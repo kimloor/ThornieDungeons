@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>ThornieDungeons</title>
+<meta name="theme-color" content="#1B1233" />
+<style>
+  html, body { margin: 0; padding: 0; background: #0d0818; min-height: 100vh; }
+  body { display: flex; justify-content: center; align-items: flex-start; padding: 16px 0; }
+  #root { width: 100%; display: flex; justify-content: center; }
+  * { -webkit-tap-highlight-color: transparent; }
+  #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
+  #boot-error { color: #FF8B8B; font-family: monospace; font-size: 12px; text-align: left; white-space: pre-wrap; word-break: break-word; padding: 16px; margin: 12px; background: rgba(255,139,139,0.08); border: 1px solid #FF8B8B; border-radius: 10px; display: none; }
+</style>
+</head>
+<body>
+<div id="root"><div id="boot-status">Loading ThornieDungeons…</div></div>
+<div id="boot-error"></div>
+
+<script>
+  // Show real errors on-screen instead of a blank/dark page — critical for debugging on mobile
+  // where there is no console access.
+  function showBootError(msg) {
+    var el = document.getElementById('boot-error');
+    if (el) { el.style.display = 'block'; el.textContent += (el.textContent ? '\n\n' : '') + msg; }
+    var status = document.getElementById('boot-status');
+    if (status) status.textContent = 'Something went wrong loading the game — see error below.';
+  }
+  window.addEventListener('error', function (e) {
+    showBootError('JS Error: ' + e.message + '\n  at ' + (e.filename || 'unknown') + ':' + (e.lineno || '?') + ':' + (e.colno || '?'));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    showBootError('Unhandled Promise Rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+  // If the CDN scripts fail to load at all (blocked network, offline, etc.), this timeout catches it.
+  window.__thornieBootTimer = setTimeout(function () {
+    if (typeof React === 'undefined') showBootError('React failed to load from CDN (unpkg.com). Network may be blocking it — try a different network or check for ad-blockers.');
+    else if (typeof Babel === 'undefined') showBootError('Babel failed to load from CDN (unpkg.com).');
+    else if (typeof ReactDOM === 'undefined') showBootError('ReactDOM failed to load from CDN (unpkg.com).');
+    else showBootError('Scripts loaded but the game never rendered. Check for a JS error above.');
+  }, 6000);
+</script>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" onerror="showBootError('Failed to load React script tag (unpkg.com blocked?)')"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" onerror="showBootError('Failed to load ReactDOM script tag (unpkg.com blocked?)')"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" onerror="showBootError('Failed to load Babel script tag (unpkg.com blocked?)')"></script>
+
+<script type="text/babel" data-presets="react">
+try {
+const { useState, useEffect, useCallback, useRef } = React;
+
+/* ============================================================
+   MAPLE DUNGEON — turn-based dungeon crawler (persistent save)
+   Mobile-first. Dark navy/gold fantasy "gacha UI" look:
+   translucent gold-bordered panels, star rarity, CP readout.
+   No permadeath — clear a stage once, farm it forever.
+   ============================================================ */
+
+const STYLE = `
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@500;700;800&display=swap');
+
+.md-root {
+  --bg-top: #1B1233;
+  --bg-mid: #2C1E4A;
+  --bg-bot: #402C63;
+  --ink: #F3EEFF;
+  --ink-soft: #B9AEDD;
+  --gold: #FFD166;
+  --gold-deep: #C9932A;
+  --gold-glow: rgba(255,209,102,0.35);
+  --coral: #FF6B6B;
+  --coral-deep: #E14F4F;
+  --violet: #8B6AE8;
+  --violet-deep: #6C4AB6;
+  --leaf: #4CAF7D;
+  --leaf-deep: #379962;
+  --panel: rgba(18,12,34,0.82);
+  --panel-soft: rgba(255,255,255,0.06);
+  --common: #9C9CA8;
+  --rare: #4FA8E0;
+  --epic: #B26AE8;
+  --legendary: #FFD166;
+  font-family: 'Nunito', sans-serif;
+  color: var(--ink);
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.5);
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bot) 100%);
+  min-height: 640px;
+  display: flex;
+  flex-direction: column;
+}
+.md-root * { box-sizing: border-box; }
+.md-display { font-family: 'Baloo 2', sans-serif; }
+
+.md-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.md-star-dot { position: absolute; background: #fff; border-radius: 50%; opacity: 0.5; animation: md-twinkle 3s ease-in-out infinite; }
+@keyframes md-twinkle { 0%,100% { opacity: 0.15; } 50% { opacity: 0.7; } }
+
+.md-status {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(10,6,22,0.55);
+  backdrop-filter: blur(3px);
+  border-bottom: 2px solid var(--gold-deep);
+}
+.md-status-chip {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--panel);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 999px;
+  padding: 3px 10px 3px 6px;
+  font-weight: 800;
+  font-size: 12.5px;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.md-chip-icon { font-size: 14px; }
+.md-bars { flex: 1; margin: 0 8px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.md-bar-track { height: 8px; border-radius: 6px; background: rgba(0,0,0,0.4); overflow: hidden; border: 1px solid rgba(255,209,102,0.25); }
+.md-bar-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease; }
+.md-bar-label { font-size: 9px; font-weight: 800; color: var(--ink-soft); letter-spacing: 0.3px; }
+
+.md-scene { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; padding: 14px 16px 8px; min-height: 240px; }
+.md-floor-tag {
+  align-self: center; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 13px; color: var(--bg-top);
+  background: linear-gradient(180deg, #FFE49A, var(--gold)); padding: 4px 18px; border-radius: 999px;
+  box-shadow: 0 3px 0 var(--gold-deep); margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.5);
+}
+
+.md-arena { flex: 1; display: flex; align-items: flex-end; justify-content: space-between; position: relative; padding: 10px 6px 20px; }
+.md-ground { position: absolute; left: -16px; right: -16px; bottom: 0; height: 26px; background: linear-gradient(180deg, #4A3670 0%, #2C1E4A 100%); border-top: 3px solid var(--gold-deep); opacity: 0.7; }
+
+.md-sprite-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 2; }
+.md-sprite-name { font-family:'Baloo 2'; font-weight: 700; font-size: 11px; background: rgba(10,6,22,0.75); color: var(--gold); border: 1px solid var(--gold-deep); padding: 1px 8px; border-radius: 999px; }
+
+.md-hero { width: 62px; height: 70px; position: relative; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); }
+.md-hero .body { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 46px; height: 46px; border-radius: 50% 50% 46% 46%; background: var(--coral); border: 3px solid #1B1233; }
+.md-hero .head { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 36px; border-radius: 50%; background: #FFE0C2; border: 3px solid #1B1233; }
+.md-hero .hair { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 44px; height: 20px; border-radius: 50% 50% 0 0; background: var(--gold-deep); border: 3px solid #1B1233; border-bottom: none; }
+.md-hero .eye { position: absolute; width: 4px; height: 6px; background: #1B1233; border-radius: 2px; top: 16px; }
+.md-hero .eye.l { left: 12px; } .md-hero .eye.r { right: 12px; }
+.md-hero.attack { animation: md-lunge 0.35s ease; }
+.md-hero.hurt { animation: md-shake 0.35s ease; }
+
+.md-enemy { width: 64px; height: 64px; position: relative; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); }
+.md-enemy .blob { position: absolute; inset: 0; border-radius: 46% 46% 52% 52% / 55% 55% 45% 45%; border: 3px solid #1B1233; }
+.md-enemy .eye { position: absolute; width: 6px; height: 8px; background: #1B1233; border-radius: 3px; top: 40%; }
+.md-enemy .eye.l { left: 30%; } .md-enemy .eye.r { right: 30%; }
+.md-enemy.attack { animation: md-lunge-l 0.35s ease; }
+.md-enemy.hurt { animation: md-shake 0.35s ease; }
+.md-enemy.boss { width: 84px; height: 84px; }
+
+@keyframes md-idle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes md-lunge { 0% { transform: translateX(0); } 40% { transform: translateX(14px) rotate(-6deg); } 100% { transform: translateX(0); } }
+@keyframes md-lunge-l { 0% { transform: translateX(0); } 40% { transform: translateX(-14px) rotate(6deg); } 100% { transform: translateX(0); } }
+@keyframes md-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+.md-dmg-float { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-family: 'Baloo 2'; font-weight: 800; font-size: 16px; pointer-events: none; animation: md-float-up 0.9s ease forwards; z-index: 5; text-shadow: 0 2px 0 rgba(0,0,0,0.4); }
+@keyframes md-float-up { 0% { opacity: 1; transform: translate(-50%, 0);} 100% { opacity: 0; transform: translate(-50%, -34px);} }
+
+.md-log { background: rgba(10,6,22,0.6); border: 1px solid rgba(255,209,102,0.25); border-radius: 12px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--ink-soft); min-height: 34px; margin-bottom: 8px; text-align: center; }
+
+.md-panel { position: relative; z-index: 2; background: rgba(10,6,22,0.5); border-top: 2px solid var(--gold-deep); padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.md-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.md-btn { font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 14px; border: none; border-radius: 14px; padding: 12px 10px; color: #fff; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.35); transition: transform 0.08s ease, box-shadow 0.08s ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.md-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+.md-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.md-btn.attack { background: linear-gradient(180deg, #FF8787, var(--coral)); }
+.md-btn.skill { background: linear-gradient(180deg, #A78BF0, var(--violet)); }
+.md-btn.item { background: linear-gradient(180deg, #6FD19C, var(--leaf)); }
+.md-btn.flee { background: #5B5470; }
+.md-btn.primary { background: linear-gradient(180deg, #FFE49A, var(--gold)); color: var(--bg-top); }
+.md-btn.info { background: var(--violet-deep); }
+.md-btn.wide { grid-column: 1 / -1; }
+.md-btn.small { padding: 8px; font-size: 12px; }
+
+.md-card { background: var(--panel); border-radius: 16px; padding: 14px; border: 1.5px solid var(--gold-deep); }
+.md-title { font-family:'Baloo 2'; font-weight: 800; font-size: 17px; margin: 0 0 4px; color: var(--gold); }
+.md-sub { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin: 0 0 10px; }
+
+.md-shop-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed rgba(255,209,102,0.2); }
+.md-shop-row:last-child { border-bottom: none; }
+.md-shop-info { font-weight: 800; font-size: 13px; }
+.md-shop-lv { font-size: 11px; color: var(--ink-soft); font-weight: 700; }
+.md-buy-btn { font-family: 'Baloo 2'; font-weight: 700; font-size: 12px; background: linear-gradient(180deg, #FFE49A, var(--gold)); border: none; border-radius: 999px; padding: 6px 12px; color: var(--bg-top); cursor: pointer; box-shadow: 0 3px 0 var(--gold-deep); }
+.md-buy-btn:disabled { opacity: 0.35; }
+.md-buy-btn:active { transform: translateY(2px); box-shadow: none; }
+
+.md-menu-title { text-align: center; padding: 30px 20px 6px; position: relative; z-index: 2; }
+.md-menu-title h1 { font-family:'Baloo 2'; font-size: 30px; margin: 0; color: var(--gold); text-shadow: 0 3px 0 rgba(0,0,0,0.4), 0 0 18px var(--gold-glow); }
+.md-menu-title p { font-weight: 800; color: var(--ink-soft); font-size: 13px; margin: 4px 0 0; }
+
+.md-cp-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.35); border: 1px solid var(--gold-deep); border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 800; color: var(--gold); }
+
+/* stars for equipment rarity */
+.md-stars-row { display: flex; gap: 1px; }
+.md-star { font-size: 11px; color: var(--gold); text-shadow: 0 0 4px var(--gold-glow); }
+.md-star.dim { color: rgba(255,255,255,0.15); }
+
+/* equipment / inventory */
+.md-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.md-slot { border-radius: 12px; padding: 8px 6px; text-align: center; background: rgba(255,255,255,0.04); border: 1.5px dashed rgba(255,209,102,0.3); cursor: pointer; }
+.md-slot.filled { border-style: solid; background: var(--panel); border-color: var(--gold-deep); }
+.md-slot-icon { font-size: 20px; }
+.md-slot-label { font-size: 10px; font-weight: 800; color: var(--ink-soft); margin-top: 2px; }
+.md-slot-name { font-size: 10.5px; font-weight: 800; margin-top: 2px; line-height: 1.15; color: var(--gold); }
+
+.md-inv-list { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; }
+.md-inv-item { display: flex; align-items: center; justify-content: space-between; background: var(--panel); border-radius: 10px; padding: 7px 10px; border-left: 4px solid var(--common); }
+.md-inv-item.rare { border-left-color: var(--rare); }
+.md-inv-item.epic { border-left-color: var(--epic); }
+.md-inv-name { font-weight: 800; font-size: 12.5px; }
+.md-inv-stat { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; }
+.md-drop-banner { text-align: center; font-family:'Baloo 2'; font-weight: 700; font-size: 13px; padding: 8px; border-radius: 10px; margin-top: 8px; border: 1px solid var(--gold-deep); }
+
+/* stage select */
+.md-stage-list { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding-right: 2px; }
+.md-stage-node {
+  display: flex; align-items: center; gap: 12px; text-align: left;
+  background: var(--panel); border: 1.5px solid var(--gold-deep); border-radius: 14px; padding: 10px 12px;
+  font-family: 'Nunito'; cursor: pointer; color: var(--ink);
+}
+.md-stage-node.boss { border-color: var(--gold); background: linear-gradient(90deg, rgba(255,209,102,0.15), var(--panel)); }
+.md-stage-node.locked { opacity: 0.4; cursor: not-allowed; border-style: dashed; }
+.md-stage-num { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,209,102,0.15); display: flex; align-items: center; justify-content: center; font-family: 'Baloo 2'; font-weight: 800; font-size: 15px; color: var(--gold); flex-shrink: 0; }
+.md-stage-node.boss .md-stage-num { background: linear-gradient(180deg, #FFE49A, var(--gold)); color: var(--bg-top); }
+.md-stage-info { flex: 1; }
+.md-stage-title { font-weight: 800; font-size: 13.5px; }
+.md-stage-sub { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; }
+.md-stage-arrow { color: var(--gold); font-size: 16px; }
+
+/* login */
+.md-login-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 20px; position: relative; z-index: 2; }
+.md-field-label { font-weight: 800; font-size: 12px; color: var(--ink-soft); margin: 10px 0 4px; }
+.md-field { width: 100%; border: 1.5px solid var(--gold-deep); border-radius: 12px; padding: 10px 12px; font-family: 'Nunito'; font-weight: 700; font-size: 14px; background: rgba(0,0,0,0.3); color: var(--ink); }
+.md-field:focus { outline: none; border-color: var(--gold); }
+.md-auth-error { color: #FF8B8B; font-weight: 800; font-size: 12px; text-align: center; margin-top: 6px; }
+.md-hint { font-size: 11px; color: var(--ink-soft); font-weight: 700; line-height: 1.5; margin-top: 10px; text-align: center; }
+`;
+
+// ---------- cloud persistence (Google Sheets via Apps Script) ----------
+const CONFIG_CACHE_KEY = "maple-dungeon-cloud-config-v1"; // caches {url,id} only — never the password
+const defaultSave = () => ({
+  gold: 0,
+  unlockedFloor: 1,
+  up: { atk: 0, def: 0, hp: 0, mp: 0 },
+  character: { level: 1, xp: 0, growth: { atk: 0, def: 0, hp: 0, mp: 0 } },
+});
+
+// Standalone build: uses real browser localStorage (window.storage was a Claude-artifact-only API)
+async function loadCachedConfig() {
+  try { const raw = localStorage.getItem(CONFIG_CACHE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  return { url: "", id: "" };
+}
+async function writeCachedConfig(cfg) { try { localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cfg)); } catch (e) {} }
+
+// offline test mode — bypasses the cloud entirely
+const LOCAL_TEST_KEY = "maple-dungeon-local-test-v2";
+async function loadLocalTest() {
+  try { const raw = localStorage.getItem(LOCAL_TEST_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  return null;
+}
+async function writeLocalTest(obj) { try { localStorage.setItem(LOCAL_TEST_KEY, JSON.stringify(obj)); } catch (e) {} }
+
+async function cloudGet(url, params) {
+  try { const qs = new URLSearchParams(params).toString(); const res = await fetch(`${url}?${qs}`); return await res.json(); }
+  catch (e) { return { error: "network_error" }; }
+}
+async function cloudPost(url, body) {
+  try { const res = await fetch(url, { method: "POST", body: JSON.stringify(body) }); return await res.json(); }
+  catch (e) { return { error: "network_error" }; }
+}
+function cloudLogin(url, id, password) { return cloudGet(url, { action: "login", id, password }); }
+function cloudRegister(url, id, password) { return cloudPost(url, { action: "register", id, password }); }
+function cloudSaveProgress(url, id, password, progress) { return cloudPost(url, { action: "saveProgress", id, password, progress }); }
+function cloudSyncItems(url, id, password, items) { return cloudPost(url, { action: "syncItems", id, password, items }); }
+
+// progress <-> server row (reuses existing column names: bank_gold now holds `gold`, best_floor now holds `unlockedFloor`)
+function progressToServer(save) {
+  return {
+    bank_gold: save.gold, best_floor: save.unlockedFloor,
+    up_atk: save.up.atk, up_def: save.up.def, up_hp: save.up.hp, up_mp: save.up.mp,
+    char_level: save.character.level, char_xp: save.character.xp,
+    char_g_atk: save.character.growth.atk, char_g_def: save.character.growth.def,
+    char_g_hp: save.character.growth.hp, char_g_mp: save.character.growth.mp,
+  };
+}
+function progressFromServer(row) {
+  if (!row) return defaultSave();
+  return {
+    gold: Number(row.bank_gold) || 0,
+    unlockedFloor: Number(row.best_floor) || 1,
+    up: { atk: Number(row.up_atk) || 0, def: Number(row.up_def) || 0, hp: Number(row.up_hp) || 0, mp: Number(row.up_mp) || 0 },
+    character: {
+      level: Number(row.char_level) || 1, xp: Number(row.char_xp) || 0,
+      growth: { atk: Number(row.char_g_atk) || 0, def: Number(row.char_g_def) || 0, hp: Number(row.char_g_hp) || 0, mp: Number(row.char_g_mp) || 0 },
+    },
+  };
+}
+function itemsToServerList(inventory, equipped) {
+  const list = [];
+  Object.values(equipped).forEach((it) => { if (it) list.push({ itemId: it.id, slotType: it.type, equipped: true, rarity: it.rarity, name: it.name, atk: it.atk, def: it.def, hp: it.hp, mp: it.mp }); });
+  inventory.forEach((it) => list.push({ itemId: it.id, slotType: it.type, equipped: false, rarity: it.rarity, name: it.name, atk: it.atk, def: it.def, hp: it.hp, mp: it.mp }));
+  return list;
+}
+function itemsFromServerList(rows) {
+  const equipped = emptyEquipped();
+  const inventory = [];
+  rows.forEach((r) => {
+    const it = { id: r.item_id, type: r.slot_type, rarity: r.rarity, name: r.name, atk: Number(r.atk) || 0, def: Number(r.def) || 0, hp: Number(r.hp) || 0, mp: Number(r.mp) || 0 };
+    ["atk", "def", "hp", "mp"].forEach((k) => { if (!it[k]) delete it[k]; });
+    if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;
+    else inventory.push(it);
+  });
+  return { equipped, inventory };
+}
+
+// ---------- game data ----------
+const UPGRADES = [
+  { key: "atk", label: "Power Charm", icon: "⚔️", desc: "+2 Attack", base: 15, growth: 1.5 },
+  { key: "def", label: "Iron Scale", icon: "🛡️", desc: "+2 Defense", base: 15, growth: 1.5 },
+  { key: "hp", label: "Vital Crystal", icon: "❤️", desc: "+10 Max HP", base: 12, growth: 1.4 },
+  { key: "mp", label: "Mana Bloom", icon: "🔷", desc: "+8 Max MP", base: 12, growth: 1.4 },
+];
+
+const ENEMY_POOL = [
+  { name: "Jelly Slime", color: "#7ED9A8" },
+  { name: "Spore Cap", color: "#C98BE0" },
+  { name: "Tusky Boar", color: "#C9A06A" },
+  { name: "Bramble Bat", color: "#8E8CD8" },
+  { name: "Bone Rattler", color: "#E5E2D6" },
+  { name: "Sandy Crab", color: "#F2B25C" },
+];
+const BOSS_POOL = [
+  { name: "Moss King", color: "#5FA85F" },
+  { name: "Ember Drake", color: "#F0714B" },
+  { name: "Frost Warden", color: "#7BC7E8" },
+];
+
+const WEAPON_NAMES = ["Wooden Sword", "Iron Blade", "Steel Rapier", "Flame Saber", "Dragon Fang"];
+const ARMOR_NAMES = ["Cloth Robe", "Leather Vest", "Iron Plate", "Mystic Cloak", "Dragon Scale Mail"];
+const ACCESSORY_NAMES = ["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"];
+const RARITY_MULT = { common: 1, rare: 1.8, epic: 3 };
+const RARITY_LABEL = { common: "Common", rare: "Rare", epic: "Epic" };
+const RARITY_STARS = { common: 1, rare: 3, epic: 5 };
+const SLOT_ICON = { weapon: "⚔️", armor: "🛡️", accessory: "💍" };
+const SLOT_LABEL = { weapon: "Weapon", armor: "Armor", accessory: "Accessory" };
+
+function upgradeCost(u, level) { return Math.round(u.base * Math.pow(u.growth, level)); }
+
+function shopBaseStats(save) {
+  return {
+    maxHp: 40 + save.up.hp * 10,
+    maxMp: 15 + save.up.mp * 8,
+    atk: 8 + save.up.atk * 2,
+    def: 2 + save.up.def * 2,
+  };
+}
+function characterBaseStats(save) {
+  const shop = shopBaseStats(save);
+  const g = save.character.growth;
+  return { maxHp: shop.maxHp + g.hp, maxMp: shop.maxMp + g.mp, atk: shop.atk + g.atk, def: shop.def + g.def };
+}
+function freshPlayerFromSave(save) {
+  const cb = characterBaseStats(save);
+  return { level: save.character.level, xp: save.character.xp, baseAtk: cb.atk, baseDef: cb.def, baseMaxHp: cb.maxHp, baseMaxMp: cb.maxMp, hp: cb.maxHp, mp: cb.maxMp };
+}
+
+function makeEnemy(floor) {
+  const isBoss = floor % 5 === 0;
+  const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  const mult = isBoss ? 2.6 : 1;
+  return {
+    name: isBoss ? `${t.name} (Boss)` : t.name,
+    color: t.color,
+    isBoss,
+    hp: Math.round((18 + floor * 7) * mult),
+    maxHp: Math.round((18 + floor * 7) * mult),
+    atk: Math.round((3 + floor * 1.6) * (isBoss ? 1.3 : 1)),
+    def: Math.floor(floor * 0.7) + (isBoss ? 3 : 0),
+    xp: Math.round((6 + floor * 3) * (isBoss ? 2.2 : 1)),
+    gold: Math.round((4 + floor * 2.5) * (isBoss ? 2.2 : 1)),
+  };
+}
+
+function xpToNext(level) { return level * 22 + 18; }
+
+function rollRarity() {
+  const r = Math.random();
+  if (r < 0.08) return "epic";
+  if (r < 0.32) return "rare";
+  return "common";
+}
+function pickName(pool, floor) { return pool[Math.min(pool.length - 1, Math.floor(floor / 4))]; }
+
+function generateDrop(floor) {
+  const roll = Math.random();
+  const type = roll < 0.34 ? "weapon" : roll < 0.67 ? "armor" : "accessory";
+  const rarity = rollRarity();
+  const mult = RARITY_MULT[rarity];
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  if (type === "weapon") { const atk = Math.max(1, Math.round((2 + floor * 0.9) * mult)); return { id, type, rarity, name: pickName(WEAPON_NAMES, floor), atk }; }
+  if (type === "armor") { const def = Math.max(1, Math.round((1.5 + floor * 0.7) * mult)); return { id, type, rarity, name: pickName(ARMOR_NAMES, floor), def }; }
+  const statKey = Math.random() < 0.5 ? "hp" : "mp";
+  const val = Math.max(4, Math.round((statKey === "hp" ? 6 + floor * 2.4 : 4 + floor * 1.6) * mult));
+  return { id, type, rarity, name: pickName(ACCESSORY_NAMES, floor), [statKey]: val };
+}
+
+function itemStatText(it) {
+  const parts = [];
+  if (it.atk) parts.push(`+${it.atk} ATK`);
+  if (it.def) parts.push(`+${it.def} DEF`);
+  if (it.hp) parts.push(`+${it.hp} HP`);
+  if (it.mp) parts.push(`+${it.mp} MP`);
+  return parts.join("  ");
+}
+
+function getEquipBonus(equipped) {
+  const b = { atk: 0, def: 0, hp: 0, mp: 0 };
+  Object.values(equipped).forEach((it) => { if (!it) return; if (it.atk) b.atk += it.atk; if (it.def) b.def += it.def; if (it.hp) b.hp += it.hp; if (it.mp) b.mp += it.mp; });
+  return b;
+}
+function getStats(player, equipped) {
+  const b = getEquipBonus(equipped);
+  return { atk: player.baseAtk + b.atk, def: player.baseDef + b.def, maxHp: player.baseMaxHp + b.hp, maxMp: player.baseMaxMp + b.mp };
+}
+function combatPower(stats, level) {
+  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + level * 50);
+}
+
+const emptyEquipped = () => ({ weapon: null, armor: null, accessory: null });
+
+function MapleDungeon() {
+  const [save, setSave] = useState(null);
+  const [phase, setPhase] = useState("loading"); // loading, login, menu, town, map, combat, result, defeat
+  const [cred, setCred] = useState({ url: "", id: "", password: "" });
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [offlineMode, setOfflineMode] = useState(false);
+
+  const [player, setPlayer] = useState(null); // ephemeral combat state, derived fresh from save each stage entry
+  const [equipped, setEquipped] = useState(emptyEquipped());
+  const [inventory, setInventory] = useState([]);
+  const [selectedFloor, setSelectedFloor] = useState(1);
+  const [enemy, setEnemy] = useState(null);
+  const [log, setLog] = useState("Welcome to ThornieDungeons!");
+  const [potions, setPotions] = useState(2);
+  const [busy, setBusy] = useState(false);
+  const [heroAnim, setHeroAnim] = useState("");
+  const [enemyAnim, setEnemyAnim] = useState("");
+  const [floats, setFloats] = useState([]);
+  const [dropItem, setDropItem] = useState(null);
+  const [lastRewards, setLastRewards] = useState({ gold: 0, xp: 0, leveledUp: false, unlockedNext: false });
+  const [invOpen, setInvOpen] = useState(false);
+  const floatId = useRef(0);
+
+  useEffect(() => {
+    (async () => {
+      const cfg = await loadCachedConfig();
+      setCred((c) => ({ ...c, url: cfg.url || "", id: cfg.id || "" }));
+      setPhase("login");
+    })();
+  }, []);
+
+  const pushProgress = useCallback((nextSave) => {
+    if (!cred.url || !cred.id || !cred.password) return;
+    cloudSaveProgress(cred.url, cred.id, cred.password, progressToServer(nextSave));
+  }, [cred]);
+  const pushItems = useCallback((inv, eq) => {
+    if (!cred.url || !cred.id || !cred.password) return;
+    cloudSyncItems(cred.url, cred.id, cred.password, itemsToServerList(inv, eq));
+  }, [cred]);
+
+  const persistSave = useCallback((next) => {
+    setSave(next);
+    if (offlineMode) writeLocalTest({ save: next, equipped, inventory });
+    else pushProgress(next);
+  }, [pushProgress, offlineMode, equipped, inventory]);
+
+  const persistItems = useCallback((inv, eq) => {
+    if (offlineMode) writeLocalTest({ save, equipped: eq, inventory: inv });
+    else pushItems(inv, eq);
+  }, [offlineMode, save, pushItems]);
+
+  function spawnFloat(side, text, color) {
+    const id = ++floatId.current;
+    setFloats((f) => [...f, { id, side, text, color }]);
+    setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 900);
+  }
+
+  async function handleLogin() {
+    setAuthError("");
+    if (!cred.url || !cred.id || !cred.password) { setAuthError("กรอกให้ครบทุกช่องนะคะ"); return; }
+    setAuthBusy(true);
+    const res = await cloudLogin(cred.url, cred.id, cred.password);
+    setAuthBusy(false);
+    if (res.error === "not_found") { setAuthError("ไม่พบ Player ID นี้ — กด \"สร้างบัญชีใหม่\" ก่อนนะคะ"); return; }
+    if (res.error === "wrong_password") { setAuthError("รหัสผ่านไม่ถูกต้อง"); return; }
+    if (res.error) { setAuthError("เชื่อมต่อไม่ได้ ตรวจสอบ Server URL หรือลองใหม่อีกครั้ง"); return; }
+    writeCachedConfig({ url: cred.url, id: cred.id });
+    const nextSave = progressFromServer(res.progress);
+    setSave(nextSave);
+    const { equipped: eq, inventory: inv } = itemsFromServerList(res.items || []);
+    setEquipped(eq);
+    setInventory(inv);
+    setPhase("menu");
+  }
+
+  async function handleRegister() {
+    setAuthError("");
+    if (!cred.url || !cred.id || !cred.password) { setAuthError("กรอกให้ครบทุกช่องนะคะ"); return; }
+    setAuthBusy(true);
+    const res = await cloudRegister(cred.url, cred.id, cred.password);
+    setAuthBusy(false);
+    if (res.error === "id_taken") { setAuthError("Player ID นี้มีคนใช้แล้ว ลองชื่ออื่น หรือกด \"เข้าสู่ระบบ\" ถ้าเป็นของคุณเอง"); return; }
+    if (res.error) { setAuthError("เชื่อมต่อไม่ได้ ตรวจสอบ Server URL หรือลองใหม่อีกครั้ง"); return; }
+    writeCachedConfig({ url: cred.url, id: cred.id });
+    setSave(defaultSave());
+    setEquipped(emptyEquipped());
+    setInventory([]);
+    setPhase("menu");
+  }
+
+  async function handleTestLogin() {
+    const cached = await loadLocalTest();
+    setOfflineMode(true);
+    setCred({ url: "", id: "test", password: "" });
+    setSave(cached?.save || defaultSave());
+    setEquipped(cached?.equipped || emptyEquipped());
+    setInventory(cached?.inventory || []);
+    setPhase("menu");
+  }
+
+  function logout() {
+    setCred((c) => ({ ...c, password: "" }));
+    setSave(null);
+    setPlayer(null);
+    setAuthError("");
+    setOfflineMode(false);
+    setPhase("login");
+  }
+
+  function enterStage(floorNum) {
+    setSelectedFloor(floorNum);
+    setPlayer(freshPlayerFromSave(save));
+    setPotions(2);
+    const e = makeEnemy(floorNum);
+    setEnemy(e);
+    setDropItem(null);
+    setLog(e.isBoss ? `A ${e.name} blocks the way!` : `A wild ${e.name} appears!`);
+    setPhase("combat");
+  }
+
+  function endCombatWin() {
+    const gained = enemy.gold;
+    const xpGained = enemy.xp;
+
+    const dropChance = enemy.isBoss ? 1 : 0.32;
+    let drop = null;
+    if (Math.random() < dropChance) {
+      drop = generateDrop(selectedFloor);
+      const nextInv = [...inventory, drop];
+      setInventory(nextInv);
+      persistItems(nextInv, equipped);
+    }
+    setDropItem(drop);
+
+    let xp = save.character.xp + xpGained;
+    let level = save.character.level;
+    let growth = { ...save.character.growth };
+    let leveledUp = false;
+    while (xp >= xpToNext(level)) {
+      xp -= xpToNext(level);
+      level += 1;
+      growth = { atk: growth.atk + 2, def: growth.def + 1, hp: growth.hp + 8, mp: growth.mp + 5 };
+      leveledUp = true;
+    }
+    const unlockedNext = selectedFloor === save.unlockedFloor;
+    const nextSave = { ...save, gold: save.gold + gained, unlockedFloor: unlockedNext ? save.unlockedFloor + 1 : save.unlockedFloor, character: { level, xp, growth } };
+    persistSave(nextSave);
+
+    setLastRewards({ gold: gained, xp: xpGained, leveledUp, unlockedNext });
+    setLog(leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
+    setPhase("result");
+  }
+
+  function playerLost() {
+    setLog("You were defeated...");
+    setPhase("defeat");
+  }
+
+  function playerTurn(action) {
+    if (busy || !enemy || !player) return;
+    const stats = getStats(player, equipped);
+    setBusy(true);
+
+    if (action === "attack") {
+      const dmg = Math.max(2, Math.round(stats.atk - enemy.def * 0.6 + (Math.random() * 4 - 2)));
+      setHeroAnim("attack");
+      setTimeout(() => {
+        setEnemy((e) => { const nh = Math.max(0, e.hp - dmg); spawnFloat("enemy", `-${dmg}`, "#FF6B6B"); setEnemyAnim("hurt"); return { ...e, hp: nh }; });
+        setHeroAnim("");
+        setTimeout(() => resolveAfterPlayerAction(), 350);
+      }, 300);
+    } else if (action === "skill") {
+      if (player.mp < 8) { setBusy(false); return; }
+      const dmg = Math.max(4, Math.round(stats.atk * 1.8 - enemy.def * 0.5 + (Math.random() * 5 - 2)));
+      setPlayer((p) => ({ ...p, mp: p.mp - 8 }));
+      setHeroAnim("attack");
+      setTimeout(() => {
+        setEnemy((e) => { const nh = Math.max(0, e.hp - dmg); spawnFloat("enemy", `-${dmg}`, "#8B6AE8"); setEnemyAnim("hurt"); return { ...e, hp: nh }; });
+        setHeroAnim("");
+        setTimeout(() => resolveAfterPlayerAction(), 350);
+      }, 300);
+    } else if (action === "item") {
+      if (potions <= 0) { setBusy(false); return; }
+      setPotions((n) => n - 1);
+      setPlayer((p) => { const heal = Math.round(stats.maxHp * 0.4); spawnFloat("hero", `+${heal}`, "#4CAF7D"); return { ...p, hp: Math.min(stats.maxHp, p.hp + heal) }; });
+      setLog("You drink a potion and recover HP.");
+      setTimeout(() => enemyTurn(), 500);
+    } else if (action === "flee") {
+      const success = Math.random() < 0.55;
+      if (success) { setLog("You escaped safely."); setEnemy(null); setPhase("map"); setBusy(false); }
+      else { setLog("Couldn't escape!"); setTimeout(() => enemyTurn(), 500); }
+    }
+  }
+
+  function resolveAfterPlayerAction() {
+    setEnemy((e) => {
+      if (e && e.hp <= 0) { setBusy(false); setTimeout(() => endCombatWin(), 250); }
+      else setTimeout(() => enemyTurn(), 400);
+      return e;
+    });
+  }
+
+  function enemyTurn() {
+    setEnemy((e) => {
+      if (!e || e.hp <= 0) { setBusy(false); return e; }
+      const stats = getStats(player, equipped);
+      const dmg = Math.max(1, Math.round(e.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
+      setEnemyAnim("attack");
+      setTimeout(() => {
+        setPlayer((p) => {
+          const nh = Math.max(0, p.hp - dmg);
+          spawnFloat("hero", `-${dmg}`, "#FF6B6B");
+          setHeroAnim("hurt");
+          if (nh <= 0) setTimeout(() => playerLost(), 400);
+          return { ...p, hp: nh };
+        });
+        setEnemyAnim("");
+        setLog(`${e.name} strikes for ${dmg}!`);
+        setBusy(false);
+      }, 300);
+      return e;
+    });
+  }
+
+  function retryStage() { enterStage(selectedFloor); }
+  function backToMap() { setEnemy(null); setDropItem(null); setPhase("map"); }
+  function nextStage() { enterStage(selectedFloor + 1); }
+
+  function buyUpgrade(u) {
+    const level = save.up[u.key];
+    const cost = upgradeCost(u, level);
+    if (save.gold < cost) return;
+    persistSave({ ...save, gold: save.gold - cost, up: { ...save.up, [u.key]: level + 1 } });
+  }
+
+  function equipItem(item) {
+    const slot = item.type;
+    const prevItem = equipped[slot];
+    const newEq = { ...equipped, [slot]: item };
+    let nextInv = inventory.filter((i) => i.id !== item.id);
+    if (prevItem) nextInv = [...nextInv, prevItem];
+    setEquipped(newEq);
+    setInventory(nextInv);
+    persistItems(nextInv, newEq);
+  }
+  function unequipItem(slot) {
+    const item = equipped[slot];
+    if (!item) return;
+    const newEq = { ...equipped, [slot]: null };
+    const nextInv = [...inventory, item];
+    setEquipped(newEq);
+    setInventory(nextInv);
+    persistItems(nextInv, newEq);
+  }
+
+  if (phase === "loading") {
+    return (
+      <div className="md-root" style={{ alignItems: "center", justifyContent: "center" }}>
+        <style>{STYLE}</style>
+        <p className="md-display" style={{ color: "var(--gold)", fontWeight: 800 }}>Loading dungeon...</p>
+      </div>
+    );
+  }
+
+  if (phase === "login" || !save) {
+    return (
+      <div className="md-root">
+        <style>{STYLE}</style>
+        <Starfield />
+        <LoginScreen cred={cred} setCred={setCred} error={authError} busy={authBusy} onLogin={handleLogin} onRegister={handleRegister} onTestLogin={handleTestLogin} />
+      </div>
+    );
+  }
+
+  const charStats = characterBaseStats(save);
+  const displayStats = player ? getStats(player, equipped) : { ...charStats, ...getEquipBonus(equipped) };
+  const cp = combatPower(player ? getStats(player, equipped) : { atk: charStats.atk + getEquipBonus(equipped).atk, def: charStats.def + getEquipBonus(equipped).def, maxHp: charStats.maxHp + getEquipBonus(equipped).hp, maxMp: charStats.maxMp + getEquipBonus(equipped).mp }, save.character.level);
+
+  return (
+    <div className="md-root">
+      <style>{STYLE}</style>
+      <Starfield />
+
+      {phase !== "menu" && phase !== "login" && (
+        <StatusBar player={player} save={save} phase={phase} />
+      )}
+
+      {phase === "menu" && (
+        <MenuScreen save={save} cp={cp} playerId={cred.id} offlineMode={offlineMode} onTown={() => setPhase("town")} onMap={() => setPhase("map")} onLogout={logout} />
+      )}
+
+      {phase === "town" && (
+        <TownScreen save={save} offlineMode={offlineMode} onBuy={buyUpgrade} onOpenInv={() => setInvOpen(true)} onMap={() => setPhase("map")} onBack={() => setPhase("menu")} />
+      )}
+
+      {phase === "map" && (
+        <MapScreen unlockedFloor={save.unlockedFloor} onSelectFloor={enterStage} onOpenInv={() => setInvOpen(true)} onBack={() => setPhase("town")} />
+      )}
+
+      {phase === "combat" && enemy && player && (
+        <CombatScreen player={player} enemy={enemy} log={log} busy={busy} potions={potions} heroAnim={heroAnim} enemyAnim={enemyAnim} floats={floats} onAction={playerTurn} equipped={equipped} />
+      )}
+
+      {phase === "result" && (
+        <ResultScreen floor={selectedFloor} rewards={lastRewards} dropItem={dropItem} onNext={nextStage} onMap={backToMap} onOpenInv={() => setInvOpen(true)} />
+      )}
+
+      {phase === "defeat" && (
+        <DefeatScreen floor={selectedFloor} onRetry={retryStage} onMap={backToMap} />
+      )}
+
+      {invOpen && (
+        <InventoryOverlay equipped={equipped} inventory={inventory} onEquip={equipItem} onUnequip={unequipItem} onClose={() => setInvOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+function Starfield() {
+  const dots = [
+    { top: 12, left: 8, size: 3 }, { top: 30, left: 80, size: 2 }, { top: 8, left: 55, size: 2 },
+    { top: 55, left: 15, size: 2 }, { top: 70, left: 90, size: 3 }, { top: 20, left: 35, size: 2 },
+    { top: 45, left: 65, size: 2 }, { top: 85, left: 40, size: 2 },
+  ];
+  return (
+    <div className="md-stars">
+      {dots.map((d, i) => (
+        <div key={i} className="md-star-dot" style={{ top: `${d.top}%`, left: `${d.left}%`, width: d.size, height: d.size, animationDelay: `${i * 0.4}s` }} />
+      ))}
+    </div>
+  );
+}
+
+function StarRating({ rarity }) {
+  const filled = RARITY_STARS[rarity] || 1;
+  return (
+    <span className="md-stars-row">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span key={i} className={`md-star ${i > filled ? "dim" : ""}`}>★</span>
+      ))}
+    </span>
+  );
+}
+
+function StatusBar({ player, save, phase }) {
+  const stats = player ? getStats(player, {}) : null;
+  const hpPct = player && stats ? Math.max(0, (player.hp / player.baseMaxHp) * 100) : 0;
+  const mpPct = player && stats ? Math.max(0, (player.mp / player.baseMaxMp) * 100) : 0;
+  return (
+    <div className="md-status">
+      <div className="md-status-chip"><span className="md-chip-icon">🏅</span>Lv{player?.level ?? save.character.level}</div>
+      {player ? (
+        <div className="md-bars">
+          <div>
+            <div className="md-bar-track"><div className="md-bar-fill" style={{ width: `${hpPct}%`, background: "linear-gradient(90deg,#FF8787,#FF6B6B)" }} /></div>
+            <div className="md-bar-label">HP {player.hp}/{player.baseMaxHp}</div>
+          </div>
+          <div>
+            <div className="md-bar-track"><div className="md-bar-fill" style={{ width: `${mpPct}%`, background: "linear-gradient(90deg,#A78BF0,#8B6AE8)" }} /></div>
+            <div className="md-bar-label">MP {player.mp}/{player.baseMaxMp}</div>
+          </div>
+        </div>
+      ) : <div style={{ flex: 1 }} />}
+      <div className="md-status-chip"><span className="md-chip-icon">🪙</span>{save.gold}</div>
+    </div>
+  );
+}
+
+function LoginScreen({ cred, setCred, error, busy, onLogin, onRegister, onTestLogin }) {
+  return (
+    <div className="md-login-wrap">
+      <div className="md-menu-title" style={{ padding: "0 0 10px" }}>
+        <h1 style={{ fontSize: 26 }}>ThornieDungeons</h1>
+        <p>sign in to sync your save</p>
+      </div>
+      <div className="md-card">
+        <p className="md-field-label" style={{ marginTop: 0 }}>Server URL (Apps Script Web App)</p>
+        <input className="md-field" placeholder="https://script.google.com/macros/s/.../exec" value={cred.url} onChange={(e) => setCred((c) => ({ ...c, url: e.target.value }))} />
+        <p className="md-field-label">Player ID</p>
+        <input className="md-field" placeholder="e.g. kimmie" value={cred.id} onChange={(e) => setCred((c) => ({ ...c, id: e.target.value }))} />
+        <p className="md-field-label">Password</p>
+        <input className="md-field" type="password" placeholder="••••••" value={cred.password} onChange={(e) => setCred((c) => ({ ...c, password: e.target.value }))} />
+        {error && <p className="md-auth-error">{error}</p>}
+        <div className="md-btn-row" style={{ marginTop: 12 }}>
+          <button className="md-btn primary" disabled={busy} onClick={onLogin}>{busy ? "..." : "🔑 เข้าสู่ระบบ"}</button>
+          <button className="md-btn info" disabled={busy} onClick={onRegister}>{busy ? "..." : "✨ สร้างบัญชีใหม่"}</button>
+        </div>
+        <p className="md-hint">ใส่ Server URL จาก Apps Script ที่ deploy ไว้ ตั้ง Player ID + Password เอง — ใช้ชุดเดียวกันนี้เข้าจากเครื่องไหนก็โหลดเซฟเดิมได้</p>
+      </div>
+      <div className="md-card" style={{ marginTop: 10, textAlign: "center" }}>
+        <p className="md-sub" style={{ margin: "0 0 8px" }}>ยังไม่มี backend พร้อมใช้? ลองเล่นเกมได้เลยแบบไม่ผ่าน cloud</p>
+        <button className="md-btn info wide" disabled={busy} onClick={onTestLogin}>🧪 เข้าเกมแบบทดสอบ (Offline)</button>
+      </div>
+    </div>
+  );
+}
+
+function MenuScreen({ save, cp, playerId, offlineMode, onTown, onMap, onLogout }) {
+  return (
+    <>
+      <div className="md-menu-title">
+        <h1>ThornieDungeons</h1>
+        <p>a persistent dungeon crawl</p>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "6px 0 16px", position: "relative", zIndex: 2 }}>
+        <HeroSprite anim="" />
+        <div className="md-cp-badge">⚡ CP {cp.toLocaleString()}</div>
+      </div>
+      <div className="md-panel" style={{ marginTop: "auto" }}>
+        {offlineMode && <div className="md-drop-banner" style={{ background: "rgba(255,209,102,0.12)", marginTop: 0 }}>🧪 Offline Test Mode — saves stay on this device only</div>}
+        <div className="md-card" style={{ marginBottom: 10 }}>
+          <p className="md-title" style={{ fontSize: 15 }}>🏰 Adventurer <span className="md-shop-lv">({playerId})</span></p>
+          <p className="md-sub" style={{ margin: 0 }}>🪙 {save.gold} gold · Lv{save.character.level} · Stage {save.unlockedFloor} unlocked</p>
+        </div>
+        <button className="md-btn primary wide" onClick={onMap}>🗺️ Select Stage</button>
+        <div className="md-btn-row">
+          <button className="md-btn info" onClick={onTown}>🏪 Town</button>
+          <button className="md-btn flee" onClick={onLogout}>🚪 {offlineMode ? "Exit Test" : "Switch Account"}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function TownScreen({ save, offlineMode, onBuy, onOpenInv, onMap, onBack }) {
+  return (
+    <div className="md-panel" style={{ flex: 1 }}>
+      {offlineMode && <div className="md-drop-banner" style={{ background: "rgba(255,209,102,0.12)" }}>🧪 Offline Test Mode</div>}
+      <div className="md-card" style={{ marginBottom: 10 }}>
+        <p className="md-title">🏪 Town</p>
+        <p className="md-sub">Spend gold on permanent upgrades.</p>
+        {UPGRADES.map((u) => {
+          const level = save.up[u.key];
+          const cost = upgradeCost(u, level);
+          const canBuy = save.gold >= cost;
+          return (
+            <div className="md-shop-row" key={u.key}>
+              <div>
+                <div className="md-shop-info">{u.icon} {u.label} <span className="md-shop-lv">Lv{level}</span></div>
+                <div className="md-shop-lv">{u.desc}</div>
+              </div>
+              <button className="md-buy-btn" disabled={!canBuy} onClick={() => onBuy(u)}>🪙{cost}</button>
+            </div>
+          );
+        })}
+      </div>
+      <div className="md-btn-row">
+        <button className="md-btn info" onClick={onOpenInv}>🎒 Equipment</button>
+        <button className="md-btn primary" onClick={onMap}>🗺️ Stage Select</button>
+      </div>
+      <button className="md-btn flee wide small" onClick={onBack}>← Back</button>
+    </div>
+  );
+}
+
+function MapScreen({ unlockedFloor, onSelectFloor, onOpenInv, onBack }) {
+  const maxShow = unlockedFloor + 1; // one locked preview ahead
+  const floors = Array.from({ length: maxShow }, (_, i) => i + 1);
+  return (
+    <div className="md-panel" style={{ flex: 1 }}>
+      <div className="md-card" style={{ marginBottom: 10, textAlign: "center" }}>
+        <p className="md-title" style={{ margin: 0 }}>🗺️ Select Stage</p>
+        <p className="md-sub" style={{ margin: 0 }}>Cleared stages can be farmed as many times as you like.</p>
+      </div>
+      <div className="md-stage-list">
+        {floors.map((f) => {
+          const locked = f > unlockedFloor;
+          const isBoss = f % 5 === 0;
+          return (
+            <button key={f} className={`md-stage-node ${isBoss ? "boss" : ""} ${locked ? "locked" : ""}`} disabled={locked} onClick={() => onSelectFloor(f)}>
+              <div className="md-stage-num">{locked ? "🔒" : isBoss ? "👑" : f}</div>
+              <div className="md-stage-info">
+                <div className="md-stage-title">{locked ? "Locked" : isBoss ? `Stage ${f} — Boss` : `Stage ${f}`}</div>
+                <div className="md-stage-sub">{locked ? "Clear the previous stage first" : isBoss ? "Tougher fight, better rewards" : "Farmable · gold, XP, gear"}</div>
+              </div>
+              {!locked && <div className="md-stage-arrow">›</div>}
+            </button>
+          );
+        })}
+      </div>
+      <div className="md-btn-row" style={{ marginTop: 10 }}>
+        <button className="md-btn info" onClick={onOpenInv}>🎒 Equipment</button>
+        <button className="md-btn flee" onClick={onBack}>🏪 Town</button>
+      </div>
+    </div>
+  );
+}
+
+function HeroSprite({ anim }) {
+  return (
+    <div className="md-sprite-wrap">
+      <div className={`md-hero ${anim}`}>
+        <div className="hair" />
+        <div className="head"><div className="eye l" /><div className="eye r" /></div>
+        <div className="body" />
+      </div>
+      <div className="md-sprite-name">You</div>
+    </div>
+  );
+}
+
+function EnemySprite({ enemy, anim }) {
+  return (
+    <div className="md-sprite-wrap">
+      <div className={`md-enemy ${enemy.isBoss ? "boss" : ""} ${anim}`}>
+        <div className="blob" style={{ background: enemy.color }}><div className="eye l" /><div className="eye r" /></div>
+      </div>
+      <div className="md-sprite-name">{enemy.name}</div>
+    </div>
+  );
+}
+
+function CombatScreen({ player, enemy, log, busy, potions, heroAnim, enemyAnim, floats, onAction }) {
+  const enemyHpPct = Math.max(0, (enemy.hp / enemy.maxHp) * 100);
+  return (
+    <>
+      <div className="md-scene">
+        <div className="md-floor-tag md-display">⚔️ Battle</div>
+        <div style={{ padding: "0 10px 6px" }}>
+          <div className="md-bar-track" style={{ height: 10 }}><div className="md-bar-fill" style={{ width: `${enemyHpPct}%`, background: "linear-gradient(90deg,#FF8787,#E14F4F)" }} /></div>
+          <div className="md-bar-label" style={{ textAlign: "center", marginTop: 2 }}>{enemy.name} — {enemy.hp}/{enemy.maxHp} HP</div>
+        </div>
+        <div className="md-arena">
+          <div className="md-ground" />
+          <div style={{ position: "relative" }}>
+            <HeroSprite anim={heroAnim} />
+            {floats.filter((f) => f.side === "hero").map((f) => (<div key={f.id} className="md-dmg-float" style={{ color: f.color }}>{f.text}</div>))}
+          </div>
+          <div style={{ position: "relative" }}>
+            <EnemySprite enemy={enemy} anim={enemyAnim} />
+            {floats.filter((f) => f.side === "enemy").map((f) => (<div key={f.id} className="md-dmg-float" style={{ color: f.color }}>{f.text}</div>))}
+          </div>
+        </div>
+      </div>
+      <div className="md-panel">
+        <div className="md-log">{log}</div>
+        <div className="md-btn-row">
+          <button className="md-btn attack" disabled={busy} onClick={() => onAction("attack")}>👊 Attack</button>
+          <button className="md-btn skill" disabled={busy || player.mp < 8} onClick={() => onAction("skill")}>✨ Skill (8mp)</button>
+          <button className="md-btn item" disabled={busy || potions <= 0} onClick={() => onAction("item")}>🧪 Potion ({potions})</button>
+          <button className="md-btn flee" disabled={busy} onClick={() => onAction("flee")}>🏃 Flee</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ResultScreen({ floor, rewards, dropItem, onNext, onMap, onOpenInv }) {
+  return (
+    <div className="md-panel" style={{ flex: 1, justifyContent: "center" }}>
+      <div className="md-card" style={{ textAlign: "center" }}>
+        <p className="md-title">🎉 Stage {floor} Cleared!</p>
+        <p className="md-sub">+{rewards.gold} 🪙 gold · +{rewards.xp} XP{rewards.leveledUp ? " · Level up!" : ""}{rewards.unlockedNext ? " · Next stage unlocked!" : ""}</p>
+        {dropItem ? (
+          <div className="md-drop-banner" style={{ background: dropItem.rarity === "epic" ? "rgba(178,106,232,0.18)" : dropItem.rarity === "rare" ? "rgba(79,168,224,0.18)" : "rgba(156,156,168,0.15)" }}>
+            {SLOT_ICON[dropItem.type]} Found {RARITY_LABEL[dropItem.rarity]} {dropItem.name}! <StarRating rarity={dropItem.rarity} /><br />
+            <span style={{ fontSize: 11, color: "var(--ink-soft)" }}>{itemStatText(dropItem)}</span>
+          </div>
+        ) : (
+          <p className="md-sub" style={{ margin: 0 }}>No item dropped this time.</p>
+        )}
+      </div>
+      {dropItem && (
+        <button className="md-btn info wide" onClick={onOpenInv}>🎒 Open Equipment</button>
+      )}
+      <div className="md-btn-row" style={{ marginTop: 4 }}>
+        <button className="md-btn primary wide" onClick={onNext}>⚔️ Next Stage</button>
+        <button className="md-btn flee wide" onClick={onMap}>🗺️ Back to Map</button>
+      </div>
+    </div>
+  );
+}
+
+function DefeatScreen({ floor, onRetry, onMap }) {
+  return (
+    <div className="md-panel" style={{ flex: 1, justifyContent: "center" }}>
+      <div className="md-card" style={{ textAlign: "center" }}>
+        <p className="md-title">💀 Defeated on Stage {floor}</p>
+        <p className="md-sub">No penalty — your gold, level, and gear are all safe. Gear up in Town and try again.</p>
+      </div>
+      <div className="md-btn-row" style={{ marginTop: 10 }}>
+        <button className="md-btn primary wide" onClick={onRetry}>🔁 Retry Stage</button>
+        <button className="md-btn flee wide" onClick={onMap}>🗺️ Back to Map</button>
+      </div>
+    </div>
+  );
+}
+
+function InventoryOverlay({ equipped, inventory, onEquip, onUnequip, onClose }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 20, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end" }}>
+      <div style={{ background: "linear-gradient(180deg, #2C1E4A, #1B1233)", width: "100%", borderRadius: "20px 20px 0 0", padding: 16, maxHeight: "88%", overflowY: "auto", border: "1.5px solid var(--gold-deep)", borderBottom: "none" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <p className="md-title" style={{ margin: 0 }}>🎒 Equipment</p>
+          <button className="md-btn flee small" onClick={onClose} style={{ boxShadow: "none", padding: "6px 12px" }}>Close</button>
+        </div>
+
+        <div className="md-slots">
+          {["weapon", "armor", "accessory"].map((slot) => {
+            const it = equipped[slot];
+            return (
+              <div key={slot} className={`md-slot ${it ? "filled" : ""}`} onClick={() => it && onUnequip(slot)}>
+                <div className="md-slot-icon">{SLOT_ICON[slot]}</div>
+                <div className="md-slot-label">{SLOT_LABEL[slot]}</div>
+                {it ? (
+                  <>
+                    <div className="md-slot-name">{it.name}</div>
+                    <div style={{ display: "flex", justifyContent: "center", margin: "2px 0" }}><StarRating rarity={it.rarity} /></div>
+                    <div className="md-slot-label">{itemStatText(it)}</div>
+                  </>
+                ) : (
+                  <div className="md-slot-name" style={{ opacity: 0.5, color: "var(--ink-soft)" }}>Empty</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="md-sub" style={{ margin: "0 0 6px" }}>Tap an equipped slot to unequip. Tap an item below to equip it.</p>
+        <div className="md-inv-list">
+          {inventory.length === 0 && <p className="md-sub" style={{ margin: 0 }}>No items in your bag yet — defeat monsters for a chance to find gear.</p>}
+          {inventory.map((it) => (
+            <div key={it.id} className={`md-inv-item ${it.rarity}`} onClick={() => onEquip(it)}>
+              <div>
+                <div className="md-inv-name">{SLOT_ICON[it.type]} {it.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <StarRating rarity={it.rarity} />
+                  <span className="md-inv-stat">{itemStatText(it)}</span>
+                </div>
+              </div>
+              <button className="md-buy-btn">Equip</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<MapleDungeon />);
+clearTimeout(window.__thornieBootTimer);
+} catch (err) {
+  clearTimeout(window.__thornieBootTimer);
+  showBootError('Render Error: ' + (err && err.message ? err.message : String(err)) + (err && err.stack ? '\n' + err.stack : ''));
+}
+</script>
+</body>
+</html>
