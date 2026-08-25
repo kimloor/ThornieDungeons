@@ -144,6 +144,11 @@ const STYLE = `
 .md-hero.attack { animation: md-lunge 0.35s ease; }
 .md-hero.hurt { animation: md-shake 0.35s ease; }
 
+.md-hero-img { width: 76px; height: 82px; position: relative; background-repeat: no-repeat; background-size: 300% 100%; animation: md-idle 2.2s ease-in-out infinite, md-sprite-play 0.9s steps(3) infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); image-rendering: -webkit-optimize-contrast; }
+.md-hero-img.attack { animation: md-lunge 0.35s ease, md-sprite-play 0.9s steps(3) infinite; }
+.md-hero-img.hurt { animation: md-shake 0.35s ease, md-sprite-play 0.9s steps(3) infinite; }
+@keyframes md-sprite-play { 100% { background-position-x: -300%; } }
+
 .md-enemy { width: 64px; height: 64px; position: relative; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); }
 .md-enemy .blob { position: absolute; inset: 0; border-radius: 46% 46% 52% 52% / 55% 55% 45% 45%; border: 3px solid #1B1233; }
 .md-enemy .eye { position: absolute; width: 6px; height: 8px; background: #1B1233; border-radius: 3px; top: 40%; }
@@ -3072,9 +3077,15 @@ function FloatingQuickActions({
 function HeroSprite({
   anim
 }) {
+  const heroIdleUrl = asset("hero.idle");
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, heroIdleUrl ? /*#__PURE__*/React.createElement("div", {
+    className: `md-hero-img ${anim}`,
+    style: {
+      backgroundImage: `url(${heroIdleUrl})`
+    }
+  }) : /*#__PURE__*/React.createElement("div", {
     className: `md-hero ${anim}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "hair"
