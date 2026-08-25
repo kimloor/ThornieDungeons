@@ -483,6 +483,12 @@ async function loadAssetText(path) {
   return response.text();
 }
 
+window.testR2Asset = async function () {
+  const text = await loadAssetText("sprite/hello.txt");
+  console.log("R2 TEST SUCCESS:", text);
+  return text;
+};
+  
 async function loadAssetJSON(path) {
   const response = await fetchAsset(path);
   return response.json();
