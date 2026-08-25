@@ -2,9 +2,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (url.pathname.startsWith("/test-asset/")) {
+    if (url.pathname.startsWith("/assets/")) {
       const key = decodeURIComponent(
-        url.pathname.substring("/test-asset/".length)
+        url.pathname.substring("/assets/".length)
       );
 
       const object = await env.GAME_ASSETS.get(key);
