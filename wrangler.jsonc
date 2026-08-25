@@ -1,10 +1,12 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "thorniedungeons",
+  "main": "worker.js",
   "compatibility_date": "2026-08-25",
 
   "assets": {
-    "directory": "."
+    "directory": ".",
+    "binding": "ASSETS"
   },
 
   "r2_buckets": [
