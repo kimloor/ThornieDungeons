@@ -1504,7 +1504,7 @@ function ThornieDungeons() {
       setPhase("login");
 
       // Prefer the latest server balance config; cache is only a fallback when offline.
-      const freshConfig = await cloudGetConfig(serverUrl);
+      const freshConfig = await cloudGetConfig(DEFAULT_SERVER_URL);
       if (freshConfig && !freshConfig.error) {
         applyGameConfig(freshConfig);
         writeCachedGameConfig(freshConfig);
