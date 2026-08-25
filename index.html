@@ -443,10 +443,10 @@ const STYLE = `
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 `;
 
-// ---------- cloud persistence (Google Sheets via Apps Script) ----------
+// ---------- cloud persistence (Cloudflare D1 via Worker API) ----------
 const CONFIG_CACHE_KEY = "thornie-dungeons-cloud-config-v1"; // caches {url,id} only — never the password
 const GAME_CONFIG_CACHE_KEY = "thornie-dungeons-game-config-v2"; // caches monster/equipment/pet/skill balance data
-const DEFAULT_SERVER_URL = "https://script.google.com/macros/s/AKfycbwdTA8N8KcxVKQtQCRe6p3ry3BS8TGW5HkPJIHHV4vL_F7PPY0kQqaF6MKT79OXDshjbA/exec";
+const DEFAULT_SERVER_URL = "https://thornie-dungeons-api.ekqtjl.workers.dev";
 const defaultSave = () => ({
   gold: 0,
   diamonds: 0,
@@ -1496,10 +1496,9 @@ function ThornieDungeons() {
       }
       
       const cfg = await loadCachedConfig();
-      const serverUrl = cfg.url || DEFAULT_SERVER_URL;
       setCred(c => ({
         ...c,
-        url: serverUrl,
+        url: DEFAULT_SERVER_URL,
         id: cfg.id || ""
       }));
       setPhase("login");
@@ -1577,7 +1576,7 @@ function ThornieDungeons() {
       return;
     }
     if (res.error) {
-      setAuthError("เชื่อมต่อไม่ได้ ตรวจสอบ Server URL หรือลองใหม่อีกครั้ง");
+      setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
       return;
     }
     writeCachedConfig({
@@ -1627,7 +1626,7 @@ function ThornieDungeons() {
       return;
     }
     if (res.error) {
-      setAuthError("เชื่อมต่อไม่ได้ ตรวจสอบ Server URL หรือลองใหม่อีกครั้ง");
+      setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
       return;
     }
     writeCachedConfig({
@@ -2493,7 +2492,6 @@ function LoginScreen({
   onLogin,
   onRegister
 }) {
-  const [urlEditing, setUrlEditing] = useState(false);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-login-wrap"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2508,40 +2506,6 @@ function LoginScreen({
   }, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "sign in to sync your save")), /*#__PURE__*/React.createElement("div", {
     className: "md-card"
   }, /*#__PURE__*/React.createElement("p", {
-    className: "md-field-label",
-    style: {
-      marginTop: 0
-    }
-  }, "Server"), urlEditing ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
-    className: "md-field",
-    placeholder: "https://script.google.com/macros/s/.../exec",
-    value: cred.url,
-    onChange: e => setCred(c => ({
-      ...c,
-      url: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info wide small",
-    style: {
-      marginTop: 8
-    },
-    onClick: () => setUrlEditing(false)
-  }, "✓ บันทึก URL")) : /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-row",
-    style: {
-      border: "none",
-      padding: "2px 0 10px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-info",
-    style: {
-      color: "var(--ink-soft)",
-      fontSize: 12
-    }
-  }, "🔗 เชื่อมต่อ Apps Script แล้ว"), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => setUrlEditing(true)
-  }, "แก้ไข")), /*#__PURE__*/React.createElement("p", {
     className: "md-field-label"
   }, "Player ID"), /*#__PURE__*/React.createElement("input", {
     className: "md-field",
