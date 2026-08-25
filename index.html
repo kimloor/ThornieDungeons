@@ -156,6 +156,11 @@ const STYLE = `
 .md-enemy.hurt { animation: md-shake 0.35s ease; }
 .md-enemy.boss { width: 84px; height: 84px; }
 
+.md-enemy-img { width: 64px; height: 64px; position: relative; display: block; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); image-rendering: -webkit-optimize-contrast; }
+.md-enemy-img.attack { animation: md-lunge-l 0.35s ease; }
+.md-enemy-img.hurt { animation: md-shake 0.35s ease; }
+.md-enemy-img.boss { width: 84px; height: 84px; }
+
 @keyframes md-idle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 @keyframes md-lunge { 0% { transform: translateX(0); } 40% { transform: translateX(14px) rotate(-6deg); } 100% { transform: translateX(0); } }
 @keyframes md-lunge-l { 0% { transform: translateX(0); } 40% { transform: translateX(-14px) rotate(6deg); } 100% { transform: translateX(0); } }
@@ -1126,31 +1131,40 @@ function rollGachaPet() {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 let ENEMY_POOL = [{
+  id: "jelly_slime",
   name: "Jelly Slime",
   color: "#7ED9A8"
 }, {
+  id: "spore_cap",
   name: "Spore Cap",
   color: "#C98BE0"
 }, {
+  id: "tusky_boar",
   name: "Tusky Boar",
   color: "#C9A06A"
 }, {
+  id: "bramble_bat",
   name: "Bramble Bat",
   color: "#8E8CD8"
 }, {
+  id: "bone_rattler",
   name: "Bone Rattler",
   color: "#E5E2D6"
 }, {
+  id: "sandy_crab",
   name: "Sandy Crab",
   color: "#F2B25C"
 }];
 let BOSS_POOL = [{
+  id: "moss_king",
   name: "Moss King",
   color: "#5FA85F"
 }, {
+  id: "ember_drake",
   name: "Ember Drake",
   color: "#F0714B"
 }, {
+  id: "frost_warden",
   name: "Frost Warden",
   color: "#7BC7E8"
 }];
@@ -1258,6 +1272,7 @@ function makeEnemy(floor) {
     goldM = t.goldMult || 1,
     xpM = t.xpMult || 1;
   return {
+    id: t.id,
     name: isBoss ? `${t.name} (Boss)` : t.name,
     color: t.color,
     isBoss,
@@ -3104,9 +3119,15 @@ function EnemySprite({
   enemy,
   anim
 }) {
+  const enemyUrl = asset(`enemy.${enemy.id}`);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, enemyUrl ? /*#__PURE__*/React.createElement("img", {
+    className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim}`,
+    src: enemyUrl,
+    alt: enemy.name,
+    draggable: false
+  }) : /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
