@@ -457,12 +457,12 @@ const defaultSave = () => ({
     }
   }
 });
+
 // ---------- R2 Asset Loader ----------
 const ASSET_BASE = "/assets/";
-  
+
 function assetUrl(path) {
   if (!path) return "";
-
   return ASSET_BASE + String(path).replace(/^\/+/, "");
 }
 
@@ -483,12 +483,6 @@ async function loadAssetText(path) {
   return response.text();
 }
 
-window.testR2Asset = async function () {
-  const text = await loadAssetText("sprite/hello.txt");
-  console.log("R2 TEST SUCCESS:", text);
-  return text;
-};
-  
 async function loadAssetJSON(path) {
   const response = await fetchAsset(path);
   return response.json();
@@ -505,6 +499,40 @@ function preloadAsset(path) {
 
     img.src = assetUrl(path);
   });
+}
+
+// ---------- R2 Asset Manifest ----------
+const ASSETS = {
+  test: "sprite/hello.txt"
+};
+
+function asset(key) {
+  const path = key
+    .split(".")
+    .reduce((obj, part) => obj?.[part], ASSETS);
+
+  if (!path) {
+    console.warn(`Asset not found in manifest: ${key}`);
+    return "";
+  }
+
+  return assetUrl(path);
+}
+
+function listAssets(obj = ASSETS, prefix = "") {
+  const result = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+
+    if (typeof value === "string") {
+      result[fullKey] = value;
+    } else if (value && typeof value === "object") {
+      Object.assign(result, listAssets(value, fullKey));
+    }
+  }
+
+  return result;
 }
 
 // window.storage only exists inside the Claude.ai artifact preview; the real deployed site
