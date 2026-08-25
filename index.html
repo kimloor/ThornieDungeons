@@ -502,9 +502,17 @@ function preloadAsset(path) {
 }
 
 // ---------- R2 Asset Manifest ----------
-const ASSETS = {
-  test: "sprite/hello.txt"
-};
+let ASSETS = {};
+
+async function loadAssetManifest() {
+  const manifest = await loadAssetJSON("manifest.json");
+
+  ASSETS = manifest.assets || {};
+
+  console.log("Asset Manifest loaded:", manifest);
+
+  return ASSETS;
+}
 
 function asset(key) {
   const path = key
@@ -1459,6 +1467,15 @@ function ThornieDungeons() {
   const potions = save ? save.potions : 0;
   useEffect(() => {
     (async () => {
+      
+      // โหลด R2 Asset Manifest ก่อนเริ่มระบบเกม
+      try {
+        await loadAssetManifest();
+      } catch (err) {
+        console.warn("R2 Asset Manifest failed to load:", err);
+        ASSETS = {};
+      }
+      
       const cfg = await loadCachedConfig();
       const serverUrl = cfg.url || DEFAULT_SERVER_URL;
       setCred(c => ({
