@@ -238,35 +238,255 @@ const STYLE = `
 .md-field:focus { outline: none; border-color: var(--gold); }
 .md-auth-error { color: #FF8B8B; font-weight: 800; font-size: 12px; text-align: center; margin-top: 6px; }
 .md-hint { font-size: 11px; color: var(--ink-soft); font-weight: 700; line-height: 1.5; margin-top: 10px; text-align: center; }
+
+.md-inv-item.epic { border-left-color: var(--legendary); }
+
+/* stage select dropdown */
+.md-select {
+  width: 100%; border: 1.5px solid var(--gold-deep); border-radius: 12px; padding: 12px 14px;
+  font-family: 'Nunito'; font-weight: 800; font-size: 14px; background: rgba(0,0,0,0.35); color: var(--ink);
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFD166'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 18px;
+}
+.md-select:focus { outline: none; border-color: var(--gold); }
+.md-select option { background: var(--bg-mid); color: var(--ink); }
+.md-select option:disabled { color: rgba(255,255,255,0.35); }
+
+/* floating quick-access buttons (shop / character / bag) */
+.md-fab-stack {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 10px; z-index: 15;
+}
+.md-fab {
+  width: 46px; height: 46px; border-radius: 50%; border: 1.5px solid var(--gold-deep);
+  background: var(--panel); color: var(--ink); display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+  transition: transform 0.08s ease;
+}
+.md-fab:active { transform: scale(0.92); }
+.md-fab.active { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-glow), 0 4px 10px rgba(0,0,0,0.4); }
+.md-fab-icon { line-height: 1; }
+
+/* pet status readout in combat */
+.md-pet-status {
+  text-align: center; font-size: 11px; font-weight: 800; color: var(--ink-soft);
+  padding: 2px 0 4px; letter-spacing: 0.2px;
+}
+
+/* battle scene — RO-style grassy outdoor background */
+.md-scene.battle-bg {
+  background:
+    radial-gradient(ellipse 55% 35% at 18% 12%, rgba(255,255,255,0.10), transparent 60%),
+    radial-gradient(circle at 82% 25%, rgba(255,255,255,0.06), transparent 55%),
+    radial-gradient(circle at 30% 85%, rgba(0,0,0,0.15), transparent 50%),
+    linear-gradient(180deg, #7CA35A 0%, #5E8A44 45%, #4A6B37 100%);
+  border-radius: 0 0 18px 18px;
+  padding-top: 50px;
+}
+.md-scene.battle-bg .md-ground {
+  background: linear-gradient(180deg, #3E5A2C 0%, #30461F 100%);
+  border-top: 3px solid #6E9752;
+  opacity: 0.9;
+}
+.md-scene.battle-bg .md-arena { padding-right: 66px; }
+
+/* top-left RO-style HUD: level badge + hp/mp/xp bars */
+.md-combat-hud { position: absolute; top: 10px; left: 10px; z-index: 6; display: flex; align-items: center; gap: 8px; }
+.md-hud-lv {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: radial-gradient(circle at 35% 30%, #FFE49A, var(--gold-deep));
+  border: 2px solid #2B1B08; color: #2B1B08; font-family: 'Baloo 2'; font-weight: 800; font-size: 15px;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+.md-hud-bars { display: flex; flex-direction: column; gap: 2px; width: 112px; }
+.md-hud-track { position: relative; height: 9px; border-radius: 4px; background: rgba(0,0,0,0.55); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
+.md-hud-track.xp { height: 4px; background: rgba(0,0,0,0.4); }
+.md-hud-fill { height: 100%; transition: width 0.4s ease; }
+.md-hud-track.hp .md-hud-fill { background: linear-gradient(90deg, #FF8A5B, #E03A3A); }
+.md-hud-track.mp .md-hud-fill { background: linear-gradient(90deg, #5B9CFF, #2C5FDB); }
+.md-hud-track.xp .md-hud-fill { background: linear-gradient(90deg, #FFE49A, var(--gold)); }
+.md-hud-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 7.5px; font-weight: 800; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.85); }
+
+.md-rail-badge {
+  position: absolute; bottom: -5px; right: -5px; background: var(--gold); color: var(--bg-top);
+  font-style: normal; font-family: 'Baloo 2'; font-weight: 800; font-size: 10px; border-radius: 999px;
+  padding: 1px 5px; border: 1.5px solid var(--bg-top); min-width: 14px; text-align: center; line-height: 1.3;
+}
+
+/* ---- combat action cluster: attack circle + potion/flee side box + skill grid ---- */
+.md-combat-actions { position: absolute; right: 10px; bottom: 12px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.md-action-cluster { display: flex; align-items: center; gap: 10px; }
+.md-atk-circle {
+  width: 74px; height: 74px; border-radius: 50%; flex-shrink: 0; padding: 0; cursor: pointer;
+  border: 3px solid var(--coral-deep); background: radial-gradient(circle at 35% 30%, #FF9B7A, #C23B2E);
+  display: flex; align-items: center; justify-content: center; font-size: 30px; color: #fff;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.md-atk-circle:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-atk-circle:disabled { opacity: 0.4; cursor: not-allowed; }
+.md-side-box {
+  display: flex; flex-direction: column; gap: 7px; padding: 7px;
+  border: 2px solid #E14F4F; border-radius: 16px; background: rgba(20,8,8,0.35);
+}
+.md-side-circle {
+  position: relative; width: 42px; height: 42px; border-radius: 50%; padding: 0; cursor: pointer;
+  border: 2px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
+  display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.md-side-circle:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-side-circle:disabled { opacity: 0.4; cursor: not-allowed; }
+.md-skill-fab {
+  width: 46px; height: 46px; border-radius: 12px; padding: 0; cursor: pointer;
+  border: 2px solid var(--violet-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
+  display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15); align-self: flex-end;
+}
+.md-skill-fab:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-skill-fab:disabled { opacity: 0.4; cursor: not-allowed; }
+.md-skill-grid {
+  display: grid; grid-template-columns: repeat(2, 46px); gap: 6px; align-self: flex-end;
+  padding: 8px; border: 2px solid var(--violet-deep); border-radius: 14px; background: rgba(20,12,30,0.55);
+}
+.md-skill-cell {
+  position: relative; width: 46px; height: 46px; border-radius: 10px; padding: 0; cursor: pointer;
+  border: 2px solid var(--violet-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
+  color: #fff; font-size: 19px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.md-skill-cell:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-skill-cell:disabled { opacity: 0.35; cursor: not-allowed; }
+.md-skill-num {
+  position: absolute; top: 1px; left: 3px; font-size: 9px; font-weight: 800; color: var(--gold);
+  font-family: 'Baloo 2';
+}
+.md-autorun-btn {
+  position: absolute; left: 8px; bottom: 12px; z-index: 6; padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  border: 2px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
+  color: #fff; font-family: 'Baloo 2'; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.md-autorun-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-autorun-btn.active { border-color: var(--leaf-deep); background: linear-gradient(180deg, rgba(40,80,50,0.95), rgba(16,36,20,0.95)); }
+
+
+/* ---- character equipment / inventory redesign ---- */
+.md-equip-overlay { position:absolute; inset:0; z-index:20; background:rgba(6,3,15,0.82); display:flex; align-items:flex-end; justify-content:center; }
+.md-equip-sheet { width:100%; max-height:96%; overflow-y:auto; background:linear-gradient(180deg,#30204f 0%,#1b1233 72%,#120b24 100%); border:1.5px solid var(--gold-deep); border-bottom:none; border-radius:22px 22px 0 0; padding:12px 12px 18px; box-shadow:0 -12px 35px rgba(0,0,0,.45); }
+.md-equip-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.md-equip-head-title { font-family:'Baloo 2'; font-size:19px; font-weight:800; color:var(--gold); margin:0; }
+.md-equip-head-sub { font-size:10px; color:var(--ink-soft); font-weight:800; }
+.md-equip-stage { position:relative; min-height:320px; margin:4px 0 10px; border:1px solid rgba(255,209,102,.22); border-radius:18px; background:radial-gradient(circle at 50% 46%,rgba(139,106,232,.20),transparent 34%),linear-gradient(180deg,rgba(10,6,22,.22),rgba(10,6,22,.58)); overflow:hidden; }
+.md-equip-stage:before { content:''; position:absolute; left:50%; bottom:34px; width:150px; height:22px; transform:translateX(-50%); border-radius:50%; background:rgba(0,0,0,.38); filter:blur(2px); }
+.md-equip-character { position:absolute; left:50%; top:50%; transform:translate(-50%,-45%); display:flex; align-items:center; justify-content:center; width:108px; height:132px; z-index:2; }
+.md-equip-character .md-sprite-wrap { transform:scale(1.55); transform-origin:center bottom; }
+.md-equip-character .md-sprite-name { display:none; }
+.md-equip-slots { position:absolute; inset:12px; z-index:3; }
+.md-equip-slot { position:absolute; width:72px; min-height:70px; padding:6px 4px; border:1.5px solid rgba(255,209,102,.48); border-radius:13px; background:rgba(10,6,22,.78); box-shadow:0 4px 12px rgba(0,0,0,.28); cursor:pointer; text-align:center; }
+.md-equip-slot.empty { border-style:dashed; opacity:.72; }
+.md-equip-slot.selected { border-color:var(--gold); box-shadow:0 0 0 2px var(--gold-glow),0 5px 14px rgba(0,0,0,.35); }
+.md-equip-slot.weapon { left:2px; top:50%; transform:translateY(-50%); }
+.md-equip-slot.accessory { right:2px; top:50%; transform:translateY(-50%); }
+.md-equip-slot.helmet { left:50%; top:4px; transform:translateX(-50%); }
+.md-equip-slot.chest { left:2px; top:16px; }
+.md-equip-slot.gloves { right:2px; top:16px; }
+.md-equip-slot.boots { left:50%; bottom:3px; transform:translateX(-50%); }
+.md-equip-slot-icon { font-size:22px; line-height:22px; }
+.md-equip-slot-label { font-size:9px; color:var(--ink-soft); font-weight:800; margin-top:2px; }
+.md-equip-slot-name { font-size:9px; color:var(--gold); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.md-equip-slot-stat { font-size:8px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.md-equip-summary { display:flex; justify-content:center; gap:7px; flex-wrap:wrap; margin:0 0 8px; }
+.md-equip-stat-chip { border:1px solid rgba(255,209,102,.28); background:rgba(0,0,0,.22); border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; color:var(--ink-soft); }
+.md-equip-stat-chip b { color:var(--gold); }
+.md-inventory-header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:7px 0; }
+.md-inventory-title { font-family:'Baloo 2'; font-size:16px; font-weight:800; color:var(--gold); }
+.md-inventory-count { font-size:10px; color:var(--ink-soft); font-weight:800; }
+.md-inventory-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+.md-inventory-cell { min-width:0; aspect-ratio:1/1; border-radius:11px; border:1px solid rgba(255,209,102,.22); background:rgba(255,255,255,.035); position:relative; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.md-inventory-cell.empty { cursor:default; opacity:.55; }
+.md-inventory-cell.selected { border:2px solid var(--gold); background:rgba(255,209,102,.11); box-shadow:0 0 0 2px var(--gold-glow); }
+.md-inventory-cell.rare { border-color:rgba(111,207,151,.58); }
+.md-inventory-cell.unique { border-color:rgba(79,168,224,.7); }
+.md-inventory-cell.elite { border-color:rgba(255,184,77,.78); }
+.md-inventory-cell-icon { font-size:22px; line-height:1; }
+.md-inventory-cell-num { position:absolute; left:4px; top:3px; font-size:8px; color:var(--ink-soft); font-weight:800; }
+.md-inventory-cell-qty { position:absolute; right:4px; bottom:3px; font-size:8px; color:var(--gold); font-weight:800; }
+.md-inventory-cell-stars { position:absolute; left:50%; bottom:3px; transform:translateX(-50%) scale(.72); transform-origin:center; white-space:nowrap; }
+.md-item-detail { margin-top:8px; padding:9px 10px; border:1px solid rgba(255,209,102,.28); border-radius:13px; background:rgba(0,0,0,.22); min-height:54px; }
+.md-item-detail-name { font-size:12px; font-weight:800; color:var(--gold); }
+.md-item-detail-sub { font-size:10px; color:var(--ink-soft); font-weight:700; margin-top:2px; }
+.md-item-actions { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:7px; margin-top:8px; }
+.md-item-actions .md-btn { min-height:42px; padding:8px 6px; font-size:12px; }
+.md-equip-close { margin-top:8px; }
+@media (max-width:380px) {
+  .md-equip-stage { min-height:300px; }
+  .md-equip-slot { width:65px; min-height:65px; }
+  .md-equip-character .md-sprite-wrap { transform:scale(1.35); }
+}
+
+/* ---- mobile web polish ---- */
+@media (max-width: 480px) {
+  body { padding: 0 !important; }
+  .md-root { max-width: 100%; min-height: 100vh; min-height: 100dvh; border-radius: 0; box-shadow: none; }
+}
+.md-btn { min-height: 46px; }
+.md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 `;
 
 // ---------- cloud persistence (Google Sheets via Apps Script) ----------
 const CONFIG_CACHE_KEY = "thornie-dungeons-cloud-config-v1"; // caches {url,id} only — never the password
+const GAME_CONFIG_CACHE_KEY = "thornie-dungeons-game-config-v2"; // caches monster/equipment/pet/skill balance data
 const DEFAULT_SERVER_URL = "https://script.google.com/macros/s/AKfycbwdTA8N8KcxVKQtQCRe6p3ry3BS8TGW5HkPJIHHV4vL_F7PPY0kQqaF6MKT79OXDshjbA/exec";
 const defaultSave = () => ({
   gold: 0,
+  diamonds: 0,
   unlockedFloor: 1,
-  up: {
-    atk: 0,
-    def: 0,
-    hp: 0,
-    mp: 0
-  },
+  potions: 2,
+  pets: [],
+  activePetId: null,
   character: {
     level: 1,
     xp: 0,
-    growth: {
-      atk: 0,
-      def: 0,
-      hp: 0,
-      mp: 0
+    statPoints: 0,
+    stats: {
+      str: 0,
+      vit: 0,
+      dex: 0,
+      luk: 0
     }
   }
 });
+
+// window.storage only exists inside the Claude.ai artifact preview; the real deployed site
+// (Cloudflare Pages) needs a real localStorage fallback or caching silently no-ops there.
+async function kvGet(key) {
+  try {
+    if (window.storage && window.storage.get) {
+      const r = await window.storage.get(key);
+      return r && r.value ? r.value : null;
+    }
+  } catch (e) {}
+  try {
+    return window.localStorage ? window.localStorage.getItem(key) : null;
+  } catch (e) {}
+  return null;
+}
+async function kvSet(key, value) {
+  try {
+    if (window.storage && window.storage.set) {
+      await window.storage.set(key, value);
+      return;
+    }
+  } catch (e) {}
+  try {
+    if (window.localStorage) window.localStorage.setItem(key, value);
+  } catch (e) {}
+}
 async function loadCachedConfig() {
   try {
-    const r = await window.storage.get(CONFIG_CACHE_KEY);
-    if (r && r.value) return JSON.parse(r.value);
+    const v = await kvGet(CONFIG_CACHE_KEY);
+    if (v) return JSON.parse(v);
   } catch (e) {}
   return {
     url: "",
@@ -274,9 +494,17 @@ async function loadCachedConfig() {
   };
 }
 async function writeCachedConfig(cfg) {
+  await kvSet(CONFIG_CACHE_KEY, JSON.stringify(cfg));
+}
+async function loadCachedGameConfig() {
   try {
-    await window.storage.set(CONFIG_CACHE_KEY, JSON.stringify(cfg));
+    const v = await kvGet(GAME_CONFIG_CACHE_KEY);
+    if (v) return JSON.parse(v);
   } catch (e) {}
+  return null;
+}
+async function writeCachedGameConfig(cfg) {
+  await kvSet(GAME_CONFIG_CACHE_KEY, JSON.stringify(cfg));
 }
 async function cloudGet(url, params) {
   try {
@@ -332,43 +560,119 @@ function cloudSyncItems(url, id, password, items) {
     items
   });
 }
+function cloudSaveRunState(url, id, password, runState) {
+  return cloudPost(url, {
+    action: "saveRunState",
+    id,
+    password,
+    runState
+  });
+}
+function cloudGetConfig(url) {
+  return cloudGet(url, {
+    action: "getGameConfig"
+  });
+}
+
+// Applies a fetched game-balance config on top of the hardcoded defaults below.
+// Every field is validated defensively — a partial or malformed sheet should never crash the game;
+// missing/invalid pieces just keep their current (default) values.
+function applyGameConfig(cfg) {
+  if (!cfg || cfg.error) return;
+  try {
+    if (Array.isArray(cfg.monsters) && cfg.monsters.length) {
+      const normal = cfg.monsters.filter(m => !m.isBoss).map(monsterFromConfig);
+      const bosses = cfg.monsters.filter(m => m.isBoss).map(monsterFromConfig);
+      if (normal.length) ENEMY_POOL = normal;
+      if (bosses.length) BOSS_POOL = bosses;
+    }
+  } catch (e) {}
+  try {
+    const n = cfg.equipmentNames;
+    if (n && Array.isArray(n.weapon) && n.weapon.length) WEAPON_NAMES = n.weapon;
+    if (n && Array.isArray(n.helmet) && n.helmet.length) HELMET_NAMES = n.helmet;
+    if (n && Array.isArray(n.chest) && n.chest.length) CHEST_NAMES = n.chest;
+    if (n && Array.isArray(n.gloves) && n.gloves.length) GLOVES_NAMES = n.gloves;
+    if (n && Array.isArray(n.boots) && n.boots.length) BOOTS_NAMES = n.boots;
+    if (n && Array.isArray(n.accessory) && n.accessory.length) ACCESSORY_NAMES = n.accessory;
+  } catch (e) {}
+  try {
+    const rm = cfg.rarityMult;
+    if (rm && typeof rm.rare === "number" && typeof rm.unique === "number" && typeof rm.elite === "number") {
+      RARITY_MULT = {
+        rare: rm.rare,
+        unique: rm.unique,
+        elite: rm.elite
+      };
+    }
+  } catch (e) {}
+  try {
+    if (Array.isArray(cfg.pets) && cfg.pets.length) {
+      const valid = cfg.pets.filter(p => p && p.id && p.rarity && p.active && p.active.type);
+      if (valid.length) PET_POOL = valid;
+    }
+  } catch (e) {}
+  try {
+    if (Array.isArray(cfg.skills) && cfg.skills.length) {
+      const valid = cfg.skills.filter(s => s && s.key && s.type);
+      if (valid.length) SKILLS = valid.sort((a, b) => a.unlockLevel - b.unlockLevel);
+    }
+  } catch (e) {}
+}
+function monsterFromConfig(m) {
+  return {
+    name: m.name,
+    color: m.color || "#7ED9A8",
+    hpMult: typeof m.hpMult === "number" ? m.hpMult : 1,
+    atkMult: typeof m.atkMult === "number" ? m.atkMult : 1,
+    defBonus: typeof m.defBonus === "number" ? m.defBonus : 0,
+    goldMult: typeof m.goldMult === "number" ? m.goldMult : 1,
+    xpMult: typeof m.xpMult === "number" ? m.xpMult : 1
+  };
+}
 
 // progress <-> server row (reuses existing column names: bank_gold now holds `gold`, best_floor now holds `unlockedFloor`)
 function progressToServer(save) {
   return {
     bank_gold: save.gold,
+    diamonds: save.diamonds,
     best_floor: save.unlockedFloor,
-    up_atk: save.up.atk,
-    up_def: save.up.def,
-    up_hp: save.up.hp,
-    up_mp: save.up.mp,
+    potions: save.potions,
     char_level: save.character.level,
     char_xp: save.character.xp,
-    char_g_atk: save.character.growth.atk,
-    char_g_def: save.character.growth.def,
-    char_g_hp: save.character.growth.hp,
-    char_g_mp: save.character.growth.mp
+    char_points: save.character.statPoints,
+    char_str: save.character.stats.str,
+    char_vit: save.character.stats.vit,
+    char_dex: save.character.stats.dex,
+    char_luk: save.character.stats.luk,
+    pets_json: JSON.stringify(save.pets || []),
+    active_pet_id: save.activePetId || ""
   };
 }
 function progressFromServer(row) {
   if (!row) return defaultSave();
+  let pets = [];
+  try {
+    pets = row.pets_json ? JSON.parse(row.pets_json) : [];
+  } catch (e) {
+    pets = [];
+  }
   return {
     gold: Number(row.bank_gold) || 0,
+    diamonds: Number(row.diamonds) || 0,
     unlockedFloor: Number(row.best_floor) || 1,
-    up: {
-      atk: Number(row.up_atk) || 0,
-      def: Number(row.up_def) || 0,
-      hp: Number(row.up_hp) || 0,
-      mp: Number(row.up_mp) || 0
-    },
+    potions: row.potions === undefined || row.potions === "" ? 2 : Number(row.potions) || 0,
+    pets,
+    activePetId: row.active_pet_id || null,
     character: {
       level: Number(row.char_level) || 1,
       xp: Number(row.char_xp) || 0,
-      growth: {
-        atk: Number(row.char_g_atk) || 0,
-        def: Number(row.char_g_def) || 0,
-        hp: Number(row.char_g_hp) || 0,
-        mp: Number(row.char_g_mp) || 0
+      statPoints: Number(row.char_points) || 0,
+      stats: {
+        str: Number(row.char_str) || 0,
+        vit: Number(row.char_vit) || 0,
+        dex: Number(row.char_dex) || 0,
+        luk: Number(row.char_luk) || 0
       }
     }
   };
@@ -427,36 +731,312 @@ function itemsFromServerList(rows) {
 }
 
 // ---------- game data ----------
-const UPGRADES = [{
-  key: "atk",
-  label: "Power Charm",
-  icon: "⚔️",
-  desc: "+2 Attack",
-  base: 15,
-  growth: 1.5
+const MAX_LEVEL = 99;
+const STAT_POINTS_PER_LEVEL = 5;
+const STAT_INFO = [{
+  key: "str",
+  label: "STR",
+  icon: "💪",
+  desc: "+3 ATK ต่อแต้ม"
 }, {
-  key: "def",
-  label: "Iron Scale",
-  icon: "🛡️",
-  desc: "+2 Defense",
-  base: 15,
-  growth: 1.5
-}, {
-  key: "hp",
-  label: "Vital Crystal",
+  key: "vit",
+  label: "VIT",
   icon: "❤️",
-  desc: "+10 Max HP",
-  base: 12,
-  growth: 1.4
+  desc: "+12 HP สูงสุด, +DEF เล็กน้อย"
 }, {
-  key: "mp",
-  label: "Mana Bloom",
-  icon: "🔷",
-  desc: "+8 Max MP",
-  base: 12,
-  growth: 1.4
+  key: "dex",
+  label: "DEX",
+  icon: "🎯",
+  desc: "+ATK เล็กน้อย, เพิ่มโอกาสโจมตีโดน"
+}, {
+  key: "luk",
+  label: "LUK",
+  icon: "🍀",
+  desc: "เพิ่มโอกาสคริติคอล, โอกาสหลบหลีก, และไอเทมดรอป"
 }];
-const ENEMY_POOL = [{
+
+// ---------- skills (unlocked every 10 levels, up to level 90 — level cap is 99) ----------
+let SKILLS = [{
+  key: "power_strike",
+  unlockLevel: 10,
+  name: "Power Strike",
+  icon: "⚔️",
+  mp: 10,
+  type: "damage",
+  mult: 2.0,
+  defPierce: 0,
+  desc: "ดาเมจกายภาพ 2.0x ATK"
+}, {
+  key: "fireball",
+  unlockLevel: 20,
+  name: "Fireball",
+  icon: "🔥",
+  mp: 14,
+  type: "damage",
+  mult: 2.4,
+  defPierce: 0.3,
+  desc: "ดาเมจไฟ 2.4x ATK เจาะเกราะ 30%"
+}, {
+  key: "healing_light",
+  unlockLevel: 30,
+  name: "Healing Light",
+  icon: "✨",
+  mp: 16,
+  type: "heal",
+  healPct: 0.45,
+  desc: "ฟื้นฟู HP 45% ของ HP สูงสุด"
+}, {
+  key: "war_cry",
+  unlockLevel: 40,
+  name: "War Cry",
+  icon: "📣",
+  mp: 12,
+  type: "buffAtk",
+  pct: 0.3,
+  turns: 3,
+  desc: "เพิ่ม ATK 30% นาน 3 เทิร์น"
+}, {
+  key: "ice_lance",
+  unlockLevel: 50,
+  name: "Ice Lance",
+  icon: "❄️",
+  mp: 18,
+  type: "damage",
+  mult: 2.2,
+  freezeChance: 0.3,
+  freezeTurns: 1,
+  desc: "ดาเมจน้ำแข็ง 2.2x ATK · 30% แช่แข็งศัตรู 1 เทิร์น"
+}, {
+  key: "iron_skin",
+  unlockLevel: 60,
+  name: "Iron Skin",
+  icon: "🛡️",
+  mp: 14,
+  type: "buffDef",
+  pct: 0.4,
+  turns: 3,
+  desc: "เพิ่ม DEF 40% นาน 3 เทิร์น"
+}, {
+  key: "venom_strike",
+  unlockLevel: 70,
+  name: "Venom Strike",
+  icon: "☠️",
+  mp: 16,
+  type: "damage",
+  mult: 1.6,
+  poisonTurns: 3,
+  poisonPct: 0.35,
+  desc: "ดาเมจ 1.6x ATK + วางยาพิษ 3 เทิร์น"
+}, {
+  key: "meteor",
+  unlockLevel: 80,
+  name: "Meteor",
+  icon: "☄️",
+  mp: 26,
+  type: "damage",
+  mult: 3.2,
+  defPierce: 0.5,
+  desc: "ดาเมจมหาศาล 3.2x ATK เจาะเกราะ 50%"
+}, {
+  key: "dragons_wrath",
+  unlockLevel: 90,
+  name: "Dragon's Wrath",
+  icon: "🐉",
+  mp: 30,
+  type: "damage",
+  mult: 4.0,
+  guaranteedCrit: true,
+  desc: "ท่าไม้ตาย 4.0x ATK คริติคอลเสมอ"
+}];
+function unlockedSkills(level) {
+  return SKILLS.filter(s => s.unlockLevel <= level);
+}
+
+// ---------- pets ----------
+// R: 1 active skill only. SR: active + 1 passive. SSR: active + passive + 1 extra skill.
+let PET_POOL = [{
+  id: "sprout",
+  rarity: "r",
+  isStarter: true,
+  name: "Sprout",
+  icon: "🌱",
+  active: {
+    name: "Regrowth",
+    icon: "💚",
+    cooldown: 4,
+    type: "regen",
+    regenPct: 0.08,
+    regenTurns: 3,
+    desc: "ฟื้นฟู HP 8% ของ HP สูงสุด ต่อเนื่อง 3 เทิร์น"
+  }
+}, {
+  id: "flamekit",
+  rarity: "r",
+  name: "Flamekit",
+  icon: "🔥",
+  active: {
+    name: "Ember Spark",
+    icon: "🔥",
+    cooldown: 4,
+    type: "damage",
+    mult: 0.9,
+    desc: "ดาเมจไฟ 0.9x ATK"
+  }
+}, {
+  id: "sparkpup",
+  rarity: "r",
+  name: "Sparkpup",
+  icon: "⚡",
+  active: {
+    name: "Static Nip",
+    icon: "⚡",
+    cooldown: 3,
+    type: "damage",
+    mult: 0.7,
+    desc: "ดาเมจสายฟ้า 0.7x ATK คูลดาวน์สั้น"
+  }
+}, {
+  id: "ember_fox",
+  rarity: "sr",
+  name: "Ember Fox",
+  icon: "🦊",
+  active: {
+    name: "Ember Spark+",
+    icon: "🔥",
+    cooldown: 4,
+    type: "damage",
+    mult: 1.0,
+    desc: "ดาเมจไฟ 1.0x ATK"
+  },
+  passive: {
+    name: "Warrior's Instinct",
+    icon: "💪",
+    type: "atkBoost",
+    pct: 0.10,
+    desc: "เพิ่ม ATK ถาวร +10%"
+  }
+}, {
+  id: "moon_hare",
+  rarity: "sr",
+  name: "Moon Hare",
+  icon: "🐇",
+  active: {
+    name: "Moonlit Regrowth",
+    icon: "💚",
+    cooldown: 4,
+    type: "regen",
+    regenPct: 0.09,
+    regenTurns: 3,
+    desc: "ฟื้นฟู HP 9% ของ HP สูงสุด ต่อเนื่อง 3 เทิร์น"
+  },
+  passive: {
+    name: "Status Ward",
+    icon: "🌙",
+    type: "statusResist",
+    pct: 0.60,
+    desc: "60% โอกาสต้านทานสถานะผิดปกติจากบอส"
+  }
+}, {
+  id: "thunder_cub",
+  rarity: "sr",
+  name: "Thunder Cub",
+  icon: "🐺",
+  active: {
+    name: "Static Nip+",
+    icon: "⚡",
+    cooldown: 3,
+    type: "damage",
+    mult: 0.85,
+    desc: "ดาเมจสายฟ้า 0.85x ATK"
+  },
+  passive: {
+    name: "Pack Instinct",
+    icon: "💪",
+    type: "atkBoost",
+    pct: 0.08,
+    desc: "เพิ่ม ATK ถาวร +8%"
+  }
+}, {
+  id: "inferno_drake",
+  rarity: "ssr",
+  name: "Inferno Drake",
+  icon: "🐲",
+  active: {
+    name: "Inferno Blast",
+    icon: "🔥",
+    cooldown: 4,
+    type: "damage",
+    mult: 1.2,
+    desc: "ดาเมจไฟ 1.2x ATK"
+  },
+  passive: {
+    name: "Dragon Might",
+    icon: "💪",
+    type: "atkBoost",
+    pct: 0.15,
+    desc: "เพิ่ม ATK ถาวร +15%"
+  },
+  extra: {
+    name: "Guard",
+    icon: "🛡️",
+    type: "block",
+    pct: 0.20,
+    desc: "20% โอกาสป้องกันการโจมตีของศัตรูทั้งหมด"
+  }
+}, {
+  id: "storm_phoenix",
+  rarity: "ssr",
+  name: "Storm Phoenix",
+  icon: "🦅",
+  active: {
+    name: "Storm Bolt",
+    icon: "⚡",
+    cooldown: 3,
+    type: "damage",
+    mult: 1.05,
+    desc: "ดาเมจสายฟ้า 1.05x ATK"
+  },
+  passive: {
+    name: "Tempest Ward",
+    icon: "🌙",
+    type: "statusResist",
+    pct: 0.70,
+    desc: "70% โอกาสต้านทานสถานะผิดปกติจากบอส"
+  },
+  extra: {
+    name: "Paralyze",
+    icon: "🌩️",
+    type: "stun",
+    pct: 0.30,
+    desc: "30% โอกาสทำให้ศัตรูมึนงง 1 เทิร์นเมื่อสกิลทำงาน"
+  }
+}];
+const RARITY_ORDER_PET = ["r", "sr", "ssr"];
+const PET_RARITY_LABEL = {
+  r: "R",
+  sr: "SR",
+  ssr: "SSR"
+};
+const GACHA_RATES = {
+  r: 0.70,
+  sr: 0.25,
+  ssr: 0.05
+};
+const GACHA_COST = 100;
+function getPetDef(defId) {
+  return PET_POOL.find(p => p.id === defId) || null;
+}
+function starterPetDef() {
+  return PET_POOL.find(p => p.isStarter);
+}
+function rollGachaPet() {
+  const roll = Math.random();
+  let rarity = "r";
+  if (roll < GACHA_RATES.ssr) rarity = "ssr";else if (roll < GACHA_RATES.ssr + GACHA_RATES.sr) rarity = "sr";
+  const pool = PET_POOL.filter(p => p.rarity === rarity);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+let ENEMY_POOL = [{
   name: "Jelly Slime",
   color: "#7ED9A8"
 }, {
@@ -475,7 +1055,7 @@ const ENEMY_POOL = [{
   name: "Sandy Crab",
   color: "#F2B25C"
 }];
-const BOSS_POOL = [{
+let BOSS_POOL = [{
   name: "Moss King",
   color: "#5FA85F"
 }, {
@@ -485,13 +1065,13 @@ const BOSS_POOL = [{
   name: "Frost Warden",
   color: "#7BC7E8"
 }];
-const WEAPON_NAMES = ["Wooden Sword", "Iron Blade", "Steel Rapier", "Flame Saber", "Dragon Fang"];
-const HELMET_NAMES = ["Cloth Cap", "Leather Hood", "Iron Helm", "Horned Helm", "Dragonbone Crown"];
-const CHEST_NAMES = ["Cloth Robe", "Leather Vest", "Iron Plate", "Mystic Cloak", "Dragon Scale Mail"];
-const GLOVES_NAMES = ["Cloth Gloves", "Leather Gauntlets", "Iron Gauntlets", "Runed Gloves", "Dragonclaw Gauntlets"];
-const BOOTS_NAMES = ["Worn Sandals", "Leather Boots", "Iron Greaves", "Swift Boots", "Dragonhide Boots"];
-const ACCESSORY_NAMES = ["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"];
-const RARITY_MULT = {
+let WEAPON_NAMES = ["Wooden Sword", "Iron Blade", "Steel Rapier", "Flame Saber", "Dragon Fang"];
+let HELMET_NAMES = ["Cloth Cap", "Leather Hood", "Iron Helm", "Horned Helm", "Dragonbone Crown"];
+let CHEST_NAMES = ["Cloth Robe", "Leather Vest", "Iron Plate", "Mystic Cloak", "Dragon Scale Mail"];
+let GLOVES_NAMES = ["Cloth Gloves", "Leather Gauntlets", "Iron Gauntlets", "Runed Gloves", "Dragonclaw Gauntlets"];
+let BOOTS_NAMES = ["Worn Sandals", "Leather Boots", "Iron Greaves", "Swift Boots", "Dragonhide Boots"];
+let ACCESSORY_NAMES = ["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"];
+let RARITY_MULT = {
   rare: 1,
   unique: 1.9,
   elite: 3.2
@@ -523,29 +1103,36 @@ const SLOT_LABEL = {
   accessory: "Accessory"
 };
 const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory"];
-function upgradeCost(u, level) {
-  return Math.round(u.base * Math.pow(u.growth, level));
-}
-function shopBaseStats(save) {
-  return {
-    maxHp: 40 + save.up.hp * 10,
-    maxMp: 15 + save.up.mp * 8,
-    atk: 8 + save.up.atk * 2,
-    def: 2 + save.up.def * 2
-  };
-}
 function characterBaseStats(save) {
-  const shop = shopBaseStats(save);
-  const g = save.character.growth;
+  const lvl = save.character.level;
+  const s = save.character.stats;
   return {
-    maxHp: shop.maxHp + g.hp,
-    maxMp: shop.maxMp + g.mp,
-    atk: shop.atk + g.atk,
-    def: shop.def + g.def
+    maxHp: 40 + lvl * 4 + s.vit * 12,
+    maxMp: 15 + lvl * 2,
+    atk: 8 + lvl + s.str * 3 + Math.floor(s.dex * 0.5),
+    def: 2 + Math.floor(lvl * 0.4) + Math.floor(s.vit * 0.5),
+    accuracy: Math.min(99, +(80 + s.dex * 1.0).toFixed(1)),
+    critChance: Math.min(50, +(s.luk * 0.8).toFixed(1)),
+    dodgeChance: Math.min(30, +(s.luk * 0.5).toFixed(1)),
+    dropBonus: Math.min(20, +(s.luk * 0.35).toFixed(1))
   };
 }
-function freshPlayerFromSave(save) {
+function activePetInstance(save) {
+  if (!save.activePetId) return null;
+  const inst = (save.pets || []).find(p => p.instId === save.activePetId);
+  if (!inst) return null;
+  const def = getPetDef(inst.defId);
+  return def ? {
+    inst,
+    def
+  } : null;
+}
+function freshPlayerFromSave(save, carry = null) {
   const cb = characterBaseStats(save);
+  const petActive = activePetInstance(save);
+  const petAtkBoostPct = petActive && petActive.def.passive && petActive.def.passive.type === "atkBoost" ? petActive.def.passive.pct : 0;
+  const hp = carry && Number.isFinite(carry.hp) ? Math.max(0, Math.min(cb.maxHp, carry.hp)) : cb.maxHp;
+  const mp = carry && Number.isFinite(carry.mp) ? Math.max(0, Math.min(cb.maxMp, carry.mp)) : cb.maxMp;
   return {
     level: save.character.level,
     xp: save.character.xp,
@@ -553,8 +1140,22 @@ function freshPlayerFromSave(save) {
     baseDef: cb.def,
     baseMaxHp: cb.maxHp,
     baseMaxMp: cb.maxMp,
-    hp: cb.maxHp,
-    mp: cb.maxMp
+    accuracy: cb.accuracy,
+    critChance: cb.critChance,
+    dodgeChance: cb.dodgeChance,
+    dropBonus: cb.dropBonus,
+    hp,
+    mp,
+    atkBuffPct: 0,
+    atkBuffTurns: 0,
+    defBuffPct: 0,
+    defBuffTurns: 0,
+    petAtkBoostPct,
+    petCooldown: 0,
+    weakenPct: 0,
+    weakenTurns: 0,
+    regenAmount: 0,
+    regenTurns: 0
   };
 }
 function makeEnemy(floor) {
@@ -562,16 +1163,21 @@ function makeEnemy(floor) {
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
   const t = pool[Math.floor(Math.random() * pool.length)];
   const mult = isBoss ? 2.6 : 1;
+  const hpM = t.hpMult || 1,
+    atkM = t.atkMult || 1,
+    defB = t.defBonus || 0,
+    goldM = t.goldMult || 1,
+    xpM = t.xpMult || 1;
   return {
     name: isBoss ? `${t.name} (Boss)` : t.name,
     color: t.color,
     isBoss,
-    hp: Math.round((18 + floor * 7) * mult),
-    maxHp: Math.round((18 + floor * 7) * mult),
-    atk: Math.round((3 + floor * 1.6) * (isBoss ? 1.3 : 1)),
-    def: Math.floor(floor * 0.7) + (isBoss ? 3 : 0),
-    xp: Math.round((6 + floor * 3) * (isBoss ? 2.2 : 1)),
-    gold: Math.round((4 + floor * 2.5) * (isBoss ? 2.2 : 1))
+    hp: Math.round((18 + floor * 7) * mult * hpM),
+    maxHp: Math.round((18 + floor * 7) * mult * hpM),
+    atk: Math.round((3 + floor * 1.6) * (isBoss ? 1.3 : 1) * atkM),
+    def: Math.floor(floor * 0.7) + (isBoss ? 3 : 0) + defB,
+    xp: Math.round((6 + floor * 3) * (isBoss ? 2.2 : 1) * xpM),
+    gold: Math.round((4 + floor * 2.5) * (isBoss ? 2.2 : 1) * goldM)
   };
 }
 function xpToNext(level) {
@@ -678,15 +1284,49 @@ function getEquipBonus(equipped) {
 }
 function getStats(player, equipped) {
   const b = getEquipBonus(equipped);
+  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0));
+  const defBuff = 1 + (player.defBuffPct || 0);
   return {
-    atk: player.baseAtk + b.atk,
-    def: player.baseDef + b.def,
+    atk: Math.round((player.baseAtk + b.atk) * atkMult),
+    def: Math.round((player.baseDef + b.def) * defBuff),
     maxHp: player.baseMaxHp + b.hp,
-    maxMp: player.baseMaxMp + b.mp
+    maxMp: player.baseMaxMp + b.mp,
+    accuracy: player.accuracy || 0,
+    critChance: player.critChance || 0,
+    dodgeChance: player.dodgeChance || 0,
+    dropBonus: player.dropBonus || 0
   };
 }
 function combatPower(stats, level) {
-  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + level * 50);
+  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.dodgeChance || 0) * 6 + level * 50);
+}
+
+// ---------- shop & selling ----------
+function itemValueScore(it) {
+  return (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6;
+}
+function sellPrice(it) {
+  return Math.max(3, Math.round(itemValueScore(it) * (RARITY_MULT[it.rarity] || 1) * 0.9));
+}
+function shopBuyPrice(it) {
+  return Math.max(10, Math.round(itemValueScore(it) * (RARITY_MULT[it.rarity] || 1) * 2.2));
+}
+function potionShopPrice(floor) {
+  return 8 + Math.round(floor * 1.5);
+}
+function generateShopStock(floor) {
+  const items = [];
+  for (let i = 0; i < 3; i++) {
+    const drop = generateDrop(Math.max(1, floor + Math.floor(Math.random() * 3) - 1));
+    items.push({
+      ...drop,
+      price: shopBuyPrice(drop)
+    });
+  }
+  return {
+    potionPrice: potionShopPrice(floor),
+    items
+  };
 }
 const emptyEquipped = () => ({
   weapon: null,
@@ -707,13 +1347,18 @@ function ThornieDungeons() {
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [player, setPlayer] = useState(null); // ephemeral combat state, derived fresh from save each stage entry
+  const [resumeRun, setResumeRun] = useState(null); // persisted current HP/MP + floor restored after login
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
   const [enemy, setEnemy] = useState(null);
   const [log, setLog] = useState("Welcome to ThornieDungeons!");
-  const [potions, setPotions] = useState(2);
   const [busy, setBusy] = useState(false);
+  const enemyRef = useRef(null);
+  const playerRef = useRef(null);
+  const combatOutcomeRef = useRef(null);
+  useEffect(() => { enemyRef.current = enemy; }, [enemy]);
+  useEffect(() => { playerRef.current = player; }, [player]);
   const [heroAnim, setHeroAnim] = useState("");
   const [enemyAnim, setEnemyAnim] = useState("");
   const [floats, setFloats] = useState([]);
@@ -722,29 +1367,68 @@ function ThornieDungeons() {
     gold: 0,
     xp: 0,
     leveledUp: false,
-    unlockedNext: false
+    unlockedNext: false,
+    newSkill: null,
+    newPet: null
   });
   const [invOpen, setInvOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [shopStock, setShopStock] = useState({
+    potionPrice: 0,
+    items: []
+  });
+  const [gachaResult, setGachaResult] = useState(null);
   const floatId = useRef(0);
+  const potions = save ? save.potions : 0;
   useEffect(() => {
     (async () => {
       const cfg = await loadCachedConfig();
+      const serverUrl = cfg.url || DEFAULT_SERVER_URL;
       setCred(c => ({
         ...c,
-        url: cfg.url || DEFAULT_SERVER_URL,
+        url: serverUrl,
         id: cfg.id || ""
       }));
       setPhase("login");
+
+      // Prefer the latest server balance config; cache is only a fallback when offline.
+      const freshConfig = await cloudGetConfig(serverUrl);
+      if (freshConfig && !freshConfig.error) {
+        applyGameConfig(freshConfig);
+        writeCachedGameConfig(freshConfig);
+      } else {
+        const cachedGameConfig = await loadCachedGameConfig();
+        if (cachedGameConfig) applyGameConfig(cachedGameConfig);
+      }
     })();
+  }, []);
+  const cloudWriteQueue = useRef(Promise.resolve());
+  const enqueueCloudWrite = useCallback(task => {
+    cloudWriteQueue.current = cloudWriteQueue.current
+      .catch(() => {})
+      .then(() => task())
+      .catch(() => {});
+    return cloudWriteQueue.current;
   }, []);
   const pushProgress = useCallback(nextSave => {
     if (!cred.url || !cred.id || !cred.password) return;
-    cloudSaveProgress(cred.url, cred.id, cred.password, progressToServer(nextSave));
-  }, [cred]);
+    enqueueCloudWrite(() => cloudSaveProgress(cred.url, cred.id, cred.password, progressToServer(nextSave)));
+  }, [cred, enqueueCloudWrite]);
   const pushItems = useCallback((inv, eq) => {
     if (!cred.url || !cred.id || !cred.password) return;
-    cloudSyncItems(cred.url, cred.id, cred.password, itemsToServerList(inv, eq));
-  }, [cred]);
+    enqueueCloudWrite(() => cloudSyncItems(cred.url, cred.id, cred.password, itemsToServerList(inv, eq)));
+  }, [cred, enqueueCloudWrite]);
+  const pushRunState = useCallback((runState) => {
+    // runState === undefined -> caller has nothing to save yet, skip.
+    // runState === null -> explicit request to clear the checkpoint (both local + cloud).
+    if (!cred.url || !cred.id || !cred.password || runState === undefined) return;
+    const key = `thornie-run-${cred.id}`;
+    try {
+      if (runState === null) window.localStorage?.removeItem(key);
+      else window.localStorage?.setItem(key, JSON.stringify(runState));
+    } catch (e) {}
+    enqueueCloudWrite(() => cloudSaveRunState(cred.url, cred.id, cred.password, runState));
+  }, [cred, enqueueCloudWrite]);
   const persistSave = useCallback(next => {
     setSave(next);
     pushProgress(next);
@@ -789,6 +1473,25 @@ function ThornieDungeons() {
     });
     const nextSave = progressFromServer(res.progress);
     setSave(nextSave);
+    let savedRun = null;
+    if (res.runState && (res.runState.hp !== undefined || res.runState.mp !== undefined)) {
+      savedRun = {
+        floor: Number(res.runState.floor) || 1,
+        hp: Number(res.runState.hp),
+        mp: Number(res.runState.mp)
+      };
+    } else {
+      try {
+        const raw = window.localStorage?.getItem(`thornie-run-${cred.id}`);
+        if (raw) savedRun = JSON.parse(raw);
+      } catch (e) {}
+    }
+    if (savedRun && Number.isFinite(savedRun.hp) && Number.isFinite(savedRun.mp)) {
+      setResumeRun(savedRun);
+      setSelectedFloor(savedRun.floor || 1);
+    } else {
+      setResumeRun(null);
+    }
     const {
       equipped: eq,
       inventory: inv
@@ -830,23 +1533,81 @@ function ThornieDungeons() {
     }));
     setSave(null);
     setPlayer(null);
+    setResumeRun(null);
     setAuthError("");
     setPhase("login");
   }
-  function enterStage(floorNum) {
+  function enterStage(floorNum, carryPlayer = null, options = {}) {
+    const allowResume = options.allowResume !== false;
+    combatOutcomeRef.current = null;
     setSelectedFloor(floorNum);
-    setPlayer(freshPlayerFromSave(save));
-    setPotions(2);
+    const resumeCarry = allowResume && !carryPlayer && resumeRun && Number(resumeRun.floor) === Number(floorNum) ? resumeRun : null;
+    const nextPlayer = freshPlayerFromSave(save, carryPlayer || resumeCarry);
+    setPlayer(nextPlayer);
+    // resumeRun is only meant to restore the session you left off at login.
+    // Consume it on the very first stage entry no matter what (matched or
+    // not) so a stale login-time checkpoint can never silently resurface
+    // later in the session (e.g. on Retry Stage for a floor number that
+    // happens to coincide with it).
+    if (resumeRun) setResumeRun(null);
+    pushRunState({
+      floor: Number(floorNum) || 1,
+      level: nextPlayer.level,
+      xp: nextPlayer.xp,
+      hp: nextPlayer.hp,
+      mp: nextPlayer.mp,
+      base_atk: nextPlayer.baseAtk,
+      base_def: nextPlayer.baseDef,
+      base_max_hp: nextPlayer.baseMaxHp,
+      base_max_mp: nextPlayer.baseMaxMp
+    });
     const e = makeEnemy(floorNum);
     setEnemy(e);
     setDropItem(null);
     setLog(e.isBoss ? `A ${e.name} blocks the way!` : `A wild ${e.name} appears!`);
     setPhase("combat");
   }
+  const runStateSaveTimer = useRef(null);
+  function buildRunStateSnapshot(floor, p) {
+    if (!p) return null;
+    return {
+      floor: Number(floor) || 1,
+      level: Number(p.level) || 1,
+      xp: Math.max(0, Number(p.xp) || 0),
+      hp: Math.max(0, Number(p.hp) || 0),
+      mp: Math.max(0, Number(p.mp) || 0),
+      base_atk: Number(p.baseAtk) || 0,
+      base_def: Number(p.baseDef) || 0,
+      base_max_hp: Number(p.baseMaxHp) || 0,
+      base_max_mp: Number(p.baseMaxMp) || 0
+    };
+  }
+  function saveCombatRunState(floor, p) {
+    const snapshot = buildRunStateSnapshot(floor, p);
+    if (snapshot) pushRunState(snapshot);
+  }
+  useEffect(() => {
+    if (!player || !cred.url || !cred.id || !cred.password || !save || combatOutcomeRef.current) return;
+    if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
+    runStateSaveTimer.current = setTimeout(() => {
+      if (!combatOutcomeRef.current) saveCombatRunState(selectedFloor, player);
+    }, 350);
+    return () => {
+      if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
+    };
+  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, cred.password, save, pushRunState]);
+
   function endCombatWin() {
-    const gained = enemy.gold;
-    const xpGained = enemy.xp;
-    const dropChance = enemy.isBoss ? 1 : 0.32;
+    if (combatOutcomeRef.current) return;
+    const currentEnemy = enemyRef.current || enemy;
+    const currentPlayer = playerRef.current || player;
+    if (!currentEnemy || currentEnemy.hp > 0) return;
+    combatOutcomeRef.current = "victory";
+    if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
+    setBusy(false);
+    const gained = currentEnemy.gold;
+    const xpGained = currentEnemy.xp;
+    const dropChance = (currentEnemy.isBoss ? 1 : 0.32) + (currentPlayer.dropBonus || 0) / 100;
     let drop = null;
     if (Math.random() < dropChance) {
       drop = generateDrop(selectedFloor);
@@ -857,87 +1618,181 @@ function ThornieDungeons() {
     setDropItem(drop);
     let xp = save.character.xp + xpGained;
     let level = save.character.level;
-    let growth = {
-      ...save.character.growth
-    };
+    let statPoints = save.character.statPoints;
     let leveledUp = false;
-    while (xp >= xpToNext(level)) {
+    while (level < MAX_LEVEL && xp >= xpToNext(level)) {
       xp -= xpToNext(level);
       level += 1;
-      growth = {
-        atk: growth.atk + 2,
-        def: growth.def + 1,
-        hp: growth.hp + 8,
-        mp: growth.mp + 5
-      };
+      statPoints += STAT_POINTS_PER_LEVEL;
       leveledUp = true;
     }
+    if (level >= MAX_LEVEL) {
+      level = MAX_LEVEL;
+      xp = 0;
+    }
+    const newSkill = leveledUp ? SKILLS.find(s => s.unlockLevel > save.character.level && s.unlockLevel <= level) : null;
     const unlockedNext = selectedFloor === save.unlockedFloor;
+    let newPets = save.pets;
+    let newActivePetId = save.activePetId;
+    let newPet = null;
+    const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
+    if (selectedFloor === 5 && currentEnemy.isBoss && unlockedNext && !alreadyHasStarter) {
+      const starter = starterPetDef();
+      const instId = `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      newPets = [...(save.pets || []), {
+        instId,
+        defId: starter.id
+      }];
+      if (!newActivePetId) newActivePetId = instId;
+      newPet = starter;
+    }
     const nextSave = {
       ...save,
       gold: save.gold + gained,
       unlockedFloor: unlockedNext ? save.unlockedFloor + 1 : save.unlockedFloor,
       character: {
+        ...save.character,
         level,
         xp,
-        growth
-      }
+        statPoints
+      },
+      pets: newPets,
+      activePetId: newActivePetId
     };
+    // Commit the post-combat character state immediately. This is important because
+    // `save` and `player` are React state values and are updated asynchronously.
+    // Saving the checkpoint from the old state here can make HP/MP/XP appear to
+    // roll back when the next stage is entered or the game is reloaded.
     persistSave(nextSave);
+    const postBattlePlayer = freshPlayerFromSave(nextSave, {
+      hp: currentPlayer.hp,
+      mp: currentPlayer.mp
+    });
+    setPlayer(postBattlePlayer);
+    saveCombatRunState(selectedFloor, postBattlePlayer);
     setLastRewards({
       gold: gained,
       xp: xpGained,
       leveledUp,
-      unlockedNext
+      unlockedNext,
+      newSkill,
+      newPet
     });
-    setLog(leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
+    setLog(newPet ? `Victory! You received a companion: ${newPet.name}!` : newSkill ? `Victory! Level up! New skill: ${newSkill.name}!` : leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
     setPhase("result");
   }
   function playerLost() {
+    if (combatOutcomeRef.current) return;
+    combatOutcomeRef.current = "defeat";
+    if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
+    setBusy(false);
+    const currentPlayer = playerRef.current || player;
+    if (currentPlayer) {
+      const defeatedPlayer = { ...currentPlayer, hp: 0 };
+      setPlayer(defeatedPlayer);
+      // A defeat is also a completed combat. Persist HP=0 immediately so a
+      // reload cannot restore an older HP checkpoint. Retry will overwrite it
+      // with a fresh full-HP checkpoint when the stage is entered again.
+      saveCombatRunState(selectedFloor, defeatedPlayer);
+    }
     setLog("You were defeated...");
     setPhase("defeat");
   }
-  function playerTurn(action) {
+  function playerTurn(action, skillKey) {
     if (busy || !enemy || !player) return;
     const stats = getStats(player, equipped);
     setBusy(true);
     if (action === "attack") {
-      const dmg = Math.max(2, Math.round(stats.atk - enemy.def * 0.6 + (Math.random() * 4 - 2)));
+      const isMiss = Math.random() * 100 >= stats.accuracy;
+      const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
+      let dmg = Math.max(2, Math.round(stats.atk - enemy.def * 0.6 + (Math.random() * 4 - 2)));
+      if (isCrit) dmg = Math.round(dmg * 1.6);
       setHeroAnim("attack");
       setTimeout(() => {
-        setEnemy(e => {
-          const nh = Math.max(0, e.hp - dmg);
-          spawnFloat("enemy", `-${dmg}`, "#FF6B6B");
-          setEnemyAnim("hurt");
-          return {
-            ...e,
-            hp: nh
-          };
-        });
+        if (isMiss) {
+          spawnFloat("enemy", "MISS", "#B9AEDD");
+          setLog("You missed!");
+        } else {
+          setEnemy(e => {
+            const nh = Math.max(0, e.hp - dmg);
+            spawnFloat("enemy", isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#FF6B6B");
+            setEnemyAnim("hurt");
+            return {
+              ...e,
+              hp: nh
+            };
+          });
+        }
         setHeroAnim("");
-        setTimeout(() => resolveAfterPlayerAction(), 350);
+        setTimeout(() => resolveAfterPlayerAction(true), 350);
       }, 300);
     } else if (action === "skill") {
-      if (player.mp < 8) {
+      const skill = SKILLS.find(s => s.key === skillKey);
+      if (!skill || player.mp < skill.mp) {
         setBusy(false);
         return;
       }
-      const dmg = Math.max(4, Math.round(stats.atk * 1.8 - enemy.def * 0.5 + (Math.random() * 5 - 2)));
+      const isMiss = skill.type === "damage" && Math.random() * 100 >= stats.accuracy;
+      const isCrit = skill.type === "damage" && !isMiss && (skill.guaranteedCrit || Math.random() * 100 < stats.critChance);
       setPlayer(p => ({
         ...p,
-        mp: p.mp - 8
+        mp: p.mp - skill.mp
       }));
       setHeroAnim("attack");
       setTimeout(() => {
-        setEnemy(e => {
-          const nh = Math.max(0, e.hp - dmg);
-          spawnFloat("enemy", `-${dmg}`, "#8B6AE8");
-          setEnemyAnim("hurt");
-          return {
-            ...e,
-            hp: nh
-          };
-        });
+        if (skill.type === "damage") {
+          if (isMiss) {
+            spawnFloat("enemy", "MISS", "#B9AEDD");
+            setLog(`${skill.name} missed!`);
+          } else {
+            const pierce = skill.defPierce || 0;
+            let dmg = Math.max(4, Math.round(stats.atk * skill.mult - enemy.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
+            if (isCrit) dmg = Math.round(dmg * 1.6);
+            const freeze = skill.freezeChance ? Math.random() < skill.freezeChance : false;
+            setEnemy(e => {
+              const nh = Math.max(0, e.hp - dmg);
+              spawnFloat("enemy", isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
+              setEnemyAnim("hurt");
+              const next = {
+                ...e,
+                hp: nh
+              };
+              if (freeze) next.frozenTurns = (e.frozenTurns || 0) + skill.freezeTurns;
+              if (skill.poisonTurns) {
+                next.poisonTurns = skill.poisonTurns;
+                next.poisonDmg = Math.max(1, Math.round(stats.atk * skill.poisonPct));
+              }
+              return next;
+            });
+            setLog(freeze ? `${skill.name}! Enemy frozen solid!` : `${skill.name} hits for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
+          }
+        } else if (skill.type === "heal") {
+          setPlayer(p => {
+            const heal = Math.round(stats.maxHp * skill.healPct);
+            spawnFloat("hero", `+${heal}`, "#4CAF7D");
+            return {
+              ...p,
+              hp: Math.min(stats.maxHp, p.hp + heal)
+            };
+          });
+          setLog(`${skill.name}! Recovered HP.`);
+        } else if (skill.type === "buffAtk") {
+          setPlayer(p => ({
+            ...p,
+            atkBuffPct: skill.pct,
+            atkBuffTurns: skill.turns
+          }));
+          spawnFloat("hero", "ATK UP", "#FFD166");
+          setLog(`${skill.name}! ATK increased for ${skill.turns} turns.`);
+        } else if (skill.type === "buffDef") {
+          setPlayer(p => ({
+            ...p,
+            defBuffPct: skill.pct,
+            defBuffTurns: skill.turns
+          }));
+          spawnFloat("hero", "DEF UP", "#7FB8E8");
+          setLog(`${skill.name}! DEF increased for ${skill.turns} turns.`);
+        }
         setHeroAnim("");
         setTimeout(() => resolveAfterPlayerAction(), 350);
       }, 300);
@@ -946,7 +1801,10 @@ function ThornieDungeons() {
         setBusy(false);
         return;
       }
-      setPotions(n => n - 1);
+      persistSave({
+        ...save,
+        potions: save.potions - 1
+      });
       setPlayer(p => {
         const heal = Math.round(stats.maxHp * 0.4);
         spawnFloat("hero", `+${heal}`, "#4CAF7D");
@@ -962,6 +1820,7 @@ function ThornieDungeons() {
       if (success) {
         setLog("You escaped safely.");
         setEnemy(null);
+        pushRunState(null);
         setPhase("map");
         setBusy(false);
       } else {
@@ -970,63 +1829,205 @@ function ThornieDungeons() {
       }
     }
   }
-  function resolveAfterPlayerAction() {
-    setEnemy(e => {
-      if (e && e.hp <= 0) {
-        setBusy(false);
-        setTimeout(() => endCombatWin(), 250);
-      } else setTimeout(() => enemyTurn(), 400);
-      return e;
-    });
-  }
-  function enemyTurn() {
-    setEnemy(e => {
-      if (!e || e.hp <= 0) {
-        setBusy(false);
-        return e;
-      }
-      const stats = getStats(player, equipped);
-      const dmg = Math.max(1, Math.round(e.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
-      setEnemyAnim("attack");
-      setTimeout(() => {
-        setPlayer(p => {
-          const nh = Math.max(0, p.hp - dmg);
-          spawnFloat("hero", `-${dmg}`, "#FF6B6B");
-          setHeroAnim("hurt");
-          if (nh <= 0) setTimeout(() => playerLost(), 400);
-          return {
-            ...p,
+  function triggerPetSkill(cb) {
+    const petActive = activePetInstance(save);
+    if (!petActive || !player || player.petCooldown > 0) {
+      cb();
+      return;
+    }
+    const stats = getStats(player, equipped);
+    const skill = petActive.def.active;
+    setPlayer(p => ({
+      ...p,
+      petCooldown: skill.cooldown
+    }));
+    setTimeout(() => {
+      if (skill.type === "damage") {
+        setEnemy(e => {
+          if (!e || e.hp <= 0) return e;
+          let dmg = Math.max(2, Math.round(stats.atk * skill.mult - e.def * 0.5 + (Math.random() * 3 - 1)));
+          const hasStun = petActive.def.extra && petActive.def.extra.type === "stun";
+          const stun = hasStun ? Math.random() < petActive.def.extra.pct : false;
+          const nh = Math.max(0, e.hp - dmg);
+          spawnFloat("enemy", `${petActive.def.icon}-${dmg}`, "#7FE0B0");
+          setEnemyAnim("hurt");
+          setLog(stun ? `${petActive.def.icon} ${skill.name}! Enemy stunned!` : `${petActive.def.icon} ${skill.name} hits for ${dmg}!`);
+          const next = {
+            ...e,
             hp: nh
           };
+          if (stun) next.frozenTurns = (e.frozenTurns || 0) + 1;
+          return next;
         });
-        setEnemyAnim("");
-        setLog(`${e.name} strikes for ${dmg}!`);
+      } else if (skill.type === "regen") {
+        const heal = Math.round(stats.maxHp * skill.regenPct);
+        setPlayer(p => {
+          spawnFloat("hero", `+${heal}`, "#6FCF97");
+          return {
+            ...p,
+            hp: Math.min(stats.maxHp, p.hp + heal),
+            regenAmount: heal,
+            regenTurns: Math.max(0, skill.regenTurns - 1)
+          };
+        });
+        setLog(`${petActive.def.icon} ${skill.name} activates!`);
+      }
+      setTimeout(() => cb(), 280);
+    }, 220);
+  }
+  function resolveAfterPlayerAction(fromAttack) {
+    if (combatOutcomeRef.current) return;
+    const currentEnemy = enemyRef.current;
+    if (!currentEnemy || currentEnemy.hp <= 0) {
+      endCombatWin();
+      return;
+    }
+    if (fromAttack) {
+      setTimeout(() => triggerPetSkill(() => {
+        if (combatOutcomeRef.current) return;
+        if (enemyRef.current && enemyRef.current.hp <= 0) endCombatWin();
+        else enemyTurn();
+      }), 300);
+    } else {
+      setTimeout(() => {
+        if (!combatOutcomeRef.current) enemyTurn();
+      }, 400);
+    }
+  }
+  function enemyTurn() {
+    if (combatOutcomeRef.current) return;
+    setEnemy(e => {
+      if (!e || e.hp <= 0) {
+        setTimeout(() => endCombatWin(), 0);
+        return e;
+      }
+      let cur = { ...e };
+      if (cur.poisonTurns > 0) {
+        const pdmg = cur.poisonDmg || 0;
+        cur.hp = Math.max(0, cur.hp - pdmg);
+        cur.poisonTurns -= 1;
+        spawnFloat("enemy", `-${pdmg} ☠️`, "#6FCF97");
+        if (cur.hp <= 0) {
+          setLog(`${cur.name} succumbed to poison!`);
+          setTimeout(() => endCombatWin(), 0);
+          return cur;
+        }
+      }
+      if (cur.frozenTurns > 0) {
+        cur.frozenTurns -= 1;
+        setLog(`${cur.name} is frozen solid and can't move!`);
         setBusy(false);
+        setTimeout(() => tickPlayerBuffs(), 0);
+        return cur;
+      }
+      const stats = getStats(playerRef.current || player, equipped);
+      const petActive = activePetInstance(save);
+      const hasGuard = petActive && petActive.def.extra && petActive.def.extra.type === "block";
+      const blocked = hasGuard && Math.random() < petActive.def.extra.pct;
+      const dodged = !blocked && Math.random() * 100 < stats.dodgeChance;
+      const dmg = blocked || dodged ? 0 : Math.max(1, Math.round(cur.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
+      setEnemyAnim("attack");
+      setTimeout(() => {
+        if (combatOutcomeRef.current) return;
+        if (blocked) {
+          spawnFloat("hero", "BLOCKED 🛡️", "#B9AEDD");
+          setLog(`${petActive.def.name} blocked the attack!`);
+        } else if (dodged) {
+          spawnFloat("hero", "MISS", "#B9AEDD");
+          setLog(`You dodged ${cur.name}'s attack!`);
+        } else {
+          const hasStatusWard = petActive && petActive.def.passive && petActive.def.passive.type === "statusResist";
+          const resisted = hasStatusWard && Math.random() < petActive.def.passive.pct;
+          const weakenProc = cur.isBoss && !resisted && Math.random() < 0.25;
+          const currentPlayer = playerRef.current || player;
+          const nh = Math.max(0, currentPlayer.hp - dmg);
+          setPlayer(p => {
+            if (!p || combatOutcomeRef.current) return p;
+            const next = { ...p, hp: nh };
+            setHeroAnim("hurt");
+            if (weakenProc && nh > 0) {
+              next.weakenPct = 0.2;
+              next.weakenTurns = 2;
+            }
+            return next;
+          });
+          spawnFloat("hero", `-${dmg}`, "#FF6B6B");
+          if (nh <= 0) setTimeout(() => playerLost(), 0);
+          setLog(weakenProc && nh > 0 ? `${cur.name} strikes for ${dmg} and weakens you!` : `${cur.name} strikes for ${dmg}!`);
+        }
+        setEnemyAnim("");
+        if (!combatOutcomeRef.current) {
+          setBusy(false);
+          tickPlayerBuffs();
+        }
       }, 300);
-      return e;
+      return cur;
+    });
+  }
+  function tickPlayerBuffs() {
+    setPlayer(p => {
+      if (!p) return p;
+      const next = {
+        ...p
+      };
+      if (next.atkBuffTurns > 0) {
+        next.atkBuffTurns -= 1;
+        if (next.atkBuffTurns === 0) next.atkBuffPct = 0;
+      }
+      if (next.defBuffTurns > 0) {
+        next.defBuffTurns -= 1;
+        if (next.defBuffTurns === 0) next.defBuffPct = 0;
+      }
+      if (next.weakenTurns > 0) {
+        next.weakenTurns -= 1;
+        if (next.weakenTurns === 0) next.weakenPct = 0;
+      }
+      if (next.petCooldown > 0) next.petCooldown -= 1;
+      if (next.hp > 0 && next.regenTurns > 0 && next.regenAmount > 0 && !combatOutcomeRef.current) {
+        const capStats = getStats(next, equipped);
+        next.hp = Math.min(capStats.maxHp, next.hp + next.regenAmount);
+        next.regenTurns -= 1;
+        spawnFloat("hero", `+${next.regenAmount}`, "#6FCF97");
+      }
+      return next;
     });
   }
   function retryStage() {
-    enterStage(selectedFloor);
+    // Defeat means HP hit 0 — always start the retry fully healed, since
+    // carrying 0 HP over would just mean an instant loss again.
+    combatOutcomeRef.current = null;
+    enterStage(selectedFloor, null, { allowResume: false });
+  }
+  function retryStageAfterWin() {
+    // Retrying a stage you just cleared keeps your real current HP/MP,
+    // same rule as advancing to the next stage — no free heal.
+    combatOutcomeRef.current = null;
+    enterStage(selectedFloor, player, { allowResume: false });
   }
   function backToMap() {
+    combatOutcomeRef.current = null;
     setEnemy(null);
     setDropItem(null);
+    pushRunState(null);
     setPhase("map");
   }
   function nextStage() {
-    enterStage(selectedFloor + 1);
+    // Dungeon run rule: carry the current HP/MP into the next stage.
+    combatOutcomeRef.current = null;
+    enterStage(selectedFloor + 1, player);
   }
-  function buyUpgrade(u) {
-    const level = save.up[u.key];
-    const cost = upgradeCost(u, level);
-    if (save.gold < cost) return;
+  function addStatPoint(key) {
+    if (save.character.statPoints <= 0) return;
+    const nextStats = {
+      ...save.character.stats,
+      [key]: save.character.stats[key] + 1
+    };
     persistSave({
       ...save,
-      gold: save.gold - cost,
-      up: {
-        ...save.up,
-        [u.key]: level + 1
+      character: {
+        ...save.character,
+        statPoints: save.character.statPoints - 1,
+        stats: nextStats
       }
     });
   }
@@ -1054,6 +2055,97 @@ function ThornieDungeons() {
     setEquipped(newEq);
     setInventory(nextInv);
     persistItems(nextInv, newEq);
+  }
+  function sellItem(item) {
+    const price = sellPrice(item);
+    const nextInv = inventory.filter(i => i.id !== item.id);
+    setInventory(nextInv);
+    persistItems(nextInv, equipped);
+    persistSave({
+      ...save,
+      gold: save.gold + price
+    });
+  }
+  function openShop() {
+    setShopStock(generateShopStock(save.unlockedFloor));
+    setShopOpen(true);
+  }
+  function buyShopItem(item) {
+    if (save.gold < item.price) return;
+    const {
+      price,
+      ...pureItem
+    } = item;
+    const nextInv = [...inventory, pureItem];
+    setInventory(nextInv);
+    persistItems(nextInv, equipped);
+    persistSave({
+      ...save,
+      gold: save.gold - item.price
+    });
+    setShopStock(s => ({
+      ...s,
+      items: s.items.filter(i => i.id !== item.id)
+    }));
+  }
+  function buyShopPotion() {
+    if (save.gold < shopStock.potionPrice) return;
+    persistSave({
+      ...save,
+      gold: save.gold - shopStock.potionPrice,
+      potions: save.potions + 1
+    });
+  }
+  function equipPet(instId) {
+    persistSave({
+      ...save,
+      activePetId: instId
+    });
+  }
+  function unequipPet() {
+    persistSave({
+      ...save,
+      activePetId: null
+    });
+  }
+  function claimTestDiamonds() {
+    persistSave({
+      ...save,
+      diamonds: save.diamonds + 500
+    });
+  }
+  function pullGacha() {
+    if (save.diamonds < GACHA_COST) return;
+    const won = rollGachaPet();
+    const already = (save.pets || []).some(p => p.defId === won.id);
+    if (already) {
+      // duplicate — refund partial diamonds as shards
+      persistSave({
+        ...save,
+        diamonds: save.diamonds - GACHA_COST + 30
+      });
+      setGachaResult({
+        pet: won,
+        duplicate: true
+      });
+      return;
+    }
+    const instId = `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const nextPets = [...(save.pets || []), {
+      instId,
+      defId: won.id
+    }];
+    const nextActivePetId = save.activePetId || instId;
+    persistSave({
+      ...save,
+      diamonds: save.diamonds - GACHA_COST,
+      pets: nextPets,
+      activePetId: nextActivePetId
+    });
+    setGachaResult({
+      pet: won,
+      duplicate: false
+    });
   }
   if (phase === "loading") {
     return /*#__PURE__*/React.createElement("div", {
@@ -1083,22 +2175,24 @@ function ThornieDungeons() {
     }));
   }
   const charStats = characterBaseStats(save);
-  const displayStats = player ? getStats(player, equipped) : {
-    ...charStats,
-    ...getEquipBonus(equipped)
+  const eqBonus = getEquipBonus(equipped);
+  const outOfCombatStats = {
+    atk: charStats.atk + eqBonus.atk,
+    def: charStats.def + eqBonus.def,
+    maxHp: charStats.maxHp + eqBonus.hp,
+    maxMp: charStats.maxMp + eqBonus.mp,
+    accuracy: charStats.accuracy,
+    critChance: charStats.critChance,
+    dodgeChance: charStats.dodgeChance
   };
-  const cp = combatPower(player ? getStats(player, equipped) : {
-    atk: charStats.atk + getEquipBonus(equipped).atk,
-    def: charStats.def + getEquipBonus(equipped).def,
-    maxHp: charStats.maxHp + getEquipBonus(equipped).hp,
-    maxMp: charStats.maxMp + getEquipBonus(equipped).mp
-  }, save.character.level);
+  const cp = combatPower(player ? getStats(player, equipped) : outOfCombatStats, save.character.level);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-root"
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "login" && /*#__PURE__*/React.createElement(StatusBar, {
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "login" && phase !== "combat" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
-    phase: phase
+    phase: phase,
+    equipped: equipped
   }), phase === "menu" && /*#__PURE__*/React.createElement(MenuScreen, {
     save: save,
     cp: cp,
@@ -1106,16 +2200,27 @@ function ThornieDungeons() {
     onTown: () => setPhase("town"),
     onMap: () => setPhase("map"),
     onLogout: logout
-  }), phase === "town" && /*#__PURE__*/React.createElement(TownScreen, {
+  }), phase === "town" && /*#__PURE__*/React.createElement(CharacterScreen, {
     save: save,
-    onBuy: buyUpgrade,
+    charStats: charStats,
+    onAddStat: addStatPoint,
     onOpenInv: () => setInvOpen(true),
     onMap: () => setPhase("map"),
+    onOpenPets: () => setPhase("pets"),
     onBack: () => setPhase("menu")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
     onSelectFloor: enterStage,
-    onOpenInv: () => setInvOpen(true),
+    onOpenPets: () => setPhase("pets"),
+    onBack: () => setPhase("town")
+  }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
+    save: save,
+    gachaResult: gachaResult,
+    onClearGachaResult: () => setGachaResult(null),
+    onEquip: equipPet,
+    onUnequip: unequipPet,
+    onGacha: pullGacha,
+    onClaimDiamonds: claimTestDiamonds,
     onBack: () => setPhase("town")
   }), phase === "combat" && enemy && player && /*#__PURE__*/React.createElement(CombatScreen, {
     player: player,
@@ -1127,24 +2232,38 @@ function ThornieDungeons() {
     enemyAnim: enemyAnim,
     floats: floats,
     onAction: playerTurn,
-    equipped: equipped
+    equipped: equipped,
+    pet: activePetInstance(save)
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,
     dropItem: dropItem,
     onNext: nextStage,
+    onRetry: retryStageAfterWin,
     onMap: backToMap,
     onOpenInv: () => setInvOpen(true)
   }), phase === "defeat" && /*#__PURE__*/React.createElement(DefeatScreen, {
     floor: selectedFloor,
     onRetry: retryStage,
     onMap: backToMap
+  }), (phase === "town" || phase === "map" || phase === "pets") && /*#__PURE__*/React.createElement(FloatingQuickActions, {
+    onShop: openShop,
+    onCharacter: () => setPhase("town"),
+    onBag: () => setInvOpen(true),
+    activePhase: phase
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
     inventory: inventory,
     onEquip: equipItem,
     onUnequip: unequipItem,
+    onSell: sellItem,
     onClose: () => setInvOpen(false)
+  }), shopOpen && /*#__PURE__*/React.createElement(ShopOverlay, {
+    gold: save.gold,
+    stock: shopStock,
+    onBuyItem: buyShopItem,
+    onBuyPotion: buyShopPotion,
+    onClose: () => setShopOpen(false)
   }));
 }
 function Starfield() {
@@ -1209,11 +2328,12 @@ function StarRating({
 function StatusBar({
   player,
   save,
-  phase
+  phase,
+  equipped
 }) {
-  const stats = player ? getStats(player, {}) : null;
-  const hpPct = player && stats ? Math.max(0, player.hp / player.baseMaxHp * 100) : 0;
-  const mpPct = player && stats ? Math.max(0, player.mp / player.baseMaxMp * 100) : 0;
+  const stats = player ? getStats(player, equipped || {}) : null;
+  const hpPct = player && stats ? Math.max(0, Math.min(100, player.hp / stats.maxHp * 100)) : 0;
+  const mpPct = player && stats ? Math.max(0, Math.min(100, player.mp / stats.maxMp * 100)) : 0;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-status"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1232,7 +2352,7 @@ function StatusBar({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-bar-label"
-  }, "HP ", player.hp, "/", player.baseMaxHp)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "HP ", player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "md-bar-track"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-bar-fill",
@@ -1242,7 +2362,7 @@ function StatusBar({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-bar-label"
-  }, "MP ", player.mp, "/", player.baseMaxMp))) : /*#__PURE__*/React.createElement("div", {
+  }, "MP ", player.mp, "/", stats.maxMp))) : /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1
     }
@@ -1402,18 +2522,22 @@ function MenuScreen({
   }, /*#__PURE__*/React.createElement("button", {
     className: "md-btn info",
     onClick: onTown
-  }, "🏪 Town"), /*#__PURE__*/React.createElement("button", {
+  }, "🧙 Character"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee",
     onClick: onLogout
   }, "🚪 Switch Account"))));
 }
-function TownScreen({
+function CharacterScreen({
   save,
-  onBuy,
+  charStats,
+  onAddStat,
   onOpenInv,
   onMap,
+  onOpenPets,
   onBack
 }) {
+  const s = save.character.stats;
+  const points = save.character.statPoints;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
@@ -1426,33 +2550,90 @@ function TownScreen({
     }
   }, /*#__PURE__*/React.createElement("p", {
     className: "md-title"
-  }, "🏪 Town"), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, "Spend gold on permanent upgrades."), UPGRADES.map(u => {
-    const level = save.up[u.key];
-    const cost = upgradeCost(u, level);
-    const canBuy = save.gold >= cost;
+  }, "🧙 Character"), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: 0
+    }
+  }, "Lv", save.character.level, " · แต้มสเตตัสคงเหลือ: ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--gold)"
+    }
+  }, points))), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, STAT_INFO.map(st => /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-row",
+    key: st.key
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-info"
+  }, st.icon, " ", st.label, " ", /*#__PURE__*/React.createElement("span", {
+    className: "md-shop-lv"
+  }, s[st.key])), /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-lv"
+  }, st.desc)), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    disabled: points <= 0,
+    onClick: () => onAddStat(st.key)
+  }, "+1")))), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: 0
+    }
+  }, "ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: "4px 0 0"
+    }
+  }, "Accuracy ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Dodge ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title",
+    style: {
+      margin: "0 0 4px",
+      fontSize: 15
+    }
+  }, "✨ Skills"), /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-list",
+    style: {
+      maxHeight: 220,
+      overflowY: "auto"
+    }
+  }, SKILLS.map(sk => {
+    const unlocked = sk.unlockLevel <= save.character.level;
     return /*#__PURE__*/React.createElement("div", {
+      key: sk.key,
       className: "md-shop-row",
-      key: u.key
+      style: {
+        opacity: unlocked ? 1 : 0.5
+      }
     }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       className: "md-shop-info"
-    }, u.icon, " ", u.label, " ", /*#__PURE__*/React.createElement("span", {
+    }, unlocked ? sk.icon : "🔒", " ", sk.name, " ", /*#__PURE__*/React.createElement("span", {
       className: "md-shop-lv"
-    }, "Lv", level)), /*#__PURE__*/React.createElement("div", {
+    }, sk.mp, "mp")), /*#__PURE__*/React.createElement("div", {
       className: "md-shop-lv"
-    }, u.desc)), /*#__PURE__*/React.createElement("button", {
-      className: "md-buy-btn",
-      disabled: !canBuy,
-      onClick: () => onBuy(u)
-    }, "🪙", cost));
-  })), /*#__PURE__*/React.createElement("div", {
+    }, unlocked ? sk.desc : `ปลดล็อกที่ Lv${sk.unlockLevel}`)));
+  }))), /*#__PURE__*/React.createElement("div", {
     className: "md-btn-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "md-btn info",
     onClick: onOpenInv
   }, "🎒 Equipment"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary",
+    className: "md-btn skill",
+    onClick: onOpenPets
+  }, "🐾 Pets"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary wide",
     onClick: onMap
   }, "🗺️ Stage Select")), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
@@ -1462,13 +2643,15 @@ function TownScreen({
 function MapScreen({
   unlockedFloor,
   onSelectFloor,
-  onOpenInv,
+  onOpenPets,
   onBack
 }) {
   const maxShow = unlockedFloor + 1; // one locked preview ahead
   const floors = Array.from({
     length: maxShow
   }, (_, i) => i + 1);
+  const [selected, setSelected] = useState(unlockedFloor);
+  const isBossSel = selected % 5 === 0;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
@@ -1491,38 +2674,306 @@ function MapScreen({
       margin: 0
     }
   }, "Cleared stages can be farmed as many times as you like.")), /*#__PURE__*/React.createElement("div", {
-    className: "md-stage-list"
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    className: "md-select",
+    value: selected,
+    onChange: e => setSelected(Number(e.target.value))
   }, floors.map(f => {
     const locked = f > unlockedFloor;
     const isBoss = f % 5 === 0;
-    return /*#__PURE__*/React.createElement("button", {
+    const label = locked ? `🔒 Stage ${f} — Locked` : isBoss ? `👑 Stage ${f} — Boss` : `Stage ${f}`;
+    return /*#__PURE__*/React.createElement("option", {
       key: f,
-      className: `md-stage-node ${isBoss ? "boss" : ""} ${locked ? "locked" : ""}`,
-      disabled: locked,
-      onClick: () => onSelectFloor(f)
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "md-stage-num"
-    }, locked ? "🔒" : isBoss ? "👑" : f), /*#__PURE__*/React.createElement("div", {
-      className: "md-stage-info"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "md-stage-title"
-    }, locked ? "Locked" : isBoss ? `Stage ${f} — Boss` : `Stage ${f}`), /*#__PURE__*/React.createElement("div", {
-      className: "md-stage-sub"
-    }, locked ? "Clear the previous stage first" : isBoss ? "Tougher fight, better rewards" : "Farmable · gold, XP, gear")), !locked && /*#__PURE__*/React.createElement("div", {
-      className: "md-stage-arrow"
-    }, "›"));
-  })), /*#__PURE__*/React.createElement("div", {
+      value: f,
+      disabled: locked
+    }, label);
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: "8px 0 10px"
+    }
+  }, isBossSel ? "Tougher fight, better rewards." : "Farmable · gold, XP, gear."), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn attack wide",
+    onClick: () => onSelectFloor(selected)
+  }, "⚔️ Enter Stage ", selected)), /*#__PURE__*/React.createElement("div", {
     className: "md-btn-row",
     style: {
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info",
-    onClick: onOpenInv
-  }, "🎒 Equipment"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee",
+    className: "md-btn skill wide",
+    onClick: onOpenPets
+  }, "🐾 Pets")), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide small",
     onClick: onBack
-  }, "🏪 Town")));
+  }, "🧙 Character"));
+}
+function ShopOverlay({
+  gold,
+  stock,
+  onBuyItem,
+  onBuyPotion,
+  onClose
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      zIndex: 20,
+      background: "rgba(0,0,0,0.6)",
+      display: "flex",
+      alignItems: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "linear-gradient(180deg, #2C1E4A, #1B1233)",
+      width: "100%",
+      borderRadius: "20px 20px 0 0",
+      padding: 16,
+      maxHeight: "88%",
+      overflowY: "auto",
+      border: "1.5px solid var(--gold-deep)",
+      borderBottom: "none"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title",
+    style: {
+      margin: 0
+    }
+  }, "🛒 Shop ", /*#__PURE__*/React.createElement("span", {
+    className: "md-shop-lv"
+  }, "🪙", gold)), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee small",
+    onClick: onClose,
+    style: {
+      boxShadow: "none",
+      padding: "6px 12px"
+    }
+  }, "Close")), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, "รายการสุ่มใหม่ทุกครั้งที่เปิดร้าน"), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-row"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-info"
+  }, "🧪 Potion"), /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-lv"
+  }, "ฟื้นฟู HP 40% ระหว่างต่อสู้")), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    disabled: gold < stock.potionPrice,
+    onClick: onBuyPotion
+  }, "🪙", stock.potionPrice))), /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-list"
+  }, stock.items.length === 0 && /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: 0
+    }
+  }, "ของหมดแล้ว — ปิดแล้วเปิดใหม่เพื่อสุ่มร้านใหม่"), stock.items.map(it => /*#__PURE__*/React.createElement("div", {
+    key: it.id,
+    className: `md-inv-item ${it.rarity}`
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-name"
+  }, SLOT_ICON[it.type], " ", it.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement(StarRating, {
+    rarity: it.rarity
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-inv-stat"
+  }, itemStatText(it)))), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    disabled: gold < it.price,
+    onClick: () => onBuyItem(it)
+  }, "🪙", it.price))))));
+}
+function PetScreen({
+  save,
+  gachaResult,
+  onClearGachaResult,
+  onEquip,
+  onUnequip,
+  onGacha,
+  onClaimDiamonds,
+  onBack
+}) {
+  const owned = save.pets || [];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-panel",
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title"
+  }, "🐾 Pets"), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: 0
+    }
+  }, "💎 ", save.diamonds, " เพชร")), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title",
+    style: {
+      margin: "0 0 4px",
+      fontSize: 15
+    }
+  }, "สัตว์เลี้ยงของฉัน"), owned.length === 0 && /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: 0
+    }
+  }, "ยังไม่มีสัตว์เลี้ยง — เอาชนะบอสด่าน 5 เพื่อรับสัตว์เลี้ยงตัวแรก!"), /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-list"
+  }, owned.map(inst => {
+    const def = getPetDef(inst.defId);
+    if (!def) return null;
+    const isActive = save.activePetId === inst.instId;
+    return /*#__PURE__*/React.createElement("div", {
+      key: inst.instId,
+      className: `md-inv-item ${def.rarity === "ssr" ? "epic" : def.rarity === "sr" ? "rare" : ""}`
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "md-inv-name"
+    }, def.icon, " ", def.name, " ", /*#__PURE__*/React.createElement("span", {
+      className: "md-shop-lv"
+    }, PET_RARITY_LABEL[def.rarity]), isActive ? " ⭐" : ""), /*#__PURE__*/React.createElement("div", {
+      className: "md-inv-stat"
+    }, def.active.icon, " ", def.active.name, " — ", def.active.desc), def.passive && /*#__PURE__*/React.createElement("div", {
+      className: "md-inv-stat"
+    }, def.passive.icon, " ", def.passive.name, " — ", def.passive.desc), def.extra && /*#__PURE__*/React.createElement("div", {
+      className: "md-inv-stat"
+    }, def.extra.icon, " ", def.extra.name, " — ", def.extra.desc)), isActive ? /*#__PURE__*/React.createElement("button", {
+      className: "md-buy-btn",
+      style: {
+        background: "var(--panel-soft)",
+        color: "var(--ink)",
+        boxShadow: "none",
+        border: "1px solid var(--gold-deep)"
+      },
+      onClick: onUnequip
+    }, "Unequip") : /*#__PURE__*/React.createElement("button", {
+      className: "md-buy-btn",
+      onClick: () => onEquip(inst.instId)
+    }, "Equip"));
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title",
+    style: {
+      margin: "0 0 4px",
+      fontSize: 15
+    }
+  }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: "0 0 6px"
+    }
+  }, "อัตราออก: R 70% · SR 25% · SSR 5%"), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: "0 0 6px",
+      color: "var(--ink-soft)"
+    }
+  }, "🧪 อยู่ระหว่างช่วงทดสอบ — ใช้ปุ่มด้านล่างรับเพชรฟรีเพื่อทดสอบระบบสุ่มได้เลย (ระบบเติมเงินจริงยังไม่เปิด)"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn item wide",
+    style: {
+      marginBottom: 8
+    },
+    onClick: onClaimDiamonds
+  }, "🎁 รับเพชรทดสอบ +500"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary wide",
+    disabled: save.diamonds < GACHA_COST,
+    onClick: onGacha
+  }, "💎 สุ่ม 1 ครั้ง (", GACHA_COST, " เพชร)")), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide small",
+    onClick: onBack
+  }, "← Back"), gachaResult && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      zIndex: 25,
+      background: "rgba(0,0,0,0.7)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      textAlign: "center",
+      maxWidth: 280
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title"
+  }, gachaResult.pet.icon, " ", gachaResult.pet.name), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: 0
+    }
+  }, PET_RARITY_LABEL[gachaResult.pet.rarity], " ", gachaResult.duplicate ? "· ได้ตัวซ้ำ! รับเพชรคืน +30" : "· ได้สัตว์เลี้ยงใหม่!"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary wide",
+    style: {
+      marginTop: 10
+    },
+    onClick: onClearGachaResult
+  }, "OK"))));
+}
+function FloatingQuickActions({
+  onShop,
+  onCharacter,
+  onBag,
+  activePhase
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-fab-stack"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-fab",
+    onClick: onShop,
+    title: "Shop"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-fab-icon"
+  }, "🛒")), /*#__PURE__*/React.createElement("button", {
+    className: `md-fab ${activePhase === "town" ? "active" : ""}`,
+    onClick: onCharacter,
+    title: "Character"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-fab-icon"
+  }, "🧙")), /*#__PURE__*/React.createElement("button", {
+    className: "md-fab",
+    onClick: onBag,
+    title: "Equipment"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-fab-icon"
+  }, "🎒")));
 }
 function HeroSprite({
   anim
@@ -1575,14 +3026,68 @@ function CombatScreen({
   heroAnim,
   enemyAnim,
   floats,
-  onAction
+  onAction,
+  equipped,
+  pet
 }) {
+  const [showSkills, setShowSkills] = useState(false);
+  const [autoRun, setAutoRun] = useState(false);
   const enemyHpPct = Math.max(0, enemy.hp / enemy.maxHp * 100);
+  const skills = unlockedSkills(player.level);
+  const stats = getStats(player, equipped);
+  const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
+  const mpPct = Math.max(0, Math.min(100, player.mp / stats.maxMp * 100));
+  const xpNeed = xpToNext(player.level);
+  const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
+  function pickSkill(skill) {
+    setShowSkills(false);
+    onAction("skill", skill.key);
+  }
+  useEffect(() => {
+    // Auto Run: keep throwing basic attacks on its own while enabled, as long
+    // as we're not mid-animation and the skill grid isn't open (so a manual
+    // skill pick doesn't get raced by an auto attack).
+    if (!autoRun || busy || showSkills) return;
+    const t = setTimeout(() => onAction("attack"), 550);
+    return () => clearTimeout(t);
+  }, [autoRun, busy, showSkills, onAction]);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "md-scene"
+    className: "md-scene battle-bg"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-floor-tag md-display"
-  }, "⚔️ Battle"), /*#__PURE__*/React.createElement("div", {
+    className: "md-combat-hud"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-lv"
+  }, player.level), /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-bars"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-track hp"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-fill",
+    style: {
+      width: `${hpPct}%`
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-hud-txt"
+  }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-track mp"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-fill",
+    style: {
+      width: `${mpPct}%`
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-hud-txt"
+  }, player.mp, "/", stats.maxMp)), /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-track xp"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-fill",
+    style: {
+      width: `${xpPct}%`
+    }
+  })))), pet && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-status",
+    title: pet.def.active.desc
+  }, pet.def.icon, " ", pet.def.active.name, player.petCooldown > 0 ? ` · CD ${player.petCooldown}` : " · Ready"), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "0 10px 6px"
     }
@@ -1603,7 +3108,7 @@ function CombatScreen({
       textAlign: "center",
       marginTop: 2
     }
-  }, enemy.name, " — ", enemy.hp, "/", enemy.maxHp, " HP")), /*#__PURE__*/React.createElement("div", {
+  }, enemy.name, " — ", enemy.hp, "/", enemy.maxHp, " HP", enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : "")), /*#__PURE__*/React.createElement("div", {
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
@@ -1613,7 +3118,16 @@ function CombatScreen({
     }
   }, /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim
-  }), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
+  }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: -6,
+      left: "50%",
+      transform: "translateX(-50%)",
+      fontSize: 11,
+      whiteSpace: "nowrap"
+    }
+  }, player.atkBuffTurns > 0 ? "⚔️+" : "", player.defBuffTurns > 0 ? "🛡️+" : "", player.regenTurns > 0 ? "💚" : ""), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {
@@ -1632,35 +3146,58 @@ function CombatScreen({
     style: {
       color: f.color
     }
-  }, f.text))))), /*#__PURE__*/React.createElement("div", {
+  }, f.text))))), /*#__PURE__*/React.createElement("button", {
+    className: `md-autorun-btn ${autoRun ? "active" : ""}`,
+    onClick: () => setAutoRun(a => !a)
+  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
+    className: "md-combat-actions"
+  }, showSkills && /*#__PURE__*/React.createElement("div", {
+    className: "md-skill-grid"
+  }, skills.map((s, i) => /*#__PURE__*/React.createElement("button", {
+    key: s.key,
+    className: "md-skill-cell",
+    disabled: busy || player.mp < s.mp,
+    title: `${s.name} (${s.mp}mp) — ${s.desc}`,
+    onClick: () => pickSkill(s)
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-skill-num"
+  }, i + 1), s.icon))), /*#__PURE__*/React.createElement("button", {
+    className: "md-skill-fab",
+    disabled: busy || skills.length === 0,
+    onClick: () => setShowSkills(v => !v)
+  }, "✨"), /*#__PURE__*/React.createElement("div", {
+    className: "md-action-cluster"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-atk-circle",
+    disabled: busy,
+    onClick: () => {
+      setShowSkills(false);
+      onAction("attack");
+    }
+  }, "👊"), /*#__PURE__*/React.createElement("div", {
+    className: "md-side-box"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-side-circle",
+    disabled: busy || potions <= 0,
+    onClick: () => onAction("item")
+  }, "🧪", /*#__PURE__*/React.createElement("i", {
+    className: "md-rail-badge"
+  }, potions)), /*#__PURE__*/React.createElement("button", {
+    className: "md-side-circle",
+    disabled: busy,
+    onClick: () => onAction("flee")
+  }, "🏃")))), /*#__PURE__*/React.createElement("div", {
     className: "md-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-log"
-  }, log), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn attack",
-    disabled: busy,
-    onClick: () => onAction("attack")
-  }, "👊 Attack"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn skill",
-    disabled: busy || player.mp < 8,
-    onClick: () => onAction("skill")
-  }, "✨ Skill (8mp)"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn item",
-    disabled: busy || potions <= 0,
-    onClick: () => onAction("item")
-  }, "🧪 Potion (", potions, ")"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee",
-    disabled: busy,
-    onClick: () => onAction("flee")
-  }, "🏃 Flee"))));
+  }, log)));
 }
 function ResultScreen({
   floor,
   rewards,
   dropItem,
   onNext,
+  onRetry,
   onMap,
   onOpenInv
 }) {
@@ -1679,7 +3216,27 @@ function ResultScreen({
     className: "md-title"
   }, "🎉 Stage ", floor, " Cleared!"), /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
-  }, "+", rewards.gold, " 🪙 gold · +", rewards.xp, " XP", rewards.leveledUp ? " · Level up!" : "", rewards.unlockedNext ? " · Next stage unlocked!" : ""), dropItem ? /*#__PURE__*/React.createElement("div", {
+  }, "+", rewards.gold, " 🪙 gold · +", rewards.xp, " XP", rewards.leveledUp ? " · Level up!" : "", rewards.unlockedNext ? " · Next stage unlocked!" : ""), rewards.newPet && /*#__PURE__*/React.createElement("div", {
+    className: "md-drop-banner",
+    style: {
+      background: "rgba(139,106,232,0.18)"
+    }
+  }, rewards.newPet.icon, " New Companion: ", rewards.newPet.name, " (R)!", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "var(--ink-soft)"
+    }
+  }, rewards.newPet.active.desc)), rewards.newSkill && /*#__PURE__*/React.createElement("div", {
+    className: "md-drop-banner",
+    style: {
+      background: "rgba(255,209,102,0.18)"
+    }
+  }, rewards.newSkill.icon, " New Skill Unlocked: ", rewards.newSkill.name, "!", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "var(--ink-soft)"
+    }
+  }, rewards.newSkill.desc)), dropItem ? /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
     style: {
       background: dropItem.rarity === "epic" ? "rgba(178,106,232,0.18)" : dropItem.rarity === "rare" ? "rgba(79,168,224,0.18)" : "rgba(156,156,168,0.15)"
@@ -1708,6 +3265,14 @@ function ResultScreen({
     className: "md-btn primary wide",
     onClick: onNext
   }, "⚔️ Next Stage"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn info wide",
+    onClick: onRetry
+  }, "🔁 Retry Stage")), /*#__PURE__*/React.createElement("div", {
+    className: "md-btn-row",
+    style: {
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide",
     onClick: onMap
   }, "🗺️ Back to Map")));
@@ -1750,111 +3315,125 @@ function InventoryOverlay({
   inventory,
   onEquip,
   onUnequip,
+  onSell,
   onClose
 }) {
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      inset: 0,
-      zIndex: 20,
-      background: "rgba(0,0,0,0.6)",
-      display: "flex",
-      alignItems: "flex-end"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "linear-gradient(180deg, #2C1E4A, #1B1233)",
-      width: "100%",
-      borderRadius: "20px 20px 0 0",
-      padding: 16,
-      maxHeight: "88%",
-      overflowY: "auto",
-      border: "1.5px solid var(--gold-deep)",
-      borderBottom: "none"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title",
-    style: {
-      margin: 0
-    }
-  }, "🎒 Equipment"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee small",
-    onClick: onClose,
-    style: {
-      boxShadow: "none",
-      padding: "6px 12px"
-    }
-  }, "Close")), /*#__PURE__*/React.createElement("div", {
-    className: "md-slots"
-  }, SLOT_ORDER.map(slot => {
-    const it = equipped[slot];
-    return /*#__PURE__*/React.createElement("div", {
-      key: slot,
-      className: `md-slot ${it ? "filled" : ""}`,
-      onClick: () => it && onUnequip(slot)
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "md-slot-icon"
-    }, SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", {
-      className: "md-slot-label"
-    }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      className: "md-slot-name"
-    }, it.name), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        justifyContent: "center",
-        margin: "2px 0"
-      }
-    }, /*#__PURE__*/React.createElement(StarRating, {
-      rarity: it.rarity
-    })), /*#__PURE__*/React.createElement("div", {
-      className: "md-slot-label"
-    }, itemStatText(it))) : /*#__PURE__*/React.createElement("div", {
-      className: "md-slot-name",
-      style: {
-        opacity: 0.5,
-        color: "var(--ink-soft)"
-      }
-    }, "Empty"));
-  })), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: "0 0 6px"
-    }
-  }, "Tap an equipped slot to unequip. Tap an item below to equip it."), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list"
-  }, inventory.length === 0 && /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "No items in your bag yet — defeat monsters for a chance to find gear."), inventory.map(it => /*#__PURE__*/React.createElement("div", {
-    key: it.id,
-    className: `md-inv-item ${it.rarity}`,
-    onClick: () => onEquip(it)
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, SLOT_ICON[it.type], " ", it.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement(StarRating, {
-    rarity: it.rarity
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "md-inv-stat"
-  }, itemStatText(it)))), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn"
-  }, "Equip"))))));
-}
+  const [selectedId, setSelectedId] = useState(null);
+  const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
+  const [sortMode, setSortMode] = useState("default");
 
+  const sortedInventory = [...inventory].sort((a, b) => {
+    if (sortMode === "rarity") {
+      const rank = { elite: 3, unique: 2, rare: 1 };
+      return (rank[b.rarity] || 0) - (rank[a.rarity] || 0);
+    }
+    if (sortMode === "type") return String(a.type).localeCompare(String(b.type));
+    if (sortMode === "value") return sellPrice(b) - sellPrice(a);
+    return 0;
+  });
+  const visibleInventory = sortedInventory.slice(0, 25);
+  const selectedItem = selectedId ? inventory.find(i => i.id === selectedId) : null;
+  const selectedEquipped = selectedEquippedSlot ? equipped[selectedEquippedSlot] : null;
+
+  const chooseInventory = item => {
+    setSelectedId(item.id);
+    setSelectedEquippedSlot(null);
+  };
+  const chooseEquipped = slot => {
+    if (!equipped[slot]) return;
+    setSelectedEquippedSlot(slot);
+    setSelectedId(null);
+  };
+  const doEquip = () => {
+    if (!selectedItem) return;
+    onEquip(selectedItem);
+    setSelectedId(null);
+  };
+  const doUnequip = () => {
+    if (!selectedEquippedSlot) return;
+    onUnequip(selectedEquippedSlot);
+    setSelectedEquippedSlot(null);
+  };
+  const doSell = () => {
+    if (!selectedItem) return;
+    onSell(selectedItem);
+    setSelectedId(null);
+  };
+
+  const renderEquipSlot = slot => {
+    const it = equipped[slot];
+    const selected = selectedEquippedSlot === slot;
+    return /*#__PURE__*/React.createElement("button", {
+      key: slot,
+      type: "button",
+      className: `md-equip-slot ${slot} ${it ? "filled" : "empty"} ${selected ? "selected" : ""}`,
+      onClick: () => chooseEquipped(slot)
+    }, /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-icon" }, SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-label" }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name" }, it.name),
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-stat" }, itemStatText(it))
+    ) : /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name", style: { color: "var(--ink-soft)", opacity: .55 } }, "Empty"));
+  };
+
+  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "⚔️ Equipment & Inventory"),
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "แตะอุปกรณ์รอบตัวละคร หรือแตะไอเทมในกระเป๋าเพื่อเลือก")
+      ),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slots" }, SLOT_ORDER.map(renderEquipSlot)),
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-character" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "" }))
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-summary" },
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "⚔️ ATK ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).atk)),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🛡️ DEF ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).def)),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "❤️ HP ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).hp)),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "💧 MP ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).mp))
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "🎒 Inventory"),
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-count", style: { marginLeft: 7 } }, `${Math.min(inventory.length,25)}/25 ช่องแสดง`)
+      ),
+      /*#__PURE__*/React.createElement("select", { className: "md-select", value: sortMode, onChange: e => setSortMode(e.target.value), style: { width: 112, padding: "7px 28px 7px 8px", fontSize: 10 } },
+        /*#__PURE__*/React.createElement("option", { value: "default" }, "เรียงเดิม"),
+        /*#__PURE__*/React.createElement("option", { value: "rarity" }, "ความหายาก"),
+        /*#__PURE__*/React.createElement("option", { value: "type" }, "ประเภท"),
+        /*#__PURE__*/React.createElement("option", { value: "value" }, "ราคาขาย")
+      )
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: 25 }, (_, index) => {
+      const it = visibleInventory[index];
+      return /*#__PURE__*/React.createElement("button", {
+        key: it ? it.id : `empty-${index}`,
+        type: "button",
+        className: `md-inventory-cell ${it ? it.rarity : "empty"} ${it && selectedId === it.id ? "selected" : ""}`,
+        onClick: () => it && chooseInventory(it)
+      }, it ? /*#__PURE__*/React.createElement(React.Fragment, null,
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-num" }, index + 1),
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, SLOT_ICON[it.type] || "📦"),
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
+        it.quantity > 1 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, "x", it.quantity)
+      ) : /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, opacity: .18 } }, "＋"));
+    })),
+    inventory.length > 25 && /*#__PURE__*/React.createElement("div", { className: "md-item-detail", style: { textAlign: "center", color: "var(--ink-soft)", fontSize: 10 } }, "มีไอเทมเกิน 25 ชิ้น — ตอนนี้แสดง 25 ช่องแรกเพื่อให้เหมาะกับหน้าจอมือถือ"),
+    /*#__PURE__*/React.createElement("div", { className: "md-item-detail" }, selectedItem ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[selectedItem.type], " ", selectedItem.name),
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[selectedItem.rarity] || selectedItem.rarity, " · ", itemStatText(selectedItem) || "ไม่มีค่าสเตตัส" )
+    ) : selectedEquipped ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[selectedEquipped.type], " ", selectedEquipped.name),
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, "สวมใส่อยู่ · ", itemStatText(selectedEquipped) || "ไม่มีค่าสเตตัส")
+    ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
+    /*#__PURE__*/React.createElement("div", { className: "md-item-actions" },
+      /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem, onClick: doEquip }, "⚔️ สวมใส่"),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem, onClick: doSell }, selectedItem ? `🪙 ขาย ${sellPrice(selectedItem)}` : "🪙 ขาย"),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot, onClick: doUnequip }, "↩️ ถอด")
+    ),
+    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิด Inventory")
+  ));
+}
 var root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(React.createElement(ThornieDungeons));
 clearTimeout(window.__thornieBootTimer);
@@ -1865,3 +3444,13 @@ clearTimeout(window.__thornieBootTimer);
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
