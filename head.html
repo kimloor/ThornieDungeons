@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>ThornieDungeons</title>
+<meta name="theme-color" content="#1B1233" />
+<style>
+  html, body { margin: 0; padding: 0; background: #0d0818; min-height: 100vh; }
+  body { display: flex; justify-content: center; align-items: flex-start; padding: 16px 0; }
+  #root { width: 100%; display: flex; justify-content: center; }
+  * { -webkit-tap-highlight-color: transparent; }
+  #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
+  #boot-error { color: #FF8B8B; font-family: monospace; font-size: 12px; text-align: left; white-space: pre-wrap; word-break: break-word; padding: 16px; margin: 12px; background: rgba(255,139,139,0.08); border: 1px solid #FF8B8B; border-radius: 10px; display: none; }
+</style>
+</head>
+<body>
+<div id="root"><div id="boot-status">Loading ThornieDungeons&hellip;</div></div>
+<div id="boot-error"></div>
+
+<script>
+  function showBootError(msg) {
+    var el = document.getElementById('boot-error');
+    if (el) { el.style.display = 'block'; el.textContent += (el.textContent ? '\n\n' : '') + msg; }
+    var status = document.getElementById('boot-status');
+    if (status) status.textContent = 'Something went wrong loading the game \u2014 see error below.';
+  }
+  window.addEventListener('error', function (e) {
+    showBootError('JS Error: ' + e.message + '\n  at ' + (e.filename || 'unknown') + ':' + (e.lineno || '?') + ':' + (e.colno || '?'));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    showBootError('Unhandled Promise Rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+  window.__thornieBootTimer = setTimeout(function () {
+    if (typeof React === 'undefined') showBootError('React failed to load from CDN (unpkg.com). Network may be blocking it.');
+    else if (typeof ReactDOM === 'undefined') showBootError('ReactDOM failed to load from CDN (unpkg.com).');
+    else showBootError('Scripts loaded but the game never rendered. Check for a JS error above.');
+  }, 6000);
+</script>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" onerror="showBootError('Failed to load React script tag (unpkg.com blocked?)')"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" onerror="showBootError('Failed to load ReactDOM script tag (unpkg.com blocked?)')"></script>
+
+<script>
+try {
+var useState = React.useState, useEffect = React.useEffect, useCallback = React.useCallback, useRef = React.useRef;
+
+/* ============================================================
+   THORNIE DUNGEONS — turn-based dungeon crawler (persistent save)
+   Mobile-first. Dark navy/gold fantasy "gacha UI" look:
+   translucent gold-bordered panels, star rarity, CP readout.
+   No permadeath — clear a stage once, farm it forever.
+   ============================================================ */
+
