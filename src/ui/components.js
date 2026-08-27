@@ -284,12 +284,12 @@ function CharacterScreen({
     style: {
       margin: 0
     }
-  }, "ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp), /*#__PURE__*/React.createElement("p", {
+  }, "ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp, " · Speed ", charStats.speed), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: "4px 0 0"
     }
-  }, "Accuracy ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Dodge ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
+  }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -743,12 +743,23 @@ function HeroSprite({
 }
 function EnemySprite({
   enemy,
-  anim
+  anim,
+  selected,
+  onClick
 }) {
   const enemyUrl = asset(`enemy.${enemy.id}`);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
+  const dead = enemy.hp <= 0;
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-wrap"
+    className: "md-sprite-wrap",
+    onClick: !dead && onClick ? () => onClick(enemy.uid) : undefined,
+    style: {
+      cursor: !dead && onClick ? "pointer" : "default",
+      opacity: dead ? 0.35 : 1,
+      outline: selected && !dead ? "2px solid var(--gold)" : "none",
+      outlineOffset: 4,
+      borderRadius: 12
+    }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar"
   }, /*#__PURE__*/React.createElement("div", {
@@ -761,12 +772,12 @@ function EnemySprite({
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
   }, enemy.hp, "/", enemy.maxHp)), enemyUrl ? /*#__PURE__*/React.createElement("img", {
-    className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim}`,
+    className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
     src: enemyUrl,
     alt: enemy.name,
     draggable: false
   }) : /*#__PURE__*/React.createElement("div", {
-    className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim}`
+    className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
     style: {
@@ -780,18 +791,43 @@ function EnemySprite({
     className: "md-sprite-name"
   }, enemy.name, enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : ""));
 }
+function PetCombatSprite({ pet, anim }) {
+  const dead = pet.hp <= 0;
+  const hpPct = Math.max(0, Math.min(100, pet.hp / pet.maxHp * 100));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-sprite-wrap",
+    style: { opacity: dead ? 0.35 : 1 }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-fill",
+    style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#8ee0a8,#4CAF7D)" }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-hp"
+  }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
+    className: `md-enemy ${anim || ""}`,
+    style: { display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, background: "none", border: "none" }
+  }, pet.icon), /*#__PURE__*/React.createElement("div", {
+    className: "md-sprite-name"
+  }, pet.name, dead ? " 💤" : ""));
+}
 function CombatScreen({
   player,
-  enemy,
+  monsters,
+  targetUid,
+  onSelectTarget,
   log,
   busy,
   potions,
   heroAnim,
-  enemyAnim,
+  petAnim,
+  enemyAnims,
   floats,
   onAction,
   equipped,
-  pet
+  petCombat
 }) {
   const [showSkills, setShowSkills] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
@@ -801,6 +837,8 @@ function CombatScreen({
   const mpPct = Math.max(0, Math.min(100, player.mp / stats.maxMp * 100));
   const xpNeed = xpToNext(player.level);
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
+  const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
+  const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
   function pickSkill(skill) {
     setShowSkills(false);
     onAction("skill", skill.key);
@@ -854,17 +892,17 @@ function CombatScreen({
     style: {
       width: `${xpPct}%`
     }
-  }))), pet && /*#__PURE__*/React.createElement("div", {
-    className: `md-pet-chip ${player.petCooldown > 0 ? "" : "ready"}`,
-    title: pet.def.active.desc
-  }, pet.def.icon, " ", player.petCooldown > 0 ? /*#__PURE__*/React.createElement("span", {
+  }))), petCombat && /*#__PURE__*/React.createElement("div", {
+    className: `md-pet-chip ${petCombat.cooldown > 0 ? "" : "ready"}`,
+    title: petCombat.active.desc
+  }, petCombat.icon, " ", petCombat.cooldown > 0 ? /*#__PURE__*/React.createElement("span", {
     className: "cd"
-  }, "CD ", player.petCooldown) : /*#__PURE__*/React.createElement("span", null, "Ready"))), (enemy.isEliteBoss || enemy.modifier) && /*#__PURE__*/React.createElement("div", {
+  }, "CD ", petCombat.cooldown) : /*#__PURE__*/React.createElement("span", null, "Ready"))), bossOrModifier && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
-      background: enemy.isEliteBoss ? "rgba(255,209,102,0.25)" : `${enemy.modifier.color}22`,
-      border: `1px solid ${enemy.isEliteBoss ? "#ffd166" : enemy.modifier.color}`,
-      color: enemy.isEliteBoss ? "#caa143" : enemy.modifier.color,
+      background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
+      border: `1px solid ${bossOrModifier.isEliteBoss ? "#ffd166" : bossOrModifier.modifier.color}`,
+      color: bossOrModifier.isEliteBoss ? "#caa143" : bossOrModifier.modifier.color,
       borderRadius: 8,
       padding: "3px 8px",
       fontSize: 11,
@@ -872,15 +910,23 @@ function CombatScreen({
       textAlign: "center",
       margin: "0 auto 4px"
     },
-    title: enemy.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : enemy.modifier.desc
-  }, enemy.isEliteBoss ? "🔥👑 Elite Boss" : `${enemy.modifier.icon} ${enemy.modifier.name}`), /*#__PURE__*/React.createElement("div", {
+    title: bossOrModifier.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : bossOrModifier.modifier.desc
+  }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
+    style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
+  }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      position: "relative"
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+      alignItems: "center"
     }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { position: "relative" }
   }, /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
@@ -898,20 +944,38 @@ function CombatScreen({
     style: {
       color: f.color
     }
-  }, f.text))), /*#__PURE__*/React.createElement("div", {
+  }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
+    style: { position: "relative", transform: "scale(0.8)" }
+  }, /*#__PURE__*/React.createElement(PetCombatSprite, {
+    pet: petCombat,
+    anim: petAnim
+  }), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
+    key: f.id,
+    className: "md-dmg-float",
+    style: { color: f.color }
+  }, f.text)))), /*#__PURE__*/React.createElement("div", {
     style: {
-      position: "relative"
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      justifyContent: "center",
+      alignItems: "flex-end"
     }
+  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.uid,
+    style: { position: "relative" }
   }, /*#__PURE__*/React.createElement(EnemySprite, {
-    enemy: enemy,
-    anim: enemyAnim
-  }), floats.filter(f => f.side === "enemy").map(f => /*#__PURE__*/React.createElement("div", {
+    enemy: m,
+    anim: enemyAnims[m.uid],
+    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
+    onClick: onSelectTarget
+  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {
       color: f.color
     }
-  }, f.text)))), /*#__PURE__*/React.createElement("div", {
+  }, f.text)))))), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto ${autoRun ? "active" : ""}`,

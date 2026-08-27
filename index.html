@@ -498,6 +498,7 @@ const defaultSave = () => ({
     stats: {
       str: 0,
       vit: 0,
+      agi: 0,
       dex: 0,
       luk: 0
     }
@@ -791,9 +792,11 @@ function progressToServer(save) {
     active_pet_id: save.activePetId || "",
     // Iron / mana stone used to live here as raw counters, but they're now regular stackable
     // junk items synced through itemsToServerList instead, so this blob only keeps the misc bits.
+    // AGI also rides here (instead of a new char_agi column) so no D1 schema migration is required.
     materials_json: JSON.stringify({
       protectionStones: save.protectionStones || 0,
-      chestPity: save.chestPity || 0
+      chestPity: save.chestPity || 0,
+      charAgi: save.character.stats.agi || 0
     })
   };
 }
@@ -807,11 +810,13 @@ function progressFromServer(row) {
   }
   let protectionStones = 0;
   let chestPity = 0;
+  let charAgi = 0;
   try {
     if (row.materials_json) {
       const parsed = JSON.parse(row.materials_json);
       protectionStones = Number(parsed.protectionStones) || 0;
       chestPity = Number(parsed.chestPity) || 0;
+      charAgi = Number(parsed.charAgi) || 0;
     }
   } catch (e) {}
   return {
@@ -830,6 +835,7 @@ function progressFromServer(row) {
       stats: {
         str: Number(row.char_str) || 0,
         vit: Number(row.char_vit) || 0,
+        agi: charAgi,
         dex: Number(row.char_dex) || 0,
         luk: Number(row.char_luk) || 0
       }
@@ -932,16 +938,23 @@ const STAT_INFO = [{
   icon: "❤️",
   desc: "+12 HP สูงสุด, +DEF เล็กน้อย"
 }, {
+  key: "agi",
+  label: "AGI",
+  icon: "🌀",
+  desc: "เพิ่ม Speed (ลำดับการออกอาวุธ) และ Evasion"
+}, {
   key: "dex",
   label: "DEX",
   icon: "🎯",
-  desc: "+ATK เล็กน้อย, เพิ่มโอกาสโจมตีโดน"
+  desc: "+ATK เล็กน้อย, เพิ่มโอกาสโจมตีโดน (Hit Rate)"
 }, {
   key: "luk",
   label: "LUK",
   icon: "🍀",
-  desc: "เพิ่มโอกาสคริติคอล, โอกาสหลบหลีก, และไอเทมดรอป"
+  desc: "เพิ่มโอกาสคริติคอล และไอเทมดรอป"
 }];
+// Base speed value before AGI is applied — shared by player, pets, and monsters.
+const BASE_SPEED = 10;
 
 
 // ===== systems/skills.js =====
@@ -1203,6 +1216,46 @@ let PET_POOL = [{
     desc: "30% โอกาสทำให้ศัตรูมึนงง 1 เทิร์นเมื่อสกิลทำงาน"
   }
 }];
+// ---------- pet stats (STR/VIT/AGI/DEX/LUK) & level ----------
+// Base per-rarity stat lines a freshly-obtained pet starts with at level 1.
+const PET_BASE_STATS = {
+  r: { str: 4, vit: 4, agi: 4, dex: 4, luk: 4 },
+  sr: { str: 6, vit: 6, agi: 6, dex: 6, luk: 6 },
+  ssr: { str: 9, vit: 9, agi: 9, dex: 9, luk: 9 }
+};
+// Creates a new pet instance (what gets stored in save.pets / pets_json) with
+// its own Level, EXP and 5-stat block, ready to be saved to D1 as-is.
+function newPetInstance(defId) {
+  const def = getPetDef(defId);
+  const rarity = (def && def.rarity) || "r";
+  const base = PET_BASE_STATS[rarity] || PET_BASE_STATS.r;
+  return {
+    instId: `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    defId,
+    level: 1,
+    xp: 0,
+    stats: { ...base }
+  };
+}
+function petXpToNext(level) {
+  return level * 15 + 10;
+}
+// Derived combat stats for a pet instance, following the same Speed/Evasion/
+// HitRate/CritChance/ItemDropBonus formulas used for the player character.
+function petCombatStats(instance) {
+  const s = (instance && instance.stats) || PET_BASE_STATS.r;
+  const lvl = (instance && instance.level) || 1;
+  return {
+    maxHp: 25 + lvl * 3 + s.vit * 8,
+    atk: 4 + Math.floor(lvl * 0.6) + s.str * 2,
+    def: 1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4),
+    speed: BASE_SPEED + s.agi * 2,
+    evasion: +(s.agi * 0.5).toFixed(1),
+    hitRate: Math.min(99, +(80 + s.dex * 0.5).toFixed(1)),
+    critChance: +(s.luk * 0.5).toFixed(1),
+    dropBonus: +(s.luk * 0.2).toFixed(1)
+  };
+}
 const RARITY_ORDER_PET = ["r", "sr", "ssr"];
 const PET_RARITY_LABEL = {
   r: "R",
@@ -1616,6 +1669,28 @@ const ACCESSORY_STAT_BASE = {
     perFloor: 0.35
   }
 };
+// ---------- 5-stat model: STR / VIT / AGI / DEX / LUK ----------
+// Derived stat formulas (shared reference — also used by pets & monsters where applicable):
+//   Speed        = BaseSpeed + (AGI * 2)
+//   Evasion      = AGI * 0.5%
+//   HitRate      = 80 + (DEX * 0.5)%
+//   CritChance   = LUK * 0.5%
+//   ItemDropBonus= LUK * 0.2%
+function speedFromAgi(agi) {
+  return BASE_SPEED + (agi || 0) * 2;
+}
+function evasionFromAgi(agi) {
+  return +((agi || 0) * 0.5).toFixed(1);
+}
+function hitRateFromDex(dex) {
+  return Math.min(99, +(80 + (dex || 0) * 0.5).toFixed(1));
+}
+function critChanceFromLuk(luk) {
+  return +((luk || 0) * 0.5).toFixed(1);
+}
+function dropBonusFromLuk(luk) {
+  return +((luk || 0) * 0.2).toFixed(1);
+}
 function characterBaseStats(save) {
   const lvl = save.character.level;
   const s = save.character.stats;
@@ -1624,11 +1699,12 @@ function characterBaseStats(save) {
     maxMp: 15 + lvl * 2,
     atk: 8 + lvl + s.str * 3 + Math.floor(s.dex * 0.5),
     def: 2 + Math.floor(lvl * 0.4) + Math.floor(s.vit * 0.5),
-    accuracy: Math.min(99, +(80 + s.dex * 1.0).toFixed(1)),
-    critChance: Math.min(50, +(s.luk * 0.8).toFixed(1)),
+    speed: speedFromAgi(s.agi),
+    accuracy: hitRateFromDex(s.dex),
+    critChance: critChanceFromLuk(s.luk),
     critDamage: 50,
-    dodgeChance: Math.min(30, +(s.luk * 0.5).toFixed(1)),
-    dropBonus: Math.min(20, +(s.luk * 0.35).toFixed(1))
+    dodgeChance: evasionFromAgi(s.agi),
+    dropBonus: dropBonusFromLuk(s.luk)
   };
 }
 function activePetInstance(save) {
@@ -1654,6 +1730,7 @@ function freshPlayerFromSave(save, carry = null) {
     baseDef: cb.def,
     baseMaxHp: cb.maxHp,
     baseMaxMp: cb.maxMp,
+    baseSpeed: cb.speed,
     accuracy: cb.accuracy,
     critChance: cb.critChance,
     critDamage: cb.critDamage,
@@ -1673,26 +1750,35 @@ function freshPlayerFromSave(save, carry = null) {
     regenTurns: 0
   };
 }
-function makeEnemy(floor) {
+function makeEnemy(floor, options = {}) {
   const isBoss = floor % 5 === 0;
   const isEliteBoss = floor % 10 === 0;
   const modifier = isBoss ? null : rollFloorModifier();
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
   const t = pool[Math.floor(Math.random() * pool.length)];
   const mult = isEliteBoss ? 4.2 : isBoss ? 2.6 : 1;
-  const hpM = (t.hpMult || 1) * (modifier?.hpMult || 1);
-  const atkM = (t.atkMult || 1) * (modifier?.atkMult || 1);
+  // groupScale softens HP/ATK a bit per monster when multiple spawn together in one encounter,
+  // so a 3-monster pack isn't simply 3x harder than a solo fight.
+  const groupScale = options.groupScale || 1;
+  const hpM = (t.hpMult || 1) * (modifier?.hpMult || 1) * groupScale;
+  const atkM = (t.atkMult || 1) * (modifier?.atkMult || 1) * groupScale;
   const defB = t.defBonus || 0;
   const goldM = (t.goldMult || 1) * (modifier?.goldMult || 1);
   const xpM = (t.xpMult || 1) * (modifier?.xpMult || 1);
   const name = isEliteBoss ? `${t.name} (Elite Boss)` : isBoss ? `${t.name} (Boss)` : modifier ? `${t.name} ${modifier.icon}` : t.name;
+  const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
   return {
     id: t.id,
+    uid: `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name,
     color: t.color,
     isBoss,
     isEliteBoss,
     modifier,
+    agi,
+    speed: speedFromAgi(agi),
+    evasion: evasionFromAgi(agi),
+    hitRate: hitRateFromDex(t.dex || (isBoss ? 6 : 2)),
     hp: Math.round((18 + floor * 7) * mult * hpM),
     maxHp: Math.round((18 + floor * 7) * mult * hpM),
     atk: Math.round((3 + floor * 1.6) * (isBoss ? 1.3 : 1) * atkM),
@@ -1700,6 +1786,28 @@ function makeEnemy(floor) {
     xp: Math.round((6 + floor * 3) * (isBoss ? 2.2 : 1) * xpM),
     gold: Math.round((4 + floor * 2.5) * (isBoss ? 2.2 : 1) * goldM)
   };
+}
+// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss),
+// normal floors spawn 1-3 regular monsters that share the field together.
+function makeEncounter(floor) {
+  const isBoss = floor % 5 === 0;
+  if (isBoss) return [makeEnemy(floor)];
+  const roll = Math.random();
+  const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
+  const groupScale = count === 1 ? 1 : count === 2 ? 0.72 : 0.55;
+  const monsters = [];
+  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { groupScale }));
+  return monsters;
+}
+// Builds the round's initiative queue: every living unit on the field
+// ([Player, Active Pet, ...Monsters]) sorted by Speed (AGI-derived), highest first.
+// Ties are broken randomly so repeated equal-speed matchups don't always favor the same side.
+// Callers are expected to only pass units that are already alive.
+function buildTurnQueue(units) {
+  return units
+    .filter(Boolean)
+    .map(u => ({ ...u, _r: Math.random() }))
+    .sort((a, b) => (b.speed - a.speed) || (b._r - a._r));
 }
 function xpToNext(level) {
   return level * 22 + 18;
@@ -1868,6 +1976,7 @@ function getStats(player, equipped) {
     def: Math.round((player.baseDef + b.def) * defBuff),
     maxHp: player.baseMaxHp + b.hp,
     maxMp: player.baseMaxMp + b.mp,
+    speed: player.baseSpeed || BASE_SPEED,
     accuracy: Math.min(99, (player.accuracy || 0) + b.accuracy),
     critChance: Math.min(80, (player.critChance || 0) + b.critChance),
     critDamage: Math.min(300, (player.critDamage || 0) + b.critDamage),
@@ -1934,19 +2043,26 @@ function ThornieDungeons() {
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
-  const [enemy, setEnemy] = useState(null);
+  // Encounter now supports 1-3 monsters on the field at once.
+  const [monsters, setMonsters] = useState([]);
+  // Combat-only state for the Active Pet as a real unit on the field (HP, cooldown).
+  const [petCombat, setPetCombat] = useState(null); // { instId, defId, name, icon, hp, maxHp, atk, def, speed, cooldown, active, passive, extra }
+  const [targetUid, setTargetUid] = useState(null); // uid of the monster the player is currently targeting
   const [log, setLogState] = useState(["Welcome to ThornieDungeons!"]);
   // Keeps the last 3 combat messages, newest first, so the log panel can show
   // a short scrolling history instead of overwriting a single line.
   const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
   const [busy, setBusy] = useState(false);
-  const enemyRef = useRef(null);
+  const monstersRef = useRef([]);
+  const petCombatRef = useRef(null);
   const playerRef = useRef(null);
   const combatOutcomeRef = useRef(null);
-  useEffect(() => { enemyRef.current = enemy; }, [enemy]);
+  useEffect(() => { monstersRef.current = monsters; }, [monsters]);
+  useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
   useEffect(() => { playerRef.current = player; }, [player]);
   const [heroAnim, setHeroAnim] = useState("");
-  const [enemyAnim, setEnemyAnim] = useState("");
+  const [petAnim, setPetAnim] = useState("");
+  const [enemyAnims, setEnemyAnims] = useState({}); // uid -> anim class
   const [floats, setFloats] = useState([]);
   const [dropItem, setDropItem] = useState(null);
   const [lastRewards, setLastRewards] = useState({
@@ -2156,11 +2272,38 @@ function ThornieDungeons() {
       base_max_hp: nextPlayer.baseMaxHp,
       base_max_mp: nextPlayer.baseMaxMp
     });
-    const e = makeEnemy(floorNum);
-    setEnemy(e);
+    const spawned = makeEncounter(floorNum);
+    setMonsters(spawned);
+    setTargetUid(spawned[0] ? spawned[0].uid : null);
+    setPetCombat(buildPetCombatUnit());
     setDropItem(null);
-    setLog(e.isBoss ? `A ${e.name} blocks the way!` : `A wild ${e.name} appears!`);
+    const boss = spawned.find(m => m.isBoss);
+    setLog(boss ? `A ${boss.name} blocks the way!` : spawned.length > 1 ? `${spawned.length} monsters appear: ${spawned.map(m => m.name).join(", ")}!` : `A wild ${spawned[0].name} appears!`);
     setPhase("combat");
+  }
+  // Builds the Active Pet as a real combat unit (own HP/ATK/DEF/Speed) for this fight.
+  function buildPetCombatUnit(carryHp = null) {
+    const petActive = activePetInstance(save);
+    if (!petActive) return null;
+    const cs = petCombatStats(petActive.inst);
+    return {
+      instId: petActive.inst.instId,
+      defId: petActive.def.id,
+      name: petActive.def.name,
+      icon: petActive.def.icon,
+      active: petActive.def.active,
+      passive: petActive.def.passive,
+      extra: petActive.def.extra,
+      maxHp: cs.maxHp,
+      hp: Number.isFinite(carryHp) ? Math.max(0, Math.min(cs.maxHp, carryHp)) : cs.maxHp,
+      atk: cs.atk,
+      def: cs.def,
+      speed: cs.speed,
+      evasion: cs.evasion,
+      hitRate: cs.hitRate,
+      critChance: cs.critChance,
+      cooldown: 0
+    };
   }
   const runStateSaveTimer = useRef(null);
   function buildRunStateSnapshot(floor, p) {
@@ -2194,15 +2337,17 @@ function ThornieDungeons() {
 
   function endCombatWin() {
     if (combatOutcomeRef.current) return;
-    const currentEnemy = enemyRef.current || enemy;
+    const currentMonsters = monstersRef.current.length ? monstersRef.current : monsters;
     const currentPlayer = playerRef.current || player;
-    if (!currentEnemy || currentEnemy.hp > 0) return;
+    if (!currentMonsters.length || currentMonsters.some(m => m.hp > 0)) return;
     combatOutcomeRef.current = "victory";
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     setBusy(false);
-    const gained = currentEnemy.gold;
-    const xpGained = currentEnemy.xp;
-    const modifier = currentEnemy.modifier;
+    // Rewards aggregate across every monster that was on the field this encounter.
+    const gained = currentMonsters.reduce((sum, m) => sum + m.gold, 0);
+    const xpGained = currentMonsters.reduce((sum, m) => sum + m.xp, 0);
+    const bossMonster = currentMonsters.find(m => m.isBoss) || null;
+    const modifier = currentMonsters.map(m => m.modifier).find(Boolean) || null;
     // Equipment now only comes from a reward CHEST on boss floors (every 5th floor).
     // Regular monsters instead have a chance to drop a stack of junk material (stone/grass/
     // wood/iron/mana stone) used for crafting, selling, and the Enhancement/Empowerment systems.
@@ -2210,18 +2355,30 @@ function ThornieDungeons() {
     let junkDrop = null;
     let nextInvAfterCombat = inventory;
     let nextChestPity = save.chestPity || 0;
-    if (currentEnemy.isBoss) {
-      const chestRarity = rollChestRarity(currentEnemy.isEliteBoss, nextChestPity);
+    if (bossMonster) {
+      const chestRarity = rollChestRarity(bossMonster.isEliteBoss, nextChestPity);
       nextChestPity = chestRarity === "elite" || chestRarity === "mythic" ? 0 : nextChestPity + 1;
       drop = generateDrop(selectedFloor, {
         forceRarity: chestRarity
       });
       nextInvAfterCombat = [...inventory, drop];
     } else {
-      const matChance = 0.45 + (currentPlayer.dropBonus || 0) / 100 + (modifier?.dropBonusFlat || 0) / 100;
-      if (Math.random() < matChance) {
-        junkDrop = rollJunkDrop(selectedFloor, modifier);
-        nextInvAfterCombat = addJunkToInventory(inventory, junkDrop.type, junkDrop.amount);
+      // Each defeated monster in the pack gets its own independent roll for junk material.
+      const junkDrops = [];
+      currentMonsters.forEach(m => {
+        const matChance = 0.45 + (currentPlayer.dropBonus || 0) / 100 + (m.modifier?.dropBonusFlat || 0) / 100;
+        if (Math.random() < matChance) {
+          const jd = rollJunkDrop(selectedFloor, m.modifier);
+          junkDrops.push(jd);
+          nextInvAfterCombat = addJunkToInventory(nextInvAfterCombat, jd.type, jd.amount);
+        }
+      });
+      if (junkDrops.length) {
+        // Combine same-type drops for a single summary banner.
+        const merged = {};
+        junkDrops.forEach(jd => { merged[jd.type] = (merged[jd.type] || 0) + jd.amount; });
+        const [type, amount] = Object.entries(merged)[0];
+        junkDrop = { type, amount };
       }
     }
     if (nextInvAfterCombat !== inventory) {
@@ -2229,7 +2386,7 @@ function ThornieDungeons() {
       persistItems(nextInvAfterCombat, equipped);
     }
     setDropItem(drop);
-    const diamondsGained = currentEnemy.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
+    const diamondsGained = bossMonster && bossMonster.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
     let xp = save.character.xp + xpGained;
     let level = save.character.level;
     let statPoints = save.character.statPoints;
@@ -2250,14 +2407,11 @@ function ThornieDungeons() {
     let newActivePetId = save.activePetId;
     let newPet = null;
     const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
-    if (selectedFloor === 5 && currentEnemy.isBoss && unlockedNext && !alreadyHasStarter) {
+    if (selectedFloor === 5 && bossMonster && unlockedNext && !alreadyHasStarter) {
       const starter = starterPetDef();
-      const instId = `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      newPets = [...(save.pets || []), {
-        instId,
-        defId: starter.id
-      }];
-      if (!newActivePetId) newActivePetId = instId;
+      const inst = newPetInstance(starter.id);
+      newPets = [...(save.pets || []), inst];
+      if (!newActivePetId) newActivePetId = inst.instId;
       newPet = starter;
     }
     const nextSave = {
@@ -2293,10 +2447,10 @@ function ThornieDungeons() {
       unlockedNext,
       newSkill,
       newPet,
-      isBoss: currentEnemy.isBoss,
+      isBoss: !!bossMonster,
       junkDrop,
       modifier,
-      isEliteBoss: currentEnemy.isEliteBoss,
+      isEliteBoss: !!(bossMonster && bossMonster.isEliteBoss),
       diamonds: diamondsGained
     });
     setLog(newPet ? `Victory! You received a companion: ${newPet.name}!` : newSkill ? `Victory! Level up! New skill: ${newSkill.name}!` : leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
@@ -2319,33 +2473,51 @@ function ThornieDungeons() {
     setLog("You were defeated...");
     setPhase("defeat");
   }
+  // ---------- targeting helpers ----------
+  function firstAliveMonster() {
+    return monstersRef.current.find(m => m.hp > 0) || null;
+  }
+  function getTargetMonster() {
+    const explicit = monstersRef.current.find(m => m.uid === targetUid && m.hp > 0);
+    return explicit || firstAliveMonster();
+  }
+  function updateMonster(uid, updater) {
+    setMonsters(ms => ms.map(m => m.uid === uid ? updater(m) : m));
+  }
+  function setMonsterAnim(uid, anim) {
+    setEnemyAnims(prev => ({ ...prev, [uid]: anim }));
+  }
+  function selectTarget(uid) {
+    const m = monstersRef.current.find(x => x.uid === uid);
+    if (m && m.hp > 0) setTargetUid(uid);
+  }
+
   function playerTurn(action, skillKey) {
-    if (busy || !enemy || !player) return;
+    if (busy || !player) return;
+    const target = getTargetMonster();
+    if ((action === "attack" || action === "skill") && !target) return;
     const stats = getStats(player, equipped);
     setBusy(true);
     if (action === "attack") {
       const isMiss = Math.random() * 100 >= stats.accuracy;
       const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
-      let dmg = Math.max(2, Math.round(stats.atk - enemy.def * 0.6 + (Math.random() * 4 - 2)));
+      let dmg = Math.max(2, Math.round(stats.atk - target.def * 0.6 + (Math.random() * 4 - 2)));
       if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
       setHeroAnim("attack");
       setTimeout(() => {
         if (isMiss) {
-          spawnFloat("enemy", "MISS", "#B9AEDD");
+          spawnFloat(target.uid, "MISS", "#B9AEDD");
           setLog("You missed!");
         } else {
-          setEnemy(e => {
-            const nh = Math.max(0, e.hp - dmg);
-            spawnFloat("enemy", isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#FF6B6B");
-            setEnemyAnim("hurt");
-            return {
-              ...e,
-              hp: nh
-            };
+          updateMonster(target.uid, m => {
+            const nh = Math.max(0, m.hp - dmg);
+            spawnFloat(target.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#FF6B6B");
+            setMonsterAnim(target.uid, "hurt");
+            return { ...m, hp: nh };
           });
         }
         setHeroAnim("");
-        setTimeout(() => resolveAfterPlayerAction(true), 350);
+        setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "skill") {
       const skill = SKILLS.find(s => s.key === skillKey);
@@ -2363,22 +2535,19 @@ function ThornieDungeons() {
       setTimeout(() => {
         if (skill.type === "damage") {
           if (isMiss) {
-            spawnFloat("enemy", "MISS", "#B9AEDD");
+            spawnFloat(target.uid, "MISS", "#B9AEDD");
             setLog(`${skill.name} missed!`);
           } else {
             const pierce = skill.defPierce || 0;
-            let dmg = Math.max(4, Math.round(stats.atk * skill.mult - enemy.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
+            let dmg = Math.max(4, Math.round(stats.atk * skill.mult - target.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
             if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
             const freeze = skill.freezeChance ? Math.random() < skill.freezeChance : false;
-            setEnemy(e => {
-              const nh = Math.max(0, e.hp - dmg);
-              spawnFloat("enemy", isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
-              setEnemyAnim("hurt");
-              const next = {
-                ...e,
-                hp: nh
-              };
-              if (freeze) next.frozenTurns = (e.frozenTurns || 0) + skill.freezeTurns;
+            updateMonster(target.uid, m => {
+              const nh = Math.max(0, m.hp - dmg);
+              spawnFloat(target.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
+              setMonsterAnim(target.uid, "hurt");
+              const next = { ...m, hp: nh };
+              if (freeze) next.frozenTurns = (m.frozenTurns || 0) + skill.freezeTurns;
               if (skill.poisonTurns) {
                 next.poisonTurns = skill.poisonTurns;
                 next.poisonDmg = Math.max(1, Math.round(stats.atk * skill.poisonPct));
@@ -2415,7 +2584,7 @@ function ThornieDungeons() {
           setLog(`${skill.name}! DEF increased for ${skill.turns} turns.`);
         }
         setHeroAnim("");
-        setTimeout(() => resolveAfterPlayerAction(), 350);
+        setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "item") {
       if (potions <= 0) {
@@ -2435,131 +2604,192 @@ function ThornieDungeons() {
         };
       });
       setLog("You drink a potion and recover HP.");
-      setTimeout(() => enemyTurn(), 500);
+      setTimeout(() => runQueueAfterPlayer(), 500);
     } else if (action === "flee") {
       const success = Math.random() < 0.55;
       if (success) {
         setLog("You escaped safely.");
-        setEnemy(null);
+        setMonsters([]);
+        setPetCombat(null);
         pushRunState(null);
         setPhase("map");
         setBusy(false);
       } else {
         setLog("Couldn't escape!");
-        setTimeout(() => enemyTurn(), 500);
+        setTimeout(() => runQueueAfterPlayer(), 500);
       }
     }
   }
-  function triggerPetSkill(cb) {
-    const petActive = activePetInstance(save);
-    if (!petActive || !player || player.petCooldown > 0) {
+  // ---------- Round-based Initiative Queue ----------
+  // After the player's own action resolves, every remaining living unit on the
+  // field (Active Pet + all Monsters) takes its action in order of Speed (AGI),
+  // highest first. Once the queue is drained, buffs/cooldowns tick and control
+  // returns to the player for the next round.
+  function runQueueAfterPlayer() {
+    if (combatOutcomeRef.current) return;
+    if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
+      endCombatWin();
+      return;
+    }
+    const units = [];
+    if (petCombatRef.current && petCombatRef.current.hp > 0) {
+      units.push({ kind: "pet", speed: petCombatRef.current.speed });
+    }
+    monstersRef.current.forEach(m => {
+      if (m.hp > 0) units.push({ kind: "monster", uid: m.uid, speed: m.speed });
+    });
+    const queue = buildTurnQueue(units);
+    processQueue(queue, 0);
+  }
+  function processQueue(queue, index) {
+    if (combatOutcomeRef.current) return;
+    if (index >= queue.length) {
+      if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
+        endCombatWin();
+        return;
+      }
+      if ((playerRef.current?.hp || 0) <= 0) {
+        playerLost();
+        return;
+      }
+      setBusy(false);
+      tickPlayerBuffs();
+      tickPetCooldown();
+      return;
+    }
+    const unit = queue[index];
+    const advance = () => {
+      if (combatOutcomeRef.current) return;
+      // Check outcome immediately after every single action, not just at round end,
+      // so combat stops the instant the player or all monsters are downed.
+      if ((playerRef.current?.hp || 0) <= 0) {
+        playerLost();
+        return;
+      }
+      if (monstersRef.current.length && monstersRef.current.every(mm => mm.hp <= 0)) {
+        endCombatWin();
+        return;
+      }
+      processQueue(queue, index + 1);
+    };
+    if (unit.kind === "pet") {
+      doPetAction(advance);
+    } else {
+      const m = monstersRef.current.find(mm => mm.uid === unit.uid);
+      if (!m || m.hp <= 0) {
+        advance();
+        return;
+      }
+      doMonsterAction(m, advance);
+    }
+  }
+  function doPetAction(cb) {
+    const pet = petCombatRef.current;
+    if (!pet || pet.hp <= 0 || pet.cooldown > 0) {
       cb();
       return;
     }
-    const stats = getStats(player, equipped);
-    const skill = petActive.def.active;
-    setPlayer(p => ({
-      ...p,
-      petCooldown: skill.cooldown
-    }));
+    const skill = pet.active;
+    setPetCombat(p => p ? { ...p, cooldown: skill.cooldown } : p);
+    setPetAnim("attack");
     setTimeout(() => {
       if (skill.type === "damage") {
-        setEnemy(e => {
-          if (!e || e.hp <= 0) return e;
-          let dmg = Math.max(2, Math.round(stats.atk * skill.mult - e.def * 0.5 + (Math.random() * 3 - 1)));
-          const hasStun = petActive.def.extra && petActive.def.extra.type === "stun";
-          const stun = hasStun ? Math.random() < petActive.def.extra.pct : false;
-          const nh = Math.max(0, e.hp - dmg);
-          spawnFloat("enemy", `${petActive.def.icon}-${dmg}`, "#7FE0B0");
-          setEnemyAnim("hurt");
-          setLog(stun ? `${petActive.def.icon} ${skill.name}! Enemy stunned!` : `${petActive.def.icon} ${skill.name} hits for ${dmg}!`);
-          const next = {
-            ...e,
-            hp: nh
-          };
-          if (stun) next.frozenTurns = (e.frozenTurns || 0) + 1;
-          return next;
-        });
+        const target = firstAliveMonster();
+        if (target) {
+          let dmg = Math.max(2, Math.round(pet.atk * skill.mult - target.def * 0.5 + (Math.random() * 3 - 1)));
+          const hasStun = pet.extra && pet.extra.type === "stun";
+          const stun = hasStun ? Math.random() < pet.extra.pct : false;
+          updateMonster(target.uid, m => {
+            const nh = Math.max(0, m.hp - dmg);
+            spawnFloat(target.uid, `${pet.icon}-${dmg}`, "#7FE0B0");
+            setMonsterAnim(target.uid, "hurt");
+            const next = { ...m, hp: nh };
+            if (stun) next.frozenTurns = (m.frozenTurns || 0) + 1;
+            return next;
+          });
+          setLog(stun ? `${pet.icon} ${skill.name}! Enemy stunned!` : `${pet.icon} ${skill.name} hits for ${dmg}!`);
+        }
       } else if (skill.type === "regen") {
-        const heal = Math.round(stats.maxHp * skill.regenPct);
         setPlayer(p => {
+          if (!p) return p;
+          const capStats = getStats(p, equipped);
+          const heal = Math.round(capStats.maxHp * skill.regenPct);
           spawnFloat("hero", `+${heal}`, "#6FCF97");
           return {
             ...p,
-            hp: Math.min(stats.maxHp, p.hp + heal),
+            hp: Math.min(capStats.maxHp, p.hp + heal),
             regenAmount: heal,
             regenTurns: Math.max(0, skill.regenTurns - 1)
           };
         });
-        setLog(`${petActive.def.icon} ${skill.name} activates!`);
+        setLog(`${pet.icon} ${skill.name} activates!`);
       }
+      setPetAnim("");
       setTimeout(() => cb(), 280);
     }, 220);
   }
-  function resolveAfterPlayerAction(fromAttack) {
-    if (combatOutcomeRef.current) return;
-    const currentEnemy = enemyRef.current;
-    if (!currentEnemy || currentEnemy.hp <= 0) {
-      endCombatWin();
+  function doMonsterAction(m, cb) {
+    if (combatOutcomeRef.current) {
+      cb();
       return;
     }
-    if (fromAttack) {
-      setTimeout(() => triggerPetSkill(() => {
-        if (combatOutcomeRef.current) return;
-        if (enemyRef.current && enemyRef.current.hp <= 0) endCombatWin();
-        else enemyTurn();
-      }), 300);
-    } else {
-      setTimeout(() => {
-        if (!combatOutcomeRef.current) enemyTurn();
-      }, 400);
+    if (m.poisonTurns > 0) {
+      const pdmg = m.poisonDmg || 0;
+      const nh = Math.max(0, m.hp - pdmg);
+      updateMonster(m.uid, mm => ({ ...mm, hp: nh, poisonTurns: mm.poisonTurns - 1 }));
+      spawnFloat(m.uid, `-${pdmg} ☠️`, "#6FCF97");
+      if (nh <= 0) {
+        setLog(`${m.name} succumbed to poison!`);
+        cb();
+        return;
+      }
     }
-  }
-  function enemyTurn() {
-    if (combatOutcomeRef.current) return;
-    setEnemy(e => {
-      if (!e || e.hp <= 0) {
-        setTimeout(() => endCombatWin(), 0);
-        return e;
+    const fresh = monstersRef.current.find(x => x.uid === m.uid) || m;
+    if (fresh.frozenTurns > 0) {
+      updateMonster(m.uid, mm => ({ ...mm, frozenTurns: mm.frozenTurns - 1 }));
+      setLog(`${fresh.name} is frozen solid and can't move!`);
+      cb();
+      return;
+    }
+    const stats = getStats(playerRef.current || player, equipped);
+    const pet = petCombatRef.current;
+    const canHitPet = pet && pet.hp > 0;
+    // Monsters mostly go for the player, but may occasionally swing at the pet instead.
+    const targetIsPet = canHitPet && Math.random() < 0.3;
+    setMonsterAnim(m.uid, "attack");
+    setTimeout(() => {
+      if (combatOutcomeRef.current) {
+        setMonsterAnim(m.uid, "");
+        cb();
+        return;
       }
-      let cur = { ...e };
-      if (cur.poisonTurns > 0) {
-        const pdmg = cur.poisonDmg || 0;
-        cur.hp = Math.max(0, cur.hp - pdmg);
-        cur.poisonTurns -= 1;
-        spawnFloat("enemy", `-${pdmg} ☠️`, "#6FCF97");
-        if (cur.hp <= 0) {
-          setLog(`${cur.name} succumbed to poison!`);
-          setTimeout(() => endCombatWin(), 0);
-          return cur;
+      if (targetIsPet) {
+        const dodged = Math.random() * 100 < (pet.evasion || 0);
+        const dmg = dodged ? 0 : Math.max(1, Math.round(fresh.atk - pet.def * 0.6 + (Math.random() * 3 - 1)));
+        if (dodged) {
+          spawnFloat("pet", "MISS", "#B9AEDD");
+          setLog(`${pet.name} dodged ${fresh.name}'s attack!`);
+        } else {
+          setPetCombat(p => p ? { ...p, hp: Math.max(0, p.hp - dmg) } : p);
+          spawnFloat("pet", `-${dmg}`, "#FF6B6B");
+          setPetAnim("hurt");
+          setLog(`${fresh.name} strikes your ${pet.name} for ${dmg}!`);
         }
-      }
-      if (cur.frozenTurns > 0) {
-        cur.frozenTurns -= 1;
-        setLog(`${cur.name} is frozen solid and can't move!`);
-        setBusy(false);
-        setTimeout(() => tickPlayerBuffs(), 0);
-        return cur;
-      }
-      const stats = getStats(playerRef.current || player, equipped);
-      const petActive = activePetInstance(save);
-      const hasGuard = petActive && petActive.def.extra && petActive.def.extra.type === "block";
-      const blocked = hasGuard && Math.random() < petActive.def.extra.pct;
-      const dodged = !blocked && Math.random() * 100 < stats.dodgeChance;
-      const dmg = blocked || dodged ? 0 : Math.max(1, Math.round(cur.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
-      setEnemyAnim("attack");
-      setTimeout(() => {
-        if (combatOutcomeRef.current) return;
+      } else {
+        const hasGuard = pet && pet.hp > 0 && pet.extra && pet.extra.type === "block";
+        const blocked = hasGuard && Math.random() < pet.extra.pct;
+        const dodged = !blocked && Math.random() * 100 < stats.dodgeChance;
+        const dmg = blocked || dodged ? 0 : Math.max(1, Math.round(fresh.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
         if (blocked) {
           spawnFloat("hero", "BLOCKED 🛡️", "#B9AEDD");
-          setLog(`${petActive.def.name} blocked the attack!`);
+          setLog(`${pet.name} blocked the attack!`);
         } else if (dodged) {
           spawnFloat("hero", "MISS", "#B9AEDD");
-          setLog(`You dodged ${cur.name}'s attack!`);
+          setLog(`You dodged ${fresh.name}'s attack!`);
         } else {
-          const hasStatusWard = petActive && petActive.def.passive && petActive.def.passive.type === "statusResist";
-          const resisted = hasStatusWard && Math.random() < petActive.def.passive.pct;
-          const weakenProc = cur.isBoss && !resisted && Math.random() < 0.25;
+          const hasStatusWard = pet && pet.passive && pet.passive.type === "statusResist";
+          const resisted = hasStatusWard && Math.random() < pet.passive.pct;
+          const weakenProc = fresh.isBoss && !resisted && Math.random() < 0.25;
           const currentPlayer = playerRef.current || player;
           const nh = Math.max(0, currentPlayer.hp - dmg);
           setPlayer(p => {
@@ -2573,17 +2803,14 @@ function ThornieDungeons() {
             return next;
           });
           spawnFloat("hero", `-${dmg}`, "#FF6B6B");
-          if (nh <= 0) setTimeout(() => playerLost(), 0);
-          setLog(weakenProc && nh > 0 ? `${cur.name} strikes for ${dmg} and weakens you!` : `${cur.name} strikes for ${dmg}!`);
+          setLog(weakenProc && nh > 0 ? `${fresh.name} strikes for ${dmg} and weakens you!` : `${fresh.name} strikes for ${dmg}!`);
         }
-        setEnemyAnim("");
-        if (!combatOutcomeRef.current) {
-          setBusy(false);
-          tickPlayerBuffs();
-        }
-      }, 300);
-      return cur;
-    });
+      }
+      setMonsterAnim(m.uid, "");
+      setHeroAnim("");
+      setPetAnim("");
+      cb();
+    }, 300);
   }
   function tickPlayerBuffs() {
     setPlayer(p => {
@@ -2603,7 +2830,6 @@ function ThornieDungeons() {
         next.weakenTurns -= 1;
         if (next.weakenTurns === 0) next.weakenPct = 0;
       }
-      if (next.petCooldown > 0) next.petCooldown -= 1;
       if (next.hp > 0 && next.regenTurns > 0 && next.regenAmount > 0 && !combatOutcomeRef.current) {
         const capStats = getStats(next, equipped);
         next.hp = Math.min(capStats.maxHp, next.hp + next.regenAmount);
@@ -2612,6 +2838,9 @@ function ThornieDungeons() {
       }
       return next;
     });
+  }
+  function tickPetCooldown() {
+    setPetCombat(p => p && p.cooldown > 0 ? { ...p, cooldown: p.cooldown - 1 } : p);
   }
   function retryStage() {
     // Defeat means HP hit 0 — always start the retry fully healed, since
@@ -2627,7 +2856,8 @@ function ThornieDungeons() {
   }
   function backToMap() {
     combatOutcomeRef.current = null;
-    setEnemy(null);
+    setMonsters([]);
+    setPetCombat(null);
     setDropItem(null);
     pushRunState(null);
     setPhase("map");
@@ -3001,12 +3231,9 @@ function ThornieDungeons() {
       });
       return;
     }
-    const instId = `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const nextPets = [...(save.pets || []), {
-      instId,
-      defId: won.id
-    }];
-    const nextActivePetId = save.activePetId || instId;
+    const inst = newPetInstance(won.id);
+    const nextPets = [...(save.pets || []), inst];
+    const nextActivePetId = save.activePetId || inst.instId;
     persistSave({
       ...save,
       diamonds: save.diamonds - GACHA_COST,
@@ -3093,18 +3320,21 @@ function ThornieDungeons() {
     onGacha: pullGacha,
     onClaimDiamonds: claimTestDiamonds,
     onBack: () => setPhase("town")
-  }), phase === "combat" && enemy && player && /*#__PURE__*/React.createElement(CombatScreen, {
+  }), phase === "combat" && monsters.length > 0 && player && /*#__PURE__*/React.createElement(CombatScreen, {
     player: player,
-    enemy: enemy,
+    monsters: monsters,
+    targetUid: targetUid,
+    onSelectTarget: selectTarget,
     log: log,
     busy: busy,
     potions: potions,
     heroAnim: heroAnim,
-    enemyAnim: enemyAnim,
+    petAnim: petAnim,
+    enemyAnims: enemyAnims,
     floats: floats,
     onAction: playerTurn,
     equipped: equipped,
-    pet: activePetInstance(save)
+    petCombat: petCombat
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,
@@ -3439,12 +3669,12 @@ function CharacterScreen({
     style: {
       margin: 0
     }
-  }, "ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp), /*#__PURE__*/React.createElement("p", {
+  }, "ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp, " · Speed ", charStats.speed), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: "4px 0 0"
     }
-  }, "Accuracy ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Dodge ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
+  }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -3898,12 +4128,23 @@ function HeroSprite({
 }
 function EnemySprite({
   enemy,
-  anim
+  anim,
+  selected,
+  onClick
 }) {
   const enemyUrl = asset(`enemy.${enemy.id}`);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
+  const dead = enemy.hp <= 0;
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-wrap"
+    className: "md-sprite-wrap",
+    onClick: !dead && onClick ? () => onClick(enemy.uid) : undefined,
+    style: {
+      cursor: !dead && onClick ? "pointer" : "default",
+      opacity: dead ? 0.35 : 1,
+      outline: selected && !dead ? "2px solid var(--gold)" : "none",
+      outlineOffset: 4,
+      borderRadius: 12
+    }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar"
   }, /*#__PURE__*/React.createElement("div", {
@@ -3916,12 +4157,12 @@ function EnemySprite({
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
   }, enemy.hp, "/", enemy.maxHp)), enemyUrl ? /*#__PURE__*/React.createElement("img", {
-    className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim}`,
+    className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
     src: enemyUrl,
     alt: enemy.name,
     draggable: false
   }) : /*#__PURE__*/React.createElement("div", {
-    className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim}`
+    className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
     style: {
@@ -3935,18 +4176,43 @@ function EnemySprite({
     className: "md-sprite-name"
   }, enemy.name, enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : ""));
 }
+function PetCombatSprite({ pet, anim }) {
+  const dead = pet.hp <= 0;
+  const hpPct = Math.max(0, Math.min(100, pet.hp / pet.maxHp * 100));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-sprite-wrap",
+    style: { opacity: dead ? 0.35 : 1 }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-fill",
+    style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#8ee0a8,#4CAF7D)" }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-hp"
+  }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
+    className: `md-enemy ${anim || ""}`,
+    style: { display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, background: "none", border: "none" }
+  }, pet.icon), /*#__PURE__*/React.createElement("div", {
+    className: "md-sprite-name"
+  }, pet.name, dead ? " 💤" : ""));
+}
 function CombatScreen({
   player,
-  enemy,
+  monsters,
+  targetUid,
+  onSelectTarget,
   log,
   busy,
   potions,
   heroAnim,
-  enemyAnim,
+  petAnim,
+  enemyAnims,
   floats,
   onAction,
   equipped,
-  pet
+  petCombat
 }) {
   const [showSkills, setShowSkills] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
@@ -3956,6 +4222,8 @@ function CombatScreen({
   const mpPct = Math.max(0, Math.min(100, player.mp / stats.maxMp * 100));
   const xpNeed = xpToNext(player.level);
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
+  const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
+  const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
   function pickSkill(skill) {
     setShowSkills(false);
     onAction("skill", skill.key);
@@ -4009,17 +4277,17 @@ function CombatScreen({
     style: {
       width: `${xpPct}%`
     }
-  }))), pet && /*#__PURE__*/React.createElement("div", {
-    className: `md-pet-chip ${player.petCooldown > 0 ? "" : "ready"}`,
-    title: pet.def.active.desc
-  }, pet.def.icon, " ", player.petCooldown > 0 ? /*#__PURE__*/React.createElement("span", {
+  }))), petCombat && /*#__PURE__*/React.createElement("div", {
+    className: `md-pet-chip ${petCombat.cooldown > 0 ? "" : "ready"}`,
+    title: petCombat.active.desc
+  }, petCombat.icon, " ", petCombat.cooldown > 0 ? /*#__PURE__*/React.createElement("span", {
     className: "cd"
-  }, "CD ", player.petCooldown) : /*#__PURE__*/React.createElement("span", null, "Ready"))), (enemy.isEliteBoss || enemy.modifier) && /*#__PURE__*/React.createElement("div", {
+  }, "CD ", petCombat.cooldown) : /*#__PURE__*/React.createElement("span", null, "Ready"))), bossOrModifier && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
-      background: enemy.isEliteBoss ? "rgba(255,209,102,0.25)" : `${enemy.modifier.color}22`,
-      border: `1px solid ${enemy.isEliteBoss ? "#ffd166" : enemy.modifier.color}`,
-      color: enemy.isEliteBoss ? "#caa143" : enemy.modifier.color,
+      background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
+      border: `1px solid ${bossOrModifier.isEliteBoss ? "#ffd166" : bossOrModifier.modifier.color}`,
+      color: bossOrModifier.isEliteBoss ? "#caa143" : bossOrModifier.modifier.color,
       borderRadius: 8,
       padding: "3px 8px",
       fontSize: 11,
@@ -4027,15 +4295,23 @@ function CombatScreen({
       textAlign: "center",
       margin: "0 auto 4px"
     },
-    title: enemy.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : enemy.modifier.desc
-  }, enemy.isEliteBoss ? "🔥👑 Elite Boss" : `${enemy.modifier.icon} ${enemy.modifier.name}`), /*#__PURE__*/React.createElement("div", {
+    title: bossOrModifier.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : bossOrModifier.modifier.desc
+  }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
+    style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
+  }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      position: "relative"
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+      alignItems: "center"
     }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { position: "relative" }
   }, /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
@@ -4053,20 +4329,38 @@ function CombatScreen({
     style: {
       color: f.color
     }
-  }, f.text))), /*#__PURE__*/React.createElement("div", {
+  }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
+    style: { position: "relative", transform: "scale(0.8)" }
+  }, /*#__PURE__*/React.createElement(PetCombatSprite, {
+    pet: petCombat,
+    anim: petAnim
+  }), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
+    key: f.id,
+    className: "md-dmg-float",
+    style: { color: f.color }
+  }, f.text)))), /*#__PURE__*/React.createElement("div", {
     style: {
-      position: "relative"
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      justifyContent: "center",
+      alignItems: "flex-end"
     }
+  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.uid,
+    style: { position: "relative" }
   }, /*#__PURE__*/React.createElement(EnemySprite, {
-    enemy: enemy,
-    anim: enemyAnim
-  }), floats.filter(f => f.side === "enemy").map(f => /*#__PURE__*/React.createElement("div", {
+    enemy: m,
+    anim: enemyAnims[m.uid],
+    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
+    onClick: onSelectTarget
+  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {
       color: f.color
     }
-  }, f.text)))), /*#__PURE__*/React.createElement("div", {
+  }, f.text)))))), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto ${autoRun ? "active" : ""}`,

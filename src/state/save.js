@@ -18,6 +18,7 @@ const defaultSave = () => ({
     stats: {
       str: 0,
       vit: 0,
+      agi: 0,
       dex: 0,
       luk: 0
     }

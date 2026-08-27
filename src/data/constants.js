@@ -12,14 +12,21 @@ const STAT_INFO = [{
   icon: "❤️",
   desc: "+12 HP สูงสุด, +DEF เล็กน้อย"
 }, {
+  key: "agi",
+  label: "AGI",
+  icon: "🌀",
+  desc: "เพิ่ม Speed (ลำดับการออกอาวุธ) และ Evasion"
+}, {
   key: "dex",
   label: "DEX",
   icon: "🎯",
-  desc: "+ATK เล็กน้อย, เพิ่มโอกาสโจมตีโดน"
+  desc: "+ATK เล็กน้อย, เพิ่มโอกาสโจมตีโดน (Hit Rate)"
 }, {
   key: "luk",
   label: "LUK",
   icon: "🍀",
-  desc: "เพิ่มโอกาสคริติคอล, โอกาสหลบหลีก, และไอเทมดรอป"
+  desc: "เพิ่มโอกาสคริติคอล และไอเทมดรอป"
 }];
+// Base speed value before AGI is applied — shared by player, pets, and monsters.
+const BASE_SPEED = 10;
 

@@ -16,9 +16,11 @@ function progressToServer(save) {
     active_pet_id: save.activePetId || "",
     // Iron / mana stone used to live here as raw counters, but they're now regular stackable
     // junk items synced through itemsToServerList instead, so this blob only keeps the misc bits.
+    // AGI also rides here (instead of a new char_agi column) so no D1 schema migration is required.
     materials_json: JSON.stringify({
       protectionStones: save.protectionStones || 0,
-      chestPity: save.chestPity || 0
+      chestPity: save.chestPity || 0,
+      charAgi: save.character.stats.agi || 0
     })
   };
 }
@@ -32,11 +34,13 @@ function progressFromServer(row) {
   }
   let protectionStones = 0;
   let chestPity = 0;
+  let charAgi = 0;
   try {
     if (row.materials_json) {
       const parsed = JSON.parse(row.materials_json);
       protectionStones = Number(parsed.protectionStones) || 0;
       chestPity = Number(parsed.chestPity) || 0;
+      charAgi = Number(parsed.charAgi) || 0;
     }
   } catch (e) {}
   return {
@@ -55,6 +59,7 @@ function progressFromServer(row) {
       stats: {
         str: Number(row.char_str) || 0,
         vit: Number(row.char_vit) || 0,
+        agi: charAgi,
         dex: Number(row.char_dex) || 0,
         luk: Number(row.char_luk) || 0
       }

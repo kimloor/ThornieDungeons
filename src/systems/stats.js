@@ -14,6 +14,28 @@ const ACCESSORY_STAT_BASE = {
     perFloor: 0.35
   }
 };
+// ---------- 5-stat model: STR / VIT / AGI / DEX / LUK ----------
+// Derived stat formulas (shared reference — also used by pets & monsters where applicable):
+//   Speed        = BaseSpeed + (AGI * 2)
+//   Evasion      = AGI * 0.5%
+//   HitRate      = 80 + (DEX * 0.5)%
+//   CritChance   = LUK * 0.5%
+//   ItemDropBonus= LUK * 0.2%
+function speedFromAgi(agi) {
+  return BASE_SPEED + (agi || 0) * 2;
+}
+function evasionFromAgi(agi) {
+  return +((agi || 0) * 0.5).toFixed(1);
+}
+function hitRateFromDex(dex) {
+  return Math.min(99, +(80 + (dex || 0) * 0.5).toFixed(1));
+}
+function critChanceFromLuk(luk) {
+  return +((luk || 0) * 0.5).toFixed(1);
+}
+function dropBonusFromLuk(luk) {
+  return +((luk || 0) * 0.2).toFixed(1);
+}
 function characterBaseStats(save) {
   const lvl = save.character.level;
   const s = save.character.stats;
@@ -22,11 +44,12 @@ function characterBaseStats(save) {
     maxMp: 15 + lvl * 2,
     atk: 8 + lvl + s.str * 3 + Math.floor(s.dex * 0.5),
     def: 2 + Math.floor(lvl * 0.4) + Math.floor(s.vit * 0.5),
-    accuracy: Math.min(99, +(80 + s.dex * 1.0).toFixed(1)),
-    critChance: Math.min(50, +(s.luk * 0.8).toFixed(1)),
+    speed: speedFromAgi(s.agi),
+    accuracy: hitRateFromDex(s.dex),
+    critChance: critChanceFromLuk(s.luk),
     critDamage: 50,
-    dodgeChance: Math.min(30, +(s.luk * 0.5).toFixed(1)),
-    dropBonus: Math.min(20, +(s.luk * 0.35).toFixed(1))
+    dodgeChance: evasionFromAgi(s.agi),
+    dropBonus: dropBonusFromLuk(s.luk)
   };
 }
 function activePetInstance(save) {
@@ -52,6 +75,7 @@ function freshPlayerFromSave(save, carry = null) {
     baseDef: cb.def,
     baseMaxHp: cb.maxHp,
     baseMaxMp: cb.maxMp,
+    baseSpeed: cb.speed,
     accuracy: cb.accuracy,
     critChance: cb.critChance,
     critDamage: cb.critDamage,
@@ -71,26 +95,35 @@ function freshPlayerFromSave(save, carry = null) {
     regenTurns: 0
   };
 }
-function makeEnemy(floor) {
+function makeEnemy(floor, options = {}) {
   const isBoss = floor % 5 === 0;
   const isEliteBoss = floor % 10 === 0;
   const modifier = isBoss ? null : rollFloorModifier();
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
   const t = pool[Math.floor(Math.random() * pool.length)];
   const mult = isEliteBoss ? 4.2 : isBoss ? 2.6 : 1;
-  const hpM = (t.hpMult || 1) * (modifier?.hpMult || 1);
-  const atkM = (t.atkMult || 1) * (modifier?.atkMult || 1);
+  // groupScale softens HP/ATK a bit per monster when multiple spawn together in one encounter,
+  // so a 3-monster pack isn't simply 3x harder than a solo fight.
+  const groupScale = options.groupScale || 1;
+  const hpM = (t.hpMult || 1) * (modifier?.hpMult || 1) * groupScale;
+  const atkM = (t.atkMult || 1) * (modifier?.atkMult || 1) * groupScale;
   const defB = t.defBonus || 0;
   const goldM = (t.goldMult || 1) * (modifier?.goldMult || 1);
   const xpM = (t.xpMult || 1) * (modifier?.xpMult || 1);
   const name = isEliteBoss ? `${t.name} (Elite Boss)` : isBoss ? `${t.name} (Boss)` : modifier ? `${t.name} ${modifier.icon}` : t.name;
+  const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
   return {
     id: t.id,
+    uid: `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name,
     color: t.color,
     isBoss,
     isEliteBoss,
     modifier,
+    agi,
+    speed: speedFromAgi(agi),
+    evasion: evasionFromAgi(agi),
+    hitRate: hitRateFromDex(t.dex || (isBoss ? 6 : 2)),
     hp: Math.round((18 + floor * 7) * mult * hpM),
     maxHp: Math.round((18 + floor * 7) * mult * hpM),
     atk: Math.round((3 + floor * 1.6) * (isBoss ? 1.3 : 1) * atkM),
@@ -98,6 +131,28 @@ function makeEnemy(floor) {
     xp: Math.round((6 + floor * 3) * (isBoss ? 2.2 : 1) * xpM),
     gold: Math.round((4 + floor * 2.5) * (isBoss ? 2.2 : 1) * goldM)
   };
+}
+// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss),
+// normal floors spawn 1-3 regular monsters that share the field together.
+function makeEncounter(floor) {
+  const isBoss = floor % 5 === 0;
+  if (isBoss) return [makeEnemy(floor)];
+  const roll = Math.random();
+  const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
+  const groupScale = count === 1 ? 1 : count === 2 ? 0.72 : 0.55;
+  const monsters = [];
+  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { groupScale }));
+  return monsters;
+}
+// Builds the round's initiative queue: every living unit on the field
+// ([Player, Active Pet, ...Monsters]) sorted by Speed (AGI-derived), highest first.
+// Ties are broken randomly so repeated equal-speed matchups don't always favor the same side.
+// Callers are expected to only pass units that are already alive.
+function buildTurnQueue(units) {
+  return units
+    .filter(Boolean)
+    .map(u => ({ ...u, _r: Math.random() }))
+    .sort((a, b) => (b.speed - a.speed) || (b._r - a._r));
 }
 function xpToNext(level) {
   return level * 22 + 18;
@@ -266,6 +321,7 @@ function getStats(player, equipped) {
     def: Math.round((player.baseDef + b.def) * defBuff),
     maxHp: player.baseMaxHp + b.hp,
     maxMp: player.baseMaxMp + b.mp,
+    speed: player.baseSpeed || BASE_SPEED,
     accuracy: Math.min(99, (player.accuracy || 0) + b.accuracy),
     critChance: Math.min(80, (player.critChance || 0) + b.critChance),
     critDamage: Math.min(300, (player.critDamage || 0) + b.critDamage),

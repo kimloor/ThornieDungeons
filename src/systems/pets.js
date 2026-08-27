@@ -157,6 +157,46 @@ let PET_POOL = [{
     desc: "30% โอกาสทำให้ศัตรูมึนงง 1 เทิร์นเมื่อสกิลทำงาน"
   }
 }];
+// ---------- pet stats (STR/VIT/AGI/DEX/LUK) & level ----------
+// Base per-rarity stat lines a freshly-obtained pet starts with at level 1.
+const PET_BASE_STATS = {
+  r: { str: 4, vit: 4, agi: 4, dex: 4, luk: 4 },
+  sr: { str: 6, vit: 6, agi: 6, dex: 6, luk: 6 },
+  ssr: { str: 9, vit: 9, agi: 9, dex: 9, luk: 9 }
+};
+// Creates a new pet instance (what gets stored in save.pets / pets_json) with
+// its own Level, EXP and 5-stat block, ready to be saved to D1 as-is.
+function newPetInstance(defId) {
+  const def = getPetDef(defId);
+  const rarity = (def && def.rarity) || "r";
+  const base = PET_BASE_STATS[rarity] || PET_BASE_STATS.r;
+  return {
+    instId: `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    defId,
+    level: 1,
+    xp: 0,
+    stats: { ...base }
+  };
+}
+function petXpToNext(level) {
+  return level * 15 + 10;
+}
+// Derived combat stats for a pet instance, following the same Speed/Evasion/
+// HitRate/CritChance/ItemDropBonus formulas used for the player character.
+function petCombatStats(instance) {
+  const s = (instance && instance.stats) || PET_BASE_STATS.r;
+  const lvl = (instance && instance.level) || 1;
+  return {
+    maxHp: 25 + lvl * 3 + s.vit * 8,
+    atk: 4 + Math.floor(lvl * 0.6) + s.str * 2,
+    def: 1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4),
+    speed: BASE_SPEED + s.agi * 2,
+    evasion: +(s.agi * 0.5).toFixed(1),
+    hitRate: Math.min(99, +(80 + s.dex * 0.5).toFixed(1)),
+    critChance: +(s.luk * 0.5).toFixed(1),
+    dropBonus: +(s.luk * 0.2).toFixed(1)
+  };
+}
 const RARITY_ORDER_PET = ["r", "sr", "ssr"];
 const PET_RARITY_LABEL = {
   r: "R",

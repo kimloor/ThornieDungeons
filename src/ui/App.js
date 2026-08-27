@@ -13,19 +13,26 @@ function ThornieDungeons() {
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
-  const [enemy, setEnemy] = useState(null);
+  // Encounter now supports 1-3 monsters on the field at once.
+  const [monsters, setMonsters] = useState([]);
+  // Combat-only state for the Active Pet as a real unit on the field (HP, cooldown).
+  const [petCombat, setPetCombat] = useState(null); // { instId, defId, name, icon, hp, maxHp, atk, def, speed, cooldown, active, passive, extra }
+  const [targetUid, setTargetUid] = useState(null); // uid of the monster the player is currently targeting
   const [log, setLogState] = useState(["Welcome to ThornieDungeons!"]);
   // Keeps the last 3 combat messages, newest first, so the log panel can show
   // a short scrolling history instead of overwriting a single line.
   const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
   const [busy, setBusy] = useState(false);
-  const enemyRef = useRef(null);
+  const monstersRef = useRef([]);
+  const petCombatRef = useRef(null);
   const playerRef = useRef(null);
   const combatOutcomeRef = useRef(null);
-  useEffect(() => { enemyRef.current = enemy; }, [enemy]);
+  useEffect(() => { monstersRef.current = monsters; }, [monsters]);
+  useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
   useEffect(() => { playerRef.current = player; }, [player]);
   const [heroAnim, setHeroAnim] = useState("");
-  const [enemyAnim, setEnemyAnim] = useState("");
+  const [petAnim, setPetAnim] = useState("");
+  const [enemyAnims, setEnemyAnims] = useState({}); // uid -> anim class
   const [floats, setFloats] = useState([]);
   const [dropItem, setDropItem] = useState(null);
   const [lastRewards, setLastRewards] = useState({
@@ -235,11 +242,38 @@ function ThornieDungeons() {
       base_max_hp: nextPlayer.baseMaxHp,
       base_max_mp: nextPlayer.baseMaxMp
     });
-    const e = makeEnemy(floorNum);
-    setEnemy(e);
+    const spawned = makeEncounter(floorNum);
+    setMonsters(spawned);
+    setTargetUid(spawned[0] ? spawned[0].uid : null);
+    setPetCombat(buildPetCombatUnit());
     setDropItem(null);
-    setLog(e.isBoss ? `A ${e.name} blocks the way!` : `A wild ${e.name} appears!`);
+    const boss = spawned.find(m => m.isBoss);
+    setLog(boss ? `A ${boss.name} blocks the way!` : spawned.length > 1 ? `${spawned.length} monsters appear: ${spawned.map(m => m.name).join(", ")}!` : `A wild ${spawned[0].name} appears!`);
     setPhase("combat");
+  }
+  // Builds the Active Pet as a real combat unit (own HP/ATK/DEF/Speed) for this fight.
+  function buildPetCombatUnit(carryHp = null) {
+    const petActive = activePetInstance(save);
+    if (!petActive) return null;
+    const cs = petCombatStats(petActive.inst);
+    return {
+      instId: petActive.inst.instId,
+      defId: petActive.def.id,
+      name: petActive.def.name,
+      icon: petActive.def.icon,
+      active: petActive.def.active,
+      passive: petActive.def.passive,
+      extra: petActive.def.extra,
+      maxHp: cs.maxHp,
+      hp: Number.isFinite(carryHp) ? Math.max(0, Math.min(cs.maxHp, carryHp)) : cs.maxHp,
+      atk: cs.atk,
+      def: cs.def,
+      speed: cs.speed,
+      evasion: cs.evasion,
+      hitRate: cs.hitRate,
+      critChance: cs.critChance,
+      cooldown: 0
+    };
   }
   const runStateSaveTimer = useRef(null);
   function buildRunStateSnapshot(floor, p) {
@@ -273,15 +307,17 @@ function ThornieDungeons() {
 
   function endCombatWin() {
     if (combatOutcomeRef.current) return;
-    const currentEnemy = enemyRef.current || enemy;
+    const currentMonsters = monstersRef.current.length ? monstersRef.current : monsters;
     const currentPlayer = playerRef.current || player;
-    if (!currentEnemy || currentEnemy.hp > 0) return;
+    if (!currentMonsters.length || currentMonsters.some(m => m.hp > 0)) return;
     combatOutcomeRef.current = "victory";
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     setBusy(false);
-    const gained = currentEnemy.gold;
-    const xpGained = currentEnemy.xp;
-    const modifier = currentEnemy.modifier;
+    // Rewards aggregate across every monster that was on the field this encounter.
+    const gained = currentMonsters.reduce((sum, m) => sum + m.gold, 0);
+    const xpGained = currentMonsters.reduce((sum, m) => sum + m.xp, 0);
+    const bossMonster = currentMonsters.find(m => m.isBoss) || null;
+    const modifier = currentMonsters.map(m => m.modifier).find(Boolean) || null;
     // Equipment now only comes from a reward CHEST on boss floors (every 5th floor).
     // Regular monsters instead have a chance to drop a stack of junk material (stone/grass/
     // wood/iron/mana stone) used for crafting, selling, and the Enhancement/Empowerment systems.
@@ -289,18 +325,30 @@ function ThornieDungeons() {
     let junkDrop = null;
     let nextInvAfterCombat = inventory;
     let nextChestPity = save.chestPity || 0;
-    if (currentEnemy.isBoss) {
-      const chestRarity = rollChestRarity(currentEnemy.isEliteBoss, nextChestPity);
+    if (bossMonster) {
+      const chestRarity = rollChestRarity(bossMonster.isEliteBoss, nextChestPity);
       nextChestPity = chestRarity === "elite" || chestRarity === "mythic" ? 0 : nextChestPity + 1;
       drop = generateDrop(selectedFloor, {
         forceRarity: chestRarity
       });
       nextInvAfterCombat = [...inventory, drop];
     } else {
-      const matChance = 0.45 + (currentPlayer.dropBonus || 0) / 100 + (modifier?.dropBonusFlat || 0) / 100;
-      if (Math.random() < matChance) {
-        junkDrop = rollJunkDrop(selectedFloor, modifier);
-        nextInvAfterCombat = addJunkToInventory(inventory, junkDrop.type, junkDrop.amount);
+      // Each defeated monster in the pack gets its own independent roll for junk material.
+      const junkDrops = [];
+      currentMonsters.forEach(m => {
+        const matChance = 0.45 + (currentPlayer.dropBonus || 0) / 100 + (m.modifier?.dropBonusFlat || 0) / 100;
+        if (Math.random() < matChance) {
+          const jd = rollJunkDrop(selectedFloor, m.modifier);
+          junkDrops.push(jd);
+          nextInvAfterCombat = addJunkToInventory(nextInvAfterCombat, jd.type, jd.amount);
+        }
+      });
+      if (junkDrops.length) {
+        // Combine same-type drops for a single summary banner.
+        const merged = {};
+        junkDrops.forEach(jd => { merged[jd.type] = (merged[jd.type] || 0) + jd.amount; });
+        const [type, amount] = Object.entries(merged)[0];
+        junkDrop = { type, amount };
       }
     }
     if (nextInvAfterCombat !== inventory) {
@@ -308,7 +356,7 @@ function ThornieDungeons() {
       persistItems(nextInvAfterCombat, equipped);
     }
     setDropItem(drop);
-    const diamondsGained = currentEnemy.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
+    const diamondsGained = bossMonster && bossMonster.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
     let xp = save.character.xp + xpGained;
     let level = save.character.level;
     let statPoints = save.character.statPoints;
@@ -329,14 +377,11 @@ function ThornieDungeons() {
     let newActivePetId = save.activePetId;
     let newPet = null;
     const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
-    if (selectedFloor === 5 && currentEnemy.isBoss && unlockedNext && !alreadyHasStarter) {
+    if (selectedFloor === 5 && bossMonster && unlockedNext && !alreadyHasStarter) {
       const starter = starterPetDef();
-      const instId = `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      newPets = [...(save.pets || []), {
-        instId,
-        defId: starter.id
-      }];
-      if (!newActivePetId) newActivePetId = instId;
+      const inst = newPetInstance(starter.id);
+      newPets = [...(save.pets || []), inst];
+      if (!newActivePetId) newActivePetId = inst.instId;
       newPet = starter;
     }
     const nextSave = {
@@ -372,10 +417,10 @@ function ThornieDungeons() {
       unlockedNext,
       newSkill,
       newPet,
-      isBoss: currentEnemy.isBoss,
+      isBoss: !!bossMonster,
       junkDrop,
       modifier,
-      isEliteBoss: currentEnemy.isEliteBoss,
+      isEliteBoss: !!(bossMonster && bossMonster.isEliteBoss),
       diamonds: diamondsGained
     });
     setLog(newPet ? `Victory! You received a companion: ${newPet.name}!` : newSkill ? `Victory! Level up! New skill: ${newSkill.name}!` : leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
@@ -398,33 +443,51 @@ function ThornieDungeons() {
     setLog("You were defeated...");
     setPhase("defeat");
   }
+  // ---------- targeting helpers ----------
+  function firstAliveMonster() {
+    return monstersRef.current.find(m => m.hp > 0) || null;
+  }
+  function getTargetMonster() {
+    const explicit = monstersRef.current.find(m => m.uid === targetUid && m.hp > 0);
+    return explicit || firstAliveMonster();
+  }
+  function updateMonster(uid, updater) {
+    setMonsters(ms => ms.map(m => m.uid === uid ? updater(m) : m));
+  }
+  function setMonsterAnim(uid, anim) {
+    setEnemyAnims(prev => ({ ...prev, [uid]: anim }));
+  }
+  function selectTarget(uid) {
+    const m = monstersRef.current.find(x => x.uid === uid);
+    if (m && m.hp > 0) setTargetUid(uid);
+  }
+
   function playerTurn(action, skillKey) {
-    if (busy || !enemy || !player) return;
+    if (busy || !player) return;
+    const target = getTargetMonster();
+    if ((action === "attack" || action === "skill") && !target) return;
     const stats = getStats(player, equipped);
     setBusy(true);
     if (action === "attack") {
       const isMiss = Math.random() * 100 >= stats.accuracy;
       const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
-      let dmg = Math.max(2, Math.round(stats.atk - enemy.def * 0.6 + (Math.random() * 4 - 2)));
+      let dmg = Math.max(2, Math.round(stats.atk - target.def * 0.6 + (Math.random() * 4 - 2)));
       if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
       setHeroAnim("attack");
       setTimeout(() => {
         if (isMiss) {
-          spawnFloat("enemy", "MISS", "#B9AEDD");
+          spawnFloat(target.uid, "MISS", "#B9AEDD");
           setLog("You missed!");
         } else {
-          setEnemy(e => {
-            const nh = Math.max(0, e.hp - dmg);
-            spawnFloat("enemy", isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#FF6B6B");
-            setEnemyAnim("hurt");
-            return {
-              ...e,
-              hp: nh
-            };
+          updateMonster(target.uid, m => {
+            const nh = Math.max(0, m.hp - dmg);
+            spawnFloat(target.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#FF6B6B");
+            setMonsterAnim(target.uid, "hurt");
+            return { ...m, hp: nh };
           });
         }
         setHeroAnim("");
-        setTimeout(() => resolveAfterPlayerAction(true), 350);
+        setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "skill") {
       const skill = SKILLS.find(s => s.key === skillKey);
@@ -442,22 +505,19 @@ function ThornieDungeons() {
       setTimeout(() => {
         if (skill.type === "damage") {
           if (isMiss) {
-            spawnFloat("enemy", "MISS", "#B9AEDD");
+            spawnFloat(target.uid, "MISS", "#B9AEDD");
             setLog(`${skill.name} missed!`);
           } else {
             const pierce = skill.defPierce || 0;
-            let dmg = Math.max(4, Math.round(stats.atk * skill.mult - enemy.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
+            let dmg = Math.max(4, Math.round(stats.atk * skill.mult - target.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
             if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
             const freeze = skill.freezeChance ? Math.random() < skill.freezeChance : false;
-            setEnemy(e => {
-              const nh = Math.max(0, e.hp - dmg);
-              spawnFloat("enemy", isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
-              setEnemyAnim("hurt");
-              const next = {
-                ...e,
-                hp: nh
-              };
-              if (freeze) next.frozenTurns = (e.frozenTurns || 0) + skill.freezeTurns;
+            updateMonster(target.uid, m => {
+              const nh = Math.max(0, m.hp - dmg);
+              spawnFloat(target.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
+              setMonsterAnim(target.uid, "hurt");
+              const next = { ...m, hp: nh };
+              if (freeze) next.frozenTurns = (m.frozenTurns || 0) + skill.freezeTurns;
               if (skill.poisonTurns) {
                 next.poisonTurns = skill.poisonTurns;
                 next.poisonDmg = Math.max(1, Math.round(stats.atk * skill.poisonPct));
@@ -494,7 +554,7 @@ function ThornieDungeons() {
           setLog(`${skill.name}! DEF increased for ${skill.turns} turns.`);
         }
         setHeroAnim("");
-        setTimeout(() => resolveAfterPlayerAction(), 350);
+        setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "item") {
       if (potions <= 0) {
@@ -514,131 +574,192 @@ function ThornieDungeons() {
         };
       });
       setLog("You drink a potion and recover HP.");
-      setTimeout(() => enemyTurn(), 500);
+      setTimeout(() => runQueueAfterPlayer(), 500);
     } else if (action === "flee") {
       const success = Math.random() < 0.55;
       if (success) {
         setLog("You escaped safely.");
-        setEnemy(null);
+        setMonsters([]);
+        setPetCombat(null);
         pushRunState(null);
         setPhase("map");
         setBusy(false);
       } else {
         setLog("Couldn't escape!");
-        setTimeout(() => enemyTurn(), 500);
+        setTimeout(() => runQueueAfterPlayer(), 500);
       }
     }
   }
-  function triggerPetSkill(cb) {
-    const petActive = activePetInstance(save);
-    if (!petActive || !player || player.petCooldown > 0) {
+  // ---------- Round-based Initiative Queue ----------
+  // After the player's own action resolves, every remaining living unit on the
+  // field (Active Pet + all Monsters) takes its action in order of Speed (AGI),
+  // highest first. Once the queue is drained, buffs/cooldowns tick and control
+  // returns to the player for the next round.
+  function runQueueAfterPlayer() {
+    if (combatOutcomeRef.current) return;
+    if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
+      endCombatWin();
+      return;
+    }
+    const units = [];
+    if (petCombatRef.current && petCombatRef.current.hp > 0) {
+      units.push({ kind: "pet", speed: petCombatRef.current.speed });
+    }
+    monstersRef.current.forEach(m => {
+      if (m.hp > 0) units.push({ kind: "monster", uid: m.uid, speed: m.speed });
+    });
+    const queue = buildTurnQueue(units);
+    processQueue(queue, 0);
+  }
+  function processQueue(queue, index) {
+    if (combatOutcomeRef.current) return;
+    if (index >= queue.length) {
+      if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
+        endCombatWin();
+        return;
+      }
+      if ((playerRef.current?.hp || 0) <= 0) {
+        playerLost();
+        return;
+      }
+      setBusy(false);
+      tickPlayerBuffs();
+      tickPetCooldown();
+      return;
+    }
+    const unit = queue[index];
+    const advance = () => {
+      if (combatOutcomeRef.current) return;
+      // Check outcome immediately after every single action, not just at round end,
+      // so combat stops the instant the player or all monsters are downed.
+      if ((playerRef.current?.hp || 0) <= 0) {
+        playerLost();
+        return;
+      }
+      if (monstersRef.current.length && monstersRef.current.every(mm => mm.hp <= 0)) {
+        endCombatWin();
+        return;
+      }
+      processQueue(queue, index + 1);
+    };
+    if (unit.kind === "pet") {
+      doPetAction(advance);
+    } else {
+      const m = monstersRef.current.find(mm => mm.uid === unit.uid);
+      if (!m || m.hp <= 0) {
+        advance();
+        return;
+      }
+      doMonsterAction(m, advance);
+    }
+  }
+  function doPetAction(cb) {
+    const pet = petCombatRef.current;
+    if (!pet || pet.hp <= 0 || pet.cooldown > 0) {
       cb();
       return;
     }
-    const stats = getStats(player, equipped);
-    const skill = petActive.def.active;
-    setPlayer(p => ({
-      ...p,
-      petCooldown: skill.cooldown
-    }));
+    const skill = pet.active;
+    setPetCombat(p => p ? { ...p, cooldown: skill.cooldown } : p);
+    setPetAnim("attack");
     setTimeout(() => {
       if (skill.type === "damage") {
-        setEnemy(e => {
-          if (!e || e.hp <= 0) return e;
-          let dmg = Math.max(2, Math.round(stats.atk * skill.mult - e.def * 0.5 + (Math.random() * 3 - 1)));
-          const hasStun = petActive.def.extra && petActive.def.extra.type === "stun";
-          const stun = hasStun ? Math.random() < petActive.def.extra.pct : false;
-          const nh = Math.max(0, e.hp - dmg);
-          spawnFloat("enemy", `${petActive.def.icon}-${dmg}`, "#7FE0B0");
-          setEnemyAnim("hurt");
-          setLog(stun ? `${petActive.def.icon} ${skill.name}! Enemy stunned!` : `${petActive.def.icon} ${skill.name} hits for ${dmg}!`);
-          const next = {
-            ...e,
-            hp: nh
-          };
-          if (stun) next.frozenTurns = (e.frozenTurns || 0) + 1;
-          return next;
-        });
+        const target = firstAliveMonster();
+        if (target) {
+          let dmg = Math.max(2, Math.round(pet.atk * skill.mult - target.def * 0.5 + (Math.random() * 3 - 1)));
+          const hasStun = pet.extra && pet.extra.type === "stun";
+          const stun = hasStun ? Math.random() < pet.extra.pct : false;
+          updateMonster(target.uid, m => {
+            const nh = Math.max(0, m.hp - dmg);
+            spawnFloat(target.uid, `${pet.icon}-${dmg}`, "#7FE0B0");
+            setMonsterAnim(target.uid, "hurt");
+            const next = { ...m, hp: nh };
+            if (stun) next.frozenTurns = (m.frozenTurns || 0) + 1;
+            return next;
+          });
+          setLog(stun ? `${pet.icon} ${skill.name}! Enemy stunned!` : `${pet.icon} ${skill.name} hits for ${dmg}!`);
+        }
       } else if (skill.type === "regen") {
-        const heal = Math.round(stats.maxHp * skill.regenPct);
         setPlayer(p => {
+          if (!p) return p;
+          const capStats = getStats(p, equipped);
+          const heal = Math.round(capStats.maxHp * skill.regenPct);
           spawnFloat("hero", `+${heal}`, "#6FCF97");
           return {
             ...p,
-            hp: Math.min(stats.maxHp, p.hp + heal),
+            hp: Math.min(capStats.maxHp, p.hp + heal),
             regenAmount: heal,
             regenTurns: Math.max(0, skill.regenTurns - 1)
           };
         });
-        setLog(`${petActive.def.icon} ${skill.name} activates!`);
+        setLog(`${pet.icon} ${skill.name} activates!`);
       }
+      setPetAnim("");
       setTimeout(() => cb(), 280);
     }, 220);
   }
-  function resolveAfterPlayerAction(fromAttack) {
-    if (combatOutcomeRef.current) return;
-    const currentEnemy = enemyRef.current;
-    if (!currentEnemy || currentEnemy.hp <= 0) {
-      endCombatWin();
+  function doMonsterAction(m, cb) {
+    if (combatOutcomeRef.current) {
+      cb();
       return;
     }
-    if (fromAttack) {
-      setTimeout(() => triggerPetSkill(() => {
-        if (combatOutcomeRef.current) return;
-        if (enemyRef.current && enemyRef.current.hp <= 0) endCombatWin();
-        else enemyTurn();
-      }), 300);
-    } else {
-      setTimeout(() => {
-        if (!combatOutcomeRef.current) enemyTurn();
-      }, 400);
+    if (m.poisonTurns > 0) {
+      const pdmg = m.poisonDmg || 0;
+      const nh = Math.max(0, m.hp - pdmg);
+      updateMonster(m.uid, mm => ({ ...mm, hp: nh, poisonTurns: mm.poisonTurns - 1 }));
+      spawnFloat(m.uid, `-${pdmg} ☠️`, "#6FCF97");
+      if (nh <= 0) {
+        setLog(`${m.name} succumbed to poison!`);
+        cb();
+        return;
+      }
     }
-  }
-  function enemyTurn() {
-    if (combatOutcomeRef.current) return;
-    setEnemy(e => {
-      if (!e || e.hp <= 0) {
-        setTimeout(() => endCombatWin(), 0);
-        return e;
+    const fresh = monstersRef.current.find(x => x.uid === m.uid) || m;
+    if (fresh.frozenTurns > 0) {
+      updateMonster(m.uid, mm => ({ ...mm, frozenTurns: mm.frozenTurns - 1 }));
+      setLog(`${fresh.name} is frozen solid and can't move!`);
+      cb();
+      return;
+    }
+    const stats = getStats(playerRef.current || player, equipped);
+    const pet = petCombatRef.current;
+    const canHitPet = pet && pet.hp > 0;
+    // Monsters mostly go for the player, but may occasionally swing at the pet instead.
+    const targetIsPet = canHitPet && Math.random() < 0.3;
+    setMonsterAnim(m.uid, "attack");
+    setTimeout(() => {
+      if (combatOutcomeRef.current) {
+        setMonsterAnim(m.uid, "");
+        cb();
+        return;
       }
-      let cur = { ...e };
-      if (cur.poisonTurns > 0) {
-        const pdmg = cur.poisonDmg || 0;
-        cur.hp = Math.max(0, cur.hp - pdmg);
-        cur.poisonTurns -= 1;
-        spawnFloat("enemy", `-${pdmg} ☠️`, "#6FCF97");
-        if (cur.hp <= 0) {
-          setLog(`${cur.name} succumbed to poison!`);
-          setTimeout(() => endCombatWin(), 0);
-          return cur;
+      if (targetIsPet) {
+        const dodged = Math.random() * 100 < (pet.evasion || 0);
+        const dmg = dodged ? 0 : Math.max(1, Math.round(fresh.atk - pet.def * 0.6 + (Math.random() * 3 - 1)));
+        if (dodged) {
+          spawnFloat("pet", "MISS", "#B9AEDD");
+          setLog(`${pet.name} dodged ${fresh.name}'s attack!`);
+        } else {
+          setPetCombat(p => p ? { ...p, hp: Math.max(0, p.hp - dmg) } : p);
+          spawnFloat("pet", `-${dmg}`, "#FF6B6B");
+          setPetAnim("hurt");
+          setLog(`${fresh.name} strikes your ${pet.name} for ${dmg}!`);
         }
-      }
-      if (cur.frozenTurns > 0) {
-        cur.frozenTurns -= 1;
-        setLog(`${cur.name} is frozen solid and can't move!`);
-        setBusy(false);
-        setTimeout(() => tickPlayerBuffs(), 0);
-        return cur;
-      }
-      const stats = getStats(playerRef.current || player, equipped);
-      const petActive = activePetInstance(save);
-      const hasGuard = petActive && petActive.def.extra && petActive.def.extra.type === "block";
-      const blocked = hasGuard && Math.random() < petActive.def.extra.pct;
-      const dodged = !blocked && Math.random() * 100 < stats.dodgeChance;
-      const dmg = blocked || dodged ? 0 : Math.max(1, Math.round(cur.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
-      setEnemyAnim("attack");
-      setTimeout(() => {
-        if (combatOutcomeRef.current) return;
+      } else {
+        const hasGuard = pet && pet.hp > 0 && pet.extra && pet.extra.type === "block";
+        const blocked = hasGuard && Math.random() < pet.extra.pct;
+        const dodged = !blocked && Math.random() * 100 < stats.dodgeChance;
+        const dmg = blocked || dodged ? 0 : Math.max(1, Math.round(fresh.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
         if (blocked) {
           spawnFloat("hero", "BLOCKED 🛡️", "#B9AEDD");
-          setLog(`${petActive.def.name} blocked the attack!`);
+          setLog(`${pet.name} blocked the attack!`);
         } else if (dodged) {
           spawnFloat("hero", "MISS", "#B9AEDD");
-          setLog(`You dodged ${cur.name}'s attack!`);
+          setLog(`You dodged ${fresh.name}'s attack!`);
         } else {
-          const hasStatusWard = petActive && petActive.def.passive && petActive.def.passive.type === "statusResist";
-          const resisted = hasStatusWard && Math.random() < petActive.def.passive.pct;
-          const weakenProc = cur.isBoss && !resisted && Math.random() < 0.25;
+          const hasStatusWard = pet && pet.passive && pet.passive.type === "statusResist";
+          const resisted = hasStatusWard && Math.random() < pet.passive.pct;
+          const weakenProc = fresh.isBoss && !resisted && Math.random() < 0.25;
           const currentPlayer = playerRef.current || player;
           const nh = Math.max(0, currentPlayer.hp - dmg);
           setPlayer(p => {
@@ -652,17 +773,14 @@ function ThornieDungeons() {
             return next;
           });
           spawnFloat("hero", `-${dmg}`, "#FF6B6B");
-          if (nh <= 0) setTimeout(() => playerLost(), 0);
-          setLog(weakenProc && nh > 0 ? `${cur.name} strikes for ${dmg} and weakens you!` : `${cur.name} strikes for ${dmg}!`);
+          setLog(weakenProc && nh > 0 ? `${fresh.name} strikes for ${dmg} and weakens you!` : `${fresh.name} strikes for ${dmg}!`);
         }
-        setEnemyAnim("");
-        if (!combatOutcomeRef.current) {
-          setBusy(false);
-          tickPlayerBuffs();
-        }
-      }, 300);
-      return cur;
-    });
+      }
+      setMonsterAnim(m.uid, "");
+      setHeroAnim("");
+      setPetAnim("");
+      cb();
+    }, 300);
   }
   function tickPlayerBuffs() {
     setPlayer(p => {
@@ -682,7 +800,6 @@ function ThornieDungeons() {
         next.weakenTurns -= 1;
         if (next.weakenTurns === 0) next.weakenPct = 0;
       }
-      if (next.petCooldown > 0) next.petCooldown -= 1;
       if (next.hp > 0 && next.regenTurns > 0 && next.regenAmount > 0 && !combatOutcomeRef.current) {
         const capStats = getStats(next, equipped);
         next.hp = Math.min(capStats.maxHp, next.hp + next.regenAmount);
@@ -691,6 +808,9 @@ function ThornieDungeons() {
       }
       return next;
     });
+  }
+  function tickPetCooldown() {
+    setPetCombat(p => p && p.cooldown > 0 ? { ...p, cooldown: p.cooldown - 1 } : p);
   }
   function retryStage() {
     // Defeat means HP hit 0 — always start the retry fully healed, since
@@ -706,7 +826,8 @@ function ThornieDungeons() {
   }
   function backToMap() {
     combatOutcomeRef.current = null;
-    setEnemy(null);
+    setMonsters([]);
+    setPetCombat(null);
     setDropItem(null);
     pushRunState(null);
     setPhase("map");
@@ -1080,12 +1201,9 @@ function ThornieDungeons() {
       });
       return;
     }
-    const instId = `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const nextPets = [...(save.pets || []), {
-      instId,
-      defId: won.id
-    }];
-    const nextActivePetId = save.activePetId || instId;
+    const inst = newPetInstance(won.id);
+    const nextPets = [...(save.pets || []), inst];
+    const nextActivePetId = save.activePetId || inst.instId;
     persistSave({
       ...save,
       diamonds: save.diamonds - GACHA_COST,
@@ -1172,18 +1290,21 @@ function ThornieDungeons() {
     onGacha: pullGacha,
     onClaimDiamonds: claimTestDiamonds,
     onBack: () => setPhase("town")
-  }), phase === "combat" && enemy && player && /*#__PURE__*/React.createElement(CombatScreen, {
+  }), phase === "combat" && monsters.length > 0 && player && /*#__PURE__*/React.createElement(CombatScreen, {
     player: player,
-    enemy: enemy,
+    monsters: monsters,
+    targetUid: targetUid,
+    onSelectTarget: selectTarget,
     log: log,
     busy: busy,
     potions: potions,
     heroAnim: heroAnim,
-    enemyAnim: enemyAnim,
+    petAnim: petAnim,
+    enemyAnims: enemyAnims,
     floats: floats,
     onAction: playerTurn,
     equipped: equipped,
-    pet: activePetInstance(save)
+    petCombat: petCombat
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,
