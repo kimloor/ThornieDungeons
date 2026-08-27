@@ -1,3 +1,19 @@
+// Accessories no longer roll HP/MP — they roll one of these % utility stats instead.
+const ACCESSORY_STAT_POOL = ["dodgeChance", "critChance", "critDamage"];
+const ACCESSORY_STAT_BASE = {
+  dodgeChance: {
+    flat: 1,
+    perFloor: 0.12
+  },
+  critChance: {
+    flat: 1.2,
+    perFloor: 0.15
+  },
+  critDamage: {
+    flat: 4,
+    perFloor: 0.35
+  }
+};
 function characterBaseStats(save) {
   const lvl = save.character.level;
   const s = save.character.stats;
@@ -8,6 +24,7 @@ function characterBaseStats(save) {
     def: 2 + Math.floor(lvl * 0.4) + Math.floor(s.vit * 0.5),
     accuracy: Math.min(99, +(80 + s.dex * 1.0).toFixed(1)),
     critChance: Math.min(50, +(s.luk * 0.8).toFixed(1)),
+    critDamage: 50,
     dodgeChance: Math.min(30, +(s.luk * 0.5).toFixed(1)),
     dropBonus: Math.min(20, +(s.luk * 0.35).toFixed(1))
   };
@@ -37,6 +54,7 @@ function freshPlayerFromSave(save, carry = null) {
     baseMaxMp: cb.maxMp,
     accuracy: cb.accuracy,
     critChance: cb.critChance,
+    critDamage: cb.critDamage,
     dodgeChance: cb.dodgeChance,
     dropBonus: cb.dropBonus,
     hp,
@@ -160,8 +178,10 @@ function buildDropItem(floor, options = {}) {
       def
     };
   }
-  const statKey = Math.random() < 0.5 ? "hp" : "mp";
-  const val = Math.max(4, Math.round((statKey === "hp" ? 6 + floor * 2.4 : 4 + floor * 1.6) * mult));
+  // Accessories are pure utility pieces: dodge / crit chance / crit damage as % values, never HP or MP.
+  const statKey = ACCESSORY_STAT_POOL[Math.floor(Math.random() * ACCESSORY_STAT_POOL.length)];
+  const base = ACCESSORY_STAT_BASE[statKey];
+  const val = Math.round((base.flat + floor * base.perFloor) * mult * 10) / 10;
   return {
     id,
     type,
@@ -183,9 +203,10 @@ function itemBonus(it) {
     def: (it.def || 0) * growMult,
     hp: (it.hp || 0) * growMult,
     mp: (it.mp || 0) * growMult,
-    critChance: 0,
+    critChance: (it.critChance || 0) * growMult,
+    critDamage: (it.critDamage || 0) * growMult,
     accuracy: 0,
-    dodgeChance: 0,
+    dodgeChance: (it.dodgeChance || 0) * growMult,
     dropBonus: 0
   };
   (it.empowerSlots || []).forEach(slot => {
@@ -202,6 +223,7 @@ function itemStatText(it) {
   if (b.hp) parts.push(`+${Math.round(b.hp)} HP`);
   if (b.mp) parts.push(`+${Math.round(b.mp)} MP`);
   if (b.critChance) parts.push(`+${b.critChance}% Crit`);
+  if (b.critDamage) parts.push(`+${b.critDamage}% Crit Dmg`);
   if (b.accuracy) parts.push(`+${b.accuracy}% Acc`);
   if (b.dodgeChance) parts.push(`+${b.dodgeChance}% Dodge`);
   if (b.dropBonus) parts.push(`+${b.dropBonus}% Drop`);
@@ -214,6 +236,7 @@ function getEquipBonus(equipped) {
     hp: 0,
     mp: 0,
     critChance: 0,
+    critDamage: 0,
     accuracy: 0,
     dodgeChance: 0,
     dropBonus: 0
@@ -228,6 +251,7 @@ function getEquipBonus(equipped) {
   b.hp = Math.round(b.hp);
   b.mp = Math.round(b.mp);
   b.critChance = Math.round(b.critChance * 10) / 10;
+  b.critDamage = Math.round(b.critDamage * 10) / 10;
   b.accuracy = Math.round(b.accuracy * 10) / 10;
   b.dodgeChance = Math.round(b.dodgeChance * 10) / 10;
   b.dropBonus = Math.round(b.dropBonus * 10) / 10;
@@ -242,13 +266,14 @@ function getStats(player, equipped) {
     def: Math.round((player.baseDef + b.def) * defBuff),
     maxHp: player.baseMaxHp + b.hp,
     maxMp: player.baseMaxMp + b.mp,
-    accuracy: (player.accuracy || 0) + b.accuracy,
-    critChance: (player.critChance || 0) + b.critChance,
-    dodgeChance: (player.dodgeChance || 0) + b.dodgeChance,
+    accuracy: Math.min(99, (player.accuracy || 0) + b.accuracy),
+    critChance: Math.min(80, (player.critChance || 0) + b.critChance),
+    critDamage: Math.min(300, (player.critDamage || 0) + b.critDamage),
+    dodgeChance: Math.min(60, (player.dodgeChance || 0) + b.dodgeChance),
     dropBonus: (player.dropBonus || 0) + b.dropBonus
   };
 }
 function combatPower(stats, level) {
-  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.dodgeChance || 0) * 6 + level * 50);
+  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.critDamage || 0) * 3 + (stats.dodgeChance || 0) * 6 + level * 50);
 }
 

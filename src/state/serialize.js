@@ -14,10 +14,9 @@ function progressToServer(save) {
     char_luk: save.character.stats.luk,
     pets_json: JSON.stringify(save.pets || []),
     active_pet_id: save.activePetId || "",
+    // Iron / mana stone used to live here as raw counters, but they're now regular stackable
+    // junk items synced through itemsToServerList instead, so this blob only keeps the misc bits.
     materials_json: JSON.stringify({
-      iron: save.materials?.iron || 0,
-      silver: save.materials?.silver || 0,
-      manaOre: save.materials?.manaOre || 0,
       protectionStones: save.protectionStones || 0,
       chestPity: save.chestPity || 0
     })
@@ -31,21 +30,11 @@ function progressFromServer(row) {
   } catch (e) {
     pets = [];
   }
-  let materials = {
-    iron: 0,
-    silver: 0,
-    manaOre: 0
-  };
   let protectionStones = 0;
   let chestPity = 0;
   try {
     if (row.materials_json) {
       const parsed = JSON.parse(row.materials_json);
-      materials = {
-        iron: Number(parsed.iron) || 0,
-        silver: Number(parsed.silver) || 0,
-        manaOre: Number(parsed.manaOre) || 0
-      };
       protectionStones = Number(parsed.protectionStones) || 0;
       chestPity = Number(parsed.chestPity) || 0;
     }
@@ -57,7 +46,6 @@ function progressFromServer(row) {
     potions: row.potions === undefined || row.potions === "" ? 2 : Number(row.potions) || 0,
     pets,
     activePetId: row.active_pet_id || null,
-    materials,
     protectionStones,
     chestPity,
     character: {
@@ -86,8 +74,17 @@ function itemsToServerList(inventory, equipped) {
     hp: it.hp,
     mp: it.mp,
     enhanceLevel: it.enhanceLevel || 0,
+    // dodgeChance/critChance/critDamage (accessory base rolls) and junk stack data
+    // (junkId/quantity/icon) don't have their own server columns, so they all ride
+    // along inside the extra JSON blob instead.
     extra: {
-      empowerSlots: it.empowerSlots || []
+      empowerSlots: it.empowerSlots || [],
+      dodgeChance: it.dodgeChance || undefined,
+      critChance: it.critChance || undefined,
+      critDamage: it.critDamage || undefined,
+      junkId: it.junkId || undefined,
+      quantity: it.quantity || undefined,
+      icon: it.icon || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -106,6 +103,18 @@ function itemsFromServerList(rows) {
     } catch (e) {
       extra = {};
     }
+    if (r.slot_type === "junk") {
+      inventory.push({
+        id: r.item_id,
+        type: "junk",
+        junkId: extra.junkId,
+        name: r.name,
+        icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
+        rarity: r.rarity || "common",
+        quantity: Number(extra.quantity) || 1
+      });
+      return;
+    }
     const it = {
       id: r.item_id,
       type: r.slot_type,
@@ -115,10 +124,13 @@ function itemsFromServerList(rows) {
       def: Number(r.def) || 0,
       hp: Number(r.hp) || 0,
       mp: Number(r.mp) || 0,
+      dodgeChance: Number(extra.dodgeChance) || 0,
+      critChance: Number(extra.critChance) || 0,
+      critDamage: Number(extra.critDamage) || 0,
       enhanceLevel: Number(r.enhance_level) || 0,
       empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
     };
-    ["atk", "def", "hp", "mp"].forEach(k => {
+    ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
       if (!it[k]) delete it[k];
     });
     if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;else inventory.push(it);

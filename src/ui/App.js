@@ -14,7 +14,10 @@ function ThornieDungeons() {
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
   const [enemy, setEnemy] = useState(null);
-  const [log, setLog] = useState("Welcome to ThornieDungeons!");
+  const [log, setLogState] = useState(["Welcome to ThornieDungeons!"]);
+  // Keeps the last 3 combat messages, newest first, so the log panel can show
+  // a short scrolling history instead of overwriting a single line.
+  const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
   const [busy, setBusy] = useState(false);
   const enemyRef = useRef(null);
   const playerRef = useRef(null);
@@ -280,10 +283,11 @@ function ThornieDungeons() {
     const xpGained = currentEnemy.xp;
     const modifier = currentEnemy.modifier;
     // Equipment now only comes from a reward CHEST on boss floors (every 5th floor).
-    // Regular monsters instead have a chance to drop crafting materials (iron / silver / mana ore)
-    // used for the Enhancement (ตีบวก) and Empowerment (เสริมพลัง) systems.
+    // Regular monsters instead have a chance to drop a stack of junk material (stone/grass/
+    // wood/iron/mana stone) used for crafting, selling, and the Enhancement/Empowerment systems.
     let drop = null;
-    let materialDrop = null;
+    let junkDrop = null;
+    let nextInvAfterCombat = inventory;
     let nextChestPity = save.chestPity || 0;
     if (currentEnemy.isBoss) {
       const chestRarity = rollChestRarity(currentEnemy.isEliteBoss, nextChestPity);
@@ -291,14 +295,17 @@ function ThornieDungeons() {
       drop = generateDrop(selectedFloor, {
         forceRarity: chestRarity
       });
-      const nextInv = [...inventory, drop];
-      setInventory(nextInv);
-      persistItems(nextInv, equipped);
+      nextInvAfterCombat = [...inventory, drop];
     } else {
       const matChance = 0.45 + (currentPlayer.dropBonus || 0) / 100 + (modifier?.dropBonusFlat || 0) / 100;
       if (Math.random() < matChance) {
-        materialDrop = rollMaterialDrop(selectedFloor, modifier);
+        junkDrop = rollJunkDrop(selectedFloor, modifier);
+        nextInvAfterCombat = addJunkToInventory(inventory, junkDrop.type, junkDrop.amount);
       }
+    }
+    if (nextInvAfterCombat !== inventory) {
+      setInventory(nextInvAfterCombat);
+      persistItems(nextInvAfterCombat, equipped);
     }
     setDropItem(drop);
     const diamondsGained = currentEnemy.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
@@ -332,21 +339,11 @@ function ThornieDungeons() {
       if (!newActivePetId) newActivePetId = instId;
       newPet = starter;
     }
-    const prevMaterials = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    const nextMaterials = materialDrop ? {
-      ...prevMaterials,
-      [materialDrop.type]: (prevMaterials[materialDrop.type] || 0) + materialDrop.amount
-    } : prevMaterials;
     const nextSave = {
       ...save,
       gold: save.gold + gained,
       diamonds: save.diamonds + diamondsGained,
       unlockedFloor: unlockedNext ? save.unlockedFloor + 1 : save.unlockedFloor,
-      materials: nextMaterials,
       chestPity: nextChestPity,
       character: {
         ...save.character,
@@ -376,7 +373,7 @@ function ThornieDungeons() {
       newSkill,
       newPet,
       isBoss: currentEnemy.isBoss,
-      materialDrop,
+      junkDrop,
       modifier,
       isEliteBoss: currentEnemy.isEliteBoss,
       diamonds: diamondsGained
@@ -409,7 +406,7 @@ function ThornieDungeons() {
       const isMiss = Math.random() * 100 >= stats.accuracy;
       const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
       let dmg = Math.max(2, Math.round(stats.atk - enemy.def * 0.6 + (Math.random() * 4 - 2)));
-      if (isCrit) dmg = Math.round(dmg * 1.6);
+      if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
       setHeroAnim("attack");
       setTimeout(() => {
         if (isMiss) {
@@ -450,7 +447,7 @@ function ThornieDungeons() {
           } else {
             const pierce = skill.defPierce || 0;
             let dmg = Math.max(4, Math.round(stats.atk * skill.mult - enemy.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
-            if (isCrit) dmg = Math.round(dmg * 1.6);
+            if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
             const freeze = skill.freezeChance ? Math.random() < skill.freezeChance : false;
             setEnemy(e => {
               const nh = Math.max(0, e.hp - dmg);
@@ -819,40 +816,30 @@ function ThornieDungeons() {
       message: "ตีบวกถึงระดับสูงสุดแล้ว (+" + ENHANCE_MAX + ")"
     };
     const cost = enhanceCost(level);
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    if (mats.iron < cost.iron || mats.silver < cost.silver || save.gold < cost.gold) {
+    if (junkTotal(inventory, "iron") < cost.iron || save.gold < cost.gold) {
       return {
         ok: false,
-        message: `วัตถุดิบ/ทองไม่พอ (ต้องการ 🔩${cost.iron} 🥈${cost.silver} 🪙${cost.gold})`
+        message: `วัตถุดิบ/ทองไม่พอ (ต้องการ 🔩${cost.iron} 🪙${cost.gold})`
       };
     }
+    const invAfterCost = removeJunkFromInventory(inventory, "iron", cost.iron);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
     persistSave({
       ...save,
-      gold: save.gold - cost.gold,
-      materials: {
-        ...mats,
-        iron: mats.iron - cost.iron,
-        silver: mats.silver - cost.silver
-      }
+      gold: save.gold - cost.gold
     });
     const success = Math.random() * 100 < enhanceSuccessRate(level);
     const riskDowngrade = !success && level >= ENHANCE_DOWNGRADE_LEVEL;
     const stones = save.protectionStones || 0;
     const useStone = riskDowngrade && stones > 0;
-    persistSave({
-      ...save,
-      gold: save.gold - cost.gold,
-      materials: {
-        ...mats,
-        iron: mats.iron - cost.iron,
-        silver: mats.silver - cost.silver
-      },
-      protectionStones: useStone ? stones - 1 : stones
-    });
+    if (useStone) {
+      persistSave({
+        ...save,
+        gold: save.gold - cost.gold,
+        protectionStones: stones - 1
+      });
+    }
     if (success) {
       applyItemUpdate(itemId, prev => ({
         ...prev,
@@ -919,21 +906,18 @@ function ThornieDungeons() {
       message: "ล็อกไว้ทุกออฟชั่นแล้ว ไม่มีอะไรให้รีรอล"
     };
     const cost = rerollCost(filled.length, lockedCount);
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    if (mats.manaOre < cost) return {
-      ok: false,
-      message: `แร่มานาไม่พอสำหรับรีรอล (ต้องการ 🔮${cost})`
-    };
+    if (junkTotal(inventory, "manaOre") < cost.manaOre || save.gold < cost.gold) {
+      return {
+        ok: false,
+        message: `หินมานา/ทองไม่พอสำหรับรีรอล (ต้องการ 🔮${cost.manaOre} 🪙${cost.gold})`
+      };
+    }
+    const invAfterCost = removeJunkFromInventory(inventory, "manaOre", cost.manaOre);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
     persistSave({
       ...save,
-      materials: {
-        ...mats,
-        manaOre: mats.manaOre - cost
-      }
+      gold: save.gold - cost.gold
     });
     applyItemUpdate(itemId, prev => {
       const nextSlots = (prev.empowerSlots || []).map(s => {
@@ -947,7 +931,7 @@ function ThornieDungeons() {
     });
     return {
       ok: true,
-      message: `🔄 รีรอลออฟชั่นสำเร็จ! (ใช้ 🔮${cost}, ล็อกไว้ ${lockedCount} ช่อง)`
+      message: `🔄 รีรอลออฟชั่นสำเร็จ! (ใช้ 🔮${cost.manaOre} 🪙${cost.gold}, ล็อกไว้ ${lockedCount} ช่อง)`
     };
   }
   function salvageItem(itemId) {
@@ -962,25 +946,14 @@ function ThornieDungeons() {
     };
     const it = found.item;
     const y = salvageYield(it.rarity);
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    persistSave({
-      ...save,
-      materials: {
-        iron: mats.iron + y.iron,
-        silver: mats.silver + y.silver,
-        manaOre: mats.manaOre + y.manaOre
-      }
-    });
-    const nextInv = inventory.filter(i => i.id !== itemId);
+    let nextInv = inventory.filter(i => i.id !== itemId);
+    nextInv = addJunkToInventory(nextInv, "iron", y.iron);
+    nextInv = addJunkToInventory(nextInv, "manaOre", y.manaOre);
     setInventory(nextInv);
     persistItems(nextInv, equipped);
     return {
       ok: true,
-      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🥈${y.silver} 🔮${y.manaOre}`
+      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}`
     };
   }
   function buyProtectionStone() {
@@ -994,18 +967,12 @@ function ThornieDungeons() {
   function buyMaterial(type) {
     const price = MATERIAL_SHOP_PRICE[type];
     if (!price || save.gold < price) return;
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
+    const nextInv = addJunkToInventory(inventory, type, 1);
+    setInventory(nextInv);
+    persistItems(nextInv, equipped);
     persistSave({
       ...save,
-      gold: save.gold - price,
-      materials: {
-        ...mats,
-        [type]: (mats[type] || 0) + 1
-      }
+      gold: save.gold - price
     });
   }
   function empowerItem(itemId) {
@@ -1022,21 +989,18 @@ function ThornieDungeons() {
       message: "เสริมพลังครบทุกออฟชั่นแล้ว"
     };
     const cost = empowerCost(nextIndex);
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    if (mats.manaOre < cost) return {
-      ok: false,
-      message: `แร่มานาไม่พอ (ต้องการ 🔮${cost})`
-    };
+    if (junkTotal(inventory, "manaOre") < cost.manaOre || save.gold < cost.gold) {
+      return {
+        ok: false,
+        message: `หินมานา/ทองไม่พอ (ต้องการ 🔮${cost.manaOre} 🪙${cost.gold})`
+      };
+    }
+    const invAfterCost = removeJunkFromInventory(inventory, "manaOre", cost.manaOre);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
     persistSave({
       ...save,
-      materials: {
-        ...mats,
-        manaOre: mats.manaOre - cost
-      }
+      gold: save.gold - cost.gold
     });
     const bonus = rollEmpowerBonus(it.rarity);
     applyItemUpdate(itemId, prev => {
@@ -1241,11 +1205,6 @@ function ThornieDungeons() {
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
     inventory: inventory,
-    materials: save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    },
     onEquip: equipItem,
     onUnequip: unequipItem,
     onSell: sellItem,
@@ -1254,11 +1213,6 @@ function ThornieDungeons() {
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,
     inventory: inventory,
-    materials: save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    },
     onEnhance: enhanceItem,
     onEmpower: empowerItem,
     onReroll: rerollEmpowerItem,

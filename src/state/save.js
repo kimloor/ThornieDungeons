@@ -9,11 +9,6 @@ const defaultSave = () => ({
   potions: 2,
   pets: [],
   activePetId: null,
-  materials: {
-    iron: 0,
-    silver: 0,
-    manaOre: 0
-  },
   protectionStones: 0,
   chestPity: 0,
   character: {

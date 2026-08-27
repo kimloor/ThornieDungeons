@@ -81,6 +81,11 @@ const STYLE = `
 .md-sprite-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 2; }
 .md-sprite-name { font-family:'Baloo 2'; font-weight: 700; font-size: 11px; background: rgba(10,6,22,0.75); color: var(--gold); border: 1px solid var(--gold-deep); padding: 1px 8px; border-radius: 999px; }
 
+.md-enemy-hpbar { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 74px; }
+.md-enemy-hpbar-track { width: 100%; height: 7px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
+.md-enemy-hpbar-fill { height: 100%; transition: width 0.4s ease; background: linear-gradient(90deg,#FF8787,#E14F4F); }
+.md-enemy-hpbar-hp { font-size: 8.5px; font-weight: 800; color: var(--ink-soft); }
+
 .md-hero { width: 62px; height: 70px; position: relative; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); }
 .md-hero .body { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 46px; height: 46px; border-radius: 50% 50% 46% 46%; background: var(--coral); border: 3px solid #1B1233; }
 .md-hero .head { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 36px; border-radius: 50%; background: #FFE0C2; border: 3px solid #1B1233; }
@@ -115,8 +120,10 @@ const STYLE = `
 .md-dmg-float { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-family: 'Baloo 2'; font-weight: 800; font-size: 16px; pointer-events: none; animation: md-float-up 0.9s ease forwards; z-index: 5; text-shadow: 0 2px 0 rgba(0,0,0,0.4); }
 @keyframes md-float-up { 0% { opacity: 1; transform: translate(-50%, 0);} 100% { opacity: 0; transform: translate(-50%, -34px);} }
 
-.md-log { background: rgba(10,6,22,0.6); border: 1px solid rgba(255,209,102,0.25); border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: var(--ink-soft); min-height: 34px; margin-bottom: 0; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
-.md-log:before { content: '💬'; font-size: 12px; flex-shrink: 0; }
+.md-log { background: rgba(10,6,22,0.6); border: 1px solid rgba(255,209,102,0.25); border-radius: 12px; padding: 8px 12px; min-height: 62px; max-height: 78px; overflow-y: auto; margin-bottom: 0; display: flex; flex-direction: column; gap: 3px; justify-content: flex-start; }
+.md-log-line { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-align: center; opacity: 0.6; }
+.md-log-line:before { content: '💬 '; }
+.md-log-line.latest { font-size: 12.5px; color: var(--ink); opacity: 1; }
 
 .md-panel { position: relative; z-index: 2; background: rgba(10,6,22,0.5); border-top: 2px solid var(--gold-deep); padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .md-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -274,17 +281,6 @@ const STYLE = `
 .md-hud-track.xp .md-hud-fill { background: linear-gradient(90deg, #FFE49A, var(--gold)); }
 .md-hud-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.85); }
 
-/* ---- enemy status strip, sits between top bar and arena ---- */
-.md-enemy-bar {
-  position: relative; z-index: 6; display: flex; align-items: center; gap: 8px;
-  background: rgba(10,6,22,0.45); border: 1px solid rgba(225,79,79,0.4); border-radius: 12px;
-  padding: 6px 10px; margin-bottom: 6px;
-}
-.md-enemy-bar-name { font-family: 'Baloo 2'; font-size: 11px; font-weight: 700; color: var(--ink); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34%; }
-.md-enemy-bar-track { flex: 1; height: 9px; border-radius: 5px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
-.md-enemy-bar-fill { height: 100%; transition: width 0.4s ease; background: linear-gradient(90deg,#FF8787,#E14F4F); }
-.md-enemy-bar-hp { font-size: 9.5px; font-weight: 800; color: var(--ink-soft); flex-shrink: 0; white-space: nowrap; }
-
 .md-rail-badge {
   position: absolute; bottom: -5px; right: -5px; background: var(--gold); color: var(--bg-top);
   font-style: normal; font-family: 'Baloo 2'; font-weight: 800; font-size: 10px; border-radius: 999px;
@@ -386,6 +382,8 @@ const STYLE = `
 .md-inventory-cell-num { position:absolute; left:4px; top:3px; font-size:8px; color:var(--ink-soft); font-weight:800; }
 .md-inventory-cell-qty { position:absolute; right:4px; bottom:3px; font-size:8px; color:var(--gold); font-weight:800; }
 .md-inventory-cell-stars { position:absolute; left:50%; bottom:3px; transform:translateX(-50%) scale(.72); transform-origin:center; white-space:nowrap; }
+.md-inventory-toggle { width:100%; margin-top:6px; padding:6px; border-radius:10px; border:1px dashed rgba(255,209,102,.4); background:rgba(255,255,255,.03); color:var(--ink-soft); font-family:'Baloo 2'; font-size:10.5px; font-weight:800; cursor:pointer; }
+.md-inventory-toggle:active { background:rgba(255,209,102,.1); }
 .md-item-detail { margin-top:8px; padding:9px 10px; border:1px solid rgba(255,209,102,.28); border-radius:13px; background:rgba(0,0,0,.22); min-height:54px; }
 .md-item-detail-name { font-size:12px; font-weight:800; color:var(--gold); }
 .md-item-detail-sub { font-size:10px; color:var(--ink-soft); font-weight:700; margin-top:2px; }

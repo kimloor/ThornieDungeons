@@ -136,6 +136,11 @@ const STYLE = `
 .md-sprite-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 2; }
 .md-sprite-name { font-family:'Baloo 2'; font-weight: 700; font-size: 11px; background: rgba(10,6,22,0.75); color: var(--gold); border: 1px solid var(--gold-deep); padding: 1px 8px; border-radius: 999px; }
 
+.md-enemy-hpbar { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 74px; }
+.md-enemy-hpbar-track { width: 100%; height: 7px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
+.md-enemy-hpbar-fill { height: 100%; transition: width 0.4s ease; background: linear-gradient(90deg,#FF8787,#E14F4F); }
+.md-enemy-hpbar-hp { font-size: 8.5px; font-weight: 800; color: var(--ink-soft); }
+
 .md-hero { width: 62px; height: 70px; position: relative; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); }
 .md-hero .body { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 46px; height: 46px; border-radius: 50% 50% 46% 46%; background: var(--coral); border: 3px solid #1B1233; }
 .md-hero .head { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 36px; border-radius: 50%; background: #FFE0C2; border: 3px solid #1B1233; }
@@ -170,8 +175,10 @@ const STYLE = `
 .md-dmg-float { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-family: 'Baloo 2'; font-weight: 800; font-size: 16px; pointer-events: none; animation: md-float-up 0.9s ease forwards; z-index: 5; text-shadow: 0 2px 0 rgba(0,0,0,0.4); }
 @keyframes md-float-up { 0% { opacity: 1; transform: translate(-50%, 0);} 100% { opacity: 0; transform: translate(-50%, -34px);} }
 
-.md-log { background: rgba(10,6,22,0.6); border: 1px solid rgba(255,209,102,0.25); border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: var(--ink-soft); min-height: 34px; margin-bottom: 0; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
-.md-log:before { content: '💬'; font-size: 12px; flex-shrink: 0; }
+.md-log { background: rgba(10,6,22,0.6); border: 1px solid rgba(255,209,102,0.25); border-radius: 12px; padding: 8px 12px; min-height: 62px; max-height: 78px; overflow-y: auto; margin-bottom: 0; display: flex; flex-direction: column; gap: 3px; justify-content: flex-start; }
+.md-log-line { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-align: center; opacity: 0.6; }
+.md-log-line:before { content: '💬 '; }
+.md-log-line.latest { font-size: 12.5px; color: var(--ink); opacity: 1; }
 
 .md-panel { position: relative; z-index: 2; background: rgba(10,6,22,0.5); border-top: 2px solid var(--gold-deep); padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .md-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -329,17 +336,6 @@ const STYLE = `
 .md-hud-track.xp .md-hud-fill { background: linear-gradient(90deg, #FFE49A, var(--gold)); }
 .md-hud-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.85); }
 
-/* ---- enemy status strip, sits between top bar and arena ---- */
-.md-enemy-bar {
-  position: relative; z-index: 6; display: flex; align-items: center; gap: 8px;
-  background: rgba(10,6,22,0.45); border: 1px solid rgba(225,79,79,0.4); border-radius: 12px;
-  padding: 6px 10px; margin-bottom: 6px;
-}
-.md-enemy-bar-name { font-family: 'Baloo 2'; font-size: 11px; font-weight: 700; color: var(--ink); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34%; }
-.md-enemy-bar-track { flex: 1; height: 9px; border-radius: 5px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
-.md-enemy-bar-fill { height: 100%; transition: width 0.4s ease; background: linear-gradient(90deg,#FF8787,#E14F4F); }
-.md-enemy-bar-hp { font-size: 9.5px; font-weight: 800; color: var(--ink-soft); flex-shrink: 0; white-space: nowrap; }
-
 .md-rail-badge {
   position: absolute; bottom: -5px; right: -5px; background: var(--gold); color: var(--bg-top);
   font-style: normal; font-family: 'Baloo 2'; font-weight: 800; font-size: 10px; border-radius: 999px;
@@ -441,6 +437,8 @@ const STYLE = `
 .md-inventory-cell-num { position:absolute; left:4px; top:3px; font-size:8px; color:var(--ink-soft); font-weight:800; }
 .md-inventory-cell-qty { position:absolute; right:4px; bottom:3px; font-size:8px; color:var(--gold); font-weight:800; }
 .md-inventory-cell-stars { position:absolute; left:50%; bottom:3px; transform:translateX(-50%) scale(.72); transform-origin:center; white-space:nowrap; }
+.md-inventory-toggle { width:100%; margin-top:6px; padding:6px; border-radius:10px; border:1px dashed rgba(255,209,102,.4); background:rgba(255,255,255,.03); color:var(--ink-soft); font-family:'Baloo 2'; font-size:10.5px; font-weight:800; cursor:pointer; }
+.md-inventory-toggle:active { background:rgba(255,209,102,.1); }
 .md-item-detail { margin-top:8px; padding:9px 10px; border:1px solid rgba(255,209,102,.28); border-radius:13px; background:rgba(0,0,0,.22); min-height:54px; }
 .md-item-detail-name { font-size:12px; font-weight:800; color:var(--gold); }
 .md-item-detail-sub { font-size:10px; color:var(--ink-soft); font-weight:700; margin-top:2px; }
@@ -491,11 +489,6 @@ const defaultSave = () => ({
   potions: 2,
   pets: [],
   activePetId: null,
-  materials: {
-    iron: 0,
-    silver: 0,
-    manaOre: 0
-  },
   protectionStones: 0,
   chestPity: 0,
   character: {
@@ -796,10 +789,9 @@ function progressToServer(save) {
     char_luk: save.character.stats.luk,
     pets_json: JSON.stringify(save.pets || []),
     active_pet_id: save.activePetId || "",
+    // Iron / mana stone used to live here as raw counters, but they're now regular stackable
+    // junk items synced through itemsToServerList instead, so this blob only keeps the misc bits.
     materials_json: JSON.stringify({
-      iron: save.materials?.iron || 0,
-      silver: save.materials?.silver || 0,
-      manaOre: save.materials?.manaOre || 0,
       protectionStones: save.protectionStones || 0,
       chestPity: save.chestPity || 0
     })
@@ -813,21 +805,11 @@ function progressFromServer(row) {
   } catch (e) {
     pets = [];
   }
-  let materials = {
-    iron: 0,
-    silver: 0,
-    manaOre: 0
-  };
   let protectionStones = 0;
   let chestPity = 0;
   try {
     if (row.materials_json) {
       const parsed = JSON.parse(row.materials_json);
-      materials = {
-        iron: Number(parsed.iron) || 0,
-        silver: Number(parsed.silver) || 0,
-        manaOre: Number(parsed.manaOre) || 0
-      };
       protectionStones = Number(parsed.protectionStones) || 0;
       chestPity = Number(parsed.chestPity) || 0;
     }
@@ -839,7 +821,6 @@ function progressFromServer(row) {
     potions: row.potions === undefined || row.potions === "" ? 2 : Number(row.potions) || 0,
     pets,
     activePetId: row.active_pet_id || null,
-    materials,
     protectionStones,
     chestPity,
     character: {
@@ -868,8 +849,17 @@ function itemsToServerList(inventory, equipped) {
     hp: it.hp,
     mp: it.mp,
     enhanceLevel: it.enhanceLevel || 0,
+    // dodgeChance/critChance/critDamage (accessory base rolls) and junk stack data
+    // (junkId/quantity/icon) don't have their own server columns, so they all ride
+    // along inside the extra JSON blob instead.
     extra: {
-      empowerSlots: it.empowerSlots || []
+      empowerSlots: it.empowerSlots || [],
+      dodgeChance: it.dodgeChance || undefined,
+      critChance: it.critChance || undefined,
+      critDamage: it.critDamage || undefined,
+      junkId: it.junkId || undefined,
+      quantity: it.quantity || undefined,
+      icon: it.icon || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -888,6 +878,18 @@ function itemsFromServerList(rows) {
     } catch (e) {
       extra = {};
     }
+    if (r.slot_type === "junk") {
+      inventory.push({
+        id: r.item_id,
+        type: "junk",
+        junkId: extra.junkId,
+        name: r.name,
+        icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
+        rarity: r.rarity || "common",
+        quantity: Number(extra.quantity) || 1
+      });
+      return;
+    }
     const it = {
       id: r.item_id,
       type: r.slot_type,
@@ -897,10 +899,13 @@ function itemsFromServerList(rows) {
       def: Number(r.def) || 0,
       hp: Number(r.hp) || 0,
       mp: Number(r.mp) || 0,
+      dodgeChance: Number(extra.dodgeChance) || 0,
+      critChance: Number(extra.critChance) || 0,
+      critDamage: Number(extra.critDamage) || 0,
       enhanceLevel: Number(r.enhance_level) || 0,
       empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
     };
-    ["atk", "def", "hp", "mp"].forEach(k => {
+    ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
       if (!it[k]) delete it[k];
     });
     if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;else inventory.push(it);
@@ -1287,31 +1292,125 @@ const RARITY_STARS = {
 };
 
 // ===== systems/enhancement.js =====
-// ---------- materials, enhancement (ตีบวก) & empowerment (เสริมพลัง) ----------
-const MATERIAL_INFO = {
+// ---------- junk materials, enhancement (ตีบวก) & empowerment (เสริมพลัง) ----------
+// Junk items are plain stackable drops that live in the normal inventory (type: "junk"),
+// not in a separate save.materials pool, so they persist through the same item sync as gear.
+const JUNK_INFO = {
+  stone: {
+    name: "หิน",
+    icon: "🪨"
+  },
+  grass: {
+    name: "หญ้า",
+    icon: "🌿"
+  },
+  wood: {
+    name: "ไม้",
+    icon: "🪵"
+  },
   iron: {
     name: "เหล็ก",
     icon: "🔩"
   },
-  silver: {
-    name: "เงิน",
-    icon: "🥈"
-  },
   manaOre: {
-    name: "แร่มานา",
+    name: "หินมานา",
     icon: "🔮"
   }
 };
+const JUNK_STACK_MAX = 99;
+const JUNK_SELL_VALUE = {
+  stone: 1,
+  grass: 1,
+  wood: 2,
+  iron: 4,
+  manaOre: 6
+};
+function makeJunkItem(junkId, quantity) {
+  const info = JUNK_INFO[junkId];
+  return {
+    id: `junk-${junkId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    type: "junk",
+    junkId,
+    name: info.name,
+    icon: info.icon,
+    rarity: "common",
+    quantity: Math.max(1, Math.min(JUNK_STACK_MAX, quantity))
+  };
+}
+// Sums every stack of a given junk type currently sitting in the inventory.
+function junkTotal(inventory, junkId) {
+  return inventory.reduce((sum, it) => it.type === "junk" && it.junkId === junkId ? sum + (it.quantity || 0) : sum, 0);
+}
+// Adds `amount` of a junk type into existing (non-full) stacks first, then creates new
+// 99-cap stacks for any remainder, so a slot never holds more than JUNK_STACK_MAX.
+function addJunkToInventory(inventory, junkId, amount) {
+  if (!amount || amount <= 0) return inventory;
+  let remaining = amount;
+  const next = inventory.map(it => {
+    if (remaining > 0 && it.type === "junk" && it.junkId === junkId && it.quantity < JUNK_STACK_MAX) {
+      const space = JUNK_STACK_MAX - it.quantity;
+      const add = Math.min(space, remaining);
+      remaining -= add;
+      return {
+        ...it,
+        quantity: it.quantity + add
+      };
+    }
+    return it;
+  });
+  while (remaining > 0) {
+    const chunk = Math.min(JUNK_STACK_MAX, remaining);
+    next.push(makeJunkItem(junkId, chunk));
+    remaining -= chunk;
+  }
+  return next;
+}
+// Removes `amount` of a junk type, draining partially-filled/emptied stacks first.
+// Returns null if the player doesn't have enough (no partial spend).
+function removeJunkFromInventory(inventory, junkId, amount) {
+  if (!amount || amount <= 0) return inventory;
+  if (junkTotal(inventory, junkId) < amount) return null;
+  let remaining = amount;
+  const next = [];
+  inventory.forEach(it => {
+    if (remaining > 0 && it.type === "junk" && it.junkId === junkId) {
+      const take = Math.min(it.quantity, remaining);
+      remaining -= take;
+      const leftover = it.quantity - take;
+      if (leftover > 0) next.push({
+        ...it,
+        quantity: leftover
+      });
+    } else {
+      next.push(it);
+    }
+  });
+  return next;
+}
+// Regular (non-boss) monsters drop one stack of a random junk material.
+function rollJunkDrop(floor, modifier) {
+  const keys = Object.keys(JUNK_INFO);
+  const manaWeight = modifier?.rarityBoost ? 0.3 : 0.14;
+  const ironWeight = 0.22;
+  const r = Math.random();
+  let junkId;
+  if (r < manaWeight) junkId = "manaOre";else if (r < manaWeight + ironWeight) junkId = "iron";else junkId = keys[Math.floor(Math.random() * 3)]; // stone / grass / wood
+  const amount = 1 + Math.floor(floor / 12) + (Math.random() < 0.25 ? 1 : 0);
+  return {
+    type: junkId,
+    amount
+  };
+}
 const ENHANCE_MAX = 10;
 const ENHANCE_RATE_TABLE = [95, 90, 82, 72, 60, 48, 36, 25, 16, 10];
 function enhanceSuccessRate(level) {
   return ENHANCE_RATE_TABLE[Math.min(level, ENHANCE_RATE_TABLE.length - 1)];
 }
+// Enhance now always costs exactly 1 iron plus a gold fee that scales with level.
 function enhanceCost(level) {
   return {
-    iron: 3 + level * 3,
-    silver: 2 + level * 2,
-    gold: 20 + level * 25
+    iron: 1,
+    gold: 25 + level * 35
   };
 }
 const ENHANCE_STAT_PCT = 0.06; // each successful +1 adds 6% of the item's base stat
@@ -1356,8 +1455,12 @@ const EMPOWER_POOL = [{
   icon: "🎁",
   unit: 1.5
 }];
+// Empowering a new slot now always costs exactly 1 mana stone plus a gold fee that scales with slot index.
 function empowerCost(slotIndex) {
-  return 5 + slotIndex * 6;
+  return {
+    manaOre: 1,
+    gold: 30 + slotIndex * 45
+  };
 }
 function rollEmpowerBonus(rarity) {
   const def = EMPOWER_POOL[Math.floor(Math.random() * EMPOWER_POOL.length)];
@@ -1388,39 +1491,25 @@ function rollChestRarity(isEliteBoss, pity = 0) {
   if (r < 0.8) return "unique";
   return "rare";
 }
-function rollMaterialDrop(floor, modifier) {
-  const r = Math.random();
-  const manaWeight = modifier?.rarityBoost ? 0.42 : 0.22;
-  let type;
-  if (r < manaWeight) type = "manaOre";else if (r < manaWeight + 0.4) type = "iron";else type = "silver";
-  const amount = 1 + Math.floor(floor / 12) + (Math.random() < 0.25 ? 1 : 0);
-  return {
-    type,
-    amount
-  };
-}
 
 // ===== systems/salvage.js =====
 // ---------- salvage, protection stone, empower reroll/lock, chest pity, material shop ----------
+// Salvaging gear now yields junk items (iron / mana stone) directly into the inventory.
 const SALVAGE_TABLE = {
   rare: {
     iron: 3,
-    silver: 2,
     manaOre: 0
   },
   unique: {
     iron: 6,
-    silver: 4,
     manaOre: 2
   },
   elite: {
     iron: 10,
-    silver: 7,
     manaOre: 5
   },
   mythic: {
     iron: 15,
-    silver: 10,
     manaOre: 9
   }
 };
@@ -1429,12 +1518,15 @@ function salvageYield(rarity) {
 }
 const PROTECTION_STONE_PRICE = 40; // diamonds
 const ENHANCE_DOWNGRADE_LEVEL = 6; // failing at +7 attempt (current level >= 6) risks a downgrade
+// Rerolling empower options now always costs exactly 1 mana stone plus a gold fee that scales with complexity.
 function rerollCost(filledCount, lockedCount) {
-  return Math.round((15 + filledCount * 8) * (1 + lockedCount * 0.6));
+  return {
+    manaOre: 1,
+    gold: Math.round((25 + filledCount * 15) * (1 + lockedCount * 0.6))
+  };
 }
 const MATERIAL_SHOP_PRICE = {
   iron: 6,
-  silver: 10,
   manaOre: 22
 };
 const CHEST_PITY_UNIQUE = 5;
@@ -1508,6 +1600,22 @@ const SLOT_LABEL = {
 const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory"];
 
 // ===== systems/stats.js =====
+// Accessories no longer roll HP/MP — they roll one of these % utility stats instead.
+const ACCESSORY_STAT_POOL = ["dodgeChance", "critChance", "critDamage"];
+const ACCESSORY_STAT_BASE = {
+  dodgeChance: {
+    flat: 1,
+    perFloor: 0.12
+  },
+  critChance: {
+    flat: 1.2,
+    perFloor: 0.15
+  },
+  critDamage: {
+    flat: 4,
+    perFloor: 0.35
+  }
+};
 function characterBaseStats(save) {
   const lvl = save.character.level;
   const s = save.character.stats;
@@ -1518,6 +1626,7 @@ function characterBaseStats(save) {
     def: 2 + Math.floor(lvl * 0.4) + Math.floor(s.vit * 0.5),
     accuracy: Math.min(99, +(80 + s.dex * 1.0).toFixed(1)),
     critChance: Math.min(50, +(s.luk * 0.8).toFixed(1)),
+    critDamage: 50,
     dodgeChance: Math.min(30, +(s.luk * 0.5).toFixed(1)),
     dropBonus: Math.min(20, +(s.luk * 0.35).toFixed(1))
   };
@@ -1547,6 +1656,7 @@ function freshPlayerFromSave(save, carry = null) {
     baseMaxMp: cb.maxMp,
     accuracy: cb.accuracy,
     critChance: cb.critChance,
+    critDamage: cb.critDamage,
     dodgeChance: cb.dodgeChance,
     dropBonus: cb.dropBonus,
     hp,
@@ -1670,8 +1780,10 @@ function buildDropItem(floor, options = {}) {
       def
     };
   }
-  const statKey = Math.random() < 0.5 ? "hp" : "mp";
-  const val = Math.max(4, Math.round((statKey === "hp" ? 6 + floor * 2.4 : 4 + floor * 1.6) * mult));
+  // Accessories are pure utility pieces: dodge / crit chance / crit damage as % values, never HP or MP.
+  const statKey = ACCESSORY_STAT_POOL[Math.floor(Math.random() * ACCESSORY_STAT_POOL.length)];
+  const base = ACCESSORY_STAT_BASE[statKey];
+  const val = Math.round((base.flat + floor * base.perFloor) * mult * 10) / 10;
   return {
     id,
     type,
@@ -1693,9 +1805,10 @@ function itemBonus(it) {
     def: (it.def || 0) * growMult,
     hp: (it.hp || 0) * growMult,
     mp: (it.mp || 0) * growMult,
-    critChance: 0,
+    critChance: (it.critChance || 0) * growMult,
+    critDamage: (it.critDamage || 0) * growMult,
     accuracy: 0,
-    dodgeChance: 0,
+    dodgeChance: (it.dodgeChance || 0) * growMult,
     dropBonus: 0
   };
   (it.empowerSlots || []).forEach(slot => {
@@ -1712,6 +1825,7 @@ function itemStatText(it) {
   if (b.hp) parts.push(`+${Math.round(b.hp)} HP`);
   if (b.mp) parts.push(`+${Math.round(b.mp)} MP`);
   if (b.critChance) parts.push(`+${b.critChance}% Crit`);
+  if (b.critDamage) parts.push(`+${b.critDamage}% Crit Dmg`);
   if (b.accuracy) parts.push(`+${b.accuracy}% Acc`);
   if (b.dodgeChance) parts.push(`+${b.dodgeChance}% Dodge`);
   if (b.dropBonus) parts.push(`+${b.dropBonus}% Drop`);
@@ -1724,6 +1838,7 @@ function getEquipBonus(equipped) {
     hp: 0,
     mp: 0,
     critChance: 0,
+    critDamage: 0,
     accuracy: 0,
     dodgeChance: 0,
     dropBonus: 0
@@ -1738,6 +1853,7 @@ function getEquipBonus(equipped) {
   b.hp = Math.round(b.hp);
   b.mp = Math.round(b.mp);
   b.critChance = Math.round(b.critChance * 10) / 10;
+  b.critDamage = Math.round(b.critDamage * 10) / 10;
   b.accuracy = Math.round(b.accuracy * 10) / 10;
   b.dodgeChance = Math.round(b.dodgeChance * 10) / 10;
   b.dropBonus = Math.round(b.dropBonus * 10) / 10;
@@ -1752,23 +1868,25 @@ function getStats(player, equipped) {
     def: Math.round((player.baseDef + b.def) * defBuff),
     maxHp: player.baseMaxHp + b.hp,
     maxMp: player.baseMaxMp + b.mp,
-    accuracy: (player.accuracy || 0) + b.accuracy,
-    critChance: (player.critChance || 0) + b.critChance,
-    dodgeChance: (player.dodgeChance || 0) + b.dodgeChance,
+    accuracy: Math.min(99, (player.accuracy || 0) + b.accuracy),
+    critChance: Math.min(80, (player.critChance || 0) + b.critChance),
+    critDamage: Math.min(300, (player.critDamage || 0) + b.critDamage),
+    dodgeChance: Math.min(60, (player.dodgeChance || 0) + b.dodgeChance),
     dropBonus: (player.dropBonus || 0) + b.dropBonus
   };
 }
 function combatPower(stats, level) {
-  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.dodgeChance || 0) * 6 + level * 50);
+  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.critDamage || 0) * 3 + (stats.dodgeChance || 0) * 6 + level * 50);
 }
 
 
 // ===== systems/shop.js =====
 // ---------- shop & selling ----------
 function itemValueScore(it) {
-  return (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6;
+  return (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6 + (it.dodgeChance || 0) * 4 + (it.critChance || 0) * 4 + (it.critDamage || 0) * 2.5;
 }
 function sellPrice(it) {
+  if (it.type === "junk") return Math.max(1, (JUNK_SELL_VALUE[it.junkId] || 1) * (it.quantity || 1));
   return Math.max(3, Math.round(itemValueScore(it) * (RARITY_MULT[it.rarity] || 1) * 0.9));
 }
 function shopBuyPrice(it) {
@@ -1817,7 +1935,10 @@ function ThornieDungeons() {
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
   const [enemy, setEnemy] = useState(null);
-  const [log, setLog] = useState("Welcome to ThornieDungeons!");
+  const [log, setLogState] = useState(["Welcome to ThornieDungeons!"]);
+  // Keeps the last 3 combat messages, newest first, so the log panel can show
+  // a short scrolling history instead of overwriting a single line.
+  const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
   const [busy, setBusy] = useState(false);
   const enemyRef = useRef(null);
   const playerRef = useRef(null);
@@ -2083,10 +2204,11 @@ function ThornieDungeons() {
     const xpGained = currentEnemy.xp;
     const modifier = currentEnemy.modifier;
     // Equipment now only comes from a reward CHEST on boss floors (every 5th floor).
-    // Regular monsters instead have a chance to drop crafting materials (iron / silver / mana ore)
-    // used for the Enhancement (ตีบวก) and Empowerment (เสริมพลัง) systems.
+    // Regular monsters instead have a chance to drop a stack of junk material (stone/grass/
+    // wood/iron/mana stone) used for crafting, selling, and the Enhancement/Empowerment systems.
     let drop = null;
-    let materialDrop = null;
+    let junkDrop = null;
+    let nextInvAfterCombat = inventory;
     let nextChestPity = save.chestPity || 0;
     if (currentEnemy.isBoss) {
       const chestRarity = rollChestRarity(currentEnemy.isEliteBoss, nextChestPity);
@@ -2094,14 +2216,17 @@ function ThornieDungeons() {
       drop = generateDrop(selectedFloor, {
         forceRarity: chestRarity
       });
-      const nextInv = [...inventory, drop];
-      setInventory(nextInv);
-      persistItems(nextInv, equipped);
+      nextInvAfterCombat = [...inventory, drop];
     } else {
       const matChance = 0.45 + (currentPlayer.dropBonus || 0) / 100 + (modifier?.dropBonusFlat || 0) / 100;
       if (Math.random() < matChance) {
-        materialDrop = rollMaterialDrop(selectedFloor, modifier);
+        junkDrop = rollJunkDrop(selectedFloor, modifier);
+        nextInvAfterCombat = addJunkToInventory(inventory, junkDrop.type, junkDrop.amount);
       }
+    }
+    if (nextInvAfterCombat !== inventory) {
+      setInventory(nextInvAfterCombat);
+      persistItems(nextInvAfterCombat, equipped);
     }
     setDropItem(drop);
     const diamondsGained = currentEnemy.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
@@ -2135,21 +2260,11 @@ function ThornieDungeons() {
       if (!newActivePetId) newActivePetId = instId;
       newPet = starter;
     }
-    const prevMaterials = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    const nextMaterials = materialDrop ? {
-      ...prevMaterials,
-      [materialDrop.type]: (prevMaterials[materialDrop.type] || 0) + materialDrop.amount
-    } : prevMaterials;
     const nextSave = {
       ...save,
       gold: save.gold + gained,
       diamonds: save.diamonds + diamondsGained,
       unlockedFloor: unlockedNext ? save.unlockedFloor + 1 : save.unlockedFloor,
-      materials: nextMaterials,
       chestPity: nextChestPity,
       character: {
         ...save.character,
@@ -2179,7 +2294,7 @@ function ThornieDungeons() {
       newSkill,
       newPet,
       isBoss: currentEnemy.isBoss,
-      materialDrop,
+      junkDrop,
       modifier,
       isEliteBoss: currentEnemy.isEliteBoss,
       diamonds: diamondsGained
@@ -2212,7 +2327,7 @@ function ThornieDungeons() {
       const isMiss = Math.random() * 100 >= stats.accuracy;
       const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
       let dmg = Math.max(2, Math.round(stats.atk - enemy.def * 0.6 + (Math.random() * 4 - 2)));
-      if (isCrit) dmg = Math.round(dmg * 1.6);
+      if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
       setHeroAnim("attack");
       setTimeout(() => {
         if (isMiss) {
@@ -2253,7 +2368,7 @@ function ThornieDungeons() {
           } else {
             const pierce = skill.defPierce || 0;
             let dmg = Math.max(4, Math.round(stats.atk * skill.mult - enemy.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
-            if (isCrit) dmg = Math.round(dmg * 1.6);
+            if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
             const freeze = skill.freezeChance ? Math.random() < skill.freezeChance : false;
             setEnemy(e => {
               const nh = Math.max(0, e.hp - dmg);
@@ -2622,40 +2737,30 @@ function ThornieDungeons() {
       message: "ตีบวกถึงระดับสูงสุดแล้ว (+" + ENHANCE_MAX + ")"
     };
     const cost = enhanceCost(level);
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    if (mats.iron < cost.iron || mats.silver < cost.silver || save.gold < cost.gold) {
+    if (junkTotal(inventory, "iron") < cost.iron || save.gold < cost.gold) {
       return {
         ok: false,
-        message: `วัตถุดิบ/ทองไม่พอ (ต้องการ 🔩${cost.iron} 🥈${cost.silver} 🪙${cost.gold})`
+        message: `วัตถุดิบ/ทองไม่พอ (ต้องการ 🔩${cost.iron} 🪙${cost.gold})`
       };
     }
+    const invAfterCost = removeJunkFromInventory(inventory, "iron", cost.iron);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
     persistSave({
       ...save,
-      gold: save.gold - cost.gold,
-      materials: {
-        ...mats,
-        iron: mats.iron - cost.iron,
-        silver: mats.silver - cost.silver
-      }
+      gold: save.gold - cost.gold
     });
     const success = Math.random() * 100 < enhanceSuccessRate(level);
     const riskDowngrade = !success && level >= ENHANCE_DOWNGRADE_LEVEL;
     const stones = save.protectionStones || 0;
     const useStone = riskDowngrade && stones > 0;
-    persistSave({
-      ...save,
-      gold: save.gold - cost.gold,
-      materials: {
-        ...mats,
-        iron: mats.iron - cost.iron,
-        silver: mats.silver - cost.silver
-      },
-      protectionStones: useStone ? stones - 1 : stones
-    });
+    if (useStone) {
+      persistSave({
+        ...save,
+        gold: save.gold - cost.gold,
+        protectionStones: stones - 1
+      });
+    }
     if (success) {
       applyItemUpdate(itemId, prev => ({
         ...prev,
@@ -2722,21 +2827,18 @@ function ThornieDungeons() {
       message: "ล็อกไว้ทุกออฟชั่นแล้ว ไม่มีอะไรให้รีรอล"
     };
     const cost = rerollCost(filled.length, lockedCount);
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    if (mats.manaOre < cost) return {
-      ok: false,
-      message: `แร่มานาไม่พอสำหรับรีรอล (ต้องการ 🔮${cost})`
-    };
+    if (junkTotal(inventory, "manaOre") < cost.manaOre || save.gold < cost.gold) {
+      return {
+        ok: false,
+        message: `หินมานา/ทองไม่พอสำหรับรีรอล (ต้องการ 🔮${cost.manaOre} 🪙${cost.gold})`
+      };
+    }
+    const invAfterCost = removeJunkFromInventory(inventory, "manaOre", cost.manaOre);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
     persistSave({
       ...save,
-      materials: {
-        ...mats,
-        manaOre: mats.manaOre - cost
-      }
+      gold: save.gold - cost.gold
     });
     applyItemUpdate(itemId, prev => {
       const nextSlots = (prev.empowerSlots || []).map(s => {
@@ -2750,7 +2852,7 @@ function ThornieDungeons() {
     });
     return {
       ok: true,
-      message: `🔄 รีรอลออฟชั่นสำเร็จ! (ใช้ 🔮${cost}, ล็อกไว้ ${lockedCount} ช่อง)`
+      message: `🔄 รีรอลออฟชั่นสำเร็จ! (ใช้ 🔮${cost.manaOre} 🪙${cost.gold}, ล็อกไว้ ${lockedCount} ช่อง)`
     };
   }
   function salvageItem(itemId) {
@@ -2765,25 +2867,14 @@ function ThornieDungeons() {
     };
     const it = found.item;
     const y = salvageYield(it.rarity);
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    persistSave({
-      ...save,
-      materials: {
-        iron: mats.iron + y.iron,
-        silver: mats.silver + y.silver,
-        manaOre: mats.manaOre + y.manaOre
-      }
-    });
-    const nextInv = inventory.filter(i => i.id !== itemId);
+    let nextInv = inventory.filter(i => i.id !== itemId);
+    nextInv = addJunkToInventory(nextInv, "iron", y.iron);
+    nextInv = addJunkToInventory(nextInv, "manaOre", y.manaOre);
     setInventory(nextInv);
     persistItems(nextInv, equipped);
     return {
       ok: true,
-      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🥈${y.silver} 🔮${y.manaOre}`
+      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}`
     };
   }
   function buyProtectionStone() {
@@ -2797,18 +2888,12 @@ function ThornieDungeons() {
   function buyMaterial(type) {
     const price = MATERIAL_SHOP_PRICE[type];
     if (!price || save.gold < price) return;
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
+    const nextInv = addJunkToInventory(inventory, type, 1);
+    setInventory(nextInv);
+    persistItems(nextInv, equipped);
     persistSave({
       ...save,
-      gold: save.gold - price,
-      materials: {
-        ...mats,
-        [type]: (mats[type] || 0) + 1
-      }
+      gold: save.gold - price
     });
   }
   function empowerItem(itemId) {
@@ -2825,21 +2910,18 @@ function ThornieDungeons() {
       message: "เสริมพลังครบทุกออฟชั่นแล้ว"
     };
     const cost = empowerCost(nextIndex);
-    const mats = save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    };
-    if (mats.manaOre < cost) return {
-      ok: false,
-      message: `แร่มานาไม่พอ (ต้องการ 🔮${cost})`
-    };
+    if (junkTotal(inventory, "manaOre") < cost.manaOre || save.gold < cost.gold) {
+      return {
+        ok: false,
+        message: `หินมานา/ทองไม่พอ (ต้องการ 🔮${cost.manaOre} 🪙${cost.gold})`
+      };
+    }
+    const invAfterCost = removeJunkFromInventory(inventory, "manaOre", cost.manaOre);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
     persistSave({
       ...save,
-      materials: {
-        ...mats,
-        manaOre: mats.manaOre - cost
-      }
+      gold: save.gold - cost.gold
     });
     const bonus = rollEmpowerBonus(it.rarity);
     applyItemUpdate(itemId, prev => {
@@ -3044,11 +3126,6 @@ function ThornieDungeons() {
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
     inventory: inventory,
-    materials: save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    },
     onEquip: equipItem,
     onUnequip: unequipItem,
     onSell: sellItem,
@@ -3057,11 +3134,6 @@ function ThornieDungeons() {
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,
     inventory: inventory,
-    materials: save.materials || {
-      iron: 0,
-      silver: 0,
-      manaOre: 0
-    },
     onEnhance: enhanceItem,
     onEmpower: empowerItem,
     onReroll: rerollEmpowerItem,
@@ -3582,13 +3654,13 @@ function ShopOverlay({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-shop-info",
     style: { marginBottom: 6 }
-  }, "⛏️ วัตถุดิบตีบวก/เสริมพลัง"), ["iron", "silver", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
+  }, "⛏️ วัตถุดิบตีบวก/เสริมพลัง"), ["iron", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
     key: type,
     className: "md-shop-row",
     style: { marginBottom: 4 }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-shop-info"
-  }, MATERIAL_INFO[type].icon, " ", MATERIAL_INFO[type].name), /*#__PURE__*/React.createElement("button", {
+  }, JUNK_INFO[type].icon, " ", JUNK_INFO[type].name), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
     disabled: gold < MATERIAL_SHOP_PRICE[type],
     onClick: () => onBuyMaterial(type)
@@ -3829,9 +3901,21 @@ function EnemySprite({
   anim
 }) {
   const enemyUrl = asset(`enemy.${enemy.id}`);
+  const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap"
-  }, enemyUrl ? /*#__PURE__*/React.createElement("img", {
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-fill",
+    style: {
+      width: `${hpPct}%`
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-hp"
+  }, enemy.hp, "/", enemy.maxHp)), enemyUrl ? /*#__PURE__*/React.createElement("img", {
     className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim}`,
     src: enemyUrl,
     alt: enemy.name,
@@ -3849,7 +3933,7 @@ function EnemySprite({
     className: "eye r"
   }))), /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-name"
-  }, enemy.name));
+  }, enemy.name, enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : ""));
 }
 function CombatScreen({
   player,
@@ -3866,7 +3950,6 @@ function CombatScreen({
 }) {
   const [showSkills, setShowSkills] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
-  const enemyHpPct = Math.max(0, enemy.hp / enemy.maxHp * 100);
   const skills = unlockedSkills(player.level);
   const stats = getStats(player, equipped);
   const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
@@ -3946,19 +4029,6 @@ function CombatScreen({
     },
     title: enemy.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : enemy.modifier.desc
   }, enemy.isEliteBoss ? "🔥👑 Elite Boss" : `${enemy.modifier.icon} ${enemy.modifier.name}`), /*#__PURE__*/React.createElement("div", {
-    className: "md-enemy-bar"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-enemy-bar-name"
-  }, enemy.name, enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : ""), /*#__PURE__*/React.createElement("div", {
-    className: "md-enemy-bar-track"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-enemy-bar-fill",
-    style: {
-      width: `${enemyHpPct}%`
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "md-enemy-bar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), /*#__PURE__*/React.createElement("div", {
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
@@ -4040,7 +4110,10 @@ function CombatScreen({
     className: "md-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-log"
-  }, log)));
+  }, (Array.isArray(log) ? log : [log]).slice(0, 3).map((line, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: `md-log-line ${i === 0 ? "latest" : ""}`
+  }, line)))));
 }
 function ResultScreen({
   floor,
@@ -4122,12 +4195,12 @@ function ResultScreen({
       fontSize: 11,
       color: "var(--ink-soft)"
     }
-  }, itemStatText(dropItem))) : !showChest && (rewards.materialDrop ? /*#__PURE__*/React.createElement("div", {
+  }, itemStatText(dropItem))) : !showChest && (rewards.junkDrop ? /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
     style: {
       background: "rgba(156,156,168,0.15)"
     }
-  }, MATERIAL_INFO[rewards.materialDrop.type].icon, " ได้รับ ", MATERIAL_INFO[rewards.materialDrop.type].name, " x", rewards.materialDrop.amount) : /*#__PURE__*/React.createElement("p", {
+  }, JUNK_INFO[rewards.junkDrop.type].icon, " ได้รับ ", JUNK_INFO[rewards.junkDrop.type].name, " x", rewards.junkDrop.amount) : /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: 0
@@ -4192,7 +4265,6 @@ function DefeatScreen({
 function InventoryOverlay({
   equipped,
   inventory,
-  materials,
   onEquip,
   onUnequip,
   onSell,
@@ -4203,6 +4275,10 @@ function InventoryOverlay({
   const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
   const [sortMode, setSortMode] = useState("default");
   const [actionMsg, setActionMsg] = useState("");
+  // Inventory grid starts collapsed to a couple of rows so the sheet fits on a phone screen;
+  // "ดูทั้งหมด" expands it out to the full 25 slots.
+  const [gridExpanded, setGridExpanded] = useState(false);
+  const GRID_COLLAPSED_COUNT = 10;
 
   const sortedInventory = [...inventory].sort((a, b) => {
     if (sortMode === "rarity") {
@@ -4214,6 +4290,7 @@ function InventoryOverlay({
     return 0;
   });
   const visibleInventory = sortedInventory.slice(0, 25);
+  const gridSlotCount = gridExpanded ? 25 : Math.min(GRID_COLLAPSED_COUNT, 25);
   const selectedItem = selectedId ? inventory.find(i => i.id === selectedId) : null;
   const selectedEquipped = selectedEquippedSlot ? equipped[selectedEquippedSlot] : null;
   const detailTarget = selectedItem || selectedEquipped;
@@ -4230,7 +4307,7 @@ function InventoryOverlay({
     setActionMsg("");
   };
   const doEquip = () => {
-    if (!selectedItem) return;
+    if (!selectedItem || selectedItem.type === "junk") return;
     onEquip(selectedItem);
     setSelectedId(null);
   };
@@ -4303,23 +4380,22 @@ function InventoryOverlay({
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "💧 MP ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).mp))
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2 } },
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, MATERIAL_INFO.iron.icon, " ", (materials && materials.iron) || 0),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, MATERIAL_INFO.silver.icon, " ", (materials && materials.silver) || 0),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, MATERIAL_INFO.manaOre.icon, " ", (materials && materials.manaOre) || 0)
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.iron.icon, " ", junkTotal(inventory, "iron")),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.manaOre.icon, " ", junkTotal(inventory, "manaOre"))
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "🎒 Inventory"),
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-count", style: { marginLeft: 7 } }, `${Math.min(inventory.length,25)}/25 ช่องแสดง`)
       ),
-      /*#__PURE__*/React.createElement("select", { className: "md-select", value: sortMode, onChange: e => setSortMode(e.target.value), style: { width: 112, padding: "7px 28px 7px 8px", fontSize: 10 } },
+      /*#__PURE__*/React.createElement("select", { className: "md-select", value: sortMode, onChange: e => setSortMode(e.target.value), style: { width: 100, padding: "7px 26px 7px 8px", fontSize: 10 } },
         /*#__PURE__*/React.createElement("option", { value: "default" }, "เรียงเดิม"),
         /*#__PURE__*/React.createElement("option", { value: "rarity" }, "ความหายาก"),
         /*#__PURE__*/React.createElement("option", { value: "type" }, "ประเภท"),
         /*#__PURE__*/React.createElement("option", { value: "value" }, "ราคาขาย")
       )
     ),
-    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: 25 }, (_, index) => {
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: gridSlotCount }, (_, index) => {
       const it = visibleInventory[index];
       return /*#__PURE__*/React.createElement("button", {
         key: it ? it.id : `empty-${index}`,
@@ -4328,29 +4404,36 @@ function InventoryOverlay({
         onClick: () => it && chooseInventory(it)
       }, it ? /*#__PURE__*/React.createElement(React.Fragment, null,
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-num" }, index + 1),
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, SLOT_ICON[it.type] || "📦"),
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, it.icon || SLOT_ICON[it.type] || "📦"),
+        it.type !== "junk" && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
         it.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, "+", it.enhanceLevel),
         it.quantity > 1 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, "x", it.quantity)
       ) : /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, opacity: .18 } }, "＋"));
     })),
+    Math.min(inventory.length, 25) > GRID_COLLAPSED_COUNT && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-inventory-toggle",
+      onClick: () => setGridExpanded(v => !v)
+    }, gridExpanded ? "▲ ย่อกระเป๋า" : `▼ ดูทั้งหมด (${Math.min(inventory.length, 25)} ชิ้น)`),
     inventory.length > 25 && /*#__PURE__*/React.createElement("div", { className: "md-item-detail", style: { textAlign: "center", color: "var(--ink-soft)", fontSize: 10 } }, "มีไอเทมเกิน 25 ชิ้น — ตอนนี้แสดง 25 ช่องแรกเพื่อให้เหมาะกับหน้าจอมือถือ"),
     /*#__PURE__*/React.createElement("div", { className: "md-item-detail" }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
-      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
-      renderEmpowerSlotsReadOnly(detailTarget),
-      selectedItem && /*#__PURE__*/React.createElement("button", {
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, detailTarget.icon || SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
+      detailTarget.type === "junk" ? /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `วัตถุดิบขยะ · มี ${detailTarget.quantity} ชิ้น (สูงสุด 99/ช่อง) · ขายได้ ${sellPrice(detailTarget)} 🪙`) : /*#__PURE__*/React.createElement(React.Fragment, null,
+        /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
+        renderEmpowerSlotsReadOnly(detailTarget)
+      ),
+      selectedItem && detailTarget.type !== "junk" && /*#__PURE__*/React.createElement("button", {
         className: "md-btn flee small",
         style: { marginTop: 6, minHeight: 38, fontSize: 10, width: "100%" },
         onClick: doSalvage
       }, (() => {
         const y = salvageYield(detailTarget.rarity);
-        return `♻️ แยกชิ้นส่วน (🔩${y.iron} 🥈${y.silver} 🔮${y.manaOre})`;
+        return `♻️ แยกชิ้นส่วน (🔩${y.iron} 🔮${y.manaOre})`;
       })()),
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
     /*#__PURE__*/React.createElement("div", { className: "md-item-actions" },
-      /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem, onClick: doEquip }, "⚔️ สวมใส่"),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem || selectedItem.type === "junk", onClick: doEquip }, "⚔️ สวมใส่"),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem, onClick: doSell }, selectedItem ? `🪙 ขาย ${sellPrice(selectedItem)}` : "🪙 ขาย"),
       /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot, onClick: doUnequip }, "↩️ ถอด")
     ),
@@ -4360,7 +4443,6 @@ function InventoryOverlay({
 function BlacksmithOverlay({
   equipped,
   inventory,
-  materials,
   onEnhance,
   onEmpower,
   onReroll,
@@ -4372,10 +4454,16 @@ function BlacksmithOverlay({
   const [actionMsg, setActionMsg] = useState("");
   const [animState, setAnimState] = useState(null); // 'success' | 'fail' | null
   const animTimerRef = useRef(null);
+  const [gridExpanded, setGridExpanded] = useState(false);
+  const GRID_COLLAPSED_COUNT = 10;
+  const gridSlotCount = gridExpanded ? 25 : Math.min(GRID_COLLAPSED_COUNT, 25);
 
   const selectedItem = selectedId ? inventory.find(i => i.id === selectedId) : null;
   const selectedEquipped = selectedEquippedSlot ? equipped[selectedEquippedSlot] : null;
   const detailTarget = selectedItem || selectedEquipped;
+  // Junk (stone/wood/iron/mana stone etc.) can't be enhanced or empowered, so the
+  // Blacksmith's item grid only shows actual gear — junk totals still show via junkTotal().
+  const gearInventory = inventory.filter(i => i.type !== "junk");
 
   const playAnim = ok => {
     if (animTimerRef.current) clearTimeout(animTimerRef.current);
@@ -4465,17 +4553,16 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("div", { className: "md-equip-character" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "" }))
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2 } },
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, MATERIAL_INFO.iron.icon, " ", (materials && materials.iron) || 0),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, MATERIAL_INFO.silver.icon, " ", (materials && materials.silver) || 0),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, MATERIAL_INFO.manaOre.icon, " ", (materials && materials.manaOre) || 0)
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.iron.icon, " ", junkTotal(inventory, "iron")),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.manaOre.icon, " ", junkTotal(inventory, "manaOre"))
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "🎒 เลือกอุปกรณ์")
       )
     ),
-    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: 25 }, (_, index) => {
-      const it = inventory[index];
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: gridSlotCount }, (_, index) => {
+      const it = gearInventory[index];
       return /*#__PURE__*/React.createElement("button", {
         key: it ? it.id : `empty-${index}`,
         type: "button",
@@ -4483,11 +4570,16 @@ function BlacksmithOverlay({
         onClick: () => it && chooseInventory(it)
       }, it ? /*#__PURE__*/React.createElement(React.Fragment, null,
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-num" }, index + 1),
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, SLOT_ICON[it.type] || "📦"),
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, it.icon || SLOT_ICON[it.type] || "📦"),
+        it.type !== "junk" && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
         it.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, "+", it.enhanceLevel)
       ) : /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, opacity: .18 } }, "＋"));
     })),
+    Math.min(gearInventory.length, 25) > GRID_COLLAPSED_COUNT && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-inventory-toggle",
+      onClick: () => setGridExpanded(v => !v)
+    }, gridExpanded ? "▲ ย่อกระเป๋า" : `▼ ดูทั้งหมด (${Math.min(gearInventory.length, 25)} ชิ้น)`),
     /*#__PURE__*/React.createElement("div", { className: `md-item-detail ${anvilClass}` }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
@@ -4499,13 +4591,16 @@ function BlacksmithOverlay({
           style: { flex: 1, minHeight: 38, fontSize: 10 },
           disabled: (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX,
           onClick: doEnhance
-        }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : `🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · 🔩${enhanceCost(detailTarget.enhanceLevel || 0).iron} 🥈${enhanceCost(detailTarget.enhanceLevel || 0).silver} 🪙${enhanceCost(detailTarget.enhanceLevel || 0).gold})`),
+        }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : `🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · 🔩${enhanceCost(detailTarget.enhanceLevel || 0).iron} 🪙${enhanceCost(detailTarget.enhanceLevel || 0).gold})`),
         /*#__PURE__*/React.createElement("button", {
           className: "md-btn info small",
           style: { flex: 1, minHeight: 38, fontSize: 10 },
           disabled: !(detailTarget.empowerSlots || []).some(s => !s),
           onClick: doEmpower
-        }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : `🔮 เสริมพลัง (🔮${empowerCost((detailTarget.empowerSlots || []).findIndex(s => !s))})`)
+        }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : (() => {
+          const c = empowerCost((detailTarget.empowerSlots || []).findIndex(s => !s));
+          return `🔮 เสริมพลัง (🔮${c.manaOre} 🪙${c.gold})`;
+        })())
       ),
       /*#__PURE__*/React.createElement("button", {
         className: "md-btn info small",
@@ -4516,7 +4611,7 @@ function BlacksmithOverlay({
         const filled = (detailTarget.empowerSlots || []).filter(Boolean);
         if (!filled.length) return "🔄 รีรอล (ยังไม่มีออฟชั่น)";
         const lockedCount = filled.filter(s => s.locked).length;
-        return `🔄 รีรอลออฟชั่น (🔮${rerollCost(filled.length, lockedCount)}) — แตะออฟชั่นด้านบนเพื่อล็อก`;
+        return `🔄 รีรอลออฟชั่น (🔮${rerollCost(filled.length, lockedCount).manaOre} 🪙${rerollCost(filled.length, lockedCount).gold}) — แตะออฟชั่นด้านบนเพื่อล็อก`;
       })()),
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกอุปกรณ์จากช่องสวมใส่หรือกระเป๋าเพื่อเริ่มตีบวก/เสริมพลัง")),

@@ -1,28 +1,122 @@
-// ---------- materials, enhancement (ตีบวก) & empowerment (เสริมพลัง) ----------
-const MATERIAL_INFO = {
+// ---------- junk materials, enhancement (ตีบวก) & empowerment (เสริมพลัง) ----------
+// Junk items are plain stackable drops that live in the normal inventory (type: "junk"),
+// not in a separate save.materials pool, so they persist through the same item sync as gear.
+const JUNK_INFO = {
+  stone: {
+    name: "หิน",
+    icon: "🪨"
+  },
+  grass: {
+    name: "หญ้า",
+    icon: "🌿"
+  },
+  wood: {
+    name: "ไม้",
+    icon: "🪵"
+  },
   iron: {
     name: "เหล็ก",
     icon: "🔩"
   },
-  silver: {
-    name: "เงิน",
-    icon: "🥈"
-  },
   manaOre: {
-    name: "แร่มานา",
+    name: "หินมานา",
     icon: "🔮"
   }
 };
+const JUNK_STACK_MAX = 99;
+const JUNK_SELL_VALUE = {
+  stone: 1,
+  grass: 1,
+  wood: 2,
+  iron: 4,
+  manaOre: 6
+};
+function makeJunkItem(junkId, quantity) {
+  const info = JUNK_INFO[junkId];
+  return {
+    id: `junk-${junkId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    type: "junk",
+    junkId,
+    name: info.name,
+    icon: info.icon,
+    rarity: "common",
+    quantity: Math.max(1, Math.min(JUNK_STACK_MAX, quantity))
+  };
+}
+// Sums every stack of a given junk type currently sitting in the inventory.
+function junkTotal(inventory, junkId) {
+  return inventory.reduce((sum, it) => it.type === "junk" && it.junkId === junkId ? sum + (it.quantity || 0) : sum, 0);
+}
+// Adds `amount` of a junk type into existing (non-full) stacks first, then creates new
+// 99-cap stacks for any remainder, so a slot never holds more than JUNK_STACK_MAX.
+function addJunkToInventory(inventory, junkId, amount) {
+  if (!amount || amount <= 0) return inventory;
+  let remaining = amount;
+  const next = inventory.map(it => {
+    if (remaining > 0 && it.type === "junk" && it.junkId === junkId && it.quantity < JUNK_STACK_MAX) {
+      const space = JUNK_STACK_MAX - it.quantity;
+      const add = Math.min(space, remaining);
+      remaining -= add;
+      return {
+        ...it,
+        quantity: it.quantity + add
+      };
+    }
+    return it;
+  });
+  while (remaining > 0) {
+    const chunk = Math.min(JUNK_STACK_MAX, remaining);
+    next.push(makeJunkItem(junkId, chunk));
+    remaining -= chunk;
+  }
+  return next;
+}
+// Removes `amount` of a junk type, draining partially-filled/emptied stacks first.
+// Returns null if the player doesn't have enough (no partial spend).
+function removeJunkFromInventory(inventory, junkId, amount) {
+  if (!amount || amount <= 0) return inventory;
+  if (junkTotal(inventory, junkId) < amount) return null;
+  let remaining = amount;
+  const next = [];
+  inventory.forEach(it => {
+    if (remaining > 0 && it.type === "junk" && it.junkId === junkId) {
+      const take = Math.min(it.quantity, remaining);
+      remaining -= take;
+      const leftover = it.quantity - take;
+      if (leftover > 0) next.push({
+        ...it,
+        quantity: leftover
+      });
+    } else {
+      next.push(it);
+    }
+  });
+  return next;
+}
+// Regular (non-boss) monsters drop one stack of a random junk material.
+function rollJunkDrop(floor, modifier) {
+  const keys = Object.keys(JUNK_INFO);
+  const manaWeight = modifier?.rarityBoost ? 0.3 : 0.14;
+  const ironWeight = 0.22;
+  const r = Math.random();
+  let junkId;
+  if (r < manaWeight) junkId = "manaOre";else if (r < manaWeight + ironWeight) junkId = "iron";else junkId = keys[Math.floor(Math.random() * 3)]; // stone / grass / wood
+  const amount = 1 + Math.floor(floor / 12) + (Math.random() < 0.25 ? 1 : 0);
+  return {
+    type: junkId,
+    amount
+  };
+}
 const ENHANCE_MAX = 10;
 const ENHANCE_RATE_TABLE = [95, 90, 82, 72, 60, 48, 36, 25, 16, 10];
 function enhanceSuccessRate(level) {
   return ENHANCE_RATE_TABLE[Math.min(level, ENHANCE_RATE_TABLE.length - 1)];
 }
+// Enhance now always costs exactly 1 iron plus a gold fee that scales with level.
 function enhanceCost(level) {
   return {
-    iron: 3 + level * 3,
-    silver: 2 + level * 2,
-    gold: 20 + level * 25
+    iron: 1,
+    gold: 25 + level * 35
   };
 }
 const ENHANCE_STAT_PCT = 0.06; // each successful +1 adds 6% of the item's base stat
@@ -67,8 +161,12 @@ const EMPOWER_POOL = [{
   icon: "🎁",
   unit: 1.5
 }];
+// Empowering a new slot now always costs exactly 1 mana stone plus a gold fee that scales with slot index.
 function empowerCost(slotIndex) {
-  return 5 + slotIndex * 6;
+  return {
+    manaOre: 1,
+    gold: 30 + slotIndex * 45
+  };
 }
 function rollEmpowerBonus(rarity) {
   const def = EMPOWER_POOL[Math.floor(Math.random() * EMPOWER_POOL.length)];
@@ -98,15 +196,4 @@ function rollChestRarity(isEliteBoss, pity = 0) {
   if (r < 0.35) return "elite";
   if (r < 0.8) return "unique";
   return "rare";
-}
-function rollMaterialDrop(floor, modifier) {
-  const r = Math.random();
-  const manaWeight = modifier?.rarityBoost ? 0.42 : 0.22;
-  let type;
-  if (r < manaWeight) type = "manaOre";else if (r < manaWeight + 0.4) type = "iron";else type = "silver";
-  const amount = 1 + Math.floor(floor / 12) + (Math.random() < 0.25 ? 1 : 0);
-  return {
-    type,
-    amount
-  };
 }
