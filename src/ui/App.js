@@ -18,6 +18,10 @@ function ThornieDungeons() {
   // Combat-only state for the Active Pet as a real unit on the field (HP, cooldown).
   const [petCombat, setPetCombat] = useState(null); // { instId, defId, name, icon, hp, maxHp, atk, def, speed, cooldown, active, passive, extra }
   const [targetUid, setTargetUid] = useState(null); // uid of the monster the player is currently targeting
+  // Turn Order Queue UI: the planned action order for the current round (Player first,
+  // then Pet + Monsters sorted by Speed), plus which unit's action is currently resolving.
+  const [turnQueue, setTurnQueue] = useState([]); // [{key, kind, uid?, name, icon, speed}]
+  const [activeTurnKey, setActiveTurnKey] = useState(null);
   const [log, setLogState] = useState(["Welcome to ThornieDungeons!"]);
   // Keeps the last 3 combat messages, newest first, so the log panel can show
   // a short scrolling history instead of overwriting a single line.
@@ -246,6 +250,8 @@ function ThornieDungeons() {
     setMonsters(spawned);
     setTargetUid(spawned[0] ? spawned[0].uid : null);
     setPetCombat(buildPetCombatUnit());
+    setTurnQueue([]);
+    setActiveTurnKey(null);
     setDropItem(null);
     const boss = spawned.find(m => m.isBoss);
     setLog(boss ? `A ${boss.name} blocks the way!` : spawned.length > 1 ? `${spawned.length} monsters appear: ${spawned.map(m => m.name).join(", ")}!` : `A wild ${spawned[0].name} appears!`);
@@ -461,6 +467,22 @@ function ThornieDungeons() {
     const m = monstersRef.current.find(x => x.uid === uid);
     if (m && m.hp > 0) setTargetUid(uid);
   }
+  // Builds the Turn Order Queue UI data for the round about to run: the Player
+  // always resolves first (their action is tap-driven), followed by Active Pet
+  // and every living Monster sorted by Speed (AGI-derived), highest first.
+  function computeRoundQueueDisplay() {
+    const p = playerRef.current || player;
+    const items = [{ key: "player", kind: "player", name: "You", icon: "🧙", speed: (p && p.baseSpeed) || 0 }];
+    const pet = petCombatRef.current;
+    if (pet && pet.hp > 0) {
+      items.push({ key: "pet", kind: "pet", name: pet.name, icon: pet.icon, speed: pet.speed });
+    }
+    monstersRef.current.forEach(m => {
+      if (m.hp > 0) items.push({ key: m.uid, kind: "monster", uid: m.uid, name: m.name, icon: "👹", speed: m.speed });
+    });
+    const rest = buildTurnQueue(items.filter(it => it.kind !== "player")).map(({ _r, ...r }) => r);
+    return [items[0], ...rest];
+  }
 
   function playerTurn(action, skillKey) {
     if (busy || !player) return;
@@ -468,6 +490,10 @@ function ThornieDungeons() {
     if ((action === "attack" || action === "skill") && !target) return;
     const stats = getStats(player, equipped);
     setBusy(true);
+    // Lock in this round's Turn Order Queue the moment the player commits to an action,
+    // so the queue bar reflects exactly what's about to resolve.
+    setTurnQueue(computeRoundQueueDisplay());
+    setActiveTurnKey("player");
     if (action === "attack") {
       const isMiss = Math.random() * 100 >= stats.accuracy;
       const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
@@ -477,7 +503,7 @@ function ThornieDungeons() {
       setTimeout(() => {
         if (isMiss) {
           spawnFloat(target.uid, "MISS", "#B9AEDD");
-          setLog("You missed!");
+          setLog(`You attack but miss ${target.name}!`);
         } else {
           updateMonster(target.uid, m => {
             const nh = Math.max(0, m.hp - dmg);
@@ -485,6 +511,7 @@ function ThornieDungeons() {
             setMonsterAnim(target.uid, "hurt");
             return { ...m, hp: nh };
           });
+          setLog(isCrit ? `You land a CRITICAL hit on ${target.name} for ${dmg}!` : `You attack ${target.name} for ${dmg}!`);
         }
         setHeroAnim("");
         setTimeout(() => runQueueAfterPlayer(), 350);
@@ -506,7 +533,7 @@ function ThornieDungeons() {
         if (skill.type === "damage") {
           if (isMiss) {
             spawnFloat(target.uid, "MISS", "#B9AEDD");
-            setLog(`${skill.name} missed!`);
+            setLog(`${skill.name} misses ${target.name}!`);
           } else {
             const pierce = skill.defPierce || 0;
             let dmg = Math.max(4, Math.round(stats.atk * skill.mult - target.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
@@ -524,7 +551,7 @@ function ThornieDungeons() {
               }
               return next;
             });
-            setLog(freeze ? `${skill.name}! Enemy frozen solid!` : `${skill.name} hits for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
+            setLog(freeze ? `${skill.name} freezes ${target.name} solid!` : `You use ${skill.name} on ${target.name} for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
           }
         } else if (skill.type === "heal") {
           setPlayer(p => {
@@ -535,7 +562,7 @@ function ThornieDungeons() {
               hp: Math.min(stats.maxHp, p.hp + heal)
             };
           });
-          setLog(`${skill.name}! Recovered HP.`);
+          setLog(`You cast ${skill.name} and recover HP.`);
         } else if (skill.type === "buffAtk") {
           setPlayer(p => ({
             ...p,
@@ -543,7 +570,7 @@ function ThornieDungeons() {
             atkBuffTurns: skill.turns
           }));
           spawnFloat("hero", "ATK UP", "#FFD166");
-          setLog(`${skill.name}! ATK increased for ${skill.turns} turns.`);
+          setLog(`You cast ${skill.name}! ATK increased for ${skill.turns} turns.`);
         } else if (skill.type === "buffDef") {
           setPlayer(p => ({
             ...p,
@@ -551,7 +578,7 @@ function ThornieDungeons() {
             defBuffTurns: skill.turns
           }));
           spawnFloat("hero", "DEF UP", "#7FB8E8");
-          setLog(`${skill.name}! DEF increased for ${skill.turns} turns.`);
+          setLog(`You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
         }
         setHeroAnim("");
         setTimeout(() => runQueueAfterPlayer(), 350);
@@ -581,6 +608,8 @@ function ThornieDungeons() {
         setLog("You escaped safely.");
         setMonsters([]);
         setPetCombat(null);
+        setTurnQueue([]);
+        setActiveTurnKey(null);
         pushRunState(null);
         setPhase("map");
         setBusy(false);
@@ -614,6 +643,8 @@ function ThornieDungeons() {
   function processQueue(queue, index) {
     if (combatOutcomeRef.current) return;
     if (index >= queue.length) {
+      setActiveTurnKey(null);
+      setTurnQueue([]);
       if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
         endCombatWin();
         return;
@@ -628,15 +659,18 @@ function ThornieDungeons() {
       return;
     }
     const unit = queue[index];
+    setActiveTurnKey(unit.kind === "pet" ? "pet" : unit.uid);
     const advance = () => {
       if (combatOutcomeRef.current) return;
       // Check outcome immediately after every single action, not just at round end,
       // so combat stops the instant the player or all monsters are downed.
       if ((playerRef.current?.hp || 0) <= 0) {
+        setActiveTurnKey(null);
         playerLost();
         return;
       }
       if (monstersRef.current.length && monstersRef.current.every(mm => mm.hp <= 0)) {
+        setActiveTurnKey(null);
         endCombatWin();
         return;
       }
@@ -677,7 +711,7 @@ function ThornieDungeons() {
             if (stun) next.frozenTurns = (m.frozenTurns || 0) + 1;
             return next;
           });
-          setLog(stun ? `${pet.icon} ${skill.name}! Enemy stunned!` : `${pet.icon} ${skill.name} hits for ${dmg}!`);
+          setLog(stun ? `${pet.name} uses ${skill.name} and stuns ${target.name}!` : `${pet.name} uses ${skill.name} on ${target.name} for ${dmg}!`);
         }
       } else if (skill.type === "regen") {
         setPlayer(p => {
@@ -692,7 +726,7 @@ function ThornieDungeons() {
             regenTurns: Math.max(0, skill.regenTurns - 1)
           };
         });
-        setLog(`${pet.icon} ${skill.name} activates!`);
+        setLog(`${pet.name} uses ${skill.name} on You!`);
       }
       setPetAnim("");
       setTimeout(() => cb(), 280);
@@ -713,6 +747,7 @@ function ThornieDungeons() {
         cb();
         return;
       }
+      setLog(`${m.name} takes ${pdmg} poison damage!`);
     }
     const fresh = monstersRef.current.find(x => x.uid === m.uid) || m;
     if (fresh.frozenTurns > 0) {
@@ -773,7 +808,7 @@ function ThornieDungeons() {
             return next;
           });
           spawnFloat("hero", `-${dmg}`, "#FF6B6B");
-          setLog(weakenProc && nh > 0 ? `${fresh.name} strikes for ${dmg} and weakens you!` : `${fresh.name} strikes for ${dmg}!`);
+          setLog(weakenProc && nh > 0 ? `${fresh.name} strikes You for ${dmg} and weakens you!` : `${fresh.name} strikes You for ${dmg}!`);
         }
       }
       setMonsterAnim(m.uid, "");
@@ -1304,7 +1339,9 @@ function ThornieDungeons() {
     floats: floats,
     onAction: playerTurn,
     equipped: equipped,
-    petCombat: petCombat
+    petCombat: petCombat,
+    turnQueue: turnQueue,
+    activeTurnKey: activeTurnKey
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,

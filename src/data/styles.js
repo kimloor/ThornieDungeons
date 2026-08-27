@@ -240,6 +240,27 @@ const STYLE = `
 .md-pet-chip .cd { color: var(--ink-soft); font-weight: 700; }
 .md-pet-chip.ready { border-color: var(--leaf-deep); }
 
+/* turn order queue bar — shows action order for the current round, sorted by Speed */
+.md-turn-queue {
+  display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+  background: rgba(10,6,22,0.5); border: 1px solid rgba(255,209,102,0.22); border-radius: 999px;
+  padding: 4px 8px; margin-bottom: 6px; position: relative; z-index: 6;
+}
+.md-turn-queue-item {
+  display: flex; align-items: center; gap: 2px; opacity: 0.55; transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.md-turn-queue-item.active { opacity: 1; transform: scale(1.18); }
+.md-turn-queue-item.done { opacity: 0.28; }
+.md-turn-queue-icon {
+  width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,209,102,0.35);
+}
+.md-turn-queue-item.player .md-turn-queue-icon { border-color: var(--gold); }
+.md-turn-queue-item.pet .md-turn-queue-icon { border-color: var(--violet-deep); }
+.md-turn-queue-item.monster .md-turn-queue-icon { border-color: var(--coral-deep); }
+.md-turn-queue-item.active .md-turn-queue-icon { box-shadow: 0 0 0 2px var(--gold-glow); }
+.md-turn-queue-arrow { color: var(--ink-soft); font-size: 11px; opacity: 0.6; }
+
 /* battle scene — RO-style grassy outdoor background */
 .md-scene.battle-bg {
   background:

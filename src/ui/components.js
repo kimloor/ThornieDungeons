@@ -813,6 +813,33 @@ function PetCombatSprite({ pet, anim }) {
     className: "md-sprite-name"
   }, pet.name, dead ? " 💤" : ""));
 }
+// Turn Order Queue UI: shows every unit's planned action order for the current round,
+// sorted by Speed (AGI), so the player can plan around who acts before whom.
+function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-turn-queue"
+  }, queue.map((item, i) => {
+    const isActive = activeKey === item.key;
+    const isDone = activeKey && queue.findIndex(q => q.key === activeKey) > i;
+    let alive = true;
+    let icon = item.icon;
+    if (item.kind === "monster") {
+      const m = monsters.find(mm => mm.uid === item.uid);
+      alive = !m || m.hp > 0;
+    } else if (item.kind === "pet") {
+      alive = !petCombat || petCombat.hp > 0;
+    }
+    return /*#__PURE__*/React.createElement("div", {
+      key: item.key + i,
+      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} ${isDone || !alive ? "done" : ""}`,
+      title: `${item.name} · Speed ${item.speed}`
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "md-turn-queue-icon"
+    }, icon), i < queue.length - 1 && /*#__PURE__*/React.createElement("span", {
+      className: "md-turn-queue-arrow"
+    }, "›"));
+  }));
+}
 function CombatScreen({
   player,
   monsters,
@@ -827,7 +854,9 @@ function CombatScreen({
   floats,
   onAction,
   equipped,
-  petCombat
+  petCombat,
+  turnQueue,
+  activeTurnKey
 }) {
   const [showSkills, setShowSkills] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
@@ -892,7 +921,12 @@ function CombatScreen({
     style: {
       width: `${xpPct}%`
     }
-  }))), petCombat && /*#__PURE__*/React.createElement("div", {
+  }))), turnQueue && turnQueue.length > 0 && /*#__PURE__*/React.createElement(TurnOrderBar, {
+    queue: turnQueue,
+    activeKey: activeTurnKey,
+    monsters: monsters,
+    petCombat: petCombat
+  }), petCombat && /*#__PURE__*/React.createElement("div", {
     className: `md-pet-chip ${petCombat.cooldown > 0 ? "" : "ready"}`,
     title: petCombat.active.desc
   }, petCombat.icon, " ", petCombat.cooldown > 0 ? /*#__PURE__*/React.createElement("span", {
