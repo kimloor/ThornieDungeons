@@ -133,16 +133,25 @@ const STYLE = `
 .md-ground { position: absolute; left: -16px; right: -16px; bottom: 0; height: 26px; background: linear-gradient(180deg, #4A3670 0%, #2C1E4A 100%); border-top: 3px solid var(--gold-deep); opacity: 0.7; }
 
 .md-sprite-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 2; }
+.md-hero-r2-wrap { min-width: 96px; min-height: 96px; justify-content: center; }
+.md-r2-error { width: 96px; height: 96px; display:flex; align-items:center; justify-content:center; font-size:9px; color:#FF8B8B; text-align:center; border:1px dashed rgba(255,139,139,.45); border-radius:10px; }
 .md-sprite-name { font-family:'Baloo 2'; font-weight: 700; font-size: 11px; background: rgba(10,6,22,0.75); color: var(--gold); border: 1px solid var(--gold-deep); padding: 1px 8px; border-radius: 999px; }
 
-.md-hero { width: 62px; height: 70px; position: relative; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); }
-.md-hero .body { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 46px; height: 46px; border-radius: 50% 50% 46% 46%; background: var(--coral); border: 3px solid #1B1233; }
-.md-hero .head { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 36px; border-radius: 50%; background: #FFE0C2; border: 3px solid #1B1233; }
-.md-hero .hair { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 44px; height: 20px; border-radius: 50% 50% 0 0; background: var(--gold-deep); border: 3px solid #1B1233; border-bottom: none; }
-.md-hero .eye { position: absolute; width: 4px; height: 6px; background: #1B1233; border-radius: 2px; top: 16px; }
-.md-hero .eye.l { left: 12px; } .md-hero .eye.r { right: 12px; }
-.md-hero.attack { animation: md-lunge 0.35s ease; }
-.md-hero.hurt { animation: md-shake 0.35s ease; }
+.md-hero-img {
+  width: 96px;
+  height: 96px;
+  max-width: 96px;
+  max-height: 96px;
+  display: block;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 0 8px var(--gold-glow));
+}
+.md-hero-img.attack { animation: md-lunge 0.35s ease; }
+.md-hero-img.hurt { animation: md-shake 0.35s ease; }
 
 .md-enemy { width: 64px; height: 64px; position: relative; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); }
 .md-enemy .blob { position: absolute; inset: 0; border-radius: 46% 46% 52% 52% / 55% 55% 45% 45%; border: 3px solid #1B1233; }
@@ -459,7 +468,10 @@ async function fetchAsset(path, options = {}) {
 }
 
 async function loadAssetJSON(path) {
-  const response = await fetchAsset(path);
+  const requestPath = path === "manifest.json"
+    ? `manifest.json?v=${Date.now()}`
+    : path;
+  const response = await fetchAsset(requestPath, { cache: "no-store" });
   return response.json();
 }
 
@@ -480,9 +492,14 @@ async function loadAssetManifest() {
 }
 
 function asset(key) {
-  const path = String(key || "").split(".").reduce((obj, part) => obj?.[part], ASSETS);
+  const aliases = {
+    "hero.idle": "hero001.core.neutral",
+    "hero.neutral": "hero001.core.neutral"
+  };
+  const resolvedKey = aliases[String(key || "")] || String(key || "");
+  const path = resolvedKey.split(".").reduce((obj, part) => obj?.[part], ASSETS);
   if (typeof path !== "string" || !path) {
-    console.warn(`[R2] Asset not found in manifest: ${key}`);
+    console.warn(`[R2] Asset not found in manifest: ${resolvedKey}`);
     return "";
   }
   return assetUrl(path);
@@ -1467,7 +1484,9 @@ function ThornieDungeons() {
       try {
         await loadAssetManifest();
         const heroNeutral = asset("hero001.core.neutral");
-        if (heroNeutral) await preloadAsset(heroNeutral);
+        if (!heroNeutral) throw new Error("Manifest missing hero001.core.neutral");
+        console.info("[R2] Hero 001 URL:", heroNeutral);
+        await preloadAsset(heroNeutral);
         console.info("[R2] Hero 001 neutral asset is reachable");
       } catch (err) {
         ASSETS = {};
@@ -3067,28 +3086,24 @@ function FloatingQuickActions({
     className: "md-fab-icon"
   }, "🎒")));
 }
-function HeroSprite({
-  anim
-}) {
+function HeroSprite({ anim }) {
   const heroUrl = asset(getHeroAssetKeyForAnim(anim));
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-wrap"
+    className: "md-sprite-wrap md-hero-r2-wrap"
   }, heroUrl ? /*#__PURE__*/React.createElement("img", {
     className: `md-hero-img ${anim || ""}`,
     src: heroUrl,
     alt: "Hero 001",
     draggable: false,
     decoding: "async",
-    style: { imageRendering: "pixelated", objectFit: "contain" },
+    loading: "eager",
     onError: e => {
-      console.error("[R2] Hero asset failed to render:", heroUrl);
-      e.currentTarget.style.display = "none";
+      console.error("[R2] Hero 001 image failed to load:", heroUrl);
+      e.currentTarget.removeAttribute("src");
     }
   }) : /*#__PURE__*/React.createElement("div", {
-    className: `md-hero ${anim || ""}`
-  }, /*#__PURE__*/React.createElement("div", { className: "hair" }), /*#__PURE__*/React.createElement("div", { className: "head" }, /*#__PURE__*/React.createElement("div", { className: "eye l" }), /*#__PURE__*/React.createElement("div", { className: "eye r" })), /*#__PURE__*/React.createElement("div", { className: "body" })), /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-name"
-  }, "You"));
+    className: "md-r2-error"
+  }, "Hero asset unavailable"));
 }
 function EnemySprite({
   enemy,
