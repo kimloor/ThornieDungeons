@@ -60,32 +60,21 @@ async function cloudPost(url, body) {
   }));
 }
 
-// ---------- debounced writes for high-frequency actions ----------
-// Salvage/Enhance/Empower/Reroll (and every other inventory tweak) each trigger a full-state
-// saveProgress/syncItems POST. During a rapid burst (e.g. mashing Enhance) there's no need to
-// send every intermediate state — only the *latest* one matters. debouncedCall() coalesces
-// same-key calls made within `waitMs` of each other into a single request carrying the most
-// recent arguments, while every caller in the burst still gets a promise that resolves with
-// that single request's result (so nobody hangs waiting on a request that never fires).
-const _debounceTimers = new Map();
-const _debounceWaiters = new Map();
-function debouncedCall(key, waitMs, run) {
-  return new Promise((resolve, reject) => {
-    if (!_debounceWaiters.has(key)) _debounceWaiters.set(key, []);
-    _debounceWaiters.get(key).push({
-      resolve,
-      reject
-    });
-    if (_debounceTimers.has(key)) clearTimeout(_debounceTimers.get(key));
-    _debounceTimers.set(key, setTimeout(() => {
-      _debounceTimers.delete(key);
-      const waiters = _debounceWaiters.get(key) || [];
-      _debounceWaiters.delete(key);
-      run().then(result => waiters.forEach(w => w.resolve(result)), err => waiters.forEach(w => w.reject(err)));
-    }, waitMs));
-  });
-}
-
+// ---------- high-frequency write calls ----------
+// NOTE: cloudSaveProgress/cloudSyncItems/cloudSaveRunState used to be routed through a
+// debouncedCall() here (250ms trailing debounce, keyed by id). That was REMOVED after it
+// caused a real regression: App.js's enqueueCloudWrite already serializes writes one-at-a-time
+// (it awaits the previous cloudXxx call before starting the next), so the debounce added no
+// protection that wasn't already there — but it DID add a real risk of data loss:
+//   1. A save made right before the player reloads/logs out could still be sitting in the
+//      250ms debounce window and never reach the server (confirmed: a stat point allocated
+//      and checked via reload ~100ms later showed the OLD value).
+//   2. Worse — under *continuous* activity (calls arriving faster than the debounce window),
+//      the debounce timer keeps getting reset and the save can be postponed indefinitely,
+//      never actually firing until the player stops entirely for 250ms+.
+// withDedupe() + withRetry() below are what's actually safe to keep: they only collapse truly
+// *identical* concurrent calls and retry *transient* failures — neither one delays or drops a
+// unique write the way the debounce did.
 function cloudLogin(url, id, password) {
   return cloudGet(url, {
     action: "login",
@@ -100,31 +89,29 @@ function cloudRegister(url, id, password) {
     password
   });
 }
-// Debounced (250ms trailing) — coalesces bursts from rapid Salvage/Enhance/etc into one write
-// of the latest state instead of one request per click.
 function cloudSaveProgress(url, id, password, progress) {
-  return debouncedCall(`saveProgress:${id}`, 250, () => cloudPost(url, {
+  return cloudPost(url, {
     action: "saveProgress",
     id,
     password,
     progress
-  }));
+  });
 }
 function cloudSyncItems(url, id, password, items) {
-  return debouncedCall(`syncItems:${id}`, 250, () => cloudPost(url, {
+  return cloudPost(url, {
     action: "syncItems",
     id,
     password,
     items
-  }));
+  });
 }
 function cloudSaveRunState(url, id, password, runState) {
-  return debouncedCall(`saveRunState:${id}`, 250, () => cloudPost(url, {
+  return cloudPost(url, {
     action: "saveRunState",
     id,
     password,
     runState
-  }));
+  });
 }
 function cloudGetConfig(url) {
   return cloudGet(url, {
