@@ -134,7 +134,7 @@ const STYLE = `
 .md-ground { position: absolute; left: -16px; right: -16px; bottom: 0; height: 26px; background: linear-gradient(180deg, #4A3670 0%, #2C1E4A 100%); border-top: 3px solid var(--gold-deep); opacity: 0.7; }
 
 .md-sprite-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 2; }
-.md-sprite-name { font-family:'Baloo 2'; font-weight: 700; font-size: 11px; background: rgba(10,6,22,0.75); color: var(--gold); border: 1px solid var(--gold-deep); padding: 1px 8px; border-radius: 999px; }
+.md-sprite-name { font-family:'Baloo 2'; font-weight: 700; font-size: 11px; background: rgba(10,6,22,0.75); color: var(--gold); border: 1px solid var(--gold-deep); padding: 1px 8px; border-radius: 999px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .md-enemy-hpbar { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 74px; }
 .md-enemy-hpbar-track { width: 100%; height: 7px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
@@ -178,7 +178,7 @@ const STYLE = `
 @keyframes md-float-up { 0% { opacity: 1; transform: translate(-50%, 0);} 100% { opacity: 0; transform: translate(-50%, -34px);} }
 
 .md-log { background: rgba(10,6,22,0.6); border: 1px solid rgba(255,209,102,0.25); border-radius: 12px; padding: 8px 12px; min-height: 62px; max-height: 78px; overflow-y: auto; margin-bottom: 0; display: flex; flex-direction: column; gap: 3px; justify-content: flex-start; }
-.md-log-line { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-align: center; opacity: 0.6; }
+.md-log-line { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-align: center; opacity: 0.6; overflow-wrap: break-word; word-break: break-word; padding: 0 4px; }
 .md-log-line:before { content: '💬 '; }
 .md-log-line.latest { font-size: 12.5px; color: var(--ink); opacity: 1; }
 
@@ -200,11 +200,12 @@ const STYLE = `
 .md-title { font-family:'Baloo 2'; font-weight: 800; font-size: 17px; margin: 0 0 4px; color: var(--gold); }
 .md-sub { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin: 0 0 10px; }
 
-.md-shop-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed rgba(255,209,102,0.2); }
+.md-shop-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px dashed rgba(255,209,102,0.2); }
 .md-shop-row:last-child { border-bottom: none; }
-.md-shop-info { font-weight: 800; font-size: 13px; }
-.md-shop-lv { font-size: 11px; color: var(--ink-soft); font-weight: 700; }
-.md-buy-btn { font-family: 'Baloo 2'; font-weight: 700; font-size: 12px; background: linear-gradient(180deg, #FFE49A, var(--gold)); border: none; border-radius: 999px; padding: 6px 12px; color: var(--bg-top); cursor: pointer; box-shadow: 0 3px 0 var(--gold-deep); }
+.md-shop-row > div:first-child { min-width: 0; flex: 1; } /* text side must be allowed to shrink for ellipsis to work in a flex row */
+.md-shop-info { font-weight: 800; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-shop-lv { font-size: 11px; color: var(--ink-soft); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-buy-btn { font-family: 'Baloo 2'; font-weight: 700; font-size: 12px; background: linear-gradient(180deg, #FFE49A, var(--gold)); border: none; border-radius: 999px; padding: 6px 12px; color: var(--bg-top); cursor: pointer; box-shadow: 0 3px 0 var(--gold-deep); flex-shrink: 0; white-space: nowrap; }
 .md-buy-btn:disabled { opacity: 0.35; }
 .md-buy-btn:active { transform: translateY(2px); box-shadow: none; }
 
@@ -212,7 +213,13 @@ const STYLE = `
 .md-menu-title h1 { font-family:'Baloo 2'; font-size: 30px; margin: 0; color: var(--gold); text-shadow: 0 3px 0 rgba(0,0,0,0.4), 0 0 18px var(--gold-glow); }
 .md-menu-title p { font-weight: 800; color: var(--ink-soft); font-size: 13px; margin: 4px 0 0; }
 
-.md-cp-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.35); border: 1px solid var(--gold-deep); border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 800; color: var(--gold); }
+.md-cp-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.35); border: 1px solid var(--gold-deep); border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 800; color: var(--gold); max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* boss/elite/floor-modifier pill above the arena — previously had no base rule at all (only
+   inline colors), so it was a full-width block with no width cap: long modifier names would
+   wrap awkwardly instead of sitting as a compact centered pill. width:fit-content lets the
+   inline margin:"0 auto" actually center it, max-width+ellipsis keeps it on one line. */
+.md-modifier-chip { display: block; width: fit-content; max-width: 92%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* stars for equipment rarity */
 .md-stars-row { display: flex; gap: 1px; }
@@ -444,11 +451,12 @@ const STYLE = `
 .md-equip-slot-name { font-size:9px; color:var(--gold); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
 .md-equip-slot-stat { font-size:8px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .md-equip-summary { display:flex; justify-content:center; gap:7px; flex-wrap:wrap; margin:0 0 8px; }
-.md-equip-stat-chip { border:1px solid rgba(255,209,102,.28); background:rgba(0,0,0,.22); border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; color:var(--ink-soft); }
+.md-equip-stat-chip { border:1px solid rgba(255,209,102,.28); background:rgba(0,0,0,.22); border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; color:var(--ink-soft); white-space: nowrap; flex-shrink: 0; }
 .md-equip-stat-chip b { color:var(--gold); }
 .md-inventory-header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:7px 0; }
-.md-inventory-title { font-family:'Baloo 2'; font-size:16px; font-weight:800; color:var(--gold); }
-.md-inventory-count { font-size:10px; color:var(--ink-soft); font-weight:800; }
+.md-inventory-header > div:first-child { min-width: 0; overflow: hidden; }
+.md-inventory-title { font-family:'Baloo 2'; font-size:16px; font-weight:800; color:var(--gold); white-space: nowrap; }
+.md-inventory-count { font-size:10px; color:var(--ink-soft); font-weight:800; white-space: nowrap; }
 .md-inventory-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
 .md-inventory-cell { min-width:0; aspect-ratio:1/1; border-radius:11px; border:1px solid rgba(255,209,102,.22); background:rgba(255,255,255,.035); position:relative; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 .md-inventory-cell.empty { cursor:default; opacity:.55; }
@@ -463,7 +471,7 @@ const STYLE = `
 .md-inventory-toggle { width:100%; margin-top:6px; padding:6px; border-radius:10px; border:1px dashed rgba(255,209,102,.4); background:rgba(255,255,255,.03); color:var(--ink-soft); font-family:'Baloo 2'; font-size:10.5px; font-weight:800; cursor:pointer; }
 .md-inventory-toggle:active { background:rgba(255,209,102,.1); }
 .md-item-detail { margin-top:8px; padding:9px 10px; border:1px solid rgba(255,209,102,.28); border-radius:13px; background:rgba(0,0,0,.22); min-height:54px; }
-.md-item-detail-name { font-size:12px; font-weight:800; color:var(--gold); }
+.md-item-detail-name { font-size:12px; font-weight:800; color:var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .md-item-detail-sub { font-size:10px; color:var(--ink-soft); font-weight:700; margin-top:2px; }
 .md-item-actions { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:7px; margin-top:8px; }
 .md-item-actions .md-btn { min-height:42px; padding:8px 6px; font-size:12px; }
