@@ -717,15 +717,21 @@ function FloatingQuickActions({
 function HeroSprite({
   anim
 }) {
-  const heroIdleUrl = asset("hero.idle");
+  // hero001's manifest is a layered "paperdoll" rig (see manifest.js/composeCharacterLayers) —
+  // compose the base body from its parts; fall back to the old CSS blob if the manifest hasn't
+  // loaded yet or hero001 isn't defined in it.
+  const layerUrls = composeCharacterLayers("hero001", HERO_LAYER_ORDER);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap"
-  }, heroIdleUrl ? /*#__PURE__*/React.createElement("img", {
-    className: `md-hero-img ${anim}`,
-    src: heroIdleUrl,
-    alt: "hero",
+  }, layerUrls.length ? /*#__PURE__*/React.createElement("div", {
+    className: `md-modular-sprite md-hero-img ${anim}`
+  }, layerUrls.map((url, i) => /*#__PURE__*/React.createElement("img", {
+    key: i,
+    className: "md-modular-layer",
+    src: url,
+    alt: "",
     draggable: false
-  }) : /*#__PURE__*/React.createElement("div", {
+  }))) : /*#__PURE__*/React.createElement("div", {
     className: `md-hero ${anim}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "hair"

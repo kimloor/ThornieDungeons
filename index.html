@@ -153,6 +153,8 @@ const STYLE = `
 .md-hero-img { width: 76px; height: 82px; position: relative; display: block; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); image-rendering: -webkit-optimize-contrast; }
 .md-hero-img.attack { animation: md-lunge 0.35s ease; }
 .md-hero-img.hurt { animation: md-shake 0.35s ease; }
+.md-modular-sprite { display: block; }
+.md-modular-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; }
 
 .md-enemy { width: 64px; height: 64px; position: relative; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); }
 .md-enemy .blob { position: absolute; inset: 0; border-radius: 46% 46% 52% 52% / 55% 55% 45% 45%; border: 3px solid #1B1233; }
@@ -725,6 +727,41 @@ function listAssets(obj = ASSETS, prefix = "") {
   }
 
   return result;
+}
+
+// ---------- modular ("paperdoll") character compositor ----------
+// Characters like hero001 are shipped as a stack of separate same-canvas-size transparent
+// PNGs (body, hair, torso, arms, legs, ...) instead of one flat sprite, so they render as a
+// stack of absolutely-positioned <img> layers (see .md-modular-sprite / .md-modular-layer in
+// styles.js) rather than a single <img src>.
+//
+// HERO_LAYER_ORDER lists which manifest sub-paths make up the *base* body, back-to-front.
+// There's no equip->asset mapping yet (equipped weapons/armor are procedurally-named, not
+// tied to a specific PNG in the manifest), so this only composes skin+hair+torso+arms+legs —
+// no weapon/armor/accessory layers are drawn on top yet. If the stacking order looks wrong
+// once real art is in place, this is the only list that needs to change.
+const HERO_LAYER_ORDER = [
+  "core.neutral",
+  "head.backHair",
+  "legs.leftUpper", "legs.leftLower", "legs.leftFoot",
+  "legs.rightUpper", "legs.rightLower", "legs.rightFoot",
+  "arms.leftUpper", "arms.leftLower", "arms.leftHand",
+  "torso.hips", "torso.base",
+  "arms.rightUpper", "arms.rightLower", "arms.rightHand",
+  "head.face", "head.ears", "head.frontHair"
+];
+
+// Resolves each `${characterId}.${part}` key in `layerOrder` against the manifest and returns
+// the URLs that actually exist, in order. Missing individual parts are silently skipped (so a
+// partially-filled character doesn't break); if NONE resolve (manifest not loaded yet, or this
+// characterId isn't in it at all), returns [] so the caller can fall back to a CSS placeholder.
+function composeCharacterLayers(characterId, layerOrder) {
+  const urls = [];
+  layerOrder.forEach(part => {
+    const path = `${characterId}.${part}`.split(".").reduce((obj, k) => obj?.[k], ASSETS);
+    if (path) urls.push(assetUrl(path));
+  });
+  return urls;
 }
 
 
@@ -4279,15 +4316,21 @@ function FloatingQuickActions({
 function HeroSprite({
   anim
 }) {
-  const heroIdleUrl = asset("hero.idle");
+  // hero001's manifest is a layered "paperdoll" rig (see manifest.js/composeCharacterLayers) —
+  // compose the base body from its parts; fall back to the old CSS blob if the manifest hasn't
+  // loaded yet or hero001 isn't defined in it.
+  const layerUrls = composeCharacterLayers("hero001", HERO_LAYER_ORDER);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap"
-  }, heroIdleUrl ? /*#__PURE__*/React.createElement("img", {
-    className: `md-hero-img ${anim}`,
-    src: heroIdleUrl,
-    alt: "hero",
+  }, layerUrls.length ? /*#__PURE__*/React.createElement("div", {
+    className: `md-modular-sprite md-hero-img ${anim}`
+  }, layerUrls.map((url, i) => /*#__PURE__*/React.createElement("img", {
+    key: i,
+    className: "md-modular-layer",
+    src: url,
+    alt: "",
     draggable: false
-  }) : /*#__PURE__*/React.createElement("div", {
+  }))) : /*#__PURE__*/React.createElement("div", {
     className: `md-hero ${anim}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "hair"
