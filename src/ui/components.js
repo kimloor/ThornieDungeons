@@ -102,7 +102,7 @@ function StatusBar({
     className: "md-status-chip"
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-chip-icon"
-  }, "🪙"), save.gold));
+  }, "🪙"), formatNumber(save.gold)));
 }
 function LoginScreen({
   cred,
@@ -189,7 +189,7 @@ function MenuScreen({
     anim: ""
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-cp-badge"
-  }, "⚡ CP ", cp.toLocaleString())), /*#__PURE__*/React.createElement("div", {
+  }, "⚡ CP ", formatNumber(cp))), /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
       marginTop: "auto"
@@ -211,7 +211,7 @@ function MenuScreen({
     style: {
       margin: 0
     }
-  }, "🪙 ", save.gold, " gold · Lv", save.character.level, " · Stage ", save.unlockedFloor, " unlocked")), /*#__PURE__*/React.createElement("button", {
+  }, "🪙 ", formatNumber(save.gold), " gold · Lv", save.character.level, " · Stage ", save.unlockedFloor, " unlocked")), /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     onClick: onMap
   }, "🗺️ Select Stage"), /*#__PURE__*/React.createElement("div", {

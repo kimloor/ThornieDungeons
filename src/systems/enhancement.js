@@ -1,6 +1,8 @@
 // ---------- junk materials, enhancement (ตีบวก) & empowerment (เสริมพลัง) ----------
 // Junk items are plain stackable drops that live in the normal inventory (type: "junk"),
 // not in a separate save.materials pool, so they persist through the same item sync as gear.
+// Uses roundTo()/roundInt()/formatNumber() from stats.js (same concatenated bundle, no import
+// needed) for the same floating-point-safety reasons documented there.
 const JUNK_INFO = {
   stone: {
     name: "หิน",
@@ -172,7 +174,11 @@ function rollEmpowerBonus(rarity) {
   const def = EMPOWER_POOL[Math.floor(Math.random() * EMPOWER_POOL.length)];
   const mult = RARITY_MULT[rarity] || 1;
   const variance = 0.8 + Math.random() * 0.4;
-  const value = Math.round(def.unit * mult * variance * 10) / 10;
+  const raw = def.unit * mult * variance;
+  // HP/MP are whole points, not fractional (a tooltip reading "+7.4 HP" doesn't make sense and
+  // risks leaving maxHp non-integer downstream); every other empowered stat here is a %-style
+  // value so it keeps 1 decimal of precision, safely rounded via roundTo() to avoid float drift.
+  const value = def.key === "hp" || def.key === "mp" ? roundInt(raw) : roundTo(raw, 1);
   return {
     key: def.key,
     label: def.label,
