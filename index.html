@@ -52,6 +52,7 @@ var useState = React.useState, useEffect = React.useEffect, useCallback = React.
    No permadeath — clear a stage once, farm it forever.
    ============================================================ */
 
+// ===== data/styles.js =====
 const STYLE = `
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@500;700;800&display=swap');
 
@@ -133,23 +134,23 @@ const STYLE = `
 .md-ground { position: absolute; left: -16px; right: -16px; bottom: 0; height: 26px; background: linear-gradient(180deg, #4A3670 0%, #2C1E4A 100%); border-top: 3px solid var(--gold-deep); opacity: 0.7; }
 
 .md-sprite-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 2; }
-.md-hero-r2-wrap { min-width: 96px; min-height: 96px; justify-content: center; }
-.md-r2-error { width: 96px; height: 96px; display:flex; align-items:center; justify-content:center; font-size:9px; color:#FF8B8B; text-align:center; border:1px dashed rgba(255,139,139,.45); border-radius:10px; }
 .md-sprite-name { font-family:'Baloo 2'; font-weight: 700; font-size: 11px; background: rgba(10,6,22,0.75); color: var(--gold); border: 1px solid var(--gold-deep); padding: 1px 8px; border-radius: 999px; }
 
-.md-hero-img {
-  width: 96px;
-  height: 96px;
-  max-width: 96px;
-  max-height: 96px;
-  display: block;
-  object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  user-select: none;
-  -webkit-user-drag: none;
-  filter: drop-shadow(0 0 8px var(--gold-glow));
-}
+.md-enemy-hpbar { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 74px; }
+.md-enemy-hpbar-track { width: 100%; height: 7px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
+.md-enemy-hpbar-fill { height: 100%; transition: width 0.4s ease; background: linear-gradient(90deg,#FF8787,#E14F4F); }
+.md-enemy-hpbar-hp { font-size: 8.5px; font-weight: 800; color: var(--ink-soft); }
+
+.md-hero { width: 62px; height: 70px; position: relative; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); }
+.md-hero .body { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 46px; height: 46px; border-radius: 50% 50% 46% 46%; background: var(--coral); border: 3px solid #1B1233; }
+.md-hero .head { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 36px; border-radius: 50%; background: #FFE0C2; border: 3px solid #1B1233; }
+.md-hero .hair { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 44px; height: 20px; border-radius: 50% 50% 0 0; background: var(--gold-deep); border: 3px solid #1B1233; border-bottom: none; }
+.md-hero .eye { position: absolute; width: 4px; height: 6px; background: #1B1233; border-radius: 2px; top: 16px; }
+.md-hero .eye.l { left: 12px; } .md-hero .eye.r { right: 12px; }
+.md-hero.attack { animation: md-lunge 0.35s ease; }
+.md-hero.hurt { animation: md-shake 0.35s ease; }
+
+.md-hero-img { width: 76px; height: 82px; position: relative; display: block; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); image-rendering: -webkit-optimize-contrast; }
 .md-hero-img.attack { animation: md-lunge 0.35s ease; }
 .md-hero-img.hurt { animation: md-shake 0.35s ease; }
 
@@ -161,6 +162,11 @@ const STYLE = `
 .md-enemy.hurt { animation: md-shake 0.35s ease; }
 .md-enemy.boss { width: 84px; height: 84px; }
 
+.md-enemy-img { width: 64px; height: 64px; position: relative; display: block; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); image-rendering: -webkit-optimize-contrast; }
+.md-enemy-img.attack { animation: md-lunge-l 0.35s ease; }
+.md-enemy-img.hurt { animation: md-shake 0.35s ease; }
+.md-enemy-img.boss { width: 84px; height: 84px; }
+
 @keyframes md-idle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 @keyframes md-lunge { 0% { transform: translateX(0); } 40% { transform: translateX(14px) rotate(-6deg); } 100% { transform: translateX(0); } }
 @keyframes md-lunge-l { 0% { transform: translateX(0); } 40% { transform: translateX(-14px) rotate(6deg); } 100% { transform: translateX(0); } }
@@ -169,7 +175,10 @@ const STYLE = `
 .md-dmg-float { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-family: 'Baloo 2'; font-weight: 800; font-size: 16px; pointer-events: none; animation: md-float-up 0.9s ease forwards; z-index: 5; text-shadow: 0 2px 0 rgba(0,0,0,0.4); }
 @keyframes md-float-up { 0% { opacity: 1; transform: translate(-50%, 0);} 100% { opacity: 0; transform: translate(-50%, -34px);} }
 
-.md-log { background: rgba(10,6,22,0.6); border: 1px solid rgba(255,209,102,0.25); border-radius: 12px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--ink-soft); min-height: 34px; margin-bottom: 8px; text-align: center; }
+.md-log { background: rgba(10,6,22,0.6); border: 1px solid rgba(255,209,102,0.25); border-radius: 12px; padding: 8px 12px; min-height: 62px; max-height: 78px; overflow-y: auto; margin-bottom: 0; display: flex; flex-direction: column; gap: 3px; justify-content: flex-start; }
+.md-log-line { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-align: center; opacity: 0.6; }
+.md-log-line:before { content: '💬 '; }
+.md-log-line.latest { font-size: 12.5px; color: var(--ink); opacity: 1; }
 
 .md-panel { position: relative; z-index: 2; background: rgba(10,6,22,0.5); border-top: 2px solid var(--gold-deep); padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .md-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -278,10 +287,34 @@ const STYLE = `
 .md-fab-icon { line-height: 1; }
 
 /* pet status readout in combat */
-.md-pet-status {
-  text-align: center; font-size: 11px; font-weight: 800; color: var(--ink-soft);
-  padding: 2px 0 4px; letter-spacing: 0.2px;
+.md-pet-chip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; color: var(--ink);
+  background: rgba(10,6,22,0.55); border: 1.5px solid var(--violet-deep); border-radius: 999px; padding: 4px 10px 4px 6px;
+  flex-shrink: 0; white-space: nowrap;
 }
+.md-pet-chip .cd { color: var(--ink-soft); font-weight: 700; }
+.md-pet-chip.ready { border-color: var(--leaf-deep); }
+
+/* turn order queue bar — shows action order for the current round, sorted by Speed */
+.md-turn-queue {
+  display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+  background: rgba(10,6,22,0.5); border: 1px solid rgba(255,209,102,0.22); border-radius: 999px;
+  padding: 4px 8px; margin-bottom: 6px; position: relative; z-index: 6;
+}
+.md-turn-queue-item {
+  display: flex; align-items: center; gap: 2px; opacity: 0.55; transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.md-turn-queue-item.active { opacity: 1; transform: scale(1.18); }
+.md-turn-queue-item.done { opacity: 0.28; }
+.md-turn-queue-icon {
+  width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,209,102,0.35);
+}
+.md-turn-queue-item.player .md-turn-queue-icon { border-color: var(--gold); }
+.md-turn-queue-item.pet .md-turn-queue-icon { border-color: var(--violet-deep); }
+.md-turn-queue-item.monster .md-turn-queue-icon { border-color: var(--coral-deep); }
+.md-turn-queue-item.active .md-turn-queue-icon { box-shadow: 0 0 0 2px var(--gold-glow); }
+.md-turn-queue-arrow { color: var(--ink-soft); font-size: 11px; opacity: 0.6; }
 
 /* battle scene — RO-style grassy outdoor background */
 .md-scene.battle-bg {
@@ -298,24 +331,31 @@ const STYLE = `
   border-top: 3px solid #6E9752;
   opacity: 0.9;
 }
-.md-scene.battle-bg .md-arena { padding-right: 66px; }
+.md-scene.battle-bg .md-arena { padding: 6px 6px 18px; }
 
-/* top-left RO-style HUD: level badge + hp/mp/xp bars */
-.md-combat-hud { position: absolute; top: 10px; left: 10px; z-index: 6; display: flex; align-items: center; gap: 8px; }
+/* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
+.md-battle-top {
+  position: relative; z-index: 6; display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(180deg, rgba(32,20,58,0.88), rgba(18,11,34,0.88));
+  border: 1.5px solid var(--gold-deep); border-radius: 14px;
+  padding: 7px 10px; margin-bottom: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
 .md-hud-lv {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
   background: radial-gradient(circle at 35% 30%, #FFE49A, var(--gold-deep));
   border: 2px solid #2B1B08; color: #2B1B08; font-family: 'Baloo 2'; font-weight: 800; font-size: 15px;
   display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
-.md-hud-bars { display: flex; flex-direction: column; gap: 2px; width: 112px; }
-.md-hud-track { position: relative; height: 9px; border-radius: 4px; background: rgba(0,0,0,0.55); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
-.md-hud-track.xp { height: 4px; background: rgba(0,0,0,0.4); }
+.md-hud-bars { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.md-hud-row { display: flex; align-items: center; gap: 5px; }
+.md-hud-label { font-family: 'Baloo 2'; font-size: 8.5px; font-weight: 800; color: var(--ink-soft); width: 16px; flex-shrink: 0; }
+.md-hud-track { position: relative; flex: 1; height: 10px; border-radius: 5px; background: rgba(0,0,0,0.55); border: 1px solid rgba(0,0,0,0.6); overflow: hidden; }
+.md-hud-track.xp { height: 4px; background: rgba(0,0,0,0.4); margin-left: 21px; }
 .md-hud-fill { height: 100%; transition: width 0.4s ease; }
 .md-hud-track.hp .md-hud-fill { background: linear-gradient(90deg, #FF8A5B, #E03A3A); }
 .md-hud-track.mp .md-hud-fill { background: linear-gradient(90deg, #5B9CFF, #2C5FDB); }
 .md-hud-track.xp .md-hud-fill { background: linear-gradient(90deg, #FFE49A, var(--gold)); }
-.md-hud-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 7.5px; font-weight: 800; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.85); }
+.md-hud-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.85); }
 
 .md-rail-badge {
   position: absolute; bottom: -5px; right: -5px; background: var(--gold); color: var(--bg-top);
@@ -323,40 +363,44 @@ const STYLE = `
   padding: 1px 5px; border: 1.5px solid var(--bg-top); min-width: 14px; text-align: center; line-height: 1.3;
 }
 
-/* ---- combat action cluster: attack circle + potion/flee side box + skill grid ---- */
-.md-combat-actions { position: absolute; right: 10px; bottom: 12px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-.md-action-cluster { display: flex; align-items: center; gap: 10px; }
-.md-atk-circle {
-  width: 74px; height: 74px; border-radius: 50%; flex-shrink: 0; padding: 0; cursor: pointer;
-  border: 3px solid var(--coral-deep); background: radial-gradient(circle at 35% 30%, #FF9B7A, #C23B2E);
-  display: flex; align-items: center; justify-content: center; font-size: 30px; color: #fff;
-  box-shadow: 0 4px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+/* ---- battle action dock: one unified bottom bar instead of floating clusters ---- */
+.md-battle-dock {
+  position: relative; z-index: 6; display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; padding: 6px 10px 0;
 }
-.md-atk-circle:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
-.md-atk-circle:disabled { opacity: 0.4; cursor: not-allowed; }
-.md-side-box {
-  display: flex; flex-direction: column; gap: 7px; padding: 7px;
-  border: 2px solid #E14F4F; border-radius: 16px; background: rgba(20,8,8,0.35);
-}
-.md-side-circle {
-  position: relative; width: 42px; height: 42px; border-radius: 50%; padding: 0; cursor: pointer;
+.md-dock-auto {
+  padding: 8px 12px; border-radius: 999px; cursor: pointer; flex-shrink: 0;
   border: 2px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
-  display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff;
+  color: #fff; font-family: 'Baloo 2'; font-weight: 800; font-size: 11px; letter-spacing: 0.4px;
   box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
 }
-.md-side-circle:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
-.md-side-circle:disabled { opacity: 0.4; cursor: not-allowed; }
-.md-skill-fab {
-  width: 46px; height: 46px; border-radius: 12px; padding: 0; cursor: pointer;
-  border: 2px solid var(--violet-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
-  display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff;
-  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15); align-self: flex-end;
+.md-dock-auto:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-dock-auto.active { border-color: var(--leaf-deep); background: linear-gradient(180deg, rgba(40,80,50,0.95), rgba(16,36,20,0.95)); }
+.md-dock-circle {
+  position: relative; width: 46px; height: 46px; border-radius: 50%; padding: 0; cursor: pointer; flex-shrink: 0;
+  border: 2px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
+  display: flex; align-items: center; justify-content: center; font-size: 19px; color: #fff;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
 }
-.md-skill-fab:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
-.md-skill-fab:disabled { opacity: 0.4; cursor: not-allowed; }
-.md-skill-grid {
-  display: grid; grid-template-columns: repeat(2, 46px); gap: 6px; align-self: flex-end;
-  padding: 8px; border: 2px solid var(--violet-deep); border-radius: 14px; background: rgba(20,12,30,0.55);
+.md-dock-circle.skill { border-color: var(--violet-deep); }
+.md-dock-circle.flee { border-color: #E14F4F; }
+.md-dock-circle:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-dock-circle:disabled { opacity: 0.4; cursor: not-allowed; }
+.md-dock-attack {
+  width: 68px; height: 68px; border-radius: 50%; flex-shrink: 0; padding: 0; cursor: pointer;
+  border: 3px solid var(--coral-deep); background: radial-gradient(circle at 35% 30%, #FF9B7A, #C23B2E);
+  display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff;
+  transform: translateY(-12px);
+  box-shadow: 0 6px 0 rgba(0,0,0,0.5), 0 8px 16px rgba(194,59,46,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.md-dock-attack:active { transform: translateY(-9px); box-shadow: 0 3px 0 rgba(0,0,0,0.5); }
+.md-dock-attack:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.md-skill-popover {
+  position: absolute; right: 10px; bottom: 100%; margin-bottom: 8px; z-index: 7;
+  display: grid; grid-template-columns: repeat(3, 46px); gap: 6px;
+  padding: 8px; border: 2px solid var(--violet-deep); border-radius: 14px; background: rgba(20,12,30,0.92);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
 }
 .md-skill-cell {
   position: relative; width: 46px; height: 46px; border-radius: 10px; padding: 0; cursor: pointer;
@@ -370,14 +414,6 @@ const STYLE = `
   position: absolute; top: 1px; left: 3px; font-size: 9px; font-weight: 800; color: var(--gold);
   font-family: 'Baloo 2';
 }
-.md-autorun-btn {
-  position: absolute; left: 8px; bottom: 12px; z-index: 6; padding: 7px 12px; border-radius: 999px; cursor: pointer;
-  border: 2px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
-  color: #fff; font-family: 'Baloo 2'; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;
-  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
-}
-.md-autorun-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
-.md-autorun-btn.active { border-color: var(--leaf-deep); background: linear-gradient(180deg, rgba(40,80,50,0.95), rgba(16,36,20,0.95)); }
 
 
 /* ---- character equipment / inventory redesign ---- */
@@ -422,6 +458,8 @@ const STYLE = `
 .md-inventory-cell-num { position:absolute; left:4px; top:3px; font-size:8px; color:var(--ink-soft); font-weight:800; }
 .md-inventory-cell-qty { position:absolute; right:4px; bottom:3px; font-size:8px; color:var(--gold); font-weight:800; }
 .md-inventory-cell-stars { position:absolute; left:50%; bottom:3px; transform:translateX(-50%) scale(.72); transform-origin:center; white-space:nowrap; }
+.md-inventory-toggle { width:100%; margin-top:6px; padding:6px; border-radius:10px; border:1px dashed rgba(255,209,102,.4); background:rgba(255,255,255,.03); color:var(--ink-soft); font-family:'Baloo 2'; font-size:10.5px; font-weight:800; cursor:pointer; }
+.md-inventory-toggle:active { background:rgba(255,209,102,.1); }
 .md-item-detail { margin-top:8px; padding:9px 10px; border:1px solid rgba(255,209,102,.28); border-radius:13px; background:rgba(0,0,0,.22); min-height:54px; }
 .md-item-detail-name { font-size:12px; font-weight:800; color:var(--gold); }
 .md-item-detail-sub { font-size:10px; color:var(--ink-soft); font-weight:700; margin-top:2px; }
@@ -441,107 +479,48 @@ const STYLE = `
 }
 .md-btn { min-height: 46px; }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
+/* ---- blacksmith anvil result animation ---- */
+@keyframes anvil-success-flash {
+  0% { box-shadow: 0 0 0 0 rgba(255,209,102,0.0); transform: scale(1); }
+  30% { box-shadow: 0 0 22px 6px rgba(255,209,102,0.65); transform: scale(1.05); }
+  100% { box-shadow: 0 0 0 0 rgba(255,209,102,0.0); transform: scale(1); }
+}
+@keyframes anvil-fail-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.md-anvil-result-success { animation: anvil-success-flash 0.6s ease-out; }
+.md-anvil-result-fail { animation: anvil-fail-shake 0.4s ease-in-out; border-color: #ff5566 !important; }
+.md-blacksmith-icon { font-size: 40px; text-align: center; margin: 6px 0; transition: transform 0.15s ease; }
 `;
 
-// ===== assets/loader.js =====
-// ---------- ThornieDungeons R2 Asset Loader ----------
-// R2 is served by the public Cloudflare Worker endpoint. Keep this absolute so the
-// game works whether index.html is hosted on Netlify, Cloudflare Pages, or elsewhere.
-const ASSET_BASE = "https://thorniedungeons.ekqtjl.workers.dev/assets/";
-let ASSETS = {};
-let ASSET_MANIFEST = null;
 
-function assetUrl(path) {
-  if (!path) return "";
-  return ASSET_BASE + String(path).replace(/^\/+/, "");
-}
-
-async function fetchAsset(path, options = {}) {
-  const response = await fetch(assetUrl(path), {
-    ...options,
-    mode: "cors"
-  });
-  if (!response.ok) {
-    throw new Error(`Asset request failed: ${response.status} ${response.statusText}: ${path}`);
-  }
-  return response;
-}
-
-async function loadAssetJSON(path) {
-  const requestPath = path === "manifest.json"
-    ? `manifest.json?v=${Date.now()}`
-    : path;
-  const response = await fetchAsset(requestPath, { cache: "no-store" });
-  return response.json();
-}
-
-async function loadAssetManifest() {
-  const manifest = await loadAssetJSON("manifest.json");
-  if (!manifest || manifest.schema !== "thornie-assets-v1" || !manifest.assets) {
-    throw new Error("Invalid Thornie asset manifest");
-  }
-  ASSET_MANIFEST = manifest;
-  ASSETS = manifest.assets;
-  console.info("[R2] Asset manifest loaded", {
-    version: manifest.version,
-    schema: manifest.schema,
-    characterId: manifest.metadata?.characterId,
-    assetCount: listAssets().length
-  });
-  return ASSETS;
-}
-
-function asset(key) {
-  const aliases = {
-    "hero.idle": "hero001.core.neutral",
-    "hero.neutral": "hero001.core.neutral"
-  };
-  const resolvedKey = aliases[String(key || "")] || String(key || "");
-  const path = resolvedKey.split(".").reduce((obj, part) => obj?.[part], ASSETS);
-  if (typeof path !== "string" || !path) {
-    console.warn(`[R2] Asset not found in manifest: ${resolvedKey}`);
-    return "";
-  }
-  return assetUrl(path);
-}
-
-function listAssets(obj = ASSETS, prefix = "") {
-  const result = [];
-  for (const [key, value] of Object.entries(obj || {})) {
-    const fullKey = prefix ? `${prefix}.${key}` : key;
-    if (typeof value === "string") result.push(fullKey);
-    else if (value && typeof value === "object") result.push(...listAssets(value, fullKey));
-  }
-  return result;
-}
-
-function getHeroAssetKeyForAnim(anim) {
-  // The current manifest provides the production-ready neutral/core asset.
-  // Animation-specific modular frames can be added later without changing callers.
-  return "hero001.core.neutral";
-}
-
-function preloadAsset(path) {
-  return new Promise((resolve, reject) => {
-    if (!path) return reject(new Error("Empty asset path"));
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load image asset: ${path}`));
-    img.src = path.startsWith("http") ? path : assetUrl(path);
-  });
-}
-
-// ---------- cloud persistence (Google Sheets via Apps Script) ----------
+// ===== state/save.js =====
+// ---------- cloud persistence (Cloudflare D1 via Worker API) ----------
 const CONFIG_CACHE_KEY = "thornie-dungeons-cloud-config-v1"; // caches {url,id} only — never the password
 const GAME_CONFIG_CACHE_KEY = "thornie-dungeons-game-config-v2"; // caches monster/equipment/pet/skill balance data
-const DEFAULT_SERVER_URL = "https://script.google.com/macros/s/AKfycbwdTA8N8KcxVKQtQCRe6p3ry3BS8TGW5HkPJIHHV4vL_F7PPY0kQqaF6MKT79OXDshjbA/exec";
+const DEFAULT_SERVER_URL = "https://thornie-dungeons-api.ekqtjl.workers.dev";
+
+// ---------- save schema versioning ----------
+// Bump this whenever the shape of `defaultSave()` changes (new top-level field, new stat key,
+// a field being removed/renamed, etc). Each bump should get a matching entry in SAVE_MIGRATIONS
+// below so saves created by older client builds keep loading correctly instead of producing
+// `undefined`/`NaN` once the new code tries to read a key that doesn't exist yet in old data.
+const CURRENT_SAVE_VERSION = 2;
+
 const defaultSave = () => ({
+  saveVersion: CURRENT_SAVE_VERSION,
   gold: 0,
   diamonds: 0,
   unlockedFloor: 1,
   potions: 2,
   pets: [],
   activePetId: null,
+  protectionStones: 0,
+  chestPity: 0,
   character: {
     level: 1,
     xp: 0,
@@ -549,12 +528,207 @@ const defaultSave = () => ({
     stats: {
       str: 0,
       vit: 0,
+      agi: 0,
       dex: 0,
       luk: 0
     }
   }
 });
 
+// ---------- generic hydration helpers ----------
+// Number(x)||0 silently turns a *legitimate* 0 into the fallback in some call sites and doesn't
+// protect against NaN/Infinity from corrupted data — this is the one safe primitive everything
+// below (and serialize.js) should use instead of ad-hoc `Number(x) || fallback`.
+function numOr(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+// Recursively fills in any key that's missing, mistyped, or NaN in `raw` using `schema`
+// (normally the output of defaultSave()) as the source of truth for shape + defaults.
+// This is what makes adding a new field to defaultSave() "just work" for old saves — no need
+// to hand-write a migration every time, only when a value needs something smarter than "default".
+function deepHydrate(raw, schema) {
+  const out = {};
+  Object.keys(schema).forEach(key => {
+    const def = schema[key];
+    const val = raw && typeof raw === "object" ? raw[key] : undefined;
+    if (def === null) {
+      // Nullable field (e.g. activePetId) — accept null or string, otherwise fall back.
+      out[key] = val === null || typeof val === "string" ? val : def;
+    } else if (Array.isArray(def)) {
+      out[key] = Array.isArray(val) ? val : def.slice();
+    } else if (typeof def === "number") {
+      out[key] = numOr(val, def);
+    } else if (typeof def === "string") {
+      out[key] = typeof val === "string" ? val : def;
+    } else if (typeof def === "object") {
+      out[key] = deepHydrate(val, def); // nested object (e.g. character, character.stats)
+    } else {
+      out[key] = val !== undefined ? val : def;
+    }
+  });
+  return out;
+}
+
+// Cross-checks character.stats against STAT_INFO (constants.js) — the actual canonical list of
+// stat keys the game uses. This is a second safety net on top of deepHydrate()'s defaultSave()
+// comparison: if a new stat gets added to STAT_INFO but someone forgets to also add it to
+// defaultSave(), old *and* freshly-created saves still self-heal instead of showing NaN in the
+// stat allocation screen.
+function ensureStatKeys(save) {
+  if (typeof STAT_INFO === "undefined" || !Array.isArray(STAT_INFO)) return save;
+  STAT_INFO.forEach(s => {
+    save.character.stats[s.key] = numOr(save.character.stats[s.key], 0);
+  });
+  return save;
+}
+
+// ---------- versioned migrations ----------
+// Each entry runs once, in order, for any save whose version is below `to`. Keep these small and
+// additive — they exist purely to handle data-shape changes that deepHydrate() can't infer on its
+// own (renames, dropping an obsolete field, moving a value from one place to another).
+const SAVE_MIGRATIONS = [{
+  to: 2,
+  migrate(save) {
+    // v1 -> v2: added the AGI stat (deepHydrate/ensureStatKeys already default it to 0), and
+    // replaced the old flat `materials: {iron, silver, manaOre}` counters with stackable junk
+    // items that live in the inventory instead. Drop the legacy field so it doesn't linger.
+    if ("materials" in save) delete save.materials;
+    return save;
+  }
+}];
+function runSaveMigrations(save) {
+  let version = numOr(save.saveVersion, 1);
+  SAVE_MIGRATIONS.forEach(step => {
+    if (version < step.to) {
+      save = step.migrate(save) || save;
+      version = step.to;
+    }
+  });
+  save.saveVersion = CURRENT_SAVE_VERSION;
+  return save;
+}
+
+// Single entry point every save load path (cloud row, localStorage fallback, brand-new account)
+// should run through. Guaranteed to always return a complete, valid save object — never throws,
+// never returns something with missing/NaN fields, even if `raw` is null, garbage, or an old
+// pre-versioning save.
+function hydrateSave(raw) {
+  try {
+    const schema = defaultSave();
+    let save = deepHydrate(raw, schema);
+    save = ensureStatKeys(save);
+    save = runSaveMigrations(save);
+    return save;
+  } catch (e) {
+    console.warn("[ThornieDungeons] Save data was corrupted or incompatible — resetting to a fresh save.", e);
+    return defaultSave();
+  }
+}
+
+// Safe JSON.parse that never throws — used for anything read from localStorage or a server JSON
+// blob column, where the raw string could be missing, truncated, or otherwise corrupted.
+function safeJsonParse(str, fallback = null) {
+  if (!str) return fallback;
+  try {
+    const parsed = JSON.parse(str);
+    return parsed === null || parsed === undefined ? fallback : parsed;
+  } catch (e) {
+    console.warn("[ThornieDungeons] Failed to parse stored JSON, using fallback.", e);
+    return fallback;
+  }
+}
+
+// ===== assets/loader.js =====
+// ---------- R2 Asset Loader ----------
+const ASSET_BASE = "/assets/";
+
+function assetUrl(path) {
+  if (!path) return "";
+  return ASSET_BASE + String(path).replace(/^\/+/, "");
+}
+
+async function fetchAsset(path, options = {}) {
+  const response = await fetch(assetUrl(path), options);
+
+  if (!response.ok) {
+    throw new Error(
+      `Asset request failed: ${response.status} ${response.statusText}: ${path}`
+    );
+  }
+
+  return response;
+}
+
+async function loadAssetText(path) {
+  const response = await fetchAsset(path);
+  return response.text();
+}
+
+async function loadAssetJSON(path) {
+  const response = await fetchAsset(path);
+  return response.json();
+}
+
+function preloadAsset(path) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => resolve(img);
+    img.onerror = () => {
+      reject(new Error(`Failed to load image asset: ${path}`));
+    };
+
+    img.src = assetUrl(path);
+  });
+}
+
+// ===== assets/manifest.js =====
+// ---------- R2 Asset Manifest ----------
+let ASSETS = {};
+
+async function loadAssetManifest() {
+  const manifest = await loadAssetJSON("manifest.json");
+
+  ASSETS = manifest.assets || {};
+
+  console.log("Asset Manifest loaded:", manifest);
+
+  return ASSETS;
+}
+
+function asset(key) {
+  const path = key
+    .split(".")
+    .reduce((obj, part) => obj?.[part], ASSETS);
+
+  if (!path) {
+    console.warn(`Asset not found in manifest: ${key}`);
+    return "";
+  }
+
+  return assetUrl(path);
+}
+
+function listAssets(obj = ASSETS, prefix = "") {
+  const result = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+
+    if (typeof value === "string") {
+      result[fullKey] = value;
+    } else if (value && typeof value === "object") {
+      Object.assign(result, listAssets(value, fullKey));
+    }
+  }
+
+  return result;
+}
+
+
+// ===== state/localCache.js =====
 // window.storage only exists inside the Claude.ai artifact preview; the real deployed site
 // (Cloudflare Pages) needs a real localStorage fallback or caching silently no-ops there.
 async function kvGet(key) {
@@ -580,6 +754,8 @@ async function kvSet(key, value) {
     if (window.localStorage) window.localStorage.setItem(key, value);
   } catch (e) {}
 }
+
+// ===== state/configCache.js =====
 async function loadCachedConfig() {
   try {
     const v = await kvGet(CONFIG_CACHE_KEY);
@@ -603,6 +779,8 @@ async function loadCachedGameConfig() {
 async function writeCachedGameConfig(cfg) {
   await kvSet(GAME_CONFIG_CACHE_KEY, JSON.stringify(cfg));
 }
+
+// ===== state/api.js =====
 async function cloudGet(url, params) {
   try {
     const qs = new URLSearchParams(params).toString();
@@ -671,6 +849,7 @@ function cloudGetConfig(url) {
   });
 }
 
+// ===== data/gameConfig.js =====
 // Applies a fetched game-balance config on top of the hardcoded defaults below.
 // Every field is validated defensively — a partial or malformed sheet should never crash the game;
 // missing/invalid pieces just keep their current (default) values.
@@ -699,7 +878,8 @@ function applyGameConfig(cfg) {
       RARITY_MULT = {
         rare: rm.rare,
         unique: rm.unique,
-        elite: rm.elite
+        elite: rm.elite,
+        mythic: typeof rm.mythic === "number" ? rm.mythic : RARITY_MULT.mythic
       };
     }
   } catch (e) {}
@@ -728,6 +908,7 @@ function monsterFromConfig(m) {
   };
 }
 
+// ===== state/serialize.js =====
 // progress <-> server row (reuses existing column names: bank_gold now holds `gold`, best_floor now holds `unlockedFloor`)
 function progressToServer(save) {
   return {
@@ -743,83 +924,137 @@ function progressToServer(save) {
     char_dex: save.character.stats.dex,
     char_luk: save.character.stats.luk,
     pets_json: JSON.stringify(save.pets || []),
-    active_pet_id: save.activePetId || ""
+    active_pet_id: save.activePetId || "",
+    // Iron / mana stone used to live here as raw counters, but they're now regular stackable
+    // junk items synced through itemsToServerList instead, so this blob only keeps the misc bits.
+    // AGI also rides here (instead of a new char_agi column) so no D1 schema migration is required.
+    // `v` stamps the save schema version at write time — mainly useful for debugging/telemetry;
+    // the authoritative version used for migrations is whatever hydrateSave() resolves on load.
+    materials_json: JSON.stringify({
+      v: save.saveVersion || CURRENT_SAVE_VERSION,
+      protectionStones: save.protectionStones || 0,
+      chestPity: save.chestPity || 0,
+      charAgi: save.character.stats.agi || 0
+    })
   };
 }
+
+// Rebuilds a client save object from a D1 row. Never throws and never leaves a field
+// undefined/NaN, no matter how old or malformed the row's JSON blobs are — every value goes
+// through numOr()/safeJsonParse(), and the whole result is run through hydrateSave() at the end
+// so any field this function doesn't explicitly know about yet still gets a safe default and any
+// pending version migration (see SAVE_MIGRATIONS in save.js) still gets applied.
 function progressFromServer(row) {
   if (!row) return defaultSave();
-  let pets = [];
-  try {
-    pets = row.pets_json ? JSON.parse(row.pets_json) : [];
-  } catch (e) {
-    pets = [];
-  }
-  return {
-    gold: Number(row.bank_gold) || 0,
-    diamonds: Number(row.diamonds) || 0,
-    unlockedFloor: Number(row.best_floor) || 1,
-    potions: row.potions === undefined || row.potions === "" ? 2 : Number(row.potions) || 0,
-    pets,
+  const pets = safeJsonParse(row.pets_json, []);
+  const materials = safeJsonParse(row.materials_json, {});
+  const raw = {
+    saveVersion: numOr(materials.v, 1), // rows written before this field existed default to v1
+    gold: numOr(row.bank_gold, 0),
+    diamonds: numOr(row.diamonds, 0),
+    unlockedFloor: numOr(row.best_floor, 1),
+    // potions historically distinguished "missing column" (-> starter 2) from "explicitly 0",
+    // so it can't just use numOr's single fallback the way every other field can.
+    potions: row.potions === undefined || row.potions === null || row.potions === "" ? 2 : numOr(row.potions, 0),
+    pets: Array.isArray(pets) ? pets : [],
     activePetId: row.active_pet_id || null,
+    protectionStones: numOr(materials.protectionStones, 0),
+    chestPity: numOr(materials.chestPity, 0),
     character: {
-      level: Number(row.char_level) || 1,
-      xp: Number(row.char_xp) || 0,
-      statPoints: Number(row.char_points) || 0,
+      level: numOr(row.char_level, 1),
+      xp: numOr(row.char_xp, 0),
+      statPoints: numOr(row.char_points, 0),
       stats: {
-        str: Number(row.char_str) || 0,
-        vit: Number(row.char_vit) || 0,
-        dex: Number(row.char_dex) || 0,
-        luk: Number(row.char_luk) || 0
+        str: numOr(row.char_str, 0),
+        vit: numOr(row.char_vit, 0),
+        agi: numOr(materials.charAgi, 0),
+        dex: numOr(row.char_dex, 0),
+        luk: numOr(row.char_luk, 0)
       }
     }
   };
+  // Final safety net: fills in anything missing against the current defaultSave() schema,
+  // cross-checks stat keys against STAT_INFO, and runs any pending saveVersion migrations.
+  return hydrateSave(raw);
 }
 function itemsToServerList(inventory, equipped) {
   const list = [];
-  Object.values(equipped).forEach(it => {
-    if (it) list.push({
-      itemId: it.id,
-      slotType: it.type,
-      equipped: true,
-      rarity: it.rarity,
-      name: it.name,
-      atk: it.atk,
-      def: it.def,
-      hp: it.hp,
-      mp: it.mp
-    });
-  });
-  inventory.forEach(it => list.push({
+  const pack = (it, equippedFlag) => ({
     itemId: it.id,
     slotType: it.type,
-    equipped: false,
+    equipped: equippedFlag,
     rarity: it.rarity,
     name: it.name,
     atk: it.atk,
     def: it.def,
     hp: it.hp,
-    mp: it.mp
-  }));
+    mp: it.mp,
+    enhanceLevel: it.enhanceLevel || 0,
+    // dodgeChance/critChance/critDamage (accessory base rolls) and junk stack data
+    // (junkId/quantity/icon) don't have their own server columns, so they all ride
+    // along inside the extra JSON blob instead.
+    extra: {
+      empowerSlots: it.empowerSlots || [],
+      dodgeChance: it.dodgeChance || undefined,
+      critChance: it.critChance || undefined,
+      critDamage: it.critDamage || undefined,
+      junkId: it.junkId || undefined,
+      quantity: it.quantity || undefined,
+      icon: it.icon || undefined
+    }
+  });
+  Object.values(equipped).forEach(it => {
+    if (it) list.push(pack(it, true));
+  });
+  inventory.forEach(it => list.push(pack(it, false)));
   return list;
 }
 function itemsFromServerList(rows) {
   const equipped = emptyEquipped();
   const inventory = [];
+  if (!Array.isArray(rows)) return {
+    equipped,
+    inventory
+  };
   rows.forEach(r => {
-    const it = {
-      id: r.item_id,
-      type: r.slot_type,
-      rarity: r.rarity,
-      name: r.name,
-      atk: Number(r.atk) || 0,
-      def: Number(r.def) || 0,
-      hp: Number(r.hp) || 0,
-      mp: Number(r.mp) || 0
-    };
-    ["atk", "def", "hp", "mp"].forEach(k => {
-      if (!it[k]) delete it[k];
-    });
-    if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;else inventory.push(it);
+    // A single malformed row (bad JSON, unexpected type, etc) should never take down the whole
+    // inventory load — skip just that row and keep processing the rest.
+    try {
+      const extra = safeJsonParse(r.extra_json, {});
+      if (r.slot_type === "junk") {
+        inventory.push({
+          id: r.item_id,
+          type: "junk",
+          junkId: extra.junkId,
+          name: r.name,
+          icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
+          rarity: r.rarity || "common",
+          quantity: numOr(extra.quantity, 1)
+        });
+        return;
+      }
+      const it = {
+        id: r.item_id,
+        type: r.slot_type,
+        rarity: r.rarity,
+        name: r.name,
+        atk: numOr(r.atk, 0),
+        def: numOr(r.def, 0),
+        hp: numOr(r.hp, 0),
+        mp: numOr(r.mp, 0),
+        dodgeChance: numOr(extra.dodgeChance, 0),
+        critChance: numOr(extra.critChance, 0),
+        critDamage: numOr(extra.critDamage, 0),
+        enhanceLevel: numOr(r.enhance_level, 0),
+        empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
+      };
+      ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
+        if (!it[k]) delete it[k];
+      });
+      if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;else inventory.push(it);
+    } catch (e) {
+      console.warn("[ThornieDungeons] Skipped a corrupted item row:", e);
+    }
   });
   return {
     equipped,
@@ -827,6 +1062,8 @@ function itemsFromServerList(rows) {
   };
 }
 
+
+// ===== data/constants.js =====
 // ---------- game data ----------
 const MAX_LEVEL = 99;
 const STAT_POINTS_PER_LEVEL = 5;
@@ -841,17 +1078,26 @@ const STAT_INFO = [{
   icon: "❤️",
   desc: "+12 HP สูงสุด, +DEF เล็กน้อย"
 }, {
+  key: "agi",
+  label: "AGI",
+  icon: "🌀",
+  desc: "เพิ่ม Speed (ลำดับการออกอาวุธ) และ Evasion"
+}, {
   key: "dex",
   label: "DEX",
   icon: "🎯",
-  desc: "+ATK เล็กน้อย, เพิ่มโอกาสโจมตีโดน"
+  desc: "+ATK เล็กน้อย, เพิ่มโอกาสโจมตีโดน (Hit Rate)"
 }, {
   key: "luk",
   label: "LUK",
   icon: "🍀",
-  desc: "เพิ่มโอกาสคริติคอล, โอกาสหลบหลีก, และไอเทมดรอป"
+  desc: "เพิ่มโอกาสคริติคอล และไอเทมดรอป"
 }];
+// Base speed value before AGI is applied — shared by player, pets, and monsters.
+const BASE_SPEED = 10;
 
+
+// ===== systems/skills.js =====
 // ---------- skills (unlocked every 10 levels, up to level 90 — level cap is 99) ----------
 let SKILLS = [{
   key: "power_strike",
@@ -949,6 +1195,8 @@ function unlockedSkills(level) {
   return SKILLS.filter(s => s.unlockLevel <= level);
 }
 
+
+// ===== systems/pets.js =====
 // ---------- pets ----------
 // R: 1 active skill only. SR: active + 1 passive. SSR: active + passive + 1 extra skill.
 let PET_POOL = [{
@@ -1108,6 +1356,46 @@ let PET_POOL = [{
     desc: "30% โอกาสทำให้ศัตรูมึนงง 1 เทิร์นเมื่อสกิลทำงาน"
   }
 }];
+// ---------- pet stats (STR/VIT/AGI/DEX/LUK) & level ----------
+// Base per-rarity stat lines a freshly-obtained pet starts with at level 1.
+const PET_BASE_STATS = {
+  r: { str: 4, vit: 4, agi: 4, dex: 4, luk: 4 },
+  sr: { str: 6, vit: 6, agi: 6, dex: 6, luk: 6 },
+  ssr: { str: 9, vit: 9, agi: 9, dex: 9, luk: 9 }
+};
+// Creates a new pet instance (what gets stored in save.pets / pets_json) with
+// its own Level, EXP and 5-stat block, ready to be saved to D1 as-is.
+function newPetInstance(defId) {
+  const def = getPetDef(defId);
+  const rarity = (def && def.rarity) || "r";
+  const base = PET_BASE_STATS[rarity] || PET_BASE_STATS.r;
+  return {
+    instId: `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    defId,
+    level: 1,
+    xp: 0,
+    stats: { ...base }
+  };
+}
+function petXpToNext(level) {
+  return level * 15 + 10;
+}
+// Derived combat stats for a pet instance, following the same Speed/Evasion/
+// HitRate/CritChance/ItemDropBonus formulas used for the player character.
+function petCombatStats(instance) {
+  const s = (instance && instance.stats) || PET_BASE_STATS.r;
+  const lvl = (instance && instance.level) || 1;
+  return {
+    maxHp: 25 + lvl * 3 + s.vit * 8,
+    atk: 4 + Math.floor(lvl * 0.6) + s.str * 2,
+    def: 1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4),
+    speed: BASE_SPEED + s.agi * 2,
+    evasion: +(s.agi * 0.5).toFixed(1),
+    hitRate: Math.min(99, +(80 + s.dex * 0.5).toFixed(1)),
+    critChance: +(s.luk * 0.5).toFixed(1),
+    dropBonus: +(s.luk * 0.2).toFixed(1)
+  };
+}
 const RARITY_ORDER_PET = ["r", "sr", "ssr"];
 const PET_RARITY_LABEL = {
   r: "R",
@@ -1134,31 +1422,40 @@ function rollGachaPet() {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 let ENEMY_POOL = [{
+  id: "jelly_slime",
   name: "Jelly Slime",
   color: "#7ED9A8"
 }, {
+  id: "spore_cap",
   name: "Spore Cap",
   color: "#C98BE0"
 }, {
+  id: "tusky_boar",
   name: "Tusky Boar",
   color: "#C9A06A"
 }, {
+  id: "bramble_bat",
   name: "Bramble Bat",
   color: "#8E8CD8"
 }, {
+  id: "bone_rattler",
   name: "Bone Rattler",
   color: "#E5E2D6"
 }, {
+  id: "sandy_crab",
   name: "Sandy Crab",
   color: "#F2B25C"
 }];
 let BOSS_POOL = [{
+  id: "moss_king",
   name: "Moss King",
   color: "#5FA85F"
 }, {
+  id: "ember_drake",
   name: "Ember Drake",
   color: "#F0714B"
 }, {
+  id: "frost_warden",
   name: "Frost Warden",
   color: "#7BC7E8"
 }];
@@ -1171,18 +1468,312 @@ let ACCESSORY_NAMES = ["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift An
 let RARITY_MULT = {
   rare: 1,
   unique: 1.9,
-  elite: 3.2
+  elite: 3.2,
+  mythic: 5.4
 };
 const RARITY_LABEL = {
   rare: "Rare",
   unique: "Unique",
-  elite: "Elite"
+  elite: "Elite",
+  mythic: "Mythic"
 };
 const RARITY_STARS = {
   rare: 1,
   unique: 3,
-  elite: 5
+  elite: 5,
+  mythic: 7
 };
+
+// ===== systems/enhancement.js =====
+// ---------- junk materials, enhancement (ตีบวก) & empowerment (เสริมพลัง) ----------
+// Junk items are plain stackable drops that live in the normal inventory (type: "junk"),
+// not in a separate save.materials pool, so they persist through the same item sync as gear.
+const JUNK_INFO = {
+  stone: {
+    name: "หิน",
+    icon: "🪨"
+  },
+  grass: {
+    name: "หญ้า",
+    icon: "🌿"
+  },
+  wood: {
+    name: "ไม้",
+    icon: "🪵"
+  },
+  iron: {
+    name: "เหล็ก",
+    icon: "🔩"
+  },
+  manaOre: {
+    name: "หินมานา",
+    icon: "🔮"
+  }
+};
+const JUNK_STACK_MAX = 99;
+const JUNK_SELL_VALUE = {
+  stone: 1,
+  grass: 1,
+  wood: 2,
+  iron: 4,
+  manaOre: 6
+};
+function makeJunkItem(junkId, quantity) {
+  const info = JUNK_INFO[junkId];
+  return {
+    id: `junk-${junkId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    type: "junk",
+    junkId,
+    name: info.name,
+    icon: info.icon,
+    rarity: "common",
+    quantity: Math.max(1, Math.min(JUNK_STACK_MAX, quantity))
+  };
+}
+// Sums every stack of a given junk type currently sitting in the inventory.
+function junkTotal(inventory, junkId) {
+  return inventory.reduce((sum, it) => it.type === "junk" && it.junkId === junkId ? sum + (it.quantity || 0) : sum, 0);
+}
+// Adds `amount` of a junk type into existing (non-full) stacks first, then creates new
+// 99-cap stacks for any remainder, so a slot never holds more than JUNK_STACK_MAX.
+function addJunkToInventory(inventory, junkId, amount) {
+  if (!amount || amount <= 0) return inventory;
+  let remaining = amount;
+  const next = inventory.map(it => {
+    if (remaining > 0 && it.type === "junk" && it.junkId === junkId && it.quantity < JUNK_STACK_MAX) {
+      const space = JUNK_STACK_MAX - it.quantity;
+      const add = Math.min(space, remaining);
+      remaining -= add;
+      return {
+        ...it,
+        quantity: it.quantity + add
+      };
+    }
+    return it;
+  });
+  while (remaining > 0) {
+    const chunk = Math.min(JUNK_STACK_MAX, remaining);
+    next.push(makeJunkItem(junkId, chunk));
+    remaining -= chunk;
+  }
+  return next;
+}
+// Removes `amount` of a junk type, draining partially-filled/emptied stacks first.
+// Returns null if the player doesn't have enough (no partial spend).
+function removeJunkFromInventory(inventory, junkId, amount) {
+  if (!amount || amount <= 0) return inventory;
+  if (junkTotal(inventory, junkId) < amount) return null;
+  let remaining = amount;
+  const next = [];
+  inventory.forEach(it => {
+    if (remaining > 0 && it.type === "junk" && it.junkId === junkId) {
+      const take = Math.min(it.quantity, remaining);
+      remaining -= take;
+      const leftover = it.quantity - take;
+      if (leftover > 0) next.push({
+        ...it,
+        quantity: leftover
+      });
+    } else {
+      next.push(it);
+    }
+  });
+  return next;
+}
+// Regular (non-boss) monsters drop one stack of a random junk material.
+function rollJunkDrop(floor, modifier) {
+  const keys = Object.keys(JUNK_INFO);
+  const manaWeight = modifier?.rarityBoost ? 0.3 : 0.14;
+  const ironWeight = 0.22;
+  const r = Math.random();
+  let junkId;
+  if (r < manaWeight) junkId = "manaOre";else if (r < manaWeight + ironWeight) junkId = "iron";else junkId = keys[Math.floor(Math.random() * 3)]; // stone / grass / wood
+  const amount = 1 + Math.floor(floor / 12) + (Math.random() < 0.25 ? 1 : 0);
+  return {
+    type: junkId,
+    amount
+  };
+}
+const ENHANCE_MAX = 10;
+const ENHANCE_RATE_TABLE = [95, 90, 82, 72, 60, 48, 36, 25, 16, 10];
+function enhanceSuccessRate(level) {
+  return ENHANCE_RATE_TABLE[Math.min(level, ENHANCE_RATE_TABLE.length - 1)];
+}
+// Enhance now always costs exactly 1 iron plus a gold fee that scales with level.
+function enhanceCost(level) {
+  return {
+    iron: 1,
+    gold: 25 + level * 35
+  };
+}
+const ENHANCE_STAT_PCT = 0.06; // each successful +1 adds 6% of the item's base stat
+const EMPOWER_POOL = [{
+  key: "atkPct",
+  label: "ATK",
+  icon: "⚔️",
+  unit: 0.03
+}, {
+  key: "defPct",
+  label: "DEF",
+  icon: "🛡️",
+  unit: 0.03
+}, {
+  key: "critChance",
+  label: "Crit",
+  icon: "💥",
+  unit: 1.2
+}, {
+  key: "accuracy",
+  label: "Accuracy",
+  icon: "🎯",
+  unit: 1.2
+}, {
+  key: "dodgeChance",
+  label: "Dodge",
+  icon: "💨",
+  unit: 1
+}, {
+  key: "hp",
+  label: "HP",
+  icon: "❤️",
+  unit: 6
+}, {
+  key: "mp",
+  label: "MP",
+  icon: "💧",
+  unit: 4
+}, {
+  key: "dropBonus",
+  label: "Drop",
+  icon: "🎁",
+  unit: 1.5
+}];
+// Empowering a new slot now always costs exactly 1 mana stone plus a gold fee that scales with slot index.
+function empowerCost(slotIndex) {
+  return {
+    manaOre: 1,
+    gold: 30 + slotIndex * 45
+  };
+}
+function rollEmpowerBonus(rarity) {
+  const def = EMPOWER_POOL[Math.floor(Math.random() * EMPOWER_POOL.length)];
+  const mult = RARITY_MULT[rarity] || 1;
+  const variance = 0.8 + Math.random() * 0.4;
+  const value = Math.round(def.unit * mult * variance * 10) / 10;
+  return {
+    key: def.key,
+    label: def.label,
+    icon: def.icon,
+    value
+  };
+}
+function rollChestRarity(isEliteBoss, pity = 0) {
+  const r = Math.random();
+  if (isEliteBoss) {
+    if (pity >= CHEST_PITY_ELITE) return "mythic";
+    return r < 0.45 ? "mythic" : "elite";
+  }
+  if (pity >= CHEST_PITY_ELITE) return "elite";
+  if (pity >= CHEST_PITY_UNIQUE) {
+    if (r < 0.08) return "mythic";
+    if (r < 0.5) return "elite";
+    return "unique";
+  }
+  if (r < 0.05) return "mythic";
+  if (r < 0.35) return "elite";
+  if (r < 0.8) return "unique";
+  return "rare";
+}
+
+// ===== systems/salvage.js =====
+// ---------- salvage, protection stone, empower reroll/lock, chest pity, material shop ----------
+// Salvaging gear now yields junk items (iron / mana stone) directly into the inventory.
+const SALVAGE_TABLE = {
+  rare: {
+    iron: 3,
+    manaOre: 0
+  },
+  unique: {
+    iron: 6,
+    manaOre: 2
+  },
+  elite: {
+    iron: 10,
+    manaOre: 5
+  },
+  mythic: {
+    iron: 15,
+    manaOre: 9
+  }
+};
+function salvageYield(rarity) {
+  return SALVAGE_TABLE[rarity] || SALVAGE_TABLE.rare;
+}
+const PROTECTION_STONE_PRICE = 40; // diamonds
+const ENHANCE_DOWNGRADE_LEVEL = 6; // failing at +7 attempt (current level >= 6) risks a downgrade
+// Rerolling empower options now always costs exactly 1 mana stone plus a gold fee that scales with complexity.
+function rerollCost(filledCount, lockedCount) {
+  return {
+    manaOre: 1,
+    gold: Math.round((25 + filledCount * 15) * (1 + lockedCount * 0.6))
+  };
+}
+const MATERIAL_SHOP_PRICE = {
+  iron: 6,
+  manaOre: 22
+};
+const CHEST_PITY_UNIQUE = 5;
+const CHEST_PITY_ELITE = 10;
+
+// ===== systems/floorModifier.js =====
+// ---------- floor modifiers & elite boss ----------
+const FLOOR_MODIFIERS = [{
+  id: "elite_pack",
+  name: "Elite Monster",
+  icon: "💀",
+  color: "#ff5566",
+  hpMult: 1.6,
+  atkMult: 1.35,
+  goldMult: 1.5,
+  xpMult: 1.5,
+  dropBonusFlat: 15,
+  desc: "ศัตรูแข็งแกร่งขึ้นมาก แต่รางวัลคุ้มกว่าเดิม"
+}, {
+  id: "golden",
+  name: "Golden Floor",
+  icon: "💰",
+  color: "#ffd166",
+  goldMult: 2.2,
+  desc: "ชั้นนี้ทองหล่นเยอะเป็นพิเศษ"
+}, {
+  id: "arcane",
+  name: "Arcane Surge",
+  icon: "✨",
+  color: "#8b6ae8",
+  xpMult: 2,
+  desc: "ได้รับ EXP เพิ่มขึ้นเป็นพิเศษ"
+}, {
+  id: "treasure",
+  name: "Treasure Trove",
+  icon: "🎁",
+  color: "#4ecb71",
+  dropBonusFlat: 35,
+  rarityBoost: true,
+  desc: "โอกาสดรอปไอเทมสูงขึ้น และมีโอกาสได้ของหายาก"
+}, {
+  id: "cursed",
+  name: "Cursed Mist",
+  icon: "☠️",
+  color: "#9c9ca8",
+  atkMult: 1.55,
+  hpMult: 0.8,
+  goldMult: 1.35,
+  desc: "ศัตรูดุร้ายขึ้นมาก เลือดน้อยลง แต่ให้รางวัลดีขึ้น"
+}];
+function rollFloorModifier() {
+  if (Math.random() >= 0.4) return null; // 60% of normal floors stay plain
+  return FLOOR_MODIFIERS[Math.floor(Math.random() * FLOOR_MODIFIERS.length)];
+}
 const SLOT_ICON = {
   weapon: "⚔️",
   helmet: "🪖",
@@ -1200,6 +1791,46 @@ const SLOT_LABEL = {
   accessory: "Accessory"
 };
 const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory"];
+
+// ===== systems/stats.js =====
+// Accessories no longer roll HP/MP — they roll one of these % utility stats instead.
+const ACCESSORY_STAT_POOL = ["dodgeChance", "critChance", "critDamage"];
+const ACCESSORY_STAT_BASE = {
+  dodgeChance: {
+    flat: 1,
+    perFloor: 0.12
+  },
+  critChance: {
+    flat: 1.2,
+    perFloor: 0.15
+  },
+  critDamage: {
+    flat: 4,
+    perFloor: 0.35
+  }
+};
+// ---------- 5-stat model: STR / VIT / AGI / DEX / LUK ----------
+// Derived stat formulas (shared reference — also used by pets & monsters where applicable):
+//   Speed        = BaseSpeed + (AGI * 2)
+//   Evasion      = AGI * 0.5%
+//   HitRate      = 80 + (DEX * 0.5)%
+//   CritChance   = LUK * 0.5%
+//   ItemDropBonus= LUK * 0.2%
+function speedFromAgi(agi) {
+  return BASE_SPEED + (agi || 0) * 2;
+}
+function evasionFromAgi(agi) {
+  return +((agi || 0) * 0.5).toFixed(1);
+}
+function hitRateFromDex(dex) {
+  return Math.min(99, +(80 + (dex || 0) * 0.5).toFixed(1));
+}
+function critChanceFromLuk(luk) {
+  return +((luk || 0) * 0.5).toFixed(1);
+}
+function dropBonusFromLuk(luk) {
+  return +((luk || 0) * 0.2).toFixed(1);
+}
 function characterBaseStats(save) {
   const lvl = save.character.level;
   const s = save.character.stats;
@@ -1208,10 +1839,12 @@ function characterBaseStats(save) {
     maxMp: 15 + lvl * 2,
     atk: 8 + lvl + s.str * 3 + Math.floor(s.dex * 0.5),
     def: 2 + Math.floor(lvl * 0.4) + Math.floor(s.vit * 0.5),
-    accuracy: Math.min(99, +(80 + s.dex * 1.0).toFixed(1)),
-    critChance: Math.min(50, +(s.luk * 0.8).toFixed(1)),
-    dodgeChance: Math.min(30, +(s.luk * 0.5).toFixed(1)),
-    dropBonus: Math.min(20, +(s.luk * 0.35).toFixed(1))
+    speed: speedFromAgi(s.agi),
+    accuracy: hitRateFromDex(s.dex),
+    critChance: critChanceFromLuk(s.luk),
+    critDamage: 50,
+    dodgeChance: evasionFromAgi(s.agi),
+    dropBonus: dropBonusFromLuk(s.luk)
   };
 }
 function activePetInstance(save) {
@@ -1237,8 +1870,10 @@ function freshPlayerFromSave(save, carry = null) {
     baseDef: cb.def,
     baseMaxHp: cb.maxHp,
     baseMaxMp: cb.maxMp,
+    baseSpeed: cb.speed,
     accuracy: cb.accuracy,
     critChance: cb.critChance,
+    critDamage: cb.critDamage,
     dodgeChance: cb.dodgeChance,
     dropBonus: cb.dropBonus,
     hp,
@@ -1255,33 +1890,75 @@ function freshPlayerFromSave(save, carry = null) {
     regenTurns: 0
   };
 }
-function makeEnemy(floor) {
+function makeEnemy(floor, options = {}) {
   const isBoss = floor % 5 === 0;
+  const isEliteBoss = floor % 10 === 0;
+  const modifier = isBoss ? null : rollFloorModifier();
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
   const t = pool[Math.floor(Math.random() * pool.length)];
-  const mult = isBoss ? 2.6 : 1;
-  const hpM = t.hpMult || 1,
-    atkM = t.atkMult || 1,
-    defB = t.defBonus || 0,
-    goldM = t.goldMult || 1,
-    xpM = t.xpMult || 1;
+  const mult = isEliteBoss ? 4.2 : isBoss ? 2.6 : 1;
+  // groupScale softens HP/ATK a bit per monster when multiple spawn together in one encounter,
+  // so a 3-monster pack isn't simply 3x harder than a solo fight.
+  const groupScale = options.groupScale || 1;
+  const hpM = (t.hpMult || 1) * (modifier?.hpMult || 1) * groupScale;
+  const atkM = (t.atkMult || 1) * (modifier?.atkMult || 1) * groupScale;
+  const defB = t.defBonus || 0;
+  const goldM = (t.goldMult || 1) * (modifier?.goldMult || 1);
+  const xpM = (t.xpMult || 1) * (modifier?.xpMult || 1);
+  const name = isEliteBoss ? `${t.name} (Elite Boss)` : isBoss ? `${t.name} (Boss)` : modifier ? `${t.name} ${modifier.icon}` : t.name;
+  const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
   return {
-    name: isBoss ? `${t.name} (Boss)` : t.name,
+    id: t.id,
+    uid: `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name,
     color: t.color,
     isBoss,
+    isEliteBoss,
+    modifier,
+    agi,
+    speed: speedFromAgi(agi),
+    evasion: evasionFromAgi(agi),
+    hitRate: hitRateFromDex(t.dex || (isBoss ? 6 : 2)),
     hp: Math.round((18 + floor * 7) * mult * hpM),
     maxHp: Math.round((18 + floor * 7) * mult * hpM),
     atk: Math.round((3 + floor * 1.6) * (isBoss ? 1.3 : 1) * atkM),
-    def: Math.floor(floor * 0.7) + (isBoss ? 3 : 0) + defB,
+    def: Math.floor(floor * 0.7) + (isBoss ? 3 : 0) + (isEliteBoss ? 4 : 0) + defB,
     xp: Math.round((6 + floor * 3) * (isBoss ? 2.2 : 1) * xpM),
     gold: Math.round((4 + floor * 2.5) * (isBoss ? 2.2 : 1) * goldM)
   };
 }
+// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss),
+// normal floors spawn 1-3 regular monsters that share the field together.
+function makeEncounter(floor) {
+  const isBoss = floor % 5 === 0;
+  if (isBoss) return [makeEnemy(floor)];
+  const roll = Math.random();
+  const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
+  const groupScale = count === 1 ? 1 : count === 2 ? 0.72 : 0.55;
+  const monsters = [];
+  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { groupScale }));
+  return monsters;
+}
+// Builds the round's initiative queue: every living unit on the field
+// ([Player, Active Pet, ...Monsters]) sorted by Speed (AGI-derived), highest first.
+// Ties are broken randomly so repeated equal-speed matchups don't always favor the same side.
+// Callers are expected to only pass units that are already alive.
+function buildTurnQueue(units) {
+  return units
+    .filter(Boolean)
+    .map(u => ({ ...u, _r: Math.random() }))
+    .sort((a, b) => (b.speed - a.speed) || (b._r - a._r));
+}
 function xpToNext(level) {
   return level * 22 + 18;
 }
-function rollRarity() {
+function rollRarity(boosted = false) {
   const r = Math.random();
+  if (boosted) {
+    if (r < 0.14) return "elite";
+    if (r < 0.5) return "unique";
+    return "rare";
+  }
   if (r < 0.06) return "elite";
   if (r < 0.28) return "unique";
   return "rare";
@@ -1289,10 +1966,16 @@ function rollRarity() {
 function pickName(pool, floor) {
   return pool[Math.min(pool.length - 1, Math.floor(floor / 4))];
 }
-function generateDrop(floor) {
+function generateDrop(floor, options = {}) {
+  const it = buildDropItem(floor, options);
+  it.enhanceLevel = 0;
+  it.empowerSlots = Array(RARITY_STARS[it.rarity] || 1).fill(null);
+  return it;
+}
+function buildDropItem(floor, options = {}) {
   const roll = Math.random();
   const type = roll < 0.18 ? "weapon" : roll < 0.33 ? "helmet" : roll < 0.52 ? "chest" : roll < 0.67 ? "gloves" : roll < 0.82 ? "boots" : "accessory";
-  const rarity = rollRarity();
+  const rarity = options.forceRarity || rollRarity(!!options.rarityBoost);
   const mult = RARITY_MULT[rarity];
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   if (type === "weapon") {
@@ -1345,8 +2028,10 @@ function generateDrop(floor) {
       def
     };
   }
-  const statKey = Math.random() < 0.5 ? "hp" : "mp";
-  const val = Math.max(4, Math.round((statKey === "hp" ? 6 + floor * 2.4 : 4 + floor * 1.6) * mult));
+  // Accessories are pure utility pieces: dodge / crit chance / crit damage as % values, never HP or MP.
+  const statKey = ACCESSORY_STAT_POOL[Math.floor(Math.random() * ACCESSORY_STAT_POOL.length)];
+  const base = ACCESSORY_STAT_BASE[statKey];
+  const val = Math.round((base.flat + floor * base.perFloor) * mult * 10) / 10;
   return {
     id,
     type,
@@ -1355,12 +2040,43 @@ function generateDrop(floor) {
     [statKey]: val
   };
 }
+function itemDisplayName(it) {
+  if (!it) return "";
+  return it.enhanceLevel ? `${it.name} +${it.enhanceLevel}` : it.name;
+}
+function itemBonus(it) {
+  if (!it) return null;
+  const lvl = it.enhanceLevel || 0;
+  const growMult = 1 + lvl * ENHANCE_STAT_PCT;
+  const b = {
+    atk: (it.atk || 0) * growMult,
+    def: (it.def || 0) * growMult,
+    hp: (it.hp || 0) * growMult,
+    mp: (it.mp || 0) * growMult,
+    critChance: (it.critChance || 0) * growMult,
+    critDamage: (it.critDamage || 0) * growMult,
+    accuracy: 0,
+    dodgeChance: (it.dodgeChance || 0) * growMult,
+    dropBonus: 0
+  };
+  (it.empowerSlots || []).forEach(slot => {
+    if (!slot) return;
+    if (slot.key === "atkPct") b.atk += (it.atk || 0) * slot.value;else if (slot.key === "defPct") b.def += (it.def || 0) * slot.value;else b[slot.key] = (b[slot.key] || 0) + slot.value;
+  });
+  return b;
+}
 function itemStatText(it) {
+  const b = itemBonus(it) || {};
   const parts = [];
-  if (it.atk) parts.push(`+${it.atk} ATK`);
-  if (it.def) parts.push(`+${it.def} DEF`);
-  if (it.hp) parts.push(`+${it.hp} HP`);
-  if (it.mp) parts.push(`+${it.mp} MP`);
+  if (b.atk) parts.push(`+${Math.round(b.atk)} ATK`);
+  if (b.def) parts.push(`+${Math.round(b.def)} DEF`);
+  if (b.hp) parts.push(`+${Math.round(b.hp)} HP`);
+  if (b.mp) parts.push(`+${Math.round(b.mp)} MP`);
+  if (b.critChance) parts.push(`+${b.critChance}% Crit`);
+  if (b.critDamage) parts.push(`+${b.critDamage}% Crit Dmg`);
+  if (b.accuracy) parts.push(`+${b.accuracy}% Acc`);
+  if (b.dodgeChance) parts.push(`+${b.dodgeChance}% Dodge`);
+  if (b.dropBonus) parts.push(`+${b.dropBonus}% Drop`);
   return parts.join("  ");
 }
 function getEquipBonus(equipped) {
@@ -1368,15 +2084,27 @@ function getEquipBonus(equipped) {
     atk: 0,
     def: 0,
     hp: 0,
-    mp: 0
+    mp: 0,
+    critChance: 0,
+    critDamage: 0,
+    accuracy: 0,
+    dodgeChance: 0,
+    dropBonus: 0
   };
   Object.values(equipped).forEach(it => {
-    if (!it) return;
-    if (it.atk) b.atk += it.atk;
-    if (it.def) b.def += it.def;
-    if (it.hp) b.hp += it.hp;
-    if (it.mp) b.mp += it.mp;
+    const ib = itemBonus(it);
+    if (!ib) return;
+    Object.keys(ib).forEach(k => b[k] += ib[k]);
   });
+  b.atk = Math.round(b.atk);
+  b.def = Math.round(b.def);
+  b.hp = Math.round(b.hp);
+  b.mp = Math.round(b.mp);
+  b.critChance = Math.round(b.critChance * 10) / 10;
+  b.critDamage = Math.round(b.critDamage * 10) / 10;
+  b.accuracy = Math.round(b.accuracy * 10) / 10;
+  b.dodgeChance = Math.round(b.dodgeChance * 10) / 10;
+  b.dropBonus = Math.round(b.dropBonus * 10) / 10;
   return b;
 }
 function getStats(player, equipped) {
@@ -1388,21 +2116,26 @@ function getStats(player, equipped) {
     def: Math.round((player.baseDef + b.def) * defBuff),
     maxHp: player.baseMaxHp + b.hp,
     maxMp: player.baseMaxMp + b.mp,
-    accuracy: player.accuracy || 0,
-    critChance: player.critChance || 0,
-    dodgeChance: player.dodgeChance || 0,
-    dropBonus: player.dropBonus || 0
+    speed: player.baseSpeed || BASE_SPEED,
+    accuracy: Math.min(99, (player.accuracy || 0) + b.accuracy),
+    critChance: Math.min(80, (player.critChance || 0) + b.critChance),
+    critDamage: Math.min(300, (player.critDamage || 0) + b.critDamage),
+    dodgeChance: Math.min(60, (player.dodgeChance || 0) + b.dodgeChance),
+    dropBonus: (player.dropBonus || 0) + b.dropBonus
   };
 }
 function combatPower(stats, level) {
-  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.dodgeChance || 0) * 6 + level * 50);
+  return Math.round(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.critDamage || 0) * 3 + (stats.dodgeChance || 0) * 6 + level * 50);
 }
 
+
+// ===== systems/shop.js =====
 // ---------- shop & selling ----------
 function itemValueScore(it) {
-  return (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6;
+  return (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6 + (it.dodgeChance || 0) * 4 + (it.critChance || 0) * 4 + (it.critDamage || 0) * 2.5;
 }
 function sellPrice(it) {
+  if (it.type === "junk") return Math.max(1, (JUNK_SELL_VALUE[it.junkId] || 1) * (it.quantity || 1));
   return Math.max(3, Math.round(itemValueScore(it) * (RARITY_MULT[it.rarity] || 1) * 0.9));
 }
 function shopBuyPrice(it) {
@@ -1433,6 +2166,8 @@ const emptyEquipped = () => ({
   boots: null,
   accessory: null
 });
+
+// ===== ui/App.js =====
 function ThornieDungeons() {
   const [save, setSave] = useState(null);
   const [phase, setPhase] = useState("loading"); // loading, login, menu, town, map, combat, result, defeat
@@ -1448,16 +2183,30 @@ function ThornieDungeons() {
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
-  const [enemy, setEnemy] = useState(null);
-  const [log, setLog] = useState("Welcome to ThornieDungeons!");
+  // Encounter now supports 1-3 monsters on the field at once.
+  const [monsters, setMonsters] = useState([]);
+  // Combat-only state for the Active Pet as a real unit on the field (HP, cooldown).
+  const [petCombat, setPetCombat] = useState(null); // { instId, defId, name, icon, hp, maxHp, atk, def, speed, cooldown, active, passive, extra }
+  const [targetUid, setTargetUid] = useState(null); // uid of the monster the player is currently targeting
+  // Turn Order Queue UI: the planned action order for the current round (Player first,
+  // then Pet + Monsters sorted by Speed), plus which unit's action is currently resolving.
+  const [turnQueue, setTurnQueue] = useState([]); // [{key, kind, uid?, name, icon, speed}]
+  const [activeTurnKey, setActiveTurnKey] = useState(null);
+  const [log, setLogState] = useState(["Welcome to ThornieDungeons!"]);
+  // Keeps the last 3 combat messages, newest first, so the log panel can show
+  // a short scrolling history instead of overwriting a single line.
+  const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
   const [busy, setBusy] = useState(false);
-  const enemyRef = useRef(null);
+  const monstersRef = useRef([]);
+  const petCombatRef = useRef(null);
   const playerRef = useRef(null);
   const combatOutcomeRef = useRef(null);
-  useEffect(() => { enemyRef.current = enemy; }, [enemy]);
+  useEffect(() => { monstersRef.current = monsters; }, [monsters]);
+  useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
   useEffect(() => { playerRef.current = player; }, [player]);
   const [heroAnim, setHeroAnim] = useState("");
-  const [enemyAnim, setEnemyAnim] = useState("");
+  const [petAnim, setPetAnim] = useState("");
+  const [enemyAnims, setEnemyAnims] = useState({}); // uid -> anim class
   const [floats, setFloats] = useState([]);
   const [dropItem, setDropItem] = useState(null);
   const [lastRewards, setLastRewards] = useState({
@@ -1470,6 +2219,7 @@ function ThornieDungeons() {
   });
   const [invOpen, setInvOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  const [blacksmithOpen, setBlacksmithOpen] = useState(false);
   const [shopStock, setShopStock] = useState({
     potionPrice: 0,
     items: []
@@ -1479,31 +2229,25 @@ function ThornieDungeons() {
   const potions = save ? save.potions : 0;
   useEffect(() => {
     (async () => {
-      // Load the R2 manifest first. Failure is non-fatal: the game keeps its legacy
-      // CSS fallback instead of crashing the entire React app.
+      
+      // โหลด R2 Asset Manifest ก่อนเริ่มระบบเกม
       try {
         await loadAssetManifest();
-        const heroNeutral = asset("hero001.core.neutral");
-        if (!heroNeutral) throw new Error("Manifest missing hero001.core.neutral");
-        console.info("[R2] Hero 001 URL:", heroNeutral);
-        await preloadAsset(heroNeutral);
-        console.info("[R2] Hero 001 neutral asset is reachable");
       } catch (err) {
+        console.warn("R2 Asset Manifest failed to load:", err);
         ASSETS = {};
-        console.warn("[R2] Asset system unavailable; using fallback sprite:", err);
       }
-
+      
       const cfg = await loadCachedConfig();
-      const serverUrl = cfg.url || DEFAULT_SERVER_URL;
       setCred(c => ({
         ...c,
-        url: serverUrl,
+        url: DEFAULT_SERVER_URL,
         id: cfg.id || ""
       }));
       setPhase("login");
 
       // Prefer the latest server balance config; cache is only a fallback when offline.
-      const freshConfig = await cloudGetConfig(serverUrl);
+      const freshConfig = await cloudGetConfig(DEFAULT_SERVER_URL);
       if (freshConfig && !freshConfig.error) {
         applyGameConfig(freshConfig);
         writeCachedGameConfig(freshConfig);
@@ -1575,7 +2319,7 @@ function ThornieDungeons() {
       return;
     }
     if (res.error) {
-      setAuthError("เชื่อมต่อไม่ได้ ตรวจสอบ Server URL หรือลองใหม่อีกครั้ง");
+      setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
       return;
     }
     writeCachedConfig({
@@ -1594,7 +2338,7 @@ function ThornieDungeons() {
     } else {
       try {
         const raw = window.localStorage?.getItem(`thornie-run-${cred.id}`);
-        if (raw) savedRun = JSON.parse(raw);
+        savedRun = safeJsonParse(raw, null);
       } catch (e) {}
     }
     if (savedRun && Number.isFinite(savedRun.hp) && Number.isFinite(savedRun.mp)) {
@@ -1625,7 +2369,7 @@ function ThornieDungeons() {
       return;
     }
     if (res.error) {
-      setAuthError("เชื่อมต่อไม่ได้ ตรวจสอบ Server URL หรือลองใหม่อีกครั้ง");
+      setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
       return;
     }
     writeCachedConfig({
@@ -1672,11 +2416,40 @@ function ThornieDungeons() {
       base_max_hp: nextPlayer.baseMaxHp,
       base_max_mp: nextPlayer.baseMaxMp
     });
-    const e = makeEnemy(floorNum);
-    setEnemy(e);
+    const spawned = makeEncounter(floorNum);
+    setMonsters(spawned);
+    setTargetUid(spawned[0] ? spawned[0].uid : null);
+    setPetCombat(buildPetCombatUnit());
+    setTurnQueue([]);
+    setActiveTurnKey(null);
     setDropItem(null);
-    setLog(e.isBoss ? `A ${e.name} blocks the way!` : `A wild ${e.name} appears!`);
+    const boss = spawned.find(m => m.isBoss);
+    setLog(boss ? `A ${boss.name} blocks the way!` : spawned.length > 1 ? `${spawned.length} monsters appear: ${spawned.map(m => m.name).join(", ")}!` : `A wild ${spawned[0].name} appears!`);
     setPhase("combat");
+  }
+  // Builds the Active Pet as a real combat unit (own HP/ATK/DEF/Speed) for this fight.
+  function buildPetCombatUnit(carryHp = null) {
+    const petActive = activePetInstance(save);
+    if (!petActive) return null;
+    const cs = petCombatStats(petActive.inst);
+    return {
+      instId: petActive.inst.instId,
+      defId: petActive.def.id,
+      name: petActive.def.name,
+      icon: petActive.def.icon,
+      active: petActive.def.active,
+      passive: petActive.def.passive,
+      extra: petActive.def.extra,
+      maxHp: cs.maxHp,
+      hp: Number.isFinite(carryHp) ? Math.max(0, Math.min(cs.maxHp, carryHp)) : cs.maxHp,
+      atk: cs.atk,
+      def: cs.def,
+      speed: cs.speed,
+      evasion: cs.evasion,
+      hitRate: cs.hitRate,
+      critChance: cs.critChance,
+      cooldown: 0
+    };
   }
   const runStateSaveTimer = useRef(null);
   function buildRunStateSnapshot(floor, p) {
@@ -1702,7 +2475,7 @@ function ThornieDungeons() {
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     runStateSaveTimer.current = setTimeout(() => {
       if (!combatOutcomeRef.current) saveCombatRunState(selectedFloor, player);
-    }, 350);
+    }, 150);
     return () => {
       if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     };
@@ -1710,23 +2483,56 @@ function ThornieDungeons() {
 
   function endCombatWin() {
     if (combatOutcomeRef.current) return;
-    const currentEnemy = enemyRef.current || enemy;
+    const currentMonsters = monstersRef.current.length ? monstersRef.current : monsters;
     const currentPlayer = playerRef.current || player;
-    if (!currentEnemy || currentEnemy.hp > 0) return;
+    if (!currentMonsters.length || currentMonsters.some(m => m.hp > 0)) return;
     combatOutcomeRef.current = "victory";
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     setBusy(false);
-    const gained = currentEnemy.gold;
-    const xpGained = currentEnemy.xp;
-    const dropChance = (currentEnemy.isBoss ? 1 : 0.32) + (currentPlayer.dropBonus || 0) / 100;
+    // Rewards aggregate across every monster that was on the field this encounter.
+    const gained = currentMonsters.reduce((sum, m) => sum + m.gold, 0);
+    const xpGained = currentMonsters.reduce((sum, m) => sum + m.xp, 0);
+    const bossMonster = currentMonsters.find(m => m.isBoss) || null;
+    const modifier = currentMonsters.map(m => m.modifier).find(Boolean) || null;
+    // Equipment now only comes from a reward CHEST on boss floors (every 5th floor).
+    // Regular monsters instead have a chance to drop a stack of junk material (stone/grass/
+    // wood/iron/mana stone) used for crafting, selling, and the Enhancement/Empowerment systems.
     let drop = null;
-    if (Math.random() < dropChance) {
-      drop = generateDrop(selectedFloor);
-      const nextInv = [...inventory, drop];
-      setInventory(nextInv);
-      persistItems(nextInv, equipped);
+    let junkDrop = null;
+    let nextInvAfterCombat = inventory;
+    let nextChestPity = save.chestPity || 0;
+    if (bossMonster) {
+      const chestRarity = rollChestRarity(bossMonster.isEliteBoss, nextChestPity);
+      nextChestPity = chestRarity === "elite" || chestRarity === "mythic" ? 0 : nextChestPity + 1;
+      drop = generateDrop(selectedFloor, {
+        forceRarity: chestRarity
+      });
+      nextInvAfterCombat = [...inventory, drop];
+    } else {
+      // Each defeated monster in the pack gets its own independent roll for junk material.
+      const junkDrops = [];
+      currentMonsters.forEach(m => {
+        const matChance = 0.45 + (currentPlayer.dropBonus || 0) / 100 + (m.modifier?.dropBonusFlat || 0) / 100;
+        if (Math.random() < matChance) {
+          const jd = rollJunkDrop(selectedFloor, m.modifier);
+          junkDrops.push(jd);
+          nextInvAfterCombat = addJunkToInventory(nextInvAfterCombat, jd.type, jd.amount);
+        }
+      });
+      if (junkDrops.length) {
+        // Combine same-type drops for a single summary banner.
+        const merged = {};
+        junkDrops.forEach(jd => { merged[jd.type] = (merged[jd.type] || 0) + jd.amount; });
+        const [type, amount] = Object.entries(merged)[0];
+        junkDrop = { type, amount };
+      }
+    }
+    if (nextInvAfterCombat !== inventory) {
+      setInventory(nextInvAfterCombat);
+      persistItems(nextInvAfterCombat, equipped);
     }
     setDropItem(drop);
+    const diamondsGained = bossMonster && bossMonster.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
     let xp = save.character.xp + xpGained;
     let level = save.character.level;
     let statPoints = save.character.statPoints;
@@ -1747,20 +2553,19 @@ function ThornieDungeons() {
     let newActivePetId = save.activePetId;
     let newPet = null;
     const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
-    if (selectedFloor === 5 && currentEnemy.isBoss && unlockedNext && !alreadyHasStarter) {
+    if (selectedFloor === 5 && bossMonster && unlockedNext && !alreadyHasStarter) {
       const starter = starterPetDef();
-      const instId = `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      newPets = [...(save.pets || []), {
-        instId,
-        defId: starter.id
-      }];
-      if (!newActivePetId) newActivePetId = instId;
+      const inst = newPetInstance(starter.id);
+      newPets = [...(save.pets || []), inst];
+      if (!newActivePetId) newActivePetId = inst.instId;
       newPet = starter;
     }
     const nextSave = {
       ...save,
       gold: save.gold + gained,
+      diamonds: save.diamonds + diamondsGained,
       unlockedFloor: unlockedNext ? save.unlockedFloor + 1 : save.unlockedFloor,
+      chestPity: nextChestPity,
       character: {
         ...save.character,
         level,
@@ -1787,7 +2592,12 @@ function ThornieDungeons() {
       leveledUp,
       unlockedNext,
       newSkill,
-      newPet
+      newPet,
+      isBoss: !!bossMonster,
+      junkDrop,
+      modifier,
+      isEliteBoss: !!(bossMonster && bossMonster.isEliteBoss),
+      diamonds: diamondsGained
     });
     setLog(newPet ? `Victory! You received a companion: ${newPet.name}!` : newSkill ? `Victory! Level up! New skill: ${newSkill.name}!` : leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
     setPhase("result");
@@ -1809,33 +2619,72 @@ function ThornieDungeons() {
     setLog("You were defeated...");
     setPhase("defeat");
   }
+  // ---------- targeting helpers ----------
+  function firstAliveMonster() {
+    return monstersRef.current.find(m => m.hp > 0) || null;
+  }
+  function getTargetMonster() {
+    const explicit = monstersRef.current.find(m => m.uid === targetUid && m.hp > 0);
+    return explicit || firstAliveMonster();
+  }
+  function updateMonster(uid, updater) {
+    setMonsters(ms => ms.map(m => m.uid === uid ? updater(m) : m));
+  }
+  function setMonsterAnim(uid, anim) {
+    setEnemyAnims(prev => ({ ...prev, [uid]: anim }));
+  }
+  function selectTarget(uid) {
+    const m = monstersRef.current.find(x => x.uid === uid);
+    if (m && m.hp > 0) setTargetUid(uid);
+  }
+  // Builds the Turn Order Queue UI data for the round about to run: the Player
+  // always resolves first (their action is tap-driven), followed by Active Pet
+  // and every living Monster sorted by Speed (AGI-derived), highest first.
+  function computeRoundQueueDisplay() {
+    const p = playerRef.current || player;
+    const items = [{ key: "player", kind: "player", name: "You", icon: "🧙", speed: (p && p.baseSpeed) || 0 }];
+    const pet = petCombatRef.current;
+    if (pet && pet.hp > 0) {
+      items.push({ key: "pet", kind: "pet", name: pet.name, icon: pet.icon, speed: pet.speed });
+    }
+    monstersRef.current.forEach(m => {
+      if (m.hp > 0) items.push({ key: m.uid, kind: "monster", uid: m.uid, name: m.name, icon: "👹", speed: m.speed });
+    });
+    const rest = buildTurnQueue(items.filter(it => it.kind !== "player")).map(({ _r, ...r }) => r);
+    return [items[0], ...rest];
+  }
+
   function playerTurn(action, skillKey) {
-    if (busy || !enemy || !player) return;
+    if (busy || !player) return;
+    const target = getTargetMonster();
+    if ((action === "attack" || action === "skill") && !target) return;
     const stats = getStats(player, equipped);
     setBusy(true);
+    // Lock in this round's Turn Order Queue the moment the player commits to an action,
+    // so the queue bar reflects exactly what's about to resolve.
+    setTurnQueue(computeRoundQueueDisplay());
+    setActiveTurnKey("player");
     if (action === "attack") {
       const isMiss = Math.random() * 100 >= stats.accuracy;
       const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
-      let dmg = Math.max(2, Math.round(stats.atk - enemy.def * 0.6 + (Math.random() * 4 - 2)));
-      if (isCrit) dmg = Math.round(dmg * 1.6);
+      let dmg = Math.max(2, Math.round(stats.atk - target.def * 0.6 + (Math.random() * 4 - 2)));
+      if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
       setHeroAnim("attack");
       setTimeout(() => {
         if (isMiss) {
-          spawnFloat("enemy", "MISS", "#B9AEDD");
-          setLog("You missed!");
+          spawnFloat(target.uid, "MISS", "#B9AEDD");
+          setLog(`You attack but miss ${target.name}!`);
         } else {
-          setEnemy(e => {
-            const nh = Math.max(0, e.hp - dmg);
-            spawnFloat("enemy", isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#FF6B6B");
-            setEnemyAnim("hurt");
-            return {
-              ...e,
-              hp: nh
-            };
+          updateMonster(target.uid, m => {
+            const nh = Math.max(0, m.hp - dmg);
+            spawnFloat(target.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#FF6B6B");
+            setMonsterAnim(target.uid, "hurt");
+            return { ...m, hp: nh };
           });
+          setLog(isCrit ? `You land a CRITICAL hit on ${target.name} for ${dmg}!` : `You attack ${target.name} for ${dmg}!`);
         }
         setHeroAnim("");
-        setTimeout(() => resolveAfterPlayerAction(true), 350);
+        setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "skill") {
       const skill = SKILLS.find(s => s.key === skillKey);
@@ -1853,29 +2702,26 @@ function ThornieDungeons() {
       setTimeout(() => {
         if (skill.type === "damage") {
           if (isMiss) {
-            spawnFloat("enemy", "MISS", "#B9AEDD");
-            setLog(`${skill.name} missed!`);
+            spawnFloat(target.uid, "MISS", "#B9AEDD");
+            setLog(`${skill.name} misses ${target.name}!`);
           } else {
             const pierce = skill.defPierce || 0;
-            let dmg = Math.max(4, Math.round(stats.atk * skill.mult - enemy.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
-            if (isCrit) dmg = Math.round(dmg * 1.6);
+            let dmg = Math.max(4, Math.round(stats.atk * skill.mult - target.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
+            if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
             const freeze = skill.freezeChance ? Math.random() < skill.freezeChance : false;
-            setEnemy(e => {
-              const nh = Math.max(0, e.hp - dmg);
-              spawnFloat("enemy", isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
-              setEnemyAnim("hurt");
-              const next = {
-                ...e,
-                hp: nh
-              };
-              if (freeze) next.frozenTurns = (e.frozenTurns || 0) + skill.freezeTurns;
+            updateMonster(target.uid, m => {
+              const nh = Math.max(0, m.hp - dmg);
+              spawnFloat(target.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
+              setMonsterAnim(target.uid, "hurt");
+              const next = { ...m, hp: nh };
+              if (freeze) next.frozenTurns = (m.frozenTurns || 0) + skill.freezeTurns;
               if (skill.poisonTurns) {
                 next.poisonTurns = skill.poisonTurns;
                 next.poisonDmg = Math.max(1, Math.round(stats.atk * skill.poisonPct));
               }
               return next;
             });
-            setLog(freeze ? `${skill.name}! Enemy frozen solid!` : `${skill.name} hits for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
+            setLog(freeze ? `${skill.name} freezes ${target.name} solid!` : `You use ${skill.name} on ${target.name} for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
           }
         } else if (skill.type === "heal") {
           setPlayer(p => {
@@ -1886,7 +2732,7 @@ function ThornieDungeons() {
               hp: Math.min(stats.maxHp, p.hp + heal)
             };
           });
-          setLog(`${skill.name}! Recovered HP.`);
+          setLog(`You cast ${skill.name} and recover HP.`);
         } else if (skill.type === "buffAtk") {
           setPlayer(p => ({
             ...p,
@@ -1894,7 +2740,7 @@ function ThornieDungeons() {
             atkBuffTurns: skill.turns
           }));
           spawnFloat("hero", "ATK UP", "#FFD166");
-          setLog(`${skill.name}! ATK increased for ${skill.turns} turns.`);
+          setLog(`You cast ${skill.name}! ATK increased for ${skill.turns} turns.`);
         } else if (skill.type === "buffDef") {
           setPlayer(p => ({
             ...p,
@@ -1902,10 +2748,10 @@ function ThornieDungeons() {
             defBuffTurns: skill.turns
           }));
           spawnFloat("hero", "DEF UP", "#7FB8E8");
-          setLog(`${skill.name}! DEF increased for ${skill.turns} turns.`);
+          setLog(`You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
         }
         setHeroAnim("");
-        setTimeout(() => resolveAfterPlayerAction(), 350);
+        setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "item") {
       if (potions <= 0) {
@@ -1925,131 +2771,200 @@ function ThornieDungeons() {
         };
       });
       setLog("You drink a potion and recover HP.");
-      setTimeout(() => enemyTurn(), 500);
+      setTimeout(() => runQueueAfterPlayer(), 500);
     } else if (action === "flee") {
       const success = Math.random() < 0.55;
       if (success) {
         setLog("You escaped safely.");
-        setEnemy(null);
+        setMonsters([]);
+        setPetCombat(null);
+        setTurnQueue([]);
+        setActiveTurnKey(null);
         pushRunState(null);
         setPhase("map");
         setBusy(false);
       } else {
         setLog("Couldn't escape!");
-        setTimeout(() => enemyTurn(), 500);
+        setTimeout(() => runQueueAfterPlayer(), 500);
       }
     }
   }
-  function triggerPetSkill(cb) {
-    const petActive = activePetInstance(save);
-    if (!petActive || !player || player.petCooldown > 0) {
+  // ---------- Round-based Initiative Queue ----------
+  // After the player's own action resolves, every remaining living unit on the
+  // field (Active Pet + all Monsters) takes its action in order of Speed (AGI),
+  // highest first. Once the queue is drained, buffs/cooldowns tick and control
+  // returns to the player for the next round.
+  function runQueueAfterPlayer() {
+    if (combatOutcomeRef.current) return;
+    if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
+      endCombatWin();
+      return;
+    }
+    const units = [];
+    if (petCombatRef.current && petCombatRef.current.hp > 0) {
+      units.push({ kind: "pet", speed: petCombatRef.current.speed });
+    }
+    monstersRef.current.forEach(m => {
+      if (m.hp > 0) units.push({ kind: "monster", uid: m.uid, speed: m.speed });
+    });
+    const queue = buildTurnQueue(units);
+    processQueue(queue, 0);
+  }
+  function processQueue(queue, index) {
+    if (combatOutcomeRef.current) return;
+    if (index >= queue.length) {
+      setActiveTurnKey(null);
+      setTurnQueue([]);
+      if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
+        endCombatWin();
+        return;
+      }
+      if ((playerRef.current?.hp || 0) <= 0) {
+        playerLost();
+        return;
+      }
+      setBusy(false);
+      tickPlayerBuffs();
+      tickPetCooldown();
+      return;
+    }
+    const unit = queue[index];
+    setActiveTurnKey(unit.kind === "pet" ? "pet" : unit.uid);
+    const advance = () => {
+      if (combatOutcomeRef.current) return;
+      // Check outcome immediately after every single action, not just at round end,
+      // so combat stops the instant the player or all monsters are downed.
+      if ((playerRef.current?.hp || 0) <= 0) {
+        setActiveTurnKey(null);
+        playerLost();
+        return;
+      }
+      if (monstersRef.current.length && monstersRef.current.every(mm => mm.hp <= 0)) {
+        setActiveTurnKey(null);
+        endCombatWin();
+        return;
+      }
+      processQueue(queue, index + 1);
+    };
+    if (unit.kind === "pet") {
+      doPetAction(advance);
+    } else {
+      const m = monstersRef.current.find(mm => mm.uid === unit.uid);
+      if (!m || m.hp <= 0) {
+        advance();
+        return;
+      }
+      doMonsterAction(m, advance);
+    }
+  }
+  function doPetAction(cb) {
+    const pet = petCombatRef.current;
+    if (!pet || pet.hp <= 0 || pet.cooldown > 0) {
       cb();
       return;
     }
-    const stats = getStats(player, equipped);
-    const skill = petActive.def.active;
-    setPlayer(p => ({
-      ...p,
-      petCooldown: skill.cooldown
-    }));
+    const skill = pet.active;
+    setPetCombat(p => p ? { ...p, cooldown: skill.cooldown } : p);
+    setPetAnim("attack");
     setTimeout(() => {
       if (skill.type === "damage") {
-        setEnemy(e => {
-          if (!e || e.hp <= 0) return e;
-          let dmg = Math.max(2, Math.round(stats.atk * skill.mult - e.def * 0.5 + (Math.random() * 3 - 1)));
-          const hasStun = petActive.def.extra && petActive.def.extra.type === "stun";
-          const stun = hasStun ? Math.random() < petActive.def.extra.pct : false;
-          const nh = Math.max(0, e.hp - dmg);
-          spawnFloat("enemy", `${petActive.def.icon}-${dmg}`, "#7FE0B0");
-          setEnemyAnim("hurt");
-          setLog(stun ? `${petActive.def.icon} ${skill.name}! Enemy stunned!` : `${petActive.def.icon} ${skill.name} hits for ${dmg}!`);
-          const next = {
-            ...e,
-            hp: nh
-          };
-          if (stun) next.frozenTurns = (e.frozenTurns || 0) + 1;
-          return next;
-        });
+        const target = firstAliveMonster();
+        if (target) {
+          let dmg = Math.max(2, Math.round(pet.atk * skill.mult - target.def * 0.5 + (Math.random() * 3 - 1)));
+          const hasStun = pet.extra && pet.extra.type === "stun";
+          const stun = hasStun ? Math.random() < pet.extra.pct : false;
+          updateMonster(target.uid, m => {
+            const nh = Math.max(0, m.hp - dmg);
+            spawnFloat(target.uid, `${pet.icon}-${dmg}`, "#7FE0B0");
+            setMonsterAnim(target.uid, "hurt");
+            const next = { ...m, hp: nh };
+            if (stun) next.frozenTurns = (m.frozenTurns || 0) + 1;
+            return next;
+          });
+          setLog(stun ? `${pet.name} uses ${skill.name} and stuns ${target.name}!` : `${pet.name} uses ${skill.name} on ${target.name} for ${dmg}!`);
+        }
       } else if (skill.type === "regen") {
-        const heal = Math.round(stats.maxHp * skill.regenPct);
         setPlayer(p => {
+          if (!p) return p;
+          const capStats = getStats(p, equipped);
+          const heal = Math.round(capStats.maxHp * skill.regenPct);
           spawnFloat("hero", `+${heal}`, "#6FCF97");
           return {
             ...p,
-            hp: Math.min(stats.maxHp, p.hp + heal),
+            hp: Math.min(capStats.maxHp, p.hp + heal),
             regenAmount: heal,
             regenTurns: Math.max(0, skill.regenTurns - 1)
           };
         });
-        setLog(`${petActive.def.icon} ${skill.name} activates!`);
+        setLog(`${pet.name} uses ${skill.name} on You!`);
       }
+      setPetAnim("");
       setTimeout(() => cb(), 280);
     }, 220);
   }
-  function resolveAfterPlayerAction(fromAttack) {
-    if (combatOutcomeRef.current) return;
-    const currentEnemy = enemyRef.current;
-    if (!currentEnemy || currentEnemy.hp <= 0) {
-      endCombatWin();
+  function doMonsterAction(m, cb) {
+    if (combatOutcomeRef.current) {
+      cb();
       return;
     }
-    if (fromAttack) {
-      setTimeout(() => triggerPetSkill(() => {
-        if (combatOutcomeRef.current) return;
-        if (enemyRef.current && enemyRef.current.hp <= 0) endCombatWin();
-        else enemyTurn();
-      }), 300);
-    } else {
-      setTimeout(() => {
-        if (!combatOutcomeRef.current) enemyTurn();
-      }, 400);
+    if (m.poisonTurns > 0) {
+      const pdmg = m.poisonDmg || 0;
+      const nh = Math.max(0, m.hp - pdmg);
+      updateMonster(m.uid, mm => ({ ...mm, hp: nh, poisonTurns: mm.poisonTurns - 1 }));
+      spawnFloat(m.uid, `-${pdmg} ☠️`, "#6FCF97");
+      if (nh <= 0) {
+        setLog(`${m.name} succumbed to poison!`);
+        cb();
+        return;
+      }
+      setLog(`${m.name} takes ${pdmg} poison damage!`);
     }
-  }
-  function enemyTurn() {
-    if (combatOutcomeRef.current) return;
-    setEnemy(e => {
-      if (!e || e.hp <= 0) {
-        setTimeout(() => endCombatWin(), 0);
-        return e;
+    const fresh = monstersRef.current.find(x => x.uid === m.uid) || m;
+    if (fresh.frozenTurns > 0) {
+      updateMonster(m.uid, mm => ({ ...mm, frozenTurns: mm.frozenTurns - 1 }));
+      setLog(`${fresh.name} is frozen solid and can't move!`);
+      cb();
+      return;
+    }
+    const stats = getStats(playerRef.current || player, equipped);
+    const pet = petCombatRef.current;
+    const canHitPet = pet && pet.hp > 0;
+    // Monsters mostly go for the player, but may occasionally swing at the pet instead.
+    const targetIsPet = canHitPet && Math.random() < 0.3;
+    setMonsterAnim(m.uid, "attack");
+    setTimeout(() => {
+      if (combatOutcomeRef.current) {
+        setMonsterAnim(m.uid, "");
+        cb();
+        return;
       }
-      let cur = { ...e };
-      if (cur.poisonTurns > 0) {
-        const pdmg = cur.poisonDmg || 0;
-        cur.hp = Math.max(0, cur.hp - pdmg);
-        cur.poisonTurns -= 1;
-        spawnFloat("enemy", `-${pdmg} ☠️`, "#6FCF97");
-        if (cur.hp <= 0) {
-          setLog(`${cur.name} succumbed to poison!`);
-          setTimeout(() => endCombatWin(), 0);
-          return cur;
+      if (targetIsPet) {
+        const dodged = Math.random() * 100 < (pet.evasion || 0);
+        const dmg = dodged ? 0 : Math.max(1, Math.round(fresh.atk - pet.def * 0.6 + (Math.random() * 3 - 1)));
+        if (dodged) {
+          spawnFloat("pet", "MISS", "#B9AEDD");
+          setLog(`${pet.name} dodged ${fresh.name}'s attack!`);
+        } else {
+          setPetCombat(p => p ? { ...p, hp: Math.max(0, p.hp - dmg) } : p);
+          spawnFloat("pet", `-${dmg}`, "#FF6B6B");
+          setPetAnim("hurt");
+          setLog(`${fresh.name} strikes your ${pet.name} for ${dmg}!`);
         }
-      }
-      if (cur.frozenTurns > 0) {
-        cur.frozenTurns -= 1;
-        setLog(`${cur.name} is frozen solid and can't move!`);
-        setBusy(false);
-        setTimeout(() => tickPlayerBuffs(), 0);
-        return cur;
-      }
-      const stats = getStats(playerRef.current || player, equipped);
-      const petActive = activePetInstance(save);
-      const hasGuard = petActive && petActive.def.extra && petActive.def.extra.type === "block";
-      const blocked = hasGuard && Math.random() < petActive.def.extra.pct;
-      const dodged = !blocked && Math.random() * 100 < stats.dodgeChance;
-      const dmg = blocked || dodged ? 0 : Math.max(1, Math.round(cur.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
-      setEnemyAnim("attack");
-      setTimeout(() => {
-        if (combatOutcomeRef.current) return;
+      } else {
+        const hasGuard = pet && pet.hp > 0 && pet.extra && pet.extra.type === "block";
+        const blocked = hasGuard && Math.random() < pet.extra.pct;
+        const dodged = !blocked && Math.random() * 100 < stats.dodgeChance;
+        const dmg = blocked || dodged ? 0 : Math.max(1, Math.round(fresh.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
         if (blocked) {
           spawnFloat("hero", "BLOCKED 🛡️", "#B9AEDD");
-          setLog(`${petActive.def.name} blocked the attack!`);
+          setLog(`${pet.name} blocked the attack!`);
         } else if (dodged) {
           spawnFloat("hero", "MISS", "#B9AEDD");
-          setLog(`You dodged ${cur.name}'s attack!`);
+          setLog(`You dodged ${fresh.name}'s attack!`);
         } else {
-          const hasStatusWard = petActive && petActive.def.passive && petActive.def.passive.type === "statusResist";
-          const resisted = hasStatusWard && Math.random() < petActive.def.passive.pct;
-          const weakenProc = cur.isBoss && !resisted && Math.random() < 0.25;
+          const hasStatusWard = pet && pet.passive && pet.passive.type === "statusResist";
+          const resisted = hasStatusWard && Math.random() < pet.passive.pct;
+          const weakenProc = fresh.isBoss && !resisted && Math.random() < 0.25;
           const currentPlayer = playerRef.current || player;
           const nh = Math.max(0, currentPlayer.hp - dmg);
           setPlayer(p => {
@@ -2063,17 +2978,14 @@ function ThornieDungeons() {
             return next;
           });
           spawnFloat("hero", `-${dmg}`, "#FF6B6B");
-          if (nh <= 0) setTimeout(() => playerLost(), 0);
-          setLog(weakenProc && nh > 0 ? `${cur.name} strikes for ${dmg} and weakens you!` : `${cur.name} strikes for ${dmg}!`);
+          setLog(weakenProc && nh > 0 ? `${fresh.name} strikes You for ${dmg} and weakens you!` : `${fresh.name} strikes You for ${dmg}!`);
         }
-        setEnemyAnim("");
-        if (!combatOutcomeRef.current) {
-          setBusy(false);
-          tickPlayerBuffs();
-        }
-      }, 300);
-      return cur;
-    });
+      }
+      setMonsterAnim(m.uid, "");
+      setHeroAnim("");
+      setPetAnim("");
+      cb();
+    }, 300);
   }
   function tickPlayerBuffs() {
     setPlayer(p => {
@@ -2093,7 +3005,6 @@ function ThornieDungeons() {
         next.weakenTurns -= 1;
         if (next.weakenTurns === 0) next.weakenPct = 0;
       }
-      if (next.petCooldown > 0) next.petCooldown -= 1;
       if (next.hp > 0 && next.regenTurns > 0 && next.regenAmount > 0 && !combatOutcomeRef.current) {
         const capStats = getStats(next, equipped);
         next.hp = Math.min(capStats.maxHp, next.hp + next.regenAmount);
@@ -2102,6 +3013,9 @@ function ThornieDungeons() {
       }
       return next;
     });
+  }
+  function tickPetCooldown() {
+    setPetCombat(p => p && p.cooldown > 0 ? { ...p, cooldown: p.cooldown - 1 } : p);
   }
   function retryStage() {
     // Defeat means HP hit 0 — always start the retry fully healed, since
@@ -2117,7 +3031,8 @@ function ThornieDungeons() {
   }
   function backToMap() {
     combatOutcomeRef.current = null;
-    setEnemy(null);
+    setMonsters([]);
+    setPetCombat(null);
     setDropItem(null);
     pushRunState(null);
     setPhase("map");
@@ -2176,6 +3091,256 @@ function ThornieDungeons() {
       ...save,
       gold: save.gold + price
     });
+  }
+  function findItemAndLocation(itemId) {
+    for (const slot of SLOT_ORDER) {
+      if (equipped[slot] && equipped[slot].id === itemId) return {
+        item: equipped[slot],
+        location: "equipped",
+        slot
+      };
+    }
+    const index = inventory.findIndex(i => i.id === itemId);
+    if (index >= 0) return {
+      item: inventory[index],
+      location: "inventory",
+      index
+    };
+    return null;
+  }
+  function applyItemUpdate(itemId, updater) {
+    const found = findItemAndLocation(itemId);
+    if (!found) return;
+    const updated = updater({
+      ...found.item,
+      empowerSlots: [...(found.item.empowerSlots || [])]
+    });
+    let nextEquipped = equipped,
+      nextInventory = inventory;
+    if (found.location === "equipped") {
+      nextEquipped = {
+        ...equipped,
+        [found.slot]: updated
+      };
+      setEquipped(nextEquipped);
+    } else {
+      nextInventory = inventory.map((it, i) => i === found.index ? updated : it);
+      setInventory(nextInventory);
+    }
+    persistItems(nextInventory, nextEquipped);
+  }
+  function enhanceItem(itemId) {
+    const found = findItemAndLocation(itemId);
+    if (!found) return {
+      ok: false,
+      message: "ไม่พบไอเทม"
+    };
+    const it = found.item;
+    const level = it.enhanceLevel || 0;
+    if (level >= ENHANCE_MAX) return {
+      ok: false,
+      message: "ตีบวกถึงระดับสูงสุดแล้ว (+" + ENHANCE_MAX + ")"
+    };
+    const cost = enhanceCost(level);
+    if (junkTotal(inventory, "iron") < cost.iron || save.gold < cost.gold) {
+      return {
+        ok: false,
+        message: `วัตถุดิบ/ทองไม่พอ (ต้องการ 🔩${cost.iron} 🪙${cost.gold})`
+      };
+    }
+    const invAfterCost = removeJunkFromInventory(inventory, "iron", cost.iron);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
+    persistSave({
+      ...save,
+      gold: save.gold - cost.gold
+    });
+    const success = Math.random() * 100 < enhanceSuccessRate(level);
+    const riskDowngrade = !success && level >= ENHANCE_DOWNGRADE_LEVEL;
+    const stones = save.protectionStones || 0;
+    const useStone = riskDowngrade && stones > 0;
+    if (useStone) {
+      persistSave({
+        ...save,
+        gold: save.gold - cost.gold,
+        protectionStones: stones - 1
+      });
+    }
+    if (success) {
+      applyItemUpdate(itemId, prev => ({
+        ...prev,
+        enhanceLevel: level + 1
+      }));
+      return {
+        ok: true,
+        message: `✨ ตีบวกสำเร็จ! ${it.name} +${level + 1}`
+      };
+    }
+    if (riskDowngrade && !useStone) {
+      const newLevel = Math.max(0, level - 1);
+      applyItemUpdate(itemId, prev => ({
+        ...prev,
+        enhanceLevel: newLevel
+      }));
+      return {
+        ok: false,
+        message: `💥 ตีบวกล้มเหลว! ${it.name} ร่วงเหลือ +${newLevel}`
+      };
+    }
+    if (useStone) {
+      return {
+        ok: false,
+        message: `🛡️ ตีบวกล้มเหลว แต่หินป้องกันช่วยไว้! ${it.name} ยังคง +${level}`
+      };
+    }
+    return {
+      ok: false,
+      message: `💢 ตีบวกล้มเหลว... (${it.name} ยังคง +${level})`
+    };
+  }
+  function toggleEmpowerLock(itemId, slotIndex) {
+    applyItemUpdate(itemId, prev => {
+      const slots = [...(prev.empowerSlots || [])];
+      const s = slots[slotIndex];
+      if (!s) return prev;
+      slots[slotIndex] = {
+        ...s,
+        locked: !s.locked
+      };
+      return {
+        ...prev,
+        empowerSlots: slots
+      };
+    });
+  }
+  function rerollEmpowerItem(itemId) {
+    const found = findItemAndLocation(itemId);
+    if (!found) return {
+      ok: false,
+      message: "ไม่พบไอเทม"
+    };
+    const it = found.item;
+    const slots = it.empowerSlots || [];
+    const filled = slots.filter(Boolean);
+    if (!filled.length) return {
+      ok: false,
+      message: "ยังไม่มีออฟชั่นให้รีรอล"
+    };
+    const lockedCount = filled.filter(s => s.locked).length;
+    if (lockedCount === filled.length) return {
+      ok: false,
+      message: "ล็อกไว้ทุกออฟชั่นแล้ว ไม่มีอะไรให้รีรอล"
+    };
+    const cost = rerollCost(filled.length, lockedCount);
+    if (junkTotal(inventory, "manaOre") < cost.manaOre || save.gold < cost.gold) {
+      return {
+        ok: false,
+        message: `หินมานา/ทองไม่พอสำหรับรีรอล (ต้องการ 🔮${cost.manaOre} 🪙${cost.gold})`
+      };
+    }
+    const invAfterCost = removeJunkFromInventory(inventory, "manaOre", cost.manaOre);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
+    persistSave({
+      ...save,
+      gold: save.gold - cost.gold
+    });
+    applyItemUpdate(itemId, prev => {
+      const nextSlots = (prev.empowerSlots || []).map(s => {
+        if (!s || s.locked) return s;
+        return rollEmpowerBonus(prev.rarity);
+      });
+      return {
+        ...prev,
+        empowerSlots: nextSlots
+      };
+    });
+    return {
+      ok: true,
+      message: `🔄 รีรอลออฟชั่นสำเร็จ! (ใช้ 🔮${cost.manaOre} 🪙${cost.gold}, ล็อกไว้ ${lockedCount} ช่อง)`
+    };
+  }
+  function salvageItem(itemId) {
+    const found = findItemAndLocation(itemId);
+    if (!found) return {
+      ok: false,
+      message: "ไม่พบไอเทม"
+    };
+    if (found.location === "equipped") return {
+      ok: false,
+      message: "ถอดอุปกรณ์ก่อนแยกชิ้นส่วน"
+    };
+    const it = found.item;
+    const y = salvageYield(it.rarity);
+    let nextInv = inventory.filter(i => i.id !== itemId);
+    nextInv = addJunkToInventory(nextInv, "iron", y.iron);
+    nextInv = addJunkToInventory(nextInv, "manaOre", y.manaOre);
+    setInventory(nextInv);
+    persistItems(nextInv, equipped);
+    return {
+      ok: true,
+      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}`
+    };
+  }
+  function buyProtectionStone() {
+    if (save.diamonds < PROTECTION_STONE_PRICE) return;
+    persistSave({
+      ...save,
+      diamonds: save.diamonds - PROTECTION_STONE_PRICE,
+      protectionStones: (save.protectionStones || 0) + 1
+    });
+  }
+  function buyMaterial(type) {
+    const price = MATERIAL_SHOP_PRICE[type];
+    if (!price || save.gold < price) return;
+    const nextInv = addJunkToInventory(inventory, type, 1);
+    setInventory(nextInv);
+    persistItems(nextInv, equipped);
+    persistSave({
+      ...save,
+      gold: save.gold - price
+    });
+  }
+  function empowerItem(itemId) {
+    const found = findItemAndLocation(itemId);
+    if (!found) return {
+      ok: false,
+      message: "ไม่พบไอเทม"
+    };
+    const it = found.item;
+    const slots = it.empowerSlots || [];
+    const nextIndex = slots.findIndex(s => !s);
+    if (nextIndex === -1) return {
+      ok: false,
+      message: "เสริมพลังครบทุกออฟชั่นแล้ว"
+    };
+    const cost = empowerCost(nextIndex);
+    if (junkTotal(inventory, "manaOre") < cost.manaOre || save.gold < cost.gold) {
+      return {
+        ok: false,
+        message: `หินมานา/ทองไม่พอ (ต้องการ 🔮${cost.manaOre} 🪙${cost.gold})`
+      };
+    }
+    const invAfterCost = removeJunkFromInventory(inventory, "manaOre", cost.manaOre);
+    setInventory(invAfterCost);
+    persistItems(invAfterCost, equipped);
+    persistSave({
+      ...save,
+      gold: save.gold - cost.gold
+    });
+    const bonus = rollEmpowerBonus(it.rarity);
+    applyItemUpdate(itemId, prev => {
+      const nextSlots = [...(prev.empowerSlots || [])];
+      nextSlots[nextIndex] = bonus;
+      return {
+        ...prev,
+        empowerSlots: nextSlots
+      };
+    });
+    return {
+      ok: true,
+      message: `🔮 เสริมพลังสำเร็จ! ได้รับ ${bonus.icon} +${bonus.value} ${bonus.label}`
+    };
   }
   function openShop() {
     setShopStock(generateShopStock(save.unlockedFloor));
@@ -2241,12 +3406,9 @@ function ThornieDungeons() {
       });
       return;
     }
-    const instId = `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const nextPets = [...(save.pets || []), {
-      instId,
-      defId: won.id
-    }];
-    const nextActivePetId = save.activePetId || instId;
+    const inst = newPetInstance(won.id);
+    const nextPets = [...(save.pets || []), inst];
+    const nextActivePetId = save.activePetId || inst.instId;
     persistSave({
       ...save,
       diamonds: save.diamonds - GACHA_COST,
@@ -2333,18 +3495,23 @@ function ThornieDungeons() {
     onGacha: pullGacha,
     onClaimDiamonds: claimTestDiamonds,
     onBack: () => setPhase("town")
-  }), phase === "combat" && enemy && player && /*#__PURE__*/React.createElement(CombatScreen, {
+  }), phase === "combat" && monsters.length > 0 && player && /*#__PURE__*/React.createElement(CombatScreen, {
     player: player,
-    enemy: enemy,
+    monsters: monsters,
+    targetUid: targetUid,
+    onSelectTarget: selectTarget,
     log: log,
     busy: busy,
     potions: potions,
     heroAnim: heroAnim,
-    enemyAnim: enemyAnim,
+    petAnim: petAnim,
+    enemyAnims: enemyAnims,
     floats: floats,
     onAction: playerTurn,
     equipped: equipped,
-    pet: activePetInstance(save)
+    petCombat: petCombat,
+    turnQueue: turnQueue,
+    activeTurnKey: activeTurnKey
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,
@@ -2361,6 +3528,7 @@ function ThornieDungeons() {
     onShop: openShop,
     onCharacter: () => setPhase("town"),
     onBag: () => setInvOpen(true),
+    onBlacksmith: () => setBlacksmithOpen(true),
     activePhase: phase
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
@@ -2368,15 +3536,30 @@ function ThornieDungeons() {
     onEquip: equipItem,
     onUnequip: unequipItem,
     onSell: sellItem,
+    onSalvage: salvageItem,
     onClose: () => setInvOpen(false)
+  }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
+    equipped: equipped,
+    inventory: inventory,
+    onEnhance: enhanceItem,
+    onEmpower: empowerItem,
+    onReroll: rerollEmpowerItem,
+    onToggleLock: toggleEmpowerLock,
+    onClose: () => setBlacksmithOpen(false)
   }), shopOpen && /*#__PURE__*/React.createElement(ShopOverlay, {
     gold: save.gold,
+    diamonds: save.diamonds,
+    protectionStones: save.protectionStones || 0,
     stock: shopStock,
     onBuyItem: buyShopItem,
     onBuyPotion: buyShopPotion,
+    onBuyProtectionStone: buyProtectionStone,
+    onBuyMaterial: buyMaterial,
     onClose: () => setShopOpen(false)
   }));
 }
+
+// ===== ui/components.js =====
 function Starfield() {
   const dots = [{
     top: 12,
@@ -2491,7 +3674,6 @@ function LoginScreen({
   onLogin,
   onRegister
 }) {
-  const [urlEditing, setUrlEditing] = useState(false);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-login-wrap"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2506,40 +3688,6 @@ function LoginScreen({
   }, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "sign in to sync your save")), /*#__PURE__*/React.createElement("div", {
     className: "md-card"
   }, /*#__PURE__*/React.createElement("p", {
-    className: "md-field-label",
-    style: {
-      marginTop: 0
-    }
-  }, "Server"), urlEditing ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
-    className: "md-field",
-    placeholder: "https://script.google.com/macros/s/.../exec",
-    value: cred.url,
-    onChange: e => setCred(c => ({
-      ...c,
-      url: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info wide small",
-    style: {
-      marginTop: 8
-    },
-    onClick: () => setUrlEditing(false)
-  }, "✓ บันทึก URL")) : /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-row",
-    style: {
-      border: "none",
-      padding: "2px 0 10px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-info",
-    style: {
-      color: "var(--ink-soft)",
-      fontSize: 12
-    }
-  }, "🔗 เชื่อมต่อ Apps Script แล้ว"), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => setUrlEditing(true)
-  }, "แก้ไข")), /*#__PURE__*/React.createElement("p", {
     className: "md-field-label"
   }, "Player ID"), /*#__PURE__*/React.createElement("input", {
     className: "md-field",
@@ -2698,12 +3846,12 @@ function CharacterScreen({
     style: {
       margin: 0
     }
-  }, "ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp), /*#__PURE__*/React.createElement("p", {
+  }, "ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp, " · Speed ", charStats.speed), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: "4px 0 0"
     }
-  }, "Accuracy ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Dodge ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
+  }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -2763,6 +3911,7 @@ function MapScreen({
   }, (_, i) => i + 1);
   const [selected, setSelected] = useState(unlockedFloor);
   const isBossSel = selected % 5 === 0;
+  const isEliteBossSel = selected % 10 === 0;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
@@ -2796,7 +3945,8 @@ function MapScreen({
   }, floors.map(f => {
     const locked = f > unlockedFloor;
     const isBoss = f % 5 === 0;
-    const label = locked ? `🔒 Stage ${f} — Locked` : isBoss ? `👑 Stage ${f} — Boss` : `Stage ${f}`;
+    const isEliteBoss = f % 10 === 0;
+    const label = locked ? `🔒 Stage ${f} — Locked` : isEliteBoss ? `🔥👑 Stage ${f} — Elite Boss` : isBoss ? `👑 Stage ${f} — Boss` : `Stage ${f}`;
     return /*#__PURE__*/React.createElement("option", {
       key: f,
       value: f,
@@ -2807,7 +3957,7 @@ function MapScreen({
     style: {
       margin: "8px 0 10px"
     }
-  }, isBossSel ? "Tougher fight, better rewards." : "Farmable · gold, XP, gear."), /*#__PURE__*/React.createElement("button", {
+  }, isEliteBossSel ? "🔥 Elite Boss — เปิดหีบการันตี Elite/Mythic + bonus 💎!" : isBossSel ? "👑 Boss — ชนะแล้วได้เปิดหีบสุ่มความหายากอุปกรณ์!" : "Farmable · gold, XP, วัตถุดิบตีบวก/เสริมพลัง. อาจมี Floor Modifier พิเศษ!"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn attack wide",
     onClick: () => onSelectFloor(selected)
   }, "⚔️ Enter Stage ", selected)), /*#__PURE__*/React.createElement("div", {
@@ -2825,9 +3975,13 @@ function MapScreen({
 }
 function ShopOverlay({
   gold,
+  diamonds,
+  protectionStones,
   stock,
   onBuyItem,
   onBuyPotion,
+  onBuyProtectionStone,
+  onBuyMaterial,
   onClose
 }) {
   return /*#__PURE__*/React.createElement("div", {
@@ -2864,7 +4018,7 @@ function ShopOverlay({
     }
   }, "🛒 Shop ", /*#__PURE__*/React.createElement("span", {
     className: "md-shop-lv"
-  }, "🪙", gold)), /*#__PURE__*/React.createElement("button", {
+  }, "🪙", gold, " · 💎", diamonds || 0)), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee small",
     onClick: onClose,
     style: {
@@ -2888,7 +4042,36 @@ function ShopOverlay({
     className: "md-buy-btn",
     disabled: gold < stock.potionPrice,
     onClick: onBuyPotion
-  }, "🪙", stock.potionPrice))), /*#__PURE__*/React.createElement("div", {
+  }, "🪙", stock.potionPrice)), /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-row",
+    style: { marginTop: 8 }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-info"
+  }, "🛡️ หินป้องกัน (มีอยู่ ", protectionStones || 0, ")"), /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-lv"
+  }, "ป้องกันไม่ให้เลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    disabled: (diamonds || 0) < PROTECTION_STONE_PRICE,
+    onClick: onBuyProtectionStone
+  }, "💎", PROTECTION_STONE_PRICE))), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-info",
+    style: { marginBottom: 6 }
+  }, "⛏️ วัตถุดิบตีบวก/เสริมพลัง"), ["iron", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
+    key: type,
+    className: "md-shop-row",
+    style: { marginBottom: 4 }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-info"
+  }, JUNK_INFO[type].icon, " ", JUNK_INFO[type].name), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    disabled: gold < MATERIAL_SHOP_PRICE[type],
+    onClick: () => onBuyMaterial(type)
+  }, "🪙", MATERIAL_SHOP_PRICE[type])))), /*#__PURE__*/React.createElement("div", {
     className: "md-inv-list"
   }, stock.items.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
@@ -3062,6 +4245,7 @@ function FloatingQuickActions({
   onShop,
   onCharacter,
   onBag,
+  onBlacksmith,
   activePhase
 }) {
   return /*#__PURE__*/React.createElement("div", {
@@ -3073,6 +4257,12 @@ function FloatingQuickActions({
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-fab-icon"
   }, "🛒")), /*#__PURE__*/React.createElement("button", {
+    className: "md-fab",
+    onClick: onBlacksmith,
+    title: "Blacksmith"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-fab-icon"
+  }, "⚒️")), /*#__PURE__*/React.createElement("button", {
     className: `md-fab ${activePhase === "town" ? "active" : ""}`,
     onClick: onCharacter,
     title: "Character"
@@ -3086,33 +4276,70 @@ function FloatingQuickActions({
     className: "md-fab-icon"
   }, "🎒")));
 }
-function HeroSprite({ anim }) {
-  const heroUrl = asset(getHeroAssetKeyForAnim(anim));
+function HeroSprite({
+  anim
+}) {
+  const heroIdleUrl = asset("hero.idle");
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-wrap md-hero-r2-wrap"
-  }, heroUrl ? /*#__PURE__*/React.createElement("img", {
-    className: `md-hero-img ${anim || ""}`,
-    src: heroUrl,
-    alt: "Hero 001",
-    draggable: false,
-    decoding: "async",
-    loading: "eager",
-    onError: e => {
-      console.error("[R2] Hero 001 image failed to load:", heroUrl);
-      e.currentTarget.removeAttribute("src");
-    }
+    className: "md-sprite-wrap"
+  }, heroIdleUrl ? /*#__PURE__*/React.createElement("img", {
+    className: `md-hero-img ${anim}`,
+    src: heroIdleUrl,
+    alt: "hero",
+    draggable: false
   }) : /*#__PURE__*/React.createElement("div", {
-    className: "md-r2-error"
-  }, "Hero asset unavailable"));
+    className: `md-hero ${anim}`
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "hair"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "head"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "eye l"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "eye r"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "body"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-sprite-name"
+  }, "You"));
 }
 function EnemySprite({
   enemy,
-  anim
+  anim,
+  selected,
+  onClick
 }) {
+  const enemyUrl = asset(`enemy.${enemy.id}`);
+  const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
+  const dead = enemy.hp <= 0;
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-wrap"
+    className: "md-sprite-wrap",
+    onClick: !dead && onClick ? () => onClick(enemy.uid) : undefined,
+    style: {
+      cursor: !dead && onClick ? "pointer" : "default",
+      opacity: dead ? 0.35 : 1,
+      outline: selected && !dead ? "2px solid var(--gold)" : "none",
+      outlineOffset: 4,
+      borderRadius: 12
+    }
   }, /*#__PURE__*/React.createElement("div", {
-    className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim}`
+    className: "md-enemy-hpbar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-fill",
+    style: {
+      width: `${hpPct}%`
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-hp"
+  }, enemy.hp, "/", enemy.maxHp)), enemyUrl ? /*#__PURE__*/React.createElement("img", {
+    className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
+    src: enemyUrl,
+    alt: enemy.name,
+    draggable: false
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
     style: {
@@ -3124,30 +4351,85 @@ function EnemySprite({
     className: "eye r"
   }))), /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-name"
-  }, enemy.name));
+  }, enemy.name, enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : ""));
+}
+function PetCombatSprite({ pet, anim }) {
+  const dead = pet.hp <= 0;
+  const hpPct = Math.max(0, Math.min(100, pet.hp / pet.maxHp * 100));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-sprite-wrap",
+    style: { opacity: dead ? 0.35 : 1 }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-fill",
+    style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#8ee0a8,#4CAF7D)" }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-hp"
+  }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
+    className: `md-enemy ${anim || ""}`,
+    style: { display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, background: "none", border: "none" }
+  }, pet.icon), /*#__PURE__*/React.createElement("div", {
+    className: "md-sprite-name"
+  }, pet.name, dead ? " 💤" : ""));
+}
+// Turn Order Queue UI: shows every unit's planned action order for the current round,
+// sorted by Speed (AGI), so the player can plan around who acts before whom.
+function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-turn-queue"
+  }, queue.map((item, i) => {
+    const isActive = activeKey === item.key;
+    const isDone = activeKey && queue.findIndex(q => q.key === activeKey) > i;
+    let alive = true;
+    let icon = item.icon;
+    if (item.kind === "monster") {
+      const m = monsters.find(mm => mm.uid === item.uid);
+      alive = !m || m.hp > 0;
+    } else if (item.kind === "pet") {
+      alive = !petCombat || petCombat.hp > 0;
+    }
+    return /*#__PURE__*/React.createElement("div", {
+      key: item.key + i,
+      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} ${isDone || !alive ? "done" : ""}`,
+      title: `${item.name} · Speed ${item.speed}`
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "md-turn-queue-icon"
+    }, icon), i < queue.length - 1 && /*#__PURE__*/React.createElement("span", {
+      className: "md-turn-queue-arrow"
+    }, "›"));
+  }));
 }
 function CombatScreen({
   player,
-  enemy,
+  monsters,
+  targetUid,
+  onSelectTarget,
   log,
   busy,
   potions,
   heroAnim,
-  enemyAnim,
+  petAnim,
+  enemyAnims,
   floats,
   onAction,
   equipped,
-  pet
+  petCombat,
+  turnQueue,
+  activeTurnKey
 }) {
   const [showSkills, setShowSkills] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
-  const enemyHpPct = Math.max(0, enemy.hp / enemy.maxHp * 100);
   const skills = unlockedSkills(player.level);
   const stats = getStats(player, equipped);
   const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
   const mpPct = Math.max(0, Math.min(100, player.mp / stats.maxMp * 100));
   const xpNeed = xpToNext(player.level);
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
+  const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
+  const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
   function pickSkill(skill) {
     setShowSkills(false);
     onAction("skill", skill.key);
@@ -3163,12 +4445,16 @@ function CombatScreen({
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-scene battle-bg"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-combat-hud"
+    className: "md-battle-top"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-lv"
   }, player.level), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-bars"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-hud-label"
+  }, "HP"), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-track hp"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-fill",
@@ -3177,7 +4463,11 @@ function CombatScreen({
     }
   }), /*#__PURE__*/React.createElement("span", {
     className: "md-hud-txt"
-  }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement("div", {
+  }, player.hp, "/", stats.maxHp))), /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-hud-label"
+  }, "MP"), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-track mp"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-fill",
@@ -3186,45 +4476,53 @@ function CombatScreen({
     }
   }), /*#__PURE__*/React.createElement("span", {
     className: "md-hud-txt"
-  }, player.mp, "/", stats.maxMp)), /*#__PURE__*/React.createElement("div", {
+  }, player.mp, "/", stats.maxMp))), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-track xp"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-fill",
     style: {
       width: `${xpPct}%`
     }
-  })))), pet && /*#__PURE__*/React.createElement("div", {
-    className: "md-pet-status",
-    title: pet.def.active.desc
-  }, pet.def.icon, " ", pet.def.active.name, player.petCooldown > 0 ? ` · CD ${player.petCooldown}` : " · Ready"), /*#__PURE__*/React.createElement("div", {
+  }))), turnQueue && turnQueue.length > 0 && /*#__PURE__*/React.createElement(TurnOrderBar, {
+    queue: turnQueue,
+    activeKey: activeTurnKey,
+    monsters: monsters,
+    petCombat: petCombat
+  }), petCombat && /*#__PURE__*/React.createElement("div", {
+    className: `md-pet-chip ${petCombat.cooldown > 0 ? "" : "ready"}`,
+    title: petCombat.active.desc
+  }, petCombat.icon, " ", petCombat.cooldown > 0 ? /*#__PURE__*/React.createElement("span", {
+    className: "cd"
+  }, "CD ", petCombat.cooldown) : /*#__PURE__*/React.createElement("span", null, "Ready"))), bossOrModifier && /*#__PURE__*/React.createElement("div", {
+    className: "md-modifier-chip",
     style: {
-      padding: "0 10px 6px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-track",
-    style: {
-      height: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-fill",
-    style: {
-      width: `${enemyHpPct}%`,
-      background: "linear-gradient(90deg,#FF8787,#E14F4F)"
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-label",
-    style: {
+      background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
+      border: `1px solid ${bossOrModifier.isEliteBoss ? "#ffd166" : bossOrModifier.modifier.color}`,
+      color: bossOrModifier.isEliteBoss ? "#caa143" : bossOrModifier.modifier.color,
+      borderRadius: 8,
+      padding: "3px 8px",
+      fontSize: 11,
+      fontWeight: 700,
       textAlign: "center",
-      marginTop: 2
-    }
-  }, enemy.name, " — ", enemy.hp, "/", enemy.maxHp, " HP", enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : "")), /*#__PURE__*/React.createElement("div", {
+      margin: "0 auto 4px"
+    },
+    title: bossOrModifier.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : bossOrModifier.modifier.desc
+  }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
+    style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
+  }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      position: "relative"
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+      alignItems: "center"
     }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { position: "relative" }
   }, /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
@@ -3242,26 +4540,61 @@ function CombatScreen({
     style: {
       color: f.color
     }
-  }, f.text))), /*#__PURE__*/React.createElement("div", {
+  }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
+    style: { position: "relative", transform: "scale(0.8)" }
+  }, /*#__PURE__*/React.createElement(PetCombatSprite, {
+    pet: petCombat,
+    anim: petAnim
+  }), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
+    key: f.id,
+    className: "md-dmg-float",
+    style: { color: f.color }
+  }, f.text)))), /*#__PURE__*/React.createElement("div", {
     style: {
-      position: "relative"
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      justifyContent: "center",
+      alignItems: "flex-end"
     }
+  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.uid,
+    style: { position: "relative" }
   }, /*#__PURE__*/React.createElement(EnemySprite, {
-    enemy: enemy,
-    anim: enemyAnim
-  }), floats.filter(f => f.side === "enemy").map(f => /*#__PURE__*/React.createElement("div", {
+    enemy: m,
+    anim: enemyAnims[m.uid],
+    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
+    onClick: onSelectTarget
+  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {
       color: f.color
     }
-  }, f.text))))), /*#__PURE__*/React.createElement("button", {
-    className: `md-autorun-btn ${autoRun ? "active" : ""}`,
+  }, f.text)))))), /*#__PURE__*/React.createElement("div", {
+    className: "md-battle-dock"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: `md-dock-auto ${autoRun ? "active" : ""}`,
     onClick: () => setAutoRun(a => !a)
-  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
-    className: "md-combat-actions"
+  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("button", {
+    className: "md-dock-circle item",
+    disabled: busy || potions <= 0,
+    onClick: () => onAction("item")
+  }, "🧪", /*#__PURE__*/React.createElement("i", {
+    className: "md-rail-badge"
+  }, potions)), /*#__PURE__*/React.createElement("button", {
+    className: "md-dock-attack",
+    disabled: busy,
+    onClick: () => {
+      setShowSkills(false);
+      onAction("attack");
+    }
+  }, "👊"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
   }, showSkills && /*#__PURE__*/React.createElement("div", {
-    className: "md-skill-grid"
+    className: "md-skill-popover"
   }, skills.map((s, i) => /*#__PURE__*/React.createElement("button", {
     key: s.key,
     className: "md-skill-cell",
@@ -3271,35 +4604,21 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-skill-num"
   }, i + 1), s.icon))), /*#__PURE__*/React.createElement("button", {
-    className: "md-skill-fab",
+    className: "md-dock-circle skill",
     disabled: busy || skills.length === 0,
     onClick: () => setShowSkills(v => !v)
-  }, "✨"), /*#__PURE__*/React.createElement("div", {
-    className: "md-action-cluster"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-atk-circle",
-    disabled: busy,
-    onClick: () => {
-      setShowSkills(false);
-      onAction("attack");
-    }
-  }, "👊"), /*#__PURE__*/React.createElement("div", {
-    className: "md-side-box"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-side-circle",
-    disabled: busy || potions <= 0,
-    onClick: () => onAction("item")
-  }, "🧪", /*#__PURE__*/React.createElement("i", {
-    className: "md-rail-badge"
-  }, potions)), /*#__PURE__*/React.createElement("button", {
-    className: "md-side-circle",
+  }, "✨")), /*#__PURE__*/React.createElement("button", {
+    className: "md-dock-circle flee",
     disabled: busy,
     onClick: () => onAction("flee")
-  }, "🏃")))), /*#__PURE__*/React.createElement("div", {
+  }, "🏃"))), /*#__PURE__*/React.createElement("div", {
     className: "md-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-log"
-  }, log)));
+  }, (Array.isArray(log) ? log : [log]).slice(0, 3).map((line, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: `md-log-line ${i === 0 ? "latest" : ""}`
+  }, line)))));
 }
 function ResultScreen({
   floor,
@@ -3310,6 +4629,9 @@ function ResultScreen({
   onMap,
   onOpenInv
 }) {
+  const [chestOpened, setChestOpened] = useState(false);
+  const showChest = rewards.isBoss && dropItem;
+  const showItemBanner = showChest && chestOpened;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
@@ -3325,7 +4647,22 @@ function ResultScreen({
     className: "md-title"
   }, "🎉 Stage ", floor, " Cleared!"), /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
-  }, "+", rewards.gold, " 🪙 gold · +", rewards.xp, " XP", rewards.leveledUp ? " · Level up!" : "", rewards.unlockedNext ? " · Next stage unlocked!" : ""), rewards.newPet && /*#__PURE__*/React.createElement("div", {
+  }, "+", rewards.gold, " 🪙 gold · +", rewards.xp, " XP", rewards.diamonds ? ` · +${rewards.diamonds} 💎` : "", rewards.leveledUp ? " · Level up!" : "", rewards.unlockedNext ? " · Next stage unlocked!" : ""), rewards.isEliteBoss && /*#__PURE__*/React.createElement("div", {
+    className: "md-drop-banner",
+    style: {
+      background: "rgba(255,209,102,0.22)"
+    }
+  }, "👑🔥 Elite Boss Defeated! Chest guarantees Elite/Mythic gear + bonus 💎"), rewards.modifier && /*#__PURE__*/React.createElement("div", {
+    className: "md-drop-banner",
+    style: {
+      background: `${rewards.modifier.color}22`
+    }
+  }, rewards.modifier.icon, " ", rewards.modifier.name, /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "var(--ink-soft)"
+    }
+  }, rewards.modifier.desc)), rewards.newPet && /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
     style: {
       background: "rgba(139,106,232,0.18)"
@@ -3345,24 +4682,35 @@ function ResultScreen({
       fontSize: 11,
       color: "var(--ink-soft)"
     }
-  }, rewards.newSkill.desc)), dropItem ? /*#__PURE__*/React.createElement("div", {
+  }, rewards.newSkill.desc)), showChest && !chestOpened && /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary wide",
+    style: {
+      marginTop: 4
+    },
+    onClick: () => setChestOpened(true)
+  }, "🎁 เปิดหีบรางวัลจากบอส"), showItemBanner ? /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
     style: {
-      background: dropItem.rarity === "epic" ? "rgba(178,106,232,0.18)" : dropItem.rarity === "rare" ? "rgba(79,168,224,0.18)" : "rgba(156,156,168,0.15)"
+      background: dropItem.rarity === "mythic" ? "rgba(255,209,102,0.28)" : dropItem.rarity === "elite" ? "rgba(178,106,232,0.18)" : dropItem.rarity === "unique" ? "rgba(79,168,224,0.18)" : "rgba(156,156,168,0.15)"
     }
-  }, SLOT_ICON[dropItem.type], " Found ", RARITY_LABEL[dropItem.rarity], " ", dropItem.name, "! ", /*#__PURE__*/React.createElement(StarRating, {
+  }, SLOT_ICON[dropItem.type], " Found ", RARITY_LABEL[dropItem.rarity], " ", itemDisplayName(dropItem), "! ", /*#__PURE__*/React.createElement(StarRating, {
     rarity: dropItem.rarity
   }), /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
       color: "var(--ink-soft)"
     }
-  }, itemStatText(dropItem))) : /*#__PURE__*/React.createElement("p", {
+  }, itemStatText(dropItem))) : !showChest && (rewards.junkDrop ? /*#__PURE__*/React.createElement("div", {
+    className: "md-drop-banner",
+    style: {
+      background: "rgba(156,156,168,0.15)"
+    }
+  }, JUNK_INFO[rewards.junkDrop.type].icon, " ได้รับ ", JUNK_INFO[rewards.junkDrop.type].name, " x", rewards.junkDrop.amount) : /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: 0
     }
-  }, "No item dropped this time.")), dropItem && /*#__PURE__*/React.createElement("button", {
+  }, "ไม่ได้วัตถุดิบจากศัตรูตัวนี้"))), showItemBanner && /*#__PURE__*/React.createElement("button", {
     className: "md-btn info wide",
     onClick: onOpenInv
   }, "🎒 Open Equipment"), /*#__PURE__*/React.createElement("div", {
@@ -3425,15 +4773,21 @@ function InventoryOverlay({
   onEquip,
   onUnequip,
   onSell,
+  onSalvage,
   onClose
 }) {
   const [selectedId, setSelectedId] = useState(null);
   const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
   const [sortMode, setSortMode] = useState("default");
+  const [actionMsg, setActionMsg] = useState("");
+  // Inventory grid starts collapsed to a couple of rows so the sheet fits on a phone screen;
+  // "ดูทั้งหมด" expands it out to the full 25 slots.
+  const [gridExpanded, setGridExpanded] = useState(false);
+  const GRID_COLLAPSED_COUNT = 10;
 
   const sortedInventory = [...inventory].sort((a, b) => {
     if (sortMode === "rarity") {
-      const rank = { elite: 3, unique: 2, rare: 1 };
+      const rank = { mythic: 4, elite: 3, unique: 2, rare: 1 };
       return (rank[b.rarity] || 0) - (rank[a.rarity] || 0);
     }
     if (sortMode === "type") return String(a.type).localeCompare(String(b.type));
@@ -3441,20 +4795,24 @@ function InventoryOverlay({
     return 0;
   });
   const visibleInventory = sortedInventory.slice(0, 25);
+  const gridSlotCount = gridExpanded ? 25 : Math.min(GRID_COLLAPSED_COUNT, 25);
   const selectedItem = selectedId ? inventory.find(i => i.id === selectedId) : null;
   const selectedEquipped = selectedEquippedSlot ? equipped[selectedEquippedSlot] : null;
+  const detailTarget = selectedItem || selectedEquipped;
 
   const chooseInventory = item => {
     setSelectedId(item.id);
     setSelectedEquippedSlot(null);
+    setActionMsg("");
   };
   const chooseEquipped = slot => {
     if (!equipped[slot]) return;
     setSelectedEquippedSlot(slot);
     setSelectedId(null);
+    setActionMsg("");
   };
   const doEquip = () => {
-    if (!selectedItem) return;
+    if (!selectedItem || selectedItem.type === "junk") return;
     onEquip(selectedItem);
     setSelectedId(null);
   };
@@ -3468,6 +4826,12 @@ function InventoryOverlay({
     onSell(selectedItem);
     setSelectedId(null);
   };
+  const doSalvage = () => {
+    if (!selectedItem) return;
+    const res = onSalvage(selectedItem.id);
+    setActionMsg(res.message);
+    if (res.ok) setSelectedId(null);
+  };
 
   const renderEquipSlot = slot => {
     const it = equipped[slot];
@@ -3478,16 +4842,35 @@ function InventoryOverlay({
       className: `md-equip-slot ${slot} ${it ? "filled" : "empty"} ${selected ? "selected" : ""}`,
       onClick: () => chooseEquipped(slot)
     }, /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-icon" }, SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-label" }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name" }, it.name),
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name" }, itemDisplayName(it)),
       /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-stat" }, itemStatText(it))
     ) : /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name", style: { color: "var(--ink-soft)", opacity: .55 } }, "Empty"));
+  };
+
+  const renderEmpowerSlotsReadOnly = it => {
+    const slots = it.empowerSlots || [];
+    if (!slots.length) return null;
+    return /*#__PURE__*/React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 } },
+      slots.map((s, i) => /*#__PURE__*/React.createElement("span", {
+        key: i,
+        title: s ? `${s.icon} +${s.value} ${s.label}` : "ยังไม่ปลดล็อก (ไปปลดล็อกที่ร้านตีเหล็ก)",
+        style: {
+          fontSize: 10,
+          padding: "2px 6px",
+          borderRadius: 6,
+          background: s ? "rgba(139,106,232,0.22)" : "rgba(156,156,168,0.15)",
+          border: s && s.locked ? "1px solid #ffd166" : "1px solid transparent",
+          color: s ? "var(--ink)" : "var(--ink-soft)"
+        }
+      }, s ? `${s.locked ? "🔒" : ""}${s.icon}+${s.value}` : "◻️"))
+    );
   };
 
   return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
     /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "⚔️ Equipment & Inventory"),
-        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "แตะอุปกรณ์รอบตัวละคร หรือแตะไอเทมในกระเป๋าเพื่อเลือก")
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "แตะอุปกรณ์รอบตัวละคร หรือแตะไอเทมในกระเป๋าเพื่อเลือก · ตีบวก/เสริมพลังไปที่ร้านตีเหล็ก ⚒️")
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
@@ -3501,19 +4884,23 @@ function InventoryOverlay({
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "❤️ HP ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).hp)),
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "💧 MP ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).mp))
     ),
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2 } },
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.iron.icon, " ", junkTotal(inventory, "iron")),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.manaOre.icon, " ", junkTotal(inventory, "manaOre"))
+    ),
     /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "🎒 Inventory"),
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-count", style: { marginLeft: 7 } }, `${Math.min(inventory.length,25)}/25 ช่องแสดง`)
       ),
-      /*#__PURE__*/React.createElement("select", { className: "md-select", value: sortMode, onChange: e => setSortMode(e.target.value), style: { width: 112, padding: "7px 28px 7px 8px", fontSize: 10 } },
+      /*#__PURE__*/React.createElement("select", { className: "md-select", value: sortMode, onChange: e => setSortMode(e.target.value), style: { width: 100, padding: "7px 26px 7px 8px", fontSize: 10 } },
         /*#__PURE__*/React.createElement("option", { value: "default" }, "เรียงเดิม"),
         /*#__PURE__*/React.createElement("option", { value: "rarity" }, "ความหายาก"),
         /*#__PURE__*/React.createElement("option", { value: "type" }, "ประเภท"),
         /*#__PURE__*/React.createElement("option", { value: "value" }, "ราคาขาย")
       )
     ),
-    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: 25 }, (_, index) => {
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: gridSlotCount }, (_, index) => {
       const it = visibleInventory[index];
       return /*#__PURE__*/React.createElement("button", {
         key: it ? it.id : `empty-${index}`,
@@ -3522,28 +4909,222 @@ function InventoryOverlay({
         onClick: () => it && chooseInventory(it)
       }, it ? /*#__PURE__*/React.createElement(React.Fragment, null,
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-num" }, index + 1),
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, SLOT_ICON[it.type] || "📦"),
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, it.icon || SLOT_ICON[it.type] || "📦"),
+        it.type !== "junk" && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
+        it.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, "+", it.enhanceLevel),
         it.quantity > 1 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, "x", it.quantity)
       ) : /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, opacity: .18 } }, "＋"));
     })),
+    Math.min(inventory.length, 25) > GRID_COLLAPSED_COUNT && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-inventory-toggle",
+      onClick: () => setGridExpanded(v => !v)
+    }, gridExpanded ? "▲ ย่อกระเป๋า" : `▼ ดูทั้งหมด (${Math.min(inventory.length, 25)} ชิ้น)`),
     inventory.length > 25 && /*#__PURE__*/React.createElement("div", { className: "md-item-detail", style: { textAlign: "center", color: "var(--ink-soft)", fontSize: 10 } }, "มีไอเทมเกิน 25 ชิ้น — ตอนนี้แสดง 25 ช่องแรกเพื่อให้เหมาะกับหน้าจอมือถือ"),
-    /*#__PURE__*/React.createElement("div", { className: "md-item-detail" }, selectedItem ? /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[selectedItem.type], " ", selectedItem.name),
-      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[selectedItem.rarity] || selectedItem.rarity, " · ", itemStatText(selectedItem) || "ไม่มีค่าสเตตัส" )
-    ) : selectedEquipped ? /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[selectedEquipped.type], " ", selectedEquipped.name),
-      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, "สวมใส่อยู่ · ", itemStatText(selectedEquipped) || "ไม่มีค่าสเตตัส")
+    /*#__PURE__*/React.createElement("div", { className: "md-item-detail" }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, detailTarget.icon || SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
+      detailTarget.type === "junk" ? /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `วัตถุดิบขยะ · มี ${detailTarget.quantity} ชิ้น (สูงสุด 99/ช่อง) · ขายได้ ${sellPrice(detailTarget)} 🪙`) : /*#__PURE__*/React.createElement(React.Fragment, null,
+        /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
+        renderEmpowerSlotsReadOnly(detailTarget)
+      ),
+      selectedItem && detailTarget.type !== "junk" && /*#__PURE__*/React.createElement("button", {
+        className: "md-btn flee small",
+        style: { marginTop: 6, minHeight: 38, fontSize: 10, width: "100%" },
+        onClick: doSalvage
+      }, (() => {
+        const y = salvageYield(detailTarget.rarity);
+        return `♻️ แยกชิ้นส่วน (🔩${y.iron} 🔮${y.manaOre})`;
+      })()),
+      actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
     /*#__PURE__*/React.createElement("div", { className: "md-item-actions" },
-      /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem, onClick: doEquip }, "⚔️ สวมใส่"),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem || selectedItem.type === "junk", onClick: doEquip }, "⚔️ สวมใส่"),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem, onClick: doSell }, selectedItem ? `🪙 ขาย ${sellPrice(selectedItem)}` : "🪙 ขาย"),
       /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot, onClick: doUnequip }, "↩️ ถอด")
     ),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิด Inventory")
   ));
 }
-var root = ReactDOM.createRoot(document.getElementById("root"));
+function BlacksmithOverlay({
+  equipped,
+  inventory,
+  onEnhance,
+  onEmpower,
+  onReroll,
+  onToggleLock,
+  onClose
+}) {
+  const [selectedId, setSelectedId] = useState(null);
+  const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
+  const [actionMsg, setActionMsg] = useState("");
+  const [animState, setAnimState] = useState(null); // 'success' | 'fail' | null
+  const animTimerRef = useRef(null);
+  const [gridExpanded, setGridExpanded] = useState(false);
+  const GRID_COLLAPSED_COUNT = 10;
+  const gridSlotCount = gridExpanded ? 25 : Math.min(GRID_COLLAPSED_COUNT, 25);
+
+  const selectedItem = selectedId ? inventory.find(i => i.id === selectedId) : null;
+  const selectedEquipped = selectedEquippedSlot ? equipped[selectedEquippedSlot] : null;
+  const detailTarget = selectedItem || selectedEquipped;
+  // Junk (stone/wood/iron/mana stone etc.) can't be enhanced or empowered, so the
+  // Blacksmith's item grid only shows actual gear — junk totals still show via junkTotal().
+  const gearInventory = inventory.filter(i => i.type !== "junk");
+
+  const playAnim = ok => {
+    if (animTimerRef.current) clearTimeout(animTimerRef.current);
+    setAnimState(ok ? "success" : "fail");
+    animTimerRef.current = setTimeout(() => setAnimState(null), 650);
+  };
+
+  const chooseInventory = item => {
+    setSelectedId(item.id);
+    setSelectedEquippedSlot(null);
+    setActionMsg("");
+  };
+  const chooseEquipped = slot => {
+    if (!equipped[slot]) return;
+    setSelectedEquippedSlot(slot);
+    setSelectedId(null);
+    setActionMsg("");
+  };
+  const doEnhance = () => {
+    if (!detailTarget) return;
+    const res = onEnhance(detailTarget.id);
+    setActionMsg(res.message);
+    playAnim(res.ok);
+  };
+  const doEmpower = () => {
+    if (!detailTarget) return;
+    const res = onEmpower(detailTarget.id);
+    setActionMsg(res.message);
+    playAnim(res.ok);
+  };
+  const doReroll = () => {
+    if (!detailTarget) return;
+    const res = onReroll(detailTarget.id);
+    setActionMsg(res.message);
+    playAnim(res.ok);
+  };
+
+  const renderEquipSlot = slot => {
+    const it = equipped[slot];
+    const selected = selectedEquippedSlot === slot;
+    return /*#__PURE__*/React.createElement("button", {
+      key: slot,
+      type: "button",
+      className: `md-equip-slot ${slot} ${it ? "filled" : "empty"} ${selected ? "selected" : ""}`,
+      onClick: () => chooseEquipped(slot)
+    }, /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-icon" }, SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-label" }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name" }, itemDisplayName(it)),
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-stat" }, itemStatText(it))
+    ) : /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name", style: { color: "var(--ink-soft)", opacity: .55 } }, "Empty"));
+  };
+
+  const renderEmpowerSlots = it => {
+    const slots = it.empowerSlots || [];
+    const nextIndex = slots.findIndex(s => !s);
+    return /*#__PURE__*/React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 } },
+      slots.map((s, i) => /*#__PURE__*/React.createElement("button", {
+        key: i,
+        type: "button",
+        disabled: !s,
+        onClick: () => s && onToggleLock(it.id, i),
+        title: s ? `${s.icon} +${s.value} ${s.label} — แตะเพื่อ${s.locked ? "ปลดล็อก" : "ล็อก"}` : "ยังไม่ปลดล็อก",
+        style: {
+          fontSize: 10,
+          padding: "2px 6px",
+          borderRadius: 6,
+          background: s ? "rgba(139,106,232,0.22)" : "rgba(156,156,168,0.15)",
+          border: s && s.locked ? "1px solid #ffd166" : i === nextIndex ? "1px solid #8b6ae8" : "1px solid transparent",
+          color: s ? "var(--ink)" : "var(--ink-soft)",
+          cursor: s ? "pointer" : "default"
+        }
+      }, s ? `${s.locked ? "🔒" : ""}${s.icon}+${s.value}` : "◻️"))
+    );
+  };
+
+  const anvilClass = animState === "success" ? "md-anvil-result-success" : animState === "fail" ? "md-anvil-result-fail" : "";
+
+  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "⚒️ Blacksmith"),
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "เลือกอุปกรณ์เพื่อ ตีบวก / เสริมพลัง / รีรอล")
+      ),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slots" }, SLOT_ORDER.map(renderEquipSlot)),
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-character" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "" }))
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2 } },
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.iron.icon, " ", junkTotal(inventory, "iron")),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.manaOre.icon, " ", junkTotal(inventory, "manaOre"))
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "🎒 เลือกอุปกรณ์")
+      )
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: gridSlotCount }, (_, index) => {
+      const it = gearInventory[index];
+      return /*#__PURE__*/React.createElement("button", {
+        key: it ? it.id : `empty-${index}`,
+        type: "button",
+        className: `md-inventory-cell ${it ? it.rarity : "empty"} ${it && selectedId === it.id ? "selected" : ""}`,
+        onClick: () => it && chooseInventory(it)
+      }, it ? /*#__PURE__*/React.createElement(React.Fragment, null,
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-num" }, index + 1),
+        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, it.icon || SLOT_ICON[it.type] || "📦"),
+        it.type !== "junk" && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
+        it.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, "+", it.enhanceLevel)
+      ) : /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, opacity: .18 } }, "＋"));
+    })),
+    Math.min(gearInventory.length, 25) > GRID_COLLAPSED_COUNT && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-inventory-toggle",
+      onClick: () => setGridExpanded(v => !v)
+    }, gridExpanded ? "▲ ย่อกระเป๋า" : `▼ ดูทั้งหมด (${Math.min(gearInventory.length, 25)} ชิ้น)`),
+    /*#__PURE__*/React.createElement("div", { className: `md-item-detail ${anvilClass}` }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
+      renderEmpowerSlots(detailTarget),
+      /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 6 } },
+        /*#__PURE__*/React.createElement("button", {
+          className: "md-btn info small",
+          style: { flex: 1, minHeight: 38, fontSize: 10 },
+          disabled: (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX,
+          onClick: doEnhance
+        }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : `🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · 🔩${enhanceCost(detailTarget.enhanceLevel || 0).iron} 🪙${enhanceCost(detailTarget.enhanceLevel || 0).gold})`),
+        /*#__PURE__*/React.createElement("button", {
+          className: "md-btn info small",
+          style: { flex: 1, minHeight: 38, fontSize: 10 },
+          disabled: !(detailTarget.empowerSlots || []).some(s => !s),
+          onClick: doEmpower
+        }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : (() => {
+          const c = empowerCost((detailTarget.empowerSlots || []).findIndex(s => !s));
+          return `🔮 เสริมพลัง (🔮${c.manaOre} 🪙${c.gold})`;
+        })())
+      ),
+      /*#__PURE__*/React.createElement("button", {
+        className: "md-btn info small",
+        style: { width: "100%", minHeight: 38, fontSize: 10, marginTop: 6 },
+        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked),
+        onClick: doReroll
+      }, (() => {
+        const filled = (detailTarget.empowerSlots || []).filter(Boolean);
+        if (!filled.length) return "🔄 รีรอล (ยังไม่มีออฟชั่น)";
+        const lockedCount = filled.filter(s => s.locked).length;
+        return `🔄 รีรอลออฟชั่น (🔮${rerollCost(filled.length, lockedCount).manaOre} 🪙${rerollCost(filled.length, lockedCount).gold}) — แตะออฟชั่นด้านบนเพื่อล็อก`;
+      })()),
+      actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, color: "var(--ink)" } }, actionMsg)
+    ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกอุปกรณ์จากช่องสวมใส่หรือกระเป๋าเพื่อเริ่มตีบวก/เสริมพลัง")),
+    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านตีเหล็ก")
+  ));
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(ThornieDungeons));
 clearTimeout(window.__thornieBootTimer);
 } catch (err) {
@@ -3553,13 +5134,3 @@ clearTimeout(window.__thornieBootTimer);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-

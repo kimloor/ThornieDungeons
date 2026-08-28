@@ -168,7 +168,7 @@ function ThornieDungeons() {
     } else {
       try {
         const raw = window.localStorage?.getItem(`thornie-run-${cred.id}`);
-        if (raw) savedRun = JSON.parse(raw);
+        savedRun = safeJsonParse(raw, null);
       } catch (e) {}
     }
     if (savedRun && Number.isFinite(savedRun.hp) && Number.isFinite(savedRun.mp)) {

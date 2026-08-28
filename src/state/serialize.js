@@ -17,54 +17,54 @@ function progressToServer(save) {
     // Iron / mana stone used to live here as raw counters, but they're now regular stackable
     // junk items synced through itemsToServerList instead, so this blob only keeps the misc bits.
     // AGI also rides here (instead of a new char_agi column) so no D1 schema migration is required.
+    // `v` stamps the save schema version at write time — mainly useful for debugging/telemetry;
+    // the authoritative version used for migrations is whatever hydrateSave() resolves on load.
     materials_json: JSON.stringify({
+      v: save.saveVersion || CURRENT_SAVE_VERSION,
       protectionStones: save.protectionStones || 0,
       chestPity: save.chestPity || 0,
       charAgi: save.character.stats.agi || 0
     })
   };
 }
+
+// Rebuilds a client save object from a D1 row. Never throws and never leaves a field
+// undefined/NaN, no matter how old or malformed the row's JSON blobs are — every value goes
+// through numOr()/safeJsonParse(), and the whole result is run through hydrateSave() at the end
+// so any field this function doesn't explicitly know about yet still gets a safe default and any
+// pending version migration (see SAVE_MIGRATIONS in save.js) still gets applied.
 function progressFromServer(row) {
   if (!row) return defaultSave();
-  let pets = [];
-  try {
-    pets = row.pets_json ? JSON.parse(row.pets_json) : [];
-  } catch (e) {
-    pets = [];
-  }
-  let protectionStones = 0;
-  let chestPity = 0;
-  let charAgi = 0;
-  try {
-    if (row.materials_json) {
-      const parsed = JSON.parse(row.materials_json);
-      protectionStones = Number(parsed.protectionStones) || 0;
-      chestPity = Number(parsed.chestPity) || 0;
-      charAgi = Number(parsed.charAgi) || 0;
-    }
-  } catch (e) {}
-  return {
-    gold: Number(row.bank_gold) || 0,
-    diamonds: Number(row.diamonds) || 0,
-    unlockedFloor: Number(row.best_floor) || 1,
-    potions: row.potions === undefined || row.potions === "" ? 2 : Number(row.potions) || 0,
-    pets,
+  const pets = safeJsonParse(row.pets_json, []);
+  const materials = safeJsonParse(row.materials_json, {});
+  const raw = {
+    saveVersion: numOr(materials.v, 1), // rows written before this field existed default to v1
+    gold: numOr(row.bank_gold, 0),
+    diamonds: numOr(row.diamonds, 0),
+    unlockedFloor: numOr(row.best_floor, 1),
+    // potions historically distinguished "missing column" (-> starter 2) from "explicitly 0",
+    // so it can't just use numOr's single fallback the way every other field can.
+    potions: row.potions === undefined || row.potions === null || row.potions === "" ? 2 : numOr(row.potions, 0),
+    pets: Array.isArray(pets) ? pets : [],
     activePetId: row.active_pet_id || null,
-    protectionStones,
-    chestPity,
+    protectionStones: numOr(materials.protectionStones, 0),
+    chestPity: numOr(materials.chestPity, 0),
     character: {
-      level: Number(row.char_level) || 1,
-      xp: Number(row.char_xp) || 0,
-      statPoints: Number(row.char_points) || 0,
+      level: numOr(row.char_level, 1),
+      xp: numOr(row.char_xp, 0),
+      statPoints: numOr(row.char_points, 0),
       stats: {
-        str: Number(row.char_str) || 0,
-        vit: Number(row.char_vit) || 0,
-        agi: charAgi,
-        dex: Number(row.char_dex) || 0,
-        luk: Number(row.char_luk) || 0
+        str: numOr(row.char_str, 0),
+        vit: numOr(row.char_vit, 0),
+        agi: numOr(materials.charAgi, 0),
+        dex: numOr(row.char_dex, 0),
+        luk: numOr(row.char_luk, 0)
       }
     }
   };
+  // Final safety net: fills in anything missing against the current defaultSave() schema,
+  // cross-checks stat keys against STAT_INFO, and runs any pending saveVersion migrations.
+  return hydrateSave(raw);
 }
 function itemsToServerList(inventory, equipped) {
   const list = [];
@@ -101,44 +101,49 @@ function itemsToServerList(inventory, equipped) {
 function itemsFromServerList(rows) {
   const equipped = emptyEquipped();
   const inventory = [];
+  if (!Array.isArray(rows)) return {
+    equipped,
+    inventory
+  };
   rows.forEach(r => {
-    let extra = {};
+    // A single malformed row (bad JSON, unexpected type, etc) should never take down the whole
+    // inventory load — skip just that row and keep processing the rest.
     try {
-      extra = r.extra_json ? JSON.parse(r.extra_json) : {};
-    } catch (e) {
-      extra = {};
-    }
-    if (r.slot_type === "junk") {
-      inventory.push({
+      const extra = safeJsonParse(r.extra_json, {});
+      if (r.slot_type === "junk") {
+        inventory.push({
+          id: r.item_id,
+          type: "junk",
+          junkId: extra.junkId,
+          name: r.name,
+          icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
+          rarity: r.rarity || "common",
+          quantity: numOr(extra.quantity, 1)
+        });
+        return;
+      }
+      const it = {
         id: r.item_id,
-        type: "junk",
-        junkId: extra.junkId,
+        type: r.slot_type,
+        rarity: r.rarity,
         name: r.name,
-        icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
-        rarity: r.rarity || "common",
-        quantity: Number(extra.quantity) || 1
+        atk: numOr(r.atk, 0),
+        def: numOr(r.def, 0),
+        hp: numOr(r.hp, 0),
+        mp: numOr(r.mp, 0),
+        dodgeChance: numOr(extra.dodgeChance, 0),
+        critChance: numOr(extra.critChance, 0),
+        critDamage: numOr(extra.critDamage, 0),
+        enhanceLevel: numOr(r.enhance_level, 0),
+        empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
+      };
+      ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
+        if (!it[k]) delete it[k];
       });
-      return;
+      if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;else inventory.push(it);
+    } catch (e) {
+      console.warn("[ThornieDungeons] Skipped a corrupted item row:", e);
     }
-    const it = {
-      id: r.item_id,
-      type: r.slot_type,
-      rarity: r.rarity,
-      name: r.name,
-      atk: Number(r.atk) || 0,
-      def: Number(r.def) || 0,
-      hp: Number(r.hp) || 0,
-      mp: Number(r.mp) || 0,
-      dodgeChance: Number(extra.dodgeChance) || 0,
-      critChance: Number(extra.critChance) || 0,
-      critDamage: Number(extra.critDamage) || 0,
-      enhanceLevel: Number(r.enhance_level) || 0,
-      empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
-    };
-    ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
-      if (!it[k]) delete it[k];
-    });
-    if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;else inventory.push(it);
   });
   return {
     equipped,
