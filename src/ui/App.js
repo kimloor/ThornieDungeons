@@ -27,6 +27,34 @@ function ThornieDungeons() {
   // a short scrolling history instead of overwriting a single line.
   const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
   const [busy, setBusy] = useState(false);
+  // Separate lock for item-mutating actions (Enhance/Empower/Reroll/Salvage/Sell/Equip/BuyMaterial).
+  // itemActionLockRef is checked+set *synchronously* so a rapid second click can never slip in
+  // and run against a stale `save`/`inventory` closure before the first click's state has
+  // committed — the ref only unlocks on the next tick (after React has flushed the update),
+  // not at the end of the (synchronous) handler itself. itemActionBusy is the render-visible
+  // twin used to actually disable/gray out the buttons in the UI.
+  const itemActionLockRef = useRef(false);
+  const [itemActionBusy, setItemActionBusy] = useState(false);
+  function guardItemAction(fn) {
+    return (...args) => {
+      if (itemActionLockRef.current) {
+        return {
+          ok: false,
+          message: "⏳ กำลังดำเนินการอยู่ กรุณารอสักครู่..."
+        };
+      }
+      itemActionLockRef.current = true;
+      setItemActionBusy(true);
+      try {
+        return fn(...args);
+      } finally {
+        setTimeout(() => {
+          itemActionLockRef.current = false;
+          setItemActionBusy(false);
+        }, 0);
+      }
+    };
+  }
   const monstersRef = useRef([]);
   const petCombatRef = useRef(null);
   const playerRef = useRef(null);
@@ -1363,17 +1391,19 @@ function ThornieDungeons() {
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
     inventory: inventory,
-    onEquip: equipItem,
-    onUnequip: unequipItem,
-    onSell: sellItem,
-    onSalvage: salvageItem,
+    busy: itemActionBusy,
+    onEquip: guardItemAction(equipItem),
+    onUnequip: guardItemAction(unequipItem),
+    onSell: guardItemAction(sellItem),
+    onSalvage: guardItemAction(salvageItem),
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,
     inventory: inventory,
-    onEnhance: enhanceItem,
-    onEmpower: empowerItem,
-    onReroll: rerollEmpowerItem,
+    busy: itemActionBusy,
+    onEnhance: guardItemAction(enhanceItem),
+    onEmpower: guardItemAction(empowerItem),
+    onReroll: guardItemAction(rerollEmpowerItem),
     onToggleLock: toggleEmpowerLock,
     onClose: () => setBlacksmithOpen(false)
   }), shopOpen && /*#__PURE__*/React.createElement(ShopOverlay, {
@@ -1384,7 +1414,7 @@ function ThornieDungeons() {
     onBuyItem: buyShopItem,
     onBuyPotion: buyShopPotion,
     onBuyProtectionStone: buyProtectionStone,
-    onBuyMaterial: buyMaterial,
+    onBuyMaterial: guardItemAction(buyMaterial),
     onClose: () => setShopOpen(false)
   }));
 }

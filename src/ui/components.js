@@ -1214,6 +1214,7 @@ function DefeatScreen({
 function InventoryOverlay({
   equipped,
   inventory,
+  busy,
   onEquip,
   onUnequip,
   onSell,
@@ -1373,7 +1374,8 @@ function InventoryOverlay({
       ),
       selectedItem && detailTarget.type !== "junk" && /*#__PURE__*/React.createElement("button", {
         className: "md-btn flee small",
-        style: { marginTop: 6, minHeight: 38, fontSize: 10, width: "100%" },
+        disabled: busy,
+        style: { marginTop: 6, minHeight: 38, fontSize: 10, width: "100%", opacity: busy ? 0.6 : 1 },
         onClick: doSalvage
       }, (() => {
         const y = salvageYield(detailTarget.rarity);
@@ -1382,9 +1384,9 @@ function InventoryOverlay({
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
     /*#__PURE__*/React.createElement("div", { className: "md-item-actions" },
-      /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem || selectedItem.type === "junk", onClick: doEquip }, "⚔️ สวมใส่"),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem, onClick: doSell }, selectedItem ? `🪙 ขาย ${sellPrice(selectedItem)}` : "🪙 ขาย"),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot, onClick: doUnequip }, "↩️ ถอด")
+      /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem || selectedItem.type === "junk" || busy, onClick: doEquip }, "⚔️ สวมใส่"),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem || busy, onClick: doSell }, selectedItem ? `🪙 ขาย ${sellPrice(selectedItem)}` : "🪙 ขาย"),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot || busy, onClick: doUnequip }, "↩️ ถอด")
     ),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิด Inventory")
   ));
@@ -1392,6 +1394,7 @@ function InventoryOverlay({
 function BlacksmithOverlay({
   equipped,
   inventory,
+  busy,
   onEnhance,
   onEmpower,
   onReroll,
@@ -1538,13 +1541,13 @@ function BlacksmithOverlay({
         /*#__PURE__*/React.createElement("button", {
           className: "md-btn info small",
           style: { flex: 1, minHeight: 38, fontSize: 10 },
-          disabled: (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX,
+          disabled: (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX || busy,
           onClick: doEnhance
         }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : `🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · 🔩${enhanceCost(detailTarget.enhanceLevel || 0).iron} 🪙${enhanceCost(detailTarget.enhanceLevel || 0).gold})`),
         /*#__PURE__*/React.createElement("button", {
           className: "md-btn info small",
           style: { flex: 1, minHeight: 38, fontSize: 10 },
-          disabled: !(detailTarget.empowerSlots || []).some(s => !s),
+          disabled: !(detailTarget.empowerSlots || []).some(s => !s) || busy,
           onClick: doEmpower
         }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : (() => {
           const c = empowerCost((detailTarget.empowerSlots || []).findIndex(s => !s));
@@ -1554,7 +1557,7 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("button", {
         className: "md-btn info small",
         style: { width: "100%", minHeight: 38, fontSize: 10, marginTop: 6 },
-        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked),
+        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked) || busy,
         onClick: doReroll
       }, (() => {
         const filled = (detailTarget.empowerSlots || []).filter(Boolean);
