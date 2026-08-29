@@ -150,6 +150,12 @@ const SAVE_MIGRATIONS = [{
     // MAX_CHARACTER_SLOTS independent character slots — migrate the existing single character
     // into slot 0 (marked active) so no returning player loses progress.
     if (Array.isArray(save.characters)) return save; // already v3-shaped — nothing to do
+    console.warn("[ThornieDungeons] Running v2->v3 character-slot migration. Legacy fields used:", JSON.stringify({
+      gold: save.gold,
+      unlockedFloor: save.unlockedFloor,
+      level: save.character && save.character.level,
+      stats: save.character && save.character.stats
+    }));
     const legacy = save.character || {};
     const slot0 = {
       id: `char-legacy-${Date.now()}`,

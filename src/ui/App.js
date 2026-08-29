@@ -139,8 +139,28 @@ function ThornieDungeons() {
       .catch(() => {});
     return cloudWriteQueue.current;
   }, []);
+  // Safety net for the "a character disappeared" class of bug: tracks how many occupied
+  // character slots we last confirmed (either freshly loaded from the server, or after a
+  // deliberate delete). If something is about to push an account with FEWER occupied slots
+  // than that, and it wasn't via handleDeleteCharacter (which sets intentionalSlotChangeRef),
+  // refuse to send it — better to lose one write and log loudly than silently erase a
+  // character's save data. This does not fix the unknown root cause below, only prevents data
+  // loss while we track it down.
+  const lastKnownCharCountRef = useRef(null);
+  const intentionalSlotChangeRef = useRef(false);
   const pushProgress = useCallback(nextAccount => {
     if (!cred.url || !cred.id || !cred.password) return;
+    const occupied = nextAccount.characters.filter(Boolean).length;
+    if (lastKnownCharCountRef.current !== null && occupied < lastKnownCharCountRef.current && !intentionalSlotChangeRef.current) {
+      console.error("[ThornieDungeons] BLOCKED a saveProgress that would have reduced character count from", lastKnownCharCountRef.current, "to", occupied, "— this write was skipped to avoid data loss. Account payload:", JSON.stringify(nextAccount));
+      return;
+    }
+    intentionalSlotChangeRef.current = false;
+    lastKnownCharCountRef.current = occupied;
+    console.log("[ThornieDungeons] saveProgress ->", occupied, "character(s), activeSlot", nextAccount.activeSlot, JSON.stringify(nextAccount.characters.map(c => c && {
+      id: c.id,
+      name: c.name
+    })));
     enqueueCloudWrite(() => cloudSaveProgress(cred.url, cred.id, cred.password, progressToServer(nextAccount)));
   }, [cred, enqueueCloudWrite]);
   const pushItems = useCallback((inv, eq, characterId) => {
@@ -220,7 +240,24 @@ function ThornieDungeons() {
       id: cred.id
     });
     const nextAccount = progressFromServer(res.progress);
+    console.log("[ThornieDungeons] login loaded account <-", JSON.stringify(nextAccount.characters.map(c => c && {
+      id: c.id,
+      name: c.name
+    })), "raw progress row:", JSON.stringify(res.progress));
+    lastKnownCharCountRef.current = nextAccount.characters.filter(Boolean).length;
     setAccount(nextAccount);
+    // If this account's row predates the multi-character system, progressFromServer() just
+    // migrated it into slot 0 IN MEMORY ONLY — the server row's materials_json still doesn't
+    // have a `characters` field yet. Persist that migration immediately rather than waiting for
+    // the player's next unrelated action: if anything else wrote to the legacy bank_gold/
+    // char_level/etc columns in the meantime (before this client got a chance to save the new
+    // v3 shape), the *next* login would re-run this same migration using whatever those legacy
+    // columns say *then* — silently rebuilding slot 0 from a different character's data.
+    const wasPreV3 = !safeJsonParse(res.progress?.materials_json, {})?.characters;
+    if (wasPreV3 && nextAccount.characters.some(Boolean)) {
+      console.log("[ThornieDungeons] pre-v3 save detected — persisting the migrated 3-slot structure immediately");
+      pushProgress(nextAccount);
+    }
     // Raw item rows for ALL characters on this account — kept as-is until a slot is entered,
     // at which point enterCharacterSlot() splits it into "this character's items" (parsed and
     // loaded into inventory/equipped) vs "everyone else's" (kept untouched in
@@ -250,6 +287,7 @@ function ThornieDungeons() {
       url: cred.url,
       id: cred.id
     });
+    lastKnownCharCountRef.current = 0;
     setAccount(defaultSave());
     pendingRawItemsRef.current = [];
     pendingRunStateRef.current = null;
@@ -264,6 +302,7 @@ function ThornieDungeons() {
     });
   }
   function handleDeleteCharacter(slotIndex) {
+    intentionalSlotChangeRef.current = true;
     setAccount(prev => {
       if (!prev) return prev;
       const nextAccount = deleteCharacterInSlot(prev, slotIndex);
@@ -340,6 +379,7 @@ function ThornieDungeons() {
     otherSlotsRawItemsRef.current = [];
     pendingRawItemsRef.current = [];
     pendingRunStateRef.current = null;
+    lastKnownCharCountRef.current = null;
     setPhase("login");
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
