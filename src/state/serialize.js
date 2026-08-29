@@ -1,34 +1,34 @@
-// progress <-> server row (reuses existing column names: bank_gold now holds `gold`, best_floor now holds `unlockedFloor`)
-function progressToServer(save) {
+// progress <-> server row. The v3 multi-character system stores its real data as JSON inside
+// materials_json (same "avoid a D1 schema migration" trick already used for AGI/junk items) —
+// the legacy fixed columns (bank_gold, char_level, etc) are mirrored from the ACTIVE character
+// purely for backward-compat / in case anything else ever reads them directly; they are not the
+// source of truth for anything.
+function progressToServer(account) {
+  const activeChar = account.activeSlot !== null ? account.characters[account.activeSlot] : null;
   return {
-    bank_gold: save.gold,
-    diamonds: save.diamonds,
-    best_floor: save.unlockedFloor,
-    potions: save.potions,
-    char_level: save.character.level,
-    char_xp: save.character.xp,
-    char_points: save.character.statPoints,
-    char_str: save.character.stats.str,
-    char_vit: save.character.stats.vit,
-    char_dex: save.character.stats.dex,
-    char_luk: save.character.stats.luk,
-    pets_json: JSON.stringify(save.pets || []),
-    active_pet_id: save.activePetId || "",
-    // Iron / mana stone used to live here as raw counters, but they're now regular stackable
-    // junk items synced through itemsToServerList instead, so this blob only keeps the misc bits.
-    // AGI also rides here (instead of a new char_agi column) so no D1 schema migration is required.
-    // `v` stamps the save schema version at write time — mainly useful for debugging/telemetry;
-    // the authoritative version used for migrations is whatever hydrateSave() resolves on load.
+    bank_gold: activeChar ? activeChar.gold : 0,
+    diamonds: account.diamonds,
+    best_floor: activeChar ? activeChar.unlockedFloor : 1,
+    potions: activeChar ? activeChar.potions : 2,
+    char_level: activeChar ? activeChar.level : 1,
+    char_xp: activeChar ? activeChar.xp : 0,
+    char_points: activeChar ? activeChar.statPoints : 0,
+    char_str: activeChar ? activeChar.stats.str : 0,
+    char_vit: activeChar ? activeChar.stats.vit : 0,
+    char_dex: activeChar ? activeChar.stats.dex : 0,
+    char_luk: activeChar ? activeChar.stats.luk : 0,
+    pets_json: JSON.stringify(activeChar ? activeChar.pets : []),
+    active_pet_id: activeChar ? activeChar.activePetId || "" : "",
+    // Real source of truth for all MAX_CHARACTER_SLOTS characters lives here.
     materials_json: JSON.stringify({
-      v: save.saveVersion || CURRENT_SAVE_VERSION,
-      protectionStones: save.protectionStones || 0,
-      chestPity: save.chestPity || 0,
-      charAgi: save.character.stats.agi || 0
+      v: account.saveVersion || CURRENT_SAVE_VERSION,
+      activeSlot: account.activeSlot,
+      characters: account.characters
     })
   };
 }
 
-// Rebuilds a client save object from a D1 row. Never throws and never leaves a field
+// Rebuilds a client account-save from a D1 row. Never throws and never leaves a field
 // undefined/NaN, no matter how old or malformed the row's JSON blobs are — every value goes
 // through numOr()/safeJsonParse(), and the whole result is run through hydrateSave() at the end
 // so any field this function doesn't explicitly know about yet still gets a safe default and any
@@ -39,11 +39,14 @@ function progressFromServer(row) {
   const materials = safeJsonParse(row.materials_json, {});
   const raw = {
     saveVersion: numOr(materials.v, 1), // rows written before this field existed default to v1
-    gold: numOr(row.bank_gold, 0),
     diamonds: numOr(row.diamonds, 0),
+    activeSlot: materials.activeSlot,
+    // Present only on v3+ saves; absent (undefined) on anything older, which is exactly what
+    // tells the v3 migration in save.js to build slot 0 out of the legacy fields below instead.
+    characters: materials.characters,
+    // Legacy v1/v2 flat fields — read only by the v3 migration, ignored otherwise.
+    gold: numOr(row.bank_gold, 0),
     unlockedFloor: numOr(row.best_floor, 1),
-    // potions historically distinguished "missing column" (-> starter 2) from "explicitly 0",
-    // so it can't just use numOr's single fallback the way every other field can.
     potions: row.potions === undefined || row.potions === null || row.potions === "" ? 2 : numOr(row.potions, 0),
     pets: Array.isArray(pets) ? pets : [],
     activePetId: row.active_pet_id || null,
@@ -66,7 +69,26 @@ function progressFromServer(row) {
   // cross-checks stat keys against STAT_INFO, and runs any pending saveVersion migrations.
   return hydrateSave(raw);
 }
-function itemsToServerList(inventory, equipped) {
+
+// Splits raw item rows (as returned by the login/sync API, extra_json still a string) between
+// the given character and every other character on the account. Untagged rows (no
+// extra.characterId — i.e. items that existed before this feature) are attributed to slot 0
+// only, matching the v3 migration story (the pre-existing single character becomes slot 0).
+function splitItemRowsBySlot(rows, activeCharacterId, activeSlotIndex) {
+  const mine = [];
+  const others = [];
+  (Array.isArray(rows) ? rows : []).forEach(r => {
+    const extra = safeJsonParse(r.extra_json, {});
+    const isMine = extra.characterId ? extra.characterId === activeCharacterId : activeSlotIndex === 0;
+    (isMine ? mine : others).push(r);
+  });
+  return {
+    mine,
+    others
+  };
+}
+
+function itemsToServerList(inventory, equipped, characterId) {
   const list = [];
   const pack = (it, equippedFlag) => ({
     itemId: it.id,
@@ -79,9 +101,10 @@ function itemsToServerList(inventory, equipped) {
     hp: it.hp,
     mp: it.mp,
     enhanceLevel: it.enhanceLevel || 0,
-    // dodgeChance/critChance/critDamage (accessory base rolls) and junk stack data
-    // (junkId/quantity/icon) don't have their own server columns, so they all ride
-    // along inside the extra JSON blob instead.
+    // dodgeChance/critChance/critDamage (accessory base rolls), junk stack data
+    // (junkId/quantity/icon), and now characterId (which of the account's up-to-3 characters
+    // owns this item) don't have their own server columns, so they all ride along inside the
+    // extra JSON blob instead.
     extra: {
       empowerSlots: it.empowerSlots || [],
       dodgeChance: it.dodgeChance || undefined,
@@ -89,7 +112,8 @@ function itemsToServerList(inventory, equipped) {
       critDamage: it.critDamage || undefined,
       junkId: it.junkId || undefined,
       quantity: it.quantity || undefined,
-      icon: it.icon || undefined
+      icon: it.icon || undefined,
+      characterId: characterId || undefined
     }
   });
   Object.values(equipped).forEach(it => {

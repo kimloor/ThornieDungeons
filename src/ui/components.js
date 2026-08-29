@@ -171,6 +171,7 @@ function MenuScreen({
   playerId,
   onTown,
   onMap,
+  onSwitchCharacter,
   onLogout
 }) {
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
@@ -204,7 +205,7 @@ function MenuScreen({
     style: {
       fontSize: 15
     }
-  }, "🏰 Adventurer ", /*#__PURE__*/React.createElement("span", {
+  }, "🏰 ", save.characterName || "Adventurer", " ", /*#__PURE__*/React.createElement("span", {
     className: "md-shop-lv"
   }, "(", playerId, ")")), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
@@ -221,8 +222,149 @@ function MenuScreen({
     onClick: onTown
   }, "🧙 Character"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee",
+    onClick: onSwitchCharacter
+  }, "👥 เปลี่ยนตัวละคร")), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide",
+    style: {
+      marginTop: 8
+    },
     onClick: onLogout
-  }, "🚪 Switch Account"))));
+  }, "🚪 Switch Account")));
+}
+function CharacterSelectScreen({
+  account,
+  onEnter,
+  onCreate,
+  onDelete,
+  onLogout
+}) {
+  const [creatingSlot, setCreatingSlot] = useState(null); // index currently showing the create-name form, or null
+  const [nameInput, setNameInput] = useState("");
+  const [confirmDeleteSlot, setConfirmDeleteSlot] = useState(null); // index awaiting delete confirmation, or null
+  if (!account) return null;
+  const startCreate = slotIndex => {
+    setConfirmDeleteSlot(null);
+    setCreatingSlot(slotIndex);
+    setNameInput("");
+  };
+  const confirmCreate = () => {
+    if (creatingSlot === null) return;
+    onCreate(creatingSlot, nameInput.trim());
+    setCreatingSlot(null);
+    setNameInput("");
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-login-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-menu-title",
+    style: {
+      padding: "0 0 10px"
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    style: {
+      fontSize: 24
+    }
+  }, "เลือกตัวละคร"), /*#__PURE__*/React.createElement("p", null, `${MAX_CHARACTER_SLOTS} ช่องตัวละครต่อบัญชี`)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      width: "100%"
+    }
+  }, account.characters.map((slot, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "md-card md-charselect-slot"
+  }, slot ? confirmDeleteSlot === i ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: "0 0 8px",
+      textAlign: "center"
+    }
+  }, "⚠️ ลบ \"", slot.name, "\" ถาวร? ข้อมูลตัวละครนี้จะหายไปทั้งหมด"), /*#__PURE__*/React.createElement("div", {
+    className: "md-btn-row"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee",
+    onClick: () => onDelete(i)
+  }, "🗑️ ยืนยันลบ"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn info",
+    onClick: () => setConfirmDeleteSlot(null)
+  }, "ยกเลิก"))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title",
+    style: {
+      fontSize: 15,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis"
+    }
+  }, "🧙 ", slot.name), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: 0
+    }
+  }, "Lv", slot.level, " · STR", slot.stats.str, " VIT", slot.stats.vit, " AGI", slot.stats.agi, " DEX", slot.stats.dex, " LUK", slot.stats.luk), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      margin: 0
+    }
+  }, "🪙 ", formatNumber(slot.gold), " · Stage ", slot.unlockedFloor)), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee small",
+    style: {
+      flexShrink: 0,
+      minHeight: 34,
+      fontSize: 10
+    },
+    onClick: () => setConfirmDeleteSlot(i)
+  }, "🗑️ ลบ")), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary wide",
+    style: {
+      marginTop: 8
+    },
+    onClick: () => onEnter(i)
+  }, "▶️ เข้าเล่น")) : creatingSlot === i ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "md-field-label"
+  }, "ตั้งชื่อตัวละคร"), /*#__PURE__*/React.createElement("input", {
+    className: "md-field",
+    placeholder: `Character ${i + 1}`,
+    value: nameInput,
+    maxLength: 16,
+    autoFocus: true,
+    onChange: e => setNameInput(e.target.value),
+    onKeyDown: e => e.key === "Enter" && confirmCreate()
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "md-btn-row",
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary",
+    onClick: confirmCreate
+  }, "✨ สร้างตัวละคร"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn info",
+    onClick: () => setCreatingSlot(null)
+  }, "ยกเลิก"))) : /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary wide",
+    style: {
+      minHeight: 64
+    },
+    onClick: () => startCreate(i)
+  }, "➕ สร้างตัวละคร")))), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide",
+    style: {
+      marginTop: 14
+    },
+    onClick: onLogout
+  }, "🚪 ออกจากระบบ"));
 }
 function CharacterScreen({
   save,

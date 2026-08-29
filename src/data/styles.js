@@ -156,6 +156,7 @@ const STYLE = `
 .md-btn.small { padding: 8px; font-size: 12px; }
 
 .md-card { background: var(--panel); border-radius: 16px; padding: 14px; border: 1.5px solid var(--gold-deep); }
+.md-charselect-slot { min-height: 76px; display: flex; flex-direction: column; justify-content: center; }
 .md-title { font-family:'Baloo 2'; font-weight: 800; font-size: 17px; margin: 0 0 4px; color: var(--gold); }
 .md-sub { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; margin: 0 0 10px; }
 
