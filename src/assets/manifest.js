@@ -41,37 +41,35 @@ function listAssets(obj = ASSETS, prefix = "") {
 }
 
 // ---------- modular ("paperdoll") character compositor ----------
-// Characters like hero001 are shipped as a stack of separate same-canvas-size transparent
-// PNGs (body, hair, torso, arms, legs, ...) instead of one flat sprite, so they render as a
-// stack of absolutely-positioned <img> layers (see .md-modular-sprite / .md-modular-layer in
-// styles.js) rather than a single <img src>.
+// IMPORTANT:
+// The modular PNGs in R2 are tightly cropped individual parts. They do NOT retain the
+// original 96x96 canvas coordinates, so blindly stacking every PNG at top:0/left:0 causes
+// visible overlap/misalignment. The runtime therefore uses the complete core.neutral image
+// as the stable base character. Equipment/accessory layers are opt-in and can later receive
+// explicit anchor metadata without changing the core character.
 //
-// HERO_LAYER_ORDER lists which manifest sub-paths make up the *base* body, back-to-front.
-// There's no equip->asset mapping yet (equipped weapons/armor are procedurally-named, not
-// tied to a specific PNG in the manifest), so this only composes skin+hair+torso+arms+legs —
-// no weapon/armor/accessory layers are drawn on top yet. If the stacking order looks wrong
-// once real art is in place, this is the only list that needs to change.
-const HERO_LAYER_ORDER = [
-  "core.neutral",
-  "head.backHair",
-  "legs.leftUpper", "legs.leftLower", "legs.leftFoot",
-  "legs.rightUpper", "legs.rightLower", "legs.rightFoot",
-  "arms.leftUpper", "arms.leftLower", "arms.leftHand",
-  "torso.hips", "torso.base",
-  "arms.rightUpper", "arms.rightLower", "arms.rightHand",
-  "head.face", "head.ears", "head.frontHair"
-];
+// Base layer: hero001.core.neutral
+// Modular body pieces remain available through asset()/listAssets() for future rigging.
+// Do not auto-stack head/arms/legs/body crops until their anchor metadata exists.
 
-// Resolves each `${characterId}.${part}` key in `layerOrder` against the manifest and returns
-// the URLs that actually exist, in order. Missing individual parts are silently skipped (so a
-// partially-filled character doesn't break); if NONE resolve (manifest not loaded yet, or this
-// characterId isn't in it at all), returns [] so the caller can fall back to a CSS placeholder.
-function composeCharacterLayers(characterId, layerOrder) {
-  const urls = [];
-  layerOrder.forEach(part => {
-    const path = `${characterId}.${part}`.split(".").reduce((obj, k) => obj?.[k], ASSETS);
-    if (path) urls.push(assetUrl(path));
-  });
-  return urls;
+const HERO_BASE_ASSET = "hero001.core.neutral";
+
+function getHeroBaseUrl(characterId = "hero001") {
+  const path = `${characterId}.core.neutral`
+    .split(".")
+    .reduce((obj, part) => obj?.[part], ASSETS);
+  return path ? assetUrl(path) : "";
 }
 
+// Equipment compositor hook. When manifest metadata later contains explicit anchors,
+// this can return positioned layers without changing HeroSprite's public API.
+function composeEquipmentLayers(characterId, equipmentKeys = []) {
+  const result = [];
+  for (const key of equipmentKeys) {
+    const path = `${characterId}.${key}`
+      .split(".")
+      .reduce((obj, part) => obj?.[part], ASSETS);
+    if (path) result.push({ key, url: assetUrl(path), x: 0, y: 0, scale: 1 });
+  }
+  return result;
+}

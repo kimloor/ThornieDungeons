@@ -717,22 +717,23 @@ function FloatingQuickActions({
 function HeroSprite({
   anim
 }) {
-  // hero001's manifest is a layered "paperdoll" rig (see manifest.js/composeCharacterLayers) —
-  // compose the base body from its parts; fall back to the old CSS blob if the manifest hasn't
-  // loaded yet or hero001 isn't defined in it.
-  const layerUrls = composeCharacterLayers("hero001", HERO_LAYER_ORDER);
+  // Use the complete 96x96 core artwork as the single stable base.
+  // The modular PNGs are tightly cropped, so stacking them without anchor metadata
+  // causes the parts to overlap. Equipment layers are intentionally disabled until
+  // explicit anchor data is available.
+  const heroUrl = getHeroBaseUrl("hero001");
+
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap"
-  }, layerUrls.length ? /*#__PURE__*/React.createElement("div", {
-    className: `md-modular-sprite md-hero-img ${anim}`
-  }, layerUrls.map((url, i) => /*#__PURE__*/React.createElement("img", {
-    key: i,
-    className: "md-modular-layer",
-    src: url,
+  }, heroUrl ? /*#__PURE__*/React.createElement("div", {
+    className: `md-modular-sprite md-hero-img ${anim || ""}`
+  }, /*#__PURE__*/React.createElement("img", {
+    className: "md-modular-layer md-hero-base-layer",
+    src: heroUrl,
     alt: "",
     draggable: false
-  }))) : /*#__PURE__*/React.createElement("div", {
-    className: `md-hero ${anim}`
+  })) : /*#__PURE__*/React.createElement("div", {
+    className: `md-hero ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "hair"
   }), /*#__PURE__*/React.createElement("div", {

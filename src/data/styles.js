@@ -95,11 +95,12 @@ const STYLE = `
 .md-hero.attack { animation: md-lunge 0.35s ease; }
 .md-hero.hurt { animation: md-shake 0.35s ease; }
 
-.md-hero-img { width: 76px; height: 82px; position: relative; display: block; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); image-rendering: -webkit-optimize-contrast; }
+.md-hero-img { width: 96px; height: 96px; position: relative; display: block; animation: md-idle 2.2s ease-in-out infinite; filter: drop-shadow(0 0 8px var(--gold-glow)); image-rendering: pixelated; overflow: visible; }
 .md-hero-img.attack { animation: md-lunge 0.35s ease; }
 .md-hero-img.hurt { animation: md-shake 0.35s ease; }
 .md-modular-sprite { display: block; }
-.md-modular-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; }
+.md-modular-layer { position: absolute; top: 0; left: 0; width: 96px; height: 96px; object-fit: fill; pointer-events: none; user-select: none; image-rendering: pixelated; }
+.md-hero-base-layer { width: 96px; height: 96px; display: block; }
 
 .md-enemy { width: 64px; height: 64px; position: relative; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); }
 .md-enemy .blob { position: absolute; inset: 0; border-radius: 46% 46% 52% 52% / 55% 55% 45% 45%; border: 3px solid #1B1233; }
