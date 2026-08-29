@@ -102,6 +102,19 @@ const STYLE = `
 .md-modular-layer { position: absolute; top: 0; left: 0; width: 96px; height: 96px; object-fit: fill; pointer-events: none; user-select: none; image-rendering: pixelated; }
 .md-hero-base-layer { width: 96px; height: 96px; display: block; }
 
+/* Rig-anchored modular hero (see assets/manifest.js: useHeroRig/HeroModularComposer).
+   Layout: .md-hero-rig-canvas is the on-screen box (e.g. 96x96), flex-centered so that
+   .md-hero-rig-master — sized to the rig's *master* canvas (150x193) and uniformly scaled via
+   transform — always ends up centered inside it, matching the rig's fit:"contain"/center:true
+   runtime policy. Each layer <img> is positioned with left/top only (no width/height — it
+   renders at its own natural pixel size, 1:1 with the master coordinate space) per the rig's
+   anchorPolicy ("do not scale individual layer anchors" — only the whole group scales, once). */
+.md-hero-rig-canvas { position: relative; display: flex; align-items: center; justify-content: center; overflow: visible; filter: drop-shadow(0 0 8px var(--gold-glow)); animation: md-idle 2.2s ease-in-out infinite; }
+.md-hero-rig-canvas.attack { animation: md-lunge 0.35s ease; }
+.md-hero-rig-canvas.hurt { animation: md-shake 0.35s ease; }
+.md-hero-rig-master { position: relative; transform-origin: center center; image-rendering: pixelated; }
+.md-hero-rig-layer { position: absolute; display: block; pointer-events: none; user-select: none; image-rendering: pixelated; }
+
 .md-enemy { width: 64px; height: 64px; position: relative; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); }
 .md-enemy .blob { position: absolute; inset: 0; border-radius: 46% 46% 52% 52% / 55% 55% 45% 45%; border: 3px solid #1B1233; }
 .md-enemy .eye { position: absolute; width: 6px; height: 8px; background: #1B1233; border-radius: 3px; top: 40%; }
