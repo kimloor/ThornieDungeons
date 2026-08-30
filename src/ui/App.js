@@ -294,12 +294,28 @@ function ThornieDungeons() {
     setPhase("characterSelect");
   }
   function handleCreateCharacter(slotIndex, name) {
+    if (!account) return {
+      ok: false,
+      message: "กรุณาลองใหม่อีกครั้ง"
+    };
+    const cleanName = String(name || "").trim();
+    const finalName = cleanName || `Character ${slotIndex + 1}`;
+    if (isCharacterNameTaken(account, finalName)) {
+      return {
+        ok: false,
+        message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
+      };
+    }
     setAccount(prev => {
       if (!prev) return prev;
       const nextAccount = createCharacterInSlot(prev, slotIndex, name);
       pushProgress(nextAccount);
       return nextAccount;
     });
+    return {
+      ok: true,
+      message: ""
+    };
   }
   function handleDeleteCharacter(slotIndex) {
     intentionalSlotChangeRef.current = true;

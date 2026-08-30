@@ -241,21 +241,31 @@ function safeJsonParse(str, fallback = null) {
 // Both return a NEW account-save object (never mutate the input) — call sites just do
 // setAccount(result) and persist as usual.
 
+// Case-insensitive, whitespace-trimmed check for whether `name` is already used by any
+// occupied slot on this account (characters within the SAME account only — this can't check
+// uniqueness across other players' accounts without a server-side check we don't have).
+function isCharacterNameTaken(account, name) {
+  const norm = String(name || "").trim().toLowerCase();
+  if (!norm) return false;
+  return account.characters.some(c => c && c.name.trim().toLowerCase() === norm);
+}
+
 function createCharacterInSlot(account, slotIndex, name) {
   if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= MAX_CHARACTER_SLOTS) return account;
   const characters = account.characters.slice();
   if (characters[slotIndex]) return account; // slot already occupied — caller should check first, no-op here as a safety net
-  // Every new character starts with the same starter pet already active, per the design brief.
-  const starterDef = typeof starterPetDef === "function" ? starterPetDef() : null;
-  const starterInst = starterDef && typeof newPetInstance === "function" ? newPetInstance(starterDef.id) : null;
   const cleanName = String(name || "").trim().slice(0, 16);
+  const finalName = cleanName || `Character ${slotIndex + 1}`;
+  if (isCharacterNameTaken(account, finalName)) return account; // caller should validate first (see isCharacterNameTaken) — no-op here as a safety net
   characters[slotIndex] = {
     ...defaultCharacterSlot(),
     id: `char-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    name: cleanName || `Character ${slotIndex + 1}`,
-    createdAt: Date.now(),
-    pets: starterInst ? [starterInst] : [],
-    activePetId: starterInst ? starterInst.instId : null
+    name: finalName,
+    createdAt: Date.now()
+    // No starter pet here — pets/activePetId stay at defaultCharacterSlot()'s defaults ([]/null).
+    // The starter pet is granted per-character the first time THAT character clears floor 5
+    // (see the "alreadyHasStarter" check in App.js's endCombatWin) — giving it at creation would
+    // let a fresh character skip that entirely, which isn't the intended design.
   };
   return {
     ...account,

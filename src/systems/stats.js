@@ -184,11 +184,13 @@ function makeEnemy(floor, options = {}) {
     gold: roundInt((4 + floor * 2.5) * (isBoss ? 2.2 : 1) * goldM)
   };
 }
-// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss),
-// normal floors spawn 1-3 regular monsters that share the field together.
+// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss). Floors 1-4
+// are single-monster only (easing new players in before multi-monster fights start) — floor 5+
+// non-boss floors spawn 1-3 regular monsters that share the field together.
 function makeEncounter(floor) {
   const isBoss = floor % 5 === 0;
   if (isBoss) return [makeEnemy(floor)];
+  if (floor < 5) return [makeEnemy(floor)];
   const roll = Math.random();
   const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
   const groupScale = count === 1 ? 1 : count === 2 ? 0.72 : 0.55;

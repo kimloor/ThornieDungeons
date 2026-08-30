@@ -767,21 +767,31 @@ function safeJsonParse(str, fallback = null) {
 // Both return a NEW account-save object (never mutate the input) — call sites just do
 // setAccount(result) and persist as usual.
 
+// Case-insensitive, whitespace-trimmed check for whether `name` is already used by any
+// occupied slot on this account (characters within the SAME account only — this can't check
+// uniqueness across other players' accounts without a server-side check we don't have).
+function isCharacterNameTaken(account, name) {
+  const norm = String(name || "").trim().toLowerCase();
+  if (!norm) return false;
+  return account.characters.some(c => c && c.name.trim().toLowerCase() === norm);
+}
+
 function createCharacterInSlot(account, slotIndex, name) {
   if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= MAX_CHARACTER_SLOTS) return account;
   const characters = account.characters.slice();
   if (characters[slotIndex]) return account; // slot already occupied — caller should check first, no-op here as a safety net
-  // Every new character starts with the same starter pet already active, per the design brief.
-  const starterDef = typeof starterPetDef === "function" ? starterPetDef() : null;
-  const starterInst = starterDef && typeof newPetInstance === "function" ? newPetInstance(starterDef.id) : null;
   const cleanName = String(name || "").trim().slice(0, 16);
+  const finalName = cleanName || `Character ${slotIndex + 1}`;
+  if (isCharacterNameTaken(account, finalName)) return account; // caller should validate first (see isCharacterNameTaken) — no-op here as a safety net
   characters[slotIndex] = {
     ...defaultCharacterSlot(),
     id: `char-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    name: cleanName || `Character ${slotIndex + 1}`,
-    createdAt: Date.now(),
-    pets: starterInst ? [starterInst] : [],
-    activePetId: starterInst ? starterInst.instId : null
+    name: finalName,
+    createdAt: Date.now()
+    // No starter pet here — pets/activePetId stay at defaultCharacterSlot()'s defaults ([]/null).
+    // The starter pet is granted per-character the first time THAT character clears floor 5
+    // (see the "alreadyHasStarter" check in App.js's endCombatWin) — giving it at creation would
+    // let a fresh character skip that entirely, which isn't the intended design.
   };
   return {
     ...account,
@@ -2459,11 +2469,13 @@ function makeEnemy(floor, options = {}) {
     gold: roundInt((4 + floor * 2.5) * (isBoss ? 2.2 : 1) * goldM)
   };
 }
-// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss),
-// normal floors spawn 1-3 regular monsters that share the field together.
+// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss). Floors 1-4
+// are single-monster only (easing new players in before multi-monster fights start) — floor 5+
+// non-boss floors spawn 1-3 regular monsters that share the field together.
 function makeEncounter(floor) {
   const isBoss = floor % 5 === 0;
   if (isBoss) return [makeEnemy(floor)];
+  if (floor < 5) return [makeEnemy(floor)];
   const roll = Math.random();
   const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
   const groupScale = count === 1 ? 1 : count === 2 ? 0.72 : 0.55;
@@ -3003,12 +3015,28 @@ function ThornieDungeons() {
     setPhase("characterSelect");
   }
   function handleCreateCharacter(slotIndex, name) {
+    if (!account) return {
+      ok: false,
+      message: "กรุณาลองใหม่อีกครั้ง"
+    };
+    const cleanName = String(name || "").trim();
+    const finalName = cleanName || `Character ${slotIndex + 1}`;
+    if (isCharacterNameTaken(account, finalName)) {
+      return {
+        ok: false,
+        message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
+      };
+    }
     setAccount(prev => {
       if (!prev) return prev;
       const nextAccount = createCharacterInSlot(prev, slotIndex, name);
       pushProgress(nextAccount);
       return nextAccount;
     });
+    return {
+      ok: true,
+      message: ""
+    };
   }
   function handleDeleteCharacter(slotIndex) {
     intentionalSlotChangeRef.current = true;
@@ -4515,18 +4543,25 @@ function CharacterSelectScreen({
 }) {
   const [creatingSlot, setCreatingSlot] = useState(null); // index currently showing the create-name form, or null
   const [nameInput, setNameInput] = useState("");
+  const [createError, setCreateError] = useState("");
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState(null); // index awaiting delete confirmation, or null
   if (!account) return null;
   const startCreate = slotIndex => {
     setConfirmDeleteSlot(null);
     setCreatingSlot(slotIndex);
     setNameInput("");
+    setCreateError("");
   };
   const confirmCreate = () => {
     if (creatingSlot === null) return;
-    onCreate(creatingSlot, nameInput.trim());
+    const res = onCreate(creatingSlot, nameInput.trim());
+    if (res && res.ok === false) {
+      setCreateError(res.message);
+      return;
+    }
     setCreatingSlot(null);
     setNameInput("");
+    setCreateError("");
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "md-login-wrap"
@@ -4614,9 +4649,18 @@ function CharacterSelectScreen({
     value: nameInput,
     maxLength: 16,
     autoFocus: true,
-    onChange: e => setNameInput(e.target.value),
+    onChange: e => {
+      setNameInput(e.target.value);
+      if (createError) setCreateError("");
+    },
     onKeyDown: e => e.key === "Enter" && confirmCreate()
-  }), /*#__PURE__*/React.createElement("div", {
+  }), createError && /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      color: "#FF8787",
+      margin: "4px 0 0"
+    }
+  }, "⚠️ ", createError), /*#__PURE__*/React.createElement("div", {
     className: "md-btn-row",
     style: {
       marginTop: 8
@@ -4626,7 +4670,10 @@ function CharacterSelectScreen({
     onClick: confirmCreate
   }, "✨ สร้างตัวละคร"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn info",
-    onClick: () => setCreatingSlot(null)
+    onClick: () => {
+      setCreatingSlot(null);
+      setCreateError("");
+    }
   }, "ยกเลิก"))) : /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     style: {

@@ -240,18 +240,25 @@ function CharacterSelectScreen({
 }) {
   const [creatingSlot, setCreatingSlot] = useState(null); // index currently showing the create-name form, or null
   const [nameInput, setNameInput] = useState("");
+  const [createError, setCreateError] = useState("");
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState(null); // index awaiting delete confirmation, or null
   if (!account) return null;
   const startCreate = slotIndex => {
     setConfirmDeleteSlot(null);
     setCreatingSlot(slotIndex);
     setNameInput("");
+    setCreateError("");
   };
   const confirmCreate = () => {
     if (creatingSlot === null) return;
-    onCreate(creatingSlot, nameInput.trim());
+    const res = onCreate(creatingSlot, nameInput.trim());
+    if (res && res.ok === false) {
+      setCreateError(res.message);
+      return;
+    }
     setCreatingSlot(null);
     setNameInput("");
+    setCreateError("");
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "md-login-wrap"
@@ -339,9 +346,18 @@ function CharacterSelectScreen({
     value: nameInput,
     maxLength: 16,
     autoFocus: true,
-    onChange: e => setNameInput(e.target.value),
+    onChange: e => {
+      setNameInput(e.target.value);
+      if (createError) setCreateError("");
+    },
     onKeyDown: e => e.key === "Enter" && confirmCreate()
-  }), /*#__PURE__*/React.createElement("div", {
+  }), createError && /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: {
+      color: "#FF8787",
+      margin: "4px 0 0"
+    }
+  }, "⚠️ ", createError), /*#__PURE__*/React.createElement("div", {
     className: "md-btn-row",
     style: {
       marginTop: 8
@@ -351,7 +367,10 @@ function CharacterSelectScreen({
     onClick: confirmCreate
   }, "✨ สร้างตัวละคร"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn info",
-    onClick: () => setCreatingSlot(null)
+    onClick: () => {
+      setCreatingSlot(null);
+      setCreateError("");
+    }
   }, "ยกเลิก"))) : /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     style: {
