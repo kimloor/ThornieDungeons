@@ -1,20 +1,7 @@
 // ---------- ThornieDungeons Pages Worker ----------
-// IMPORTANT SCOPE NOTE (network/race-condition audit):
-// This worker only serves static site assets and R2-hosted game art (`/assets/*`). It has
-// no knowledge of game actions/transactions — login, saveProgress, syncItems, Salvage,
-// Enhance, etc. are all handled by a *separate* Cloudflare Worker (the D1-backed API at
-// DEFAULT_SERVER_URL in save.js, e.g. thornie-dungeons-api.ekqtjl.workers.dev), whose source
-// isn't part of this repo. Real atomic/idempotent transaction handling for those actions
-// (e.g. "reject a duplicate Enhance if the same idempotency key was already processed") has
-// to be added over there, not here — this file has nothing to make atomic.
-// What IS hardened below, within this file's actual job of serving assets:
-//   1. Only GET/HEAD are accepted for asset requests (anything else is rejected fast).
-//   2. The R2 key is sanitized against path traversal (`..`, encoded slashes) before being
-//      used to look up an object — previously it was passed straight from the URL to
-//      env.GAME_ASSETS.get() unchecked.
-//   3. Concurrent duplicate GETs for the *same* R2 key (e.g. several UI elements requesting
-//      the same sprite layer at once) are coalesced into a single R2 read per isolate instead
-//      of hitting R2 once per request.
+// This worker serves static site assets and R2-hosted game art (/assets/*).
+// Game actions/transactions are handled by the separate D1-backed API Worker.
+
 const inFlightAssetReads = new Map();
 
 function sanitizeAssetKey(pathname) {
@@ -22,9 +9,8 @@ function sanitizeAssetKey(pathname) {
   try {
     key = decodeURIComponent(pathname.substring("/assets/".length));
   } catch (e) {
-    return null; // malformed percent-encoding
+    return null;
   }
-  // Reject traversal / absolute-escape attempts and empty keys.
   if (!key || key.includes("..") || key.startsWith("/") || key.includes("\\")) return null;
   return key;
 }
@@ -36,9 +22,64 @@ async function readAssetObject(env, key) {
   return p;
 }
 
+// Private-by-default asset inspection endpoint.
+// Authentication is intentionally required so the R2 object listing is never public.
+// Set R2_ADMIN_TOKEN as a Worker secret before using this endpoint.
+async function handleR2Admin(request, env, url) {
+  if (request.method !== "GET") {
+    return new Response("Method not allowed", { status: 405, headers: { Allow: "GET" } });
+  }
+
+  const configuredToken = env.R2_ADMIN_TOKEN;
+  if (!configuredToken) {
+    return new Response("R2 admin endpoint is not configured", { status: 503 });
+  }
+
+  const suppliedToken = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+  if (!suppliedToken || suppliedToken !== configuredToken) {
+    return new Response("Unauthorized", {
+      status: 401,
+      headers: { "WWW-Authenticate": "Bearer" }
+    });
+  }
+
+  const prefix = url.searchParams.get("prefix") || "";
+  if (prefix.includes("..") || prefix.startsWith("/") || prefix.includes("\\")) {
+    return new Response("Invalid prefix", { status: 400 });
+  }
+
+  const limitRaw = Number(url.searchParams.get("limit") || "100");
+  const limit = Number.isInteger(limitRaw) ? Math.min(Math.max(limitRaw, 1), 1000) : 100;
+  const cursor = url.searchParams.get("cursor") || undefined;
+
+  try {
+    const result = await env.GAME_ASSETS.list({ prefix, limit, cursor });
+    return Response.json({
+      bucket: "assets",
+      prefix,
+      objects: result.objects.map((object) => ({
+        key: object.key,
+        size: object.size,
+        etag: object.etag,
+        uploaded: object.uploaded
+      })),
+      truncated: result.truncated,
+      cursor: result.truncated ? result.cursor : null
+    }, {
+      headers: { "Cache-Control": "no-store" }
+    });
+  } catch (e) {
+    return new Response("R2 listing failed", { status: 502 });
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/__admin/r2/list") {
+      return handleR2Admin(request, env, url);
+    }
 
     if (url.pathname.startsWith("/assets/")) {
       if (request.method !== "GET" && request.method !== "HEAD") {
@@ -61,16 +102,12 @@ export default {
       }
 
       if (!object) {
-        return new Response(`R2 object not found: ${key}`, {
-          status: 404
-        });
+        return new Response(`R2 object not found: ${key}`, { status: 404 });
       }
 
       const headers = new Headers();
       object.writeHttpMetadata(headers);
       headers.set("etag", object.httpEtag);
-      // Sprite/manifest assets are content-addressed by path and don't change in place —
-      // safe to let browsers/CDN cache them aggressively.
       if (!headers.has("cache-control")) {
         headers.set("cache-control", "public, max-age=86400");
       }
