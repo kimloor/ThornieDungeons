@@ -1,0 +1,72 @@
+name: Sync R2 asset manifest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: List R2 objects
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN" || { echo "Missing CF_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "Missing CF_ACCOUNT_ID"; exit 1; }
+
+          api="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/assets/objects"
+          cursor=""
+          all='[]'
+
+          while true; do
+            if [ -n "$cursor" ]; then
+              url="${api}?per_page=1000&cursor=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$cursor")"
+            else
+              url="${api}?per_page=1000"
+            fi
+
+            response=$(curl --fail-with-body -sS "$url" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Accept: application/json")
+
+            echo "$response" | jq -e '.success == true' >/dev/null
+            page=$(echo "$response" | jq '.result // []')
+            all=$(jq -n --argjson a "$all" --argjson b "$page" '$a + $b')
+
+            next=$(echo "$response" | jq -r '.result_info.cursor // empty')
+            truncated=$(echo "$response" | jq -r '.result_info.is_truncated // false')
+            if [ "$truncated" != "true" ] || [ -z "$next" ]; then
+              break
+            fi
+            cursor="$next"
+          done
+
+          mkdir -p src/data
+          jq -n \
+            --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg bucket "assets" \
+            --argjson objects "$all" \
+            '{bucket:$bucket, generatedAt:$generatedAt, count:($objects|length), objects:$objects}' \
+            > src/data/r2-manifest.json
+
+      - name: Commit manifest when changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/r2-manifest.json
+          if git diff --cached --quiet; then
+            echo "R2 manifest unchanged"
+            exit 0
+          fi
+          git commit -m "chore: sync R2 asset manifest"
+          git push
