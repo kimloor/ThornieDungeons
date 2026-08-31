@@ -30,16 +30,31 @@ jobs:
 
           while true; do
             if [ -n "$cursor" ]; then
-              url="${api}?per_page=1000&cursor=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$cursor")"
+              url="${api}?per_page=1000&cursor=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]) )' "$cursor")"
             else
               url="${api}?per_page=1000"
             fi
 
-            response=$(curl --fail-with-body -sS "$url" \
+            tmp=$(mktemp)
+            status=$(curl -sS -o "$tmp" -w '%{http_code}' "$url" \
               -H "Authorization: Bearer ${CF_API_TOKEN}" \
               -H "Accept: application/json")
+            response=$(cat "$tmp")
+            rm -f "$tmp"
 
-            echo "$response" | jq -e '.success == true' >/dev/null
+            if [ "$status" != "200" ]; then
+              echo "Cloudflare R2 API returned HTTP $status"
+              echo "$response" | jq -c '{success, errors, messages}' 2>/dev/null || echo "$response"
+              echo "Check that CF_API_TOKEN has Account > Workers R2 Storage > Read permission and that CF_ACCOUNT_ID is the correct Cloudflare Account ID."
+              exit 1
+            fi
+
+            echo "$response" | jq -e '.success == true' >/dev/null || {
+              echo "Cloudflare R2 API returned success=false"
+              echo "$response" | jq -c '{success, errors, messages}'
+              exit 1
+            }
+
             page=$(echo "$response" | jq '.result // []')
             all=$(jq -n --argjson a "$all" --argjson b "$page" '$a + $b')
 
