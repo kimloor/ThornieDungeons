@@ -1,10 +1,11 @@
 function ThornieDungeons() {
   // `account` holds the multi-character save (up to MAX_CHARACTER_SLOTS characters + shared
-  // diamonds) exactly as it round-trips to the server. `save` keeps the OLD flat single-character
-  // shape ({gold, character:{...}, pets, ...}) — the "runtime view" of whichever character slot
-  // is currently active — so every existing combat/shop/blacksmith/inventory function below
-  // (which all read save.gold / save.character directly) needed zero changes for multi-character
-  // support. See flattenCharacterForRuntime()/packRuntimeIntoSlot() in state/save.js.
+  // diamonds), built fresh from the server's responses every session. `save` keeps the flat
+  // single-character shape ({gold, character:{...}, pets, ...}) — the "runtime view" of
+  // whichever character slot is currently active — so every existing combat/shop/blacksmith/
+  // inventory function below (which all read save.gold / save.character directly) needs zero
+  // changes for multi-character support. See flattenCharacterForRuntime()/packRuntimeIntoSlot()
+  // in state/save.js.
   const [account, setAccount] = useState(null);
   const [save, setSave] = useState(null);
   const [phase, setPhase] = useState("loading"); // loading, login, characterSelect, menu, town, map, combat, result, defeat
@@ -16,7 +17,7 @@ function ThornieDungeons() {
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [player, setPlayer] = useState(null); // ephemeral combat state, derived fresh from save each stage entry
-  const [resumeRun, setResumeRun] = useState(null); // persisted current HP/MP + floor restored after login
+  const [resumeRun, setResumeRun] = useState(null); // persisted current HP/MP + floor restored after entering a character
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
@@ -66,15 +67,6 @@ function ThornieDungeons() {
   const petCombatRef = useRef(null);
   const playerRef = useRef(null);
   const combatOutcomeRef = useRef(null);
-  // Raw (server-row-shaped, extra_json still a string) item rows belonging to the OTHER
-  // characters on this account — kept untouched and re-sent as-is on every item sync so saving
-  // the currently active character's inventory can never wipe out the other two's gear,
-  // regardless of whether the server's syncItems does an upsert or a full replace-per-account.
-  const otherSlotsRawItemsRef = useRef([]);
-  // Holds the account's raw item/runState payload between login and character selection —
-  // only split/consumed once enterCharacterSlot() actually knows which character was chosen.
-  const pendingRawItemsRef = useRef([]);
-  const pendingRunStateRef = useRef(null);
   useEffect(() => { monstersRef.current = monsters; }, [monsters]);
   useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
   useEffect(() => { playerRef.current = player; }, [player]);
@@ -139,70 +131,54 @@ function ThornieDungeons() {
       .catch(() => {});
     return cloudWriteQueue.current;
   }, []);
-  // Safety net for the "a character disappeared" class of bug: tracks how many occupied
-  // character slots we last confirmed (either freshly loaded from the server, or after a
-  // deliberate delete). If something is about to push an account with FEWER occupied slots
-  // than that, and it wasn't via handleDeleteCharacter (which sets intentionalSlotChangeRef),
-  // refuse to send it — better to lose one write and log loudly than silently erase a
-  // character's save data. This does not fix the unknown root cause below, only prevents data
-  // loss while we track it down.
-  const lastKnownCharCountRef = useRef(null);
-  const intentionalSlotChangeRef = useRef(false);
-  const pushProgress = useCallback(nextAccount => {
-    if (!cred.url || !cred.id || !cred.password) return;
-    const occupied = nextAccount.characters.filter(Boolean).length;
-    if (lastKnownCharCountRef.current !== null && occupied < lastKnownCharCountRef.current && !intentionalSlotChangeRef.current) {
-      console.error("[ThornieDungeons] BLOCKED a saveProgress that would have reduced character count from", lastKnownCharCountRef.current, "to", occupied, "— this write was skipped to avoid data loss. Account payload:", JSON.stringify(nextAccount));
-      return;
-    }
-    intentionalSlotChangeRef.current = false;
-    lastKnownCharCountRef.current = occupied;
-    console.log("[ThornieDungeons] saveProgress ->", occupied, "character(s), activeSlot", nextAccount.activeSlot, JSON.stringify(nextAccount.characters.map(c => c && {
-      id: c.id,
-      name: c.name
-    })));
-    enqueueCloudWrite(() => cloudSaveProgress(cred.url, cred.id, cred.password, progressToServer(nextAccount)));
+  // Each of these now targets ONE specific character (by characterId), matching the schema-v2
+  // API worker where every character has its own real row — the server itself refuses (403s)
+  // any of these if characterId doesn't actually belong to the authenticated account, so there's
+  // no client-side "don't let this wipe another character" bookkeeping needed anymore (that used
+  // to live here as otherSlotsRawItemsRef / the character-count safety net; both are gone now
+  // that the server enforces isolation directly).
+  const pushCharacterProgress = useCallback((characterId, diamonds, progress) => {
+    if (!cred.url || !cred.id || !cred.password || !characterId) return;
+    enqueueCloudWrite(() => cloudSaveCharacterProgress(cred.url, cred.id, cred.password, characterId, diamonds, progress));
   }, [cred, enqueueCloudWrite]);
   const pushItems = useCallback((inv, eq, characterId) => {
-    if (!cred.url || !cred.id || !cred.password) return;
-    const mine = itemsToServerList(inv, eq, characterId);
-    enqueueCloudWrite(() => cloudSyncItems(cred.url, cred.id, cred.password, [...mine, ...otherSlotsRawItemsRef.current]));
+    if (!cred.url || !cred.id || !cred.password || !characterId) return;
+    enqueueCloudWrite(() => cloudSyncItems(cred.url, cred.id, cred.password, characterId, itemsToServerList(inv, eq)));
   }, [cred, enqueueCloudWrite]);
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.
     // runState === null -> explicit request to clear the checkpoint (both local + cloud).
     if (!cred.url || !cred.id || !cred.password || runState === undefined) return;
     const characterId = save && save.characterId;
-    const key = `thornie-run-${cred.id}-${characterId || "none"}`;
+    if (!characterId) return;
+    const key = `thornie-run-${cred.id}-${characterId}`;
     try {
       if (runState === null) window.localStorage?.removeItem(key);
       else window.localStorage?.setItem(key, JSON.stringify(runState));
     } catch (e) {}
-    enqueueCloudWrite(() => cloudSaveRunState(cred.url, cred.id, cred.password, runState === null ? null : {
-      ...runState,
-      characterId
-    }));
+    enqueueCloudWrite(() => cloudSaveRunState(cred.url, cred.id, cred.password, characterId, runState));
   }, [cred, save, enqueueCloudWrite]);
-  // Updates the runtime `save` view immediately, then folds it back into the active character's
-  // slot inside `account` (functional setState — always folds into the LATEST account, same
-  // stale-closure protection used for the item-action guard below) before syncing to the server.
+  // Updates the runtime `save` view immediately, mirrors the change into the active character's
+  // slot inside `account` (functional setState, so it always folds into the latest account
+  // regardless of render timing), and pushes straight to that character's own row server-side.
   const persistSave = useCallback(next => {
     setSave(next);
     setAccount(prevAccount => {
       if (!prevAccount || prevAccount.activeSlot === null) return prevAccount;
       const characters = prevAccount.characters.slice();
       characters[prevAccount.activeSlot] = packRuntimeIntoSlot(characters[prevAccount.activeSlot], next);
-      const nextAccount = {
+      return {
         ...prevAccount,
         diamonds: next.diamonds,
         characters
       };
-      pushProgress(nextAccount);
-      return nextAccount;
     });
-  }, [pushProgress]);
+    if (next.characterId) {
+      pushCharacterProgress(next.characterId, next.diamonds, characterProgressToServer(next));
+    }
+  }, [pushCharacterProgress]);
   const persistItems = useCallback((inv, eq) => {
-    pushItems(inv, eq, save && save.characterId);
+    if (save && save.characterId) pushItems(inv, eq, save.characterId);
   }, [pushItems, save]);
   function spawnFloat(side, text, color) {
     const id = ++floatId.current;
@@ -239,31 +215,7 @@ function ThornieDungeons() {
       url: cred.url,
       id: cred.id
     });
-    const nextAccount = progressFromServer(res.progress);
-    console.log("[ThornieDungeons] login loaded account <-", JSON.stringify(nextAccount.characters.map(c => c && {
-      id: c.id,
-      name: c.name
-    })), "raw progress row:", JSON.stringify(res.progress));
-    lastKnownCharCountRef.current = nextAccount.characters.filter(Boolean).length;
-    setAccount(nextAccount);
-    // If this account's row predates the multi-character system, progressFromServer() just
-    // migrated it into slot 0 IN MEMORY ONLY — the server row's materials_json still doesn't
-    // have a `characters` field yet. Persist that migration immediately rather than waiting for
-    // the player's next unrelated action: if anything else wrote to the legacy bank_gold/
-    // char_level/etc columns in the meantime (before this client got a chance to save the new
-    // v3 shape), the *next* login would re-run this same migration using whatever those legacy
-    // columns say *then* — silently rebuilding slot 0 from a different character's data.
-    const wasPreV3 = !safeJsonParse(res.progress?.materials_json, {})?.characters;
-    if (wasPreV3 && nextAccount.characters.some(Boolean)) {
-      console.log("[ThornieDungeons] pre-v3 save detected — persisting the migrated 3-slot structure immediately");
-      pushProgress(nextAccount);
-    }
-    // Raw item rows for ALL characters on this account — kept as-is until a slot is entered,
-    // at which point enterCharacterSlot() splits it into "this character's items" (parsed and
-    // loaded into inventory/equipped) vs "everyone else's" (kept untouched in
-    // otherSlotsRawItemsRef so a later save can never wipe them — see pushItems above).
-    pendingRawItemsRef.current = res.items || [];
-    pendingRunStateRef.current = res.runState || null;
+    setAccount(accountFromLoginResponse(res));
     setPhase("characterSelect");
   }
   async function handleRegister() {
@@ -287,66 +239,100 @@ function ThornieDungeons() {
       url: cred.url,
       id: cred.id
     });
-    lastKnownCharCountRef.current = 0;
     setAccount(defaultSave());
-    pendingRawItemsRef.current = [];
-    pendingRunStateRef.current = null;
     setPhase("characterSelect");
   }
-  function handleCreateCharacter(slotIndex, name) {
+  async function handleCreateCharacter(slotIndex, name) {
     if (!account) return {
       ok: false,
       message: "กรุณาลองใหม่อีกครั้ง"
     };
     const cleanName = String(name || "").trim();
     const finalName = cleanName || `Character ${slotIndex + 1}`;
+    // Instant client-side check first (better UX — no network round trip for the common case);
+    // the server enforces the same rule authoritatively below regardless.
     if (isCharacterNameTaken(account, finalName)) {
       return {
         ok: false,
         message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
       };
     }
+    const res = await cloudCreateCharacter(cred.url, cred.id, cred.password, slotIndex, name);
+    if (res.error === "name_taken") return {
+      ok: false,
+      message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
+    };
+    if (res.error === "slot_occupied") return {
+      ok: false,
+      message: "ช่องนี้มีตัวละครอยู่แล้ว"
+    };
+    if (res.error) return {
+      ok: false,
+      message: "เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง"
+    };
     setAccount(prev => {
       if (!prev) return prev;
-      const nextAccount = createCharacterInSlot(prev, slotIndex, name);
-      pushProgress(nextAccount);
-      return nextAccount;
+      const characters = prev.characters.slice();
+      characters[slotIndex] = characterFromServerRow(res.character);
+      return {
+        ...prev,
+        characters
+      };
     });
     return {
       ok: true,
       message: ""
     };
   }
-  function handleDeleteCharacter(slotIndex) {
-    intentionalSlotChangeRef.current = true;
+  async function handleDeleteCharacter(slotIndex) {
+    const res = await cloudDeleteCharacter(cred.url, cred.id, cred.password, slotIndex);
+    if (res.error) {
+      console.error("[ThornieDungeons] deleteCharacter failed:", res.error);
+      return;
+    }
     setAccount(prev => {
       if (!prev) return prev;
-      const nextAccount = deleteCharacterInSlot(prev, slotIndex);
-      pushProgress(nextAccount);
-      return nextAccount;
+      const characters = prev.characters.slice();
+      characters[slotIndex] = null;
+      return {
+        ...prev,
+        characters,
+        activeSlot: prev.activeSlot === slotIndex ? null : prev.activeSlot
+      };
     });
   }
-  function enterCharacterSlot(slotIndex) {
+  async function enterCharacterSlot(slotIndex) {
     if (!account || !account.characters[slotIndex]) return;
-    const slot = account.characters[slotIndex];
-    const flat = flattenCharacterForRuntime(account, slotIndex);
-    const {
-      mine,
-      others
-    } = splitItemRowsBySlot(pendingRawItemsRef.current, slot.id, slotIndex);
-    otherSlotsRawItemsRef.current = others;
+    const res = await cloudEnterCharacter(cred.url, cred.id, cred.password, slotIndex);
+    if (res.error) {
+      console.error("[ThornieDungeons] enterCharacter failed:", res.error);
+      return;
+    }
+    const characterSlot = characterFromServerRow(res.character);
+    const nextAccount = (() => {
+      const characters = account.characters.slice();
+      characters[slotIndex] = characterSlot;
+      return {
+        ...account,
+        characters,
+        activeSlot: slotIndex
+      };
+    })();
+    setAccount(nextAccount);
     const {
       equipped: eq,
       inventory: inv
-    } = itemsFromServerList(mine);
+    } = itemsFromServerList(res.items || []);
     setEquipped(eq);
     setInventory(inv);
     // Mid-combat resume checkpoint is namespaced per-character so switching characters never
     // shows a stale "resume at floor X" prompt left over from a different character's last run.
-    const runKey = `thornie-run-${cred.id}-${slot.id}`;
+    // enterCharacter already returns this character's own run_state row directly (scoped
+    // server-side by character_id) — localStorage is only the fallback if that's empty.
+    const runKey = `thornie-run-${cred.id}-${characterSlot.id}`;
     let savedRun = null;
-    const rs = pendingRunStateRef.current;
-    if (rs && rs.characterId === slot.id && (rs.hp !== undefined || rs.mp !== undefined)) {
+    const rs = res.runState;
+    if (rs && (rs.hp !== undefined || rs.mp !== undefined)) {
       savedRun = {
         floor: Number(rs.floor) || 1,
         hp: Number(rs.hp),
@@ -363,15 +349,7 @@ function ThornieDungeons() {
     } else {
       setResumeRun(null);
     }
-    setAccount(prev => {
-      const nextAccount = {
-        ...prev,
-        activeSlot: slotIndex
-      };
-      pushProgress(nextAccount);
-      return nextAccount;
-    });
-    setSave(flat);
+    setSave(flattenCharacterForRuntime(nextAccount, slotIndex));
     setPhase("menu");
   }
   function backToCharacterSelect() {
@@ -392,10 +370,6 @@ function ThornieDungeons() {
     setPlayer(null);
     setResumeRun(null);
     setAuthError("");
-    otherSlotsRawItemsRef.current = [];
-    pendingRawItemsRef.current = [];
-    pendingRunStateRef.current = null;
-    lastKnownCharCountRef.current = null;
     setPhase("login");
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {

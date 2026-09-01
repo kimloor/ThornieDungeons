@@ -242,6 +242,10 @@ function CharacterSelectScreen({
   const [nameInput, setNameInput] = useState("");
   const [createError, setCreateError] = useState("");
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState(null); // index awaiting delete confirmation, or null
+  // onEnter/onCreate/onDelete are now real network round-trips (schema-v2 API), not instant
+  // local state updates — busy disables every action button on the screen so a slow connection
+  // can't let someone double-tap Enter/Create/Delete and fire the request twice.
+  const [busy, setBusy] = useState(false);
   if (!account) return null;
   const startCreate = slotIndex => {
     setConfirmDeleteSlot(null);
@@ -249,9 +253,11 @@ function CharacterSelectScreen({
     setNameInput("");
     setCreateError("");
   };
-  const confirmCreate = () => {
-    if (creatingSlot === null) return;
-    const res = onCreate(creatingSlot, nameInput.trim());
+  const confirmCreate = async () => {
+    if (creatingSlot === null || busy) return;
+    setBusy(true);
+    const res = await onCreate(creatingSlot, nameInput.trim());
+    setBusy(false);
     if (res && res.ok === false) {
       setCreateError(res.message);
       return;
@@ -291,9 +297,16 @@ function CharacterSelectScreen({
     className: "md-btn-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee",
-    onClick: () => onDelete(i)
+    disabled: busy,
+    onClick: async () => {
+      setBusy(true);
+      await onDelete(i);
+      setBusy(false);
+      setConfirmDeleteSlot(null);
+    }
   }, "🗑️ ยืนยันลบ"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn info",
+    disabled: busy,
     onClick: () => setConfirmDeleteSlot(null)
   }, "ยกเลิก"))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -331,13 +344,19 @@ function CharacterSelectScreen({
       minHeight: 34,
       fontSize: 10
     },
+    disabled: busy,
     onClick: () => setConfirmDeleteSlot(i)
   }, "🗑️ ลบ")), /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     style: {
       marginTop: 8
     },
-    onClick: () => onEnter(i)
+    disabled: busy,
+    onClick: async () => {
+      setBusy(true);
+      await onEnter(i);
+      setBusy(false);
+    }
   }, "▶️ เข้าเล่น")) : creatingSlot === i ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
     className: "md-field-label"
   }, "ตั้งชื่อตัวละคร"), /*#__PURE__*/React.createElement("input", {
@@ -364,9 +383,11 @@ function CharacterSelectScreen({
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary",
+    disabled: busy,
     onClick: confirmCreate
   }, "✨ สร้างตัวละคร"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn info",
+    disabled: busy,
     onClick: () => {
       setCreatingSlot(null);
       setCreateError("");
@@ -376,6 +397,7 @@ function CharacterSelectScreen({
     style: {
       minHeight: 64
     },
+    disabled: busy,
     onClick: () => startCreate(i)
   }, "➕ สร้างตัวละคร")))), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide",

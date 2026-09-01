@@ -60,21 +60,7 @@ async function cloudPost(url, body) {
   }));
 }
 
-// ---------- high-frequency write calls ----------
-// NOTE: cloudSaveProgress/cloudSyncItems/cloudSaveRunState used to be routed through a
-// debouncedCall() here (250ms trailing debounce, keyed by id). That was REMOVED after it
-// caused a real regression: App.js's enqueueCloudWrite already serializes writes one-at-a-time
-// (it awaits the previous cloudXxx call before starting the next), so the debounce added no
-// protection that wasn't already there — but it DID add a real risk of data loss:
-//   1. A save made right before the player reloads/logs out could still be sitting in the
-//      250ms debounce window and never reach the server (confirmed: a stat point allocated
-//      and checked via reload ~100ms later showed the OLD value).
-//   2. Worse — under *continuous* activity (calls arriving faster than the debounce window),
-//      the debounce timer keeps getting reset and the save can be postponed indefinitely,
-//      never actually firing until the player stops entirely for 250ms+.
-// withDedupe() + withRetry() below are what's actually safe to keep: they only collapse truly
-// *identical* concurrent calls and retry *transient* failures — neither one delays or drops a
-// unique write the way the debounce did.
+// ---------- calls ----------
 function cloudLogin(url, id, password) {
   return cloudGet(url, {
     action: "login",
@@ -89,27 +75,56 @@ function cloudRegister(url, id, password) {
     password
   });
 }
-function cloudSaveProgress(url, id, password, progress) {
+function cloudCreateCharacter(url, id, password, slotIndex, name) {
   return cloudPost(url, {
-    action: "saveProgress",
+    action: "createCharacter",
     id,
     password,
+    slotIndex,
+    name
+  });
+}
+function cloudDeleteCharacter(url, id, password, slotIndex) {
+  return cloudPost(url, {
+    action: "deleteCharacter",
+    id,
+    password,
+    slotIndex
+  });
+}
+function cloudEnterCharacter(url, id, password, slotIndex) {
+  return cloudPost(url, {
+    action: "enterCharacter",
+    id,
+    password,
+    slotIndex
+  });
+}
+function cloudSaveCharacterProgress(url, id, password, characterId, diamonds, progress) {
+  return cloudPost(url, {
+    action: "saveCharacterProgress",
+    id,
+    password,
+    characterId,
+    diamonds,
     progress
   });
 }
-function cloudSyncItems(url, id, password, items) {
+function cloudSyncItems(url, id, password, characterId, items) {
   return cloudPost(url, {
     action: "syncItems",
     id,
     password,
+    characterId,
     items
   });
 }
-function cloudSaveRunState(url, id, password, runState) {
+function cloudSaveRunState(url, id, password, characterId, runState) {
   return cloudPost(url, {
     action: "saveRunState",
     id,
     password,
+    characterId,
     runState
   });
 }
