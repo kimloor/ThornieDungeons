@@ -279,7 +279,7 @@ const STYLE = `
 .md-turn-queue {
   display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
   background: rgba(10,6,22,0.5); border: 1px solid rgba(255,209,102,0.22); border-radius: 999px;
-  padding: 4px 8px; margin-bottom: 6px; position: relative; z-index: 6;
+  padding: 4px 8px; margin: 0 0 8px; position: relative; z-index: 6;
 }
 .md-turn-queue-item {
   display: flex; align-items: center; gap: 2px; opacity: 0.55; transition: opacity 0.2s ease, transform 0.2s ease;
@@ -336,6 +336,13 @@ const STYLE = `
 .md-hud-track.mp .md-hud-fill { background: linear-gradient(90deg, #5B9CFF, #2C5FDB); }
 .md-hud-track.xp .md-hud-fill { background: linear-gradient(90deg, #FFE49A, var(--gold)); }
 .md-hud-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.85); }
+
+/* compact left-aligned HP/MP/EXP readout — no full-width bars here anymore.
+   Real-time HP is shown on a small bar over the hero's head in the arena instead,
+   the same way monsters/pets already show theirs. */
+.md-hud-text { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; flex: 0 1 auto; min-width: 0; }
+.md-hud-text-row { font-family: 'Baloo 2'; font-size: 10.5px; font-weight: 800; color: var(--ink); white-space: nowrap; }
+.md-hud-text-row.xp { color: var(--gold); font-size: 9.5px; }
 
 .md-rail-badge {
   position: absolute; bottom: -5px; right: -5px; background: var(--gold); color: var(--bg-top);

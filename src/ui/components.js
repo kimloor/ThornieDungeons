@@ -1164,41 +1164,14 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-lv"
   }, player.level), /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-bars"
+    className: "md-hud-text"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-row"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-hud-label"
-  }, "HP"), /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-track hp"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-fill",
-    style: {
-      width: `${hpPct}%`
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "md-hud-txt"
-  }, player.hp, "/", stats.maxHp))), /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-row"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-hud-label"
-  }, "MP"), /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-track mp"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-fill",
-    style: {
-      width: `${mpPct}%`
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "md-hud-txt"
-  }, player.mp, "/", stats.maxMp))), /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-track xp"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-fill",
-    style: {
-      width: `${xpPct}%`
-    }
-  }))), turnQueue && turnQueue.length > 0 && /*#__PURE__*/React.createElement(TurnOrderBar, {
+    className: "md-hud-text-row"
+  }, "❤️ ", player.hp, "/", stats.maxHp), /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-text-row"
+  }, "💧 ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-text-row xp"
+  }, "⭐ EXP ", Math.floor(xpPct), "%"))), turnQueue && turnQueue.length > 0 && /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue,
     activeKey: activeTurnKey,
     monsters: monsters,
@@ -1208,7 +1181,7 @@ function CombatScreen({
     title: petCombat.active.desc
   }, petCombat.icon, " ", petCombat.cooldown > 0 ? /*#__PURE__*/React.createElement("span", {
     className: "cd"
-  }, "CD ", petCombat.cooldown) : /*#__PURE__*/React.createElement("span", null, "Ready"))), bossOrModifier && /*#__PURE__*/React.createElement("div", {
+  }, "CD ", petCombat.cooldown) : /*#__PURE__*/React.createElement("span", null, "Ready")), bossOrModifier && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
@@ -1238,7 +1211,19 @@ function CombatScreen({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { position: "relative" }
-  }, /*#__PURE__*/React.createElement(HeroSprite, {
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar hero"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-fill",
+    style: {
+      width: `${hpPct}%`,
+      background: "linear-gradient(90deg,#FFE49A,var(--gold))"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-enemy-hpbar-hp"
+  }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
     style: {
