@@ -312,7 +312,7 @@ const STYLE = `
 .md-floor-chip.locked { opacity: 0.45; cursor: not-allowed; }
 .md-floor-chip .sub { display:block; font-size: 9px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
 .md-map-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.md-monster-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 4px; justify-items: center; align-items: end; width: 100%; padding: 4px 0 10px; }
+.md-monster-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; justify-items: center; align-items: end; max-width: 220px; }
 
 /* floating quick-access buttons (shop / character / bag) */
 .md-fab-stack {
@@ -407,6 +407,10 @@ const STYLE = `
 .md-hud-text { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; flex: 0 1 auto; min-width: 0; }
 .md-hud-text-row { font-family: 'Baloo 2'; font-size: 10.5px; font-weight: 800; color: var(--ink); white-space: nowrap; }
 .md-hud-text-row.xp { color: var(--gold); font-size: 9.5px; }
+.md-hud-pet { margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 2px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,209,102,0.3); border-radius: 10px; padding: 4px 9px; flex-shrink: 0; }
+.md-hud-pet-icon { font-size: 17px; line-height: 1; }
+.md-hud-pet-cd { font-size: 8.5px; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+.md-hud-pet-cd.ready { color: #8ee0a8; }
 
 .md-rail-badge {
   position: absolute; bottom: -5px; right: -5px; background: var(--gold); color: var(--bg-top);
@@ -2966,8 +2970,17 @@ function ThornieDungeons() {
     const spawned = makeEncounter(floorNum);
     setMonsters(spawned);
     setTargetUid(spawned[0] ? spawned[0].uid : null);
-    setPetCombat(buildPetCombatUnit());
-    setTurnQueue([]);
+    const initialPet = buildPetCombatUnit();
+    setPetCombat(initialPet);
+    const initItems = [{ key: "player", kind: "player", name: "You", icon: "🧙", speed: nextPlayer.baseSpeed || 0 }];
+    if (initialPet && initialPet.hp > 0) {
+      initItems.push({ key: "pet", kind: "pet", name: initialPet.name, icon: initialPet.icon, speed: initialPet.speed });
+    }
+    spawned.forEach(m => {
+      if (m.hp > 0) initItems.push({ key: m.uid, kind: "monster", uid: m.uid, name: m.name, icon: "👹", speed: m.speed });
+    });
+    const initRest = buildTurnQueue(initItems.filter(it => it.kind !== "player")).map(({ _r, ...r }) => r);
+    setTurnQueue([initItems[0], ...initRest]);
     setActiveTurnKey(null);
     setDropItem(null);
     const boss = spawned.find(m => m.isBoss);
@@ -3361,15 +3374,17 @@ function ThornieDungeons() {
     if (combatOutcomeRef.current) return;
     if (index >= queue.length) {
       setActiveTurnKey(null);
-      setTurnQueue([]);
       if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
+        setTurnQueue([]);
         endCombatWin();
         return;
       }
       if ((playerRef.current?.hp || 0) <= 0) {
+        setTurnQueue([]);
         playerLost();
         return;
       }
+      setTurnQueue(computeRoundQueueDisplay());
       setBusy(false);
       tickPlayerBuffs();
       tickPetCooldown();
@@ -5313,26 +5328,27 @@ function PetCombatSprite({ pet, anim }) {
 // Turn Order Queue UI: shows every unit's planned action order for the current round,
 // sorted by Speed (AGI), so the player can plan around who acts before whom.
 function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-turn-queue"
-  }, queue.map((item, i) => {
-    const isActive = activeKey === item.key;
-    const isDone = activeKey && queue.findIndex(q => q.key === activeKey) > i;
-    let alive = true;
-    let icon = item.icon;
+  const visible = queue.filter(item => {
     if (item.kind === "monster") {
       const m = monsters.find(mm => mm.uid === item.uid);
-      alive = !m || m.hp > 0;
-    } else if (item.kind === "pet") {
-      alive = !petCombat || petCombat.hp > 0;
+      return !!m && m.hp > 0;
     }
+    if (item.kind === "pet") {
+      return !!petCombat && petCombat.hp > 0;
+    }
+    return true;
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-turn-queue"
+  }, visible.map((item, i) => {
+    const isActive = activeKey === item.key;
     return /*#__PURE__*/React.createElement("div", {
-      key: item.key + i,
-      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} ${isDone || !alive ? "done" : ""}`,
+      key: item.key,
+      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""}`,
       title: `${item.name} · Speed ${item.speed}`
     }, /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-icon"
-    }, icon), i < queue.length - 1 && /*#__PURE__*/React.createElement("span", {
+    }, item.icon), i < visible.length - 1 && /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-arrow"
     }, "›"));
   }));
@@ -5391,9 +5407,14 @@ function CombatScreen({
     className: "md-hud-text-row"
   }, "💧 ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row xp"
-  }, "⭐ EXP ", Math.floor(xpPct), "%"), petCombat && /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-text-row"
-  }, petCombat.icon, " ", petCombat.cooldown > 0 ? `CD ${petCombat.cooldown}` : "Ready"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
+  }, "⭐ EXP ", Math.floor(xpPct), "%")), petCombat && /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-pet",
+    title: petCombat.active && petCombat.active.desc
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-hud-pet-icon"
+  }, petCombat.icon), /*#__PURE__*/React.createElement("span", {
+    className: `md-hud-pet-cd ${petCombat.cooldown > 0 ? "" : "ready"}`
+  }, petCombat.cooldown > 0 ? `CD ${petCombat.cooldown}` : "Ready"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue || [],
     activeKey: activeTurnKey,
     monsters: monsters,
@@ -5415,34 +5436,16 @@ function CombatScreen({
   }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
     style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
   }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
-    className: "md-arena",
-    style: { flexDirection: "column", justifyContent: "flex-end" }
+    className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "md-monster-board"
-  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
-    key: m.uid,
-    style: { position: "relative" }
-  }, /*#__PURE__*/React.createElement(EnemySprite, {
-    enemy: m,
-    anim: enemyAnims[m.uid],
-    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
-    onClick: onSelectTarget
-  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
-    key: f.id,
-    className: "md-dmg-float",
-    style: {
-      color: f.color
-    }
-  }, f.text))))), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "relative",
       display: "flex",
       flexDirection: "row",
       gap: 16,
-      alignItems: "flex-end",
-      justifyContent: "center"
+      alignItems: "flex-end"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { position: "relative" }
@@ -5483,7 +5486,23 @@ function CombatScreen({
     key: f.id,
     className: "md-dmg-float",
     style: { color: f.color }
-  }, f.text))))), /*#__PURE__*/React.createElement("div", {
+  }, f.text)))), /*#__PURE__*/React.createElement("div", {
+    className: "md-monster-board"
+  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.uid,
+    style: { position: "relative" }
+  }, /*#__PURE__*/React.createElement(EnemySprite, {
+    enemy: m,
+    anim: enemyAnims[m.uid],
+    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
+    onClick: onSelectTarget
+  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
+    key: f.id,
+    className: "md-dmg-float",
+    style: {
+      color: f.color
+    }
+  }, f.text)))))), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto ${autoRun ? "active" : ""}`,

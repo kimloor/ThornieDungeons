@@ -403,8 +403,17 @@ function ThornieDungeons() {
     const spawned = makeEncounter(floorNum);
     setMonsters(spawned);
     setTargetUid(spawned[0] ? spawned[0].uid : null);
-    setPetCombat(buildPetCombatUnit());
-    setTurnQueue([]);
+    const initialPet = buildPetCombatUnit();
+    setPetCombat(initialPet);
+    const initItems = [{ key: "player", kind: "player", name: "You", icon: "🧙", speed: nextPlayer.baseSpeed || 0 }];
+    if (initialPet && initialPet.hp > 0) {
+      initItems.push({ key: "pet", kind: "pet", name: initialPet.name, icon: initialPet.icon, speed: initialPet.speed });
+    }
+    spawned.forEach(m => {
+      if (m.hp > 0) initItems.push({ key: m.uid, kind: "monster", uid: m.uid, name: m.name, icon: "👹", speed: m.speed });
+    });
+    const initRest = buildTurnQueue(initItems.filter(it => it.kind !== "player")).map(({ _r, ...r }) => r);
+    setTurnQueue([initItems[0], ...initRest]);
     setActiveTurnKey(null);
     setDropItem(null);
     const boss = spawned.find(m => m.isBoss);
@@ -798,15 +807,17 @@ function ThornieDungeons() {
     if (combatOutcomeRef.current) return;
     if (index >= queue.length) {
       setActiveTurnKey(null);
-      setTurnQueue([]);
       if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
+        setTurnQueue([]);
         endCombatWin();
         return;
       }
       if ((playerRef.current?.hp || 0) <= 0) {
+        setTurnQueue([]);
         playerLost();
         return;
       }
+      setTurnQueue(computeRoundQueueDisplay());
       setBusy(false);
       tickPlayerBuffs();
       tickPetCooldown();

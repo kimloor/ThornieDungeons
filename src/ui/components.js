@@ -1171,26 +1171,27 @@ function PetCombatSprite({ pet, anim }) {
 // Turn Order Queue UI: shows every unit's planned action order for the current round,
 // sorted by Speed (AGI), so the player can plan around who acts before whom.
 function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-turn-queue"
-  }, queue.map((item, i) => {
-    const isActive = activeKey === item.key;
-    const isDone = activeKey && queue.findIndex(q => q.key === activeKey) > i;
-    let alive = true;
-    let icon = item.icon;
+  const visible = queue.filter(item => {
     if (item.kind === "monster") {
       const m = monsters.find(mm => mm.uid === item.uid);
-      alive = !m || m.hp > 0;
-    } else if (item.kind === "pet") {
-      alive = !petCombat || petCombat.hp > 0;
+      return !!m && m.hp > 0;
     }
+    if (item.kind === "pet") {
+      return !!petCombat && petCombat.hp > 0;
+    }
+    return true;
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-turn-queue"
+  }, visible.map((item, i) => {
+    const isActive = activeKey === item.key;
     return /*#__PURE__*/React.createElement("div", {
-      key: item.key + i,
-      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} ${isDone || !alive ? "done" : ""}`,
+      key: item.key,
+      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""}`,
       title: `${item.name} · Speed ${item.speed}`
     }, /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-icon"
-    }, icon), i < queue.length - 1 && /*#__PURE__*/React.createElement("span", {
+    }, item.icon), i < visible.length - 1 && /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-arrow"
     }, "›"));
   }));
@@ -1249,9 +1250,14 @@ function CombatScreen({
     className: "md-hud-text-row"
   }, "💧 ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row xp"
-  }, "⭐ EXP ", Math.floor(xpPct), "%"), petCombat && /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-text-row"
-  }, petCombat.icon, " ", petCombat.cooldown > 0 ? `CD ${petCombat.cooldown}` : "Ready"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
+  }, "⭐ EXP ", Math.floor(xpPct), "%")), petCombat && /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-pet",
+    title: petCombat.active && petCombat.active.desc
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-hud-pet-icon"
+  }, petCombat.icon), /*#__PURE__*/React.createElement("span", {
+    className: `md-hud-pet-cd ${petCombat.cooldown > 0 ? "" : "ready"}`
+  }, petCombat.cooldown > 0 ? `CD ${petCombat.cooldown}` : "Ready"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue || [],
     activeKey: activeTurnKey,
     monsters: monsters,
@@ -1273,34 +1279,16 @@ function CombatScreen({
   }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
     style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
   }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
-    className: "md-arena",
-    style: { flexDirection: "column", justifyContent: "flex-end" }
+    className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "md-monster-board"
-  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
-    key: m.uid,
-    style: { position: "relative" }
-  }, /*#__PURE__*/React.createElement(EnemySprite, {
-    enemy: m,
-    anim: enemyAnims[m.uid],
-    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
-    onClick: onSelectTarget
-  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
-    key: f.id,
-    className: "md-dmg-float",
-    style: {
-      color: f.color
-    }
-  }, f.text))))), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "relative",
       display: "flex",
       flexDirection: "row",
       gap: 16,
-      alignItems: "flex-end",
-      justifyContent: "center"
+      alignItems: "flex-end"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { position: "relative" }
@@ -1341,7 +1329,23 @@ function CombatScreen({
     key: f.id,
     className: "md-dmg-float",
     style: { color: f.color }
-  }, f.text))))), /*#__PURE__*/React.createElement("div", {
+  }, f.text)))), /*#__PURE__*/React.createElement("div", {
+    className: "md-monster-board"
+  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.uid,
+    style: { position: "relative" }
+  }, /*#__PURE__*/React.createElement(EnemySprite, {
+    enemy: m,
+    anim: enemyAnims[m.uid],
+    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
+    onClick: onSelectTarget
+  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
+    key: f.id,
+    className: "md-dmg-float",
+    style: {
+      color: f.color
+    }
+  }, f.text)))))), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto ${autoRun ? "active" : ""}`,

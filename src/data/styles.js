@@ -257,7 +257,7 @@ const STYLE = `
 .md-floor-chip.locked { opacity: 0.45; cursor: not-allowed; }
 .md-floor-chip .sub { display:block; font-size: 9px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
 .md-map-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.md-monster-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 4px; justify-items: center; align-items: end; width: 100%; padding: 4px 0 10px; }
+.md-monster-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; justify-items: center; align-items: end; max-width: 220px; }
 
 /* floating quick-access buttons (shop / character / bag) */
 .md-fab-stack {
@@ -352,6 +352,10 @@ const STYLE = `
 .md-hud-text { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; flex: 0 1 auto; min-width: 0; }
 .md-hud-text-row { font-family: 'Baloo 2'; font-size: 10.5px; font-weight: 800; color: var(--ink); white-space: nowrap; }
 .md-hud-text-row.xp { color: var(--gold); font-size: 9.5px; }
+.md-hud-pet { margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 2px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,209,102,0.3); border-radius: 10px; padding: 4px 9px; flex-shrink: 0; }
+.md-hud-pet-icon { font-size: 17px; line-height: 1; }
+.md-hud-pet-cd { font-size: 8.5px; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+.md-hud-pet-cd.ready { color: #8ee0a8; }
 
 .md-rail-badge {
   position: absolute; bottom: -5px; right: -5px; background: var(--gold); color: var(--bg-top);
