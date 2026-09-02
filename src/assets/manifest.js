@@ -208,7 +208,8 @@ function HeroModularComposer({
     style: {
       width: rig.masterCanvas.width,
       height: rig.masterCanvas.height,
-      transform: `scale(${scale})`
+      transform: `scale(${scale})`,
+      left: -2
     }
   }, layers.map(l => /*#__PURE__*/React.createElement("img", {
     key: l.filename,
