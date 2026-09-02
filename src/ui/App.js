@@ -1471,6 +1471,7 @@ function ThornieDungeons() {
     onShop: openShop,
     onEnhance: () => setBlacksmithOpen(true),
     onPets: () => setPhase("pets"),
+    onSave: () => persistSave(save),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout
   }), phase === "town" && /*#__PURE__*/React.createElement(StatusScreen, {
@@ -1487,7 +1488,11 @@ function ThornieDungeons() {
     onBack: () => setPhase("town")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
-    onSelectFloor: enterStage,
+    // Same rule as nextStage/retryStageAfterWin: if there's a live player object
+    // sitting in state (from the last stage you fought, incl. a flee), carry its
+    // real current HP/MP into the newly-selected stage instead of full-healing —
+    // Stage Select should only ever full-heal when there's truly no run to continue.
+    onSelectFloor: floorNum => enterStage(floorNum, player),
     onOpenPets: () => setPhase("pets"),
     onBack: () => setPhase("town")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {

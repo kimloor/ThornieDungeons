@@ -238,6 +238,8 @@ const STYLE = `
 .md-hub-btn.primary { background: linear-gradient(180deg, #FFE49A, var(--gold)); color: var(--bg-top); border-color: var(--gold-deep); }
 .md-hub-footer { display: flex; gap: 8px; margin-top: 10px; }
 .md-hub-footer .md-btn { flex: 1; }
+.md-hub-save-btn { font-family: 'Baloo 2', sans-serif; display: block; margin: 10px auto 0; background: none; border: none; color: var(--ink-soft); font-size: 11.5px; font-weight: 700; opacity: 0.65; cursor: pointer; padding: 6px 10px; }
+.md-hub-save-btn:active { opacity: 1; }
 
 /* boss/elite/floor-modifier pill above the arena — previously had no base rule at all (only
    inline colors), so it was a full-width block with no width cap: long modifier names would
@@ -4014,6 +4016,7 @@ function ThornieDungeons() {
     onShop: openShop,
     onEnhance: () => setBlacksmithOpen(true),
     onPets: () => setPhase("pets"),
+    onSave: () => persistSave(save),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout
   }), phase === "town" && /*#__PURE__*/React.createElement(StatusScreen, {
@@ -4030,7 +4033,11 @@ function ThornieDungeons() {
     onBack: () => setPhase("town")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
-    onSelectFloor: enterStage,
+    // Same rule as nextStage/retryStageAfterWin: if there's a live player object
+    // sitting in state (from the last stage you fought, incl. a flee), carry its
+    // real current HP/MP into the newly-selected stage instead of full-healing —
+    // Stage Select should only ever full-heal when there's truly no run to continue.
+    onSelectFloor: floorNum => enterStage(floorNum, player),
     onOpenPets: () => setPhase("pets"),
     onBack: () => setPhase("town")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
@@ -4286,9 +4293,16 @@ function HubScreen({
   onShop,
   onEnhance,
   onPets,
+  onSave,
   onSwitchCharacter,
   onLogout
 }) {
+  const [saveFlash, setSaveFlash] = useState(false);
+  const handleSave = () => {
+    onSave();
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 1200);
+  };
   const hubLinks = [{
     key: "map",
     icon: "🗺️",
@@ -4377,7 +4391,10 @@ function HubScreen({
   }, "👥 เปลี่ยนตัวละคร"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee",
     onClick: onLogout
-  }, "🚪 ออกจากระบบ"))));
+  }, "🚪 ออกจากระบบ")), /*#__PURE__*/React.createElement("button", {
+    className: "md-hub-save-btn",
+    onClick: handleSave
+  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")));
 }
 function CharacterSelectScreen({
   account,

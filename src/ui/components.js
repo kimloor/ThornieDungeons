@@ -175,9 +175,16 @@ function HubScreen({
   onShop,
   onEnhance,
   onPets,
+  onSave,
   onSwitchCharacter,
   onLogout
 }) {
+  const [saveFlash, setSaveFlash] = useState(false);
+  const handleSave = () => {
+    onSave();
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 1200);
+  };
   const hubLinks = [{
     key: "map",
     icon: "🗺️",
@@ -266,7 +273,10 @@ function HubScreen({
   }, "👥 เปลี่ยนตัวละคร"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee",
     onClick: onLogout
-  }, "🚪 ออกจากระบบ"))));
+  }, "🚪 ออกจากระบบ")), /*#__PURE__*/React.createElement("button", {
+    className: "md-hub-save-btn",
+    onClick: handleSave
+  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")));
 }
 function CharacterSelectScreen({
   account,

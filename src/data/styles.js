@@ -183,6 +183,8 @@ const STYLE = `
 .md-hub-btn.primary { background: linear-gradient(180deg, #FFE49A, var(--gold)); color: var(--bg-top); border-color: var(--gold-deep); }
 .md-hub-footer { display: flex; gap: 8px; margin-top: 10px; }
 .md-hub-footer .md-btn { flex: 1; }
+.md-hub-save-btn { font-family: 'Baloo 2', sans-serif; display: block; margin: 10px auto 0; background: none; border: none; color: var(--ink-soft); font-size: 11.5px; font-weight: 700; opacity: 0.65; cursor: pointer; padding: 6px 10px; }
+.md-hub-save-btn:active { opacity: 1; }
 
 /* boss/elite/floor-modifier pill above the arena — previously had no base rule at all (only
    inline colors), so it was a full-width block with no width cap: long modifier names would
