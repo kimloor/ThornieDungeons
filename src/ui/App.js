@@ -66,6 +66,7 @@ function ThornieDungeons() {
   const monstersRef = useRef([]);
   const petCombatRef = useRef(null);
   const playerRef = useRef(null);
+  const turnQueueRef = useRef([]);
   const combatOutcomeRef = useRef(null);
   useEffect(() => { monstersRef.current = monsters; }, [monsters]);
   useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
@@ -414,6 +415,7 @@ function ThornieDungeons() {
     });
     const initRest = buildTurnQueue(initItems.filter(it => it.kind !== "player")).map(({ _r, ...r }) => r);
     setTurnQueue([initItems[0], ...initRest]);
+    turnQueueRef.current = [initItems[0], ...initRest];
     setActiveTurnKey(null);
     setDropItem(null);
     const boss = spawned.find(m => m.isBoss);
@@ -655,7 +657,9 @@ function ThornieDungeons() {
     setBusy(true);
     // Lock in this round's Turn Order Queue the moment the player commits to an action,
     // so the queue bar reflects exactly what's about to resolve.
-    setTurnQueue(computeRoundQueueDisplay());
+    const roundQueue = computeRoundQueueDisplay();
+    setTurnQueue(roundQueue);
+    turnQueueRef.current = roundQueue;
     setActiveTurnKey("player");
     if (action === "attack") {
       const isMiss = Math.random() * 100 >= stats.accuracy;
@@ -772,6 +776,7 @@ function ThornieDungeons() {
         setMonsters([]);
         setPetCombat(null);
         setTurnQueue([]);
+        turnQueueRef.current = [];
         setActiveTurnKey(null);
         pushRunState(null);
         setPhase("map");
@@ -793,14 +798,17 @@ function ThornieDungeons() {
       endCombatWin();
       return;
     }
-    const units = [];
-    if (petCombatRef.current && petCombatRef.current.hp > 0) {
-      units.push({ kind: "pet", speed: petCombatRef.current.speed });
-    }
-    monstersRef.current.forEach(m => {
-      if (m.hp > 0) units.push({ kind: "monster", uid: m.uid, speed: m.speed });
-    });
-    const queue = buildTurnQueue(units);
+    // Reuse the exact order already resolved for the Turn Order bar (turnQueueRef)
+    // instead of re-rolling buildTurnQueue's random tie-breaks here — otherwise the
+    // displayed icon order and the actual resolution order could diverge whenever
+    // two units share the same Speed.
+    const queue = (turnQueueRef.current || [])
+      .filter(item => item.kind !== "player")
+      .filter(item => {
+        if (item.kind === "pet") return petCombatRef.current && petCombatRef.current.hp > 0;
+        const m = monstersRef.current.find(mm => mm.uid === item.uid);
+        return !!m && m.hp > 0;
+      });
     processQueue(queue, 0);
   }
   function processQueue(queue, index) {
@@ -809,15 +817,21 @@ function ThornieDungeons() {
       setActiveTurnKey(null);
       if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
         setTurnQueue([]);
+        turnQueueRef.current = [];
         endCombatWin();
         return;
       }
       if ((playerRef.current?.hp || 0) <= 0) {
         setTurnQueue([]);
+        turnQueueRef.current = [];
         playerLost();
         return;
       }
-      setTurnQueue(computeRoundQueueDisplay());
+      {
+        const roundQueue = computeRoundQueueDisplay();
+        setTurnQueue(roundQueue);
+        turnQueueRef.current = roundQueue;
+      }
       setBusy(false);
       tickPlayerBuffs();
       tickPetCooldown();

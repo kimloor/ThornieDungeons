@@ -1287,8 +1287,11 @@ function CombatScreen({
       position: "relative",
       display: "flex",
       flexDirection: "row",
-      gap: 16,
-      alignItems: "flex-end"
+      flexWrap: "nowrap",
+      gap: 10,
+      alignItems: "flex-end",
+      minWidth: 0,
+      flexShrink: 0
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { position: "relative" }
