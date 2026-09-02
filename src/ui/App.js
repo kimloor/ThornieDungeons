@@ -1494,16 +1494,20 @@ function ThornieDungeons() {
     // Stage Select should only ever full-heal when there's truly no run to continue.
     onSelectFloor: floorNum => enterStage(floorNum, player),
     onOpenPets: () => setPhase("pets"),
-    onBack: () => setPhase("town")
+    onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
+    save: save,
+    onEquip: equipPet,
+    onUnequip: unequipPet,
+    onOpenGacha: () => setPhase("gacha"),
+    onBack: () => setPhase("town")
+  }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
     gachaResult: gachaResult,
     onClearGachaResult: () => setGachaResult(null),
-    onEquip: equipPet,
-    onUnequip: unequipPet,
     onGacha: pullGacha,
     onClaimDiamonds: claimTestDiamonds,
-    onBack: () => setPhase("town")
+    onBack: () => setPhase("pets")
   }), phase === "combat" && monsters.length > 0 && player && /*#__PURE__*/React.createElement(CombatScreen, {
     player: player,
     monsters: monsters,
@@ -1533,16 +1537,13 @@ function ThornieDungeons() {
     floor: selectedFloor,
     onRetry: retryStage,
     onMap: backToMap
-  }), (phase === "town" || phase === "map" || phase === "pets" || phase === "skill") && /*#__PURE__*/React.createElement(FloatingQuickActions, {
-    onShop: openShop,
-    onCharacter: () => setPhase("town"),
-    onBag: () => setInvOpen(true),
-    onBlacksmith: () => setBlacksmithOpen(true),
-    activePhase: phase
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
     inventory: inventory,
     busy: itemActionBusy,
+    gold: save.gold,
+    diamonds: save.diamonds,
+    protectionStones: save.protectionStones || 0,
     onEquip: guardItemAction(equipItem),
     onUnequip: guardItemAction(unequipItem),
     onSell: guardItemAction(sellItem),
@@ -1556,6 +1557,7 @@ function ThornieDungeons() {
     onEmpower: guardItemAction(empowerItem),
     onReroll: guardItemAction(rerollEmpowerItem),
     onToggleLock: toggleEmpowerLock,
+    onOpenInventory: () => { setBlacksmithOpen(false); setInvOpen(true); },
     onClose: () => setBlacksmithOpen(false)
   }), shopOpen && /*#__PURE__*/React.createElement(ShopOverlay, {
     gold: save.gold,

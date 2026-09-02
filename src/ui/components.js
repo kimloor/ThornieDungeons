@@ -219,26 +219,7 @@ function HubScreen({
   }];
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-menu-title"
-  }, /*#__PURE__*/React.createElement("h1", null, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "a persistent dungeon crawl")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 6,
-      padding: "6px 0 12px",
-      position: "relative",
-      zIndex: 2
-    }
-  }, /*#__PURE__*/React.createElement(HeroSprite, {
-    anim: ""
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "md-cp-badge"
-  }, "⚡ CP ", formatNumber(cp))), /*#__PURE__*/React.createElement("div", {
-    className: "md-panel",
-    style: {
-      marginTop: "auto"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("h1", null, "ThornieDungeons")), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 4
@@ -255,7 +236,25 @@ function HubScreen({
     style: {
       margin: 0
     }
-  }, "🪙 ", formatNumber(save.gold), " gold · Lv", save.character.level, " · Stage ", save.unlockedFloor, " unlocked")), /*#__PURE__*/React.createElement("div", {
+  }, "🪙 ", formatNumber(save.gold), " gold · ⚡ CP ", formatNumber(cp), " · Lv", save.character.level, " · Stage ", save.unlockedFloor, " unlocked")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 6,
+      padding: "6px 0 12px",
+      position: "relative",
+      zIndex: 2
+    }
+  }, /*#__PURE__*/React.createElement(HeroSprite, {
+    anim: "",
+    showName: false
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-panel",
+    style: {
+      marginTop: "auto"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-hub-grid"
   }, hubLinks.map(link => /*#__PURE__*/React.createElement("button", {
     key: link.key,
@@ -472,22 +471,40 @@ function StatusScreen({
       flex: 1
     }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title",
+    style: {
+      margin: 0
+    }
+  }, "📊 Status"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee small",
+    onClick: onBack,
+    style: {
+      boxShadow: "none",
+      padding: "6px 12px"
+    }
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title"
-  }, "📊 Status"), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: 0
     }
-  }, "Lv", save.character.level, " · แต้มสเตตัสคงเหลือ: ", /*#__PURE__*/React.createElement("span", {
+  }, "Lv", save.character.level, " · ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp, " · Speed ", charStats.speed), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
     style: {
-      color: "var(--gold)"
+      margin: "4px 0 0"
     }
-  }, points))), /*#__PURE__*/React.createElement("div", {
+  }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -508,36 +525,18 @@ function StatusScreen({
   }, "+1")))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
-      marginBottom: 10
+      textAlign: "center"
     }
   }, /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: 0
     }
-  }, "ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp, " · Speed ", charStats.speed), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
+  }, "แต้มสเตตัสคงเหลือ: ", /*#__PURE__*/React.createElement("span", {
     style: {
-      margin: "4px 0 0"
+      color: "var(--gold)"
     }
-  }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info",
-    onClick: onOpenInv
-  }, "🎒 Equipment"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn skill",
-    onClick: onOpenSkill
-  }, "✨ Skills"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn skill",
-    onClick: onOpenPets
-  }, "🐾 Pets"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary",
-    onClick: onMap
-  }, "🗺️ Stage Select")), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee wide small",
-    onClick: onBack
-  }, "← Back"));
+  }, points))));
 }
 function SkillScreen({
   save,
@@ -663,7 +662,7 @@ function MapScreen({
   }, "🐾 Pets")), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
-  }, "🧙 Character"));
+  }, "🔙 Back"));
 }
 function ShopOverlay({
   gold,
@@ -676,6 +675,20 @@ function ShopOverlay({
   onBuyMaterial,
   onClose
 }) {
+  const [toast, setToast] = useState("");
+  const toastRef = useRef(null);
+  const showToast = msg => {
+    setToast(msg);
+    if (toastRef.current) clearTimeout(toastRef.current);
+    toastRef.current = setTimeout(() => setToast(""), 1000);
+  };
+  const guardBuy = (canAfford, action) => {
+    if (!canAfford) {
+      showToast("เงินไม่พอซื้อ");
+      return;
+    }
+    action();
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: "absolute",
@@ -694,9 +707,25 @@ function ShopOverlay({
       maxHeight: "88%",
       overflowY: "auto",
       border: "1.5px solid var(--gold-deep)",
-      borderBottom: "none"
+      borderBottom: "none",
+      position: "relative"
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, toast && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 10,
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "rgba(0,0,0,0.85)",
+      color: "#fff",
+      padding: "8px 16px",
+      borderRadius: 20,
+      fontSize: 12,
+      zIndex: 30,
+      whiteSpace: "nowrap",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.4)"
+    }
+  }, "💸 ", toast), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -720,50 +749,6 @@ function ShopOverlay({
   }, "Close")), /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
   }, "รายการสุ่มใหม่ทุกครั้งที่เปิดร้าน"), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-row"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-info"
-  }, "🧪 Potion"), /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-lv"
-  }, "ฟื้นฟู HP 40% ระหว่างต่อสู้")), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    disabled: gold < stock.potionPrice,
-    onClick: onBuyPotion
-  }, "🪙", stock.potionPrice)), /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-row",
-    style: { marginTop: 8 }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-info"
-  }, "🛡️ หินป้องกัน (มีอยู่ ", protectionStones || 0, ")"), /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-lv"
-  }, "ป้องกันไม่ให้เลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    disabled: (diamonds || 0) < PROTECTION_STONE_PRICE,
-    onClick: onBuyProtectionStone
-  }, "💎", PROTECTION_STONE_PRICE))), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-info",
-    style: { marginBottom: 6 }
-  }, "⛏️ วัตถุดิบตีบวก/เสริมพลัง"), ["iron", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
-    key: type,
-    className: "md-shop-row",
-    style: { marginBottom: 4 }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-info"
-  }, JUNK_INFO[type].icon, " ", JUNK_INFO[type].name), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    disabled: gold < MATERIAL_SHOP_PRICE[type],
-    onClick: () => onBuyMaterial(type)
-  }, "🪙", MATERIAL_SHOP_PRICE[type])))), /*#__PURE__*/React.createElement("div", {
     className: "md-inv-list"
   }, stock.items.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
@@ -787,21 +772,50 @@ function ShopOverlay({
     className: "md-inv-stat"
   }, itemStatText(it)))), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
-    disabled: gold < it.price,
-    onClick: () => onBuyItem(it)
-  }, "🪙", it.price))))));
+    onClick: () => guardBuy(gold >= it.price, () => onBuyItem(it))
+  }, "🪙", it.price))), /*#__PURE__*/React.createElement("div", {
+    key: "potion",
+    className: "md-inv-item"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-name"
+  }, "🧪 Potion"), /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-stat"
+  }, "ฟื้นฟู HP 40% ระหว่างต่อสู้")), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: () => guardBuy(gold >= stock.potionPrice, onBuyPotion)
+  }, "🪙", stock.potionPrice)), /*#__PURE__*/React.createElement("div", {
+    key: "protectionStone",
+    className: "md-inv-item"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-name"
+  }, "🛡️ หินป้องกัน (มีอยู่ ", protectionStones || 0, ")"), /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-stat"
+  }, "ป้องกันไม่ให้เลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: () => guardBuy((diamonds || 0) >= PROTECTION_STONE_PRICE, onBuyProtectionStone)
+  }, "💎", PROTECTION_STONE_PRICE)), ["iron", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
+    key: type,
+    className: "md-inv-item"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-name"
+  }, JUNK_INFO[type].icon, " ", JUNK_INFO[type].name)), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: () => guardBuy(gold >= MATERIAL_SHOP_PRICE[type], () => onBuyMaterial(type))
+  }, "🪙", MATERIAL_SHOP_PRICE[type]))))));
 }
 function PetScreen({
   save,
-  gachaResult,
-  onClearGachaResult,
   onEquip,
   onUnequip,
-  onGacha,
-  onClaimDiamonds,
+  onOpenGacha,
   onBack
 }) {
-  const owned = save.pets || [];
+  const rarityRank = { r: 0, sr: 1, ssr: 2 };
+  const owned = [...(save.pets || [])].sort((a, b) => {
+    const da = getPetDef(a.defId);
+    const db = getPetDef(b.defId);
+    return (rarityRank[db?.rarity] ?? 0) - (rarityRank[da?.rarity] ?? 0);
+  });
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
@@ -813,13 +827,13 @@ function PetScreen({
       marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title"
-  }, "🐾 Pets"), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
+    className: "md-title",
     style: {
       margin: 0
     }
-  }, "💎 ", save.diamonds, " เพชร")), /*#__PURE__*/React.createElement("div", {
+  }, "🐾 Pets ", /*#__PURE__*/React.createElement("span", {
+    className: "md-shop-lv"
+  }, "💎", save.diamonds || 0))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -867,7 +881,31 @@ function PetScreen({
       className: "md-buy-btn",
       onClick: () => onEquip(inst.instId)
     }, "Equip"));
-  }))), /*#__PURE__*/React.createElement("div", {
+  }))), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary wide",
+    style: {
+      marginBottom: 8
+    },
+    onClick: onOpenGacha
+  }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide small",
+    onClick: onBack
+  }, "← Back"));
+}
+function GachaScreen({
+  save,
+  gachaResult,
+  onClearGachaResult,
+  onGacha,
+  onClaimDiamonds,
+  onBack
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-panel",
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -878,7 +916,9 @@ function PetScreen({
       margin: "0 0 4px",
       fontSize: 15
     }
-  }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("p", {
+  }, "🎰 Pet Gacha ", /*#__PURE__*/React.createElement("span", {
+    className: "md-shop-lv"
+  }, "💎", save.diamonds || 0)), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: "0 0 6px"
@@ -969,7 +1009,8 @@ function FloatingQuickActions({
   }, "🎒")));
 }
 function HeroSprite({
-  anim
+  anim,
+  showName = true
 }) {
   // 3-tier fallback, checked in order, so a wrong rig path or missing art never breaks combat:
   //   1. Rig-anchored modular composite (real body pose from hero001_rig_v1.json) — the goal.
@@ -1014,7 +1055,7 @@ function HeroSprite({
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap"
-  }, visual, /*#__PURE__*/React.createElement("div", {
+  }, visual, showName && /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-name"
   }, "You"));
 }
@@ -1471,6 +1512,9 @@ function InventoryOverlay({
   equipped,
   inventory,
   busy,
+  gold,
+  diamonds,
+  protectionStones,
   onEquip,
   onUnequip,
   onSell,
@@ -1580,15 +1624,28 @@ function InventoryOverlay({
       /*#__PURE__*/React.createElement("div", { className: "md-equip-character" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "" }))
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary" },
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "⚔️ ATK ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).atk)),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🛡️ DEF ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).def)),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "❤️ HP ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).hp)),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "💧 MP ", /*#__PURE__*/React.createElement("b", null, getEquipBonus(equipped).mp))
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🪙 ", /*#__PURE__*/React.createElement("b", null, formatNumber(gold || 0))),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🛡️ ", /*#__PURE__*/React.createElement("b", null, protectionStones || 0)),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.manaOre.icon, " ", /*#__PURE__*/React.createElement("b", null, junkTotal(inventory, "manaOre"))),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "💎 ", /*#__PURE__*/React.createElement("b", null, diamonds || 0))
     ),
-    /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2 } },
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.iron.icon, " ", junkTotal(inventory, "iron")),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.manaOre.icon, " ", junkTotal(inventory, "manaOre"))
-    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-item-detail" }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, detailTarget.icon || SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
+      detailTarget.type === "junk" ? /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `วัตถุดิบขยะ · มี ${detailTarget.quantity} ชิ้น (สูงสุด 99/ช่อง) · ขายได้ ${sellPrice(detailTarget)} 🪙`) : /*#__PURE__*/React.createElement(React.Fragment, null,
+        /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
+        renderEmpowerSlotsReadOnly(detailTarget)
+      ),
+      selectedItem && detailTarget.type !== "junk" && /*#__PURE__*/React.createElement("button", {
+        className: "md-btn flee small",
+        disabled: busy,
+        style: { marginTop: 6, minHeight: 38, fontSize: 10, width: "100%", opacity: busy ? 0.6 : 1 },
+        onClick: doSalvage
+      }, (() => {
+        const y = salvageYield(detailTarget.rarity);
+        return `♻️ แยกชิ้นส่วน (🔩${y.iron} 🔮${y.manaOre})`;
+      })()),
+      actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
+    ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
     /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "🎒 Inventory"),
@@ -1622,23 +1679,6 @@ function InventoryOverlay({
       onClick: () => setGridExpanded(v => !v)
     }, gridExpanded ? "▲ ย่อกระเป๋า" : `▼ ดูทั้งหมด (${Math.min(inventory.length, 25)} ชิ้น)`),
     inventory.length > 25 && /*#__PURE__*/React.createElement("div", { className: "md-item-detail", style: { textAlign: "center", color: "var(--ink-soft)", fontSize: 10 } }, "มีไอเทมเกิน 25 ชิ้น — ตอนนี้แสดง 25 ช่องแรกเพื่อให้เหมาะกับหน้าจอมือถือ"),
-    /*#__PURE__*/React.createElement("div", { className: "md-item-detail" }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, detailTarget.icon || SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
-      detailTarget.type === "junk" ? /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `วัตถุดิบขยะ · มี ${detailTarget.quantity} ชิ้น (สูงสุด 99/ช่อง) · ขายได้ ${sellPrice(detailTarget)} 🪙`) : /*#__PURE__*/React.createElement(React.Fragment, null,
-        /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
-        renderEmpowerSlotsReadOnly(detailTarget)
-      ),
-      selectedItem && detailTarget.type !== "junk" && /*#__PURE__*/React.createElement("button", {
-        className: "md-btn flee small",
-        disabled: busy,
-        style: { marginTop: 6, minHeight: 38, fontSize: 10, width: "100%", opacity: busy ? 0.6 : 1 },
-        onClick: doSalvage
-      }, (() => {
-        const y = salvageYield(detailTarget.rarity);
-        return `♻️ แยกชิ้นส่วน (🔩${y.iron} 🔮${y.manaOre})`;
-      })()),
-      actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
-    ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
     /*#__PURE__*/React.createElement("div", { className: "md-item-actions" },
       /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem || selectedItem.type === "junk" || busy, onClick: doEquip }, "⚔️ สวมใส่"),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem || busy, onClick: doSell }, selectedItem ? `🪙 ขาย ${sellPrice(selectedItem)}` : "🪙 ขาย"),
@@ -1655,6 +1695,7 @@ function BlacksmithOverlay({
   onEmpower,
   onReroll,
   onToggleLock,
+  onOpenInventory,
   onClose
 }) {
   const [selectedId, setSelectedId] = useState(null);
@@ -1757,37 +1798,17 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-slots" }, SLOT_ORDER.map(renderEquipSlot)),
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-character" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "" }))
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slots" }, SLOT_ORDER.map(renderEquipSlot))
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.iron.icon, " ", junkTotal(inventory, "iron")),
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.manaOre.icon, " ", junkTotal(inventory, "manaOre"))
     ),
-    /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
-      /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "🎒 เลือกอุปกรณ์")
-      )
-    ),
-    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid" }, Array.from({ length: gridSlotCount }, (_, index) => {
-      const it = gearInventory[index];
-      return /*#__PURE__*/React.createElement("button", {
-        key: it ? it.id : `empty-${index}`,
-        type: "button",
-        className: `md-inventory-cell ${it ? it.rarity : "empty"} ${it && selectedId === it.id ? "selected" : ""}`,
-        onClick: () => it && chooseInventory(it)
-      }, it ? /*#__PURE__*/React.createElement(React.Fragment, null,
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-num" }, index + 1),
-        /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, it.icon || SLOT_ICON[it.type] || "📦"),
-        it.type !== "junk" && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-stars" }, /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity })),
-        it.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, "+", it.enhanceLevel)
-      ) : /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, opacity: .18 } }, "＋"));
-    })),
-    Math.min(gearInventory.length, 25) > GRID_COLLAPSED_COUNT && /*#__PURE__*/React.createElement("button", {
+    /*#__PURE__*/React.createElement("button", {
       type: "button",
       className: "md-inventory-toggle",
-      onClick: () => setGridExpanded(v => !v)
-    }, gridExpanded ? "▲ ย่อกระเป๋า" : `▼ ดูทั้งหมด (${Math.min(gearInventory.length, 25)} ชิ้น)`),
+      onClick: onOpenInventory
+    }, "🎒 ไปที่กระเป๋าไอเทม"),
     /*#__PURE__*/React.createElement("div", { className: `md-item-detail ${anvilClass}` }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
