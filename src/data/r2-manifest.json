@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-02T05:51:53Z",
-  "count": 52,
+  "generatedAt": "2026-09-02T11:23:42Z",
+  "count": 67,
   "objects": [
     {
       "key": "hero001_rig_v1.json",
-      "etag": "cb3997ee1b44e1ca19d8f8a6bcf94398",
-      "last_modified": "2026-08-29T01:34:49.118Z",
-      "size": 8276,
+      "etag": "93ad84e9cf99c2510bc268c8ffe29326",
+      "last_modified": "2026-09-02T06:24:58.098Z",
+      "size": 8482,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -82,9 +82,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_cape.png",
-      "etag": "32dedb59a304c59e1f0aa0b69c92ef3e",
-      "last_modified": "2026-08-29T10:05:30.898Z",
-      "size": 101968,
+      "etag": "c69721cec695fd026444c1d40fc01d6f",
+      "last_modified": "2026-09-02T06:32:21.609Z",
+      "size": 41887,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -93,9 +93,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_chest_plate.png",
-      "etag": "e9ce10494b92e8b0becf0da26795f3c8",
-      "last_modified": "2026-08-29T10:05:30.857Z",
-      "size": 44882,
+      "etag": "642579cb9f47635ddeef0ad14468de87",
+      "last_modified": "2026-09-02T06:32:21.645Z",
+      "size": 15593,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -104,9 +104,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_chest_plate_full.png",
-      "etag": "26f51f9caab842e59956b9bec449c8b5",
-      "last_modified": "2026-08-29T10:05:30.908Z",
-      "size": 46193,
+      "etag": "7e0c4395c193f50ea7569b1c609c3071",
+      "last_modified": "2026-09-02T06:32:21.527Z",
+      "size": 14484,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -115,9 +115,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_knee_guard_left.png",
-      "etag": "638a6020e913a06da48c96bb9161c602",
-      "last_modified": "2026-08-29T10:05:30.880Z",
-      "size": 6623,
+      "etag": "e3ba1bdb9185d29c01bbcf2754baf5cd",
+      "last_modified": "2026-09-02T06:32:21.913Z",
+      "size": 2908,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -126,9 +126,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_knee_guard_right.png",
-      "etag": "a69fd375a5d2b8da22c86ad3b3534a68",
-      "last_modified": "2026-08-29T10:05:31.566Z",
-      "size": 12308,
+      "etag": "5ea8d6f483f993260527b50c05a97ce9",
+      "last_modified": "2026-09-02T06:32:21.604Z",
+      "size": 2989,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -137,9 +137,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_shoulder_pauldron_left.png",
-      "etag": "b56f8bf2ee5c07b1e0f09c2c47c29b82",
-      "last_modified": "2026-08-29T10:05:32.120Z",
-      "size": 12206,
+      "etag": "1fcb5f58e31e524fb8873890201e8f6e",
+      "last_modified": "2026-09-02T06:32:22.723Z",
+      "size": 4068,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -148,9 +148,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_shoulder_pauldron_right.png",
-      "etag": "3ae9c965d1aa6979a1ea6c61a66a433b",
-      "last_modified": "2026-08-29T10:05:32.209Z",
-      "size": 12374,
+      "etag": "ac1a22d224eb965c90dbe16ee0757d17",
+      "last_modified": "2026-09-02T06:32:22.897Z",
+      "size": 4165,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -159,9 +159,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_skirt_plates_front.png",
-      "etag": "3f0d439424acad01cfd26af9e754c2c8",
-      "last_modified": "2026-08-29T10:05:32.119Z",
-      "size": 31414,
+      "etag": "85aa39e692925b2232b1c53577fc7523",
+      "last_modified": "2026-09-02T06:32:22.976Z",
+      "size": 8854,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -170,9 +170,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_skirt_plates_side.png",
-      "etag": "8a5186090a784f1462f35bb28b40fd8b",
-      "last_modified": "2026-08-29T10:05:32.177Z",
-      "size": 22285,
+      "etag": "d01cd01065d780163524c3126fb89d2c",
+      "last_modified": "2026-09-02T06:32:23.002Z",
+      "size": 3677,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -181,9 +181,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_wrist_bracer_left.png",
-      "etag": "0965c677249c72c331135608001090b7",
-      "last_modified": "2026-08-29T10:05:32.928Z",
-      "size": 14478,
+      "etag": "ee780d7cccbde3288d5be86d8719341e",
+      "last_modified": "2026-09-02T06:32:23.472Z",
+      "size": 2094,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -192,9 +192,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/azure_wrist_bracer_right.png",
-      "etag": "82e161b3bd769d2d227a6dab7fa13555",
-      "last_modified": "2026-08-29T10:05:33.283Z",
-      "size": 12773,
+      "etag": "5bd4419007967a4de20af748ea318a1f",
+      "last_modified": "2026-09-02T06:32:24.163Z",
+      "size": 1897,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -203,9 +203,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/core_neutral.png",
-      "etag": "363c3980137f17bec8036343c8f8f59d",
-      "last_modified": "2026-08-29T10:05:33.850Z",
-      "size": 155005,
+      "etag": "4a6e540e0bda1424e0f48de658da00d8",
+      "last_modified": "2026-09-02T06:25:51.873Z",
+      "size": 85452,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -214,9 +214,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/core_tpose.png",
-      "etag": "a4d777a21e5ca782babc60685f00a178",
-      "last_modified": "2026-08-29T10:05:33.802Z",
-      "size": 142061,
+      "etag": "a4bb4e4cfa3f32b7c3cc8ced834c7706",
+      "last_modified": "2026-09-02T06:25:51.991Z",
+      "size": 119510,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -225,9 +225,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/head_back_hair.png",
-      "etag": "1a95c39134ba98d4a1f512e468e45087",
-      "last_modified": "2026-08-29T10:05:33.451Z",
-      "size": 54175,
+      "etag": "6ccd9ee1367e7794f7ef574439cf710e",
+      "last_modified": "2026-09-02T06:25:51.995Z",
+      "size": 8470,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -236,9 +236,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/head_ears.png",
-      "etag": "f2b59328c6762e78e1ce314de542cb91",
-      "last_modified": "2026-08-29T10:05:34.135Z",
-      "size": 16316,
+      "etag": "5f0fbeebb3ac0179c60c61df5cc8c9d0",
+      "last_modified": "2026-09-02T06:25:52.202Z",
+      "size": 2424,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -247,9 +247,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/head_face.png",
-      "etag": "f96fa0de93d7c1dc3abb2c11224829ad",
-      "last_modified": "2026-08-29T10:05:34.494Z",
-      "size": 24105,
+      "etag": "852584aa8fe9b80374d31e11f37c27e6",
+      "last_modified": "2026-09-02T06:25:52.888Z",
+      "size": 8677,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -258,9 +258,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/head_front_hair.png",
-      "etag": "547f8141aa5843265f35f2726437c774",
-      "last_modified": "2026-08-29T10:05:34.709Z",
-      "size": 80460,
+      "etag": "b8e2d18b17555c26903b07c8403dbde7",
+      "last_modified": "2026-09-02T06:25:53.033Z",
+      "size": 19796,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -269,9 +269,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/hips.png",
-      "etag": "b9f1ac1acb113754098e8890f7c3a69f",
-      "last_modified": "2026-08-29T10:05:35.294Z",
-      "size": 28023,
+      "etag": "9761153356f2db7a131664e4b16e8bf0",
+      "last_modified": "2026-09-02T06:25:53.281Z",
+      "size": 10118,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -280,9 +280,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/ice_sword.png",
-      "etag": "02a575e4de429d97c431d360595fadd6",
-      "last_modified": "2026-08-29T10:05:35.123Z",
-      "size": 26958,
+      "etag": "fc07f9908073f03f3645b68a9e3a6833",
+      "last_modified": "2026-09-02T06:32:23.983Z",
+      "size": 5863,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -291,9 +291,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/l_arm_lower.png",
-      "etag": "6a1f43e2b178b23ab1e87265d8e24bcb",
-      "last_modified": "2026-08-29T10:05:35.418Z",
-      "size": 14777,
+      "etag": "67b971966be5b0325512bf3f180742ea",
+      "last_modified": "2026-09-02T06:25:53.446Z",
+      "size": 3317,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -302,9 +302,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/l_arm_upper.png",
-      "etag": "fb5367b2ec5ec5746ede714d9b64a405",
-      "last_modified": "2026-08-29T10:05:35.705Z",
-      "size": 15723,
+      "etag": "e7fb68175cf92931a975025de0ec4f3a",
+      "last_modified": "2026-09-02T06:25:54.060Z",
+      "size": 3806,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -313,9 +313,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/l_foot.png",
-      "etag": "95e90af55fbf791a3a0492d37ed64f04",
-      "last_modified": "2026-08-29T10:05:36.015Z",
-      "size": 15094,
+      "etag": "4ffb5a5f8ed69cad0897ee6462c0ce23",
+      "last_modified": "2026-09-02T06:25:54.161Z",
+      "size": 3697,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -324,9 +324,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/l_hand.png",
-      "etag": "2199d7355cd14be57dbb17adfea2dd0a",
-      "last_modified": "2026-08-29T10:05:36.278Z",
-      "size": 14802,
+      "etag": "c26b744e6ba7bea967bbef2ba666443c",
+      "last_modified": "2026-09-02T06:25:54.490Z",
+      "size": 2067,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -335,9 +335,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/l_leg_lower.png",
-      "etag": "060b163921eb59b3ae7961460e58e3af",
-      "last_modified": "2026-08-29T10:05:37.264Z",
-      "size": 17754,
+      "etag": "237a5e5a41aaeec1fbeca423a3f7ca2c",
+      "last_modified": "2026-09-02T06:25:54.924Z",
+      "size": 2510,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -346,9 +346,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/l_leg_upper.png",
-      "etag": "abc977988b4a80ec0e5ec8cabf975b14",
-      "last_modified": "2026-08-29T10:05:36.901Z",
-      "size": 18687,
+      "etag": "d3abb28c3d1469231c3f5871952cdad3",
+      "last_modified": "2026-09-02T06:25:54.663Z",
+      "size": 4398,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -357,9 +357,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/ornate_dagger.png",
-      "etag": "5c5a15259e575b10a22a793881913dcd",
-      "last_modified": "2026-08-29T10:05:37.340Z",
-      "size": 27989,
+      "etag": "1acfb342e0b60b526843ec786d5224cf",
+      "last_modified": "2026-09-02T06:32:24.153Z",
+      "size": 5016,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -368,9 +368,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/r_arm_lower.png",
-      "etag": "d56bffa5dec157125abbd09be5542447",
-      "last_modified": "2026-08-29T10:05:37.170Z",
-      "size": 14143,
+      "etag": "66afd61cae25f1a5071efe0a23ef327c",
+      "last_modified": "2026-09-02T06:25:55.333Z",
+      "size": 3768,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -379,9 +379,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/r_arm_upper.png",
-      "etag": "57c144d8efdbc33da2aebd14be4762f7",
-      "last_modified": "2026-08-29T10:05:37.476Z",
-      "size": 18393,
+      "etag": "fc4f50800ca71c191270d5b545f72dbb",
+      "last_modified": "2026-09-02T06:25:56.000Z",
+      "size": 4642,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -390,9 +390,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/r_foot.png",
-      "etag": "307e309948c88a15569acc821cab578b",
-      "last_modified": "2026-08-29T10:05:38.085Z",
-      "size": 7491,
+      "etag": "7acfddb171ac4b7bdf27afe40f44cb37",
+      "last_modified": "2026-09-02T06:25:55.866Z",
+      "size": 3747,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -401,9 +401,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/r_hand.png",
-      "etag": "df3c6a836f28360b5a86147df3a7b310",
-      "last_modified": "2026-08-29T10:05:39.047Z",
-      "size": 13887,
+      "etag": "d21464d905416f0ebd1812a6d71ce3b8",
+      "last_modified": "2026-09-02T06:25:56.088Z",
+      "size": 1724,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -412,9 +412,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/r_leg_lower.png",
-      "etag": "ee7eee8943140f45579e4abe1df450e1",
-      "last_modified": "2026-08-29T10:05:38.445Z",
-      "size": 15436,
+      "etag": "67f6e09452baa165e7b65c9b63f0e8f0",
+      "last_modified": "2026-09-02T06:25:56.529Z",
+      "size": 2206,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -423,9 +423,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/r_leg_upper.png",
-      "etag": "61a5932a26034897ef2c66d58fc89129",
-      "last_modified": "2026-08-29T10:05:38.623Z",
-      "size": 19592,
+      "etag": "2408b3d9164f8f3068bec34dd109beaa",
+      "last_modified": "2026-09-02T06:25:56.574Z",
+      "size": 5173,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -434,9 +434,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/red_tassel.png",
-      "etag": "ec7f9c177a346eff74e51788be227ef4",
-      "last_modified": "2026-08-29T10:05:38.739Z",
-      "size": 20334,
+      "etag": "7931519ef8c44dbce2f5382ef8e11133",
+      "last_modified": "2026-09-02T06:32:24.216Z",
+      "size": 3204,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -445,9 +445,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/torso_base.png",
-      "etag": "16c45d45aaf04352bd5d0cf1503fd466",
-      "last_modified": "2026-08-29T10:05:39.554Z",
-      "size": 43125,
+      "etag": "f1b5aa9ce5e7fb990a02ce2d0da4e194",
+      "last_modified": "2026-09-02T06:25:57.179Z",
+      "size": 9938,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -456,9 +456,9 @@
     },
     {
       "key": "sprite/characters/hero001/modular/training_wooden_sword.png",
-      "etag": "5c8d4d933f09abba472b62612cfc7f18",
-      "last_modified": "2026-08-29T10:05:39.805Z",
-      "size": 30408,
+      "etag": "41fa891dee18940cd677e4ec971133de",
+      "last_modified": "2026-09-02T06:32:24.744Z",
+      "size": 5165,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -510,12 +510,177 @@
       "storage_class": "Standard"
     },
     {
+      "key": "sprite/equipment/armors/azure_cape.png",
+      "etag": "c69721cec695fd026444c1d40fc01d6f",
+      "last_modified": "2026-09-02T06:27:50.675Z",
+      "size": 41887,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_chest_plate.png",
+      "etag": "642579cb9f47635ddeef0ad14468de87",
+      "last_modified": "2026-09-02T06:27:51.734Z",
+      "size": 15593,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_chest_plate_full.png",
+      "etag": "7e0c4395c193f50ea7569b1c609c3071",
+      "last_modified": "2026-09-02T06:27:49.354Z",
+      "size": 14484,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_knee_guard_left.png",
+      "etag": "e3ba1bdb9185d29c01bbcf2754baf5cd",
+      "last_modified": "2026-09-02T06:27:49.386Z",
+      "size": 2908,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_knee_guard_right.png",
+      "etag": "5ea8d6f483f993260527b50c05a97ce9",
+      "last_modified": "2026-09-02T06:27:49.333Z",
+      "size": 2989,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_shoulder_pauldron_left.png",
+      "etag": "1fcb5f58e31e524fb8873890201e8f6e",
+      "last_modified": "2026-09-02T06:27:49.234Z",
+      "size": 4068,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_shoulder_pauldron_right.png",
+      "etag": "ac1a22d224eb965c90dbe16ee0757d17",
+      "last_modified": "2026-09-02T06:27:49.414Z",
+      "size": 4165,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_skirt_plates_front.png",
+      "etag": "85aa39e692925b2232b1c53577fc7523",
+      "last_modified": "2026-09-02T06:27:50.456Z",
+      "size": 8854,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_skirt_plates_side.png",
+      "etag": "d01cd01065d780163524c3126fb89d2c",
+      "last_modified": "2026-09-02T06:27:50.476Z",
+      "size": 3677,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_wrist_bracer_left.png",
+      "etag": "ee780d7cccbde3288d5be86d8719341e",
+      "last_modified": "2026-09-02T06:27:50.637Z",
+      "size": 2094,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/armors/azure_wrist_bracer_right.png",
+      "etag": "5bd4419007967a4de20af748ea318a1f",
+      "last_modified": "2026-09-02T06:27:50.884Z",
+      "size": 1897,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "sprite/equipment/weapons/",
       "etag": "d41d8cd98f00b204e9800998ecf8427e",
       "last_modified": "2026-08-27T13:07:15.081Z",
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/weapons/ice_sword.png",
+      "etag": "fc07f9908073f03f3645b68a9e3a6833",
+      "last_modified": "2026-09-02T06:28:25.309Z",
+      "size": 5863,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/weapons/ornate_dagger.png",
+      "etag": "1acfb342e0b60b526843ec786d5224cf",
+      "last_modified": "2026-09-02T06:28:25.403Z",
+      "size": 5016,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/weapons/red_tassel.png",
+      "etag": "7931519ef8c44dbce2f5382ef8e11133",
+      "last_modified": "2026-09-02T06:28:25.415Z",
+      "size": 3204,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/equipment/weapons/training_wooden_sword.png",
+      "etag": "41fa891dee18940cd677e4ec971133de",
+      "last_modified": "2026-09-02T06:28:25.377Z",
+      "size": 5165,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
