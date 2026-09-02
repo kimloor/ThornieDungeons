@@ -42,23 +42,8 @@ function listAssets(obj = ASSETS, prefix = "") {
 
 // ---------- modular ("paperdoll") character compositor — anchor/rig based ----------
 // Base layer: hero001.core.neutral (used as a graceful fallback — see useHeroRig below).
-//
-// The individual body-part PNGs are tightly cropped, so they can't just be stacked at
-// top:0/left:0 like before (that was the earlier, wrong approach). A rig file (e.g.
-// hero001_rig_v1.json) supplies, per character: a "master canvas" size the PNGs were
-// authored against, a set of named "joints" (skeleton points in master-pixel coordinates),
-// and per-layer entries mapping each PNG filename to a joint + a "localPivot" (the point
-// *within that PNG's own pixel space* that should land exactly on the joint).
-//
-// Placement: prefer each layer's precomputed "offset" (its authored top-left position in
-// master-pixel space); a few layers carry a small deliberate hand-tuned nudge a few px off
-// from the raw joint-localPivot formula (confirmed by testing — e.g. wrist bracers, skirt
-// plates), so trusting the given offset is more faithful to the actual art than recomputing it.
-// joint + localPivot is kept as a fallback for any layer that doesn't specify an offset, and
-// remains useful groundwork if joints ever need to move for future animation — see
-// resolveLayerPlacement below.
-// The whole composed stack is then uniformly scaled once (never per-layer) to fit whatever
-// on-screen canvas size it's rendered at — see HeroModularComposer.
+// Individual body-part PNGs are placed from the Hero001 rig in master/source coordinates.
+// The complete stack is uniformly scaled once to the runtime canvas.
 
 const RIG_CACHE = {};
 
@@ -111,9 +96,13 @@ function heroUniformScale(rig, canvasWidth, canvasHeight) {
   return Math.min(canvasWidth / rig.masterCanvas.width, canvasHeight / rig.masterCanvas.height);
 }
 
-// DEBUG STEP 2: torso + hips + head only.
-// Head is intentionally limited to four modular head layers so we can validate the head rig
-// independently before enabling arms, legs, equipment, weapons, and accessories.
+// DEBUG STEP 2A: torso + hips + head only.
+// Face and ears were confirmed aligned. Front/back hair are a connected pair but their
+// combined head position is offset from the face, so apply one shared nudge to both hair
+// layers only. This keeps the two hair pieces locked together and does not alter the face,
+// ears, torso, or hips. The nudge is intentionally isolated so it can be tuned later.
+const HERO_HEAD_HAIR_NUDGE = { x: -12, y: 0 };
+
 const HERO_BODY_LAYER_ORDER = [
   "hips.png",
   "torso_base.png",
@@ -159,7 +148,15 @@ function HeroModularComposer({
   const layers = allFilenames.map(filename => {
     const pos = resolveLayerPlacement(rig, filename);
     const url = filenameToUrl[filename];
-    return pos && url ? { filename, url, pos } : null;
+    if (!pos || !url) return null;
+
+    const adjustedPos = { ...pos };
+    if (filename === "head_back_hair.png" || filename === "head_front_hair.png") {
+      adjustedPos.x += HERO_HEAD_HAIR_NUDGE.x;
+      adjustedPos.y += HERO_HEAD_HAIR_NUDGE.y;
+    }
+
+    return { filename, url, pos: adjustedPos };
   }).filter(Boolean);
   if (!layers.length) return null;
   return /*#__PURE__*/React.createElement("div", {
