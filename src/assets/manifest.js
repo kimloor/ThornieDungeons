@@ -134,12 +134,11 @@ function heroUniformScale(rig, canvasWidth, canvasHeight) {
   return Math.min(canvasWidth / rig.masterCanvas.width, canvasHeight / rig.masterCanvas.height);
 }
 
-// z-order back-to-front for the base body. The rig has no explicit z-index per layer (only
-// anchors), so this ordering is a judgment call — tweak this one array if a layer renders on
-// the wrong side of another once real art is previewed. Equipment/weapon layers are NOT
-// included here on purpose (per the rollout plan: verify the bare body first, then opt in
-// equipment/weapons layer by layer via HeroModularComposer's extra layerOrder entries).
-const HERO_BODY_LAYER_ORDER = ["head_back_hair.png", "l_leg_upper.png", "l_leg_lower.png", "l_foot.png", "r_leg_upper.png", "r_leg_lower.png", "r_foot.png", "l_arm_upper.png", "l_arm_lower.png", "l_hand.png", "hips.png", "torso_base.png", "r_arm_upper.png", "r_arm_lower.png", "r_hand.png", "head_face.png", "head_ears.png", "head_front_hair.png"];
+// z-order back-to-front for the base body.
+// DEBUG STEP 1: render only the two torso/body layers. All other body parts are intentionally
+// disabled for this test so we can validate torso + hips placement before touching head, arms,
+// legs, equipment, or weapons.
+const HERO_BODY_LAYER_ORDER = ["hips.png", "torso_base.png"];
 
 // React hook: loads (and caches) a character's rig once, exposing {ready, rig}. `ready` flips
 // true once we've either found a usable rig or exhausted every candidate path — callers should
