@@ -1457,12 +1457,16 @@ function ThornieDungeons() {
     save: save,
     phase: phase,
     equipped: equipped
-  }), phase === "menu" && /*#__PURE__*/React.createElement(MenuScreen, {
+  }), phase === "menu" && /*#__PURE__*/React.createElement(HubScreen, {
     save: save,
     cp: cp,
     playerId: cred.id,
     onTown: () => setPhase("town"),
     onMap: () => setPhase("map"),
+    onOpenInv: () => setInvOpen(true),
+    onShop: openShop,
+    onEnhance: () => setBlacksmithOpen(true),
+    onPets: () => setPhase("pets"),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout
   }), phase === "town" && /*#__PURE__*/React.createElement(CharacterScreen, {

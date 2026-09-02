@@ -165,15 +165,51 @@ function LoginScreen({
     className: "md-hint"
   }, "ตั้ง Player ID + Password เอง — ใช้ชุดเดียวกันนี้เข้าจากเครื่องไหนก็โหลดเซฟเดิมได้")));
 }
-function MenuScreen({
+function HubScreen({
   save,
   cp,
   playerId,
   onTown,
   onMap,
+  onOpenInv,
+  onShop,
+  onEnhance,
+  onPets,
   onSwitchCharacter,
   onLogout
 }) {
+  const hubLinks = [{
+    key: "map",
+    icon: "🗺️",
+    label: "ดันเจี้ยน",
+    onClick: onMap,
+    primary: true
+  }, {
+    key: "town",
+    icon: "🧙",
+    label: "สถานะตัวละคร",
+    onClick: onTown
+  }, {
+    key: "inv",
+    icon: "🎒",
+    label: "กระเป๋าไอเทม",
+    onClick: onOpenInv
+  }, {
+    key: "shop",
+    icon: "🛒",
+    label: "ร้านค้า",
+    onClick: onShop
+  }, {
+    key: "enhance",
+    icon: "🔨",
+    label: "ตีบวก",
+    onClick: onEnhance
+  }, {
+    key: "pets",
+    icon: "🐾",
+    label: "สัตว์เลี้ยง",
+    onClick: onPets
+  }];
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-menu-title"
   }, /*#__PURE__*/React.createElement("h1", null, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "a persistent dungeon crawl")), /*#__PURE__*/React.createElement("div", {
@@ -182,7 +218,7 @@ function MenuScreen({
       flexDirection: "column",
       alignItems: "center",
       gap: 6,
-      padding: "6px 0 16px",
+      padding: "6px 0 12px",
       position: "relative",
       zIndex: 2
     }
@@ -198,7 +234,7 @@ function MenuScreen({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
-      marginBottom: 10
+      marginBottom: 4
     }
   }, /*#__PURE__*/React.createElement("p", {
     className: "md-title",
@@ -212,24 +248,25 @@ function MenuScreen({
     style: {
       margin: 0
     }
-  }, "🪙 ", formatNumber(save.gold), " gold · Lv", save.character.level, " · Stage ", save.unlockedFloor, " unlocked")), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary wide",
-    onClick: onMap
-  }, "🗺️ Select Stage"), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row"
+  }, "🪙 ", formatNumber(save.gold), " gold · Lv", save.character.level, " · Stage ", save.unlockedFloor, " unlocked")), /*#__PURE__*/React.createElement("div", {
+    className: "md-hub-grid"
+  }, hubLinks.map(link => /*#__PURE__*/React.createElement("button", {
+    key: link.key,
+    className: "md-hub-btn" + (link.primary ? " primary" : ""),
+    onClick: link.onClick
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-hub-icon"
+  }, link.icon), /*#__PURE__*/React.createElement("span", {
+    className: "md-hub-label"
+  }, link.label)))), /*#__PURE__*/React.createElement("div", {
+    className: "md-hub-footer"
   }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info",
-    onClick: onTown
-  }, "🧙 Character"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee",
     onClick: onSwitchCharacter
-  }, "👥 เปลี่ยนตัวละคร")), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee wide",
-    style: {
-      marginTop: 8
-    },
+  }, "👥 เปลี่ยนตัวละคร"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee",
     onClick: onLogout
-  }, "🚪 Switch Account")));
+  }, "🚪 ออกจากระบบ"))));
 }
 function CharacterSelectScreen({
   account,

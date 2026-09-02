@@ -175,6 +175,15 @@ const STYLE = `
 
 .md-cp-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.35); border: 1px solid var(--gold-deep); border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 800; color: var(--gold); max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+.md-hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.md-hub-btn { font-family: 'Baloo 2', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--panel); border: 1.5px solid var(--gold-deep); border-radius: 16px; padding: 14px 8px; color: var(--ink); cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.35); transition: transform 0.08s ease, box-shadow 0.08s ease; }
+.md-hub-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+.md-hub-btn .md-hub-icon { font-size: 26px; line-height: 1; }
+.md-hub-btn .md-hub-label { font-weight: 800; font-size: 12.5px; }
+.md-hub-btn.primary { background: linear-gradient(180deg, #FFE49A, var(--gold)); color: var(--bg-top); border-color: var(--gold-deep); }
+.md-hub-footer { display: flex; gap: 8px; margin-top: 10px; }
+.md-hub-footer .md-btn { flex: 1; }
+
 /* boss/elite/floor-modifier pill above the arena — previously had no base rule at all (only
    inline colors), so it was a full-width block with no width cap: long modifier names would
    wrap awkwardly instead of sitting as a compact centered pill. width:fit-content lets the
