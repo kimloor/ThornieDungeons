@@ -592,23 +592,58 @@ function SkillScreen({
 }
 function MapScreen({
   unlockedFloor,
+  hp,
+  maxHp,
+  mp,
+  maxMp,
   onSelectFloor,
-  onOpenPets,
+  onSave,
   onBack
 }) {
   const maxShow = unlockedFloor + 1; // one locked preview ahead
+  const windowStart = Math.max(1, unlockedFloor - 4);
   const floors = Array.from({
-    length: maxShow
-  }, (_, i) => i + 1);
+    length: maxShow - windowStart + 1
+  }, (_, i) => windowStart + i);
   const [selected, setSelected] = useState(unlockedFloor);
+  const [saveFlash, setSaveFlash] = useState(false);
   const isBossSel = selected % 5 === 0;
   const isEliteBossSel = selected % 10 === 0;
+  const hpPct = maxHp ? Math.max(0, Math.min(100, hp / maxHp * 100)) : 0;
+  const mpPct = maxMp ? Math.max(0, Math.min(100, mp / maxMp * 100)) : 0;
+  const handleSave = () => {
+    onSave();
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 1200);
+  };
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
       flex: 1
     }
   }, /*#__PURE__*/React.createElement("div", {
+    className: "md-map-bars"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-fill",
+    style: {
+      width: `${hpPct}%`,
+      background: "linear-gradient(90deg,#FF8787,#FF6B6B)"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-label"
+  }, "HP ", hp, "/", maxHp)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-fill",
+    style: {
+      width: `${mpPct}%`,
+      background: "linear-gradient(90deg,#A78BF0,#8B6AE8)"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-label"
+  }, "MP ", mp, "/", maxMp))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10,
@@ -629,20 +664,22 @@ function MapScreen({
     style: {
       marginBottom: 10
     }
-  }, /*#__PURE__*/React.createElement("select", {
-    className: "md-select",
-    value: selected,
-    onChange: e => setSelected(Number(e.target.value))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-floor-slider"
   }, floors.map(f => {
     const locked = f > unlockedFloor;
     const isBoss = f % 5 === 0;
     const isEliteBoss = f % 10 === 0;
-    const label = locked ? `🔒 Stage ${f} — Locked` : isEliteBoss ? `🔥👑 Stage ${f} — Elite Boss` : isBoss ? `👑 Stage ${f} — Boss` : `Stage ${f}`;
-    return /*#__PURE__*/React.createElement("option", {
+    const sub = locked ? "🔒 Locked" : isEliteBoss ? "🔥👑 Elite" : isBoss ? "👑 Boss" : "";
+    return /*#__PURE__*/React.createElement("button", {
       key: f,
-      value: f,
-      disabled: locked
-    }, label);
+      type: "button",
+      className: `md-floor-chip ${selected === f ? "selected" : ""} ${locked ? "locked" : ""}`,
+      disabled: locked,
+      onClick: () => setSelected(f)
+    }, `Stage ${f}`, sub && /*#__PURE__*/React.createElement("span", {
+      className: "sub"
+    }, sub));
   })), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
@@ -658,8 +695,8 @@ function MapScreen({
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "md-btn skill wide",
-    onClick: onOpenPets
-  }, "🐾 Pets")), /*#__PURE__*/React.createElement("button", {
+    onClick: handleSave
+  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
   }, "🔙 Back"));
@@ -749,7 +786,7 @@ function ShopOverlay({
   }, "Close")), /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
   }, "รายการสุ่มใหม่ทุกครั้งที่เปิดร้าน"), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list"
+    className: "md-shop-list"
   }, stock.items.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
@@ -1121,7 +1158,7 @@ function PetCombatSprite({ pet, anim }) {
     className: "md-enemy-hpbar-track"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-fill",
-    style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#8ee0a8,#4CAF7D)" }
+    style: { width: `${hpPct}%` }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
   }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
@@ -1212,17 +1249,14 @@ function CombatScreen({
     className: "md-hud-text-row"
   }, "💧 ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row xp"
-  }, "⭐ EXP ", Math.floor(xpPct), "%"))), turnQueue && turnQueue.length > 0 && /*#__PURE__*/React.createElement(TurnOrderBar, {
-    queue: turnQueue,
+  }, "⭐ EXP ", Math.floor(xpPct), "%"), petCombat && /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-text-row"
+  }, petCombat.icon, " ", petCombat.cooldown > 0 ? `CD ${petCombat.cooldown}` : "Ready"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
+    queue: turnQueue || [],
     activeKey: activeTurnKey,
     monsters: monsters,
     petCombat: petCombat
-  }), petCombat && /*#__PURE__*/React.createElement("div", {
-    className: `md-pet-chip ${petCombat.cooldown > 0 ? "" : "ready"}`,
-    title: petCombat.active.desc
-  }, petCombat.icon, " ", petCombat.cooldown > 0 ? /*#__PURE__*/React.createElement("span", {
-    className: "cd"
-  }, "CD ", petCombat.cooldown) : /*#__PURE__*/React.createElement("span", null, "Ready")), bossOrModifier && /*#__PURE__*/React.createElement("div", {
+  }), bossOrModifier && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
@@ -1239,16 +1273,34 @@ function CombatScreen({
   }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
     style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
   }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
-    className: "md-arena"
+    className: "md-arena",
+    style: { flexDirection: "column", justifyContent: "flex-end" }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
+    className: "md-monster-board"
+  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.uid,
+    style: { position: "relative" }
+  }, /*#__PURE__*/React.createElement(EnemySprite, {
+    enemy: m,
+    anim: enemyAnims[m.uid],
+    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
+    onClick: onSelectTarget
+  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
+    key: f.id,
+    className: "md-dmg-float",
+    style: {
+      color: f.color
+    }
+  }, f.text))))), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "relative",
       display: "flex",
-      flexDirection: "column",
-      gap: 6,
-      alignItems: "center"
+      flexDirection: "row",
+      gap: 16,
+      alignItems: "flex-end",
+      justifyContent: "center"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { position: "relative" }
@@ -1259,8 +1311,7 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-fill",
     style: {
-      width: `${hpPct}%`,
-      background: "linear-gradient(90deg,#FFE49A,var(--gold))"
+      width: `${hpPct}%`
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
@@ -1282,7 +1333,7 @@ function CombatScreen({
       color: f.color
     }
   }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
-    style: { position: "relative", transform: "scale(0.8)" }
+    style: { position: "relative", transform: "scale(0.55)" }
   }, /*#__PURE__*/React.createElement(PetCombatSprite, {
     pet: petCombat,
     anim: petAnim
@@ -1290,29 +1341,7 @@ function CombatScreen({
     key: f.id,
     className: "md-dmg-float",
     style: { color: f.color }
-  }, f.text)))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 10,
-      flexWrap: "wrap",
-      justifyContent: "center",
-      alignItems: "flex-end"
-    }
-  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
-    key: m.uid,
-    style: { position: "relative" }
-  }, /*#__PURE__*/React.createElement(EnemySprite, {
-    enemy: m,
-    anim: enemyAnims[m.uid],
-    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
-    onClick: onSelectTarget
-  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
-    key: f.id,
-    className: "md-dmg-float",
-    style: {
-      color: f.color
-    }
-  }, f.text)))))), /*#__PURE__*/React.createElement("div", {
+  }, f.text))))), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto ${autoRun ? "active" : ""}`,
@@ -1797,8 +1826,8 @@ function BlacksmithOverlay({
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
-    /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-slots" }, SLOT_ORDER.map(renderEquipSlot))
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+      /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-slots" }, SLOT_ORDER.map(renderEquipSlot))
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.iron.icon, " ", junkTotal(inventory, "iron")),

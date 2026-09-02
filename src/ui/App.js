@@ -1488,19 +1488,23 @@ function ThornieDungeons() {
     onBack: () => setPhase("town")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
+    hp: player ? player.hp : outOfCombatStats.maxHp,
+    maxHp: outOfCombatStats.maxHp,
+    mp: player ? player.mp : outOfCombatStats.maxMp,
+    maxMp: outOfCombatStats.maxMp,
     // Same rule as nextStage/retryStageAfterWin: if there's a live player object
     // sitting in state (from the last stage you fought, incl. a flee), carry its
     // real current HP/MP into the newly-selected stage instead of full-healing —
     // Stage Select should only ever full-heal when there's truly no run to continue.
     onSelectFloor: floorNum => enterStage(floorNum, player),
-    onOpenPets: () => setPhase("pets"),
+    onSave: () => persistSave(save),
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,
     onEquip: equipPet,
     onUnequip: unequipPet,
     onOpenGacha: () => setPhase("gacha"),
-    onBack: () => setPhase("town")
+    onBack: () => setPhase("menu")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
     gachaResult: gachaResult,

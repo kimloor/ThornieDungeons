@@ -261,6 +261,7 @@ const STYLE = `
 .md-slot-name { font-size: 10.5px; font-weight: 800; margin-top: 2px; line-height: 1.15; color: var(--gold); }
 
 .md-inv-list { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; }
+.md-shop-list { display: flex; flex-direction: column; gap: 6px; }
 .md-inv-item { display: flex; align-items: center; justify-content: space-between; background: var(--panel); border-radius: 10px; padding: 7px 10px; border-left: 4px solid var(--rare); }
 .md-inv-item.unique { border-left-color: var(--unique); }
 .md-inv-item.elite { border-left-color: var(--elite); }
@@ -305,6 +306,13 @@ const STYLE = `
 .md-select:focus { outline: none; border-color: var(--gold); }
 .md-select option { background: var(--bg-mid); color: var(--ink); }
 .md-select option:disabled { color: rgba(255,255,255,0.35); }
+.md-floor-slider { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.md-floor-chip { flex: 0 0 auto; scroll-snap-align: center; min-width: 62px; padding: 10px 6px; border-radius: 12px; border: 1.5px solid rgba(255,209,102,0.3); background: var(--panel); color: var(--ink); text-align: center; font-weight: 800; font-size: 12px; cursor: pointer; }
+.md-floor-chip.selected { border-color: var(--gold); background: rgba(255,209,102,0.16); box-shadow: 0 0 0 2px var(--gold-glow); }
+.md-floor-chip.locked { opacity: 0.45; cursor: not-allowed; }
+.md-floor-chip .sub { display:block; font-size: 9px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
+.md-map-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.md-monster-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 4px; justify-items: center; align-items: end; width: 100%; padding: 4px 0 10px; }
 
 /* floating quick-access buttons (shop / character / bag) */
 .md-fab-stack {
@@ -332,6 +340,7 @@ const STYLE = `
 
 /* turn order queue bar — shows action order for the current round, sorted by Speed */
 .md-turn-queue {
+  min-height: 30px;
   display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
   background: rgba(10,6,22,0.5); border: 1px solid rgba(255,209,102,0.22); border-radius: 999px;
   padding: 4px 8px; margin: 0 0 8px; position: relative; z-index: 6;
@@ -483,6 +492,8 @@ const STYLE = `
 .md-equip-slot-label { font-size:9px; color:var(--ink-soft); font-weight:800; margin-top:2px; }
 .md-equip-slot-name { font-size:9px; color:var(--gold); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
 .md-equip-slot-stat { font-size:8px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.md-blacksmith-slots { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:10px; }
+.md-blacksmith-slots .md-equip-slot { position: static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; transform:none !important; width:100% !important; min-height:76px; }
 .md-equip-summary { display:flex; justify-content:center; gap:7px; flex-wrap:wrap; margin:0 0 8px; }
 .md-equip-stat-chip { border:1px solid rgba(255,209,102,.28); background:rgba(0,0,0,.22); border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; color:var(--ink-soft); white-space: nowrap; flex-shrink: 0; }
 .md-equip-stat-chip b { color:var(--gold); }
@@ -4040,19 +4051,23 @@ function ThornieDungeons() {
     onBack: () => setPhase("town")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
+    hp: player ? player.hp : outOfCombatStats.maxHp,
+    maxHp: outOfCombatStats.maxHp,
+    mp: player ? player.mp : outOfCombatStats.maxMp,
+    maxMp: outOfCombatStats.maxMp,
     // Same rule as nextStage/retryStageAfterWin: if there's a live player object
     // sitting in state (from the last stage you fought, incl. a flee), carry its
     // real current HP/MP into the newly-selected stage instead of full-healing —
     // Stage Select should only ever full-heal when there's truly no run to continue.
     onSelectFloor: floorNum => enterStage(floorNum, player),
-    onOpenPets: () => setPhase("pets"),
+    onSave: () => persistSave(save),
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,
     onEquip: equipPet,
     onUnequip: unequipPet,
     onOpenGacha: () => setPhase("gacha"),
-    onBack: () => setPhase("town")
+    onBack: () => setPhase("menu")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
     gachaResult: gachaResult,
@@ -4719,23 +4734,58 @@ function SkillScreen({
 }
 function MapScreen({
   unlockedFloor,
+  hp,
+  maxHp,
+  mp,
+  maxMp,
   onSelectFloor,
-  onOpenPets,
+  onSave,
   onBack
 }) {
   const maxShow = unlockedFloor + 1; // one locked preview ahead
+  const windowStart = Math.max(1, unlockedFloor - 4);
   const floors = Array.from({
-    length: maxShow
-  }, (_, i) => i + 1);
+    length: maxShow - windowStart + 1
+  }, (_, i) => windowStart + i);
   const [selected, setSelected] = useState(unlockedFloor);
+  const [saveFlash, setSaveFlash] = useState(false);
   const isBossSel = selected % 5 === 0;
   const isEliteBossSel = selected % 10 === 0;
+  const hpPct = maxHp ? Math.max(0, Math.min(100, hp / maxHp * 100)) : 0;
+  const mpPct = maxMp ? Math.max(0, Math.min(100, mp / maxMp * 100)) : 0;
+  const handleSave = () => {
+    onSave();
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 1200);
+  };
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
       flex: 1
     }
   }, /*#__PURE__*/React.createElement("div", {
+    className: "md-map-bars"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-fill",
+    style: {
+      width: `${hpPct}%`,
+      background: "linear-gradient(90deg,#FF8787,#FF6B6B)"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-label"
+  }, "HP ", hp, "/", maxHp)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-track"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-fill",
+    style: {
+      width: `${mpPct}%`,
+      background: "linear-gradient(90deg,#A78BF0,#8B6AE8)"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-bar-label"
+  }, "MP ", mp, "/", maxMp))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10,
@@ -4756,20 +4806,22 @@ function MapScreen({
     style: {
       marginBottom: 10
     }
-  }, /*#__PURE__*/React.createElement("select", {
-    className: "md-select",
-    value: selected,
-    onChange: e => setSelected(Number(e.target.value))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-floor-slider"
   }, floors.map(f => {
     const locked = f > unlockedFloor;
     const isBoss = f % 5 === 0;
     const isEliteBoss = f % 10 === 0;
-    const label = locked ? `🔒 Stage ${f} — Locked` : isEliteBoss ? `🔥👑 Stage ${f} — Elite Boss` : isBoss ? `👑 Stage ${f} — Boss` : `Stage ${f}`;
-    return /*#__PURE__*/React.createElement("option", {
+    const sub = locked ? "🔒 Locked" : isEliteBoss ? "🔥👑 Elite" : isBoss ? "👑 Boss" : "";
+    return /*#__PURE__*/React.createElement("button", {
       key: f,
-      value: f,
-      disabled: locked
-    }, label);
+      type: "button",
+      className: `md-floor-chip ${selected === f ? "selected" : ""} ${locked ? "locked" : ""}`,
+      disabled: locked,
+      onClick: () => setSelected(f)
+    }, `Stage ${f}`, sub && /*#__PURE__*/React.createElement("span", {
+      className: "sub"
+    }, sub));
   })), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
@@ -4785,8 +4837,8 @@ function MapScreen({
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "md-btn skill wide",
-    onClick: onOpenPets
-  }, "🐾 Pets")), /*#__PURE__*/React.createElement("button", {
+    onClick: handleSave
+  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
   }, "🔙 Back"));
@@ -4876,7 +4928,7 @@ function ShopOverlay({
   }, "Close")), /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
   }, "รายการสุ่มใหม่ทุกครั้งที่เปิดร้าน"), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list"
+    className: "md-shop-list"
   }, stock.items.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
@@ -5248,7 +5300,7 @@ function PetCombatSprite({ pet, anim }) {
     className: "md-enemy-hpbar-track"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-fill",
-    style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#8ee0a8,#4CAF7D)" }
+    style: { width: `${hpPct}%` }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
   }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
@@ -5339,17 +5391,14 @@ function CombatScreen({
     className: "md-hud-text-row"
   }, "💧 ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row xp"
-  }, "⭐ EXP ", Math.floor(xpPct), "%"))), turnQueue && turnQueue.length > 0 && /*#__PURE__*/React.createElement(TurnOrderBar, {
-    queue: turnQueue,
+  }, "⭐ EXP ", Math.floor(xpPct), "%"), petCombat && /*#__PURE__*/React.createElement("div", {
+    className: "md-hud-text-row"
+  }, petCombat.icon, " ", petCombat.cooldown > 0 ? `CD ${petCombat.cooldown}` : "Ready"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
+    queue: turnQueue || [],
     activeKey: activeTurnKey,
     monsters: monsters,
     petCombat: petCombat
-  }), petCombat && /*#__PURE__*/React.createElement("div", {
-    className: `md-pet-chip ${petCombat.cooldown > 0 ? "" : "ready"}`,
-    title: petCombat.active.desc
-  }, petCombat.icon, " ", petCombat.cooldown > 0 ? /*#__PURE__*/React.createElement("span", {
-    className: "cd"
-  }, "CD ", petCombat.cooldown) : /*#__PURE__*/React.createElement("span", null, "Ready")), bossOrModifier && /*#__PURE__*/React.createElement("div", {
+  }), bossOrModifier && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
@@ -5366,16 +5415,34 @@ function CombatScreen({
   }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
     style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
   }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
-    className: "md-arena"
+    className: "md-arena",
+    style: { flexDirection: "column", justifyContent: "flex-end" }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
+    className: "md-monster-board"
+  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.uid,
+    style: { position: "relative" }
+  }, /*#__PURE__*/React.createElement(EnemySprite, {
+    enemy: m,
+    anim: enemyAnims[m.uid],
+    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
+    onClick: onSelectTarget
+  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
+    key: f.id,
+    className: "md-dmg-float",
+    style: {
+      color: f.color
+    }
+  }, f.text))))), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "relative",
       display: "flex",
-      flexDirection: "column",
-      gap: 6,
-      alignItems: "center"
+      flexDirection: "row",
+      gap: 16,
+      alignItems: "flex-end",
+      justifyContent: "center"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: { position: "relative" }
@@ -5386,8 +5453,7 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-fill",
     style: {
-      width: `${hpPct}%`,
-      background: "linear-gradient(90deg,#FFE49A,var(--gold))"
+      width: `${hpPct}%`
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
@@ -5409,7 +5475,7 @@ function CombatScreen({
       color: f.color
     }
   }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
-    style: { position: "relative", transform: "scale(0.8)" }
+    style: { position: "relative", transform: "scale(0.55)" }
   }, /*#__PURE__*/React.createElement(PetCombatSprite, {
     pet: petCombat,
     anim: petAnim
@@ -5417,29 +5483,7 @@ function CombatScreen({
     key: f.id,
     className: "md-dmg-float",
     style: { color: f.color }
-  }, f.text)))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 10,
-      flexWrap: "wrap",
-      justifyContent: "center",
-      alignItems: "flex-end"
-    }
-  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
-    key: m.uid,
-    style: { position: "relative" }
-  }, /*#__PURE__*/React.createElement(EnemySprite, {
-    enemy: m,
-    anim: enemyAnims[m.uid],
-    selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
-    onClick: onSelectTarget
-  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
-    key: f.id,
-    className: "md-dmg-float",
-    style: {
-      color: f.color
-    }
-  }, f.text)))))), /*#__PURE__*/React.createElement("div", {
+  }, f.text))))), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto ${autoRun ? "active" : ""}`,
@@ -5924,8 +5968,8 @@ function BlacksmithOverlay({
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
-    /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-slots" }, SLOT_ORDER.map(renderEquipSlot))
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+      /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-slots" }, SLOT_ORDER.map(renderEquipSlot))
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.iron.icon, " ", junkTotal(inventory, "iron")),

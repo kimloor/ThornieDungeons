@@ -206,6 +206,7 @@ const STYLE = `
 .md-slot-name { font-size: 10.5px; font-weight: 800; margin-top: 2px; line-height: 1.15; color: var(--gold); }
 
 .md-inv-list { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; }
+.md-shop-list { display: flex; flex-direction: column; gap: 6px; }
 .md-inv-item { display: flex; align-items: center; justify-content: space-between; background: var(--panel); border-radius: 10px; padding: 7px 10px; border-left: 4px solid var(--rare); }
 .md-inv-item.unique { border-left-color: var(--unique); }
 .md-inv-item.elite { border-left-color: var(--elite); }
@@ -250,6 +251,13 @@ const STYLE = `
 .md-select:focus { outline: none; border-color: var(--gold); }
 .md-select option { background: var(--bg-mid); color: var(--ink); }
 .md-select option:disabled { color: rgba(255,255,255,0.35); }
+.md-floor-slider { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.md-floor-chip { flex: 0 0 auto; scroll-snap-align: center; min-width: 62px; padding: 10px 6px; border-radius: 12px; border: 1.5px solid rgba(255,209,102,0.3); background: var(--panel); color: var(--ink); text-align: center; font-weight: 800; font-size: 12px; cursor: pointer; }
+.md-floor-chip.selected { border-color: var(--gold); background: rgba(255,209,102,0.16); box-shadow: 0 0 0 2px var(--gold-glow); }
+.md-floor-chip.locked { opacity: 0.45; cursor: not-allowed; }
+.md-floor-chip .sub { display:block; font-size: 9px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
+.md-map-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.md-monster-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 4px; justify-items: center; align-items: end; width: 100%; padding: 4px 0 10px; }
 
 /* floating quick-access buttons (shop / character / bag) */
 .md-fab-stack {
@@ -277,6 +285,7 @@ const STYLE = `
 
 /* turn order queue bar — shows action order for the current round, sorted by Speed */
 .md-turn-queue {
+  min-height: 30px;
   display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
   background: rgba(10,6,22,0.5); border: 1px solid rgba(255,209,102,0.22); border-radius: 999px;
   padding: 4px 8px; margin: 0 0 8px; position: relative; z-index: 6;
@@ -428,6 +437,8 @@ const STYLE = `
 .md-equip-slot-label { font-size:9px; color:var(--ink-soft); font-weight:800; margin-top:2px; }
 .md-equip-slot-name { font-size:9px; color:var(--gold); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
 .md-equip-slot-stat { font-size:8px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.md-blacksmith-slots { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:10px; }
+.md-blacksmith-slots .md-equip-slot { position: static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; transform:none !important; width:100% !important; min-height:76px; }
 .md-equip-summary { display:flex; justify-content:center; gap:7px; flex-wrap:wrap; margin:0 0 8px; }
 .md-equip-stat-chip { border:1px solid rgba(255,209,102,.28); background:rgba(0,0,0,.22); border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; color:var(--ink-soft); white-space: nowrap; flex-shrink: 0; }
 .md-equip-stat-chip b { color:var(--gold); }
