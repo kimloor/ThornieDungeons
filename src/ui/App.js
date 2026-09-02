@@ -361,6 +361,10 @@ function ThornieDungeons() {
     setPhase("characterSelect");
   }
   function logout() {
+    // Same safety-net flush as backToCharacterSelect — leaving the account context
+    // entirely should never skip the final sync, even though every mutation already
+    // persists immediately on its own.
+    if (save) persistSave(save);
     setCred(c => ({
       ...c,
       password: ""
@@ -1469,14 +1473,18 @@ function ThornieDungeons() {
     onPets: () => setPhase("pets"),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout
-  }), phase === "town" && /*#__PURE__*/React.createElement(CharacterScreen, {
+  }), phase === "town" && /*#__PURE__*/React.createElement(StatusScreen, {
     save: save,
     charStats: charStats,
     onAddStat: addStatPoint,
     onOpenInv: () => setInvOpen(true),
     onMap: () => setPhase("map"),
     onOpenPets: () => setPhase("pets"),
+    onOpenSkill: () => setPhase("skill"),
     onBack: () => setPhase("menu")
+  }), phase === "skill" && /*#__PURE__*/React.createElement(SkillScreen, {
+    save: save,
+    onBack: () => setPhase("town")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
     onSelectFloor: enterStage,
@@ -1520,7 +1528,7 @@ function ThornieDungeons() {
     floor: selectedFloor,
     onRetry: retryStage,
     onMap: backToMap
-  }), (phase === "town" || phase === "map" || phase === "pets") && /*#__PURE__*/React.createElement(FloatingQuickActions, {
+  }), (phase === "town" || phase === "map" || phase === "pets" || phase === "skill") && /*#__PURE__*/React.createElement(FloatingQuickActions, {
     onShop: openShop,
     onCharacter: () => setPhase("town"),
     onBag: () => setInvOpen(true),

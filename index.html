@@ -2904,6 +2904,10 @@ function ThornieDungeons() {
     setPhase("characterSelect");
   }
   function logout() {
+    // Same safety-net flush as backToCharacterSelect — leaving the account context
+    // entirely should never skip the final sync, even though every mutation already
+    // persists immediately on its own.
+    if (save) persistSave(save);
     setCred(c => ({
       ...c,
       password: ""
@@ -4012,14 +4016,18 @@ function ThornieDungeons() {
     onPets: () => setPhase("pets"),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout
-  }), phase === "town" && /*#__PURE__*/React.createElement(CharacterScreen, {
+  }), phase === "town" && /*#__PURE__*/React.createElement(StatusScreen, {
     save: save,
     charStats: charStats,
     onAddStat: addStatPoint,
     onOpenInv: () => setInvOpen(true),
     onMap: () => setPhase("map"),
     onOpenPets: () => setPhase("pets"),
+    onOpenSkill: () => setPhase("skill"),
     onBack: () => setPhase("menu")
+  }), phase === "skill" && /*#__PURE__*/React.createElement(SkillScreen, {
+    save: save,
+    onBack: () => setPhase("town")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
     onSelectFloor: enterStage,
@@ -4063,7 +4071,7 @@ function ThornieDungeons() {
     floor: selectedFloor,
     onRetry: retryStage,
     onMap: backToMap
-  }), (phase === "town" || phase === "map" || phase === "pets") && /*#__PURE__*/React.createElement(FloatingQuickActions, {
+  }), (phase === "town" || phase === "map" || phase === "pets" || phase === "skill") && /*#__PURE__*/React.createElement(FloatingQuickActions, {
     onShop: openShop,
     onCharacter: () => setPhase("town"),
     onBag: () => setInvOpen(true),
@@ -4547,13 +4555,14 @@ function CharacterSelectScreen({
     onClick: onLogout
   }, "🚪 ออกจากระบบ"));
 }
-function CharacterScreen({
+function StatusScreen({
   save,
   charStats,
   onAddStat,
   onOpenInv,
   onMap,
   onOpenPets,
+  onOpenSkill,
   onBack
 }) {
   const s = save.character.stats;
@@ -4570,7 +4579,7 @@ function CharacterScreen({
     }
   }, /*#__PURE__*/React.createElement("p", {
     className: "md-title"
-  }, "🧙 Character"), /*#__PURE__*/React.createElement("p", {
+  }, "📊 Status"), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: 0
@@ -4613,20 +4622,54 @@ function CharacterScreen({
       margin: "4px 0 0"
     }
   }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "md-btn-row"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-btn info",
+    onClick: onOpenInv
+  }, "🎒 Equipment"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn skill",
+    onClick: onOpenSkill
+  }, "✨ Skills"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn skill",
+    onClick: onOpenPets
+  }, "🐾 Pets"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary",
+    onClick: onMap
+  }, "🗺️ Stage Select")), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide small",
+    onClick: onBack
+  }, "← Back"));
+}
+function SkillScreen({
+  save,
+  onBack
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-panel",
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title",
+    className: "md-title"
+  }, "✨ Skills"), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
     style: {
-      margin: "0 0 4px",
-      fontSize: 15
+      margin: 0
     }
-  }, "✨ Skills"), /*#__PURE__*/React.createElement("div", {
+  }, "Lv", save.character.level)), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-inv-list",
     style: {
-      maxHeight: 220,
+      maxHeight: 420,
       overflowY: "auto"
     }
   }, SKILLS.map(sk => {
@@ -4644,18 +4687,7 @@ function CharacterScreen({
     }, sk.mp, "mp")), /*#__PURE__*/React.createElement("div", {
       className: "md-shop-lv"
     }, unlocked ? sk.desc : `ปลดล็อกที่ Lv${sk.unlockLevel}`)));
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info",
-    onClick: onOpenInv
-  }, "🎒 Equipment"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn skill",
-    onClick: onOpenPets
-  }, "🐾 Pets"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary wide",
-    onClick: onMap
-  }, "🗺️ Stage Select")), /*#__PURE__*/React.createElement("button", {
+  }))), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
   }, "← Back"));

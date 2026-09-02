@@ -444,13 +444,14 @@ function CharacterSelectScreen({
     onClick: onLogout
   }, "🚪 ออกจากระบบ"));
 }
-function CharacterScreen({
+function StatusScreen({
   save,
   charStats,
   onAddStat,
   onOpenInv,
   onMap,
   onOpenPets,
+  onOpenSkill,
   onBack
 }) {
   const s = save.character.stats;
@@ -467,7 +468,7 @@ function CharacterScreen({
     }
   }, /*#__PURE__*/React.createElement("p", {
     className: "md-title"
-  }, "🧙 Character"), /*#__PURE__*/React.createElement("p", {
+  }, "📊 Status"), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: 0
@@ -510,20 +511,54 @@ function CharacterScreen({
       margin: "4px 0 0"
     }
   }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "md-btn-row"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-btn info",
+    onClick: onOpenInv
+  }, "🎒 Equipment"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn skill",
+    onClick: onOpenSkill
+  }, "✨ Skills"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn skill",
+    onClick: onOpenPets
+  }, "🐾 Pets"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary",
+    onClick: onMap
+  }, "🗺️ Stage Select")), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide small",
+    onClick: onBack
+  }, "← Back"));
+}
+function SkillScreen({
+  save,
+  onBack
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-panel",
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title",
+    className: "md-title"
+  }, "✨ Skills"), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
     style: {
-      margin: "0 0 4px",
-      fontSize: 15
+      margin: 0
     }
-  }, "✨ Skills"), /*#__PURE__*/React.createElement("div", {
+  }, "Lv", save.character.level)), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-inv-list",
     style: {
-      maxHeight: 220,
+      maxHeight: 420,
       overflowY: "auto"
     }
   }, SKILLS.map(sk => {
@@ -541,18 +576,7 @@ function CharacterScreen({
     }, sk.mp, "mp")), /*#__PURE__*/React.createElement("div", {
       className: "md-shop-lv"
     }, unlocked ? sk.desc : `ปลดล็อกที่ Lv${sk.unlockLevel}`)));
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info",
-    onClick: onOpenInv
-  }, "🎒 Equipment"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn skill",
-    onClick: onOpenPets
-  }, "🐾 Pets"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary wide",
-    onClick: onMap
-  }, "🗺️ Stage Select")), /*#__PURE__*/React.createElement("button", {
+  }))), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
   }, "← Back"));
