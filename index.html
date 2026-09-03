@@ -4050,46 +4050,33 @@ function StatusBar({
   phase,
   equipped
 }) {
-  const stats = player ? getStats(player, equipped || {}) : null;
-  const hpPct = player && stats ? Math.max(0, Math.min(100, player.hp / stats.maxHp * 100)) : 0;
-  const mpPct = player && stats ? Math.max(0, Math.min(100, player.mp / stats.maxMp * 100)) : 0;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-status"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-status-chip"
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-chip-icon"
-  }, "🏅"), "Lv", player?.level ?? save.character.level), player ? /*#__PURE__*/React.createElement("div", {
-    className: "md-bars"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-track"
+  }, "🏅"), "Lv", player?.level ?? save.character.level), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      flex: 1,
+      justifyContent: "center",
+      flexWrap: "wrap"
+    }
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-fill",
-    style: {
-      width: `${hpPct}%`,
-      background: "linear-gradient(90deg,#FF8787,#FF6B6B)"
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-label"
-  }, "HP ", player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-track"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-fill",
-    style: {
-      width: `${mpPct}%`,
-      background: "linear-gradient(90deg,#A78BF0,#8B6AE8)"
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-label"
-  }, "MP ", player.mp, "/", stats.maxMp))) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }), /*#__PURE__*/React.createElement("div", {
     className: "md-status-chip"
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-chip-icon"
-  }, "🪙"), formatNumber(save.gold)));
+  }, "🪙"), formatNumber(save.gold)), /*#__PURE__*/React.createElement("div", {
+    className: "md-status-chip"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-chip-icon"
+  }, "💎"), formatNumber(save.diamonds || 0)), /*#__PURE__*/React.createElement("div", {
+    className: "md-status-chip"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-chip-icon"
+  }, "🛡️"), formatNumber(save.protectionStones || 0))));
 }
 function LoginScreen({
   cred,
