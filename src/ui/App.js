@@ -1582,6 +1582,7 @@ function ThornieDungeons() {
     equipped: equipped,
     inventory: inventory,
     busy: itemActionBusy,
+    gold: save.gold,
     onEnhance: guardItemAction(enhanceItem),
     onEmpower: guardItemAction(empowerItem),
     onReroll: guardItemAction(rerollEmpowerItem),

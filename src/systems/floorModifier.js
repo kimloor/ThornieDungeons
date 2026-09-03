@@ -62,4 +62,9 @@ const SLOT_LABEL = {
   boots: "Boots",
   accessory: "Accessory"
 };
+// NOTE: "wings" (ปีก/เครื่องสวมใส่ด้านหลัง) is reserved as a future 7th equipment slot —
+// shown as a disabled "Soon" placeholder in the Inventory grid. It is NOT added to
+// SLOT_ORDER/SLOT_ICON/SLOT_LABEL yet since no "wings"-type items exist in-game. When
+// this ships, the D1 `items`/equip schema (in the separate API Worker, not this repo)
+// needs its slot/type constraint widened to accept "wings" alongside the 6 existing types.
 const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory"];

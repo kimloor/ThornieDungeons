@@ -223,6 +223,7 @@ const STYLE = `
 .md-buy-btn { font-family: 'Baloo 2'; font-weight: 700; font-size: 12px; background: linear-gradient(180deg, #FFE49A, var(--gold)); border: none; border-radius: 999px; padding: 6px 12px; color: var(--bg-top); cursor: pointer; box-shadow: 0 3px 0 var(--gold-deep); flex-shrink: 0; white-space: nowrap; }
 .md-buy-btn:disabled { opacity: 0.35; }
 .md-buy-btn:active { transform: translateY(2px); box-shadow: none; }
+.md-cost-insufficient { color: #ff5566 !important; font-weight: 900; }
 
 .md-menu-title { text-align: center; padding: 30px 20px 6px; position: relative; z-index: 2; }
 .md-menu-title h1 { font-family:'Baloo 2'; font-size: 30px; margin: 0; color: var(--gold); text-shadow: 0 3px 0 rgba(0,0,0,0.4), 0 0 18px var(--gold-glow); }
@@ -499,6 +500,12 @@ const STYLE = `
 .md-equip-slot-stat { font-size:8px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .md-blacksmith-slots { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:10px; }
 .md-blacksmith-slots .md-equip-slot { position: static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; transform:none !important; width:100% !important; min-height:76px; }
+.md-equip-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, auto); gap: 8px; align-items: stretch; padding: 8px 2px; position: relative; }
+.md-equip-grid .md-equip-slot { position: static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; transform:none !important; width:100% !important; min-height:72px; }
+.md-equip-grid .md-equip-hero { grid-column: 2; grid-row: 2 / span 2; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; }
+.md-equip-grid .md-equip-slot-soon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 12px; border: 1.5px dashed rgba(255,209,102,0.3); background: rgba(0,0,0,0.18); min-height: 72px; opacity: 0.55; }
+.md-equip-grid .md-equip-slot-soon .icon { font-size: 20px; }
+.md-equip-grid .md-equip-slot-soon .label { font-size: 9px; font-weight: 800; color: var(--ink-soft); }
 .md-equip-summary { display:flex; justify-content:center; gap:7px; flex-wrap:wrap; margin:0 0 8px; }
 .md-equip-stat-chip { border:1px solid rgba(255,209,102,.28); background:rgba(0,0,0,.22); border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; color:var(--ink-soft); white-space: nowrap; flex-shrink: 0; }
 .md-equip-stat-chip b { color:var(--gold); }
@@ -1927,6 +1934,11 @@ const SLOT_LABEL = {
   boots: "Boots",
   accessory: "Accessory"
 };
+// NOTE: "wings" (ปีก/เครื่องสวมใส่ด้านหลัง) is reserved as a future 7th equipment slot —
+// shown as a disabled "Soon" placeholder in the Inventory grid. It is NOT added to
+// SLOT_ORDER/SLOT_ICON/SLOT_LABEL yet since no "wings"-type items exist in-game. When
+// this ships, the D1 `items`/equip schema (in the separate API Worker, not this repo)
+// needs its slot/type constraint widened to accept "wings" alongside the 6 existing types.
 const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory"];
 
 // ===== systems/stats.js =====
@@ -3950,6 +3962,7 @@ function ThornieDungeons() {
     equipped: equipped,
     inventory: inventory,
     busy: itemActionBusy,
+    gold: save.gold,
     onEnhance: guardItemAction(enhanceItem),
     onEmpower: guardItemAction(empowerItem),
     onReroll: guardItemAction(rerollEmpowerItem),
@@ -4782,7 +4795,7 @@ function ShopOverlay({
   }, itemStatText(it)))), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
     onClick: () => guardBuy(gold >= it.price, () => onBuyItem(it))
-  }, "🪙", it.price))), /*#__PURE__*/React.createElement("div", {
+  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < it.price ? "md-cost-insufficient" : "" }, it.price)))), /*#__PURE__*/React.createElement("div", {
     key: "potion",
     className: "md-inv-item"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -4792,7 +4805,7 @@ function ShopOverlay({
   }, "ฟื้นฟู HP 40% ระหว่างต่อสู้")), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
     onClick: () => guardBuy(gold >= stock.potionPrice, onBuyPotion)
-  }, "🪙", stock.potionPrice)), /*#__PURE__*/React.createElement("div", {
+  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < stock.potionPrice ? "md-cost-insufficient" : "" }, stock.potionPrice))), /*#__PURE__*/React.createElement("div", {
     key: "protectionStone",
     className: "md-inv-item"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -4802,7 +4815,7 @@ function ShopOverlay({
   }, "ป้องกันไม่ให้เลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
     onClick: () => guardBuy((diamonds || 0) >= PROTECTION_STONE_PRICE, onBuyProtectionStone)
-  }, "💎", PROTECTION_STONE_PRICE)), ["iron", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
+  }, "💎", /*#__PURE__*/React.createElement("span", { className: (diamonds || 0) < PROTECTION_STONE_PRICE ? "md-cost-insufficient" : "" }, PROTECTION_STONE_PRICE))), ["iron", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
     key: type,
     className: "md-inv-item"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -4810,7 +4823,7 @@ function ShopOverlay({
   }, JUNK_INFO[type].icon, " ", JUNK_INFO[type].name)), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
     onClick: () => guardBuy(gold >= MATERIAL_SHOP_PRICE[type], () => onBuyMaterial(type))
-  }, "🪙", MATERIAL_SHOP_PRICE[type]))))));
+  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < MATERIAL_SHOP_PRICE[type] ? "md-cost-insufficient" : "" }, MATERIAL_SHOP_PRICE[type])))))));
 }
 function PetScreen({
   save,
@@ -5586,6 +5599,14 @@ function InventoryOverlay({
     if (res.ok) setSelectedId(null);
   };
 
+  const SLOT_GRID_POS = {
+    chest: { gridColumn: 1, gridRow: 1 },
+    helmet: { gridColumn: 2, gridRow: 1 },
+    gloves: { gridColumn: 3, gridRow: 1 },
+    boots: { gridColumn: 1, gridRow: 2 },
+    weapon: { gridColumn: 3, gridRow: 2 },
+    accessory: { gridColumn: 1, gridRow: 3 }
+  };
   const renderEquipSlot = slot => {
     const it = equipped[slot];
     const selected = selectedEquippedSlot === slot;
@@ -5593,6 +5614,7 @@ function InventoryOverlay({
       key: slot,
       type: "button",
       className: `md-equip-slot ${slot} ${it ? "filled" : "empty"} ${selected ? "selected" : ""}`,
+      style: SLOT_GRID_POS[slot],
       onClick: () => chooseEquipped(slot)
     }, /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-icon" }, SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-label" }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name" }, itemDisplayName(it)),
@@ -5628,8 +5650,16 @@ function InventoryOverlay({
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-slots" }, SLOT_ORDER.map(renderEquipSlot)),
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-character" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "" }))
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-grid" },
+        SLOT_ORDER.map(renderEquipSlot),
+        /*#__PURE__*/React.createElement("div", { key: "hero", className: "md-equip-hero" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "" })),
+        /*#__PURE__*/React.createElement("div", {
+          key: "wings",
+          className: "md-equip-slot-soon",
+          style: { gridColumn: 3, gridRow: 3 },
+          title: "ปีก/เครื่องสวมใส่ด้านหลัง — เร็วๆ นี้"
+        }, /*#__PURE__*/React.createElement("span", { className: "icon" }, "🪽"), /*#__PURE__*/React.createElement("span", { className: "label" }, "Soon"))
+      )
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary" },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🪙 ", /*#__PURE__*/React.createElement("b", null, formatNumber(gold || 0))),
@@ -5699,6 +5729,7 @@ function BlacksmithOverlay({
   equipped,
   inventory,
   busy,
+  gold,
   onEnhance,
   onEmpower,
   onReroll,
@@ -5828,7 +5859,15 @@ function BlacksmithOverlay({
           style: { flex: 1, minHeight: 38, fontSize: 10 },
           disabled: (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX || busy,
           onClick: doEnhance
-        }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : `🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · 🔩${enhanceCost(detailTarget.enhanceLevel || 0).iron} 🪙${enhanceCost(detailTarget.enhanceLevel || 0).gold})`),
+        }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : (() => {
+          const c = enhanceCost(detailTarget.enhanceLevel || 0);
+          const haveIron = junkTotal(inventory, "iron");
+          return [`🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · 🔩`,
+            /*#__PURE__*/React.createElement("span", { key: "iron", className: haveIron < c.iron ? "md-cost-insufficient" : "" }, c.iron),
+            " 🪙",
+            /*#__PURE__*/React.createElement("span", { key: "gold", className: gold < c.gold ? "md-cost-insufficient" : "" }, c.gold),
+            ")"];
+        })()),
         /*#__PURE__*/React.createElement("button", {
           className: "md-btn info small",
           style: { flex: 1, minHeight: 38, fontSize: 10 },
@@ -5836,7 +5875,12 @@ function BlacksmithOverlay({
           onClick: doEmpower
         }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : (() => {
           const c = empowerCost((detailTarget.empowerSlots || []).findIndex(s => !s));
-          return `🔮 เสริมพลัง (🔮${c.manaOre} 🪙${c.gold})`;
+          const haveManaOre = junkTotal(inventory, "manaOre");
+          return ["🔮 เสริมพลัง (🔮",
+            /*#__PURE__*/React.createElement("span", { key: "mana", className: haveManaOre < c.manaOre ? "md-cost-insufficient" : "" }, c.manaOre),
+            " 🪙",
+            /*#__PURE__*/React.createElement("span", { key: "gold", className: gold < c.gold ? "md-cost-insufficient" : "" }, c.gold),
+            ")"];
         })())
       ),
       /*#__PURE__*/React.createElement("button", {
@@ -5848,7 +5892,13 @@ function BlacksmithOverlay({
         const filled = (detailTarget.empowerSlots || []).filter(Boolean);
         if (!filled.length) return "🔄 รีรอล (ยังไม่มีออฟชั่น)";
         const lockedCount = filled.filter(s => s.locked).length;
-        return `🔄 รีรอลออฟชั่น (🔮${rerollCost(filled.length, lockedCount).manaOre} 🪙${rerollCost(filled.length, lockedCount).gold}) — แตะออฟชั่นด้านบนเพื่อล็อก`;
+        const c = rerollCost(filled.length, lockedCount);
+        const haveManaOre = junkTotal(inventory, "manaOre");
+        return ["🔄 รีรอลออฟชั่น (🔮",
+          /*#__PURE__*/React.createElement("span", { key: "mana", className: haveManaOre < c.manaOre ? "md-cost-insufficient" : "" }, c.manaOre),
+          " 🪙",
+          /*#__PURE__*/React.createElement("span", { key: "gold", className: gold < c.gold ? "md-cost-insufficient" : "" }, c.gold),
+          ") — แตะออฟชั่นด้านบนเพื่อล็อก"];
       })()),
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกอุปกรณ์จากช่องสวมใส่หรือกระเป๋าเพื่อเริ่มตีบวก/เสริมพลัง")),

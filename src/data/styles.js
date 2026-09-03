@@ -168,6 +168,7 @@ const STYLE = `
 .md-buy-btn { font-family: 'Baloo 2'; font-weight: 700; font-size: 12px; background: linear-gradient(180deg, #FFE49A, var(--gold)); border: none; border-radius: 999px; padding: 6px 12px; color: var(--bg-top); cursor: pointer; box-shadow: 0 3px 0 var(--gold-deep); flex-shrink: 0; white-space: nowrap; }
 .md-buy-btn:disabled { opacity: 0.35; }
 .md-buy-btn:active { transform: translateY(2px); box-shadow: none; }
+.md-cost-insufficient { color: #ff5566 !important; font-weight: 900; }
 
 .md-menu-title { text-align: center; padding: 30px 20px 6px; position: relative; z-index: 2; }
 .md-menu-title h1 { font-family:'Baloo 2'; font-size: 30px; margin: 0; color: var(--gold); text-shadow: 0 3px 0 rgba(0,0,0,0.4), 0 0 18px var(--gold-glow); }
@@ -444,6 +445,12 @@ const STYLE = `
 .md-equip-slot-stat { font-size:8px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .md-blacksmith-slots { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:10px; }
 .md-blacksmith-slots .md-equip-slot { position: static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; transform:none !important; width:100% !important; min-height:76px; }
+.md-equip-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, auto); gap: 8px; align-items: stretch; padding: 8px 2px; position: relative; }
+.md-equip-grid .md-equip-slot { position: static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; transform:none !important; width:100% !important; min-height:72px; }
+.md-equip-grid .md-equip-hero { grid-column: 2; grid-row: 2 / span 2; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; }
+.md-equip-grid .md-equip-slot-soon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 12px; border: 1.5px dashed rgba(255,209,102,0.3); background: rgba(0,0,0,0.18); min-height: 72px; opacity: 0.55; }
+.md-equip-grid .md-equip-slot-soon .icon { font-size: 20px; }
+.md-equip-grid .md-equip-slot-soon .label { font-size: 9px; font-weight: 800; color: var(--ink-soft); }
 .md-equip-summary { display:flex; justify-content:center; gap:7px; flex-wrap:wrap; margin:0 0 8px; }
 .md-equip-stat-chip { border:1px solid rgba(255,209,102,.28); background:rgba(0,0,0,.22); border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; color:var(--ink-soft); white-space: nowrap; flex-shrink: 0; }
 .md-equip-stat-chip b { color:var(--gold); }
