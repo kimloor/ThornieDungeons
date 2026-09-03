@@ -257,7 +257,7 @@ const STYLE = `
 .md-floor-chip.locked { opacity: 0.45; cursor: not-allowed; }
 .md-floor-chip .sub { display:block; font-size: 9px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
 .md-map-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.md-monster-board { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 2px; align-items: flex-end; justify-content: flex-end; }
+.md-monster-board { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 8px; align-items: flex-end; justify-content: flex-end; }
 .md-monster-board .md-sprite-wrap { transform: scale(0.82); transform-origin: bottom center; }
 
 /* floating quick-access buttons (shop / character / bag) */

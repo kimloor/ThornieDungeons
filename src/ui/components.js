@@ -1286,10 +1286,10 @@ function CombatScreen({
     style: {
       position: "relative",
       display: "flex",
-      flexDirection: "row",
+      flexDirection: "column",
       flexWrap: "nowrap",
-      gap: 10,
-      alignItems: "flex-end",
+      gap: 6,
+      alignItems: "center",
       minWidth: 0,
       flexShrink: 0
     }
@@ -1324,7 +1324,7 @@ function CombatScreen({
       color: f.color
     }
   }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
-    style: { position: "relative", transform: "scale(0.55)" }
+    style: { position: "relative", transform: "scale(0.65)" }
   }, /*#__PURE__*/React.createElement(PetCombatSprite, {
     pet: petCombat,
     anim: petAnim
