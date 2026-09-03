@@ -1054,6 +1054,13 @@ function ThornieDungeons() {
             }
             return next;
           });
+          // Keep playerRef in sync immediately: playerRef.current is normally
+          // updated by a useEffect on the next render, but advance() below
+          // (called synchronously via cb() in this same tick) reads
+          // playerRef.current right away to detect defeat. Without this, a
+          // lethal hit could be read as "still alive" and combat would keep
+          // going past 0 HP.
+          if (playerRef.current) playerRef.current = { ...playerRef.current, hp: nh };
           spawnFloat("hero", `-${dmg}`, "#FF6B6B");
           setLog(weakenProc && nh > 0 ? `${fresh.name} strikes You for ${dmg} and weakens you!` : `${fresh.name} strikes You for ${dmg}!`);
         }
@@ -1617,7 +1624,7 @@ function ThornieDungeons() {
     // sitting in state (from the last stage you fought, incl. a flee), carry its
     // real current HP/MP into the newly-selected stage instead of full-healing —
     // Stage Select should only ever full-heal when there's truly no run to continue.
-    onSelectFloor: floorNum => enterStage(floorNum, player),
+    onSelectFloor: floorNum => enterStage(floorNum, player && player.hp > 0 ? player : null),
     onSave: () => persistSave(save),
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
