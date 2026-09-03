@@ -1573,6 +1573,7 @@ function ThornieDungeons() {
     gold: save.gold,
     diamonds: save.diamonds,
     protectionStones: save.protectionStones || 0,
+    characterName: save.characterName,
     onEquip: guardItemAction(equipItem),
     onUnequip: guardItemAction(unequipItem),
     onSell: guardItemAction(sellItem),

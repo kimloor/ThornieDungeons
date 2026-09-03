@@ -1047,7 +1047,8 @@ function FloatingQuickActions({
 }
 function HeroSprite({
   anim,
-  showName = true
+  showName = true,
+  label = "You"
 }) {
   // 3-tier fallback, checked in order, so a wrong rig path or missing art never breaks combat:
   //   1. Rig-anchored modular composite (real body pose from hero001_rig_v1.json) — the goal.
@@ -1094,7 +1095,7 @@ function HeroSprite({
     className: "md-sprite-wrap"
   }, visual, showName && /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-name"
-  }, "You"));
+  }, label));
 }
 function EnemySprite({
   enemy,
@@ -1551,6 +1552,7 @@ function InventoryOverlay({
   gold,
   diamonds,
   protectionStones,
+  characterName,
   onEquip,
   onUnequip,
   onSell,
@@ -1615,12 +1617,12 @@ function InventoryOverlay({
   };
 
   const SLOT_GRID_POS = {
-    chest: { gridColumn: 1, gridRow: 1 },
     helmet: { gridColumn: 2, gridRow: 1 },
     gloves: { gridColumn: 3, gridRow: 1 },
-    boots: { gridColumn: 1, gridRow: 2 },
+    chest: { gridColumn: 1, gridRow: 2 },
     weapon: { gridColumn: 3, gridRow: 2 },
-    accessory: { gridColumn: 1, gridRow: 3 }
+    accessory: { gridColumn: 1, gridRow: 3 },
+    boots: { gridColumn: 3, gridRow: 3 }
   };
   const renderEquipSlot = slot => {
     const it = equipped[slot];
@@ -1630,10 +1632,11 @@ function InventoryOverlay({
       type: "button",
       className: `md-equip-slot ${slot} ${it ? "filled" : "empty"} ${selected ? "selected" : ""}`,
       style: SLOT_GRID_POS[slot],
+      title: it ? itemStatText(it) : "",
       onClick: () => chooseEquipped(slot)
     }, /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-icon" }, SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-label" }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name" }, itemDisplayName(it)),
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-stat" }, itemStatText(it))
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-hint" }, "แตะดูรายละเอียด")
     ) : /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name", style: { color: "var(--ink-soft)", opacity: .55 } }, "Empty"));
   };
 
@@ -1667,11 +1670,11 @@ function InventoryOverlay({
     /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
       /*#__PURE__*/React.createElement("div", { className: "md-equip-grid" },
         SLOT_ORDER.map(renderEquipSlot),
-        /*#__PURE__*/React.createElement("div", { key: "hero", className: "md-equip-hero" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "" })),
+        /*#__PURE__*/React.createElement("div", { key: "hero", className: "md-equip-hero" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", label: characterName || "Adventurer" })),
         /*#__PURE__*/React.createElement("div", {
           key: "wings",
           className: "md-equip-slot-soon",
-          style: { gridColumn: 3, gridRow: 3 },
+          style: { gridColumn: 1, gridRow: 1 },
           title: "ปีก/เครื่องสวมใส่ด้านหลัง — เร็วๆ นี้"
         }, /*#__PURE__*/React.createElement("span", { className: "icon" }, "🪽"), /*#__PURE__*/React.createElement("span", { className: "label" }, "Soon"))
       )
@@ -1811,10 +1814,11 @@ function BlacksmithOverlay({
       key: slot,
       type: "button",
       className: `md-equip-slot ${slot} ${it ? "filled" : "empty"} ${selected ? "selected" : ""}`,
+      title: it ? itemStatText(it) : "",
       onClick: () => chooseEquipped(slot)
     }, /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-icon" }, SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-label" }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name" }, itemDisplayName(it)),
-      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-stat" }, itemStatText(it))
+      /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-hint" }, "แตะดูรายละเอียด")
     ) : /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name", style: { color: "var(--ink-soft)", opacity: .55 } }, "Empty"));
   };
 

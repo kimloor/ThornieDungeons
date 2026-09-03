@@ -441,8 +441,9 @@ const STYLE = `
 .md-equip-slot.boots { left:50%; bottom:3px; transform:translateX(-50%); }
 .md-equip-slot-icon { font-size:22px; line-height:22px; }
 .md-equip-slot-label { font-size:9px; color:var(--ink-soft); font-weight:800; margin-top:2px; }
-.md-equip-slot-name { font-size:9px; color:var(--gold); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.md-equip-slot-name { font-size:9px; color:var(--gold); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; max-width: 100%; }
 .md-equip-slot-stat { font-size:8px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.md-equip-slot-hint { font-size:7.5px; color:var(--ink-soft); opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .md-blacksmith-slots { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:10px; }
 .md-blacksmith-slots .md-equip-slot { position: static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; transform:none !important; width:100% !important; min-height:76px; }
 .md-equip-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, auto); gap: 8px; align-items: stretch; padding: 8px 2px; position: relative; }
