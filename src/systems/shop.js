@@ -9,9 +9,6 @@ function sellPrice(it) {
 function shopBuyPrice(it) {
   return Math.max(10, Math.round(itemValueScore(it) * (RARITY_MULT[it.rarity] || 1) * 2.2));
 }
-function potionShopPrice(floor) {
-  return 8 + Math.round(floor * 1.5);
-}
 function generateShopStock(floor) {
   const items = [];
   for (let i = 0; i < 3; i++) {
@@ -22,7 +19,8 @@ function generateShopStock(floor) {
     });
   }
   return {
-    potionPrice: potionShopPrice(floor),
+    // Potion tiers are a fixed catalog (not randomized like gear rolls) — always all 8 in stock.
+    potions: POTION_DEFS,
     items
   };
 }

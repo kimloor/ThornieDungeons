@@ -472,6 +472,51 @@ const STYLE = `
   font-family: 'Baloo 2';
 }
 
+/* ---- quick slots: 4 always-visible one-tap combat slots + assign/edit UI ---- */
+.md-quickslot-bar { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.md-quickslot-bar.battle { position: relative; }
+.md-quickslot-btn {
+  position: relative; width: 40px; height: 40px; border-radius: 12px; padding: 0; cursor: pointer;
+  border: 2px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
+  display: flex; align-items: center; justify-content: center; font-size: 17px; color: #fff;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15); flex-shrink: 0;
+}
+.md-quickslot-btn.empty { opacity: 0.55; border-style: dashed; }
+.md-quickslot-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-quickslot-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.md-quickslot-btn.editing { border-color: #E14F4F; }
+.md-quickslot-icon { pointer-events: none; }
+.md-quickslot-edit {
+  width: 30px; height: 30px; border-radius: 50%; padding: 0; cursor: pointer; flex-shrink: 0;
+  border: 2px solid var(--violet-deep); background: rgba(20,12,30,0.92); color: #fff; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.md-quickslot-edit.active { border-color: #8ee0a8; color: #8ee0a8; }
+.md-skill-popover.quickslot-assign, .md-skill-popover.more {
+  right: auto; left: 0; grid-template-columns: none; display: flex; flex-direction: column;
+  width: min(78vw, 300px); max-height: 50vh; overflow-y: auto;
+}
+.md-quickslot-popover-title { font-family: 'Baloo 2'; font-weight: 800; font-size: 11.5px; color: var(--gold); margin-bottom: 6px; }
+.md-quickslot-popover-list { display: flex; flex-direction: column; gap: 4px; }
+.md-quickslot-popover-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer;
+  padding: 7px 10px; border-radius: 10px; border: 1.5px solid var(--violet-deep);
+  background: rgba(64,46,22,0.5); color: #fff; font-family: 'Baloo 2'; font-size: 12px; font-weight: 700;
+}
+.md-quickslot-popover-item:active { transform: translateY(1px); }
+.md-quickslot-popover-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.md-quickslot-popover-sub { color: var(--ink-soft); font-size: 10.5px; font-weight: 800; flex-shrink: 0; }
+
+/* quick slot panel inside the Inventory sheet */
+.md-quickslot-panel { margin: 4px 0 10px; padding: 8px 10px; border-radius: 14px; border: 1.5px solid var(--gold-deep); background: rgba(0,0,0,0.22); position: relative; }
+.md-quickslot-panel-label { font-family: 'Baloo 2'; font-weight: 800; font-size: 11px; color: var(--gold); margin-bottom: 6px; }
+.md-quickslot-clear {
+  position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%;
+  background: #E14F4F; color: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: 1.5px solid rgba(0,0,0,0.4);
+}
+.md-quickslot-popover { margin-top: 8px; padding: 8px; border-radius: 12px; border: 1.5px solid var(--violet-deep); background: rgba(20,12,30,0.92); }
+
 
 /* ---- character equipment / inventory redesign ---- */
 .md-equip-overlay { position:absolute; inset:0; z-index:20; background:rgba(6,3,15,0.82); display:flex; align-items:flex-end; justify-content:center; }
@@ -743,6 +788,24 @@ function flattenCharacterForRuntime(account, slotIndex) {
     characterId: slot.id,
     characterName: slot.name
   };
+}
+
+// ---------- quick slots (client-side only — no D1 schema change needed) ----------
+// 4 combat quick slots, each either null or { kind: "skill", key } / { kind: "potion", potionId }.
+// Stored via kvGet/kvSet (localStorage, same fallback used elsewhere) and namespaced per
+// player+character so switching characters/accounts never bleeds one character's slots into
+// another's, same reasoning as the per-character `thornie-run-*` resume key.
+function quickSlotsStorageKey(userId, characterId) {
+  return `thornie-quickslots-${userId}-${characterId}`;
+}
+async function loadQuickSlots(userId, characterId) {
+  const raw = await kvGet(quickSlotsStorageKey(userId, characterId));
+  const parsed = safeJsonParse(raw, null);
+  if (Array.isArray(parsed) && parsed.length === 4) return parsed;
+  return [null, null, null, null];
+}
+async function saveQuickSlotsLocal(userId, characterId, slots) {
+  await kvSet(quickSlotsStorageKey(userId, characterId), JSON.stringify(slots));
 }
 
 function packRuntimeIntoSlot(existingSlot, flatSave) {
@@ -1129,9 +1192,9 @@ function itemsToServerList(inventory, equipped) {
     hp: it.hp,
     mp: it.mp,
     enhanceLevel: it.enhanceLevel || 0,
-    // dodgeChance/critChance/critDamage (accessory base rolls) and junk stack data
-    // (junkId/quantity/icon) don't have their own server columns, so they ride along inside
-    // the extra JSON blob instead (this part is unaffected by the schema-v2 change — the
+    // dodgeChance/critChance/critDamage (accessory base rolls) and junk/potion stack data
+    // (junkId/potionId/quantity/icon) don't have their own server columns, so they ride along
+    // inside the extra JSON blob instead (this part is unaffected by the schema-v2 change — the
     // items table's extra_json column was always real, unlike progress.materials_json).
     extra: {
       empowerSlots: it.empowerSlots || [],
@@ -1139,6 +1202,7 @@ function itemsToServerList(inventory, equipped) {
       critChance: it.critChance || undefined,
       critDamage: it.critDamage || undefined,
       junkId: it.junkId || undefined,
+      potionId: it.potionId || undefined,
       quantity: it.quantity || undefined,
       icon: it.icon || undefined
     }
@@ -1168,6 +1232,19 @@ function itemsFromServerList(rows) {
           junkId: extra.junkId,
           name: r.name,
           icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
+          rarity: r.rarity || "common",
+          quantity: numOr(extra.quantity, 1)
+        });
+        return;
+      }
+      if (r.slot_type === "potion") {
+        const def = getPotionDef(extra.potionId);
+        inventory.push({
+          id: r.item_id,
+          type: "potion",
+          potionId: extra.potionId,
+          name: r.name || (def && def.name) || "Potion",
+          icon: extra.icon || (def && def.icon) || "🧪",
           rarity: r.rarity || "common",
           quantity: numOr(extra.quantity, 1)
         });
@@ -1266,7 +1343,7 @@ let SKILLS = [{
   mp: 16,
   type: "heal",
   healPct: 0.45,
-  desc: "ฟื้นฟู HP 45% ของ HP สูงสุด"
+  desc: "สกิลหมู่: ฟื้นฟู HP 45% ของ HP สูงสุด ให้ทั้งตัวคุณและสัตว์เลี้ยง"
 }, {
   key: "war_cry",
   unlockLevel: 40,
@@ -1276,7 +1353,7 @@ let SKILLS = [{
   type: "buffAtk",
   pct: 0.3,
   turns: 3,
-  desc: "เพิ่ม ATK 30% นาน 3 เทิร์น"
+  desc: "สกิลหมู่: เพิ่ม ATK 30% นาน 3 เทิร์น ให้ทั้งตัวคุณและสัตว์เลี้ยง"
 }, {
   key: "ice_lance",
   unlockLevel: 50,
@@ -1297,7 +1374,7 @@ let SKILLS = [{
   type: "buffDef",
   pct: 0.4,
   turns: 3,
-  desc: "เพิ่ม DEF 40% นาน 3 เทิร์น"
+  desc: "สกิลหมู่: เพิ่ม DEF 40% นาน 3 เทิร์น ให้ทั้งตัวคุณและสัตว์เลี้ยง"
 }, {
   key: "venom_strike",
   unlockLevel: 70,
@@ -1830,6 +1907,96 @@ function rollChestRarity(isEliteBoss, pity = 0) {
   return "rare";
 }
 
+// ===== systems/potions.js =====
+// ---------- potions (stackable consumables, live in normal inventory like junk) ----------
+// Same pattern as JUNK_INFO/addJunkToInventory in enhancement.js: plain stackable items with
+// type: "potion" that ride through the normal item sync (serialize.js) via extra_json, so no
+// D1 schema migration is needed to support them.
+const POTION_DEFS = [
+  { id: "hp_small", kind: "hp", tier: 1, name: "Small HP Potion", icon: "🧪", healPct: 0.20, price: 15, desc: "ฟื้นฟู HP 20% ของ HP สูงสุด" },
+  { id: "hp_medium", kind: "hp", tier: 2, name: "Medium HP Potion", icon: "🧪", healPct: 0.40, price: 32, desc: "ฟื้นฟู HP 40% ของ HP สูงสุด" },
+  { id: "hp_high", kind: "hp", tier: 3, name: "High HP Potion", icon: "🧪", healPct: 0.70, price: 60, desc: "ฟื้นฟู HP 70% ของ HP สูงสุด" },
+  { id: "hp_full", kind: "hp", tier: 4, name: "Full HP Potion", icon: "🧪", healPct: 1.0, price: 110, desc: "ฟื้นฟู HP เต็ม 100%" },
+  { id: "mp_small", kind: "mp", tier: 1, name: "Small SP Potion", icon: "🧴", healPct: 0.20, price: 15, desc: "ฟื้นฟู SP 20% ของ SP สูงสุด" },
+  { id: "mp_medium", kind: "mp", tier: 2, name: "Medium SP Potion", icon: "🧴", healPct: 0.40, price: 32, desc: "ฟื้นฟู SP 40% ของ SP สูงสุด" },
+  { id: "mp_high", kind: "mp", tier: 3, name: "High SP Potion", icon: "🧴", healPct: 0.70, price: 60, desc: "ฟื้นฟู SP 70% ของ SP สูงสุด" },
+  { id: "mp_full", kind: "mp", tier: 4, name: "Full SP Potion", icon: "🧴", healPct: 1.0, price: 110, desc: "ฟื้นฟู SP เต็ม 100%" }
+];
+const POTION_STACK_MAX = 99;
+function getPotionDef(potionId) {
+  return POTION_DEFS.find(p => p.id === potionId) || null;
+}
+function makePotionItem(potionId, quantity) {
+  const def = getPotionDef(potionId);
+  if (!def) return null;
+  return {
+    id: `potion-${potionId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    type: "potion",
+    potionId,
+    name: def.name,
+    icon: def.icon,
+    rarity: "common",
+    quantity: Math.max(1, Math.min(POTION_STACK_MAX, quantity))
+  };
+}
+// Sums every stack of a given potion type currently sitting in the inventory.
+function potionTotal(inventory, potionId) {
+  return inventory.reduce((sum, it) => it.type === "potion" && it.potionId === potionId ? sum + (it.quantity || 0) : sum, 0);
+}
+// Adds `amount` of a potion type into existing (non-full) stacks first, then creates new
+// 99-cap stacks for any remainder — identical shape to addJunkToInventory().
+function addPotionToInventory(inventory, potionId, amount) {
+  if (!amount || amount <= 0) return inventory;
+  let remaining = amount;
+  const next = inventory.map(it => {
+    if (remaining > 0 && it.type === "potion" && it.potionId === potionId && it.quantity < POTION_STACK_MAX) {
+      const space = POTION_STACK_MAX - it.quantity;
+      const add = Math.min(space, remaining);
+      remaining -= add;
+      return { ...it, quantity: it.quantity + add };
+    }
+    return it;
+  });
+  while (remaining > 0) {
+    const chunk = Math.min(POTION_STACK_MAX, remaining);
+    next.push(makePotionItem(potionId, chunk));
+    remaining -= chunk;
+  }
+  return next;
+}
+// Removes `amount` of a potion type, draining partially-filled/emptied stacks first.
+// Returns null if the player doesn't have enough (no partial spend).
+function removePotionFromInventory(inventory, potionId, amount) {
+  if (!amount || amount <= 0) return inventory;
+  if (potionTotal(inventory, potionId) < amount) return null;
+  let remaining = amount;
+  const next = [];
+  inventory.forEach(it => {
+    if (remaining > 0 && it.type === "potion" && it.potionId === potionId) {
+      const take = Math.min(it.quantity, remaining);
+      remaining -= take;
+      const leftover = it.quantity - take;
+      if (leftover > 0) next.push({ ...it, quantity: leftover });
+    } else {
+      next.push(it);
+    }
+  });
+  return next;
+}
+// Every distinct potion type currently owned (qty > 0), one entry each, for list UIs.
+function ownedPotionStacks(inventory) {
+  const seen = {};
+  const out = [];
+  inventory.forEach(it => {
+    if (it.type !== "potion" || !(it.quantity > 0)) return;
+    if (seen[it.potionId]) return;
+    seen[it.potionId] = true;
+    const def = getPotionDef(it.potionId);
+    if (def) out.push({ ...def, quantity: potionTotal(inventory, it.potionId) });
+  });
+  return out;
+}
+
 // ===== systems/salvage.js =====
 // ---------- salvage, protection stone, empower reroll/lock, chest pity, material shop ----------
 // Salvaging gear now yields junk items (iron / mana stone) directly into the inventory.
@@ -2352,9 +2519,6 @@ function sellPrice(it) {
 function shopBuyPrice(it) {
   return Math.max(10, Math.round(itemValueScore(it) * (RARITY_MULT[it.rarity] || 1) * 2.2));
 }
-function potionShopPrice(floor) {
-  return 8 + Math.round(floor * 1.5);
-}
 function generateShopStock(floor) {
   const items = [];
   for (let i = 0; i < 3; i++) {
@@ -2365,7 +2529,8 @@ function generateShopStock(floor) {
     });
   }
   return {
-    potionPrice: potionShopPrice(floor),
+    // Potion tiers are a fixed catalog (not randomized like gear rolls) — always all 8 in stock.
+    potions: POTION_DEFS,
     items
   };
 }
@@ -2469,12 +2634,14 @@ function ThornieDungeons() {
   const [shopOpen, setShopOpen] = useState(false);
   const [blacksmithOpen, setBlacksmithOpen] = useState(false);
   const [shopStock, setShopStock] = useState({
-    potionPrice: 0,
+    potions: [],
     items: []
   });
   const [gachaResult, setGachaResult] = useState(null);
   const floatId = useRef(0);
-  const potions = save ? save.potions : 0;
+  // 4 combat quick slots — { kind: "skill", key } | { kind: "potion", potionId } | null.
+  // Loaded/saved locally per-character (see loadQuickSlots/saveQuickSlotsLocal in save.js).
+  const [quickSlots, setQuickSlots] = useState([null, null, null, null]);
   useEffect(() => {
     (async () => {
       
@@ -2705,8 +2872,18 @@ function ThornieDungeons() {
       equipped: eq,
       inventory: inv
     } = itemsFromServerList(res.items || []);
+    // One-time migration: the old flat `potions` counter becomes real Small HP Potion stacks
+    // in the inventory the first time this character loads post-update, then gets zeroed out
+    // so it doesn't keep resurrecting extra potions on every future login.
+    let finalInv = inv;
+    if (characterSlot.potions > 0) {
+      finalInv = addPotionToInventory(inv, "hp_small", characterSlot.potions);
+      pushItems(finalInv, eq, characterSlot.id);
+      characterSlot.potions = 0;
+    }
     setEquipped(eq);
-    setInventory(inv);
+    setInventory(finalInv);
+    loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
     // Mid-combat resume checkpoint is namespaced per-character so switching characters never
     // shows a stale "resume at floor X" prompt left over from a different character's last run.
     // enterCharacter already returns this character's own run_state row directly (scoped
@@ -3102,6 +3279,7 @@ function ThornieDungeons() {
             setLog(freeze ? `${skill.name} freezes ${target.name} solid!` : `You use ${skill.name} on ${target.name} for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
           }
         } else if (skill.type === "heal") {
+          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
           setPlayer(p => {
             const heal = Math.round(stats.maxHp * skill.healPct);
             spawnFloat("hero", `+${heal}`, "#4CAF7D");
@@ -3110,45 +3288,80 @@ function ThornieDungeons() {
               hp: Math.min(stats.maxHp, p.hp + heal)
             };
           });
-          setLog(`You cast ${skill.name} and recover HP.`);
+          if (petAlive) {
+            setPetCombat(pc => {
+              if (!pc) return pc;
+              const petHeal = Math.round(pc.maxHp * skill.healPct);
+              spawnFloat("pet", `+${petHeal}`, "#4CAF7D");
+              return { ...pc, hp: Math.min(pc.maxHp, pc.hp + petHeal) };
+            });
+          }
+          setLog(petAlive ? `You cast ${skill.name} — you and your pet recover HP.` : `You cast ${skill.name} and recover HP.`);
         } else if (skill.type === "buffAtk") {
+          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
           setPlayer(p => ({
             ...p,
             atkBuffPct: skill.pct,
             atkBuffTurns: skill.turns
           }));
           spawnFloat("hero", "ATK UP", "#FFD166");
-          setLog(`You cast ${skill.name}! ATK increased for ${skill.turns} turns.`);
+          if (petAlive) {
+            setPetCombat(pc => pc ? { ...pc, atkBuffPct: skill.pct, atkBuffTurns: skill.turns } : pc);
+            spawnFloat("pet", "ATK UP", "#FFD166");
+          }
+          setLog(petAlive ? `You cast ${skill.name}! ATK increased for you and your pet, ${skill.turns} turns.` : `You cast ${skill.name}! ATK increased for ${skill.turns} turns.`);
         } else if (skill.type === "buffDef") {
+          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
           setPlayer(p => ({
             ...p,
             defBuffPct: skill.pct,
             defBuffTurns: skill.turns
           }));
           spawnFloat("hero", "DEF UP", "#7FB8E8");
-          setLog(`You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
+          if (petAlive) {
+            setPetCombat(pc => pc ? { ...pc, defBuffPct: skill.pct, defBuffTurns: skill.turns } : pc);
+            spawnFloat("pet", "DEF UP", "#7FB8E8");
+          }
+          setLog(petAlive ? `You cast ${skill.name}! DEF increased for you and your pet, ${skill.turns} turns.` : `You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
         }
         setHeroAnim("");
         setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "item") {
-      if (potions <= 0) {
+      const potionId = skillKey;
+      const def = getPotionDef(potionId);
+      if (!def || potionTotal(inventory, potionId) <= 0) {
         setBusy(false);
         return;
       }
-      persistSave({
-        ...save,
-        potions: save.potions - 1
-      });
-      setPlayer(p => {
-        const heal = Math.round(stats.maxHp * 0.4);
-        spawnFloat("hero", `+${heal}`, "#4CAF7D");
-        return {
-          ...p,
-          hp: Math.min(stats.maxHp, p.hp + heal)
-        };
-      });
-      setLog("You drink a potion and recover HP.");
+      const nextInv = removePotionFromInventory(inventory, potionId, 1);
+      if (!nextInv) {
+        setBusy(false);
+        return;
+      }
+      setInventory(nextInv);
+      persistItems(nextInv, equipped);
+      if (def.kind === "hp") {
+        setPlayer(p => {
+          const heal = Math.round(stats.maxHp * def.healPct);
+          spawnFloat("hero", `+${heal}`, "#4CAF7D");
+          return {
+            ...p,
+            hp: Math.min(stats.maxHp, p.hp + heal)
+          };
+        });
+        setLog(`You drink a ${def.name} and recover HP.`);
+      } else {
+        setPlayer(p => {
+          const heal = Math.round(stats.maxMp * def.healPct);
+          spawnFloat("hero", `+${heal}`, "#7FB8E8");
+          return {
+            ...p,
+            mp: Math.min(stats.maxMp, p.mp + heal)
+          };
+        });
+        setLog(`You drink a ${def.name} and recover SP.`);
+      }
       setTimeout(() => runQueueAfterPlayer(), 500);
     } else if (action === "flee") {
       const success = Math.random() < 0.55;
@@ -3260,7 +3473,8 @@ function ThornieDungeons() {
       if (skill.type === "damage") {
         const target = firstAliveMonster();
         if (target) {
-          let dmg = Math.max(2, Math.round(pet.atk * skill.mult - target.def * 0.5 + (Math.random() * 3 - 1)));
+          const petAtkMult = 1 + (pet.atkBuffPct || 0);
+          let dmg = Math.max(2, Math.round(pet.atk * petAtkMult * skill.mult - target.def * 0.5 + (Math.random() * 3 - 1)));
           const hasStun = pet.extra && pet.extra.type === "stun";
           const stun = hasStun ? Math.random() < pet.extra.pct : false;
           updateMonster(target.uid, m => {
@@ -3330,7 +3544,8 @@ function ThornieDungeons() {
       }
       if (targetIsPet) {
         const dodged = Math.random() * 100 < (pet.evasion || 0);
-        const dmg = dodged ? 0 : Math.max(1, Math.round(fresh.atk - pet.def * 0.6 + (Math.random() * 3 - 1)));
+        const petDefMult = 1 + (pet.defBuffPct || 0);
+        const dmg = dodged ? 0 : Math.max(1, Math.round(fresh.atk - pet.def * petDefMult * 0.6 + (Math.random() * 3 - 1)));
         if (dodged) {
           spawnFloat("pet", "MISS", "#B9AEDD");
           setLog(`${pet.name} dodged ${fresh.name}'s attack!`);
@@ -3405,7 +3620,20 @@ function ThornieDungeons() {
     });
   }
   function tickPetCooldown() {
-    setPetCombat(p => p && p.cooldown > 0 ? { ...p, cooldown: p.cooldown - 1 } : p);
+    setPetCombat(p => {
+      if (!p) return p;
+      const next = { ...p };
+      if (next.cooldown > 0) next.cooldown -= 1;
+      if (next.atkBuffTurns > 0) {
+        next.atkBuffTurns -= 1;
+        if (next.atkBuffTurns === 0) next.atkBuffPct = 0;
+      }
+      if (next.defBuffTurns > 0) {
+        next.defBuffTurns -= 1;
+        if (next.defBuffTurns === 0) next.defBuffPct = 0;
+      }
+      return next;
+    });
   }
   function retryStage() {
     // Defeat means HP hit 0 — always start the retry fully healed, since
@@ -3754,13 +3982,28 @@ function ThornieDungeons() {
       items: s.items.filter(i => i.id !== item.id)
     }));
   }
-  function buyShopPotion() {
-    if (save.gold < shopStock.potionPrice) return;
+  function buyShopPotionTier(potionId) {
+    const def = getPotionDef(potionId);
+    if (!def || save.gold < def.price) return;
+    const nextInv = addPotionToInventory(inventory, potionId, 1);
+    setInventory(nextInv);
+    persistItems(nextInv, equipped);
     persistSave({
       ...save,
-      gold: save.gold - shopStock.potionPrice,
-      potions: save.potions + 1
+      gold: save.gold - def.price
     });
+  }
+  // ---------- quick slots ----------
+  function assignQuickSlot(index, entry) {
+    setQuickSlots(qs => {
+      const next = qs.slice();
+      next[index] = entry;
+      if (save && save.characterId) saveQuickSlotsLocal(cred.id, save.characterId, next);
+      return next;
+    });
+  }
+  function clearQuickSlot(index) {
+    assignQuickSlot(index, null);
   }
   function equipPet(instId) {
     persistSave({
@@ -3925,7 +4168,10 @@ function ThornieDungeons() {
     onSelectTarget: selectTarget,
     log: log,
     busy: busy,
-    potions: potions,
+    inventory: inventory,
+    quickSlots: quickSlots,
+    onAssignQuickSlot: assignQuickSlot,
+    onClearQuickSlot: clearQuickSlot,
     heroAnim: heroAnim,
     petAnim: petAnim,
     enemyAnims: enemyAnims,
@@ -3955,6 +4201,10 @@ function ThornieDungeons() {
     diamonds: save.diamonds,
     protectionStones: save.protectionStones || 0,
     characterName: save.characterName,
+    quickSlots: quickSlots,
+    unlockedSkillList: unlockedSkills(save.character.level),
+    onAssignQuickSlot: assignQuickSlot,
+    onClearQuickSlot: clearQuickSlot,
     onEquip: guardItemAction(equipItem),
     onUnequip: guardItemAction(unequipItem),
     onSell: guardItemAction(sellItem),
@@ -3977,7 +4227,7 @@ function ThornieDungeons() {
     protectionStones: save.protectionStones || 0,
     stock: shopStock,
     onBuyItem: buyShopItem,
-    onBuyPotion: buyShopPotion,
+    onBuyPotionTier: buyShopPotionTier,
     onBuyProtectionStone: buyProtectionStone,
     onBuyMaterial: guardItemAction(buyMaterial),
     onClose: () => setShopOpen(false)
@@ -4681,7 +4931,7 @@ function ShopOverlay({
   protectionStones,
   stock,
   onBuyItem,
-  onBuyPotion,
+  onBuyPotionTier,
   onBuyProtectionStone,
   onBuyMaterial,
   onClose
@@ -4784,17 +5034,17 @@ function ShopOverlay({
   }, itemStatText(it)))), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
     onClick: () => guardBuy(gold >= it.price, () => onBuyItem(it))
-  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < it.price ? "md-cost-insufficient" : "" }, it.price)))), /*#__PURE__*/React.createElement("div", {
-    key: "potion",
+  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < it.price ? "md-cost-insufficient" : "" }, it.price)))), (stock.potions || []).map(p => /*#__PURE__*/React.createElement("div", {
+    key: p.id,
     className: "md-inv-item"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "md-inv-name"
-  }, "🧪 Potion"), /*#__PURE__*/React.createElement("div", {
+  }, p.icon, " ", p.name), /*#__PURE__*/React.createElement("div", {
     className: "md-inv-stat"
-  }, "ฟื้นฟู HP 40% ระหว่างต่อสู้")), /*#__PURE__*/React.createElement("button", {
+  }, p.desc)), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
-    onClick: () => guardBuy(gold >= stock.potionPrice, onBuyPotion)
-  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < stock.potionPrice ? "md-cost-insufficient" : "" }, stock.potionPrice))), /*#__PURE__*/React.createElement("div", {
+    onClick: () => guardBuy(gold >= p.price, () => onBuyPotionTier(p.id))
+  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < p.price ? "md-cost-insufficient" : "" }, p.price)))), /*#__PURE__*/React.createElement("div", {
     key: "protectionStone",
     className: "md-inv-item"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -5178,7 +5428,10 @@ function CombatScreen({
   onSelectTarget,
   log,
   busy,
-  potions,
+  inventory,
+  quickSlots,
+  onAssignQuickSlot,
+  onClearQuickSlot,
   heroAnim,
   petAnim,
   enemyAnims,
@@ -5189,9 +5442,12 @@ function CombatScreen({
   turnQueue,
   activeTurnKey
 }) {
-  const [showSkills, setShowSkills] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [editSlots, setEditSlots] = useState(false);
+  const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [autoRun, setAutoRun] = useState(false);
   const skills = unlockedSkills(player.level);
+  const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
   const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
   const mpPct = Math.max(0, Math.min(100, player.mp / stats.maxMp * 100));
@@ -5199,18 +5455,44 @@ function CombatScreen({
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
-  function pickSkill(skill) {
-    setShowSkills(false);
-    onAction("skill", skill.key);
+  const qs = quickSlots || [null, null, null, null];
+  function quickSlotVisual(entry) {
+    if (!entry) return { icon: "➕", disabled: true, badge: null };
+    if (entry.kind === "skill") {
+      const sk = skills.find(s => s.key === entry.key);
+      if (!sk) return { icon: "❓", disabled: true, badge: null };
+      return { icon: sk.icon, disabled: busy || player.mp < sk.mp, badge: sk.mp, title: `${sk.name} (${sk.mp}mp) — ${sk.desc}` };
+    }
+    const def = getPotionDef(entry.potionId);
+    const qty = potionTotal(inventory || [], entry.potionId);
+    if (!def) return { icon: "🧪", disabled: true, badge: null };
+    return { icon: def.icon, disabled: busy || qty <= 0, badge: qty, title: `${def.name} — ${def.desc}` };
+  }
+  function useQuickSlot(i) {
+    const entry = qs[i];
+    if (editSlots) {
+      onClearQuickSlot(i);
+      return;
+    }
+    if (!entry) {
+      setAssignSlotIndex(i);
+      setShowMore(false);
+      return;
+    }
+    if (entry.kind === "skill") onAction("skill", entry.key);else onAction("item", entry.potionId);
+  }
+  function assignTo(slotIndex, entry) {
+    onAssignQuickSlot(slotIndex, entry);
+    setAssignSlotIndex(null);
   }
   useEffect(() => {
     // Auto Run: keep throwing basic attacks on its own while enabled, as long
-    // as we're not mid-animation and the skill grid isn't open (so a manual
-    // skill pick doesn't get raced by an auto attack).
-    if (!autoRun || busy || showSkills) return;
+    // as we're not mid-animation and no picker is open (so a manual pick doesn't
+    // get raced by an auto attack).
+    if (!autoRun || busy || showMore || assignSlotIndex !== null) return;
     const t = setTimeout(() => onAction("attack"), 550);
     return () => clearTimeout(t);
-  }, [autoRun, busy, showSkills, onAction]);
+  }, [autoRun, busy, showMore, assignSlotIndex, onAction]);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-scene battle-bg"
   }, /*#__PURE__*/React.createElement("div", {
@@ -5328,38 +5610,75 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto ${autoRun ? "active" : ""}`,
     onClick: () => setAutoRun(a => !a)
-  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("button", {
-    className: "md-dock-circle item",
-    disabled: busy || potions <= 0,
-    onClick: () => onAction("item")
-  }, "🧪", /*#__PURE__*/React.createElement("i", {
-    className: "md-rail-badge"
-  }, potions)), /*#__PURE__*/React.createElement("button", {
+  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
+    className: "md-quickslot-bar battle"
+  }, [0, 1, 2, 3].map(i => {
+    const v = quickSlotVisual(qs[i]);
+    return /*#__PURE__*/React.createElement("button", {
+      key: i,
+      className: `md-quickslot-btn battle ${qs[i] ? "filled" : "empty"} ${editSlots ? "editing" : ""}`,
+      disabled: !editSlots && v.disabled,
+      title: v.title || "แตะเพื่อกำหนดช่องนี้",
+      onClick: () => useQuickSlot(i)
+    }, /*#__PURE__*/React.createElement("span", { className: "md-quickslot-icon" }, v.icon), v.badge != null && /*#__PURE__*/React.createElement("i", {
+      className: "md-rail-badge"
+    }, v.badge));
+  }), /*#__PURE__*/React.createElement("button", {
+    className: `md-quickslot-edit ${editSlots ? "active" : ""}`,
+    title: editSlots ? "เสร็จสิ้นการแก้ไข" : "แก้ไขช่อง (ลบไอเทม/สกิลออกจากช่อง)",
+    onClick: () => setEditSlots(v => !v)
+  }, editSlots ? "✓" : "✏️")), assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", {
+    className: "md-skill-popover quickslot-assign"
+  }, /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-title" }, `เลือกไอเทม/สกิลสำหรับช่อง ${assignSlotIndex + 1}`), /*#__PURE__*/React.createElement("div", {
+    className: "md-quickslot-popover-list"
+  }, skills.map(s => /*#__PURE__*/React.createElement("button", {
+    key: `sk-${s.key}`,
+    className: "md-quickslot-popover-item",
+    onClick: () => assignTo(assignSlotIndex, { kind: "skill", key: s.key })
+  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "MP ", s.mp))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
+    key: `pt-${p.id}`,
+    className: "md-quickslot-popover-item",
+    onClick: () => assignTo(assignSlotIndex, { kind: "potion", potionId: p.id })
+  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))), skills.length === 0 && potionStacks.length === 0 && /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "ยังไม่มีสกิลหรือโพชั่น")), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee small",
+    onClick: () => setAssignSlotIndex(null),
+    style: { boxShadow: "none", marginTop: 6 }
+  }, "ปิด")), /*#__PURE__*/React.createElement("button", {
     className: "md-dock-attack",
     disabled: busy,
     onClick: () => {
-      setShowSkills(false);
+      setShowMore(false);
       onAction("attack");
     }
   }, "👊"), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "relative"
     }
-  }, showSkills && /*#__PURE__*/React.createElement("div", {
-    className: "md-skill-popover"
-  }, skills.map((s, i) => /*#__PURE__*/React.createElement("button", {
+  }, showMore && /*#__PURE__*/React.createElement("div", {
+    className: "md-skill-popover more"
+  }, /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-list" }, skills.map((s, i) => /*#__PURE__*/React.createElement("button", {
     key: s.key,
-    className: "md-skill-cell",
+    className: "md-quickslot-popover-item",
     disabled: busy || player.mp < s.mp,
     title: `${s.name} (${s.mp}mp) — ${s.desc}`,
-    onClick: () => pickSkill(s)
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-skill-num"
-  }, i + 1), s.icon))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setShowMore(false);
+      onAction("skill", s.key);
+    }
+  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "MP ", s.mp))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
+    key: p.id,
+    className: "md-quickslot-popover-item",
+    disabled: busy,
+    title: p.desc,
+    onClick: () => {
+      setShowMore(false);
+      onAction("item", p.id);
+    }
+  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))))), /*#__PURE__*/React.createElement("button", {
     className: "md-dock-circle skill",
-    disabled: busy || skills.length === 0,
-    onClick: () => setShowSkills(v => !v)
-  }, "✨")), /*#__PURE__*/React.createElement("button", {
+    disabled: busy || skills.length === 0 && potionStacks.length === 0,
+    onClick: () => setShowMore(v => !v)
+  }, "☰")), /*#__PURE__*/React.createElement("button", {
     className: "md-dock-circle flee",
     disabled: busy,
     onClick: () => onAction("flee")
@@ -5527,6 +5846,10 @@ function InventoryOverlay({
   diamonds,
   protectionStones,
   characterName,
+  quickSlots,
+  unlockedSkillList,
+  onAssignQuickSlot,
+  onClearQuickSlot,
   onEquip,
   onUnequip,
   onSell,
@@ -5534,6 +5857,7 @@ function InventoryOverlay({
   onClose
 }) {
   const [selectedId, setSelectedId] = useState(null);
+  const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
   const [sortMode, setSortMode] = useState("default");
   const [actionMsg, setActionMsg] = useState("");
@@ -5633,6 +5957,20 @@ function InventoryOverlay({
     );
   };
 
+  const quickAssignOptions = [
+    ...(unlockedSkillList || []).map(s => ({ kind: "skill", key: s.key, potionId: null, icon: s.icon, name: s.name, sub: `MP ${s.mp}` })),
+    ...ownedPotionStacks(inventory).map(p => ({ kind: "potion", key: null, potionId: p.id, icon: p.icon, name: p.name, sub: `x${p.quantity}` }))
+  ];
+  const quickSlotVisual = entry => {
+    if (!entry) return { icon: "➕", name: "ว่าง" };
+    if (entry.kind === "skill") {
+      const sk = (unlockedSkillList || []).find(s => s.key === entry.key);
+      return sk ? { icon: sk.icon, name: sk.name } : { icon: "❓", name: "ล็อกอยู่" };
+    }
+    const def = getPotionDef(entry.potionId);
+    return def ? { icon: def.icon, name: def.name } : { icon: "🧪", name: "Potion" };
+  };
+
   return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
     /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
       /*#__PURE__*/React.createElement("div", null,
@@ -5640,6 +5978,42 @@ function InventoryOverlay({
         /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "แตะอุปกรณ์รอบตัวละคร หรือแตะไอเทมในกระเป๋าเพื่อเลือก · ตีบวก/เสริมพลังไปที่ร้านตีเหล็ก ⚒️")
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
+    ),
+    onAssignQuickSlot && /*#__PURE__*/React.createElement("div", { className: "md-quickslot-panel" },
+      /*#__PURE__*/React.createElement("div", { className: "md-quickslot-panel-label" }, "🎯 Quick Slots (ใช้ในสนามรบแบบแตะครั้งเดียว)"),
+      /*#__PURE__*/React.createElement("div", { className: "md-quickslot-bar" },
+        [0, 1, 2, 3].map(i => {
+          const entry = (quickSlots || [])[i];
+          const v = quickSlotVisual(entry);
+          return /*#__PURE__*/React.createElement("button", {
+            key: i,
+            type: "button",
+            className: `md-quickslot-btn ${entry ? "filled" : "empty"}`,
+            title: v.name,
+            onClick: () => setAssignSlotIndex(i)
+          }, /*#__PURE__*/React.createElement("span", { className: "md-quickslot-icon" }, v.icon),
+             entry && /*#__PURE__*/React.createElement("span", {
+               className: "md-quickslot-clear",
+               onClick: e => { e.stopPropagation(); onClearQuickSlot(i); }
+             }, "✕"));
+        })
+      ),
+      assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover" },
+        /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-title" }, `เลือกไอเทม/สกิลสำหรับช่อง ${assignSlotIndex + 1}`),
+        /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-list" },
+          quickAssignOptions.length === 0 && /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "ยังไม่มีสกิลหรือโพชั่นให้เลือก"),
+          quickAssignOptions.map((opt, idx) => /*#__PURE__*/React.createElement("button", {
+            key: `${opt.kind}-${opt.key || opt.potionId}-${idx}`,
+            type: "button",
+            className: "md-quickslot-popover-item",
+            onClick: () => {
+              onAssignQuickSlot(assignSlotIndex, opt.kind === "skill" ? { kind: "skill", key: opt.key } : { kind: "potion", potionId: opt.potionId });
+              setAssignSlotIndex(null);
+            }
+          }, /*#__PURE__*/React.createElement("span", null, opt.icon, " ", opt.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, opt.sub)))
+        ),
+        /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: () => setAssignSlotIndex(null), style: { boxShadow: "none", marginTop: 6 } }, "ปิด")
+      )
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
       /*#__PURE__*/React.createElement("div", { className: "md-equip-grid" },

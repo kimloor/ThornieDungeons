@@ -88,12 +88,14 @@ function ThornieDungeons() {
   const [shopOpen, setShopOpen] = useState(false);
   const [blacksmithOpen, setBlacksmithOpen] = useState(false);
   const [shopStock, setShopStock] = useState({
-    potionPrice: 0,
+    potions: [],
     items: []
   });
   const [gachaResult, setGachaResult] = useState(null);
   const floatId = useRef(0);
-  const potions = save ? save.potions : 0;
+  // 4 combat quick slots — { kind: "skill", key } | { kind: "potion", potionId } | null.
+  // Loaded/saved locally per-character (see loadQuickSlots/saveQuickSlotsLocal in save.js).
+  const [quickSlots, setQuickSlots] = useState([null, null, null, null]);
   useEffect(() => {
     (async () => {
       
@@ -324,8 +326,18 @@ function ThornieDungeons() {
       equipped: eq,
       inventory: inv
     } = itemsFromServerList(res.items || []);
+    // One-time migration: the old flat `potions` counter becomes real Small HP Potion stacks
+    // in the inventory the first time this character loads post-update, then gets zeroed out
+    // so it doesn't keep resurrecting extra potions on every future login.
+    let finalInv = inv;
+    if (characterSlot.potions > 0) {
+      finalInv = addPotionToInventory(inv, "hp_small", characterSlot.potions);
+      pushItems(finalInv, eq, characterSlot.id);
+      characterSlot.potions = 0;
+    }
     setEquipped(eq);
-    setInventory(inv);
+    setInventory(finalInv);
+    loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
     // Mid-combat resume checkpoint is namespaced per-character so switching characters never
     // shows a stale "resume at floor X" prompt left over from a different character's last run.
     // enterCharacter already returns this character's own run_state row directly (scoped
@@ -721,6 +733,7 @@ function ThornieDungeons() {
             setLog(freeze ? `${skill.name} freezes ${target.name} solid!` : `You use ${skill.name} on ${target.name} for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
           }
         } else if (skill.type === "heal") {
+          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
           setPlayer(p => {
             const heal = Math.round(stats.maxHp * skill.healPct);
             spawnFloat("hero", `+${heal}`, "#4CAF7D");
@@ -729,45 +742,80 @@ function ThornieDungeons() {
               hp: Math.min(stats.maxHp, p.hp + heal)
             };
           });
-          setLog(`You cast ${skill.name} and recover HP.`);
+          if (petAlive) {
+            setPetCombat(pc => {
+              if (!pc) return pc;
+              const petHeal = Math.round(pc.maxHp * skill.healPct);
+              spawnFloat("pet", `+${petHeal}`, "#4CAF7D");
+              return { ...pc, hp: Math.min(pc.maxHp, pc.hp + petHeal) };
+            });
+          }
+          setLog(petAlive ? `You cast ${skill.name} — you and your pet recover HP.` : `You cast ${skill.name} and recover HP.`);
         } else if (skill.type === "buffAtk") {
+          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
           setPlayer(p => ({
             ...p,
             atkBuffPct: skill.pct,
             atkBuffTurns: skill.turns
           }));
           spawnFloat("hero", "ATK UP", "#FFD166");
-          setLog(`You cast ${skill.name}! ATK increased for ${skill.turns} turns.`);
+          if (petAlive) {
+            setPetCombat(pc => pc ? { ...pc, atkBuffPct: skill.pct, atkBuffTurns: skill.turns } : pc);
+            spawnFloat("pet", "ATK UP", "#FFD166");
+          }
+          setLog(petAlive ? `You cast ${skill.name}! ATK increased for you and your pet, ${skill.turns} turns.` : `You cast ${skill.name}! ATK increased for ${skill.turns} turns.`);
         } else if (skill.type === "buffDef") {
+          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
           setPlayer(p => ({
             ...p,
             defBuffPct: skill.pct,
             defBuffTurns: skill.turns
           }));
           spawnFloat("hero", "DEF UP", "#7FB8E8");
-          setLog(`You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
+          if (petAlive) {
+            setPetCombat(pc => pc ? { ...pc, defBuffPct: skill.pct, defBuffTurns: skill.turns } : pc);
+            spawnFloat("pet", "DEF UP", "#7FB8E8");
+          }
+          setLog(petAlive ? `You cast ${skill.name}! DEF increased for you and your pet, ${skill.turns} turns.` : `You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
         }
         setHeroAnim("");
         setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "item") {
-      if (potions <= 0) {
+      const potionId = skillKey;
+      const def = getPotionDef(potionId);
+      if (!def || potionTotal(inventory, potionId) <= 0) {
         setBusy(false);
         return;
       }
-      persistSave({
-        ...save,
-        potions: save.potions - 1
-      });
-      setPlayer(p => {
-        const heal = Math.round(stats.maxHp * 0.4);
-        spawnFloat("hero", `+${heal}`, "#4CAF7D");
-        return {
-          ...p,
-          hp: Math.min(stats.maxHp, p.hp + heal)
-        };
-      });
-      setLog("You drink a potion and recover HP.");
+      const nextInv = removePotionFromInventory(inventory, potionId, 1);
+      if (!nextInv) {
+        setBusy(false);
+        return;
+      }
+      setInventory(nextInv);
+      persistItems(nextInv, equipped);
+      if (def.kind === "hp") {
+        setPlayer(p => {
+          const heal = Math.round(stats.maxHp * def.healPct);
+          spawnFloat("hero", `+${heal}`, "#4CAF7D");
+          return {
+            ...p,
+            hp: Math.min(stats.maxHp, p.hp + heal)
+          };
+        });
+        setLog(`You drink a ${def.name} and recover HP.`);
+      } else {
+        setPlayer(p => {
+          const heal = Math.round(stats.maxMp * def.healPct);
+          spawnFloat("hero", `+${heal}`, "#7FB8E8");
+          return {
+            ...p,
+            mp: Math.min(stats.maxMp, p.mp + heal)
+          };
+        });
+        setLog(`You drink a ${def.name} and recover SP.`);
+      }
       setTimeout(() => runQueueAfterPlayer(), 500);
     } else if (action === "flee") {
       const success = Math.random() < 0.55;
@@ -879,7 +927,8 @@ function ThornieDungeons() {
       if (skill.type === "damage") {
         const target = firstAliveMonster();
         if (target) {
-          let dmg = Math.max(2, Math.round(pet.atk * skill.mult - target.def * 0.5 + (Math.random() * 3 - 1)));
+          const petAtkMult = 1 + (pet.atkBuffPct || 0);
+          let dmg = Math.max(2, Math.round(pet.atk * petAtkMult * skill.mult - target.def * 0.5 + (Math.random() * 3 - 1)));
           const hasStun = pet.extra && pet.extra.type === "stun";
           const stun = hasStun ? Math.random() < pet.extra.pct : false;
           updateMonster(target.uid, m => {
@@ -949,7 +998,8 @@ function ThornieDungeons() {
       }
       if (targetIsPet) {
         const dodged = Math.random() * 100 < (pet.evasion || 0);
-        const dmg = dodged ? 0 : Math.max(1, Math.round(fresh.atk - pet.def * 0.6 + (Math.random() * 3 - 1)));
+        const petDefMult = 1 + (pet.defBuffPct || 0);
+        const dmg = dodged ? 0 : Math.max(1, Math.round(fresh.atk - pet.def * petDefMult * 0.6 + (Math.random() * 3 - 1)));
         if (dodged) {
           spawnFloat("pet", "MISS", "#B9AEDD");
           setLog(`${pet.name} dodged ${fresh.name}'s attack!`);
@@ -1024,7 +1074,20 @@ function ThornieDungeons() {
     });
   }
   function tickPetCooldown() {
-    setPetCombat(p => p && p.cooldown > 0 ? { ...p, cooldown: p.cooldown - 1 } : p);
+    setPetCombat(p => {
+      if (!p) return p;
+      const next = { ...p };
+      if (next.cooldown > 0) next.cooldown -= 1;
+      if (next.atkBuffTurns > 0) {
+        next.atkBuffTurns -= 1;
+        if (next.atkBuffTurns === 0) next.atkBuffPct = 0;
+      }
+      if (next.defBuffTurns > 0) {
+        next.defBuffTurns -= 1;
+        if (next.defBuffTurns === 0) next.defBuffPct = 0;
+      }
+      return next;
+    });
   }
   function retryStage() {
     // Defeat means HP hit 0 — always start the retry fully healed, since
@@ -1373,13 +1436,28 @@ function ThornieDungeons() {
       items: s.items.filter(i => i.id !== item.id)
     }));
   }
-  function buyShopPotion() {
-    if (save.gold < shopStock.potionPrice) return;
+  function buyShopPotionTier(potionId) {
+    const def = getPotionDef(potionId);
+    if (!def || save.gold < def.price) return;
+    const nextInv = addPotionToInventory(inventory, potionId, 1);
+    setInventory(nextInv);
+    persistItems(nextInv, equipped);
     persistSave({
       ...save,
-      gold: save.gold - shopStock.potionPrice,
-      potions: save.potions + 1
+      gold: save.gold - def.price
     });
+  }
+  // ---------- quick slots ----------
+  function assignQuickSlot(index, entry) {
+    setQuickSlots(qs => {
+      const next = qs.slice();
+      next[index] = entry;
+      if (save && save.characterId) saveQuickSlotsLocal(cred.id, save.characterId, next);
+      return next;
+    });
+  }
+  function clearQuickSlot(index) {
+    assignQuickSlot(index, null);
   }
   function equipPet(instId) {
     persistSave({
@@ -1544,7 +1622,10 @@ function ThornieDungeons() {
     onSelectTarget: selectTarget,
     log: log,
     busy: busy,
-    potions: potions,
+    inventory: inventory,
+    quickSlots: quickSlots,
+    onAssignQuickSlot: assignQuickSlot,
+    onClearQuickSlot: clearQuickSlot,
     heroAnim: heroAnim,
     petAnim: petAnim,
     enemyAnims: enemyAnims,
@@ -1574,6 +1655,10 @@ function ThornieDungeons() {
     diamonds: save.diamonds,
     protectionStones: save.protectionStones || 0,
     characterName: save.characterName,
+    quickSlots: quickSlots,
+    unlockedSkillList: unlockedSkills(save.character.level),
+    onAssignQuickSlot: assignQuickSlot,
+    onClearQuickSlot: clearQuickSlot,
     onEquip: guardItemAction(equipItem),
     onUnequip: guardItemAction(unequipItem),
     onSell: guardItemAction(sellItem),
@@ -1596,7 +1681,7 @@ function ThornieDungeons() {
     protectionStones: save.protectionStones || 0,
     stock: shopStock,
     onBuyItem: buyShopItem,
-    onBuyPotion: buyShopPotion,
+    onBuyPotionTier: buyShopPotionTier,
     onBuyProtectionStone: buyProtectionStone,
     onBuyMaterial: guardItemAction(buyMaterial),
     onClose: () => setShopOpen(false)

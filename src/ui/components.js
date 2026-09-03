@@ -694,7 +694,7 @@ function ShopOverlay({
   protectionStones,
   stock,
   onBuyItem,
-  onBuyPotion,
+  onBuyPotionTier,
   onBuyProtectionStone,
   onBuyMaterial,
   onClose
@@ -797,17 +797,17 @@ function ShopOverlay({
   }, itemStatText(it)))), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
     onClick: () => guardBuy(gold >= it.price, () => onBuyItem(it))
-  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < it.price ? "md-cost-insufficient" : "" }, it.price)))), /*#__PURE__*/React.createElement("div", {
-    key: "potion",
+  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < it.price ? "md-cost-insufficient" : "" }, it.price)))), (stock.potions || []).map(p => /*#__PURE__*/React.createElement("div", {
+    key: p.id,
     className: "md-inv-item"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "md-inv-name"
-  }, "🧪 Potion"), /*#__PURE__*/React.createElement("div", {
+  }, p.icon, " ", p.name), /*#__PURE__*/React.createElement("div", {
     className: "md-inv-stat"
-  }, "ฟื้นฟู HP 40% ระหว่างต่อสู้")), /*#__PURE__*/React.createElement("button", {
+  }, p.desc)), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
-    onClick: () => guardBuy(gold >= stock.potionPrice, onBuyPotion)
-  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < stock.potionPrice ? "md-cost-insufficient" : "" }, stock.potionPrice))), /*#__PURE__*/React.createElement("div", {
+    onClick: () => guardBuy(gold >= p.price, () => onBuyPotionTier(p.id))
+  }, "🪙", /*#__PURE__*/React.createElement("span", { className: gold < p.price ? "md-cost-insufficient" : "" }, p.price)))), /*#__PURE__*/React.createElement("div", {
     key: "protectionStone",
     className: "md-inv-item"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -1191,7 +1191,10 @@ function CombatScreen({
   onSelectTarget,
   log,
   busy,
-  potions,
+  inventory,
+  quickSlots,
+  onAssignQuickSlot,
+  onClearQuickSlot,
   heroAnim,
   petAnim,
   enemyAnims,
@@ -1202,9 +1205,12 @@ function CombatScreen({
   turnQueue,
   activeTurnKey
 }) {
-  const [showSkills, setShowSkills] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [editSlots, setEditSlots] = useState(false);
+  const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [autoRun, setAutoRun] = useState(false);
   const skills = unlockedSkills(player.level);
+  const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
   const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
   const mpPct = Math.max(0, Math.min(100, player.mp / stats.maxMp * 100));
@@ -1212,18 +1218,44 @@ function CombatScreen({
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
-  function pickSkill(skill) {
-    setShowSkills(false);
-    onAction("skill", skill.key);
+  const qs = quickSlots || [null, null, null, null];
+  function quickSlotVisual(entry) {
+    if (!entry) return { icon: "➕", disabled: true, badge: null };
+    if (entry.kind === "skill") {
+      const sk = skills.find(s => s.key === entry.key);
+      if (!sk) return { icon: "❓", disabled: true, badge: null };
+      return { icon: sk.icon, disabled: busy || player.mp < sk.mp, badge: sk.mp, title: `${sk.name} (${sk.mp}mp) — ${sk.desc}` };
+    }
+    const def = getPotionDef(entry.potionId);
+    const qty = potionTotal(inventory || [], entry.potionId);
+    if (!def) return { icon: "🧪", disabled: true, badge: null };
+    return { icon: def.icon, disabled: busy || qty <= 0, badge: qty, title: `${def.name} — ${def.desc}` };
+  }
+  function useQuickSlot(i) {
+    const entry = qs[i];
+    if (editSlots) {
+      onClearQuickSlot(i);
+      return;
+    }
+    if (!entry) {
+      setAssignSlotIndex(i);
+      setShowMore(false);
+      return;
+    }
+    if (entry.kind === "skill") onAction("skill", entry.key);else onAction("item", entry.potionId);
+  }
+  function assignTo(slotIndex, entry) {
+    onAssignQuickSlot(slotIndex, entry);
+    setAssignSlotIndex(null);
   }
   useEffect(() => {
     // Auto Run: keep throwing basic attacks on its own while enabled, as long
-    // as we're not mid-animation and the skill grid isn't open (so a manual
-    // skill pick doesn't get raced by an auto attack).
-    if (!autoRun || busy || showSkills) return;
+    // as we're not mid-animation and no picker is open (so a manual pick doesn't
+    // get raced by an auto attack).
+    if (!autoRun || busy || showMore || assignSlotIndex !== null) return;
     const t = setTimeout(() => onAction("attack"), 550);
     return () => clearTimeout(t);
-  }, [autoRun, busy, showSkills, onAction]);
+  }, [autoRun, busy, showMore, assignSlotIndex, onAction]);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-scene battle-bg"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1341,38 +1373,75 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto ${autoRun ? "active" : ""}`,
     onClick: () => setAutoRun(a => !a)
-  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("button", {
-    className: "md-dock-circle item",
-    disabled: busy || potions <= 0,
-    onClick: () => onAction("item")
-  }, "🧪", /*#__PURE__*/React.createElement("i", {
-    className: "md-rail-badge"
-  }, potions)), /*#__PURE__*/React.createElement("button", {
+  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
+    className: "md-quickslot-bar battle"
+  }, [0, 1, 2, 3].map(i => {
+    const v = quickSlotVisual(qs[i]);
+    return /*#__PURE__*/React.createElement("button", {
+      key: i,
+      className: `md-quickslot-btn battle ${qs[i] ? "filled" : "empty"} ${editSlots ? "editing" : ""}`,
+      disabled: !editSlots && v.disabled,
+      title: v.title || "แตะเพื่อกำหนดช่องนี้",
+      onClick: () => useQuickSlot(i)
+    }, /*#__PURE__*/React.createElement("span", { className: "md-quickslot-icon" }, v.icon), v.badge != null && /*#__PURE__*/React.createElement("i", {
+      className: "md-rail-badge"
+    }, v.badge));
+  }), /*#__PURE__*/React.createElement("button", {
+    className: `md-quickslot-edit ${editSlots ? "active" : ""}`,
+    title: editSlots ? "เสร็จสิ้นการแก้ไข" : "แก้ไขช่อง (ลบไอเทม/สกิลออกจากช่อง)",
+    onClick: () => setEditSlots(v => !v)
+  }, editSlots ? "✓" : "✏️")), assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", {
+    className: "md-skill-popover quickslot-assign"
+  }, /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-title" }, `เลือกไอเทม/สกิลสำหรับช่อง ${assignSlotIndex + 1}`), /*#__PURE__*/React.createElement("div", {
+    className: "md-quickslot-popover-list"
+  }, skills.map(s => /*#__PURE__*/React.createElement("button", {
+    key: `sk-${s.key}`,
+    className: "md-quickslot-popover-item",
+    onClick: () => assignTo(assignSlotIndex, { kind: "skill", key: s.key })
+  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "MP ", s.mp))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
+    key: `pt-${p.id}`,
+    className: "md-quickslot-popover-item",
+    onClick: () => assignTo(assignSlotIndex, { kind: "potion", potionId: p.id })
+  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))), skills.length === 0 && potionStacks.length === 0 && /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "ยังไม่มีสกิลหรือโพชั่น")), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee small",
+    onClick: () => setAssignSlotIndex(null),
+    style: { boxShadow: "none", marginTop: 6 }
+  }, "ปิด")), /*#__PURE__*/React.createElement("button", {
     className: "md-dock-attack",
     disabled: busy,
     onClick: () => {
-      setShowSkills(false);
+      setShowMore(false);
       onAction("attack");
     }
   }, "👊"), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "relative"
     }
-  }, showSkills && /*#__PURE__*/React.createElement("div", {
-    className: "md-skill-popover"
-  }, skills.map((s, i) => /*#__PURE__*/React.createElement("button", {
+  }, showMore && /*#__PURE__*/React.createElement("div", {
+    className: "md-skill-popover more"
+  }, /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-list" }, skills.map((s, i) => /*#__PURE__*/React.createElement("button", {
     key: s.key,
-    className: "md-skill-cell",
+    className: "md-quickslot-popover-item",
     disabled: busy || player.mp < s.mp,
     title: `${s.name} (${s.mp}mp) — ${s.desc}`,
-    onClick: () => pickSkill(s)
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-skill-num"
-  }, i + 1), s.icon))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setShowMore(false);
+      onAction("skill", s.key);
+    }
+  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "MP ", s.mp))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
+    key: p.id,
+    className: "md-quickslot-popover-item",
+    disabled: busy,
+    title: p.desc,
+    onClick: () => {
+      setShowMore(false);
+      onAction("item", p.id);
+    }
+  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))))), /*#__PURE__*/React.createElement("button", {
     className: "md-dock-circle skill",
-    disabled: busy || skills.length === 0,
-    onClick: () => setShowSkills(v => !v)
-  }, "✨")), /*#__PURE__*/React.createElement("button", {
+    disabled: busy || skills.length === 0 && potionStacks.length === 0,
+    onClick: () => setShowMore(v => !v)
+  }, "☰")), /*#__PURE__*/React.createElement("button", {
     className: "md-dock-circle flee",
     disabled: busy,
     onClick: () => onAction("flee")
@@ -1540,6 +1609,10 @@ function InventoryOverlay({
   diamonds,
   protectionStones,
   characterName,
+  quickSlots,
+  unlockedSkillList,
+  onAssignQuickSlot,
+  onClearQuickSlot,
   onEquip,
   onUnequip,
   onSell,
@@ -1547,6 +1620,7 @@ function InventoryOverlay({
   onClose
 }) {
   const [selectedId, setSelectedId] = useState(null);
+  const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
   const [sortMode, setSortMode] = useState("default");
   const [actionMsg, setActionMsg] = useState("");
@@ -1646,6 +1720,20 @@ function InventoryOverlay({
     );
   };
 
+  const quickAssignOptions = [
+    ...(unlockedSkillList || []).map(s => ({ kind: "skill", key: s.key, potionId: null, icon: s.icon, name: s.name, sub: `MP ${s.mp}` })),
+    ...ownedPotionStacks(inventory).map(p => ({ kind: "potion", key: null, potionId: p.id, icon: p.icon, name: p.name, sub: `x${p.quantity}` }))
+  ];
+  const quickSlotVisual = entry => {
+    if (!entry) return { icon: "➕", name: "ว่าง" };
+    if (entry.kind === "skill") {
+      const sk = (unlockedSkillList || []).find(s => s.key === entry.key);
+      return sk ? { icon: sk.icon, name: sk.name } : { icon: "❓", name: "ล็อกอยู่" };
+    }
+    const def = getPotionDef(entry.potionId);
+    return def ? { icon: def.icon, name: def.name } : { icon: "🧪", name: "Potion" };
+  };
+
   return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
     /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
       /*#__PURE__*/React.createElement("div", null,
@@ -1653,6 +1741,42 @@ function InventoryOverlay({
         /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "แตะอุปกรณ์รอบตัวละคร หรือแตะไอเทมในกระเป๋าเพื่อเลือก · ตีบวก/เสริมพลังไปที่ร้านตีเหล็ก ⚒️")
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
+    ),
+    onAssignQuickSlot && /*#__PURE__*/React.createElement("div", { className: "md-quickslot-panel" },
+      /*#__PURE__*/React.createElement("div", { className: "md-quickslot-panel-label" }, "🎯 Quick Slots (ใช้ในสนามรบแบบแตะครั้งเดียว)"),
+      /*#__PURE__*/React.createElement("div", { className: "md-quickslot-bar" },
+        [0, 1, 2, 3].map(i => {
+          const entry = (quickSlots || [])[i];
+          const v = quickSlotVisual(entry);
+          return /*#__PURE__*/React.createElement("button", {
+            key: i,
+            type: "button",
+            className: `md-quickslot-btn ${entry ? "filled" : "empty"}`,
+            title: v.name,
+            onClick: () => setAssignSlotIndex(i)
+          }, /*#__PURE__*/React.createElement("span", { className: "md-quickslot-icon" }, v.icon),
+             entry && /*#__PURE__*/React.createElement("span", {
+               className: "md-quickslot-clear",
+               onClick: e => { e.stopPropagation(); onClearQuickSlot(i); }
+             }, "✕"));
+        })
+      ),
+      assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover" },
+        /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-title" }, `เลือกไอเทม/สกิลสำหรับช่อง ${assignSlotIndex + 1}`),
+        /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-list" },
+          quickAssignOptions.length === 0 && /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "ยังไม่มีสกิลหรือโพชั่นให้เลือก"),
+          quickAssignOptions.map((opt, idx) => /*#__PURE__*/React.createElement("button", {
+            key: `${opt.kind}-${opt.key || opt.potionId}-${idx}`,
+            type: "button",
+            className: "md-quickslot-popover-item",
+            onClick: () => {
+              onAssignQuickSlot(assignSlotIndex, opt.kind === "skill" ? { kind: "skill", key: opt.key } : { kind: "potion", potionId: opt.potionId });
+              setAssignSlotIndex(null);
+            }
+          }, /*#__PURE__*/React.createElement("span", null, opt.icon, " ", opt.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, opt.sub)))
+        ),
+        /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: () => setAssignSlotIndex(null), style: { boxShadow: "none", marginTop: 6 } }, "ปิด")
+      )
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
       /*#__PURE__*/React.createElement("div", { className: "md-equip-grid" },

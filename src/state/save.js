@@ -177,6 +177,24 @@ function flattenCharacterForRuntime(account, slotIndex) {
   };
 }
 
+// ---------- quick slots (client-side only — no D1 schema change needed) ----------
+// 4 combat quick slots, each either null or { kind: "skill", key } / { kind: "potion", potionId }.
+// Stored via kvGet/kvSet (localStorage, same fallback used elsewhere) and namespaced per
+// player+character so switching characters/accounts never bleeds one character's slots into
+// another's, same reasoning as the per-character `thornie-run-*` resume key.
+function quickSlotsStorageKey(userId, characterId) {
+  return `thornie-quickslots-${userId}-${characterId}`;
+}
+async function loadQuickSlots(userId, characterId) {
+  const raw = await kvGet(quickSlotsStorageKey(userId, characterId));
+  const parsed = safeJsonParse(raw, null);
+  if (Array.isArray(parsed) && parsed.length === 4) return parsed;
+  return [null, null, null, null];
+}
+async function saveQuickSlotsLocal(userId, characterId, slots) {
+  await kvSet(quickSlotsStorageKey(userId, characterId), JSON.stringify(slots));
+}
+
 function packRuntimeIntoSlot(existingSlot, flatSave) {
   return {
     ...existingSlot,

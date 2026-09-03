@@ -27,7 +27,7 @@ let SKILLS = [{
   mp: 16,
   type: "heal",
   healPct: 0.45,
-  desc: "ฟื้นฟู HP 45% ของ HP สูงสุด"
+  desc: "สกิลหมู่: ฟื้นฟู HP 45% ของ HP สูงสุด ให้ทั้งตัวคุณและสัตว์เลี้ยง"
 }, {
   key: "war_cry",
   unlockLevel: 40,
@@ -37,7 +37,7 @@ let SKILLS = [{
   type: "buffAtk",
   pct: 0.3,
   turns: 3,
-  desc: "เพิ่ม ATK 30% นาน 3 เทิร์น"
+  desc: "สกิลหมู่: เพิ่ม ATK 30% นาน 3 เทิร์น ให้ทั้งตัวคุณและสัตว์เลี้ยง"
 }, {
   key: "ice_lance",
   unlockLevel: 50,
@@ -58,7 +58,7 @@ let SKILLS = [{
   type: "buffDef",
   pct: 0.4,
   turns: 3,
-  desc: "เพิ่ม DEF 40% นาน 3 เทิร์น"
+  desc: "สกิลหมู่: เพิ่ม DEF 40% นาน 3 เทิร์น ให้ทั้งตัวคุณและสัตว์เลี้ยง"
 }, {
   key: "venom_strike",
   unlockLevel: 70,

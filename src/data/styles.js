@@ -417,6 +417,51 @@ const STYLE = `
   font-family: 'Baloo 2';
 }
 
+/* ---- quick slots: 4 always-visible one-tap combat slots + assign/edit UI ---- */
+.md-quickslot-bar { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.md-quickslot-bar.battle { position: relative; }
+.md-quickslot-btn {
+  position: relative; width: 40px; height: 40px; border-radius: 12px; padding: 0; cursor: pointer;
+  border: 2px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,0.92), rgba(28,18,8,0.92));
+  display: flex; align-items: center; justify-content: center; font-size: 17px; color: #fff;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15); flex-shrink: 0;
+}
+.md-quickslot-btn.empty { opacity: 0.55; border-style: dashed; }
+.md-quickslot-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.md-quickslot-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.md-quickslot-btn.editing { border-color: #E14F4F; }
+.md-quickslot-icon { pointer-events: none; }
+.md-quickslot-edit {
+  width: 30px; height: 30px; border-radius: 50%; padding: 0; cursor: pointer; flex-shrink: 0;
+  border: 2px solid var(--violet-deep); background: rgba(20,12,30,0.92); color: #fff; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.md-quickslot-edit.active { border-color: #8ee0a8; color: #8ee0a8; }
+.md-skill-popover.quickslot-assign, .md-skill-popover.more {
+  right: auto; left: 0; grid-template-columns: none; display: flex; flex-direction: column;
+  width: min(78vw, 300px); max-height: 50vh; overflow-y: auto;
+}
+.md-quickslot-popover-title { font-family: 'Baloo 2'; font-weight: 800; font-size: 11.5px; color: var(--gold); margin-bottom: 6px; }
+.md-quickslot-popover-list { display: flex; flex-direction: column; gap: 4px; }
+.md-quickslot-popover-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer;
+  padding: 7px 10px; border-radius: 10px; border: 1.5px solid var(--violet-deep);
+  background: rgba(64,46,22,0.5); color: #fff; font-family: 'Baloo 2'; font-size: 12px; font-weight: 700;
+}
+.md-quickslot-popover-item:active { transform: translateY(1px); }
+.md-quickslot-popover-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.md-quickslot-popover-sub { color: var(--ink-soft); font-size: 10.5px; font-weight: 800; flex-shrink: 0; }
+
+/* quick slot panel inside the Inventory sheet */
+.md-quickslot-panel { margin: 4px 0 10px; padding: 8px 10px; border-radius: 14px; border: 1.5px solid var(--gold-deep); background: rgba(0,0,0,0.22); position: relative; }
+.md-quickslot-panel-label { font-family: 'Baloo 2'; font-weight: 800; font-size: 11px; color: var(--gold); margin-bottom: 6px; }
+.md-quickslot-clear {
+  position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%;
+  background: #E14F4F; color: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: 1.5px solid rgba(0,0,0,0.4);
+}
+.md-quickslot-popover { margin-top: 8px; padding: 8px; border-radius: 12px; border: 1.5px solid var(--violet-deep); background: rgba(20,12,30,0.92); }
+
 
 /* ---- character equipment / inventory redesign ---- */
 .md-equip-overlay { position:absolute; inset:0; z-index:20; background:rgba(6,3,15,0.82); display:flex; align-items:flex-end; justify-content:center; }

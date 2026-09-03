@@ -43,9 +43,9 @@ function itemsToServerList(inventory, equipped) {
     hp: it.hp,
     mp: it.mp,
     enhanceLevel: it.enhanceLevel || 0,
-    // dodgeChance/critChance/critDamage (accessory base rolls) and junk stack data
-    // (junkId/quantity/icon) don't have their own server columns, so they ride along inside
-    // the extra JSON blob instead (this part is unaffected by the schema-v2 change — the
+    // dodgeChance/critChance/critDamage (accessory base rolls) and junk/potion stack data
+    // (junkId/potionId/quantity/icon) don't have their own server columns, so they ride along
+    // inside the extra JSON blob instead (this part is unaffected by the schema-v2 change — the
     // items table's extra_json column was always real, unlike progress.materials_json).
     extra: {
       empowerSlots: it.empowerSlots || [],
@@ -53,6 +53,7 @@ function itemsToServerList(inventory, equipped) {
       critChance: it.critChance || undefined,
       critDamage: it.critDamage || undefined,
       junkId: it.junkId || undefined,
+      potionId: it.potionId || undefined,
       quantity: it.quantity || undefined,
       icon: it.icon || undefined
     }
@@ -82,6 +83,19 @@ function itemsFromServerList(rows) {
           junkId: extra.junkId,
           name: r.name,
           icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
+          rarity: r.rarity || "common",
+          quantity: numOr(extra.quantity, 1)
+        });
+        return;
+      }
+      if (r.slot_type === "potion") {
+        const def = getPotionDef(extra.potionId);
+        inventory.push({
+          id: r.item_id,
+          type: "potion",
+          potionId: extra.potionId,
+          name: r.name || (def && def.name) || "Potion",
+          icon: extra.icon || (def && def.icon) || "🧪",
           rarity: r.rarity || "common",
           quantity: numOr(extra.quantity, 1)
         });
