@@ -1347,13 +1347,13 @@ let SKILLS = [{
 }, {
   key: "war_cry",
   unlockLevel: 40,
-  name: "War Cry",
-  icon: "📣",
+  name: "Whirlwind Slash",
+  icon: "🌪️",
   mp: 12,
-  type: "buffAtk",
-  pct: 0.3,
-  turns: 3,
-  desc: "สกิลหมู่: เพิ่ม ATK 30% นาน 3 เทิร์น ให้ทั้งตัวคุณและสัตว์เลี้ยง"
+  type: "aoe",
+  mult: 1.1,
+  defPierce: 0,
+  desc: "โจมตีหมู่: ฟันรอบตัวใส่ศัตรูทุกตัว (สูงสุด 3) ดาเมจ 1.1x ATK ต่อเป้าหมาย"
 }, {
   key: "ice_lance",
   unlockLevel: 50,
@@ -1368,13 +1368,13 @@ let SKILLS = [{
 }, {
   key: "iron_skin",
   unlockLevel: 60,
-  name: "Iron Skin",
-  icon: "🛡️",
+  name: "Thunder Wave",
+  icon: "⚡",
   mp: 14,
-  type: "buffDef",
-  pct: 0.4,
-  turns: 3,
-  desc: "สกิลหมู่: เพิ่ม DEF 40% นาน 3 เทิร์น ให้ทั้งตัวคุณและสัตว์เลี้ยง"
+  type: "aoe",
+  mult: 1.3,
+  defPierce: 0.15,
+  desc: "โจมตีหมู่: สายฟ้าใส่ศัตรูทุกตัว (สูงสุด 3) ดาเมจ 1.3x ATK เจาะเกราะ 15%"
 }, {
   key: "venom_strike",
   unlockLevel: 70,
@@ -3247,8 +3247,8 @@ function ThornieDungeons() {
         setBusy(false);
         return;
       }
-      const isMiss = skill.type === "damage" && Math.random() * 100 >= stats.accuracy;
-      const isCrit = skill.type === "damage" && !isMiss && (skill.guaranteedCrit || Math.random() * 100 < stats.critChance);
+      const isMiss = (skill.type === "damage" || skill.type === "aoe") && Math.random() * 100 >= stats.accuracy;
+      const isCrit = (skill.type === "damage" || skill.type === "aoe") && !isMiss && (skill.guaranteedCrit || Math.random() * 100 < stats.critChance);
       setPlayer(p => ({
         ...p,
         mp: p.mp - skill.mp
@@ -3277,6 +3277,24 @@ function ThornieDungeons() {
               return next;
             });
             setLog(freeze ? `${skill.name} freezes ${target.name} solid!` : `You use ${skill.name} on ${target.name} for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
+          }
+        } else if (skill.type === "aoe") {
+          const targets = monstersRef.current.filter(m => m.hp > 0);
+          if (isMiss) {
+            setLog(`${skill.name} misses everyone!`);
+          } else {
+            const pierce = skill.defPierce || 0;
+            targets.forEach(m => {
+              let dmg = Math.max(3, Math.round(stats.atk * skill.mult - m.def * (1 - pierce) * 0.6 + (Math.random() * 4 - 2)));
+              if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
+              updateMonster(m.uid, mm => {
+                const nh = Math.max(0, mm.hp - dmg);
+                spawnFloat(m.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
+                setMonsterAnim(m.uid, "hurt");
+                return { ...mm, hp: nh };
+              });
+            });
+            setLog(`You unleash ${skill.name}, hitting ${targets.length} enem${targets.length === 1 ? "y" : "ies"}${isCrit ? " (CRIT!)" : ""}!`);
           }
         } else if (skill.type === "heal") {
           const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;

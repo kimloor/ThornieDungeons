@@ -701,8 +701,8 @@ function ThornieDungeons() {
         setBusy(false);
         return;
       }
-      const isMiss = skill.type === "damage" && Math.random() * 100 >= stats.accuracy;
-      const isCrit = skill.type === "damage" && !isMiss && (skill.guaranteedCrit || Math.random() * 100 < stats.critChance);
+      const isMiss = (skill.type === "damage" || skill.type === "aoe") && Math.random() * 100 >= stats.accuracy;
+      const isCrit = (skill.type === "damage" || skill.type === "aoe") && !isMiss && (skill.guaranteedCrit || Math.random() * 100 < stats.critChance);
       setPlayer(p => ({
         ...p,
         mp: p.mp - skill.mp
@@ -731,6 +731,24 @@ function ThornieDungeons() {
               return next;
             });
             setLog(freeze ? `${skill.name} freezes ${target.name} solid!` : `You use ${skill.name} on ${target.name} for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
+          }
+        } else if (skill.type === "aoe") {
+          const targets = monstersRef.current.filter(m => m.hp > 0);
+          if (isMiss) {
+            setLog(`${skill.name} misses everyone!`);
+          } else {
+            const pierce = skill.defPierce || 0;
+            targets.forEach(m => {
+              let dmg = Math.max(3, Math.round(stats.atk * skill.mult - m.def * (1 - pierce) * 0.6 + (Math.random() * 4 - 2)));
+              if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
+              updateMonster(m.uid, mm => {
+                const nh = Math.max(0, mm.hp - dmg);
+                spawnFloat(m.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
+                setMonsterAnim(m.uid, "hurt");
+                return { ...mm, hp: nh };
+              });
+            });
+            setLog(`You unleash ${skill.name}, hitting ${targets.length} enem${targets.length === 1 ? "y" : "ies"}${isCrit ? " (CRIT!)" : ""}!`);
           }
         } else if (skill.type === "heal") {
           const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;

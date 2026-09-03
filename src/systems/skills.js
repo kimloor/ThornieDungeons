@@ -31,13 +31,13 @@ let SKILLS = [{
 }, {
   key: "war_cry",
   unlockLevel: 40,
-  name: "War Cry",
-  icon: "📣",
+  name: "Whirlwind Slash",
+  icon: "🌪️",
   mp: 12,
-  type: "buffAtk",
-  pct: 0.3,
-  turns: 3,
-  desc: "สกิลหมู่: เพิ่ม ATK 30% นาน 3 เทิร์น ให้ทั้งตัวคุณและสัตว์เลี้ยง"
+  type: "aoe",
+  mult: 1.1,
+  defPierce: 0,
+  desc: "โจมตีหมู่: ฟันรอบตัวใส่ศัตรูทุกตัว (สูงสุด 3) ดาเมจ 1.1x ATK ต่อเป้าหมาย"
 }, {
   key: "ice_lance",
   unlockLevel: 50,
@@ -52,13 +52,13 @@ let SKILLS = [{
 }, {
   key: "iron_skin",
   unlockLevel: 60,
-  name: "Iron Skin",
-  icon: "🛡️",
+  name: "Thunder Wave",
+  icon: "⚡",
   mp: 14,
-  type: "buffDef",
-  pct: 0.4,
-  turns: 3,
-  desc: "สกิลหมู่: เพิ่ม DEF 40% นาน 3 เทิร์น ให้ทั้งตัวคุณและสัตว์เลี้ยง"
+  type: "aoe",
+  mult: 1.3,
+  defPierce: 0.15,
+  desc: "โจมตีหมู่: สายฟ้าใส่ศัตรูทุกตัว (สูงสุด 3) ดาเมจ 1.3x ATK เจาะเกราะ 15%"
 }, {
   key: "venom_strike",
   unlockLevel: 70,
