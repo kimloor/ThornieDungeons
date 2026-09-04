@@ -172,8 +172,8 @@ function HubScreen({
 }) {
   const [saveFlash, setSaveFlash] = useState(false);
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
-  const canClaimDaily = dailyLoginCanClaim(dailyLogin);
-  const dailyPreview = dailyLoginPreview(dailyLogin);
+  const canClaimDaily = dailyLogin.canClaim;
+  const dailyPreview = dailyLogin.preview || { streak: 1, reward: {} };
   const handleSave = () => {
     onSave();
     setSaveFlash(true);
@@ -287,7 +287,7 @@ function HubScreen({
       dailyLoginClaimResult.reward.diamonds ? `💎 +${dailyLoginClaimResult.reward.diamonds} ` : "",
       dailyLoginClaimResult.reward.potions ? `🧪 +${dailyLoginClaimResult.reward.potions}` : "")
   ) : /*#__PURE__*/React.createElement(React.Fragment, null,
-    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.loginStreak} วัน`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.state.loginStreak} วัน`),
     /*#__PURE__*/React.createElement("p", { className: "md-sub" },
       `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `,
       dailyPreview.reward.gold ? `🪙 ${dailyPreview.reward.gold} ` : "",

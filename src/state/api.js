@@ -133,3 +133,19 @@ function cloudGetConfig(url) {
     action: "getGameConfig"
   });
 }
+function cloudGetDailyLogin(url, id, password, characterId) {
+  return cloudGet(url, {
+    action: "getDailyLogin",
+    id,
+    password,
+    characterId
+  });
+}
+function cloudClaimDailyLogin(url, id, password, characterId) {
+  return cloudPost(url, {
+    action: "claimDailyLogin",
+    id,
+    password,
+    characterId
+  });
+}

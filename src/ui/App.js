@@ -96,8 +96,9 @@ function ThornieDungeons() {
   // 4 combat quick slots — { kind: "skill", key } | { kind: "potion", potionId } | null.
   // Loaded/saved locally per-character (see loadQuickSlots/saveQuickSlotsLocal in save.js).
   const [quickSlots, setQuickSlots] = useState([null, null, null, null]);
-  // Daily login streak state — local-only for now, see systems/dailyLogin.js.
-  const [dailyLogin, setDailyLogin] = useState({ loginStreak: 0, lastClaimDate: "", totalClaims: 0 });
+  // Daily login streak state — backed by the real thornie-dungeons-api worker
+  // (getDailyLogin/claimDailyLogin), fetched fresh each time a character is entered.
+  const [dailyLogin, setDailyLogin] = useState({ state: { loginStreak: 0, lastClaimDate: "", totalClaims: 0 }, canClaim: false, preview: { streak: 1, reward: {} } });
   const [dailyLoginClaimResult, setDailyLoginClaimResult] = useState(null);
   useEffect(() => {
     (async () => {
@@ -341,7 +342,9 @@ function ThornieDungeons() {
     setEquipped(eq);
     setInventory(finalInv);
     loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
-    loadDailyLogin(cred.id, characterSlot.id).then(setDailyLogin);
+    cloudGetDailyLogin(cred.url, cred.id, cred.password, characterSlot.id).then(res => {
+      if (res && res.ok) setDailyLogin({ state: res.state, canClaim: res.canClaim, preview: res.preview });
+    });
     // Mid-combat resume checkpoint is namespaced per-character so switching characters never
     // shows a stale "resume at floor X" prompt left over from a different character's last run.
     // enterCharacter already returns this character's own run_state row directly (scoped
@@ -1561,23 +1564,21 @@ function ThornieDungeons() {
     });
     return { ok: true };
   }
-  function claimDailyLogin() {
-    if (!dailyLoginCanClaim(dailyLogin)) return { ok: false, alreadyClaimed: true };
-    const { nextState, reward, streak } = dailyLoginClaim(dailyLogin);
-    setDailyLogin(nextState);
-    if (save && save.characterId) saveDailyLoginLocal(cred.id, save.characterId, nextState);
-    persistSave({
-      ...save,
-      gold: save.gold + (reward.gold || 0),
-      diamonds: save.diamonds + (reward.diamonds || 0)
-    });
-    if (reward.potions) {
-      const nextInv = addPotionToInventory(inventory, "hp_small", reward.potions);
-      setInventory(nextInv);
-      pushItems(nextInv, equipped, save.characterId);
-    }
-    setDailyLoginClaimResult({ reward, streak });
-    return { ok: true, reward, streak };
+  async function claimDailyLogin() {
+    if (!dailyLogin.canClaim) return { ok: false, alreadyClaimed: true };
+    const res = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, save.characterId);
+    if (!res || res.error) return { ok: false, error: res && res.error };
+    setDailyLogin({ state: res.state, canClaim: false, preview: dailyLogin.preview });
+    // Reflect the reward locally right away instead of waiting for the next full reload —
+    // the worker already applied it server-side (characters.gold / players.diamonds), this
+    // just keeps the in-memory `save` in sync with what the server now has.
+    setSave(s => ({
+      ...s,
+      gold: s.gold + (res.reward.gold || 0),
+      diamonds: s.diamonds + (res.reward.diamonds || 0)
+    }));
+    setDailyLoginClaimResult({ reward: res.reward, streak: res.streak });
+    return { ok: true, reward: res.reward, streak: res.streak };
   }
   if (phase === "loading") {
     return /*#__PURE__*/React.createElement("div", {
