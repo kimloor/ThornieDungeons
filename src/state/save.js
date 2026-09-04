@@ -70,6 +70,7 @@ const defaultCharacterSlot = () => ({
   unlockedFloor: 1,
   potions: 2,
   pets: [],
+  petDuplicates: {},
   activePetId: null,
   protectionStones: 0,
   chestPity: 0
@@ -80,7 +81,12 @@ const defaultCharacterSlot = () => ({
 // row should never let NaN or undefined leak into gameplay math.
 function characterFromServerRow(row) {
   if (!row) return null;
-  const pets = safeJsonParse(row.pets_json, []);
+  // pets_json holds either the legacy shape (a plain array of pet instances) or the current
+  // shape ({list, dup}) that also carries the star-up duplicate pool — same column, no new
+  // schema needed, just a richer JSON payload. Both are handled here so old saves keep loading.
+  const petsRaw = safeJsonParse(row.pets_json, []);
+  const pets = Array.isArray(petsRaw) ? petsRaw : (Array.isArray(petsRaw?.list) ? petsRaw.list : []);
+  const petDuplicates = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.dup === "object" && petsRaw.dup ? petsRaw.dup : {});
   return {
     id: row.character_id,
     name: row.name || "",
@@ -98,6 +104,7 @@ function characterFromServerRow(row) {
     unlockedFloor: numOr(row.unlocked_floor, 1),
     potions: row.potions === undefined || row.potions === null ? 2 : numOr(row.potions, 0),
     pets: Array.isArray(pets) ? pets : [],
+    petDuplicates,
     activePetId: row.active_pet_id || null,
     protectionStones: numOr(row.protection_stones, 0),
     chestPity: numOr(row.chest_pity, 0)
@@ -158,6 +165,7 @@ function flattenCharacterForRuntime(account, slotIndex) {
     unlockedFloor: slot.unlockedFloor,
     potions: slot.potions,
     pets: slot.pets,
+    petDuplicates: slot.petDuplicates || {},
     activePetId: slot.activePetId,
     protectionStones: slot.protectionStones,
     chestPity: slot.chestPity,
@@ -208,6 +216,7 @@ function packRuntimeIntoSlot(existingSlot, flatSave) {
     unlockedFloor: flatSave.unlockedFloor,
     potions: flatSave.potions,
     pets: flatSave.pets,
+    petDuplicates: flatSave.petDuplicates || {},
     activePetId: flatSave.activePetId,
     protectionStones: flatSave.protectionStones,
     chestPity: flatSave.chestPity

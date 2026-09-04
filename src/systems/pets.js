@@ -175,22 +175,45 @@ function newPetInstance(defId) {
     defId,
     level: 1,
     xp: 0,
+    star: 1,
     stats: { ...base }
   };
 }
 function petXpToNext(level) {
   return level * 15 + 10;
 }
+// ---------- pet star-up (max 5★, spent from the duplicate pool, player-driven) ----------
+// Multiplier applied to a pet's 5-stat block per star. Kept modest and relative to the existing
+// per-rarity gap (r=20/sr=30/ssr=45 total at 1★) so a maxed-out lower rarity never overtakes the
+// next rarity up at 1★: r ★5 ≈ 29 (< sr ★1 = 30), sr ★5 ≈ 43.5 (< ssr ★1 = 45).
+const PET_STAR_MULT = [1.00, 1.08, 1.18, 1.30, 1.45]; // index 0 = ★1 ... index 4 = ★5
+// Duplicates required to go from star N to star N+1 (index 0 = ★1→★2 ... index 3 = ★4→★5).
+const PET_STAR_UP_COST = [1, 1, 1, 2];
+function petStarUpCost(star) {
+  const idx = (star || 1) - 1;
+  return PET_STAR_UP_COST[idx] ?? null; // null = already ★5, nothing more to spend on
+}
+function petDuplicateCount(petDuplicates, defId) {
+  return ((petDuplicates || {})[defId]) || 0;
+}
 // Derived combat stats for a pet instance, following the same Speed/Evasion/
 // HitRate/CritChance/ItemDropBonus formulas used for the player character.
 function petCombatStats(instance) {
-  const s = (instance && instance.stats) || PET_BASE_STATS.r;
+  const base = (instance && instance.stats) || PET_BASE_STATS.r;
+  const mult = PET_STAR_MULT[((instance && instance.star) || 1) - 1] || 1;
+  const s = {
+    str: base.str * mult,
+    vit: base.vit * mult,
+    agi: base.agi * mult,
+    dex: base.dex * mult,
+    luk: base.luk * mult
+  };
   const lvl = (instance && instance.level) || 1;
   return {
-    maxHp: 25 + lvl * 3 + s.vit * 8,
-    atk: 4 + Math.floor(lvl * 0.6) + s.str * 2,
-    def: 1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4),
-    speed: BASE_SPEED + s.agi * 2,
+    maxHp: roundInt(25 + lvl * 3 + s.vit * 8),
+    atk: roundInt(4 + Math.floor(lvl * 0.6) + s.str * 2),
+    def: roundInt(1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4)),
+    speed: roundInt(BASE_SPEED + s.agi * 2),
     evasion: +(s.agi * 0.5).toFixed(1),
     hitRate: Math.min(99, +(80 + s.dex * 0.5).toFixed(1)),
     critChance: +(s.luk * 0.5).toFixed(1),
@@ -266,6 +289,7 @@ let CHEST_NAMES = ["Cloth Robe", "Leather Vest", "Iron Plate", "Mystic Cloak", "
 let GLOVES_NAMES = ["Cloth Gloves", "Leather Gauntlets", "Iron Gauntlets", "Runed Gloves", "Dragonclaw Gauntlets"];
 let BOOTS_NAMES = ["Worn Sandals", "Leather Boots", "Iron Greaves", "Swift Boots", "Dragonhide Boots"];
 let ACCESSORY_NAMES = ["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"];
+let WINGS_NAMES = ["Tattered Wings", "Feathered Cloak", "Gale Wings", "Spectral Wings", "Dragonwing Mantle"];
 let RARITY_MULT = {
   rare: 1,
   unique: 1.9,

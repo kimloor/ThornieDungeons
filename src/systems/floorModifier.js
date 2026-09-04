@@ -52,7 +52,8 @@ const SLOT_ICON = {
   chest: "👕",
   gloves: "🧤",
   boots: "🥾",
-  accessory: "💍"
+  accessory: "💍",
+  wings: "🪽"
 };
 const SLOT_LABEL = {
   weapon: "Weapon",
@@ -60,11 +61,12 @@ const SLOT_LABEL = {
   chest: "Armor",
   gloves: "Gloves",
   boots: "Boots",
-  accessory: "Accessory"
+  accessory: "Accessory",
+  wings: "Wings"
 };
-// NOTE: "wings" (ปีก/เครื่องสวมใส่ด้านหลัง) is reserved as a future 7th equipment slot —
-// shown as a disabled "Soon" placeholder in the Inventory grid. It is NOT added to
-// SLOT_ORDER/SLOT_ICON/SLOT_LABEL yet since no "wings"-type items exist in-game. When
-// this ships, the D1 `items`/equip schema (in the separate API Worker, not this repo)
-// needs its slot/type constraint widened to accept "wings" alongside the 6 existing types.
-const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory"];
+// "wings" (ปีก/เครื่องสวมใส่ด้านหลัง) is the 7th equipment slot. Themed around
+// evasion/crit utility (rolls from WING_STAT_POOL in stats.js), reusing the existing
+// dodgeChance/critChance/critDamage stat keys so itemBonus()/getEquipBonus() need no changes.
+// D1 `items.slot_type` is a plain TEXT column (no CHECK constraint), so "wings" values
+// are already accepted by the API worker with no schema change needed.
+const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"];

@@ -52,6 +52,13 @@ function formatNumber(n) {
 
 // Accessories no longer roll HP/MP — they roll one of these % utility stats instead.
 const ACCESSORY_STAT_POOL = ["dodgeChance", "critChance", "critDamage"];
+// Wings are the evasion-themed 7th slot: always roll dodgeChance as a slightly stronger
+// version of the accessory roll (higher flat/perFloor), reusing the same stat key so
+// itemBonus()/getEquipBonus()/getStats() need no changes.
+const WING_STAT_BASE = {
+  flat: 2,
+  perFloor: 0.18
+};
 const ACCESSORY_STAT_BASE = {
   dodgeChance: {
     flat: 1,
@@ -233,7 +240,7 @@ function generateDrop(floor, options = {}) {
 }
 function buildDropItem(floor, options = {}) {
   const roll = Math.random();
-  const type = roll < 0.18 ? "weapon" : roll < 0.33 ? "helmet" : roll < 0.52 ? "chest" : roll < 0.67 ? "gloves" : roll < 0.82 ? "boots" : "accessory";
+  const type = roll < 0.16 ? "weapon" : roll < 0.30 ? "helmet" : roll < 0.47 ? "chest" : roll < 0.61 ? "gloves" : roll < 0.75 ? "boots" : roll < 0.90 ? "accessory" : "wings";
   const rarity = options.forceRarity || rollRarity(!!options.rarityBoost);
   const mult = RARITY_MULT[rarity];
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -285,6 +292,16 @@ function buildDropItem(floor, options = {}) {
       rarity,
       name: pickName(BOOTS_NAMES, floor),
       def
+    };
+  }
+  if (type === "wings") {
+    const val = roundTo((WING_STAT_BASE.flat + floor * WING_STAT_BASE.perFloor) * mult, 1);
+    return {
+      id,
+      type,
+      rarity,
+      name: pickName(WINGS_NAMES, floor),
+      dodgeChance: val
     };
   }
   // Accessories are pure utility pieces: dodge / crit chance / crit damage as % values, never HP or MP.

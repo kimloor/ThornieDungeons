@@ -19,7 +19,7 @@ function characterProgressToServer(flatSave) {
     potions: flatSave.potions,
     protection_stones: flatSave.protectionStones,
     chest_pity: flatSave.chestPity,
-    pets_json: JSON.stringify(flatSave.pets || []),
+    pets_json: JSON.stringify({ list: flatSave.pets || [], dup: flatSave.petDuplicates || {} }),
     active_pet_id: flatSave.activePetId || ""
   };
 }

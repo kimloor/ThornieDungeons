@@ -831,15 +831,33 @@ function PetScreen({
   save,
   onEquip,
   onUnequip,
+  onStarUp,
   onOpenGacha,
   onBack
 }) {
+  const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
   const rarityRank = { r: 0, sr: 1, ssr: 2 };
   const owned = [...(save.pets || [])].sort((a, b) => {
     const da = getPetDef(a.defId);
     const db = getPetDef(b.defId);
     return (rarityRank[db?.rarity] ?? 0) - (rarityRank[da?.rarity] ?? 0);
   });
+  function handleStarUp(inst) {
+    const res = onStarUp(inst.instId);
+    if (res && res.ok) {
+      setStarUpMsg(m => ({ ...m, [inst.instId]: null }));
+      return;
+    }
+    if (res && res.maxed) {
+      setStarUpMsg(m => ({ ...m, [inst.instId]: { text: "★5 เต็มแล้ว", short: false } }));
+      return;
+    }
+    const missing = (res.need || 0) - (res.have || 0);
+    setStarUpMsg(m => ({
+      ...m,
+      [inst.instId]: { text: `ตัวซ้ำไม่พอ ขาดอีก ${missing} ตัว (มี ${res.have}/${res.need})`, short: true }
+    }));
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
@@ -879,6 +897,10 @@ function PetScreen({
     const def = getPetDef(inst.defId);
     if (!def) return null;
     const isActive = save.activePetId === inst.instId;
+    const star = inst.star || 1;
+    const dupHave = petDuplicateCount(save.petDuplicates, inst.defId);
+    const cost = petStarUpCost(star);
+    const msg = starUpMsg[inst.instId];
     return /*#__PURE__*/React.createElement("div", {
       key: inst.instId,
       className: `md-inv-item ${def.rarity === "ssr" ? "epic" : def.rarity === "sr" ? "rare" : ""}`
@@ -888,11 +910,18 @@ function PetScreen({
       className: "md-shop-lv"
     }, PET_RARITY_LABEL[def.rarity]), isActive ? " ⭐" : ""), /*#__PURE__*/React.createElement("div", {
       className: "md-inv-stat"
+    }, "★".repeat(star), "☆".repeat(5 - star), " ", cost !== null ? `· ตัวซ้ำ ${dupHave}/${cost}` : "· ★5 สูงสุด"), /*#__PURE__*/React.createElement("div", {
+      className: "md-inv-stat"
     }, def.active.icon, " ", def.active.name, " — ", def.active.desc), def.passive && /*#__PURE__*/React.createElement("div", {
       className: "md-inv-stat"
     }, def.passive.icon, " ", def.passive.name, " — ", def.passive.desc), def.extra && /*#__PURE__*/React.createElement("div", {
       className: "md-inv-stat"
-    }, def.extra.icon, " ", def.extra.name, " — ", def.extra.desc)), isActive ? /*#__PURE__*/React.createElement("button", {
+    }, def.extra.icon, " ", def.extra.name, " — ", def.extra.desc), msg && /*#__PURE__*/React.createElement("div", {
+      className: "md-inv-stat",
+      style: msg.short ? { color: "#ff5566", fontWeight: 700 } : { color: "var(--gold)" }
+    }, msg.text)), /*#__PURE__*/React.createElement("div", {
+      style: { display: "flex", flexDirection: "column", gap: 4, alignItems: "stretch" }
+    }, isActive ? /*#__PURE__*/React.createElement("button", {
       className: "md-buy-btn",
       style: {
         background: "var(--panel-soft)",
@@ -904,7 +933,16 @@ function PetScreen({
     }, "Unequip") : /*#__PURE__*/React.createElement("button", {
       className: "md-buy-btn",
       onClick: () => onEquip(inst.instId)
-    }, "Equip"));
+    }, "Equip"), cost !== null && /*#__PURE__*/React.createElement("button", {
+      className: "md-buy-btn",
+      style: dupHave < cost ? {
+        background: "var(--panel-soft)",
+        color: "#ff5566",
+        boxShadow: "none",
+        border: "1px solid #ff5566"
+      } : undefined,
+      onClick: () => handleStarUp(inst)
+    }, `⭐ อัพดาว (${cost})`)));
   }))), /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     style: {
@@ -989,7 +1027,7 @@ function GachaScreen({
     style: {
       margin: 0
     }
-  }, PET_RARITY_LABEL[gachaResult.pet.rarity], " ", gachaResult.duplicate ? "· ได้ตัวซ้ำ! รับเพชรคืน +30" : "· ได้สัตว์เลี้ยงใหม่!"), /*#__PURE__*/React.createElement("button", {
+  }, PET_RARITY_LABEL[gachaResult.pet.rarity], " ", gachaResult.duplicate ? "· ได้ตัวซ้ำ! เก็บเป็นวัตถุดิบอัพดาวแล้ว" : "· ได้สัตว์เลี้ยงใหม่!"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     style: {
       marginTop: 10
@@ -1780,14 +1818,12 @@ function InventoryOverlay({
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
       /*#__PURE__*/React.createElement("div", { className: "md-equip-grid" },
-        SLOT_ORDER.map(renderEquipSlot),
+        SLOT_ORDER.filter(s => s !== "wings").map(renderEquipSlot),
         /*#__PURE__*/React.createElement("div", { key: "hero", className: "md-equip-hero" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", label: characterName || "Adventurer" })),
         /*#__PURE__*/React.createElement("div", {
-          key: "wings",
-          className: "md-equip-slot-soon",
-          style: { gridColumn: 1, gridRow: 1 },
-          title: "ปีก/เครื่องสวมใส่ด้านหลัง — เร็วๆ นี้"
-        }, /*#__PURE__*/React.createElement("span", { className: "icon" }, "🪽"), /*#__PURE__*/React.createElement("span", { className: "label" }, "Soon"))
+          key: "wings-slot",
+          style: { gridColumn: 1, gridRow: 1 }
+        }, renderEquipSlot("wings"))
       )
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary" },

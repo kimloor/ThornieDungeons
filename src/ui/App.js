@@ -1507,10 +1507,14 @@ function ThornieDungeons() {
     const won = rollGachaPet();
     const already = (save.pets || []).some(p => p.defId === won.id);
     if (already) {
-      // duplicate — refund partial diamonds as shards
+      // duplicate — no longer auto-refunded to diamonds; banked into the star-up pool instead,
+      // spent manually by the player via starUpPet() below.
+      const nextDup = { ...(save.petDuplicates || {}) };
+      nextDup[won.id] = (nextDup[won.id] || 0) + 1;
       persistSave({
         ...save,
-        diamonds: save.diamonds - GACHA_COST + 30
+        diamonds: save.diamonds - GACHA_COST,
+        petDuplicates: nextDup
       });
       setGachaResult({
         pet: won,
@@ -1531,6 +1535,27 @@ function ThornieDungeons() {
       pet: won,
       duplicate: false
     });
+  }
+  // Spends duplicates from save.petDuplicates[defId] to raise one pet instance's star by 1.
+  // Returns {ok:true} on success, or {ok:false, need, have} so the UI can show exactly how many
+  // more duplicates are needed (and highlight the shortfall) without guessing.
+  function starUpPet(instId) {
+    const pets = save.pets || [];
+    const pet = pets.find(p => p.instId === instId);
+    if (!pet) return { ok: false, need: 0, have: 0 };
+    const cost = petStarUpCost(pet.star || 1);
+    if (cost === null) return { ok: false, maxed: true };
+    const have = petDuplicateCount(save.petDuplicates, pet.defId);
+    if (have < cost) return { ok: false, need: cost, have };
+    const nextDup = { ...(save.petDuplicates || {}) };
+    nextDup[pet.defId] = have - cost;
+    const nextPets = pets.map(p => p.instId === instId ? { ...p, star: (p.star || 1) + 1 } : p);
+    persistSave({
+      ...save,
+      pets: nextPets,
+      petDuplicates: nextDup
+    });
+    return { ok: true };
   }
   if (phase === "loading") {
     return /*#__PURE__*/React.createElement("div", {
@@ -1631,6 +1656,7 @@ function ThornieDungeons() {
     save: save,
     onEquip: equipPet,
     onUnequip: unequipPet,
+    onStarUp: starUpPet,
     onOpenGacha: () => setPhase("gacha"),
     onBack: () => setPhase("menu")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
