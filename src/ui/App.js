@@ -96,6 +96,9 @@ function ThornieDungeons() {
   // 4 combat quick slots — { kind: "skill", key } | { kind: "potion", potionId } | null.
   // Loaded/saved locally per-character (see loadQuickSlots/saveQuickSlotsLocal in save.js).
   const [quickSlots, setQuickSlots] = useState([null, null, null, null]);
+  // Daily login streak state — local-only for now, see systems/dailyLogin.js.
+  const [dailyLogin, setDailyLogin] = useState({ loginStreak: 0, lastClaimDate: "", totalClaims: 0 });
+  const [dailyLoginClaimResult, setDailyLoginClaimResult] = useState(null);
   useEffect(() => {
     (async () => {
       
@@ -338,6 +341,7 @@ function ThornieDungeons() {
     setEquipped(eq);
     setInventory(finalInv);
     loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
+    loadDailyLogin(cred.id, characterSlot.id).then(setDailyLogin);
     // Mid-combat resume checkpoint is namespaced per-character so switching characters never
     // shows a stale "resume at floor X" prompt left over from a different character's last run.
     // enterCharacter already returns this character's own run_state row directly (scoped
@@ -1557,6 +1561,24 @@ function ThornieDungeons() {
     });
     return { ok: true };
   }
+  function claimDailyLogin() {
+    if (!dailyLoginCanClaim(dailyLogin)) return { ok: false, alreadyClaimed: true };
+    const { nextState, reward, streak } = dailyLoginClaim(dailyLogin);
+    setDailyLogin(nextState);
+    if (save && save.characterId) saveDailyLoginLocal(cred.id, save.characterId, nextState);
+    persistSave({
+      ...save,
+      gold: save.gold + (reward.gold || 0),
+      diamonds: save.diamonds + (reward.diamonds || 0)
+    });
+    if (reward.potions) {
+      const nextInv = addPotionToInventory(inventory, "hp_small", reward.potions);
+      setInventory(nextInv);
+      pushItems(nextInv, equipped, save.characterId);
+    }
+    setDailyLoginClaimResult({ reward, streak });
+    return { ok: true, reward, streak };
+  }
   if (phase === "loading") {
     return /*#__PURE__*/React.createElement("div", {
       className: "md-root",
@@ -1626,7 +1648,11 @@ function ThornieDungeons() {
     onPets: () => setPhase("pets"),
     onSave: () => persistSave(save),
     onSwitchCharacter: backToCharacterSelect,
-    onLogout: logout
+    onLogout: logout,
+    dailyLogin: dailyLogin,
+    dailyLoginClaimResult: dailyLoginClaimResult,
+    onClaimDailyLogin: claimDailyLogin,
+    onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
   }), phase === "town" && /*#__PURE__*/React.createElement(StatusScreen, {
     save: save,
     charStats: charStats,

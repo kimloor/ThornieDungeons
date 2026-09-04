@@ -164,9 +164,16 @@ function HubScreen({
   onPets,
   onSave,
   onSwitchCharacter,
-  onLogout
+  onLogout,
+  dailyLogin,
+  dailyLoginClaimResult,
+  onClaimDailyLogin,
+  onClearDailyLoginResult
 }) {
   const [saveFlash, setSaveFlash] = useState(false);
+  const [dailyModalOpen, setDailyModalOpen] = useState(false);
+  const canClaimDaily = dailyLoginCanClaim(dailyLogin);
+  const dailyPreview = dailyLoginPreview(dailyLogin);
   const handleSave = () => {
     onSave();
     setSaveFlash(true);
@@ -203,6 +210,11 @@ function HubScreen({
     icon: "🐾",
     label: "สัตว์เลี้ยง",
     onClick: onPets
+  }, {
+    key: "daily",
+    icon: canClaimDaily ? "🎁" : "📅",
+    label: canClaimDaily ? "รับรางวัลรายวัน!" : "รางวัลรายวัน",
+    onClick: () => setDailyModalOpen(true)
   }];
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-menu-title"
@@ -262,7 +274,34 @@ function HubScreen({
   }, "🚪 ออกจากระบบ")), /*#__PURE__*/React.createElement("button", {
     className: "md-hub-save-btn",
     onClick: handleSave
-  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")));
+  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")), dailyModalOpen && /*#__PURE__*/React.createElement("div", {
+    className: "md-equip-overlay",
+    onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-equip-sheet",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("h3", { className: "md-title" }, "🎁 รางวัลรายวัน"), dailyLoginClaimResult ? /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `รับแล้ว! Day ${dailyLoginClaimResult.streak}`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      dailyLoginClaimResult.reward.gold ? `🪙 +${dailyLoginClaimResult.reward.gold} ` : "",
+      dailyLoginClaimResult.reward.diamonds ? `💎 +${dailyLoginClaimResult.reward.diamonds} ` : "",
+      dailyLoginClaimResult.reward.potions ? `🧪 +${dailyLoginClaimResult.reward.potions}` : "")
+  ) : /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.loginStreak} วัน`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `,
+      dailyPreview.reward.gold ? `🪙 ${dailyPreview.reward.gold} ` : "",
+      dailyPreview.reward.diamonds ? `💎 ${dailyPreview.reward.diamonds} ` : "",
+      dailyPreview.reward.potions ? `🧪 ${dailyPreview.reward.potions}` : ""),
+    canClaimDaily ? /*#__PURE__*/React.createElement("button", {
+      className: "md-btn primary wide",
+      onClick: onClaimDailyLogin
+    }, "รับรางวัล") : /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" } }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
+  ), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide",
+    style: { marginTop: 8 },
+    onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
+  }, "ปิด"))));
 }
 function CharacterSelectScreen({
   account,

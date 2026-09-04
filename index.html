@@ -1733,6 +1733,68 @@ const RARITY_STARS = {
   mythic: 7
 };
 
+// ===== systems/dailyLogin.js =====
+// ---------- Daily Login ----------
+// Master reward data (day_index -> reward). Mirrors the `daily_login_rewards` D1 table from
+// migration_v3, but shipped client-side for now since the real API Worker (deployed separately,
+// not in this repo) doesn't have daily-login endpoints yet. Stored via kvGet/kvSet the same way
+// quickSlots is (see quickSlotsStorageKey in state/save.js) — local-only, per player+character,
+// until a real `daily_login_claims`-backed endpoint exists to sync it cross-device.
+const DAILY_LOGIN_REWARDS = [
+  { day: 1, gold: 50, diamonds: 0, potions: 1 },
+  { day: 2, gold: 80, diamonds: 0, potions: 0 },
+  { day: 3, gold: 0, diamonds: 20, potions: 0 },
+  { day: 4, gold: 120, diamonds: 0, potions: 1 },
+  { day: 5, gold: 0, diamonds: 30, potions: 0 },
+  { day: 6, gold: 200, diamonds: 0, potions: 1 },
+  { day: 7, gold: 0, diamonds: 100, potions: 3 } // bonus day, cycle repeats after this
+];
+function dailyLoginStorageKey(userId, characterId) {
+  return `thornie-dailylogin-${userId}-${characterId}`;
+}
+function todayKey(d = new Date()) {
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD, UTC day boundary
+}
+function yesterdayKey() {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - 1);
+  return todayKey(d);
+}
+async function loadDailyLogin(userId, characterId) {
+  const raw = await kvGet(dailyLoginStorageKey(userId, characterId));
+  const parsed = safeJsonParse(raw, null);
+  if (parsed && typeof parsed === "object") {
+    return {
+      loginStreak: parsed.loginStreak || 0,
+      lastClaimDate: parsed.lastClaimDate || "",
+      totalClaims: parsed.totalClaims || 0
+    };
+  }
+  return { loginStreak: 0, lastClaimDate: "", totalClaims: 0 };
+}
+async function saveDailyLoginLocal(userId, characterId, state) {
+  await kvSet(dailyLoginStorageKey(userId, characterId), JSON.stringify(state));
+}
+function dailyLoginCanClaim(state) {
+  return (state.lastClaimDate || "") !== todayKey();
+}
+// Computes the streak the *next* claim would land on (continues if last claim was
+// yesterday, otherwise resets to day 1), and which reward that corresponds to.
+function dailyLoginPreview(state) {
+  const streak = state.lastClaimDate === yesterdayKey() ? (state.loginStreak || 0) + 1 : 1;
+  const reward = DAILY_LOGIN_REWARDS[(streak - 1) % DAILY_LOGIN_REWARDS.length];
+  return { streak, reward };
+}
+function dailyLoginClaim(state) {
+  const { streak, reward } = dailyLoginPreview(state);
+  const nextState = {
+    loginStreak: streak,
+    lastClaimDate: todayKey(),
+    totalClaims: (state.totalClaims || 0) + 1
+  };
+  return { nextState, reward, streak };
+}
+
 // ===== systems/enhancement.js =====
 // ---------- junk materials, enhancement (ตีบวก) & empowerment (เสริมพลัง) ----------
 // Junk items are plain stackable drops that live in the normal inventory (type: "junk"),
@@ -2694,6 +2756,9 @@ function ThornieDungeons() {
   // 4 combat quick slots — { kind: "skill", key } | { kind: "potion", potionId } | null.
   // Loaded/saved locally per-character (see loadQuickSlots/saveQuickSlotsLocal in save.js).
   const [quickSlots, setQuickSlots] = useState([null, null, null, null]);
+  // Daily login streak state — local-only for now, see systems/dailyLogin.js.
+  const [dailyLogin, setDailyLogin] = useState({ loginStreak: 0, lastClaimDate: "", totalClaims: 0 });
+  const [dailyLoginClaimResult, setDailyLoginClaimResult] = useState(null);
   useEffect(() => {
     (async () => {
       
@@ -2936,6 +3001,7 @@ function ThornieDungeons() {
     setEquipped(eq);
     setInventory(finalInv);
     loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
+    loadDailyLogin(cred.id, characterSlot.id).then(setDailyLogin);
     // Mid-combat resume checkpoint is namespaced per-character so switching characters never
     // shows a stale "resume at floor X" prompt left over from a different character's last run.
     // enterCharacter already returns this character's own run_state row directly (scoped
@@ -4155,6 +4221,24 @@ function ThornieDungeons() {
     });
     return { ok: true };
   }
+  function claimDailyLogin() {
+    if (!dailyLoginCanClaim(dailyLogin)) return { ok: false, alreadyClaimed: true };
+    const { nextState, reward, streak } = dailyLoginClaim(dailyLogin);
+    setDailyLogin(nextState);
+    if (save && save.characterId) saveDailyLoginLocal(cred.id, save.characterId, nextState);
+    persistSave({
+      ...save,
+      gold: save.gold + (reward.gold || 0),
+      diamonds: save.diamonds + (reward.diamonds || 0)
+    });
+    if (reward.potions) {
+      const nextInv = addPotionToInventory(inventory, "hp_small", reward.potions);
+      setInventory(nextInv);
+      pushItems(nextInv, equipped, save.characterId);
+    }
+    setDailyLoginClaimResult({ reward, streak });
+    return { ok: true, reward, streak };
+  }
   if (phase === "loading") {
     return /*#__PURE__*/React.createElement("div", {
       className: "md-root",
@@ -4224,7 +4308,11 @@ function ThornieDungeons() {
     onPets: () => setPhase("pets"),
     onSave: () => persistSave(save),
     onSwitchCharacter: backToCharacterSelect,
-    onLogout: logout
+    onLogout: logout,
+    dailyLogin: dailyLogin,
+    dailyLoginClaimResult: dailyLoginClaimResult,
+    onClaimDailyLogin: claimDailyLogin,
+    onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
   }), phase === "town" && /*#__PURE__*/React.createElement(StatusScreen, {
     save: save,
     charStats: charStats,
@@ -4504,9 +4592,16 @@ function HubScreen({
   onPets,
   onSave,
   onSwitchCharacter,
-  onLogout
+  onLogout,
+  dailyLogin,
+  dailyLoginClaimResult,
+  onClaimDailyLogin,
+  onClearDailyLoginResult
 }) {
   const [saveFlash, setSaveFlash] = useState(false);
+  const [dailyModalOpen, setDailyModalOpen] = useState(false);
+  const canClaimDaily = dailyLoginCanClaim(dailyLogin);
+  const dailyPreview = dailyLoginPreview(dailyLogin);
   const handleSave = () => {
     onSave();
     setSaveFlash(true);
@@ -4543,6 +4638,11 @@ function HubScreen({
     icon: "🐾",
     label: "สัตว์เลี้ยง",
     onClick: onPets
+  }, {
+    key: "daily",
+    icon: canClaimDaily ? "🎁" : "📅",
+    label: canClaimDaily ? "รับรางวัลรายวัน!" : "รางวัลรายวัน",
+    onClick: () => setDailyModalOpen(true)
   }];
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-menu-title"
@@ -4602,7 +4702,34 @@ function HubScreen({
   }, "🚪 ออกจากระบบ")), /*#__PURE__*/React.createElement("button", {
     className: "md-hub-save-btn",
     onClick: handleSave
-  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")));
+  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")), dailyModalOpen && /*#__PURE__*/React.createElement("div", {
+    className: "md-equip-overlay",
+    onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-equip-sheet",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("h3", { className: "md-title" }, "🎁 รางวัลรายวัน"), dailyLoginClaimResult ? /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `รับแล้ว! Day ${dailyLoginClaimResult.streak}`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      dailyLoginClaimResult.reward.gold ? `🪙 +${dailyLoginClaimResult.reward.gold} ` : "",
+      dailyLoginClaimResult.reward.diamonds ? `💎 +${dailyLoginClaimResult.reward.diamonds} ` : "",
+      dailyLoginClaimResult.reward.potions ? `🧪 +${dailyLoginClaimResult.reward.potions}` : "")
+  ) : /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.loginStreak} วัน`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `,
+      dailyPreview.reward.gold ? `🪙 ${dailyPreview.reward.gold} ` : "",
+      dailyPreview.reward.diamonds ? `💎 ${dailyPreview.reward.diamonds} ` : "",
+      dailyPreview.reward.potions ? `🧪 ${dailyPreview.reward.potions}` : ""),
+    canClaimDaily ? /*#__PURE__*/React.createElement("button", {
+      className: "md-btn primary wide",
+      onClick: onClaimDailyLogin
+    }, "รับรางวัล") : /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" } }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
+  ), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide",
+    style: { marginTop: 8 },
+    onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
+  }, "ปิด"))));
 }
 function CharacterSelectScreen({
   account,

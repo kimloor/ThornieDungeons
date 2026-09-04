@@ -25,6 +25,7 @@ const MODULE_ORDER = [
   "data/constants.js",
   "systems/skills.js",
   "systems/pets.js",
+  "systems/dailyLogin.js",
   "systems/enhancement.js",
   "systems/potions.js",
   "systems/salvage.js",
