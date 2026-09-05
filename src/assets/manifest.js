@@ -1,26 +1,149 @@
 // ---------- R2 Asset Manifest ----------
 let ASSETS = {};
-async function loadAssetManifest() { const manifest = await loadAssetJSON("manifest.json"); ASSETS = manifest.assets || {}; console.log("Asset Manifest loaded:", manifest); return ASSETS; }
-function asset(key) { const path = key.split(".").reduce((obj, part) => obj?.[part], ASSETS); if (!path) { console.warn(`Asset not found in manifest: ${key}`); return ""; } return assetUrl(path); }
-function listAssets(obj = ASSETS, prefix = "") { const result = {}; for (const [key, value] of Object.entries(obj)) { const fullKey = prefix ? `${prefix}.${key}` : key; if (typeof value === "string") result[fullKey] = value; else if (value && typeof value === "object") Object.assign(result, listAssets(value, fullKey)); } return result; }
-const RIG_CACHE = {};
-function rigPathCandidates(characterId) { return [`${characterId}_rig_v1.json`, `sprite/characters/${characterId}/modular/${characterId}_rig_v1.json`, `sprite/characters/${characterId}/${characterId}_rig_v1.json`]; }
-async function loadHeroRig(characterId) { if (RIG_CACHE[characterId] !== undefined) return RIG_CACHE[characterId]; for (const path of rigPathCandidates(characterId)) { try { const rig = await loadAssetJSON(path); if (rig && rig.joints && rig.layers && rig.masterCanvas) { console.log(`[HeroRig] Loaded ${characterId} rig from /assets/${path}`); RIG_CACHE[characterId] = rig; return rig; } } catch (e) {} } RIG_CACHE[characterId] = null; return null; }
-function getHeroBaseUrl(characterId = "hero001") { const path = `${characterId}.core.neutral`.split(".").reduce((obj, part) => obj?.[part], ASSETS); return path ? assetUrl(path) : ""; }
-function buildFilenameUrlMap(characterId) { const charAssets = ASSETS[characterId]; if (!charAssets) return {}; const map = {}; Object.values(listAssets(charAssets)).forEach(path => { map[String(path).split("/").pop()] = assetUrl(path); }); return map; }
-function resolveLayerPlacement(rig, layerFilename) { const layerDef = rig.layers[layerFilename]; if (!layerDef) return null; if (layerDef.offset) return { x: layerDef.offset.x, y: layerDef.offset.y }; const joint = rig.joints[layerDef.joint]; if (!joint || !layerDef.localPivot) return null; return { x: joint.x - layerDef.localPivot.x, y: joint.y - layerDef.localPivot.y }; }
-function heroUniformScale(rig, canvasWidth, canvasHeight) { return Math.min(canvasWidth / rig.masterCanvas.width, canvasHeight / rig.masterCanvas.height); }
 
-// DEBUG STEP 3C: keep face + locked front hair, disable back hair and all lower/hand layers.
-// The supplied art showed the upper-arm assets on opposite sides, so swap their runtime
-// placement without changing the R2 asset files or the Rig source data yet.
-// A small negative X nudge moves front hair toward the requested "<" direction.
-const HERO_FRONT_HAIR_NUDGE_X = -4;
-const HERO_BODY_LAYER_ORDER = [
-  "hips.png", "torso_base.png", "head_face.png",
-  "head_front_hair.png",
-  "l_arm_upper.png", "r_arm_upper.png"
+async function loadAssetManifest() {
+  const manifest = await loadAssetJSON("manifest.json");
+  ASSETS = manifest.assets || {};
+  console.log("Asset Manifest loaded:", manifest);
+  return ASSETS;
+}
+
+function asset(key) {
+  const path = key.split(".").reduce((obj, part) => obj?.[part], ASSETS);
+  if (!path || typeof path !== "string") {
+    console.warn(`Asset not found in manifest: ${key}`);
+    return "";
+  }
+  return assetUrl(path);
+}
+
+function listAssets(obj = ASSETS, prefix = "") {
+  const result = {};
+  for (const [key, value] of Object.entries(obj || {})) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (typeof value === "string") result[fullKey] = value;
+    else if (value && typeof value === "object") Object.assign(result, listAssets(value, fullKey));
+  }
+  return result;
+}
+
+// ---------- Hero V3: flat base + overlay layers ----------
+// The old skeletal/rig composer was intentionally removed.
+// Hero V3 uses one approved full-body base image and optional transparent overlays.
+// All placement data belongs in runtime manifest.json so art can be tuned without code changes.
+
+const HERO_V3_LAYER_ORDER = [
+  "wings",
+  "base",
+  "hair",
+  "outfit",
+  "shoes",
+  "arms",
+  "hat",
+  "weapon"
 ];
 
-function useHeroRig(characterId) { const [state, setState] = useState(() => RIG_CACHE[characterId] !== undefined ? { ready: true, rig: RIG_CACHE[characterId] } : { ready: false, rig: null }); useEffect(() => { let alive = true; loadHeroRig(characterId).then(rig => { if (alive) setState({ ready: true, rig }); }); return () => { alive = false; }; }, [characterId]); return state; }
-function HeroModularComposer({ rig, layerOrder, filenameToUrl, canvasWidth, canvasHeight, weaponKey, equipmentKeys, anim = "" }) { if (!rig) return null; const cw = canvasWidth || rig.runtime?.defaultCanvas?.width || 96; const ch = canvasHeight || rig.runtime?.defaultCanvas?.height || 96; const scale = heroUniformScale(rig, cw, ch); const allFilenames = [...layerOrder, ...(equipmentKeys || []), ...(weaponKey ? [weaponKey] : [])]; const layers = allFilenames.map(filename => { let pos = resolveLayerPlacement(rig, filename); const url = filenameToUrl[filename]; if (filename === "head_front_hair.png" && pos) pos = { x: pos.x + HERO_FRONT_HAIR_NUDGE_X, y: pos.y }; if (filename === "l_arm_upper.png" && pos) pos = resolveLayerPlacement(rig, "r_arm_upper.png"); else if (filename === "r_arm_upper.png" && pos) pos = resolveLayerPlacement(rig, "l_arm_upper.png"); return pos && url ? { filename, url, pos } : null; }).filter(Boolean); if (!layers.length) return null; return /*#__PURE__*/React.createElement("div", { className: `md-hero-rig-canvas ${anim}`, style: { width: cw, height: ch } }, /*#__PURE__*/React.createElement("div", { className: "md-hero-rig-master", style: { width: rig.masterCanvas.width, height: rig.masterCanvas.height, transform: `scale(${scale})` } }, layers.map(l => /*#__PURE__*/React.createElement("img", { key: l.filename, className: "md-hero-rig-layer", src: l.url, alt: "", draggable: false, style: { left: l.pos.x, top: l.pos.y } })))); }
+function getHeroV3Config(characterId = "hero001") {
+  return ASSETS?.[characterId]?.v3 || null;
+}
+
+function normalizeHeroV3Layer(def, fallback = {}) {
+  if (!def) return null;
+  if (typeof def === "string") {
+    return {
+      path: def,
+      x: fallback.x || 0,
+      y: fallback.y || 0,
+      scale: fallback.scale ?? 1,
+      rotation: fallback.rotation || 0
+    };
+  }
+  if (typeof def !== "object" || !def.path) return null;
+  return {
+    path: def.path,
+    x: Number(def.x ?? fallback.x ?? 0),
+    y: Number(def.y ?? fallback.y ?? 0),
+    scale: Number(def.scale ?? fallback.scale ?? 1),
+    rotation: Number(def.rotation ?? fallback.rotation ?? 0)
+  };
+}
+
+function resolveHeroV3Selection(config, selection = {}) {
+  return {
+    ...(config?.defaults || {}),
+    ...(selection || {})
+  };
+}
+
+function resolveHeroV3Layers(characterId = "hero001", selection = {}) {
+  const config = getHeroV3Config(characterId);
+  if (!config) return null;
+
+  const selected = resolveHeroV3Selection(config, selection);
+  const baseDef = normalizeHeroV3Layer(config.base?.idle || config.base);
+
+  const lookup = {
+    wings: normalizeHeroV3Layer(config.wings?.[selected.wings]),
+    base: baseDef,
+    hair: normalizeHeroV3Layer(config.hair?.[selected.hair]),
+    outfit: normalizeHeroV3Layer(config.equipment?.outfit?.[selected.outfit]),
+    shoes: normalizeHeroV3Layer(config.equipment?.shoes?.[selected.shoes]),
+    arms: normalizeHeroV3Layer(config.equipment?.arms?.[selected.arms]),
+    hat: normalizeHeroV3Layer(config.equipment?.hat?.[selected.hat]),
+    weapon: normalizeHeroV3Layer(config.weapon?.[selected.weapon])
+  };
+
+  return HERO_V3_LAYER_ORDER
+    .map(name => {
+      const layer = lookup[name];
+      return layer ? { name, ...layer, url: assetUrl(layer.path) } : null;
+    })
+    .filter(Boolean);
+}
+
+function HeroOverlayComposer({
+  characterId = "hero001",
+  selection = {},
+  canvasWidth = 96,
+  canvasHeight = 96,
+  anim = ""
+}) {
+  const config = getHeroV3Config(characterId);
+  const layers = resolveHeroV3Layers(characterId, selection);
+  if (!config || !layers?.some(layer => layer.name === "base")) return null;
+
+  const masterWidth = Number(config.canvas?.width || 1254);
+  const masterHeight = Number(config.canvas?.height || 1254);
+  const scale = Math.min(canvasWidth / masterWidth, canvasHeight / masterHeight);
+
+  return /*#__PURE__*/React.createElement(
+    "div",
+    {
+      className: `md-hero-v3-canvas ${anim || ""}`,
+      style: { width: canvasWidth, height: canvasHeight }
+    },
+    /*#__PURE__*/React.createElement(
+      "div",
+      {
+        className: "md-hero-v3-master",
+        style: {
+          width: masterWidth,
+          height: masterHeight,
+          transform: `scale(${scale})`
+        }
+      },
+      layers.map(layer => /*#__PURE__*/React.createElement("img", {
+        key: layer.name,
+        className: `md-hero-v3-layer layer-${layer.name}`,
+        src: layer.url,
+        alt: "",
+        draggable: false,
+        style: {
+          left: layer.x,
+          top: layer.y,
+          transform: `scale(${layer.scale}) rotate(${layer.rotation}deg)`
+        }
+      }))
+    )
+  );
+}
