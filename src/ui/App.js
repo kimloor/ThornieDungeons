@@ -152,6 +152,27 @@ function ThornieDungeons() {
     if (!cred.url || !cred.id || !cred.password || !characterId) return;
     enqueueCloudWrite(() => cloudSyncItems(cred.url, cred.id, cred.password, characterId, itemsToServerList(inv, eq)));
   }, [cred, enqueueCloudWrite]);
+  // Applies a claimed mail's reward into local state (gold/diamonds/junk). The existing
+  // autosave effect below then persists it via the normal saveCharacterProgress/syncItems
+  // flow — the server never touches characters/items directly for rewards (see worker
+  // mailbox comment), so this is the only place a mail reward actually "lands".
+  const applyMailReward = useCallback((reward) => {
+    if (!reward) return;
+    if (reward.gold || reward.diamonds) {
+      setSave(s => s && ({
+        ...s,
+        gold: s.gold + (Number(reward.gold) || 0),
+        diamonds: s.diamonds + (Number(reward.diamonds) || 0)
+      }));
+    }
+    if (reward.junk && reward.junk.length) {
+      setInventory(inv => {
+        let next = inv;
+        reward.junk.forEach(j => { next = addJunkToInventory(next, j.junkId, Number(j.quantity) || 0); });
+        return next;
+      });
+    }
+  }, []);
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.
     // runState === null -> explicit request to clear the checkpoint (both local + cloud).
@@ -1658,6 +1679,7 @@ function ThornieDungeons() {
     onPets: () => setPhase("pets"),
     onLeaderboard: () => setPhase("leaderboard"),
     onRaid: () => setPhase("raid"),
+    onMailbox: () => setPhase("mailbox"),
     onSave: () => persistSave(save),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
@@ -1705,6 +1727,12 @@ function ThornieDungeons() {
     serverUrl: cred.url,
     cred: cred,
     characterId: save.characterId,
+    onBack: () => setPhase("menu")
+  }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
+    serverUrl: cred.url,
+    cred: cred,
+    characterId: save.characterId,
+    onApplyReward: applyMailReward,
     onBack: () => setPhase("menu")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,

@@ -30,6 +30,7 @@
  *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid                (NEW, Phase 2/3)
  *   GET  ?action=getRaidStatus&id=&password=&characterId=                (NEW, Phase 3)
+ *   GET  ?action=getMailbox&id=&password=&characterId=                   (NEW, Phase 3.1)
  *   GET  ?action=getPlayer&adminKey=&id=            (admin)
  *   GET  ?action=getAllPlayers&adminKey=            (admin)
  *   GET  ?action=getPlayerItems&adminKey=&id=        (admin)
@@ -46,6 +47,8 @@
  *   POST { action: "claimDailyLogin", id, password, characterId }        (NEW)
  *   POST { action: "attackRaidBoss", id, password, characterId }          (NEW, Phase 3)
  *   POST { action: "claimRaidMilestones", id, password, characterId }     (NEW, Phase 3)
+ *   POST { action: "claimMail", id, password, characterId, mailId }       (NEW, Phase 3.1)
+ *   POST { action: "claimAllMail", id, password, characterId }            (NEW, Phase 3.1)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
  *
@@ -724,6 +727,81 @@ async function handleClaimDailyLogin(db, id, password, characterId) {
   });
 }
 
+// ---------- Mailbox: generic reward delivery queue ----------
+// Server-side reward mutations (UPDATE characters/items directly) get silently
+// clobbered by this project's client-authoritative full-sync save model — the next
+// saveCharacterProgress/syncItems push from the client overwrites them with its own
+// stale local copy. So ANY server-granted reward (raid, and future PvP/guild/event)
+// must go through here instead: drop a mail row, let the client claim it and merge
+// the reward into its own local state, then the normal autosave persists it correctly.
+function newMailId() {
+  return `mail-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+async function sendMail(db, characterId, title, body, reward) {
+  const r = reward || {};
+  await db
+    .prepare(
+      `INSERT INTO mailbox (mail_id, character_id, title, body, gold, diamonds, junk_json, claimed, created_at, claimed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, '')`
+    )
+    .bind(newMailId(), characterId, title || "", body || "", Number(r.gold) || 0, Number(r.diamonds) || 0, r.junk ? JSON.stringify(r.junk) : "", nowIso())
+    .run();
+}
+async function handleGetMailbox(db, id, password, characterId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  const res = await db
+    .prepare(`SELECT mail_id, title, body, gold, diamonds, junk_json, claimed, created_at FROM mailbox WHERE character_id = ? ORDER BY created_at DESC LIMIT 50`)
+    .bind(characterId)
+    .all();
+  const mails = (res.results || []).map((m) => ({
+    mailId: m.mail_id, title: m.title, body: m.body, gold: Number(m.gold) || 0, diamonds: Number(m.diamonds) || 0,
+    junk: m.junk_json ? JSON.parse(m.junk_json) : [], claimed: !!Number(m.claimed), createdAt: m.created_at,
+  }));
+  return json({ ok: true, mails });
+}
+async function handleClaimMail(db, id, password, characterId, mailId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  if (!mailId) return json({ error: "missing_fields" });
+
+  const mail = await db.prepare(`SELECT * FROM mailbox WHERE mail_id = ? AND character_id = ?`).bind(mailId, characterId).first();
+  if (!mail) return json({ error: "not_found" });
+  if (Number(mail.claimed)) return json({ error: "already_claimed" });
+
+  const guard = await db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND claimed = 0`).bind(nowIso(), mailId).run();
+  if (!guard.meta || !guard.meta.changes) return json({ error: "already_claimed" });
+
+  return json({ ok: true, mailId, gold: Number(mail.gold) || 0, diamonds: Number(mail.diamonds) || 0, junk: mail.junk_json ? JSON.parse(mail.junk_json) : [] });
+}
+async function handleClaimAllMail(db, id, password, characterId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+
+  const unclaimed = await db.prepare(`SELECT * FROM mailbox WHERE character_id = ? AND claimed = 0`).bind(characterId).all();
+  const rows = unclaimed.results || [];
+  if (!rows.length) return json({ ok: true, mailIds: [], gold: 0, diamonds: 0, junk: [] });
+
+  const now = nowIso();
+  await db.batch(rows.map((m) => db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND claimed = 0`).bind(now, m.mail_id)));
+
+  let gold = 0, diamonds = 0;
+  const junkTotals = {};
+  rows.forEach((m) => {
+    gold += Number(m.gold) || 0;
+    diamonds += Number(m.diamonds) || 0;
+    (m.junk_json ? JSON.parse(m.junk_json) : []).forEach((j) => { junkTotals[j.junkId] = (junkTotals[j.junkId] || 0) + (Number(j.quantity) || 0); });
+  });
+  const junk = Object.keys(junkTotals).map((junkId) => ({ junkId, quantity: junkTotals[junkId] }));
+  return json({ ok: true, mailIds: rows.map((m) => m.mail_id), gold, diamonds, junk });
+}
+
 // ---------- Phase 3: Raid Boss ----------
 // One shared boss per day, rotates through this list as each one dies (spawnIndex =
 // how many have already spawned today, scales hpMax up a bit each respawn so later
@@ -834,16 +912,16 @@ async function settleRaidRank(db, raidId) {
     .run();
   if (!guard.meta || !guard.meta.changes) return; // someone else already settled this raid
 
+  const bossRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state WHERE raid_id = ?`).bind(raidId).first();
+  const bossName = raidBossDefById(bossRow ? bossRow.boss_def_id : "").name;
   const topRes = await db
     .prepare(`SELECT character_id, player_id, total_damage FROM raid_participants WHERE raid_id = ? ORDER BY total_damage DESC LIMIT 10`)
     .bind(raidId)
     .all();
   const rows = topRes.results || [];
-  const now = nowIso();
   for (let i = 0; i < rows.length; i++) {
     const reward = RAID_RANK_REWARDS[i] || RAID_RANK_CONSOLATION;
-    if (reward.gold) await db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ?`).bind(reward.gold, now, rows[i].character_id).run();
-    if (reward.diamonds) await db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ?`).bind(reward.diamonds, rows[i].player_id).run();
+    await sendMail(db, rows[i].character_id, `🏆 อันดับ ${i + 1} ศึก ${bossName}`, `คุณจบการล่า ${bossName} ในอันดับที่ ${i + 1} ด้วยดาเมจสูงสุด ${rows[i].total_damage}`, reward);
   }
 }
 
@@ -966,9 +1044,8 @@ async function handleClaimRaidMilestones(db, id, password, characterId) {
 
   let goldSum = 0, diamondSum = 0;
   newlyEarned.forEach((i) => { goldSum += RAID_MILESTONES[i].gold || 0; diamondSum += RAID_MILESTONES[i].diamonds || 0; });
-  const now = nowIso();
-  if (goldSum) await db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ?`).bind(goldSum, now, characterId).run();
-  if (diamondSum) await db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ?`).bind(diamondSum, id).run();
+  const def = raidBossDefById(raid.boss_def_id);
+  await sendMail(db, characterId, `🎁 รางวัลดาเมจสะสม ${def.name}`, `คุณสะสมดาเมจถึง ${newlyEarned.map((i) => RAID_MILESTONES[i].label).join(", ")}`, { gold: goldSum, diamonds: diamondSum });
 
   const allClaimed = claimed.concat(newlyEarned).sort((a, b) => a - b).join(",");
   await db.prepare(`UPDATE raid_participants SET milestone_claimed = ? WHERE raid_id = ? AND character_id = ?`).bind(allClaimed, raid.raid_id, characterId).run();
@@ -1099,6 +1176,7 @@ export default {
         if (action === "getDailyLogin") return await handleGetDailyLogin(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));
         if (action === "getRaidStatus") return await handleGetRaidStatus(db, p.get("id"), p.get("password"), p.get("characterId"));
+        if (action === "getMailbox") return await handleGetMailbox(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "runLeaderboardSnapshot") {
           const auth = verifyAdminKey(env, p.get("adminKey"));
           if (auth.error) return json(auth);
@@ -1137,6 +1215,10 @@ export default {
             return await handleAttackRaidBoss(db, body.id, body.password, body.characterId);
           case "claimRaidMilestones":
             return await handleClaimRaidMilestones(db, body.id, body.password, body.characterId);
+          case "claimMail":
+            return await handleClaimMail(db, body.id, body.password, body.characterId, body.mailId);
+          case "claimAllMail":
+            return await handleClaimAllMail(db, body.id, body.password, body.characterId);
           case "saveGameConfig":
             return await handleAdminSaveGameConfig(db, env, body.adminKey, body.config);
           case "setGameConfigItem":

@@ -164,6 +164,7 @@ function HubScreen({
   onPets,
   onLeaderboard,
   onRaid,
+  onMailbox,
   onSave,
   onSwitchCharacter,
   onLogout,
@@ -225,6 +226,11 @@ function HubScreen({
     icon: "🐉",
     label: "Raid Boss",
     onClick: onRaid
+  }, {
+    key: "mailbox",
+    icon: "📬",
+    label: "จดหมาย",
+    onClick: onMailbox
   }, {
     key: "daily",
     icon: canClaimDaily ? "🎁" : "📅",
@@ -797,8 +803,8 @@ function RaidScreen({
     cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
       if (!res || res.error) return;
       if (res.claimed && res.claimed.length) {
-        setClaimMsg(`ได้รับ ${formatNumber(res.gold)} ทอง${res.diamonds ? ` + ${res.diamonds} เพชร` : ""}`);
-        setTimeout(() => setClaimMsg(null), 2500);
+        setClaimMsg("🎉 ส่งรางวัลเข้ากล่องจดหมายแล้ว ไปกดรับที่ 📬 กล่องจดหมาย");
+        setTimeout(() => setClaimMsg(null), 3000);
       }
       load();
     });
@@ -870,6 +876,70 @@ function RaidScreen({
            /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_damage)));
       })),
 
+    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+}
+// ---------- Phase 3.1: Mailbox ----------
+function MailboxScreen({
+  serverUrl,
+  cred,
+  characterId,
+  onApplyReward,
+  onBack
+}) {
+  const [mails, setMails] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+      if (!res || res.error) { setMails([]); return; }
+      setMails(res.mails || []);
+    });
+  };
+  React.useEffect(() => { load(); }, [characterId]);
+
+  const handleClaim = (mailId) => {
+    if (busy) return;
+    setBusy(true);
+    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(res => {
+      setBusy(false);
+      if (!res || res.error) return;
+      onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk });
+      load();
+    });
+  };
+
+  const handleClaimAll = () => {
+    if (busy) return;
+    setBusy(true);
+    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+      setBusy(false);
+      if (!res || res.error) return;
+      if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk });
+      load();
+    });
+  };
+
+  if (!mails) {
+    return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "กำลังโหลด..."));
+  }
+  const unclaimed = mails.filter(m => !m.claimed);
+
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" } },
+      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "📬 กล่องจดหมาย"),
+      unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
+    mails.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
+    mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.5 : 1 } },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { fontWeight: "bold" } }, m.title),
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, m.body),
+      (m.gold > 0 || m.diamonds > 0 || (m.junk && m.junk.length > 0)) && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+        m.gold > 0 ? `🪙${formatNumber(m.gold)} ` : "",
+        m.diamonds > 0 ? `💎${formatNumber(m.diamonds)} ` : "",
+        (m.junk || []).map(j => `${(JUNK_INFO[j.junkId] || {}).icon || "📦"}${j.quantity}`).join(" ")),
+      m.claimed
+        ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "✅ รับแล้ว")
+        : /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
 }
 function MapScreen({

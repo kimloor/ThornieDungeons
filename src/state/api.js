@@ -181,3 +181,30 @@ function cloudClaimRaidMilestones(url, id, password, characterId) {
     characterId
   });
 }
+// Phase 3.1 — Mailbox (reward delivery queue; client applies gold/diamonds/junk locally
+// after claiming, then the normal autosave persists it — see worker comment for why).
+function cloudGetMailbox(url, id, password, characterId) {
+  return cloudGet(url, {
+    action: "getMailbox",
+    id,
+    password,
+    characterId
+  });
+}
+function cloudClaimMail(url, id, password, characterId, mailId) {
+  return cloudPost(url, {
+    action: "claimMail",
+    id,
+    password,
+    characterId,
+    mailId
+  });
+}
+function cloudClaimAllMail(url, id, password, characterId) {
+  return cloudPost(url, {
+    action: "claimAllMail",
+    id,
+    password,
+    characterId
+  });
+}
