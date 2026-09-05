@@ -28,7 +28,8 @@
  *   GET  ?action=getGameConfig
  *   GET  ?action=getInventory&id=&password=&characterId=&page=&pageSize=
  *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
- *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp                    (NEW, Phase 2)
+ *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid                (NEW, Phase 2/3)
+ *   GET  ?action=getRaidStatus&id=&password=&characterId=                (NEW, Phase 3)
  *   GET  ?action=getPlayer&adminKey=&id=            (admin)
  *   GET  ?action=getAllPlayers&adminKey=            (admin)
  *   GET  ?action=getPlayerItems&adminKey=&id=        (admin)
@@ -43,6 +44,8 @@
  *   POST { action: "syncItems", id, password, characterId, items }
  *   POST { action: "setInventorySlot", id, password, itemId, inventorySlot }
  *   POST { action: "claimDailyLogin", id, password, characterId }        (NEW)
+ *   POST { action: "attackRaidBoss", id, password, characterId }          (NEW, Phase 3)
+ *   POST { action: "claimRaidMilestones", id, password, characterId }     (NEW, Phase 3)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
  *
@@ -251,6 +254,15 @@ async function runLeaderboardSnapshot(db) {
 const LEADERBOARD_BOARD_COLS = { floor: "max_floor", cp: "total_cp", pet_cp: "pet_cp" };
 
 async function handleGetLeaderboard(db, board) {
+  if (board === "raid") {
+    const raid = await getOrCreateActiveRaid(db);
+    const def = raidBossDefById(raid.boss_def_id);
+    const res = await db
+      .prepare(`SELECT character_id, player_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_damage DESC LIMIT 50`)
+      .bind(raid.raid_id)
+      .all();
+    return json({ ok: true, board, raidId: raid.raid_id, bossName: def.name, bossEmoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current), rows: res.results || [] });
+  }
   const col = LEADERBOARD_BOARD_COLS[board];
   if (!col) return json({ error: "invalid_board", allowed: Object.keys(LEADERBOARD_BOARD_COLS) });
   const res = await db
@@ -712,6 +724,258 @@ async function handleClaimDailyLogin(db, id, password, characterId) {
   });
 }
 
+// ---------- Phase 3: Raid Boss ----------
+// One shared boss per day, rotates through this list as each one dies (spawnIndex =
+// how many have already spawned today, scales hpMax up a bit each respawn so later
+// bosses in the day are a bit tougher once the playerbase has more total damage output).
+const RAID_BOSS_DEFS = [
+  { id: "slime_titan", name: "Slime Titan", emoji: "🟢", hpBase: 150000 },
+  { id: "iron_golem", name: "Iron Golem", emoji: "⚙️", hpBase: 260000 },
+  { id: "shadow_wyrm", name: "Shadow Wyrm", emoji: "🐉", hpBase: 420000 },
+];
+const RAID_ATTEMPTS_MAX = 5;
+const RAID_HITS_PER_ATTACK = 3; // mini combat round per attack, not a single flat hit
+// Milestone tiers: % of that boss's hpMax the character has *cumulatively* contributed
+// across all their attempts this raid. Claimed via claimRaidMilestones (idempotent —
+// milestone_claimed tracks which tier indices were already paid out).
+const RAID_MILESTONES = [
+  { pct: 0.01, gold: 200, diamonds: 0, label: "ดาเมจสะสม 1%" },
+  { pct: 0.03, gold: 500, diamonds: 5, label: "ดาเมจสะสม 3%" },
+  { pct: 0.08, gold: 1200, diamonds: 15, label: "ดาเมจสะสม 8%" },
+];
+// Rank bonus: granted automatically (no claim needed) the instant the boss dies, based
+// on each character's best single-attack damage (raid_participants.total_damage).
+const RAID_RANK_REWARDS = [
+  { gold: 3000, diamonds: 100 }, // rank 1
+  { gold: 2000, diamonds: 60 },  // rank 2
+  { gold: 1000, diamonds: 30 },  // rank 3
+];
+const RAID_RANK_CONSOLATION = { gold: 300, diamonds: 10 }; // rank 4-10
+
+function raidBossDefById(defId) {
+  return RAID_BOSS_DEFS.find((b) => b.id === defId) || RAID_BOSS_DEFS[0];
+}
+
+// Fetches today's live boss, or spawns the next one in rotation if there isn't one yet
+// or the last one is already dead. Never returns a dead boss.
+async function getOrCreateActiveRaid(db) {
+  const today = todayDateKey();
+  const row = await db
+    .prepare(`SELECT * FROM raid_boss_state WHERE date = ? ORDER BY created_at DESC LIMIT 1`)
+    .bind(today)
+    .first();
+  if (row && Number(row.boss_hp_current) > 0) return row;
+
+  const cntRow = await db.prepare(`SELECT COUNT(*) as c FROM raid_boss_state WHERE date = ?`).bind(today).first();
+  const spawnIndex = cntRow ? Number(cntRow.c) || 0 : 0;
+  const def = RAID_BOSS_DEFS[spawnIndex % RAID_BOSS_DEFS.length];
+  const hpMax = Math.round(def.hpBase * (1 + spawnIndex * 0.2));
+  const raidId = `raid-${today}-${spawnIndex}-${Math.random().toString(36).slice(2, 8)}`;
+  const now = nowIso();
+  await db
+    .prepare(
+      `INSERT INTO raid_boss_state (raid_id, date, boss_def_id, boss_hp_max, boss_hp_current, settled_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, '', ?, ?)`
+    )
+    .bind(raidId, today, def.id, hpMax, hpMax, now, now)
+    .run();
+  return { raid_id: raidId, date: today, boss_def_id: def.id, boss_hp_max: hpMax, boss_hp_current: hpMax, settled_at: "", created_at: now, updated_at: now };
+}
+
+// Ported subset of characterBaseStats/itemBonus above — returns only what raid combat
+// needs (atk/crit) rather than the full CP number, so this stays decoupled from the
+// leaderboard CP formula (don't merge these; CP formula changes shouldn't silently
+// reshape raid damage and vice versa).
+function raidCombatStats(character, equippedItems) {
+  const s = {
+    str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
+    dex: Number(character.dex) || 0, luk: Number(character.luk) || 0,
+  };
+  const level = Number(character.level) || 1;
+  const base = characterBaseStats(level, s);
+  const eb = { atk: 0, critChance: 0, critDamage: 0 };
+  (equippedItems || []).forEach((it) => {
+    const ib = itemBonus(it);
+    eb.atk += ib.atk;
+    eb.critChance += ib.critChance || 0;
+    eb.critDamage += ib.critDamage || 0;
+  });
+  return {
+    atk: Math.round(base.atk + eb.atk),
+    critChance: Math.min(100, Math.round((base.critChance + eb.critChance) * 10) / 10),
+    critDamage: Math.round((base.critDamage + eb.critDamage) * 10) / 10,
+  };
+}
+
+// One "attack" = a short simulated combat round (a few swings with crit rolls), not a
+// single flat hit — keeps some randomness/excitement per attempt like real combat.
+function simulateRaidAttack(stats) {
+  let total = 0;
+  let anyCrit = false;
+  for (let i = 0; i < RAID_HITS_PER_ATTACK; i++) {
+    const variance = 0.85 + Math.random() * 0.3;
+    let dmg = stats.atk * variance;
+    if (Math.random() * 100 < stats.critChance) {
+      dmg *= 1 + stats.critDamage / 100;
+      anyCrit = true;
+    }
+    total += dmg;
+  }
+  return { damage: Math.max(1, Math.round(total)), crit: anyCrit };
+}
+
+// Grants rank-bonus rewards once, the instant the boss dies. Guarded by an atomic
+// UPDATE on settled_at (only succeeds for whichever concurrent attack request gets
+// there first) so two players killing it in the same instant can't double-pay rewards.
+async function settleRaidRank(db, raidId) {
+  const guard = await db
+    .prepare(`UPDATE raid_boss_state SET settled_at = ? WHERE raid_id = ? AND settled_at = ''`)
+    .bind(nowIso(), raidId)
+    .run();
+  if (!guard.meta || !guard.meta.changes) return; // someone else already settled this raid
+
+  const topRes = await db
+    .prepare(`SELECT character_id, player_id, total_damage FROM raid_participants WHERE raid_id = ? ORDER BY total_damage DESC LIMIT 10`)
+    .bind(raidId)
+    .all();
+  const rows = topRes.results || [];
+  const now = nowIso();
+  for (let i = 0; i < rows.length; i++) {
+    const reward = RAID_RANK_REWARDS[i] || RAID_RANK_CONSOLATION;
+    if (reward.gold) await db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ?`).bind(reward.gold, now, rows[i].character_id).run();
+    if (reward.diamonds) await db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ?`).bind(reward.diamonds, rows[i].player_id).run();
+  }
+}
+
+async function handleGetRaidStatus(db, id, password, characterId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+
+  const raid = await getOrCreateActiveRaid(db);
+  const def = raidBossDefById(raid.boss_def_id);
+  const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
+  const topRes = await db
+    .prepare(`SELECT character_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_damage DESC LIMIT 10`)
+    .bind(raid.raid_id)
+    .all();
+
+  return json({
+    ok: true,
+    boss: { raidId: raid.raid_id, defId: def.id, name: def.name, emoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
+    me: participant
+      ? {
+          attemptsUsed: Number(participant.attempts_used) || 0,
+          attemptsMax: RAID_ATTEMPTS_MAX,
+          bestHit: Number(participant.total_damage) || 0,
+          contribution: Number(participant.total_contribution) || 0,
+          milestonesClaimed: (participant.milestone_claimed || "").split(",").filter(Boolean).map(Number),
+        }
+      : { attemptsUsed: 0, attemptsMax: RAID_ATTEMPTS_MAX, bestHit: 0, contribution: 0, milestonesClaimed: [] },
+    milestones: RAID_MILESTONES.map((m, i) => ({
+      index: i, pct: m.pct, label: m.label, gold: m.gold, diamonds: m.diamonds,
+      thresholdDamage: Math.round(Number(raid.boss_hp_max) * m.pct),
+    })),
+    top: topRes.results || [],
+  });
+}
+
+async function handleAttackRaidBoss(db, id, password, characterId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  const character = owned.row;
+
+  const raid = await getOrCreateActiveRaid(db);
+  if (Number(raid.boss_hp_current) <= 0) return json({ error: "boss_already_dead" });
+
+  const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
+  const attemptsUsed = participant ? Number(participant.attempts_used) || 0 : 0;
+  if (attemptsUsed >= RAID_ATTEMPTS_MAX) return json({ error: "no_attempts_left" });
+
+  const itemsRes = await db.prepare(`SELECT atk, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all();
+  const stats = raidCombatStats(character, itemsRes.results || []);
+  const hit = simulateRaidAttack(stats);
+  const hpBefore = Number(raid.boss_hp_current);
+  const appliedDamage = Math.min(hit.damage, hpBefore); // this character's actual contribution to the shared boss HP
+
+  const now = nowIso();
+  // Atomic clamp — safe even if many players hit at once, never goes negative.
+  await db
+    .prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0`)
+    .bind(hit.damage, now, raid.raid_id)
+    .run();
+  const freshBoss = await db.prepare(`SELECT boss_hp_current FROM raid_boss_state WHERE raid_id = ?`).bind(raid.raid_id).first();
+
+  const newBest = Math.max(participant ? Number(participant.total_damage) || 0 : 0, hit.damage);
+  const newContribution = (participant ? Number(participant.total_contribution) || 0 : 0) + appliedDamage;
+
+  await db
+    .prepare(
+      `INSERT INTO raid_participants (raid_id, character_id, player_id, name, total_damage, total_contribution, attempts_used, milestone_claimed, last_hit_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(raid_id, character_id) DO UPDATE SET
+         total_damage = excluded.total_damage,
+         total_contribution = excluded.total_contribution,
+         attempts_used = excluded.attempts_used,
+         last_hit_at = excluded.last_hit_at`
+    )
+    .bind(raid.raid_id, characterId, id, character.name || "", newBest, newContribution, attemptsUsed + 1, participant ? participant.milestone_claimed || "" : "", now)
+    .run();
+
+  let bossDied = false;
+  if (freshBoss && Number(freshBoss.boss_hp_current) <= 0 && hpBefore > 0) {
+    bossDied = true;
+    await settleRaidRank(db, raid.raid_id);
+  }
+
+  return json({
+    ok: true,
+    damage: hit.damage,
+    crit: hit.crit,
+    appliedDamage,
+    bossHpCurrent: freshBoss ? Number(freshBoss.boss_hp_current) : 0,
+    bossDied,
+    attemptsUsed: attemptsUsed + 1,
+    attemptsLeft: RAID_ATTEMPTS_MAX - (attemptsUsed + 1),
+    bestHit: newBest,
+    contribution: newContribution,
+  });
+}
+
+async function handleClaimRaidMilestones(db, id, password, characterId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+
+  const raid = await getOrCreateActiveRaid(db);
+  const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
+  if (!participant) return json({ error: "no_participation" });
+
+  const claimed = (participant.milestone_claimed || "").split(",").filter(Boolean).map(Number);
+  const contribution = Number(participant.total_contribution) || 0;
+  const newlyEarned = [];
+  RAID_MILESTONES.forEach((m, i) => {
+    if (claimed.indexOf(i) !== -1) return;
+    if (contribution >= Number(raid.boss_hp_max) * m.pct) newlyEarned.push(i);
+  });
+  if (!newlyEarned.length) return json({ ok: true, claimed: [], gold: 0, diamonds: 0 });
+
+  let goldSum = 0, diamondSum = 0;
+  newlyEarned.forEach((i) => { goldSum += RAID_MILESTONES[i].gold || 0; diamondSum += RAID_MILESTONES[i].diamonds || 0; });
+  const now = nowIso();
+  if (goldSum) await db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ?`).bind(goldSum, now, characterId).run();
+  if (diamondSum) await db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ?`).bind(diamondSum, id).run();
+
+  const allClaimed = claimed.concat(newlyEarned).sort((a, b) => a - b).join(",");
+  await db.prepare(`UPDATE raid_participants SET milestone_claimed = ? WHERE raid_id = ? AND character_id = ?`).bind(allClaimed, raid.raid_id, characterId).run();
+
+  return json({ ok: true, claimed: newlyEarned, gold: goldSum, diamonds: diamondSum });
+}
+
 // ---------- admin / QA ----------
 async function handleAdminGetPlayer(db, env, adminKey, id) {
   const auth = verifyAdminKey(env, adminKey);
@@ -834,6 +1098,7 @@ export default {
         if (action === "getInventory") return await handleGetInventory(db, p.get("id"), p.get("password"), p.get("characterId"), p.get("page"), p.get("pageSize"));
         if (action === "getDailyLogin") return await handleGetDailyLogin(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));
+        if (action === "getRaidStatus") return await handleGetRaidStatus(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "runLeaderboardSnapshot") {
           const auth = verifyAdminKey(env, p.get("adminKey"));
           if (auth.error) return json(auth);
@@ -868,6 +1133,10 @@ export default {
             return await handleSetInventorySlot(db, body.id, body.password, body.itemId, body.inventorySlot);
           case "claimDailyLogin":
             return await handleClaimDailyLogin(db, body.id, body.password, body.characterId);
+          case "attackRaidBoss":
+            return await handleAttackRaidBoss(db, body.id, body.password, body.characterId);
+          case "claimRaidMilestones":
+            return await handleClaimRaidMilestones(db, body.id, body.password, body.characterId);
           case "saveGameConfig":
             return await handleAdminSaveGameConfig(db, env, body.adminKey, body.config);
           case "setGameConfigItem":

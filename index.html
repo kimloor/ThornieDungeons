@@ -1240,11 +1240,36 @@ function cloudClaimDailyLogin(url, id, password, characterId) {
     characterId
   });
 }
-// Phase 2 — public, no auth needed (board is one of "floor" | "cp" | "pet_cp").
+// Phase 2/3 — public, no auth needed (board is one of "floor" | "cp" | "pet_cp" | "raid").
 function cloudGetLeaderboard(url, board) {
   return cloudGet(url, {
     action: "getLeaderboard",
     board
+  });
+}
+// Phase 3 — Raid Boss
+function cloudGetRaidStatus(url, id, password, characterId) {
+  return cloudGet(url, {
+    action: "getRaidStatus",
+    id,
+    password,
+    characterId
+  });
+}
+function cloudAttackRaidBoss(url, id, password, characterId) {
+  return cloudPost(url, {
+    action: "attackRaidBoss",
+    id,
+    password,
+    characterId
+  });
+}
+function cloudClaimRaidMilestones(url, id, password, characterId) {
+  return cloudPost(url, {
+    action: "claimRaidMilestones",
+    id,
+    password,
+    characterId
   });
 }
 
@@ -4407,6 +4432,7 @@ function ThornieDungeons() {
     onEnhance: () => setBlacksmithOpen(true),
     onPets: () => setPhase("pets"),
     onLeaderboard: () => setPhase("leaderboard"),
+    onRaid: () => setPhase("raid"),
     onSave: () => persistSave(save),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
@@ -4449,6 +4475,11 @@ function ThornieDungeons() {
   }), phase === "leaderboard" && /*#__PURE__*/React.createElement(LeaderboardScreen, {
     serverUrl: cred.url,
     myCharacterId: save.characterId,
+    onBack: () => setPhase("menu")
+  }), phase === "raid" && /*#__PURE__*/React.createElement(RaidScreen, {
+    serverUrl: cred.url,
+    cred: cred,
+    characterId: save.characterId,
     onBack: () => setPhase("menu")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
@@ -4696,6 +4727,7 @@ function HubScreen({
   onEnhance,
   onPets,
   onLeaderboard,
+  onRaid,
   onSave,
   onSwitchCharacter,
   onLogout,
@@ -4752,6 +4784,11 @@ function HubScreen({
     icon: "🏆",
     label: "อันดับ",
     onClick: onLeaderboard
+  }, {
+    key: "raid",
+    icon: "🐉",
+    label: "Raid Boss",
+    onClick: onRaid
   }, {
     key: "daily",
     icon: canClaimDaily ? "🎁" : "📅",
@@ -5185,8 +5222,9 @@ const LEADERBOARD_BOARDS = [{
 }, {
   key: "raid",
   icon: "🐉",
-  label: "Raid Boss",
-  disabled: true
+  label: "Raid Boss (ดาเมจสูงสุด)",
+  valueKey: "total_damage",
+  format: v => `${formatNumber(v)} dmg`
 }];
 function LeaderboardScreen({
   serverUrl,
@@ -5284,6 +5322,119 @@ function LeaderboardScreen({
     className: "md-btn flee wide small",
     onClick: onBack
   }, "← Back"));
+}
+// ---------- Phase 3: Raid Boss ----------
+function RaidScreen({
+  serverUrl,
+  cred,
+  characterId,
+  onBack
+}) {
+  const [status, setStatus] = useState(null);
+  const [error, setError] = useState(null);
+  const [attacking, setAttacking] = useState(false);
+  const [lastResult, setLastResult] = useState(null);
+  const [claimMsg, setClaimMsg] = useState(null);
+
+  const load = () => {
+    setError(null);
+    cloudGetRaidStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+      if (!res || res.error) { setError("โหลดข้อมูล Raid ไม่สำเร็จ"); return; }
+      setStatus(res);
+    });
+  };
+  React.useEffect(() => { load(); }, [characterId]);
+
+  const handleAttack = () => {
+    if (attacking) return;
+    setAttacking(true);
+    setLastResult(null);
+    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+      setAttacking(false);
+      if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
+      setLastResult(res);
+      load();
+    });
+  };
+
+  const handleClaim = () => {
+    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+      if (!res || res.error) return;
+      if (res.claimed && res.claimed.length) {
+        setClaimMsg(`ได้รับ ${formatNumber(res.gold)} ทอง${res.diamonds ? ` + ${res.diamonds} เพชร` : ""}`);
+        setTimeout(() => setClaimMsg(null), 2500);
+      }
+      load();
+    });
+  };
+
+  if (error) {
+    return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, error),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+  }
+  if (!status) {
+    return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "กำลังโหลด..."));
+  }
+
+  const boss = status.boss;
+  const me = status.me;
+  const hpPct = boss.hpMax ? Math.max(0, Math.min(100, boss.hpCurrent / boss.hpMax * 100)) : 0;
+  const isDead = boss.hpCurrent <= 0;
+
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
+      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.emoji, " ", boss.name),
+      /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
+        /*#__PURE__*/React.createElement("div", {
+          className: "md-bar-fill",
+          style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
+        })),
+      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(boss.hpCurrent), " / ", formatNumber(boss.hpMax)),
+      isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา")),
+
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "โจมตีเหลือ ", me.attemptsMax - me.attemptsUsed, "/", me.attemptsMax, " ครั้ง"),
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสูงสุดของคุณ: ", formatNumber(me.bestHit)),
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสะสม: ", formatNumber(me.contribution)),
+      lastResult && !lastResult.error && /*#__PURE__*/React.createElement("p", {
+        className: "md-sub",
+        style: { color: lastResult.crit ? "#FFD166" : undefined }
+      }, lastResult.crit ? "💥 CRIT! " : "", "ดาเมจ ", formatNumber(lastResult.damage)),
+      lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, lastResult.error === "no_attempts_left" ? "หมดจำนวนครั้งโจมตีวันนี้แล้ว" : lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่" : lastResult.error),
+      /*#__PURE__*/React.createElement("button", {
+        className: "md-btn wide",
+        disabled: attacking || isDead || me.attemptsUsed >= me.attemptsMax,
+        onClick: handleAttack
+      }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี")),
+
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "รางวัลตามดาเมจสะสม"),
+      status.milestones.map(m => {
+        const done = me.contribution >= m.thresholdDamage;
+        const claimed = me.milestonesClaimed.indexOf(m.index) !== -1;
+        return /*#__PURE__*/React.createElement("div", { key: m.index, className: "md-shop-row" },
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.label, " (", formatNumber(m.thresholdDamage), " dmg)"),
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ รับแล้ว" : done ? "🎁 พร้อมรับ" : `${formatNumber(m.gold)}g`));
+      }),
+      claimMsg && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, claimMsg),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn wide small", onClick: handleClaim }, "รับรางวัล")),
+
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "อันดับดาเมจ"),
+      (status.top || []).map((row, idx) => {
+        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+        const isMe = row.character_id === characterId;
+        return /*#__PURE__*/React.createElement("div", {
+          key: row.character_id,
+          className: "md-shop-row",
+          style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
+        }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
+           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_damage)));
+      })),
+
+    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
 }
 function MapScreen({
   unlockedFloor,

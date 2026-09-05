@@ -149,10 +149,35 @@ function cloudClaimDailyLogin(url, id, password, characterId) {
     characterId
   });
 }
-// Phase 2 — public, no auth needed (board is one of "floor" | "cp" | "pet_cp").
+// Phase 2/3 — public, no auth needed (board is one of "floor" | "cp" | "pet_cp" | "raid").
 function cloudGetLeaderboard(url, board) {
   return cloudGet(url, {
     action: "getLeaderboard",
     board
+  });
+}
+// Phase 3 — Raid Boss
+function cloudGetRaidStatus(url, id, password, characterId) {
+  return cloudGet(url, {
+    action: "getRaidStatus",
+    id,
+    password,
+    characterId
+  });
+}
+function cloudAttackRaidBoss(url, id, password, characterId) {
+  return cloudPost(url, {
+    action: "attackRaidBoss",
+    id,
+    password,
+    characterId
+  });
+}
+function cloudClaimRaidMilestones(url, id, password, characterId) {
+  return cloudPost(url, {
+    action: "claimRaidMilestones",
+    id,
+    password,
+    characterId
   });
 }
