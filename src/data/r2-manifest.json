@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-05T13:53:03Z",
-  "count": 42,
+  "generatedAt": "2026-09-05T16:50:48Z",
+  "count": 69,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "55839835739550baa05755849b47dffb",
-      "last_modified": "2026-09-05T13:03:40.178Z",
-      "size": 5158,
+      "etag": "3dd816e383e2c19b260a98702616dd2a",
+      "last_modified": "2026-09-05T14:28:51.037Z",
+      "size": 5205,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -92,10 +92,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/equipment/hat_angel_crown.png",
-      "etag": "cd49cc09de5ec48f43bf29bf231f54e8",
-      "last_modified": "2026-09-05T12:52:12.544Z",
-      "size": 30723,
+      "key": "sprite/characters/hero001/equipment/arms_azure.png",
+      "etag": "a064244d8e9c65fa701793d06ccda31c",
+      "last_modified": "2026-09-05T14:25:21.375Z",
+      "size": 41629,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -103,10 +103,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/equipment/legs_shoes_azure.png",
-      "etag": "be2e438f59c3f6c31506cbe68cbe2079",
-      "last_modified": "2026-09-05T12:52:56.101Z",
-      "size": 68244,
+      "key": "sprite/characters/hero001/equipment/hat_angel_crown.png",
+      "etag": "cd49cc09de5ec48f43bf29bf231f54e8",
+      "last_modified": "2026-09-05T12:52:12.544Z",
+      "size": 30723,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -125,10 +125,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/equipment/right_arm_gauntlet.png",
-      "etag": "a064244d8e9c65fa701793d06ccda31c",
-      "last_modified": "2026-09-05T12:53:23.773Z",
-      "size": 41629,
+      "key": "sprite/characters/hero001/equipment/shoes_azure.png",
+      "etag": "be2e438f59c3f6c31506cbe68cbe2079",
+      "last_modified": "2026-09-05T14:25:36.154Z",
+      "size": 68244,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -208,6 +208,204 @@
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T14:01:59.638Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T14:02:47.635Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/animations/orc_attack_0.png",
+      "etag": "8bb9a3ee7dc3816da35c4ceb6d43c924",
+      "last_modified": "2026-09-05T14:03:01.994Z",
+      "size": 150642,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/animations/orc_attack_1.png",
+      "etag": "54cc74d3e3695b85bd961629946b581d",
+      "last_modified": "2026-09-05T14:03:01.816Z",
+      "size": 148900,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/animations/orc_attack_2.png",
+      "etag": "9c672c99472fe6315731b248c31261b2",
+      "last_modified": "2026-09-05T14:03:02.034Z",
+      "size": 135104,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/animations/orc_death_0.png",
+      "etag": "e00eebf653551ce0b21e59dec076b6cb",
+      "last_modified": "2026-09-05T14:03:02.697Z",
+      "size": 91055,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/animations/orc_idle_0.png",
+      "etag": "4160d01cfcae4faa8fff0dde645d9851",
+      "last_modified": "2026-09-05T14:03:03.120Z",
+      "size": 150027,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/animations/orc_idle_1.png",
+      "etag": "b021d3464a2fda34fd81afc822cf9a5a",
+      "last_modified": "2026-09-05T14:03:03.256Z",
+      "size": 151490,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/orc001/animations/orc_idle_2.png",
+      "etag": "ef6e1bff1b258b0984ea861690a67e97",
+      "last_modified": "2026-09-05T14:03:02.279Z",
+      "size": 147004,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T14:01:51.865Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T14:02:11.466Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/animations/poring_attack_0.png",
+      "etag": "14e12c6a029a861c1161eac4e9dff9e5",
+      "last_modified": "2026-09-05T14:02:23.108Z",
+      "size": 62894,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/animations/poring_attack_1.png",
+      "etag": "674de8efffd7d94f4da49ceda33e5dad",
+      "last_modified": "2026-09-05T14:02:23.144Z",
+      "size": 81317,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/animations/poring_attack_2.png",
+      "etag": "7d5da2961b38ca5010e5645c459f61e0",
+      "last_modified": "2026-09-05T14:02:23.149Z",
+      "size": 72324,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/animations/poring_death_0.png",
+      "etag": "c1371280ebb23446dcf4adecde20590d",
+      "last_modified": "2026-09-05T14:02:23.262Z",
+      "size": 59505,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/animations/poring_idle_0.png",
+      "etag": "07301b1cbeceb5f42b21fa0aa2f28bda",
+      "last_modified": "2026-09-05T14:02:24.507Z",
+      "size": 68982,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/animations/poring_idle_1.png",
+      "etag": "f0790e0828471a0f3214128bb72dbdff",
+      "last_modified": "2026-09-05T14:02:24.444Z",
+      "size": 53683,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/poring001/animations/poring_idle_2.png",
+      "etag": "c0a90c13e66cfd3f124e691fb1909bf8",
+      "last_modified": "2026-09-05T14:02:23.351Z",
+      "size": 79652,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
@@ -461,6 +659,105 @@
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T13:54:34.576Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T13:54:58.657Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/animations/sprout_attack_0.png",
+      "etag": "74916bf766fe17a936ae5a6a2051da16",
+      "last_modified": "2026-09-05T14:01:22.260Z",
+      "size": 255436,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/animations/sprout_attack_1.png",
+      "etag": "df6b302be73bc7362ed0c4de43f80241",
+      "last_modified": "2026-09-05T14:01:23.583Z",
+      "size": 166796,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/animations/sprout_attack_2.png",
+      "etag": "ba8d1656df700b497a00708f163c8427",
+      "last_modified": "2026-09-05T14:01:24.121Z",
+      "size": 152394,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/animations/sprout_death_0.png",
+      "etag": "536d9faf9d5e865c95cfef762f3fea68",
+      "last_modified": "2026-09-05T14:20:03.748Z",
+      "size": 169447,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/animations/sprout_idle_0.png",
+      "etag": "6b9f106427d6931c540c9be877a2c889",
+      "last_modified": "2026-09-05T14:01:21.933Z",
+      "size": 241587,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/animations/sprout_idle_1.png",
+      "etag": "00a80ae905559f88ccbedfc15359a944",
+      "last_modified": "2026-09-05T14:01:21.960Z",
+      "size": 247753,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sprout001/animations/sprout_idle_2.png",
+      "etag": "5b707b166542166972ebf7a10f74eb8b",
+      "last_modified": "2026-09-05T14:20:03.302Z",
+      "size": 252683,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
