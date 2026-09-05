@@ -1473,15 +1473,25 @@ function EnemySprite({
   selected,
   onClick
 }) {
-  const enemyUrl = asset(`enemy.${enemy.id}`);
+  const spriteConfig = getMonsterSpriteConfig(enemy);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
   const dead = enemy.hp <= 0;
+  const spriteVisual = spriteConfig
+    ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+        config: spriteConfig,
+        anim: anim || "",
+        dead,
+        className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
+        alt: enemy.name
+      })
+    : null;
+
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap",
     onClick: !dead && onClick ? () => onClick(enemy.uid) : undefined,
     style: {
       cursor: !dead && onClick ? "pointer" : "default",
-      opacity: dead ? 0.35 : 1,
+      opacity: 1,
       outline: selected && !dead ? "2px solid var(--gold)" : "none",
       outlineOffset: 4,
       borderRadius: 12
@@ -1497,12 +1507,7 @@ function EnemySprite({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), enemyUrl ? /*#__PURE__*/React.createElement("img", {
-    className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
-    src: enemyUrl,
-    alt: enemy.name,
-    draggable: false
-  }) : /*#__PURE__*/React.createElement("div", {
+  }, enemy.hp, "/", enemy.maxHp)), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
@@ -1517,12 +1522,24 @@ function EnemySprite({
     className: "md-sprite-name"
   }, enemy.name, enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : ""));
 }
+
 function PetCombatSprite({ pet, anim }) {
   const dead = pet.hp <= 0;
   const hpPct = Math.max(0, Math.min(100, pet.hp / pet.maxHp * 100));
+  const spriteConfig = getPetSpriteConfig(pet.defId);
+  const spriteVisual = spriteConfig
+    ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+        config: spriteConfig,
+        anim: anim || "",
+        dead,
+        className: `md-enemy-img md-pet-img ${anim || ""}`,
+        alt: pet.name
+      })
+    : null;
+
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap",
-    style: { opacity: dead ? 0.35 : 1 }
+    style: { opacity: 1 }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1532,13 +1549,14 @@ function PetCombatSprite({ pet, anim }) {
     style: { width: `${hpPct}%` }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
+  }, pet.hp, "/", pet.maxHp)), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${anim || ""}`,
     style: { display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, background: "none", border: "none" }
   }, pet.icon), /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-name"
   }, pet.name, dead ? " 💤" : ""));
 }
+
 // Turn Order Queue UI: shows every unit's planned action order for the current round,
 // sorted by Speed (AGI), so the player can plan around who acts before whom.
 function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
