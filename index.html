@@ -1607,7 +1607,9 @@ function itemsToServerList(inventory, equipped) {
       junkId: it.junkId || undefined,
       potionId: it.potionId || undefined,
       quantity: it.quantity || undefined,
-      icon: it.icon || undefined
+      icon: it.icon || undefined,
+      setId: it.setId || undefined,
+      star: it.star || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -1668,6 +1670,8 @@ function itemsFromServerList(rows) {
         enhanceLevel: numOr(r.enhance_level, 0),
         empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
       };
+      if (extra.setId) it.setId = extra.setId;
+      if (extra.star) it.star = numOr(extra.star, 0);
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });
@@ -2118,13 +2122,16 @@ const RARITY_LABEL = {
   rare: "Rare",
   unique: "Unique",
   elite: "Elite",
-  mythic: "Mythic"
+  mythic: "Mythic",
+  raid: "Raid Wing",
+  azure: "Azure Set"
 };
 const RARITY_STARS = {
   rare: 1,
   unique: 3,
   elite: 5,
-  mythic: 7
+  mythic: 7,
+  azure: 5
 };
 
 // ===== systems/enhancement.js =====
@@ -2153,7 +2160,23 @@ const JUNK_INFO = {
   manaOre: {
     name: "หินมานา",
     icon: "🔮"
-  }
+  },
+  // Raid boss materials (shared across all boss types for now).
+  bossHorn: {
+    name: "เขาบอส",
+    icon: "🦴"
+  },
+  bossHide: {
+    name: "หนังบอส",
+    icon: "🟫"
+  },
+  // Azure set recipes — inert placeholders until the Crafting phase can consume them.
+  recipe_azure_helmet: { name: "แบบร่างหมวก Azure", icon: "📜" },
+  recipe_azure_chest: { name: "แบบร่างเสื้อ Azure", icon: "📜" },
+  recipe_azure_gloves: { name: "แบบร่างถุงมือ Azure", icon: "📜" },
+  recipe_azure_boots: { name: "แบบร่างรองเท้า Azure", icon: "📜" },
+  recipe_azure_weapon: { name: "แบบร่างอาวุธ Azure", icon: "📜" },
+  recipe_azure_ring: { name: "แบบร่างแหวน Azure", icon: "📜" }
 };
 const JUNK_STACK_MAX = 99;
 const JUNK_SELL_VALUE = {
@@ -2781,7 +2804,9 @@ function generateDrop(floor, options = {}) {
 }
 function buildDropItem(floor, options = {}) {
   const roll = Math.random();
-  const type = roll < 0.16 ? "weapon" : roll < 0.30 ? "helmet" : roll < 0.47 ? "chest" : roll < 0.61 ? "gloves" : roll < 0.75 ? "boots" : roll < 0.90 ? "accessory" : "wings";
+  // wings and accessory are raid-exclusive now (see workers/thornie-dungeons-api.js
+  // RAID_WING_DEFS / AZURE_SET_DEFS) — shop stock and floor-boss chests no longer roll them.
+  const type = roll < 0.20 ? "weapon" : roll < 0.40 ? "helmet" : roll < 0.60 ? "chest" : roll < 0.80 ? "gloves" : "boots";
   const rarity = options.forceRarity || rollRarity(!!options.rarityBoost);
   const mult = RARITY_MULT[rarity];
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -2928,10 +2953,37 @@ function getEquipBonus(equipped) {
   b.dropBonus = roundTo(b.dropBonus, 1);
   return b;
 }
+// Equipment set bonuses (raid-exclusive Azure set for now — see AZURE_SET_DEFS in the
+// worker). Items carry a plain `setId` string (round-tripped via items_json extra, same
+// as junkId/potionId); count how many equipped pieces share a setId and apply the
+// highest tier reached. Placeholder numbers — revisit once actual balance is decided.
+const SET_BONUS_DEFS = {
+  azure: [
+    { count: 2, atkPct: 0.05 },
+    { count: 4, atkPct: 0.10, defPct: 0.05 },
+    { count: 6, atkPct: 0.15, defPct: 0.10, critChance: 5 },
+  ],
+};
+function getSetBonusPct(equipped) {
+  const counts = {};
+  Object.values(equipped).forEach(it => { if (it && it.setId) counts[it.setId] = (counts[it.setId] || 0) + 1; });
+  const out = { atkPct: 0, defPct: 0, critChance: 0 };
+  Object.keys(counts).forEach(setId => {
+    (SET_BONUS_DEFS[setId] || []).forEach(tier => {
+      if (counts[setId] >= tier.count) {
+        out.atkPct += tier.atkPct || 0;
+        out.defPct += tier.defPct || 0;
+        out.critChance += tier.critChance || 0;
+      }
+    });
+  });
+  return out;
+}
 function getStats(player, equipped) {
   const b = getEquipBonus(equipped);
-  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0));
-  const defBuff = 1 + (player.defBuffPct || 0);
+  const setBonus = getSetBonusPct(equipped);
+  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0) + setBonus.atkPct);
+  const defBuff = 1 + (player.defBuffPct || 0) + setBonus.defPct;
   return {
     atk: roundInt((player.baseAtk + b.atk) * atkMult),
     def: roundInt((player.baseDef + b.def) * defBuff),
@@ -2942,7 +2994,7 @@ function getStats(player, equipped) {
     // point can turn into 7.3999999999999995 even though both inputs were "clean" — re-round
     // every percentage stat here, since this is the value combat rolls and the UI both read.
     accuracy: roundTo(Math.min(99, (player.accuracy || 0) + b.accuracy), 1),
-    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance), 1),
+    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + setBonus.critChance), 1),
     critDamage: roundTo(Math.min(300, (player.critDamage || 0) + b.critDamage), 1),
     dodgeChance: roundTo(Math.min(60, (player.dodgeChance || 0) + b.dodgeChance), 1),
     dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus, 1)
@@ -3163,6 +3215,9 @@ function ThornieDungeons() {
         reward.junk.forEach(j => { next = addJunkToInventory(next, j.junkId, Number(j.quantity) || 0); });
         return next;
       });
+    }
+    if (reward.items && reward.items.length) {
+      setInventory(inv => [...inv, ...reward.items.map(materializeMailItem)]);
     }
   }, []);
   const pushRunState = useCallback((runState) => {
@@ -5474,8 +5529,8 @@ const LEADERBOARD_BOARDS = [{
 }, {
   key: "raid",
   icon: "🐉",
-  label: "Raid Boss (ดาเมจสูงสุด)",
-  valueKey: "total_damage",
+  label: "Raid Boss (ดาเมจสะสม)",
+  valueKey: "total_contribution",
   format: v => `${formatNumber(v)} dmg`
 }];
 function LeaderboardScreen({
@@ -5662,13 +5717,17 @@ function RaidScreen({
       }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี")),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "รางวัลตามดาเมจสะสม"),
-      status.milestones.map(m => {
-        const done = me.contribution >= m.thresholdDamage;
-        const claimed = me.milestonesClaimed.indexOf(m.index) !== -1;
-        return /*#__PURE__*/React.createElement("div", { key: m.index, className: "md-shop-row" },
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.label, " (", formatNumber(m.thresholdDamage), " dmg)"),
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ รับแล้ว" : done ? "🎁 พร้อมรับ" : `${formatNumber(m.gold)}g`));
+      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ)"),
+      /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
+        /*#__PURE__*/React.createElement("div", { className: "md-bar-fill", style: { width: `${me.contributionPct}%`, background: "linear-gradient(90deg,#6EC6FF,#4A7CFF)" } })),
+      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, me.contributionPct, "%"),
+      status.milestoneSpecials.map(m => {
+        const key = `p${m.pct}`;
+        const done = me.contributionPct >= m.pct;
+        const claimed = me.milestonesClaimed.indexOf(key) !== -1;
+        return /*#__PURE__*/React.createElement("div", { key: m.pct, className: "md-shop-row" },
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.pct, "% — ", m.label),
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ รับแล้ว" : done ? "🎁 พร้อมรับ" : "🔒"));
       }),
       claimMsg && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, claimMsg),
       /*#__PURE__*/React.createElement("button", { className: "md-btn wide small", onClick: handleClaim }, "รับรางวัล")),
@@ -5683,10 +5742,33 @@ function RaidScreen({
           className: "md-shop-row",
           style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
         }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
-           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_damage)));
+           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_contribution)));
       })),
 
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+}
+// Turns a mail's item descriptor (worker-side plain data: type/rarity/name/stats/setId/star)
+// into a proper client-side item object with a fresh local id + empowerSlots array, ready to
+// drop into inventory. The worker never touches items table directly (see mailbox comment in
+// api.js) — this is the one place a mail's equipment reward actually "becomes" a real item.
+function materializeMailItem(desc) {
+  return {
+    id: `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type: desc.type,
+    rarity: desc.rarity,
+    name: desc.name,
+    atk: desc.atk || 0,
+    def: desc.def || 0,
+    hp: desc.hp || 0,
+    mp: desc.mp || 0,
+    dodgeChance: desc.dodgeChance || 0,
+    critChance: desc.critChance || 0,
+    critDamage: desc.critDamage || 0,
+    enhanceLevel: 0,
+    empowerSlots: Array(Math.max(1, desc.empowerSlotCount || 1)).fill(null),
+    ...(desc.setId ? { setId: desc.setId } : {}),
+    ...(desc.star ? { star: desc.star } : {})
+  };
 }
 // ---------- Phase 3.1: Mailbox ----------
 function MailboxScreen({
@@ -5713,7 +5795,7 @@ function MailboxScreen({
     cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(res => {
       setBusy(false);
       if (!res || res.error) return;
-      onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk });
+      onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
       load();
     });
   };
@@ -5724,7 +5806,7 @@ function MailboxScreen({
     cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
       setBusy(false);
       if (!res || res.error) return;
-      if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk });
+      if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
       load();
     });
   };
@@ -5743,10 +5825,12 @@ function MailboxScreen({
     mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.5 : 1 } },
       /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { fontWeight: "bold" } }, m.title),
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, m.body),
-      (m.gold > 0 || m.diamonds > 0 || (m.junk && m.junk.length > 0)) && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      (m.gold > 0 || m.diamonds > 0 || (m.junk && m.junk.length > 0) || (m.items && m.items.length > 0)) && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
         m.gold > 0 ? `🪙${formatNumber(m.gold)} ` : "",
         m.diamonds > 0 ? `💎${formatNumber(m.diamonds)} ` : "",
-        (m.junk || []).map(j => `${(JUNK_INFO[j.junkId] || {}).icon || "📦"}${j.quantity}`).join(" ")),
+        (m.junk || []).map(j => `${(JUNK_INFO[j.junkId] || {}).icon || "📦"}${j.quantity}`).join(" "),
+        " ",
+        (m.items || []).map(it => it.star ? `🪽${it.name}` : it.setId ? `🔷${it.name}` : it.name).join(" ")),
       m.claimed
         ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "✅ รับแล้ว")
         : /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))),

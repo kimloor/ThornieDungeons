@@ -55,7 +55,9 @@ function itemsToServerList(inventory, equipped) {
       junkId: it.junkId || undefined,
       potionId: it.potionId || undefined,
       quantity: it.quantity || undefined,
-      icon: it.icon || undefined
+      icon: it.icon || undefined,
+      setId: it.setId || undefined,
+      star: it.star || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -116,6 +118,8 @@ function itemsFromServerList(rows) {
         enhanceLevel: numOr(r.enhance_level, 0),
         empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
       };
+      if (extra.setId) it.setId = extra.setId;
+      if (extra.star) it.star = numOr(extra.star, 0);
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });

@@ -261,7 +261,7 @@ async function handleGetLeaderboard(db, board) {
     const raid = await getOrCreateActiveRaid(db);
     const def = raidBossDefById(raid.boss_def_id);
     const res = await db
-      .prepare(`SELECT character_id, player_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_damage DESC LIMIT 50`)
+      .prepare(`SELECT character_id, player_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC LIMIT 50`)
       .bind(raid.raid_id)
       .all();
     return json({ ok: true, board, raidId: raid.raid_id, bossName: def.name, bossEmoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current), rows: res.results || [] });
@@ -741,10 +741,10 @@ async function sendMail(db, characterId, title, body, reward) {
   const r = reward || {};
   await db
     .prepare(
-      `INSERT INTO mailbox (mail_id, character_id, title, body, gold, diamonds, junk_json, claimed, created_at, claimed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, '')`
+      `INSERT INTO mailbox (mail_id, character_id, title, body, gold, diamonds, junk_json, items_json, claimed, created_at, claimed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, '')`
     )
-    .bind(newMailId(), characterId, title || "", body || "", Number(r.gold) || 0, Number(r.diamonds) || 0, r.junk ? JSON.stringify(r.junk) : "", nowIso())
+    .bind(newMailId(), characterId, title || "", body || "", Number(r.gold) || 0, Number(r.diamonds) || 0, r.junk && r.junk.length ? JSON.stringify(r.junk) : "", r.items && r.items.length ? JSON.stringify(r.items) : "", nowIso())
     .run();
 }
 async function handleGetMailbox(db, id, password, characterId) {
@@ -753,12 +753,13 @@ async function handleGetMailbox(db, id, password, characterId) {
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
   const res = await db
-    .prepare(`SELECT mail_id, title, body, gold, diamonds, junk_json, claimed, created_at FROM mailbox WHERE character_id = ? ORDER BY created_at DESC LIMIT 50`)
+    .prepare(`SELECT mail_id, title, body, gold, diamonds, junk_json, items_json, claimed, created_at FROM mailbox WHERE character_id = ? ORDER BY created_at DESC LIMIT 50`)
     .bind(characterId)
     .all();
   const mails = (res.results || []).map((m) => ({
     mailId: m.mail_id, title: m.title, body: m.body, gold: Number(m.gold) || 0, diamonds: Number(m.diamonds) || 0,
-    junk: m.junk_json ? JSON.parse(m.junk_json) : [], claimed: !!Number(m.claimed), createdAt: m.created_at,
+    junk: m.junk_json ? JSON.parse(m.junk_json) : [], items: m.items_json ? JSON.parse(m.items_json) : [],
+    claimed: !!Number(m.claimed), createdAt: m.created_at,
   }));
   return json({ ok: true, mails });
 }
@@ -776,7 +777,10 @@ async function handleClaimMail(db, id, password, characterId, mailId) {
   const guard = await db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND claimed = 0`).bind(nowIso(), mailId).run();
   if (!guard.meta || !guard.meta.changes) return json({ error: "already_claimed" });
 
-  return json({ ok: true, mailId, gold: Number(mail.gold) || 0, diamonds: Number(mail.diamonds) || 0, junk: mail.junk_json ? JSON.parse(mail.junk_json) : [] });
+  return json({
+    ok: true, mailId, gold: Number(mail.gold) || 0, diamonds: Number(mail.diamonds) || 0,
+    junk: mail.junk_json ? JSON.parse(mail.junk_json) : [], items: mail.items_json ? JSON.parse(mail.items_json) : [],
+  });
 }
 async function handleClaimAllMail(db, id, password, characterId) {
   const auth = await verifyPlayer(db, id, password);
@@ -786,20 +790,22 @@ async function handleClaimAllMail(db, id, password, characterId) {
 
   const unclaimed = await db.prepare(`SELECT * FROM mailbox WHERE character_id = ? AND claimed = 0`).bind(characterId).all();
   const rows = unclaimed.results || [];
-  if (!rows.length) return json({ ok: true, mailIds: [], gold: 0, diamonds: 0, junk: [] });
+  if (!rows.length) return json({ ok: true, mailIds: [], gold: 0, diamonds: 0, junk: [], items: [] });
 
   const now = nowIso();
   await db.batch(rows.map((m) => db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND claimed = 0`).bind(now, m.mail_id)));
 
   let gold = 0, diamonds = 0;
   const junkTotals = {};
+  const items = [];
   rows.forEach((m) => {
     gold += Number(m.gold) || 0;
     diamonds += Number(m.diamonds) || 0;
     (m.junk_json ? JSON.parse(m.junk_json) : []).forEach((j) => { junkTotals[j.junkId] = (junkTotals[j.junkId] || 0) + (Number(j.quantity) || 0); });
+    (m.items_json ? JSON.parse(m.items_json) : []).forEach((it) => items.push(it));
   });
   const junk = Object.keys(junkTotals).map((junkId) => ({ junkId, quantity: junkTotals[junkId] }));
-  return json({ ok: true, mailIds: rows.map((m) => m.mail_id), gold, diamonds, junk });
+  return json({ ok: true, mailIds: rows.map((m) => m.mail_id), gold, diamonds, junk, items });
 }
 
 // ---------- Phase 3: Raid Boss ----------
@@ -813,31 +819,82 @@ const RAID_BOSS_DEFS = [
 ];
 const RAID_ATTEMPTS_MAX = 5;
 const RAID_HITS_PER_ATTACK = 3; // mini combat round per attack, not a single flat hit
-// Milestone tiers: % of that boss's hpMax the character has *cumulatively* contributed
-// across all their attempts this raid. Claimed via claimRaidMilestones (idempotent —
-// milestone_claimed tracks which tier indices were already paid out).
-const RAID_MILESTONES = [
-  { pct: 0.01, gold: 200, diamonds: 0, label: "ดาเมจสะสม 1%" },
-  { pct: 0.03, gold: 500, diamonds: 5, label: "ดาเมจสะสม 3%" },
-  { pct: 0.08, gold: 1200, diamonds: 15, label: "ดาเมจสะสม 8%" },
+
+// Raid Wings — a separate 1-5★ tier exclusive to raid rewards (not the normal floor-drop
+// wings pool; client's buildDropItem() no longer rolls wings/accessory at all — see stats.js).
+const RAID_WING_DEFS = [
+  { star: 1, name: "ปีกอัศวินฝึกหัด ★1", dodgeChance: 5 },
+  { star: 2, name: "ปีกอัศวินฝึกหัด ★2", dodgeChance: 10 },
+  { star: 3, name: "ปีกนักรบราชวงศ์ ★3", dodgeChance: 18 },
+  { star: 4, name: "ปีกนักรบราชวงศ์ ★4", dodgeChance: 28 },
+  { star: 5, name: "ปีกเทพประจัญบาน ★5", dodgeChance: 40 },
 ];
-// Rank bonus: granted automatically (no claim needed) the instant the boss dies, based
-// on each character's best single-attack damage (raid_participants.total_damage).
+function raidWingItemDesc(star) {
+  const def = RAID_WING_DEFS[Math.max(1, Math.min(5, star)) - 1];
+  return { type: "wings", rarity: "raid", name: def.name, dodgeChance: def.dodgeChance, star: def.star, empowerSlotCount: def.star };
+}
+function randomRaidWingStar() {
+  return 1 + Math.floor(Math.random() * 5);
+}
+
+// Azure set — 6 pieces (helmet/chest/gloves/boots/weapon/ring), set bonus at 2/4/6 equipped
+// (client-side bonus values live in stats.js SET_BONUS_DEFS.azure — keep both in sync).
+const AZURE_SET_DEFS = {
+  azure_helmet: { type: "helmet", name: "หมวก Azure", def: 60 },
+  azure_chest: { type: "chest", name: "เสื้อ Azure", def: 90 },
+  azure_gloves: { type: "gloves", name: "ถุงมือ Azure", atk: 40 },
+  azure_boots: { type: "boots", name: "รองเท้า Azure", def: 45 },
+  azure_weapon: { type: "weapon", name: "อาวุธ Azure", atk: 120 },
+  azure_ring: { type: "accessory", name: "แหวน Azure", dodgeChance: 15 }, // uses the existing "accessory" equip slot
+};
+function randomAzureItemDesc() {
+  const keys = Object.keys(AZURE_SET_DEFS);
+  const key = keys[Math.floor(Math.random() * keys.length)];
+  const d = AZURE_SET_DEFS[key];
+  return { type: d.type, rarity: "azure", name: d.name, atk: d.atk || 0, def: d.def || 0, dodgeChance: d.dodgeChance || 0, setId: "azure", empowerSlotCount: 5 };
+}
+// Recipes are inert placeholder items (stackable, riding the existing junk pipeline) until
+// the Crafting phase exists to consume them — see JUNK_INFO/recipe_* entries in enhancement.js.
+const AZURE_RECIPE_JUNK_IDS = ["recipe_azure_helmet", "recipe_azure_chest", "recipe_azure_gloves", "recipe_azure_boots", "recipe_azure_weapon", "recipe_azure_ring"];
+function randomAzureRecipeJunkId() {
+  return AZURE_RECIPE_JUNK_IDS[Math.floor(Math.random() * AZURE_RECIPE_JUNK_IDS.length)];
+}
+// Boss horn/hide — a single shared material pool across all boss types (not per-boss for now).
+function randomBossMaterialJunkId() {
+  return Math.random() < 0.5 ? "bossHorn" : "bossHide";
+}
+
+// Rank rewards, keyed by cumulative CONTRIBUTION (total_contribution) across the whole
+// raid instance — settled for EVERY participant (rank 1..last), not just a top-N cutoff.
+// Rank 1-3 get a fixed wing tier + boss materials + a random azure recipe; everyone ranked
+// 4th or lower gets 2 random boss materials as a consolation.
 const RAID_RANK_REWARDS = [
-  { gold: 3000, diamonds: 100 }, // rank 1
-  { gold: 2000, diamonds: 60 },  // rank 2
-  { gold: 1000, diamonds: 30 },  // rank 3
+  { wingStar: 5, junk: [{ junkId: "bossHorn", quantity: 3 }, { junkId: "bossHide", quantity: 3 }], recipe: true },
+  { wingStar: 3, junk: [{ junkId: "bossHorn", quantity: 2 }, { junkId: "bossHide", quantity: 2 }], recipe: true },
+  { wingStar: 1, junk: [{ junkId: "bossHorn", quantity: 1 }, { junkId: "bossHide", quantity: 1 }], recipe: true },
 ];
-const RAID_RANK_CONSOLATION = { gold: 300, diamonds: 10 }; // rank 4-10
+
+// Milestones — % of boss hpMax the character has personally CONTRIBUTED this raid instance
+// (rewards the players who carry the server boss, not just whoever gets lucky crits).
+// Every 5% -> diamonds. Every 10% -> 1 random boss material (on top of the 5% diamonds).
+// 25% -> 1★ wing, 50% -> 3★ wing, 75% -> random azure recipe, 99% -> a full random azure item.
+const RAID_MILESTONE_STEP = 5; // percent
+const RAID_MILESTONE_DIAMOND_PER_STEP = 5;
 
 function raidBossDefById(defId) {
   return RAID_BOSS_DEFS.find((b) => b.id === defId) || RAID_BOSS_DEFS[0];
 }
 
+// Raid resets at Thai midnight specifically (not the UTC boundary todayDateKey() uses for
+// daily login), so it gets its own +7h-shifted date key.
+function raidDateKey() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 // Fetches today's live boss, or spawns the next one in rotation if there isn't one yet
 // or the last one is already dead. Never returns a dead boss.
 async function getOrCreateActiveRaid(db) {
-  const today = todayDateKey();
+  const today = raidDateKey();
   const row = await db
     .prepare(`SELECT * FROM raid_boss_state WHERE date = ? ORDER BY created_at DESC LIMIT 1`)
     .bind(today)
@@ -858,6 +915,21 @@ async function getOrCreateActiveRaid(db) {
     .bind(raidId, today, def.id, hpMax, hpMax, now, now)
     .run();
   return { raid_id: raidId, date: today, boss_def_id: def.id, boss_hp_max: hpMax, boss_hp_current: hpMax, settled_at: "", created_at: now, updated_at: now };
+}
+
+// Settles (and closes out) any raid instance whose date has rolled past today — this is what
+// makes the "changes every midnight even if the boss is still alive" rule actually happen,
+// since getOrCreateActiveRaid alone would just silently start ignoring the old raid_id without
+// ever paying out its rank rewards. Call from scheduled() — see bottom of file. Needs the Cron
+// Trigger (Dashboard -> this worker -> Trigger Events) to fire at least roughly daily around
+// 17:00 UTC (00:00 ICT) for the reset to land on time; it's safe to run more often too, since
+// settleRaidRank() is idempotent (guarded by settled_at).
+async function closeOutExpiredRaids(db) {
+  const today = raidDateKey();
+  const stale = await db.prepare(`SELECT raid_id FROM raid_boss_state WHERE date != ? AND settled_at = ''`).bind(today).all();
+  for (const row of stale.results || []) {
+    await settleRaidRank(db, row.raid_id);
+  }
 }
 
 // Ported subset of characterBaseStats/itemBonus above — returns only what raid combat
@@ -905,23 +977,42 @@ function simulateRaidAttack(stats) {
 // Grants rank-bonus rewards once, the instant the boss dies. Guarded by an atomic
 // UPDATE on settled_at (only succeeds for whichever concurrent attack request gets
 // there first) so two players killing it in the same instant can't double-pay rewards.
+// Grants rank rewards once, either the instant the boss dies OR when closeOutExpiredRaids()
+// force-closes an unfinished raid at the daily reset. Guarded by an atomic UPDATE on
+// settled_at so it can only ever run once per raid_id even under concurrent triggers.
+// Ranked by cumulative CONTRIBUTION (not best single hit) across ALL participants —
+// rank 1-3 get the big reward, everyone else (4th..last) gets a consolation.
 async function settleRaidRank(db, raidId) {
   const guard = await db
     .prepare(`UPDATE raid_boss_state SET settled_at = ? WHERE raid_id = ? AND settled_at = ''`)
     .bind(nowIso(), raidId)
     .run();
-  if (!guard.meta || !guard.meta.changes) return; // someone else already settled this raid
+  if (!guard.meta || !guard.meta.changes) return; // already settled
 
   const bossRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state WHERE raid_id = ?`).bind(raidId).first();
   const bossName = raidBossDefById(bossRow ? bossRow.boss_def_id : "").name;
-  const topRes = await db
-    .prepare(`SELECT character_id, player_id, total_damage FROM raid_participants WHERE raid_id = ? ORDER BY total_damage DESC LIMIT 10`)
+  const allRes = await db
+    .prepare(`SELECT character_id, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC`)
     .bind(raidId)
     .all();
-  const rows = topRes.results || [];
+  const rows = allRes.results || [];
+
   for (let i = 0; i < rows.length; i++) {
-    const reward = RAID_RANK_REWARDS[i] || RAID_RANK_CONSOLATION;
-    await sendMail(db, rows[i].character_id, `🏆 อันดับ ${i + 1} ศึก ${bossName}`, `คุณจบการล่า ${bossName} ในอันดับที่ ${i + 1} ด้วยดาเมจสูงสุด ${rows[i].total_damage}`, reward);
+    const top = RAID_RANK_REWARDS[i];
+    if (top) {
+      const junk = top.junk.slice();
+      if (top.recipe) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
+      await sendMail(
+        db, rows[i].character_id, `🏆 อันดับ ${i + 1} ศึก ${bossName}`,
+        `คุณจบการล่า ${bossName} ในอันดับที่ ${i + 1} ด้วยดาเมจสะสม ${rows[i].total_contribution}`,
+        { junk, items: [raidWingItemDesc(top.wingStar)] }
+      );
+    } else {
+      await sendMail(
+        db, rows[i].character_id, `⚔️ ร่วมศึก ${bossName}`, `อันดับที่ ${i + 1} ในการล่าครั้งนี้ — ได้วัตถุดิบติดไม้ติดมือ`,
+        { junk: [{ junkId: randomBossMaterialJunkId(), quantity: 1 }, { junkId: randomBossMaterialJunkId(), quantity: 1 }] }
+      );
+    }
   }
 }
 
@@ -935,10 +1026,11 @@ async function handleGetRaidStatus(db, id, password, characterId) {
   const def = raidBossDefById(raid.boss_def_id);
   const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
   const topRes = await db
-    .prepare(`SELECT character_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_damage DESC LIMIT 10`)
+    .prepare(`SELECT character_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC LIMIT 10`)
     .bind(raid.raid_id)
     .all();
 
+  const contribution = participant ? Number(participant.total_contribution) || 0 : 0;
   return json({
     ok: true,
     boss: { raidId: raid.raid_id, defId: def.id, name: def.name, emoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
@@ -947,14 +1039,15 @@ async function handleGetRaidStatus(db, id, password, characterId) {
           attemptsUsed: Number(participant.attempts_used) || 0,
           attemptsMax: RAID_ATTEMPTS_MAX,
           bestHit: Number(participant.total_damage) || 0,
-          contribution: Number(participant.total_contribution) || 0,
-          milestonesClaimed: (participant.milestone_claimed || "").split(",").filter(Boolean).map(Number),
+          contribution,
+          contributionPct: Math.min(100, Math.round((contribution / Number(raid.boss_hp_max)) * 1000) / 10),
+          milestonesClaimed: (participant.milestone_claimed || "").split(",").filter(Boolean),
         }
-      : { attemptsUsed: 0, attemptsMax: RAID_ATTEMPTS_MAX, bestHit: 0, contribution: 0, milestonesClaimed: [] },
-    milestones: RAID_MILESTONES.map((m, i) => ({
-      index: i, pct: m.pct, label: m.label, gold: m.gold, diamonds: m.diamonds,
-      thresholdDamage: Math.round(Number(raid.boss_hp_max) * m.pct),
-    })),
+      : { attemptsUsed: 0, attemptsMax: RAID_ATTEMPTS_MAX, bestHit: 0, contribution: 0, contributionPct: 0, milestonesClaimed: [] },
+    milestoneStep: RAID_MILESTONE_STEP,
+    milestoneSpecials: [
+      { pct: 25, label: "ปีก 1★" }, { pct: 50, label: "ปีก 3★" }, { pct: 75, label: "แบบร่างชุด Azure" }, { pct: 99, label: "ไอเทมชุด Azure" },
+    ],
     top: topRes.results || [],
   });
 }
@@ -1006,6 +1099,8 @@ async function handleAttackRaidBoss(db, id, password, characterId) {
   let bossDied = false;
   if (freshBoss && Number(freshBoss.boss_hp_current) <= 0 && hpBefore > 0) {
     bossDied = true;
+    const lastHitStar = randomRaidWingStar();
+    await sendMail(db, characterId, `💥 Last Hit! ${raidBossDefById(raid.boss_def_id).name}`, `คุณคือผู้ปิดจ๊อบ! ได้รับปีกสุ่ม ★${lastHitStar}`, { items: [raidWingItemDesc(lastHitStar)] });
     await settleRaidRank(db, raid.raid_id);
   }
 
@@ -1033,24 +1128,38 @@ async function handleClaimRaidMilestones(db, id, password, characterId) {
   const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
   if (!participant) return json({ error: "no_participation" });
 
-  const claimed = (participant.milestone_claimed || "").split(",").filter(Boolean).map(Number);
-  const contribution = Number(participant.total_contribution) || 0;
-  const newlyEarned = [];
-  RAID_MILESTONES.forEach((m, i) => {
-    if (claimed.indexOf(i) !== -1) return;
-    if (contribution >= Number(raid.boss_hp_max) * m.pct) newlyEarned.push(i);
-  });
-  if (!newlyEarned.length) return json({ ok: true, claimed: [], gold: 0, diamonds: 0 });
+  const claimed = (participant.milestone_claimed || "").split(",").filter(Boolean);
+  const hpMax = Number(raid.boss_hp_max) || 1;
+  const pctReached = ((Number(participant.total_contribution) || 0) / hpMax) * 100;
 
-  let goldSum = 0, diamondSum = 0;
-  newlyEarned.forEach((i) => { goldSum += RAID_MILESTONES[i].gold || 0; diamondSum += RAID_MILESTONES[i].diamonds || 0; });
+  const newKeys = [];
+  let diamonds = 0;
+  const junk = [];
+  const items = [];
+  for (let pct = RAID_MILESTONE_STEP; pct <= 100; pct += RAID_MILESTONE_STEP) {
+    const key = `p${pct}`;
+    if (pctReached < pct || claimed.indexOf(key) !== -1) continue;
+    newKeys.push(key);
+    diamonds += RAID_MILESTONE_DIAMOND_PER_STEP;
+    if (pct % 10 === 0) junk.push({ junkId: randomBossMaterialJunkId(), quantity: 1 });
+    if (pct === 25) items.push(raidWingItemDesc(1));
+    if (pct === 50) items.push(raidWingItemDesc(3));
+    if (pct === 75) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
+  }
+  // 99% is its own checkpoint (not a multiple of 5) — a full random azure piece, not a recipe.
+  if (pctReached >= 99 && claimed.indexOf("p99") === -1) {
+    newKeys.push("p99");
+    items.push(randomAzureItemDesc());
+  }
+  if (!newKeys.length) return json({ ok: true, claimed: [] });
+
   const def = raidBossDefById(raid.boss_def_id);
-  await sendMail(db, characterId, `🎁 รางวัลดาเมจสะสม ${def.name}`, `คุณสะสมดาเมจถึง ${newlyEarned.map((i) => RAID_MILESTONES[i].label).join(", ")}`, { gold: goldSum, diamonds: diamondSum });
+  await sendMail(db, characterId, `🎁 รางวัลดาเมจสะสม ${def.name}`, `คุณสะสมดาเมจถึง ${newKeys.map((k) => k.replace("p", "")).join("%, ")}%`, { diamonds, junk, items });
 
-  const allClaimed = claimed.concat(newlyEarned).sort((a, b) => a - b).join(",");
+  const allClaimed = claimed.concat(newKeys).join(",");
   await db.prepare(`UPDATE raid_participants SET milestone_claimed = ? WHERE raid_id = ? AND character_id = ?`).bind(allClaimed, raid.raid_id, characterId).run();
 
-  return json({ ok: true, claimed: newlyEarned, gold: goldSum, diamonds: diamondSum });
+  return json({ ok: true, claimed: newKeys });
 }
 
 // ---------- admin / QA ----------
@@ -1240,5 +1349,6 @@ export default {
   // admin GET action above to trigger it manually for testing/backfill.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runLeaderboardSnapshot(env.DB));
+    ctx.waitUntil(closeOutExpiredRaids(env.DB));
   },
 };

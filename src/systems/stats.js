@@ -240,7 +240,9 @@ function generateDrop(floor, options = {}) {
 }
 function buildDropItem(floor, options = {}) {
   const roll = Math.random();
-  const type = roll < 0.16 ? "weapon" : roll < 0.30 ? "helmet" : roll < 0.47 ? "chest" : roll < 0.61 ? "gloves" : roll < 0.75 ? "boots" : roll < 0.90 ? "accessory" : "wings";
+  // wings and accessory are raid-exclusive now (see workers/thornie-dungeons-api.js
+  // RAID_WING_DEFS / AZURE_SET_DEFS) — shop stock and floor-boss chests no longer roll them.
+  const type = roll < 0.20 ? "weapon" : roll < 0.40 ? "helmet" : roll < 0.60 ? "chest" : roll < 0.80 ? "gloves" : "boots";
   const rarity = options.forceRarity || rollRarity(!!options.rarityBoost);
   const mult = RARITY_MULT[rarity];
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -387,10 +389,37 @@ function getEquipBonus(equipped) {
   b.dropBonus = roundTo(b.dropBonus, 1);
   return b;
 }
+// Equipment set bonuses (raid-exclusive Azure set for now — see AZURE_SET_DEFS in the
+// worker). Items carry a plain `setId` string (round-tripped via items_json extra, same
+// as junkId/potionId); count how many equipped pieces share a setId and apply the
+// highest tier reached. Placeholder numbers — revisit once actual balance is decided.
+const SET_BONUS_DEFS = {
+  azure: [
+    { count: 2, atkPct: 0.05 },
+    { count: 4, atkPct: 0.10, defPct: 0.05 },
+    { count: 6, atkPct: 0.15, defPct: 0.10, critChance: 5 },
+  ],
+};
+function getSetBonusPct(equipped) {
+  const counts = {};
+  Object.values(equipped).forEach(it => { if (it && it.setId) counts[it.setId] = (counts[it.setId] || 0) + 1; });
+  const out = { atkPct: 0, defPct: 0, critChance: 0 };
+  Object.keys(counts).forEach(setId => {
+    (SET_BONUS_DEFS[setId] || []).forEach(tier => {
+      if (counts[setId] >= tier.count) {
+        out.atkPct += tier.atkPct || 0;
+        out.defPct += tier.defPct || 0;
+        out.critChance += tier.critChance || 0;
+      }
+    });
+  });
+  return out;
+}
 function getStats(player, equipped) {
   const b = getEquipBonus(equipped);
-  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0));
-  const defBuff = 1 + (player.defBuffPct || 0);
+  const setBonus = getSetBonusPct(equipped);
+  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0) + setBonus.atkPct);
+  const defBuff = 1 + (player.defBuffPct || 0) + setBonus.defPct;
   return {
     atk: roundInt((player.baseAtk + b.atk) * atkMult),
     def: roundInt((player.baseDef + b.def) * defBuff),
@@ -401,7 +430,7 @@ function getStats(player, equipped) {
     // point can turn into 7.3999999999999995 even though both inputs were "clean" — re-round
     // every percentage stat here, since this is the value combat rolls and the UI both read.
     accuracy: roundTo(Math.min(99, (player.accuracy || 0) + b.accuracy), 1),
-    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance), 1),
+    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + setBonus.critChance), 1),
     critDamage: roundTo(Math.min(300, (player.critDamage || 0) + b.critDamage), 1),
     dodgeChance: roundTo(Math.min(60, (player.dodgeChance || 0) + b.dodgeChance), 1),
     dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus, 1)

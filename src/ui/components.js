@@ -664,8 +664,8 @@ const LEADERBOARD_BOARDS = [{
 }, {
   key: "raid",
   icon: "🐉",
-  label: "Raid Boss (ดาเมจสูงสุด)",
-  valueKey: "total_damage",
+  label: "Raid Boss (ดาเมจสะสม)",
+  valueKey: "total_contribution",
   format: v => `${formatNumber(v)} dmg`
 }];
 function LeaderboardScreen({
@@ -852,13 +852,17 @@ function RaidScreen({
       }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี")),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "รางวัลตามดาเมจสะสม"),
-      status.milestones.map(m => {
-        const done = me.contribution >= m.thresholdDamage;
-        const claimed = me.milestonesClaimed.indexOf(m.index) !== -1;
-        return /*#__PURE__*/React.createElement("div", { key: m.index, className: "md-shop-row" },
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.label, " (", formatNumber(m.thresholdDamage), " dmg)"),
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ รับแล้ว" : done ? "🎁 พร้อมรับ" : `${formatNumber(m.gold)}g`));
+      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ)"),
+      /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
+        /*#__PURE__*/React.createElement("div", { className: "md-bar-fill", style: { width: `${me.contributionPct}%`, background: "linear-gradient(90deg,#6EC6FF,#4A7CFF)" } })),
+      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, me.contributionPct, "%"),
+      status.milestoneSpecials.map(m => {
+        const key = `p${m.pct}`;
+        const done = me.contributionPct >= m.pct;
+        const claimed = me.milestonesClaimed.indexOf(key) !== -1;
+        return /*#__PURE__*/React.createElement("div", { key: m.pct, className: "md-shop-row" },
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.pct, "% — ", m.label),
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ รับแล้ว" : done ? "🎁 พร้อมรับ" : "🔒"));
       }),
       claimMsg && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, claimMsg),
       /*#__PURE__*/React.createElement("button", { className: "md-btn wide small", onClick: handleClaim }, "รับรางวัล")),
@@ -873,10 +877,33 @@ function RaidScreen({
           className: "md-shop-row",
           style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
         }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
-           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_damage)));
+           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_contribution)));
       })),
 
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+}
+// Turns a mail's item descriptor (worker-side plain data: type/rarity/name/stats/setId/star)
+// into a proper client-side item object with a fresh local id + empowerSlots array, ready to
+// drop into inventory. The worker never touches items table directly (see mailbox comment in
+// api.js) — this is the one place a mail's equipment reward actually "becomes" a real item.
+function materializeMailItem(desc) {
+  return {
+    id: `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type: desc.type,
+    rarity: desc.rarity,
+    name: desc.name,
+    atk: desc.atk || 0,
+    def: desc.def || 0,
+    hp: desc.hp || 0,
+    mp: desc.mp || 0,
+    dodgeChance: desc.dodgeChance || 0,
+    critChance: desc.critChance || 0,
+    critDamage: desc.critDamage || 0,
+    enhanceLevel: 0,
+    empowerSlots: Array(Math.max(1, desc.empowerSlotCount || 1)).fill(null),
+    ...(desc.setId ? { setId: desc.setId } : {}),
+    ...(desc.star ? { star: desc.star } : {})
+  };
 }
 // ---------- Phase 3.1: Mailbox ----------
 function MailboxScreen({
@@ -903,7 +930,7 @@ function MailboxScreen({
     cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(res => {
       setBusy(false);
       if (!res || res.error) return;
-      onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk });
+      onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
       load();
     });
   };
@@ -914,7 +941,7 @@ function MailboxScreen({
     cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
       setBusy(false);
       if (!res || res.error) return;
-      if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk });
+      if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
       load();
     });
   };
@@ -933,10 +960,12 @@ function MailboxScreen({
     mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.5 : 1 } },
       /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { fontWeight: "bold" } }, m.title),
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, m.body),
-      (m.gold > 0 || m.diamonds > 0 || (m.junk && m.junk.length > 0)) && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      (m.gold > 0 || m.diamonds > 0 || (m.junk && m.junk.length > 0) || (m.items && m.items.length > 0)) && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
         m.gold > 0 ? `🪙${formatNumber(m.gold)} ` : "",
         m.diamonds > 0 ? `💎${formatNumber(m.diamonds)} ` : "",
-        (m.junk || []).map(j => `${(JUNK_INFO[j.junkId] || {}).icon || "📦"}${j.quantity}`).join(" ")),
+        (m.junk || []).map(j => `${(JUNK_INFO[j.junkId] || {}).icon || "📦"}${j.quantity}`).join(" "),
+        " ",
+        (m.items || []).map(it => it.star ? `🪽${it.name}` : it.setId ? `🔷${it.name}` : it.name).join(" ")),
       m.claimed
         ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "✅ รับแล้ว")
         : /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))),

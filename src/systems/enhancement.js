@@ -23,7 +23,23 @@ const JUNK_INFO = {
   manaOre: {
     name: "หินมานา",
     icon: "🔮"
-  }
+  },
+  // Raid boss materials (shared across all boss types for now).
+  bossHorn: {
+    name: "เขาบอส",
+    icon: "🦴"
+  },
+  bossHide: {
+    name: "หนังบอส",
+    icon: "🟫"
+  },
+  // Azure set recipes — inert placeholders until the Crafting phase can consume them.
+  recipe_azure_helmet: { name: "แบบร่างหมวก Azure", icon: "📜" },
+  recipe_azure_chest: { name: "แบบร่างเสื้อ Azure", icon: "📜" },
+  recipe_azure_gloves: { name: "แบบร่างถุงมือ Azure", icon: "📜" },
+  recipe_azure_boots: { name: "แบบร่างรองเท้า Azure", icon: "📜" },
+  recipe_azure_weapon: { name: "แบบร่างอาวุธ Azure", icon: "📜" },
+  recipe_azure_ring: { name: "แบบร่างแหวน Azure", icon: "📜" }
 };
 const JUNK_STACK_MAX = 99;
 const JUNK_SELL_VALUE = {

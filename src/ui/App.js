@@ -172,6 +172,9 @@ function ThornieDungeons() {
         return next;
       });
     }
+    if (reward.items && reward.items.length) {
+      setInventory(inv => [...inv, ...reward.items.map(materializeMailItem)]);
+    }
   }, []);
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.

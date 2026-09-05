@@ -300,11 +300,14 @@ const RARITY_LABEL = {
   rare: "Rare",
   unique: "Unique",
   elite: "Elite",
-  mythic: "Mythic"
+  mythic: "Mythic",
+  raid: "Raid Wing",
+  azure: "Azure Set"
 };
 const RARITY_STARS = {
   rare: 1,
   unique: 3,
   elite: 5,
-  mythic: 7
+  mythic: 7,
+  azure: 5
 };
