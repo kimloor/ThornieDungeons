@@ -1250,47 +1250,27 @@ function HeroSprite({
   showName = true,
   label = "You"
 }) {
-  // 3-tier fallback, checked in order, so a wrong rig path or missing art never breaks combat:
-  //   1. Rig-anchored modular composite (real body pose from hero001_rig_v1.json) — the goal.
-  //   2. Flat core.neutral image (the safe baseline that was already working).
-  //   3. CSS-drawn placeholder blob (works even with zero art loaded).
-  const {
-    ready: rigReady,
-    rig
-  } = useHeroRig("hero001");
-  const filenameToUrl = rig ? buildFilenameUrlMap("hero001") : null;
-  const rigHasBody = rig && filenameToUrl && HERO_BODY_LAYER_ORDER.some(f => rig.layers[f] && filenameToUrl[f]);
-  let visual = null;
-  if (!rigReady) {
-    visual = null; // still checking — render nothing for a beat rather than flash the wrong fallback
-  } else if (rigHasBody) {
-    visual = /*#__PURE__*/React.createElement(HeroModularComposer, {
-      rig,
-      layerOrder: HERO_BODY_LAYER_ORDER,
-      filenameToUrl,
-      anim: anim || ""
-    });
-  } else {
-    const heroUrl = getHeroBaseUrl("hero001");
-    visual = heroUrl ? /*#__PURE__*/React.createElement("img", {
-      className: `md-hero-img ${anim || ""}`,
-      src: heroUrl,
-      alt: "hero",
-      draggable: false
-    }) : /*#__PURE__*/React.createElement("div", {
-    className: `md-hero ${anim || ""}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "hair"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "head"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "eye l"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "eye r"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "body"
-  }));
-  }
+  // Hero V3 only: one approved Base Hero plus transparent overlay equipment.
+  // The old skeletal rig and legacy core.neutral paths have been removed.
+  const visual = getHeroV3Config("hero001")
+    ? /*#__PURE__*/React.createElement(HeroOverlayComposer, {
+        characterId: "hero001",
+        anim: anim || ""
+      })
+    : /*#__PURE__*/React.createElement("div", {
+        className: `md-hero ${anim || ""}`
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "hair"
+      }), /*#__PURE__*/React.createElement("div", {
+        className: "head"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "eye l"
+      }), /*#__PURE__*/React.createElement("div", {
+        className: "eye r"
+      })), /*#__PURE__*/React.createElement("div", {
+        className: "body"
+      }));
+
   return /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-wrap"
   }, visual, showName && /*#__PURE__*/React.createElement("div", {
