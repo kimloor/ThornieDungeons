@@ -14,11 +14,23 @@
   #boot-error { color: #FF8B8B; font-family: monospace; font-size: 12px; text-align: left; white-space: pre-wrap; word-break: break-word; padding: 16px; margin: 12px; background: rgba(255,139,139,0.08); border: 1px solid #FF8B8B; border-radius: 10px; display: none; }
 
   /* Combat display sizing: prefer code/CSS scaling before editing sprite files. */
-  .md-enemy-img { width: 88px !important; height: 88px !important; object-fit: contain; }
-  .md-enemy-img.boss { width: 116px !important; height: 116px !important; }
-  .md-enemy-img.md-pet-img { width: 72px !important; height: 72px !important; }
-  .md-enemy { width: 88px !important; height: 88px !important; }
-  .md-enemy.boss { width: 116px !important; height: 116px !important; }
+  .md-enemy-img { width: 84px !important; height: 84px !important; object-fit: contain; max-width: none; }
+  .md-enemy-img.boss { width: 110px !important; height: 110px !important; }
+  .md-enemy-img.md-pet-img { width: 64px !important; height: 64px !important; }
+  .md-enemy { width: 84px !important; height: 84px !important; }
+  .md-enemy.boss { width: 110px !important; height: 110px !important; }
+  .md-monster-board { gap: 5px !important; max-width: 128px; flex-shrink: 0; }
+  .md-monster-board .md-sprite-wrap { transform: scale(.92) !important; transform-origin: bottom center !important; }
+
+  /* Smaller phones: keep the 3-monster stack inside the arena. */
+  @media (max-width: 380px) {
+    .md-enemy-img { width: 80px !important; height: 80px !important; }
+    .md-enemy-img.boss { width: 104px !important; height: 104px !important; }
+    .md-enemy { width: 80px !important; height: 80px !important; }
+    .md-enemy.boss { width: 104px !important; height: 104px !important; }
+    .md-monster-board { gap: 3px !important; max-width: 116px; }
+    .md-monster-board .md-sprite-wrap { transform: scale(.86) !important; }
+  }
 </style>
 </head>
 <body>
