@@ -5067,6 +5067,8 @@ function LeaderboardScreen({
   const [board, setBoard] = useState("floor");
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [spinning, setSpinning] = useState(false);
   React.useEffect(() => {
     const def = LEADERBOARD_BOARDS.find(b => b.key === board);
     if (!def || def.disabled) return;
@@ -5075,19 +5077,35 @@ function LeaderboardScreen({
     setError(null);
     cloudGetLeaderboard(serverUrl || DEFAULT_SERVER_URL, board).then(res => {
       if (cancelled) return;
+      setSpinning(false);
       if (!res || !res.ok) { setError("โหลดอันดับไม่สำเร็จ ลองใหม่อีกครั้ง"); setRows([]); return; }
       setRows(res.rows || []);
     });
     return () => { cancelled = true; };
-  }, [board, serverUrl]);
+  }, [board, serverUrl, refreshKey]);
+  const handleRefresh = () => {
+    setSpinning(true);
+    setRefreshKey(k => k + 1);
+  };
   const activeDef = LEADERBOARD_BOARDS.find(b => b.key === board);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: { flex: 1 }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-card",
-    style: { marginBottom: 10 }
-  }, /*#__PURE__*/React.createElement("p", {
+    style: { marginBottom: 10, position: "relative" }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-btn small flee",
+    title: "รีเฟรช",
+    onClick: handleRefresh,
+    style: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      padding: "4px 8px",
+      lineHeight: 1
+    }
+  }, spinning ? "⏳" : "🔄"), /*#__PURE__*/React.createElement("p", {
     className: "md-title"
   }, "🏆 อันดับผู้เล่น"), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
