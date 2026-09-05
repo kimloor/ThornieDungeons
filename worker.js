@@ -77,6 +77,15 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // VERSIONED ROOT ENTRYPOINT WORKAROUND
+    // app-v2.html is copied from index.html. Cloudflare previously kept serving
+    // a stale index.html at "/" while newer sibling assets were already live.
+    // Keep this route aligned with the note at the top of app-v2.html.
+    if (url.pathname === "/" || url.pathname === "/index.html") {
+      const entryUrl = new URL("/app-v2", url);
+      return env.ASSETS.fetch(new Request(entryUrl, request));
+    }
+
     if (url.pathname === "/__admin/r2/list") {
       return handleR2Admin(request, env, url);
     }

@@ -6,7 +6,11 @@
 
   "assets": {
     "directory": ".",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // Required by the versioned root-entrypoint workaround in worker.js.
+    // Without this, a matching Static Asset may be served before Worker code
+    // runs, which can expose the stale index.html instead of app-v2.html.
+    "run_worker_first": true
   },
 
   "r2_buckets": [
