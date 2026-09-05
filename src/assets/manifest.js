@@ -27,6 +27,102 @@ function listAssets(obj = ASSETS, prefix = "") {
   return result;
 }
 
+
+// ---------- Pet / Monster frame-sequence sprites ----------
+// The R2 manifest is the source of truth. Pet/monster art is optional:
+// entities without a matching manifest entry keep the legacy fallback renderer.
+const PET_ASSET_ALIASES = {
+  sprout: "sprout001",
+  sprout001: "sprout001"
+};
+
+const MONSTER_ASSET_ALIASES = {
+  poring: "poring001",
+  poring001: "poring001",
+  jelly_slime: "poring001",
+  orc: "orc001",
+  orc001: "orc001",
+  tusky_boar: "orc001"
+};
+
+function normalizeAssetLookupKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s*\((?:elite\s+)?boss\)\s*/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function getPetSpriteConfig(defId) {
+  const raw = normalizeAssetLookupKey(defId);
+  const assetId = PET_ASSET_ALIASES[raw] || raw;
+  return ASSETS?.pets?.[assetId] || null;
+}
+
+function getMonsterSpriteConfig(enemy) {
+  if (!enemy) return null;
+  const idKey = normalizeAssetLookupKey(enemy.id);
+  const nameKey = normalizeAssetLookupKey(enemy.name);
+
+  const candidates = [
+    MONSTER_ASSET_ALIASES[idKey],
+    idKey,
+    MONSTER_ASSET_ALIASES[nameKey],
+    nameKey
+  ].filter(Boolean);
+
+  for (const assetId of candidates) {
+    const config = ASSETS?.monsters?.[assetId];
+    if (config) return config;
+  }
+  return null;
+}
+
+function getSpriteAnimationFrames(config, requestedAnim, dead = false) {
+  if (!config?.animations) return [];
+  const animName = dead ? "death" : requestedAnim === "attack" ? "attack" : "idle";
+  const frames = config.animations[animName];
+  if (!Array.isArray(frames) || !frames.length) return [];
+  return frames.filter(Boolean).map(assetUrl);
+}
+
+function AnimatedFrameSprite({
+  config,
+  anim = "",
+  dead = false,
+  className = "",
+  alt = "",
+  idleFrameMs = 220,
+  attackFrameMs = 80
+}) {
+  const effectiveAnim = dead ? "death" : anim === "attack" ? "attack" : "idle";
+  const frames = getSpriteAnimationFrames(config, effectiveAnim, dead);
+  const [frameIndex, setFrameIndex] = React.useState(0);
+  const frameKey = frames.join("|");
+
+  React.useEffect(() => {
+    setFrameIndex(0);
+    if (frames.length <= 1) return undefined;
+
+    const loop = effectiveAnim === "idle";
+    const delay = effectiveAnim === "attack" ? attackFrameMs : idleFrameMs;
+    const timer = setInterval(() => {
+      setFrameIndex(i => loop ? (i + 1) % frames.length : Math.min(i + 1, frames.length - 1));
+    }, delay);
+
+    return () => clearInterval(timer);
+  }, [effectiveAnim, frameKey, idleFrameMs, attackFrameMs]);
+
+  if (!frames.length) return null;
+
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src: frames[Math.min(frameIndex, frames.length - 1)],
+    alt,
+    draggable: false
+  });
+}
+
 // ---------- Hero V3: flat base + overlay layers ----------
 // The old skeletal/rig composer was intentionally removed.
 // Hero V3 uses one approved full-body base image and optional transparent overlays.
