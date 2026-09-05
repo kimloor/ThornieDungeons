@@ -174,6 +174,9 @@ function HubScreen({
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const canClaimDaily = dailyLogin.canClaim;
   const dailyPreview = dailyLogin.preview || { streak: 1, reward: {} };
+  React.useEffect(() => {
+    if (dailyLoginClaimResult) setDailyModalOpen(true);
+  }, [dailyLoginClaimResult]);
   const handleSave = () => {
     onSave();
     setSaveFlash(true);

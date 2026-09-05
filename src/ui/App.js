@@ -342,8 +342,17 @@ function ThornieDungeons() {
     setEquipped(eq);
     setInventory(finalInv);
     loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
-    cloudGetDailyLogin(cred.url, cred.id, cred.password, characterSlot.id).then(res => {
-      if (res && res.ok) setDailyLogin({ state: res.state, canClaim: res.canClaim, preview: res.preview });
+    cloudGetDailyLogin(cred.url, cred.id, cred.password, characterSlot.id).then(async dlRes => {
+      if (!dlRes || !dlRes.ok) return;
+      setDailyLogin({ state: dlRes.state, canClaim: dlRes.canClaim, preview: dlRes.preview });
+      if (!dlRes.canClaim) return;
+      // Auto-claim right away instead of waiting for the player to open a menu and press a
+      // button — the popup below is what actually tells them they got it.
+      const claim = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, characterSlot.id);
+      if (!claim || claim.error) return;
+      setDailyLogin({ state: claim.state, canClaim: false, preview: dlRes.preview });
+      setSave(s => s ? { ...s, gold: s.gold + (claim.reward.gold || 0), diamonds: s.diamonds + (claim.reward.diamonds || 0) } : s);
+      setDailyLoginClaimResult({ reward: claim.reward, streak: claim.streak });
     });
     // Mid-combat resume checkpoint is namespaced per-character so switching characters never
     // shows a stale "resume at floor X" prompt left over from a different character's last run.
