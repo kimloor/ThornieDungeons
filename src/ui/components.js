@@ -162,6 +162,7 @@ function HubScreen({
   onShop,
   onEnhance,
   onPets,
+  onLeaderboard,
   onSave,
   onSwitchCharacter,
   onLogout,
@@ -213,6 +214,11 @@ function HubScreen({
     icon: "🐾",
     label: "สัตว์เลี้ยง",
     onClick: onPets
+  }, {
+    key: "leaderboard",
+    icon: "🏆",
+    label: "อันดับ",
+    onClick: onLeaderboard
   }, {
     key: "daily",
     icon: canClaimDaily ? "🎁" : "📅",
@@ -614,6 +620,115 @@ function SkillScreen({
     }, sk.mp, "mp")), /*#__PURE__*/React.createElement("div", {
       className: "md-shop-lv"
     }, unlocked ? sk.desc : `ปลดล็อกที่ Lv${sk.unlockLevel}`)));
+  }))), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide small",
+    onClick: onBack
+  }, "← Back"));
+}
+// ---------- Phase 2: Leaderboard ----------
+const LEADERBOARD_BOARDS = [{
+  key: "floor",
+  icon: "🗺️",
+  label: "ชั้นลึกสุด",
+  valueKey: "max_floor",
+  format: v => `ชั้น ${v}`
+}, {
+  key: "cp",
+  icon: "⚡",
+  label: "พลังรบ",
+  valueKey: "total_cp",
+  format: v => `${formatNumber(v)} CP`
+}, {
+  key: "pet_cp",
+  icon: "🐾",
+  label: "พลังรบสัตว์เลี้ยง",
+  valueKey: "pet_cp",
+  format: v => `${formatNumber(v)} CP`
+}, {
+  key: "pvp",
+  icon: "⚔️",
+  label: "PvP",
+  disabled: true
+}, {
+  key: "raid",
+  icon: "🐉",
+  label: "Raid Boss",
+  disabled: true
+}];
+function LeaderboardScreen({
+  serverUrl,
+  myCharacterId,
+  onBack
+}) {
+  const [board, setBoard] = useState("floor");
+  const [rows, setRows] = useState(null);
+  const [error, setError] = useState(null);
+  React.useEffect(() => {
+    const def = LEADERBOARD_BOARDS.find(b => b.key === board);
+    if (!def || def.disabled) return;
+    let cancelled = false;
+    setRows(null);
+    setError(null);
+    cloudGetLeaderboard(serverUrl || DEFAULT_SERVER_URL, board).then(res => {
+      if (cancelled) return;
+      if (!res || !res.ok) { setError("โหลดอันดับไม่สำเร็จ ลองใหม่อีกครั้ง"); setRows([]); return; }
+      setRows(res.rows || []);
+    });
+    return () => { cancelled = true; };
+  }, [board, serverUrl]);
+  const activeDef = LEADERBOARD_BOARDS.find(b => b.key === board);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-panel",
+    style: { flex: 1 }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: { marginBottom: 10 }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "md-title"
+  }, "🏆 อันดับผู้เล่น"), /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: { margin: 0 }
+  }, "อัปเดตทุกเที่ยงคืน · Top 50")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      flexWrap: "wrap",
+      marginBottom: 10
+    }
+  }, LEADERBOARD_BOARDS.map(b => /*#__PURE__*/React.createElement("button", {
+    key: b.key,
+    className: "md-btn small" + (board === b.key ? " primary" : " flee"),
+    disabled: b.disabled,
+    style: b.disabled ? { opacity: 0.45 } : undefined,
+    onClick: () => setBoard(b.key)
+  }, b.icon, " ", b.label, b.disabled ? " (เร็วๆนี้)" : ""))), /*#__PURE__*/React.createElement("div", {
+    className: "md-card",
+    style: { marginBottom: 10 }
+  }, activeDef && activeDef.disabled ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, "บอร์ดนี้จะเปิดใช้งานในเฟสถัดไป") : error ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, error) : rows === null ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, "กำลังโหลด...") : rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, "ยังไม่มีข้อมูลอันดับ") : /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-list",
+    style: { maxHeight: 420, overflowY: "auto" }
+  }, rows.map((row, idx) => {
+    const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+    const isMe = row.character_id === myCharacterId;
+    const infoEl = /*#__PURE__*/React.createElement("div", {
+      className: "md-shop-info"
+    }, medal, " ", row.name || "?", isMe ? " (คุณ)" : "");
+    const valueEl = /*#__PURE__*/React.createElement("div", {
+      className: "md-shop-lv"
+    }, activeDef.format(Number(row[activeDef.valueKey]) || 0));
+    return /*#__PURE__*/React.createElement("div", {
+      key: row.character_id,
+      className: "md-shop-row",
+      style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
+    }, /*#__PURE__*/React.createElement("div", null, infoEl, valueEl));
   }))), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack

@@ -149,3 +149,10 @@ function cloudClaimDailyLogin(url, id, password, characterId) {
     characterId
   });
 }
+// Phase 2 — public, no auth needed (board is one of "floor" | "cp" | "pet_cp").
+function cloudGetLeaderboard(url, board) {
+  return cloudGet(url, {
+    action: "getLeaderboard",
+    board
+  });
+}

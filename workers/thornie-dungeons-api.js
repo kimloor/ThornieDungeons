@@ -28,6 +28,7 @@
  *   GET  ?action=getGameConfig
  *   GET  ?action=getInventory&id=&password=&characterId=&page=&pageSize=
  *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
+ *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp                    (NEW, Phase 2)
  *   GET  ?action=getPlayer&adminKey=&id=            (admin)
  *   GET  ?action=getAllPlayers&adminKey=            (admin)
  *   GET  ?action=getPlayerItems&adminKey=&id=        (admin)
@@ -44,6 +45,18 @@
  *   POST { action: "claimDailyLogin", id, password, characterId }        (NEW)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
+ *
+ * Phase 2 (leaderboard, migration_v3.sql already applied — leaderboard_stats exists):
+ *   - GET ?action=getLeaderboard&board=floor|cp|pet_cp returns top 50 rows, read-only,
+ *     no auth needed (leaderboard is public within the game).
+ *   - A `scheduled()` handler below runs on a Cron Trigger (added via Cloudflare
+ *     Dashboard -> Workers -> thornie-dungeons-api -> Trigger Events -> Cron Trigger,
+ *     since this worker has no wrangler.toml in the repo and is deployed by hand).
+ *     Suggested cron: "0 17 * * *" (17:00 UTC = 00:00 ICT, i.e. Thai midnight).
+ *     It snapshots every character's floor / combat power / active-pet combat power
+ *     into leaderboard_stats. CP formulas are ported from src/systems/stats.js
+ *     (characterBaseStats + getEquipBonus + combatPower) and src/systems/pets.js
+ *     (petCombatStats) — keep these two in sync if those formulas change.
  * ---------------------------------------------------------------
  */
 
@@ -80,7 +93,171 @@ const TABLES = {
     name: "daily_login_claims",
     cols: ["character_id", "login_streak", "last_claim_date", "total_claims", "updated_at"],
   },
+  // NEW — Phase 2 (migration_v3.sql). One row per character; snapshotted nightly by scheduled().
+  leaderboard_stats: {
+    name: "leaderboard_stats",
+    cols: ["character_id", "player_id", "name", "max_floor", "total_cp", "pet_cp", "updated_at"],
+  },
 };
+
+// ---------- Phase 2: combat-power formulas ----------
+// Ported from src/systems/stats.js and src/systems/pets.js. These MUST stay numerically
+// consistent with the client so the leaderboard reflects what players actually see on
+// their Status screen — if those files change, update the matching function here too.
+const ENHANCE_STAT_PCT = 0.06;
+const BASE_SPEED = 100; // unused in CP math directly but kept for parity/reference
+
+function characterBaseStats(level, s) {
+  return {
+    maxHp: Math.round(40 + level * 4 + s.vit * 12),
+    maxMp: Math.round(15 + level * 2),
+    atk: Math.round(8 + level + s.str * 3 + Math.floor(s.dex * 0.5)),
+    def: Math.round(2 + Math.floor(level * 0.4) + Math.floor(s.vit * 0.5)),
+    accuracy: Math.min(99, Math.round((80 + s.dex * 0.5) * 10) / 10),
+    critChance: Math.round(s.luk * 0.5 * 10) / 10,
+    critDamage: 50,
+    dodgeChance: Math.round(s.agi * 0.5 * 10) / 10,
+  };
+}
+
+// it: a row from the `items` table (equipped=1). extra_json may carry critChance/
+// critDamage/dodgeChance/empowerSlots that don't have their own columns.
+function itemBonus(it) {
+  const lvl = Number(it.enhance_level) || 0;
+  const growMult = 1 + lvl * ENHANCE_STAT_PCT;
+  let extra = {};
+  try { extra = it.extra_json ? JSON.parse(it.extra_json) : {}; } catch (e) { extra = {}; }
+  const b = {
+    atk: (Number(it.atk) || 0) * growMult,
+    def: (Number(it.def) || 0) * growMult,
+    hp: (Number(it.hp) || 0) * growMult,
+    mp: (Number(it.mp) || 0) * growMult,
+    critChance: (Number(extra.critChance) || 0) * growMult,
+    critDamage: (Number(extra.critDamage) || 0) * growMult,
+    dodgeChance: (Number(extra.dodgeChance) || 0) * growMult,
+    dropBonus: 0,
+  };
+  (extra.empowerSlots || []).forEach((slot) => {
+    if (!slot) return;
+    if (slot.key === "atkPct") b.atk += (Number(it.atk) || 0) * slot.value;
+    else if (slot.key === "defPct") b.def += (Number(it.def) || 0) * slot.value;
+    else b[slot.key] = (b[slot.key] || 0) + slot.value;
+  });
+  return b;
+}
+
+function combatPowerFromCharacter(character, equippedItems) {
+  const s = {
+    str: Number(character.str) || 0,
+    vit: Number(character.vit) || 0,
+    agi: Number(character.agi) || 0,
+    dex: Number(character.dex) || 0,
+    luk: Number(character.luk) || 0,
+  };
+  const level = Number(character.level) || 1;
+  const base = characterBaseStats(level, s);
+  const eb = { atk: 0, def: 0, hp: 0, mp: 0, critChance: 0, critDamage: 0, dodgeChance: 0, dropBonus: 0 };
+  (equippedItems || []).forEach((it) => {
+    const ib = itemBonus(it);
+    Object.keys(ib).forEach((k) => { eb[k] += ib[k]; });
+  });
+  const atk = Math.round(base.atk + eb.atk);
+  const def = Math.round(base.def + eb.def);
+  const maxHp = Math.round(base.maxHp + eb.hp);
+  const maxMp = Math.round(base.maxMp + eb.mp);
+  const accuracy = Math.min(99, Math.round((base.accuracy + eb.accuracy) * 10) / 10 || base.accuracy);
+  const critChance = Math.round((base.critChance + eb.critChance) * 10) / 10;
+  const critDamage = Math.round((base.critDamage + eb.critDamage) * 10) / 10;
+  const dodgeChance = Math.round((base.dodgeChance + eb.dodgeChance) * 10) / 10;
+  return Math.round(
+    atk * 12 + def * 15 + maxHp * 2 + maxMp * 1.5 + accuracy * 4 + critChance * 8 + critDamage * 3 + dodgeChance * 6 + level * 50
+  );
+}
+
+const PET_BASE_STATS = {
+  r: { str: 4, vit: 4, agi: 4, dex: 4, luk: 4 },
+  sr: { str: 6, vit: 6, agi: 6, dex: 6, luk: 6 },
+  ssr: { str: 9, vit: 9, agi: 9, dex: 9, luk: 9 },
+};
+const PET_STAR_MULT = [1.0, 1.08, 1.18, 1.3, 1.45];
+
+// instance: one entry from a character's parsed pets_json list; rarity comes from the
+// pet's def, which the worker doesn't have a copy of (PET_POOL lives client-side only)
+// — instance.stats already reflects the pet's own rolled base line, so we use that
+// directly rather than re-deriving it from rarity.
+function petCombatPower(instance) {
+  if (!instance || !instance.stats) return 0;
+  const mult = PET_STAR_MULT[(Number(instance.star) || 1) - 1] || 1;
+  const s = {
+    str: (Number(instance.stats.str) || 0) * mult,
+    vit: (Number(instance.stats.vit) || 0) * mult,
+    agi: (Number(instance.stats.agi) || 0) * mult,
+    dex: (Number(instance.stats.dex) || 0) * mult,
+    luk: (Number(instance.stats.luk) || 0) * mult,
+  };
+  const lvl = Number(instance.level) || 1;
+  const maxHp = Math.round(25 + lvl * 3 + s.vit * 8);
+  const atk = Math.round(4 + Math.floor(lvl * 0.6) + s.str * 2);
+  const def = Math.round(1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4));
+  const evasion = Math.round(s.agi * 0.5 * 10) / 10;
+  const critChance = Math.round(s.luk * 0.5 * 10) / 10;
+  return Math.round(atk * 12 + def * 15 + maxHp * 2 + critChance * 8 + evasion * 6 + lvl * 50);
+}
+
+// Snapshots every character into leaderboard_stats. Called by scheduled() (nightly cron)
+// and also exposed as an admin action so Kimmie can force a refresh without waiting for
+// the cron to fire (e.g. right after deploying this).
+async function runLeaderboardSnapshot(db) {
+  const chars = await db.prepare(`SELECT * FROM characters`).all();
+  const characters = chars.results || [];
+  const now = nowIso();
+  let updated = 0;
+
+  for (const ch of characters) {
+    const itemsRes = await db
+      .prepare(`SELECT atk, def, hp, mp, enhance_level, extra_json FROM items WHERE character_id = ? AND equipped = 1`)
+      .bind(ch.character_id)
+      .all();
+    const totalCp = combatPowerFromCharacter(ch, itemsRes.results || []);
+
+    let petCp = 0;
+    if (ch.active_pet_id) {
+      try {
+        const parsed = JSON.parse(ch.pets_json || "[]");
+        // pets_json is backward-compatible: legacy rows are a bare array, current rows
+        // are `{list, dup}` (dup = star-up duplicate pool) — see pets.js star-up system.
+        const pets = Array.isArray(parsed) ? parsed : (parsed && parsed.list) || [];
+        const active = pets.find((p) => p.instId === ch.active_pet_id);
+        if (active) petCp = petCombatPower(active);
+      } catch (e) { /* malformed pets_json — leave pet_cp at 0 for this character */ }
+    }
+
+    await db
+      .prepare(
+        `INSERT INTO leaderboard_stats (character_id, player_id, name, max_floor, total_cp, pet_cp, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(character_id) DO UPDATE SET
+           player_id=excluded.player_id, name=excluded.name, max_floor=excluded.max_floor,
+           total_cp=excluded.total_cp, pet_cp=excluded.pet_cp, updated_at=excluded.updated_at`
+      )
+      .bind(ch.character_id, ch.player_id, ch.name || "", Number(ch.unlocked_floor) || 1, totalCp, petCp, now)
+      .run();
+    updated++;
+  }
+
+  return { updated, at: now };
+}
+
+const LEADERBOARD_BOARD_COLS = { floor: "max_floor", cp: "total_cp", pet_cp: "pet_cp" };
+
+async function handleGetLeaderboard(db, board) {
+  const col = LEADERBOARD_BOARD_COLS[board];
+  if (!col) return json({ error: "invalid_board", allowed: Object.keys(LEADERBOARD_BOARD_COLS) });
+  const res = await db
+    .prepare(`SELECT character_id, player_id, name, max_floor, total_cp, pet_cp, updated_at FROM leaderboard_stats ORDER BY ${col} DESC LIMIT 50`)
+    .all();
+  return json({ ok: true, board, rows: res.results || [] });
+}
 
 // NEW — server-owned reward cycle (source of truth; client only displays what this returns,
 // never computes its own reward, so a tampered client can't grant itself diamonds).
@@ -656,6 +833,12 @@ export default {
         if (action === "getGameConfig") return await handleGetGameConfig(db);
         if (action === "getInventory") return await handleGetInventory(db, p.get("id"), p.get("password"), p.get("characterId"), p.get("page"), p.get("pageSize"));
         if (action === "getDailyLogin") return await handleGetDailyLogin(db, p.get("id"), p.get("password"), p.get("characterId"));
+        if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));
+        if (action === "runLeaderboardSnapshot") {
+          const auth = verifyAdminKey(env, p.get("adminKey"));
+          if (auth.error) return json(auth);
+          return json({ ok: true, ...(await runLeaderboardSnapshot(db)) });
+        }
         if (action === "getPlayer") return await handleAdminGetPlayer(db, env, p.get("adminKey"), p.get("id"));
         if (action === "getAllPlayers") return await handleAdminGetAllPlayers(db, env, p.get("adminKey"));
         if (action === "getPlayerItems") return await handleAdminGetPlayerItems(db, env, p.get("adminKey"), p.get("id"));
@@ -698,5 +881,13 @@ export default {
     } catch (err) {
       return json({ error: "server_error", message: String((err && err.message) || err) }, 500);
     }
+  },
+
+  // Cron Trigger entry point (set up in Cloudflare Dashboard -> this worker -> Trigger
+  // Events, since there's no wrangler.toml here to declare it in). Not testable locally
+  // via bash (api.cloudflare.com isn't allowlisted) — use the runLeaderboardSnapshot
+  // admin GET action above to trigger it manually for testing/backfill.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runLeaderboardSnapshot(env.DB));
   },
 };

@@ -1656,6 +1656,7 @@ function ThornieDungeons() {
     onShop: openShop,
     onEnhance: () => setBlacksmithOpen(true),
     onPets: () => setPhase("pets"),
+    onLeaderboard: () => setPhase("leaderboard"),
     onSave: () => persistSave(save),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
@@ -1694,6 +1695,10 @@ function ThornieDungeons() {
     onUnequip: unequipPet,
     onStarUp: starUpPet,
     onOpenGacha: () => setPhase("gacha"),
+    onBack: () => setPhase("menu")
+  }), phase === "leaderboard" && /*#__PURE__*/React.createElement(LeaderboardScreen, {
+    serverUrl: cred.url,
+    myCharacterId: save.characterId,
     onBack: () => setPhase("menu")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
