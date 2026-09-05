@@ -12,6 +12,13 @@
   * { -webkit-tap-highlight-color: transparent; }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
   #boot-error { color: #FF8B8B; font-family: monospace; font-size: 12px; text-align: left; white-space: pre-wrap; word-break: break-word; padding: 16px; margin: 12px; background: rgba(255,139,139,0.08); border: 1px solid #FF8B8B; border-radius: 10px; display: none; }
+
+  /* Combat display sizing: prefer code/CSS scaling before editing sprite files. */
+  .md-enemy-img { width: 88px !important; height: 88px !important; object-fit: contain; }
+  .md-enemy-img.boss { width: 116px !important; height: 116px !important; }
+  .md-enemy-img.md-pet-img { width: 72px !important; height: 72px !important; }
+  .md-enemy { width: 88px !important; height: 88px !important; }
+  .md-enemy.boss { width: 116px !important; height: 116px !important; }
 </style>
 </head>
 <body>
