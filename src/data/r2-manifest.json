@@ -1,24 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-05T10:39:22Z",
-  "count": 67,
+  "generatedAt": "2026-09-05T13:53:03Z",
+  "count": 42,
   "objects": [
     {
-      "key": "hero001_rig_v1.json",
-      "etag": "93ad84e9cf99c2510bc268c8ffe29326",
-      "last_modified": "2026-09-02T06:24:58.098Z",
-      "size": 8482,
-      "http_metadata": {
-        "contentType": "application/json"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
       "key": "manifest.json",
-      "etag": "88791c92f99e478c2d2f00389b183817",
-      "last_modified": "2026-08-28T02:35:53.003Z",
-      "size": 3322,
+      "etag": "55839835739550baa05755849b47dffb",
+      "last_modified": "2026-09-05T13:03:40.178Z",
+      "size": 5158,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -70,9 +59,9 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/",
+      "key": "sprite/characters/hero001/base/",
       "etag": "d41d8cd98f00b204e9800998ecf8427e",
-      "last_modified": "2026-08-28T02:38:30.811Z",
+      "last_modified": "2026-09-05T12:49:54.055Z",
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
@@ -81,10 +70,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_cape.png",
-      "etag": "c69721cec695fd026444c1d40fc01d6f",
-      "last_modified": "2026-09-02T06:32:21.609Z",
-      "size": 41887,
+      "key": "sprite/characters/hero001/base/hero_base.png",
+      "etag": "29065313815227568cc752eb461ecf53",
+      "last_modified": "2026-09-05T12:51:00.058Z",
+      "size": 1025188,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -92,10 +81,21 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_chest_plate.png",
-      "etag": "642579cb9f47635ddeef0ad14468de87",
-      "last_modified": "2026-09-02T06:32:21.645Z",
-      "size": 15593,
+      "key": "sprite/characters/hero001/equipment/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T12:50:22.538Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/equipment/hat_angel_crown.png",
+      "etag": "cd49cc09de5ec48f43bf29bf231f54e8",
+      "last_modified": "2026-09-05T12:52:12.544Z",
+      "size": 30723,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -103,10 +103,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_chest_plate_full.png",
-      "etag": "7e0c4395c193f50ea7569b1c609c3071",
-      "last_modified": "2026-09-02T06:32:21.527Z",
-      "size": 14484,
+      "key": "sprite/characters/hero001/equipment/legs_shoes_azure.png",
+      "etag": "be2e438f59c3f6c31506cbe68cbe2079",
+      "last_modified": "2026-09-05T12:52:56.101Z",
+      "size": 68244,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -114,10 +114,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_knee_guard_left.png",
-      "etag": "e3ba1bdb9185d29c01bbcf2754baf5cd",
-      "last_modified": "2026-09-02T06:32:21.913Z",
-      "size": 2908,
+      "key": "sprite/characters/hero001/equipment/outfit_azure_armor.png",
+      "etag": "c1bc9a4fe0479e05fac0e8fdf37abb12",
+      "last_modified": "2026-09-05T12:52:38.674Z",
+      "size": 118676,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -125,10 +125,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_knee_guard_right.png",
-      "etag": "5ea8d6f483f993260527b50c05a97ce9",
-      "last_modified": "2026-09-02T06:32:21.604Z",
-      "size": 2989,
+      "key": "sprite/characters/hero001/equipment/right_arm_gauntlet.png",
+      "etag": "a064244d8e9c65fa701793d06ccda31c",
+      "last_modified": "2026-09-05T12:53:23.773Z",
+      "size": 41629,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -136,10 +136,21 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_shoulder_pauldron_left.png",
-      "etag": "1fcb5f58e31e524fb8873890201e8f6e",
-      "last_modified": "2026-09-02T06:32:22.723Z",
-      "size": 4068,
+      "key": "sprite/characters/hero001/hair/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T12:50:08.155Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/hair/hair_blue.png",
+      "etag": "e0d407a158cb4d6c9f9fe76c9cf531e8",
+      "last_modified": "2026-09-05T12:51:58.777Z",
+      "size": 83447,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -147,10 +158,21 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_shoulder_pauldron_right.png",
-      "etag": "ac1a22d224eb965c90dbe16ee0757d17",
-      "last_modified": "2026-09-02T06:32:22.897Z",
-      "size": 4165,
+      "key": "sprite/characters/hero001/weapons/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T12:50:33.232Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/weapons/sword_azure.png",
+      "etag": "d5cdde93b963197b66ae586e4bc35086",
+      "last_modified": "2026-09-05T12:51:21.692Z",
+      "size": 56448,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -158,307 +180,21 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_skirt_plates_front.png",
-      "etag": "85aa39e692925b2232b1c53577fc7523",
-      "last_modified": "2026-09-02T06:32:22.976Z",
-      "size": 8854,
+      "key": "sprite/characters/hero001/wings/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-05T12:50:39.356Z",
+      "size": 0,
       "http_metadata": {
-        "contentType": "image/png"
+        "contentType": "application/octet-stream"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/modular/azure_skirt_plates_side.png",
-      "etag": "d01cd01065d780163524c3126fb89d2c",
-      "last_modified": "2026-09-02T06:32:23.002Z",
-      "size": 3677,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/azure_wrist_bracer_left.png",
-      "etag": "ee780d7cccbde3288d5be86d8719341e",
-      "last_modified": "2026-09-02T06:32:23.472Z",
-      "size": 2094,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/azure_wrist_bracer_right.png",
-      "etag": "5bd4419007967a4de20af748ea318a1f",
-      "last_modified": "2026-09-02T06:32:24.163Z",
-      "size": 1897,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/core_neutral.png",
-      "etag": "4a6e540e0bda1424e0f48de658da00d8",
-      "last_modified": "2026-09-02T06:25:51.873Z",
-      "size": 85452,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/core_tpose.png",
-      "etag": "a4bb4e4cfa3f32b7c3cc8ced834c7706",
-      "last_modified": "2026-09-02T06:25:51.991Z",
-      "size": 119510,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/head_back_hair.png",
-      "etag": "6ccd9ee1367e7794f7ef574439cf710e",
-      "last_modified": "2026-09-02T06:25:51.995Z",
-      "size": 8470,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/head_ears.png",
-      "etag": "5f0fbeebb3ac0179c60c61df5cc8c9d0",
-      "last_modified": "2026-09-02T06:25:52.202Z",
-      "size": 2424,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/head_face.png",
-      "etag": "852584aa8fe9b80374d31e11f37c27e6",
-      "last_modified": "2026-09-02T06:25:52.888Z",
-      "size": 8677,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/head_front_hair.png",
-      "etag": "b8e2d18b17555c26903b07c8403dbde7",
-      "last_modified": "2026-09-02T06:25:53.033Z",
-      "size": 19796,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/hips.png",
-      "etag": "9761153356f2db7a131664e4b16e8bf0",
-      "last_modified": "2026-09-02T06:25:53.281Z",
-      "size": 10118,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/ice_sword.png",
-      "etag": "fc07f9908073f03f3645b68a9e3a6833",
-      "last_modified": "2026-09-02T06:32:23.983Z",
-      "size": 5863,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/l_arm_lower.png",
-      "etag": "67b971966be5b0325512bf3f180742ea",
-      "last_modified": "2026-09-02T06:25:53.446Z",
-      "size": 3317,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/l_arm_upper.png",
-      "etag": "e7fb68175cf92931a975025de0ec4f3a",
-      "last_modified": "2026-09-02T06:25:54.060Z",
-      "size": 3806,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/l_foot.png",
-      "etag": "4ffb5a5f8ed69cad0897ee6462c0ce23",
-      "last_modified": "2026-09-02T06:25:54.161Z",
-      "size": 3697,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/l_hand.png",
-      "etag": "c26b744e6ba7bea967bbef2ba666443c",
-      "last_modified": "2026-09-02T06:25:54.490Z",
-      "size": 2067,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/l_leg_lower.png",
-      "etag": "237a5e5a41aaeec1fbeca423a3f7ca2c",
-      "last_modified": "2026-09-02T06:25:54.924Z",
-      "size": 2510,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/l_leg_upper.png",
-      "etag": "d3abb28c3d1469231c3f5871952cdad3",
-      "last_modified": "2026-09-02T06:25:54.663Z",
-      "size": 4398,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/ornate_dagger.png",
-      "etag": "1acfb342e0b60b526843ec786d5224cf",
-      "last_modified": "2026-09-02T06:32:24.153Z",
-      "size": 5016,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/r_arm_lower.png",
-      "etag": "66afd61cae25f1a5071efe0a23ef327c",
-      "last_modified": "2026-09-02T06:25:55.333Z",
-      "size": 3768,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/r_arm_upper.png",
-      "etag": "fc4f50800ca71c191270d5b545f72dbb",
-      "last_modified": "2026-09-02T06:25:56.000Z",
-      "size": 4642,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/r_foot.png",
-      "etag": "7acfddb171ac4b7bdf27afe40f44cb37",
-      "last_modified": "2026-09-02T06:25:55.866Z",
-      "size": 3747,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/r_hand.png",
-      "etag": "d21464d905416f0ebd1812a6d71ce3b8",
-      "last_modified": "2026-09-02T06:25:56.088Z",
-      "size": 1724,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/r_leg_lower.png",
-      "etag": "67f6e09452baa165e7b65c9b63f0e8f0",
-      "last_modified": "2026-09-02T06:25:56.529Z",
-      "size": 2206,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/r_leg_upper.png",
-      "etag": "2408b3d9164f8f3068bec34dd109beaa",
-      "last_modified": "2026-09-02T06:25:56.574Z",
-      "size": 5173,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/red_tassel.png",
-      "etag": "7931519ef8c44dbce2f5382ef8e11133",
-      "last_modified": "2026-09-02T06:32:24.216Z",
-      "size": 3204,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/torso_base.png",
-      "etag": "f1b5aa9ce5e7fb990a02ce2d0da4e194",
-      "last_modified": "2026-09-02T06:25:57.179Z",
-      "size": 9938,
-      "http_metadata": {
-        "contentType": "image/png"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/characters/hero001/modular/training_wooden_sword.png",
-      "etag": "41fa891dee18940cd677e4ec971133de",
-      "last_modified": "2026-09-02T06:32:24.744Z",
-      "size": 5165,
+      "key": "sprite/characters/hero001/wings/angel_wings.png",
+      "etag": "4df1475a64f373e21ded8897be468dd2",
+      "last_modified": "2026-09-05T12:51:37.543Z",
+      "size": 100837,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -692,17 +428,6 @@
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/hero/idle.png",
-      "etag": "780ac53ffaa3d489b006214e9b8b5112",
-      "last_modified": "2026-08-25T07:18:24.202Z",
-      "size": 68794,
-      "http_metadata": {
-        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
