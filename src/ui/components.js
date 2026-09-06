@@ -763,6 +763,13 @@ function LeaderboardScreen({
   }, "← Back"));
 }
 // ---------- Phase 3: Raid Boss ----------
+// Boss sprite placeholder — colored "blob" per boss type until real art is ready
+// (sprite/rig work is handled separately). Swap this out for an <img> once art lands.
+const RAID_BOSS_BLOB_STYLE = {
+  slime_titan: { background: "radial-gradient(circle at 35% 30%, #7EE0A8, var(--leaf-deep))" },
+  iron_golem: { background: "radial-gradient(circle at 35% 30%, #C9D2DB, #6B7684)" },
+  shadow_wyrm: { background: "radial-gradient(circle at 35% 30%, #A78BF0, var(--violet-deep))" }
+};
 const RAID_ATTEMPTS_MAX_CLIENT = 5; // fallback only — server response's attemptsMax is authoritative
 function RaidScreen({
   serverUrl,
@@ -835,19 +842,25 @@ function RaidScreen({
           style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
         })),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
+      /*#__PURE__*/React.createElement("div", {
+        className: "md-boss-blob",
+        style: (RAID_BOSS_BLOB_STYLE[boss.defId] || RAID_BOSS_BLOB_STYLE.slime_titan)
+      }, boss.emoji || "🐉"),
       isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา")),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "โจมตีเหลือ ", me.attemptsMax - me.attemptsUsed, "/", me.attemptsMax, " ครั้ง"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสูงสุดของคุณ: ", formatNumber(me.bestHit)),
+      /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between" } },
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "โจมตีเหลือ ", me.attemptsMax - me.attemptsUsed, "/", me.attemptsMax),
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "สูงสุด ", formatNumber(me.bestHit))),
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสะสม: ", formatNumber(me.contribution)),
       lastResult && !lastResult.error && /*#__PURE__*/React.createElement("p", {
         className: "md-sub",
-        style: { color: lastResult.crit ? "#FFD166" : undefined }
+        style: { color: lastResult.crit ? "#FFD166" : undefined, fontWeight: "bold" }
       }, lastResult.crit ? "💥 CRIT! " : "", "ดาเมจ ", formatNumber(lastResult.damage)),
       lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, lastResult.error === "no_attempts_left" ? "หมดจำนวนครั้งโจมตีวันนี้แล้ว" : lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่" : lastResult.error),
       /*#__PURE__*/React.createElement("button", {
-        className: "md-btn wide",
+        className: "md-btn attack wide",
+        style: { marginTop: 8 },
         disabled: attacking || isDead || me.attemptsUsed >= me.attemptsMax,
         onClick: handleAttack
       }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี")),
@@ -867,7 +880,7 @@ function RaidScreen({
           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ รับแล้ว" : done ? "🎁 พร้อมรับ" : "🔒"));
       }),
       claimMsg && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, claimMsg),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn wide small", onClick: handleClaim }, "รับรางวัล")),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn primary wide small", style: { marginTop: 6 }, onClick: handleClaim }, "🎁 รับรางวัล")),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
       /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "อันดับดาเมจ"),
@@ -957,7 +970,7 @@ function MailboxScreen({
   return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" } },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "📬 กล่องจดหมาย"),
-      unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
+      unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
     mails.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
     mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.5 : 1 } },
       /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { fontWeight: "bold" } }, m.title),
@@ -970,7 +983,7 @@ function MailboxScreen({
         (m.items || []).map(it => it.star ? `🪽${it.name}` : it.setId ? `🔷${it.name}` : it.name).join(" ")),
       m.claimed
         ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "✅ รับแล้ว")
-        : /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))),
+        : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
 }
 function MapScreen({

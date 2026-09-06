@@ -630,6 +630,8 @@ const STYLE = `
   .md-root { max-width: 100%; min-height: 100vh; min-height: 100dvh; border-radius: 0; box-shadow: none; }
 }
 .md-btn { min-height: 46px; }
+.md-boss-blob { width: 96px; height: 96px; margin: 10px auto 4px; display: flex; align-items: center; justify-content: center; font-size: 44px; border-radius: 46% 54% 58% 42% / 52% 46% 54% 48%; box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 -8px 14px rgba(0,0,0,0.2); animation: mdBossBlobPulse 2.6s ease-in-out infinite; }
+@keyframes mdBossBlobPulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.05) rotate(-2deg); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */
 @keyframes anvil-success-flash {
