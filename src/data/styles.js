@@ -39,6 +39,36 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 .md-display { font-family: 'Baloo 2', sans-serif; }
 
+/* Shared authenticated-game backdrop. Login keeps its original entrance scene and character
+   select owns the first-person transition; every screen after selection reuses the deeper
+   dungeon image with a page-specific readability veil. */
+.md-root-dungeon { isolation: isolate; background: #071126; --md-dungeon-veil: .46; }
+.md-root-dungeon::before,
+.md-root-dungeon::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.md-root-dungeon::before {
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(3,8,25,.06), rgba(3,8,25,.24)),
+    url("ui/character-select-background.webp") center / cover no-repeat;
+  transform: scale(1.025);
+  animation: md-global-dungeon-breathe 14s ease-in-out infinite alternate;
+}
+.md-root-dungeon::after {
+  z-index: 1;
+  background: rgba(3,7,20,var(--md-dungeon-veil));
+  box-shadow: inset 0 0 90px rgba(0,0,0,.28);
+  transition: background-color .25s ease;
+}
+.md-root-dungeon.md-dungeon-fade-light { --md-dungeon-veil: .27; }
+.md-root-dungeon.md-dungeon-fade-medium { --md-dungeon-veil: .47; }
+.md-root-dungeon.md-dungeon-fade-heavy { --md-dungeon-veil: .61; }
+.md-root-dungeon.md-dungeon-modal-open { --md-dungeon-veil: .69; }
+.md-root-dungeon > :not(style):not(.md-stars) { position: relative; z-index: 2; }
+@keyframes md-global-dungeon-breathe {
+  0% { transform: scale(1.025) translate3d(0,0,0); filter: brightness(.92); }
+  100% { transform: scale(1.055) translate3d(0,-.45%,0); filter: brightness(1.04); }
+}
+
 .md-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
 .md-star-dot { position: absolute; background: #fff; border-radius: 50%; opacity: 0.5; animation: md-twinkle 3s ease-in-out infinite; }
 @keyframes md-twinkle { 0%,100% { opacity: 0.15; } 50% { opacity: 0.7; } }
@@ -537,7 +567,8 @@ const STYLE = `
   .md-character-door-glow,
   .md-character-torch-glow,
   .md-character-fog,
-  .md-character-particles { animation: none !important; }
+  .md-character-particles,
+  .md-root-dungeon::before { animation: none !important; }
   .md-character-select-wrap::after { opacity: 0; }
   .md-login-wrap.is-departing .md-login-brand,
   .md-login-wrap.is-departing .md-login-card { opacity: .35; transition: opacity .18s ease; }
@@ -611,20 +642,21 @@ const STYLE = `
 .md-turn-queue-item.active .md-turn-queue-icon { box-shadow: 0 0 0 2px var(--gold-glow); }
 .md-turn-queue-arrow { color: var(--ink-soft); font-size: 11px; opacity: 0.6; }
 
-/* battle scene — RO-style grassy outdoor background */
+/* Battle uses the shared dungeon backdrop too; these translucent arena lights keep units and
+   HP bars readable while allowing the global scene to remain visible underneath. */
 .md-scene.battle-bg {
   background:
-    radial-gradient(ellipse 55% 35% at 18% 12%, rgba(255,255,255,0.10), transparent 60%),
-    radial-gradient(circle at 82% 25%, rgba(255,255,255,0.06), transparent 55%),
-    radial-gradient(circle at 30% 85%, rgba(0,0,0,0.15), transparent 50%),
-    linear-gradient(180deg, #7CA35A 0%, #5E8A44 45%, #4A6B37 100%);
+    radial-gradient(ellipse 55% 35% at 18% 12%, rgba(80,190,255,.12), transparent 60%),
+    radial-gradient(circle at 82% 25%, rgba(255,209,102,.08), transparent 55%),
+    radial-gradient(circle at 30% 85%, rgba(0,0,0,.25), transparent 50%),
+    linear-gradient(180deg, rgba(11,28,59,.34) 0%, rgba(8,20,46,.47) 48%, rgba(4,12,31,.62) 100%);
   border-radius: 0 0 18px 18px;
   padding-top: 50px;
 }
 .md-scene.battle-bg .md-ground {
-  background: linear-gradient(180deg, #3E5A2C 0%, #30461F 100%);
-  border-top: 3px solid #6E9752;
-  opacity: 0.9;
+  background: linear-gradient(180deg, rgba(18,53,83,.72) 0%, rgba(7,24,48,.84) 100%);
+  border-top: 3px solid rgba(78,190,236,.58);
+  opacity: .78;
 }
 .md-scene.battle-bg .md-arena { padding: 6px 6px 18px; }
 

@@ -1704,8 +1704,13 @@ function ThornieDungeons() {
     dodgeChance: charStats.dodgeChance
   };
   const cp = combatPower(player ? getStats(player, equipped) : outOfCombatStats, save.character.level);
+  // Reuse the first-person dungeon artwork throughout the authenticated game. Each screen
+  // chooses its own veil strength so scenery never competes with stats, targets or actions.
+  const heavyDungeonFade = ["map", "combat", "result", "defeat"].includes(phase);
+  const dungeonFade = phase === "menu" ? "light" : heavyDungeonFade ? "heavy" : "medium";
+  const dungeonModalOpen = invOpen || shopOpen || blacksmithOpen;
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-root"
+    className: `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
   }, /*#__PURE__*/React.createElement("style", null, STYLE), /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "login" && phase !== "combat" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
