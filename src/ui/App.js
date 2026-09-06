@@ -216,6 +216,27 @@ function ThornieDungeons() {
       pushCharacterProgress(next.characterId, next.diamonds, characterProgressToServer(next));
     }
   }, [pushCharacterProgress]);
+  // Raid responses arrive asynchronously, so deduct from the latest save snapshot and persist
+  // immediately. A plain setSave() here used to leave the server balance unchanged until some
+  // later manual save/logout and could lose the charge if Safari closed first.
+  const spendRaidDiamonds = useCallback(amount => {
+    const cost = Math.max(0, Number(amount) || 0);
+    if (!cost) return;
+    setSave(current => {
+      if (!current) return current;
+      const next = { ...current, diamonds: Math.max(0, (Number(current.diamonds) || 0) - cost) };
+      setAccount(prevAccount => {
+        if (!prevAccount || prevAccount.activeSlot === null) return prevAccount;
+        const characters = prevAccount.characters.slice();
+        characters[prevAccount.activeSlot] = packRuntimeIntoSlot(characters[prevAccount.activeSlot], next);
+        return { ...prevAccount, diamonds: next.diamonds, characters };
+      });
+      if (next.characterId) {
+        pushCharacterProgress(next.characterId, next.diamonds, characterProgressToServer(next));
+      }
+      return next;
+    });
+  }, [pushCharacterProgress]);
   const persistItems = useCallback((inv, eq) => {
     if (save && save.characterId) pushItems(inv, eq, save.characterId);
   }, [pushItems, save]);
@@ -1777,7 +1798,7 @@ function ThornieDungeons() {
     cred: cred,
     characterId: save.characterId,
     diamonds: save.diamonds,
-    onSpendDiamonds: (amount) => setSave(s => s && ({ ...s, diamonds: s.diamonds - amount })),
+    onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase("menu")
   }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,

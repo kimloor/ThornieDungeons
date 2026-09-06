@@ -828,20 +828,29 @@ const RAID_HITS_PER_ATTACK = 3; // mini combat round per attack, not a single fl
 // stamina is full there's nothing to track so updatedAt collapses back to "" (matches
 // the migration's default, and getOrCreateActiveRaid-style lazy init below).
 function resolveRaidStamina(stored, updatedAtIso) {
-  const storedStamina = Number.isFinite(Number(stored)) ? Number(stored) : RAID_STAMINA_MAX;
-  if (storedStamina >= RAID_STAMINA_MAX || !updatedAtIso) {
-    return { stamina: Math.min(RAID_STAMINA_MAX, storedStamina), updatedAt: "" };
+  const rawStamina = Number(stored);
+  const storedStamina = Number.isFinite(rawStamina) ? Math.max(0, Math.min(RAID_STAMINA_MAX, Math.floor(rawStamina))) : RAID_STAMINA_MAX;
+  if (storedStamina >= RAID_STAMINA_MAX) {
+    return { stamina: RAID_STAMINA_MAX, updatedAt: "" };
   }
-  const elapsedMs = Date.now() - new Date(updatedAtIso).getTime();
+  const updatedAtMs = Date.parse(updatedAtIso || "");
+  // A missing/malformed checkpoint must not turn stamina into NaN and crash every Raid
+  // request. Start a fresh regeneration window while preserving the stored amount.
+  if (!Number.isFinite(updatedAtMs)) {
+    return { stamina: storedStamina, updatedAt: new Date(Date.now()).toISOString() };
+  }
+  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
   const ticks = Math.floor(elapsedMs / RAID_STAMINA_REGEN_MS);
   if (ticks <= 0) return { stamina: storedStamina, updatedAt: updatedAtIso };
   const stamina = Math.min(RAID_STAMINA_MAX, storedStamina + ticks);
-  const updatedAt = stamina >= RAID_STAMINA_MAX ? "" : new Date(new Date(updatedAtIso).getTime() + ticks * RAID_STAMINA_REGEN_MS).toISOString();
+  const updatedAt = stamina >= RAID_STAMINA_MAX ? "" : new Date(updatedAtMs + ticks * RAID_STAMINA_REGEN_MS).toISOString();
   return { stamina, updatedAt };
 }
 function raidStaminaSecondsToNext(updatedAtIso) {
   if (!updatedAtIso) return 0;
-  const elapsedMs = Date.now() - new Date(updatedAtIso).getTime();
+  const updatedAtMs = Date.parse(updatedAtIso);
+  if (!Number.isFinite(updatedAtMs)) return Math.round(RAID_STAMINA_REGEN_MS / 1000);
+  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
   const remaining = RAID_STAMINA_REGEN_MS - (elapsedMs % RAID_STAMINA_REGEN_MS);
   return Math.max(0, Math.round(remaining / 1000));
 }
@@ -1089,18 +1098,39 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
   const raid = await getOrCreateActiveRaid(db);
   if (Number(raid.boss_hp_current) <= 0) return json({ error: "boss_already_dead" });
 
-  // Stamina is per-CHARACTER (not per-raid-instance) and regenerates over time — see
-  // resolveRaidStamina. Diamonds are this project's client-authoritative currency (same
-  // trust model as gacha pulls / protection stones elsewhere in App.js: the client
-  // deducts locally and just tells us it paid), so a diamond-refilled attack is a flag
-  // from the client, not a server-verified debit — this endpoint never touches
-  // characters.gold/players.diamonds directly either way.
+  // Stamina is per-character and regenerates over time. Reserve it before applying damage
+  // with a compare-and-swap update, so two simultaneous taps cannot both spend the same
+  // final stamina point. Paid attacks are also charged atomically on the authoritative
+  // player row; never trust the client's paidDiamonds flag as proof of payment.
   const staminaState = resolveRaidStamina(character.raid_stamina, character.raid_stamina_updated_at);
   let spentStamina = false;
+  let diamondsSpent = 0;
+  let newStamina = staminaState.stamina;
+  let newStaminaUpdatedAt = staminaState.updatedAt;
   if (staminaState.stamina >= 1) {
     spentStamina = true;
+    newStamina = staminaState.stamina - 1;
+    newStaminaUpdatedAt = staminaState.updatedAt || nowIso();
+    const storedStamina = Number.isFinite(Number(character.raid_stamina)) ? Number(character.raid_stamina) : RAID_STAMINA_MAX;
+    const storedUpdatedAt = character.raid_stamina_updated_at || "";
+    const reserved = await db
+      .prepare(`UPDATE characters SET raid_stamina = ?, raid_stamina_updated_at = ? WHERE character_id = ? AND raid_stamina = ? AND raid_stamina_updated_at = ?`)
+      .bind(newStamina, newStaminaUpdatedAt, characterId, storedStamina, storedUpdatedAt)
+      .run();
+    if (!reserved.meta || !reserved.meta.changes) {
+      return json({ error: "stamina_conflict", retry: true });
+    }
   } else if (!paidDiamonds) {
     return json({ error: "no_stamina", diamondRefillCost: RAID_DIAMOND_REFILL_COST, staminaRegenSeconds: raidStaminaSecondsToNext(staminaState.updatedAt) });
+  } else {
+    const charged = await db
+      .prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ?`)
+      .bind(RAID_DIAMOND_REFILL_COST, id, RAID_DIAMOND_REFILL_COST)
+      .run();
+    if (!charged.meta || !charged.meta.changes) {
+      return json({ error: "insufficient_diamonds", diamondRefillCost: RAID_DIAMOND_REFILL_COST });
+    }
+    diamondsSpent = RAID_DIAMOND_REFILL_COST;
   }
 
   const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
@@ -1136,14 +1166,6 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
     .bind(raid.raid_id, characterId, id, character.name || "", newBest, newContribution, attemptsUsed, participant ? participant.milestone_claimed || "" : "", now)
     .run();
 
-  let newStamina = staminaState.stamina;
-  let newStaminaUpdatedAt = staminaState.updatedAt;
-  if (spentStamina) {
-    newStamina = staminaState.stamina - 1;
-    newStaminaUpdatedAt = newStamina >= RAID_STAMINA_MAX ? "" : staminaState.updatedAt || now;
-    await db.prepare(`UPDATE characters SET raid_stamina = ?, raid_stamina_updated_at = ? WHERE character_id = ?`).bind(newStamina, newStaminaUpdatedAt, characterId).run();
-  }
-
   let bossDied = false;
   if (freshBoss && Number(freshBoss.boss_hp_current) <= 0 && hpBefore > 0) {
     bossDied = true;
@@ -1160,6 +1182,7 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
     bossHpCurrent: freshBoss ? Number(freshBoss.boss_hp_current) : 0,
     bossDied,
     paidDiamonds: !spentStamina,
+    diamondsSpent,
     stamina: newStamina,
     staminaMax: RAID_STAMINA_MAX,
     staminaRegenSeconds: raidStaminaSecondsToNext(newStaminaUpdatedAt),
