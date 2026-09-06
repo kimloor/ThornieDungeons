@@ -9,6 +9,10 @@ function ThornieDungeons() {
   const [account, setAccount] = useState(null);
   const [save, setSave] = useState(null);
   const [phase, setPhase] = useState("loading"); // loading, login, characterSelect, menu, town, map, combat, result, defeat
+  // True only when character selection follows a successful login/register. It lets the
+  // screen bridge from the login artwork without replaying that transition when switching
+  // characters from inside the game.
+  const [characterSelectEntry, setCharacterSelectEntry] = useState(false);
   const [cred, setCred] = useState({
     url: "",
     id: "",
@@ -247,6 +251,7 @@ function ThornieDungeons() {
       id: cred.id
     });
     setAccount(accountFromLoginResponse(res));
+    setCharacterSelectEntry(true);
     setPhase("characterSelect");
   }
   async function handleRegister() {
@@ -271,6 +276,7 @@ function ThornieDungeons() {
       id: cred.id
     });
     setAccount(defaultSave());
+    setCharacterSelectEntry(true);
     setPhase("characterSelect");
   }
   async function handleCreateCharacter(slotIndex, name) {
@@ -411,6 +417,7 @@ function ThornieDungeons() {
     if (save) persistSave(save);
     setPlayer(null);
     setResumeRun(null);
+    setCharacterSelectEntry(false);
     setPhase("characterSelect");
   }
   function logout() {
@@ -426,6 +433,7 @@ function ThornieDungeons() {
     setSave(null);
     setPlayer(null);
     setResumeRun(null);
+    setCharacterSelectEntry(false);
     setAuthError("");
     setPhase("login");
   }
@@ -1645,6 +1653,7 @@ function ThornieDungeons() {
       className: "md-root"
     }, /*#__PURE__*/React.createElement("style", null, STYLE), /*#__PURE__*/React.createElement(Starfield, null), /*#__PURE__*/React.createElement(CharacterSelectScreen, {
       account: account,
+      entryTransition: characterSelectEntry,
       onEnter: enterCharacterSlot,
       onCreate: handleCreateCharacter,
       onDelete: handleDeleteCharacter,

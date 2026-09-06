@@ -323,6 +323,7 @@ function HubScreen({
 }
 function CharacterSelectScreen({
   account,
+  entryTransition,
   onEnter,
   onCreate,
   onDelete,
@@ -357,17 +358,26 @@ function CharacterSelectScreen({
     setCreateError("");
   };
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-login-wrap"
+    className: `md-character-select-wrap${entryTransition ? " is-entering" : ""}`
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-menu-title",
-    style: {
-      padding: "0 0 10px"
-    }
+    className: "md-character-atmosphere",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-character-door-glow"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-character-fog md-character-fog-a"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-character-fog md-character-fog-b"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-character-particles"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-menu-title md-character-select-title"
   }, /*#__PURE__*/React.createElement("h1", {
     style: {
       fontSize: 24
     }
   }, "เลือกตัวละคร"), /*#__PURE__*/React.createElement("p", null, `${MAX_CHARACTER_SLOTS} ช่องตัวละครต่อบัญชี`)), /*#__PURE__*/React.createElement("div", {
+    className: "md-character-slot-list",
     style: {
       display: "flex",
       flexDirection: "column",
@@ -406,6 +416,9 @@ function CharacterSelectScreen({
       gap: 8
     }
   }, /*#__PURE__*/React.createElement("div", {
+    className: "md-charselect-crest",
+    "aria-hidden": "true"
+  }, "T"), /*#__PURE__*/React.createElement("div", {
     style: {
       minWidth: 0
     }
@@ -417,7 +430,7 @@ function CharacterSelectScreen({
       overflow: "hidden",
       textOverflow: "ellipsis"
     }
-  }, "🧙 ", slot.name), /*#__PURE__*/React.createElement("p", {
+  }, slot.name), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: 0
@@ -490,7 +503,7 @@ function CharacterSelectScreen({
     disabled: busy,
     onClick: () => startCreate(i)
   }, "➕ สร้างตัวละคร")))), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee wide",
+    className: "md-btn flee wide md-character-logout",
     style: {
       marginTop: 14
     },
