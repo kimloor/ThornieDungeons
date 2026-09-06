@@ -163,7 +163,9 @@ const STYLE = `
 .md-root-dungeon.md-dungeon-fade-medium { --md-dungeon-veil: .47; }
 .md-root-dungeon.md-dungeon-fade-heavy { --md-dungeon-veil: .61; }
 .md-root-dungeon.md-dungeon-modal-open { --md-dungeon-veil: .69; }
-.md-root-dungeon > :not(style):not(.md-stars) { position: relative; z-index: 2; }
+/* Keep normal screens above the backdrop, but never rewrite overlay positioning. The inventory,
+   blacksmith and daily-reward sheets rely on position:absolute to open over the current screen. */
+.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay) { position: relative; z-index: 2; }
 @keyframes md-global-dungeon-breathe {
   0% { transform: scale(1.025) translate3d(0,0,0); filter: brightness(.92); }
   100% { transform: scale(1.055) translate3d(0,-.45%,0); filter: brightness(1.04); }
