@@ -1090,8 +1090,14 @@ async function handleGetRaidStatus(db, id, password, characterId) {
 }
 
 async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds) {
-  // See handleGetRaidStatus for why these three are safe to fire concurrently.
-  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, password), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
+  // See handleGetRaidStatus for why these four are safe to fire concurrently — the equipped-
+  // items read only needs characterId, so it doesn't have to wait for raid/ownership either.
+  const [auth, owned, raid, itemsRes] = await Promise.all([
+    verifyPlayer(db, id, password),
+    verifyOwnedCharacter(db, id, characterId),
+    getOrCreateActiveRaid(db),
+    db.prepare(`SELECT atk, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
+  ]);
   if (auth.error) return json({ error: auth.error });
   if (owned.error) return json({ error: owned.error });
   const character = owned.row;
@@ -1101,7 +1107,10 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
   // Stamina is per-character and regenerates over time. Reserve it before applying damage
   // with a compare-and-swap update, so two simultaneous taps cannot both spend the same
   // final stamina point. Paid attacks are also charged atomically on the authoritative
-  // player row; never trust the client's paidDiamonds flag as proof of payment.
+  // player row; never trust the client's paidDiamonds flag as proof of payment. This has to
+  // stay its own round trip (can't be folded into the batch below) — if the CAS/charge
+  // fails, the batch's damage + participant writes must not happen at all, and D1 batches
+  // don't support conditionally skipping later statements based on an earlier one's result.
   const staminaState = resolveRaidStamina(character.raid_stamina, character.raid_stamina_updated_at);
   let spentStamina = false;
   let diamondsSpent = 0;
@@ -1133,41 +1142,43 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
     diamondsSpent = RAID_DIAMOND_REFILL_COST;
   }
 
-  const [participant, itemsRes] = await Promise.all([
-    db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first(),
-    db.prepare(`SELECT atk, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
-  ]);
-
   const stats = raidCombatStats(character, itemsRes.results || []);
   const hit = simulateRaidAttack(stats);
   const hpBefore = Number(raid.boss_hp_current);
   const appliedDamage = Math.min(hit.damage, hpBefore); // this character's actual contribution to the shared boss HP
-
   const now = nowIso();
-  const newBest = Math.max(participant ? Number(participant.total_damage) || 0 : 0, hit.damage);
-  const newContribution = (participant ? Number(participant.total_contribution) || 0 : 0) + appliedDamage;
-  const attemptsUsed = (participant ? Number(participant.attempts_used) || 0 : 0) + 1; // display-only counter now, no longer gates anything
 
-  // Neither write depends on the other's result, so send them as one D1 batch (one round
-  // trip, executed as a transaction) instead of two sequential awaits. The boss's actual
-  // post-hit HP still needs its own read after, since a concurrent attacker's damage could
-  // land in between — see the atomic clamp comment.
-  await db.batch([
-    db.prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0`).bind(hit.damage, now, raid.raid_id),
+  // Both writes use RETURNING so this single batch also gets us the numbers we need back —
+  // no separate SELECT before (to know the participant's prior best/contribution) or after
+  // (to read the boss's post-hit HP). MAX()/+= happen in SQL against the live row, which is
+  // also correctness-safer than the old read-then-write-computed-value approach: two
+  // concurrent hits reading the same stale contribution total could otherwise silently lose
+  // one of them, the same race class the stamina CAS above exists to prevent.
+  const [bossBatch, participantBatch] = await db.batch([
+    db.prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0 RETURNING boss_hp_current`).bind(hit.damage, now, raid.raid_id),
     db.prepare(
       `INSERT INTO raid_participants (raid_id, character_id, player_id, name, total_damage, total_contribution, attempts_used, milestone_claimed, last_hit_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, 1, '', ?)
        ON CONFLICT(raid_id, character_id) DO UPDATE SET
-         total_damage = excluded.total_damage,
-         total_contribution = excluded.total_contribution,
-         attempts_used = excluded.attempts_used,
-         last_hit_at = excluded.last_hit_at`
-    ).bind(raid.raid_id, characterId, id, character.name || "", newBest, newContribution, attemptsUsed, participant ? participant.milestone_claimed || "" : "", now),
+         total_damage = MAX(total_damage, excluded.total_damage),
+         total_contribution = total_contribution + excluded.total_contribution,
+         attempts_used = attempts_used + 1,
+         name = excluded.name,
+         last_hit_at = excluded.last_hit_at
+       RETURNING total_damage, total_contribution`
+    ).bind(raid.raid_id, characterId, id, character.name || "", hit.damage, appliedDamage, now),
   ]);
-  const freshBoss = await db.prepare(`SELECT boss_hp_current FROM raid_boss_state WHERE raid_id = ?`).bind(raid.raid_id).first();
+  // If the WHERE didn't match (boss already hit 0 by someone else between our early check
+  // and this batch landing), RETURNING yields no row — treat that as "our damage didn't land"
+  // rather than crashing on a missing value.
+  const bossRow = (bossBatch.results || [])[0];
+  const bossHpAfter = bossRow ? Number(bossRow.boss_hp_current) : hpBefore;
+  const participantRow = (participantBatch.results || [])[0];
+  const newBest = participantRow ? Number(participantRow.total_damage) : hit.damage;
+  const newContribution = participantRow ? Number(participantRow.total_contribution) : appliedDamage;
 
   let bossDied = false;
-  if (freshBoss && Number(freshBoss.boss_hp_current) <= 0 && hpBefore > 0) {
+  if (bossRow && bossHpAfter <= 0 && hpBefore > 0) {
     bossDied = true;
     const lastHitStar = randomRaidWingStar();
     await sendMail(db, characterId, `💥 Last Hit! ${raidBossDefById(raid.boss_def_id).name}`, `คุณคือผู้ปิดจ๊อบ! ได้รับปีกสุ่ม ★${lastHitStar}`, { items: [raidWingItemDesc(lastHitStar)] });
@@ -1179,7 +1190,7 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
     damage: hit.damage,
     crit: hit.crit,
     appliedDamage,
-    bossHpCurrent: freshBoss ? Number(freshBoss.boss_hp_current) : 0,
+    bossHpCurrent: bossHpAfter,
     bossDied,
     paidDiamonds: !spentStamina,
     diamondsSpent,
