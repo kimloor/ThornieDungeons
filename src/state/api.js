@@ -165,12 +165,13 @@ function cloudGetRaidStatus(url, id, password, characterId) {
     characterId
   });
 }
-function cloudAttackRaidBoss(url, id, password, characterId) {
+function cloudAttackRaidBoss(url, id, password, characterId, paidDiamonds) {
   return cloudPost(url, {
     action: "attackRaidBoss",
     id,
     password,
-    characterId
+    characterId,
+    paidDiamonds: !!paidDiamonds
   });
 }
 function cloudClaimRaidMilestones(url, id, password, characterId) {

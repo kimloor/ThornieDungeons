@@ -817,8 +817,34 @@ const RAID_BOSS_DEFS = [
   { id: "iron_golem", name: "Iron Golem", emoji: "⚙️", hpBase: 260000 },
   { id: "shadow_wyrm", name: "Shadow Wyrm", emoji: "🐉", hpBase: 420000 },
 ];
-const RAID_ATTEMPTS_MAX = 5;
+const RAID_STAMINA_MAX = 10;
+const RAID_STAMINA_REGEN_MS = 15 * 60 * 1000; // +1 every 15 minutes
+const RAID_DIAMOND_REFILL_COST = 50; // per extra attack once stamina hits 0
 const RAID_HITS_PER_ATTACK = 3; // mini combat round per attack, not a single flat hit
+
+// Lazily resolves current stamina from a stored checkpoint (no cron needed — same
+// approach as most mobile energy systems). Only "spends" whole elapsed 15-min ticks
+// from the checkpoint so partial progress toward the next point is never lost; once
+// stamina is full there's nothing to track so updatedAt collapses back to "" (matches
+// the migration's default, and getOrCreateActiveRaid-style lazy init below).
+function resolveRaidStamina(stored, updatedAtIso) {
+  const storedStamina = Number.isFinite(Number(stored)) ? Number(stored) : RAID_STAMINA_MAX;
+  if (storedStamina >= RAID_STAMINA_MAX || !updatedAtIso) {
+    return { stamina: Math.min(RAID_STAMINA_MAX, storedStamina), updatedAt: "" };
+  }
+  const elapsedMs = Date.now() - new Date(updatedAtIso).getTime();
+  const ticks = Math.floor(elapsedMs / RAID_STAMINA_REGEN_MS);
+  if (ticks <= 0) return { stamina: storedStamina, updatedAt: updatedAtIso };
+  const stamina = Math.min(RAID_STAMINA_MAX, storedStamina + ticks);
+  const updatedAt = stamina >= RAID_STAMINA_MAX ? "" : new Date(new Date(updatedAtIso).getTime() + ticks * RAID_STAMINA_REGEN_MS).toISOString();
+  return { stamina, updatedAt };
+}
+function raidStaminaSecondsToNext(updatedAtIso) {
+  if (!updatedAtIso) return 0;
+  const elapsedMs = Date.now() - new Date(updatedAtIso).getTime();
+  const remaining = RAID_STAMINA_REGEN_MS - (elapsedMs % RAID_STAMINA_REGEN_MS);
+  return Math.max(0, Math.round(remaining / 1000));
+}
 
 // Raid Wings — a separate 1-5★ tier exclusive to raid rewards (not the normal floor-drop
 // wings pool; client's buildDropItem() no longer rolls wings/accessory at all — see stats.js).
@@ -1030,20 +1056,21 @@ async function handleGetRaidStatus(db, id, password, characterId) {
     .bind(raid.raid_id)
     .all();
 
+  const staminaState = resolveRaidStamina(owned.row.raid_stamina, owned.row.raid_stamina_updated_at);
   const contribution = participant ? Number(participant.total_contribution) || 0 : 0;
   return json({
     ok: true,
     boss: { raidId: raid.raid_id, defId: def.id, name: def.name, emoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
-    me: participant
-      ? {
-          attemptsUsed: Number(participant.attempts_used) || 0,
-          attemptsMax: RAID_ATTEMPTS_MAX,
-          bestHit: Number(participant.total_damage) || 0,
-          contribution,
-          contributionPct: Math.min(100, Math.round((contribution / Number(raid.boss_hp_max)) * 1000) / 10),
-          milestonesClaimed: (participant.milestone_claimed || "").split(",").filter(Boolean),
-        }
-      : { attemptsUsed: 0, attemptsMax: RAID_ATTEMPTS_MAX, bestHit: 0, contribution: 0, contributionPct: 0, milestonesClaimed: [] },
+    me: {
+      stamina: staminaState.stamina,
+      staminaMax: RAID_STAMINA_MAX,
+      staminaRegenSeconds: raidStaminaSecondsToNext(staminaState.updatedAt),
+      diamondRefillCost: RAID_DIAMOND_REFILL_COST,
+      bestHit: participant ? Number(participant.total_damage) || 0 : 0,
+      contribution,
+      contributionPct: Math.min(100, Math.round((contribution / Number(raid.boss_hp_max)) * 1000) / 10),
+      milestonesClaimed: participant ? (participant.milestone_claimed || "").split(",").filter(Boolean) : [],
+    },
     milestoneStep: RAID_MILESTONE_STEP,
     milestoneSpecials: [
       { pct: 25, label: "ปีก 1★" }, { pct: 50, label: "ปีก 3★" }, { pct: 75, label: "แบบร่างชุด Azure" }, { pct: 99, label: "ไอเทมชุด Azure" },
@@ -1052,7 +1079,7 @@ async function handleGetRaidStatus(db, id, password, characterId) {
   });
 }
 
-async function handleAttackRaidBoss(db, id, password, characterId) {
+async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds) {
   const auth = await verifyPlayer(db, id, password);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
@@ -1062,9 +1089,21 @@ async function handleAttackRaidBoss(db, id, password, characterId) {
   const raid = await getOrCreateActiveRaid(db);
   if (Number(raid.boss_hp_current) <= 0) return json({ error: "boss_already_dead" });
 
+  // Stamina is per-CHARACTER (not per-raid-instance) and regenerates over time — see
+  // resolveRaidStamina. Diamonds are this project's client-authoritative currency (same
+  // trust model as gacha pulls / protection stones elsewhere in App.js: the client
+  // deducts locally and just tells us it paid), so a diamond-refilled attack is a flag
+  // from the client, not a server-verified debit — this endpoint never touches
+  // characters.gold/players.diamonds directly either way.
+  const staminaState = resolveRaidStamina(character.raid_stamina, character.raid_stamina_updated_at);
+  let spentStamina = false;
+  if (staminaState.stamina >= 1) {
+    spentStamina = true;
+  } else if (!paidDiamonds) {
+    return json({ error: "no_stamina", diamondRefillCost: RAID_DIAMOND_REFILL_COST, staminaRegenSeconds: raidStaminaSecondsToNext(staminaState.updatedAt) });
+  }
+
   const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
-  const attemptsUsed = participant ? Number(participant.attempts_used) || 0 : 0;
-  if (attemptsUsed >= RAID_ATTEMPTS_MAX) return json({ error: "no_attempts_left" });
 
   const itemsRes = await db.prepare(`SELECT atk, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all();
   const stats = raidCombatStats(character, itemsRes.results || []);
@@ -1082,6 +1121,7 @@ async function handleAttackRaidBoss(db, id, password, characterId) {
 
   const newBest = Math.max(participant ? Number(participant.total_damage) || 0 : 0, hit.damage);
   const newContribution = (participant ? Number(participant.total_contribution) || 0 : 0) + appliedDamage;
+  const attemptsUsed = (participant ? Number(participant.attempts_used) || 0 : 0) + 1; // display-only counter now, no longer gates anything
 
   await db
     .prepare(
@@ -1093,8 +1133,16 @@ async function handleAttackRaidBoss(db, id, password, characterId) {
          attempts_used = excluded.attempts_used,
          last_hit_at = excluded.last_hit_at`
     )
-    .bind(raid.raid_id, characterId, id, character.name || "", newBest, newContribution, attemptsUsed + 1, participant ? participant.milestone_claimed || "" : "", now)
+    .bind(raid.raid_id, characterId, id, character.name || "", newBest, newContribution, attemptsUsed, participant ? participant.milestone_claimed || "" : "", now)
     .run();
+
+  let newStamina = staminaState.stamina;
+  let newStaminaUpdatedAt = staminaState.updatedAt;
+  if (spentStamina) {
+    newStamina = staminaState.stamina - 1;
+    newStaminaUpdatedAt = newStamina >= RAID_STAMINA_MAX ? "" : staminaState.updatedAt || now;
+    await db.prepare(`UPDATE characters SET raid_stamina = ?, raid_stamina_updated_at = ? WHERE character_id = ?`).bind(newStamina, newStaminaUpdatedAt, characterId).run();
+  }
 
   let bossDied = false;
   if (freshBoss && Number(freshBoss.boss_hp_current) <= 0 && hpBefore > 0) {
@@ -1111,8 +1159,10 @@ async function handleAttackRaidBoss(db, id, password, characterId) {
     appliedDamage,
     bossHpCurrent: freshBoss ? Number(freshBoss.boss_hp_current) : 0,
     bossDied,
-    attemptsUsed: attemptsUsed + 1,
-    attemptsLeft: RAID_ATTEMPTS_MAX - (attemptsUsed + 1),
+    paidDiamonds: !spentStamina,
+    stamina: newStamina,
+    staminaMax: RAID_STAMINA_MAX,
+    staminaRegenSeconds: raidStaminaSecondsToNext(newStaminaUpdatedAt),
     bestHit: newBest,
     contribution: newContribution,
   });
@@ -1321,7 +1371,7 @@ export default {
           case "claimDailyLogin":
             return await handleClaimDailyLogin(db, body.id, body.password, body.characterId);
           case "attackRaidBoss":
-            return await handleAttackRaidBoss(db, body.id, body.password, body.characterId);
+            return await handleAttackRaidBoss(db, body.id, body.password, body.characterId, !!body.paidDiamonds);
           case "claimRaidMilestones":
             return await handleClaimRaidMilestones(db, body.id, body.password, body.characterId);
           case "claimMail":

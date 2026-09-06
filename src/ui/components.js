@@ -800,11 +800,13 @@ const RAID_BOSS_BLOB_STYLE = {
   iron_golem: { background: "radial-gradient(circle at 35% 30%, #C9D2DB, #6B7684)" },
   shadow_wyrm: { background: "radial-gradient(circle at 35% 30%, #A78BF0, var(--violet-deep))" }
 };
-const RAID_ATTEMPTS_MAX_CLIENT = 5; // fallback only — server response's attemptsMax is authoritative
+const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
 function RaidScreen({
   serverUrl,
   cred,
   characterId,
+  diamonds,
+  onSpendDiamonds,
   onBack
 }) {
   const [status, setStatus] = useState(null);
@@ -812,23 +814,37 @@ function RaidScreen({
   const [attacking, setAttacking] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [claimMsg, setClaimMsg] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
 
   const load = () => {
     setError(null);
     cloudGetRaidStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
       if (!res || res.error) { setError("โหลดข้อมูล Raid ไม่สำเร็จ"); return; }
       setStatus(res);
+      setSecondsLeft((res.me && res.me.staminaRegenSeconds) || 0);
     });
   };
   React.useEffect(() => { load(); }, [characterId]);
+  // Local countdown ticker so the "เติมอีกใน mm:ss" label moves without re-polling every
+  // second; once it hits 0 we just re-fetch to pick up the real regenerated value.
+  React.useEffect(() => {
+    const t = setInterval(() => {
+      setSecondsLeft(s => {
+        if (s <= 1) { load(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [characterId]);
 
-  const handleAttack = () => {
+  const handleAttack = (useDiamonds) => {
     if (attacking) return;
     setAttacking(true);
     setLastResult(null);
-    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, useDiamonds).then(res => {
       setAttacking(false);
       if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
+      if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(status.me.diamondRefillCost || 50);
       setLastResult(res);
       load();
     });
@@ -856,12 +872,16 @@ function RaidScreen({
   }
 
   const boss = status.boss || {};
-  const me = Object.assign({ attemptsUsed: 0, attemptsMax: RAID_ATTEMPTS_MAX_CLIENT, bestHit: 0, contribution: 0, contributionPct: 0, milestonesClaimed: [] }, status.me || {});
+  const me = Object.assign({ stamina: RAID_STAMINA_MAX_CLIENT, staminaMax: RAID_STAMINA_MAX_CLIENT, diamondRefillCost: 50, bestHit: 0, contribution: 0, contributionPct: 0, milestonesClaimed: [] }, status.me || {});
   const milestoneSpecials = status.milestoneSpecials || [];
   const hpMax = boss.hpMax || 0;
   const hpCurrent = boss.hpCurrent || 0;
   const hpPct = hpMax ? Math.max(0, Math.min(100, hpCurrent / hpMax * 100)) : 0;
   const isDead = hpCurrent <= 0;
+  const outOfStamina = me.stamina <= 0;
+  const canAffordRefill = (diamonds || 0) >= me.diamondRefillCost;
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
 
   return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
@@ -880,20 +900,26 @@ function RaidScreen({
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between" } },
-        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "โจมตีเหลือ ", me.attemptsMax - me.attemptsUsed, "/", me.attemptsMax),
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "⚡ ", me.stamina, "/", me.staminaMax, outOfStamina ? ` (เติมอีกใน ${mm}:${ss})` : ""),
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "สูงสุด ", formatNumber(me.bestHit))),
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสะสม: ", formatNumber(me.contribution)),
       lastResult && !lastResult.error && /*#__PURE__*/React.createElement("p", {
         className: "md-sub",
         style: { color: lastResult.crit ? "#FFD166" : undefined, fontWeight: "bold" }
       }, lastResult.crit ? "💥 CRIT! " : "", "ดาเมจ ", formatNumber(lastResult.damage)),
-      lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, lastResult.error === "no_attempts_left" ? "หมดจำนวนครั้งโจมตีวันนี้แล้ว" : lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่" : lastResult.error),
-      /*#__PURE__*/React.createElement("button", {
+      lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่" : lastResult.error),
+      !outOfStamina && /*#__PURE__*/React.createElement("button", {
         className: "md-btn attack wide",
         style: { marginTop: 8 },
-        disabled: attacking || isDead || me.attemptsUsed >= me.attemptsMax,
-        onClick: handleAttack
-      }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี")),
+        disabled: attacking || isDead,
+        onClick: () => handleAttack(false)
+      }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี"),
+      outOfStamina && /*#__PURE__*/React.createElement("button", {
+        className: "md-btn attack wide",
+        style: { marginTop: 8 },
+        disabled: attacking || isDead || !canAffordRefill,
+        onClick: () => handleAttack(true)
+      }, attacking ? "กำลังโจมตี..." : `💎 จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`)),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
       /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ)"),

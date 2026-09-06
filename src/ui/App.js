@@ -1776,6 +1776,8 @@ function ThornieDungeons() {
     serverUrl: cred.url,
     cred: cred,
     characterId: save.characterId,
+    diamonds: save.diamonds,
+    onSpendDiamonds: (amount) => setSave(s => s && ({ ...s, diamonds: s.diamonds - amount })),
     onBack: () => setPhase("menu")
   }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,
