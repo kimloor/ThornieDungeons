@@ -1571,11 +1571,16 @@ async function writeCachedGameConfig(cfg) {
 // silently swallowed by the caller's write queue — with no retry, a single dropped packet during
 // a burst of Salvage/Enhance clicks permanently desyncs the client from the server. withRetry()
 // gives transient failures a couple of quick chances to recover before giving up for real.
+// IMPORTANT: only "network_error" (thrown fetch/parse failures) is retried. Definitive
+// server responses — wrong password, no_stamina, stamina_conflict, boss_already_dead, etc.
+// — are real answers, not transient failures, and used to get retried too: that added up to
+// ~900ms of pure wasted waiting (300ms + 600ms backoff) before the user ever saw the error,
+// which felt worst exactly when double-tapping the Raid attack button.
 async function withRetry(fn, { retries = 2, baseDelayMs = 300 } = {}) {
   let lastResult;
   for (let attempt = 0; attempt <= retries; attempt++) {
     lastResult = await fn();
-    if (!lastResult || !lastResult.error) return lastResult;
+    if (!lastResult || lastResult.error !== "network_error") return lastResult;
     if (attempt < retries) {
       await new Promise(r => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));
     }
