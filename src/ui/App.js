@@ -13,6 +13,7 @@ function ThornieDungeons() {
   // screen bridge from the login artwork without replaying that transition when switching
   // characters from inside the game.
   const [characterSelectEntry, setCharacterSelectEntry] = useState(false);
+  const [loginTransitioning, setLoginTransitioning] = useState(false);
   const [cred, setCred] = useState({
     url: "",
     id: "",
@@ -225,6 +226,17 @@ function ThornieDungeons() {
     }]);
     setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 900);
   }
+  async function beginCharacterSelect(nextAccount) {
+    setAccount(nextAccount);
+    setLoginTransitioning(true);
+    // Give Safari a committed login-screen frame before changing routes. Reduced-motion
+    // users still receive a short cross-fade, without the first-person camera push.
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    await new Promise(resolve => setTimeout(resolve, reduceMotion ? 180 : 760));
+    setCharacterSelectEntry(true);
+    setPhase("characterSelect");
+    setLoginTransitioning(false);
+  }
   async function handleLogin() {
     setAuthError("");
     if (!cred.url || !cred.id || !cred.password) {
@@ -250,9 +262,7 @@ function ThornieDungeons() {
       url: cred.url,
       id: cred.id
     });
-    setAccount(accountFromLoginResponse(res));
-    setCharacterSelectEntry(true);
-    setPhase("characterSelect");
+    await beginCharacterSelect(accountFromLoginResponse(res));
   }
   async function handleRegister() {
     setAuthError("");
@@ -275,9 +285,7 @@ function ThornieDungeons() {
       url: cred.url,
       id: cred.id
     });
-    setAccount(defaultSave());
-    setCharacterSelectEntry(true);
-    setPhase("characterSelect");
+    await beginCharacterSelect(defaultSave());
   }
   async function handleCreateCharacter(slotIndex, name) {
     if (!account) return {
@@ -434,6 +442,7 @@ function ThornieDungeons() {
     setPlayer(null);
     setResumeRun(null);
     setCharacterSelectEntry(false);
+    setLoginTransitioning(false);
     setAuthError("");
     setPhase("login");
   }
@@ -1643,7 +1652,8 @@ function ThornieDungeons() {
       cred: cred,
       setCred: setCred,
       error: authError,
-      busy: authBusy,
+      busy: authBusy || loginTransitioning,
+      departing: loginTransitioning,
       onLogin: handleLogin,
       onRegister: handleRegister
     }));

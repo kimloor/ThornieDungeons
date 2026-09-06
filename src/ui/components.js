@@ -96,11 +96,12 @@ function LoginScreen({
   setCred,
   error,
   busy,
+  departing,
   onLogin,
   onRegister
 }) {
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-login-wrap"
+    className: `md-login-wrap${departing ? " is-departing" : ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-menu-title md-login-brand"
   }, /*#__PURE__*/React.createElement("img", {
@@ -364,6 +365,8 @@ function CharacterSelectScreen({
     "aria-hidden": "true"
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-character-door-glow"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-character-torch-glow"
   }), /*#__PURE__*/React.createElement("span", {
     className: "md-character-fog md-character-fog-a"
   }), /*#__PURE__*/React.createElement("span", {
