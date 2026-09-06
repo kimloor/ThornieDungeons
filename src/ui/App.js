@@ -1740,7 +1740,6 @@ function ThornieDungeons() {
   }), phase === "menu" && /*#__PURE__*/React.createElement(HubScreen, {
     save: save,
     cp: cp,
-    playerId: cred.id,
     onTown: () => setPhase("town"),
     onMap: () => setPhase("map"),
     onOpenInv: () => setInvOpen(true),

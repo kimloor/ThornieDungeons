@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pets">
+  <defs>
+    <linearGradient id="bg" x1="9" y1="6" x2="55" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#17477f"/><stop offset="1" stop-color="#07152f"/></linearGradient>
+    <linearGradient id="paw" x1="21" y1="15" x2="43" y2="50" gradientUnits="userSpaceOnUse"><stop stop-color="#fff0a8"/><stop offset=".48" stop-color="#e9b84c"/><stop offset="1" stop-color="#925219"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <path d="M32 3 55 12v18c0 15-9 25-23 31C18 55 9 45 9 30V12Z" fill="url(#bg)" stroke="#e9b84c" stroke-width="2.5"/>
+  <ellipse cx="19" cy="26" rx="6" ry="8" transform="rotate(-24 19 26)" fill="url(#paw)" stroke="#4e2b12" stroke-width="1.6"/>
+  <ellipse cx="29" cy="19" rx="6" ry="8" transform="rotate(-7 29 19)" fill="url(#paw)" stroke="#4e2b12" stroke-width="1.6"/>
+  <ellipse cx="40" cy="20" rx="6" ry="8" transform="rotate(12 40 20)" fill="url(#paw)" stroke="#4e2b12" stroke-width="1.6"/>
+  <ellipse cx="48" cy="29" rx="6" ry="8" transform="rotate(27 48 29)" fill="url(#paw)" stroke="#4e2b12" stroke-width="1.6"/>
+  <path d="M17 44c0-8 7-15 15-15s15 7 15 15c0 7-6 11-12 8l-3-2-3 2c-6 3-12-1-12-8Z" fill="url(#paw)" stroke="#4e2b12" stroke-width="2"/>
+  <path d="m32 34 2 4 4 .6-3 3 .8 4.4-3.8-2-3.8 2 .8-4.4-3-3 4-.6Z" fill="#22a9ff" stroke="#8ce9ff" stroke-width="1" filter="url(#glow)"/>
+</svg>
