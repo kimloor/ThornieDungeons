@@ -763,6 +763,7 @@ function LeaderboardScreen({
   }, "← Back"));
 }
 // ---------- Phase 3: Raid Boss ----------
+const RAID_ATTEMPTS_MAX_CLIENT = 5; // fallback only — server response's attemptsMax is authoritative
 function RaidScreen({
   serverUrl,
   cred,
@@ -817,20 +818,23 @@ function RaidScreen({
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "กำลังโหลด..."));
   }
 
-  const boss = status.boss;
-  const me = status.me;
-  const hpPct = boss.hpMax ? Math.max(0, Math.min(100, boss.hpCurrent / boss.hpMax * 100)) : 0;
-  const isDead = boss.hpCurrent <= 0;
+  const boss = status.boss || {};
+  const me = Object.assign({ attemptsUsed: 0, attemptsMax: RAID_ATTEMPTS_MAX_CLIENT, bestHit: 0, contribution: 0, contributionPct: 0, milestonesClaimed: [] }, status.me || {});
+  const milestoneSpecials = status.milestoneSpecials || [];
+  const hpMax = boss.hpMax || 0;
+  const hpCurrent = boss.hpCurrent || 0;
+  const hpPct = hpMax ? Math.max(0, Math.min(100, hpCurrent / hpMax * 100)) : 0;
+  const isDead = hpCurrent <= 0;
 
   return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.emoji, " ", boss.name),
+      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.emoji || "🐉", " ", boss.name || "Raid Boss"),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
         /*#__PURE__*/React.createElement("div", {
           className: "md-bar-fill",
           style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
         })),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(boss.hpCurrent), " / ", formatNumber(boss.hpMax)),
+      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
       isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา")),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
@@ -853,7 +857,8 @@ function RaidScreen({
       /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
         /*#__PURE__*/React.createElement("div", { className: "md-bar-fill", style: { width: `${me.contributionPct}%`, background: "linear-gradient(90deg,#6EC6FF,#4A7CFF)" } })),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, me.contributionPct, "%"),
-      status.milestoneSpecials.map(m => {
+      milestoneSpecials.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "(อัปเดต server แล้วรายละเอียดจะขึ้นตรงนี้)"),
+      milestoneSpecials.map(m => {
         const key = `p${m.pct}`;
         const done = me.contributionPct >= m.pct;
         const claimed = me.milestonesClaimed.indexOf(key) !== -1;
