@@ -258,11 +258,11 @@ const STYLE = `
 .md-login-brand p { color: #D8E9FF; text-shadow: 0 2px 5px #050817; margin-top: 8px; }
 .md-login-wrap.is-departing {
   pointer-events: none; transform-origin: 50% 47%;
-  animation: md-login-walk-forward .76s cubic-bezier(.22,.72,.18,1) both;
+  animation: md-login-walk-forward 1.25s cubic-bezier(.22,.72,.18,1) both;
 }
 .md-login-wrap.is-departing .md-login-brand,
 .md-login-wrap.is-departing .md-login-card {
-  animation: md-login-ui-depart .42s ease-in both;
+  animation: md-login-ui-depart .72s ease-in both;
 }
 .md-login-card {
   padding: 16px; border: 1.5px solid #E6B84F;
@@ -284,6 +284,32 @@ const STYLE = `
 .md-login-card .md-btn.info { background: rgba(8,31,70,.86); border: 1.5px solid #42C8FF; color: #DDF6FF; box-shadow: 0 3px 0 #174B78; }
 .md-auth-error { color: #FF9B9B; font-weight: 800; font-size: 12px; text-align: center; margin-top: 7px; }
 .md-hint { font-size: 10.5px; color: #AFC7E8; font-weight: 700; line-height: 1.45; margin: 11px 0 0; text-align: center; }
+.md-remember-password {
+  display: flex; align-items: center; gap: 9px; width: fit-content; margin: 11px 0 2px;
+  color: #C8DCF7; font-size: 11.5px; font-weight: 800; cursor: pointer; user-select: none;
+}
+.md-remember-password input {
+  position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;
+}
+.md-remember-check {
+  width: 21px; height: 21px; flex: 0 0 21px; position: relative;
+  border: 1.5px solid #69A9EE; border-radius: 5px;
+  background: rgba(1,7,24,.86); box-shadow: inset 0 0 7px rgba(45,148,255,.2);
+}
+.md-remember-password input:checked + .md-remember-check {
+  border-color: #FFE49A;
+  background: linear-gradient(180deg, #FFE8A3, #DFA739);
+  box-shadow: inset 0 0 0 2px #A66C17, 0 0 10px rgba(255,209,102,.34);
+}
+.md-remember-password input:checked + .md-remember-check::after {
+  content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #211430; font-size: 15px; font-weight: 900; line-height: 1;
+}
+.md-remember-password input:focus-visible + .md-remember-check {
+  outline: 2px solid #5ED8FF; outline-offset: 2px;
+}
+.md-remember-password input:disabled + .md-remember-check,
+.md-remember-password input:disabled + .md-remember-check + span { opacity: .5; }
 
 /* LOGIN ORNAMENT PASS
    Makes the real HTML controls match the approved login mockup more closely.
@@ -371,11 +397,11 @@ const STYLE = `
 }
 .md-character-select-wrap.is-entering::before {
   animation:
-    md-character-depth-enter 1.45s cubic-bezier(.22,.72,.18,1) both,
-    md-character-camera-idle 11s 1.45s ease-in-out infinite alternate;
+    md-character-depth-enter 1.9s cubic-bezier(.22,.72,.18,1) both,
+    md-character-camera-idle 11s 1.9s ease-in-out infinite alternate;
 }
 .md-character-select-wrap.is-entering::after {
-  animation: md-character-login-bridge 1.45s cubic-bezier(.22,.72,.18,1) both;
+  animation: md-character-login-bridge 1.9s cubic-bezier(.22,.72,.18,1) both;
 }
 .md-character-atmosphere { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
 .md-character-door-glow {
@@ -414,7 +440,7 @@ const STYLE = `
 }
 .md-character-select-wrap > :not(.md-character-atmosphere) { position: relative; z-index: 3; }
 .md-character-select-wrap.is-entering > :not(.md-character-atmosphere) {
-  animation: md-character-ui-enter .72s .78s ease-out both;
+  animation: md-character-ui-enter .86s 1.05s ease-out both;
 }
 .md-character-select-title { padding: 0 0 11px; filter: drop-shadow(0 3px 8px rgba(0,0,0,.9)); }
 .md-character-select-title h1 { font-size: 27px !important; color: #FFE49A; }

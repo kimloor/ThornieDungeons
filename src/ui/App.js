@@ -19,6 +19,7 @@ function ThornieDungeons() {
     id: "",
     password: ""
   });
+  const [rememberPassword, setRememberPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [player, setPlayer] = useState(null); // ephemeral combat state, derived fresh from save each stage entry
@@ -120,8 +121,10 @@ function ThornieDungeons() {
       setCred(c => ({
         ...c,
         url: DEFAULT_SERVER_URL,
-        id: cfg.id || ""
+        id: cfg.id || "",
+        password: cfg.rememberPassword ? cfg.password || "" : ""
       }));
+      setRememberPassword(!!cfg.rememberPassword && !!cfg.password);
       setPhase("login");
 
       // Prefer the latest server balance config; cache is only a fallback when offline.
@@ -226,13 +229,26 @@ function ThornieDungeons() {
     }]);
     setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 900);
   }
+  function handleRememberPassword(checked) {
+    setRememberPassword(checked);
+    if (!checked) {
+      // Clear an existing saved password immediately; the current in-memory value remains
+      // available until this page/session is closed or the user edits it.
+      writeCachedConfig({
+        url: cred.url || DEFAULT_SERVER_URL,
+        id: cred.id || "",
+        password: "",
+        rememberPassword: false
+      });
+    }
+  }
   async function beginCharacterSelect(nextAccount) {
     setAccount(nextAccount);
     setLoginTransitioning(true);
     // Give Safari a committed login-screen frame before changing routes. Reduced-motion
     // users still receive a short cross-fade, without the first-person camera push.
     const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    await new Promise(resolve => setTimeout(resolve, reduceMotion ? 180 : 760));
+    await new Promise(resolve => setTimeout(resolve, reduceMotion ? 280 : 1250));
     setCharacterSelectEntry(true);
     setPhase("characterSelect");
     setLoginTransitioning(false);
@@ -260,7 +276,9 @@ function ThornieDungeons() {
     }
     writeCachedConfig({
       url: cred.url,
-      id: cred.id
+      id: cred.id,
+      password: rememberPassword ? cred.password : "",
+      rememberPassword: rememberPassword
     });
     await beginCharacterSelect(accountFromLoginResponse(res));
   }
@@ -283,7 +301,9 @@ function ThornieDungeons() {
     }
     writeCachedConfig({
       url: cred.url,
-      id: cred.id
+      id: cred.id,
+      password: rememberPassword ? cred.password : "",
+      rememberPassword: rememberPassword
     });
     await beginCharacterSelect(defaultSave());
   }
@@ -435,7 +455,7 @@ function ThornieDungeons() {
     if (save) persistSave(save);
     setCred(c => ({
       ...c,
-      password: ""
+      password: rememberPassword ? c.password : ""
     }));
     setAccount(null);
     setSave(null);
@@ -1654,6 +1674,8 @@ function ThornieDungeons() {
       error: authError,
       busy: authBusy || loginTransitioning,
       departing: loginTransitioning,
+      rememberPassword: rememberPassword,
+      onRememberPassword: handleRememberPassword,
       onLogin: handleLogin,
       onRegister: handleRegister
     }));

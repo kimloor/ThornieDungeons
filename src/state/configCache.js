@@ -5,7 +5,9 @@ async function loadCachedConfig() {
   } catch (e) {}
   return {
     url: "",
-    id: ""
+    id: "",
+    password: "",
+    rememberPassword: false
   };
 }
 async function writeCachedConfig(cfg) {

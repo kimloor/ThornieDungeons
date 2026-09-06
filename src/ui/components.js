@@ -97,6 +97,8 @@ function LoginScreen({
   error,
   busy,
   departing,
+  rememberPassword,
+  onRememberPassword,
   onLogin,
   onRegister
 }) {
@@ -115,6 +117,7 @@ function LoginScreen({
   }, "Player ID"), /*#__PURE__*/React.createElement("input", {
     className: "md-field",
     placeholder: "e.g. kimmie",
+    autoComplete: "username",
     value: cred.id,
     onChange: e => setCred(c => ({
       ...c,
@@ -126,12 +129,23 @@ function LoginScreen({
     className: "md-field",
     type: "password",
     placeholder: "••••••",
+    autoComplete: "current-password",
     value: cred.password,
     onChange: e => setCred(c => ({
       ...c,
       password: e.target.value
     }))
-  }), error && /*#__PURE__*/React.createElement("p", {
+  }), /*#__PURE__*/React.createElement("label", {
+    className: "md-remember-password"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: rememberPassword,
+    disabled: busy,
+    onChange: e => onRememberPassword(e.target.checked)
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-remember-check",
+    "aria-hidden": "true"
+  }), /*#__PURE__*/React.createElement("span", null, "จำรหัสผ่านบนอุปกรณ์นี้")), error && /*#__PURE__*/React.createElement("p", {
     className: "md-auth-error"
   }, error), /*#__PURE__*/React.createElement("div", {
     className: "md-btn-row",
