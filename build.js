@@ -58,7 +58,11 @@ function build() {
   const scriptMatch = output.match(/<script>\s*try\s*\{([\s\S]*?)\}\s*catch \(err\) \{/);
 
   fs.writeFileSync(path.join(ROOT, "index.html"), output, "utf8");
-  console.log(`Built index.html (${output.split("\n").length} lines) from ${MODULE_ORDER.length} modules.`);
+  // worker.js routes "/" and "/index.html" to app-v2.html (see the "VERSIONED ROOT
+  // ENTRYPOINT WORKAROUND" comment there) — keep it byte-identical to index.html on
+  // every build so it can never silently drift stale again (it did, once, for Phase 3).
+  fs.writeFileSync(path.join(ROOT, "app-v2.html"), output, "utf8");
+  console.log(`Built index.html + app-v2.html (${output.split("\n").length} lines) from ${MODULE_ORDER.length} modules.`);
 }
 
 build();
