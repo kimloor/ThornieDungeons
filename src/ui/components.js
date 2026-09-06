@@ -164,10 +164,49 @@ function LoginScreen({
     className: "md-hint"
   }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")));
 }
+function GameDock({
+  onCharacter,
+  onOpenInv,
+  onPets,
+  moreOpen,
+  onToggleMore
+}) {
+  return /*#__PURE__*/React.createElement("nav", {
+    className: "md-hub-dock",
+    "aria-label": "เมนูหลัก"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: onCharacter
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "ui/hub-icons/character.svg",
+    alt: ""
+  }), /*#__PURE__*/React.createElement("span", null, "ตัวละคร")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: onOpenInv
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "ui/hub-icons/bag.svg",
+    alt: ""
+  }), /*#__PURE__*/React.createElement("span", null, "กระเป๋า")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: onPets
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "ui/hub-icons/pet.svg",
+    alt: ""
+  }), /*#__PURE__*/React.createElement("span", null, "สัตว์เลี้ยง")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: moreOpen ? "active" : "",
+    onClick: onToggleMore
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "ui/hub-icons/more.svg",
+    alt: ""
+  }), /*#__PURE__*/React.createElement("span", null, "เพิ่มเติม")));
+}
+
 function HubScreen({
   save,
   cp,
   onTown,
+  onCharacter,
   onMap,
   onOpenInv,
   onShop,
@@ -258,14 +297,13 @@ function HubScreen({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement("nav", {
-    className: "md-hub-dock",
-    "aria-label": "เมนูหลัก"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onTown }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/character.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "ตัวละคร")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onOpenInv }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/bag.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "กระเป๋า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onPets }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/pet.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "สัตว์เลี้ยง")), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: moreOpen ? "active" : "",
-    onClick: () => setMoreOpen(open => !open)
-  }, "☰", /*#__PURE__*/React.createElement("span", null, "เพิ่มเติม")))), dailyModalOpen && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+    onCharacter: onCharacter,
+    onOpenInv: onOpenInv,
+    onPets: onPets,
+    moreOpen: moreOpen,
+    onToggleMore: () => setMoreOpen(open => !open)
+  })), dailyModalOpen && /*#__PURE__*/React.createElement("div", {
     className: "md-equip-overlay",
     onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
   }, /*#__PURE__*/React.createElement("div", {
@@ -294,6 +332,157 @@ function HubScreen({
     onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
   }, "ปิด"))));
 }
+
+function TownScreen({
+  save,
+  onCharacter,
+  onDungeon,
+  onOpenInv,
+  onShop,
+  onEnhance,
+  onPets,
+  onLeaderboard,
+  onRaid,
+  onMailbox,
+  onSummoning,
+  onSave,
+  onSwitchCharacter,
+  onLogout,
+  dailyLogin,
+  dailyLoginClaimResult,
+  onClaimDailyLogin,
+  onClearDailyLoginResult
+}) {
+  const e = React.createElement;
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [saveFlash, setSaveFlash] = useState(false);
+  const [dailyModalOpen, setDailyModalOpen] = useState(false);
+  const [notice, setNotice] = useState("");
+  const canClaimDaily = dailyLogin.canClaim;
+  const dailyPreview = dailyLogin.preview || { streak: 1, reward: {} };
+  const noticeTimer = useRef(null);
+  React.useEffect(() => {
+    if (dailyLoginClaimResult) setDailyModalOpen(true);
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, [dailyLoginClaimResult]);
+  const showSoon = label => {
+    setNotice(`ระบบ ${label} กำลังพัฒนา`);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(""), 1800);
+  };
+  const handleSave = () => {
+    onSave();
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 1200);
+  };
+  const openDaily = () => {
+    setMoreOpen(false);
+    setDailyModalOpen(true);
+  };
+  const hotspot = (className, label, icon, onClick) => e("button", {
+    type: "button",
+    className: `md-town-hotspot ${className}`,
+    onClick,
+    "aria-label": label
+  }, icon && e("span", { className: "md-town-hotspot-icon", "aria-hidden": "true" }, icon),
+  e("strong", null, label));
+  return e(React.Fragment, null,
+    e("main", { className: "md-town-shell" },
+      e("div", { className: "md-hub-resources md-town-resources" },
+        e("span", null, "🪙 ", e("b", null, formatNumber(save.gold))),
+        e("span", null, "💎 ", e("b", null, formatNumber(save.diamonds || 0))),
+        e("span", null, "🛡️ ", e("b", null, formatNumber(save.protectionStones || 0)))
+      ),
+      e("section", { className: "md-town-world", "aria-label": "ตัวเมือง" },
+        e("h1", { className: "md-town-title" }, "Town"),
+        e("button", {
+          type: "button",
+          className: "md-town-leaderboard",
+          onClick: onLeaderboard,
+          "aria-label": "Leaderboard"
+        }, e("img", { src: "ui/town-icons/leaderboard-bird.svg", alt: "" }),
+        e("span", null, "Leaderboard")),
+        hotspot("guild", "กิลด์", "♜", () => showSoon("กิลด์")),
+        hotspot("arena", "อารีน่า", "⚔", () => showSoon("อารีน่า")),
+        hotspot("summoning", "Summoning", "✦", onSummoning),
+        hotspot("home", "Home", "⌂", () => showSoon("Crafting")),
+        hotspot("enhance", "ร้านตีบวก", "⚒", onEnhance),
+        hotspot("shop", "ร้านค้า", "◈", onShop),
+        e("button", {
+          type: "button",
+          className: "md-town-dungeon",
+          onClick: onDungeon
+        }, e("span", null, "กลับสู่ดันเจี้ยน")),
+        e("button", {
+          type: "button",
+          className: "md-town-chat",
+          onClick: () => showSoon("แชท"),
+          "aria-label": "แชท"
+        }, e("span", { "aria-hidden": "true" }, "•••"), e("b", null, "แชท")),
+        notice && e("div", { className: "md-town-notice", role: "status" }, notice)
+      ),
+      moreOpen && e("div", { className: "md-hub-more-panel md-town-more-panel" },
+        e("div", { className: "md-hub-more-head" },
+          e("strong", null, "เมนูเพิ่มเติม"),
+          e("button", { type: "button", onClick: () => setMoreOpen(false), "aria-label": "ปิดเมนู" }, "✕")
+        ),
+        e("div", { className: "md-hub-more-grid" },
+          e("button", { type: "button", onClick: onLeaderboard }, "✉️", e("span", null, "อันดับ")),
+          e("button", { type: "button", onClick: onShop }, "🛒", e("span", null, "ร้านค้า")),
+          e("button", { type: "button", onClick: onEnhance }, "⚒️", e("span", null, "ตีบวก")),
+          e("button", { type: "button", onClick: onRaid }, e("img", { src: "ui/hub-icons/raid.svg", alt: "" }), e("span", null, "Raid")),
+          e("button", { type: "button", onClick: onMailbox }, "📬", e("span", null, "จดหมาย")),
+          e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
+          e("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", e("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")),
+          e("button", { type: "button", onClick: onSwitchCharacter }, "👥", e("span", null, "เปลี่ยนตัว")),
+          e("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", e("span", null, "ออกจากระบบ"))
+        )
+      ),
+      e(GameDock, {
+        onCharacter,
+        onOpenInv,
+        onPets,
+        moreOpen,
+        onToggleMore: () => setMoreOpen(open => !open)
+      })
+    ),
+    dailyModalOpen && e("div", {
+      className: "md-equip-overlay",
+      onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
+    }, e("div", {
+      className: "md-equip-sheet",
+      onClick: event => event.stopPropagation()
+    }, e("h3", { className: "md-title" }, "🎁 รางวัลรายวัน"),
+    dailyLoginClaimResult ? e(React.Fragment, null,
+      e("p", { className: "md-sub" }, `รับแล้ว! Day ${dailyLoginClaimResult.streak}`),
+      e("p", { className: "md-sub" },
+        dailyLoginClaimResult.reward.gold ? `🪙 +${dailyLoginClaimResult.reward.gold} ` : "",
+        dailyLoginClaimResult.reward.diamonds ? `💎 +${dailyLoginClaimResult.reward.diamonds} ` : "",
+        dailyLoginClaimResult.reward.potions ? `🧪 +${dailyLoginClaimResult.reward.potions}` : "")
+    ) : e(React.Fragment, null,
+      e("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.state.loginStreak} วัน`),
+      e("p", { className: "md-sub" },
+        `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `,
+        dailyPreview.reward.gold ? `🪙 ${dailyPreview.reward.gold} ` : "",
+        dailyPreview.reward.diamonds ? `💎 ${dailyPreview.reward.diamonds} ` : "",
+        dailyPreview.reward.potions ? `🧪 ${dailyPreview.reward.potions}` : ""),
+      canClaimDaily ? e("button", {
+        className: "md-btn primary wide",
+        onClick: onClaimDailyLogin
+      }, "รับรางวัล") : e("p", {
+        className: "md-sub",
+        style: { color: "var(--gold)" }
+      }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
+    ), e("button", {
+      className: "md-btn flee wide",
+      style: { marginTop: 8 },
+      onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
+    }, "ปิด")))
+  );
+}
+
 function CharacterSelectScreen({
   account,
   entryTransition,

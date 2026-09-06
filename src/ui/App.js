@@ -8,7 +8,13 @@ function ThornieDungeons() {
   // in state/save.js.
   const [account, setAccount] = useState(null);
   const [save, setSave] = useState(null);
-  const [phase, setPhase] = useState("loading"); // loading, login, characterSelect, menu, town, map, combat, result, defeat
+  const [phase, setPhase] = useState("loading"); // loading, login, characterSelect, menu, town, character, map, combat, result, defeat
+  // Screens reachable from both Main Hub and Town return to the place that opened them.
+  // This avoids hard-coding every Back button to Main Hub now that Town is a real hub too.
+  const [characterReturnPhase, setCharacterReturnPhase] = useState("menu");
+  const [petReturnPhase, setPetReturnPhase] = useState("menu");
+  const [gachaReturnPhase, setGachaReturnPhase] = useState("pets");
+  const [utilityReturnPhase, setUtilityReturnPhase] = useState("menu");
   // True only when character selection follows a successful login/register. It lets the
   // screen bridge from the login artwork without replaying that transition when switching
   // characters from inside the game.
@@ -1730,9 +1736,12 @@ function ThornieDungeons() {
   const heavyDungeonFade = ["map", "combat", "result", "defeat"].includes(phase);
   const dungeonFade = phase === "menu" ? "light" : heavyDungeonFade ? "heavy" : "medium";
   const dungeonModalOpen = invOpen || shopOpen || blacksmithOpen;
+  const isTown = phase === "town";
   return /*#__PURE__*/React.createElement("div", {
-    className: `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "login" && phase !== "combat" && /*#__PURE__*/React.createElement(StatusBar, {
+    className: isTown
+      ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
+      : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -1741,14 +1750,30 @@ function ThornieDungeons() {
     save: save,
     cp: cp,
     onTown: () => setPhase("town"),
+    onCharacter: () => {
+      setCharacterReturnPhase("menu");
+      setPhase("character");
+    },
     onMap: () => setPhase("map"),
     onOpenInv: () => setInvOpen(true),
     onShop: openShop,
     onEnhance: () => setBlacksmithOpen(true),
-    onPets: () => setPhase("pets"),
-    onLeaderboard: () => setPhase("leaderboard"),
-    onRaid: () => setPhase("raid"),
-    onMailbox: () => setPhase("mailbox"),
+    onPets: () => {
+      setPetReturnPhase("menu");
+      setPhase("pets");
+    },
+    onLeaderboard: () => {
+      setUtilityReturnPhase("menu");
+      setPhase("leaderboard");
+    },
+    onRaid: () => {
+      setUtilityReturnPhase("menu");
+      setPhase("raid");
+    },
+    onMailbox: () => {
+      setUtilityReturnPhase("menu");
+      setPhase("mailbox");
+    },
     onSave: () => persistSave(save),
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
@@ -1756,18 +1781,58 @@ function ThornieDungeons() {
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
     onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
-  }), phase === "town" && /*#__PURE__*/React.createElement(StatusScreen, {
+  }), phase === "town" && /*#__PURE__*/React.createElement(TownScreen, {
+    save: save,
+    onCharacter: () => {
+      setCharacterReturnPhase("town");
+      setPhase("character");
+    },
+    onDungeon: () => setPhase("menu"),
+    onOpenInv: () => setInvOpen(true),
+    onShop: openShop,
+    onEnhance: () => setBlacksmithOpen(true),
+    onPets: () => {
+      setPetReturnPhase("town");
+      setPhase("pets");
+    },
+    onLeaderboard: () => {
+      setUtilityReturnPhase("town");
+      setPhase("leaderboard");
+    },
+    onRaid: () => {
+      setUtilityReturnPhase("town");
+      setPhase("raid");
+    },
+    onMailbox: () => {
+      setUtilityReturnPhase("town");
+      setPhase("mailbox");
+    },
+    onSummoning: () => {
+      setGachaReturnPhase("town");
+      setPhase("gacha");
+    },
+    onSave: () => persistSave(save),
+    onSwitchCharacter: backToCharacterSelect,
+    onLogout: logout,
+    dailyLogin: dailyLogin,
+    dailyLoginClaimResult: dailyLoginClaimResult,
+    onClaimDailyLogin: claimDailyLogin,
+    onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
+  }), phase === "character" && /*#__PURE__*/React.createElement(StatusScreen, {
     save: save,
     charStats: charStats,
     onAddStat: addStatPoint,
     onOpenInv: () => setInvOpen(true),
     onMap: () => setPhase("map"),
-    onOpenPets: () => setPhase("pets"),
+    onOpenPets: () => {
+      setPetReturnPhase("character");
+      setPhase("pets");
+    },
     onOpenSkill: () => setPhase("skill"),
-    onBack: () => setPhase("menu")
+    onBack: () => setPhase(characterReturnPhase)
   }), phase === "skill" && /*#__PURE__*/React.createElement(SkillScreen, {
     save: save,
-    onBack: () => setPhase("town")
+    onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
     hp: player ? player.hp : outOfCombatStats.maxHp,
@@ -1786,32 +1851,35 @@ function ThornieDungeons() {
     onEquip: equipPet,
     onUnequip: unequipPet,
     onStarUp: starUpPet,
-    onOpenGacha: () => setPhase("gacha"),
-    onBack: () => setPhase("menu")
+    onOpenGacha: () => {
+      setGachaReturnPhase("pets");
+      setPhase("gacha");
+    },
+    onBack: () => setPhase(petReturnPhase)
   }), phase === "leaderboard" && /*#__PURE__*/React.createElement(LeaderboardScreen, {
     serverUrl: cred.url,
     myCharacterId: save.characterId,
-    onBack: () => setPhase("menu")
+    onBack: () => setPhase(utilityReturnPhase)
   }), phase === "raid" && /*#__PURE__*/React.createElement(RaidScreen, {
     serverUrl: cred.url,
     cred: cred,
     characterId: save.characterId,
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
-    onBack: () => setPhase("menu")
+    onBack: () => setPhase(utilityReturnPhase)
   }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,
     cred: cred,
     characterId: save.characterId,
     onApplyReward: applyMailReward,
-    onBack: () => setPhase("menu")
+    onBack: () => setPhase(utilityReturnPhase)
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
     gachaResult: gachaResult,
     onClearGachaResult: () => setGachaResult(null),
     onGacha: pullGacha,
     onClaimDiamonds: claimTestDiamonds,
-    onBack: () => setPhase("pets")
+    onBack: () => setPhase(gachaReturnPhase)
   }), phase === "combat" && monsters.length > 0 && player && /*#__PURE__*/React.createElement(CombatScreen, {
     player: player,
     monsters: monsters,

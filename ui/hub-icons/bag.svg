@@ -1,12 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Inventory">
   <defs>
-    <linearGradient id="bg" x1="9" y1="6" x2="55" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#17477f"/><stop offset="1" stop-color="#07152f"/></linearGradient>
-    <linearGradient id="leather" x1="20" y1="18" x2="45" y2="53" gradientUnits="userSpaceOnUse"><stop stop-color="#f6cc69"/><stop offset=".46" stop-color="#b96b28"/><stop offset="1" stop-color="#653215"/></linearGradient>
+    <radialGradient id="halo" cx="50%" cy="28%" r="72%"><stop stop-color="#2365a5"/><stop offset="1" stop-color="#06142d"/></radialGradient>
+    <linearGradient id="leather" x1="18" y1="15" x2="46" y2="55" gradientUnits="userSpaceOnUse"><stop stop-color="#f5cc70"/><stop offset=".42" stop-color="#b96d2d"/><stop offset="1" stop-color="#5a2b13"/></linearGradient>
+    <linearGradient id="gold" x1="27" y1="29" x2="38" y2="44" gradientUnits="userSpaceOnUse"><stop stop-color="#fff0a1"/><stop offset="1" stop-color="#c57a20"/></linearGradient>
   </defs>
-  <path d="M32 3 55 12v18c0 15-9 25-23 31C18 55 9 45 9 30V12Z" fill="url(#bg)" stroke="#e9b84c" stroke-width="2.5"/>
-  <path d="M24 24v-4c0-6 3-9 8-9s8 3 8 9v4" fill="none" stroke="#f5ca62" stroke-width="4" stroke-linecap="round"/>
-  <path d="M17 25c0-3 2-5 5-5h20c3 0 5 2 5 5l3 25c0 3-2 5-5 5H19c-3 0-5-2-5-5Z" fill="url(#leather)" stroke="#4c2914" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M15 31h34l-3 9c-1 3-3 4-6 4H24c-3 0-5-1-6-4Z" fill="#8e4c21" stroke="#f0bd54" stroke-width="1.7"/>
-  <path d="M27 32h10v9H27Z" fill="#0b2f65" stroke="#ffe181" stroke-width="1.7" stroke-linejoin="round"/>
-  <path d="M24 48h16" stroke="#f7d473" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+  <circle cx="32" cy="32" r="28" fill="url(#halo)" stroke="#f1c65d" stroke-width="2.6"/>
+  <path d="M24 20c0-7 3-11 8-11s8 4 8 11" fill="none" stroke="#f4cf70" stroke-width="4" stroke-linecap="round"/>
+  <path d="M17 24c0-3 2-5 5-5h20c3 0 5 2 5 5l4 26c.5 4-2 7-6 7H19c-4 0-6.5-3-6-7Z" fill="url(#leather)" stroke="#41220f" stroke-width="2.4"/>
+  <path d="M15 31h34l-2 10c-1 4-4 6-8 6H25c-4 0-7-2-8-6Z" fill="#7c411f" stroke="#efbe58" stroke-width="1.7"/>
+  <rect x="26" y="31" width="12" height="12" rx="2" fill="url(#gold)" stroke="#4b2a12" stroke-width="1.7"/>
+  <path d="M29 35h6v4h-6Z" fill="#0a3267"/>
+  <path d="M21 51h22" stroke="#f6d77d" stroke-width="2" stroke-linecap="round" opacity=".75"/>
 </svg>

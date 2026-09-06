@@ -1,14 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pets">
   <defs>
-    <linearGradient id="bg" x1="9" y1="6" x2="55" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#17477f"/><stop offset="1" stop-color="#07152f"/></linearGradient>
-    <linearGradient id="paw" x1="21" y1="15" x2="43" y2="50" gradientUnits="userSpaceOnUse"><stop stop-color="#fff0a8"/><stop offset=".48" stop-color="#e9b84c"/><stop offset="1" stop-color="#925219"/></linearGradient>
-    <filter id="glow"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <radialGradient id="halo" cx="50%" cy="28%" r="72%"><stop stop-color="#2365a5"/><stop offset="1" stop-color="#06142d"/></radialGradient>
+    <linearGradient id="egg" x1="22" y1="13" x2="43" y2="53" gradientUnits="userSpaceOnUse"><stop stop-color="#e9fbff"/><stop offset=".34" stop-color="#69d6ff"/><stop offset=".7" stop-color="#7c6be8"/><stop offset="1" stop-color="#302164"/></linearGradient>
+    <linearGradient id="gold" x1="24" y1="22" x2="41" y2="45" gradientUnits="userSpaceOnUse"><stop stop-color="#fff0aa"/><stop offset="1" stop-color="#d58a24"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <path d="M32 3 55 12v18c0 15-9 25-23 31C18 55 9 45 9 30V12Z" fill="url(#bg)" stroke="#e9b84c" stroke-width="2.5"/>
-  <ellipse cx="19" cy="26" rx="6" ry="8" transform="rotate(-24 19 26)" fill="url(#paw)" stroke="#4e2b12" stroke-width="1.6"/>
-  <ellipse cx="29" cy="19" rx="6" ry="8" transform="rotate(-7 29 19)" fill="url(#paw)" stroke="#4e2b12" stroke-width="1.6"/>
-  <ellipse cx="40" cy="20" rx="6" ry="8" transform="rotate(12 40 20)" fill="url(#paw)" stroke="#4e2b12" stroke-width="1.6"/>
-  <ellipse cx="48" cy="29" rx="6" ry="8" transform="rotate(27 48 29)" fill="url(#paw)" stroke="#4e2b12" stroke-width="1.6"/>
-  <path d="M17 44c0-8 7-15 15-15s15 7 15 15c0 7-6 11-12 8l-3-2-3 2c-6 3-12-1-12-8Z" fill="url(#paw)" stroke="#4e2b12" stroke-width="2"/>
-  <path d="m32 34 2 4 4 .6-3 3 .8 4.4-3.8-2-3.8 2 .8-4.4-3-3 4-.6Z" fill="#22a9ff" stroke="#8ce9ff" stroke-width="1" filter="url(#glow)"/>
+  <circle cx="32" cy="32" r="28" fill="url(#halo)" stroke="#f1c65d" stroke-width="2.6"/>
+  <path d="M32 8c10 0 18 16 18 29S43 57 32 57 14 50 14 37 22 8 32 8Z" fill="url(#egg)" stroke="#f0c45b" stroke-width="2.4"/>
+  <path d="M21 42c0-7 5-12 11-12s11 5 11 12c0 6-5 9-9 7l-2-2-2 2c-4 2-9-1-9-7Z" fill="url(#gold)" stroke="#593514" stroke-width="1.8" filter="url(#glow)"/>
+  <ellipse cx="23" cy="29" rx="3.8" ry="5" transform="rotate(-20 23 29)" fill="url(#gold)"/>
+  <ellipse cx="29" cy="24" rx="3.8" ry="5" transform="rotate(-8 29 24)" fill="url(#gold)"/>
+  <ellipse cx="36" cy="24" rx="3.8" ry="5" transform="rotate(8 36 24)" fill="url(#gold)"/>
+  <ellipse cx="42" cy="29" rx="3.8" ry="5" transform="rotate(20 42 29)" fill="url(#gold)"/>
 </svg>

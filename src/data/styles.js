@@ -71,6 +71,29 @@ const STYLE = `
   100% { transform: scale(1.055) translate3d(0,-.45%,0); filter: brightness(1.04); }
 }
 
+/* Town is a separate, sunlit world layer. All labels and hit targets remain code-rendered so
+   they stay crisp, localizable and independently editable without regenerating the artwork. */
+.md-root-town { isolation:isolate; background:#78bde9; }
+.md-root-town::before,
+.md-root-town::after { content:""; position:absolute; inset:0; pointer-events:none; }
+.md-root-town::before {
+  z-index:0;
+  background:url("ui/town-background.webp") center / cover no-repeat;
+  transform:scale(1.015);
+  animation:md-town-camera-breathe 16s ease-in-out infinite alternate;
+}
+.md-root-town::after {
+  z-index:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,246,207,.02) 55%,rgba(2,10,28,.12));
+  box-shadow:inset 0 0 55px rgba(14,55,92,.12);
+}
+.md-root-town.md-town-modal-open::after { background:rgba(3,8,24,.58); }
+.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay) { position:relative; z-index:2; }
+@keyframes md-town-camera-breathe {
+  0% { transform:scale(1.015) translate3d(0,0,0); filter:saturate(1.02) brightness(.98); }
+  100% { transform:scale(1.04) translate3d(0,-.35%,0); filter:saturate(1.07) brightness(1.03); }
+}
+
 .md-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
 .md-star-dot { position: absolute; background: #fff; border-radius: 50%; opacity: 0.5; animation: md-twinkle 3s ease-in-out infinite; }
 @keyframes md-twinkle { 0%,100% { opacity: 0.15; } 50% { opacity: 0.7; } }
@@ -265,9 +288,49 @@ const STYLE = `
 .md-hub-more-grid button > img { width:29px; height:29px; }
 .md-hub-more-grid button span { font-family:'Baloo 2'; font-size:8.5px; font-weight:800; white-space:nowrap; }
 .md-hub-more-grid button.danger { color:#ff9b9b; }
+
+/* Town hub — landmark buttons sit over the art instead of being baked into it. */
+.md-town-shell { flex:1; min-height:640px; padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:6px; position:relative; overflow:hidden; }
+.md-town-resources { position:relative; z-index:8; }
+.md-town-resources span { background:linear-gradient(180deg,rgba(6,24,51,.92),rgba(3,14,34,.9)); border-color:rgba(255,210,105,.55); color:#e9f7ff; box-shadow:0 3px 10px rgba(0,0,0,.22); }
+.md-town-world { flex:1; min-height:470px; position:relative; }
+.md-town-title { position:absolute; z-index:6; top:1px; left:50%; transform:translateX(-50%); margin:0; min-width:116px; padding:3px 19px 4px; border:1px solid rgba(255,220,132,.9); border-radius:999px; background:linear-gradient(180deg,rgba(8,38,76,.94),rgba(3,20,48,.95)); box-shadow:0 3px 0 rgba(91,53,16,.78),0 4px 14px rgba(0,0,0,.25); color:#fff0bc; font-family:'Baloo 2'; font-size:21px; line-height:1.05; text-align:center; text-shadow:0 2px 0 rgba(0,0,0,.5); }
+.md-town-leaderboard { position:absolute; z-index:7; top:-2px; left:0; width:96px; padding:0; display:flex; flex-direction:column; align-items:center; border:0; background:transparent; color:#071b3b; cursor:pointer; filter:drop-shadow(0 2px 3px rgba(255,255,255,.75)); }
+.md-town-leaderboard img { width:72px; height:52px; object-fit:contain; animation:md-town-bird-float 2.8s ease-in-out infinite; }
+.md-town-leaderboard span { margin-top:-5px; padding:2px 7px; border:1px solid #e5b94f; border-radius:999px; background:rgba(5,27,61,.94); color:#fff0bc; font-family:'Baloo 2'; font-size:8px; font-weight:800; letter-spacing:.1px; box-shadow:0 3px 8px rgba(0,0,0,.25); }
+.md-town-hotspot { position:absolute; z-index:5; min-height:34px; padding:4px 10px; display:flex; align-items:center; gap:4px; border:1px solid rgba(255,222,137,.96); border-radius:999px; background:linear-gradient(180deg,rgba(8,48,91,.94),rgba(3,24,57,.96)); color:#fff3c5; box-shadow:0 3px 0 rgba(103,59,16,.82),0 3px 12px rgba(0,0,0,.28),0 0 11px rgba(255,210,93,.22); cursor:pointer; white-space:nowrap; }
+.md-town-hotspot:active,.md-town-leaderboard:active,.md-town-chat:active,.md-town-dungeon:active { transform:translateY(2px); }
+.md-town-hotspot strong { font-family:'Baloo 2'; font-size:11px; line-height:1; }
+.md-town-hotspot-icon { color:#ffd878; font-size:14px; line-height:1; }
+.md-town-hotspot.guild { top:28%; left:1%; }
+.md-town-hotspot.arena { top:20%; left:50%; transform:translateX(-50%); }
+.md-town-hotspot.arena:active { transform:translate(-50%,2px); }
+.md-town-hotspot.summoning { top:32%; right:0; }
+.md-town-hotspot.home { top:61%; left:50%; transform:translateX(-50%); }
+.md-town-hotspot.home:active { transform:translate(-50%,2px); }
+.md-town-hotspot.enhance { top:70%; left:0; }
+.md-town-hotspot.shop { top:70%; right:0; }
+.md-town-dungeon { position:absolute; z-index:6; left:50%; bottom:1.5%; transform:translateX(-50%); min-width:156px; min-height:42px; padding:18px 17px 3px; border:1px solid rgba(111,163,203,.62); border-radius:19px 19px 11px 11px; background:radial-gradient(ellipse at 50% 8%,rgba(24,148,219,.38),rgba(4,14,34,.93) 60%); color:#c7def0; box-shadow:0 5px 0 #020816,0 0 16px rgba(25,139,212,.28),inset 0 0 14px rgba(0,0,0,.45); cursor:pointer; }
+.md-town-dungeon:active { transform:translate(-50%,2px); }
+.md-town-dungeon span { font-family:'Baloo 2'; font-size:10px; font-weight:800; text-shadow:0 2px 3px #000; }
+.md-town-chat { position:absolute; z-index:8; right:1px; bottom:2%; width:48px; height:48px; padding:3px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid #f0c35a; border-radius:50%; background:linear-gradient(180deg,rgba(13,62,108,.96),rgba(4,25,58,.98)); color:#ffe8a4; box-shadow:0 3px 0 #633a12,0 4px 12px rgba(0,0,0,.3); cursor:pointer; }
+.md-town-chat span { font-size:14px; line-height:.7; }
+.md-town-chat b { margin-top:3px; font-family:'Baloo 2'; font-size:8px; }
+.md-town-notice { position:absolute; z-index:11; left:50%; bottom:10%; transform:translateX(-50%); width:max-content; max-width:84%; padding:7px 13px; border:1px solid #efd06e; border-radius:999px; background:rgba(4,17,40,.94); color:#fff0b7; font-family:'Baloo 2'; font-size:10px; font-weight:800; box-shadow:0 5px 18px rgba(0,0,0,.35); animation:md-town-notice-in .18s ease-out both; }
+.md-town-more-panel { bottom:88px; }
+@keyframes md-town-bird-float { 0%,100% { transform:translateY(0) rotate(-2deg); } 50% { transform:translateY(-4px) rotate(2deg); } }
+@keyframes md-town-notice-in { from { opacity:0; transform:translate(-50%,7px); } to { opacity:1; transform:translate(-50%,0); } }
 @keyframes md-hub-gate-glow { 0%,100% { opacity:.55; transform:translateX(-50%) scale(.92); } 50% { opacity:1; transform:translateX(-50%) scale(1.08); } }
 @keyframes md-hub-alert { 0%,100% { transform:scale(.82); } 50% { transform:scale(1.18); } }
 @keyframes md-hub-more-in { from { opacity:0; transform:translateY(8px) scale(.98); } to { opacity:1; transform:none; } }
+
+@media (max-width:380px) {
+  .md-town-title { min-width:103px; font-size:19px; }
+  .md-town-leaderboard { width:88px; }
+  .md-town-leaderboard img { width:66px; }
+  .md-town-hotspot { padding:4px 8px; }
+  .md-town-hotspot strong { font-size:10px; }
+}
 
 /* boss/elite/floor-modifier pill above the arena — previously had no base rule at all (only
    inline colors), so it was a full-width block with no width cap: long modifier names would
@@ -616,6 +679,9 @@ const STYLE = `
   .md-character-fog,
   .md-character-particles,
   .md-root-dungeon::before,
+  .md-root-town::before,
+  .md-town-leaderboard img,
+  .md-town-notice,
   .md-hub-world::before,
   .md-hub-hotspot,
   .md-hub-icon-btn i,
