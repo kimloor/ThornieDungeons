@@ -1,10 +1,36 @@
 <!DOCTYPE html>
+<!--
+THORNIEDUNGEONS VERSIONED ENTRYPOINT / BUILD NOTE
+
+Source of truth:
+This file (head.html), src/data/styles.js, src/ui/components.js, the remaining
+src modules, and tail.html are compiled by build.js. Do not edit index.html or
+app-v2.html by hand because the next build will replace those generated files.
+
+Why app-v2.html exists:
+After the mobile icon and redesigned login update, Cloudflare Workers Static
+Assets continued serving an older cached index.html at the public root URL.
+worker.js therefore routes "/" and "/index.html" to "/app-v2". build.js writes
+the same current build to both index.html and app-v2.html so gameplay changes
+and the login design cannot drift apart.
+
+Maintenance:
+Keep app-v2.html, the root route in worker.js, and assets.run_worker_first in
+wrangler.jsonc together. Do not remove the workaround until the public Workers
+URL has been verified to serve the intended index.html revision consistently.
+-->
 <html lang="th">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="ThornieDungeons" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
 <style>
   html, body { margin: 0; padding: 0; background: #0d0818; min-height: 100vh; }
   body { display: flex; justify-content: center; align-items: flex-start; padding: 16px 0; }
@@ -70,4 +96,3 @@ var useState = React.useState, useEffect = React.useEffect, useCallback = React.
    translucent gold-bordered panels, star rarity, CP readout.
    No permadeath — clear a stage once, farm it forever.
    ============================================================ */
-

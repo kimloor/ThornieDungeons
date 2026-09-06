@@ -237,12 +237,102 @@ const STYLE = `
 .md-stage-arrow { color: var(--gold); font-size: 16px; }
 
 /* login */
-.md-login-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 20px; position: relative; z-index: 2; }
-.md-field-label { font-weight: 800; font-size: 12px; color: var(--ink-soft); margin: 10px 0 4px; }
-.md-field { width: 100%; border: 1.5px solid var(--gold-deep); border-radius: 12px; padding: 10px 12px; font-family: 'Nunito'; font-weight: 700; font-size: 14px; background: rgba(0,0,0,0.3); color: var(--ink); }
-.md-field:focus { outline: none; border-color: var(--gold); }
-.md-auth-error { color: #FF8B8B; font-weight: 800; font-size: 12px; text-align: center; margin-top: 6px; }
-.md-hint { font-size: 11px; color: var(--ink-soft); font-weight: 700; line-height: 1.5; margin-top: 10px; text-align: center; }
+.md-login-wrap {
+  flex: 1; min-height: 640px; display: flex; flex-direction: column; justify-content: center;
+  padding: 20px; position: relative; z-index: 2; isolation: isolate;
+  background-image:
+    linear-gradient(180deg, rgba(5,8,24,0.08) 0%, rgba(5,8,24,0.28) 46%, rgba(5,8,24,0.5) 100%),
+    url("ui/login-background.webp");
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+}
+.md-login-wrap::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle at 50% 38%, rgba(20,135,255,0.12), rgba(4,6,20,0.2) 62%, rgba(4,6,20,0.58) 100%);
+}
+.md-login-brand { padding: 0 0 12px !important; filter: drop-shadow(0 4px 10px rgba(0,0,0,.75)); }
+.md-login-emblem {
+  width: 86px; height: 86px; display: block; margin: 0 auto 7px; border-radius: 22px;
+  border: 2px solid var(--gold); box-shadow: 0 0 0 3px rgba(8,17,45,.72), 0 0 22px rgba(0,194,255,.72);
+}
+.md-login-brand h1 { font-size: 28px !important; line-height: 1; letter-spacing: -.4px; color: #FFE49A; }
+.md-login-brand p { color: #D8E9FF; text-shadow: 0 2px 5px #050817; margin-top: 8px; }
+.md-login-card {
+  padding: 16px; border: 1.5px solid #E6B84F;
+  background: linear-gradient(180deg, rgba(10,18,43,.91), rgba(7,12,31,.94));
+  box-shadow: inset 0 0 22px rgba(44,157,255,.12), 0 10px 28px rgba(0,0,0,.58), 0 0 0 1px rgba(82,194,255,.16);
+  backdrop-filter: blur(7px);
+}
+.md-field-label { font-weight: 800; font-size: 12px; color: #D8E9FF; margin: 10px 0 5px; }
+.md-field {
+  width: 100%; min-height: 44px; border: 1.5px solid rgba(130,177,236,.72); border-radius: 10px;
+  padding: 10px 12px; font-family: 'Nunito'; font-weight: 700; font-size: 14px;
+  background: rgba(2,8,25,.7); color: var(--ink); box-shadow: inset 0 0 10px rgba(57,130,218,.1);
+}
+.md-field::placeholder { color: rgba(216,233,255,.45); }
+.md-field:focus { outline: none; border-color: #5ED8FF; box-shadow: 0 0 0 3px rgba(49,185,255,.14), inset 0 0 10px rgba(57,130,218,.12); }
+.md-login-card .md-btn-row { grid-template-columns: 1fr; gap: 9px; }
+.md-login-card .md-btn { min-height: 45px; border-radius: 10px; }
+.md-login-card .md-btn.primary { border: 1px solid #FFE49A; box-shadow: 0 4px 0 #9B691D, 0 0 15px rgba(255,209,102,.2); }
+.md-login-card .md-btn.info { background: rgba(8,31,70,.86); border: 1.5px solid #42C8FF; color: #DDF6FF; box-shadow: 0 3px 0 #174B78; }
+.md-auth-error { color: #FF9B9B; font-weight: 800; font-size: 12px; text-align: center; margin-top: 7px; }
+.md-hint { font-size: 10.5px; color: #AFC7E8; font-weight: 700; line-height: 1.45; margin: 11px 0 0; text-align: center; }
+
+/* LOGIN ORNAMENT PASS
+   Makes the real HTML controls match the approved login mockup more closely.
+   Kept as CSS (not baked into the background) so inputs/buttons remain accessible. */
+.md-login-card .md-field {
+  border-radius: 4px;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+  padding-left: 58px;
+  background-color: rgba(1, 7, 24, .84);
+  background-repeat: no-repeat;
+  background-position: 19px center;
+  background-size: 23px 23px;
+  box-shadow: inset 0 0 0 1px rgba(95, 151, 219, .24), inset 0 0 18px rgba(34, 115, 214, .12);
+}
+.md-login-card input:not([type="password"]).md-field {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23FFD166' d='M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5C21 16.5 17 14 12 14Z'/%3E%3C/svg%3E");
+}
+.md-login-card input[type="password"].md-field {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23FFD166' d='M17 9h-1V7A4 4 0 0 0 8 7v2H7a2 2 0 0 0-2 2v9h14v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 0 1 4 0v2h-4V7Zm3 8.7V18h-2v-2.3a2 2 0 1 1 2 0Z'/%3E%3C/svg%3E");
+}
+.md-login-card .md-btn {
+  position: relative; overflow: hidden; border-radius: 4px;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+  letter-spacing: .2px;
+}
+.md-login-card .md-btn::before,
+.md-login-card .md-btn::after {
+  content: "◆"; position: absolute; top: 50%; transform: translateY(-50%);
+  font-size: 10px; line-height: 1;
+}
+.md-login-card .md-btn::before { left: 16px; }
+.md-login-card .md-btn::after { right: 16px; }
+.md-login-card .md-btn.primary {
+  color: #231536;
+  background:
+    linear-gradient(110deg, rgba(255,255,255,.3), transparent 24% 76%, rgba(255,255,255,.2)),
+    linear-gradient(180deg, #FFE8A3 0%, #FFD166 58%, #E5A936 100%);
+  border: 2px solid #FFF0B1;
+  box-shadow: inset 0 0 0 2px #D39324, inset 0 0 12px rgba(255,255,255,.28), 0 5px 0 #845312, 0 0 17px rgba(255,209,102,.28);
+}
+.md-login-card .md-btn.primary::before,
+.md-login-card .md-btn.primary::after { color: #9A6416; }
+.md-login-card .md-btn.info {
+  color: #DDF6FF;
+  background: linear-gradient(180deg, rgba(11,48,96,.98), rgba(5,24,58,.98));
+  border: 2px solid #55D7FF;
+  box-shadow: inset 0 0 0 2px #155589, inset 0 0 18px rgba(36,177,255,.12), 0 5px 0 #08375F, 0 0 14px rgba(38,190,255,.22);
+}
+.md-login-card .md-btn.info::before,
+.md-login-card .md-btn.info::after { color: #61E2FF; text-shadow: 0 0 7px #22BFFF; }
+
+@media (max-height: 680px) {
+  .md-login-wrap { justify-content: flex-start; padding-top: 16px; }
+  .md-login-emblem { width: 68px; height: 68px; border-radius: 17px; }
+  .md-login-brand { padding-bottom: 7px !important; }
+  .md-login-card { padding: 12px 15px; }
+}
 
 .md-inv-item.epic { border-left-color: var(--legendary); }
 
@@ -558,4 +648,3 @@ const STYLE = `
 .md-anvil-result-fail { animation: anvil-fail-shake 0.4s ease-in-out; border-color: #ff5566 !important; }
 .md-blacksmith-icon { font-size: 40px; text-align: center; margin: 6px 0; transition: transform 0.15s ease; }
 `;
-

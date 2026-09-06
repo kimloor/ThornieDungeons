@@ -102,16 +102,13 @@ function LoginScreen({
   return /*#__PURE__*/React.createElement("div", {
     className: "md-login-wrap"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-menu-title",
-    style: {
-      padding: "0 0 10px"
-    }
-  }, /*#__PURE__*/React.createElement("h1", {
-    style: {
-      fontSize: 26
-    }
-  }, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "sign in to sync your save")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card"
+    className: "md-menu-title md-login-brand"
+  }, /*#__PURE__*/React.createElement("img", {
+    className: "md-login-emblem",
+    src: "icons/icon-512.png",
+    alt: "ThornieDungeons"
+  }), /*#__PURE__*/React.createElement("h1", null, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "เข้าสู่ดันเจี้ยนของคุณ")), /*#__PURE__*/React.createElement("div", {
+    className: "md-card md-login-card"
   }, /*#__PURE__*/React.createElement("p", {
     className: "md-field-label"
   }, "Player ID"), /*#__PURE__*/React.createElement("input", {
@@ -144,13 +141,13 @@ function LoginScreen({
     className: "md-btn primary",
     disabled: busy,
     onClick: onLogin
-  }, busy ? "..." : "🔑 เข้าสู่ระบบ"), /*#__PURE__*/React.createElement("button", {
+  }, busy ? "..." : "เข้าสู่ระบบ"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn info",
     disabled: busy,
     onClick: onRegister
-  }, busy ? "..." : "✨ สร้างบัญชีใหม่")), /*#__PURE__*/React.createElement("p", {
+  }, busy ? "..." : "สร้างบัญชีใหม่")), /*#__PURE__*/React.createElement("p", {
     className: "md-hint"
-  }, "ตั้ง Player ID + Password เอง — ใช้ชุดเดียวกันนี้เข้าจากเครื่องไหนก็โหลดเซฟเดิมได้")));
+  }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")));
 }
 function HubScreen({
   save,
