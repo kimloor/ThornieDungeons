@@ -960,7 +960,7 @@ function RaidScreen({
   const [error, setError] = useState(null);
   const [attacking, setAttacking] = useState(false);
   const [lastResult, setLastResult] = useState(null);
-  const [claimMsg, setClaimMsg] = useState(null);
+  const [toast, setToast] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
 
   const load = React.useCallback(() => {
@@ -984,6 +984,22 @@ function RaidScreen({
     return () => clearTimeout(t);
   }, [secondsLeft, load]);
 
+  // Milestones are auto-granted now — no claim button. This is idempotent server-side
+  // (returns claimed: [] if nothing new crossed), so it's safe to fire after every attack
+  // and once on mount to sweep up anything a previous session left unclaimed. It does NOT
+  // run off the countdown-timer's periodic load() — contribution only changes from this
+  // character's own attacks, so checking there too would just be wasted API calls.
+  const checkMilestones = React.useCallback(() => {
+    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+      if (!res || res.error || !res.claimed || !res.claimed.length) return;
+      const pcts = res.claimed.map(k => k.replace("p", "") + "%").join(", ");
+      setToast(`🎁 ถึงเกณฑ์ดาเมจสะสม ${pcts} — รางวัลส่งเข้ากล่องจดหมายแล้ว!`);
+      setTimeout(() => setToast(null), 3500);
+      load();
+    });
+  }, [serverUrl, cred.id, cred.password, characterId, load]);
+  React.useEffect(() => { checkMilestones(); }, [checkMilestones]);
+
   const handleAttack = (useDiamonds) => {
     if (attacking) return;
     setAttacking(true);
@@ -993,18 +1009,8 @@ function RaidScreen({
       if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent || status.me.diamondRefillCost || 50);
       setLastResult(res);
       load();
+      checkMilestones();
     }).catch(() => setLastResult({ error: "network_error" })).finally(() => setAttacking(false));
-  };
-
-  const handleClaim = () => {
-    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
-      if (!res || res.error) return;
-      if (res.claimed && res.claimed.length) {
-        setClaimMsg("🎉 ส่งรางวัลเข้ากล่องจดหมายแล้ว ไปกดรับที่ 📬 กล่องจดหมาย");
-        setTimeout(() => setClaimMsg(null), 3000);
-      }
-      load();
-    });
   };
 
   if (error) {
@@ -1034,7 +1040,8 @@ function RaidScreen({
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
+    toast && /*#__PURE__*/React.createElement("div", { className: "md-toast" }, toast),
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.emoji || "🐉", " ", boss.name || "Raid Boss"),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
@@ -1075,7 +1082,7 @@ function RaidScreen({
       }, attacking ? "กำลังโจมตี..." : `💎 จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`)),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ)"),
+      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ — แจกอัตโนมัติ)"),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
         /*#__PURE__*/React.createElement("div", { className: "md-bar-fill", style: { width: `${me.contributionPct}%`, background: "linear-gradient(90deg,#6EC6FF,#4A7CFF)" } })),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, me.contributionPct, "%"),
@@ -1086,10 +1093,8 @@ function RaidScreen({
         const claimed = me.milestonesClaimed.indexOf(key) !== -1;
         return /*#__PURE__*/React.createElement("div", { key: m.pct, className: "md-shop-row" },
           /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.pct, "% — ", m.label),
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ รับแล้ว" : done ? "🎁 พร้อมรับ" : "🔒"));
-      }),
-      claimMsg && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, claimMsg),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn primary wide small", style: { marginTop: 6 }, onClick: handleClaim }, "🎁 รับรางวัล")),
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ ส่งแล้ว" : done ? "⏳ กำลังส่ง..." : "🔒"));
+      })),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
       /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "อันดับดาเมจ"),
@@ -1139,11 +1144,19 @@ function MailboxScreen({
 }) {
   const [mails, setMails] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState({});
 
   const load = () => {
     cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
       if (!res || res.error) { setMails([]); return; }
       setMails(res.mails || []);
+      // Drop selections for mail that no longer exists (e.g. after a delete).
+      setSelected(prev => {
+        const ids = new Set((res.mails || []).map(m => m.mailId));
+        const next = {};
+        Object.keys(prev).forEach(id => { if (ids.has(id)) next[id] = prev[id]; });
+        return next;
+      });
     });
   };
   React.useEffect(() => { load(); }, [characterId]);
@@ -1170,29 +1183,76 @@ function MailboxScreen({
     });
   };
 
+  const toggleSelect = (mailId) => setSelected(prev => ({ ...prev, [mailId]: !prev[mailId] }));
+
+  const handleDeleteOne = (mailId) => {
+    if (busy) return;
+    setBusy(true);
+    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(() => {
+      setBusy(false);
+      load();
+    });
+  };
+
+  const handleDeleteSelected = () => {
+    const ids = Object.keys(selected).filter(id => selected[id]);
+    if (!ids.length || busy) return;
+    setBusy(true);
+    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, ids).then(() => {
+      setBusy(false);
+      setSelected({});
+      load();
+    });
+  };
+
+  const handleDeleteAllClaimed = () => {
+    if (busy) return;
+    setBusy(true);
+    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(() => {
+      setBusy(false);
+      setSelected({});
+      load();
+    });
+  };
+
   if (!mails) {
     return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "กำลังโหลด..."));
   }
   const unclaimed = mails.filter(m => !m.claimed);
+  const claimedMails = mails.filter(m => m.claimed);
+  const selectedCount = Object.values(selected).filter(Boolean).length;
 
   return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" } },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "📬 กล่องจดหมาย"),
       unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
+    claimedMails.length > 0 && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, selectedCount > 0 ? `เลือกแล้ว ${selectedCount} ฉบับ` : "จดหมายที่รับแล้ว"),
+      /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6 } },
+        selectedCount > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteSelected }, "🗑️ ลบที่เลือก"),
+        /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteAllClaimed }, "🗑️ ลบที่รับแล้วทั้งหมด"))),
     mails.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
-    mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.5 : 1 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { fontWeight: "bold" } }, m.title),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, m.body),
-      (m.gold > 0 || m.diamonds > 0 || (m.junk && m.junk.length > 0) || (m.items && m.items.length > 0)) && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
-        m.gold > 0 ? `🪙${formatNumber(m.gold)} ` : "",
-        m.diamonds > 0 ? `💎${formatNumber(m.diamonds)} ` : "",
-        (m.junk || []).map(j => `${(JUNK_INFO[j.junkId] || {}).icon || "📦"}${j.quantity}`).join(" "),
-        " ",
-        (m.items || []).map(it => it.star ? `🪽${it.name}` : it.setId ? `🔷${it.name}` : it.name).join(" ")),
-      m.claimed
-        ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "✅ รับแล้ว")
-        : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))),
+    mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
+      m.claimed && /*#__PURE__*/React.createElement("input", {
+        type: "checkbox",
+        checked: !!selected[m.mailId],
+        onChange: () => toggleSelect(m.mailId),
+        style: { marginTop: 4, flexShrink: 0 }
+      }),
+      /*#__PURE__*/React.createElement("div", { style: { flex: 1 } },
+        /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { fontWeight: "bold" } }, m.title),
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, m.body),
+        (m.gold > 0 || m.diamonds > 0 || (m.junk && m.junk.length > 0) || (m.items && m.items.length > 0)) && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+          m.gold > 0 ? `🪙${formatNumber(m.gold)} ` : "",
+          m.diamonds > 0 ? `💎${formatNumber(m.diamonds)} ` : "",
+          (m.junk || []).map(j => `${(JUNK_INFO[j.junkId] || {}).icon || "📦"}${j.quantity}`).join(" "),
+          " ",
+          (m.items || []).map(it => it.star ? `🪽${it.name}` : it.setId ? `🔷${it.name}` : it.name).join(" ")),
+        /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 4 } },
+          m.claimed
+            ? /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: () => handleDeleteOne(m.mailId) }, "🗑️ ลบ")
+            : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))))),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
 }
 function MapScreen({

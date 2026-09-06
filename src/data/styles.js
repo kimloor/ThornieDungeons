@@ -989,6 +989,8 @@ const STYLE = `
 }
 .md-btn { min-height: 46px; }
 .md-boss-blob { width: 96px; height: 96px; margin: 10px auto 4px; display: flex; align-items: center; justify-content: center; font-size: 44px; border-radius: 46% 54% 58% 42% / 52% 46% 54% 48%; box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 -8px 14px rgba(0,0,0,0.2); animation: mdBossBlobPulse 2.6s ease-in-out infinite; }
+.md-toast { position: sticky; top: 4px; z-index: 20; margin: 0 auto 10px; padding: 10px 14px; border-radius: 12px; background: linear-gradient(135deg, var(--violet-deep), var(--violet)); border: 1px solid var(--gold-glow); color: var(--ink); font-size: 13px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); animation: mdToastIn 0.25s ease-out; }
+@keyframes mdToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes mdBossBlobPulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.05) rotate(-2deg); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */

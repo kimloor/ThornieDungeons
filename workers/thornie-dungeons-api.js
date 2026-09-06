@@ -49,6 +49,9 @@
  *   POST { action: "claimRaidMilestones", id, password, characterId }     (NEW, Phase 3)
  *   POST { action: "claimMail", id, password, characterId, mailId }       (NEW, Phase 3.1)
  *   POST { action: "claimAllMail", id, password, characterId }            (NEW, Phase 3.1)
+ *   POST { action: "deleteMail", id, password, characterId, mailId }       (NEW, Phase 3.6)
+ *   POST { action: "deleteMails", id, password, characterId, mailIds }     (NEW, Phase 3.6)
+ *   POST { action: "deleteAllClaimedMail", id, password, characterId }     (NEW, Phase 3.6)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
  *
@@ -807,6 +810,45 @@ async function handleClaimAllMail(db, id, password, characterId) {
   const junk = Object.keys(junkTotals).map((junkId) => ({ junkId, quantity: junkTotals[junkId] }));
   return json({ ok: true, mailIds: rows.map((m) => m.mail_id), gold, diamonds, junk, items });
 }
+// Deletes only CLAIMED mail — deleting an unclaimed one would silently discard whatever
+// reward it was carrying, so the WHERE clause refuses to touch claimed=0 rows regardless
+// of what the client asks for.
+async function handleDeleteMail(db, id, password, characterId, mailId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  if (!mailId) return json({ error: "missing_fields" });
+
+  const result = await db.prepare(`DELETE FROM mailbox WHERE mail_id = ? AND character_id = ? AND claimed = 1`).bind(mailId, characterId).run();
+  if (!result.meta || !result.meta.changes) return json({ error: "not_found_or_unclaimed" });
+  return json({ ok: true, mailId });
+}
+async function handleDeleteMails(db, id, password, characterId, mailIds) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  if (!Array.isArray(mailIds) || !mailIds.length) return json({ error: "missing_fields" });
+
+  const placeholders = mailIds.map(() => "?").join(",");
+  const result = await db
+    .prepare(`DELETE FROM mailbox WHERE character_id = ? AND claimed = 1 AND mail_id IN (${placeholders})`)
+    .bind(characterId, ...mailIds)
+    .run();
+  return json({ ok: true, deleted: result.meta ? result.meta.changes : 0 });
+}
+// Deletes ALL claimed mail for this character in one shot — the common "clean up my old
+// read mail" action, without the client needing to enumerate every id first.
+async function handleDeleteAllClaimedMail(db, id, password, characterId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+
+  const result = await db.prepare(`DELETE FROM mailbox WHERE character_id = ? AND claimed = 1`).bind(characterId).run();
+  return json({ ok: true, deleted: result.meta ? result.meta.changes : 0 });
+}
 
 // ---------- Phase 3: Raid Boss ----------
 // One shared boss per day, rotates through this list as each one dies (spawnIndex =
@@ -1410,6 +1452,12 @@ export default {
             return await handleClaimMail(db, body.id, body.password, body.characterId, body.mailId);
           case "claimAllMail":
             return await handleClaimAllMail(db, body.id, body.password, body.characterId);
+          case "deleteMail":
+            return await handleDeleteMail(db, body.id, body.password, body.characterId, body.mailId);
+          case "deleteMails":
+            return await handleDeleteMails(db, body.id, body.password, body.characterId, body.mailIds);
+          case "deleteAllClaimedMail":
+            return await handleDeleteAllClaimedMail(db, body.id, body.password, body.characterId);
           case "saveGameConfig":
             return await handleAdminSaveGameConfig(db, env, body.adminKey, body.config);
           case "setGameConfigItem":

@@ -214,3 +214,29 @@ function cloudClaimAllMail(url, id, password, characterId) {
     characterId
   });
 }
+function cloudDeleteMail(url, id, password, characterId, mailId) {
+  return cloudPost(url, {
+    action: "deleteMail",
+    id,
+    password,
+    characterId,
+    mailId
+  });
+}
+function cloudDeleteMails(url, id, password, characterId, mailIds) {
+  return cloudPost(url, {
+    action: "deleteMails",
+    id,
+    password,
+    characterId,
+    mailIds
+  });
+}
+function cloudDeleteAllClaimedMail(url, id, password, characterId) {
+  return cloudPost(url, {
+    action: "deleteAllClaimedMail",
+    id,
+    password,
+    characterId
+  });
+}
