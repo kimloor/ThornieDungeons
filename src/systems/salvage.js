@@ -16,6 +16,12 @@ const SALVAGE_TABLE = {
   mythic: {
     iron: 15,
     manaOre: 9
+  },
+  // Azure (crafted) had no entry here either — same silent "falls back to rare" bug as the
+  // missing RARITY_MULT.azure. Pinned equal to mythic, consistent with that earlier call.
+  azure: {
+    iron: 15,
+    manaOre: 9
   }
 };
 function salvageYield(rarity) {

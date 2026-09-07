@@ -1544,11 +1544,19 @@ function ThornieDungeons() {
     let nextInv = inventory.filter(i => i.id !== itemId);
     nextInv = addJunkToInventory(nextInv, "iron", y.iron);
     nextInv = addJunkToInventory(nextInv, "manaOre", y.manaOre);
+    // Crafted (Azure) gear also returns a cut of its original materials + the recipe
+    // scroll in full — see craftSalvageRefund() in crafting.js for the split.
+    const refund = craftSalvageRefund(it);
+    let refundMsg = "";
+    if (refund && refund.length) {
+      refund.forEach(r => { nextInv = addJunkToInventory(nextInv, r.junkId, r.qty); });
+      refundMsg = " + คืน " + refund.map(r => `${(JUNK_INFO[r.junkId] || {}).icon || "📦"}${r.qty}`).join(" ");
+    }
     setInventory(nextInv);
     persistItems(nextInv, equipped);
     return {
       ok: true,
-      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}`
+      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}${refundMsg}`
     };
   }
   function buyProtectionStone() {

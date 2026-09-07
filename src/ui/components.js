@@ -1255,7 +1255,8 @@ function materializeMailItem(desc) {
     enhanceLevel: 0,
     empowerSlots: Array(Math.max(1, desc.empowerSlotCount || 1)).fill(null),
     ...(desc.setId ? { setId: desc.setId } : {}),
-    ...(desc.star ? { star: desc.star } : {})
+    ...(desc.star ? { star: desc.star } : {}),
+    ...(desc.craftRecipeId ? { craftRecipeId: desc.craftRecipeId } : {})
   };
 }
 // ---------- Phase 3.1: Mailbox ----------

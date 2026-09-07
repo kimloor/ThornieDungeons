@@ -38,7 +38,31 @@ function craftPreviewStats(recipe, floor) {
   return fn ? fn(Math.max(1, floor || 1)) : {};
 }
 
-// junkTotal()/JUNK_INFO come from enhancement.js (earlier module in build order).
+// Salvaging a crafted item returns a portion of what it cost to make: the recipe scroll
+// back in full (it's the "proof of design", not consumed materials — refunding it in full
+// means salvaging a mis-craft doesn't lose you the recipe, just the raw materials) plus a
+// cut of the raw junk materials (bossHorn/bossHide etc, NOT the gold — gold sunk into a
+// craft is gone either way, same as any other gold sink in this game).
+// CRAFT_SALVAGE_REFUND_RATE is a tunable balance knob, easy to adjust later.
+const CRAFT_SALVAGE_REFUND_RATE = 0.5;
+function craftSalvageRefund(item) {
+  if (!item || item.setId !== "azure") return null;
+  // Prefer the exact recipe stamped on the item at craft time (craftRecipeId); fall back to
+  // matching by type for older crafted items from before that field existed.
+  const recipe = CRAFTING_RECIPES.find(r => r.recipeId === item.craftRecipeId) || CRAFTING_RECIPES.find(r => r.type === item.type);
+  if (!recipe) return null;
+  const refund = [];
+  Object.keys(recipe.materials).forEach(key => {
+    if (key === "gold") return; // gold sunk into a craft isn't recoverable, same as any other gold sink
+    const original = recipe.materials[key];
+    // The recipe's own scroll (recipe_azure_*) always comes back in full; raw farmed
+    // materials (bossHorn/bossHide) come back at the partial refund rate.
+    const qty = key.indexOf("recipe_") === 0 ? original : Math.max(1, Math.floor(original * CRAFT_SALVAGE_REFUND_RATE));
+    if (qty > 0) refund.push({ junkId: key, qty });
+  });
+  return refund;
+}
+
 function craftMaterialTotal(inventory, junkId) {
   return junkTotal(inventory, junkId);
 }

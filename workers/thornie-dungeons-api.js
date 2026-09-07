@@ -1026,6 +1026,7 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
     dodgeChance: stats.dodgeChance || undefined,
     setId: resultDef.setId || undefined,
     star: resultDef.star || undefined,
+    craftRecipeId: recipeId,
   });
   stmts.push(
     db
@@ -1049,6 +1050,7 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
       dodgeChance: Number(stats.dodgeChance) || 0,
       setId: resultDef.setId,
       empowerSlotCount: resultDef.empowerSlotCount || 1,
+      craftRecipeId: recipeId,
     },
     consumed: junkNeeds,
     goldSpent: goldCost,

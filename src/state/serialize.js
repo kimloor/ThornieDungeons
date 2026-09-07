@@ -63,7 +63,8 @@ function itemsToServerList(inventory, equipped) {
       quantity: it.quantity || undefined,
       icon: it.icon || undefined,
       setId: it.setId || undefined,
-      star: it.star || undefined
+      star: it.star || undefined,
+      craftRecipeId: it.craftRecipeId || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -126,6 +127,7 @@ function itemsFromServerList(rows) {
       };
       if (extra.setId) it.setId = extra.setId;
       if (extra.star) it.star = numOr(extra.star, 0);
+      if (extra.craftRecipeId) it.craftRecipeId = extra.craftRecipeId;
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });

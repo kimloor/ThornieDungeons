@@ -2198,7 +2198,8 @@ function itemsToServerList(inventory, equipped) {
       quantity: it.quantity || undefined,
       icon: it.icon || undefined,
       setId: it.setId || undefined,
-      star: it.star || undefined
+      star: it.star || undefined,
+      craftRecipeId: it.craftRecipeId || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -2261,6 +2262,7 @@ function itemsFromServerList(rows) {
       };
       if (extra.setId) it.setId = extra.setId;
       if (extra.star) it.star = numOr(extra.star, 0);
+      if (extra.craftRecipeId) it.craftRecipeId = extra.craftRecipeId;
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });
@@ -3018,7 +3020,31 @@ function craftPreviewStats(recipe, floor) {
   return fn ? fn(Math.max(1, floor || 1)) : {};
 }
 
-// junkTotal()/JUNK_INFO come from enhancement.js (earlier module in build order).
+// Salvaging a crafted item returns a portion of what it cost to make: the recipe scroll
+// back in full (it's the "proof of design", not consumed materials — refunding it in full
+// means salvaging a mis-craft doesn't lose you the recipe, just the raw materials) plus a
+// cut of the raw junk materials (bossHorn/bossHide etc, NOT the gold — gold sunk into a
+// craft is gone either way, same as any other gold sink in this game).
+// CRAFT_SALVAGE_REFUND_RATE is a tunable balance knob, easy to adjust later.
+const CRAFT_SALVAGE_REFUND_RATE = 0.5;
+function craftSalvageRefund(item) {
+  if (!item || item.setId !== "azure") return null;
+  // Prefer the exact recipe stamped on the item at craft time (craftRecipeId); fall back to
+  // matching by type for older crafted items from before that field existed.
+  const recipe = CRAFTING_RECIPES.find(r => r.recipeId === item.craftRecipeId) || CRAFTING_RECIPES.find(r => r.type === item.type);
+  if (!recipe) return null;
+  const refund = [];
+  Object.keys(recipe.materials).forEach(key => {
+    if (key === "gold") return; // gold sunk into a craft isn't recoverable, same as any other gold sink
+    const original = recipe.materials[key];
+    // The recipe's own scroll (recipe_azure_*) always comes back in full; raw farmed
+    // materials (bossHorn/bossHide) come back at the partial refund rate.
+    const qty = key.indexOf("recipe_") === 0 ? original : Math.max(1, Math.floor(original * CRAFT_SALVAGE_REFUND_RATE));
+    if (qty > 0) refund.push({ junkId: key, qty });
+  });
+  return refund;
+}
+
 function craftMaterialTotal(inventory, junkId) {
   return junkTotal(inventory, junkId);
 }
@@ -3145,6 +3171,12 @@ const SALVAGE_TABLE = {
     manaOre: 5
   },
   mythic: {
+    iron: 15,
+    manaOre: 9
+  },
+  // Azure (crafted) had no entry here either — same silent "falls back to rare" bug as the
+  // missing RARITY_MULT.azure. Pinned equal to mythic, consistent with that earlier call.
+  azure: {
     iron: 15,
     manaOre: 9
   }
@@ -5296,11 +5328,19 @@ function ThornieDungeons() {
     let nextInv = inventory.filter(i => i.id !== itemId);
     nextInv = addJunkToInventory(nextInv, "iron", y.iron);
     nextInv = addJunkToInventory(nextInv, "manaOre", y.manaOre);
+    // Crafted (Azure) gear also returns a cut of its original materials + the recipe
+    // scroll in full — see craftSalvageRefund() in crafting.js for the split.
+    const refund = craftSalvageRefund(it);
+    let refundMsg = "";
+    if (refund && refund.length) {
+      refund.forEach(r => { nextInv = addJunkToInventory(nextInv, r.junkId, r.qty); });
+      refundMsg = " + คืน " + refund.map(r => `${(JUNK_INFO[r.junkId] || {}).icon || "📦"}${r.qty}`).join(" ");
+    }
     setInventory(nextInv);
     persistItems(nextInv, equipped);
     return {
       ok: true,
-      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}`
+      message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}${refundMsg}`
     };
   }
   function buyProtectionStone() {
@@ -7054,7 +7094,8 @@ function materializeMailItem(desc) {
     enhanceLevel: 0,
     empowerSlots: Array(Math.max(1, desc.empowerSlotCount || 1)).fill(null),
     ...(desc.setId ? { setId: desc.setId } : {}),
-    ...(desc.star ? { star: desc.star } : {})
+    ...(desc.star ? { star: desc.star } : {}),
+    ...(desc.craftRecipeId ? { craftRecipeId: desc.craftRecipeId } : {})
   };
 }
 // ---------- Phase 3.1: Mailbox ----------
