@@ -1,6 +1,9 @@
 // ---------- game data ----------
 const MAX_LEVEL = 99;
 const STAT_POINTS_PER_LEVEL = 5;
+const STAT_RESET_COST = 100;
+const SKILL_RESET_COST = 100;
+const SKILL_MAX_LEVEL = 10;
 const STAT_INFO = [{
   key: "str",
   label: "STR",
@@ -29,4 +32,3 @@ const STAT_INFO = [{
 }];
 // Base speed value before AGI is applied — shared by player, pets, and monsters.
 const BASE_SPEED = 10;
-

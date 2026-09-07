@@ -168,6 +168,7 @@ function GameDock({
   onCharacter,
   onOpenInv,
   onPets,
+  activeKey,
   moreOpen,
   onToggleMore
 }) {
@@ -176,6 +177,7 @@ function GameDock({
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
+    className: activeKey === "character" ? "active" : "",
     onClick: onCharacter
   }, /*#__PURE__*/React.createElement("img", {
     src: "ui/hub-icons/character.svg",
@@ -674,142 +676,249 @@ function CharacterSelectScreen({
     onClick: onLogout
   }, "🚪 ออกจากระบบ"));
 }
+function CharacterPageHeader({ save, cp, onBack }) {
+  const xpNeed = xpToNext(save.character.level);
+  const xpPct = save.character.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, save.character.xp / xpNeed * 100));
+  return /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("header", { className: "md-character-page-title" },
+      /*#__PURE__*/React.createElement("button", { type: "button", onClick: onBack, "aria-label": "ย้อนกลับ" }, "‹"),
+      /*#__PURE__*/React.createElement("h1", null, "Character")
+    ),
+    /*#__PURE__*/React.createElement("section", { className: "md-character-summary" },
+      /*#__PURE__*/React.createElement("div", { className: "md-character-summary-main" },
+        /*#__PURE__*/React.createElement("strong", null, save.characterName || "Adventurer"),
+        /*#__PURE__*/React.createElement("b", null, "⚔ CP ", formatNumber(cp))
+      ),
+      /*#__PURE__*/React.createElement("div", { className: "md-character-level" }, "LV. ", save.character.level),
+      /*#__PURE__*/React.createElement("div", { className: "md-character-exp" },
+        /*#__PURE__*/React.createElement("span", null, "EXP ", Math.round(xpPct), "%"),
+        /*#__PURE__*/React.createElement("i", null, /*#__PURE__*/React.createElement("b", { style: { width: `${xpPct}%` } }))
+      )
+    )
+  );
+}
+
+function CharacterTabs({ active, onStatus, onSkills }) {
+  return /*#__PURE__*/React.createElement("nav", { className: "md-character-tabs", "aria-label": "ข้อมูลตัวละคร" },
+    /*#__PURE__*/React.createElement("button", { type: "button", className: active === "status" ? "active" : "", onClick: onStatus }, "◈ Status"),
+    /*#__PURE__*/React.createElement("button", { type: "button", className: active === "skills" ? "active" : "", onClick: onSkills }, "▤ Skills")
+  );
+}
+
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onBack }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  return /*#__PURE__*/React.createElement(React.Fragment, null,
+    moreOpen && /*#__PURE__*/React.createElement("div", { className: "md-character-more" },
+      /*#__PURE__*/React.createElement("button", { type: "button", onClick: onBack }, "↩ กลับหน้าก่อนหน้า")
+    ),
+    /*#__PURE__*/React.createElement(GameDock, {
+      activeKey: "character",
+      onCharacter,
+      onOpenInv,
+      onPets: onOpenPets,
+      moreOpen,
+      onToggleMore: () => setMoreOpen(open => !open)
+    })
+  );
+}
+
+function PaidResetConfirm({ type, diamonds, onCancel, onConfirm }) {
+  const label = type === "stats" ? "รีสเตตัสทั้งหมด" : "รีสกิลทั้งหมด";
+  return /*#__PURE__*/React.createElement("div", { className: "md-character-confirm", role: "dialog", "aria-modal": "true" },
+    /*#__PURE__*/React.createElement("div", { className: "md-character-confirm-card" },
+      /*#__PURE__*/React.createElement("h3", null, label),
+      /*#__PURE__*/React.createElement("p", null, type === "stats" ? "คืนแต้มสเตตัสที่เคยใช้ทั้งหมด" : "คืนแต้มสกิลที่เคยใช้ทั้งหมด"),
+      /*#__PURE__*/React.createElement("strong", null, "ใช้ 💎 100 · มี ", formatNumber(diamonds)),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCancel }, "ยกเลิก"),
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "confirm", disabled: diamonds < 100, onClick: onConfirm }, diamonds < 100 ? "เพชรไม่พอ" : "ยืนยัน")
+      )
+    )
+  );
+}
+
 function StatusScreen({
   save,
   charStats,
-  onAddStat,
+  cp,
+  onCommitStats,
+  onResetStats,
   onOpenInv,
-  onMap,
   onOpenPets,
   onOpenSkill,
   onBack
 }) {
-  const s = save.character.stats;
-  const points = save.character.statPoints;
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-panel",
-    style: {
-      flex: 1
+  const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
+  const [draft, setDraft] = useState(emptyDraft);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const used = Object.values(draft).reduce((sum, value) => sum + value, 0);
+  const pointsLeft = Math.max(0, save.character.statPoints - used);
+  const previewStatsRaw = { ...save.character.stats };
+  STAT_INFO.forEach(st => { previewStatsRaw[st.key] += draft[st.key]; });
+  const previewSave = { ...save, character: { ...save.character, stats: previewStatsRaw } };
+  const committedBase = characterBaseStats(save);
+  const previewBase = characterBaseStats(previewSave);
+  // charStats includes equipment/set/pet bonuses. Add only the delta caused by this draft so
+  // the screen previews the real total value without pretending equipment disappeared.
+  const preview = { ...charStats };
+  ["maxHp", "maxMp", "atk", "def", "speed", "accuracy", "critChance", "critDamage", "dodgeChance", "dropBonus"].forEach(key => {
+    preview[key] = roundTo(charStats[key] + (previewBase[key] - committedBase[key]), 1);
+  });
+  const changed = (before, after) => before !== after;
+  const value = (before, after, suffix = "") => /*#__PURE__*/React.createElement("span", null,
+    before, suffix,
+    changed(before, after) && /*#__PURE__*/React.createElement(React.Fragment, null, " → ", /*#__PURE__*/React.createElement("b", { className: "md-preview-value" }, after, suffix))
+  );
+  const changeDraft = (key, delta) => setDraft(current => {
+    const next = Math.max(0, current[key] + delta);
+    if (delta > 0 && pointsLeft <= 0) return current;
+    return { ...current, [key]: next };
+  });
+  const commit = () => {
+    if (onCommitStats(draft)) setDraft(emptyDraft());
+  };
+  const doPaidReset = () => {
+    if (onResetStats()) {
+      setDraft(emptyDraft());
+      setConfirmReset(false);
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title",
-    style: {
-      margin: 0
-    }
-  }, "📊 Status"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee small",
-    onClick: onBack,
-    style: {
-      boxShadow: "none",
-      padding: "6px 12px"
-    }
-  }, "✕")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "Lv", save.character.level, " · ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp, " · Speed ", charStats.speed), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: "4px 0 0"
-    }
-  }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, STAT_INFO.map(st => /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-row",
-    key: st.key
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-info"
-  }, st.icon, " ", st.label, " ", /*#__PURE__*/React.createElement("span", {
-    className: "md-shop-lv"
-  }, s[st.key])), /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-lv"
-  }, st.desc)), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    disabled: points <= 0,
-    onClick: () => onAddStat(st.key)
-  }, "+1")))), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      textAlign: "center"
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "แต้มสเตตัสคงเหลือ: ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: "var(--gold)"
-    }
-  }, points))));
+  };
+  const combatRows = [
+    ["♥", "HP", charStats.maxHp, preview.maxHp, ""],
+    ["◆", "MP", charStats.maxMp, preview.maxMp, ""],
+    ["⚔", "ATK", charStats.atk, preview.atk, ""],
+    ["⬟", "DEF", charStats.def, preview.def, ""],
+    ["➤", "SPD", charStats.speed, preview.speed, ""]
+  ];
+  const advancedRows = [
+    ["◎", "Hit Rate", charStats.accuracy, preview.accuracy, "%"],
+    ["✦", "CRIT Rate", charStats.critChance, preview.critChance, "%"],
+    ["✷", "CRIT DMG", charStats.critDamage, preview.critDamage, "%"],
+    ["≋", "Evasion", charStats.dodgeChance, preview.dodgeChance, "%"],
+    ["⚔", "Armor Pen.", 0, 0, "%"],
+    ["♣", "Drop Bonus", charStats.dropBonus, preview.dropBonus, "%"]
+  ];
+  const allocatedStats = STAT_INFO.reduce((sum, st) => sum + Math.max(0, Number(save.character.stats[st.key]) || 0), 0);
+  return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
+    /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
+    /*#__PURE__*/React.createElement(CharacterTabs, { active: "status", onStatus: () => {}, onSkills: onOpenSkill }),
+    /*#__PURE__*/React.createElement("section", { className: "md-character-scroll" },
+      /*#__PURE__*/React.createElement("div", { className: "md-status-grid" },
+        /*#__PURE__*/React.createElement("div", { className: "md-stat-card" },
+          /*#__PURE__*/React.createElement("h2", null, "⚔ Combat Status"),
+          combatRows.map(row => /*#__PURE__*/React.createElement("div", { className: "md-derived-row", key: row[1] }, /*#__PURE__*/React.createElement("span", null, row[0], " ", row[1]), value(row[2], row[3], row[4])))
+        ),
+        /*#__PURE__*/React.createElement("div", { className: "md-stat-card" },
+          /*#__PURE__*/React.createElement("h2", null, "✦ Advanced Status"),
+          advancedRows.slice(0, advancedOpen ? advancedRows.length : 4).map(row => /*#__PURE__*/React.createElement("div", { className: "md-derived-row", key: row[1] }, /*#__PURE__*/React.createElement("span", null, row[0], " ", row[1]), value(row[2], row[3], row[4]))),
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "md-advanced-toggle", onClick: () => setAdvancedOpen(open => !open) }, advancedOpen ? "ย่อรายการ⌃" : "ดูทั้งหมด⌄")
+        )
+      ),
+      /*#__PURE__*/React.createElement("section", { className: "md-upgrade-card" },
+        /*#__PURE__*/React.createElement("div", { className: "md-upgrade-head" },
+          /*#__PURE__*/React.createElement("h2", null, "▥ อัปสเตตัส"),
+          /*#__PURE__*/React.createElement("span", null, "แต้มคงเหลือ ", /*#__PURE__*/React.createElement("b", null, pointsLeft)),
+          /*#__PURE__*/React.createElement("span", null, "ใช้ไป ", /*#__PURE__*/React.createElement("b", null, used))
+        ),
+        STAT_INFO.map(st => {
+          const current = save.character.stats[st.key];
+          const after = current + draft[st.key];
+          return /*#__PURE__*/React.createElement("div", { className: "md-upgrade-row", key: st.key },
+            /*#__PURE__*/React.createElement("span", { className: "md-upgrade-name" }, st.icon, " ", st.label),
+            /*#__PURE__*/React.createElement("button", { type: "button", disabled: draft[st.key] <= 0, onClick: () => changeDraft(st.key, -1) }, "−"),
+            /*#__PURE__*/React.createElement("span", { className: "md-upgrade-value" }, current, draft[st.key] > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, " → ", /*#__PURE__*/React.createElement("b", { className: "md-preview-value" }, after))),
+            /*#__PURE__*/React.createElement("button", { type: "button", disabled: pointsLeft <= 0, onClick: () => changeDraft(st.key, 1) }, "+")
+          );
+        }),
+        /*#__PURE__*/React.createElement("div", { className: "md-preview-help" }, /*#__PURE__*/React.createElement("span", null, "● ค่าที่เปลี่ยนจากการทดลองอัป"), /*#__PURE__*/React.createElement("button", { type: "button", disabled: !used, onClick: () => setDraft(emptyDraft()) }, "↻ รีเซ็ต")),
+        /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !allocatedStats, onClick: () => setConfirmReset(true) }, "↻ รีสเตตัส ", /*#__PURE__*/React.createElement("span", null, "💎 100")),
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสเตตัส")
+        )
+      )
+    ),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onBack }),
+    confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
+  );
 }
+
 function SkillScreen({
   save,
+  cp,
+  onCommitSkills,
+  onResetSkills,
+  onOpenInv,
+  onOpenPets,
   onBack
 }) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-panel",
-    style: {
-      flex: 1
+  const [draft, setDraft] = useState({});
+  const [filter, setFilter] = useState("all");
+  const [confirmReset, setConfirmReset] = useState(false);
+  const points = remainingSkillPoints(save);
+  const used = Object.values(draft).reduce((sum, value) => sum + value, 0);
+  const pointsLeft = Math.max(0, points - used);
+  const visibleSkills = SKILLS.filter(skill => filter === "all" || (filter === "active" ? skill.type !== "passive" : skill.type === "passive"));
+  const changeDraft = (skill, delta) => setDraft(current => {
+    const now = current[skill.key] || 0;
+    const committed = committedSkillLevel(save, skill.key);
+    if (delta > 0 && (pointsLeft <= 0 || committed + now >= SKILL_MAX_LEVEL)) return current;
+    const next = Math.max(0, now + delta);
+    return { ...current, [skill.key]: next };
+  });
+  const effectText = (skill, level) => {
+    const scaled = skillAtLevel(skill, level);
+    if (Number.isFinite(scaled.mult)) return `${roundInt(scaled.mult * 100)}% ATK`;
+    if (Number.isFinite(scaled.healPct)) return `ฟื้นฟู ${roundInt(scaled.healPct * 100)}% HP`;
+    return skill.desc;
+  };
+  const commit = () => {
+    if (onCommitSkills(draft)) setDraft({});
+  };
+  const doPaidReset = () => {
+    if (onResetSkills()) {
+      setDraft({});
+      setConfirmReset(false);
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title"
-  }, "✨ Skills"), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "Lv", save.character.level)), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list",
-    style: {
-      maxHeight: 420,
-      overflowY: "auto"
-    }
-  }, SKILLS.map(sk => {
-    const unlocked = sk.unlockLevel <= save.character.level;
-    return /*#__PURE__*/React.createElement("div", {
-      key: sk.key,
-      className: "md-shop-row",
-      style: {
-        opacity: unlocked ? 1 : 0.5
-      }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-info"
-    }, unlocked ? sk.icon : "🔒", " ", sk.name, " ", /*#__PURE__*/React.createElement("span", {
-      className: "md-shop-lv"
-    }, sk.mp, "mp")), /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-lv"
-    }, unlocked ? sk.desc : `ปลดล็อกที่ Lv${sk.unlockLevel}`)));
-  }))), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee wide small",
-    onClick: onBack
-  }, "← Back"));
+  };
+  return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
+    /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
+    /*#__PURE__*/React.createElement(CharacterTabs, { active: "skills", onStatus: onBack, onSkills: () => {} }),
+    /*#__PURE__*/React.createElement("section", { className: "md-character-scroll" },
+      /*#__PURE__*/React.createElement("div", { className: "md-skill-toolbar" }, /*#__PURE__*/React.createElement("strong", null, "✦ Skill Points ", pointsLeft)),
+      /*#__PURE__*/React.createElement("nav", { className: "md-skill-filters" },
+        [["all", "ทั้งหมด"], ["active", "Active"], ["passive", "Passive"]].map(item => /*#__PURE__*/React.createElement("button", { type: "button", key: item[0], className: filter === item[0] ? "active" : "", onClick: () => setFilter(item[0]) }, item[1]))
+      ),
+      /*#__PURE__*/React.createElement("section", { className: "md-skill-list" },
+        visibleSkills.map(skill => {
+          const unlocked = skill.unlockLevel <= save.character.level;
+          const current = committedSkillLevel(save, skill.key);
+          const added = draft[skill.key] || 0;
+          const after = current + added;
+          return /*#__PURE__*/React.createElement("article", { className: `md-skill-upgrade${unlocked ? "" : " locked"}`, key: skill.key },
+            /*#__PURE__*/React.createElement("span", { className: "md-skill-upgrade-icon" }, unlocked ? skill.icon : "🔒"),
+            /*#__PURE__*/React.createElement("div", { className: "md-skill-upgrade-copy" },
+              /*#__PURE__*/React.createElement("strong", null, skill.name),
+              unlocked ? /*#__PURE__*/React.createElement("small", null, effectText(skill, current), added > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, " → ", /*#__PURE__*/React.createElement("b", { className: "md-preview-value" }, effectText(skill, after)))) : /*#__PURE__*/React.createElement("small", null, "ปลดล็อกที่ LV. ", skill.unlockLevel)
+            ),
+            unlocked && /*#__PURE__*/React.createElement("div", { className: "md-skill-level-control" },
+              /*#__PURE__*/React.createElement("button", { type: "button", disabled: added <= 0, onClick: () => changeDraft(skill, -1) }, "−"),
+              /*#__PURE__*/React.createElement("span", null, "LV. ", current, added > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, " → ", /*#__PURE__*/React.createElement("b", { className: "md-preview-value" }, after))),
+              /*#__PURE__*/React.createElement("button", { type: "button", disabled: pointsLeft <= 0 || after >= SKILL_MAX_LEVEL, onClick: () => changeDraft(skill, 1) }, "+")
+            )
+          );
+        }),
+        visibleSkills.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-skill-empty" }, "ยังไม่มีสกิลประเภทนี้")
+      ),
+      /*#__PURE__*/React.createElement("div", { className: "md-preview-help" }, /*#__PURE__*/React.createElement("span", null, "● ค่าที่เปลี่ยนจากการทดลองอัป"), /*#__PURE__*/React.createElement("button", { type: "button", disabled: !used, onClick: () => setDraft({}) }, "↻ รีเซ็ต")),
+      /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spentSkillPoints(save), onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100")),
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสกิล")
+      )
+    ),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onBack }),
+    confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
+  );
 }
 // ---------- Phase 2: Leaderboard ----------
 const LEADERBOARD_BOARDS = [{

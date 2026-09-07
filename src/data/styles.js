@@ -290,6 +290,92 @@ const STYLE = `
 .md-hub-more-grid button span { font-family:'Baloo 2'; font-size:8.5px; font-weight:800; white-space:nowrap; }
 .md-hub-more-grid button.danger { color:#ff9b9b; }
 
+/* Character Status / Skills — data-first layout. The page deliberately has no hero or
+   equipment artwork: the scroll area belongs to readable stats and reversible previews. */
+.md-character-page { flex:1; min-height:640px; height:calc(100dvh - 32px); max-height:900px; padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:7px; position:relative; overflow:hidden; }
+.md-character-page-title { min-height:48px; display:grid; grid-template-columns:48px 1fr 48px; align-items:center; }
+.md-character-page-title button { width:44px; height:44px; border:1px solid #f3c759; border-radius:13px; background:linear-gradient(180deg,rgba(10,35,74,.96),rgba(3,16,42,.98)); color:#ffe496; font-family:'Baloo 2'; font-size:34px; line-height:1; box-shadow:0 3px 0 #6c4616; cursor:pointer; }
+.md-character-page-title h1 { grid-column:2; margin:0; padding:3px 20px; justify-self:center; border-bottom:1px solid rgba(255,209,102,.62); color:#ffe6a0; font-family:'Baloo 2'; font-size:25px; line-height:1; text-shadow:0 2px 5px #000; }
+.md-character-summary { padding:10px 13px 9px; border:1.5px solid #d8aa3d; border-radius:15px; background:linear-gradient(105deg,rgba(5,21,52,.95),rgba(6,18,43,.91)); box-shadow:inset 0 0 18px rgba(39,155,255,.08),0 5px 16px rgba(0,0,0,.28); }
+.md-character-summary-main { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.md-character-summary-main strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#ffe6a0; font-family:'Baloo 2'; font-size:21px; line-height:1; }
+.md-character-summary-main b { flex:0 0 auto; color:#ffd166; font-family:'Baloo 2'; font-size:15px; }
+.md-character-level { margin-top:4px; color:#e5f3ff; font-family:'Baloo 2'; font-size:12px; font-weight:800; }
+.md-character-exp { margin-top:3px; display:flex; align-items:center; gap:7px; color:#cfe5ff; font-size:9px; font-weight:900; }
+.md-character-exp i { flex:1; height:7px; overflow:hidden; border:1px solid rgba(112,172,229,.65); border-radius:99px; background:#020919; }
+.md-character-exp i b { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#168eff,#55e7ff); box-shadow:0 0 9px rgba(59,211,255,.65); }
+.md-character-tabs { min-height:45px; display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.md-character-tabs button { border:1px solid rgba(116,166,220,.45); border-radius:11px; background:linear-gradient(180deg,rgba(7,28,64,.92),rgba(3,14,38,.96)); color:#dbeaff; font-family:'Baloo 2'; font-size:14px; font-weight:800; cursor:pointer; }
+.md-character-tabs button.active { border-color:#4ad7ff; color:#eafdff; background:linear-gradient(180deg,rgba(10,76,140,.95),rgba(5,31,78,.97)); box-shadow:inset 0 0 15px rgba(41,187,255,.2),0 0 9px rgba(40,198,255,.36); }
+.md-character-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:7px; padding-bottom:2px; }
+.md-status-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.md-stat-card,.md-upgrade-card,.md-skill-list { border:1px solid rgba(224,177,63,.78); border-radius:14px; background:linear-gradient(180deg,rgba(4,20,49,.94),rgba(3,13,35,.96)); box-shadow:inset 0 0 14px rgba(32,132,229,.06); }
+.md-stat-card { padding:8px 9px 6px; }
+.md-stat-card h2,.md-upgrade-head h2 { margin:0 0 4px; color:#ffe09a; font-family:'Baloo 2'; font-size:12px; line-height:1.1; }
+.md-derived-row { min-height:25px; padding:3px 1px; display:flex; justify-content:space-between; align-items:center; gap:5px; border-top:1px solid rgba(102,160,218,.22); color:#e6f2ff; font-size:9px; font-weight:800; }
+.md-derived-row > span:first-child { color:#bcd5f1; white-space:nowrap; }
+.md-preview-value { color:#49e3ff !important; font-weight:900; text-shadow:0 0 8px rgba(55,215,255,.55); }
+.md-advanced-toggle { width:100%; min-height:25px; margin-top:3px; border:1px solid rgba(94,161,223,.28); border-radius:8px; background:rgba(255,255,255,.035); color:#d8eaff; font-family:'Baloo 2'; font-size:9px; font-weight:800; cursor:pointer; }
+.md-upgrade-card { padding:9px; }
+.md-upgrade-head { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:5px; margin-bottom:3px; }
+.md-upgrade-head h2 { margin:0; font-size:15px; }
+.md-upgrade-head > span { padding:3px 7px; border:1px solid rgba(255,209,102,.38); border-radius:8px; color:#cfe1f5; font-size:8px; font-weight:800; white-space:nowrap; }
+.md-upgrade-head > span b { color:#ffe08d; font-size:11px; }
+.md-upgrade-row { min-height:37px; display:grid; grid-template-columns:minmax(83px,1fr) 34px minmax(82px,auto) 34px; align-items:center; gap:5px; border-top:1px solid rgba(99,157,216,.21); }
+.md-upgrade-name { color:#eef6ff; font-family:'Baloo 2'; font-size:11px; font-weight:800; }
+.md-upgrade-value { text-align:center; color:#dcecff; font-size:10px; font-weight:800; white-space:nowrap; }
+.md-upgrade-row button,.md-skill-level-control button { width:32px; height:30px; padding:0; border:1px solid #47ceff; border-radius:8px; background:rgba(7,39,83,.92); color:#dff8ff; font-size:19px; font-weight:900; box-shadow:inset 0 0 9px rgba(43,192,255,.12); cursor:pointer; }
+.md-upgrade-row button:disabled,.md-skill-level-control button:disabled { opacity:.3; }
+.md-preview-help { min-height:35px; display:flex; align-items:center; justify-content:space-between; gap:5px; color:#b9d3ef; font-size:8.5px; font-weight:800; }
+.md-preview-help > span:first-child { color:#aeeeff; }
+.md-preview-help button { min-height:28px; padding:3px 10px; border:1px solid rgba(123,165,209,.38); border-radius:8px; background:rgba(255,255,255,.04); color:#d9eaff; font-family:'Baloo 2'; font-size:9px; font-weight:800; cursor:pointer; }
+.md-preview-help button:disabled { opacity:.35; }
+.md-character-actions { display:grid; grid-template-columns:minmax(108px,.55fr) minmax(0,1.45fr); gap:7px; }
+.md-character-actions button { min-height:47px; padding:7px 8px; border-radius:11px; font-family:'Baloo 2'; font-size:11px; font-weight:900; cursor:pointer; }
+.md-character-actions button:disabled { opacity:.4; cursor:not-allowed; }
+.md-character-actions .reset { border:1.5px solid #45d7ff; background:linear-gradient(180deg,rgba(7,50,100,.98),rgba(3,25,64,.98)); color:#e1f8ff; box-shadow:inset 0 0 12px rgba(42,188,255,.12),0 3px 0 #062d52; }
+.md-character-actions .reset span { display:block; color:#76e8ff; font-size:9px; white-space:nowrap; }
+.md-character-actions .apply { border:1.5px solid #fff0a8; background:linear-gradient(180deg,#ffe894,#f2bb43); color:#20142d; box-shadow:inset 0 0 9px rgba(255,255,255,.25),0 3px 0 #8b5a18; }
+.md-character-page > .md-hub-dock { flex:0 0 auto; min-height:67px; }
+.md-character-page > .md-hub-dock button { min-height:51px; }
+.md-character-more { position:absolute; z-index:15; left:8px; right:8px; bottom:82px; padding:8px; border:1px solid #d3a844; border-radius:14px; background:rgba(4,17,44,.98); box-shadow:0 -5px 22px rgba(0,0,0,.45); }
+.md-character-more button { width:100%; min-height:42px; border:1px solid rgba(91,196,255,.38); border-radius:10px; background:rgba(255,255,255,.04); color:#e2f3ff; font-family:'Baloo 2'; font-weight:800; }
+.md-character-confirm { position:absolute; z-index:50; inset:0; padding:18px; display:grid; place-items:center; background:rgba(1,5,17,.8); backdrop-filter:blur(5px); }
+.md-character-confirm-card { width:100%; max-width:340px; padding:18px; border:1.5px solid #e1b13e; border-radius:17px; background:linear-gradient(180deg,#0c2451,#06132f); text-align:center; box-shadow:0 16px 45px rgba(0,0,0,.62); }
+.md-character-confirm-card h3 { margin:0; color:#ffe297; font-family:'Baloo 2'; font-size:20px; }
+.md-character-confirm-card p { margin:7px 0; color:#c5d9f2; font-size:11px; font-weight:700; }
+.md-character-confirm-card > strong { color:#72e5ff; font-family:'Baloo 2'; }
+.md-character-confirm-card > div { margin-top:13px; display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.md-character-confirm-card button { min-height:42px; border:1px solid rgba(122,167,214,.5); border-radius:10px; background:#19284b; color:#eef7ff; font-family:'Baloo 2'; font-weight:800; }
+.md-character-confirm-card button.confirm { border-color:#ffe499; background:linear-gradient(180deg,#ffe894,#efb43b); color:#20142d; }
+.md-skill-toolbar { min-height:43px; padding:8px 12px; display:flex; align-items:center; border:1px solid rgba(220,174,61,.76); border-radius:12px; background:rgba(4,20,49,.94); color:#ffe19a; font-family:'Baloo 2'; font-size:14px; }
+.md-skill-filters { min-height:39px; display:grid; grid-template-columns:repeat(3,1fr); border:1px solid rgba(95,157,220,.35); border-radius:11px; overflow:hidden; background:rgba(3,16,41,.92); }
+.md-skill-filters button { border:0; border-right:1px solid rgba(95,157,220,.28); background:transparent; color:#bfd5ee; font-family:'Baloo 2'; font-size:10px; font-weight:800; }
+.md-skill-filters button:last-child { border-right:0; }
+.md-skill-filters button.active { color:#e8fbff; background:rgba(17,115,191,.48); box-shadow:inset 0 -2px #49dfff; }
+.md-skill-list { padding:7px; display:flex; flex-direction:column; gap:5px; }
+.md-skill-upgrade { min-height:67px; padding:7px; display:grid; grid-template-columns:43px minmax(0,1fr) auto; align-items:center; gap:7px; border:1px solid rgba(99,160,218,.28); border-radius:11px; background:rgba(255,255,255,.025); }
+.md-skill-upgrade.locked { opacity:.5; }
+.md-skill-upgrade-icon { width:42px; height:42px; display:grid; place-items:center; border:1px solid #d6a73e; border-radius:10px; background:radial-gradient(circle,rgba(31,133,223,.3),rgba(2,12,34,.92)); font-size:24px; }
+.md-skill-upgrade-copy { min-width:0; display:flex; flex-direction:column; }
+.md-skill-upgrade-copy strong { color:#ffe19a; font-family:'Baloo 2'; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.md-skill-upgrade-copy small { color:#c1d7ef; font-size:8.5px; font-weight:800; line-height:1.25; }
+.md-skill-level-control { display:grid; grid-template-columns:32px minmax(61px,auto) 32px; align-items:center; gap:4px; }
+.md-skill-level-control > span { text-align:center; color:#dcecff; font-size:9px; font-weight:900; white-space:nowrap; }
+.md-skill-empty { padding:30px 12px; text-align:center; color:#adc5e1; font-size:11px; font-weight:800; }
+
+@media (max-width:380px) {
+  .md-character-page { padding-left:6px; padding-right:6px; }
+  .md-character-summary-main strong { font-size:19px; }
+  .md-status-grid { grid-template-columns:1fr; }
+  .md-upgrade-row { grid-template-columns:minmax(76px,1fr) 31px minmax(74px,auto) 31px; gap:3px; }
+  .md-upgrade-row button,.md-skill-level-control button { width:29px; }
+  .md-character-actions { grid-template-columns:101px 1fr; }
+  .md-skill-upgrade { grid-template-columns:39px minmax(0,1fr); }
+  .md-skill-upgrade-icon { width:38px; height:38px; }
+  .md-skill-level-control { grid-column:1 / -1; justify-content:end; }
+}
+
 /* Town hub — landmark buttons sit over the art instead of being baked into it. */
 .md-town-shell { flex:1; min-height:640px; padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:6px; position:relative; overflow:hidden; }
 .md-town-resources { position:relative; z-index:8; }

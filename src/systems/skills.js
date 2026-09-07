@@ -95,3 +95,28 @@ function unlockedSkills(level) {
   return SKILLS.filter(s => s.unlockLevel <= level);
 }
 
+// Existing characters receive their full budget from their current level. Only committed
+// levels are stored; a missing entry is Lv.1, so old saves migrate without a data rewrite.
+function totalSkillPointBudget(level) {
+  return Math.max(0, Math.floor((Number(level) || 0) / 5));
+}
+function committedSkillLevel(save, skillKey) {
+  const raw = save?.character?.skillLevels?.[skillKey];
+  return Math.max(1, Math.min(SKILL_MAX_LEVEL, Math.floor(Number(raw) || 1)));
+}
+function spentSkillPoints(save) {
+  return Object.keys(save?.character?.skillLevels || {}).reduce((sum, key) => {
+    return sum + Math.max(0, committedSkillLevel(save, key) - 1);
+  }, 0);
+}
+function remainingSkillPoints(save) {
+  return Math.max(0, totalSkillPointBudget(save?.character?.level) - spentSkillPoints(save));
+}
+function skillAtLevel(skill, level) {
+  const lv = Math.max(1, Math.min(SKILL_MAX_LEVEL, Math.floor(Number(level) || 1)));
+  const bonusLevels = lv - 1;
+  const next = { ...skill, skillLevel: lv };
+  if (Number.isFinite(skill.mult)) next.mult = roundTo(skill.mult * (1 + bonusLevels * 0.08), 2);
+  if (Number.isFinite(skill.healPct)) next.healPct = roundTo(skill.healPct + bonusLevels * 0.03, 2);
+  return next;
+}

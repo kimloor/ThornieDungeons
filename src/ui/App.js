@@ -800,7 +800,8 @@ function ThornieDungeons() {
         setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "skill") {
-      const skill = SKILLS.find(s => s.key === skillKey);
+      const baseSkill = SKILLS.find(s => s.key === skillKey);
+      const skill = baseSkill ? skillAtLevel(baseSkill, committedSkillLevel(save, skillKey)) : null;
       if (!skill || player.mp < skill.mp) {
         setBusy(false);
         return;
@@ -1246,20 +1247,64 @@ function ThornieDungeons() {
     combatOutcomeRef.current = null;
     enterStage(selectedFloor + 1, player);
   }
-  function addStatPoint(key) {
-    if (save.character.statPoints <= 0) return;
-    const nextStats = {
-      ...save.character.stats,
-      [key]: save.character.stats[key] + 1
-    };
+  function commitStatDraft(draft) {
+    const safeDraft = Object.fromEntries(STAT_INFO.map(st => [st.key, Math.max(0, Math.floor(Number(draft?.[st.key]) || 0))]));
+    const used = Object.values(safeDraft).reduce((sum, value) => sum + value, 0);
+    if (!used || used > save.character.statPoints) return false;
+    const nextStats = { ...save.character.stats };
+    STAT_INFO.forEach(st => { nextStats[st.key] += safeDraft[st.key]; });
     persistSave({
       ...save,
       character: {
         ...save.character,
-        statPoints: save.character.statPoints - 1,
+        statPoints: save.character.statPoints - used,
         stats: nextStats
       }
     });
+    return true;
+  }
+  function resetAllStats() {
+    const refunded = STAT_INFO.reduce((sum, st) => sum + Math.max(0, Number(save.character.stats[st.key]) || 0), 0);
+    if (!refunded || save.diamonds < STAT_RESET_COST) return false;
+    persistSave({
+      ...save,
+      diamonds: save.diamonds - STAT_RESET_COST,
+      character: {
+        ...save.character,
+        statPoints: save.character.statPoints + refunded,
+        stats: Object.fromEntries(STAT_INFO.map(st => [st.key, 0]))
+      }
+    });
+    return true;
+  }
+  function commitSkillDraft(draft) {
+    const unlocked = new Set(unlockedSkills(save.character.level).map(skill => skill.key));
+    const currentLevels = { ...(save.character.skillLevels || {}) };
+    let used = 0;
+    Object.entries(draft || {}).forEach(([key, amount]) => {
+      if (!unlocked.has(key)) return;
+      const current = committedSkillLevel(save, key);
+      const add = Math.max(0, Math.min(SKILL_MAX_LEVEL - current, Math.floor(Number(amount) || 0)));
+      if (add) {
+        currentLevels[key] = current + add;
+        used += add;
+      }
+    });
+    if (!used || used > remainingSkillPoints(save)) return false;
+    persistSave({
+      ...save,
+      character: { ...save.character, skillLevels: currentLevels }
+    });
+    return true;
+  }
+  function resetAllSkills() {
+    if (!spentSkillPoints(save) || save.diamonds < SKILL_RESET_COST) return false;
+    persistSave({
+      ...save,
+      diamonds: save.diamonds - SKILL_RESET_COST,
+      character: { ...save.character, skillLevels: {} }
+    });
+    return true;
   }
   function equipItem(item) {
     const slot = item.type;
@@ -1734,6 +1779,7 @@ function ThornieDungeons() {
     dodgeChance: charStats.dodgeChance
   };
   const cp = combatPower(player ? getStats(player, equipped) : outOfCombatStats, save.character.level);
+  const characterDisplayStats = getStats(freshPlayerFromSave(save), equipped);
   // Reuse the first-person dungeon artwork throughout the authenticated game. Each screen
   // chooses its own veil strength so scenery never competes with stats, targets or actions.
   const heavyDungeonFade = ["map", "combat", "result", "defeat"].includes(phase);
@@ -1744,7 +1790,7 @@ function ThornieDungeons() {
     className: isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
       : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && /*#__PURE__*/React.createElement(StatusBar, {
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -1823,8 +1869,10 @@ function ThornieDungeons() {
     onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
   }), phase === "character" && /*#__PURE__*/React.createElement(StatusScreen, {
     save: save,
-    charStats: charStats,
-    onAddStat: addStatPoint,
+    charStats: characterDisplayStats,
+    cp: cp,
+    onCommitStats: commitStatDraft,
+    onResetStats: resetAllStats,
     onOpenInv: () => setInvOpen(true),
     onMap: () => setPhase("map"),
     onOpenPets: () => {
@@ -1835,6 +1883,14 @@ function ThornieDungeons() {
     onBack: () => setPhase(characterReturnPhase)
   }), phase === "skill" && /*#__PURE__*/React.createElement(SkillScreen, {
     save: save,
+    cp: cp,
+    onCommitSkills: commitSkillDraft,
+    onResetSkills: resetAllSkills,
+    onOpenInv: () => setInvOpen(true),
+    onOpenPets: () => {
+      setPetReturnPhase("skill");
+      setPhase("pets");
+    },
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,

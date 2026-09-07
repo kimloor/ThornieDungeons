@@ -391,6 +391,92 @@ const STYLE = `
 .md-hub-more-grid button span { font-family:'Baloo 2'; font-size:8.5px; font-weight:800; white-space:nowrap; }
 .md-hub-more-grid button.danger { color:#ff9b9b; }
 
+/* Character Status / Skills — data-first layout. The page deliberately has no hero or
+   equipment artwork: the scroll area belongs to readable stats and reversible previews. */
+.md-character-page { flex:1; min-height:640px; height:calc(100dvh - 32px); max-height:900px; padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:7px; position:relative; overflow:hidden; }
+.md-character-page-title { min-height:48px; display:grid; grid-template-columns:48px 1fr 48px; align-items:center; }
+.md-character-page-title button { width:44px; height:44px; border:1px solid #f3c759; border-radius:13px; background:linear-gradient(180deg,rgba(10,35,74,.96),rgba(3,16,42,.98)); color:#ffe496; font-family:'Baloo 2'; font-size:34px; line-height:1; box-shadow:0 3px 0 #6c4616; cursor:pointer; }
+.md-character-page-title h1 { grid-column:2; margin:0; padding:3px 20px; justify-self:center; border-bottom:1px solid rgba(255,209,102,.62); color:#ffe6a0; font-family:'Baloo 2'; font-size:25px; line-height:1; text-shadow:0 2px 5px #000; }
+.md-character-summary { padding:10px 13px 9px; border:1.5px solid #d8aa3d; border-radius:15px; background:linear-gradient(105deg,rgba(5,21,52,.95),rgba(6,18,43,.91)); box-shadow:inset 0 0 18px rgba(39,155,255,.08),0 5px 16px rgba(0,0,0,.28); }
+.md-character-summary-main { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.md-character-summary-main strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#ffe6a0; font-family:'Baloo 2'; font-size:21px; line-height:1; }
+.md-character-summary-main b { flex:0 0 auto; color:#ffd166; font-family:'Baloo 2'; font-size:15px; }
+.md-character-level { margin-top:4px; color:#e5f3ff; font-family:'Baloo 2'; font-size:12px; font-weight:800; }
+.md-character-exp { margin-top:3px; display:flex; align-items:center; gap:7px; color:#cfe5ff; font-size:9px; font-weight:900; }
+.md-character-exp i { flex:1; height:7px; overflow:hidden; border:1px solid rgba(112,172,229,.65); border-radius:99px; background:#020919; }
+.md-character-exp i b { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#168eff,#55e7ff); box-shadow:0 0 9px rgba(59,211,255,.65); }
+.md-character-tabs { min-height:45px; display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.md-character-tabs button { border:1px solid rgba(116,166,220,.45); border-radius:11px; background:linear-gradient(180deg,rgba(7,28,64,.92),rgba(3,14,38,.96)); color:#dbeaff; font-family:'Baloo 2'; font-size:14px; font-weight:800; cursor:pointer; }
+.md-character-tabs button.active { border-color:#4ad7ff; color:#eafdff; background:linear-gradient(180deg,rgba(10,76,140,.95),rgba(5,31,78,.97)); box-shadow:inset 0 0 15px rgba(41,187,255,.2),0 0 9px rgba(40,198,255,.36); }
+.md-character-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:7px; padding-bottom:2px; }
+.md-status-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.md-stat-card,.md-upgrade-card,.md-skill-list { border:1px solid rgba(224,177,63,.78); border-radius:14px; background:linear-gradient(180deg,rgba(4,20,49,.94),rgba(3,13,35,.96)); box-shadow:inset 0 0 14px rgba(32,132,229,.06); }
+.md-stat-card { padding:8px 9px 6px; }
+.md-stat-card h2,.md-upgrade-head h2 { margin:0 0 4px; color:#ffe09a; font-family:'Baloo 2'; font-size:12px; line-height:1.1; }
+.md-derived-row { min-height:25px; padding:3px 1px; display:flex; justify-content:space-between; align-items:center; gap:5px; border-top:1px solid rgba(102,160,218,.22); color:#e6f2ff; font-size:9px; font-weight:800; }
+.md-derived-row > span:first-child { color:#bcd5f1; white-space:nowrap; }
+.md-preview-value { color:#49e3ff !important; font-weight:900; text-shadow:0 0 8px rgba(55,215,255,.55); }
+.md-advanced-toggle { width:100%; min-height:25px; margin-top:3px; border:1px solid rgba(94,161,223,.28); border-radius:8px; background:rgba(255,255,255,.035); color:#d8eaff; font-family:'Baloo 2'; font-size:9px; font-weight:800; cursor:pointer; }
+.md-upgrade-card { padding:9px; }
+.md-upgrade-head { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:5px; margin-bottom:3px; }
+.md-upgrade-head h2 { margin:0; font-size:15px; }
+.md-upgrade-head > span { padding:3px 7px; border:1px solid rgba(255,209,102,.38); border-radius:8px; color:#cfe1f5; font-size:8px; font-weight:800; white-space:nowrap; }
+.md-upgrade-head > span b { color:#ffe08d; font-size:11px; }
+.md-upgrade-row { min-height:37px; display:grid; grid-template-columns:minmax(83px,1fr) 34px minmax(82px,auto) 34px; align-items:center; gap:5px; border-top:1px solid rgba(99,157,216,.21); }
+.md-upgrade-name { color:#eef6ff; font-family:'Baloo 2'; font-size:11px; font-weight:800; }
+.md-upgrade-value { text-align:center; color:#dcecff; font-size:10px; font-weight:800; white-space:nowrap; }
+.md-upgrade-row button,.md-skill-level-control button { width:32px; height:30px; padding:0; border:1px solid #47ceff; border-radius:8px; background:rgba(7,39,83,.92); color:#dff8ff; font-size:19px; font-weight:900; box-shadow:inset 0 0 9px rgba(43,192,255,.12); cursor:pointer; }
+.md-upgrade-row button:disabled,.md-skill-level-control button:disabled { opacity:.3; }
+.md-preview-help { min-height:35px; display:flex; align-items:center; justify-content:space-between; gap:5px; color:#b9d3ef; font-size:8.5px; font-weight:800; }
+.md-preview-help > span:first-child { color:#aeeeff; }
+.md-preview-help button { min-height:28px; padding:3px 10px; border:1px solid rgba(123,165,209,.38); border-radius:8px; background:rgba(255,255,255,.04); color:#d9eaff; font-family:'Baloo 2'; font-size:9px; font-weight:800; cursor:pointer; }
+.md-preview-help button:disabled { opacity:.35; }
+.md-character-actions { display:grid; grid-template-columns:minmax(108px,.55fr) minmax(0,1.45fr); gap:7px; }
+.md-character-actions button { min-height:47px; padding:7px 8px; border-radius:11px; font-family:'Baloo 2'; font-size:11px; font-weight:900; cursor:pointer; }
+.md-character-actions button:disabled { opacity:.4; cursor:not-allowed; }
+.md-character-actions .reset { border:1.5px solid #45d7ff; background:linear-gradient(180deg,rgba(7,50,100,.98),rgba(3,25,64,.98)); color:#e1f8ff; box-shadow:inset 0 0 12px rgba(42,188,255,.12),0 3px 0 #062d52; }
+.md-character-actions .reset span { display:block; color:#76e8ff; font-size:9px; white-space:nowrap; }
+.md-character-actions .apply { border:1.5px solid #fff0a8; background:linear-gradient(180deg,#ffe894,#f2bb43); color:#20142d; box-shadow:inset 0 0 9px rgba(255,255,255,.25),0 3px 0 #8b5a18; }
+.md-character-page > .md-hub-dock { flex:0 0 auto; min-height:67px; }
+.md-character-page > .md-hub-dock button { min-height:51px; }
+.md-character-more { position:absolute; z-index:15; left:8px; right:8px; bottom:82px; padding:8px; border:1px solid #d3a844; border-radius:14px; background:rgba(4,17,44,.98); box-shadow:0 -5px 22px rgba(0,0,0,.45); }
+.md-character-more button { width:100%; min-height:42px; border:1px solid rgba(91,196,255,.38); border-radius:10px; background:rgba(255,255,255,.04); color:#e2f3ff; font-family:'Baloo 2'; font-weight:800; }
+.md-character-confirm { position:absolute; z-index:50; inset:0; padding:18px; display:grid; place-items:center; background:rgba(1,5,17,.8); backdrop-filter:blur(5px); }
+.md-character-confirm-card { width:100%; max-width:340px; padding:18px; border:1.5px solid #e1b13e; border-radius:17px; background:linear-gradient(180deg,#0c2451,#06132f); text-align:center; box-shadow:0 16px 45px rgba(0,0,0,.62); }
+.md-character-confirm-card h3 { margin:0; color:#ffe297; font-family:'Baloo 2'; font-size:20px; }
+.md-character-confirm-card p { margin:7px 0; color:#c5d9f2; font-size:11px; font-weight:700; }
+.md-character-confirm-card > strong { color:#72e5ff; font-family:'Baloo 2'; }
+.md-character-confirm-card > div { margin-top:13px; display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.md-character-confirm-card button { min-height:42px; border:1px solid rgba(122,167,214,.5); border-radius:10px; background:#19284b; color:#eef7ff; font-family:'Baloo 2'; font-weight:800; }
+.md-character-confirm-card button.confirm { border-color:#ffe499; background:linear-gradient(180deg,#ffe894,#efb43b); color:#20142d; }
+.md-skill-toolbar { min-height:43px; padding:8px 12px; display:flex; align-items:center; border:1px solid rgba(220,174,61,.76); border-radius:12px; background:rgba(4,20,49,.94); color:#ffe19a; font-family:'Baloo 2'; font-size:14px; }
+.md-skill-filters { min-height:39px; display:grid; grid-template-columns:repeat(3,1fr); border:1px solid rgba(95,157,220,.35); border-radius:11px; overflow:hidden; background:rgba(3,16,41,.92); }
+.md-skill-filters button { border:0; border-right:1px solid rgba(95,157,220,.28); background:transparent; color:#bfd5ee; font-family:'Baloo 2'; font-size:10px; font-weight:800; }
+.md-skill-filters button:last-child { border-right:0; }
+.md-skill-filters button.active { color:#e8fbff; background:rgba(17,115,191,.48); box-shadow:inset 0 -2px #49dfff; }
+.md-skill-list { padding:7px; display:flex; flex-direction:column; gap:5px; }
+.md-skill-upgrade { min-height:67px; padding:7px; display:grid; grid-template-columns:43px minmax(0,1fr) auto; align-items:center; gap:7px; border:1px solid rgba(99,160,218,.28); border-radius:11px; background:rgba(255,255,255,.025); }
+.md-skill-upgrade.locked { opacity:.5; }
+.md-skill-upgrade-icon { width:42px; height:42px; display:grid; place-items:center; border:1px solid #d6a73e; border-radius:10px; background:radial-gradient(circle,rgba(31,133,223,.3),rgba(2,12,34,.92)); font-size:24px; }
+.md-skill-upgrade-copy { min-width:0; display:flex; flex-direction:column; }
+.md-skill-upgrade-copy strong { color:#ffe19a; font-family:'Baloo 2'; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.md-skill-upgrade-copy small { color:#c1d7ef; font-size:8.5px; font-weight:800; line-height:1.25; }
+.md-skill-level-control { display:grid; grid-template-columns:32px minmax(61px,auto) 32px; align-items:center; gap:4px; }
+.md-skill-level-control > span { text-align:center; color:#dcecff; font-size:9px; font-weight:900; white-space:nowrap; }
+.md-skill-empty { padding:30px 12px; text-align:center; color:#adc5e1; font-size:11px; font-weight:800; }
+
+@media (max-width:380px) {
+  .md-character-page { padding-left:6px; padding-right:6px; }
+  .md-character-summary-main strong { font-size:19px; }
+  .md-status-grid { grid-template-columns:1fr; }
+  .md-upgrade-row { grid-template-columns:minmax(76px,1fr) 31px minmax(74px,auto) 31px; gap:3px; }
+  .md-upgrade-row button,.md-skill-level-control button { width:29px; }
+  .md-character-actions { grid-template-columns:101px 1fr; }
+  .md-skill-upgrade { grid-template-columns:39px minmax(0,1fr); }
+  .md-skill-upgrade-icon { width:38px; height:38px; }
+  .md-skill-level-control { grid-column:1 / -1; justify-content:end; }
+}
+
 /* Town hub — landmark buttons sit over the art instead of being baked into it. */
 .md-town-shell { flex:1; min-height:640px; padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:6px; position:relative; overflow:hidden; }
 .md-town-resources { position:relative; z-index:8; }
@@ -1182,6 +1268,7 @@ const defaultCharacterSlot = () => ({
     dex: 0,
     luk: 0
   },
+  skillLevels: {},
   gold: 0,
   unlockedFloor: 1,
   potions: 2,
@@ -1203,6 +1290,7 @@ function characterFromServerRow(row) {
   const petsRaw = safeJsonParse(row.pets_json, []);
   const pets = Array.isArray(petsRaw) ? petsRaw : (Array.isArray(petsRaw?.list) ? petsRaw.list : []);
   const petDuplicates = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.dup === "object" && petsRaw.dup ? petsRaw.dup : {});
+  const skillLevels = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.skills === "object" && petsRaw.skills ? petsRaw.skills : {});
   return {
     id: row.character_id,
     name: row.name || "",
@@ -1216,6 +1304,7 @@ function characterFromServerRow(row) {
       dex: numOr(row.dex, 0),
       luk: numOr(row.luk, 0)
     },
+    skillLevels,
     gold: numOr(row.gold, 0),
     unlockedFloor: numOr(row.unlocked_floor, 1),
     potions: row.potions === undefined || row.potions === null ? 2 : numOr(row.potions, 0),
@@ -1289,6 +1378,7 @@ function flattenCharacterForRuntime(account, slotIndex) {
       level: slot.level,
       xp: slot.xp,
       statPoints: slot.statPoints,
+      skillLevels: { ...(slot.skillLevels || {}) },
       stats: {
         ...slot.stats
       }
@@ -1325,6 +1415,7 @@ function packRuntimeIntoSlot(existingSlot, flatSave) {
     level: flatSave.character.level,
     xp: flatSave.character.xp,
     statPoints: flatSave.character.statPoints,
+    skillLevels: { ...(flatSave.character.skillLevels || {}) },
     stats: {
       ...flatSave.character.stats
     },
@@ -2049,7 +2140,13 @@ function characterProgressToServer(flatSave) {
     potions: flatSave.potions,
     protection_stones: flatSave.protectionStones,
     chest_pity: flatSave.chestPity,
-    pets_json: JSON.stringify({ list: flatSave.pets || [], dup: flatSave.petDuplicates || {} }),
+    // Skill progression shares this existing per-character JSON envelope so it remains cloud
+    // persistent without a production D1 schema migration.
+    pets_json: JSON.stringify({
+      list: flatSave.pets || [],
+      dup: flatSave.petDuplicates || {},
+      skills: flatSave.character.skillLevels || {}
+    }),
     active_pet_id: flatSave.activePetId || ""
   };
 }
@@ -2168,6 +2265,9 @@ function itemsFromServerList(rows) {
 // ---------- game data ----------
 const MAX_LEVEL = 99;
 const STAT_POINTS_PER_LEVEL = 5;
+const STAT_RESET_COST = 100;
+const SKILL_RESET_COST = 100;
+const SKILL_MAX_LEVEL = 10;
 const STAT_INFO = [{
   key: "str",
   label: "STR",
@@ -2196,7 +2296,6 @@ const STAT_INFO = [{
 }];
 // Base speed value before AGI is applied — shared by player, pets, and monsters.
 const BASE_SPEED = 10;
-
 
 // ===== systems/skills.js =====
 // ---------- skills (unlocked every 10 levels, up to level 90 — level cap is 99) ----------
@@ -2296,6 +2395,31 @@ function unlockedSkills(level) {
   return SKILLS.filter(s => s.unlockLevel <= level);
 }
 
+// Existing characters receive their full budget from their current level. Only committed
+// levels are stored; a missing entry is Lv.1, so old saves migrate without a data rewrite.
+function totalSkillPointBudget(level) {
+  return Math.max(0, Math.floor((Number(level) || 0) / 5));
+}
+function committedSkillLevel(save, skillKey) {
+  const raw = save?.character?.skillLevels?.[skillKey];
+  return Math.max(1, Math.min(SKILL_MAX_LEVEL, Math.floor(Number(raw) || 1)));
+}
+function spentSkillPoints(save) {
+  return Object.keys(save?.character?.skillLevels || {}).reduce((sum, key) => {
+    return sum + Math.max(0, committedSkillLevel(save, key) - 1);
+  }, 0);
+}
+function remainingSkillPoints(save) {
+  return Math.max(0, totalSkillPointBudget(save?.character?.level) - spentSkillPoints(save));
+}
+function skillAtLevel(skill, level) {
+  const lv = Math.max(1, Math.min(SKILL_MAX_LEVEL, Math.floor(Number(level) || 1)));
+  const bonusLevels = lv - 1;
+  const next = { ...skill, skillLevel: lv };
+  if (Number.isFinite(skill.mult)) next.mult = roundTo(skill.mult * (1 + bonusLevels * 0.08), 2);
+  if (Number.isFinite(skill.healPct)) next.healPct = roundTo(skill.healPct + bonusLevels * 0.03, 2);
+  return next;
+}
 
 // ===== systems/pets.js =====
 // ---------- pets ----------
@@ -4348,7 +4472,8 @@ function ThornieDungeons() {
         setTimeout(() => runQueueAfterPlayer(), 350);
       }, 300);
     } else if (action === "skill") {
-      const skill = SKILLS.find(s => s.key === skillKey);
+      const baseSkill = SKILLS.find(s => s.key === skillKey);
+      const skill = baseSkill ? skillAtLevel(baseSkill, committedSkillLevel(save, skillKey)) : null;
       if (!skill || player.mp < skill.mp) {
         setBusy(false);
         return;
@@ -4794,20 +4919,64 @@ function ThornieDungeons() {
     combatOutcomeRef.current = null;
     enterStage(selectedFloor + 1, player);
   }
-  function addStatPoint(key) {
-    if (save.character.statPoints <= 0) return;
-    const nextStats = {
-      ...save.character.stats,
-      [key]: save.character.stats[key] + 1
-    };
+  function commitStatDraft(draft) {
+    const safeDraft = Object.fromEntries(STAT_INFO.map(st => [st.key, Math.max(0, Math.floor(Number(draft?.[st.key]) || 0))]));
+    const used = Object.values(safeDraft).reduce((sum, value) => sum + value, 0);
+    if (!used || used > save.character.statPoints) return false;
+    const nextStats = { ...save.character.stats };
+    STAT_INFO.forEach(st => { nextStats[st.key] += safeDraft[st.key]; });
     persistSave({
       ...save,
       character: {
         ...save.character,
-        statPoints: save.character.statPoints - 1,
+        statPoints: save.character.statPoints - used,
         stats: nextStats
       }
     });
+    return true;
+  }
+  function resetAllStats() {
+    const refunded = STAT_INFO.reduce((sum, st) => sum + Math.max(0, Number(save.character.stats[st.key]) || 0), 0);
+    if (!refunded || save.diamonds < STAT_RESET_COST) return false;
+    persistSave({
+      ...save,
+      diamonds: save.diamonds - STAT_RESET_COST,
+      character: {
+        ...save.character,
+        statPoints: save.character.statPoints + refunded,
+        stats: Object.fromEntries(STAT_INFO.map(st => [st.key, 0]))
+      }
+    });
+    return true;
+  }
+  function commitSkillDraft(draft) {
+    const unlocked = new Set(unlockedSkills(save.character.level).map(skill => skill.key));
+    const currentLevels = { ...(save.character.skillLevels || {}) };
+    let used = 0;
+    Object.entries(draft || {}).forEach(([key, amount]) => {
+      if (!unlocked.has(key)) return;
+      const current = committedSkillLevel(save, key);
+      const add = Math.max(0, Math.min(SKILL_MAX_LEVEL - current, Math.floor(Number(amount) || 0)));
+      if (add) {
+        currentLevels[key] = current + add;
+        used += add;
+      }
+    });
+    if (!used || used > remainingSkillPoints(save)) return false;
+    persistSave({
+      ...save,
+      character: { ...save.character, skillLevels: currentLevels }
+    });
+    return true;
+  }
+  function resetAllSkills() {
+    if (!spentSkillPoints(save) || save.diamonds < SKILL_RESET_COST) return false;
+    persistSave({
+      ...save,
+      diamonds: save.diamonds - SKILL_RESET_COST,
+      character: { ...save.character, skillLevels: {} }
+    });
+    return true;
   }
   function equipItem(item) {
     const slot = item.type;
@@ -5282,6 +5451,7 @@ function ThornieDungeons() {
     dodgeChance: charStats.dodgeChance
   };
   const cp = combatPower(player ? getStats(player, equipped) : outOfCombatStats, save.character.level);
+  const characterDisplayStats = getStats(freshPlayerFromSave(save), equipped);
   // Reuse the first-person dungeon artwork throughout the authenticated game. Each screen
   // chooses its own veil strength so scenery never competes with stats, targets or actions.
   const heavyDungeonFade = ["map", "combat", "result", "defeat"].includes(phase);
@@ -5292,7 +5462,7 @@ function ThornieDungeons() {
     className: isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
       : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && /*#__PURE__*/React.createElement(StatusBar, {
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -5371,8 +5541,10 @@ function ThornieDungeons() {
     onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
   }), phase === "character" && /*#__PURE__*/React.createElement(StatusScreen, {
     save: save,
-    charStats: charStats,
-    onAddStat: addStatPoint,
+    charStats: characterDisplayStats,
+    cp: cp,
+    onCommitStats: commitStatDraft,
+    onResetStats: resetAllStats,
     onOpenInv: () => setInvOpen(true),
     onMap: () => setPhase("map"),
     onOpenPets: () => {
@@ -5383,6 +5555,14 @@ function ThornieDungeons() {
     onBack: () => setPhase(characterReturnPhase)
   }), phase === "skill" && /*#__PURE__*/React.createElement(SkillScreen, {
     save: save,
+    cp: cp,
+    onCommitSkills: commitSkillDraft,
+    onResetSkills: resetAllSkills,
+    onOpenInv: () => setInvOpen(true),
+    onOpenPets: () => {
+      setPetReturnPhase("skill");
+      setPhase("pets");
+    },
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     unlockedFloor: save.unlockedFloor,
@@ -5675,6 +5855,7 @@ function GameDock({
   onCharacter,
   onOpenInv,
   onPets,
+  activeKey,
   moreOpen,
   onToggleMore
 }) {
@@ -5683,6 +5864,7 @@ function GameDock({
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
+    className: activeKey === "character" ? "active" : "",
     onClick: onCharacter
   }, /*#__PURE__*/React.createElement("img", {
     src: "ui/hub-icons/character.svg",
@@ -6181,142 +6363,249 @@ function CharacterSelectScreen({
     onClick: onLogout
   }, "🚪 ออกจากระบบ"));
 }
+function CharacterPageHeader({ save, cp, onBack }) {
+  const xpNeed = xpToNext(save.character.level);
+  const xpPct = save.character.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, save.character.xp / xpNeed * 100));
+  return /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("header", { className: "md-character-page-title" },
+      /*#__PURE__*/React.createElement("button", { type: "button", onClick: onBack, "aria-label": "ย้อนกลับ" }, "‹"),
+      /*#__PURE__*/React.createElement("h1", null, "Character")
+    ),
+    /*#__PURE__*/React.createElement("section", { className: "md-character-summary" },
+      /*#__PURE__*/React.createElement("div", { className: "md-character-summary-main" },
+        /*#__PURE__*/React.createElement("strong", null, save.characterName || "Adventurer"),
+        /*#__PURE__*/React.createElement("b", null, "⚔ CP ", formatNumber(cp))
+      ),
+      /*#__PURE__*/React.createElement("div", { className: "md-character-level" }, "LV. ", save.character.level),
+      /*#__PURE__*/React.createElement("div", { className: "md-character-exp" },
+        /*#__PURE__*/React.createElement("span", null, "EXP ", Math.round(xpPct), "%"),
+        /*#__PURE__*/React.createElement("i", null, /*#__PURE__*/React.createElement("b", { style: { width: `${xpPct}%` } }))
+      )
+    )
+  );
+}
+
+function CharacterTabs({ active, onStatus, onSkills }) {
+  return /*#__PURE__*/React.createElement("nav", { className: "md-character-tabs", "aria-label": "ข้อมูลตัวละคร" },
+    /*#__PURE__*/React.createElement("button", { type: "button", className: active === "status" ? "active" : "", onClick: onStatus }, "◈ Status"),
+    /*#__PURE__*/React.createElement("button", { type: "button", className: active === "skills" ? "active" : "", onClick: onSkills }, "▤ Skills")
+  );
+}
+
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onBack }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  return /*#__PURE__*/React.createElement(React.Fragment, null,
+    moreOpen && /*#__PURE__*/React.createElement("div", { className: "md-character-more" },
+      /*#__PURE__*/React.createElement("button", { type: "button", onClick: onBack }, "↩ กลับหน้าก่อนหน้า")
+    ),
+    /*#__PURE__*/React.createElement(GameDock, {
+      activeKey: "character",
+      onCharacter,
+      onOpenInv,
+      onPets: onOpenPets,
+      moreOpen,
+      onToggleMore: () => setMoreOpen(open => !open)
+    })
+  );
+}
+
+function PaidResetConfirm({ type, diamonds, onCancel, onConfirm }) {
+  const label = type === "stats" ? "รีสเตตัสทั้งหมด" : "รีสกิลทั้งหมด";
+  return /*#__PURE__*/React.createElement("div", { className: "md-character-confirm", role: "dialog", "aria-modal": "true" },
+    /*#__PURE__*/React.createElement("div", { className: "md-character-confirm-card" },
+      /*#__PURE__*/React.createElement("h3", null, label),
+      /*#__PURE__*/React.createElement("p", null, type === "stats" ? "คืนแต้มสเตตัสที่เคยใช้ทั้งหมด" : "คืนแต้มสกิลที่เคยใช้ทั้งหมด"),
+      /*#__PURE__*/React.createElement("strong", null, "ใช้ 💎 100 · มี ", formatNumber(diamonds)),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCancel }, "ยกเลิก"),
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "confirm", disabled: diamonds < 100, onClick: onConfirm }, diamonds < 100 ? "เพชรไม่พอ" : "ยืนยัน")
+      )
+    )
+  );
+}
+
 function StatusScreen({
   save,
   charStats,
-  onAddStat,
+  cp,
+  onCommitStats,
+  onResetStats,
   onOpenInv,
-  onMap,
   onOpenPets,
   onOpenSkill,
   onBack
 }) {
-  const s = save.character.stats;
-  const points = save.character.statPoints;
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-panel",
-    style: {
-      flex: 1
+  const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
+  const [draft, setDraft] = useState(emptyDraft);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const used = Object.values(draft).reduce((sum, value) => sum + value, 0);
+  const pointsLeft = Math.max(0, save.character.statPoints - used);
+  const previewStatsRaw = { ...save.character.stats };
+  STAT_INFO.forEach(st => { previewStatsRaw[st.key] += draft[st.key]; });
+  const previewSave = { ...save, character: { ...save.character, stats: previewStatsRaw } };
+  const committedBase = characterBaseStats(save);
+  const previewBase = characterBaseStats(previewSave);
+  // charStats includes equipment/set/pet bonuses. Add only the delta caused by this draft so
+  // the screen previews the real total value without pretending equipment disappeared.
+  const preview = { ...charStats };
+  ["maxHp", "maxMp", "atk", "def", "speed", "accuracy", "critChance", "critDamage", "dodgeChance", "dropBonus"].forEach(key => {
+    preview[key] = roundTo(charStats[key] + (previewBase[key] - committedBase[key]), 1);
+  });
+  const changed = (before, after) => before !== after;
+  const value = (before, after, suffix = "") => /*#__PURE__*/React.createElement("span", null,
+    before, suffix,
+    changed(before, after) && /*#__PURE__*/React.createElement(React.Fragment, null, " → ", /*#__PURE__*/React.createElement("b", { className: "md-preview-value" }, after, suffix))
+  );
+  const changeDraft = (key, delta) => setDraft(current => {
+    const next = Math.max(0, current[key] + delta);
+    if (delta > 0 && pointsLeft <= 0) return current;
+    return { ...current, [key]: next };
+  });
+  const commit = () => {
+    if (onCommitStats(draft)) setDraft(emptyDraft());
+  };
+  const doPaidReset = () => {
+    if (onResetStats()) {
+      setDraft(emptyDraft());
+      setConfirmReset(false);
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title",
-    style: {
-      margin: 0
-    }
-  }, "📊 Status"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee small",
-    onClick: onBack,
-    style: {
-      boxShadow: "none",
-      padding: "6px 12px"
-    }
-  }, "✕")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "Lv", save.character.level, " · ATK ", charStats.atk, " · DEF ", charStats.def, " · HP ", charStats.maxHp, " · MP ", charStats.maxMp, " · Speed ", charStats.speed), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: "4px 0 0"
-    }
-  }, "Hit Rate ", charStats.accuracy, "% · Crit ", charStats.critChance, "% · Evasion ", charStats.dodgeChance, "% · Drop Bonus +", charStats.dropBonus, "%")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, STAT_INFO.map(st => /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-row",
-    key: st.key
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-info"
-  }, st.icon, " ", st.label, " ", /*#__PURE__*/React.createElement("span", {
-    className: "md-shop-lv"
-  }, s[st.key])), /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-lv"
-  }, st.desc)), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    disabled: points <= 0,
-    onClick: () => onAddStat(st.key)
-  }, "+1")))), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      textAlign: "center"
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "แต้มสเตตัสคงเหลือ: ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: "var(--gold)"
-    }
-  }, points))));
+  };
+  const combatRows = [
+    ["♥", "HP", charStats.maxHp, preview.maxHp, ""],
+    ["◆", "MP", charStats.maxMp, preview.maxMp, ""],
+    ["⚔", "ATK", charStats.atk, preview.atk, ""],
+    ["⬟", "DEF", charStats.def, preview.def, ""],
+    ["➤", "SPD", charStats.speed, preview.speed, ""]
+  ];
+  const advancedRows = [
+    ["◎", "Hit Rate", charStats.accuracy, preview.accuracy, "%"],
+    ["✦", "CRIT Rate", charStats.critChance, preview.critChance, "%"],
+    ["✷", "CRIT DMG", charStats.critDamage, preview.critDamage, "%"],
+    ["≋", "Evasion", charStats.dodgeChance, preview.dodgeChance, "%"],
+    ["⚔", "Armor Pen.", 0, 0, "%"],
+    ["♣", "Drop Bonus", charStats.dropBonus, preview.dropBonus, "%"]
+  ];
+  const allocatedStats = STAT_INFO.reduce((sum, st) => sum + Math.max(0, Number(save.character.stats[st.key]) || 0), 0);
+  return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
+    /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
+    /*#__PURE__*/React.createElement(CharacterTabs, { active: "status", onStatus: () => {}, onSkills: onOpenSkill }),
+    /*#__PURE__*/React.createElement("section", { className: "md-character-scroll" },
+      /*#__PURE__*/React.createElement("div", { className: "md-status-grid" },
+        /*#__PURE__*/React.createElement("div", { className: "md-stat-card" },
+          /*#__PURE__*/React.createElement("h2", null, "⚔ Combat Status"),
+          combatRows.map(row => /*#__PURE__*/React.createElement("div", { className: "md-derived-row", key: row[1] }, /*#__PURE__*/React.createElement("span", null, row[0], " ", row[1]), value(row[2], row[3], row[4])))
+        ),
+        /*#__PURE__*/React.createElement("div", { className: "md-stat-card" },
+          /*#__PURE__*/React.createElement("h2", null, "✦ Advanced Status"),
+          advancedRows.slice(0, advancedOpen ? advancedRows.length : 4).map(row => /*#__PURE__*/React.createElement("div", { className: "md-derived-row", key: row[1] }, /*#__PURE__*/React.createElement("span", null, row[0], " ", row[1]), value(row[2], row[3], row[4]))),
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "md-advanced-toggle", onClick: () => setAdvancedOpen(open => !open) }, advancedOpen ? "ย่อรายการ⌃" : "ดูทั้งหมด⌄")
+        )
+      ),
+      /*#__PURE__*/React.createElement("section", { className: "md-upgrade-card" },
+        /*#__PURE__*/React.createElement("div", { className: "md-upgrade-head" },
+          /*#__PURE__*/React.createElement("h2", null, "▥ อัปสเตตัส"),
+          /*#__PURE__*/React.createElement("span", null, "แต้มคงเหลือ ", /*#__PURE__*/React.createElement("b", null, pointsLeft)),
+          /*#__PURE__*/React.createElement("span", null, "ใช้ไป ", /*#__PURE__*/React.createElement("b", null, used))
+        ),
+        STAT_INFO.map(st => {
+          const current = save.character.stats[st.key];
+          const after = current + draft[st.key];
+          return /*#__PURE__*/React.createElement("div", { className: "md-upgrade-row", key: st.key },
+            /*#__PURE__*/React.createElement("span", { className: "md-upgrade-name" }, st.icon, " ", st.label),
+            /*#__PURE__*/React.createElement("button", { type: "button", disabled: draft[st.key] <= 0, onClick: () => changeDraft(st.key, -1) }, "−"),
+            /*#__PURE__*/React.createElement("span", { className: "md-upgrade-value" }, current, draft[st.key] > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, " → ", /*#__PURE__*/React.createElement("b", { className: "md-preview-value" }, after))),
+            /*#__PURE__*/React.createElement("button", { type: "button", disabled: pointsLeft <= 0, onClick: () => changeDraft(st.key, 1) }, "+")
+          );
+        }),
+        /*#__PURE__*/React.createElement("div", { className: "md-preview-help" }, /*#__PURE__*/React.createElement("span", null, "● ค่าที่เปลี่ยนจากการทดลองอัป"), /*#__PURE__*/React.createElement("button", { type: "button", disabled: !used, onClick: () => setDraft(emptyDraft()) }, "↻ รีเซ็ต")),
+        /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !allocatedStats, onClick: () => setConfirmReset(true) }, "↻ รีสเตตัส ", /*#__PURE__*/React.createElement("span", null, "💎 100")),
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสเตตัส")
+        )
+      )
+    ),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onBack }),
+    confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
+  );
 }
+
 function SkillScreen({
   save,
+  cp,
+  onCommitSkills,
+  onResetSkills,
+  onOpenInv,
+  onOpenPets,
   onBack
 }) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-panel",
-    style: {
-      flex: 1
+  const [draft, setDraft] = useState({});
+  const [filter, setFilter] = useState("all");
+  const [confirmReset, setConfirmReset] = useState(false);
+  const points = remainingSkillPoints(save);
+  const used = Object.values(draft).reduce((sum, value) => sum + value, 0);
+  const pointsLeft = Math.max(0, points - used);
+  const visibleSkills = SKILLS.filter(skill => filter === "all" || (filter === "active" ? skill.type !== "passive" : skill.type === "passive"));
+  const changeDraft = (skill, delta) => setDraft(current => {
+    const now = current[skill.key] || 0;
+    const committed = committedSkillLevel(save, skill.key);
+    if (delta > 0 && (pointsLeft <= 0 || committed + now >= SKILL_MAX_LEVEL)) return current;
+    const next = Math.max(0, now + delta);
+    return { ...current, [skill.key]: next };
+  });
+  const effectText = (skill, level) => {
+    const scaled = skillAtLevel(skill, level);
+    if (Number.isFinite(scaled.mult)) return `${roundInt(scaled.mult * 100)}% ATK`;
+    if (Number.isFinite(scaled.healPct)) return `ฟื้นฟู ${roundInt(scaled.healPct * 100)}% HP`;
+    return skill.desc;
+  };
+  const commit = () => {
+    if (onCommitSkills(draft)) setDraft({});
+  };
+  const doPaidReset = () => {
+    if (onResetSkills()) {
+      setDraft({});
+      setConfirmReset(false);
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title"
-  }, "✨ Skills"), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "Lv", save.character.level)), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list",
-    style: {
-      maxHeight: 420,
-      overflowY: "auto"
-    }
-  }, SKILLS.map(sk => {
-    const unlocked = sk.unlockLevel <= save.character.level;
-    return /*#__PURE__*/React.createElement("div", {
-      key: sk.key,
-      className: "md-shop-row",
-      style: {
-        opacity: unlocked ? 1 : 0.5
-      }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-info"
-    }, unlocked ? sk.icon : "🔒", " ", sk.name, " ", /*#__PURE__*/React.createElement("span", {
-      className: "md-shop-lv"
-    }, sk.mp, "mp")), /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-lv"
-    }, unlocked ? sk.desc : `ปลดล็อกที่ Lv${sk.unlockLevel}`)));
-  }))), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee wide small",
-    onClick: onBack
-  }, "← Back"));
+  };
+  return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
+    /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
+    /*#__PURE__*/React.createElement(CharacterTabs, { active: "skills", onStatus: onBack, onSkills: () => {} }),
+    /*#__PURE__*/React.createElement("section", { className: "md-character-scroll" },
+      /*#__PURE__*/React.createElement("div", { className: "md-skill-toolbar" }, /*#__PURE__*/React.createElement("strong", null, "✦ Skill Points ", pointsLeft)),
+      /*#__PURE__*/React.createElement("nav", { className: "md-skill-filters" },
+        [["all", "ทั้งหมด"], ["active", "Active"], ["passive", "Passive"]].map(item => /*#__PURE__*/React.createElement("button", { type: "button", key: item[0], className: filter === item[0] ? "active" : "", onClick: () => setFilter(item[0]) }, item[1]))
+      ),
+      /*#__PURE__*/React.createElement("section", { className: "md-skill-list" },
+        visibleSkills.map(skill => {
+          const unlocked = skill.unlockLevel <= save.character.level;
+          const current = committedSkillLevel(save, skill.key);
+          const added = draft[skill.key] || 0;
+          const after = current + added;
+          return /*#__PURE__*/React.createElement("article", { className: `md-skill-upgrade${unlocked ? "" : " locked"}`, key: skill.key },
+            /*#__PURE__*/React.createElement("span", { className: "md-skill-upgrade-icon" }, unlocked ? skill.icon : "🔒"),
+            /*#__PURE__*/React.createElement("div", { className: "md-skill-upgrade-copy" },
+              /*#__PURE__*/React.createElement("strong", null, skill.name),
+              unlocked ? /*#__PURE__*/React.createElement("small", null, effectText(skill, current), added > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, " → ", /*#__PURE__*/React.createElement("b", { className: "md-preview-value" }, effectText(skill, after)))) : /*#__PURE__*/React.createElement("small", null, "ปลดล็อกที่ LV. ", skill.unlockLevel)
+            ),
+            unlocked && /*#__PURE__*/React.createElement("div", { className: "md-skill-level-control" },
+              /*#__PURE__*/React.createElement("button", { type: "button", disabled: added <= 0, onClick: () => changeDraft(skill, -1) }, "−"),
+              /*#__PURE__*/React.createElement("span", null, "LV. ", current, added > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, " → ", /*#__PURE__*/React.createElement("b", { className: "md-preview-value" }, after))),
+              /*#__PURE__*/React.createElement("button", { type: "button", disabled: pointsLeft <= 0 || after >= SKILL_MAX_LEVEL, onClick: () => changeDraft(skill, 1) }, "+")
+            )
+          );
+        }),
+        visibleSkills.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-skill-empty" }, "ยังไม่มีสกิลประเภทนี้")
+      ),
+      /*#__PURE__*/React.createElement("div", { className: "md-preview-help" }, /*#__PURE__*/React.createElement("span", null, "● ค่าที่เปลี่ยนจากการทดลองอัป"), /*#__PURE__*/React.createElement("button", { type: "button", disabled: !used, onClick: () => setDraft({}) }, "↻ รีเซ็ต")),
+      /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spentSkillPoints(save), onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100")),
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสกิล")
+      )
+    ),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onBack }),
+    confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
+  );
 }
 // ---------- Phase 2: Leaderboard ----------
 const LEADERBOARD_BOARDS = [{

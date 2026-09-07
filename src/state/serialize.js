@@ -19,7 +19,13 @@ function characterProgressToServer(flatSave) {
     potions: flatSave.potions,
     protection_stones: flatSave.protectionStones,
     chest_pity: flatSave.chestPity,
-    pets_json: JSON.stringify({ list: flatSave.pets || [], dup: flatSave.petDuplicates || {} }),
+    // Skill progression shares this existing per-character JSON envelope so it remains cloud
+    // persistent without a production D1 schema migration.
+    pets_json: JSON.stringify({
+      list: flatSave.pets || [],
+      dup: flatSave.petDuplicates || {},
+      skills: flatSave.character.skillLevels || {}
+    }),
     active_pet_id: flatSave.activePetId || ""
   };
 }

@@ -66,6 +66,7 @@ const defaultCharacterSlot = () => ({
     dex: 0,
     luk: 0
   },
+  skillLevels: {},
   gold: 0,
   unlockedFloor: 1,
   potions: 2,
@@ -87,6 +88,7 @@ function characterFromServerRow(row) {
   const petsRaw = safeJsonParse(row.pets_json, []);
   const pets = Array.isArray(petsRaw) ? petsRaw : (Array.isArray(petsRaw?.list) ? petsRaw.list : []);
   const petDuplicates = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.dup === "object" && petsRaw.dup ? petsRaw.dup : {});
+  const skillLevels = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.skills === "object" && petsRaw.skills ? petsRaw.skills : {});
   return {
     id: row.character_id,
     name: row.name || "",
@@ -100,6 +102,7 @@ function characterFromServerRow(row) {
       dex: numOr(row.dex, 0),
       luk: numOr(row.luk, 0)
     },
+    skillLevels,
     gold: numOr(row.gold, 0),
     unlockedFloor: numOr(row.unlocked_floor, 1),
     potions: row.potions === undefined || row.potions === null ? 2 : numOr(row.potions, 0),
@@ -173,6 +176,7 @@ function flattenCharacterForRuntime(account, slotIndex) {
       level: slot.level,
       xp: slot.xp,
       statPoints: slot.statPoints,
+      skillLevels: { ...(slot.skillLevels || {}) },
       stats: {
         ...slot.stats
       }
@@ -209,6 +213,7 @@ function packRuntimeIntoSlot(existingSlot, flatSave) {
     level: flatSave.character.level,
     xp: flatSave.character.xp,
     statPoints: flatSave.character.statPoints,
+    skillLevels: { ...(flatSave.character.skillLevels || {}) },
     stats: {
       ...flatSave.character.stats
     },
