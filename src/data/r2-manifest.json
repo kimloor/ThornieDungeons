@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-07T04:47:29Z",
-  "count": 69,
+  "generatedAt": "2026-09-07T10:23:35Z",
+  "count": 134,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "3dd816e383e2c19b260a98702616dd2a",
-      "last_modified": "2026-09-05T14:28:51.037Z",
-      "size": 5205,
+      "etag": "a1c9e3291e73fd11b5af9647d9e56f15",
+      "last_modified": "2026-09-07T05:17:00.874Z",
+      "size": 12572,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -71,9 +71,9 @@
     },
     {
       "key": "sprite/characters/hero001/base/hero_base.png",
-      "etag": "29065313815227568cc752eb461ecf53",
-      "last_modified": "2026-09-05T12:51:00.058Z",
-      "size": 1025188,
+      "etag": "8f5806f4f2b886c7dcbd38af02f5cf45",
+      "last_modified": "2026-09-07T04:49:56.821Z",
+      "size": 668879,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -93,9 +93,9 @@
     },
     {
       "key": "sprite/characters/hero001/equipment/arms_azure.png",
-      "etag": "a064244d8e9c65fa701793d06ccda31c",
-      "last_modified": "2026-09-05T14:25:21.375Z",
-      "size": 41629,
+      "etag": "68c011436536c1956d7ce12f1ed52d2e",
+      "last_modified": "2026-09-07T04:50:18.665Z",
+      "size": 47087,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -107,6 +107,17 @@
       "etag": "cd49cc09de5ec48f43bf29bf231f54e8",
       "last_modified": "2026-09-05T12:52:12.544Z",
       "size": 30723,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/equipment/outfit_azure.png",
+      "etag": "73e4ec5b7664a7688157151fe190fe81",
+      "last_modified": "2026-09-07T04:50:18.913Z",
+      "size": 255118,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -126,9 +137,9 @@
     },
     {
       "key": "sprite/characters/hero001/equipment/shoes_azure.png",
-      "etag": "be2e438f59c3f6c31506cbe68cbe2079",
-      "last_modified": "2026-09-05T14:25:36.154Z",
-      "size": 68244,
+      "etag": "f24e6cf6413c3673732d60ed7d991114",
+      "last_modified": "2026-09-07T04:50:18.586Z",
+      "size": 95259,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -158,6 +169,17 @@
       "storage_class": "Standard"
     },
     {
+      "key": "sprite/characters/hero001/hair/hair_topknot.png",
+      "etag": "404ce9e6e029b06d95bf7cacb26eef81",
+      "last_modified": "2026-09-07T04:50:36.944Z",
+      "size": 504200,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "sprite/characters/hero001/weapons/",
       "etag": "d41d8cd98f00b204e9800998ecf8427e",
       "last_modified": "2026-09-05T12:50:33.232Z",
@@ -170,9 +192,9 @@
     },
     {
       "key": "sprite/characters/hero001/weapons/sword_azure.png",
-      "etag": "d5cdde93b963197b66ae586e4bc35086",
-      "last_modified": "2026-09-05T12:51:21.692Z",
-      "size": 56448,
+      "etag": "f7a4468bdfa70a4e6213302725debf77",
+      "last_modified": "2026-09-07T04:50:54.479Z",
+      "size": 109218,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -191,10 +213,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/wings/angel_wings.png",
-      "etag": "4df1475a64f373e21ded8897be468dd2",
-      "last_modified": "2026-09-05T12:51:37.543Z",
-      "size": 100837,
+      "key": "sprite/characters/hero001/wings/wings_angel.png",
+      "etag": "d8ee603743c66cefa5f711586c5de397",
+      "last_modified": "2026-09-07T04:51:15.247Z",
+      "size": 505688,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -208,6 +230,501 @@
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:52:11.288Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:53:53.436Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/animations/bone_rattler_attack_0.png",
+      "etag": "653e4347982d3f563652226019acf694",
+      "last_modified": "2026-09-07T04:54:02.991Z",
+      "size": 129143,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/animations/bone_rattler_attack_1.png",
+      "etag": "1c63bc2f78ab14581b7d410c8585b150",
+      "last_modified": "2026-09-07T04:54:02.741Z",
+      "size": 128192,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/animations/bone_rattler_attack_2.png",
+      "etag": "2930fd95fae4d191530fec5fe8d5d048",
+      "last_modified": "2026-09-07T04:54:02.797Z",
+      "size": 141082,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/animations/bone_rattler_death_0.png",
+      "etag": "646fd4dac20bfbced841a6539c1087c4",
+      "last_modified": "2026-09-07T04:54:03.902Z",
+      "size": 92933,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/animations/bone_rattler_idle_0.png",
+      "etag": "bd5a07c8fd2f3533711d56f00e2c9b9e",
+      "last_modified": "2026-09-07T04:54:03.945Z",
+      "size": 118827,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/animations/bone_rattler_idle_1.png",
+      "etag": "407175c58ffd09ede556e034457a9f9a",
+      "last_modified": "2026-09-07T04:54:02.743Z",
+      "size": 115181,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bone_rattler/animations/bone_rattler_idle_2.png",
+      "etag": "45095d504c1bf2354e7be39285e1ca05",
+      "last_modified": "2026-09-07T04:54:02.966Z",
+      "size": 112779,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:52:23.012Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:54:12.249Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/animations/bramble_bat_attack_0.png",
+      "etag": "b14416e5d8f3b4260299319281301ece",
+      "last_modified": "2026-09-07T04:54:22.727Z",
+      "size": 251078,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/animations/bramble_bat_attack_1.png",
+      "etag": "91162996da5b8c8d763e145145fb37d5",
+      "last_modified": "2026-09-07T04:54:22.749Z",
+      "size": 265358,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/animations/bramble_bat_attack_2.png",
+      "etag": "e7304843886bc579d2229be119c40ab3",
+      "last_modified": "2026-09-07T04:54:22.703Z",
+      "size": 330497,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/animations/bramble_bat_death_0.png",
+      "etag": "4dce8a1e1eb552eca79bf3c082ef0e80",
+      "last_modified": "2026-09-07T04:54:22.672Z",
+      "size": 160708,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/animations/bramble_bat_idle_0.png",
+      "etag": "7f5fd6927e6be98b25c1194c17f9b6eb",
+      "last_modified": "2026-09-07T04:54:24.197Z",
+      "size": 245809,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/animations/bramble_bat_idle_1.png",
+      "etag": "369fe42591aa5dadb9b7cf55aae40e81",
+      "last_modified": "2026-09-07T04:54:24.361Z",
+      "size": 229479,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/bramble_bat/animations/bramble_bat_idle_2.png",
+      "etag": "31a8ce84a2930c075cc1ea7583362cb3",
+      "last_modified": "2026-09-07T04:54:22.758Z",
+      "size": 263668,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:52:33.536Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:54:31.862Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/animations/ember_drake_attack_0.png",
+      "etag": "e74d20dbd473cf8a25a3d703879f94c7",
+      "last_modified": "2026-09-07T04:54:39.093Z",
+      "size": 240111,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/animations/ember_drake_attack_1.png",
+      "etag": "ba1d8cd649e706bf624333baa7f1f1c5",
+      "last_modified": "2026-09-07T04:54:38.933Z",
+      "size": 266925,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/animations/ember_drake_attack_2.png",
+      "etag": "f2f01f090922708fa4059ed1dd7c244b",
+      "last_modified": "2026-09-07T04:54:39.199Z",
+      "size": 220769,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/animations/ember_drake_death_0.png",
+      "etag": "48e117a28a2310bf9443ffb5ac11b586",
+      "last_modified": "2026-09-07T04:54:38.478Z",
+      "size": 194542,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/animations/ember_drake_idle_0.png",
+      "etag": "b80c1b0a67e971dc3d92391f65eb5781",
+      "last_modified": "2026-09-07T04:54:40.216Z",
+      "size": 208647,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/animations/ember_drake_idle_1.png",
+      "etag": "209e8edefedf6863e126ce21657e9b81",
+      "last_modified": "2026-09-07T04:54:40.221Z",
+      "size": 203980,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/ember_drake/animations/ember_drake_idle_2.png",
+      "etag": "2eb5cc5c50cd4b04c8e91a3175dfb5e7",
+      "last_modified": "2026-09-07T04:54:38.596Z",
+      "size": 201910,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:52:42.007Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:54:47.593Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/animations/frost_warden_attack_0.png",
+      "etag": "845e487e83844b046b55efbefaa92c9f",
+      "last_modified": "2026-09-07T04:54:56.349Z",
+      "size": 301558,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/animations/frost_warden_attack_1.png",
+      "etag": "a63225287f49dfe3e33b7e84ddc875d5",
+      "last_modified": "2026-09-07T04:54:56.331Z",
+      "size": 344156,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/animations/frost_warden_attack_2.png",
+      "etag": "0d28f87ec2f6cc7f855b6698f69d0f96",
+      "last_modified": "2026-09-07T04:54:56.182Z",
+      "size": 272952,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/animations/frost_warden_death_0.png",
+      "etag": "920fc4edb636a1cc5a5d5ababa8a93cb",
+      "last_modified": "2026-09-07T04:54:55.831Z",
+      "size": 216205,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/animations/frost_warden_idle_0.png",
+      "etag": "54abd9174317b0d7e7cb53f6f36ca687",
+      "last_modified": "2026-09-07T04:54:57.057Z",
+      "size": 304054,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/animations/frost_warden_idle_1.png",
+      "etag": "5294b0c8868616620af904d9c23b4701",
+      "last_modified": "2026-09-07T04:54:57.428Z",
+      "size": 298907,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/frost_warden/animations/frost_warden_idle_2.png",
+      "etag": "f032dec737a1e5c9b6207ab2bbb29fd6",
+      "last_modified": "2026-09-07T04:54:56.166Z",
+      "size": 293864,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:52:52.983Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:55:05.714Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/animations/moss_king_attack_0.png",
+      "etag": "86590cac9c5519f33e4cf492d9dff7f5",
+      "last_modified": "2026-09-07T04:55:12.849Z",
+      "size": 246663,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/animations/moss_king_attack_1.png",
+      "etag": "4bde36884ffeb774678fdbee7f1b9fd5",
+      "last_modified": "2026-09-07T04:55:12.774Z",
+      "size": 266390,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/animations/moss_king_attack_2.png",
+      "etag": "9546dd5bc627e0521249d06f16c91e63",
+      "last_modified": "2026-09-07T04:55:12.802Z",
+      "size": 232016,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/animations/moss_king_death_0.png",
+      "etag": "ab8240fa60cfbd01731d341395bacc66",
+      "last_modified": "2026-09-07T04:55:13.170Z",
+      "size": 183975,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/animations/moss_king_idle_0.png",
+      "etag": "f9ab4bbe0c50f7fb754466d342ad1034",
+      "last_modified": "2026-09-07T04:55:14.053Z",
+      "size": 224620,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/animations/moss_king_idle_1.png",
+      "etag": "8672c1b2972cc286d9c81981d69ff808",
+      "last_modified": "2026-09-07T04:55:14.355Z",
+      "size": 228409,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/moss_king/animations/moss_king_idle_2.png",
+      "etag": "24fd73e213b9c9d7a61f9ef67fc56dc9",
+      "last_modified": "2026-09-07T04:55:12.778Z",
+      "size": 228247,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
@@ -236,9 +753,9 @@
     },
     {
       "key": "sprite/enemy/orc001/animations/orc_attack_0.png",
-      "etag": "8bb9a3ee7dc3816da35c4ceb6d43c924",
-      "last_modified": "2026-09-05T14:03:01.994Z",
-      "size": 150642,
+      "etag": "2fb0a193da832c7b6cf02f1be0a73472",
+      "last_modified": "2026-09-07T04:53:28.166Z",
+      "size": 227987,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -247,9 +764,9 @@
     },
     {
       "key": "sprite/enemy/orc001/animations/orc_attack_1.png",
-      "etag": "54cc74d3e3695b85bd961629946b581d",
-      "last_modified": "2026-09-05T14:03:01.816Z",
-      "size": 148900,
+      "etag": "b52d855392d893b7515924adc9f64a55",
+      "last_modified": "2026-09-07T04:53:28.560Z",
+      "size": 214089,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -258,9 +775,9 @@
     },
     {
       "key": "sprite/enemy/orc001/animations/orc_attack_2.png",
-      "etag": "9c672c99472fe6315731b248c31261b2",
-      "last_modified": "2026-09-05T14:03:02.034Z",
-      "size": 135104,
+      "etag": "5af6c0c4d0d626d5fb726b4647848114",
+      "last_modified": "2026-09-07T04:53:28.597Z",
+      "size": 230834,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -269,9 +786,9 @@
     },
     {
       "key": "sprite/enemy/orc001/animations/orc_death_0.png",
-      "etag": "e00eebf653551ce0b21e59dec076b6cb",
-      "last_modified": "2026-09-05T14:03:02.697Z",
-      "size": 91055,
+      "etag": "5c4b989395b90511a139c65b5f28827d",
+      "last_modified": "2026-09-07T04:53:28.118Z",
+      "size": 112794,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -280,9 +797,9 @@
     },
     {
       "key": "sprite/enemy/orc001/animations/orc_idle_0.png",
-      "etag": "4160d01cfcae4faa8fff0dde645d9851",
-      "last_modified": "2026-09-05T14:03:03.120Z",
-      "size": 150027,
+      "etag": "53173338484ff1d31da6d0a30e6bfe0e",
+      "last_modified": "2026-09-07T04:53:28.572Z",
+      "size": 271702,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -291,9 +808,9 @@
     },
     {
       "key": "sprite/enemy/orc001/animations/orc_idle_1.png",
-      "etag": "b021d3464a2fda34fd81afc822cf9a5a",
-      "last_modified": "2026-09-05T14:03:03.256Z",
-      "size": 151490,
+      "etag": "bf552f58d796cdea9528582abae13d1f",
+      "last_modified": "2026-09-07T04:53:29.614Z",
+      "size": 269105,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -302,9 +819,9 @@
     },
     {
       "key": "sprite/enemy/orc001/animations/orc_idle_2.png",
-      "etag": "ef6e1bff1b258b0984ea861690a67e97",
-      "last_modified": "2026-09-05T14:03:02.279Z",
-      "size": 147004,
+      "etag": "b7a8ea3e54b89c8ef21e7a8e9aa99163",
+      "last_modified": "2026-09-07T04:53:29.760Z",
+      "size": 271022,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -404,6 +921,204 @@
       "etag": "c0a90c13e66cfd3f124e691fb1909bf8",
       "last_modified": "2026-09-05T14:02:23.351Z",
       "size": 79652,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:53:03.983Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:55:22.754Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/animations/sandy_crab_attack_0.png",
+      "etag": "9375a9a15c3ed913ee93fb3653dd26cd",
+      "last_modified": "2026-09-07T04:55:32.739Z",
+      "size": 137645,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/animations/sandy_crab_attack_1.png",
+      "etag": "d2b30247c75b9541b47674445cdd8cb1",
+      "last_modified": "2026-09-07T04:55:31.358Z",
+      "size": 196882,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/animations/sandy_crab_attack_2.png",
+      "etag": "790d17c7e444863d9d5e3972141ce662",
+      "last_modified": "2026-09-07T04:55:31.369Z",
+      "size": 159240,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/animations/sandy_crab_death_0.png",
+      "etag": "5a557255f6fddb867e7c8d02606a2508",
+      "last_modified": "2026-09-07T04:55:31.348Z",
+      "size": 109422,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/animations/sandy_crab_idle_0.png",
+      "etag": "22118a92575349774a4fd32a9a16e48a",
+      "last_modified": "2026-09-07T04:55:31.593Z",
+      "size": 127230,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/animations/sandy_crab_idle_1.png",
+      "etag": "e0a307cec6f2a13de1d216ea80a46eff",
+      "last_modified": "2026-09-07T04:55:31.517Z",
+      "size": 124372,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/sandy_crab/animations/sandy_crab_idle_2.png",
+      "etag": "537595813f0935bf52f0ac53902f1a49",
+      "last_modified": "2026-09-07T04:55:32.612Z",
+      "size": 123584,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:53:12.294Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/animations/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-07T04:55:39.825Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/animations/spore_cap_attack_0.png",
+      "etag": "6d866276bfb338350a2c8c6fe8025f2f",
+      "last_modified": "2026-09-07T04:55:47.340Z",
+      "size": 267732,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/animations/spore_cap_attack_1.png",
+      "etag": "e56cf1ecf76dff4c0c38dd0da50f1be8",
+      "last_modified": "2026-09-07T04:55:47.581Z",
+      "size": 289121,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/animations/spore_cap_attack_2.png",
+      "etag": "6ddec09799857efc69c0d6dc978003ce",
+      "last_modified": "2026-09-07T04:55:48.861Z",
+      "size": 242118,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/animations/spore_cap_death_0.png",
+      "etag": "b50c25de3fd3798c4ec14fc1b517dc5a",
+      "last_modified": "2026-09-07T04:55:47.311Z",
+      "size": 110034,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/animations/spore_cap_idle_0.png",
+      "etag": "6978ee77bacd0e317f2cc3da814c25b2",
+      "last_modified": "2026-09-07T04:55:48.529Z",
+      "size": 297734,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/animations/spore_cap_idle_1.png",
+      "etag": "f6981739d1bb36bb2f98aec3fbef212e",
+      "last_modified": "2026-09-07T04:55:48.580Z",
+      "size": 293830,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/spore_cap/animations/spore_cap_idle_2.png",
+      "etag": "a847121c2ab827f41865a4c9b86bb4c1",
+      "last_modified": "2026-09-07T04:55:47.907Z",
+      "size": 302170,
       "http_metadata": {
         "contentType": "image/png"
       },
