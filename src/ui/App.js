@@ -1080,7 +1080,9 @@ function ThornieDungeons() {
       }
       setPetAnim("");
       setTimeout(() => cb(), 280);
-    }, 220);
+    // 3 attack frames at 120ms each, followed by a brief final-frame hold.
+    // The previous 220ms window reset to idle before the sequence was clearly visible.
+    }, 420);
   }
   function doMonsterAction(m, cb) {
     if (combatOutcomeRef.current) {
@@ -1173,7 +1175,8 @@ function ThornieDungeons() {
       setHeroAnim("");
       setPetAnim("");
       cb();
-    }, 300);
+    // 3 attack frames at 120ms each, followed by a brief final-frame hold.
+    }, 420);
   }
   function tickPlayerBuffs() {
     setPlayer(p => {

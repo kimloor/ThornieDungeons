@@ -1808,6 +1808,8 @@ function EnemySprite({
         config: spriteConfig,
         anim: anim || "",
         dead,
+        // Match the combat action window so all three attack frames are readable.
+        attackFrameMs: 120,
         className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
         alt: enemy.name
       })
@@ -1859,6 +1861,9 @@ function PetCombatSprite({ pet, anim }) {
         config: spriteConfig,
         anim: anim || "",
         dead,
+        // Keep all three attack frames visible long enough to read in combat.
+        // The pet action state is held for 420ms in App.js.
+        attackFrameMs: 120,
         className: `md-enemy-img md-pet-img ${anim || ""}`,
         alt: pet.name
       })
