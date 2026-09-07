@@ -2941,7 +2941,7 @@ function CraftingOverlay({
       return /*#__PURE__*/React.createElement("div", { key: recipe.recipeId, className: "md-card", style: { marginBottom: 8, padding: 10 } },
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           /*#__PURE__*/React.createElement("div", null,
-            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, recipe.icon, " ", recipe.name),
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, craftIcon(recipe), " ", recipe.name),
             /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { fontSize: 11 } }, statText)
           ),
           /*#__PURE__*/React.createElement("button", {

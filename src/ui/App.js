@@ -143,6 +143,18 @@ function ThornieDungeons() {
         const cachedGameConfig = await loadCachedGameConfig();
         if (cachedGameConfig) applyGameConfig(cachedGameConfig);
       }
+
+      // Phase 4 refactor — recipes come from D1 now, not a hardcoded array, so new
+      // crafted sets can go live with just an insert. Same fetch-then-cache-fallback
+      // shape as the balance config above.
+      const freshRecipes = await cloudGetRecipes(DEFAULT_SERVER_URL);
+      if (freshRecipes && !freshRecipes.error && Array.isArray(freshRecipes.recipes)) {
+        applyRecipes(freshRecipes.recipes);
+        writeCachedRecipes(freshRecipes.recipes);
+      } else {
+        const cachedRecipes = await loadCachedRecipes();
+        if (cachedRecipes) applyRecipes(cachedRecipes);
+      }
     })();
   }, []);
   const cloudWriteQueue = useRef(Promise.resolve());

@@ -23,3 +23,13 @@ async function loadCachedGameConfig() {
 async function writeCachedGameConfig(cfg) {
   await kvSet(GAME_CONFIG_CACHE_KEY, JSON.stringify(cfg));
 }
+async function loadCachedRecipes() {
+  try {
+    const v = await kvGet(RECIPES_CACHE_KEY);
+    if (v) return JSON.parse(v);
+  } catch (e) {}
+  return null;
+}
+async function writeCachedRecipes(recipes) {
+  await kvSet(RECIPES_CACHE_KEY, JSON.stringify(recipes));
+}

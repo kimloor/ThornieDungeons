@@ -26,6 +26,7 @@
  * Endpoints:
  *   GET  ?action=login&id=&password=
  *   GET  ?action=getGameConfig
+ *   GET  ?action=getRecipes                                                (NEW, Phase 4 refactor)
  *   GET  ?action=getInventory&id=&password=&characterId=&page=&pageSize=
  *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid                (NEW, Phase 2/3)
@@ -456,6 +457,23 @@ async function handleGetGameConfig(db) {
     try { cfg[r.key] = JSON.parse(r.value_json || "null"); } catch (e) {}
   }
   return json(cfg);
+}
+
+// Public, unauthenticated — just game data, not user-specific (same trust level as
+// getGameConfig above). Lets new crafted sets go live via a D1 insert alone, no worker
+// redeploy and no client code change: the client fetches this list on load instead of
+// hardcoding it (see CRAFTING_RECIPES in crafting.js, which now starts empty and gets
+// filled in from this response, falling back to a cached copy if offline).
+async function handleGetRecipes(db) {
+  const res = await db.prepare(`SELECT recipe_id, result_item_def, materials_json FROM recipes`).all();
+  const recipes = (res.results || []).map((r) => {
+    let resultDef = {};
+    let materials = {};
+    try { resultDef = JSON.parse(r.result_item_def || "{}"); } catch (e) {}
+    try { materials = JSON.parse(r.materials_json || "{}"); } catch (e) {}
+    return { recipeId: r.recipe_id, type: resultDef.type, name: resultDef.name, materials };
+  });
+  return json({ recipes });
 }
 
 // ---------- player / auth handlers ----------
@@ -925,23 +943,37 @@ async function handleDeleteAllClaimedMail(db, id, password, characterId) {
 
 // ---------- Phase 4: Crafting ----------
 // Recipes live in the `recipes` table (recipe_id, result_item_def JSON, materials_json
-// JSON, source, created_at) — see migration/backfill that inserted the 6 azure_* rows.
-// materials_json is a flat { junkId: qty, ..., gold: qty } map. result_item_def only
-// carries identity fields now (type/rarity/name/setId/empowerSlotCount) — NOT stat
-// numbers. Azure stats are computed fresh at craft time from the character's own
-// unlocked_floor using AZURE_STAT_FORMULA below, so crafted gear stays "current BiS"
-// forever without needing a rebalance pass every time a new floor is added. This
-// mirrors generateDrop()'s per-type formulas in stats.js, pinned to RARITY_MULT.azure
-// (== mythic — crafting's value is guaranteeing that tier, not exceeding it).
-// KEEP IN SYNC with AZURE_STAT_FORMULA in src/systems/crafting.js (client preview copy).
-const RARITY_MULT_AZURE = 5.4;
-const AZURE_STAT_FORMULA = {
-  weapon: (floor) => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * RARITY_MULT_AZURE)) }),
-  helmet: (floor) => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * RARITY_MULT_AZURE)) }),
-  chest: (floor) => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * RARITY_MULT_AZURE)) }),
-  gloves: (floor) => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * RARITY_MULT_AZURE)) }),
-  boots: (floor) => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * RARITY_MULT_AZURE)) }),
-  accessory: (floor) => ({ dodgeChance: Math.round((1 + floor * 0.12) * RARITY_MULT_AZURE * 10) / 10 }),
+// JSON, source, created_at). result_item_def only carries identity fields (type/rarity/
+// name/setId/empowerSlotCount) — NOT stat numbers. Stats are computed fresh at craft time
+// from the character's own unlocked_floor using CRAFTED_STAT_FORMULA below, so crafted
+// gear stays "current BiS" forever without needing a rebalance pass every time a new
+// floor is added. Mirrors generateDrop()'s per-type formulas in stats.js, pinned to
+// CRAFTED_RARITY_MULT.
+//
+// This formula table is keyed by item TYPE (weapon/helmet/chest/gloves/boots/accessory),
+// not by set — it's shared by every crafted set, present and future. Mythic is the
+// permanent rarity ceiling in this game (confirmed, no new rarity tier is ever planned
+// above it), so ALL crafted output — Azure today, any future set — is pinned to that same
+// ceiling (5.4, equal to mythic) regardless of which `rarity`/`setId` string a given
+// recipe's result_item_def uses. A new set just needs a `recipes` row; it does NOT need a
+// new rarity tier, a new RARITY_MULT/RARITY_STARS/SALVAGE_TABLE key, or a worker redeploy.
+// KEEP IN SYNC with CRAFTED_STAT_FORMULA in src/systems/crafting.js (client preview copy).
+// Note: every crafted item's DB `rarity` is hardcoded to the literal string "azure" below
+// (see the INSERT), regardless of what a recipe's result_item_def says or which visual
+// setId it uses — "azure" here means "crafted tier", not "the Azure set specifically". This
+// is deliberate: RARITY_MULT/RARITY_STARS/SALVAGE_TABLE only have entries for rare/unique/
+// elite/mythic/azure, so a future set accidentally introducing a new rarity string (e.g.
+// "crimson") would silently fall back to the weakest tier everywhere those tables are
+// read — the exact bug class already hit twice during this phase. A future set should use
+// a new `setId` for its visual identity/set-bonus grouping, but keep `rarity: "azure"`.
+const CRAFTED_RARITY_MULT = 5.4;
+const CRAFTED_STAT_FORMULA = {
+  weapon: (floor) => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * CRAFTED_RARITY_MULT)) }),
+  helmet: (floor) => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
+  chest: (floor) => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * CRAFTED_RARITY_MULT)) }),
+  gloves: (floor) => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
+  boots: (floor) => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * CRAFTED_RARITY_MULT)) }),
+  accessory: (floor) => ({ dodgeChance: Math.round((1 + floor * 0.12) * CRAFTED_RARITY_MULT * 10) / 10 }),
 };
 
 // This is a real server-validated mutation (unlike enhance/salvage/shop, which are fully
@@ -1018,7 +1050,7 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
   // Computed fresh from the character's OWN unlocked_floor (already loaded via
   // verifyOwnedCharacter above) — never trusts a floor value from the client.
   const floor = Math.max(1, Number(character.unlocked_floor) || 1);
-  const formula = AZURE_STAT_FORMULA[resultDef.type] || (() => ({}));
+  const formula = CRAFTED_STAT_FORMULA[resultDef.type] || (() => ({}));
   const stats = formula(floor);
 
   const newItemId = `item-craft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1034,7 +1066,7 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
         `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
          VALUES (?, ?, ?, ?, 0, '', ?, ?, ?, 0, 0, 0, 1, ?, ?, 0, 0, ?, ?, ?)`
       )
-      .bind(newItemId, id, characterId, resultDef.type || "", recipeId, resultDef.rarity || "azure", resultDef.name || "Crafted Item", Number(stats.atk) || 0, Number(stats.def) || 0, extraJson, now, now)
+      .bind(newItemId, id, characterId, resultDef.type || "", recipeId, "azure", resultDef.name || "Crafted Item", Number(stats.atk) || 0, Number(stats.def) || 0, extraJson, now, now)
   );
 
   await db.batch(stmts);
@@ -1043,7 +1075,7 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
     ok: true,
     item: {
       type: resultDef.type,
-      rarity: resultDef.rarity,
+      rarity: "azure",
       name: resultDef.name,
       atk: Number(stats.atk) || 0,
       def: Number(stats.def) || 0,
@@ -1613,6 +1645,7 @@ export default {
         const action = p.get("action");
         if (action === "login") return await handleLogin(db, p.get("id"), p.get("password"));
         if (action === "getGameConfig") return await handleGetGameConfig(db);
+        if (action === "getRecipes") return await handleGetRecipes(db);
         if (action === "getInventory") return await handleGetInventory(db, p.get("id"), p.get("password"), p.get("characterId"), p.get("page"), p.get("pageSize"));
         if (action === "getDailyLogin") return await handleGetDailyLogin(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));

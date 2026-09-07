@@ -1203,6 +1203,7 @@ const STYLE = `
 // ---------- cloud persistence (Cloudflare D1 via Worker API) ----------
 const CONFIG_CACHE_KEY = "thornie-dungeons-cloud-config-v1"; // caches {url,id} only — never the password
 const GAME_CONFIG_CACHE_KEY = "thornie-dungeons-game-config-v2"; // caches monster/equipment/pet/skill balance data
+const RECIPES_CACHE_KEY = "thornie-dungeons-recipes-v1"; // caches crafting recipes (Phase 4 refactor)
 const DEFAULT_SERVER_URL = "https://thornie-dungeons-api.ekqtjl.workers.dev";
 
 // ---------- save schema version ----------
@@ -1808,6 +1809,16 @@ async function loadCachedGameConfig() {
 async function writeCachedGameConfig(cfg) {
   await kvSet(GAME_CONFIG_CACHE_KEY, JSON.stringify(cfg));
 }
+async function loadCachedRecipes() {
+  try {
+    const v = await kvGet(RECIPES_CACHE_KEY);
+    if (v) return JSON.parse(v);
+  } catch (e) {}
+  return null;
+}
+async function writeCachedRecipes(recipes) {
+  await kvSet(RECIPES_CACHE_KEY, JSON.stringify(recipes));
+}
 
 // ===== state/api.js =====
 // ---------- HTTP helpers: retry + in-flight de-duplication ----------
@@ -1948,6 +1959,13 @@ function cloudSaveRunState(url, id, password, characterId, runState) {
 function cloudGetConfig(url) {
   return cloudGet(url, {
     action: "getGameConfig"
+  });
+}
+// Phase 4 refactor — recipes now live purely in D1 (see handleGetRecipes on the worker),
+// fetched on load same as getGameConfig, so new crafted sets go live via a D1 insert alone.
+function cloudGetRecipes(url) {
+  return cloudGet(url, {
+    action: "getRecipes"
   });
 }
 function cloudGetDailyLogin(url, id, password, characterId) {
@@ -2981,42 +2999,55 @@ function rollChestRarity(isEliteBoss, pity = 0) {
 
 // ===== systems/crafting.js =====
 // ---------- Phase 4: Crafting ----------
-// Recipes are client-side display data ONLY (icons, names, materials/gold costs, and the
-// stat FORMULA used to preview what you'll get). The actual craft is granted by the server
-// (handleCraftItem in the worker), which computes the real stats itself the same way — this
-// list must stay numerically in sync with the recipes D1 table (materials/gold) and with
-// the AZURE_STAT_FORMULA table in the worker (stat math) or the preview will just show a
-// number the server doesn't agree with.
-//
-// Azure gear stats are NOT flat numbers — they scale with the character's unlockedFloor
-// using the exact same per-type formulas as normal floor drops (generateDrop in stats.js),
-// just with rarity mult fixed at RARITY_MULT.azure (== mythic, see pets.js). This is what
-// keeps crafted gear "always current BiS" without needing manual rebalancing every time a
-// new floor is added — see the phase-4 design discussion for why flat numbers were rejected.
-const CRAFTING_RECIPES = [
-  { recipeId: "azure_helmet", type: "helmet", name: "หมวก Azure", icon: "⛑️", materials: { recipe_azure_helmet: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_chest", type: "chest", name: "เสื้อ Azure", icon: "🥋", materials: { recipe_azure_chest: 1, bossHorn: 6, bossHide: 6, gold: 350 } },
-  { recipeId: "azure_gloves", type: "gloves", name: "ถุงมือ Azure", icon: "🧤", materials: { recipe_azure_gloves: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_boots", type: "boots", name: "รองเท้า Azure", icon: "🥾", materials: { recipe_azure_boots: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_weapon", type: "weapon", name: "อาวุธ Azure", icon: "⚔️", materials: { recipe_azure_weapon: 1, bossHorn: 8, bossHide: 8, gold: 500 } },
-  { recipeId: "azure_ring", type: "accessory", name: "แหวน Azure", icon: "💍", materials: { recipe_azure_ring: 1, bossHorn: 6, bossHide: 6, gold: 350 } }
+// Recipes are fetched from the server on app load (getRecipes, see api.js/App.js) rather
+// than hardcoded — this is what lets Kimmie add a whole new crafted set later with just a
+// `recipes` D1 insert, no client code change or redeploy. CRAFTING_RECIPES starts as a
+// small built-in fallback (today's 6 Azure pieces) so the Craft screen still works if the
+// fetch fails and there's no cache yet; applyRecipes() below replaces it wholesale once
+// real data comes back, same pattern as applyGameConfig() for RARITY_MULT/ENEMY_POOL/etc.
+let CRAFTING_RECIPES = [
+  { recipeId: "azure_helmet", type: "helmet", name: "หมวก Azure", materials: { recipe_azure_helmet: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
+  { recipeId: "azure_chest", type: "chest", name: "เสื้อ Azure", materials: { recipe_azure_chest: 1, bossHorn: 6, bossHide: 6, gold: 350 } },
+  { recipeId: "azure_gloves", type: "gloves", name: "ถุงมือ Azure", materials: { recipe_azure_gloves: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
+  { recipeId: "azure_boots", type: "boots", name: "รองเท้า Azure", materials: { recipe_azure_boots: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
+  { recipeId: "azure_weapon", type: "weapon", name: "อาวุธ Azure", materials: { recipe_azure_weapon: 1, bossHorn: 8, bossHide: 8, gold: 500 } },
+  { recipeId: "azure_ring", type: "accessory", name: "แหวน Azure", materials: { recipe_azure_ring: 1, bossHorn: 6, bossHide: 6, gold: 350 } }
 ];
+// Recipes only carry type/name/materials from the server — icon is purely presentational
+// and looked up locally by type, so new crafted types (if any are ever added beyond the
+// existing 6 gear slots) just need an entry here, not a schema change.
+const CRAFT_ICON_BY_TYPE = {
+  helmet: "⛑️", chest: "🥋", gloves: "🧤", boots: "🥾", weapon: "⚔️", accessory: "💍"
+};
+function craftIcon(recipe) {
+  return CRAFT_ICON_BY_TYPE[recipe.type] || "📦";
+}
+// Applies a freshly-fetched recipe list from getRecipes. Defensive like applyGameConfig()
+// — a malformed/empty response should never wipe out a working recipe list.
+function applyRecipes(list) {
+  if (!Array.isArray(list) || !list.length) return;
+  const valid = list.filter(r => r && r.recipeId && r.type && r.materials);
+  if (valid.length) CRAFTING_RECIPES = valid;
+}
 
-// Mirrors generateDrop()'s per-type formulas in stats.js, pinned to RARITY_MULT.azure.
-// KEEP IN SYNC with AZURE_STAT_FORMULA in workers/thornie-dungeons-api.js — the worker is
+// Mirrors generateDrop()'s per-type formulas in stats.js, pinned to CRAFTED_RARITY_MULT.
+// KEEP IN SYNC with CRAFTED_STAT_FORMULA in workers/thornie-dungeons-api.js — the worker is
 // authoritative (uses the character's real unlocked_floor at craft time); this copy only
-// exists so the UI can show an accurate "you'll get ~X atk" preview before crafting.
-const AZURE_STAT_FORMULA = {
-  weapon: floor => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * RARITY_MULT.azure)) }),
-  helmet: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * RARITY_MULT.azure)) }),
-  chest: floor => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * RARITY_MULT.azure)) }),
-  gloves: floor => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * RARITY_MULT.azure)) }),
-  boots: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * RARITY_MULT.azure)) }),
-  accessory: floor => ({ dodgeChance: Math.round((1 + floor * 0.12) * RARITY_MULT.azure * 10) / 10 })
+// exists so the UI can show an accurate "you'll get ~X atk" preview before crafting. Shared
+// by every crafted set (present and future) — mythic is this game's permanent rarity
+// ceiling, so all crafted output is pinned to that same ceiling regardless of setId.
+const CRAFTED_RARITY_MULT = 5.4;
+const CRAFTED_STAT_FORMULA = {
+  weapon: floor => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * CRAFTED_RARITY_MULT)) }),
+  helmet: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
+  chest: floor => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * CRAFTED_RARITY_MULT)) }),
+  gloves: floor => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
+  boots: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * CRAFTED_RARITY_MULT)) }),
+  accessory: floor => ({ dodgeChance: Math.round((1 + floor * 0.12) * CRAFTED_RARITY_MULT * 10) / 10 })
 };
 
 function craftPreviewStats(recipe, floor) {
-  const fn = AZURE_STAT_FORMULA[recipe.type];
+  const fn = CRAFTED_STAT_FORMULA[recipe.type];
   return fn ? fn(Math.max(1, floor || 1)) : {};
 }
 
@@ -3024,27 +3055,33 @@ function craftPreviewStats(recipe, floor) {
 // back in full (it's the "proof of design", not consumed materials — refunding it in full
 // means salvaging a mis-craft doesn't lose you the recipe, just the raw materials) plus a
 // cut of the raw junk materials (bossHorn/bossHide etc, NOT the gold — gold sunk into a
-// craft is gone either way, same as any other gold sink in this game).
+// craft is gone either way, same as any other gold sink in this game). This works for ANY
+// crafted item (Azure today, any future set) because it keys off craftRecipeId — the exact
+// recipe stamped on the item at craft time — rather than checking a specific setId string.
 // CRAFT_SALVAGE_REFUND_RATE is a tunable balance knob, easy to adjust later.
 const CRAFT_SALVAGE_REFUND_RATE = 0.5;
 function craftSalvageRefund(item) {
-  if (!item || item.setId !== "azure") return null;
-  // Prefer the exact recipe stamped on the item at craft time (craftRecipeId); fall back to
-  // matching by type for older crafted items from before that field existed.
-  const recipe = CRAFTING_RECIPES.find(r => r.recipeId === item.craftRecipeId) || CRAFTING_RECIPES.find(r => r.type === item.type);
+  if (!item) return null;
+  // craftRecipeId is the source of truth (stamped by the worker at craft time and carried
+  // through extra_json ever since). Fall back to matching by type only for items crafted
+  // before that field existed — a small, closing window, and only ambiguous if two recipes
+  // ever target the same type, which isn't the case for the legacy Azure-only data it covers.
+  const recipe = (item.craftRecipeId && CRAFTING_RECIPES.find(r => r.recipeId === item.craftRecipeId))
+    || (item.setId === "azure" && !item.craftRecipeId ? CRAFTING_RECIPES.find(r => r.type === item.type) : null);
   if (!recipe) return null;
   const refund = [];
   Object.keys(recipe.materials).forEach(key => {
     if (key === "gold") return; // gold sunk into a craft isn't recoverable, same as any other gold sink
     const original = recipe.materials[key];
-    // The recipe's own scroll (recipe_azure_*) always comes back in full; raw farmed
-    // materials (bossHorn/bossHide) come back at the partial refund rate.
+    // The recipe's own scroll (recipe_*) always comes back in full; raw farmed materials
+    // (bossHorn/bossHide etc) come back at the partial refund rate.
     const qty = key.indexOf("recipe_") === 0 ? original : Math.max(1, Math.floor(original * CRAFT_SALVAGE_REFUND_RATE));
     if (qty > 0) refund.push({ junkId: key, qty });
   });
   return refund;
 }
 
+// junkTotal()/JUNK_INFO come from enhancement.js (earlier module in build order).
 function craftMaterialTotal(inventory, junkId) {
   return junkTotal(inventory, junkId);
 }
@@ -3926,6 +3963,18 @@ function ThornieDungeons() {
       } else {
         const cachedGameConfig = await loadCachedGameConfig();
         if (cachedGameConfig) applyGameConfig(cachedGameConfig);
+      }
+
+      // Phase 4 refactor — recipes come from D1 now, not a hardcoded array, so new
+      // crafted sets can go live with just an insert. Same fetch-then-cache-fallback
+      // shape as the balance config above.
+      const freshRecipes = await cloudGetRecipes(DEFAULT_SERVER_URL);
+      if (freshRecipes && !freshRecipes.error && Array.isArray(freshRecipes.recipes)) {
+        applyRecipes(freshRecipes.recipes);
+        writeCachedRecipes(freshRecipes.recipes);
+      } else {
+        const cachedRecipes = await loadCachedRecipes();
+        if (cachedRecipes) applyRecipes(cachedRecipes);
       }
     })();
   }, []);
@@ -8780,7 +8829,7 @@ function CraftingOverlay({
       return /*#__PURE__*/React.createElement("div", { key: recipe.recipeId, className: "md-card", style: { marginBottom: 8, padding: 10 } },
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           /*#__PURE__*/React.createElement("div", null,
-            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, recipe.icon, " ", recipe.name),
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, craftIcon(recipe), " ", recipe.name),
             /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { fontSize: 11 } }, statText)
           ),
           /*#__PURE__*/React.createElement("button", {

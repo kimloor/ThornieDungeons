@@ -138,6 +138,13 @@ function cloudGetConfig(url) {
     action: "getGameConfig"
   });
 }
+// Phase 4 refactor — recipes now live purely in D1 (see handleGetRecipes on the worker),
+// fetched on load same as getGameConfig, so new crafted sets go live via a D1 insert alone.
+function cloudGetRecipes(url) {
+  return cloudGet(url, {
+    action: "getRecipes"
+  });
+}
 function cloudGetDailyLogin(url, id, password, characterId) {
   return cloudGet(url, {
     action: "getDailyLogin",
