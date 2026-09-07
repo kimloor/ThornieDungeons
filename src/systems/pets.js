@@ -294,7 +294,11 @@ let RARITY_MULT = {
   rare: 1,
   unique: 1.9,
   elite: 3.2,
-  mythic: 5.4
+  mythic: 5.4,
+  // Azure (crafted, Phase 4) is deliberately set equal to mythic, not above it — crafting's
+  // value is guaranteeing that tier deterministically via materials/gold, not power-creeping
+  // past the rarest chest-pity drop in the game.
+  azure: 5.4
 };
 const RARITY_LABEL = {
   rare: "Rare",

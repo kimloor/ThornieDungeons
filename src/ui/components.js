@@ -2892,6 +2892,7 @@ function CraftingOverlay({
   characterId,
   inventory,
   gold,
+  floor,
   busy,
   onCrafted,
   onClose
@@ -2923,7 +2924,7 @@ function CraftingOverlay({
     /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "🛠️ ประดิษฐ์ไอเทม"),
-        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ใช้แบบร่าง + วัตถุดิบจากบอส Raid เพื่อประดิษฐ์ชุด Azure")
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ใช้แบบร่าง + วัตถุดิบจากบอส Raid เพื่อประดิษฐ์ชุด Azure (สเกลสเตตัสตาม floor สูงสุด ", floor || 1, ")")
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
@@ -2934,7 +2935,8 @@ function CraftingOverlay({
     ),
     CRAFTING_RECIPES.map(recipe => {
       const afford = canAffordRecipe(recipe, inventory, gold);
-      const statText = [recipe.atk ? `⚔️${recipe.atk}` : "", recipe.def ? `🛡️${recipe.def}` : "", recipe.dodgeChance ? `💨${recipe.dodgeChance}%` : ""].filter(Boolean).join(" ");
+      const preview = craftPreviewStats(recipe, floor);
+      const statText = [preview.atk ? `⚔️${preview.atk}` : "", preview.def ? `🛡️${preview.def}` : "", preview.dodgeChance ? `💨${preview.dodgeChance}%` : ""].filter(Boolean).join(" ");
       return /*#__PURE__*/React.createElement("div", { key: recipe.recipeId, className: "md-card", style: { marginBottom: 8, padding: 10 } },
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           /*#__PURE__*/React.createElement("div", null,

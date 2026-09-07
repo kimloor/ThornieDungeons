@@ -926,12 +926,24 @@ async function handleDeleteAllClaimedMail(db, id, password, characterId) {
 // ---------- Phase 4: Crafting ----------
 // Recipes live in the `recipes` table (recipe_id, result_item_def JSON, materials_json
 // JSON, source, created_at) — see migration/backfill that inserted the 6 azure_* rows.
-// materials_json is a flat { junkId: qty, ..., gold: qty } map; result_item_def is a
-// mail-item-shaped descriptor (type/rarity/name/atk/def/dodgeChance/setId/empowerSlotCount)
-// — the exact same shape sendMail() uses for raid rewards, reused here so the client's
-// existing materializeMailItem() can turn the response straight into a real item with zero
-// new client-side parsing logic.
-//
+// materials_json is a flat { junkId: qty, ..., gold: qty } map. result_item_def only
+// carries identity fields now (type/rarity/name/setId/empowerSlotCount) — NOT stat
+// numbers. Azure stats are computed fresh at craft time from the character's own
+// unlocked_floor using AZURE_STAT_FORMULA below, so crafted gear stays "current BiS"
+// forever without needing a rebalance pass every time a new floor is added. This
+// mirrors generateDrop()'s per-type formulas in stats.js, pinned to RARITY_MULT.azure
+// (== mythic — crafting's value is guaranteeing that tier, not exceeding it).
+// KEEP IN SYNC with AZURE_STAT_FORMULA in src/systems/crafting.js (client preview copy).
+const RARITY_MULT_AZURE = 5.4;
+const AZURE_STAT_FORMULA = {
+  weapon: (floor) => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * RARITY_MULT_AZURE)) }),
+  helmet: (floor) => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * RARITY_MULT_AZURE)) }),
+  chest: (floor) => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * RARITY_MULT_AZURE)) }),
+  gloves: (floor) => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * RARITY_MULT_AZURE)) }),
+  boots: (floor) => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * RARITY_MULT_AZURE)) }),
+  accessory: (floor) => ({ dodgeChance: Math.round((1 + floor * 0.12) * RARITY_MULT_AZURE * 10) / 10 }),
+};
+
 // This is a real server-validated mutation (unlike enhance/salvage/shop, which are fully
 // client-authoritative and just ride the next full syncItems push) because Kimmie asked for
 // anti-cheat here specifically, and because "delete these exact item rows, then insert a new
@@ -1003,9 +1015,15 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
     stmts.push(db.prepare(`UPDATE characters SET gold = MAX(0, gold - ?), updated_at = ? WHERE character_id = ?`).bind(goldCost, now, characterId));
   }
 
+  // Computed fresh from the character's OWN unlocked_floor (already loaded via
+  // verifyOwnedCharacter above) — never trusts a floor value from the client.
+  const floor = Math.max(1, Number(character.unlocked_floor) || 1);
+  const formula = AZURE_STAT_FORMULA[resultDef.type] || (() => ({}));
+  const stats = formula(floor);
+
   const newItemId = `item-craft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const extraJson = JSON.stringify({
-    dodgeChance: resultDef.dodgeChance || undefined,
+    dodgeChance: stats.dodgeChance || undefined,
     setId: resultDef.setId || undefined,
     star: resultDef.star || undefined,
   });
@@ -1015,7 +1033,7 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
         `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
          VALUES (?, ?, ?, ?, 0, '', ?, ?, ?, 0, 0, 0, 1, ?, ?, 0, 0, ?, ?, ?)`
       )
-      .bind(newItemId, id, characterId, resultDef.type || "", recipeId, resultDef.rarity || "azure", resultDef.name || "Crafted Item", Number(resultDef.atk) || 0, Number(resultDef.def) || 0, extraJson, now, now)
+      .bind(newItemId, id, characterId, resultDef.type || "", recipeId, resultDef.rarity || "azure", resultDef.name || "Crafted Item", Number(stats.atk) || 0, Number(stats.def) || 0, extraJson, now, now)
   );
 
   await db.batch(stmts);
@@ -1026,14 +1044,15 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
       type: resultDef.type,
       rarity: resultDef.rarity,
       name: resultDef.name,
-      atk: Number(resultDef.atk) || 0,
-      def: Number(resultDef.def) || 0,
-      dodgeChance: Number(resultDef.dodgeChance) || 0,
+      atk: Number(stats.atk) || 0,
+      def: Number(stats.def) || 0,
+      dodgeChance: Number(stats.dodgeChance) || 0,
       setId: resultDef.setId,
       empowerSlotCount: resultDef.empowerSlotCount || 1,
     },
     consumed: junkNeeds,
     goldSpent: goldCost,
+    craftedAtFloor: floor,
   });
 }
 

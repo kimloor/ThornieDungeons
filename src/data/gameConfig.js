@@ -27,7 +27,8 @@ function applyGameConfig(cfg) {
         rare: rm.rare,
         unique: rm.unique,
         elite: rm.elite,
-        mythic: typeof rm.mythic === "number" ? rm.mythic : RARITY_MULT.mythic
+        mythic: typeof rm.mythic === "number" ? rm.mythic : RARITY_MULT.mythic,
+        azure: typeof rm.azure === "number" ? rm.azure : RARITY_MULT.azure
       };
     }
   } catch (e) {}

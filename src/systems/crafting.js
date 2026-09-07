@@ -1,72 +1,42 @@
 // ---------- Phase 4: Crafting ----------
-// Recipes are client-side display data ONLY (icons, names, and the material/gold costs
-// shown in the UI so players can see what they need before tapping Craft). The actual
-// craft is granted by the server (handleCraftItem in the worker), which reads the same
-// costs from the `recipes` D1 table as the single source of truth — this list must stay
-// numerically in sync with those rows (and with AZURE_SET_DEFS in the worker) or the UI
-// will just show a wrong "you have enough" state that the server then rejects.
+// Recipes are client-side display data ONLY (icons, names, materials/gold costs, and the
+// stat FORMULA used to preview what you'll get). The actual craft is granted by the server
+// (handleCraftItem in the worker), which computes the real stats itself the same way — this
+// list must stay numerically in sync with the recipes D1 table (materials/gold) and with
+// the AZURE_STAT_FORMULA table in the worker (stat math) or the preview will just show a
+// number the server doesn't agree with.
+//
+// Azure gear stats are NOT flat numbers — they scale with the character's unlockedFloor
+// using the exact same per-type formulas as normal floor drops (generateDrop in stats.js),
+// just with rarity mult fixed at RARITY_MULT.azure (== mythic, see pets.js). This is what
+// keeps crafted gear "always current BiS" without needing manual rebalancing every time a
+// new floor is added — see the phase-4 design discussion for why flat numbers were rejected.
 const CRAFTING_RECIPES = [
-  {
-    recipeId: "azure_helmet",
-    type: "helmet",
-    name: "หมวก Azure",
-    icon: "⛑️",
-    atk: 0,
-    def: 60,
-    dodgeChance: 0,
-    materials: { recipe_azure_helmet: 1, bossHorn: 5, bossHide: 5, gold: 300 }
-  },
-  {
-    recipeId: "azure_chest",
-    type: "chest",
-    name: "เสื้อ Azure",
-    icon: "🥋",
-    atk: 0,
-    def: 90,
-    dodgeChance: 0,
-    materials: { recipe_azure_chest: 1, bossHorn: 6, bossHide: 6, gold: 350 }
-  },
-  {
-    recipeId: "azure_gloves",
-    type: "gloves",
-    name: "ถุงมือ Azure",
-    icon: "🧤",
-    atk: 40,
-    def: 0,
-    dodgeChance: 0,
-    materials: { recipe_azure_gloves: 1, bossHorn: 5, bossHide: 5, gold: 300 }
-  },
-  {
-    recipeId: "azure_boots",
-    type: "boots",
-    name: "รองเท้า Azure",
-    icon: "🥾",
-    atk: 0,
-    def: 45,
-    dodgeChance: 0,
-    materials: { recipe_azure_boots: 1, bossHorn: 5, bossHide: 5, gold: 300 }
-  },
-  {
-    recipeId: "azure_weapon",
-    type: "weapon",
-    name: "อาวุธ Azure",
-    icon: "⚔️",
-    atk: 120,
-    def: 0,
-    dodgeChance: 0,
-    materials: { recipe_azure_weapon: 1, bossHorn: 8, bossHide: 8, gold: 500 }
-  },
-  {
-    recipeId: "azure_ring",
-    type: "accessory",
-    name: "แหวน Azure",
-    icon: "💍",
-    atk: 0,
-    def: 0,
-    dodgeChance: 15,
-    materials: { recipe_azure_ring: 1, bossHorn: 6, bossHide: 6, gold: 350 }
-  }
+  { recipeId: "azure_helmet", type: "helmet", name: "หมวก Azure", icon: "⛑️", materials: { recipe_azure_helmet: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
+  { recipeId: "azure_chest", type: "chest", name: "เสื้อ Azure", icon: "🥋", materials: { recipe_azure_chest: 1, bossHorn: 6, bossHide: 6, gold: 350 } },
+  { recipeId: "azure_gloves", type: "gloves", name: "ถุงมือ Azure", icon: "🧤", materials: { recipe_azure_gloves: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
+  { recipeId: "azure_boots", type: "boots", name: "รองเท้า Azure", icon: "🥾", materials: { recipe_azure_boots: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
+  { recipeId: "azure_weapon", type: "weapon", name: "อาวุธ Azure", icon: "⚔️", materials: { recipe_azure_weapon: 1, bossHorn: 8, bossHide: 8, gold: 500 } },
+  { recipeId: "azure_ring", type: "accessory", name: "แหวน Azure", icon: "💍", materials: { recipe_azure_ring: 1, bossHorn: 6, bossHide: 6, gold: 350 } }
 ];
+
+// Mirrors generateDrop()'s per-type formulas in stats.js, pinned to RARITY_MULT.azure.
+// KEEP IN SYNC with AZURE_STAT_FORMULA in workers/thornie-dungeons-api.js — the worker is
+// authoritative (uses the character's real unlocked_floor at craft time); this copy only
+// exists so the UI can show an accurate "you'll get ~X atk" preview before crafting.
+const AZURE_STAT_FORMULA = {
+  weapon: floor => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * RARITY_MULT.azure)) }),
+  helmet: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * RARITY_MULT.azure)) }),
+  chest: floor => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * RARITY_MULT.azure)) }),
+  gloves: floor => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * RARITY_MULT.azure)) }),
+  boots: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * RARITY_MULT.azure)) }),
+  accessory: floor => ({ dodgeChance: Math.round((1 + floor * 0.12) * RARITY_MULT.azure * 10) / 10 })
+};
+
+function craftPreviewStats(recipe, floor) {
+  const fn = AZURE_STAT_FORMULA[recipe.type];
+  return fn ? fn(Math.max(1, floor || 1)) : {};
+}
 
 // junkTotal()/JUNK_INFO come from enhancement.js (earlier module in build order).
 function craftMaterialTotal(inventory, junkId) {

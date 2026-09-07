@@ -2027,6 +2027,7 @@ function ThornieDungeons() {
     characterId: save.characterId,
     inventory: inventory,
     gold: save.gold,
+    floor: save.unlockedFloor,
     busy: itemActionBusy,
     onCrafted: applyCraftResult,
     onClose: () => setCraftingOpen(false)

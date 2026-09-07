@@ -218,16 +218,17 @@ function buildTurnQueue(units) {
 function xpToNext(level) {
   return level * 22 + 18;
 }
+// Capped at "unique" — elite/mythic used to be reachable here too, but Phase 4 crafting
+// retired them from normal floor drops (elite/mythic now only exist via boss/elite-boss
+// chest pity, see rollChestRarity in enhancement.js) so Azure crafted gear has clean air
+// above anything obtainable through plain floor grinding. Existing elite/mythic items
+// already owned by players are untouched — this only affects what future rolls can return.
 function rollRarity(boosted = false) {
   const r = Math.random();
   if (boosted) {
-    if (r < 0.14) return "elite";
-    if (r < 0.5) return "unique";
-    return "rare";
+    return r < 0.5 ? "unique" : "rare";
   }
-  if (r < 0.06) return "elite";
-  if (r < 0.28) return "unique";
-  return "rare";
+  return r < 0.28 ? "unique" : "rare";
 }
 function pickName(pool, floor) {
   return pool[Math.min(pool.length - 1, Math.floor(floor / 4))];
