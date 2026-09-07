@@ -130,14 +130,32 @@ function AnimatedFrameSprite({
 
 const HERO_V3_LAYER_ORDER = [
   "wings",
+  "weapon",
   "base",
   "hair",
   "outfit",
   "shoes",
   "arms",
-  "hat",
-  "weapon"
+  "hat"
 ];
+
+function heroVisualSelectionFromEquipment(equipped = {}) {
+  const isAzure = slot => {
+    const item = equipped?.[slot];
+    return !!item && (item.setId === "azure" || String(item.name || "").toLowerCase().includes("azure"));
+  };
+
+  return {
+    hair: "topknot",
+    // Azure helmet art will be wired when that overlay is produced.
+    hat: null,
+    outfit: isAzure("chest") ? "azure" : null,
+    arms: isAzure("gloves") ? "azure" : null,
+    shoes: isAzure("boots") ? "azure" : null,
+    weapon: isAzure("weapon") ? "azureSword" : null,
+    wings: equipped?.wings ? "angel" : null
+  };
+}
 
 function getHeroV3Config(characterId = "hero001") {
   return ASSETS?.[characterId]?.v3 || null;

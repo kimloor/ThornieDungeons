@@ -1762,6 +1762,7 @@ function FloatingQuickActions({
 }
 function HeroSprite({
   anim,
+  equipped = {},
   showName = true,
   label = "You"
 }) {
@@ -1769,9 +1770,10 @@ function HeroSprite({
   // The old skeletal rig and legacy core.neutral paths have been removed.
   const visual = getHeroV3Config("hero001")
     ? /*#__PURE__*/React.createElement(HeroOverlayComposer, {
-        characterId: "hero001",
-        anim: anim || ""
-      })
+      characterId: "hero001",
+      selection: heroVisualSelectionFromEquipment(equipped),
+      anim: anim || ""
+    })
     : /*#__PURE__*/React.createElement("div", {
         className: `md-hero ${anim || ""}`
       }, /*#__PURE__*/React.createElement("div", {
@@ -2053,7 +2055,8 @@ function CombatScreen({
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
   }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
-    anim: heroAnim
+    anim: heroAnim,
+    equipped: equipped
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "absolute",
@@ -2507,7 +2510,7 @@ function InventoryOverlay({
     /*#__PURE__*/React.createElement("div", { className: "md-equip-stage" },
       /*#__PURE__*/React.createElement("div", { className: "md-equip-grid" },
         SLOT_ORDER.filter(s => s !== "wings").map(renderEquipSlot),
-        /*#__PURE__*/React.createElement("div", { key: "hero", className: "md-equip-hero" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", label: characterName || "Adventurer" })),
+        /*#__PURE__*/React.createElement("div", { key: "hero", className: "md-equip-hero" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", equipped: equipped, label: characterName || "Adventurer" })),
         /*#__PURE__*/React.createElement("div", {
           key: "wings-slot",
           style: { gridColumn: 1, gridRow: 1 }
