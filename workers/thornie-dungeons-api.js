@@ -53,6 +53,7 @@
  *   POST { action: "deleteMail", id, password, characterId, mailId }       (NEW, Phase 3.6)
  *   POST { action: "deleteMails", id, password, characterId, mailIds }     (NEW, Phase 3.6)
  *   POST { action: "deleteAllClaimedMail", id, password, characterId }     (NEW, Phase 3.6)
+ *   POST { action: "craftItem", id, password, characterId, recipeId }       (NEW, Phase 4)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
  *
@@ -922,6 +923,120 @@ async function handleDeleteAllClaimedMail(db, id, password, characterId) {
   return json({ ok: true, deleted: result.meta ? result.meta.changes : 0 });
 }
 
+// ---------- Phase 4: Crafting ----------
+// Recipes live in the `recipes` table (recipe_id, result_item_def JSON, materials_json
+// JSON, source, created_at) — see migration/backfill that inserted the 6 azure_* rows.
+// materials_json is a flat { junkId: qty, ..., gold: qty } map; result_item_def is a
+// mail-item-shaped descriptor (type/rarity/name/atk/def/dodgeChance/setId/empowerSlotCount)
+// — the exact same shape sendMail() uses for raid rewards, reused here so the client's
+// existing materializeMailItem() can turn the response straight into a real item with zero
+// new client-side parsing logic.
+//
+// This is a real server-validated mutation (unlike enhance/salvage/shop, which are fully
+// client-authoritative and just ride the next full syncItems push) because Kimmie asked for
+// anti-cheat here specifically, and because "delete these exact item rows, then insert a new
+// one" is impossible to fake safely from a client that could just lie about which stacks it
+// spent. It checks materials/gold against THIS request's own fresh read of items/characters
+// (not anything the client asserts), consumes them, and returns the crafted item descriptor
+// for the client to materialize locally — same "server decides, client mirrors" shape as the
+// mailbox/raid systems, just without needing an actual mailbox row since there's no delay.
+async function handleCraftItem(db, id, password, characterId, recipeId) {
+  const [auth, owned] = await Promise.all([verifyPlayer(db, id, password), verifyOwnedCharacter(db, id, characterId)]);
+  if (auth.error) return json({ error: auth.error });
+  if (owned.error) return json({ error: owned.error });
+  if (!recipeId) return json({ error: "missing_fields" });
+
+  const recipe = await db.prepare(`SELECT * FROM recipes WHERE recipe_id = ?`).bind(recipeId).first();
+  if (!recipe) return json({ error: "recipe_not_found" });
+
+  let resultDef = {};
+  let materials = {};
+  try { resultDef = JSON.parse(recipe.result_item_def || "{}"); } catch (e) { resultDef = {}; }
+  try { materials = JSON.parse(recipe.materials_json || "{}"); } catch (e) { materials = {}; }
+
+  const character = owned.row;
+  const goldCost = Number(materials.gold) || 0;
+  if (goldCost > 0 && (Number(character.gold) || 0) < goldCost) {
+    return json({ error: "insufficient_gold", need: goldCost, have: Number(character.gold) || 0 });
+  }
+
+  const junkNeeds = Object.keys(materials)
+    .filter((k) => k !== "gold")
+    .map((k) => ({ junkId: k, qty: Number(materials[k]) || 0 }))
+    .filter((m) => m.qty > 0);
+
+  // Fresh read of this character's own junk stacks — junkId isn't its own column (rides
+  // inside extra_json, same as everywhere else junk items are read in this file), so we
+  // parse it out per row rather than trying to SQL-filter on it.
+  const junkRowsRes = await db
+    .prepare(`SELECT item_id, quantity, extra_json FROM items WHERE character_id = ? AND slot_type = 'junk'`)
+    .bind(characterId)
+    .all();
+  const junkRows = (junkRowsRes.results || []).map((r) => {
+    let extra = {};
+    try { extra = JSON.parse(r.extra_json || "{}"); } catch (e) { extra = {}; }
+    return { item_id: r.item_id, quantity: Number(r.quantity) || 0, junkId: extra.junkId };
+  });
+
+  for (const need of junkNeeds) {
+    const have = junkRows.filter((r) => r.junkId === need.junkId).reduce((s, r) => s + r.quantity, 0);
+    if (have < need.qty) return json({ error: "insufficient_materials", junkId: need.junkId, need: need.qty, have });
+  }
+
+  const now = nowIso();
+  const stmts = [];
+  junkNeeds.forEach((need) => {
+    let remaining = need.qty;
+    for (const row of junkRows.filter((r) => r.junkId === need.junkId)) {
+      if (remaining <= 0) break;
+      const take = Math.min(row.quantity, remaining);
+      remaining -= take;
+      const leftover = row.quantity - take;
+      if (leftover > 0) {
+        stmts.push(db.prepare(`UPDATE items SET quantity = ?, updated_at = ? WHERE item_id = ? AND character_id = ?`).bind(leftover, now, row.item_id, characterId));
+      } else {
+        stmts.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND character_id = ?`).bind(row.item_id, characterId));
+      }
+    }
+  });
+  if (goldCost > 0) {
+    stmts.push(db.prepare(`UPDATE characters SET gold = MAX(0, gold - ?), updated_at = ? WHERE character_id = ?`).bind(goldCost, now, characterId));
+  }
+
+  const newItemId = `item-craft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const extraJson = JSON.stringify({
+    dodgeChance: resultDef.dodgeChance || undefined,
+    setId: resultDef.setId || undefined,
+    star: resultDef.star || undefined,
+  });
+  stmts.push(
+    db
+      .prepare(
+        `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 0, '', ?, ?, ?, 0, 0, 0, 1, ?, ?, 0, 0, ?, ?, ?)`
+      )
+      .bind(newItemId, id, characterId, resultDef.type || "", recipeId, resultDef.rarity || "azure", resultDef.name || "Crafted Item", Number(resultDef.atk) || 0, Number(resultDef.def) || 0, extraJson, now, now)
+  );
+
+  await db.batch(stmts);
+
+  return json({
+    ok: true,
+    item: {
+      type: resultDef.type,
+      rarity: resultDef.rarity,
+      name: resultDef.name,
+      atk: Number(resultDef.atk) || 0,
+      def: Number(resultDef.def) || 0,
+      dodgeChance: Number(resultDef.dodgeChance) || 0,
+      setId: resultDef.setId,
+      empowerSlotCount: resultDef.empowerSlotCount || 1,
+    },
+    consumed: junkNeeds,
+    goldSpent: goldCost,
+  });
+}
+
 // ---------- Phase 3: Raid Boss ----------
 // One shared boss per day, rotates through this list as each one dies (spawnIndex =
 // how many have already spawned today, scales hpMax up a bit each respawn so later
@@ -1531,6 +1646,8 @@ export default {
             return await handleDeleteMails(db, body.id, body.password, body.characterId, body.mailIds);
           case "deleteAllClaimedMail":
             return await handleDeleteAllClaimedMail(db, body.id, body.password, body.characterId);
+          case "craftItem":
+            return await handleCraftItem(db, body.id, body.password, body.characterId, body.recipeId);
           case "saveGameConfig":
             return await handleAdminSaveGameConfig(db, env, body.adminKey, body.config);
           case "setGameConfigItem":

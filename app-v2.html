@@ -2058,6 +2058,19 @@ function cloudDeleteAllClaimedMail(url, id, password, characterId) {
     characterId
   });
 }
+// Phase 4 — Crafting. Server checks materials/gold against its own items/characters rows
+// (never trusts the client), consumes them, and returns the crafted item as a plain
+// descriptor — same shape as a mail item reward — for materializeMailItem() to turn into
+// a real local item. See worker's handleCraftItem for the authoritative logic.
+function cloudCraftItem(url, id, password, characterId, recipeId) {
+  return cloudPost(url, {
+    action: "craftItem",
+    id,
+    password,
+    characterId,
+    recipeId
+  });
+}
 
 // ===== data/gameConfig.js =====
 // Applies a fetched game-balance config on top of the hardcoded defaults below.
@@ -2959,6 +2972,97 @@ function rollChestRarity(isEliteBoss, pity = 0) {
   return "rare";
 }
 
+// ===== systems/crafting.js =====
+// ---------- Phase 4: Crafting ----------
+// Recipes are client-side display data ONLY (icons, names, and the material/gold costs
+// shown in the UI so players can see what they need before tapping Craft). The actual
+// craft is granted by the server (handleCraftItem in the worker), which reads the same
+// costs from the `recipes` D1 table as the single source of truth — this list must stay
+// numerically in sync with those rows (and with AZURE_SET_DEFS in the worker) or the UI
+// will just show a wrong "you have enough" state that the server then rejects.
+const CRAFTING_RECIPES = [
+  {
+    recipeId: "azure_helmet",
+    type: "helmet",
+    name: "หมวก Azure",
+    icon: "⛑️",
+    atk: 0,
+    def: 60,
+    dodgeChance: 0,
+    materials: { recipe_azure_helmet: 1, bossHorn: 5, bossHide: 5, gold: 300 }
+  },
+  {
+    recipeId: "azure_chest",
+    type: "chest",
+    name: "เสื้อ Azure",
+    icon: "🥋",
+    atk: 0,
+    def: 90,
+    dodgeChance: 0,
+    materials: { recipe_azure_chest: 1, bossHorn: 6, bossHide: 6, gold: 350 }
+  },
+  {
+    recipeId: "azure_gloves",
+    type: "gloves",
+    name: "ถุงมือ Azure",
+    icon: "🧤",
+    atk: 40,
+    def: 0,
+    dodgeChance: 0,
+    materials: { recipe_azure_gloves: 1, bossHorn: 5, bossHide: 5, gold: 300 }
+  },
+  {
+    recipeId: "azure_boots",
+    type: "boots",
+    name: "รองเท้า Azure",
+    icon: "🥾",
+    atk: 0,
+    def: 45,
+    dodgeChance: 0,
+    materials: { recipe_azure_boots: 1, bossHorn: 5, bossHide: 5, gold: 300 }
+  },
+  {
+    recipeId: "azure_weapon",
+    type: "weapon",
+    name: "อาวุธ Azure",
+    icon: "⚔️",
+    atk: 120,
+    def: 0,
+    dodgeChance: 0,
+    materials: { recipe_azure_weapon: 1, bossHorn: 8, bossHide: 8, gold: 500 }
+  },
+  {
+    recipeId: "azure_ring",
+    type: "accessory",
+    name: "แหวน Azure",
+    icon: "💍",
+    atk: 0,
+    def: 0,
+    dodgeChance: 15,
+    materials: { recipe_azure_ring: 1, bossHorn: 6, bossHide: 6, gold: 350 }
+  }
+];
+
+// junkTotal()/JUNK_INFO come from enhancement.js (earlier module in build order).
+function craftMaterialTotal(inventory, junkId) {
+  return junkTotal(inventory, junkId);
+}
+
+// Returns { ok, missing: [{junkId,need,have}], goldOk } — used to gray out the Craft
+// button and show what's missing, without needing a server round trip just to check.
+function canAffordRecipe(recipe, inventory, gold) {
+  const missing = [];
+  Object.keys(recipe.materials).forEach(key => {
+    if (key === "gold") return;
+    const need = recipe.materials[key];
+    const have = craftMaterialTotal(inventory, key);
+    if (have < need) missing.push({ junkId: key, need, have });
+  });
+  const goldNeed = recipe.materials.gold || 0;
+  const goldOk = (gold || 0) >= goldNeed;
+  return { ok: missing.length === 0 && goldOk, missing, goldOk, goldNeed };
+}
+
 // ===== systems/potions.js =====
 // ---------- potions (stackable consumables, live in normal inventory like junk) ----------
 // Same pattern as JUNK_INFO/addJunkToInventory in enhancement.js: plain stackable items with
@@ -3771,6 +3875,7 @@ function ThornieDungeons() {
   const [invOpen, setInvOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [blacksmithOpen, setBlacksmithOpen] = useState(false);
+  const [craftingOpen, setCraftingOpen] = useState(false);
   const [shopStock, setShopStock] = useState({
     potions: [],
     items: []
@@ -3918,6 +4023,25 @@ function ThornieDungeons() {
   const persistItems = useCallback((inv, eq) => {
     if (save && save.characterId) pushItems(inv, eq, save.characterId);
   }, [pushItems, save]);
+  // Applies a server-confirmed craft result (see CraftingOverlay/handleCraftItem): the
+  // server already validated+consumed materials/gold on ITS copy of the items/characters
+  // rows, so this only needs to mirror that same removal locally, add the crafted item,
+  // then push the resulting inventory/gold back up so both sides stay in sync.
+  const applyCraftResult = useCallback((res) => {
+    if (!res || !res.item) return;
+    setInventory(inv => {
+      let next = inv;
+      (res.consumed || []).forEach(m => {
+        next = removeJunkFromInventory(next, m.junkId, m.qty) || next;
+      });
+      next = [...next, materializeMailItem(res.item)];
+      persistItems(next, equipped);
+      return next;
+    });
+    if (res.goldSpent) {
+      persistSave({ ...save, gold: Math.max(0, save.gold - res.goldSpent) });
+    }
+  }, [persistItems, equipped, save, persistSave]);
   function spawnFloat(side, text, color) {
     const id = ++floatId.current;
     setFloats(f => [...f, {
@@ -5456,7 +5580,7 @@ function ThornieDungeons() {
   // chooses its own veil strength so scenery never competes with stats, targets or actions.
   const heavyDungeonFade = ["map", "combat", "result", "defeat"].includes(phase);
   const dungeonFade = phase === "menu" ? "light" : heavyDungeonFade ? "heavy" : "medium";
-  const dungeonModalOpen = invOpen || shopOpen || blacksmithOpen;
+  const dungeonModalOpen = invOpen || shopOpen || blacksmithOpen || craftingOpen;
   const isTown = phase === "town";
   return /*#__PURE__*/React.createElement("div", {
     className: isTown
@@ -5479,6 +5603,7 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true),
     onShop: openShop,
     onEnhance: () => setBlacksmithOpen(true),
+    onCraft: () => setCraftingOpen(true),
     onPets: () => {
       setPetReturnPhase("menu");
       setPhase("pets");
@@ -5512,6 +5637,7 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true),
     onShop: openShop,
     onEnhance: () => setBlacksmithOpen(true),
+    onCraft: () => setCraftingOpen(true),
     onPets: () => {
       setPetReturnPhase("town");
       setPhase("pets");
@@ -5671,6 +5797,15 @@ function ThornieDungeons() {
     onToggleLock: toggleEmpowerLock,
     onOpenInventory: () => { setBlacksmithOpen(false); setInvOpen(true); },
     onClose: () => setBlacksmithOpen(false)
+  }), craftingOpen && /*#__PURE__*/React.createElement(CraftingOverlay, {
+    serverUrl: cred.url,
+    cred: cred,
+    characterId: save.characterId,
+    inventory: inventory,
+    gold: save.gold,
+    busy: itemActionBusy,
+    onCrafted: applyCraftResult,
+    onClose: () => setCraftingOpen(false)
   }), shopOpen && /*#__PURE__*/React.createElement(ShopOverlay, {
     gold: save.gold,
     diamonds: save.diamonds,
@@ -5900,6 +6035,7 @@ function HubScreen({
   onOpenInv,
   onShop,
   onEnhance,
+  onCraft,
   onPets,
   onLeaderboard,
   onRaid,
@@ -5986,7 +6122,7 @@ function HubScreen({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
     onCharacter: onCharacter,
     onOpenInv: onOpenInv,
     onPets: onPets,
@@ -6029,6 +6165,7 @@ function TownScreen({
   onOpenInv,
   onShop,
   onEnhance,
+  onCraft,
   onPets,
   onLeaderboard,
   onRaid,
@@ -6096,7 +6233,7 @@ function TownScreen({
         hotspot("guild", "กิลด์", "♜", () => showSoon("กิลด์")),
         hotspot("arena", "อารีน่า", "⚔", () => showSoon("อารีน่า")),
         hotspot("summoning", "Summoning", "✦", onSummoning),
-        hotspot("home", "Home", "⌂", () => showSoon("Crafting")),
+        hotspot("home", "ประดิษฐ์", "⌂", onCraft),
         hotspot("enhance", "ร้านตีบวก", "⚒", onEnhance),
         hotspot("shop", "ร้านค้า", "◈", onShop),
         e("button", {
@@ -6121,6 +6258,7 @@ function TownScreen({
           e("button", { type: "button", onClick: onLeaderboard }, "✉️", e("span", null, "อันดับ")),
           e("button", { type: "button", onClick: onShop }, "🛒", e("span", null, "ร้านค้า")),
           e("button", { type: "button", onClick: onEnhance }, "⚒️", e("span", null, "ตีบวก")),
+          e("button", { type: "button", onClick: onCraft }, "🛠️", e("span", null, "ประดิษฐ์")),
           e("button", { type: "button", onClick: onRaid }, e("img", { src: "ui/hub-icons/raid.svg", alt: "" }), e("span", null, "Raid")),
           e("button", { type: "button", onClick: onMailbox }, "📬", e("span", null, "จดหมาย")),
           e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
@@ -8563,6 +8701,90 @@ function BlacksmithOverlay({
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกอุปกรณ์จากช่องสวมใส่หรือกระเป๋าเพื่อเริ่มตีบวก/เสริมพลัง")),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านตีเหล็ก")
+  ));
+}
+
+// ---------- Phase 4: Crafting ----------
+// Talks to the server directly (like RaidScreen/MailboxScreen) rather than mutating local
+// state itself — the worker is the one that validates+consumes materials/gold, so this
+// component only ever applies what the server confirms actually happened.
+function CraftingOverlay({
+  serverUrl,
+  cred,
+  characterId,
+  inventory,
+  gold,
+  busy,
+  onCrafted,
+  onClose
+}) {
+  const [craftingId, setCraftingId] = useState(null);
+  const [msg, setMsg] = useState("");
+
+  const doCraft = recipe => {
+    if (craftingId || busy) return;
+    setCraftingId(recipe.recipeId);
+    setMsg("");
+    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, recipe.recipeId)
+      .then(res => {
+        if (!res || res.error) {
+          const errMsg = res && res.error === "insufficient_gold" ? `ทองไม่พอ (ต้องการ 🪙${res.need})`
+            : res && res.error === "insufficient_materials" ? `${(JUNK_INFO[res.junkId] || {}).icon || ""} ${(JUNK_INFO[res.junkId] || {}).name || res.junkId} ไม่พอ (มี ${res.have}/${res.need})`
+            : "ประดิษฐ์ไม่สำเร็จ";
+          setMsg(errMsg);
+          return;
+        }
+        onCrafted(res);
+        setMsg(`✨ ประดิษฐ์สำเร็จ! ได้รับ ${res.item && res.item.name}`);
+      })
+      .catch(() => setMsg("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ"))
+      .finally(() => setCraftingId(null));
+  };
+
+  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "🛠️ ประดิษฐ์ไอเทม"),
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ใช้แบบร่าง + วัตถุดิบจากบอส Raid เพื่อประดิษฐ์ชุด Azure")
+      ),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🪙 ", formatNumber(gold)),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.bossHorn.icon, " ", junkTotal(inventory, "bossHorn")),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.bossHide.icon, " ", junkTotal(inventory, "bossHide"))
+    ),
+    CRAFTING_RECIPES.map(recipe => {
+      const afford = canAffordRecipe(recipe, inventory, gold);
+      const statText = [recipe.atk ? `⚔️${recipe.atk}` : "", recipe.def ? `🛡️${recipe.def}` : "", recipe.dodgeChance ? `💨${recipe.dodgeChance}%` : ""].filter(Boolean).join(" ");
+      return /*#__PURE__*/React.createElement("div", { key: recipe.recipeId, className: "md-card", style: { marginBottom: 8, padding: 10 } },
+        /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+          /*#__PURE__*/React.createElement("div", null,
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, recipe.icon, " ", recipe.name),
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { fontSize: 11 } }, statText)
+          ),
+          /*#__PURE__*/React.createElement("button", {
+            type: "button",
+            className: "md-btn primary small",
+            disabled: !afford.ok || !!craftingId || busy,
+            onClick: () => doCraft(recipe)
+          }, craftingId === recipe.recipeId ? "..." : "ประดิษฐ์")
+        ),
+        /*#__PURE__*/React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 } },
+          Object.keys(recipe.materials).map(key => {
+            if (key === "gold") {
+              return /*#__PURE__*/React.createElement("span", { key: key, className: "md-equip-stat-chip", style: !afford.goldOk ? { color: "#e05555" } : undefined }, "🪙 ", recipe.materials.gold);
+            }
+            const missing = afford.missing.find(m => m.junkId === key);
+            const info = JUNK_INFO[key] || {};
+            const have = craftMaterialTotal(inventory, key);
+            return /*#__PURE__*/React.createElement("span", { key: key, className: "md-equip-stat-chip", style: missing ? { color: "#e05555" } : undefined }, info.icon || "📦", " ", have, "/", recipe.materials[key]);
+          })
+        )
+      );
+    }),
+    msg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, textAlign: "center", color: "var(--ink)" } }, msg),
+    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านประดิษฐ์")
   ));
 }
 

@@ -99,6 +99,7 @@ function ThornieDungeons() {
   const [invOpen, setInvOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [blacksmithOpen, setBlacksmithOpen] = useState(false);
+  const [craftingOpen, setCraftingOpen] = useState(false);
   const [shopStock, setShopStock] = useState({
     potions: [],
     items: []
@@ -246,6 +247,25 @@ function ThornieDungeons() {
   const persistItems = useCallback((inv, eq) => {
     if (save && save.characterId) pushItems(inv, eq, save.characterId);
   }, [pushItems, save]);
+  // Applies a server-confirmed craft result (see CraftingOverlay/handleCraftItem): the
+  // server already validated+consumed materials/gold on ITS copy of the items/characters
+  // rows, so this only needs to mirror that same removal locally, add the crafted item,
+  // then push the resulting inventory/gold back up so both sides stay in sync.
+  const applyCraftResult = useCallback((res) => {
+    if (!res || !res.item) return;
+    setInventory(inv => {
+      let next = inv;
+      (res.consumed || []).forEach(m => {
+        next = removeJunkFromInventory(next, m.junkId, m.qty) || next;
+      });
+      next = [...next, materializeMailItem(res.item)];
+      persistItems(next, equipped);
+      return next;
+    });
+    if (res.goldSpent) {
+      persistSave({ ...save, gold: Math.max(0, save.gold - res.goldSpent) });
+    }
+  }, [persistItems, equipped, save, persistSave]);
   function spawnFloat(side, text, color) {
     const id = ++floatId.current;
     setFloats(f => [...f, {
@@ -1784,7 +1804,7 @@ function ThornieDungeons() {
   // chooses its own veil strength so scenery never competes with stats, targets or actions.
   const heavyDungeonFade = ["map", "combat", "result", "defeat"].includes(phase);
   const dungeonFade = phase === "menu" ? "light" : heavyDungeonFade ? "heavy" : "medium";
-  const dungeonModalOpen = invOpen || shopOpen || blacksmithOpen;
+  const dungeonModalOpen = invOpen || shopOpen || blacksmithOpen || craftingOpen;
   const isTown = phase === "town";
   return /*#__PURE__*/React.createElement("div", {
     className: isTown
@@ -1807,6 +1827,7 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true),
     onShop: openShop,
     onEnhance: () => setBlacksmithOpen(true),
+    onCraft: () => setCraftingOpen(true),
     onPets: () => {
       setPetReturnPhase("menu");
       setPhase("pets");
@@ -1840,6 +1861,7 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true),
     onShop: openShop,
     onEnhance: () => setBlacksmithOpen(true),
+    onCraft: () => setCraftingOpen(true),
     onPets: () => {
       setPetReturnPhase("town");
       setPhase("pets");
@@ -1999,6 +2021,15 @@ function ThornieDungeons() {
     onToggleLock: toggleEmpowerLock,
     onOpenInventory: () => { setBlacksmithOpen(false); setInvOpen(true); },
     onClose: () => setBlacksmithOpen(false)
+  }), craftingOpen && /*#__PURE__*/React.createElement(CraftingOverlay, {
+    serverUrl: cred.url,
+    cred: cred,
+    characterId: save.characterId,
+    inventory: inventory,
+    gold: save.gold,
+    busy: itemActionBusy,
+    onCrafted: applyCraftResult,
+    onClose: () => setCraftingOpen(false)
   }), shopOpen && /*#__PURE__*/React.createElement(ShopOverlay, {
     gold: save.gold,
     diamonds: save.diamonds,

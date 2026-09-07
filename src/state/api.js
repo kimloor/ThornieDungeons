@@ -246,3 +246,16 @@ function cloudDeleteAllClaimedMail(url, id, password, characterId) {
     characterId
   });
 }
+// Phase 4 — Crafting. Server checks materials/gold against its own items/characters rows
+// (never trusts the client), consumes them, and returns the crafted item as a plain
+// descriptor — same shape as a mail item reward — for materializeMailItem() to turn into
+// a real local item. See worker's handleCraftItem for the authoritative logic.
+function cloudCraftItem(url, id, password, characterId, recipeId) {
+  return cloudPost(url, {
+    action: "craftItem",
+    id,
+    password,
+    characterId,
+    recipeId
+  });
+}

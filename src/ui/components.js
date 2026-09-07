@@ -213,6 +213,7 @@ function HubScreen({
   onOpenInv,
   onShop,
   onEnhance,
+  onCraft,
   onPets,
   onLeaderboard,
   onRaid,
@@ -299,7 +300,7 @@ function HubScreen({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
     onCharacter: onCharacter,
     onOpenInv: onOpenInv,
     onPets: onPets,
@@ -342,6 +343,7 @@ function TownScreen({
   onOpenInv,
   onShop,
   onEnhance,
+  onCraft,
   onPets,
   onLeaderboard,
   onRaid,
@@ -409,7 +411,7 @@ function TownScreen({
         hotspot("guild", "กิลด์", "♜", () => showSoon("กิลด์")),
         hotspot("arena", "อารีน่า", "⚔", () => showSoon("อารีน่า")),
         hotspot("summoning", "Summoning", "✦", onSummoning),
-        hotspot("home", "Home", "⌂", () => showSoon("Crafting")),
+        hotspot("home", "ประดิษฐ์", "⌂", onCraft),
         hotspot("enhance", "ร้านตีบวก", "⚒", onEnhance),
         hotspot("shop", "ร้านค้า", "◈", onShop),
         e("button", {
@@ -434,6 +436,7 @@ function TownScreen({
           e("button", { type: "button", onClick: onLeaderboard }, "✉️", e("span", null, "อันดับ")),
           e("button", { type: "button", onClick: onShop }, "🛒", e("span", null, "ร้านค้า")),
           e("button", { type: "button", onClick: onEnhance }, "⚒️", e("span", null, "ตีบวก")),
+          e("button", { type: "button", onClick: onCraft }, "🛠️", e("span", null, "ประดิษฐ์")),
           e("button", { type: "button", onClick: onRaid }, e("img", { src: "ui/hub-icons/raid.svg", alt: "" }), e("span", null, "Raid")),
           e("button", { type: "button", onClick: onMailbox }, "📬", e("span", null, "จดหมาย")),
           e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
@@ -2876,5 +2879,89 @@ function BlacksmithOverlay({
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกอุปกรณ์จากช่องสวมใส่หรือกระเป๋าเพื่อเริ่มตีบวก/เสริมพลัง")),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านตีเหล็ก")
+  ));
+}
+
+// ---------- Phase 4: Crafting ----------
+// Talks to the server directly (like RaidScreen/MailboxScreen) rather than mutating local
+// state itself — the worker is the one that validates+consumes materials/gold, so this
+// component only ever applies what the server confirms actually happened.
+function CraftingOverlay({
+  serverUrl,
+  cred,
+  characterId,
+  inventory,
+  gold,
+  busy,
+  onCrafted,
+  onClose
+}) {
+  const [craftingId, setCraftingId] = useState(null);
+  const [msg, setMsg] = useState("");
+
+  const doCraft = recipe => {
+    if (craftingId || busy) return;
+    setCraftingId(recipe.recipeId);
+    setMsg("");
+    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, recipe.recipeId)
+      .then(res => {
+        if (!res || res.error) {
+          const errMsg = res && res.error === "insufficient_gold" ? `ทองไม่พอ (ต้องการ 🪙${res.need})`
+            : res && res.error === "insufficient_materials" ? `${(JUNK_INFO[res.junkId] || {}).icon || ""} ${(JUNK_INFO[res.junkId] || {}).name || res.junkId} ไม่พอ (มี ${res.have}/${res.need})`
+            : "ประดิษฐ์ไม่สำเร็จ";
+          setMsg(errMsg);
+          return;
+        }
+        onCrafted(res);
+        setMsg(`✨ ประดิษฐ์สำเร็จ! ได้รับ ${res.item && res.item.name}`);
+      })
+      .catch(() => setMsg("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ"))
+      .finally(() => setCraftingId(null));
+  };
+
+  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "🛠️ ประดิษฐ์ไอเทม"),
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ใช้แบบร่าง + วัตถุดิบจากบอส Raid เพื่อประดิษฐ์ชุด Azure")
+      ),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🪙 ", formatNumber(gold)),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.bossHorn.icon, " ", junkTotal(inventory, "bossHorn")),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.bossHide.icon, " ", junkTotal(inventory, "bossHide"))
+    ),
+    CRAFTING_RECIPES.map(recipe => {
+      const afford = canAffordRecipe(recipe, inventory, gold);
+      const statText = [recipe.atk ? `⚔️${recipe.atk}` : "", recipe.def ? `🛡️${recipe.def}` : "", recipe.dodgeChance ? `💨${recipe.dodgeChance}%` : ""].filter(Boolean).join(" ");
+      return /*#__PURE__*/React.createElement("div", { key: recipe.recipeId, className: "md-card", style: { marginBottom: 8, padding: 10 } },
+        /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+          /*#__PURE__*/React.createElement("div", null,
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, recipe.icon, " ", recipe.name),
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { fontSize: 11 } }, statText)
+          ),
+          /*#__PURE__*/React.createElement("button", {
+            type: "button",
+            className: "md-btn primary small",
+            disabled: !afford.ok || !!craftingId || busy,
+            onClick: () => doCraft(recipe)
+          }, craftingId === recipe.recipeId ? "..." : "ประดิษฐ์")
+        ),
+        /*#__PURE__*/React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 } },
+          Object.keys(recipe.materials).map(key => {
+            if (key === "gold") {
+              return /*#__PURE__*/React.createElement("span", { key: key, className: "md-equip-stat-chip", style: !afford.goldOk ? { color: "#e05555" } : undefined }, "🪙 ", recipe.materials.gold);
+            }
+            const missing = afford.missing.find(m => m.junkId === key);
+            const info = JUNK_INFO[key] || {};
+            const have = craftMaterialTotal(inventory, key);
+            return /*#__PURE__*/React.createElement("span", { key: key, className: "md-equip-stat-chip", style: missing ? { color: "#e05555" } : undefined }, info.icon || "📦", " ", have, "/", recipe.materials[key]);
+          })
+        )
+      );
+    }),
+    msg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, textAlign: "center", color: "var(--ink)" } }, msg),
+    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านประดิษฐ์")
   ));
 }
