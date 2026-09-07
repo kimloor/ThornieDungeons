@@ -163,6 +163,7 @@ const STYLE = `
 .md-hero-v3-canvas.hurt { animation: md-shake 0.35s ease; }
 .md-hero-v3-master {
   position: relative;
+  flex: 0 0 auto;
   transform-origin: center center;
   image-rendering: pixelated;
 }
@@ -184,7 +185,7 @@ const STYLE = `
 .md-enemy.boss { width: 84px; height: 84px; }
 
 .md-enemy-img { width: 64px; height: 64px; position: relative; display: block; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); image-rendering: -webkit-optimize-contrast; }
-.md-enemy-img.attack { animation: md-lunge-l 0.35s ease; }
+.md-enemy-img.attack { animation: none; }
 .md-enemy-img.hurt { animation: md-shake 0.35s ease; }
 .md-enemy-img.boss { width: 84px; height: 84px; }
 

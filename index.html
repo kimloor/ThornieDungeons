@@ -264,6 +264,7 @@ const STYLE = `
 .md-hero-v3-canvas.hurt { animation: md-shake 0.35s ease; }
 .md-hero-v3-master {
   position: relative;
+  flex: 0 0 auto;
   transform-origin: center center;
   image-rendering: pixelated;
 }
@@ -285,7 +286,7 @@ const STYLE = `
 .md-enemy.boss { width: 84px; height: 84px; }
 
 .md-enemy-img { width: 64px; height: 64px; position: relative; display: block; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); image-rendering: -webkit-optimize-contrast; }
-.md-enemy-img.attack { animation: md-lunge-l 0.35s ease; }
+.md-enemy-img.attack { animation: none; }
 .md-enemy-img.hurt { animation: md-shake 0.35s ease; }
 .md-enemy-img.boss { width: 84px; height: 84px; }
 
@@ -1484,6 +1485,22 @@ function AnimatedFrameSprite({
   const frames = getSpriteAnimationFrames(config, effectiveAnim, dead);
   const [frameIndex, setFrameIndex] = React.useState(0);
   const frameKey = frames.join("|");
+  const preloadSources = Object.values(config?.animations || {})
+    .flat()
+    .filter(Boolean)
+    .map(assetUrl);
+  const preloadKey = preloadSources.join("|");
+
+  React.useEffect(() => {
+    // Idle is normally the only sequence requested when the encounter mounts.
+    // Warm the attack/death frames here as well so the first combat transition
+    // cannot finish before its images arrive from R2.
+    preloadSources.forEach(src => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+    });
+  }, [preloadKey]);
 
   React.useEffect(() => {
     setFrameIndex(0);
@@ -7269,6 +7286,7 @@ function EnemySprite({
   const dead = enemy.hp <= 0;
   const spriteVisual = spriteConfig
     ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+        key: `${enemy.uid}:${dead ? "death" : anim === "attack" ? "attack" : "idle"}`,
         config: spriteConfig,
         anim: anim || "",
         dead,
@@ -7322,6 +7340,7 @@ function PetCombatSprite({ pet, anim }) {
   const spriteConfig = getPetSpriteConfig(pet.defId);
   const spriteVisual = spriteConfig
     ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+        key: `${pet.instId}:${dead ? "death" : anim === "attack" ? "attack" : "idle"}`,
         config: spriteConfig,
         anim: anim || "",
         dead,

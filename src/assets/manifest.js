@@ -99,6 +99,22 @@ function AnimatedFrameSprite({
   const frames = getSpriteAnimationFrames(config, effectiveAnim, dead);
   const [frameIndex, setFrameIndex] = React.useState(0);
   const frameKey = frames.join("|");
+  const preloadSources = Object.values(config?.animations || {})
+    .flat()
+    .filter(Boolean)
+    .map(assetUrl);
+  const preloadKey = preloadSources.join("|");
+
+  React.useEffect(() => {
+    // Idle is normally the only sequence requested when the encounter mounts.
+    // Warm the attack/death frames here as well so the first combat transition
+    // cannot finish before its images arrive from R2.
+    preloadSources.forEach(src => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+    });
+  }, [preloadKey]);
 
   React.useEffect(() => {
     setFrameIndex(0);

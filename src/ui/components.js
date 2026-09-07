@@ -1805,6 +1805,7 @@ function EnemySprite({
   const dead = enemy.hp <= 0;
   const spriteVisual = spriteConfig
     ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+        key: `${enemy.uid}:${dead ? "death" : anim === "attack" ? "attack" : "idle"}`,
         config: spriteConfig,
         anim: anim || "",
         dead,
@@ -1858,6 +1859,7 @@ function PetCombatSprite({ pet, anim }) {
   const spriteConfig = getPetSpriteConfig(pet.defId);
   const spriteVisual = spriteConfig
     ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+        key: `${pet.instId}:${dead ? "death" : anim === "attack" ? "attack" : "idle"}`,
         config: spriteConfig,
         anim: anim || "",
         dead,
