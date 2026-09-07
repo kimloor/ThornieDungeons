@@ -161,6 +161,12 @@ function cloudGetLeaderboard(url, board) {
     board
   });
 }
+// Phase 2.1 — up to the last 7 days; omit date for today.
+function cloudGetLeaderboardHistory(url, board, date) {
+  const params = { action: "getLeaderboardHistory", board };
+  if (date) params.date = date;
+  return cloudGet(url, params);
+}
 // Phase 3 — Raid Boss
 function cloudGetRaidStatus(url, id, password, characterId) {
   return cloudGet(url, {

@@ -29,6 +29,7 @@
  *   GET  ?action=getInventory&id=&password=&characterId=&page=&pageSize=
  *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid                (NEW, Phase 2/3)
+ *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD             (NEW, Phase 2.1, last 7 days)
  *   GET  ?action=getRaidStatus&id=&password=&characterId=                (NEW, Phase 3)
  *   GET  ?action=getMailbox&id=&password=&characterId=                   (NEW, Phase 3.1)
  *   GET  ?action=getPlayer&adminKey=&id=            (admin)
@@ -106,6 +107,12 @@ const TABLES = {
   leaderboard_stats: {
     name: "leaderboard_stats",
     cols: ["character_id", "player_id", "name", "max_floor", "total_cp", "pet_cp", "updated_at"],
+  },
+  // NEW — Phase 2.1 (migration_v8_leaderboard_history.sql). Append-only daily archive, one
+  // row per character per date, pruned to the last 7 days by runLeaderboardSnapshot.
+  leaderboard_history: {
+    name: "leaderboard_history",
+    cols: ["date", "character_id", "player_id", "name", "max_floor", "total_cp", "pet_cp", "created_at"],
   },
 };
 
@@ -213,6 +220,11 @@ function petCombatPower(instance) {
   return Math.round(atk * 12 + def * 15 + maxHp * 2 + critChance * 8 + evasion * 6 + lvl * 50);
 }
 
+const LEADERBOARD_HISTORY_RETENTION_DAYS = 7;
+function dateKeyDaysAgo(days) {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000 - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 // Snapshots every character into leaderboard_stats. Called by scheduled() (nightly cron)
 // and also exposed as an admin action so Kimmie can force a refresh without waiting for
 // the cron to fire (e.g. right after deploying this).
@@ -251,8 +263,29 @@ async function runLeaderboardSnapshot(db) {
       )
       .bind(ch.character_id, ch.player_id, ch.name || "", Number(ch.unlocked_floor) || 1, totalCp, petCp, now)
       .run();
+
+    // Append-only archive (Phase 2.1) — same values, but keyed by date too so today's
+    // snapshot doesn't erase yesterday's like the upsert above does. Uses raidDateKey()
+    // (Thai midnight) so every board's history lines up on the same date boundary.
+    await db
+      .prepare(
+        `INSERT INTO leaderboard_history (date, character_id, player_id, name, max_floor, total_cp, pet_cp, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(date, character_id) DO UPDATE SET
+           player_id=excluded.player_id, name=excluded.name, max_floor=excluded.max_floor,
+           total_cp=excluded.total_cp, pet_cp=excluded.pet_cp, created_at=excluded.created_at`
+      )
+      .bind(raidDateKey(), ch.character_id, ch.player_id, ch.name || "", Number(ch.unlocked_floor) || 1, totalCp, petCp, now)
+      .run();
     updated++;
   }
+
+  // Retention: keep only the last LEADERBOARD_HISTORY_RETENTION_DAYS days of history (and of
+  // raid data, which doubles as that board's own history — see handleGetLeaderboardHistory)
+  // so these tables don't grow forever.
+  const cutoff = dateKeyDaysAgo(LEADERBOARD_HISTORY_RETENTION_DAYS);
+  await db.prepare(`DELETE FROM leaderboard_history WHERE date < ?`).bind(cutoff).run();
+  await db.prepare(`DELETE FROM raid_boss_state WHERE date < ?`).bind(cutoff).run(); // cascades to raid_participants
 
   return { updated, at: now };
 }
@@ -267,14 +300,53 @@ async function handleGetLeaderboard(db, board) {
       .prepare(`SELECT character_id, player_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC LIMIT 50`)
       .bind(raid.raid_id)
       .all();
-    return json({ ok: true, board, raidId: raid.raid_id, bossName: def.name, bossEmoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current), rows: res.results || [] });
+    return json({ ok: true, board, raidId: raid.raid_id, bossName: def.name, bossEmoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current), rows: res.results || [], availableDates: recentDateKeys() });
   }
   const col = LEADERBOARD_BOARD_COLS[board];
   if (!col) return json({ error: "invalid_board", allowed: Object.keys(LEADERBOARD_BOARD_COLS) });
   const res = await db
     .prepare(`SELECT character_id, player_id, name, max_floor, total_cp, pet_cp, updated_at FROM leaderboard_stats ORDER BY ${col} DESC LIMIT 50`)
     .all();
-  return json({ ok: true, board, rows: res.results || [] });
+  return json({ ok: true, board, rows: res.results || [], availableDates: recentDateKeys() });
+}
+
+// Returns the last LEADERBOARD_HISTORY_RETENTION_DAYS calendar dates (today first) so the
+// client can render a date picker without needing a separate "which dates have data" call —
+// picking an empty day just renders an empty list, which is a fine, simple UX for this.
+function recentDateKeys() {
+  const out = [];
+  for (let i = 0; i < LEADERBOARD_HISTORY_RETENTION_DAYS; i++) out.push(dateKeyDaysAgo(i));
+  return out;
+}
+
+async function handleGetLeaderboardHistory(db, board, date) {
+  const dateKey = date || raidDateKey();
+  if (board === "raid") {
+    // Raid never had a separate history table — raid_boss_state/raid_participants already
+    // carry the date a boss was fought on, so "history" is just querying them directly.
+    // Multiple bosses can spawn in one day (respawn-on-death, or the forced daily reset), so
+    // this aggregates every raid instance that date per character rather than picking one.
+    const raidsThatDay = await db.prepare(`SELECT raid_id FROM raid_boss_state WHERE date = ?`).bind(dateKey).all();
+    const raidIds = (raidsThatDay.results || []).map((r) => r.raid_id);
+    if (!raidIds.length) return json({ ok: true, board, date: dateKey, availableDates: recentDateKeys(), rows: [] });
+    const placeholders = raidIds.map(() => "?").join(",");
+    const res = await db
+      .prepare(
+        `SELECT character_id, MAX(player_id) as player_id, MAX(name) as name, MAX(total_damage) as total_damage, SUM(total_contribution) as total_contribution
+         FROM raid_participants WHERE raid_id IN (${placeholders}) GROUP BY character_id ORDER BY total_contribution DESC LIMIT 50`
+      )
+      .bind(...raidIds)
+      .all();
+    return json({ ok: true, board, date: dateKey, availableDates: recentDateKeys(), rows: res.results || [] });
+  }
+
+  const col = LEADERBOARD_BOARD_COLS[board];
+  if (!col) return json({ error: "invalid_board", allowed: Object.keys(LEADERBOARD_BOARD_COLS) });
+  const res = await db
+    .prepare(`SELECT character_id, player_id, name, max_floor, total_cp, pet_cp, created_at FROM leaderboard_history WHERE date = ? ORDER BY ${col} DESC LIMIT 50`)
+    .bind(dateKey)
+    .all();
+  return json({ ok: true, board, date: dateKey, availableDates: recentDateKeys(), rows: res.results || [] });
 }
 
 // NEW — server-owned reward cycle (source of truth; client only displays what this returns,
@@ -1408,6 +1480,7 @@ export default {
         if (action === "getInventory") return await handleGetInventory(db, p.get("id"), p.get("password"), p.get("characterId"), p.get("page"), p.get("pageSize"));
         if (action === "getDailyLogin") return await handleGetDailyLogin(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));
+        if (action === "getLeaderboardHistory") return await handleGetLeaderboardHistory(db, p.get("board"), p.get("date"));
         if (action === "getRaidStatus") return await handleGetRaidStatus(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getMailbox") return await handleGetMailbox(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "runLeaderboardSnapshot") {

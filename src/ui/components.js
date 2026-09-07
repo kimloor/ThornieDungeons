@@ -852,24 +852,30 @@ function LeaderboardScreen({
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  const [availableDates, setAvailableDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null); // null = live/today
   React.useEffect(() => {
     const def = LEADERBOARD_BOARDS.find(b => b.key === board);
-    if (!def || def.disabled) return;
+    if (!def || def.disabled) return undefined;
     let cancelled = false;
     setRows(null);
     setError(null);
-    cloudGetLeaderboard(serverUrl || DEFAULT_SERVER_URL, board).then(res => {
+    const url = serverUrl || DEFAULT_SERVER_URL;
+    const fetcher = selectedDate ? cloudGetLeaderboardHistory(url, board, selectedDate) : cloudGetLeaderboard(url, board);
+    fetcher.then(res => {
       if (cancelled) return;
       setSpinning(false);
       if (!res || !res.ok) { setError("โหลดอันดับไม่สำเร็จ ลองใหม่อีกครั้ง"); setRows([]); return; }
       setRows(res.rows || []);
+      if (res.availableDates) setAvailableDates(res.availableDates);
     });
     return () => { cancelled = true; };
-  }, [board, serverUrl, refreshKey]);
+  }, [board, serverUrl, refreshKey, selectedDate]);
   const handleRefresh = () => {
     setSpinning(true);
     setRefreshKey(k => k + 1);
   };
+  const dateLabel = (d, idx) => idx === 0 ? "วันนี้" : idx === 1 ? "เมื่อวาน" : `${d.slice(5)}`; // "09-05" etc for 2+ days back
   const activeDef = LEADERBOARD_BOARDS.find(b => b.key === board);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
@@ -893,7 +899,7 @@ function LeaderboardScreen({
   }, "🏆 อันดับผู้เล่น"), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: { margin: 0 }
-  }, "อัปเดตทุกเที่ยงคืน · Top 50")), /*#__PURE__*/React.createElement("div", {
+  }, "อัปเดตทุกเที่ยงคืน · Top 50", selectedDate ? ` · ย้อนหลัง ${selectedDate}` : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 6,
@@ -906,7 +912,13 @@ function LeaderboardScreen({
     disabled: b.disabled,
     style: b.disabled ? { opacity: 0.45 } : undefined,
     onClick: () => setBoard(b.key)
-  }, b.icon, " ", b.label, b.disabled ? " (เร็วๆนี้)" : ""))), /*#__PURE__*/React.createElement("div", {
+  }, b.icon, " ", b.label, b.disabled ? " (เร็วๆนี้)" : ""))), availableDates.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }
+  }, availableDates.map((d, idx) => /*#__PURE__*/React.createElement("button", {
+    key: d,
+    className: "md-btn small" + ((selectedDate === d || (!selectedDate && idx === 0)) ? " primary" : " flee"),
+    onClick: () => setSelectedDate(idx === 0 ? null : d)
+  }, dateLabel(d, idx)))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: { marginBottom: 10 }
   }, activeDef && activeDef.disabled ? /*#__PURE__*/React.createElement("p", {
@@ -917,7 +929,7 @@ function LeaderboardScreen({
     className: "md-sub"
   }, "กำลังโหลด...") : rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
-  }, "ยังไม่มีข้อมูลอันดับ") : /*#__PURE__*/React.createElement("div", {
+  }, selectedDate ? "ไม่มีข้อมูลของวันนี้" : "ยังไม่มีข้อมูลอันดับ") : /*#__PURE__*/React.createElement("div", {
     className: "md-inv-list",
     style: { maxHeight: 420, overflowY: "auto" }
   }, rows.map((row, idx) => {
