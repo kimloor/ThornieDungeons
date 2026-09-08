@@ -1458,8 +1458,10 @@ function MapScreen({
   onPets
 }) {
   const e = React.createElement;
-  const topFloor = Math.max(5, unlockedFloor + 4);
-  const bottomFloor = Math.max(1, unlockedFloor - 8);
+  // Six world gates keep the approved composition readable: roughly four remain visible
+  // in a phone viewport while the current floor sits near the visual centre.
+  const topFloor = Math.max(6, unlockedFloor + 2);
+  const bottomFloor = Math.max(1, topFloor - 5);
   const floors = Array.from({ length: topFloor - bottomFloor + 1 }, (_, index) => topFloor - index);
   const encounterCache = useRef(new Map());
   const listRef = useRef(null);
@@ -1509,7 +1511,6 @@ function MapScreen({
       )
     ),
     e("section", { className: "md-dungeon-floor-world", ref: listRef, "aria-label": "ชั้นดันเจี้ยน" },
-      e("div", { className: "md-dungeon-route", "aria-hidden": "true" }),
       floors.map(floor => {
         const locked = floor > unlockedFloor;
         const current = floor === unlockedFloor;
@@ -1533,7 +1534,12 @@ function MapScreen({
           e("span", { className: "md-dungeon-floor-number" }, floor),
           boss && e("span", { className: "md-dungeon-boss-label" }, elite ? "ELITE BOSS" : "BOSS"),
           e("span", { className: "md-dungeon-door" },
-            e("span", { className: "md-dungeon-sword-mark", "aria-hidden": "true" }),
+            e("img", {
+              src: boss ? "ui/dungeon-select/dungeon-gate-boss-v2.webp" : "ui/dungeon-select/dungeon-gate-normal-v2.webp",
+              alt: "",
+              draggable: false,
+              "aria-hidden": "true"
+            }),
             locked && e("span", { className: "md-dungeon-lock", "aria-hidden": "true" }, "▣")
           ),
           e("span", { className: "md-dungeon-floor-state" }, locked ? "ล็อกอยู่" : current ? "พร้อมท้าทาย" : cleared ? "เคลียร์แล้ว" : "")
