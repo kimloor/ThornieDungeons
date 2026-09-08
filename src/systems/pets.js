@@ -283,6 +283,49 @@ let BOSS_POOL = [{
   name: "Frost Warden",
   color: "#7BC7E8"
 }];
+// Per-monster loot tables (design: admin-backend-design.md) — { [monsterId]: { gear: [
+// {itemType, rarity, weight} ], junk: [ {junkId, qtyMin, qtyMax, dropChance} ] } }, filled
+// in from getMonsterLoot on app load (App.js), same fetch/cache/apply shape as recipes and
+// game config. Starts empty on purpose: a monster with no entry here just falls back to
+// the existing generic floor-based drop roll — nothing changes until rows are added.
+let MONSTER_LOOT = {};
+function applyMonsterLoot(data) {
+  if (data && typeof data === "object") MONSTER_LOOT = data;
+}
+function monsterLootFor(monsterId) {
+  return MONSTER_LOOT[monsterId] || null;
+}
+// Weighted pick among a monster's configured gear rows. Returns null if the pool is
+// empty/invalid so the caller can fall back to the generic roll.
+function pickWeightedGear(gearRows) {
+  if (!Array.isArray(gearRows) || !gearRows.length) return null;
+  const total = gearRows.reduce((s, g) => s + (Number(g.weight) || 0), 0);
+  if (total <= 0) return null;
+  let r = Math.random() * total;
+  for (const g of gearRows) {
+    r -= Number(g.weight) || 0;
+    if (r <= 0) return g;
+  }
+  return gearRows[gearRows.length - 1];
+}
+// Independent per-entry roll for a monster's bonus junk table — separate from the gear
+// pool above, and additive on top of the game's existing generic junk roll (rollJunkDrop
+// in enhancement.js). Each row is its own chance, so a monster can grant several bonus
+// materials from a single kill (e.g. "always 2-3 bossHorn" + "10% a recipe scroll").
+function rollMonsterBonusJunk(monsterId) {
+  const table = monsterLootFor(monsterId);
+  if (!table || !table.junk || !table.junk.length) return [];
+  const drops = [];
+  table.junk.forEach(entry => {
+    if (Math.random() < (Number(entry.dropChance) || 0)) {
+      const min = Math.max(1, Number(entry.qtyMin) || 1);
+      const max = Math.max(min, Number(entry.qtyMax) || min);
+      const qty = min + Math.floor(Math.random() * (max - min + 1));
+      if (qty > 0) drops.push({ type: entry.junkId, amount: qty });
+    }
+  });
+  return drops;
+}
 let WEAPON_NAMES = ["Wooden Sword", "Iron Blade", "Steel Rapier", "Flame Saber", "Dragon Fang"];
 let HELMET_NAMES = ["Cloth Cap", "Leather Hood", "Iron Helm", "Horned Helm", "Dragonbone Crown"];
 let CHEST_NAMES = ["Cloth Robe", "Leather Vest", "Iron Plate", "Mystic Cloak", "Dragon Scale Mail"];

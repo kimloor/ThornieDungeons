@@ -27,6 +27,7 @@
  *   GET  ?action=login&id=&password=
  *   GET  ?action=getGameConfig
  *   GET  ?action=getRecipes                                                (NEW, Phase 4 refactor)
+ *   GET  ?action=getMonsterLoot                                             (NEW, monster loot table)
  *   GET  ?action=getInventory&id=&password=&characterId=&page=&pageSize=
  *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid                (NEW, Phase 2/3)
@@ -474,6 +475,25 @@ async function handleGetRecipes(db) {
     return { recipeId: r.recipe_id, type: resultDef.type, name: resultDef.name, materials };
   });
   return json({ recipes });
+}
+
+// Public, unauthenticated — same trust level as getGameConfig/getRecipes above. Per-monster
+// loot tables (Phase: monster loot design doc) — grouped by monster_id so the client can do
+// a single lookup per kill. Empty for any monster_id with no rows, which the client treats
+// as "use the existing generic floor-based roll" (fully backward compatible; nothing
+// changes for a monster until rows are added here).
+async function handleGetMonsterLoot(db) {
+  const res = await db.prepare(`SELECT monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance FROM monster_loot`).all();
+  const byMonster = {};
+  for (const r of res.results || []) {
+    if (!byMonster[r.monster_id]) byMonster[r.monster_id] = { gear: [], junk: [] };
+    if (r.kind === "gear") {
+      byMonster[r.monster_id].gear.push({ itemType: r.item_type, rarity: r.rarity || null, weight: Number(r.weight) || 1 });
+    } else if (r.kind === "junk") {
+      byMonster[r.monster_id].junk.push({ junkId: r.junk_id, qtyMin: Number(r.qty_min) || 1, qtyMax: Number(r.qty_max) || 1, dropChance: Number(r.drop_chance) || 1 });
+    }
+  }
+  return json({ monsterLoot: byMonster });
 }
 
 // ---------- player / auth handlers ----------
@@ -1646,6 +1666,7 @@ export default {
         if (action === "login") return await handleLogin(db, p.get("id"), p.get("password"));
         if (action === "getGameConfig") return await handleGetGameConfig(db);
         if (action === "getRecipes") return await handleGetRecipes(db);
+        if (action === "getMonsterLoot") return await handleGetMonsterLoot(db);
         if (action === "getInventory") return await handleGetInventory(db, p.get("id"), p.get("password"), p.get("characterId"), p.get("page"), p.get("pageSize"));
         if (action === "getDailyLogin") return await handleGetDailyLogin(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));

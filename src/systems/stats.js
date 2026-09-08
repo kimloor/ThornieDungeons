@@ -239,11 +239,30 @@ function generateDrop(floor, options = {}) {
   it.empowerSlots = Array(RARITY_STARS[it.rarity] || 1).fill(null);
   return it;
 }
+// Per-monster loot table aware wrapper (design: admin-backend-design.md). If `monsterId`
+// has configured gear rows, weighted-picks type+rarity from THAT list only (rarity left
+// null on a row falls back to whatever the caller's own fallbackOptions specify, e.g. the
+// existing chest-pity rarity) — otherwise behaves exactly like plain generateDrop(), so a
+// monster with no rows configured is completely unaffected.
+function generateDropForMonster(floor, monsterId, fallbackOptions = {}) {
+  const table = monsterLootFor(monsterId);
+  if (table && table.gear && table.gear.length) {
+    const picked = pickWeightedGear(table.gear);
+    if (picked) {
+      return generateDrop(floor, {
+        ...fallbackOptions,
+        forceType: picked.itemType,
+        forceRarity: picked.rarity || fallbackOptions.forceRarity
+      });
+    }
+  }
+  return generateDrop(floor, fallbackOptions);
+}
 function buildDropItem(floor, options = {}) {
   const roll = Math.random();
   // wings and accessory are raid-exclusive now (see workers/thornie-dungeons-api.js
   // RAID_WING_DEFS / AZURE_SET_DEFS) — shop stock and floor-boss chests no longer roll them.
-  const type = roll < 0.20 ? "weapon" : roll < 0.40 ? "helmet" : roll < 0.60 ? "chest" : roll < 0.80 ? "gloves" : "boots";
+  const type = options.forceType || (roll < 0.20 ? "weapon" : roll < 0.40 ? "helmet" : roll < 0.60 ? "chest" : roll < 0.80 ? "gloves" : "boots");
   const rarity = options.forceRarity || rollRarity(!!options.rarityBoost);
   const mult = RARITY_MULT[rarity];
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

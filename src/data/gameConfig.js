@@ -45,8 +45,22 @@ function applyGameConfig(cfg) {
     }
   } catch (e) {}
 }
+// Slugify fallback for a monster that's genuinely new (added via remote config with no
+// matching static entry and no explicit id supplied) — should rarely trigger in practice
+// since real monster ids should always be assigned explicitly going forward.
+function slugifyMonsterName(name) {
+  return String(name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "unknown_monster";
+}
+// BUG FIX (prerequisite for per-monster loot tables): this used to drop `id` entirely, so
+// ANY monster overridden via remote config silently lost its stable identity — harmless
+// while nothing read monster.id besides makeEnemy's display/uid, but fatal once loot
+// tables need to join on it. Preference order: explicit `m.id` from config > matching
+// static ENEMY_POOL/BOSS_POOL entry by name (covers today's config, which only overrides
+// name/color/mults) > slugified name as a last resort so id is never undefined.
 function monsterFromConfig(m) {
+  const staticMatch = (ENEMY_POOL || []).find(s => s.name === m.name) || (BOSS_POOL || []).find(s => s.name === m.name);
   return {
+    id: m.id || (staticMatch && staticMatch.id) || slugifyMonsterName(m.name),
     name: m.name,
     color: m.color || "#7ED9A8",
     hpMult: typeof m.hpMult === "number" ? m.hpMult : 1,

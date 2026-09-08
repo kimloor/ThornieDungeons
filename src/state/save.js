@@ -2,6 +2,7 @@
 const CONFIG_CACHE_KEY = "thornie-dungeons-cloud-config-v1"; // caches {url,id} only — never the password
 const GAME_CONFIG_CACHE_KEY = "thornie-dungeons-game-config-v2"; // caches monster/equipment/pet/skill balance data
 const RECIPES_CACHE_KEY = "thornie-dungeons-recipes-v1"; // caches crafting recipes (Phase 4 refactor)
+const MONSTER_LOOT_CACHE_KEY = "thornie-dungeons-monster-loot-v1"; // caches per-monster loot tables
 const DEFAULT_SERVER_URL = "https://thornie-dungeons-api.ekqtjl.workers.dev";
 
 // ---------- save schema version ----------

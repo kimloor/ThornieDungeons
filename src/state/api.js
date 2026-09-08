@@ -145,6 +145,12 @@ function cloudGetRecipes(url) {
     action: "getRecipes"
   });
 }
+// Per-monster loot tables — same public/cached/fetch-on-load shape as getRecipes.
+function cloudGetMonsterLoot(url) {
+  return cloudGet(url, {
+    action: "getMonsterLoot"
+  });
+}
 function cloudGetDailyLogin(url, id, password, characterId) {
   return cloudGet(url, {
     action: "getDailyLogin",

@@ -155,6 +155,16 @@ function ThornieDungeons() {
         const cachedRecipes = await loadCachedRecipes();
         if (cachedRecipes) applyRecipes(cachedRecipes);
       }
+
+      // Per-monster loot tables — same fetch-then-cache-fallback shape as recipes above.
+      const freshMonsterLoot = await cloudGetMonsterLoot(DEFAULT_SERVER_URL);
+      if (freshMonsterLoot && !freshMonsterLoot.error && freshMonsterLoot.monsterLoot) {
+        applyMonsterLoot(freshMonsterLoot.monsterLoot);
+        writeCachedMonsterLoot(freshMonsterLoot.monsterLoot);
+      } else {
+        const cachedMonsterLoot = await loadCachedMonsterLoot();
+        if (cachedMonsterLoot) applyMonsterLoot(cachedMonsterLoot);
+      }
     })();
   }, []);
   const cloudWriteQueue = useRef(Promise.resolve());
@@ -647,7 +657,7 @@ function ThornieDungeons() {
     if (bossMonster) {
       const chestRarity = rollChestRarity(bossMonster.isEliteBoss, nextChestPity);
       nextChestPity = chestRarity === "elite" || chestRarity === "mythic" ? 0 : nextChestPity + 1;
-      drop = generateDrop(selectedFloor, {
+      drop = generateDropForMonster(selectedFloor, bossMonster.id, {
         forceRarity: chestRarity
       });
       nextInvAfterCombat = [...inventory, drop];
@@ -669,6 +679,20 @@ function ThornieDungeons() {
         const [type, amount] = Object.entries(merged)[0];
         junkDrop = { type, amount };
       }
+    }
+    // Per-monster bonus junk table (design: admin-backend-design.md) — independent of the
+    // generic junk roll above and applies to EVERY monster in the encounter, boss included,
+    // since a monster with no configured rows here is a no-op. Merged into the same
+    // junkDrop summary banner so nothing new needs to be shown to the player differently.
+    const bonusJunk = [];
+    currentMonsters.forEach(m => { bonusJunk.push(...rollMonsterBonusJunk(m.id)); });
+    if (bonusJunk.length) {
+      bonusJunk.forEach(jd => { nextInvAfterCombat = addJunkToInventory(nextInvAfterCombat, jd.type, jd.amount); });
+      const merged = {};
+      if (junkDrop) merged[junkDrop.type] = junkDrop.amount;
+      bonusJunk.forEach(jd => { merged[jd.type] = (merged[jd.type] || 0) + jd.amount; });
+      const [type, amount] = Object.entries(merged)[0];
+      junkDrop = { type, amount };
     }
     if (nextInvAfterCombat !== inventory) {
       setInventory(nextInvAfterCombat);
