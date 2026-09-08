@@ -1,0 +1,79 @@
+name: Repair Azure Angel R2 sprites
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/repair_azure_angel.py"
+      - ".github/workflows/repair-azure-angel-r2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      R2_BUCKET: assets
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install --disable-pip-version-check pillow numpy opencv-python-headless
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Download current Azure Angel sprites from R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/azure-angel/source
+          for name in             azure_angel_idle_1.png             azure_angel_idle_2.png             azure_angel_idle_3.png             azure_angel_hurt_1.png             azure_angel_hurt_2.png             azure_angel_hurt_3.png
+          do
+            echo "Downloading sprite/raid/$name"
+            wrangler r2 object get "$R2_BUCKET/sprite/raid/$name"               --file "tmp/azure-angel/source/$name"               --remote
+          done
+
+      - name: Rebuild frames to ThornieDungeons sprite standard
+        run: python scripts/repair_azure_angel.py
+
+      - name: Upload repaired sprites to original R2 paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in tmp/azure-angel/output/*.png
+          do
+            name="$(basename "$file")"
+            echo "Uploading $name -> sprite/raid/$name"
+            wrangler r2 object put "$R2_BUCKET/sprite/raid/$name"               --file "$file"               --content-type "image/png"               --remote
+          done
+
+      - name: Verify uploaded bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/azure-angel/verify
+          for file in tmp/azure-angel/output/*.png
+          do
+            name="$(basename "$file")"
+            wrangler r2 object get "$R2_BUCKET/sprite/raid/$name"               --file "tmp/azure-angel/verify/$name"               --remote
+            local_sha="$(sha256sum "$file" | awk '{print $1}')"
+            remote_sha="$(sha256sum "tmp/azure-angel/verify/$name" | awk '{print $1}')"
+            test "$local_sha" = "$remote_sha" || {
+              echo "SHA mismatch: $name"
+              exit 1
+            }
+            echo "Verified $name $local_sha"
+          done
