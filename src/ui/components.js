@@ -3072,8 +3072,13 @@ function CraftingOverlay({
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🪙 ", formatNumber(gold)),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.bossHorn.icon, " ", junkTotal(inventory, "bossHorn")),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, JUNK_INFO.bossHide.icon, " ", junkTotal(inventory, "bossHide"))
+      // Union of every non-gold/non-scroll material across ALL loaded recipes — was
+      // hardcoded to bossHorn/bossHide (Azure-only) before; now reads whatever the current
+      // recipe list actually needs, so a future set with different materials shows up here
+      // automatically with no code change.
+      ...Array.from(new Set(CRAFTING_RECIPES.flatMap(r => Object.keys(r.materials)))).filter(k => k !== "gold" && k.indexOf("recipe_") !== 0).map(key =>
+        /*#__PURE__*/React.createElement("span", { key: key, className: "md-equip-stat-chip" }, (JUNK_INFO[key] || {}).icon || "📦", " ", junkTotal(inventory, key))
+      )
     ),
     CRAFTING_RECIPES.map(recipe => {
       const afford = canAffordRecipe(recipe, inventory, gold);
