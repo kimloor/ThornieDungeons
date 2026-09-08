@@ -191,10 +191,10 @@
       </div>
       <div class="muted" style="margin:6px 0 12px;">
         <b>เรื่อง icon:</b> พิมพ์ emoji ตรงๆ ได้เลย (ใช้แบบนี้ทุกจุดในเกมตอนนี้ ขึ้นถูกต้องแน่นอน) —
-        ถ้าอยากใช้รูปจริงจาก R2 ให้เอาไฟล์ไปวางใน <code>r2-upload/icons/</code> ใน repo แล้ว commit ขึ้น main
-        (ระบบ CI เดิมจะอัปโหลดขึ้น R2 อัตโนมัติเหมือนไฟล์ sprite) แล้วเอา URL ที่ได้มาวางในช่องนี้แทน —
-        แต่ตอนนี้ยังมีจุดที่โชว์ icon เป็นข้อความล้วน (เช่น toast แจ้งเตือน) ซึ่งจะโชว้ URL เป็นตัวหนังสือแทนรูปจริง
-        ยังไม่รองรับเต็มรูปแบบทุกจุด ถ้าจะใช้รูปจริงทั่วเกม บอกได้ จะทยอยแก้จุดแสดงผลให้ทีหลัง
+        หรือใช้รูปจริงจาก R2: วางไฟล์ไว้ที่ <code>r2-upload/icons/&lt;ชื่อไฟล์&gt;</code> ใน repo แล้ว commit ขึ้น main
+        (CI เดิมจะอัปโหลดขึ้น R2 อัตโนมัติเหมือนไฟล์ sprite/ui) แล้ววาง URL รูปแบบ
+        <code>/assets/icons/&lt;ชื่อไฟล์&gt;</code> (ต่อท้ายโดเมนเกม) ในช่องนี้แทน —
+        การแสดงผลเป็นรูปจริงในเกม (แทนที่จะโชว์ URL เป็นตัวหนังสือ) ทาง ChatGPT จะแก้ไขจุดแสดงผลให้เอง
       </div>
       <button class="btn-primary" id="saveJunkInfoBtn">บันทึก</button>
       <button class="ghost" id="cancelJunkInfoEditBtn" style="display:none;margin-left:8px;padding:8px 16px;border-radius:6px;">ยกเลิกแก้ไข</button>
