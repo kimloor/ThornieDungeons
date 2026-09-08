@@ -486,9 +486,8 @@ const STYLE = `
 .md-dungeon-map-header > div { grid-column:2; min-width:0; }
 .md-dungeon-map-header h1 { margin:0; color:#ffe7a5; font-family:'Baloo 2'; font-size:22px; line-height:1.05; }
 .md-dungeon-map-header p { margin:2px 0 0; color:#c3daf4; font-size:8.5px; font-weight:800; }
-.md-dungeon-floor-world { flex:1; min-height:0; position:relative; overflow-y:auto; overflow-x:hidden; padding:20px 7px 32px; border:1px solid rgba(220,172,58,.34); border-radius:18px; background-image:linear-gradient(180deg,rgba(2,7,20,.08),rgba(1,5,16,.2)),url("ui/dungeon-select/dungeon-floor-select-v2.webp"); background-size:cover; background-position:center bottom; background-repeat:no-repeat; background-attachment:local; box-shadow:inset 0 0 42px rgba(0,0,0,.36),0 7px 24px rgba(0,0,0,.28); overscroll-behavior:contain; scroll-behavior:smooth; scrollbar-width:thin; scrollbar-color:rgba(70,187,255,.5) transparent; }
-.md-dungeon-floor-node { width:124px; min-height:142px; padding:0; position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; border:0; background:transparent; color:#d4d8e1; cursor:pointer; filter:drop-shadow(0 7px 6px rgba(0,0,0,.72)); }
-.md-dungeon-floor-node + .md-dungeon-floor-node { margin-top:2px; }
+.md-dungeon-floor-world { flex:1; min-height:0; position:relative; overflow:hidden; border:1px solid rgba(220,172,58,.34); border-radius:18px; background-image:linear-gradient(180deg,rgba(2,7,20,.08),rgba(1,5,16,.2)),url("ui/dungeon-select/dungeon-floor-select-v2.webp"); background-size:cover; background-position:center bottom; background-repeat:no-repeat; box-shadow:inset 0 0 42px rgba(0,0,0,.36),0 7px 24px rgba(0,0,0,.28); }
+.md-dungeon-floor-node { width:124px; min-height:142px; padding:0; position:absolute; z-index:2; display:flex; flex-direction:column; align-items:center; border:0; background:transparent; color:#d4d8e1; cursor:pointer; filter:drop-shadow(0 7px 6px rgba(0,0,0,.72)); transform:translateX(-50%) scale(var(--md-gate-scale,1)); transform-origin:center top; }
 .md-dungeon-floor-node:disabled { cursor:not-allowed; }
 .md-dungeon-floor-number { min-width:43px; height:25px; margin-bottom:-4px; z-index:4; display:grid; place-items:center; padding:1px 9px; border:1px solid #71684f; border-radius:10px 10px 5px 5px; background:linear-gradient(180deg,#17243a,#060b15); color:#e5e7e8; font-family:'Baloo 2'; font-size:15px; font-weight:900; line-height:1; box-shadow:0 2px 0 #02050b; }
 .md-dungeon-boss-label { position:absolute; z-index:5; top:23px; padding:1px 7px; border:1px solid #9b6e20; border-radius:999px; background:#130c08; color:#d7a334; font-family:'Baloo 2'; font-size:6.5px; font-weight:900; letter-spacing:.5px; }
@@ -505,7 +504,7 @@ const STYLE = `
 .md-dungeon-floor-node.boss .md-dungeon-door { width:104px; height:124px; }
 .md-dungeon-floor-node.boss.current .md-dungeon-door > img { filter:saturate(1.18) brightness(1.05) drop-shadow(0 0 8px rgba(255,174,38,.9)) drop-shadow(0 0 16px rgba(185,87,0,.62)); }
 .md-dungeon-floor-node.boss.current .md-dungeon-floor-number,.md-dungeon-floor-node.boss.current .md-dungeon-floor-state { border-color:#cf922d; color:#ffe2a0; box-shadow:0 0 10px rgba(218,137,25,.42); }
-.md-dungeon-floor-node:active:not(:disabled) { transform:scale(.97); }
+.md-dungeon-floor-node:active:not(:disabled) { filter:brightness(.88) drop-shadow(0 5px 5px rgba(0,0,0,.72)); }
 .md-dungeon-map-page > .md-hub-dock { flex:0 0 auto; min-height:67px; z-index:10; }
 .md-dungeon-map-page > .md-hub-dock button { min-height:51px; }
 .md-dungeon-more-panel { bottom:82px; }

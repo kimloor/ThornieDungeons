@@ -1458,24 +1458,23 @@ function MapScreen({
   onPets
 }) {
   const e = React.createElement;
-  // Six world gates keep the approved composition readable: roughly four remain visible
-  // in a phone viewport while the current floor sits near the visual centre.
-  const topFloor = Math.max(6, unlockedFloor + 2);
-  const bottomFloor = Math.max(1, topFloor - 5);
+  // Five fixed perspective slots match the stair landings painted into
+  // dungeon-floor-select-v2.webp. Keep this index-based: calculating positions from
+  // floor numbers makes the gates drift away from the artwork as progress changes.
+  const gateSlots = [
+    { x: 79, y: 2, scale: 0.62 },
+    { x: 58, y: 20, scale: 0.72 },
+    { x: 75, y: 39, scale: 0.86 },
+    { x: 49, y: 58, scale: 0.8 },
+    { x: 23, y: 72, scale: 0.88 }
+  ];
+  const topFloor = Math.max(5, unlockedFloor + 2);
+  const bottomFloor = Math.max(1, topFloor - 4);
   const floors = Array.from({ length: topFloor - bottomFloor + 1 }, (_, index) => topFloor - index);
   const encounterCache = useRef(new Map());
-  const listRef = useRef(null);
-  const currentRef = useRef(null);
   const [detail, setDetail] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
-
-  useEffect(() => {
-    const list = listRef.current;
-    const current = currentRef.current;
-    if (!list || !current) return;
-    list.scrollTop = Math.max(0, current.offsetTop - list.clientHeight * 0.52);
-  }, [unlockedFloor]);
 
   const encounterFor = floor => {
     if (!encounterCache.current.has(floor)) encounterCache.current.set(floor, makeEncounter(floor));
@@ -1495,8 +1494,6 @@ function MapScreen({
     if (!detail || detail.floor > unlockedFloor) return;
     onSelectFloor(detail.floor, detail.monsters);
   };
-  const range = Math.max(1, topFloor - bottomFloor);
-
   return e("main", { className: `md-dungeon-map-page${detail ? " detail-open" : ""}` },
     e("div", { className: "md-hub-resources md-dungeon-resources" },
       e("span", null, "🪙 ", e("b", null, formatNumber(save.gold))),
@@ -1510,23 +1507,24 @@ function MapScreen({
         e("p", null, "ท้าทายให้สูงขึ้น เพื่อรับรางวัลที่ดีกว่า")
       )
     ),
-    e("section", { className: "md-dungeon-floor-world", ref: listRef, "aria-label": "ชั้นดันเจี้ยน" },
-      floors.map(floor => {
+    e("section", { className: "md-dungeon-floor-world", "aria-label": "ชั้นดันเจี้ยน" },
+      floors.map((floor, index) => {
         const locked = floor > unlockedFloor;
         const current = floor === unlockedFloor;
         const cleared = floor < unlockedFloor;
         const boss = floor % 5 === 0;
         const elite = floor % 10 === 0;
-        const progress = (floor - bottomFloor) / range;
-        const jitter = [-4, 3, -1, 5, -3][floor % 5];
-        const left = Math.max(3, Math.min(58, 5 + progress * 52 + jitter));
+        const slot = gateSlots[index];
         const state = locked ? "locked" : current ? "current" : "cleared";
         return e("button", {
           key: floor,
           type: "button",
-          ref: current ? currentRef : null,
           className: `md-dungeon-floor-node ${state}${boss ? " boss" : ""}${elite ? " elite" : ""}`,
-          style: { marginLeft: `${left}%` },
+          style: {
+            left: `${slot.x}%`,
+            top: `${slot.y}%`,
+            "--md-gate-scale": slot.scale
+          },
           disabled: locked,
           onClick: () => openFloor(floor),
           "aria-label": `ชั้น ${floor} ${locked ? "ล็อกอยู่" : current ? "ชั้นปัจจุบัน" : "เคลียร์แล้ว"}`
