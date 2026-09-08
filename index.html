@@ -1205,6 +1205,7 @@ const CONFIG_CACHE_KEY = "thornie-dungeons-cloud-config-v1"; // caches {url,id} 
 const GAME_CONFIG_CACHE_KEY = "thornie-dungeons-game-config-v2"; // caches monster/equipment/pet/skill balance data
 const RECIPES_CACHE_KEY = "thornie-dungeons-recipes-v1"; // caches crafting recipes (Phase 4 refactor)
 const MONSTER_LOOT_CACHE_KEY = "thornie-dungeons-monster-loot-v1"; // caches per-monster loot tables
+const JUNK_INFO_CACHE_KEY = "thornie-dungeons-junk-info-v1"; // caches material names/icons (admin.html)
 const DEFAULT_SERVER_URL = "https://thornie-dungeons-api.ekqtjl.workers.dev";
 
 // ---------- save schema version ----------
@@ -1925,6 +1926,16 @@ async function loadCachedMonsterLoot() {
 async function writeCachedMonsterLoot(loot) {
   await kvSet(MONSTER_LOOT_CACHE_KEY, JSON.stringify(loot));
 }
+async function loadCachedJunkInfo() {
+  try {
+    const v = await kvGet(JUNK_INFO_CACHE_KEY);
+    if (v) return JSON.parse(v);
+  } catch (e) {}
+  return null;
+}
+async function writeCachedJunkInfo(info) {
+  await kvSet(JUNK_INFO_CACHE_KEY, JSON.stringify(info));
+}
 
 // ===== state/api.js =====
 // ---------- HTTP helpers: retry + in-flight de-duplication ----------
@@ -2078,6 +2089,11 @@ function cloudGetRecipes(url) {
 function cloudGetMonsterLoot(url) {
   return cloudGet(url, {
     action: "getMonsterLoot"
+  });
+}
+function cloudGetJunkInfo(url) {
+  return cloudGet(url, {
+    action: "getJunkInfo"
   });
 }
 function cloudGetDailyLogin(url, id, password, characterId) {
@@ -2987,6 +3003,15 @@ const JUNK_INFO = {
   recipe_azure_weapon: { name: "แบบร่างอาวุธ Azure", icon: "📜" },
   recipe_azure_ring: { name: "แบบร่างแหวน Azure", icon: "📜" }
 };
+// Merges server-managed junk_info rows (admin.html) into the built-in defaults above —
+// merge, not replace, so newly-added materials show up without needing every existing
+// one re-declared server-side, and nothing breaks if the table is ever emptied.
+function applyJunkInfo(data) {
+  if (!data || typeof data !== "object") return;
+  Object.keys(data).forEach(key => {
+    if (data[key] && data[key].name) JUNK_INFO[key] = { name: data[key].name, icon: data[key].icon || "📦" };
+  });
+}
 const JUNK_STACK_MAX = 99;
 const JUNK_SELL_VALUE = {
   stone: 1,
@@ -4173,6 +4198,16 @@ function ThornieDungeons() {
       } else {
         const cachedMonsterLoot = await loadCachedMonsterLoot();
         if (cachedMonsterLoot) applyMonsterLoot(cachedMonsterLoot);
+      }
+
+      // Material names/icons (admin.html) — merges into the built-in JUNK_INFO defaults.
+      const freshJunkInfo = await cloudGetJunkInfo(DEFAULT_SERVER_URL);
+      if (freshJunkInfo && !freshJunkInfo.error && freshJunkInfo.junkInfo) {
+        applyJunkInfo(freshJunkInfo.junkInfo);
+        writeCachedJunkInfo(freshJunkInfo.junkInfo);
+      } else {
+        const cachedJunkInfo = await loadCachedJunkInfo();
+        if (cachedJunkInfo) applyJunkInfo(cachedJunkInfo);
       }
     })();
   }, []);

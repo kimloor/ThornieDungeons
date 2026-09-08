@@ -41,6 +41,15 @@ const JUNK_INFO = {
   recipe_azure_weapon: { name: "แบบร่างอาวุธ Azure", icon: "📜" },
   recipe_azure_ring: { name: "แบบร่างแหวน Azure", icon: "📜" }
 };
+// Merges server-managed junk_info rows (admin.html) into the built-in defaults above —
+// merge, not replace, so newly-added materials show up without needing every existing
+// one re-declared server-side, and nothing breaks if the table is ever emptied.
+function applyJunkInfo(data) {
+  if (!data || typeof data !== "object") return;
+  Object.keys(data).forEach(key => {
+    if (data[key] && data[key].name) JUNK_INFO[key] = { name: data[key].name, icon: data[key].icon || "📦" };
+  });
+}
 const JUNK_STACK_MAX = 99;
 const JUNK_SELL_VALUE = {
   stone: 1,

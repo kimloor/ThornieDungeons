@@ -43,3 +43,13 @@ async function loadCachedMonsterLoot() {
 async function writeCachedMonsterLoot(loot) {
   await kvSet(MONSTER_LOOT_CACHE_KEY, JSON.stringify(loot));
 }
+async function loadCachedJunkInfo() {
+  try {
+    const v = await kvGet(JUNK_INFO_CACHE_KEY);
+    if (v) return JSON.parse(v);
+  } catch (e) {}
+  return null;
+}
+async function writeCachedJunkInfo(info) {
+  await kvSet(JUNK_INFO_CACHE_KEY, JSON.stringify(info));
+}

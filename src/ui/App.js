@@ -165,6 +165,16 @@ function ThornieDungeons() {
         const cachedMonsterLoot = await loadCachedMonsterLoot();
         if (cachedMonsterLoot) applyMonsterLoot(cachedMonsterLoot);
       }
+
+      // Material names/icons (admin.html) — merges into the built-in JUNK_INFO defaults.
+      const freshJunkInfo = await cloudGetJunkInfo(DEFAULT_SERVER_URL);
+      if (freshJunkInfo && !freshJunkInfo.error && freshJunkInfo.junkInfo) {
+        applyJunkInfo(freshJunkInfo.junkInfo);
+        writeCachedJunkInfo(freshJunkInfo.junkInfo);
+      } else {
+        const cachedJunkInfo = await loadCachedJunkInfo();
+        if (cachedJunkInfo) applyJunkInfo(cachedJunkInfo);
+      }
     })();
   }, []);
   const cloudWriteQueue = useRef(Promise.resolve());

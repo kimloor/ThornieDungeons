@@ -57,6 +57,7 @@
 <div class="tabs">
   <div class="tab active" data-tab="recipes">Recipes</div>
   <div class="tab" data-tab="monsters">Monster Drops</div>
+  <div class="tab" data-tab="junk">Junk Info</div>
 </div>
 
 <main>
@@ -165,6 +166,41 @@
       <div class="msg" id="junkMsg"></div>
     </div>
   </section>
+
+  <!-- ===================== JUNK INFO TAB ===================== -->
+  <section id="tab-junk">
+    <div class="card">
+      <h2>วัตถุดิบ (junkId) ทั้งหมด</h2>
+      <table id="junkInfoTable">
+        <thead><tr><th>junkId</th><th>ชื่อ</th><th>icon</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="muted" id="junkInfoEmptyMsg">ยังไม่มีข้อมูล — ใส่ admin key แล้วกด "โหลดข้อมูล"</div>
+      <button class="btn-add" id="reloadJunkInfoBtn">โหลดข้อมูล</button>
+    </div>
+
+    <div class="card">
+      <h2 id="junkInfoFormTitle">เพิ่มวัตถุดิบใหม่</h2>
+      <div class="grid2">
+        <div class="field"><label>junkId (เช่น dragonScale — ใช้ตัวนี้อ้างอิงใน recipe/loot table)</label><input id="ji_junkId"></div>
+        <div class="field"><label>ชื่อ (แสดงในเกม)</label><input id="ji_name"></div>
+      </div>
+      <div class="field">
+        <label>icon</label>
+        <input id="ji_icon" placeholder="พิมพ์ emoji ได้เลย เช่น 🐉 หรือวาง URL รูปจาก R2">
+      </div>
+      <div class="muted" style="margin:6px 0 12px;">
+        <b>เรื่อง icon:</b> พิมพ์ emoji ตรงๆ ได้เลย (ใช้แบบนี้ทุกจุดในเกมตอนนี้ ขึ้นถูกต้องแน่นอน) —
+        ถ้าอยากใช้รูปจริงจาก R2 ให้เอาไฟล์ไปวางใน <code>r2-upload/icons/</code> ใน repo แล้ว commit ขึ้น main
+        (ระบบ CI เดิมจะอัปโหลดขึ้น R2 อัตโนมัติเหมือนไฟล์ sprite) แล้วเอา URL ที่ได้มาวางในช่องนี้แทน —
+        แต่ตอนนี้ยังมีจุดที่โชว์ icon เป็นข้อความล้วน (เช่น toast แจ้งเตือน) ซึ่งจะโชว้ URL เป็นตัวหนังสือแทนรูปจริง
+        ยังไม่รองรับเต็มรูปแบบทุกจุด ถ้าจะใช้รูปจริงทั่วเกม บอกได้ จะทยอยแก้จุดแสดงผลให้ทีหลัง
+      </div>
+      <button class="btn-primary" id="saveJunkInfoBtn">บันทึก</button>
+      <button class="ghost" id="cancelJunkInfoEditBtn" style="display:none;margin-left:8px;padding:8px 16px;border-radius:6px;">ยกเลิกแก้ไข</button>
+      <div class="msg" id="junkInfoMsg"></div>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -224,11 +260,30 @@ document.querySelectorAll(".tab").forEach(t => {
 // RECIPES TAB
 // ==================================================================
 let editingRecipeId = null;
+let junkInfoCache = []; // shared with Junk Info tab — [{junk_id, name, icon}]
+
+async function loadJunkInfoList() {
+  if (!adminKey()) return junkInfoCache;
+  const res = await apiGet({ action: "getSheet", adminKey: adminKey(), sheet: "junk_info" });
+  if (!res.error) junkInfoCache = res.rows || [];
+  return junkInfoCache;
+}
+
+function junkSelectOptions(selected) {
+  const ids = new Set(["gold"]);
+  junkInfoCache.forEach(j => ids.add(j.junk_id));
+  if (selected) ids.add(selected);
+  return Array.from(ids).sort().map(id => {
+    const match = junkInfoCache.find(j => j.junk_id === id);
+    const label = id === "gold" ? "gold (ทอง)" : (match ? `${id} (${match.name})` : id);
+    return `<option value="${id}"${id === selected ? " selected" : ""}>${label}</option>`;
+  }).join("");
+}
 
 function materialRow(key = "", qty = "") {
   const div = document.createElement("div");
   div.className = "matRow";
-  div.innerHTML = `<input class="matKey" placeholder="junkId หรือ gold" value="${key}">
+  div.innerHTML = `<select class="matKey">${junkSelectOptions(key)}</select>
     <input class="matQty" type="number" placeholder="จำนวน" value="${qty}" style="max-width:100px">
     <button type="button">ลบ</button>`;
   div.querySelector("button").onclick = () => div.remove();
@@ -268,6 +323,7 @@ let recipesCache = [];
 async function loadRecipes() {
   const msg = document.getElementById("recipeMsg");
   if (!adminKey()) { msg.textContent = "กรุณาใส่ admin key ก่อน"; msg.className = "msg err"; return; }
+  await loadJunkInfoList(); // needed to populate the materials dropdown options
   const res = await apiGet({ action: "getSheet", adminKey: adminKey(), sheet: "recipes" });
   if (res.error) { msg.textContent = "โหลดไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
   recipesCache = (res.rows || []).map(r => {
@@ -277,6 +333,7 @@ async function loadRecipes() {
     return { recipeId: r.recipe_id, ...def, materials };
   });
   renderRecipeTable();
+  resetRecipeForm(); // rebuild the empty form's material row now that junk options are loaded
 }
 document.getElementById("reloadRecipesBtn").onclick = loadRecipes;
 
@@ -484,6 +541,76 @@ async function deleteLootEntry(entryId, kind) {
   if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
   monsterLootCache = monsterLootCache.filter(r => r.entry_id !== entryId);
   if (kind === "gear") renderGearTable(); else renderJunkTable();
+}
+
+// ==================================================================
+// JUNK INFO TAB
+// ==================================================================
+let editingJunkId = null;
+
+function resetJunkInfoForm() {
+  editingJunkId = null;
+  document.getElementById("junkInfoFormTitle").textContent = "เพิ่มวัตถุดิบใหม่";
+  document.getElementById("ji_junkId").value = "";
+  document.getElementById("ji_junkId").disabled = false;
+  document.getElementById("ji_name").value = "";
+  document.getElementById("ji_icon").value = "";
+  document.getElementById("cancelJunkInfoEditBtn").style.display = "none";
+}
+document.getElementById("cancelJunkInfoEditBtn").onclick = resetJunkInfoForm;
+
+function renderJunkInfoTable() {
+  const tbody = document.querySelector("#junkInfoTable tbody");
+  tbody.innerHTML = "";
+  document.getElementById("junkInfoEmptyMsg").style.display = junkInfoCache.length ? "none" : "block";
+  junkInfoCache.forEach(j => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${j.junk_id}</td><td>${j.name}</td><td>${j.icon}</td>
+      <td class="rowActions"><button class="edit">แก้</button><button class="del">ลบ</button></td>`;
+    tr.querySelector(".edit").onclick = () => editJunkInfo(j);
+    tr.querySelector(".del").onclick = () => deleteJunkInfo(j.junk_id);
+    tbody.appendChild(tr);
+  });
+}
+
+function editJunkInfo(j) {
+  editingJunkId = j.junk_id;
+  document.getElementById("junkInfoFormTitle").textContent = "แก้ไข: " + j.junk_id;
+  document.getElementById("ji_junkId").value = j.junk_id;
+  document.getElementById("ji_junkId").disabled = true;
+  document.getElementById("ji_name").value = j.name;
+  document.getElementById("ji_icon").value = j.icon;
+  document.getElementById("cancelJunkInfoEditBtn").style.display = "inline-block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("reloadJunkInfoBtn").onclick = async () => {
+  const msg = document.getElementById("junkInfoMsg");
+  if (!adminKey()) { msg.textContent = "กรุณาใส่ admin key ก่อน"; msg.className = "msg err"; return; }
+  await loadJunkInfoList();
+  renderJunkInfoTable();
+};
+
+document.getElementById("saveJunkInfoBtn").onclick = async () => {
+  const msg = document.getElementById("junkInfoMsg");
+  const junkId = document.getElementById("ji_junkId").value.trim();
+  const name = document.getElementById("ji_name").value.trim();
+  const icon = document.getElementById("ji_icon").value.trim() || "📦";
+  if (!junkId || !name) { msg.textContent = "กรอก junkId และชื่อก่อน"; msg.className = "msg err"; return; }
+  const res = await apiPost({ action: "adminUpsertJunkInfo", adminKey: adminKey(), junkId, name, icon });
+  if (res.error) { msg.textContent = "บันทึกไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
+  msg.textContent = "บันทึกแล้ว ✓"; msg.className = "msg ok";
+  resetJunkInfoForm();
+  await loadJunkInfoList();
+  renderJunkInfoTable();
+};
+
+async function deleteJunkInfo(junkId) {
+  if (!confirm(`ลบวัตถุดิบ "${junkId}" ? (recipe ที่ใช้วัตถุดิบนี้อยู่จะยังอ้างอิง junkId เดิม แค่ไม่มีชื่อ/icon ให้แสดงในเกม)`)) return;
+  const res = await apiPost({ action: "adminDeleteJunkInfo", adminKey: adminKey(), junkId });
+  if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
+  await loadJunkInfoList();
+  renderJunkInfoTable();
 }
 </script>
 </body>

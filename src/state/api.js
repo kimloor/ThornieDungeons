@@ -151,6 +151,11 @@ function cloudGetMonsterLoot(url) {
     action: "getMonsterLoot"
   });
 }
+function cloudGetJunkInfo(url) {
+  return cloudGet(url, {
+    action: "getJunkInfo"
+  });
+}
 function cloudGetDailyLogin(url, id, password, characterId) {
   return cloudGet(url, {
     action: "getDailyLogin",

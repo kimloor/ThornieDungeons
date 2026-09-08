@@ -28,6 +28,9 @@
  *   GET  ?action=getGameConfig
  *   GET  ?action=getRecipes                                                (NEW, Phase 4 refactor)
  *   GET  ?action=getMonsterLoot                                             (NEW, monster loot table)
+ *   GET  ?action=getJunkInfo                                                (NEW, admin.html — material names/icons)
+ *   POST { action: "adminUpsertJunkInfo", adminKey, junkId, name, icon }     (NEW, admin.html)
+ *   POST { action: "adminDeleteJunkInfo", adminKey, junkId }                 (NEW, admin.html)
  *   GET  ?action=getInventory&id=&password=&characterId=&page=&pageSize=
  *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid                (NEW, Phase 2/3)
@@ -111,6 +114,7 @@ const TABLES = {
   // below, same as craftItem/getRecipes/getMonsterLoot already do their own raw queries).
   recipes: { name: "recipes", cols: ["recipe_id", "result_item_def", "materials_json", "source", "created_at"] },
   monster_loot: { name: "monster_loot", cols: ["entry_id", "monster_id", "kind", "item_type", "rarity", "junk_id", "qty_min", "qty_max", "weight", "drop_chance", "created_at", "updated_at"] },
+  junk_info: { name: "junk_info", cols: ["junk_id", "name", "icon", "created_at", "updated_at"] },
   // NEW — daily login (migration_v3.sql)
   daily_login_claims: {
     name: "daily_login_claims",
@@ -504,6 +508,19 @@ async function handleGetMonsterLoot(db) {
     }
   }
   return json({ monsterLoot: byMonster });
+}
+
+// Public, unauthenticated — same trust level as getRecipes/getMonsterLoot above. Client
+// merges this INTO the built-in JUNK_INFO defaults (enhancement.js) rather than replacing
+// it wholesale, so a material added here shows up without needing every existing one
+// re-declared, and nothing breaks if this table is ever emptied.
+async function handleGetJunkInfo(db) {
+  const res = await db.prepare(`SELECT junk_id, name, icon FROM junk_info`).all();
+  const junkInfo = {};
+  for (const r of res.results || []) {
+    junkInfo[r.junk_id] = { name: r.name, icon: r.icon || "📦" };
+  }
+  return json({ junkInfo });
 }
 
 // ---------- player / auth handlers ----------
@@ -1732,6 +1749,30 @@ async function handleAdminDeleteMonsterLootEntry(db, env, adminKey, entryId) {
   return json({ ok: true });
 }
 
+async function handleAdminUpsertJunkInfo(db, env, adminKey, junkId, name, icon) {
+  const auth = verifyAdminKey(env, adminKey);
+  if (auth.error) return json(auth);
+  if (!junkId || !name) return json({ error: "missing_fields" });
+  const now = nowIso();
+  await db
+    .prepare(
+      `INSERT INTO junk_info (junk_id, name, icon, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(junk_id) DO UPDATE SET name = excluded.name, icon = excluded.icon, updated_at = excluded.updated_at`
+    )
+    .bind(junkId, name, icon || "📦", now, now)
+    .run();
+  return json({ ok: true });
+}
+
+async function handleAdminDeleteJunkInfo(db, env, adminKey, junkId) {
+  const auth = verifyAdminKey(env, adminKey);
+  if (auth.error) return json(auth);
+  if (!junkId) return json({ error: "missing_fields" });
+  await db.prepare(`DELETE FROM junk_info WHERE junk_id = ?`).bind(junkId).run();
+  return json({ ok: true });
+}
+
 // ---------- router ----------
 export default {
   async fetch(request, env) {
@@ -1750,6 +1791,7 @@ export default {
         if (action === "getGameConfig") return await handleGetGameConfig(db);
         if (action === "getRecipes") return await handleGetRecipes(db);
         if (action === "getMonsterLoot") return await handleGetMonsterLoot(db);
+        if (action === "getJunkInfo") return await handleGetJunkInfo(db);
         if (action === "getInventory") return await handleGetInventory(db, p.get("id"), p.get("password"), p.get("characterId"), p.get("page"), p.get("pageSize"));
         if (action === "getDailyLogin") return await handleGetDailyLogin(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));
@@ -1818,6 +1860,10 @@ export default {
             return await handleAdminUpsertMonsterLootEntry(db, env, body.adminKey, body.entry);
           case "adminDeleteMonsterLootEntry":
             return await handleAdminDeleteMonsterLootEntry(db, env, body.adminKey, body.entryId);
+          case "adminUpsertJunkInfo":
+            return await handleAdminUpsertJunkInfo(db, env, body.adminKey, body.junkId, body.name, body.icon);
+          case "adminDeleteJunkInfo":
+            return await handleAdminDeleteJunkInfo(db, env, body.adminKey, body.junkId);
           default:
             return json({ error: "unknown_action" });
         }
