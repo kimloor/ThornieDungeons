@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-07T20:36:12Z",
-  "count": 134,
+  "generatedAt": "2026-09-08T04:42:42Z",
+  "count": 152,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "a1c9e3291e73fd11b5af9647d9e56f15",
-      "last_modified": "2026-09-07T05:17:00.874Z",
-      "size": 12572,
+      "etag": "f670a37171063793bdbef4487c035a81",
+      "last_modified": "2026-09-08T02:59:32.663Z",
+      "size": 9153,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -103,10 +103,10 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/characters/hero001/equipment/hat_angel_crown.png",
-      "etag": "cd49cc09de5ec48f43bf29bf231f54e8",
-      "last_modified": "2026-09-05T12:52:12.544Z",
-      "size": 30723,
+      "key": "sprite/characters/hero001/equipment/hat_azure.png",
+      "etag": "be3997d6e6bf902baa66e791f3d43629",
+      "last_modified": "2026-09-08T01:36:21.807Z",
+      "size": 363361,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1346,17 +1346,6 @@
       "storage_class": "Standard"
     },
     {
-      "key": "sprite/icon/",
-      "etag": "d41d8cd98f00b204e9800998ecf8427e",
-      "last_modified": "2026-08-25T07:03:54.654Z",
-      "size": 0,
-      "http_metadata": {
-        "contentType": "application/octet-stream"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
       "key": "sprite/item/",
       "etag": "d41d8cd98f00b204e9800998ecf8427e",
       "last_modified": "2026-08-25T07:03:47.409Z",
@@ -1471,6 +1460,215 @@
       "etag": "5b707b166542166972ebf7a10f74eb8b",
       "last_modified": "2026-09-05T14:20:03.302Z",
       "size": 252683,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/",
+      "etag": "d41d8cd98f00b204e9800998ecf8427e",
+      "last_modified": "2026-09-08T01:37:36.855Z",
+      "size": 0,
+      "http_metadata": {
+        "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/azure_angel_hurt_1.png",
+      "etag": "35a8532cc4b42c255351b001dcf517aa",
+      "last_modified": "2026-09-08T04:06:42.621Z",
+      "size": 395784,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/azure_angel_hurt_2.png",
+      "etag": "dda70c9592cb480e30ed89f7d5ec82e8",
+      "last_modified": "2026-09-08T04:06:44.381Z",
+      "size": 397459,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/azure_angel_hurt_3.png",
+      "etag": "da07b19f969b4f546804a660b20943c8",
+      "last_modified": "2026-09-08T04:06:46.207Z",
+      "size": 384963,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/azure_angel_idle_1.png",
+      "etag": "f08e256f6f746bab01feac11e19cf85f",
+      "last_modified": "2026-09-08T04:06:48.518Z",
+      "size": 399910,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/azure_angel_idle_2.png",
+      "etag": "0f9b4920a8b739442edd1a9152685a3d",
+      "last_modified": "2026-09-08T04:06:50.234Z",
+      "size": 410132,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/azure_angel_idle_3.png",
+      "etag": "04322426516e14b77232cc491d9ea1d7",
+      "last_modified": "2026-09-08T04:06:52.001Z",
+      "size": 394796,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/dark_dragonlord_hurt_1.png",
+      "etag": "ef54f190666f3bab778574e31c7e3583",
+      "last_modified": "2026-09-08T01:38:20.345Z",
+      "size": 518360,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/dark_dragonlord_hurt_2.png",
+      "etag": "70e744f7364012f7e31a6f827983db9e",
+      "last_modified": "2026-09-08T01:38:20.820Z",
+      "size": 559410,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/dark_dragonlord_hurt_3.png",
+      "etag": "28421a0acc76a7a7e3e9b5989f7df8d1",
+      "last_modified": "2026-09-08T01:38:21.462Z",
+      "size": 508286,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/dark_dragonlord_idle_1.png",
+      "etag": "b082478bae9f748cbbc0ccf689e86496",
+      "last_modified": "2026-09-08T01:38:16.286Z",
+      "size": 521587,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/dark_dragonlord_idle_2.png",
+      "etag": "89f7d2726284f6aaafa559a5b3a6e6fe",
+      "last_modified": "2026-09-08T01:38:16.053Z",
+      "size": 532825,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/dark_dragonlord_idle_3.png",
+      "etag": "66014872bfee9da1d9e970b0cd5bfac4",
+      "last_modified": "2026-09-08T01:38:16.078Z",
+      "size": 508275,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/robo_phoenix_hurt_1.png",
+      "etag": "ae5bbddaf206b8414ef411fa404b5f96",
+      "last_modified": "2026-09-08T01:38:15.864Z",
+      "size": 412289,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/robo_phoenix_hurt_2.png",
+      "etag": "02ffa335b64d5ee97ef364e263dc9f50",
+      "last_modified": "2026-09-08T01:38:15.997Z",
+      "size": 422618,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/robo_phoenix_hurt_3.png",
+      "etag": "96ff53e549a5f3e0fabe8a403658fb57",
+      "last_modified": "2026-09-08T01:38:17.336Z",
+      "size": 400143,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/robo_phoenix_idle_1.png",
+      "etag": "a5f88d8c465040b53cb501962350e907",
+      "last_modified": "2026-09-08T01:38:18.014Z",
+      "size": 459760,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/robo_phoenix_idle_2.png",
+      "etag": "1d8fe632c484349de4875eebfeabbdf9",
+      "last_modified": "2026-09-08T01:38:18.034Z",
+      "size": 471305,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/raid/robo_phoenix_idle_3.png",
+      "etag": "761e533ab03143a26688d73b01924bf4",
+      "last_modified": "2026-09-08T01:38:18.688Z",
+      "size": 460550,
       "http_metadata": {
         "contentType": "image/png"
       },
