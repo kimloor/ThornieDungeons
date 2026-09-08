@@ -1,0 +1,63 @@
+name: Upload Azure Angel fixed sprites
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/upload-azure-angel-fixed.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      R2_BUCKET: assets
+
+    steps:
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Download fixed Azure Angel frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p frames
+          curl -fL 'https://d2ol7oe51mr4n9.cloudfront.net/user_3Is4AponagqSirGKMN1pgBOEl6n/a2291845-e0e9-4ef8-9f7d-c095354e6c3f.png' -o frames/azure_angel_idle_1.png
+          curl -fL 'https://d2ol7oe51mr4n9.cloudfront.net/user_3Is4AponagqSirGKMN1pgBOEl6n/710f5cc2-589e-4bc2-b953-147b2f2d4163.png' -o frames/azure_angel_idle_2.png
+          curl -fL 'https://d2ol7oe51mr4n9.cloudfront.net/user_3Is4AponagqSirGKMN1pgBOEl6n/52c300c0-db9d-4dec-bef4-49bc55c0ae80.png' -o frames/azure_angel_idle_3.png
+          curl -fL 'https://d2ol7oe51mr4n9.cloudfront.net/user_3Is4AponagqSirGKMN1pgBOEl6n/da46856b-aeae-4e54-8015-0aeb8245a234.png' -o frames/azure_angel_hurt_1.png
+          curl -fL 'https://d2ol7oe51mr4n9.cloudfront.net/user_3Is4AponagqSirGKMN1pgBOEl6n/4318cb40-db56-46c3-9919-b223d7ed931b.png' -o frames/azure_angel_hurt_2.png
+          curl -fL 'https://d2ol7oe51mr4n9.cloudfront.net/user_3Is4AponagqSirGKMN1pgBOEl6n/b8c37bf0-edbf-4644-8bc3-1a927f02fc88.png' -o frames/azure_angel_hurt_3.png
+          file frames/*.png
+
+      - name: Upload to R2 original paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in frames/*.png; do
+            name="$(basename "$file")"
+            echo "Uploading $name"
+            wrangler r2 object put "$R2_BUCKET/sprite/raid/$name"               --file "$file"               --content-type "image/png"               --remote
+          done
+
+      - name: Verify R2 bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p verify
+          for file in frames/*.png; do
+            name="$(basename "$file")"
+            wrangler r2 object get "$R2_BUCKET/sprite/raid/$name"               --file "verify/$name"               --remote
+            local_sha="$(sha256sum "$file" | awk '{print $1}')"
+            remote_sha="$(sha256sum "verify/$name" | awk '{print $1}')"
+            test "$local_sha" = "$remote_sha" || {
+              echo "SHA mismatch: $name"
+              exit 1
+            }
+            echo "Verified $name"
+          done
