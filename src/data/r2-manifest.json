@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-08T14:35:41Z",
-  "count": 164,
+  "generatedAt": "2026-09-08T18:43:32Z",
+  "count": 176,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "f670a37171063793bdbef4487c035a81",
-      "last_modified": "2026-09-08T07:19:50.916Z",
-      "size": 9153,
+      "etag": "9862fcfa546c2e2665d56c8e16558a06",
+      "last_modified": "2026-09-08T16:25:40.356Z",
+      "size": 10256,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -59,6 +59,39 @@
       "storage_class": "Standard"
     },
     {
+      "key": "sprite/characters/hero001/animations/attack/hero_attack_0.png",
+      "etag": "dbbc455147a090f8d875534613f327af",
+      "last_modified": "2026-09-08T16:25:43.903Z",
+      "size": 386075,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/animations/attack/hero_attack_1.png",
+      "etag": "018862a5e76e00514c776b53c0e6fd6d",
+      "last_modified": "2026-09-08T16:25:47.194Z",
+      "size": 525769,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/animations/attack/hero_attack_2.png",
+      "etag": "e2617b7ffa589f1a87f1fbcc2885bbc9",
+      "last_modified": "2026-09-08T16:25:50.384Z",
+      "size": 354679,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "sprite/characters/hero001/base/",
       "etag": "d41d8cd98f00b204e9800998ecf8427e",
       "last_modified": "2026-09-05T12:49:54.055Z",
@@ -96,6 +129,72 @@
       "etag": "68c011436536c1956d7ce12f1ed52d2e",
       "last_modified": "2026-09-07T04:50:18.665Z",
       "size": 47087,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/equipment/attack/arms_azure_attack_0.png",
+      "etag": "2cbe252d3f93f41d5ca42643aab8f28a",
+      "last_modified": "2026-09-08T16:25:53.514Z",
+      "size": 45348,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/equipment/attack/arms_azure_attack_1.png",
+      "etag": "ea57e86ae1e9c08bf38e18f619164b35",
+      "last_modified": "2026-09-08T16:25:56.570Z",
+      "size": 100827,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/equipment/attack/arms_azure_attack_2.png",
+      "etag": "fd38acca7ef9a56c999d75b0845c821e",
+      "last_modified": "2026-09-08T16:25:59.695Z",
+      "size": 45364,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/equipment/attack/shoes_azure_attack_0.png",
+      "etag": "cd3f80df616f8a2aee41b8b6ba3be0ac",
+      "last_modified": "2026-09-08T16:26:02.856Z",
+      "size": 144064,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/equipment/attack/shoes_azure_attack_1.png",
+      "etag": "8e89d5de8bc5296b30f27fed82cc600c",
+      "last_modified": "2026-09-08T16:26:06.184Z",
+      "size": 85645,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/equipment/attack/shoes_azure_attack_2.png",
+      "etag": "94758c72a61d106377e7972c7d3f1836",
+      "last_modified": "2026-09-08T16:26:09.242Z",
+      "size": 86351,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -186,6 +285,39 @@
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/weapons/attack/sword_azure_attack_0.png",
+      "etag": "98ca7a7bbef6a2ff58754a7319d72e3c",
+      "last_modified": "2026-09-08T16:26:12.319Z",
+      "size": 103054,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/weapons/attack/sword_azure_attack_1.png",
+      "etag": "9f53de207c7cab1fcb854380cd604597",
+      "last_modified": "2026-09-08T16:26:15.327Z",
+      "size": 77661,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/characters/hero001/weapons/attack/sword_azure_attack_2.png",
+      "etag": "5103028313487afd720511b949b1de34",
+      "last_modified": "2026-09-08T16:26:18.509Z",
+      "size": 100476,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
