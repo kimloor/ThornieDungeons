@@ -1,0 +1,175 @@
+name: Upload R2 assets
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "r2-upload/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r2-asset-upload-main
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      R2_BUCKET: assets
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Collect changed assets
+        id: collect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          list_file="$RUNNER_TEMP/r2-files.list"
+          : > "$list_file"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -d r2-upload ]; then
+              find r2-upload -type f -print0 | sort -z > "$list_file"
+            fi
+          else
+            before="${{ github.event.before }}"
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              if [ -d r2-upload ]; then
+                find r2-upload -type f -print0 | sort -z > "$list_file"
+              fi
+            else
+              git diff --name-only -z --diff-filter=AMR "$before" "$GITHUB_SHA" -- r2-upload/ > "$list_file"
+            fi
+          fi
+
+          upload_count=0
+          while IFS= read -r -d '' file; do
+            lower="${file,,}"
+            case "$lower" in
+              *.png|*.webp|*.jpg|*.jpeg|*.gif|*.svg|*.json|*.mp3|*.ogg|*.wav)
+                upload_count=$((upload_count + 1))
+                ;;
+              *)
+                echo "Skip unsupported staging file: $file"
+                ;;
+            esac
+          done < "$list_file"
+
+          echo "count=$upload_count" >> "$GITHUB_OUTPUT"
+          echo "Found $upload_count uploadable file(s)."
+
+      - name: Upload and verify R2 assets
+        if: steps.collect.outputs.count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "$CLOUDFLARE_API_TOKEN" || {
+            echo "Missing GitHub secret CF_API_TOKEN"
+            exit 1
+          }
+
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || {
+            echo "Missing GitHub secret CF_ACCOUNT_ID"
+            exit 1
+          }
+
+          list_file="$RUNNER_TEMP/r2-files.list"
+          uploaded=0
+
+          content_type_for() {
+            local lower="${1,,}"
+            case "$lower" in
+              *.png)  echo "image/png" ;;
+              *.webp) echo "image/webp" ;;
+              *.jpg|*.jpeg) echo "image/jpeg" ;;
+              *.gif)  echo "image/gif" ;;
+              *.svg)  echo "image/svg+xml" ;;
+              *.json) echo "application/json" ;;
+              *.mp3)  echo "audio/mpeg" ;;
+              *.ogg)  echo "audio/ogg" ;;
+              *.wav)  echo "audio/wav" ;;
+              *) return 1 ;;
+            esac
+          }
+
+          while IFS= read -r -d '' file; do
+            [ -f "$file" ] || continue
+
+            if [ -L "$file" ]; then
+              echo "Refusing to upload symlink: $file"
+              exit 1
+            fi
+
+            content_type="$(content_type_for "$file" || true)"
+            if [ -z "$content_type" ]; then
+              continue
+            fi
+
+            key="${file#r2-upload/}"
+            if [ -z "$key" ] || [ "$key" = "$file" ]; then
+              echo "Invalid staging path: $file"
+              exit 1
+            fi
+
+            size="$(stat -c '%s' "$file")"
+            if [ "$size" -gt 104857600 ]; then
+              echo "File exceeds the 100 MiB asset limit: $file ($size bytes)"
+              exit 1
+            fi
+
+            echo "Uploading $file -> r2://$R2_BUCKET/$key"
+            wrangler r2 object put "$R2_BUCKET/$key"               --file "$file"               --content-type "$content_type"               --remote
+
+            verify_file="$(mktemp)"
+            trap 'rm -f "$verify_file"' RETURN
+            wrangler r2 object get "$R2_BUCKET/$key"               --file "$verify_file"               --remote
+
+            local_sha="$(sha256sum "$file" | awk '{print $1}')"
+            remote_sha="$(sha256sum "$verify_file" | awk '{print $1}')"
+            rm -f "$verify_file"
+            trap - RETURN
+
+            if [ "$local_sha" != "$remote_sha" ]; then
+              echo "Verification failed for $key"
+              echo "local : $local_sha"
+              echo "remote: $remote_sha"
+              exit 1
+            fi
+
+            echo "Verified $key"
+            uploaded=$((uploaded + 1))
+          done < "$list_file"
+
+          echo "Uploaded and verified $uploaded object(s)."
+          {
+            echo "## R2 asset upload"
+            echo ""
+            echo "- Bucket: `$R2_BUCKET`"
+            echo "- Uploaded and verified: **$uploaded** object(s)"
+            echo "- Mapping: `r2-upload/<key>` -> `R2 <key>`"
+            echo "- R2 deletions: **disabled**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nothing to upload
+        if: steps.collect.outputs.count == '0'
+        run: echo "No supported files changed under r2-upload/."
