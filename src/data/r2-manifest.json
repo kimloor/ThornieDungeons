@@ -1,7 +1,7 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-08T09:44:56Z",
-  "count": 161,
+  "generatedAt": "2026-09-08T14:35:41Z",
+  "count": 164,
   "objects": [
     {
       "key": "manifest.json",
@@ -1680,6 +1680,39 @@
       "etag": "fe9f432c9ed16a6081dd951d42e74642",
       "last_modified": "2026-09-08T07:20:16.443Z",
       "size": 193894,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/dungeon-select/dungeon-floor-select-v2.webp",
+      "etag": "f263dae9f3831b44104aea254c5d6260",
+      "last_modified": "2026-09-08T11:03:05.059Z",
+      "size": 265680,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/dungeon-select/dungeon-gate-boss-v2.webp",
+      "etag": "eadbbd7624ae6b837a074f42b4917fa7",
+      "last_modified": "2026-09-08T11:03:08.376Z",
+      "size": 339930,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/dungeon-select/dungeon-gate-normal-v2.webp",
+      "etag": "2af2f36fab992e711a636cafcb17e68a",
+      "last_modified": "2026-09-08T11:03:11.504Z",
+      "size": 283840,
       "http_metadata": {
         "contentType": "image/webp"
       },
