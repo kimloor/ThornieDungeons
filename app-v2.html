@@ -31,8 +31,8 @@ URL has been verified to serve the intended index.html revision consistently.
 <link rel="manifest" href="site.webmanifest" />
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
-<link rel="preload" as="image" href="ui/character-select-background.webp" fetchpriority="low" />
-<link rel="preload" as="image" href="ui/town-background.webp" fetchpriority="low" />
+<link rel="preload" as="image" href="/assets/ui/character-select-background.webp" fetchpriority="low" />
+<link rel="preload" as="image" href="/assets/ui/town-background.webp" fetchpriority="low" />
 <style>
   html, body { margin: 0; padding: 0; background: #0d0818; min-height: 100vh; }
   body { display: flex; justify-content: center; align-items: flex-start; padding: 16px 0; }
@@ -150,7 +150,7 @@ const STYLE = `
   z-index: 0;
   background:
     linear-gradient(180deg, rgba(3,8,25,.06), rgba(3,8,25,.24)),
-    url("ui/character-select-background.webp") center / cover no-repeat;
+    url("/assets/ui/character-select-background.webp") center / cover no-repeat;
   transform: scale(1.025);
   animation: md-global-dungeon-breathe 14s ease-in-out infinite alternate;
 }
@@ -179,7 +179,7 @@ const STYLE = `
 .md-root-town::after { content:""; position:absolute; inset:0; pointer-events:none; }
 .md-root-town::before {
   z-index:0;
-  background:url("ui/town-background.webp") center / cover no-repeat;
+  background:url("/assets/ui/town-background.webp") center / cover no-repeat;
   transform:scale(1.015);
   animation:md-town-camera-breathe 16s ease-in-out infinite alternate;
 }
@@ -570,7 +570,7 @@ const STYLE = `
   padding: 20px; position: relative; z-index: 2; isolation: isolate;
   background-image:
     linear-gradient(180deg, rgba(5,8,24,0.08) 0%, rgba(5,8,24,0.28) 46%, rgba(5,8,24,0.5) 100%),
-    url("ui/login-background.webp");
+    url("/assets/ui/login-background.webp");
   background-size: cover; background-position: center; background-repeat: no-repeat;
 }
 .md-login-wrap::before {
@@ -713,7 +713,7 @@ const STYLE = `
   z-index: 0;
   background-image:
     linear-gradient(180deg, rgba(3,7,20,.08), rgba(3,8,25,.22) 43%, rgba(2,6,19,.46)),
-    url("ui/character-select-background.webp");
+    url("/assets/ui/character-select-background.webp");
   transform: scale(1.02);
   animation: md-character-camera-idle 11s ease-in-out infinite alternate;
 }
@@ -721,7 +721,7 @@ const STYLE = `
   z-index: 1; opacity: 0;
   background-image:
     linear-gradient(180deg, rgba(5,8,24,.08), rgba(5,8,24,.34) 58%, rgba(5,8,24,.54)),
-    url("ui/login-background.webp");
+    url("/assets/ui/login-background.webp");
 }
 .md-character-select-wrap.is-entering::before {
   animation:
@@ -6280,26 +6280,26 @@ function GameDock({
     className: activeKey === "character" ? "active" : "",
     onClick: onCharacter
   }, /*#__PURE__*/React.createElement("img", {
-    src: "ui/hub-icons/character.svg",
+    src: "/assets/ui/hub-icons/character.svg",
     alt: ""
   }), /*#__PURE__*/React.createElement("span", null, "ตัวละคร")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: onOpenInv
   }, /*#__PURE__*/React.createElement("img", {
-    src: "ui/hub-icons/bag.svg",
+    src: "/assets/ui/hub-icons/bag.svg",
     alt: ""
   }), /*#__PURE__*/React.createElement("span", null, "กระเป๋า")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: onPets
   }, /*#__PURE__*/React.createElement("img", {
-    src: "ui/hub-icons/pet.svg",
+    src: "/assets/ui/hub-icons/pet.svg",
     alt: ""
   }), /*#__PURE__*/React.createElement("span", null, "สัตว์เลี้ยง")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: moreOpen ? "active" : "",
     onClick: onToggleMore
   }, /*#__PURE__*/React.createElement("img", {
-    src: "ui/hub-icons/more.svg",
+    src: "/assets/ui/hub-icons/more.svg",
     alt: ""
   }), /*#__PURE__*/React.createElement("span", null, "เพิ่มเติม")));
 }
@@ -6378,7 +6378,7 @@ function HubScreen({
     type: "button",
     className: "md-hub-raid-callout",
     onClick: onRaid
-  }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("small", null, "WORLD EVENT"), /*#__PURE__*/React.createElement("strong", null, "Raid Boss")), /*#__PURE__*/React.createElement("b", null, "ไปต่อ ›")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("img", { src: "/assets/ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("small", null, "WORLD EVENT"), /*#__PURE__*/React.createElement("strong", null, "Raid Boss")), /*#__PURE__*/React.createElement("b", null, "ไปต่อ ›")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-gate-focus"
   }, /*#__PURE__*/React.createElement("span", null, "ชั้นปัจจุบัน"), /*#__PURE__*/React.createElement("strong", null, save.unlockedFloor)), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-world-actions"
@@ -6400,7 +6400,7 @@ function HubScreen({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "/assets/ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
     onCharacter: onCharacter,
     onOpenInv: onOpenInv,
     onPets: onPets,
@@ -6506,7 +6506,7 @@ function TownScreen({
           className: "md-town-leaderboard",
           onClick: onLeaderboard,
           "aria-label": "Leaderboard"
-        }, e("img", { src: "ui/town-icons/leaderboard-bird.svg", alt: "" }),
+        }, e("img", { src: "/assets/ui/town-icons/leaderboard-bird.svg", alt: "" }),
         e("span", null, "Leaderboard")),
         hotspot("guild", "กิลด์", "♜", () => showSoon("กิลด์")),
         hotspot("arena", "อารีน่า", "⚔", () => showSoon("อารีน่า")),
@@ -6537,7 +6537,7 @@ function TownScreen({
           e("button", { type: "button", onClick: onShop }, "🛒", e("span", null, "ร้านค้า")),
           e("button", { type: "button", onClick: onEnhance }, "⚒️", e("span", null, "ตีบวก")),
           e("button", { type: "button", onClick: onCraft }, "🛠️", e("span", null, "ประดิษฐ์")),
-          e("button", { type: "button", onClick: onRaid }, e("img", { src: "ui/hub-icons/raid.svg", alt: "" }), e("span", null, "Raid")),
+          e("button", { type: "button", onClick: onRaid }, e("img", { src: "/assets/ui/hub-icons/raid.svg", alt: "" }), e("span", null, "Raid")),
           e("button", { type: "button", onClick: onMailbox }, "📬", e("span", null, "จดหมาย")),
           e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
           e("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", e("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")),

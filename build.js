@@ -36,6 +36,15 @@ const MODULE_ORDER = [
   "ui/components.js",
 ];
 
+// Production UI artwork lives in Cloudflare R2 behind the Worker /assets/ route.
+// Keep source references readable as ui/<file>; the build rewrites only image asset paths.
+function mapR2UiAssetPaths(content) {
+  return content.replace(
+    /(?<!\\/assets\\/)ui\\/([A-Za-z0-9_.\\/-]+\\.(?:png|webp|jpg|jpeg|gif|svg))/g,
+    "/assets/ui/$1"
+  );
+}
+
 function readModule(relPath) {
   const fullPath = path.join(SRC, relPath);
   if (!fs.existsSync(fullPath)) {
@@ -53,7 +62,7 @@ function build() {
     return `// ===== ${m} =====\n${code}`;
   }).join("\n");
 
-  const output = head + body + "\n" + tail;
+  const output = mapR2UiAssetPaths(head + body + "\n" + tail);
 
   // Basic sanity check: make sure the compiled JS block is syntactically valid.
   const scriptMatch = output.match(/<script>\s*try\s*\{([\s\S]*?)\}\s*catch \(err\) \{/);
