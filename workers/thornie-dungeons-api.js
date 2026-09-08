@@ -58,6 +58,10 @@
  *   POST { action: "craftItem", id, password, characterId, recipeId }       (NEW, Phase 4)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
+ *   POST { action: "adminUpsertRecipe", adminKey, recipeId, type, name, setId, empowerSlotCount, materials }  (NEW, admin.html)
+ *   POST { action: "adminDeleteRecipe", adminKey, recipeId }                                                  (NEW, admin.html)
+ *   POST { action: "adminUpsertMonsterLootEntry", adminKey, entry: {...} }                                    (NEW, admin.html)
+ *   POST { action: "adminDeleteMonsterLootEntry", adminKey, entryId }                                         (NEW, admin.html)
  *
  * Phase 2 (leaderboard, migration_v3.sql already applied — leaderboard_stats exists):
  *   - GET ?action=getLeaderboard&board=floor|cp|pet_cp returns top 50 rows, read-only,
@@ -101,6 +105,12 @@ const TABLES = {
     cols: ["item_id", "player_id", "character_id", "slot_type", "equipped", "inventory_slot", "item_template_id", "rarity", "name", "item_level", "enhance_level", "bound", "quantity", "atk", "def", "hp", "mp", "extra_json", "created_at", "updated_at"],
   },
   game_config: { name: "game_config", cols: ["key", "value_json", "updated_at"] },
+  // Reference/design-data tables, registered here purely so the existing admin `getSheet`
+  // action can list them raw — nothing writes to these via the generic upsertRow()/getRow()
+  // sync path (recipes/monster_loot writes go through their own dedicated admin handlers
+  // below, same as craftItem/getRecipes/getMonsterLoot already do their own raw queries).
+  recipes: { name: "recipes", cols: ["recipe_id", "result_item_def", "materials_json", "source", "created_at"] },
+  monster_loot: { name: "monster_loot", cols: ["entry_id", "monster_id", "kind", "item_type", "rarity", "junk_id", "qty_min", "qty_max", "weight", "drop_chance", "created_at", "updated_at"] },
   // NEW — daily login (migration_v3.sql)
   daily_login_claims: {
     name: "daily_login_claims",
@@ -1649,6 +1659,79 @@ async function handleAdminSetGameConfigItem(db, env, adminKey, key, value) {
   return json({ ok: true });
 }
 
+// ---------- admin: recipes + monster loot (admin.html) ----------
+// Reuses the existing ADMIN_API_KEY / verifyAdminKey infra above — no new secret needed.
+// Reading recipes/monster_loot as an admin already works via the existing generic
+// `getSheet` action (now that both tables are registered in TABLES); only writes need
+// dedicated handlers since getSheet is read-only by design.
+async function handleAdminUpsertRecipe(db, env, adminKey, recipeId, type, name, setId, empowerSlotCount, materials) {
+  const auth = verifyAdminKey(env, adminKey);
+  if (auth.error) return json(auth);
+  if (!recipeId || !type || !name || !materials || typeof materials !== "object") return json({ error: "missing_fields" });
+  // rarity is ALWAYS "azure" regardless of set — see the design notes in handleCraftItem:
+  // this is a fixed "crafted tier" tag (== mythic), not literally the Azure set's name, so
+  // RARITY_MULT/RARITY_STARS/SALVAGE_TABLE lookups never hit an unregistered rarity key for
+  // a new set. Give the new set its own identity via `setId` instead.
+  const resultDef = {
+    type,
+    rarity: "azure",
+    name,
+    setId: setId || "azure",
+    empowerSlotCount: Number(empowerSlotCount) || 5,
+  };
+  await db
+    .prepare(
+      `INSERT INTO recipes (recipe_id, result_item_def, materials_json, source, created_at)
+       VALUES (?, ?, ?, 'admin', ?)
+       ON CONFLICT(recipe_id) DO UPDATE SET result_item_def = excluded.result_item_def, materials_json = excluded.materials_json`
+    )
+    .bind(recipeId, JSON.stringify(resultDef), JSON.stringify(materials), nowIso())
+    .run();
+  return json({ ok: true });
+}
+
+async function handleAdminDeleteRecipe(db, env, adminKey, recipeId) {
+  const auth = verifyAdminKey(env, adminKey);
+  if (auth.error) return json(auth);
+  if (!recipeId) return json({ error: "missing_fields" });
+  await db.prepare(`DELETE FROM recipes WHERE recipe_id = ?`).bind(recipeId).run();
+  return json({ ok: true });
+}
+
+async function handleAdminUpsertMonsterLootEntry(db, env, adminKey, entry) {
+  const auth = verifyAdminKey(env, adminKey);
+  if (auth.error) return json(auth);
+  const { entryId, monsterId, kind, itemType, rarity, junkId, qtyMin, qtyMax, weight, dropChance } = entry || {};
+  if (!monsterId || (kind !== "gear" && kind !== "junk")) return json({ error: "missing_fields" });
+  if (kind === "gear" && !itemType) return json({ error: "missing_fields" });
+  if (kind === "junk" && !junkId) return json({ error: "missing_fields" });
+  const validRarities = ["rare", "unique", "elite", "mythic"];
+  if (rarity && validRarities.indexOf(rarity) === -1) return json({ error: "invalid_rarity", allowed: validRarities });
+  const id = entryId || crypto.randomUUID();
+  const now = nowIso();
+  await db
+    .prepare(
+      `INSERT INTO monster_loot (entry_id, monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(entry_id) DO UPDATE SET
+         monster_id = excluded.monster_id, kind = excluded.kind, item_type = excluded.item_type,
+         rarity = excluded.rarity, junk_id = excluded.junk_id, qty_min = excluded.qty_min,
+         qty_max = excluded.qty_max, weight = excluded.weight, drop_chance = excluded.drop_chance,
+         updated_at = excluded.updated_at`
+    )
+    .bind(id, monsterId, kind, itemType || null, rarity || null, junkId || null, Number(qtyMin) || 1, Number(qtyMax) || 1, Number(weight) || 1, Number(dropChance) != null ? Number(dropChance) : 1, now, now)
+    .run();
+  return json({ ok: true, entryId: id });
+}
+
+async function handleAdminDeleteMonsterLootEntry(db, env, adminKey, entryId) {
+  const auth = verifyAdminKey(env, adminKey);
+  if (auth.error) return json(auth);
+  if (!entryId) return json({ error: "missing_fields" });
+  await db.prepare(`DELETE FROM monster_loot WHERE entry_id = ?`).bind(entryId).run();
+  return json({ ok: true });
+}
+
 // ---------- router ----------
 export default {
   async fetch(request, env) {
@@ -1727,6 +1810,14 @@ export default {
             return await handleAdminSaveGameConfig(db, env, body.adminKey, body.config);
           case "setGameConfigItem":
             return await handleAdminSetGameConfigItem(db, env, body.adminKey, body.key, body.value);
+          case "adminUpsertRecipe":
+            return await handleAdminUpsertRecipe(db, env, body.adminKey, body.recipeId, body.type, body.name, body.setId, body.empowerSlotCount, body.materials);
+          case "adminDeleteRecipe":
+            return await handleAdminDeleteRecipe(db, env, body.adminKey, body.recipeId);
+          case "adminUpsertMonsterLootEntry":
+            return await handleAdminUpsertMonsterLootEntry(db, env, body.adminKey, body.entry);
+          case "adminDeleteMonsterLootEntry":
+            return await handleAdminDeleteMonsterLootEntry(db, env, body.adminKey, body.entryId);
           default:
             return json({ error: "unknown_action" });
         }

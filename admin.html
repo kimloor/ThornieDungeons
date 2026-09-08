@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ThornieDungeons — Admin</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Sarabun, sans-serif; background: #14161d; color: #e8e8ef; }
+  header { padding: 14px 18px; background: #1c1f29; border-bottom: 1px solid #2c2f3a; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; flex: 1; }
+  header input { background: #0f1116; border: 1px solid #333; color: #eee; padding: 6px 8px; border-radius: 6px; font-size: 13px; width: 220px; }
+  header button, .row button { background: #3a5ac9; border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  header button.ghost { background: transparent; border: 1px solid #444; }
+  .tabs { display: flex; gap: 4px; padding: 10px 18px 0; border-bottom: 1px solid #2c2f3a; }
+  .tab { padding: 8px 16px; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 13px; color: #999; }
+  .tab.active { background: #1c1f29; color: #fff; font-weight: 600; }
+  main { padding: 18px; max-width: 980px; margin: 0 auto; }
+  section { display: none; }
+  section.active { display: block; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #26293380; }
+  th { color: #999; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .card { background: #1c1f29; border: 1px solid #2c2f3a; border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .card h2 { font-size: 14px; margin: 0 0 12px; color: #9db4ff; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
+  .field input, .field select { width: 100%; background: #0f1116; border: 1px solid #333; color: #eee; padding: 7px 9px; border-radius: 6px; font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .matRow, .lootRow { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .matRow input, .lootRow input, .lootRow select { flex: 1; }
+  .matRow button, .lootRow button, .rowActions button { background: #d9534f; color: #fff; border: none; border-radius: 6px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
+  .rowActions { display: flex; gap: 6px; }
+  .rowActions .edit { background: #3a5ac9; }
+  .btn-add { background: #2f7d4f; margin-top: 4px; }
+  .btn-primary { background: #3a5ac9; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-top: 6px; }
+  .muted { color: #888; font-size: 12px; }
+  .msg { font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .msg.ok { color: #6fd48a; }
+  .msg.err { color: #f08a8a; }
+  .pill { display: inline-block; background: #2c2f3a; border-radius: 999px; padding: 2px 8px; font-size: 11px; margin-left: 6px; }
+  select option { background: #14161d; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛠️ ThornieDungeons Admin</h1>
+  <input id="adminKeyInput" type="password" placeholder="Admin key">
+  <button id="saveKeyBtn">บันทึกคีย์</button>
+  <button class="ghost" id="clearKeyBtn">ล้าง</button>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="recipes">Recipes</div>
+  <div class="tab" data-tab="monsters">Monster Drops</div>
+</div>
+
+<main>
+  <!-- ===================== RECIPES TAB ===================== -->
+  <section id="tab-recipes" class="active">
+    <div class="card">
+      <h2>Recipe ทั้งหมด</h2>
+      <table id="recipeTable">
+        <thead><tr><th>ID</th><th>Type</th><th>ชื่อ</th><th>setId</th><th>วัตถุดิบ</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="muted" id="recipeEmptyMsg">ยังไม่มีข้อมูล — ใส่ admin key แล้วกด "โหลดข้อมูล"</div>
+      <button class="btn-add" id="reloadRecipesBtn">โหลดข้อมูล</button>
+    </div>
+
+    <div class="card">
+      <h2 id="recipeFormTitle">เพิ่ม Recipe ใหม่</h2>
+      <div class="grid2">
+        <div class="field"><label>recipe_id (เช่น crimson_helmet)</label><input id="f_recipeId"></div>
+        <div class="field"><label>type</label>
+          <select id="f_type">
+            <option value="helmet">helmet</option>
+            <option value="chest">chest</option>
+            <option value="gloves">gloves</option>
+            <option value="boots">boots</option>
+            <option value="weapon">weapon</option>
+            <option value="accessory">accessory</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>ชื่อไอเทม (แสดงในเกม)</label><input id="f_name"></div>
+        <div class="field"><label>setId (กลุ่มโบนัสชุด, เช่น crimson)</label><input id="f_setId" value="azure"></div>
+      </div>
+      <div class="field"><label>empowerSlotCount</label><input id="f_empowerSlotCount" type="number" value="5" style="width:120px"></div>
+      <div class="field">
+        <label>วัตถุดิบ (junkId + จำนวน, ใส่ "gold" เป็นค่าทองด้วยได้)</label>
+        <div id="materialRows"></div>
+        <button class="btn-add" id="addMaterialRowBtn" type="button">+ เพิ่มวัตถุดิบ</button>
+      </div>
+      <button class="btn-primary" id="saveRecipeBtn">บันทึก Recipe</button>
+      <button class="ghost" id="cancelRecipeEditBtn" style="display:none;margin-left:8px;padding:8px 16px;border-radius:6px;">ยกเลิกแก้ไข</button>
+      <div class="msg" id="recipeMsg"></div>
+      <div class="muted">rarity ถูกล็อกเป็น "azure" เสมอ (แปลว่า "tier ที่คราฟได้" เทียบเท่า mythic — ไม่ใช่ชื่อ set) ไม่ต้องกรอก</div>
+    </div>
+  </section>
+
+  <!-- ===================== MONSTER DROPS TAB ===================== -->
+  <section id="tab-monsters">
+    <div class="card">
+      <h2>เลือกมอนสเตอร์</h2>
+      <select id="monsterSelect" style="width:100%;padding:8px;background:#0f1116;color:#eee;border:1px solid #333;border-radius:6px;"></select>
+      <button class="btn-add" id="reloadMonsterDataBtn" style="margin-top:10px;">โหลดข้อมูลมอนสเตอร์ทั้งหมด</button>
+    </div>
+
+    <div class="card">
+      <h2>Stats <span class="pill" id="monsterIdPill"></span></h2>
+      <div class="grid4">
+        <div class="field"><label>hpMult</label><input id="s_hpMult" type="number" step="0.1"></div>
+        <div class="field"><label>atkMult</label><input id="s_atkMult" type="number" step="0.1"></div>
+        <div class="field"><label>defBonus</label><input id="s_defBonus" type="number" step="1"></div>
+        <div class="field"><label>goldMult</label><input id="s_goldMult" type="number" step="0.1"></div>
+      </div>
+      <div class="field" style="max-width:140px"><label>xpMult</label><input id="s_xpMult" type="number" step="0.1"></div>
+      <button class="btn-primary" id="saveStatsBtn">บันทึก Stats</button>
+      <div class="msg" id="statsMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Gear Pool (ดรอปเฉพาะ type/rarity ที่ตั้งไว้ — ว่าง = ใช้ระบบสุ่มปกติ)</h2>
+      <table id="gearTable">
+        <thead><tr><th>type</th><th>rarity</th><th>weight</th><th>%</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="lootRow">
+        <select id="g_itemType">
+          <option value="helmet">helmet</option><option value="chest">chest</option>
+          <option value="gloves">gloves</option><option value="boots">boots</option>
+          <option value="weapon">weapon</option><option value="accessory">accessory</option>
+          <option value="wings">wings</option>
+        </select>
+        <select id="g_rarity">
+          <option value="">(ปล่อยตามระบบเดิม)</option>
+          <option value="rare">rare</option><option value="unique">unique</option>
+          <option value="elite">elite</option><option value="mythic">mythic</option>
+        </select>
+        <input id="g_weight" type="number" placeholder="weight" value="1" style="max-width:90px">
+        <button id="addGearBtn" style="background:#2f7d4f;">+ เพิ่ม</button>
+      </div>
+      <div class="msg" id="gearMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Bonus Junk (ดรอปเพิ่มอิสระต่อแถว)</h2>
+      <table id="junkTable">
+        <thead><tr><th>junkId</th><th>qty</th><th>chance</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="lootRow">
+        <input id="j_junkId" placeholder="junkId (bossHorn, iron, recipe_azure_x, ...)">
+        <input id="j_qtyMin" type="number" placeholder="min" value="1" style="max-width:70px">
+        <input id="j_qtyMax" type="number" placeholder="max" value="1" style="max-width:70px">
+        <input id="j_dropChance" type="number" placeholder="0-1" value="1" step="0.01" min="0" max="1" style="max-width:80px">
+        <button id="addJunkBtn" style="background:#2f7d4f;">+ เพิ่ม</button>
+      </div>
+      <div class="msg" id="junkMsg"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const SERVER_URL = "https://thornie-dungeons-api.ekqtjl.workers.dev";
+const KEY_STORAGE = "thornie-admin-key";
+
+// Static fallback monster list — kept in sync manually with ENEMY_POOL/BOSS_POOL in
+// src/systems/pets.js. Only used to populate the dropdown; actual stat values always come
+// from getGameConfig (falls back to these defaults — hpMult/atkMult=1, defBonus=0,
+// goldMult/xpMult=1 — when a monster has no override yet).
+const STATIC_MONSTERS = [
+  { id: "jelly_slime", name: "Jelly Slime", isBoss: false },
+  { id: "spore_cap", name: "Spore Cap", isBoss: false },
+  { id: "tusky_boar", name: "Tusky Boar", isBoss: false },
+  { id: "bramble_bat", name: "Bramble Bat", isBoss: false },
+  { id: "bone_rattler", name: "Bone Rattler", isBoss: false },
+  { id: "sandy_crab", name: "Sandy Crab", isBoss: false },
+  { id: "moss_king", name: "Moss King", isBoss: true },
+  { id: "ember_drake", name: "Ember Drake", isBoss: true },
+  { id: "frost_warden", name: "Frost Warden", isBoss: true }
+];
+
+function adminKey() { return localStorage.getItem(KEY_STORAGE) || ""; }
+
+async function apiGet(params) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${SERVER_URL}?${qs}`);
+  return res.json();
+}
+async function apiPost(body) {
+  const res = await fetch(SERVER_URL, { method: "POST", body: JSON.stringify(body) });
+  return res.json();
+}
+
+// ---------- key handling ----------
+document.getElementById("adminKeyInput").value = adminKey();
+document.getElementById("saveKeyBtn").onclick = () => {
+  localStorage.setItem(KEY_STORAGE, document.getElementById("adminKeyInput").value.trim());
+  alert("บันทึกคีย์แล้ว");
+};
+document.getElementById("clearKeyBtn").onclick = () => {
+  localStorage.removeItem(KEY_STORAGE);
+  document.getElementById("adminKeyInput").value = "";
+};
+
+// ---------- tabs ----------
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll("main > section").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("tab-" + t.dataset.tab).classList.add("active");
+  };
+});
+
+// ==================================================================
+// RECIPES TAB
+// ==================================================================
+let editingRecipeId = null;
+
+function materialRow(key = "", qty = "") {
+  const div = document.createElement("div");
+  div.className = "matRow";
+  div.innerHTML = `<input class="matKey" placeholder="junkId หรือ gold" value="${key}">
+    <input class="matQty" type="number" placeholder="จำนวน" value="${qty}" style="max-width:100px">
+    <button type="button">ลบ</button>`;
+  div.querySelector("button").onclick = () => div.remove();
+  return div;
+}
+document.getElementById("addMaterialRowBtn").onclick = () => {
+  document.getElementById("materialRows").appendChild(materialRow());
+};
+
+function readMaterialsFromForm() {
+  const out = {};
+  document.querySelectorAll("#materialRows .matRow").forEach(row => {
+    const k = row.querySelector(".matKey").value.trim();
+    const v = Number(row.querySelector(".matQty").value);
+    if (k && v > 0) out[k] = v;
+  });
+  return out;
+}
+
+function resetRecipeForm() {
+  editingRecipeId = null;
+  document.getElementById("recipeFormTitle").textContent = "เพิ่ม Recipe ใหม่";
+  document.getElementById("f_recipeId").value = "";
+  document.getElementById("f_recipeId").disabled = false;
+  document.getElementById("f_type").value = "helmet";
+  document.getElementById("f_name").value = "";
+  document.getElementById("f_setId").value = "azure";
+  document.getElementById("f_empowerSlotCount").value = 5;
+  document.getElementById("materialRows").innerHTML = "";
+  document.getElementById("materialRows").appendChild(materialRow());
+  document.getElementById("cancelRecipeEditBtn").style.display = "none";
+}
+resetRecipeForm();
+document.getElementById("cancelRecipeEditBtn").onclick = resetRecipeForm;
+
+let recipesCache = [];
+async function loadRecipes() {
+  const msg = document.getElementById("recipeMsg");
+  if (!adminKey()) { msg.textContent = "กรุณาใส่ admin key ก่อน"; msg.className = "msg err"; return; }
+  const res = await apiGet({ action: "getSheet", adminKey: adminKey(), sheet: "recipes" });
+  if (res.error) { msg.textContent = "โหลดไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
+  recipesCache = (res.rows || []).map(r => {
+    let def = {}, materials = {};
+    try { def = JSON.parse(r.result_item_def || "{}"); } catch (e) {}
+    try { materials = JSON.parse(r.materials_json || "{}"); } catch (e) {}
+    return { recipeId: r.recipe_id, ...def, materials };
+  });
+  renderRecipeTable();
+}
+document.getElementById("reloadRecipesBtn").onclick = loadRecipes;
+
+function renderRecipeTable() {
+  const tbody = document.querySelector("#recipeTable tbody");
+  tbody.innerHTML = "";
+  document.getElementById("recipeEmptyMsg").style.display = recipesCache.length ? "none" : "block";
+  recipesCache.forEach(r => {
+    const tr = document.createElement("tr");
+    const matStr = Object.entries(r.materials || {}).map(([k, v]) => `${k}:${v}`).join(", ");
+    tr.innerHTML = `<td>${r.recipeId}</td><td>${r.type || ""}</td><td>${r.name || ""}</td><td>${r.setId || ""}</td><td>${matStr}</td>
+      <td class="rowActions"><button class="edit">แก้</button><button class="del">ลบ</button></td>`;
+    tr.querySelector(".edit").onclick = () => editRecipe(r);
+    tr.querySelector(".del").onclick = () => deleteRecipe(r.recipeId);
+    tbody.appendChild(tr);
+  });
+}
+
+function editRecipe(r) {
+  editingRecipeId = r.recipeId;
+  document.getElementById("recipeFormTitle").textContent = "แก้ไข: " + r.recipeId;
+  document.getElementById("f_recipeId").value = r.recipeId;
+  document.getElementById("f_recipeId").disabled = true;
+  document.getElementById("f_type").value = r.type || "helmet";
+  document.getElementById("f_name").value = r.name || "";
+  document.getElementById("f_setId").value = r.setId || "azure";
+  document.getElementById("f_empowerSlotCount").value = r.empowerSlotCount || 5;
+  const rows = document.getElementById("materialRows");
+  rows.innerHTML = "";
+  Object.entries(r.materials || {}).forEach(([k, v]) => rows.appendChild(materialRow(k, v)));
+  if (!rows.children.length) rows.appendChild(materialRow());
+  document.getElementById("cancelRecipeEditBtn").style.display = "inline-block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("saveRecipeBtn").onclick = async () => {
+  const msg = document.getElementById("recipeMsg");
+  const recipeId = document.getElementById("f_recipeId").value.trim();
+  const type = document.getElementById("f_type").value;
+  const name = document.getElementById("f_name").value.trim();
+  const setId = document.getElementById("f_setId").value.trim() || "azure";
+  const empowerSlotCount = Number(document.getElementById("f_empowerSlotCount").value) || 5;
+  const materials = readMaterialsFromForm();
+  if (!recipeId || !name || !Object.keys(materials).length) {
+    msg.textContent = "กรอก recipe_id, ชื่อ, และวัตถุดิบอย่างน้อย 1 อย่าง";
+    msg.className = "msg err";
+    return;
+  }
+  const res = await apiPost({ action: "adminUpsertRecipe", adminKey: adminKey(), recipeId, type, name, setId, empowerSlotCount, materials });
+  if (res.error) { msg.textContent = "บันทึกไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
+  msg.textContent = "บันทึกแล้ว ✓"; msg.className = "msg ok";
+  resetRecipeForm();
+  loadRecipes();
+};
+
+async function deleteRecipe(recipeId) {
+  if (!confirm(`ลบ recipe "${recipeId}" ?`)) return;
+  const res = await apiPost({ action: "adminDeleteRecipe", adminKey: adminKey(), recipeId });
+  if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
+  loadRecipes();
+}
+
+// ==================================================================
+// MONSTER DROPS TAB
+// ==================================================================
+let gameConfigCache = null;
+let monsterLootCache = [];
+let currentMonsterId = null;
+
+function populateMonsterSelect() {
+  const sel = document.getElementById("monsterSelect");
+  sel.innerHTML = "";
+  STATIC_MONSTERS.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = `${m.name}${m.isBoss ? " (Boss)" : ""} — ${m.id}`;
+    sel.appendChild(opt);
+  });
+}
+populateMonsterSelect();
+
+document.getElementById("monsterSelect").onchange = renderMonsterSection;
+document.getElementById("reloadMonsterDataBtn").onclick = async () => {
+  if (!adminKey()) { alert("กรุณาใส่ admin key ก่อน"); return; }
+  const [cfgRes, lootRes] = await Promise.all([
+    apiGet({ action: "getGameConfig" }),
+    apiGet({ action: "getSheet", adminKey: adminKey(), sheet: "monster_loot" })
+  ]);
+  if (lootRes.error) { alert("โหลด monster_loot ไม่สำเร็จ: " + lootRes.error); return; }
+  gameConfigCache = cfgRes || {};
+  monsterLootCache = lootRes.rows || [];
+  renderMonsterSection();
+};
+
+function findMonsterConfig(id) {
+  const list = (gameConfigCache && Array.isArray(gameConfigCache.monsters)) ? gameConfigCache.monsters : [];
+  return list.find(m => m.id === id) || null;
+}
+
+function renderMonsterSection() {
+  currentMonsterId = document.getElementById("monsterSelect").value;
+  document.getElementById("monsterIdPill").textContent = currentMonsterId;
+  const cfg = findMonsterConfig(currentMonsterId);
+  document.getElementById("s_hpMult").value = cfg ? cfg.hpMult : 1;
+  document.getElementById("s_atkMult").value = cfg ? cfg.atkMult : 1;
+  document.getElementById("s_defBonus").value = cfg ? cfg.defBonus : 0;
+  document.getElementById("s_goldMult").value = cfg ? cfg.goldMult : 1;
+  document.getElementById("s_xpMult").value = cfg ? cfg.xpMult : 1;
+  renderGearTable();
+  renderJunkTable();
+}
+
+document.getElementById("saveStatsBtn").onclick = async () => {
+  const msg = document.getElementById("statsMsg");
+  if (!gameConfigCache) { msg.textContent = "กด \"โหลดข้อมูลมอนสเตอร์ทั้งหมด\" ก่อน"; msg.className = "msg err"; return; }
+  const list = Array.isArray(gameConfigCache.monsters) ? [...gameConfigCache.monsters] : STATIC_MONSTERS.map(m => ({ id: m.id, name: m.name, isBoss: m.isBoss, color: "#7ED9A8" }));
+  const idx = list.findIndex(m => m.id === currentMonsterId);
+  const staticMeta = STATIC_MONSTERS.find(m => m.id === currentMonsterId);
+  const updated = {
+    id: currentMonsterId,
+    name: (idx >= 0 && list[idx].name) || (staticMeta && staticMeta.name) || currentMonsterId,
+    color: (idx >= 0 && list[idx].color) || "#7ED9A8",
+    isBoss: (staticMeta && staticMeta.isBoss) || false,
+    hpMult: Number(document.getElementById("s_hpMult").value) || 1,
+    atkMult: Number(document.getElementById("s_atkMult").value) || 1,
+    defBonus: Number(document.getElementById("s_defBonus").value) || 0,
+    goldMult: Number(document.getElementById("s_goldMult").value) || 1,
+    xpMult: Number(document.getElementById("s_xpMult").value) || 1
+  };
+  if (idx >= 0) list[idx] = updated; else list.push(updated);
+  const res = await apiPost({ action: "setGameConfigItem", adminKey: adminKey(), key: "monsters", value: list });
+  if (res.error) { msg.textContent = "บันทึกไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
+  gameConfigCache.monsters = list;
+  msg.textContent = "บันทึกแล้ว ✓ (มีผลตอน client โหลด config รอบถัดไป)"; msg.className = "msg ok";
+};
+
+function renderGearTable() {
+  const tbody = document.querySelector("#gearTable tbody");
+  tbody.innerHTML = "";
+  const rows = monsterLootCache.filter(r => r.monster_id === currentMonsterId && r.kind === "gear");
+  const totalWeight = rows.reduce((s, r) => s + (Number(r.weight) || 0), 0) || 1;
+  rows.forEach(r => {
+    const pct = ((Number(r.weight) || 0) / totalWeight * 100).toFixed(1);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${r.item_type || ""}</td><td>${r.rarity || "(ตามระบบเดิม)"}</td><td>${r.weight}</td><td>${pct}%</td>
+      <td class="rowActions"><button class="del">ลบ</button></td>`;
+    tr.querySelector(".del").onclick = () => deleteLootEntry(r.entry_id, "gear");
+    tbody.appendChild(tr);
+  });
+}
+function renderJunkTable() {
+  const tbody = document.querySelector("#junkTable tbody");
+  tbody.innerHTML = "";
+  const rows = monsterLootCache.filter(r => r.monster_id === currentMonsterId && r.kind === "junk");
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${r.junk_id}</td><td>${r.qty_min}-${r.qty_max}</td><td>${Math.round((Number(r.drop_chance) || 0) * 100)}%</td>
+      <td class="rowActions"><button class="del">ลบ</button></td>`;
+    tr.querySelector(".del").onclick = () => deleteLootEntry(r.entry_id, "junk");
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById("addGearBtn").onclick = async () => {
+  const msg = document.getElementById("gearMsg");
+  if (!currentMonsterId) return;
+  const entry = {
+    monsterId: currentMonsterId,
+    kind: "gear",
+    itemType: document.getElementById("g_itemType").value,
+    rarity: document.getElementById("g_rarity").value || null,
+    weight: Number(document.getElementById("g_weight").value) || 1
+  };
+  const res = await apiPost({ action: "adminUpsertMonsterLootEntry", adminKey: adminKey(), entry });
+  if (res.error) { msg.textContent = "เพิ่มไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
+  msg.textContent = "เพิ่มแล้ว ✓"; msg.className = "msg ok";
+  monsterLootCache.push({ entry_id: res.entryId, monster_id: currentMonsterId, kind: "gear", item_type: entry.itemType, rarity: entry.rarity, weight: entry.weight });
+  renderGearTable();
+};
+
+document.getElementById("addJunkBtn").onclick = async () => {
+  const msg = document.getElementById("junkMsg");
+  if (!currentMonsterId) return;
+  const junkId = document.getElementById("j_junkId").value.trim();
+  if (!junkId) { msg.textContent = "กรอก junkId ก่อน"; msg.className = "msg err"; return; }
+  const entry = {
+    monsterId: currentMonsterId,
+    kind: "junk",
+    junkId,
+    qtyMin: Number(document.getElementById("j_qtyMin").value) || 1,
+    qtyMax: Number(document.getElementById("j_qtyMax").value) || 1,
+    dropChance: Number(document.getElementById("j_dropChance").value)
+  };
+  entry.dropChance = isNaN(entry.dropChance) ? 1 : entry.dropChance;
+  const res = await apiPost({ action: "adminUpsertMonsterLootEntry", adminKey: adminKey(), entry });
+  if (res.error) { msg.textContent = "เพิ่มไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
+  msg.textContent = "เพิ่มแล้ว ✓"; msg.className = "msg ok";
+  monsterLootCache.push({ entry_id: res.entryId, monster_id: currentMonsterId, kind: "junk", junk_id: junkId, qty_min: entry.qtyMin, qty_max: entry.qtyMax, drop_chance: entry.dropChance });
+  renderJunkTable();
+};
+
+async function deleteLootEntry(entryId, kind) {
+  if (!confirm("ลบแถวนี้?")) return;
+  const res = await apiPost({ action: "adminDeleteMonsterLootEntry", adminKey: adminKey(), entryId });
+  if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
+  monsterLootCache = monsterLootCache.filter(r => r.entry_id !== entryId);
+  if (kind === "gear") renderGearTable(); else renderJunkTable();
+}
+</script>
+</body>
+</html>
