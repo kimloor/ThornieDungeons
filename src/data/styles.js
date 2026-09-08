@@ -1,1 +1,1 @@
-PLACEHOLDER
+const STYLE = ``;
