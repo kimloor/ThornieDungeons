@@ -159,7 +159,7 @@ const STYLE = `
   filter: drop-shadow(0 0 8px var(--gold-glow));
   animation: md-idle 2.2s ease-in-out infinite;
 }
-.md-hero-v3-canvas.attack { animation: md-lunge 0.35s ease; }
+.md-hero-v3-canvas.attack { animation: none; }
 .md-hero-v3-canvas.hurt { animation: md-shake 0.35s ease; }
 .md-hero-v3-master {
   position: relative;

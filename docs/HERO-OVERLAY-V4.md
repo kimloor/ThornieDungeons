@@ -2,6 +2,7 @@
 
 Hero V4 keeps every PNG on the same transparent 1254×1254 canvas. Runtime placement is
 always `x: 0`, `y: 0`, `scale: 1`, and `rotation: 0`; alignment is baked into the files.
+The attack animation uses three ordered frames at 105 ms per frame.
 
 ## Runtime layer order
 
@@ -15,6 +16,9 @@ always `x: 0`, `y: 0`, `scale: 1`, and `rotation: 0`; alignment is baked into th
 8. hat
 
 The weapon sits behind the base so the existing hand covers its grip in the idle pose.
+During an attack, the base, Azure arm pieces, Azure shoes, and Azure sword switch to their
+matching frame. Hair, outfit, and wings remain independent overlays and reuse their idle
+art when they do not define an attack sequence.
 
 ## Equipment mapping
 
@@ -37,8 +41,19 @@ sprite/characters/hero001/v4/
 ├─ equipment/outfit_azure.png
 ├─ equipment/arms_azure.png
 ├─ equipment/shoes_azure.png
+├─ equipment/hat_azure.png
 ├─ weapons/sword_azure.png
 └─ wings/wings_angel.png
 ```
 
-The Azure helmet visual, attack frames, and death frame are not part of this candidate.
+Attack additions are staged at:
+
+```text
+sprite/characters/hero001/animations/attack/hero_attack_[0-2].png
+sprite/characters/hero001/equipment/attack/arms_azure_attack_[0-2].png
+sprite/characters/hero001/equipment/attack/shoes_azure_attack_[0-2].png
+sprite/characters/hero001/weapons/attack/sword_azure_attack_[0-2].png
+```
+
+The Azure helmet uses `x: 75`, `y: -50`, and `scale: 0.88`, and is reused across
+Idle and all three Attack frames. The death frame is not part of this candidate.

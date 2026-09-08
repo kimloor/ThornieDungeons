@@ -258,8 +258,7 @@ function heroVisualSelectionFromEquipment(equipped = {}) {
 
   return {
     hair: "topknot",
-    // Azure helmet art will be wired when that overlay is produced.
-    hat: null,
+    hat: isAzure("helmet") ? "azure_helmet" : null,
     outfit: isAzure("chest") ? "azure" : null,
     arms: isAzure("gloves") ? "azure" : null,
     shoes: isAzure("boots") ? "azure" : null,
@@ -300,28 +299,51 @@ function resolveHeroV3Selection(config, selection = {}) {
   };
 }
 
-function resolveHeroV3Layers(characterId = "hero001", selection = {}) {
+function resolveHeroV3AnimatedLayer(def, anim = "", frameIndex = 0) {
+  const idleLayer = normalizeHeroV3Layer(def);
+  if (!idleLayer) return null;
+
+  if (anim !== "attack" || !Array.isArray(def?.attack) || !def.attack.length) {
+    return { ...idleLayer, fallbackPath: idleLayer.path };
+  }
+
+  const frameDef = def.attack[Math.min(frameIndex, def.attack.length - 1)];
+  const attackLayer = normalizeHeroV3Layer(frameDef, idleLayer);
+  return attackLayer
+    ? { ...attackLayer, fallbackPath: idleLayer.path }
+    : { ...idleLayer, fallbackPath: idleLayer.path };
+}
+
+function resolveHeroV3Layers(characterId = "hero001", selection = {}, anim = "", frameIndex = 0) {
   const config = getHeroV3Config(characterId);
   if (!config) return null;
 
   const selected = resolveHeroV3Selection(config, selection);
-  const baseDef = normalizeHeroV3Layer(config.base?.idle || config.base);
+  const baseIdleDef = config.base?.idle || config.base;
+  const baseDef = anim === "attack" && Array.isArray(config.base?.attack)
+    ? resolveHeroV3AnimatedLayer({ ...baseIdleDef, attack: config.base.attack }, anim, frameIndex)
+    : resolveHeroV3AnimatedLayer(baseIdleDef);
 
   const lookup = {
-    wings: normalizeHeroV3Layer(config.wings?.[selected.wings]),
+    wings: resolveHeroV3AnimatedLayer(config.wings?.[selected.wings], anim, frameIndex),
     base: baseDef,
-    hair: normalizeHeroV3Layer(config.hair?.[selected.hair]),
-    outfit: normalizeHeroV3Layer(config.equipment?.outfit?.[selected.outfit]),
-    shoes: normalizeHeroV3Layer(config.equipment?.shoes?.[selected.shoes]),
-    arms: normalizeHeroV3Layer(config.equipment?.arms?.[selected.arms]),
-    hat: normalizeHeroV3Layer(config.equipment?.hat?.[selected.hat]),
-    weapon: normalizeHeroV3Layer(config.weapon?.[selected.weapon])
+    hair: resolveHeroV3AnimatedLayer(config.hair?.[selected.hair], anim, frameIndex),
+    outfit: resolveHeroV3AnimatedLayer(config.equipment?.outfit?.[selected.outfit], anim, frameIndex),
+    shoes: resolveHeroV3AnimatedLayer(config.equipment?.shoes?.[selected.shoes], anim, frameIndex),
+    arms: resolveHeroV3AnimatedLayer(config.equipment?.arms?.[selected.arms], anim, frameIndex),
+    hat: resolveHeroV3AnimatedLayer(config.equipment?.hat?.[selected.hat], anim, frameIndex),
+    weapon: resolveHeroV3AnimatedLayer(config.weapon?.[selected.weapon], anim, frameIndex)
   };
 
   return HERO_V3_LAYER_ORDER
     .map(name => {
       const layer = lookup[name];
-      return layer ? { name, ...layer, url: assetUrl(layer.path) } : null;
+      return layer ? {
+        name,
+        ...layer,
+        url: assetUrl(layer.path),
+        fallbackUrl: assetUrl(layer.fallbackPath)
+      } : null;
     })
     .filter(Boolean);
 }
@@ -334,7 +356,42 @@ function HeroOverlayComposer({
   anim = ""
 }) {
   const config = getHeroV3Config(characterId);
-  const layers = resolveHeroV3Layers(characterId, selection);
+  const [attackFrameIndex, setAttackFrameIndex] = React.useState(0);
+  const attackFrameCount = Array.isArray(config?.base?.attack) ? config.base.attack.length : 0;
+  const selectionKey = Object.keys(selection || {})
+    .sort()
+    .map(key => `${key}:${selection[key] || ""}`)
+    .join("|");
+
+  React.useEffect(() => {
+    if (!config || attackFrameCount < 1 || typeof Image === "undefined") return;
+
+    const sources = new Set();
+    for (let frameIndex = 0; frameIndex < attackFrameCount; frameIndex += 1) {
+      const frameLayers = resolveHeroV3Layers(characterId, selection, "attack", frameIndex) || [];
+      frameLayers.forEach(layer => sources.add(layer.url));
+    }
+    sources.forEach(src => {
+      const image = new Image();
+      image.src = src;
+    });
+  }, [characterId, selectionKey, attackFrameCount]);
+
+  React.useEffect(() => {
+    setAttackFrameIndex(0);
+    if (anim !== "attack" || attackFrameCount < 2) return undefined;
+
+    let nextFrame = 0;
+    const timer = setInterval(() => {
+      nextFrame += 1;
+      setAttackFrameIndex(Math.min(nextFrame, attackFrameCount - 1));
+      if (nextFrame >= attackFrameCount - 1) clearInterval(timer);
+    }, Number(config?.attackFrameMs || 105));
+
+    return () => clearInterval(timer);
+  }, [anim, attackFrameCount, config?.attackFrameMs]);
+
+  const layers = resolveHeroV3Layers(characterId, selection, anim, attackFrameIndex);
   if (!config || !layers?.some(layer => layer.name === "base")) return null;
 
   const masterWidth = Number(config.canvas?.width || 1254);
@@ -363,6 +420,11 @@ function HeroOverlayComposer({
         src: layer.url,
         alt: "",
         draggable: false,
+        onError: event => {
+          if (layer.fallbackUrl && event.currentTarget.src !== layer.fallbackUrl) {
+            event.currentTarget.src = layer.fallbackUrl;
+          }
+        },
         style: {
           left: layer.x,
           top: layer.y,
