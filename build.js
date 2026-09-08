@@ -40,7 +40,7 @@ const MODULE_ORDER = [
 // Keep source references readable as ui/<file>; the build rewrites only image asset paths.
 function mapR2UiAssetPaths(content) {
   return content.replace(
-    /(?<!\\/assets\\/)ui\\/([A-Za-z0-9_.\\/-]+\\.(?:png|webp|jpg|jpeg|gif|svg))/g,
+    /(?<!\/assets\/)ui\/([A-Za-z0-9_.\/-]+\.(?:png|webp|jpg|jpeg|gif|svg))/g,
     "/assets/ui/$1"
   );
 }
