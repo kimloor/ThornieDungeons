@@ -302,7 +302,7 @@ async function handleGetLeaderboard(db, board) {
       .prepare(`SELECT character_id, player_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC LIMIT 50`)
       .bind(raid.raid_id)
       .all();
-    return json({ ok: true, board, raidId: raid.raid_id, bossName: def.name, bossEmoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current), rows: res.results || [], availableDates: recentDateKeys() });
+    return json({ ok: true, board, raidId: raid.raid_id, bossName: def.name, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current), rows: res.results || [], availableDates: recentDateKeys() });
   }
   const col = LEADERBOARD_BOARD_COLS[board];
   if (!col) return json({ error: "invalid_board", allowed: Object.keys(LEADERBOARD_BOARD_COLS) });
@@ -1095,9 +1095,9 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
 // how many have already spawned today, scales hpMax up a bit each respawn so later
 // bosses in the day are a bit tougher once the playerbase has more total damage output).
 const RAID_BOSS_DEFS = [
-  { id: "slime_titan", name: "Slime Titan", emoji: "🟢", hpBase: 150000 },
-  { id: "iron_golem", name: "Iron Golem", emoji: "⚙️", hpBase: 260000 },
-  { id: "shadow_wyrm", name: "Shadow Wyrm", emoji: "🐉", hpBase: 420000 },
+  { id: "azure_angel", name: "Azure Angel", hpBase: 150000 },
+  { id: "robo_phoenix", name: "Robo Phoenix", hpBase: 260000 },
+  { id: "dark_dragonlord", name: "Dark Dragonlord", hpBase: 420000 },
 ];
 const RAID_STAMINA_MAX = 10;
 const RAID_STAMINA_REGEN_MS = 15 * 60 * 1000; // +1 every 15 minutes
@@ -1352,7 +1352,7 @@ async function handleGetRaidStatus(db, id, password, characterId) {
   const contribution = participant ? Number(participant.total_contribution) || 0 : 0;
   return json({
     ok: true,
-    boss: { raidId: raid.raid_id, defId: def.id, name: def.name, emoji: def.emoji, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
+    boss: { raidId: raid.raid_id, defId: def.id, name: def.name, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
     me: {
       stamina: staminaState.stamina,
       staminaMax: RAID_STAMINA_MAX,

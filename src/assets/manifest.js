@@ -78,6 +78,98 @@ function getMonsterSpriteConfig(enemy) {
   return null;
 }
 
+function getRaidBossSpriteConfig(defId) {
+  const assetId = normalizeAssetLookupKey(defId);
+  return assetId ? ASSETS?.raidBosses?.[assetId] || null : null;
+}
+
+function getRaidBossAnimationFrames(config, anim) {
+  const animName = anim === "hurt" ? "hurt" : "idle";
+  const frames = config?.animations?.[animName];
+  if (!Array.isArray(frames) || !frames.length) return [];
+  return frames.filter(Boolean).map(assetUrl);
+}
+
+function RaidBossFrameSprite({
+  config,
+  hurtToken = 0,
+  className = "",
+  alt = "Raid Boss",
+  idleFrameMs = 220,
+  hurtFrameMs = 110,
+  onHurtComplete
+}) {
+  const [anim, setAnim] = React.useState("idle");
+  const [frameIndex, setFrameIndex] = React.useState(0);
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const completionRef = React.useRef(onHurtComplete);
+  completionRef.current = onHurtComplete;
+
+  const frames = getRaidBossAnimationFrames(config, anim);
+  const frameKey = frames.join("|");
+  const preloadSources = [
+    ...getRaidBossAnimationFrames(config, "idle"),
+    ...getRaidBossAnimationFrames(config, "hurt")
+  ];
+  const preloadKey = preloadSources.join("|");
+
+  React.useEffect(() => {
+    setImageFailed(false);
+    preloadSources.forEach(src => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+    });
+  }, [preloadKey]);
+
+  React.useEffect(() => {
+    if (hurtToken > 0) setAnim("hurt");
+  }, [hurtToken]);
+
+  React.useEffect(() => {
+    setFrameIndex(0);
+    if (anim === "hurt") {
+      const stepTimer = frames.length > 1 ? setInterval(() => {
+        setFrameIndex(i => Math.min(i + 1, frames.length - 1));
+      }, hurtFrameMs) : null;
+      // Keep the final hurt frame visible for one complete frame interval, then
+      // return to idle. Missing hurt art follows the same short timing so the
+      // parent can safely refresh without leaving its controls locked.
+      const completionTimer = setTimeout(() => {
+        if (stepTimer) clearInterval(stepTimer);
+        setAnim("idle");
+        if (completionRef.current) completionRef.current();
+      }, Math.max(1, frames.length || 3) * hurtFrameMs);
+      return () => {
+        if (stepTimer) clearInterval(stepTimer);
+        clearTimeout(completionTimer);
+      };
+    }
+
+    if (frames.length <= 1) return undefined;
+    const idleTimer = setInterval(() => {
+      setFrameIndex(i => (i + 1) % frames.length);
+    }, idleFrameMs);
+    return () => clearInterval(idleTimer);
+  }, [anim, frameKey, idleFrameMs, hurtFrameMs]);
+
+  if (!frames.length || imageFailed) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: `${className} md-raid-boss-fallback`,
+      role: "img",
+      "aria-label": alt
+    }, "RAID");
+  }
+
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src: frames[Math.min(frameIndex, frames.length - 1)],
+    alt,
+    draggable: false,
+    onError: () => setImageFailed(true)
+  });
+}
+
 function getSpriteAnimationFrames(config, requestedAnim, dead = false) {
   if (!config?.animations) return [];
   const animName = dead ? "death" : requestedAnim === "attack" ? "attack" : "idle";

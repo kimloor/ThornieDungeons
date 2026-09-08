@@ -1075,10 +1075,10 @@ const STYLE = `
   .md-root { max-width: 100%; min-height: 100vh; min-height: 100dvh; border-radius: 0; box-shadow: none; }
 }
 .md-btn { min-height: 46px; }
-.md-boss-blob { width: 96px; height: 96px; margin: 10px auto 4px; display: flex; align-items: center; justify-content: center; font-size: 44px; border-radius: 46% 54% 58% 42% / 52% 46% 54% 48%; box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 -8px 14px rgba(0,0,0,0.2); animation: mdBossBlobPulse 2.6s ease-in-out infinite; }
+.md-raid-boss-sprite { display:block; width:min(72vw, 280px); height:clamp(180px, 42vh, 310px); margin:10px auto 4px; object-fit:contain; object-position:center; user-select:none; -webkit-user-drag:none; }
+.md-raid-boss-fallback { display:flex; align-items:center; justify-content:center; min-height:180px; border:1px dashed rgba(255,209,102,.45); border-radius:18px; background:radial-gradient(circle, rgba(167,139,240,.22), rgba(16,18,32,.18) 70%); color:var(--gold); font-size:22px; font-weight:900; letter-spacing:.18em; }
 .md-toast { position: sticky; top: 4px; z-index: 20; margin: 0 auto 10px; padding: 10px 14px; border-radius: 12px; background: linear-gradient(135deg, var(--violet-deep), var(--violet)); border: 1px solid var(--gold-glow); color: var(--ink); font-size: 13px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); animation: mdToastIn 0.25s ease-out; }
 @keyframes mdToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes mdBossBlobPulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.05) rotate(-2deg); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */
 @keyframes anvil-success-flash {

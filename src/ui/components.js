@@ -1064,13 +1064,6 @@ function LeaderboardScreen({
   }, "← Back"));
 }
 // ---------- Phase 3: Raid Boss ----------
-// Boss sprite placeholder — colored "blob" per boss type until real art is ready
-// (sprite/rig work is handled separately). Swap this out for an <img> once art lands.
-const RAID_BOSS_BLOB_STYLE = {
-  slime_titan: { background: "radial-gradient(circle at 35% 30%, #7EE0A8, var(--leaf-deep))" },
-  iron_golem: { background: "radial-gradient(circle at 35% 30%, #C9D2DB, #6B7684)" },
-  shadow_wyrm: { background: "radial-gradient(circle at 35% 30%, #A78BF0, var(--violet-deep))" }
-};
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
 function RaidScreen({
   serverUrl,
@@ -1086,6 +1079,8 @@ function RaidScreen({
   const [lastResult, setLastResult] = useState(null);
   const [toast, setToast] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [hurtToken, setHurtToken] = useState(0);
+  const [hurtPlaying, setHurtPlaying] = useState(false);
 
   const load = React.useCallback(() => {
     setError(null);
@@ -1124,16 +1119,25 @@ function RaidScreen({
   }, [serverUrl, cred.id, cred.password, characterId, load]);
   React.useEffect(() => { checkMilestones(); }, [checkMilestones]);
 
+  const handleHurtComplete = React.useCallback(() => {
+    setHurtPlaying(false);
+    load();
+    checkMilestones();
+  }, [load, checkMilestones]);
+
   const handleAttack = (useDiamonds) => {
-    if (attacking) return;
+    if (attacking || hurtPlaying) return;
     setAttacking(true);
     setLastResult(null);
     cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, useDiamonds).then(res => {
       if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
       if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent || status.me.diamondRefillCost || 50);
       setLastResult(res);
-      load();
-      checkMilestones();
+      // A successful server-side hit is the only trigger for hurt. Delay the
+      // status refresh until all three frames finish so a respawn cannot reset
+      // or replace the animation halfway through.
+      setHurtPlaying(true);
+      setHurtToken(token => token + 1);
     }).catch(() => setLastResult({ error: "network_error" })).finally(() => setAttacking(false));
   };
 
@@ -1158,6 +1162,7 @@ function RaidScreen({
   const hpCurrent = boss.hpCurrent || 0;
   const hpPct = hpMax ? Math.max(0, Math.min(100, hpCurrent / hpMax * 100)) : 0;
   const isDead = hpCurrent <= 0;
+  const bossSpriteConfig = getRaidBossSpriteConfig(boss.defId || boss.id);
   const legacyAttemptsLeft = Math.max(0, Number(me.attemptsMax) - Number(me.attemptsUsed));
   const outOfStamina = supportsStamina ? me.stamina <= 0 : legacyAttemptsLeft <= 0;
   const canAffordRefill = (diamonds || 0) >= me.diamondRefillCost;
@@ -1167,17 +1172,20 @@ function RaidScreen({
   return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
     toast && /*#__PURE__*/React.createElement("div", { className: "md-toast" }, toast),
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.emoji || "🐉", " ", boss.name || "Raid Boss"),
+      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.name || "Raid Boss"),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
         /*#__PURE__*/React.createElement("div", {
           className: "md-bar-fill",
           style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
         })),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
-      /*#__PURE__*/React.createElement("div", {
-        className: "md-boss-blob",
-        style: (RAID_BOSS_BLOB_STYLE[boss.defId] || RAID_BOSS_BLOB_STYLE.slime_titan)
-      }, boss.emoji || "🐉"),
+      /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
+        config: bossSpriteConfig,
+        hurtToken,
+        className: "md-raid-boss-sprite",
+        alt: boss.name || "Raid Boss",
+        onHurtComplete: handleHurtComplete
+      }),
       isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา")),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
@@ -1195,13 +1203,13 @@ function RaidScreen({
       (!outOfStamina || !supportsStamina) && /*#__PURE__*/React.createElement("button", {
         className: "md-btn attack wide",
         style: { marginTop: 8 },
-        disabled: attacking || isDead || (!supportsStamina && outOfStamina),
+        disabled: attacking || hurtPlaying || isDead || (!supportsStamina && outOfStamina),
         onClick: () => handleAttack(false)
       }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี"),
       supportsStamina && outOfStamina && /*#__PURE__*/React.createElement("button", {
         className: "md-btn attack wide",
         style: { marginTop: 8 },
-        disabled: attacking || isDead || !canAffordRefill,
+        disabled: attacking || hurtPlaying || isDead || !canAffordRefill,
         onClick: () => handleAttack(true)
       }, attacking ? "กำลังโจมตี..." : `💎 จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`)),
 

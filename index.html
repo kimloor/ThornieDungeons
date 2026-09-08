@@ -1176,10 +1176,10 @@ const STYLE = `
   .md-root { max-width: 100%; min-height: 100vh; min-height: 100dvh; border-radius: 0; box-shadow: none; }
 }
 .md-btn { min-height: 46px; }
-.md-boss-blob { width: 96px; height: 96px; margin: 10px auto 4px; display: flex; align-items: center; justify-content: center; font-size: 44px; border-radius: 46% 54% 58% 42% / 52% 46% 54% 48%; box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 -8px 14px rgba(0,0,0,0.2); animation: mdBossBlobPulse 2.6s ease-in-out infinite; }
+.md-raid-boss-sprite { display:block; width:min(72vw, 280px); height:clamp(180px, 42vh, 310px); margin:10px auto 4px; object-fit:contain; object-position:center; user-select:none; -webkit-user-drag:none; }
+.md-raid-boss-fallback { display:flex; align-items:center; justify-content:center; min-height:180px; border:1px dashed rgba(255,209,102,.45); border-radius:18px; background:radial-gradient(circle, rgba(167,139,240,.22), rgba(16,18,32,.18) 70%); color:var(--gold); font-size:22px; font-weight:900; letter-spacing:.18em; }
 .md-toast { position: sticky; top: 4px; z-index: 20; margin: 0 auto 10px; padding: 10px 14px; border-radius: 12px; background: linear-gradient(135deg, var(--violet-deep), var(--violet)); border: 1px solid var(--gold-glow); color: var(--ink); font-size: 13px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); animation: mdToastIn 0.25s ease-out; }
 @keyframes mdToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes mdBossBlobPulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.05) rotate(-2deg); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */
 @keyframes anvil-success-flash {
@@ -1554,6 +1554,98 @@ function getMonsterSpriteConfig(enemy) {
     if (config) return config;
   }
   return null;
+}
+
+function getRaidBossSpriteConfig(defId) {
+  const assetId = normalizeAssetLookupKey(defId);
+  return assetId ? ASSETS?.raidBosses?.[assetId] || null : null;
+}
+
+function getRaidBossAnimationFrames(config, anim) {
+  const animName = anim === "hurt" ? "hurt" : "idle";
+  const frames = config?.animations?.[animName];
+  if (!Array.isArray(frames) || !frames.length) return [];
+  return frames.filter(Boolean).map(assetUrl);
+}
+
+function RaidBossFrameSprite({
+  config,
+  hurtToken = 0,
+  className = "",
+  alt = "Raid Boss",
+  idleFrameMs = 220,
+  hurtFrameMs = 110,
+  onHurtComplete
+}) {
+  const [anim, setAnim] = React.useState("idle");
+  const [frameIndex, setFrameIndex] = React.useState(0);
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const completionRef = React.useRef(onHurtComplete);
+  completionRef.current = onHurtComplete;
+
+  const frames = getRaidBossAnimationFrames(config, anim);
+  const frameKey = frames.join("|");
+  const preloadSources = [
+    ...getRaidBossAnimationFrames(config, "idle"),
+    ...getRaidBossAnimationFrames(config, "hurt")
+  ];
+  const preloadKey = preloadSources.join("|");
+
+  React.useEffect(() => {
+    setImageFailed(false);
+    preloadSources.forEach(src => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+    });
+  }, [preloadKey]);
+
+  React.useEffect(() => {
+    if (hurtToken > 0) setAnim("hurt");
+  }, [hurtToken]);
+
+  React.useEffect(() => {
+    setFrameIndex(0);
+    if (anim === "hurt") {
+      const stepTimer = frames.length > 1 ? setInterval(() => {
+        setFrameIndex(i => Math.min(i + 1, frames.length - 1));
+      }, hurtFrameMs) : null;
+      // Keep the final hurt frame visible for one complete frame interval, then
+      // return to idle. Missing hurt art follows the same short timing so the
+      // parent can safely refresh without leaving its controls locked.
+      const completionTimer = setTimeout(() => {
+        if (stepTimer) clearInterval(stepTimer);
+        setAnim("idle");
+        if (completionRef.current) completionRef.current();
+      }, Math.max(1, frames.length || 3) * hurtFrameMs);
+      return () => {
+        if (stepTimer) clearInterval(stepTimer);
+        clearTimeout(completionTimer);
+      };
+    }
+
+    if (frames.length <= 1) return undefined;
+    const idleTimer = setInterval(() => {
+      setFrameIndex(i => (i + 1) % frames.length);
+    }, idleFrameMs);
+    return () => clearInterval(idleTimer);
+  }, [anim, frameKey, idleFrameMs, hurtFrameMs]);
+
+  if (!frames.length || imageFailed) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: `${className} md-raid-boss-fallback`,
+      role: "img",
+      "aria-label": alt
+    }, "RAID");
+  }
+
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src: frames[Math.min(frameIndex, frames.length - 1)],
+    alt,
+    draggable: false,
+    onError: () => setImageFailed(true)
+  });
 }
 
 function getSpriteAnimationFrames(config, requestedAnim, dead = false) {
@@ -6952,13 +7044,6 @@ function LeaderboardScreen({
   }, "← Back"));
 }
 // ---------- Phase 3: Raid Boss ----------
-// Boss sprite placeholder — colored "blob" per boss type until real art is ready
-// (sprite/rig work is handled separately). Swap this out for an <img> once art lands.
-const RAID_BOSS_BLOB_STYLE = {
-  slime_titan: { background: "radial-gradient(circle at 35% 30%, #7EE0A8, var(--leaf-deep))" },
-  iron_golem: { background: "radial-gradient(circle at 35% 30%, #C9D2DB, #6B7684)" },
-  shadow_wyrm: { background: "radial-gradient(circle at 35% 30%, #A78BF0, var(--violet-deep))" }
-};
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
 function RaidScreen({
   serverUrl,
@@ -6974,6 +7059,8 @@ function RaidScreen({
   const [lastResult, setLastResult] = useState(null);
   const [toast, setToast] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [hurtToken, setHurtToken] = useState(0);
+  const [hurtPlaying, setHurtPlaying] = useState(false);
 
   const load = React.useCallback(() => {
     setError(null);
@@ -7012,16 +7099,25 @@ function RaidScreen({
   }, [serverUrl, cred.id, cred.password, characterId, load]);
   React.useEffect(() => { checkMilestones(); }, [checkMilestones]);
 
+  const handleHurtComplete = React.useCallback(() => {
+    setHurtPlaying(false);
+    load();
+    checkMilestones();
+  }, [load, checkMilestones]);
+
   const handleAttack = (useDiamonds) => {
-    if (attacking) return;
+    if (attacking || hurtPlaying) return;
     setAttacking(true);
     setLastResult(null);
     cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, useDiamonds).then(res => {
       if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
       if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent || status.me.diamondRefillCost || 50);
       setLastResult(res);
-      load();
-      checkMilestones();
+      // A successful server-side hit is the only trigger for hurt. Delay the
+      // status refresh until all three frames finish so a respawn cannot reset
+      // or replace the animation halfway through.
+      setHurtPlaying(true);
+      setHurtToken(token => token + 1);
     }).catch(() => setLastResult({ error: "network_error" })).finally(() => setAttacking(false));
   };
 
@@ -7046,6 +7142,7 @@ function RaidScreen({
   const hpCurrent = boss.hpCurrent || 0;
   const hpPct = hpMax ? Math.max(0, Math.min(100, hpCurrent / hpMax * 100)) : 0;
   const isDead = hpCurrent <= 0;
+  const bossSpriteConfig = getRaidBossSpriteConfig(boss.defId || boss.id);
   const legacyAttemptsLeft = Math.max(0, Number(me.attemptsMax) - Number(me.attemptsUsed));
   const outOfStamina = supportsStamina ? me.stamina <= 0 : legacyAttemptsLeft <= 0;
   const canAffordRefill = (diamonds || 0) >= me.diamondRefillCost;
@@ -7055,17 +7152,20 @@ function RaidScreen({
   return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
     toast && /*#__PURE__*/React.createElement("div", { className: "md-toast" }, toast),
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.emoji || "🐉", " ", boss.name || "Raid Boss"),
+      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.name || "Raid Boss"),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
         /*#__PURE__*/React.createElement("div", {
           className: "md-bar-fill",
           style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
         })),
       /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
-      /*#__PURE__*/React.createElement("div", {
-        className: "md-boss-blob",
-        style: (RAID_BOSS_BLOB_STYLE[boss.defId] || RAID_BOSS_BLOB_STYLE.slime_titan)
-      }, boss.emoji || "🐉"),
+      /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
+        config: bossSpriteConfig,
+        hurtToken,
+        className: "md-raid-boss-sprite",
+        alt: boss.name || "Raid Boss",
+        onHurtComplete: handleHurtComplete
+      }),
       isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา")),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
@@ -7083,13 +7183,13 @@ function RaidScreen({
       (!outOfStamina || !supportsStamina) && /*#__PURE__*/React.createElement("button", {
         className: "md-btn attack wide",
         style: { marginTop: 8 },
-        disabled: attacking || isDead || (!supportsStamina && outOfStamina),
+        disabled: attacking || hurtPlaying || isDead || (!supportsStamina && outOfStamina),
         onClick: () => handleAttack(false)
       }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี"),
       supportsStamina && outOfStamina && /*#__PURE__*/React.createElement("button", {
         className: "md-btn attack wide",
         style: { marginTop: 8 },
-        disabled: attacking || isDead || !canAffordRefill,
+        disabled: attacking || hurtPlaying || isDead || !canAffordRefill,
         onClick: () => handleAttack(true)
       }, attacking ? "กำลังโจมตี..." : `💎 จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`)),
 
