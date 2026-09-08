@@ -1389,27 +1389,47 @@ function MailboxScreen({
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
 }
 function floorEventPreview(monsters) {
-  const events = [];
-  const add = (icon, text) => {
-    if (!events.some(event => event.text === text)) events.push({ icon, text });
-  };
+  const modifierEvents = new Map();
   monsters.forEach(monster => {
     const modifier = monster.modifier;
     if (!modifier) return;
-    if (modifier.goldMult > 1) add("🪙", `ดรอปทองเพิ่ม +${roundInt((modifier.goldMult - 1) * 100)}%`);
-    if (modifier.xpMult > 1) add("✦", `EXP เพิ่ม +${roundInt((modifier.xpMult - 1) * 100)}%`);
-    if (modifier.hpMult > 1) add("♥", `พลังชีวิตศัตรู +${roundInt((modifier.hpMult - 1) * 100)}%`);
-    if (modifier.hpMult < 1) add("♥", `พลังชีวิตศัตรูลด ${roundInt((1 - modifier.hpMult) * 100)}%`);
-    if (modifier.atkMult > 1) add("⚔", `พลังโจมตีศัตรู +${roundInt((modifier.atkMult - 1) * 100)}%`);
-    if (modifier.dropBonusFlat > 0) add("◆", `Drop Rate เพิ่ม +${roundInt(modifier.dropBonusFlat)}%`);
-    if (modifier.rarityBoost) add("✧", "โอกาสพบไอเทมหายากเพิ่มขึ้น");
+    const effects = [];
+    if (modifier.goldMult > 1) effects.push(`Gold +${roundInt((modifier.goldMult - 1) * 100)}%`);
+    if (modifier.xpMult > 1) effects.push(`EXP +${roundInt((modifier.xpMult - 1) * 100)}%`);
+    if (modifier.hpMult > 1) effects.push(`Enemy HP +${roundInt((modifier.hpMult - 1) * 100)}%`);
+    if (modifier.hpMult < 1) effects.push(`Enemy HP -${roundInt((1 - modifier.hpMult) * 100)}%`);
+    if (modifier.atkMult > 1) effects.push(`Enemy ATK +${roundInt((modifier.atkMult - 1) * 100)}%`);
+    if (modifier.dropBonusFlat > 0) effects.push(`Drop +${roundInt(modifier.dropBonusFlat)}%`);
+    if (modifier.rarityBoost) effects.push("Rare Drop Up");
+    modifierEvents.set(modifier.id || modifier.name, {
+      id: modifier.id || modifier.name,
+      icon: modifier.icon || "✦",
+      name: modifier.name || "Special Floor",
+      desc: modifier.desc || "ชั้นนี้มีเงื่อนไขพิเศษ",
+      color: modifier.color || "#43c8ff",
+      effects
+    });
   });
+  const events = Array.from(modifierEvents.values());
   const boss = monsters.find(monster => monster.isBoss);
   if (boss) {
-    add("♛", boss.isEliteBoss ? "Elite Boss · ความท้าทายระดับสูง" : "Boss Gate · ศัตรูระดับบอส");
-    add("🎁", boss.isEliteBoss ? "หีบการันตี Elite / Mythic" : "ปลดล็อกหีบรางวัลเมื่อชนะ");
+    events.push({
+      id: boss.isEliteBoss ? "elite-boss" : "boss",
+      icon: "♛",
+      name: boss.isEliteBoss ? "Elite Boss" : "Boss Gate",
+      desc: boss.isEliteBoss ? "บอสระดับสูง พร้อมหีบการันตี Elite / Mythic" : "เอาชนะบอสเพื่อปลดล็อกหีบรางวัล",
+      color: "#e2aa38",
+      effects: []
+    });
   }
-  return events.length ? events : [{ icon: "◇", text: "ไม่มีอีเวนต์พิเศษในชั้นนี้" }];
+  return events.length ? events : [{
+    id: "normal",
+    icon: "◇",
+    name: "Normal Floor",
+    desc: "ไม่มีอีเวนต์พิเศษในชั้นนี้",
+    color: "#7189a7",
+    effects: []
+  }];
 }
 
 function floorRewardPreview(floor, monsters) {
@@ -1571,7 +1591,7 @@ function MapScreen({
       },
         e("button", { type: "button", className: "md-floor-detail-x", onClick: () => setDetail(null), "aria-label": "ปิด" }, "✕"),
         e("div", { className: `md-floor-detail-heading${detail.floor % 5 === 0 ? " boss" : ""}` },
-          e("div", null,
+          e("div", { className: "md-floor-title" },
             e("small", null, detail.floor % 5 === 0 ? "BOSS GATE" : "DUNGEON FLOOR"),
             e("h2", { id: "md-floor-detail-title" }, "ชั้น ", detail.floor)
           ),
@@ -1585,7 +1605,18 @@ function MapScreen({
         ),
         e("h3", null, "อีเวนต์ชั้นนี้"),
         e("div", { className: "md-floor-events" },
-          floorEventPreview(detail.monsters).map((event, index) => e("div", { key: `${event.text}-${index}` }, e("span", null, event.icon), e("b", null, event.text)))
+          floorEventPreview(detail.monsters).map(event => e("div", {
+            key: event.id,
+            className: "md-floor-event",
+            style: { "--md-event-color": event.color }
+          },
+            e("span", { className: "md-floor-event-icon", "aria-hidden": "true" }, event.icon),
+            e("div", { className: "md-floor-event-copy" },
+              e("b", null, event.name),
+              e("p", null, event.desc),
+              event.effects.length > 0 && e("small", null, event.effects.join(" · "))
+            )
+          ))
         ),
         e("h3", null, "รางวัลที่อาจได้รับ"),
         e("div", { className: "md-floor-rewards" },
