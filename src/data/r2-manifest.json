@@ -1,12 +1,12 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-08T04:42:42Z",
-  "count": 152,
+  "generatedAt": "2026-09-08T09:44:56Z",
+  "count": 161,
   "objects": [
     {
       "key": "manifest.json",
       "etag": "f670a37171063793bdbef4487c035a81",
-      "last_modified": "2026-09-08T02:59:32.663Z",
+      "last_modified": "2026-09-08T07:19:50.916Z",
       "size": 9153,
       "http_metadata": {
         "contentType": "application/json"
@@ -1671,6 +1671,105 @@
       "size": 460550,
       "http_metadata": {
         "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/character-select-background.webp",
+      "etag": "fe9f432c9ed16a6081dd951d42e74642",
+      "last_modified": "2026-09-08T07:20:16.443Z",
+      "size": 193894,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/hub-icons/bag.svg",
+      "etag": "66d734d2b95ca6edeb4bac516e18f708",
+      "last_modified": "2026-09-08T07:20:00.161Z",
+      "size": 1364,
+      "http_metadata": {
+        "contentType": "image/svg+xml"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/hub-icons/character.svg",
+      "etag": "1bc78a4c5a5d9c753c408ac2666f99bd",
+      "last_modified": "2026-09-08T07:20:04.791Z",
+      "size": 1435,
+      "http_metadata": {
+        "contentType": "image/svg+xml"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/hub-icons/more.svg",
+      "etag": "dbd535eb8bcac037cd02f33fb7af7c34",
+      "last_modified": "2026-09-08T07:19:57.154Z",
+      "size": 912,
+      "http_metadata": {
+        "contentType": "image/svg+xml"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/hub-icons/pet.svg",
+      "etag": "a49f5e07c1f51ebe8715009316e01806",
+      "last_modified": "2026-09-08T07:20:10.510Z",
+      "size": 1583,
+      "http_metadata": {
+        "contentType": "image/svg+xml"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/hub-icons/raid.svg",
+      "etag": "a8843b0f554c9ba3919a9ba686635bf8",
+      "last_modified": "2026-09-08T07:19:54.054Z",
+      "size": 1259,
+      "http_metadata": {
+        "contentType": "image/svg+xml"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/login-background.webp",
+      "etag": "5bb8cab6f7aadb8548342c2bbc5a8020",
+      "last_modified": "2026-09-08T07:20:19.630Z",
+      "size": 197928,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/town-background.webp",
+      "etag": "db441eab1e9c3239641798c191d5e34a",
+      "last_modified": "2026-09-08T07:20:25.959Z",
+      "size": 358522,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/town-icons/leaderboard-bird.svg",
+      "etag": "7a51c7d2364b4ed0d696124a1852e256",
+      "last_modified": "2026-09-08T07:20:22.785Z",
+      "size": 1587,
+      "http_metadata": {
+        "contentType": "image/svg+xml"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
