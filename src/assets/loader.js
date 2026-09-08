@@ -23,8 +23,8 @@ async function loadAssetText(path) {
   return response.text();
 }
 
-async function loadAssetJSON(path) {
-  const response = await fetchAsset(path);
+async function loadAssetJSON(path, options = {}) {
+  const response = await fetchAsset(path, options);
   return response.json();
 }
 

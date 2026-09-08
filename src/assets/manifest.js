@@ -2,7 +2,10 @@
 let ASSETS = {};
 
 async function loadAssetManifest() {
-  const manifest = await loadAssetJSON("manifest.json");
+  // R2 serves assets with a long max-age. A unique query plus no-store prevents
+  // Safari and Cloudflare edge caches from keeping an older manifest after the
+  // object is replaced under the same key.
+  const manifest = await loadAssetJSON(`manifest.json?v=${Date.now()}`, { cache: "no-store" });
   ASSETS = manifest.assets || {};
   console.log("Asset Manifest loaded:", manifest);
   return ASSETS;
