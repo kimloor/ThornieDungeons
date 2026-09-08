@@ -47,6 +47,9 @@ function ThornieDungeons() {
   // a short scrolling history instead of overwriting a single line.
   const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
   const [busy, setBusy] = useState(false);
+  // Combat presentation speed. x1 keeps authored frame timing; x2 shortens the
+  // action windows without changing damage, turn order, or cooldown rules.
+  const [combatSpeed, setCombatSpeed] = useState(1);
   // Separate lock for item-mutating actions (Enhance/Empower/Reroll/Salvage/Sell/Equip/BuyMaterial).
   // itemActionLockRef is checked+set *synchronously* so a rapid second click can never slip in
   // and run against a stale `save`/`inventory` closure before the first click's state has
@@ -836,6 +839,10 @@ function ThornieDungeons() {
     return [items[0], ...rest];
   }
 
+  function combatDelay(ms) {
+    return Math.max(60, Math.round(ms / combatSpeed));
+  }
+
   function playerTurn(action, skillKey) {
     if (busy || !player) return;
     const target = getTargetMonster();
@@ -848,7 +855,10 @@ function ThornieDungeons() {
     setTurnQueue(roundQueue);
     turnQueueRef.current = roundQueue;
     setActiveTurnKey("player");
-    if (action === "attack") {
+    if (action === "skip") {
+      setLog("You wait and let the next unit act.");
+      setTimeout(() => runQueueAfterPlayer(), combatDelay(220));
+    } else if (action === "attack") {
       const isMiss = Math.random() * 100 >= stats.accuracy;
       const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
       let dmg = Math.max(2, Math.round(stats.atk - target.def * 0.6 + (Math.random() * 4 - 2)));
@@ -868,8 +878,8 @@ function ThornieDungeons() {
           setLog(isCrit ? `You land a CRITICAL hit on ${target.name} for ${dmg}!` : `You attack ${target.name} for ${dmg}!`);
         }
         setHeroAnim("");
-        setTimeout(() => runQueueAfterPlayer(), 350);
-      }, 300);
+        setTimeout(() => runQueueAfterPlayer(), combatDelay(350));
+      }, combatDelay(420));
     } else if (action === "skill") {
       const baseSkill = SKILLS.find(s => s.key === skillKey);
       const skill = baseSkill ? skillAtLevel(baseSkill, committedSkillLevel(save, skillKey)) : null;
@@ -973,8 +983,8 @@ function ThornieDungeons() {
           setLog(petAlive ? `You cast ${skill.name}! DEF increased for you and your pet, ${skill.turns} turns.` : `You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
         }
         setHeroAnim("");
-        setTimeout(() => runQueueAfterPlayer(), 350);
-      }, 300);
+        setTimeout(() => runQueueAfterPlayer(), combatDelay(350));
+      }, combatDelay(420));
     } else if (action === "item") {
       const potionId = skillKey;
       const def = getPotionDef(potionId);
@@ -1010,7 +1020,7 @@ function ThornieDungeons() {
         });
         setLog(`You drink a ${def.name} and recover SP.`);
       }
-      setTimeout(() => runQueueAfterPlayer(), 500);
+      setTimeout(() => runQueueAfterPlayer(), combatDelay(500));
     } else if (action === "flee") {
       const success = Math.random() < 0.55;
       if (success) {
@@ -1025,7 +1035,7 @@ function ThornieDungeons() {
         setBusy(false);
       } else {
         setLog("Couldn't escape!");
-        setTimeout(() => runQueueAfterPlayer(), 500);
+        setTimeout(() => runQueueAfterPlayer(), combatDelay(500));
       }
     }
   }
@@ -1151,10 +1161,10 @@ function ThornieDungeons() {
         setLog(`${pet.name} uses ${skill.name} on You!`);
       }
       setPetAnim("");
-      setTimeout(() => cb(), 280);
+      setTimeout(() => cb(), combatDelay(280));
     // 3 attack frames at 120ms each, followed by a brief final-frame hold.
     // The previous 220ms window reset to idle before the sequence was clearly visible.
-    }, 420);
+    }, combatDelay(420));
   }
   function doMonsterAction(m, cb) {
     if (combatOutcomeRef.current) {
@@ -1248,7 +1258,7 @@ function ThornieDungeons() {
       setPetAnim("");
       cb();
     // 3 attack frames at 120ms each, followed by a brief final-frame hold.
-    }, 420);
+    }, combatDelay(420));
   }
   function tickPlayerBuffs() {
     setPlayer(p => {
@@ -2049,7 +2059,9 @@ function ThornieDungeons() {
     equipped: equipped,
     petCombat: petCombat,
     turnQueue: turnQueue,
-    activeTurnKey: activeTurnKey
+    activeTurnKey: activeTurnKey,
+    combatSpeed: combatSpeed,
+    onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,

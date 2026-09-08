@@ -353,7 +353,8 @@ function HeroOverlayComposer({
   selection = {},
   canvasWidth = 96,
   canvasHeight = 96,
-  anim = ""
+  anim = "",
+  playbackRate = 1
 }) {
   const config = getHeroV3Config(characterId);
   const [attackFrameIndex, setAttackFrameIndex] = React.useState(0);
@@ -386,10 +387,10 @@ function HeroOverlayComposer({
       nextFrame += 1;
       setAttackFrameIndex(Math.min(nextFrame, attackFrameCount - 1));
       if (nextFrame >= attackFrameCount - 1) clearInterval(timer);
-    }, Number(config?.attackFrameMs || 105));
+    }, Math.max(40, Number(config?.attackFrameMs || 105) / Math.max(1, playbackRate)));
 
     return () => clearInterval(timer);
-  }, [anim, attackFrameCount, config?.attackFrameMs]);
+  }, [anim, attackFrameCount, config?.attackFrameMs, playbackRate]);
 
   const layers = resolveHeroV3Layers(characterId, selection, anim, attackFrameIndex);
   if (!config || !layers?.some(layer => layer.name === "base")) return null;

@@ -2018,7 +2018,8 @@ function HeroSprite({
   anim,
   equipped = {},
   showName = true,
-  label = "You"
+  label = "You",
+  combatSpeed = 1
 }) {
   // Hero V3 only: one approved Base Hero plus transparent overlay equipment.
   // The old skeletal rig and legacy core.neutral paths have been removed.
@@ -2026,7 +2027,8 @@ function HeroSprite({
     ? /*#__PURE__*/React.createElement(HeroOverlayComposer, {
       characterId: "hero001",
       selection: heroVisualSelectionFromEquipment(equipped),
-      anim: anim || ""
+      anim: anim || "",
+      playbackRate: combatSpeed
     })
     : /*#__PURE__*/React.createElement("div", {
         className: `md-hero ${anim || ""}`
@@ -2052,7 +2054,8 @@ function EnemySprite({
   enemy,
   anim,
   selected,
-  onClick
+  onClick,
+  combatSpeed = 1
 }) {
   const spriteConfig = getMonsterSpriteConfig(enemy);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
@@ -2064,7 +2067,7 @@ function EnemySprite({
         anim: anim || "",
         dead,
         // Match the combat action window so all three attack frames are readable.
-        attackFrameMs: 120,
+        attackFrameMs: 120 / combatSpeed,
         className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
         alt: enemy.name
       })
@@ -2091,7 +2094,17 @@ function EnemySprite({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), spriteVisual || /*#__PURE__*/React.createElement("div", {
+  }, enemy.hp, "/", enemy.maxHp)), (enemy.isEliteBoss || enemy.frozenTurns > 0 || enemy.poisonTurns > 0) && /*#__PURE__*/React.createElement("div", {
+    className: "md-unit-status",
+    "aria-label": "Enemy status effects"
+  }, enemy.isEliteBoss && /*#__PURE__*/React.createElement("span", {
+    className: "elite",
+    title: "Elite Boss"
+  }, "👑 ELITE"), enemy.frozenTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `Frozen · ${enemy.frozenTurns} turn(s)`
+  }, "❄️", enemy.frozenTurns), enemy.poisonTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `Poison · ${enemy.poisonTurns} turn(s)`
+  }, "☠️", enemy.poisonTurns)), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
@@ -2104,10 +2117,10 @@ function EnemySprite({
     className: "eye r"
   }))), /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-name"
-  }, enemy.name, enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : ""));
+  }, enemy.name));
 }
 
-function PetCombatSprite({ pet, anim }) {
+function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
   const dead = pet.hp <= 0;
   const hpPct = Math.max(0, Math.min(100, pet.hp / pet.maxHp * 100));
   const spriteConfig = getPetSpriteConfig(pet.defId);
@@ -2119,7 +2132,7 @@ function PetCombatSprite({ pet, anim }) {
         dead,
         // Keep all three attack frames visible long enough to read in combat.
         // The pet action state is held for 420ms in App.js.
-        attackFrameMs: 120,
+        attackFrameMs: 120 / combatSpeed,
         className: `md-enemy-img md-pet-img ${anim || ""}`,
         alt: pet.name
       })
@@ -2137,7 +2150,17 @@ function PetCombatSprite({ pet, anim }) {
     style: { width: `${hpPct}%` }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, pet.hp, "/", pet.maxHp)), spriteVisual || /*#__PURE__*/React.createElement("div", {
+  }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
+    className: "md-unit-status pet",
+    "aria-label": "Pet status"
+  }, pet.atkBuffTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `ATK Up · ${pet.atkBuffTurns} turn(s)`
+  }, "⚔️", pet.atkBuffTurns), pet.defBuffTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `DEF Up · ${pet.defBuffTurns} turn(s)`
+  }, "🛡️", pet.defBuffTurns), /*#__PURE__*/React.createElement("span", {
+    className: pet.cooldown > 0 ? "cooldown" : "ready",
+    title: pet.active && pet.active.desc
+  }, pet.cooldown > 0 ? `CD ${pet.cooldown}` : "READY")), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${anim || ""}`,
     style: { display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, background: "none", border: "none" }
   }, pet.icon), /*#__PURE__*/React.createElement("div", {
@@ -2145,8 +2168,9 @@ function PetCombatSprite({ pet, anim }) {
   }, pet.name, dead ? " 💤" : ""));
 }
 
-// Turn Order Queue UI: shows every unit's planned action order for the current round,
-// sorted by Speed (AGI), so the player can plan around who acts before whom.
+// Four fixed ATB cells occupy the middle four sixths of the combat header. When
+// an action is resolving, the window follows the active unit so upcoming turns
+// remain readable even in a five-unit battle (hero + pet + three monsters).
 function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
   const visible = queue.filter(item => {
     if (item.kind === "monster") {
@@ -2158,9 +2182,20 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
     }
     return true;
   });
+  const activeIndex = Math.max(0, visible.findIndex(item => item.key === activeKey));
+  const ordered = visible.slice(activeIndex);
+  const overflow = Math.max(0, ordered.length - 4);
+  const slots = Array.from({ length: 4 }, (_, index) => ordered[index] || null);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-turn-queue"
-  }, visible.map((item, i) => {
+  }, slots.map((item, i) => {
+    if (!item) return /*#__PURE__*/React.createElement("div", {
+      key: `empty-${i}`,
+      className: "md-turn-queue-item empty",
+      title: "Empty ATB slot"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "md-turn-queue-icon"
+    }, "·"));
     const isActive = activeKey === item.key;
     return /*#__PURE__*/React.createElement("div", {
       key: item.key,
@@ -2168,9 +2203,9 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
       title: `${item.name} · Speed ${item.speed}`
     }, /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-icon"
-    }, item.icon), i < visible.length - 1 && /*#__PURE__*/React.createElement("span", {
-      className: "md-turn-queue-arrow"
-    }, "›"));
+    }, item.icon), i === 3 && overflow > 0 && /*#__PURE__*/React.createElement("i", {
+      className: "md-turn-queue-more"
+    }, "+", overflow));
   }));
 }
 function CombatScreen({
@@ -2192,9 +2227,10 @@ function CombatScreen({
   equipped,
   petCombat,
   turnQueue,
-  activeTurnKey
+  activeTurnKey,
+  combatSpeed,
+  onCycleCombatSpeed
 }) {
-  const [showMore, setShowMore] = useState(false);
   const [editSlots, setEditSlots] = useState(false);
   const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [autoRun, setAutoRun] = useState(false);
@@ -2223,12 +2259,11 @@ function CombatScreen({
   function useQuickSlot(i) {
     const entry = qs[i];
     if (editSlots) {
-      onClearQuickSlot(i);
+      setAssignSlotIndex(i);
       return;
     }
     if (!entry) {
       setAssignSlotIndex(i);
-      setShowMore(false);
       return;
     }
     if (entry.kind === "skill") onAction("skill", entry.key);else onAction("item", entry.potionId);
@@ -2241,37 +2276,44 @@ function CombatScreen({
     // Auto Run: keep throwing basic attacks on its own while enabled, as long
     // as we're not mid-animation and no picker is open (so a manual pick doesn't
     // get raced by an auto attack).
-    if (!autoRun || busy || showMore || assignSlotIndex !== null) return;
-    const t = setTimeout(() => onAction("attack"), 550);
+    if (!autoRun || busy || assignSlotIndex !== null) return;
+    const t = setTimeout(() => onAction("attack"), Math.round(550 / (combatSpeed || 1)));
     return () => clearTimeout(t);
-  }, [autoRun, busy, showMore, assignSlotIndex, onAction]);
+  }, [autoRun, busy, assignSlotIndex, onAction, combatSpeed]);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-scene battle-bg"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-battle-top"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-lv"
-  }, player.level), /*#__PURE__*/React.createElement("div", {
+    className: "md-combat-stats"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-combat-level"
+  }, "LV ", player.level), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row"
-  }, "❤️ ", player.hp, "/", stats.maxHp), /*#__PURE__*/React.createElement("div", {
+  }, "HP ", player.hp, "/", stats.maxHp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row"
-  }, "💧 ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
+  }, "SP ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row xp"
-  }, "⭐ EXP ", Math.floor(xpPct), "%")), petCombat && /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-pet",
-    title: petCombat.active && petCombat.active.desc
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-hud-pet-icon"
-  }, petCombat.icon), /*#__PURE__*/React.createElement("span", {
-    className: `md-hud-pet-cd ${petCombat.cooldown > 0 ? "" : "ready"}`
-  }, petCombat.cooldown > 0 ? `CD ${petCombat.cooldown}` : "Ready"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
+  }, "EXP ", Math.floor(xpPct), "%"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue || [],
     activeKey: activeTurnKey,
     monsters: monsters,
     petCombat: petCombat
-  }), bossOrModifier && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "md-combat-top-actions"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-combat-speed",
+    disabled: busy,
+    title: "เปลี่ยนความเร็วการต่อสู้",
+    onClick: onCycleCombatSpeed
+  }, "×", combatSpeed || 1), /*#__PURE__*/React.createElement("button", {
+    className: "md-combat-skip",
+    disabled: busy,
+    title: "ข้ามเทิร์นของฮีโร่",
+    onClick: () => onAction("skip")
+  }, "SKIP"))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
@@ -2292,18 +2334,9 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "relative",
-      display: "flex",
-      flexDirection: "column",
-      flexWrap: "nowrap",
-      gap: 6,
-      alignItems: "center",
-      minWidth: 0,
-      flexShrink: 0
-    }
+    className: "md-party-board"
   }, /*#__PURE__*/React.createElement("div", {
-    style: { position: "relative" }
+    className: "md-hero-slot"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar hero"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2317,41 +2350,38 @@ function CombatScreen({
     className: "md-enemy-hpbar-hp"
   }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim,
-    equipped: equipped
+    equipped: equipped,
+    combatSpeed: combatSpeed
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      top: -6,
-      left: "50%",
-      transform: "translateX(-50%)",
-      fontSize: 11,
-      whiteSpace: "nowrap"
-    }
-  }, player.atkBuffTurns > 0 ? "⚔️+" : "", player.defBuffTurns > 0 ? "🛡️+" : "", player.regenTurns > 0 ? "💚" : ""), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
+    className: "md-unit-status hero",
+    "aria-label": "Hero status"
+  }, player.atkBuffTurns > 0 ? `⚔️${player.atkBuffTurns}` : "", player.defBuffTurns > 0 ? `🛡️${player.defBuffTurns}` : "", player.regenTurns > 0 ? `💚${player.regenTurns}` : ""), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {
       color: f.color
     }
   }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
-    style: { position: "relative", transform: "scale(0.65)" }
+    className: "md-pet-slot"
   }, /*#__PURE__*/React.createElement(PetCombatSprite, {
     pet: petCombat,
-    anim: petAnim
+    anim: petAnim,
+    combatSpeed: combatSpeed
   }), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: { color: f.color }
   }, f.text)))), /*#__PURE__*/React.createElement("div", {
-    className: "md-monster-board"
-  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`
+  }, monsters.map((m, monsterIndex) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
-    style: { position: "relative" }
+    className: `md-monster-slot md-monster-slot-${Math.min(monsterIndex, 2)} ${m.isEliteBoss ? "elite" : ""}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
     anim: enemyAnims[m.uid],
     selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
-    onClick: onSelectTarget
+    onClick: onSelectTarget,
+    combatSpeed: combatSpeed
   }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
@@ -2360,10 +2390,7 @@ function CombatScreen({
     }
   }, f.text)))))), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: `md-dock-auto ${autoRun ? "active" : ""}`,
-    onClick: () => setAutoRun(a => !a)
-  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-quickslot-bar battle"
   }, [0, 1, 2, 3].map(i => {
     const v = quickSlotVisual(qs[i]);
@@ -2376,11 +2403,7 @@ function CombatScreen({
     }, /*#__PURE__*/React.createElement("span", { className: "md-quickslot-icon" }, v.icon), v.badge != null && /*#__PURE__*/React.createElement("i", {
       className: "md-rail-badge"
     }, v.badge));
-  }), /*#__PURE__*/React.createElement("button", {
-    className: `md-quickslot-edit ${editSlots ? "active" : ""}`,
-    title: editSlots ? "เสร็จสิ้นการแก้ไข" : "แก้ไขช่อง (ลบไอเทม/สกิลออกจากช่อง)",
-    onClick: () => setEditSlots(v => !v)
-  }, editSlots ? "✓" : "✏️")), assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", {
+  })), assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", {
     className: "md-skill-popover quickslot-assign"
   }, /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-title" }, `เลือกไอเทม/สกิลสำหรับช่อง ${assignSlotIndex + 1}`), /*#__PURE__*/React.createElement("div", {
     className: "md-quickslot-popover-list"
@@ -2392,50 +2415,43 @@ function CombatScreen({
     key: `pt-${p.id}`,
     className: "md-quickslot-popover-item",
     onClick: () => assignTo(assignSlotIndex, { kind: "potion", potionId: p.id })
-  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))), skills.length === 0 && potionStacks.length === 0 && /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "ยังไม่มีสกิลหรือโพชั่น")), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))), skills.length === 0 && potionStacks.length === 0 && /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "ยังไม่มีสกิลหรือโพชั่น")), qs[assignSlotIndex] && /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee small",
+    onClick: () => {
+      onClearQuickSlot(assignSlotIndex);
+      setAssignSlotIndex(null);
+    },
+    style: { boxShadow: "none", marginTop: 6 }
+  }, "ล้างช่อง"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee small",
     onClick: () => setAssignSlotIndex(null),
     style: { boxShadow: "none", marginTop: 6 }
-  }, "ปิด")), /*#__PURE__*/React.createElement("button", {
+  }, "ปิด")), /*#__PURE__*/React.createElement("div", {
+    className: "md-dock-side-controls"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: `md-dock-auto ${autoRun ? "active" : ""}`,
+    onClick: () => setAutoRun(a => !a)
+  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
+    className: "md-dock-half-row"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-dock-mini flee",
+    disabled: busy,
+    title: "หลบหนีจากการต่อสู้",
+    onClick: () => onAction("flee")
+  }, "🏃"), /*#__PURE__*/React.createElement("button", {
+    className: `md-dock-mini settings ${editSlots ? "active" : ""}`,
+    title: editSlots ? "เสร็จสิ้นการตั้งค่า Quick Slot" : "ตั้งค่า Quick Slot",
+    onClick: () => {
+      setAssignSlotIndex(null);
+      setEditSlots(v => !v);
+    }
+  }, editSlots ? "✓" : "⚙️"))), /*#__PURE__*/React.createElement("button", {
     className: "md-dock-attack",
     disabled: busy,
     onClick: () => {
-      setShowMore(false);
       onAction("attack");
     }
-  }, "👊"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "relative"
-    }
-  }, showMore && /*#__PURE__*/React.createElement("div", {
-    className: "md-skill-popover more"
-  }, /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-list" }, skills.map((s, i) => /*#__PURE__*/React.createElement("button", {
-    key: s.key,
-    className: "md-quickslot-popover-item",
-    disabled: busy || player.mp < s.mp,
-    title: `${s.name} (${s.mp}mp) — ${s.desc}`,
-    onClick: () => {
-      setShowMore(false);
-      onAction("skill", s.key);
-    }
-  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "MP ", s.mp))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
-    key: p.id,
-    className: "md-quickslot-popover-item",
-    disabled: busy,
-    title: p.desc,
-    onClick: () => {
-      setShowMore(false);
-      onAction("item", p.id);
-    }
-  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))))), /*#__PURE__*/React.createElement("button", {
-    className: "md-dock-circle skill",
-    disabled: busy || skills.length === 0 && potionStacks.length === 0,
-    onClick: () => setShowMore(v => !v)
-  }, "☰")), /*#__PURE__*/React.createElement("button", {
-    className: "md-dock-circle flee",
-    disabled: busy,
-    onClick: () => onAction("flee")
-  }, "🏃"))), /*#__PURE__*/React.createElement("div", {
+  }, "👊"))), /*#__PURE__*/React.createElement("div", {
     className: "md-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-log"

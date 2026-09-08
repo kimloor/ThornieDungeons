@@ -48,7 +48,7 @@ URL has been verified to serve the intended index.html revision consistently.
   .md-enemy-img.md-pet-img { width: 64px !important; height: 64px !important; }
   .md-enemy { width: 84px !important; height: 84px !important; }
   .md-enemy.boss { width: 110px !important; height: 110px !important; }
-  .md-monster-board { gap: 5px !important; max-width: 128px; flex-shrink: 0; }
+  .md-monster-board { max-width: none !important; }
   .md-monster-board .md-sprite-wrap { transform: scale(.92) !important; transform-origin: bottom center !important; }
 
   /* Smaller phones: keep the 3-monster stack inside the arena. */
@@ -57,7 +57,7 @@ URL has been verified to serve the intended index.html revision consistently.
     .md-enemy-img.boss { width: 104px !important; height: 104px !important; }
     .md-enemy { width: 80px !important; height: 80px !important; }
     .md-enemy.boss { width: 104px !important; height: 104px !important; }
-    .md-monster-board { gap: 3px !important; max-width: 116px; }
+    .md-monster-board { max-width: none !important; }
     .md-monster-board .md-sprite-wrap { transform: scale(.86) !important; }
   }
 </style>
@@ -1000,8 +1000,7 @@ const STYLE = `
 .md-floor-chip.locked { opacity: 0.45; cursor: not-allowed; }
 .md-floor-chip .sub { display:block; font-size: 9px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
 .md-map-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.md-monster-board { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 8px; align-items: flex-end; justify-content: flex-end; }
-.md-monster-board .md-sprite-wrap { transform: scale(0.82); transform-origin: bottom center; }
+.md-monster-board .md-sprite-wrap { transform: scale(0.92); transform-origin: center center; }
 
 /* floating quick-access buttons (shop / character / bag) */
 .md-fab-stack {
@@ -1065,7 +1064,37 @@ const STYLE = `
   border-top: 3px solid rgba(78,190,236,.58);
   opacity: .78;
 }
-.md-scene.battle-bg .md-arena { padding: 6px 6px 18px; }
+.md-scene.battle-bg .md-arena { padding: 6px 6px 18px; min-height: 390px; overflow: visible; }
+
+/* Battlefield anchors use percentages of the arena itself. This keeps the formation stable
+   across phone widths while leaving room for the Hero's widest wing overlays. */
+.md-party-board,
+.md-monster-board { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.md-hero-slot,
+.md-pet-slot,
+.md-monster-slot { position: absolute; pointer-events: auto; }
+.md-hero-slot { left: 21%; top: 54%; transform: translate(-50%, -50%); }
+.md-pet-slot { left: 13%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
+
+/* One enemy takes the middle lane; two enemies straddle it. Three enemies use an evenly
+   spaced diagonal: (83%,77%) -> (77%,64.5%) -> (71%,52%). */
+.md-monster-count-1 .md-monster-slot-0 { left: 77%; top: 64.5%; }
+.md-monster-count-2 .md-monster-slot-0 { left: 81%; top: 72%; }
+.md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 57%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 77%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 64.5%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 52%; }
+.md-monster-slot { transform: translate(-50%, -50%); }
+.md-monster-slot-0 { z-index: 3; }
+.md-monster-slot-1 { z-index: 2; }
+.md-monster-slot-2 { z-index: 1; }
+.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 64%; }
+
+@media (max-width: 380px) {
+  .md-scene.battle-bg .md-arena { min-height: 360px; }
+  .md-hero-slot { left: 22%; top: 53%; }
+  .md-pet-slot { left: 13%; top: 76%; transform: translate(-50%, -50%) scale(0.61); }
+}
 
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
 .md-battle-top {
@@ -1194,6 +1223,92 @@ const STYLE = `
 .md-quickslot-popover-item:active { transform: translateY(1px); }
 .md-quickslot-popover-item:disabled { opacity: 0.4; cursor: not-allowed; }
 .md-quickslot-popover-sub { color: var(--ink-soft); font-size: 10.5px; font-weight: 800; flex-shrink: 0; }
+
+/* ---- Combat layout V2: six-part header + Quick Slot dock ---- */
+.md-scene.battle-bg { padding-top: 8px; }
+.md-battle-top {
+  display: grid; grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)) .9fr;
+  align-items: stretch; gap: 0; padding: 0; min-height: 58px; overflow: hidden;
+}
+.md-combat-stats {
+  grid-column: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;
+  padding: 5px 6px; border-right: 1px solid rgba(255,209,102,.28);
+  background: linear-gradient(180deg, rgba(255,209,102,.09), rgba(0,0,0,.08));
+}
+.md-combat-level { color: var(--gold); font: 800 8px/1 'Baloo 2'; letter-spacing: .5px; margin-bottom: 2px; }
+.md-combat-stats .md-hud-text { gap: 0; }
+.md-combat-stats .md-hud-text-row { font-size: 8px; line-height: 1.35; }
+.md-combat-stats .md-hud-text-row.xp { font-size: 7.5px; }
+.md-turn-queue {
+  grid-column: 2 / span 4; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent;
+}
+.md-turn-queue-item {
+  position: relative; display: flex; align-items: center; justify-content: center; opacity: .65;
+  border-right: 1px solid rgba(255,209,102,.22); transform: none;
+}
+.md-turn-queue-item.active { opacity: 1; transform: none; background: rgba(255,209,102,.09); }
+.md-turn-queue-item.empty { opacity: .2; }
+.md-turn-queue-icon { width: 28px; height: 28px; font-size: 15px; }
+.md-turn-queue-item.active .md-turn-queue-icon { transform: scale(1.12); box-shadow: 0 0 0 2px var(--gold-glow), 0 0 12px rgba(255,209,102,.3); }
+.md-turn-queue-more {
+  position: absolute; right: 2px; bottom: 2px; min-width: 14px; padding: 0 3px; border-radius: 8px;
+  background: var(--violet-deep); color: #fff; font: 800 7px/14px 'Baloo 2'; text-align: center;
+}
+.md-combat-top-actions {
+  grid-column: 6; display: grid; grid-template-rows: 1fr 1fr; min-width: 0;
+  background: rgba(0,0,0,.16);
+}
+.md-combat-speed, .md-combat-skip {
+  min-width: 0; padding: 0 2px; border: 0; border-bottom: 1px solid rgba(255,209,102,.22);
+  background: transparent; color: var(--gold); font: 800 10px/1 'Baloo 2'; cursor: pointer;
+}
+.md-combat-skip { border-bottom: 0; color: var(--ink-soft); font-size: 7.5px; letter-spacing: .25px; }
+.md-combat-speed:disabled, .md-combat-skip:disabled { opacity: .38; cursor: not-allowed; }
+
+.md-unit-status {
+  min-height: 16px; display: flex; align-items: center; justify-content: center; gap: 3px;
+  color: #fff; font: 800 8px/1 'Baloo 2'; white-space: nowrap; text-shadow: 0 1px 2px #000;
+}
+.md-unit-status span {
+  display: inline-flex; align-items: center; gap: 1px; min-height: 15px; padding: 1px 4px;
+  border: 1px solid rgba(255,255,255,.2); border-radius: 7px; background: rgba(10,6,22,.76);
+}
+.md-unit-status .ready { color: #8ee0a8; border-color: rgba(142,224,168,.45); }
+.md-unit-status .cooldown { color: var(--ink-soft); }
+.md-unit-status .elite { color: var(--gold); border-color: rgba(255,209,102,.62); background: rgba(55,32,8,.86); }
+.md-unit-status.hero { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); z-index: 5; }
+
+.md-battle-dock {
+  display: grid; grid-template-columns: minmax(0, 1fr) 70px 68px; align-items: center;
+  justify-content: stretch; gap: 6px; padding: 7px 10px 0;
+}
+.md-quickslot-bar.battle { min-width: 0; justify-content: space-between; gap: 4px; }
+.md-dock-side-controls { display: grid; grid-template-rows: 30px 30px; gap: 4px; }
+.md-dock-side-controls .md-dock-auto { width: 100%; padding: 2px 4px; border-radius: 8px; font-size: 9px; }
+.md-dock-half-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.md-dock-mini {
+  min-width: 0; height: 30px; padding: 0; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,.92), rgba(28,18,8,.92));
+  color: #fff; font-size: 13px; box-shadow: 0 2px 0 rgba(0,0,0,.5);
+}
+.md-dock-mini.flee { border-color: #E14F4F; }
+.md-dock-mini.settings { border-color: var(--violet-deep); }
+.md-dock-mini.settings.active { border-color: #8ee0a8; color: #8ee0a8; }
+.md-dock-mini:disabled { opacity: .4; cursor: not-allowed; }
+.md-battle-dock .md-dock-attack { justify-self: end; transform: none; }
+.md-battle-dock .md-dock-attack:active { transform: translateY(2px); }
+
+@media (max-width: 380px) {
+  .md-battle-top { grid-template-columns: 1.45fr repeat(4, minmax(0, 1fr)) .9fr; min-height: 54px; }
+  .md-turn-queue-icon { width: 24px; height: 24px; font-size: 13px; }
+  .md-combat-stats { padding-inline: 4px; }
+  .md-combat-stats .md-hud-text-row { font-size: 7px; }
+  .md-battle-dock { grid-template-columns: minmax(0, 1fr) 64px 62px; padding-inline: 6px; gap: 4px; }
+  .md-quickslot-bar.battle { gap: 3px; }
+  .md-quickslot-btn { width: 32px; height: 36px; border-radius: 10px; font-size: 15px; }
+  .md-battle-dock .md-dock-attack { width: 62px; height: 62px; }
+}
 
 /* quick slot panel inside the Inventory sheet */
 .md-quickslot-panel { margin: 4px 0 10px; padding: 8px 10px; border-radius: 14px; border: 1.5px solid var(--gold-deep); background: rgba(0,0,0,0.22); position: relative; }
@@ -1935,7 +2050,8 @@ function HeroOverlayComposer({
   selection = {},
   canvasWidth = 96,
   canvasHeight = 96,
-  anim = ""
+  anim = "",
+  playbackRate = 1
 }) {
   const config = getHeroV3Config(characterId);
   const [attackFrameIndex, setAttackFrameIndex] = React.useState(0);
@@ -1968,10 +2084,10 @@ function HeroOverlayComposer({
       nextFrame += 1;
       setAttackFrameIndex(Math.min(nextFrame, attackFrameCount - 1));
       if (nextFrame >= attackFrameCount - 1) clearInterval(timer);
-    }, Number(config?.attackFrameMs || 105));
+    }, Math.max(40, Number(config?.attackFrameMs || 105) / Math.max(1, playbackRate)));
 
     return () => clearInterval(timer);
-  }, [anim, attackFrameCount, config?.attackFrameMs]);
+  }, [anim, attackFrameCount, config?.attackFrameMs, playbackRate]);
 
   const layers = resolveHeroV3Layers(characterId, selection, anim, attackFrameIndex);
   if (!config || !layers?.some(layer => layer.name === "base")) return null;
@@ -4245,6 +4361,9 @@ function ThornieDungeons() {
   // a short scrolling history instead of overwriting a single line.
   const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
   const [busy, setBusy] = useState(false);
+  // Combat presentation speed. x1 keeps authored frame timing; x2 shortens the
+  // action windows without changing damage, turn order, or cooldown rules.
+  const [combatSpeed, setCombatSpeed] = useState(1);
   // Separate lock for item-mutating actions (Enhance/Empower/Reroll/Salvage/Sell/Equip/BuyMaterial).
   // itemActionLockRef is checked+set *synchronously* so a rapid second click can never slip in
   // and run against a stale `save`/`inventory` closure before the first click's state has
@@ -5034,6 +5153,10 @@ function ThornieDungeons() {
     return [items[0], ...rest];
   }
 
+  function combatDelay(ms) {
+    return Math.max(60, Math.round(ms / combatSpeed));
+  }
+
   function playerTurn(action, skillKey) {
     if (busy || !player) return;
     const target = getTargetMonster();
@@ -5046,7 +5169,10 @@ function ThornieDungeons() {
     setTurnQueue(roundQueue);
     turnQueueRef.current = roundQueue;
     setActiveTurnKey("player");
-    if (action === "attack") {
+    if (action === "skip") {
+      setLog("You wait and let the next unit act.");
+      setTimeout(() => runQueueAfterPlayer(), combatDelay(220));
+    } else if (action === "attack") {
       const isMiss = Math.random() * 100 >= stats.accuracy;
       const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
       let dmg = Math.max(2, Math.round(stats.atk - target.def * 0.6 + (Math.random() * 4 - 2)));
@@ -5066,8 +5192,8 @@ function ThornieDungeons() {
           setLog(isCrit ? `You land a CRITICAL hit on ${target.name} for ${dmg}!` : `You attack ${target.name} for ${dmg}!`);
         }
         setHeroAnim("");
-        setTimeout(() => runQueueAfterPlayer(), 350);
-      }, 300);
+        setTimeout(() => runQueueAfterPlayer(), combatDelay(350));
+      }, combatDelay(420));
     } else if (action === "skill") {
       const baseSkill = SKILLS.find(s => s.key === skillKey);
       const skill = baseSkill ? skillAtLevel(baseSkill, committedSkillLevel(save, skillKey)) : null;
@@ -5171,8 +5297,8 @@ function ThornieDungeons() {
           setLog(petAlive ? `You cast ${skill.name}! DEF increased for you and your pet, ${skill.turns} turns.` : `You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
         }
         setHeroAnim("");
-        setTimeout(() => runQueueAfterPlayer(), 350);
-      }, 300);
+        setTimeout(() => runQueueAfterPlayer(), combatDelay(350));
+      }, combatDelay(420));
     } else if (action === "item") {
       const potionId = skillKey;
       const def = getPotionDef(potionId);
@@ -5208,7 +5334,7 @@ function ThornieDungeons() {
         });
         setLog(`You drink a ${def.name} and recover SP.`);
       }
-      setTimeout(() => runQueueAfterPlayer(), 500);
+      setTimeout(() => runQueueAfterPlayer(), combatDelay(500));
     } else if (action === "flee") {
       const success = Math.random() < 0.55;
       if (success) {
@@ -5223,7 +5349,7 @@ function ThornieDungeons() {
         setBusy(false);
       } else {
         setLog("Couldn't escape!");
-        setTimeout(() => runQueueAfterPlayer(), 500);
+        setTimeout(() => runQueueAfterPlayer(), combatDelay(500));
       }
     }
   }
@@ -5349,10 +5475,10 @@ function ThornieDungeons() {
         setLog(`${pet.name} uses ${skill.name} on You!`);
       }
       setPetAnim("");
-      setTimeout(() => cb(), 280);
+      setTimeout(() => cb(), combatDelay(280));
     // 3 attack frames at 120ms each, followed by a brief final-frame hold.
     // The previous 220ms window reset to idle before the sequence was clearly visible.
-    }, 420);
+    }, combatDelay(420));
   }
   function doMonsterAction(m, cb) {
     if (combatOutcomeRef.current) {
@@ -5446,7 +5572,7 @@ function ThornieDungeons() {
       setPetAnim("");
       cb();
     // 3 attack frames at 120ms each, followed by a brief final-frame hold.
-    }, 420);
+    }, combatDelay(420));
   }
   function tickPlayerBuffs() {
     setPlayer(p => {
@@ -6247,7 +6373,9 @@ function ThornieDungeons() {
     equipped: equipped,
     petCombat: petCombat,
     turnQueue: turnQueue,
-    activeTurnKey: activeTurnKey
+    activeTurnKey: activeTurnKey,
+    combatSpeed: combatSpeed,
+    onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,
@@ -8332,7 +8460,8 @@ function HeroSprite({
   anim,
   equipped = {},
   showName = true,
-  label = "You"
+  label = "You",
+  combatSpeed = 1
 }) {
   // Hero V3 only: one approved Base Hero plus transparent overlay equipment.
   // The old skeletal rig and legacy core.neutral paths have been removed.
@@ -8340,7 +8469,8 @@ function HeroSprite({
     ? /*#__PURE__*/React.createElement(HeroOverlayComposer, {
       characterId: "hero001",
       selection: heroVisualSelectionFromEquipment(equipped),
-      anim: anim || ""
+      anim: anim || "",
+      playbackRate: combatSpeed
     })
     : /*#__PURE__*/React.createElement("div", {
         className: `md-hero ${anim || ""}`
@@ -8366,7 +8496,8 @@ function EnemySprite({
   enemy,
   anim,
   selected,
-  onClick
+  onClick,
+  combatSpeed = 1
 }) {
   const spriteConfig = getMonsterSpriteConfig(enemy);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
@@ -8378,7 +8509,7 @@ function EnemySprite({
         anim: anim || "",
         dead,
         // Match the combat action window so all three attack frames are readable.
-        attackFrameMs: 120,
+        attackFrameMs: 120 / combatSpeed,
         className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
         alt: enemy.name
       })
@@ -8405,7 +8536,17 @@ function EnemySprite({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), spriteVisual || /*#__PURE__*/React.createElement("div", {
+  }, enemy.hp, "/", enemy.maxHp)), (enemy.isEliteBoss || enemy.frozenTurns > 0 || enemy.poisonTurns > 0) && /*#__PURE__*/React.createElement("div", {
+    className: "md-unit-status",
+    "aria-label": "Enemy status effects"
+  }, enemy.isEliteBoss && /*#__PURE__*/React.createElement("span", {
+    className: "elite",
+    title: "Elite Boss"
+  }, "👑 ELITE"), enemy.frozenTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `Frozen · ${enemy.frozenTurns} turn(s)`
+  }, "❄️", enemy.frozenTurns), enemy.poisonTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `Poison · ${enemy.poisonTurns} turn(s)`
+  }, "☠️", enemy.poisonTurns)), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
@@ -8418,10 +8559,10 @@ function EnemySprite({
     className: "eye r"
   }))), /*#__PURE__*/React.createElement("div", {
     className: "md-sprite-name"
-  }, enemy.name, enemy.frozenTurns > 0 ? " ❄️" : "", enemy.poisonTurns > 0 ? " ☠️" : ""));
+  }, enemy.name));
 }
 
-function PetCombatSprite({ pet, anim }) {
+function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
   const dead = pet.hp <= 0;
   const hpPct = Math.max(0, Math.min(100, pet.hp / pet.maxHp * 100));
   const spriteConfig = getPetSpriteConfig(pet.defId);
@@ -8433,7 +8574,7 @@ function PetCombatSprite({ pet, anim }) {
         dead,
         // Keep all three attack frames visible long enough to read in combat.
         // The pet action state is held for 420ms in App.js.
-        attackFrameMs: 120,
+        attackFrameMs: 120 / combatSpeed,
         className: `md-enemy-img md-pet-img ${anim || ""}`,
         alt: pet.name
       })
@@ -8451,7 +8592,17 @@ function PetCombatSprite({ pet, anim }) {
     style: { width: `${hpPct}%` }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, pet.hp, "/", pet.maxHp)), spriteVisual || /*#__PURE__*/React.createElement("div", {
+  }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
+    className: "md-unit-status pet",
+    "aria-label": "Pet status"
+  }, pet.atkBuffTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `ATK Up · ${pet.atkBuffTurns} turn(s)`
+  }, "⚔️", pet.atkBuffTurns), pet.defBuffTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `DEF Up · ${pet.defBuffTurns} turn(s)`
+  }, "🛡️", pet.defBuffTurns), /*#__PURE__*/React.createElement("span", {
+    className: pet.cooldown > 0 ? "cooldown" : "ready",
+    title: pet.active && pet.active.desc
+  }, pet.cooldown > 0 ? `CD ${pet.cooldown}` : "READY")), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${anim || ""}`,
     style: { display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, background: "none", border: "none" }
   }, pet.icon), /*#__PURE__*/React.createElement("div", {
@@ -8459,8 +8610,9 @@ function PetCombatSprite({ pet, anim }) {
   }, pet.name, dead ? " 💤" : ""));
 }
 
-// Turn Order Queue UI: shows every unit's planned action order for the current round,
-// sorted by Speed (AGI), so the player can plan around who acts before whom.
+// Four fixed ATB cells occupy the middle four sixths of the combat header. When
+// an action is resolving, the window follows the active unit so upcoming turns
+// remain readable even in a five-unit battle (hero + pet + three monsters).
 function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
   const visible = queue.filter(item => {
     if (item.kind === "monster") {
@@ -8472,9 +8624,20 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
     }
     return true;
   });
+  const activeIndex = Math.max(0, visible.findIndex(item => item.key === activeKey));
+  const ordered = visible.slice(activeIndex);
+  const overflow = Math.max(0, ordered.length - 4);
+  const slots = Array.from({ length: 4 }, (_, index) => ordered[index] || null);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-turn-queue"
-  }, visible.map((item, i) => {
+  }, slots.map((item, i) => {
+    if (!item) return /*#__PURE__*/React.createElement("div", {
+      key: `empty-${i}`,
+      className: "md-turn-queue-item empty",
+      title: "Empty ATB slot"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "md-turn-queue-icon"
+    }, "·"));
     const isActive = activeKey === item.key;
     return /*#__PURE__*/React.createElement("div", {
       key: item.key,
@@ -8482,9 +8645,9 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
       title: `${item.name} · Speed ${item.speed}`
     }, /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-icon"
-    }, item.icon), i < visible.length - 1 && /*#__PURE__*/React.createElement("span", {
-      className: "md-turn-queue-arrow"
-    }, "›"));
+    }, item.icon), i === 3 && overflow > 0 && /*#__PURE__*/React.createElement("i", {
+      className: "md-turn-queue-more"
+    }, "+", overflow));
   }));
 }
 function CombatScreen({
@@ -8506,9 +8669,10 @@ function CombatScreen({
   equipped,
   petCombat,
   turnQueue,
-  activeTurnKey
+  activeTurnKey,
+  combatSpeed,
+  onCycleCombatSpeed
 }) {
-  const [showMore, setShowMore] = useState(false);
   const [editSlots, setEditSlots] = useState(false);
   const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [autoRun, setAutoRun] = useState(false);
@@ -8537,12 +8701,11 @@ function CombatScreen({
   function useQuickSlot(i) {
     const entry = qs[i];
     if (editSlots) {
-      onClearQuickSlot(i);
+      setAssignSlotIndex(i);
       return;
     }
     if (!entry) {
       setAssignSlotIndex(i);
-      setShowMore(false);
       return;
     }
     if (entry.kind === "skill") onAction("skill", entry.key);else onAction("item", entry.potionId);
@@ -8555,37 +8718,44 @@ function CombatScreen({
     // Auto Run: keep throwing basic attacks on its own while enabled, as long
     // as we're not mid-animation and no picker is open (so a manual pick doesn't
     // get raced by an auto attack).
-    if (!autoRun || busy || showMore || assignSlotIndex !== null) return;
-    const t = setTimeout(() => onAction("attack"), 550);
+    if (!autoRun || busy || assignSlotIndex !== null) return;
+    const t = setTimeout(() => onAction("attack"), Math.round(550 / (combatSpeed || 1)));
     return () => clearTimeout(t);
-  }, [autoRun, busy, showMore, assignSlotIndex, onAction]);
+  }, [autoRun, busy, assignSlotIndex, onAction, combatSpeed]);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-scene battle-bg"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-battle-top"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-lv"
-  }, player.level), /*#__PURE__*/React.createElement("div", {
+    className: "md-combat-stats"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-combat-level"
+  }, "LV ", player.level), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row"
-  }, "❤️ ", player.hp, "/", stats.maxHp), /*#__PURE__*/React.createElement("div", {
+  }, "HP ", player.hp, "/", stats.maxHp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row"
-  }, "💧 ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
+  }, "SP ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row xp"
-  }, "⭐ EXP ", Math.floor(xpPct), "%")), petCombat && /*#__PURE__*/React.createElement("div", {
-    className: "md-hud-pet",
-    title: petCombat.active && petCombat.active.desc
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-hud-pet-icon"
-  }, petCombat.icon), /*#__PURE__*/React.createElement("span", {
-    className: `md-hud-pet-cd ${petCombat.cooldown > 0 ? "" : "ready"}`
-  }, petCombat.cooldown > 0 ? `CD ${petCombat.cooldown}` : "Ready"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
+  }, "EXP ", Math.floor(xpPct), "%"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue || [],
     activeKey: activeTurnKey,
     monsters: monsters,
     petCombat: petCombat
-  }), bossOrModifier && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "md-combat-top-actions"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-combat-speed",
+    disabled: busy,
+    title: "เปลี่ยนความเร็วการต่อสู้",
+    onClick: onCycleCombatSpeed
+  }, "×", combatSpeed || 1), /*#__PURE__*/React.createElement("button", {
+    className: "md-combat-skip",
+    disabled: busy,
+    title: "ข้ามเทิร์นของฮีโร่",
+    onClick: () => onAction("skip")
+  }, "SKIP"))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
@@ -8606,18 +8776,9 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
   }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "relative",
-      display: "flex",
-      flexDirection: "column",
-      flexWrap: "nowrap",
-      gap: 6,
-      alignItems: "center",
-      minWidth: 0,
-      flexShrink: 0
-    }
+    className: "md-party-board"
   }, /*#__PURE__*/React.createElement("div", {
-    style: { position: "relative" }
+    className: "md-hero-slot"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar hero"
   }, /*#__PURE__*/React.createElement("div", {
@@ -8631,41 +8792,38 @@ function CombatScreen({
     className: "md-enemy-hpbar-hp"
   }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim,
-    equipped: equipped
+    equipped: equipped,
+    combatSpeed: combatSpeed
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      top: -6,
-      left: "50%",
-      transform: "translateX(-50%)",
-      fontSize: 11,
-      whiteSpace: "nowrap"
-    }
-  }, player.atkBuffTurns > 0 ? "⚔️+" : "", player.defBuffTurns > 0 ? "🛡️+" : "", player.regenTurns > 0 ? "💚" : ""), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
+    className: "md-unit-status hero",
+    "aria-label": "Hero status"
+  }, player.atkBuffTurns > 0 ? `⚔️${player.atkBuffTurns}` : "", player.defBuffTurns > 0 ? `🛡️${player.defBuffTurns}` : "", player.regenTurns > 0 ? `💚${player.regenTurns}` : ""), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {
       color: f.color
     }
   }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
-    style: { position: "relative", transform: "scale(0.65)" }
+    className: "md-pet-slot"
   }, /*#__PURE__*/React.createElement(PetCombatSprite, {
     pet: petCombat,
-    anim: petAnim
+    anim: petAnim,
+    combatSpeed: combatSpeed
   }), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: { color: f.color }
   }, f.text)))), /*#__PURE__*/React.createElement("div", {
-    className: "md-monster-board"
-  }, monsters.map(m => /*#__PURE__*/React.createElement("div", {
+    className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`
+  }, monsters.map((m, monsterIndex) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
-    style: { position: "relative" }
+    className: `md-monster-slot md-monster-slot-${Math.min(monsterIndex, 2)} ${m.isEliteBoss ? "elite" : ""}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
     anim: enemyAnims[m.uid],
     selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
-    onClick: onSelectTarget
+    onClick: onSelectTarget,
+    combatSpeed: combatSpeed
   }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
@@ -8674,10 +8832,7 @@ function CombatScreen({
     }
   }, f.text)))))), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: `md-dock-auto ${autoRun ? "active" : ""}`,
-    onClick: () => setAutoRun(a => !a)
-  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-quickslot-bar battle"
   }, [0, 1, 2, 3].map(i => {
     const v = quickSlotVisual(qs[i]);
@@ -8690,11 +8845,7 @@ function CombatScreen({
     }, /*#__PURE__*/React.createElement("span", { className: "md-quickslot-icon" }, v.icon), v.badge != null && /*#__PURE__*/React.createElement("i", {
       className: "md-rail-badge"
     }, v.badge));
-  }), /*#__PURE__*/React.createElement("button", {
-    className: `md-quickslot-edit ${editSlots ? "active" : ""}`,
-    title: editSlots ? "เสร็จสิ้นการแก้ไข" : "แก้ไขช่อง (ลบไอเทม/สกิลออกจากช่อง)",
-    onClick: () => setEditSlots(v => !v)
-  }, editSlots ? "✓" : "✏️")), assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", {
+  })), assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", {
     className: "md-skill-popover quickslot-assign"
   }, /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-title" }, `เลือกไอเทม/สกิลสำหรับช่อง ${assignSlotIndex + 1}`), /*#__PURE__*/React.createElement("div", {
     className: "md-quickslot-popover-list"
@@ -8706,50 +8857,43 @@ function CombatScreen({
     key: `pt-${p.id}`,
     className: "md-quickslot-popover-item",
     onClick: () => assignTo(assignSlotIndex, { kind: "potion", potionId: p.id })
-  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))), skills.length === 0 && potionStacks.length === 0 && /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "ยังไม่มีสกิลหรือโพชั่น")), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))), skills.length === 0 && potionStacks.length === 0 && /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "ยังไม่มีสกิลหรือโพชั่น")), qs[assignSlotIndex] && /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee small",
+    onClick: () => {
+      onClearQuickSlot(assignSlotIndex);
+      setAssignSlotIndex(null);
+    },
+    style: { boxShadow: "none", marginTop: 6 }
+  }, "ล้างช่อง"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee small",
     onClick: () => setAssignSlotIndex(null),
     style: { boxShadow: "none", marginTop: 6 }
-  }, "ปิด")), /*#__PURE__*/React.createElement("button", {
+  }, "ปิด")), /*#__PURE__*/React.createElement("div", {
+    className: "md-dock-side-controls"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: `md-dock-auto ${autoRun ? "active" : ""}`,
+    onClick: () => setAutoRun(a => !a)
+  }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
+    className: "md-dock-half-row"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "md-dock-mini flee",
+    disabled: busy,
+    title: "หลบหนีจากการต่อสู้",
+    onClick: () => onAction("flee")
+  }, "🏃"), /*#__PURE__*/React.createElement("button", {
+    className: `md-dock-mini settings ${editSlots ? "active" : ""}`,
+    title: editSlots ? "เสร็จสิ้นการตั้งค่า Quick Slot" : "ตั้งค่า Quick Slot",
+    onClick: () => {
+      setAssignSlotIndex(null);
+      setEditSlots(v => !v);
+    }
+  }, editSlots ? "✓" : "⚙️"))), /*#__PURE__*/React.createElement("button", {
     className: "md-dock-attack",
     disabled: busy,
     onClick: () => {
-      setShowMore(false);
       onAction("attack");
     }
-  }, "👊"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "relative"
-    }
-  }, showMore && /*#__PURE__*/React.createElement("div", {
-    className: "md-skill-popover more"
-  }, /*#__PURE__*/React.createElement("div", { className: "md-quickslot-popover-list" }, skills.map((s, i) => /*#__PURE__*/React.createElement("button", {
-    key: s.key,
-    className: "md-quickslot-popover-item",
-    disabled: busy || player.mp < s.mp,
-    title: `${s.name} (${s.mp}mp) — ${s.desc}`,
-    onClick: () => {
-      setShowMore(false);
-      onAction("skill", s.key);
-    }
-  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "MP ", s.mp))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
-    key: p.id,
-    className: "md-quickslot-popover-item",
-    disabled: busy,
-    title: p.desc,
-    onClick: () => {
-      setShowMore(false);
-      onAction("item", p.id);
-    }
-  }, /*#__PURE__*/React.createElement("span", null, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "x", p.quantity))))), /*#__PURE__*/React.createElement("button", {
-    className: "md-dock-circle skill",
-    disabled: busy || skills.length === 0 && potionStacks.length === 0,
-    onClick: () => setShowMore(v => !v)
-  }, "☰")), /*#__PURE__*/React.createElement("button", {
-    className: "md-dock-circle flee",
-    disabled: busy,
-    onClick: () => onAction("flee")
-  }, "🏃"))), /*#__PURE__*/React.createElement("div", {
+  }, "👊"))), /*#__PURE__*/React.createElement("div", {
     className: "md-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-log"
@@ -9386,6 +9530,10 @@ function CraftingOverlay({
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🪙 ", formatNumber(gold)),
+      // Union of every non-gold/non-scroll material across ALL loaded recipes — was
+      // hardcoded to bossHorn/bossHide (Azure-only) before; now reads whatever the current
+      // recipe list actually needs, so a future set with different materials shows up here
+      // automatically with no code change.
       ...Array.from(new Set(CRAFTING_RECIPES.flatMap(r => Object.keys(r.materials)))).filter(k => k !== "gold" && k.indexOf("recipe_") !== 0).map(key =>
         /*#__PURE__*/React.createElement("span", { key: key, className: "md-equip-stat-chip" }, (JUNK_INFO[key] || {}).icon || "📦", " ", junkTotal(inventory, key))
       )

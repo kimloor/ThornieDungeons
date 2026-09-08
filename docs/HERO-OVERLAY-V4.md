@@ -2,7 +2,7 @@
 
 Hero V4 keeps every PNG on the same transparent 1254×1254 canvas. Runtime placement is
 always `x: 0`, `y: 0`, `scale: 1`, and `rotation: 0`; alignment is baked into the files.
-The attack animation uses three ordered frames at 105 ms per frame.
+The attack animation uses three ordered frames at 140 ms per frame.
 
 ## Runtime layer order
 
@@ -57,3 +57,24 @@ sprite/characters/hero001/weapons/attack/sword_azure_attack_[0-2].png
 
 The Azure helmet uses `x: 75`, `y: -50`, and `scale: 0.88`, and is reused across
 Idle and all three Attack frames. The death frame is not part of this candidate.
+
+## Combat anchors
+
+- Hero: `x: 21%`, `y: 54%` of the battle arena, leaving horizontal room for wings.
+- Pet: `x: 13%`, `y: 75%`.
+- Three-monster formation: `(83%, 77%)`, `(77%, 64.5%)`, `(71%, 52%)` from
+  front to back, with the lower/front unit rendered above the others.
+- Two monsters straddle the middle lane; one monster or Elite Boss uses the middle lane.
+
+## Combat UI layout
+
+- The top header is split into six proportional cells: Hero HP/SP/EXP, four fixed
+  ATB/Turn Order cells, and a final Speed/Skip control cell.
+- Speed switches between `×1` and `×2`. It scales both action delays and sprite frame
+  intervals, while `×1` preserves the approved Hero attack timing of 140 ms per frame.
+- Skip consumes only the Hero turn and then continues through the existing Pet/Monster queue.
+- Hero, Pet, Monster, and Elite Boss HP/status indicators live above their battlefield sprites.
+  Elite Boss labeling is attached to the unit instead of using the removed enemy HUD.
+- The bottom dock keeps four Quick Slots on the left, Auto plus half-width Flee/Settings
+  controls in the middle, and Attack at the far right. Settings opens slot replacement;
+  an assigned slot can also be cleared from its picker.
