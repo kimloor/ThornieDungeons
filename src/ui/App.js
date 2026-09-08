@@ -569,7 +569,12 @@ function ThornieDungeons() {
       base_max_hp: nextPlayer.baseMaxHp,
       base_max_mp: nextPlayer.baseMaxMp
     });
-    const spawned = makeEncounter(floorNum);
+    // Dungeon Select pre-rolls a real encounter so its modifier, monster sprites and
+    // reward preview are the same ones the player actually fights. All other entry
+    // paths (retry/next/resume) keep generating encounters exactly as before.
+    const spawned = Array.isArray(options.encounter) && options.encounter.length
+      ? options.encounter
+      : makeEncounter(floorNum);
     setMonsters(spawned);
     setTargetUid(spawned[0] ? spawned[0].uid : null);
     const initialPet = buildPetCombatUnit();
@@ -1863,8 +1868,8 @@ function ThornieDungeons() {
   return /*#__PURE__*/React.createElement("div", {
     className: isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
-      : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && /*#__PURE__*/React.createElement(StatusBar, {
+      : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -1969,16 +1974,26 @@ function ThornieDungeons() {
     },
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
+    save: save,
     unlockedFloor: save.unlockedFloor,
-    hp: player ? player.hp : outOfCombatStats.maxHp,
-    maxHp: outOfCombatStats.maxHp,
-    mp: player ? player.mp : outOfCombatStats.maxMp,
-    maxMp: outOfCombatStats.maxMp,
+    onCharacter: () => {
+      setCharacterReturnPhase("map");
+      setPhase("character");
+    },
+    onOpenInv: () => setInvOpen(true),
+    onPets: () => {
+      setPetReturnPhase("map");
+      setPhase("pets");
+    },
     // Same rule as nextStage/retryStageAfterWin: if there's a live player object
     // sitting in state (from the last stage you fought, incl. a flee), carry its
     // real current HP/MP into the newly-selected stage instead of full-healing —
     // Stage Select should only ever full-heal when there's truly no run to continue.
-    onSelectFloor: floorNum => enterStage(floorNum, player && player.hp > 0 ? player : null),
+    onSelectFloor: (floorNum, encounter) => enterStage(
+      floorNum,
+      player && player.hp > 0 ? player : null,
+      { encounter }
+    ),
     onSave: () => persistSave(save),
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {

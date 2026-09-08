@@ -1388,116 +1388,214 @@ function MailboxScreen({
             : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))))),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
 }
+function floorEventPreview(monsters) {
+  const events = [];
+  const add = (icon, text) => {
+    if (!events.some(event => event.text === text)) events.push({ icon, text });
+  };
+  monsters.forEach(monster => {
+    const modifier = monster.modifier;
+    if (!modifier) return;
+    if (modifier.goldMult > 1) add("🪙", `ดรอปทองเพิ่ม +${roundInt((modifier.goldMult - 1) * 100)}%`);
+    if (modifier.xpMult > 1) add("✦", `EXP เพิ่ม +${roundInt((modifier.xpMult - 1) * 100)}%`);
+    if (modifier.hpMult > 1) add("♥", `พลังชีวิตศัตรู +${roundInt((modifier.hpMult - 1) * 100)}%`);
+    if (modifier.hpMult < 1) add("♥", `พลังชีวิตศัตรูลด ${roundInt((1 - modifier.hpMult) * 100)}%`);
+    if (modifier.atkMult > 1) add("⚔", `พลังโจมตีศัตรู +${roundInt((modifier.atkMult - 1) * 100)}%`);
+    if (modifier.dropBonusFlat > 0) add("◆", `Drop Rate เพิ่ม +${roundInt(modifier.dropBonusFlat)}%`);
+    if (modifier.rarityBoost) add("✧", "โอกาสพบไอเทมหายากเพิ่มขึ้น");
+  });
+  const boss = monsters.find(monster => monster.isBoss);
+  if (boss) {
+    add("♛", boss.isEliteBoss ? "Elite Boss · ความท้าทายระดับสูง" : "Boss Gate · ศัตรูระดับบอส");
+    add("🎁", boss.isEliteBoss ? "หีบการันตี Elite / Mythic" : "ปลดล็อกหีบรางวัลเมื่อชนะ");
+  }
+  return events.length ? events : [{ icon: "◇", text: "ไม่มีอีเวนต์พิเศษในชั้นนี้" }];
+}
+
+function floorRewardPreview(floor, monsters) {
+  const gold = monsters.reduce((sum, monster) => sum + (monster.gold || 0), 0);
+  const xp = monsters.reduce((sum, monster) => sum + (monster.xp || 0), 0);
+  const boss = monsters.find(monster => monster.isBoss);
+  const rewards = [
+    { icon: "🪙", label: formatNumber(gold), hint: "Gold" },
+    { icon: "✦", label: formatNumber(xp), hint: "EXP" }
+  ];
+  if (boss) rewards.push({ icon: "🎁", label: "1", hint: "หีบอุปกรณ์" });
+  else rewards.push({ icon: "📦", label: "สุ่ม", hint: "วัตถุดิบ" });
+  if (boss?.isEliteBoss) rewards.push({ icon: "💎", label: formatNumber(20 + Math.round(floor / 2)), hint: "Blue Gem" });
+  return rewards;
+}
+
+function recommendedFloorCp(monsters) {
+  return roundInt(monsters.reduce((sum, monster) => {
+    return sum + monster.maxHp * 4 + monster.atk * 18 + monster.def * 12 + monster.speed * 5;
+  }, 0));
+}
+
+function FloorMonsterPreview({ monster }) {
+  const config = getMonsterSpriteConfig(monster);
+  if (!config) return /*#__PURE__*/React.createElement("div", {
+    className: "md-floor-monster-fallback",
+    role: "img",
+    "aria-label": monster.name
+  }, "👹");
+  return /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+    config,
+    className: `md-floor-monster-sprite${monster.isBoss ? " boss" : ""}`,
+    alt: monster.name,
+    idleFrameMs: 260
+  });
+}
+
 function MapScreen({
+  save,
   unlockedFloor,
-  hp,
-  maxHp,
-  mp,
-  maxMp,
   onSelectFloor,
   onSave,
-  onBack
+  onBack,
+  onCharacter,
+  onOpenInv,
+  onPets
 }) {
-  const maxShow = unlockedFloor + 1; // one locked preview ahead
-  const windowStart = Math.max(1, unlockedFloor - 4);
-  const floors = Array.from({
-    length: maxShow - windowStart + 1
-  }, (_, i) => windowStart + i);
-  const [selected, setSelected] = useState(unlockedFloor);
+  const e = React.createElement;
+  const topFloor = Math.max(5, unlockedFloor + 4);
+  const bottomFloor = Math.max(1, unlockedFloor - 8);
+  const floors = Array.from({ length: topFloor - bottomFloor + 1 }, (_, index) => topFloor - index);
+  const encounterCache = useRef(new Map());
+  const listRef = useRef(null);
+  const currentRef = useRef(null);
+  const [detail, setDetail] = useState(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
-  const isBossSel = selected % 5 === 0;
-  const isEliteBossSel = selected % 10 === 0;
-  const hpPct = maxHp ? Math.max(0, Math.min(100, hp / maxHp * 100)) : 0;
-  const mpPct = maxMp ? Math.max(0, Math.min(100, mp / maxMp * 100)) : 0;
+
+  useEffect(() => {
+    const list = listRef.current;
+    const current = currentRef.current;
+    if (!list || !current) return;
+    list.scrollTop = Math.max(0, current.offsetTop - list.clientHeight * 0.52);
+  }, [unlockedFloor]);
+
+  const encounterFor = floor => {
+    if (!encounterCache.current.has(floor)) encounterCache.current.set(floor, makeEncounter(floor));
+    return encounterCache.current.get(floor);
+  };
+  const openFloor = floor => {
+    if (floor > unlockedFloor) return;
+    setMoreOpen(false);
+    setDetail({ floor, monsters: encounterFor(floor) });
+  };
   const handleSave = () => {
     onSave();
     setSaveFlash(true);
     setTimeout(() => setSaveFlash(false), 1200);
   };
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-panel",
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-map-bars"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-track"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-fill",
-    style: {
-      width: `${hpPct}%`,
-      background: "linear-gradient(90deg,#FF8787,#FF6B6B)"
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-label"
-  }, "HP ", hp, "/", maxHp)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-track"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-fill",
-    style: {
-      width: `${mpPct}%`,
-      background: "linear-gradient(90deg,#A78BF0,#8B6AE8)"
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "md-bar-label"
-  }, "MP ", mp, "/", maxMp))), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10,
-      textAlign: "center"
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title",
-    style: {
-      margin: 0
-    }
-  }, "🗺️ Select Stage"), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "Cleared stages can be farmed as many times as you like.")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-floor-slider"
-  }, floors.map(f => {
-    const locked = f > unlockedFloor;
-    const isBoss = f % 5 === 0;
-    const isEliteBoss = f % 10 === 0;
-    const sub = locked ? "🔒 Locked" : isEliteBoss ? "🔥👑 Elite" : isBoss ? "👑 Boss" : "";
-    return /*#__PURE__*/React.createElement("button", {
-      key: f,
-      type: "button",
-      className: `md-floor-chip ${selected === f ? "selected" : ""} ${locked ? "locked" : ""}`,
-      disabled: locked,
-      onClick: () => setSelected(f)
-    }, `Stage ${f}`, sub && /*#__PURE__*/React.createElement("span", {
-      className: "sub"
-    }, sub));
-  })), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: "8px 0 10px"
-    }
-  }, isEliteBossSel ? "🔥 Elite Boss — เปิดหีบการันตี Elite/Mythic + bonus 💎!" : isBossSel ? "👑 Boss — ชนะแล้วได้เปิดหีบสุ่มความหายากอุปกรณ์!" : "Farmable · gold, XP, วัตถุดิบตีบวก/เสริมพลัง. อาจมี Floor Modifier พิเศษ!"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn attack wide",
-    onClick: () => onSelectFloor(selected)
-  }, "⚔️ Enter Stage ", selected)), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row",
-    style: {
-      marginTop: 10
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn skill wide",
-    onClick: handleSave
-  }, saveFlash ? "✅ บันทึกแล้ว" : "💾 บันทึกข้อมูล")), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee wide small",
-    onClick: onBack
-  }, "🔙 Back"));
+  const enterSelectedFloor = () => {
+    if (!detail || detail.floor > unlockedFloor) return;
+    onSelectFloor(detail.floor, detail.monsters);
+  };
+  const range = Math.max(1, topFloor - bottomFloor);
+
+  return e("main", { className: `md-dungeon-map-page${detail ? " detail-open" : ""}` },
+    e("div", { className: "md-hub-resources md-dungeon-resources" },
+      e("span", null, "🪙 ", e("b", null, formatNumber(save.gold))),
+      e("span", null, "💎 ", e("b", null, formatNumber(save.diamonds || 0))),
+      e("span", null, "🛡️ ", e("b", null, formatNumber(save.protectionStones || 0)))
+    ),
+    e("header", { className: "md-dungeon-map-header" },
+      e("button", { type: "button", onClick: onBack, "aria-label": "กลับหน้าหลัก" }, "‹"),
+      e("div", null,
+        e("h1", null, "เลือกชั้นดันเจี้ยน"),
+        e("p", null, "ท้าทายให้สูงขึ้น เพื่อรับรางวัลที่ดีกว่า")
+      )
+    ),
+    e("section", { className: "md-dungeon-floor-world", ref: listRef, "aria-label": "ชั้นดันเจี้ยน" },
+      e("div", { className: "md-dungeon-route", "aria-hidden": "true" }),
+      floors.map(floor => {
+        const locked = floor > unlockedFloor;
+        const current = floor === unlockedFloor;
+        const cleared = floor < unlockedFloor;
+        const boss = floor % 5 === 0;
+        const elite = floor % 10 === 0;
+        const progress = (floor - bottomFloor) / range;
+        const jitter = [-4, 3, -1, 5, -3][floor % 5];
+        const left = Math.max(3, Math.min(58, 5 + progress * 52 + jitter));
+        const state = locked ? "locked" : current ? "current" : "cleared";
+        return e("button", {
+          key: floor,
+          type: "button",
+          ref: current ? currentRef : null,
+          className: `md-dungeon-floor-node ${state}${boss ? " boss" : ""}${elite ? " elite" : ""}`,
+          style: { marginLeft: `${left}%` },
+          disabled: locked,
+          onClick: () => openFloor(floor),
+          "aria-label": `ชั้น ${floor} ${locked ? "ล็อกอยู่" : current ? "ชั้นปัจจุบัน" : "เคลียร์แล้ว"}`
+        },
+          e("span", { className: "md-dungeon-floor-number" }, floor),
+          boss && e("span", { className: "md-dungeon-boss-label" }, elite ? "ELITE BOSS" : "BOSS"),
+          e("span", { className: "md-dungeon-door" },
+            e("span", { className: "md-dungeon-sword-mark", "aria-hidden": "true" }),
+            locked && e("span", { className: "md-dungeon-lock", "aria-hidden": "true" }, "▣")
+          ),
+          e("span", { className: "md-dungeon-floor-state" }, locked ? "ล็อกอยู่" : current ? "พร้อมท้าทาย" : cleared ? "เคลียร์แล้ว" : "")
+        );
+      })
+    ),
+    moreOpen && e("div", { className: "md-hub-more-panel md-dungeon-more-panel" },
+      e("div", { className: "md-hub-more-head" },
+        e("strong", null, "เมนูเพิ่มเติม"),
+        e("button", { type: "button", onClick: () => setMoreOpen(false), "aria-label": "ปิดเมนู" }, "✕")
+      ),
+      e("div", { className: "md-hub-more-grid" },
+        e("button", { type: "button", onClick: onBack }, "⌂", e("span", null, "หน้าหลัก")),
+        e("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", e("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก"))
+      )
+    ),
+    e(GameDock, {
+      onCharacter,
+      onOpenInv,
+      onPets,
+      moreOpen,
+      onToggleMore: () => setMoreOpen(open => !open)
+    }),
+    detail && e("div", { className: "md-floor-detail-backdrop", onClick: () => setDetail(null) },
+      e("section", {
+        className: "md-floor-detail-sheet",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-labelledby": "md-floor-detail-title",
+        onClick: event => event.stopPropagation()
+      },
+        e("button", { type: "button", className: "md-floor-detail-x", onClick: () => setDetail(null), "aria-label": "ปิด" }, "✕"),
+        e("div", { className: `md-floor-detail-heading${detail.floor % 5 === 0 ? " boss" : ""}` },
+          e("div", null,
+            e("small", null, detail.floor % 5 === 0 ? "BOSS GATE" : "DUNGEON FLOOR"),
+            e("h2", { id: "md-floor-detail-title" }, "ชั้น ", detail.floor)
+          ),
+          e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, formatNumber(recommendedFloorCp(detail.monsters))))
+        ),
+        e("div", { className: "md-floor-monster-stage", "aria-label": "มอนสเตอร์ประจำชั้น" },
+          detail.monsters.map(monster => e("div", { className: "md-floor-monster", key: monster.uid },
+            e(FloorMonsterPreview, { monster }),
+            e("span", null, monster.name.replace(/\s*\((?:Elite\s+)?Boss\)\s*/gi, ""))
+          ))
+        ),
+        e("h3", null, "อีเวนต์ชั้นนี้"),
+        e("div", { className: "md-floor-events" },
+          floorEventPreview(detail.monsters).map((event, index) => e("div", { key: `${event.text}-${index}` }, e("span", null, event.icon), e("b", null, event.text)))
+        ),
+        e("h3", null, "รางวัลที่อาจได้รับ"),
+        e("div", { className: "md-floor-rewards" },
+          floorRewardPreview(detail.floor, detail.monsters).map(reward => e("div", { key: reward.hint },
+            e("span", null, reward.icon), e("b", null, reward.label), e("small", null, reward.hint)
+          ))
+        ),
+        e("div", { className: "md-floor-detail-actions" },
+          e("button", { type: "button", className: "close", onClick: () => setDetail(null) }, "ปิด"),
+          e("button", { type: "button", className: "enter", onClick: enterSelectedFloor }, "เข้าสู่ดันเจี้ยน", e("span", null, " ›"))
+        )
+      )
+    )
+  );
 }
 function ShopOverlay({
   gold,
