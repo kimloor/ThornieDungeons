@@ -1,12 +1,12 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-08T21:53:32Z",
+  "generatedAt": "2026-09-09T00:17:56Z",
   "count": 176,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "9862fcfa546c2e2665d56c8e16558a06",
-      "last_modified": "2026-09-08T16:25:40.356Z",
+      "etag": "ef5ecef32e7e8d4768d21944922af994",
+      "last_modified": "2026-09-08T23:07:30.865Z",
       "size": 10256,
       "http_metadata": {
         "contentType": "application/json"
@@ -1523,9 +1523,9 @@
     },
     {
       "key": "sprite/pet/sprout001/animations/sprout_attack_0.png",
-      "etag": "74916bf766fe17a936ae5a6a2051da16",
-      "last_modified": "2026-09-05T14:01:22.260Z",
-      "size": 255436,
+      "etag": "a117d9ad06e694a44210d89f55f3b384",
+      "last_modified": "2026-09-08T23:43:08.100Z",
+      "size": 127539,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1534,9 +1534,9 @@
     },
     {
       "key": "sprite/pet/sprout001/animations/sprout_attack_1.png",
-      "etag": "df6b302be73bc7362ed0c4de43f80241",
-      "last_modified": "2026-09-05T14:01:23.583Z",
-      "size": 166796,
+      "etag": "fca78fe80655b6930450e9788b6da674",
+      "last_modified": "2026-09-08T23:43:11.541Z",
+      "size": 153605,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1545,9 +1545,9 @@
     },
     {
       "key": "sprite/pet/sprout001/animations/sprout_attack_2.png",
-      "etag": "ba8d1656df700b497a00708f163c8427",
-      "last_modified": "2026-09-05T14:01:24.121Z",
-      "size": 152394,
+      "etag": "2aff83d3670cf02fc37c0dc8386c793e",
+      "last_modified": "2026-09-08T23:43:14.651Z",
+      "size": 139236,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1556,9 +1556,9 @@
     },
     {
       "key": "sprite/pet/sprout001/animations/sprout_death_0.png",
-      "etag": "536d9faf9d5e865c95cfef762f3fea68",
-      "last_modified": "2026-09-05T14:20:03.748Z",
-      "size": 169447,
+      "etag": "260487cfd261e0427edcf0d1f6bb2289",
+      "last_modified": "2026-09-08T23:43:18.076Z",
+      "size": 113791,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1567,9 +1567,9 @@
     },
     {
       "key": "sprite/pet/sprout001/animations/sprout_idle_0.png",
-      "etag": "6b9f106427d6931c540c9be877a2c889",
-      "last_modified": "2026-09-05T14:01:21.933Z",
-      "size": 241587,
+      "etag": "2e1bfa826fc0b4f9befb76c9f0c6e3a1",
+      "last_modified": "2026-09-08T23:43:21.283Z",
+      "size": 128254,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1578,9 +1578,9 @@
     },
     {
       "key": "sprite/pet/sprout001/animations/sprout_idle_1.png",
-      "etag": "00a80ae905559f88ccbedfc15359a944",
-      "last_modified": "2026-09-05T14:01:21.960Z",
-      "size": 247753,
+      "etag": "d6a0c1108f2c8218bc95133c608adb0b",
+      "last_modified": "2026-09-08T23:43:24.635Z",
+      "size": 133004,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1589,9 +1589,9 @@
     },
     {
       "key": "sprite/pet/sprout001/animations/sprout_idle_2.png",
-      "etag": "5b707b166542166972ebf7a10f74eb8b",
-      "last_modified": "2026-09-05T14:20:03.302Z",
-      "size": 252683,
+      "etag": "07b6c83a2c7c3c7e8425019d29e00bd9",
+      "last_modified": "2026-09-08T23:43:28.070Z",
+      "size": 133046,
       "http_metadata": {
         "contentType": "image/png"
       },
