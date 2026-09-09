@@ -290,6 +290,8 @@ const STYLE = `
 .md-enemy-img.attack { animation: none; }
 .md-enemy-img.hurt { animation: md-shake 0.35s ease; }
 .md-enemy-img.boss { width: 84px; height: 84px; }
+.md-cropped-sprite-stage { position: relative; display: block; overflow: hidden; flex: 0 0 auto; }
+.md-cropped-sprite-image { position: absolute; display: block; max-width: none; image-rendering: -webkit-optimize-contrast; }
 
 @keyframes md-idle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 @keyframes md-lunge { 0% { transform: translateX(0); } 40% { transform: translateX(14px) rotate(-6deg); } 100% { transform: translateX(0); } }
@@ -1000,7 +1002,7 @@ const STYLE = `
 .md-floor-chip.locked { opacity: 0.45; cursor: not-allowed; }
 .md-floor-chip .sub { display:block; font-size: 9px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
 .md-map-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.md-monster-board .md-sprite-wrap { transform: scale(0.92); transform-origin: center center; }
+.md-monster-board .md-sprite-wrap { transform-origin: center bottom; }
 
 /* floating quick-access buttons (shop / character / bag) */
 .md-fab-stack {
@@ -1076,19 +1078,39 @@ const STYLE = `
 .md-hero-slot { left: 21%; top: 54%; transform: translate(-50%, -50%); }
 .md-pet-slot { left: 13%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
 
-/* One enemy takes the middle lane; two enemies straddle it. Three enemies use an evenly
-   spaced diagonal lifted clear of the bottom control dock. */
-.md-monster-count-1 .md-monster-slot-0 { left: 77%; top: 64.5%; }
-.md-monster-count-2 .md-monster-slot-0 { left: 81%; top: 72%; }
-.md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 57%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 71%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 58.5%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 46%; }
-.md-monster-slot { transform: translate(-50%, -50%); }
+/* These coordinates are shared centre-bottom ground anchors, not canvas centres.
+   Visual size therefore never changes where a walking monster's feet meet the lane. */
+.md-monster-count-1 .md-monster-slot-0 { left: 77%; top: 73%; }
+.md-monster-count-2 .md-monster-slot-0 { left: 81%; top: 79%; }
+.md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 64%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 78%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 65.5%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 53%; }
+.md-monster-slot { transform: translateX(-50%); }
+.md-monster-slot.flying { transform: translate(-50%, -18px); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
 .md-monster-slot-2 { z-index: 1; }
-.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 64%; }
+.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 76%; }
+
+/* Monster scale is based on measured opaque pixels. HP/status are removed from
+   normal flow so the unit's bottom edge is always the artwork's actual ground point. */
+.md-monster-unit { --monster-height: 68px; width: max-content; height: var(--monster-height); gap: 0; justify-content: flex-end; }
+.md-monster-unit.size-small { --monster-height: 52px; }
+.md-monster-unit.size-medium { --monster-height: 68px; }
+.md-monster-unit.size-large { --monster-height: 84px; }
+.md-monster-unit.size-elite { --monster-height: 104px; }
+.md-monster-unit > .md-enemy { width: var(--monster-height); height: var(--monster-height); }
+.md-monster-unit > .md-enemy-hpbar {
+  position: absolute; left: 50%; bottom: calc(100% + 22px); transform: translateX(-50%); z-index: 5;
+}
+.md-monster-unit > .md-unit-status {
+  position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translateX(-50%); z-index: 5;
+}
+.md-monster-unit > .md-sprite-name {
+  position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); z-index: 5;
+}
+.md-monster-unit.size-elite > .md-enemy-hpbar { width: 94px; }
 
 @media (max-width: 380px) {
   .md-scene.battle-bg .md-arena { min-height: 360px; }
@@ -1878,6 +1900,79 @@ function getSpriteAnimationFrames(config, requestedAnim, dead = false) {
   return frames.filter(Boolean).map(assetUrl);
 }
 
+// Transparent sprite sheets share a canvas size, but the painted character can
+// occupy a very different percentage of that canvas. Measure the union of the
+// visible pixels within the current animation once, then reuse it so changing
+// frames never changes scale or makes the character jump. Keeping animations
+// separate also prevents a long attack pose from shrinking the idle character.
+const SPRITE_OPAQUE_BOUNDS_CACHE = new Map();
+function measureOpaqueFrame(src) {
+  return new Promise(resolve => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let minX = canvas.width;
+        let minY = canvas.height;
+        let maxX = -1;
+        let maxY = -1;
+        // Ignore near-invisible antialiasing/glow pixels that would otherwise
+        // make the empty canvas count as part of the monster.
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            if (pixels[(y * canvas.width + x) * 4 + 3] < 16) continue;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+        if (maxX < minX || maxY < minY) return resolve(null);
+        resolve({
+          left: minX / canvas.width,
+          top: minY / canvas.height,
+          right: (maxX + 1) / canvas.width,
+          bottom: (maxY + 1) / canvas.height,
+          canvasAspect: canvas.width / canvas.height
+        });
+      } catch (error) {
+        resolve(null);
+      }
+    };
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+function measureSpriteOpaqueBounds(sources) {
+  const key = sources.join("|");
+  if (!SPRITE_OPAQUE_BOUNDS_CACHE.has(key)) {
+    SPRITE_OPAQUE_BOUNDS_CACHE.set(key, Promise.all(sources.map(measureOpaqueFrame)).then(results => {
+      const valid = results.filter(Boolean);
+      if (!valid.length) return null;
+      const left = Math.min(...valid.map(r => r.left));
+      const top = Math.min(...valid.map(r => r.top));
+      const right = Math.max(...valid.map(r => r.right));
+      const bottom = Math.max(...valid.map(r => r.bottom));
+      const canvasAspect = valid[0].canvasAspect;
+      return {
+        left,
+        top,
+        width: Math.max(0.001, right - left),
+        height: Math.max(0.001, bottom - top),
+        canvasAspect,
+        contentAspect: canvasAspect * (right - left) / Math.max(0.001, bottom - top)
+      };
+    }));
+  }
+  return SPRITE_OPAQUE_BOUNDS_CACHE.get(key);
+}
+
 function AnimatedFrameSprite({
   config,
   anim = "",
@@ -1885,7 +1980,10 @@ function AnimatedFrameSprite({
   className = "",
   alt = "",
   idleFrameMs = 220,
-  attackFrameMs = 80
+  attackFrameMs = 80,
+  cropTransparent = false,
+  visualHeight = 64,
+  maxVisualWidth = 104
 }) {
   const effectiveAnim = dead ? "death" : anim === "attack" ? "attack" : "idle";
   const frames = getSpriteAnimationFrames(config, effectiveAnim, dead);
@@ -1896,6 +1994,7 @@ function AnimatedFrameSprite({
     .filter(Boolean)
     .map(assetUrl);
   const preloadKey = preloadSources.join("|");
+  const [opaqueBounds, setOpaqueBounds] = React.useState(null);
 
   React.useEffect(() => {
     // Idle is normally the only sequence requested when the encounter mounts.
@@ -1907,6 +2006,20 @@ function AnimatedFrameSprite({
       image.src = src;
     });
   }, [preloadKey]);
+
+  React.useEffect(() => {
+    if (!cropTransparent || !frames.length) {
+      setOpaqueBounds(null);
+      return undefined;
+    }
+    let cancelled = false;
+    measureSpriteOpaqueBounds(frames).then(bounds => {
+      if (!cancelled) setOpaqueBounds(bounds);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cropTransparent, frameKey]);
 
   React.useEffect(() => {
     setFrameIndex(0);
@@ -1923,9 +2036,36 @@ function AnimatedFrameSprite({
 
   if (!frames.length) return null;
 
+  const currentSrc = frames[Math.min(frameIndex, frames.length - 1)];
+  if (cropTransparent && opaqueBounds) {
+    let contentHeight = visualHeight;
+    let contentWidth = contentHeight * opaqueBounds.contentAspect;
+    if (contentWidth > maxVisualWidth) {
+      contentHeight *= maxVisualWidth / contentWidth;
+      contentWidth = maxVisualWidth;
+    }
+    const imageHeight = contentHeight / opaqueBounds.height;
+    const imageWidth = imageHeight * opaqueBounds.canvasAspect;
+    return /*#__PURE__*/React.createElement("span", {
+      className: `${className} md-cropped-sprite-stage`,
+      style: { width: contentWidth, height: contentHeight }
+    }, /*#__PURE__*/React.createElement("img", {
+      className: "md-cropped-sprite-image",
+      src: currentSrc,
+      alt,
+      draggable: false,
+      style: {
+        width: imageWidth,
+        height: imageHeight,
+        left: -opaqueBounds.left * imageWidth,
+        top: -opaqueBounds.top * imageHeight
+      }
+    }));
+  }
+
   return /*#__PURE__*/React.createElement("img", {
     className,
-    src: frames[Math.min(frameIndex, frames.length - 1)],
+    src: currentSrc,
     alt,
     draggable: false
   });
@@ -2564,6 +2704,8 @@ function monsterFromConfig(m) {
     id: m.id || (staticMatch && staticMatch.id) || slugifyMonsterName(m.name),
     name: m.name,
     color: m.color || "#7ED9A8",
+    sizeClass: ["small", "medium", "large"].includes(m.sizeClass) ? m.sizeClass : staticMatch?.sizeClass || "medium",
+    anchorType: m.anchorType === "flying" ? "flying" : staticMatch?.anchorType || "ground",
     hpMult: typeof m.hpMult === "number" ? m.hpMult : 1,
     atkMult: typeof m.atkMult === "number" ? m.atkMult : 1,
     defBonus: typeof m.defBonus === "number" ? m.defBonus : 0,
@@ -3128,40 +3270,58 @@ function rollGachaPet() {
 let ENEMY_POOL = [{
   id: "jelly_slime",
   name: "Jelly Slime",
-  color: "#7ED9A8"
+  color: "#7ED9A8",
+  sizeClass: "small",
+  anchorType: "ground"
 }, {
   id: "spore_cap",
   name: "Spore Cap",
-  color: "#C98BE0"
+  color: "#C98BE0",
+  sizeClass: "small",
+  anchorType: "ground"
 }, {
   id: "tusky_boar",
   name: "Tusky Boar",
-  color: "#C9A06A"
+  color: "#C9A06A",
+  sizeClass: "medium",
+  anchorType: "ground"
 }, {
   id: "bramble_bat",
   name: "Bramble Bat",
-  color: "#8E8CD8"
+  color: "#8E8CD8",
+  sizeClass: "medium",
+  anchorType: "flying"
 }, {
   id: "bone_rattler",
   name: "Bone Rattler",
-  color: "#E5E2D6"
+  color: "#E5E2D6",
+  sizeClass: "medium",
+  anchorType: "ground"
 }, {
   id: "sandy_crab",
   name: "Sandy Crab",
-  color: "#F2B25C"
+  color: "#F2B25C",
+  sizeClass: "medium",
+  anchorType: "ground"
 }];
 let BOSS_POOL = [{
   id: "moss_king",
   name: "Moss King",
-  color: "#5FA85F"
+  color: "#5FA85F",
+  sizeClass: "large",
+  anchorType: "ground"
 }, {
   id: "ember_drake",
   name: "Ember Drake",
-  color: "#F0714B"
+  color: "#F0714B",
+  sizeClass: "large",
+  anchorType: "ground"
 }, {
   id: "frost_warden",
   name: "Frost Warden",
-  color: "#7BC7E8"
+  color: "#7BC7E8",
+  sizeClass: "large",
+  anchorType: "ground"
 }];
 // Per-monster loot tables (design: admin-backend-design.md) — { [monsterId]: { gear: [
 // {itemType, rarity, weight} ], junk: [ {junkId, qtyMin, qtyMax, dropChance} ] } }, filled
@@ -3966,6 +4126,8 @@ function makeEnemy(floor, options = {}) {
     color: t.color,
     isBoss,
     isEliteBoss,
+    sizeClass: isEliteBoss ? "elite" : t.sizeClass || (isBoss ? "large" : "medium"),
+    anchorType: t.anchorType === "flying" ? "flying" : "ground",
     modifier,
     agi,
     speed: speedFromAgi(agi),
@@ -4247,7 +4409,6 @@ function getStats(player, equipped) {
 function combatPower(stats, level) {
   return roundInt(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.critDamage || 0) * 3 + (stats.dodgeChance || 0) * 6 + level * 50);
 }
-
 
 // ===== systems/shop.js =====
 // ---------- shop & selling ----------
@@ -8498,6 +8659,22 @@ function HeroSprite({
     className: "md-sprite-name"
   }, label));
 }
+
+const MONSTER_VISUAL_SIZES = {
+  small: { height: 52, maxWidth: 78 },
+  medium: { height: 68, maxWidth: 100 },
+  large: { height: 84, maxWidth: 120 },
+  elite: { height: 104, maxWidth: 144 }
+};
+function getMonsterPresentation(enemy) {
+  const config = getMonsterSpriteConfig(enemy);
+  const configuredSize = config?.presentation?.sizeClass;
+  const requestedSize = enemy?.isEliteBoss ? "elite" : configuredSize || enemy?.sizeClass || (enemy?.isBoss ? "large" : "medium");
+  const sizeClass = MONSTER_VISUAL_SIZES[requestedSize] ? requestedSize : "medium";
+  const configuredAnchor = config?.presentation?.anchorType;
+  const anchorType = configuredAnchor === "flying" || enemy?.anchorType === "flying" ? "flying" : "ground";
+  return { sizeClass, anchorType, ...MONSTER_VISUAL_SIZES[sizeClass] };
+}
 function EnemySprite({
   enemy,
   anim,
@@ -8506,6 +8683,7 @@ function EnemySprite({
   combatSpeed = 1
 }) {
   const spriteConfig = getMonsterSpriteConfig(enemy);
+  const presentation = getMonsterPresentation(enemy);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
   const dead = enemy.hp <= 0;
   const spriteVisual = spriteConfig
@@ -8516,13 +8694,16 @@ function EnemySprite({
         dead,
         // Match the combat action window so all three attack frames are readable.
         attackFrameMs: 120 / combatSpeed,
+        cropTransparent: true,
+        visualHeight: presentation.height,
+        maxVisualWidth: presentation.maxWidth,
         className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
         alt: enemy.name
       })
     : null;
 
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-wrap",
+    className: `md-sprite-wrap md-monster-unit size-${presentation.sizeClass} anchor-${presentation.anchorType}`,
     onClick: !dead && onClick ? () => onClick(enemy.uid) : undefined,
     style: {
       cursor: !dead && onClick ? "pointer" : "default",
@@ -8542,7 +8723,7 @@ function EnemySprite({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), (enemy.isEliteBoss || enemy.frozenTurns > 0 || enemy.poisonTurns > 0) && /*#__PURE__*/React.createElement("div", {
+  }, enemy.hp, "/", enemy.maxHp)), /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status",
     "aria-label": "Enemy status effects"
   }, enemy.isEliteBoss && /*#__PURE__*/React.createElement("span", {
@@ -8693,6 +8874,13 @@ function CombatScreen({
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
   const skipUnlocked = (combatTurnCount || 0) >= 5;
+  // Keep ground monsters in their encounter order. A verified flying monster is
+  // placed last, which maps it to formation slot 3 in a three-enemy encounter.
+  const formationMonsters = monsters.slice().sort((a, b) => {
+    const aFlying = getMonsterPresentation(a).anchorType === "flying" ? 1 : 0;
+    const bFlying = getMonsterPresentation(b).anchorType === "flying" ? 1 : 0;
+    return aFlying - bFlying;
+  });
   const qs = quickSlots || [null, null, null, null];
   function quickSlotVisual(entry) {
     if (!entry) return { icon: "➕", disabled: true, badge: null };
@@ -8818,9 +9006,9 @@ function CombatScreen({
     style: { color: f.color }
   }, f.text)))), /*#__PURE__*/React.createElement("div", {
     className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`
-  }, monsters.map((m, monsterIndex) => /*#__PURE__*/React.createElement("div", {
+  }, formationMonsters.map((m, monsterIndex) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
-    className: `md-monster-slot md-monster-slot-${Math.min(monsterIndex, 2)} ${m.isEliteBoss ? "elite" : ""}`
+    className: `md-monster-slot md-monster-slot-${Math.min(monsterIndex, 2)} ${m.isEliteBoss ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
     anim: enemyAnims[m.uid],

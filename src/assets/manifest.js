@@ -181,6 +181,79 @@ function getSpriteAnimationFrames(config, requestedAnim, dead = false) {
   return frames.filter(Boolean).map(assetUrl);
 }
 
+// Transparent sprite sheets share a canvas size, but the painted character can
+// occupy a very different percentage of that canvas. Measure the union of the
+// visible pixels within the current animation once, then reuse it so changing
+// frames never changes scale or makes the character jump. Keeping animations
+// separate also prevents a long attack pose from shrinking the idle character.
+const SPRITE_OPAQUE_BOUNDS_CACHE = new Map();
+function measureOpaqueFrame(src) {
+  return new Promise(resolve => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let minX = canvas.width;
+        let minY = canvas.height;
+        let maxX = -1;
+        let maxY = -1;
+        // Ignore near-invisible antialiasing/glow pixels that would otherwise
+        // make the empty canvas count as part of the monster.
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            if (pixels[(y * canvas.width + x) * 4 + 3] < 16) continue;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+        if (maxX < minX || maxY < minY) return resolve(null);
+        resolve({
+          left: minX / canvas.width,
+          top: minY / canvas.height,
+          right: (maxX + 1) / canvas.width,
+          bottom: (maxY + 1) / canvas.height,
+          canvasAspect: canvas.width / canvas.height
+        });
+      } catch (error) {
+        resolve(null);
+      }
+    };
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+function measureSpriteOpaqueBounds(sources) {
+  const key = sources.join("|");
+  if (!SPRITE_OPAQUE_BOUNDS_CACHE.has(key)) {
+    SPRITE_OPAQUE_BOUNDS_CACHE.set(key, Promise.all(sources.map(measureOpaqueFrame)).then(results => {
+      const valid = results.filter(Boolean);
+      if (!valid.length) return null;
+      const left = Math.min(...valid.map(r => r.left));
+      const top = Math.min(...valid.map(r => r.top));
+      const right = Math.max(...valid.map(r => r.right));
+      const bottom = Math.max(...valid.map(r => r.bottom));
+      const canvasAspect = valid[0].canvasAspect;
+      return {
+        left,
+        top,
+        width: Math.max(0.001, right - left),
+        height: Math.max(0.001, bottom - top),
+        canvasAspect,
+        contentAspect: canvasAspect * (right - left) / Math.max(0.001, bottom - top)
+      };
+    }));
+  }
+  return SPRITE_OPAQUE_BOUNDS_CACHE.get(key);
+}
+
 function AnimatedFrameSprite({
   config,
   anim = "",
@@ -188,7 +261,10 @@ function AnimatedFrameSprite({
   className = "",
   alt = "",
   idleFrameMs = 220,
-  attackFrameMs = 80
+  attackFrameMs = 80,
+  cropTransparent = false,
+  visualHeight = 64,
+  maxVisualWidth = 104
 }) {
   const effectiveAnim = dead ? "death" : anim === "attack" ? "attack" : "idle";
   const frames = getSpriteAnimationFrames(config, effectiveAnim, dead);
@@ -199,6 +275,7 @@ function AnimatedFrameSprite({
     .filter(Boolean)
     .map(assetUrl);
   const preloadKey = preloadSources.join("|");
+  const [opaqueBounds, setOpaqueBounds] = React.useState(null);
 
   React.useEffect(() => {
     // Idle is normally the only sequence requested when the encounter mounts.
@@ -210,6 +287,20 @@ function AnimatedFrameSprite({
       image.src = src;
     });
   }, [preloadKey]);
+
+  React.useEffect(() => {
+    if (!cropTransparent || !frames.length) {
+      setOpaqueBounds(null);
+      return undefined;
+    }
+    let cancelled = false;
+    measureSpriteOpaqueBounds(frames).then(bounds => {
+      if (!cancelled) setOpaqueBounds(bounds);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cropTransparent, frameKey]);
 
   React.useEffect(() => {
     setFrameIndex(0);
@@ -226,9 +317,36 @@ function AnimatedFrameSprite({
 
   if (!frames.length) return null;
 
+  const currentSrc = frames[Math.min(frameIndex, frames.length - 1)];
+  if (cropTransparent && opaqueBounds) {
+    let contentHeight = visualHeight;
+    let contentWidth = contentHeight * opaqueBounds.contentAspect;
+    if (contentWidth > maxVisualWidth) {
+      contentHeight *= maxVisualWidth / contentWidth;
+      contentWidth = maxVisualWidth;
+    }
+    const imageHeight = contentHeight / opaqueBounds.height;
+    const imageWidth = imageHeight * opaqueBounds.canvasAspect;
+    return /*#__PURE__*/React.createElement("span", {
+      className: `${className} md-cropped-sprite-stage`,
+      style: { width: contentWidth, height: contentHeight }
+    }, /*#__PURE__*/React.createElement("img", {
+      className: "md-cropped-sprite-image",
+      src: currentSrc,
+      alt,
+      draggable: false,
+      style: {
+        width: imageWidth,
+        height: imageHeight,
+        left: -opaqueBounds.left * imageWidth,
+        top: -opaqueBounds.top * imageHeight
+      }
+    }));
+  }
+
   return /*#__PURE__*/React.createElement("img", {
     className,
-    src: frames[Math.min(frameIndex, frames.length - 1)],
+    src: currentSrc,
     alt,
     draggable: false
   });

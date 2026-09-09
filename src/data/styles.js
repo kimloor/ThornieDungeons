@@ -188,6 +188,8 @@ const STYLE = `
 .md-enemy-img.attack { animation: none; }
 .md-enemy-img.hurt { animation: md-shake 0.35s ease; }
 .md-enemy-img.boss { width: 84px; height: 84px; }
+.md-cropped-sprite-stage { position: relative; display: block; overflow: hidden; flex: 0 0 auto; }
+.md-cropped-sprite-image { position: absolute; display: block; max-width: none; image-rendering: -webkit-optimize-contrast; }
 
 @keyframes md-idle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 @keyframes md-lunge { 0% { transform: translateX(0); } 40% { transform: translateX(14px) rotate(-6deg); } 100% { transform: translateX(0); } }
@@ -898,7 +900,7 @@ const STYLE = `
 .md-floor-chip.locked { opacity: 0.45; cursor: not-allowed; }
 .md-floor-chip .sub { display:block; font-size: 9px; color: var(--ink-soft); font-weight: 700; margin-top: 2px; }
 .md-map-bars { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.md-monster-board .md-sprite-wrap { transform: scale(0.92); transform-origin: center center; }
+.md-monster-board .md-sprite-wrap { transform-origin: center bottom; }
 
 /* floating quick-access buttons (shop / character / bag) */
 .md-fab-stack {
@@ -974,19 +976,39 @@ const STYLE = `
 .md-hero-slot { left: 21%; top: 54%; transform: translate(-50%, -50%); }
 .md-pet-slot { left: 13%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
 
-/* One enemy takes the middle lane; two enemies straddle it. Three enemies use an evenly
-   spaced diagonal lifted clear of the bottom control dock. */
-.md-monster-count-1 .md-monster-slot-0 { left: 77%; top: 64.5%; }
-.md-monster-count-2 .md-monster-slot-0 { left: 81%; top: 72%; }
-.md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 57%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 71%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 58.5%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 46%; }
-.md-monster-slot { transform: translate(-50%, -50%); }
+/* These coordinates are shared centre-bottom ground anchors, not canvas centres.
+   Visual size therefore never changes where a walking monster's feet meet the lane. */
+.md-monster-count-1 .md-monster-slot-0 { left: 77%; top: 73%; }
+.md-monster-count-2 .md-monster-slot-0 { left: 81%; top: 79%; }
+.md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 64%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 78%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 65.5%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 53%; }
+.md-monster-slot { transform: translateX(-50%); }
+.md-monster-slot.flying { transform: translate(-50%, -18px); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
 .md-monster-slot-2 { z-index: 1; }
-.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 64%; }
+.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 76%; }
+
+/* Monster scale is based on measured opaque pixels. HP/status are removed from
+   normal flow so the unit's bottom edge is always the artwork's actual ground point. */
+.md-monster-unit { --monster-height: 68px; width: max-content; height: var(--monster-height); gap: 0; justify-content: flex-end; }
+.md-monster-unit.size-small { --monster-height: 52px; }
+.md-monster-unit.size-medium { --monster-height: 68px; }
+.md-monster-unit.size-large { --monster-height: 84px; }
+.md-monster-unit.size-elite { --monster-height: 104px; }
+.md-monster-unit > .md-enemy { width: var(--monster-height); height: var(--monster-height); }
+.md-monster-unit > .md-enemy-hpbar {
+  position: absolute; left: 50%; bottom: calc(100% + 22px); transform: translateX(-50%); z-index: 5;
+}
+.md-monster-unit > .md-unit-status {
+  position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translateX(-50%); z-index: 5;
+}
+.md-monster-unit > .md-sprite-name {
+  position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); z-index: 5;
+}
+.md-monster-unit.size-elite > .md-enemy-hpbar { width: 94px; }
 
 @media (max-width: 380px) {
   .md-scene.battle-bg .md-arena { min-height: 360px; }

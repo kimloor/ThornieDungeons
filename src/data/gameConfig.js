@@ -63,6 +63,8 @@ function monsterFromConfig(m) {
     id: m.id || (staticMatch && staticMatch.id) || slugifyMonsterName(m.name),
     name: m.name,
     color: m.color || "#7ED9A8",
+    sizeClass: ["small", "medium", "large"].includes(m.sizeClass) ? m.sizeClass : staticMatch?.sizeClass || "medium",
+    anchorType: m.anchorType === "flying" ? "flying" : staticMatch?.anchorType || "ground",
     hpMult: typeof m.hpMult === "number" ? m.hpMult : 1,
     atkMult: typeof m.atkMult === "number" ? m.atkMult : 1,
     defBonus: typeof m.defBonus === "number" ? m.defBonus : 0,

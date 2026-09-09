@@ -2050,6 +2050,22 @@ function HeroSprite({
     className: "md-sprite-name"
   }, label));
 }
+
+const MONSTER_VISUAL_SIZES = {
+  small: { height: 52, maxWidth: 78 },
+  medium: { height: 68, maxWidth: 100 },
+  large: { height: 84, maxWidth: 120 },
+  elite: { height: 104, maxWidth: 144 }
+};
+function getMonsterPresentation(enemy) {
+  const config = getMonsterSpriteConfig(enemy);
+  const configuredSize = config?.presentation?.sizeClass;
+  const requestedSize = enemy?.isEliteBoss ? "elite" : configuredSize || enemy?.sizeClass || (enemy?.isBoss ? "large" : "medium");
+  const sizeClass = MONSTER_VISUAL_SIZES[requestedSize] ? requestedSize : "medium";
+  const configuredAnchor = config?.presentation?.anchorType;
+  const anchorType = configuredAnchor === "flying" || enemy?.anchorType === "flying" ? "flying" : "ground";
+  return { sizeClass, anchorType, ...MONSTER_VISUAL_SIZES[sizeClass] };
+}
 function EnemySprite({
   enemy,
   anim,
@@ -2058,6 +2074,7 @@ function EnemySprite({
   combatSpeed = 1
 }) {
   const spriteConfig = getMonsterSpriteConfig(enemy);
+  const presentation = getMonsterPresentation(enemy);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
   const dead = enemy.hp <= 0;
   const spriteVisual = spriteConfig
@@ -2068,13 +2085,16 @@ function EnemySprite({
         dead,
         // Match the combat action window so all three attack frames are readable.
         attackFrameMs: 120 / combatSpeed,
+        cropTransparent: true,
+        visualHeight: presentation.height,
+        maxVisualWidth: presentation.maxWidth,
         className: `md-enemy-img ${enemy.isBoss ? "boss" : ""} ${anim || ""}`,
         alt: enemy.name
       })
     : null;
 
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-wrap",
+    className: `md-sprite-wrap md-monster-unit size-${presentation.sizeClass} anchor-${presentation.anchorType}`,
     onClick: !dead && onClick ? () => onClick(enemy.uid) : undefined,
     style: {
       cursor: !dead && onClick ? "pointer" : "default",
@@ -2094,7 +2114,7 @@ function EnemySprite({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), (enemy.isEliteBoss || enemy.frozenTurns > 0 || enemy.poisonTurns > 0) && /*#__PURE__*/React.createElement("div", {
+  }, enemy.hp, "/", enemy.maxHp)), /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status",
     "aria-label": "Enemy status effects"
   }, enemy.isEliteBoss && /*#__PURE__*/React.createElement("span", {
@@ -2245,6 +2265,13 @@ function CombatScreen({
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
   const skipUnlocked = (combatTurnCount || 0) >= 5;
+  // Keep ground monsters in their encounter order. A verified flying monster is
+  // placed last, which maps it to formation slot 3 in a three-enemy encounter.
+  const formationMonsters = monsters.slice().sort((a, b) => {
+    const aFlying = getMonsterPresentation(a).anchorType === "flying" ? 1 : 0;
+    const bFlying = getMonsterPresentation(b).anchorType === "flying" ? 1 : 0;
+    return aFlying - bFlying;
+  });
   const qs = quickSlots || [null, null, null, null];
   function quickSlotVisual(entry) {
     if (!entry) return { icon: "➕", disabled: true, badge: null };
@@ -2370,9 +2397,9 @@ function CombatScreen({
     style: { color: f.color }
   }, f.text)))), /*#__PURE__*/React.createElement("div", {
     className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`
-  }, monsters.map((m, monsterIndex) => /*#__PURE__*/React.createElement("div", {
+  }, formationMonsters.map((m, monsterIndex) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
-    className: `md-monster-slot md-monster-slot-${Math.min(monsterIndex, 2)} ${m.isEliteBoss ? "elite" : ""}`
+    className: `md-monster-slot md-monster-slot-${Math.min(monsterIndex, 2)} ${m.isEliteBoss ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
     anim: enemyAnims[m.uid],

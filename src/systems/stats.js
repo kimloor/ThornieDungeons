@@ -178,6 +178,8 @@ function makeEnemy(floor, options = {}) {
     color: t.color,
     isBoss,
     isEliteBoss,
+    sizeClass: isEliteBoss ? "elite" : t.sizeClass || (isBoss ? "large" : "medium"),
+    anchorType: t.anchorType === "flying" ? "flying" : "ground",
     modifier,
     agi,
     speed: speedFromAgi(agi),
@@ -459,4 +461,3 @@ function getStats(player, equipped) {
 function combatPower(stats, level) {
   return roundInt(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.critDamage || 0) * 3 + (stats.dodgeChance || 0) * 6 + level * 50);
 }
-

@@ -248,40 +248,58 @@ function rollGachaPet() {
 let ENEMY_POOL = [{
   id: "jelly_slime",
   name: "Jelly Slime",
-  color: "#7ED9A8"
+  color: "#7ED9A8",
+  sizeClass: "small",
+  anchorType: "ground"
 }, {
   id: "spore_cap",
   name: "Spore Cap",
-  color: "#C98BE0"
+  color: "#C98BE0",
+  sizeClass: "small",
+  anchorType: "ground"
 }, {
   id: "tusky_boar",
   name: "Tusky Boar",
-  color: "#C9A06A"
+  color: "#C9A06A",
+  sizeClass: "medium",
+  anchorType: "ground"
 }, {
   id: "bramble_bat",
   name: "Bramble Bat",
-  color: "#8E8CD8"
+  color: "#8E8CD8",
+  sizeClass: "medium",
+  anchorType: "flying"
 }, {
   id: "bone_rattler",
   name: "Bone Rattler",
-  color: "#E5E2D6"
+  color: "#E5E2D6",
+  sizeClass: "medium",
+  anchorType: "ground"
 }, {
   id: "sandy_crab",
   name: "Sandy Crab",
-  color: "#F2B25C"
+  color: "#F2B25C",
+  sizeClass: "medium",
+  anchorType: "ground"
 }];
 let BOSS_POOL = [{
   id: "moss_king",
   name: "Moss King",
-  color: "#5FA85F"
+  color: "#5FA85F",
+  sizeClass: "large",
+  anchorType: "ground"
 }, {
   id: "ember_drake",
   name: "Ember Drake",
-  color: "#F0714B"
+  color: "#F0714B",
+  sizeClass: "large",
+  anchorType: "ground"
 }, {
   id: "frost_warden",
   name: "Frost Warden",
-  color: "#7BC7E8"
+  color: "#7BC7E8",
+  sizeClass: "large",
+  anchorType: "ground"
 }];
 // Per-monster loot tables (design: admin-backend-design.md) — { [monsterId]: { gear: [
 // {itemType, rarity, weight} ], junk: [ {junkId, qtyMin, qtyMax, dropChance} ] } }, filled
