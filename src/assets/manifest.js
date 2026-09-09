@@ -78,7 +78,15 @@ function battleEncounterSources({ equipped = {}, pet = null, monsters = [] } = {
 }
 
 function preloadBattleCriticalAssets(encounter) {
-  return preloadAssetImages(battleEncounterSources(encounter, false), 1200);
+  const settled = preloadAssetImages(battleEncounterSources(encounter, false));
+  const ready = Promise.race([
+    settled,
+    new Promise(resolve => setTimeout(resolve, 1200))
+  ]);
+  // `ready` keeps Battle entry bounded on a slow connection. `settled` remains
+  // available so deferred frames cannot compete with critical UI/idle images
+  // after the entry timeout wins the race.
+  return { ready, settled };
 }
 
 function warmBattleDeferredAssets(encounter) {
@@ -370,12 +378,15 @@ function getStableSpriteOpaqueBounds(config, anim) {
   if (!raw || typeof raw !== "object") return null;
   const canvasWidth = Number(raw.canvasWidth || config?.canvas?.width || 1);
   const canvasHeight = Number(raw.canvasHeight || config?.canvas?.height || 1);
+  if (!(Number.isFinite(canvasWidth) && canvasWidth > 0 && Number.isFinite(canvasHeight) && canvasHeight > 0)) return null;
   const normalized = Math.max(Number(raw.left || 0), Number(raw.top || 0), Number(raw.width || 0), Number(raw.height || 0)) <= 1;
   const left = Number(raw.left || 0) / (normalized ? 1 : canvasWidth);
   const top = Number(raw.top || 0) / (normalized ? 1 : canvasHeight);
   const width = Number(raw.width || (Number(raw.right || 0) - Number(raw.left || 0))) / (normalized ? 1 : canvasWidth);
   const height = Number(raw.height || (Number(raw.bottom || 0) - Number(raw.top || 0))) / (normalized ? 1 : canvasHeight);
-  if (!(width > 0 && height > 0)) return null;
+  if (![left, top, width, height].every(Number.isFinite)
+      || left < 0 || top < 0 || width <= 0 || height <= 0
+      || left + width > 1.001 || top + height > 1.001) return null;
   const canvasAspect = canvasWidth / Math.max(1, canvasHeight);
   return { left, top, width, height, canvasAspect, contentAspect: canvasAspect * width / height };
 }
