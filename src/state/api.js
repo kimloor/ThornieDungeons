@@ -277,8 +277,9 @@ function cloudCraftItem(url, id, password, characterId, recipeId) {
     recipeId
   });
 }
-// Phase 5 — PvP Arena. Battles are fully resolved server-side (see worker's
-// simulateArenaBattle) — the client only gets back a turn-by-turn log to play back.
+// Phase 5 — PvP Arena. Turn-based: startArenaMatch() opens a session, then
+// submitArenaTurn() is called once per player action (attack or skill) — the worker
+// resolves that whole round (both pets + the bot) and returns the updated state.
 function cloudGetArenaStatus(url, id, password, characterId) {
   return cloudGet(url, {
     action: "getArenaStatus",
@@ -295,13 +296,24 @@ function cloudGetArenaOpponents(url, id, password, characterId) {
     characterId
   });
 }
-function cloudAttackArenaOpponent(url, id, password, characterId, opponentCharacterId, paidDiamonds) {
+function cloudStartArenaMatch(url, id, password, characterId, opponentCharacterId, paidDiamonds) {
   return cloudPost(url, {
-    action: "attackArenaOpponent",
+    action: "startArenaMatch",
     id,
     password,
     characterId,
     opponentCharacterId,
     paidDiamonds: !!paidDiamonds
+  });
+}
+function cloudSubmitArenaTurn(url, id, password, characterId, matchId, actionType, skillKey) {
+  return cloudPost(url, {
+    action: "submitArenaTurn",
+    id,
+    password,
+    characterId,
+    matchId,
+    actionType,
+    skillKey
   });
 }
