@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-09T06:01:23Z",
-  "count": 176,
+  "generatedAt": "2026-09-09T11:28:33Z",
+  "count": 199,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "ef5ecef32e7e8d4768d21944922af994",
-      "last_modified": "2026-09-08T23:07:30.865Z",
-      "size": 10256,
+      "etag": "3d7ad0f865db0079ac0b0cb6378d5a9c",
+      "last_modified": "2026-09-09T09:50:15.121Z",
+      "size": 11451,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -1852,6 +1852,83 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/equipment-icons/azure/azure_armor.png",
+      "etag": "52962c4d1cc648924a9559fff9b8060f",
+      "last_modified": "2026-09-09T09:23:04.537Z",
+      "size": 786446,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/azure/azure_boots.png",
+      "etag": "9c9924660c9c46feb8214a273fc7d3df",
+      "last_modified": "2026-09-09T09:23:07.874Z",
+      "size": 786444,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/azure/azure_gauntlets.png",
+      "etag": "f4c554fa7709073fa9ce50f0a438d097",
+      "last_modified": "2026-09-09T09:23:11.460Z",
+      "size": 786444,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/azure/azure_helmet.png",
+      "etag": "d5eb477795018a1894a547ab90a71d50",
+      "last_modified": "2026-09-09T09:23:14.847Z",
+      "size": 786444,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/azure/azure_ring.png",
+      "etag": "441bf58231ada98b6d3619e87694942a",
+      "last_modified": "2026-09-09T09:23:17.943Z",
+      "size": 786444,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/azure/azure_sword.png",
+      "etag": "9e4b03e989964e199df6a5b92318753c",
+      "last_modified": "2026-09-09T09:23:21.712Z",
+      "size": 786444,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/wings/angel_wings.png",
+      "etag": "f72e69677c29b7d35a4ee376301955fe",
+      "last_modified": "2026-09-09T09:23:24.973Z",
+      "size": 786444,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/hub-icons/bag.svg",
       "etag": "66d734d2b95ca6edeb4bac516e18f708",
       "last_modified": "2026-09-08T07:20:00.161Z",
@@ -1902,6 +1979,182 @@
       "size": 1259,
       "http_metadata": {
         "contentType": "image/svg+xml"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/chests/equipment_chest.png",
+      "etag": "49fa99ded3672930200a620cedab555a",
+      "last_modified": "2026-09-09T09:50:18.605Z",
+      "size": 95452,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/currency/diamond.png",
+      "etag": "e5a9e2b378aa7070c5fddbc13f893619",
+      "last_modified": "2026-09-09T09:50:21.679Z",
+      "size": 89127,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/currency/gold.png",
+      "etag": "0ec1c00070785ef0251a77d51eff4a14",
+      "last_modified": "2026-09-09T09:50:24.826Z",
+      "size": 116270,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/grass.png",
+      "etag": "55bc1bc56617f592703aff7511c9f0cc",
+      "last_modified": "2026-09-09T09:50:28.008Z",
+      "size": 90892,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/iron.png",
+      "etag": "b73c9cae5f067f7c207cc5a6081e6417",
+      "last_modified": "2026-09-09T09:50:31.058Z",
+      "size": 64713,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/mana_ore.png",
+      "etag": "b0d997d228e3fa79059e70fdffa2020d",
+      "last_modified": "2026-09-09T09:50:34.107Z",
+      "size": 84219,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/stone.png",
+      "etag": "5ce0348bd1cf554d5cc2360afc1d1a6d",
+      "last_modified": "2026-09-09T09:50:37.257Z",
+      "size": 85618,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/wood.png",
+      "etag": "0c378c6e5dfd1ba1ccb6c8912945734a",
+      "last_modified": "2026-09-09T09:50:40.832Z",
+      "size": 76742,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/potions/hp_full.png",
+      "etag": "90937e0b25d84f2db42e7d9a1cdd9257",
+      "last_modified": "2026-09-09T09:50:43.841Z",
+      "size": 84415,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/potions/hp_high.png",
+      "etag": "4bf904343bec661831a04b18a384b87f",
+      "last_modified": "2026-09-09T09:50:47.067Z",
+      "size": 67744,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/potions/hp_medium.png",
+      "etag": "1896dc03ed358df2fc8b1d801757bd87",
+      "last_modified": "2026-09-09T09:50:50.107Z",
+      "size": 58365,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/potions/hp_small.png",
+      "etag": "c0c8c591de60652070446e3d60f79983",
+      "last_modified": "2026-09-09T09:50:53.494Z",
+      "size": 51401,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/potions/mp_full.png",
+      "etag": "5d774273eab5fd42f7c02f3817a68e70",
+      "last_modified": "2026-09-09T09:50:56.561Z",
+      "size": 92436,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/potions/mp_high.png",
+      "etag": "8ed18784bfd68623820cb3550429db3a",
+      "last_modified": "2026-09-09T09:50:59.889Z",
+      "size": 68267,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/potions/mp_medium.png",
+      "etag": "3903103fff4e2bcb7231967bdd3b09cd",
+      "last_modified": "2026-09-09T09:51:02.943Z",
+      "size": 60002,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/potions/mp_small.png",
+      "etag": "21017cb4fb767db4af8f517da7230d98",
+      "last_modified": "2026-09-09T09:51:05.985Z",
+      "size": 51652,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
