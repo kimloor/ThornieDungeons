@@ -1764,7 +1764,7 @@ function resolveItemIconPath(item) {
 
   const wingKey = item.wingId || item.wingsId || item.star;
   if (item.type === "wings" || item.type === "wing" || wingKey === "angel") {
-    return icons.wings?.[wingKey || "angel"] || icons.wings?.angel || "";
+    return wingKey ? icons.wings?.[wingKey] || "" : "";
   }
 
   return "";
@@ -7470,7 +7470,7 @@ function PaidResetConfirm({ type, diamonds, onCancel, onConfirm }) {
     /*#__PURE__*/React.createElement("div", { className: "md-character-confirm-card" },
       /*#__PURE__*/React.createElement("h3", null, label),
       /*#__PURE__*/React.createElement("p", null, type === "stats" ? "คืนแต้มสเตตัสที่เคยใช้ทั้งหมด" : "คืนแต้มสกิลที่เคยใช้ทั้งหมด"),
-      /*#__PURE__*/React.createElement("strong", null, "ใช้ 💎 100 · มี ", formatNumber(diamonds)),
+      /*#__PURE__*/React.createElement("strong", null, "ใช้ ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " 100 · มี ", formatNumber(diamonds)),
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCancel }, "ยกเลิก"),
         /*#__PURE__*/React.createElement("button", { type: "button", className: "confirm", disabled: diamonds < 100, onClick: onConfirm }, diamonds < 100 ? "เพชรไม่พอ" : "ยืนยัน")
@@ -7950,7 +7950,7 @@ function RaidScreen({
         style: { marginTop: 8 },
         disabled: attacking || hurtPlaying || isDead || !canAffordRefill,
         onClick: () => handleAttack(true)
-      }, attacking ? "กำลังโจมตี..." : `💎 จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`)),
+      }, attacking ? "กำลังโจมตี..." : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), ` จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`))),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
       /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ — แจกอัตโนมัติ)"),
@@ -8110,7 +8110,7 @@ function ArenaScreen({
               className: "md-btn attack small",
               disabled: !!attackingId || !canAffordRefill,
               onClick: () => handleAttack(opp.characterId, true)
-            }, attackingId === opp.characterId ? "..." : `💎${status.diamondRefillCost || 30}`)))),
+            }, attackingId === opp.characterId ? "..." : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), status.diamondRefillCost || 30))))),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
       /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "จัดอันดับ"),
@@ -9709,7 +9709,7 @@ function InventoryOverlay({
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-item-detail" }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: detailTarget.icon || SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
-      detailTarget.type === "junk" ? /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `วัตถุดิบขยะ · มี ${detailTarget.quantity} ชิ้น (สูงสุด 99/ช่อง) · ขายได้ ${sellPrice(detailTarget)} 🪙`) : /*#__PURE__*/React.createElement(React.Fragment, null,
+      detailTarget.type === "junk" ? /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `วัตถุดิบขยะ · มี ${detailTarget.quantity} ชิ้น (สูงสุด 99/ช่อง) · ขายได้ ${sellPrice(detailTarget)} `, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" })) : /*#__PURE__*/React.createElement(React.Fragment, null,
         /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
         renderEmpowerSlotsReadOnly(detailTarget)
       ),
@@ -9720,7 +9720,7 @@ function InventoryOverlay({
         onClick: doSalvage
       }, (() => {
         const y = salvageYield(detailTarget.rarity);
-        return `♻️ แยกชิ้นส่วน (🔩${y.iron} 🔮${y.manaOre})`;
+        return /*#__PURE__*/React.createElement(React.Fragment, null, "♻️ แยกชิ้นส่วน (", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }), y.iron, " ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }), y.manaOre, ")");
       })()),
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
@@ -9978,8 +9978,8 @@ function CraftingOverlay({
     cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, recipe.recipeId)
       .then(res => {
         if (!res || res.error) {
-          const errMsg = res && res.error === "insufficient_gold" ? `ทองไม่พอ (ต้องการ 🪙${res.need})`
-            : res && res.error === "insufficient_materials" ? `${(JUNK_INFO[res.junkId] || {}).icon || ""} ${(JUNK_INFO[res.junkId] || {}).name || res.junkId} ไม่พอ (มี ${res.have}/${res.need})`
+          const errMsg = res && res.error === "insufficient_gold" ? /*#__PURE__*/React.createElement(React.Fragment, null, "ทองไม่พอ (ต้องการ ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), res.need, ")")
+            : res && res.error === "insufficient_materials" ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: res.junkId }, fallback: (JUNK_INFO[res.junkId] || {}).icon || "📦", className: "md-game-icon md-inline-item-icon", alt: (JUNK_INFO[res.junkId] || {}).name || res.junkId }), " ", (JUNK_INFO[res.junkId] || {}).name || res.junkId, ` ไม่พอ (มี ${res.have}/${res.need})`)
             : "ประดิษฐ์ไม่สำเร็จ";
           setMsg(errMsg);
           return;

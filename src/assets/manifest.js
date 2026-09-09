@@ -37,7 +37,7 @@ function resolveItemIconPath(item) {
 
   const wingKey = item.wingId || item.wingsId || item.star;
   if (item.type === "wings" || item.type === "wing" || wingKey === "angel") {
-    return icons.wings?.[wingKey || "angel"] || icons.wings?.angel || "";
+    return wingKey ? icons.wings?.[wingKey] || "" : "";
   }
 
   return "";
