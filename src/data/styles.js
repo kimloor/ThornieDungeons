@@ -1307,6 +1307,28 @@ const STYLE = `
   .md-equip-character .md-sprite-wrap { transform:scale(1.35); }
 }
 
+/* ---- manifest-backed item icons ---- */
+.md-game-icon { width:1.35em; height:1.35em; object-fit:contain; object-position:center; display:inline-block; vertical-align:-0.28em; flex:0 0 auto; }
+.md-game-icon.fallback { width:auto; height:auto; object-fit:initial; vertical-align:baseline; }
+.md-resource-icon { width:18px; height:18px; vertical-align:-4px; }
+.md-inline-item-icon { width:20px; height:20px; vertical-align:-5px; margin-right:2px; }
+.md-shop-item-icon, .md-detail-item-icon, .md-drop-item-icon { width:28px; height:28px; vertical-align:-8px; margin-right:3px; }
+.md-equipped-item-icon { width:34px; height:34px; margin:auto; }
+.md-inventory-item-icon { width:34px; height:34px; }
+.md-quickslot-item-icon { width:30px; height:30px; vertical-align:middle; }
+.md-floor-reward-icon { width:28px; height:28px; vertical-align:middle; }
+.md-mail-reward-icons { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
+.md-mail-reward-icons > span { display:inline-flex; align-items:center; gap:3px; }
+.md-equip-stat-chip, .md-hub-resources > span, .md-status-chip, .md-shop-lv { display:inline-flex; align-items:center; gap:3px; }
+.md-inventory-cell-icon { display:flex; align-items:center; justify-content:center; }
+@media (max-width:380px) {
+  .md-resource-icon { width:16px; height:16px; }
+  .md-inline-item-icon { width:18px; height:18px; }
+  .md-shop-item-icon, .md-detail-item-icon, .md-drop-item-icon { width:24px; height:24px; }
+  .md-equipped-item-icon, .md-inventory-item-icon { width:30px; height:30px; }
+  .md-quickslot-item-icon { width:26px; height:26px; }
+}
+
 /* ---- mobile web polish ---- */
 @media (max-width: 480px) {
   body { padding: 0 !important; }
