@@ -2229,6 +2229,7 @@ function CombatScreen({
   turnQueue,
   activeTurnKey,
   combatSpeed,
+  combatTurnCount,
   onCycleCombatSpeed
 }) {
   const [editSlots, setEditSlots] = useState(false);
@@ -2243,6 +2244,7 @@ function CombatScreen({
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
+  const skipUnlocked = (combatTurnCount || 0) >= 5;
   const qs = quickSlots || [null, null, null, null];
   function quickSlotVisual(entry) {
     if (!entry) return { icon: "➕", disabled: true, badge: null };
@@ -2304,16 +2306,11 @@ function CombatScreen({
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
   }, /*#__PURE__*/React.createElement("button", {
-    className: "md-combat-speed",
+    className: `md-combat-header-action ${skipUnlocked ? "skip" : "speed"}`,
     disabled: busy,
-    title: "เปลี่ยนความเร็วการต่อสู้",
-    onClick: onCycleCombatSpeed
-  }, "×", combatSpeed || 1), /*#__PURE__*/React.createElement("button", {
-    className: "md-combat-skip",
-    disabled: busy,
-    title: "ข้ามเทิร์นของฮีโร่",
-    onClick: () => onAction("skip")
-  }, "SKIP"))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
+    title: skipUnlocked ? "ข้ามเทิร์นของฮีโร่" : "เปลี่ยนความเร็วการต่อสู้",
+    onClick: skipUnlocked ? () => onAction("skip") : onCycleCombatSpeed
+  }, skipUnlocked ? "SKIP" : `×${combatSpeed || 1}`))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,

@@ -42,7 +42,7 @@ function ThornieDungeons() {
   // then Pet + Monsters sorted by Speed), plus which unit's action is currently resolving.
   const [turnQueue, setTurnQueue] = useState([]); // [{key, kind, uid?, name, icon, speed}]
   const [activeTurnKey, setActiveTurnKey] = useState(null);
-  const [log, setLogState] = useState(["Welcome to ThornieDungeons!"]);
+  const [log, setLogState] = useState([]);
   // Keeps the last 3 combat messages, newest first, so the log panel can show
   // a short scrolling history instead of overwriting a single line.
   const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
@@ -50,6 +50,9 @@ function ThornieDungeons() {
   // Combat presentation speed. x1 keeps authored frame timing; x2 shortens the
   // action windows without changing damage, turn order, or cooldown rules.
   const [combatSpeed, setCombatSpeed] = useState(1);
+  // The header's last cell is a large speed button for the opening rounds,
+  // then becomes Skip after five player turns.
+  const [combatTurnCount, setCombatTurnCount] = useState(0);
   // Separate lock for item-mutating actions (Enhance/Empower/Reroll/Salvage/Sell/Equip/BuyMaterial).
   // itemActionLockRef is checked+set *synchronously* so a rapid second click can never slip in
   // and run against a stale `save`/`inventory` closure before the first click's state has
@@ -593,6 +596,7 @@ function ThornieDungeons() {
     setTurnQueue([initItems[0], ...initRest]);
     turnQueueRef.current = [initItems[0], ...initRest];
     setActiveTurnKey(null);
+    setCombatTurnCount(0);
     setDropItem(null);
     const boss = spawned.find(m => m.isBoss);
     setLog(boss ? `A ${boss.name} blocks the way!` : spawned.length > 1 ? `${spawned.length} monsters appear: ${spawned.map(m => m.name).join(", ")}!` : `A wild ${spawned[0].name} appears!`);
@@ -848,6 +852,7 @@ function ThornieDungeons() {
     const target = getTargetMonster();
     if ((action === "attack" || action === "skill") && !target) return;
     const stats = getStats(player, equipped);
+    if (action !== "flee") setCombatTurnCount(count => count + 1);
     setBusy(true);
     // Lock in this round's Turn Order Queue the moment the player commits to an action,
     // so the queue bar reflects exactly what's about to resolve.
@@ -2061,6 +2066,7 @@ function ThornieDungeons() {
     turnQueue: turnQueue,
     activeTurnKey: activeTurnKey,
     combatSpeed: combatSpeed,
+    combatTurnCount: combatTurnCount,
     onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,

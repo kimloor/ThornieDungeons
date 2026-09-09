@@ -975,13 +975,13 @@ const STYLE = `
 .md-pet-slot { left: 13%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
 
 /* One enemy takes the middle lane; two enemies straddle it. Three enemies use an evenly
-   spaced diagonal: (83%,77%) -> (77%,64.5%) -> (71%,52%). */
+   spaced diagonal lifted clear of the bottom control dock. */
 .md-monster-count-1 .md-monster-slot-0 { left: 77%; top: 64.5%; }
 .md-monster-count-2 .md-monster-slot-0 { left: 81%; top: 72%; }
 .md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 57%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 77%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 64.5%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 52%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 71%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 58.5%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 46%; }
 .md-monster-slot { transform: translate(-50%, -50%); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
@@ -1123,9 +1123,9 @@ const STYLE = `
 .md-quickslot-popover-sub { color: var(--ink-soft); font-size: 10.5px; font-weight: 800; flex-shrink: 0; }
 
 /* ---- Combat layout V2: six-part header + Quick Slot dock ---- */
-.md-scene.battle-bg { padding-top: 8px; }
+.md-scene.battle-bg { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
 .md-battle-top {
-  display: grid; grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)) .9fr;
+  display: grid; grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)) 1.15fr;
   align-items: stretch; gap: 0; padding: 0; min-height: 58px; overflow: hidden;
 }
 .md-combat-stats {
@@ -1154,15 +1154,15 @@ const STYLE = `
   background: var(--violet-deep); color: #fff; font: 800 7px/14px 'Baloo 2'; text-align: center;
 }
 .md-combat-top-actions {
-  grid-column: 6; display: grid; grid-template-rows: 1fr 1fr; min-width: 0;
+  grid-column: 6; display: grid; min-width: 0;
   background: rgba(0,0,0,.16);
 }
-.md-combat-speed, .md-combat-skip {
-  min-width: 0; padding: 0 2px; border: 0; border-bottom: 1px solid rgba(255,209,102,.22);
-  background: transparent; color: var(--gold); font: 800 10px/1 'Baloo 2'; cursor: pointer;
+.md-combat-header-action {
+  width: 100%; min-width: 0; padding: 0 4px; border: 0; background: transparent;
+  color: var(--gold); font: 800 15px/1 'Baloo 2'; cursor: pointer;
 }
-.md-combat-skip { border-bottom: 0; color: var(--ink-soft); font-size: 7.5px; letter-spacing: .25px; }
-.md-combat-speed:disabled, .md-combat-skip:disabled { opacity: .38; cursor: not-allowed; }
+.md-combat-header-action.skip { color: #fff; font-size: 11px; letter-spacing: .45px; }
+.md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
 
 .md-unit-status {
   min-height: 16px; display: flex; align-items: center; justify-content: center; gap: 3px;
@@ -1198,7 +1198,7 @@ const STYLE = `
 .md-battle-dock .md-dock-attack:active { transform: translateY(2px); }
 
 @media (max-width: 380px) {
-  .md-battle-top { grid-template-columns: 1.45fr repeat(4, minmax(0, 1fr)) .9fr; min-height: 54px; }
+  .md-battle-top { grid-template-columns: 1.45fr repeat(4, minmax(0, 1fr)) 1.1fr; min-height: 54px; }
   .md-turn-queue-icon { width: 24px; height: 24px; font-size: 13px; }
   .md-combat-stats { padding-inline: 4px; }
   .md-combat-stats .md-hud-text-row { font-size: 7px; }

@@ -1077,13 +1077,13 @@ const STYLE = `
 .md-pet-slot { left: 13%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
 
 /* One enemy takes the middle lane; two enemies straddle it. Three enemies use an evenly
-   spaced diagonal: (83%,77%) -> (77%,64.5%) -> (71%,52%). */
+   spaced diagonal lifted clear of the bottom control dock. */
 .md-monster-count-1 .md-monster-slot-0 { left: 77%; top: 64.5%; }
 .md-monster-count-2 .md-monster-slot-0 { left: 81%; top: 72%; }
 .md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 57%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 77%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 64.5%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 52%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 71%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 58.5%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 46%; }
 .md-monster-slot { transform: translate(-50%, -50%); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
@@ -1225,9 +1225,9 @@ const STYLE = `
 .md-quickslot-popover-sub { color: var(--ink-soft); font-size: 10.5px; font-weight: 800; flex-shrink: 0; }
 
 /* ---- Combat layout V2: six-part header + Quick Slot dock ---- */
-.md-scene.battle-bg { padding-top: 8px; }
+.md-scene.battle-bg { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
 .md-battle-top {
-  display: grid; grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)) .9fr;
+  display: grid; grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)) 1.15fr;
   align-items: stretch; gap: 0; padding: 0; min-height: 58px; overflow: hidden;
 }
 .md-combat-stats {
@@ -1256,15 +1256,15 @@ const STYLE = `
   background: var(--violet-deep); color: #fff; font: 800 7px/14px 'Baloo 2'; text-align: center;
 }
 .md-combat-top-actions {
-  grid-column: 6; display: grid; grid-template-rows: 1fr 1fr; min-width: 0;
+  grid-column: 6; display: grid; min-width: 0;
   background: rgba(0,0,0,.16);
 }
-.md-combat-speed, .md-combat-skip {
-  min-width: 0; padding: 0 2px; border: 0; border-bottom: 1px solid rgba(255,209,102,.22);
-  background: transparent; color: var(--gold); font: 800 10px/1 'Baloo 2'; cursor: pointer;
+.md-combat-header-action {
+  width: 100%; min-width: 0; padding: 0 4px; border: 0; background: transparent;
+  color: var(--gold); font: 800 15px/1 'Baloo 2'; cursor: pointer;
 }
-.md-combat-skip { border-bottom: 0; color: var(--ink-soft); font-size: 7.5px; letter-spacing: .25px; }
-.md-combat-speed:disabled, .md-combat-skip:disabled { opacity: .38; cursor: not-allowed; }
+.md-combat-header-action.skip { color: #fff; font-size: 11px; letter-spacing: .45px; }
+.md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
 
 .md-unit-status {
   min-height: 16px; display: flex; align-items: center; justify-content: center; gap: 3px;
@@ -1300,7 +1300,7 @@ const STYLE = `
 .md-battle-dock .md-dock-attack:active { transform: translateY(2px); }
 
 @media (max-width: 380px) {
-  .md-battle-top { grid-template-columns: 1.45fr repeat(4, minmax(0, 1fr)) .9fr; min-height: 54px; }
+  .md-battle-top { grid-template-columns: 1.45fr repeat(4, minmax(0, 1fr)) 1.1fr; min-height: 54px; }
   .md-turn-queue-icon { width: 24px; height: 24px; font-size: 13px; }
   .md-combat-stats { padding-inline: 4px; }
   .md-combat-stats .md-hud-text-row { font-size: 7px; }
@@ -4356,7 +4356,7 @@ function ThornieDungeons() {
   // then Pet + Monsters sorted by Speed), plus which unit's action is currently resolving.
   const [turnQueue, setTurnQueue] = useState([]); // [{key, kind, uid?, name, icon, speed}]
   const [activeTurnKey, setActiveTurnKey] = useState(null);
-  const [log, setLogState] = useState(["Welcome to ThornieDungeons!"]);
+  const [log, setLogState] = useState([]);
   // Keeps the last 3 combat messages, newest first, so the log panel can show
   // a short scrolling history instead of overwriting a single line.
   const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
@@ -4364,6 +4364,9 @@ function ThornieDungeons() {
   // Combat presentation speed. x1 keeps authored frame timing; x2 shortens the
   // action windows without changing damage, turn order, or cooldown rules.
   const [combatSpeed, setCombatSpeed] = useState(1);
+  // The header's last cell is a large speed button for the opening rounds,
+  // then becomes Skip after five player turns.
+  const [combatTurnCount, setCombatTurnCount] = useState(0);
   // Separate lock for item-mutating actions (Enhance/Empower/Reroll/Salvage/Sell/Equip/BuyMaterial).
   // itemActionLockRef is checked+set *synchronously* so a rapid second click can never slip in
   // and run against a stale `save`/`inventory` closure before the first click's state has
@@ -4907,6 +4910,7 @@ function ThornieDungeons() {
     setTurnQueue([initItems[0], ...initRest]);
     turnQueueRef.current = [initItems[0], ...initRest];
     setActiveTurnKey(null);
+    setCombatTurnCount(0);
     setDropItem(null);
     const boss = spawned.find(m => m.isBoss);
     setLog(boss ? `A ${boss.name} blocks the way!` : spawned.length > 1 ? `${spawned.length} monsters appear: ${spawned.map(m => m.name).join(", ")}!` : `A wild ${spawned[0].name} appears!`);
@@ -5162,6 +5166,7 @@ function ThornieDungeons() {
     const target = getTargetMonster();
     if ((action === "attack" || action === "skill") && !target) return;
     const stats = getStats(player, equipped);
+    if (action !== "flee") setCombatTurnCount(count => count + 1);
     setBusy(true);
     // Lock in this round's Turn Order Queue the moment the player commits to an action,
     // so the queue bar reflects exactly what's about to resolve.
@@ -6375,6 +6380,7 @@ function ThornieDungeons() {
     turnQueue: turnQueue,
     activeTurnKey: activeTurnKey,
     combatSpeed: combatSpeed,
+    combatTurnCount: combatTurnCount,
     onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
@@ -8671,6 +8677,7 @@ function CombatScreen({
   turnQueue,
   activeTurnKey,
   combatSpeed,
+  combatTurnCount,
   onCycleCombatSpeed
 }) {
   const [editSlots, setEditSlots] = useState(false);
@@ -8685,6 +8692,7 @@ function CombatScreen({
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
+  const skipUnlocked = (combatTurnCount || 0) >= 5;
   const qs = quickSlots || [null, null, null, null];
   function quickSlotVisual(entry) {
     if (!entry) return { icon: "➕", disabled: true, badge: null };
@@ -8746,16 +8754,11 @@ function CombatScreen({
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
   }, /*#__PURE__*/React.createElement("button", {
-    className: "md-combat-speed",
+    className: `md-combat-header-action ${skipUnlocked ? "skip" : "speed"}`,
     disabled: busy,
-    title: "เปลี่ยนความเร็วการต่อสู้",
-    onClick: onCycleCombatSpeed
-  }, "×", combatSpeed || 1), /*#__PURE__*/React.createElement("button", {
-    className: "md-combat-skip",
-    disabled: busy,
-    title: "ข้ามเทิร์นของฮีโร่",
-    onClick: () => onAction("skip")
-  }, "SKIP"))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
+    title: skipUnlocked ? "ข้ามเทิร์นของฮีโร่" : "เปลี่ยนความเร็วการต่อสู้",
+    onClick: skipUnlocked ? () => onAction("skip") : onCycleCombatSpeed
+  }, skipUnlocked ? "SKIP" : `×${combatSpeed || 1}`))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
