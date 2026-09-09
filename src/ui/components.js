@@ -620,7 +620,7 @@ function CharacterSelectScreen({
     style: {
       margin: 0
     }
-  }, "🪙 ", formatNumber(slot.gold), " · Stage ", slot.unlockedFloor)), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", formatNumber(slot.gold), " · Stage ", slot.unlockedFloor)), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee small",
     style: {
       flexShrink: 0,
@@ -847,7 +847,7 @@ function StatusScreen({
         }),
         /*#__PURE__*/React.createElement("div", { className: "md-preview-help" }, /*#__PURE__*/React.createElement("span", null, "● ค่าที่เปลี่ยนจากการทดลองอัป"), /*#__PURE__*/React.createElement("button", { type: "button", disabled: !used, onClick: () => setDraft(emptyDraft()) }, "↻ รีเซ็ต")),
         /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
-          /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !allocatedStats, onClick: () => setConfirmReset(true) }, "↻ รีสเตตัส ", /*#__PURE__*/React.createElement("span", null, "💎 100")),
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !allocatedStats, onClick: () => setConfirmReset(true) }, "↻ รีสเตตัส ", /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " 100")),
           /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสเตตัส")
         )
       )
@@ -926,7 +926,7 @@ function SkillScreen({
       ),
       /*#__PURE__*/React.createElement("div", { className: "md-preview-help" }, /*#__PURE__*/React.createElement("span", null, "● ค่าที่เปลี่ยนจากการทดลองอัป"), /*#__PURE__*/React.createElement("button", { type: "button", disabled: !used, onClick: () => setDraft({}) }, "↻ รีเซ็ต")),
       /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
-        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spentSkillPoints(save), onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100")),
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spentSkillPoints(save), onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " 100")),
         /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสกิล")
       )
     ),
@@ -1357,7 +1357,7 @@ function ArenaScreen({
             /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 16, color: lastResult.win ? "#7CFF9E" : "#FF6B6B" } }, lastResult.win ? "🏆 ชนะ!" : "💢 แพ้"),
             /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "vs ", lastResult.opponentName || "?"),
             /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating ", lastResult.ratingBefore, " → ", lastResult.ratingAfter, " (", lastResult.ratingChange >= 0 ? "+" : "", lastResult.ratingChange, ")"),
-            /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "💎 +", lastResult.diamondsEarned || 0))),
+            /*#__PURE__*/React.createElement("p", { className: "md-sub" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " +", lastResult.diamondsEarned || 0))),
 
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
@@ -1974,7 +1974,7 @@ function PetScreen({
     }
   }, "🐾 Pets ", /*#__PURE__*/React.createElement("span", {
     className: "md-shop-lv"
-  }, "💎", save.diamonds || 0))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), save.diamonds || 0))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -2079,7 +2079,7 @@ function GachaScreen({
     }
   }, "🎰 Pet Gacha ", /*#__PURE__*/React.createElement("span", {
     className: "md-shop-lv"
-  }, "💎", save.diamonds || 0)), /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), save.diamonds || 0)), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: "0 0 6px"
@@ -2100,7 +2100,7 @@ function GachaScreen({
     className: "md-btn primary wide",
     disabled: save.diamonds < GACHA_COST,
     onClick: onGacha
-  }, "💎 สุ่ม 1 ครั้ง (", GACHA_COST, " เพชร)")), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " สุ่ม 1 ครั้ง (", GACHA_COST, " เพชร)")), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
   }, "← Back"), gachaResult && /*#__PURE__*/React.createElement("div", {
@@ -3041,7 +3041,7 @@ function InventoryOverlay({
     inventory.length > 25 && /*#__PURE__*/React.createElement("div", { className: "md-item-detail", style: { textAlign: "center", color: "var(--ink-soft)", fontSize: 10 } }, "มีไอเทมเกิน 25 ชิ้น — ตอนนี้แสดง 25 ช่องแรกเพื่อให้เหมาะกับหน้าจอมือถือ"),
     /*#__PURE__*/React.createElement("div", { className: "md-item-actions" },
       /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem || selectedItem.type === "junk" || busy, onClick: doEquip }, "⚔️ สวมใส่"),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem || busy, onClick: doSell }, selectedItem ? `🪙 ขาย ${sellPrice(selectedItem)}` : "🪙 ขาย"),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem || busy, onClick: doSell }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), selectedItem ? ` ขาย ${sellPrice(selectedItem)}` : " ขาย"),
       /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot || busy, onClick: doUnequip }, "↩️ ถอด")
     ),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิด Inventory")
@@ -3120,7 +3120,7 @@ function BlacksmithOverlay({
       className: `md-equip-slot ${slot} ${it ? "filled" : "empty"} ${selected ? "selected" : ""}`,
       title: it ? itemStatText(it) : "",
       onClick: () => chooseEquipped(slot)
-    }, /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-icon" }, SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-label" }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null,
+    }, /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-icon" }, it ? /*#__PURE__*/React.createElement(GameIcon, { item: it, fallback: SLOT_ICON[slot], className: "md-game-icon md-equipped-item-icon", alt: itemDisplayName(it) }) : SLOT_ICON[slot]), /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-label" }, SLOT_LABEL[slot]), it ? /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name" }, itemDisplayName(it)),
       /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-hint" }, "แตะดูรายละเอียด")
     ) : /*#__PURE__*/React.createElement("div", { className: "md-equip-slot-name", style: { color: "var(--ink-soft)", opacity: .55 } }, "Empty"));
