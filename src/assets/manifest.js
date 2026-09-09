@@ -20,6 +20,74 @@ function asset(key) {
   return assetUrl(path);
 }
 
+
+function resolveItemIconPath(item) {
+  const icons = ASSETS?.itemIcons || {};
+  if (!item || typeof item !== "object") return "";
+
+  if (item.type === "potion" && item.potionId) {
+    return icons.potions?.[item.potionId] || "";
+  }
+  if (item.type === "junk" && item.junkId) {
+    return icons.materials?.[item.junkId] || "";
+  }
+  if (item.setId === "azure" && item.type) {
+    return icons.azure?.[item.type] || "";
+  }
+
+  const wingKey = item.wingId || item.wingsId || item.star;
+  if (item.type === "wings" || item.type === "wing" || wingKey === "angel") {
+    return icons.wings?.[wingKey || "angel"] || icons.wings?.angel || "";
+  }
+
+  return "";
+}
+
+function resolveUiIconPath(category, key) {
+  if (!category || !key) return "";
+  const group = ASSETS?.itemIcons?.[category];
+  return group && typeof group[key] === "string" ? group[key] : "";
+}
+
+function resolveItemIconUrl(item) {
+  const path = resolveItemIconPath(item);
+  return path ? assetUrl(path) : "";
+}
+
+function resolveUiIconUrl(category, key) {
+  const path = resolveUiIconPath(category, key);
+  return path ? assetUrl(path) : "";
+}
+
+function GameIcon({
+  item = null,
+  category = "",
+  iconKey = "",
+  fallback = "",
+  className = "md-game-icon",
+  alt = "",
+  title = ""
+}) {
+  const [failed, setFailed] = React.useState(false);
+  const src = item ? resolveItemIconUrl(item) : resolveUiIconUrl(category, iconKey);
+  if (!src || failed) {
+    return /*#__PURE__*/React.createElement("span", {
+      className: `${className} fallback`,
+      title,
+      "aria-hidden": alt ? undefined : "true"
+    }, fallback);
+  }
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src,
+    alt,
+    title,
+    draggable: false,
+    loading: "lazy",
+    onError: () => setFailed(true)
+  });
+}
+
 function listAssets(obj = ASSETS, prefix = "") {
   const result = {};
   for (const [key, value] of Object.entries(obj || {})) {
