@@ -600,7 +600,11 @@ function ThornieDungeons() {
     setDropItem(null);
     const boss = spawned.find(m => m.isBoss);
     setLog(boss ? `A ${boss.name} blocks the way!` : spawned.length > 1 ? `${spawned.length} monsters appear: ${spawned.map(m => m.name).join(", ")}!` : `A wild ${spawned[0].name} appears!`);
-    setPhase("combat");
+    const battleAssets = { equipped: save?.equipped || {}, pet: initialPet, monsters: spawned };
+    preloadBattleCriticalAssets(battleAssets).finally(() => {
+      setPhase("combat");
+      warmBattleDeferredAssets(battleAssets);
+    });
   }
   // Builds the Active Pet as a real combat unit (own HP/ATK/DEF/Speed) for this fight.
   function buildPetCombatUnit(carryHp = null) {
