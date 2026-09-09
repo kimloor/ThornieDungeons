@@ -3173,7 +3173,7 @@ function BlacksmithOverlay({
     }, "🎒 ไปที่กระเป๋าไอเทม"),
     /*#__PURE__*/React.createElement("div", { className: `md-item-detail ${anvilClass}` }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
-      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, SLOT_ICON[detailTarget.type], " ", itemDisplayName(detailTarget)),
+      /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
       renderEmpowerSlots(detailTarget),
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 6 } },
@@ -3185,9 +3185,11 @@ function BlacksmithOverlay({
         }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : (() => {
           const c = enhanceCost(detailTarget.enhanceLevel || 0);
           const haveIron = junkTotal(inventory, "iron");
-          return [`🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · 🔩`,
+          return [`🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · `,
+            /*#__PURE__*/React.createElement(GameIcon, { key: "iron-icon", item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }),
             /*#__PURE__*/React.createElement("span", { key: "iron", className: haveIron < c.iron ? "md-cost-insufficient" : "" }, c.iron),
-            " 🪙",
+            " ",
+            /*#__PURE__*/React.createElement(GameIcon, { key: "gold-icon", category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }),
             /*#__PURE__*/React.createElement("span", { key: "gold", className: gold < c.gold ? "md-cost-insufficient" : "" }, c.gold),
             ")"];
         })()),
@@ -3199,9 +3201,11 @@ function BlacksmithOverlay({
         }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : (() => {
           const c = empowerCost((detailTarget.empowerSlots || []).findIndex(s => !s));
           const haveManaOre = junkTotal(inventory, "manaOre");
-          return ["🔮 เสริมพลัง (🔮",
+          return ["🔮 เสริมพลัง (",
+            /*#__PURE__*/React.createElement(GameIcon, { key: "mana-icon", item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }),
             /*#__PURE__*/React.createElement("span", { key: "mana", className: haveManaOre < c.manaOre ? "md-cost-insufficient" : "" }, c.manaOre),
-            " 🪙",
+            " ",
+            /*#__PURE__*/React.createElement(GameIcon, { key: "gold-icon", category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }),
             /*#__PURE__*/React.createElement("span", { key: "gold", className: gold < c.gold ? "md-cost-insufficient" : "" }, c.gold),
             ")"];
         })())
@@ -3217,9 +3221,11 @@ function BlacksmithOverlay({
         const lockedCount = filled.filter(s => s.locked).length;
         const c = rerollCost(filled.length, lockedCount);
         const haveManaOre = junkTotal(inventory, "manaOre");
-        return ["🔄 รีรอลออฟชั่น (🔮",
+        return ["🔄 รีรอลออฟชั่น (",
+          /*#__PURE__*/React.createElement(GameIcon, { key: "mana-icon", item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }),
           /*#__PURE__*/React.createElement("span", { key: "mana", className: haveManaOre < c.manaOre ? "md-cost-insufficient" : "" }, c.manaOre),
-          " 🪙",
+          " ",
+          /*#__PURE__*/React.createElement(GameIcon, { key: "gold-icon", category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }),
           /*#__PURE__*/React.createElement("span", { key: "gold", className: gold < c.gold ? "md-cost-insufficient" : "" }, c.gold),
           ") — แตะออฟชั่นด้านบนเพื่อล็อก"];
       })()),
@@ -3292,7 +3298,7 @@ function CraftingOverlay({
       return /*#__PURE__*/React.createElement("div", { key: recipe.recipeId, className: "md-card", style: { marginBottom: 8, padding: 10 } },
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           /*#__PURE__*/React.createElement("div", null,
-            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, craftIcon(recipe), " ", recipe.name),
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: recipe.type, setId: "azure" }, fallback: craftIcon(recipe), className: "md-game-icon md-detail-item-icon", alt: recipe.name }), " ", recipe.name),
             /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { fontSize: 11 } }, statText)
           ),
           /*#__PURE__*/React.createElement("button", {
