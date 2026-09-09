@@ -59,6 +59,9 @@
  *   POST { action: "deleteMails", id, password, characterId, mailIds }     (NEW, Phase 3.6)
  *   POST { action: "deleteAllClaimedMail", id, password, characterId }     (NEW, Phase 3.6)
  *   POST { action: "craftItem", id, password, characterId, recipeId }       (NEW, Phase 4)
+ *   GET  ?action=getArenaStatus&id=&password=&characterId=               (NEW, Phase 5 — PvP Arena)
+ *   GET  ?action=getArenaOpponents&id=&password=&characterId=             (NEW, Phase 5)
+ *   POST { action: "attackArenaOpponent", id, password, characterId, opponentCharacterId, paidDiamonds }  (NEW, Phase 5)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
  *   POST { action: "adminUpsertRecipe", adminKey, recipeId, type, name, setId, empowerSlotCount, materials }  (NEW, admin.html)
@@ -1151,6 +1154,21 @@ const RAID_STAMINA_REGEN_MS = 15 * 60 * 1000; // +1 every 15 minutes
 const RAID_DIAMOND_REFILL_COST = 50; // per extra attack once stamina hits 0
 const RAID_HITS_PER_ATTACK = 3; // mini combat round per attack, not a single flat hit
 
+// ---------- Phase 5: PvP Arena ----------
+// Tables (pvp_ranking, pvp_snapshots, pvp_match_log) already existed from migration_v3.sql.
+// migration_v9_arena.sql adds characters.pvp_tickets / pvp_tickets_updated_at (same
+// CAS-regen pattern as raid_stamina above, own constants so the two systems can be tuned
+// independently).
+const PVP_TICKET_MAX = 5;
+const PVP_TICKET_REGEN_MS = 20 * 60 * 1000; // +1 every 20 minutes
+const PVP_DIAMOND_REFILL_COST = 30; // per extra attack once tickets hit 0
+const PVP_RATING_K = 24;
+const PVP_RATING_FLOOR = 100; // rating never drops below this
+const PVP_RATING_MIN_DELTA = 5; // guaranteed minimum rating swing on any decisive match
+const PVP_WIN_DIAMONDS = 15;
+const PVP_LOSS_DIAMONDS = 3; // small consolation so losing still feels worth attempting
+const PVP_MAX_BATTLE_TURNS = 60; // hard cap so a near-tied matchup can't loop forever
+
 // Lazily resolves current stamina from a stored checkpoint (no cron needed — same
 // approach as most mobile energy systems). Only "spends" whole elapsed 15-min ticks
 // from the checkpoint so partial progress toward the next point is never lost; once
@@ -1573,6 +1591,305 @@ async function handleClaimRaidMilestones(db, id, password, characterId) {
   return json({ ok: true, claimed: newKeys });
 }
 
+// ---------- Phase 5: PvP Arena ----------
+function resolvePvpTickets(stored, updatedAtIso) {
+  const rawTickets = Number(stored);
+  const storedTickets = Number.isFinite(rawTickets) ? Math.max(0, Math.min(PVP_TICKET_MAX, Math.floor(rawTickets))) : PVP_TICKET_MAX;
+  if (storedTickets >= PVP_TICKET_MAX) {
+    return { tickets: PVP_TICKET_MAX, updatedAt: "" };
+  }
+  const updatedAtMs = Date.parse(updatedAtIso || "");
+  if (!Number.isFinite(updatedAtMs)) {
+    return { tickets: storedTickets, updatedAt: new Date(Date.now()).toISOString() };
+  }
+  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
+  const ticks = Math.floor(elapsedMs / PVP_TICKET_REGEN_MS);
+  if (ticks <= 0) return { tickets: storedTickets, updatedAt: updatedAtIso };
+  const tickets = Math.min(PVP_TICKET_MAX, storedTickets + ticks);
+  const updatedAt = tickets >= PVP_TICKET_MAX ? "" : new Date(updatedAtMs + ticks * PVP_TICKET_REGEN_MS).toISOString();
+  return { tickets, updatedAt };
+}
+function pvpTicketsSecondsToNext(updatedAtIso) {
+  if (!updatedAtIso) return 0;
+  const updatedAtMs = Date.parse(updatedAtIso);
+  if (!Number.isFinite(updatedAtMs)) return Math.round(PVP_TICKET_REGEN_MS / 1000);
+  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
+  const remaining = PVP_TICKET_REGEN_MS - (elapsedMs % PVP_TICKET_REGEN_MS);
+  return Math.max(0, Math.round(remaining / 1000));
+}
+
+// Full stat block (not just a single CP number) — this is what gets frozen into
+// pvp_snapshots.stats_json so an opponent can be "attacked" without them being online,
+// and what simulateArenaBattle() runs the fight against on both sides.
+function pvpCombatStats(character, equippedItems) {
+  const s = {
+    str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
+    dex: Number(character.dex) || 0, luk: Number(character.luk) || 0,
+  };
+  const level = Number(character.level) || 1;
+  const base = characterBaseStats(level, s);
+  const eb = { atk: 0, def: 0, hp: 0, critChance: 0, critDamage: 0, dodgeChance: 0 };
+  (equippedItems || []).forEach((it) => {
+    const ib = itemBonus(it);
+    eb.atk += ib.atk; eb.def += ib.def; eb.hp += ib.hp;
+    eb.critChance += ib.critChance || 0; eb.critDamage += ib.critDamage || 0; eb.dodgeChance += ib.dodgeChance || 0;
+  });
+  return {
+    level,
+    atk: Math.round(base.atk + eb.atk),
+    def: Math.round(base.def + eb.def),
+    maxHp: Math.round(base.maxHp + eb.hp),
+    accuracy: base.accuracy,
+    critChance: Math.round((base.critChance + eb.critChance) * 10) / 10,
+    critDamage: Math.round((base.critDamage + eb.critDamage) * 10) / 10,
+    dodgeChance: Math.round((base.dodgeChance + eb.dodgeChance) * 10) / 10,
+  };
+}
+
+// Turn-based simulation, alternating starting with the attacker. Damage formula mirrors
+// the client's own PvE combat (src/ui/App.js: atk - def*0.6 + small variance, crit
+// multiplies by 1+critDamage/100) purely for a familiar feel — kept as its own copy since
+// PvP balance shouldn't silently shift if PvE combat tuning changes, same reasoning as
+// raidCombatStats staying decoupled from combatPowerFromCharacter above.
+function simulateArenaBattle(atk, def) {
+  let hpA = Math.max(1, atk.maxHp);
+  let hpD = Math.max(1, def.maxHp);
+  const log = [];
+  let turn = 0;
+  while (hpA > 0 && hpD > 0 && turn < PVP_MAX_BATTLE_TURNS) {
+    const attackerTurn = turn % 2 === 0;
+    const attacker = attackerTurn ? atk : def;
+    const defender = attackerTurn ? def : atk;
+    const dodged = Math.random() * 100 < defender.dodgeChance;
+    let dmg = 0;
+    let crit = false;
+    if (!dodged) {
+      crit = Math.random() * 100 < attacker.critChance;
+      dmg = Math.max(2, Math.round(attacker.atk - defender.def * 0.6 + (Math.random() * 4 - 2)));
+      if (crit) dmg = Math.round(dmg * (1 + attacker.critDamage / 100));
+      if (attackerTurn) hpD = Math.max(0, hpD - dmg); else hpA = Math.max(0, hpA - dmg);
+    }
+    log.push({ turn, side: attackerTurn ? "attacker" : "defender", dmg, dodged, crit, hpA, hpD });
+    turn++;
+  }
+  // Hard-cap tie-break: whoever has the higher remaining HP% wins rather than replaying —
+  // this only matters for near-mirror matchups that would otherwise run the full 60 turns.
+  const attackerWon = hpD <= 0 && hpA > 0 ? true : hpA <= 0 && hpD > 0 ? false : hpA / atk.maxHp >= hpD / def.maxHp;
+  return { log, attackerWon, hpA, hpD };
+}
+
+async function ensureArenaRanking(db, characterId, playerId, name) {
+  await db
+    .prepare(
+      `INSERT INTO pvp_ranking (character_id, player_id, name, rating, wins, losses, updated_at)
+       VALUES (?, ?, ?, 1000, 0, 0, ?)
+       ON CONFLICT(character_id) DO UPDATE SET name = excluded.name`
+    )
+    .bind(characterId, playerId, name || "", nowIso())
+    .run();
+}
+async function upsertArenaSnapshot(db, characterId, playerId, name, stats) {
+  await db
+    .prepare(
+      `INSERT INTO pvp_snapshots (character_id, player_id, name, stats_json, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(character_id) DO UPDATE SET
+         player_id = excluded.player_id, name = excluded.name, stats_json = excluded.stats_json, updated_at = excluded.updated_at`
+    )
+    .bind(characterId, playerId, name || "", JSON.stringify(stats), nowIso())
+    .run();
+}
+
+// Refreshes the caller's own ranking row + combat snapshot (so the opponent pool always
+// reflects roughly-current gear/level even though matches are fought against a frozen
+// snapshot rather than a live read), then returns rating/rank/tickets/top-10.
+async function handleGetArenaStatus(db, id, password, characterId) {
+  const [auth, owned, itemsRes] = await Promise.all([
+    verifyPlayer(db, id, password),
+    verifyOwnedCharacter(db, id, characterId),
+    db.prepare(`SELECT atk, def, hp, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
+  ]);
+  if (auth.error) return json({ error: auth.error });
+  if (owned.error) return json({ error: owned.error });
+  const character = owned.row;
+  const stats = pvpCombatStats(character, itemsRes.results || []);
+
+  await Promise.all([
+    ensureArenaRanking(db, characterId, id, character.name || ""),
+    upsertArenaSnapshot(db, characterId, id, character.name || "", stats),
+  ]);
+
+  const [rankRow, top10] = await Promise.all([
+    db.prepare(`SELECT rating, wins, losses FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first(),
+    db.prepare(`SELECT character_id, name, rating, wins, losses FROM pvp_ranking ORDER BY rating DESC LIMIT 10`).all(),
+  ]);
+  const myRating = rankRow ? Number(rankRow.rating) : 1000;
+  const rankPosRow = await db.prepare(`SELECT COUNT(*) as c FROM pvp_ranking WHERE rating > ?`).bind(myRating).first();
+  const rankPos = (rankPosRow ? Number(rankPosRow.c) : 0) + 1;
+  const ticketState = resolvePvpTickets(character.pvp_tickets, character.pvp_tickets_updated_at);
+
+  return json({
+    ok: true,
+    rating: myRating,
+    wins: rankRow ? Number(rankRow.wins) : 0,
+    losses: rankRow ? Number(rankRow.losses) : 0,
+    rank: rankPos,
+    tickets: ticketState.tickets,
+    ticketsMax: PVP_TICKET_MAX,
+    ticketsRegenSeconds: pvpTicketsSecondsToNext(ticketState.updatedAt),
+    diamondRefillCost: PVP_DIAMOND_REFILL_COST,
+    myStats: stats,
+    top: (top10.results || []).map((r) => ({ characterId: r.character_id, name: r.name, rating: Number(r.rating), wins: Number(r.wins), losses: Number(r.losses) })),
+  });
+}
+
+// Returns 3 opponents (never self), preferring characters within +-300 rating of the
+// caller and falling back to any ranked character if that band is too sparse. Only
+// level/rating/wins/losses go to the client — not the raw stat block — so there's no
+// point inspecting network traffic to min-max a specific matchup.
+async function handleGetArenaOpponents(db, id, password, characterId) {
+  const auth = await verifyPlayer(db, id, password);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+
+  const myRank = await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first();
+  const myRating = myRank ? Number(myRank.rating) : 1000;
+
+  const nearby = await db
+    .prepare(
+      `SELECT s.character_id, s.name, s.stats_json, r.rating, r.wins, r.losses
+       FROM pvp_snapshots s JOIN pvp_ranking r ON r.character_id = s.character_id
+       WHERE s.character_id != ? AND r.rating BETWEEN ? AND ?
+       ORDER BY RANDOM() LIMIT 3`
+    )
+    .bind(characterId, myRating - 300, myRating + 300)
+    .all();
+  let rows = nearby.results || [];
+  if (rows.length < 3) {
+    const any = await db
+      .prepare(
+        `SELECT s.character_id, s.name, s.stats_json, r.rating, r.wins, r.losses
+         FROM pvp_snapshots s JOIN pvp_ranking r ON r.character_id = s.character_id
+         WHERE s.character_id != ? ORDER BY RANDOM() LIMIT 3`
+      )
+      .bind(characterId)
+      .all();
+    rows = any.results || [];
+  }
+  const opponents = rows.map((r) => {
+    let stats = {};
+    try { stats = r.stats_json ? JSON.parse(r.stats_json) : {}; } catch (e) { stats = {}; }
+    return { characterId: r.character_id, name: r.name, level: stats.level || 1, rating: Number(r.rating), wins: Number(r.wins), losses: Number(r.losses) };
+  });
+  return json({ ok: true, opponents });
+}
+
+async function handleAttackArenaOpponent(db, id, password, characterId, opponentCharacterId, paidDiamonds) {
+  if (!opponentCharacterId) return json({ error: "missing_fields" });
+  if (opponentCharacterId === characterId) return json({ error: "cannot_attack_self" });
+
+  const [auth, owned, itemsRes, oppSnap, oppRank] = await Promise.all([
+    verifyPlayer(db, id, password),
+    verifyOwnedCharacter(db, id, characterId),
+    db.prepare(`SELECT atk, def, hp, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
+    db.prepare(`SELECT * FROM pvp_snapshots WHERE character_id = ?`).bind(opponentCharacterId).first(),
+    db.prepare(`SELECT * FROM pvp_ranking WHERE character_id = ?`).bind(opponentCharacterId).first(),
+  ]);
+  if (auth.error) return json({ error: auth.error });
+  if (owned.error) return json({ error: owned.error });
+  if (!oppSnap || !oppRank) return json({ error: "opponent_not_found" });
+  const character = owned.row;
+
+  // Ticket CAS — identical shape to the raid_stamina reservation in handleAttackRaidBoss
+  // above (see its comment for why this can't be folded into the batch below).
+  const ticketState = resolvePvpTickets(character.pvp_tickets, character.pvp_tickets_updated_at);
+  let spentTicket = false;
+  let diamondsSpent = 0;
+  let newTickets = ticketState.tickets;
+  let newTicketsUpdatedAt = ticketState.updatedAt;
+  if (ticketState.tickets >= 1) {
+    spentTicket = true;
+    newTickets = ticketState.tickets - 1;
+    newTicketsUpdatedAt = ticketState.updatedAt || nowIso();
+    const storedTickets = Number.isFinite(Number(character.pvp_tickets)) ? Number(character.pvp_tickets) : PVP_TICKET_MAX;
+    const storedUpdatedAt = character.pvp_tickets_updated_at || "";
+    const reserved = await db
+      .prepare(`UPDATE characters SET pvp_tickets = ?, pvp_tickets_updated_at = ? WHERE character_id = ? AND pvp_tickets = ? AND pvp_tickets_updated_at = ?`)
+      .bind(newTickets, newTicketsUpdatedAt, characterId, storedTickets, storedUpdatedAt)
+      .run();
+    if (!reserved.meta || !reserved.meta.changes) {
+      return json({ error: "ticket_conflict", retry: true });
+    }
+  } else if (!paidDiamonds) {
+    return json({ error: "no_tickets", diamondRefillCost: PVP_DIAMOND_REFILL_COST, ticketsRegenSeconds: pvpTicketsSecondsToNext(ticketState.updatedAt) });
+  } else {
+    const charged = await db
+      .prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ?`)
+      .bind(PVP_DIAMOND_REFILL_COST, id, PVP_DIAMOND_REFILL_COST)
+      .run();
+    if (!charged.meta || !charged.meta.changes) {
+      return json({ error: "insufficient_diamonds", diamondRefillCost: PVP_DIAMOND_REFILL_COST });
+    }
+    diamondsSpent = PVP_DIAMOND_REFILL_COST;
+  }
+
+  const myStats = pvpCombatStats(character, itemsRes.results || []);
+  let oppStats = {};
+  try { oppStats = oppSnap.stats_json ? JSON.parse(oppSnap.stats_json) : {}; } catch (e) { oppStats = {}; }
+  oppStats = {
+    atk: Number(oppStats.atk) || 10, def: Number(oppStats.def) || 0, maxHp: Number(oppStats.maxHp) || 50,
+    accuracy: Number(oppStats.accuracy) || 80, critChance: Number(oppStats.critChance) || 0,
+    critDamage: Number(oppStats.critDamage) || 50, dodgeChance: Number(oppStats.dodgeChance) || 0,
+  };
+
+  const battle = simulateArenaBattle(myStats, oppStats);
+
+  const myRating = Number((await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first())?.rating) || 1000;
+  const oppRating = Number(oppRank.rating) || 1000;
+  const expected = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400));
+  const actual = battle.attackerWon ? 1 : 0;
+  let delta = Math.round(PVP_RATING_K * (actual - expected));
+  if (battle.attackerWon) delta = Math.max(PVP_RATING_MIN_DELTA, delta);
+  else delta = Math.min(-PVP_RATING_MIN_DELTA, delta);
+
+  const myNewRating = Math.max(PVP_RATING_FLOOR, myRating + delta);
+  const oppNewRating = Math.max(PVP_RATING_FLOOR, oppRating - delta);
+  const now = nowIso();
+
+  await db.batch([
+    db.prepare(`UPDATE pvp_ranking SET rating = ?, wins = wins + ?, losses = losses + ?, updated_at = ? WHERE character_id = ?`)
+      .bind(myNewRating, battle.attackerWon ? 1 : 0, battle.attackerWon ? 0 : 1, now, characterId),
+    db.prepare(`UPDATE pvp_ranking SET rating = ?, wins = wins + ?, losses = losses + ?, updated_at = ? WHERE character_id = ?`)
+      .bind(oppNewRating, battle.attackerWon ? 0 : 1, battle.attackerWon ? 1 : 0, now, opponentCharacterId),
+    db.prepare(`INSERT INTO pvp_match_log (attacker_character_id, defender_character_id, result, rating_change, created_at) VALUES (?, ?, ?, ?, ?)`)
+      .bind(characterId, opponentCharacterId, battle.attackerWon ? "win" : "loss", delta, now),
+  ]);
+
+  const oppName = oppSnap.name || "คู่ต่อสู้";
+  if (battle.attackerWon) {
+    await sendMail(db, characterId, `🏆 ชนะศึกอารีน่า!`, `คุณเอาชนะ ${oppName} ได้สำเร็จ (Rating ${myRating} → ${myNewRating})`, { diamonds: PVP_WIN_DIAMONDS });
+  } else {
+    await sendMail(db, characterId, `💢 แพ้ศึกอารีน่า`, `คุณแพ้ให้กับ ${oppName} (Rating ${myRating} → ${myNewRating})`, { diamonds: PVP_LOSS_DIAMONDS });
+  }
+
+  return json({
+    ok: true,
+    win: battle.attackerWon,
+    log: battle.log,
+    ratingBefore: myRating,
+    ratingAfter: myNewRating,
+    ratingChange: delta,
+    opponentName: oppName,
+    tickets: newTickets,
+    ticketsMax: PVP_TICKET_MAX,
+    ticketsRegenSeconds: pvpTicketsSecondsToNext(newTicketsUpdatedAt),
+    paidDiamonds: !spentTicket,
+    diamondsSpent,
+    diamondsEarned: battle.attackerWon ? PVP_WIN_DIAMONDS : PVP_LOSS_DIAMONDS,
+  });
+}
+
 // ---------- admin / QA ----------
 async function handleAdminGetPlayer(db, env, adminKey, id) {
   const auth = verifyAdminKey(env, adminKey);
@@ -1798,6 +2115,8 @@ export default {
         if (action === "getLeaderboardHistory") return await handleGetLeaderboardHistory(db, p.get("board"), p.get("date"));
         if (action === "getRaidStatus") return await handleGetRaidStatus(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getMailbox") return await handleGetMailbox(db, p.get("id"), p.get("password"), p.get("characterId"));
+        if (action === "getArenaStatus") return await handleGetArenaStatus(db, p.get("id"), p.get("password"), p.get("characterId"));
+        if (action === "getArenaOpponents") return await handleGetArenaOpponents(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "runLeaderboardSnapshot") {
           const auth = verifyAdminKey(env, p.get("adminKey"));
           if (auth.error) return json(auth);
@@ -1836,6 +2155,8 @@ export default {
             return await handleAttackRaidBoss(db, body.id, body.password, body.characterId, !!body.paidDiamonds);
           case "claimRaidMilestones":
             return await handleClaimRaidMilestones(db, body.id, body.password, body.characterId);
+          case "attackArenaOpponent":
+            return await handleAttackArenaOpponent(db, body.id, body.password, body.characterId, body.opponentCharacterId, !!body.paidDiamonds);
           case "claimMail":
             return await handleClaimMail(db, body.id, body.password, body.characterId, body.mailId);
           case "claimAllMail":

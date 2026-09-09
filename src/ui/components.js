@@ -217,6 +217,7 @@ function HubScreen({
   onPets,
   onLeaderboard,
   onRaid,
+  onArena,
   onMailbox,
   onSave,
   onSwitchCharacter,
@@ -300,7 +301,7 @@ function HubScreen({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onArena }, "🥊", /*#__PURE__*/React.createElement("span", null, "อารีน่า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
     onCharacter: onCharacter,
     onOpenInv: onOpenInv,
     onPets: onPets,
@@ -347,6 +348,7 @@ function TownScreen({
   onPets,
   onLeaderboard,
   onRaid,
+  onArena,
   onMailbox,
   onSummoning,
   onSave,
@@ -409,7 +411,7 @@ function TownScreen({
         }, e("img", { src: "ui/town-icons/leaderboard-bird.svg", alt: "" }),
         e("span", null, "Leaderboard")),
         hotspot("guild", "กิลด์", "♜", () => showSoon("กิลด์")),
-        hotspot("arena", "อารีน่า", "⚔", () => showSoon("อารีน่า")),
+        hotspot("arena", "อารีน่า", "⚔", onArena),
         hotspot("summoning", "Summoning", "✦", onSummoning),
         hotspot("home", "ประดิษฐ์", "⌂", onCraft),
         hotspot("enhance", "ร้านตีบวก", "⚒", onEnhance),
@@ -438,6 +440,7 @@ function TownScreen({
           e("button", { type: "button", onClick: onEnhance }, "⚒️", e("span", null, "ตีบวก")),
           e("button", { type: "button", onClick: onCraft }, "🛠️", e("span", null, "ประดิษฐ์")),
           e("button", { type: "button", onClick: onRaid }, e("img", { src: "ui/hub-icons/raid.svg", alt: "" }), e("span", null, "Raid")),
+          e("button", { type: "button", onClick: onArena }, "🥊", e("span", null, "อารีน่า")),
           e("button", { type: "button", onClick: onMailbox }, "📬", e("span", null, "จดหมาย")),
           e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
           e("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", e("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")),
@@ -1239,6 +1242,151 @@ function RaidScreen({
           style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
         }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
            /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_contribution)));
+      })),
+
+    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+}
+const PVP_TICKET_MAX_CLIENT = 5; // fallback only — server response's ticketsMax is authoritative
+// ---------- Phase 5: PvP Arena ----------
+function ArenaScreen({
+  serverUrl,
+  cred,
+  characterId,
+  diamonds,
+  onSpendDiamonds,
+  onBack
+}) {
+  const [status, setStatus] = useState(null);
+  const [opponents, setOpponents] = useState(null);
+  const [error, setError] = useState(null);
+  const [attackingId, setAttackingId] = useState(null);
+  const [refreshingOpp, setRefreshingOpp] = useState(false);
+  const [lastResult, setLastResult] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  const load = React.useCallback(() => {
+    setError(null);
+    cloudGetArenaStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+      if (!res || res.error) { setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"); return; }
+      setStatus(res);
+      setSecondsLeft(res.ticketsRegenSeconds || 0);
+    }).catch(() => setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"));
+  }, [serverUrl, cred.id, cred.password, characterId]);
+  const loadOpponents = React.useCallback(() => {
+    setRefreshingOpp(true);
+    cloudGetArenaOpponents(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+      if (!res || res.error) return;
+      setOpponents(res.opponents || []);
+    }).finally(() => setRefreshingOpp(false));
+  }, [serverUrl, cred.id, cred.password, characterId]);
+  React.useEffect(() => { load(); loadOpponents(); }, [load, loadOpponents]);
+  // Same "only tick while regen is actually pending" rule as RaidScreen — avoids polling
+  // the API once per second while sitting at full tickets.
+  React.useEffect(() => {
+    if (secondsLeft <= 0) return undefined;
+    const t = setTimeout(() => {
+      if (secondsLeft <= 1) load();
+      else setSecondsLeft(secondsLeft - 1);
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [secondsLeft, load]);
+
+  const handleAttack = (opponentCharacterId, useDiamonds) => {
+    if (attackingId) return;
+    setAttackingId(opponentCharacterId);
+    setLastResult(null);
+    cloudAttackArenaOpponent(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, opponentCharacterId, useDiamonds).then(res => {
+      if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
+      if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent || (status && status.diamondRefillCost) || 30);
+      setLastResult(res);
+      load();
+    }).catch(() => setLastResult({ error: "network_error" })).finally(() => setAttackingId(null));
+  };
+
+  if (error) {
+    return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, error),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+  }
+  if (!status) {
+    return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "กำลังโหลด..."));
+  }
+
+  const ticketsMax = status.ticketsMax || PVP_TICKET_MAX_CLIENT;
+  const outOfTickets = status.tickets <= 0;
+  const canAffordRefill = (diamonds || 0) >= (status.diamondRefillCost || 30);
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
+  const errMsgMap = {
+    no_tickets: "ตั๋วอารีน่าหมดแล้ว กรุณารอให้ฟื้น",
+    ticket_conflict: "ตั๋วอารีน่ามีการเปลี่ยนแปลง กรุณากดใหม่",
+    insufficient_diamonds: "เพชรไม่พอสำหรับโจมตี",
+    opponent_not_found: "หาคู่ต่อสู้นี้ไม่เจอแล้ว กรุณาสุ่มใหม่",
+    cannot_attack_self: "โจมตีตัวเองไม่ได้",
+    network_error: "เชื่อมต่ออารีน่าไม่สำเร็จ กรุณาลองใหม่"
+  };
+
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
+      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 อารีน่า"),
+      /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-around", marginTop: 6 } },
+        /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating"),
+          /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, formatNumber(status.rating))),
+        /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "อันดับ"),
+          /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, "#", status.rank)),
+        /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "W / L"),
+          /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, status.wins, " / ", status.losses))),
+      /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 8 } }, "⚡ ตั๋ว ", status.tickets, "/", ticketsMax, outOfTickets ? ` (เติมอีกใน ${mm}:${ss})` : "")),
+
+    lastResult && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
+      lastResult.error
+        ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, errMsgMap[lastResult.error] || lastResult.error)
+        : /*#__PURE__*/React.createElement(React.Fragment, null,
+            /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 16, color: lastResult.win ? "#7CFF9E" : "#FF6B6B" } }, lastResult.win ? "🏆 ชนะ!" : "💢 แพ้"),
+            /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "vs ", lastResult.opponentName || "?"),
+            /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating ", lastResult.ratingBefore, " → ", lastResult.ratingAfter, " (", lastResult.ratingChange >= 0 ? "+" : "", lastResult.ratingChange, ")"),
+            /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "💎 +", lastResult.diamondsEarned || 0))),
+
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+      /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+        /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "คู่ต่อสู้"),
+        /*#__PURE__*/React.createElement("button", {
+          className: "md-btn wide small",
+          disabled: refreshingOpp,
+          onClick: loadOpponents
+        }, refreshingOpp ? "..." : "🔄 สุ่มใหม่")),
+      (!opponents || opponents.length === 0) && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, refreshingOpp ? "กำลังหาคู่ต่อสู้..." : "ไม่พบคู่ต่อสู้ในตอนนี้"),
+      (opponents || []).map(opp => /*#__PURE__*/React.createElement("div", { key: opp.characterId, className: "md-shop-row" },
+        /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, opp.name || "?", " (Lv.", opp.level, ")"),
+          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, "Rating ", formatNumber(opp.rating), " · ", opp.wins, "W ", opp.losses, "L")),
+        !outOfTickets
+          ? /*#__PURE__*/React.createElement("button", {
+              className: "md-btn attack small",
+              disabled: !!attackingId,
+              onClick: () => handleAttack(opp.characterId, false)
+            }, attackingId === opp.characterId ? "..." : "⚔️ โจมตี")
+          : /*#__PURE__*/React.createElement("button", {
+              className: "md-btn attack small",
+              disabled: !!attackingId || !canAffordRefill,
+              onClick: () => handleAttack(opp.characterId, true)
+            }, attackingId === opp.characterId ? "..." : `💎${status.diamondRefillCost || 30}`)))),
+
+    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "จัดอันดับ"),
+      (status.top || []).map((row, idx) => {
+        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+        const isMe = row.characterId === characterId;
+        return /*#__PURE__*/React.createElement("div", {
+          key: row.characterId,
+          className: "md-shop-row",
+          style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
+        }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
+           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.rating), " (", row.wins, "W ", row.losses, "L)"));
       })),
 
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));

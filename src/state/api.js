@@ -277,3 +277,31 @@ function cloudCraftItem(url, id, password, characterId, recipeId) {
     recipeId
   });
 }
+// Phase 5 — PvP Arena. Battles are fully resolved server-side (see worker's
+// simulateArenaBattle) — the client only gets back a turn-by-turn log to play back.
+function cloudGetArenaStatus(url, id, password, characterId) {
+  return cloudGet(url, {
+    action: "getArenaStatus",
+    id,
+    password,
+    characterId
+  });
+}
+function cloudGetArenaOpponents(url, id, password, characterId) {
+  return cloudGet(url, {
+    action: "getArenaOpponents",
+    id,
+    password,
+    characterId
+  });
+}
+function cloudAttackArenaOpponent(url, id, password, characterId, opponentCharacterId, paidDiamonds) {
+  return cloudPost(url, {
+    action: "attackArenaOpponent",
+    id,
+    password,
+    characterId,
+    opponentCharacterId,
+    paidDiamonds: !!paidDiamonds
+  });
+}

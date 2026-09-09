@@ -1914,6 +1914,10 @@ function ThornieDungeons() {
       setUtilityReturnPhase("menu");
       setPhase("raid");
     },
+    onArena: () => {
+      setUtilityReturnPhase("menu");
+      setPhase("arena");
+    },
     onMailbox: () => {
       setUtilityReturnPhase("menu");
       setPhase("mailbox");
@@ -1947,6 +1951,10 @@ function ThornieDungeons() {
     onRaid: () => {
       setUtilityReturnPhase("town");
       setPhase("raid");
+    },
+    onArena: () => {
+      setUtilityReturnPhase("town");
+      setPhase("arena");
     },
     onMailbox: () => {
       setUtilityReturnPhase("town");
@@ -2026,6 +2034,13 @@ function ThornieDungeons() {
     myCharacterId: save.characterId,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "raid" && /*#__PURE__*/React.createElement(RaidScreen, {
+    serverUrl: cred.url,
+    cred: cred,
+    characterId: save.characterId,
+    diamonds: save.diamonds,
+    onSpendDiamonds: spendRaidDiamonds,
+    onBack: () => setPhase(utilityReturnPhase)
+  }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaScreen, {
     serverUrl: cred.url,
     cred: cred,
     characterId: save.characterId,
