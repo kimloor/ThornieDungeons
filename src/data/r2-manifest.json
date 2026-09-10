@@ -1,7 +1,7 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-10T01:07:06Z",
-  "count": 206,
+  "generatedAt": "2026-09-10T06:01:01Z",
+  "count": 205,
   "objects": [
     {
       "key": "manifest.json",
@@ -1470,17 +1470,6 @@
       "key": "sprite/hero/",
       "etag": "d41d8cd98f00b204e9800998ecf8427e",
       "last_modified": "2026-08-25T07:03:26.077Z",
-      "size": 0,
-      "http_metadata": {
-        "contentType": "application/octet-stream"
-      },
-      "custom_metadata": {},
-      "storage_class": "Standard"
-    },
-    {
-      "key": "sprite/item/",
-      "etag": "d41d8cd98f00b204e9800998ecf8427e",
-      "last_modified": "2026-08-25T07:03:47.409Z",
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
