@@ -1065,13 +1065,20 @@ const STYLE = `
 .md-pet-slot { left: 13%; bottom: 5%; transform: translateX(-50%) scale(.68); transform-origin: center bottom; }
 
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
-   Visual size therefore never changes where a walking monster's feet meet the lane. */
-.md-monster-count-1 .md-monster-slot-0 { left: 75%; bottom: 18%; }
-.md-monster-count-2 .md-monster-slot-0 { left: 80%; bottom: 15%; }
-.md-monster-count-2 .md-monster-slot-1 { left: 64%; bottom: 52%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 80%; bottom: 7%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 66%; bottom: 39.5%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 52%; bottom: 72%; }
+   Use bounded pixel steps instead of full-field percentages: tall iPhones should not
+   stretch a three-monster formation from the top to the bottom of the battlefield. */
+.md-monster-board {
+  --monster-step-x: clamp(38px, 11vw, 48px);
+  --monster-half-step-x: clamp(19px, 5.5vw, 24px);
+  --monster-step-y: clamp(104px, 15dvh, 122px);
+  --monster-half-step-y: clamp(52px, 7.5dvh, 61px);
+}
+.md-monster-count-1 .md-monster-slot-0 { left: 74%; bottom: 43%; }
+.md-monster-count-2 .md-monster-slot-0 { left: calc(70% + var(--monster-half-step-x)); bottom: calc(48% - var(--monster-half-step-y)); }
+.md-monster-count-2 .md-monster-slot-1 { left: calc(70% - var(--monster-half-step-x)); bottom: calc(48% + var(--monster-half-step-y)); }
+.md-monster-count-3 .md-monster-slot-0 { left: calc(68% + var(--monster-step-x)); bottom: calc(48% - var(--monster-step-y)); }
+.md-monster-count-3 .md-monster-slot-1 { left: 68%; bottom: 48%; }
+.md-monster-count-3 .md-monster-slot-2 { left: calc(68% - var(--monster-step-x)); bottom: calc(48% + var(--monster-step-y)); }
 .md-monster-slot { transform: translateX(-50%); }
 .md-monster-slot.flying { transform: translate(-50%, -18px); }
 .md-monster-slot-0 { z-index: 3; }
@@ -1101,7 +1108,6 @@ const STYLE = `
 @media (max-width: 380px) {
   .md-hero-slot { left: 25%; bottom: 31%; }
   .md-pet-slot { left: 14%; bottom: 4%; transform: translateX(-50%) scale(.62); }
-  .md-monster-count-3 .md-monster-slot-2 { left: 51%; }
 }
 
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
