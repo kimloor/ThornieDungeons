@@ -1092,6 +1092,7 @@ function RaidScreen({
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [hurtToken, setHurtToken] = useState(0);
   const [hurtPlaying, setHurtPlaying] = useState(false);
+  const [pendingPetHit, setPendingPetHit] = useState(false);
 
   const load = React.useCallback(() => {
     setError(null);
@@ -1131,10 +1132,18 @@ function RaidScreen({
   React.useEffect(() => { checkMilestones(); }, [checkMilestones]);
 
   const handleHurtComplete = React.useCallback(() => {
+    // Hero's hurt cycle just finished. If the pet also landed a hit, play a second hurt
+    // cycle for it before actually wrapping up — this callback fires again when that one
+    // completes too, at which point pendingPetHit is already false and we finish for real.
+    if (pendingPetHit) {
+      setPendingPetHit(false);
+      setHurtToken(token => token + 1);
+      return;
+    }
     setHurtPlaying(false);
     load();
     checkMilestones();
-  }, [load, checkMilestones]);
+  }, [pendingPetHit, load, checkMilestones]);
 
   const handleAttack = (useDiamonds) => {
     if (attacking || hurtPlaying) return;
@@ -1146,7 +1155,9 @@ function RaidScreen({
       setLastResult(res);
       // A successful server-side hit is the only trigger for hurt. Delay the
       // status refresh until all three frames finish so a respawn cannot reset
-      // or replace the animation halfway through.
+      // or replace the animation halfway through. Queue a second hurt play for the
+      // pet's damage (if any) — handleHurtComplete fires it after the hero's finishes.
+      setPendingPetHit((res.petDamage || 0) > 0);
       setHurtPlaying(true);
       setHurtToken(token => token + 1);
     }).catch(() => setLastResult({ error: "network_error" })).finally(() => setAttacking(false));
@@ -1210,6 +1221,10 @@ function RaidScreen({
         className: "md-sub",
         style: { color: lastResult.crit ? "#FFD166" : undefined, fontWeight: "bold" }
       }, lastResult.crit ? "💥 CRIT! " : "", "ดาเมจ ", formatNumber(lastResult.damage)),
+      lastResult && !lastResult.error && lastResult.petDamage > 0 && /*#__PURE__*/React.createElement("p", {
+        className: "md-sub",
+        style: { color: lastResult.petCrit ? "#FFD166" : undefined }
+      }, "🐾 pet ", lastResult.petCrit ? "💥 " : "", formatNumber(lastResult.petDamage)),
       lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่" : lastResult.error === "no_attempts_left" ? "หมดจำนวนครั้งโจมตีวันนี้แล้ว" : lastResult.error === "no_stamina" ? "พลัง Raid หมดแล้ว กรุณารอให้ฟื้น" : lastResult.error === "stamina_conflict" ? "พลัง Raid มีการเปลี่ยนแปลง กรุณากดใหม่" : lastResult.error === "insufficient_diamonds" ? "เพชรไม่พอสำหรับโจมตี" : lastResult.error === "network_error" ? "เชื่อมต่อ Raid ไม่สำเร็จ กรุณาลองใหม่" : lastResult.error),
       (!outOfStamina || !supportsStamina) && /*#__PURE__*/React.createElement("button", {
         className: "md-btn attack wide",

@@ -1423,6 +1423,22 @@ function simulateRaidAttack(stats) {
   return { damage: Math.max(1, Math.round(total)), crit: anyCrit };
 }
 
+// Pet auto-attacks alongside the player — one basic-attack swing (no MP/skill system for
+// raid yet, per the skills-system discussion). petBattleStats() doesn't carry a critDamage
+// stat (pets never needed one before raid), so this uses a flat 1.5x crit multiplier rather
+// than inventing a new pet stat just for this.
+const RAID_PET_CRIT_MULT = 1.5;
+function simulateRaidPetAttack(pet) {
+  const variance = 0.85 + Math.random() * 0.3;
+  let dmg = (pet.atk || 0) * variance;
+  let crit = false;
+  if (Math.random() * 100 < (pet.critChance || 0)) {
+    dmg *= RAID_PET_CRIT_MULT;
+    crit = true;
+  }
+  return { damage: Math.max(0, Math.round(dmg)), crit };
+}
+
 // Grants rank-bonus rewards once, the instant the boss dies. Guarded by an atomic
 // UPDATE on settled_at (only succeeds for whichever concurrent attack request gets
 // there first) so two players killing it in the same instant can't double-pay rewards.
@@ -1558,8 +1574,17 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
 
   const stats = raidCombatStats(character, itemsRes.results || []);
   const hit = simulateRaidAttack(stats);
+
+  // Pet auto-attacks alongside the player — basic attack only for now (no MP/skill system
+  // for raid yet, see the skills-system discussion). No active pet, or an active pet with no
+  // battle stats, just means zero pet damage this swing rather than an error.
+  const { active: activePet } = parsePetsJson(character);
+  const petStats = activePet ? petBattleStats(activePet) : null;
+  const petHit = petStats ? simulateRaidPetAttack(petStats) : { damage: 0, crit: false };
+
+  const totalDamage = hit.damage + petHit.damage;
   const hpBefore = Number(raid.boss_hp_current);
-  const appliedDamage = Math.min(hit.damage, hpBefore); // this character's actual contribution to the shared boss HP
+  const appliedDamage = Math.min(totalDamage, hpBefore); // this character's actual contribution to the shared boss HP
   const now = nowIso();
 
   // Both writes use RETURNING so this single batch also gets us the numbers we need back —
@@ -1569,7 +1594,7 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
   // concurrent hits reading the same stale contribution total could otherwise silently lose
   // one of them, the same race class the stamina CAS above exists to prevent.
   const [bossBatch, participantBatch] = await db.batch([
-    db.prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0 RETURNING boss_hp_current`).bind(hit.damage, now, raid.raid_id),
+    db.prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0 RETURNING boss_hp_current`).bind(totalDamage, now, raid.raid_id),
     db.prepare(
       `INSERT INTO raid_participants (raid_id, character_id, player_id, name, total_damage, total_contribution, attempts_used, milestone_claimed, last_hit_at)
        VALUES (?, ?, ?, ?, ?, ?, 1, '', ?)
@@ -1580,7 +1605,7 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
          name = excluded.name,
          last_hit_at = excluded.last_hit_at
        RETURNING total_damage, total_contribution`
-    ).bind(raid.raid_id, characterId, id, character.name || "", hit.damage, appliedDamage, now),
+    ).bind(raid.raid_id, characterId, id, character.name || "", totalDamage, appliedDamage, now),
   ]);
   // If the WHERE didn't match (boss already hit 0 by someone else between our early check
   // and this batch landing), RETURNING yields no row — treat that as "our damage didn't land"
@@ -1588,7 +1613,7 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
   const bossRow = (bossBatch.results || [])[0];
   const bossHpAfter = bossRow ? Number(bossRow.boss_hp_current) : hpBefore;
   const participantRow = (participantBatch.results || [])[0];
-  const newBest = participantRow ? Number(participantRow.total_damage) : hit.damage;
+  const newBest = participantRow ? Number(participantRow.total_damage) : totalDamage;
   const newContribution = participantRow ? Number(participantRow.total_contribution) : appliedDamage;
 
   let bossDied = false;
@@ -1603,6 +1628,9 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
     ok: true,
     damage: hit.damage,
     crit: hit.crit,
+    petDamage: petHit.damage,
+    petCrit: petHit.crit,
+    totalDamage,
     appliedDamage,
     bossHpCurrent: bossHpAfter,
     bossDied,
