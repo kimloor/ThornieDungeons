@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-09T22:35:06Z",
-  "count": 199,
+  "generatedAt": "2026-09-10T01:07:06Z",
+  "count": 206,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "3d7ad0f865db0079ac0b0cb6378d5a9c",
-      "last_modified": "2026-09-09T09:50:15.121Z",
-      "size": 11451,
+      "etag": "47329317b64da7d47d33ee2acbedea04",
+      "last_modified": "2026-09-10T01:01:27.679Z",
+      "size": 15231,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -1801,6 +1801,83 @@
       "etag": "761e533ab03143a26688d73b01924bf4",
       "last_modified": "2026-09-08T01:38:18.688Z",
       "size": 460550,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/battle_top_bar.png",
+      "etag": "b0d6f09c7503654fae9b3da3a4b1eddd",
+      "last_modified": "2026-09-10T01:01:30.753Z",
+      "size": 113220,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/button_attack.png",
+      "etag": "ac7c1f23f0a13ce73eb747c454741a7e",
+      "last_modified": "2026-09-10T01:01:33.807Z",
+      "size": 97019,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/button_auto.png",
+      "etag": "802e73ea18640d00c0015dcecde69801",
+      "last_modified": "2026-09-10T01:01:36.822Z",
+      "size": 57250,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/button_flee.png",
+      "etag": "dedd2b0ea1f67f054626bee1c12612f5",
+      "last_modified": "2026-09-10T01:01:39.746Z",
+      "size": 52280,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/button_settings.png",
+      "etag": "8b8d52640fde195f741d3f174130f059",
+      "last_modified": "2026-09-10T01:01:42.750Z",
+      "size": 54492,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/hp_status_frame.png",
+      "etag": "fb9d106eb2a5e1294e5905b62494b0e5",
+      "last_modified": "2026-09-10T01:01:45.706Z",
+      "size": 127665,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/quick_slot_frame.png",
+      "etag": "5a73fbd953e3b30e81b05ab5ec6c194e",
+      "last_modified": "2026-09-10T01:01:48.594Z",
+      "size": 48636,
       "http_metadata": {
         "contentType": "image/png"
       },
