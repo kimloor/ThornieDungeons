@@ -20,6 +20,81 @@ function asset(key) {
   return assetUrl(path);
 }
 
+function optionalAsset(key) {
+  const path = key.split(".").reduce((obj, part) => obj?.[part], ASSETS);
+  return typeof path === "string" && path ? assetUrl(path) : "";
+}
+
+function battleUiStyle(key) {
+  const src = optionalAsset(`battleUi.${key}`);
+  return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
+}
+
+const IMAGE_PRELOAD_CACHE = new Map();
+function preloadAssetImage(src) {
+  if (!src || typeof Image === "undefined") return Promise.resolve();
+  if (!IMAGE_PRELOAD_CACHE.has(src)) {
+    IMAGE_PRELOAD_CACHE.set(src, new Promise(resolve => {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = image.onerror = () => resolve();
+      image.src = src;
+    }));
+  }
+  return IMAGE_PRELOAD_CACHE.get(src);
+}
+
+function preloadAssetImages(sources, timeoutMs = 0) {
+  const loading = Promise.all([...new Set((sources || []).filter(Boolean))].map(preloadAssetImage));
+  return timeoutMs ? Promise.race([loading, new Promise(resolve => setTimeout(resolve, timeoutMs))]) : loading;
+}
+
+function spriteAnimationSources(config, names) {
+  return (names || []).flatMap(name => getSpriteAnimationFrames(config, name, name === "death"));
+}
+
+function battleUiAssetUrls() {
+  return ["topBar", "quickSlotFrame", "buttons.auto", "buttons.flee", "buttons.settings", "buttons.attack", "hpStatusFrame"]
+    .map(key => optionalAsset(`battleUi.${key}`)).filter(Boolean);
+}
+
+function battleEncounterSources({ equipped = {}, pet = null, monsters = [] } = {}, deferred = false) {
+  const sources = deferred ? [] : battleUiAssetUrls();
+  const selection = heroVisualSelectionFromEquipment(equipped);
+  const heroConfig = getHeroV3Config("hero001");
+  if (deferred) {
+    const count = Array.isArray(heroConfig?.base?.attack) ? heroConfig.base.attack.length : 0;
+    for (let i = 0; i < count; i += 1) {
+      (resolveHeroV3Layers("hero001", selection, "attack", i) || []).forEach(layer => sources.push(layer.url));
+    }
+  } else {
+    (resolveHeroV3Layers("hero001", selection, "idle", 0) || []).forEach(layer => sources.push(layer.url));
+  }
+  if (pet) sources.push(...spriteAnimationSources(getPetSpriteConfig(pet.defId), deferred ? ["attack", "death"] : ["idle"]));
+  (monsters || []).forEach(enemy => {
+    sources.push(...spriteAnimationSources(getMonsterSpriteConfig(enemy), deferred ? ["attack", "death"] : ["idle"]));
+  });
+  return sources;
+}
+
+function preloadBattleCriticalAssets(encounter) {
+  const settled = preloadAssetImages(battleEncounterSources(encounter, false));
+  const ready = Promise.race([
+    settled,
+    new Promise(resolve => setTimeout(resolve, 1200))
+  ]);
+  // `ready` keeps Battle entry bounded on a slow connection. `settled` remains
+  // available so deferred frames cannot compete with critical UI/idle images
+  // after the entry timeout wins the race.
+  return { ready, settled };
+}
+
+function warmBattleDeferredAssets(encounter) {
+  const warm = () => preloadAssetImages(battleEncounterSources(encounter, true));
+  if (typeof requestIdleCallback === "function") requestIdleCallback(warm, { timeout: 1600 });
+  else setTimeout(warm, 0);
+}
+
 
 function resolveItemIconPath(item) {
   const icons = ASSETS?.itemIcons || {};
@@ -298,6 +373,24 @@ function measureOpaqueFrame(src) {
     image.src = src;
   });
 }
+function getStableSpriteOpaqueBounds(config, anim) {
+  const raw = config?.presentation?.bounds?.[anim];
+  if (!raw || typeof raw !== "object") return null;
+  const canvasWidth = Number(raw.canvasWidth || config?.canvas?.width || 1);
+  const canvasHeight = Number(raw.canvasHeight || config?.canvas?.height || 1);
+  if (!(Number.isFinite(canvasWidth) && canvasWidth > 0 && Number.isFinite(canvasHeight) && canvasHeight > 0)) return null;
+  const normalized = Math.max(Number(raw.left || 0), Number(raw.top || 0), Number(raw.width || 0), Number(raw.height || 0)) <= 1;
+  const left = Number(raw.left || 0) / (normalized ? 1 : canvasWidth);
+  const top = Number(raw.top || 0) / (normalized ? 1 : canvasHeight);
+  const width = Number(raw.width || (Number(raw.right || 0) - Number(raw.left || 0))) / (normalized ? 1 : canvasWidth);
+  const height = Number(raw.height || (Number(raw.bottom || 0) - Number(raw.top || 0))) / (normalized ? 1 : canvasHeight);
+  if (![left, top, width, height].every(Number.isFinite)
+      || left < 0 || top < 0 || width <= 0 || height <= 0
+      || left + width > 1.001 || top + height > 1.001) return null;
+  const canvasAspect = canvasWidth / Math.max(1, canvasHeight);
+  return { left, top, width, height, canvasAspect, contentAspect: canvasAspect * width / height };
+}
+
 function measureSpriteOpaqueBounds(sources) {
   const key = sources.join("|");
   if (!SPRITE_OPAQUE_BOUNDS_CACHE.has(key)) {
@@ -338,37 +431,25 @@ function AnimatedFrameSprite({
   const frames = getSpriteAnimationFrames(config, effectiveAnim, dead);
   const [frameIndex, setFrameIndex] = React.useState(0);
   const frameKey = frames.join("|");
-  const preloadSources = Object.values(config?.animations || {})
-    .flat()
-    .filter(Boolean)
-    .map(assetUrl);
-  const preloadKey = preloadSources.join("|");
-  const [opaqueBounds, setOpaqueBounds] = React.useState(null);
-
-  React.useEffect(() => {
-    // Idle is normally the only sequence requested when the encounter mounts.
-    // Warm the attack/death frames here as well so the first combat transition
-    // cannot finish before its images arrive from R2.
-    preloadSources.forEach(src => {
-      const image = new Image();
-      image.decoding = "async";
-      image.src = src;
-    });
-  }, [preloadKey]);
+  const stableBoundsKey = JSON.stringify(config?.presentation?.bounds?.[effectiveAnim] || null);
+  const [opaqueBounds, setOpaqueBounds] = React.useState(() => getStableSpriteOpaqueBounds(config, effectiveAnim));
 
   React.useEffect(() => {
     if (!cropTransparent || !frames.length) {
       setOpaqueBounds(null);
       return undefined;
     }
+    const stable = getStableSpriteOpaqueBounds(config, effectiveAnim);
+    if (stable) {
+      setOpaqueBounds(stable);
+      return undefined;
+    }
     let cancelled = false;
     measureSpriteOpaqueBounds(frames).then(bounds => {
       if (!cancelled) setOpaqueBounds(bounds);
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [cropTransparent, frameKey]);
+    return () => { cancelled = true; };
+  }, [cropTransparent, frameKey, stableBoundsKey, effectiveAnim]);
 
   React.useEffect(() => {
     setFrameIndex(0);
@@ -545,24 +626,6 @@ function HeroOverlayComposer({
   const config = getHeroV3Config(characterId);
   const [attackFrameIndex, setAttackFrameIndex] = React.useState(0);
   const attackFrameCount = Array.isArray(config?.base?.attack) ? config.base.attack.length : 0;
-  const selectionKey = Object.keys(selection || {})
-    .sort()
-    .map(key => `${key}:${selection[key] || ""}`)
-    .join("|");
-
-  React.useEffect(() => {
-    if (!config || attackFrameCount < 1 || typeof Image === "undefined") return;
-
-    const sources = new Set();
-    for (let frameIndex = 0; frameIndex < attackFrameCount; frameIndex += 1) {
-      const frameLayers = resolveHeroV3Layers(characterId, selection, "attack", frameIndex) || [];
-      frameLayers.forEach(layer => sources.add(layer.url));
-    }
-    sources.forEach(src => {
-      const image = new Image();
-      image.src = src;
-    });
-  }, [characterId, selectionKey, attackFrameCount]);
 
   React.useEffect(() => {
     setAttackFrameIndex(0);

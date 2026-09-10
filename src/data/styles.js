@@ -1146,6 +1146,12 @@ const STYLE = `
 
 /* ---- Combat layout V2: six-part header + Quick Slot dock ---- */
 .md-scene.battle-bg { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+.md-battle-art {
+  background-image: var(--battle-ui-image);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+}
 .md-battle-top {
   display: grid; grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)) 1.15fr;
   align-items: stretch; gap: 0; padding: 0; min-height: 58px; overflow: hidden;

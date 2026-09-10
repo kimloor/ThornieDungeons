@@ -2358,7 +2358,8 @@ function EnemySprite({
       borderRadius: 12
     }
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-enemy-hpbar"
+    className: "md-enemy-hpbar md-battle-art",
+    style: battleUiStyle("hpStatusFrame")
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-track"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2416,7 +2417,8 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
     className: "md-sprite-wrap",
     style: { opacity: 1 }
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-enemy-hpbar"
+    className: "md-enemy-hpbar md-battle-art",
+    style: battleUiStyle("hpStatusFrame")
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-track"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2566,7 +2568,8 @@ function CombatScreen({
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-scene battle-bg"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-battle-top"
+    className: "md-battle-top md-battle-art",
+    style: battleUiStyle("topBar")
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-combat-stats"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2616,7 +2619,8 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hero-slot"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-enemy-hpbar hero"
+    className: "md-enemy-hpbar hero md-battle-art",
+    style: battleUiStyle("hpStatusFrame")
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-track"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2674,7 +2678,8 @@ function CombatScreen({
     const v = quickSlotVisual(qs[i]);
     return /*#__PURE__*/React.createElement("button", {
       key: i,
-      className: `md-quickslot-btn battle ${qs[i] ? "filled" : "empty"} ${editSlots ? "editing" : ""}`,
+      className: `md-quickslot-btn battle md-battle-art ${qs[i] ? "filled" : "empty"} ${editSlots ? "editing" : ""}`,
+      style: battleUiStyle("quickSlotFrame"),
       disabled: !editSlots && v.disabled,
       title: v.title || "แตะเพื่อกำหนดช่องนี้",
       onClick: () => useQuickSlot(i)
@@ -2717,24 +2722,28 @@ function CombatScreen({
   }, "ปิด")), /*#__PURE__*/React.createElement("div", {
     className: "md-dock-side-controls"
   }, /*#__PURE__*/React.createElement("button", {
-    className: `md-dock-auto ${autoRun ? "active" : ""}`,
+    className: `md-dock-auto md-battle-art ${autoRun ? "active" : ""}`,
+    style: battleUiStyle("buttons.auto"),
     onClick: () => setAutoRun(a => !a)
   }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
     className: "md-dock-half-row"
   }, /*#__PURE__*/React.createElement("button", {
-    className: "md-dock-mini flee",
+    className: "md-dock-mini flee md-battle-art",
+    style: battleUiStyle("buttons.flee"),
     disabled: busy,
     title: "หลบหนีจากการต่อสู้",
     onClick: () => onAction("flee")
   }, "🏃"), /*#__PURE__*/React.createElement("button", {
-    className: `md-dock-mini settings ${editSlots ? "active" : ""}`,
+    className: `md-dock-mini settings md-battle-art ${editSlots ? "active" : ""}`,
+    style: battleUiStyle("buttons.settings"),
     title: editSlots ? "เสร็จสิ้นการตั้งค่า Quick Slot" : "ตั้งค่า Quick Slot",
     onClick: () => {
       setAssignSlotIndex(null);
       setEditSlots(v => !v);
     }
   }, editSlots ? "✓" : "⚙️"))), /*#__PURE__*/React.createElement("button", {
-    className: "md-dock-attack",
+    className: "md-dock-attack md-battle-art",
+    style: battleUiStyle("buttons.attack"),
     disabled: busy,
     onClick: () => {
       onAction("attack");
