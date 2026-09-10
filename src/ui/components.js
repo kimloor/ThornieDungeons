@@ -935,7 +935,12 @@ function SkillScreen({
   );
 }
 // ---------- Phase 2: Leaderboard ----------
-const LEADERBOARD_BOARDS = [{
+// "Core" boards all come from the same leaderboard_stats row shape (max_floor/total_cp/
+// pet_cp together on every row), so they render as ONE table with sortable columns
+// instead of separate tabs that hide each other. Raid/PvP have a different row shape
+// (raid = current-instance participants only, pvp = arena ranking) so they stay as
+// their own separate view below the core table.
+const LEADERBOARD_CORE_COLUMNS = [{
   key: "floor",
   icon: "🗺️",
   label: "ชั้นลึกสุด",
@@ -953,7 +958,8 @@ const LEADERBOARD_BOARDS = [{
   label: "พลังรบสัตว์เลี้ยง",
   valueKey: "pet_cp",
   format: v => `${formatNumber(v)} CP`
-}, {
+}];
+const LEADERBOARD_BOARDS = LEADERBOARD_CORE_COLUMNS.concat([{
   key: "pvp",
   icon: "⚔️",
   label: "PvP",
@@ -964,19 +970,20 @@ const LEADERBOARD_BOARDS = [{
   label: "Raid Boss (ดาเมจสะสม)",
   valueKey: "total_contribution",
   format: v => `${formatNumber(v)} dmg`
-}];
+}]);
 function LeaderboardScreen({
   serverUrl,
   myCharacterId,
   onBack
 }) {
-  const [board, setBoard] = useState("floor");
+  const [board, setBoard] = useState("floor"); // sort key when in core mode, or "raid"/"pvp" for the special views
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null); // null = live/today
+  const isCore = LEADERBOARD_CORE_COLUMNS.some(b => b.key === board);
   React.useEffect(() => {
     const def = LEADERBOARD_BOARDS.find(b => b.key === board);
     if (!def || def.disabled) return undefined;
@@ -1000,6 +1007,58 @@ function LeaderboardScreen({
   };
   const dateLabel = (d, idx) => idx === 0 ? "วันนี้" : idx === 1 ? "เมื่อวาน" : `${d.slice(5)}`; // "09-05" etc for 2+ days back
   const activeDef = LEADERBOARD_BOARDS.find(b => b.key === board);
+  const coreTable = rows === null ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, "กำลังโหลด...") : rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, selectedDate ? "ไม่มีข้อมูลของวันนี้" : "ยังไม่มีข้อมูลอันดับ") : /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-list",
+    style: { maxHeight: 420, overflowY: "auto" }
+  }, rows.map((row, idx) => {
+    const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+    const isMe = row.character_id === myCharacterId;
+    const infoEl = /*#__PURE__*/React.createElement("div", {
+      className: "md-shop-info"
+    }, medal, " ", row.name || "?", isMe ? " (คุณ)" : "");
+    const statsEl = /*#__PURE__*/React.createElement("div", {
+      className: "md-shop-lv",
+      style: { display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }
+    }, LEADERBOARD_CORE_COLUMNS.map(col => /*#__PURE__*/React.createElement("span", {
+      key: col.key,
+      style: board === col.key ? { fontWeight: 700, color: "var(--gold, #FFD700)" } : undefined
+    }, col.icon, " ", col.format(Number(row[col.valueKey]) || 0))));
+    return /*#__PURE__*/React.createElement("div", {
+      key: row.character_id,
+      className: "md-shop-row",
+      style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
+    }, /*#__PURE__*/React.createElement("div", null, infoEl, statsEl));
+  }));
+  const specialTable = activeDef && activeDef.disabled ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, "บอร์ดนี้จะเปิดใช้งานในเฟสถัดไป") : error ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, error) : rows === null ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, "กำลังโหลด...") : rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, selectedDate ? "ไม่มีข้อมูลของวันนี้" : "ยังไม่มีข้อมูลอันดับ") : /*#__PURE__*/React.createElement("div", {
+    className: "md-inv-list",
+    style: { maxHeight: 420, overflowY: "auto" }
+  }, rows.map((row, idx) => {
+    const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+    const isMe = row.character_id === myCharacterId;
+    const infoEl = /*#__PURE__*/React.createElement("div", {
+      className: "md-shop-info"
+    }, medal, " ", row.name || "?", isMe ? " (คุณ)" : "");
+    const valueEl = /*#__PURE__*/React.createElement("div", {
+      className: "md-shop-lv"
+    }, activeDef.format(Number(row[activeDef.valueKey]) || 0));
+    return /*#__PURE__*/React.createElement("div", {
+      key: row.character_id,
+      className: "md-shop-row",
+      style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
+    }, /*#__PURE__*/React.createElement("div", null, infoEl, valueEl));
+  }));
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: { flex: 1 }
@@ -1035,7 +1094,10 @@ function LeaderboardScreen({
     disabled: b.disabled,
     style: b.disabled ? { opacity: 0.45 } : undefined,
     onClick: () => setBoard(b.key)
-  }, b.icon, " ", b.label, b.disabled ? " (เร็วๆนี้)" : ""))), availableDates.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, b.icon, " ", b.label, b.disabled ? " (เร็วๆนี้)" : ""))), isCore && /*#__PURE__*/React.createElement("p", {
+    className: "md-sub",
+    style: { margin: "0 0 6px" }
+  }, "เรียงตาม: ", LEADERBOARD_CORE_COLUMNS.find(c => c.key === board).label, " (แตะปุ่มด้านบนเพื่อเรียงคอลัมน์อื่น)"), availableDates.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }
   }, availableDates.map((d, idx) => /*#__PURE__*/React.createElement("button", {
     key: d,
@@ -1044,32 +1106,7 @@ function LeaderboardScreen({
   }, dateLabel(d, idx)))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: { marginBottom: 10 }
-  }, activeDef && activeDef.disabled ? /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, "บอร์ดนี้จะเปิดใช้งานในเฟสถัดไป") : error ? /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, error) : rows === null ? /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, "กำลังโหลด...") : rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, selectedDate ? "ไม่มีข้อมูลของวันนี้" : "ยังไม่มีข้อมูลอันดับ") : /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list",
-    style: { maxHeight: 420, overflowY: "auto" }
-  }, rows.map((row, idx) => {
-    const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
-    const isMe = row.character_id === myCharacterId;
-    const infoEl = /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-info"
-    }, medal, " ", row.name || "?", isMe ? " (คุณ)" : "");
-    const valueEl = /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-lv"
-    }, activeDef.format(Number(row[activeDef.valueKey]) || 0));
-    return /*#__PURE__*/React.createElement("div", {
-      key: row.character_id,
-      className: "md-shop-row",
-      style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
-    }, /*#__PURE__*/React.createElement("div", null, infoEl, valueEl));
-  }))), /*#__PURE__*/React.createElement("button", {
+  }, isCore ? coreTable : specialTable), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
   }, "← Back"));
