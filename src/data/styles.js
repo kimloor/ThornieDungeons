@@ -957,14 +957,13 @@ const STYLE = `
     radial-gradient(circle at 30% 85%, rgba(0,0,0,.25), transparent 50%),
     linear-gradient(180deg, rgba(11,28,59,.34) 0%, rgba(8,20,46,.47) 48%, rgba(4,12,31,.62) 100%);
   border-radius: 0 0 18px 18px;
-  padding-top: 50px;
 }
 .md-scene.battle-bg .md-ground {
   background: linear-gradient(180deg, rgba(18,53,83,.72) 0%, rgba(7,24,48,.84) 100%);
   border-top: 3px solid rgba(78,190,236,.58);
   opacity: .78;
 }
-.md-scene.battle-bg .md-arena { padding: 6px 6px 18px; min-height: 390px; overflow: visible; }
+.md-scene.battle-bg .md-arena { padding: 6px 6px 18px; min-height: 0; overflow: hidden; }
 
 /* Battlefield anchors use percentages of the arena itself. This keeps the formation stable
    across phone widths while leaving room for the Hero's widest wing overlays. */
@@ -973,23 +972,23 @@ const STYLE = `
 .md-hero-slot,
 .md-pet-slot,
 .md-monster-slot { position: absolute; pointer-events: auto; }
-.md-hero-slot { left: 21%; top: 54%; transform: translate(-50%, -50%); }
-.md-pet-slot { left: 13%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
+.md-hero-slot { left: 25%; bottom: 32%; transform: translateX(-50%); }
+.md-pet-slot { left: 13%; bottom: 5%; transform: translateX(-50%) scale(.68); transform-origin: center bottom; }
 
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
    Visual size therefore never changes where a walking monster's feet meet the lane. */
-.md-monster-count-1 .md-monster-slot-0 { left: 77%; top: 73%; }
-.md-monster-count-2 .md-monster-slot-0 { left: 81%; top: 79%; }
-.md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 64%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 83%; top: 78%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 77%; top: 65.5%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 71%; top: 53%; }
+.md-monster-count-1 .md-monster-slot-0 { left: 75%; bottom: 18%; }
+.md-monster-count-2 .md-monster-slot-0 { left: 80%; bottom: 15%; }
+.md-monster-count-2 .md-monster-slot-1 { left: 64%; bottom: 52%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 80%; bottom: 7%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 66%; bottom: 39.5%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 52%; bottom: 72%; }
 .md-monster-slot { transform: translateX(-50%); }
 .md-monster-slot.flying { transform: translate(-50%, -18px); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
 .md-monster-slot-2 { z-index: 1; }
-.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 76%; }
+.md-monster-count-1 .md-monster-slot.elite { left: 74%; bottom: 12%; }
 
 /* Monster scale is based on measured opaque pixels. HP/status are removed from
    normal flow so the unit's bottom edge is always the artwork's actual ground point. */
@@ -1000,20 +999,20 @@ const STYLE = `
 .md-monster-unit.size-elite { --monster-height: 104px; }
 .md-monster-unit > .md-enemy { width: var(--monster-height); height: var(--monster-height); }
 .md-monster-unit > .md-enemy-hpbar {
-  position: absolute; left: 50%; bottom: calc(100% + 22px); transform: translateX(-50%); z-index: 5;
+  position: absolute; left: 50%; bottom: calc(100% + 18px); transform: translateX(-50%); z-index: 5;
 }
 .md-monster-unit > .md-unit-status {
-  position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translateX(-50%); z-index: 5;
+  position: absolute; left: 50%; bottom: calc(100% + 1px); transform: translateX(-50%); z-index: 5;
 }
 .md-monster-unit > .md-sprite-name {
-  position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); z-index: 5;
+  position: absolute; left: 50%; bottom: calc(100% + 36px); transform: translateX(-50%); z-index: 5;
 }
 .md-monster-unit.size-elite > .md-enemy-hpbar { width: 94px; }
 
 @media (max-width: 380px) {
-  .md-scene.battle-bg .md-arena { min-height: 360px; }
-  .md-hero-slot { left: 22%; top: 53%; }
-  .md-pet-slot { left: 13%; top: 76%; transform: translate(-50%, -50%) scale(0.61); }
+  .md-hero-slot { left: 25%; bottom: 31%; }
+  .md-pet-slot { left: 14%; bottom: 4%; transform: translateX(-50%) scale(.62); }
+  .md-monster-count-3 .md-monster-slot-2 { left: 51%; }
 }
 
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
@@ -1144,8 +1143,24 @@ const STYLE = `
 .md-quickslot-popover-item:disabled { opacity: 0.4; cursor: not-allowed; }
 .md-quickslot-popover-sub { color: var(--ink-soft); font-size: 10.5px; font-weight: 800; flex-shrink: 0; }
 
-/* ---- Combat layout V2: six-part header + Quick Slot dock ---- */
-.md-scene.battle-bg { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+/* ---- Combat layout V3: safe-area grid with a bounded battlefield and dock ---- */
+.md-scene.battle-bg {
+  flex: none;
+  width: 100%;
+  height: clamp(640px, 100dvh, 900px);
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+  gap: 4px;
+  padding: max(8px, env(safe-area-inset-top, 0px)) 8px max(6px, env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+}
+.md-battle-top { grid-row: 1; margin: 0; }
+.md-scene.battle-bg > .md-modifier-chip { grid-row: 2; margin-bottom: 0 !important; }
+.md-target-hint { grid-row: 3; margin: 0 !important; line-height: 14px; }
+.md-scene.battle-bg > .md-arena { grid-row: 4; width: 100%; height: 100%; }
+.md-scene.battle-bg > .md-battle-dock { grid-row: 5; }
+.md-scene.battle-bg > .md-battle-log-panel { grid-row: 6; }
 .md-battle-art {
   background-image: var(--battle-ui-image);
   background-repeat: no-repeat;
@@ -1203,11 +1218,33 @@ const STYLE = `
 .md-unit-status .ready { color: #8ee0a8; border-color: rgba(142,224,168,.45); }
 .md-unit-status .cooldown { color: var(--ink-soft); }
 .md-unit-status .elite { color: var(--gold); border-color: rgba(255,209,102,.62); background: rgba(55,32,8,.86); }
-.md-unit-status.hero { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); z-index: 5; }
+.md-hero-slot > .md-sprite-name,
+.md-hero-slot > .md-enemy-hpbar,
+.md-hero-slot > .md-unit-status,
+.md-pet-slot .md-enemy-hpbar,
+.md-pet-slot .md-unit-status,
+.md-pet-slot .md-sprite-name {
+  position: absolute; left: 50%; transform: translateX(-50%); z-index: 7;
+}
+.md-hero-slot > .md-sprite-name,
+.md-pet-slot .md-sprite-name { bottom: calc(100% + 36px); }
+.md-hero-slot > .md-enemy-hpbar,
+.md-pet-slot .md-enemy-hpbar { bottom: calc(100% + 18px); }
+.md-hero-slot > .md-unit-status,
+.md-pet-slot .md-unit-status { bottom: calc(100% + 1px); top: auto; }
+.md-pet-slot .md-sprite-wrap { gap: 0; }
+.md-pet-slot .md-sprite-name { max-width: 104px; }
+.md-hero-slot > .md-sprite-name { max-width: 84px; }
+.md-hero-slot .md-dmg-float,
+.md-pet-slot .md-dmg-float,
+.md-monster-slot > .md-dmg-float { top: -52px; z-index: 9; }
 
 .md-battle-dock {
   display: grid; grid-template-columns: minmax(0, 1fr) 70px 68px; align-items: center;
-  justify-content: stretch; gap: 6px; padding: 7px 10px 0;
+  justify-content: stretch; gap: 6px; padding: 5px 2px 1px;
+  min-height: 70px;
+  border-top: 1px solid rgba(255,209,102,.28);
+  background: linear-gradient(180deg, rgba(8,15,36,.22), rgba(4,9,25,.7));
 }
 .md-quickslot-bar.battle { min-width: 0; justify-content: space-between; gap: 4px; }
 .md-dock-side-controls { display: grid; grid-template-rows: 30px 30px; gap: 4px; }
@@ -1225,6 +1262,18 @@ const STYLE = `
 .md-battle-dock .md-dock-attack { justify-self: end; transform: none; }
 .md-battle-dock .md-dock-attack:active { transform: translateY(2px); }
 
+.md-battle-log-panel {
+  min-height: 0; padding: 3px 5px 2px; gap: 0; border-top-width: 1px;
+  background: rgba(6,11,28,.7);
+}
+.md-battle-log-panel .md-log {
+  min-height: 38px; max-height: 44px; padding: 3px 7px; gap: 1px;
+  overscroll-behavior: contain;
+}
+.md-battle-log-panel .md-log-line { font-size: 9.5px; line-height: 1.25; padding: 0 2px; }
+.md-battle-log-panel .md-log-line.latest { font-size: 10.5px; }
+.md-battle-log-panel .md-log-line:nth-child(n+3) { display: none; }
+
 @media (max-width: 380px) {
   .md-battle-top { grid-template-columns: 1.45fr repeat(4, minmax(0, 1fr)) 1.1fr; min-height: 54px; }
   .md-turn-queue-icon { width: 24px; height: 24px; font-size: 13px; }
@@ -1234,6 +1283,16 @@ const STYLE = `
   .md-quickslot-bar.battle { gap: 3px; }
   .md-quickslot-btn { width: 32px; height: 36px; border-radius: 10px; font-size: 15px; }
   .md-battle-dock .md-dock-attack { width: 62px; height: 62px; }
+}
+
+@media (max-height: 700px) {
+  .md-scene.battle-bg { gap: 3px; }
+  .md-battle-top { min-height: 52px; }
+  .md-battle-dock { min-height: 64px; padding-top: 2px; }
+  .md-battle-log-panel .md-log { min-height: 34px; max-height: 38px; }
+  .md-battle-log-panel .md-log-line:nth-child(n+2) { display: none; }
+  .md-hero-slot { bottom: 30%; }
+  .md-pet-slot { bottom: 3%; }
 }
 
 /* quick slot panel inside the Inventory sheet */

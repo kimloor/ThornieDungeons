@@ -2624,6 +2624,7 @@ function CombatScreen({
     },
     title: bossOrModifier.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : bossOrModifier.modifier.desc
   }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
+    className: "md-target-hint",
     style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
   }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
     className: "md-arena"
@@ -2634,6 +2635,8 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hero-slot"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "md-sprite-name"
+  }, "You"), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar hero md-battle-art",
     style: battleUiStyle("hpStatusFrame")
   }, /*#__PURE__*/React.createElement("div", {
@@ -2648,7 +2651,8 @@ function CombatScreen({
   }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim,
     equipped: equipped,
-    combatSpeed: combatSpeed
+    combatSpeed: combatSpeed,
+    showName: false
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status hero",
     "aria-label": "Hero status"
@@ -2764,7 +2768,7 @@ function CombatScreen({
       onAction("attack");
     }
   }, "👊"))), /*#__PURE__*/React.createElement("div", {
-    className: "md-panel"
+    className: "md-panel md-battle-log-panel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-log"
   }, (Array.isArray(log) ? log : [log]).slice(0, 3).map((line, i) => /*#__PURE__*/React.createElement("div", {
