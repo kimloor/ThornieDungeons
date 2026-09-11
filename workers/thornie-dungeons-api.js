@@ -1,34 +1,47 @@
 /**
  * THORNIE DUNGEONS — Cloud Save Backend (Cloudflare Worker + D1) — schema v2 + daily login
  * ---------------------------------------------------------------
- * This file mirrors the LIVE worker (fetched via Cloudflare MCP on 2026-09-11) with the
- * PvP leaderboard board added on top (marked "NEW" below). Everything else is unchanged
+ * This file mirrors the LIVE worker (fetched via Cloudflare MCP on 2026-09-04) with the
+ * daily-login endpoints added on top (marked "NEW" below). Everything else is unchanged
  * from the deployed version.
  *
  * NOT YET DEPLOYED — Claude has read access to Workers via the Cloudflare MCP connector
  * (workers_get_worker_code) but no write/deploy tool, and api.cloudflare.com isn't in
- * Claude's bash network allowlist either. Deploy this manually: paste into the Cloudflare
- * Dashboard editor for the `thornie-dungeons-api` worker, same as always.
+ * Claude's bash network allowlist either. Deploy this manually:
+ *   wrangler deploy workers/thornie-dungeons-api.js --name thornie-dungeons-api
+ * or paste it into the Cloudflare Dashboard editor for the `thornie-dungeons-api` worker,
+ * same as migration_v2.sql was applied by hand.
+ *
+ * v2 change (see migration_v2.sql — RUN THAT FIRST): each account can now have up to
+ * MAX_CHARACTER_SLOTS independent characters, each with its own row in `characters`
+ * instead of being squeezed into a single `progress` row. Items and run-state
+ * checkpoints are now scoped by `character_id` as well as `player_id`, so saving one
+ * character's inventory can never touch another character's gear — the old worker
+ * deleted any item row for the *player* that wasn't in the sync payload, which is
+ * fine for one character but silently unsafe the moment there's more than one.
+ *
+ * The v1 `progress` table is left in place untouched (harmless, no longer written
+ * to) purely as a historical backfill source for the one-time migration.
  *
  * Endpoints:
  *   GET  ?action=login&id=&password=
  *   GET  ?action=getGameConfig
- *   GET  ?action=getRecipes
- *   GET  ?action=getMonsterLoot
- *   GET  ?action=getJunkInfo
+ *   GET  ?action=getRecipes                                                (NEW, Phase 4 refactor)
+ *   GET  ?action=getMonsterLoot                                             (NEW, monster loot table)
+ *   GET  ?action=getJunkInfo                                                (NEW, admin.html — material names/icons)
+ *   POST { action: "adminUpsertJunkInfo", adminKey, junkId, name, icon }     (NEW, admin.html)
+ *   POST { action: "adminDeleteJunkInfo", adminKey, junkId }                 (NEW, admin.html)
  *   GET  ?action=getInventory&id=&password=&characterId=&page=&pageSize=
- *   GET  ?action=getDailyLogin&id=&password=&characterId=
- *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid|pvp                  (pvp = NEW)
- *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD
- *   GET  ?action=getRaidStatus&id=&password=&characterId=
- *   GET  ?action=getMailbox&id=&password=&characterId=
- *   GET  ?action=getArenaStatus&id=&password=&characterId=
- *   GET  ?action=getArenaOpponents&id=&password=&characterId=
+ *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
+ *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid|pvp            (pvp = NEW)
+ *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD             (NEW, Phase 2.1, last 7 days)
+ *   GET  ?action=getRaidStatus&id=&password=&characterId=                (NEW, Phase 3)
+ *   GET  ?action=getMailbox&id=&password=&characterId=                   (NEW, Phase 3.1)
  *   GET  ?action=getPlayer&adminKey=&id=            (admin)
  *   GET  ?action=getAllPlayers&adminKey=            (admin)
  *   GET  ?action=getPlayerItems&adminKey=&id=        (admin)
  *   GET  ?action=getGameStats&adminKey=              (admin)
- *   GET  ?action=getSheet&adminKey=&sheet=           (admin)
+ *   GET  ?action=getSheet&adminKey=&sheet=           (admin — "sheet" name kept from before, means "table")
  *   POST { action: "register", id, password }
  *   POST { action: "createCharacter", id, password, slotIndex, name }
  *   POST { action: "deleteCharacter", id, password, slotIndex }
@@ -37,35 +50,37 @@
  *   POST { action: "saveRunState", id, password, characterId, runState }
  *   POST { action: "syncItems", id, password, characterId, items }
  *   POST { action: "setInventorySlot", id, password, itemId, inventorySlot }
- *   POST { action: "claimDailyLogin", id, password, characterId }
- *   POST { action: "attackRaidBoss", id, password, characterId, paidDiamonds }
- *   POST { action: "claimRaidMilestones", id, password, characterId }
- *   POST { action: "claimMail", id, password, characterId, mailId }
- *   POST { action: "claimAllMail", id, password, characterId }
- *   POST { action: "deleteMail", id, password, characterId, mailId }
- *   POST { action: "deleteMails", id, password, characterId, mailIds }
- *   POST { action: "deleteAllClaimedMail", id, password, characterId }
- *   POST { action: "craftItem", id, password, characterId, recipeId }
- *   POST { action: "startArenaMatch", id, password, characterId, opponentCharacterId, paidDiamonds }
- *   POST { action: "submitArenaTurn", id, password, characterId, matchId, actionType, skillKey }
+ *   POST { action: "claimDailyLogin", id, password, characterId }        (NEW)
+ *   POST { action: "attackRaidBoss", id, password, characterId }          (NEW, Phase 3)
+ *   POST { action: "claimRaidMilestones", id, password, characterId }     (NEW, Phase 3)
+ *   POST { action: "claimMail", id, password, characterId, mailId }       (NEW, Phase 3.1)
+ *   POST { action: "claimAllMail", id, password, characterId }            (NEW, Phase 3.1)
+ *   POST { action: "deleteMail", id, password, characterId, mailId }       (NEW, Phase 3.6)
+ *   POST { action: "deleteMails", id, password, characterId, mailIds }     (NEW, Phase 3.6)
+ *   POST { action: "deleteAllClaimedMail", id, password, characterId }     (NEW, Phase 3.6)
+ *   POST { action: "craftItem", id, password, characterId, recipeId }       (NEW, Phase 4)
+ *   GET  ?action=getArenaStatus&id=&password=&characterId=               (NEW, Phase 5 — PvP Arena)
+ *   GET  ?action=getArenaOpponents&id=&password=&characterId=             (NEW, Phase 5)
+ *   POST { action: "startArenaMatch", id, password, characterId, opponentCharacterId, paidDiamonds }  (NEW, Phase 5, turn-based)
+ *   POST { action: "submitArenaTurn", id, password, characterId, matchId, actionType, skillKey }        (NEW, Phase 5)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
- *   POST { action: "adminUpsertRecipe", adminKey, recipeId, type, name, setId, empowerSlotCount, materials }
- *   POST { action: "adminDeleteRecipe", adminKey, recipeId }
- *   POST { action: "adminUpsertMonsterLootEntry", adminKey, entry: {...} }
- *   POST { action: "adminDeleteMonsterLootEntry", adminKey, entryId }
- *   POST { action: "adminUpsertJunkInfo", adminKey, junkId, name, icon }
- *   POST { action: "adminDeleteJunkInfo", adminKey, junkId }
+ *   POST { action: "adminUpsertRecipe", adminKey, recipeId, type, name, setId, empowerSlotCount, materials }  (NEW, admin.html)
+ *   POST { action: "adminDeleteRecipe", adminKey, recipeId }                                                  (NEW, admin.html)
+ *   POST { action: "adminUpsertMonsterLootEntry", adminKey, entry: {...} }                                    (NEW, admin.html)
+ *   POST { action: "adminDeleteMonsterLootEntry", adminKey, entryId }                                         (NEW, admin.html)
  *
- * Leaderboard notes:
- *   - "floor"/"cp"/"pet_cp" read from leaderboard_stats, snapshotted nightly by
- *     scheduled() (Cron Trigger set in Cloudflare Dashboard -> this worker -> Trigger
- *     Events; not declared here since there's no wrangler.toml for this worker).
- *   - "raid" reads live from raid_participants for the current raid instance.
- *   - "pvp" (NEW) reads live from pvp_ranking — no snapshot/history needed since rating
- *     is already the persistent live record (unlike floor/cp/pet_cp, which are derived).
- *     getLeaderboardHistory does NOT support "pvp" — client only shows the date picker
- *     for boards that support history.
+ * Phase 2 (leaderboard, migration_v3.sql already applied — leaderboard_stats exists):
+ *   - GET ?action=getLeaderboard&board=floor|cp|pet_cp returns top 50 rows, read-only,
+ *     no auth needed (leaderboard is public within the game).
+ *   - A `scheduled()` handler below runs on a Cron Trigger (added via Cloudflare
+ *     Dashboard -> Workers -> thornie-dungeons-api -> Trigger Events -> Cron Trigger,
+ *     since this worker has no wrangler.toml in the repo and is deployed by hand).
+ *     Suggested cron: "0 17 * * *" (17:00 UTC = 00:00 ICT, i.e. Thai midnight).
+ *     It snapshots every character's floor / combat power / active-pet combat power
+ *     into leaderboard_stats. CP formulas are ported from src/systems/stats.js
+ *     (characterBaseStats + getEquipBonus + combatPower) and src/systems/pets.js
+ *     (petCombatStats) — keep these two in sync if those formulas change.
  * ---------------------------------------------------------------
  */
 
@@ -73,6 +88,8 @@ const MAX_CHARACTER_SLOTS = 3;
 
 const TABLES = {
   players: { name: "players", cols: ["id", "password", "diamonds", "active_slot", "created_at"] },
+  // v1 leftover — never written to by v2 code, kept readable only so migratePlayerIfNeeded()
+  // and the admin "getSheet" endpoint can still look at it for historical/debug purposes.
   progress: {
     name: "progress",
     cols: ["player_id", "bank_gold", "diamonds", "best_floor", "potions", "char_level", "char_xp", "char_points", "char_str", "char_vit", "char_dex", "char_luk", "pets_json", "active_pet_id", "updated_at"],
@@ -95,25 +112,37 @@ const TABLES = {
     cols: ["item_id", "player_id", "character_id", "slot_type", "equipped", "inventory_slot", "item_template_id", "rarity", "name", "item_level", "enhance_level", "bound", "quantity", "atk", "def", "hp", "mp", "extra_json", "created_at", "updated_at"],
   },
   game_config: { name: "game_config", cols: ["key", "value_json", "updated_at"] },
+  // Reference/design-data tables, registered here purely so the existing admin `getSheet`
+  // action can list them raw — nothing writes to these via the generic upsertRow()/getRow()
+  // sync path (recipes/monster_loot writes go through their own dedicated admin handlers
+  // below, same as craftItem/getRecipes/getMonsterLoot already do their own raw queries).
   recipes: { name: "recipes", cols: ["recipe_id", "result_item_def", "materials_json", "source", "created_at"] },
   monster_loot: { name: "monster_loot", cols: ["entry_id", "monster_id", "kind", "item_type", "rarity", "junk_id", "qty_min", "qty_max", "weight", "drop_chance", "created_at", "updated_at"] },
   junk_info: { name: "junk_info", cols: ["junk_id", "name", "icon", "created_at", "updated_at"] },
+  // NEW — daily login (migration_v3.sql)
   daily_login_claims: {
     name: "daily_login_claims",
     cols: ["character_id", "login_streak", "last_claim_date", "total_claims", "updated_at"],
   },
+  // NEW — Phase 2 (migration_v3.sql). One row per character; snapshotted nightly by scheduled().
   leaderboard_stats: {
     name: "leaderboard_stats",
     cols: ["character_id", "player_id", "name", "max_floor", "total_cp", "pet_cp", "updated_at"],
   },
+  // NEW — Phase 2.1 (migration_v8_leaderboard_history.sql). Append-only daily archive, one
+  // row per character per date, pruned to the last 7 days by runLeaderboardSnapshot.
   leaderboard_history: {
     name: "leaderboard_history",
     cols: ["date", "character_id", "player_id", "name", "max_floor", "total_cp", "pet_cp", "created_at"],
   },
 };
 
-// ---------- combat-power formulas (ported from src/systems/stats.js / pets.js) ----------
+// ---------- Phase 2: combat-power formulas ----------
+// Ported from src/systems/stats.js and src/systems/pets.js. These MUST stay numerically
+// consistent with the client so the leaderboard reflects what players actually see on
+// their Status screen — if those files change, update the matching function here too.
 const ENHANCE_STAT_PCT = 0.06;
+const BASE_SPEED = 100; // unused in CP math directly but kept for parity/reference
 
 function characterBaseStats(level, s) {
   return {
@@ -128,6 +157,8 @@ function characterBaseStats(level, s) {
   };
 }
 
+// it: a row from the `items` table (equipped=1). extra_json may carry critChance/
+// critDamage/dodgeChance/empowerSlots that don't have their own columns.
 function itemBonus(it) {
   const lvl = Number(it.enhance_level) || 0;
   const growMult = 1 + lvl * ENHANCE_STAT_PCT;
@@ -180,8 +211,17 @@ function combatPowerFromCharacter(character, equippedItems) {
   );
 }
 
+const PET_BASE_STATS = {
+  r: { str: 4, vit: 4, agi: 4, dex: 4, luk: 4 },
+  sr: { str: 6, vit: 6, agi: 6, dex: 6, luk: 6 },
+  ssr: { str: 9, vit: 9, agi: 9, dex: 9, luk: 9 },
+};
 const PET_STAR_MULT = [1.0, 1.08, 1.18, 1.3, 1.45];
 
+// instance: one entry from a character's parsed pets_json list; rarity comes from the
+// pet's def, which the worker doesn't have a copy of (PET_POOL lives client-side only)
+// — instance.stats already reflects the pet's own rolled base line, so we use that
+// directly rather than re-deriving it from rarity.
 function petCombatPower(instance) {
   if (!instance || !instance.stats) return 0;
   const mult = PET_STAR_MULT[(Number(instance.star) || 1) - 1] || 1;
@@ -206,6 +246,9 @@ function dateKeyDaysAgo(days) {
   return new Date(Date.now() + 7 * 60 * 60 * 1000 - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+// Snapshots every character into leaderboard_stats. Called by scheduled() (nightly cron)
+// and also exposed as an admin action so Kimmie can force a refresh without waiting for
+// the cron to fire (e.g. right after deploying this).
 async function runLeaderboardSnapshot(db) {
   const chars = await db.prepare(`SELECT * FROM characters`).all();
   const characters = chars.results || [];
@@ -223,6 +266,8 @@ async function runLeaderboardSnapshot(db) {
     if (ch.active_pet_id) {
       try {
         const parsed = JSON.parse(ch.pets_json || "[]");
+        // pets_json is backward-compatible: legacy rows are a bare array, current rows
+        // are `{list, dup}` (dup = star-up duplicate pool) — see pets.js star-up system.
         const pets = Array.isArray(parsed) ? parsed : (parsed && parsed.list) || [];
         const active = pets.find((p) => p.instId === ch.active_pet_id);
         if (active) petCp = petCombatPower(active);
@@ -240,6 +285,9 @@ async function runLeaderboardSnapshot(db) {
       .bind(ch.character_id, ch.player_id, ch.name || "", Number(ch.unlocked_floor) || 1, totalCp, petCp, now)
       .run();
 
+    // Append-only archive (Phase 2.1) — same values, but keyed by date too so today's
+    // snapshot doesn't erase yesterday's like the upsert above does. Uses raidDateKey()
+    // (Thai midnight) so every board's history lines up on the same date boundary.
     await db
       .prepare(
         `INSERT INTO leaderboard_history (date, character_id, player_id, name, max_floor, total_cp, pet_cp, created_at)
@@ -253,9 +301,12 @@ async function runLeaderboardSnapshot(db) {
     updated++;
   }
 
+  // Retention: keep only the last LEADERBOARD_HISTORY_RETENTION_DAYS days of history (and of
+  // raid data, which doubles as that board's own history — see handleGetLeaderboardHistory)
+  // so these tables don't grow forever.
   const cutoff = dateKeyDaysAgo(LEADERBOARD_HISTORY_RETENTION_DAYS);
   await db.prepare(`DELETE FROM leaderboard_history WHERE date < ?`).bind(cutoff).run();
-  await db.prepare(`DELETE FROM raid_boss_state WHERE date < ?`).bind(cutoff).run();
+  await db.prepare(`DELETE FROM raid_boss_state WHERE date < ?`).bind(cutoff).run(); // cascades to raid_participants
 
   return { updated, at: now };
 }
@@ -289,6 +340,9 @@ async function handleGetLeaderboard(db, board) {
   return json({ ok: true, board, rows: res.results || [], availableDates: recentDateKeys() });
 }
 
+// Returns the last LEADERBOARD_HISTORY_RETENTION_DAYS calendar dates (today first) so the
+// client can render a date picker without needing a separate "which dates have data" call —
+// picking an empty day just renders an empty list, which is a fine, simple UX for this.
 function recentDateKeys() {
   const out = [];
   for (let i = 0; i < LEADERBOARD_HISTORY_RETENTION_DAYS; i++) out.push(dateKeyDaysAgo(i));
@@ -298,6 +352,10 @@ function recentDateKeys() {
 async function handleGetLeaderboardHistory(db, board, date) {
   const dateKey = date || raidDateKey();
   if (board === "raid") {
+    // Raid never had a separate history table — raid_boss_state/raid_participants already
+    // carry the date a boss was fought on, so "history" is just querying them directly.
+    // Multiple bosses can spawn in one day (respawn-on-death, or the forced daily reset), so
+    // this aggregates every raid instance that date per character rather than picking one.
     const raidsThatDay = await db.prepare(`SELECT raid_id FROM raid_boss_state WHERE date = ?`).bind(dateKey).all();
     const raidIds = (raidsThatDay.results || []).map((r) => r.raid_id);
     if (!raidIds.length) return json({ ok: true, board, date: dateKey, availableDates: recentDateKeys(), rows: [] });
@@ -324,6 +382,8 @@ async function handleGetLeaderboardHistory(db, board, date) {
   return json({ ok: true, board, date: dateKey, availableDates: recentDateKeys(), rows: res.results || [] });
 }
 
+// NEW — server-owned reward cycle (source of truth; client only displays what this returns,
+// never computes its own reward, so a tampered client can't grant itself diamonds).
 const DAILY_LOGIN_REWARDS = [
   { day: 1, gold: 50, diamonds: 0 },
   { day: 2, gold: 80, diamonds: 0 },
@@ -331,7 +391,7 @@ const DAILY_LOGIN_REWARDS = [
   { day: 4, gold: 150, diamonds: 0 },
   { day: 5, gold: 0, diamonds: 30 },
   { day: 6, gold: 250, diamonds: 0 },
-  { day: 7, gold: 0, diamonds: 120 },
+  { day: 7, gold: 0, diamonds: 120 }, // bonus day, cycle repeats after this
 ];
 
 function json(obj, status = 200) {
@@ -350,6 +410,7 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+// NEW — UTC day-boundary date keys, used only by the daily login handlers below.
 function todayDateKey() {
   return nowIso().slice(0, 10);
 }
@@ -401,6 +462,9 @@ async function verifyPlayer(db, id, password) {
   return { ok: true, row };
 }
 
+// Confirms `characterId` actually belongs to `playerId` before letting any write
+// touch it — prevents one account's requests from ever reading/writing another
+// account's character just by guessing/reusing a character_id.
 async function verifyOwnedCharacter(db, playerId, characterId) {
   if (!characterId) return { error: "missing_fields" };
   const row = await getRow(db, "characters", "character_id", characterId);
@@ -426,6 +490,11 @@ async function handleGetGameConfig(db) {
   return json(cfg);
 }
 
+// Public, unauthenticated — just game data, not user-specific (same trust level as
+// getGameConfig above). Lets new crafted sets go live via a D1 insert alone, no worker
+// redeploy and no client code change: the client fetches this list on load instead of
+// hardcoding it (see CRAFTING_RECIPES in crafting.js, which now starts empty and gets
+// filled in from this response, falling back to a cached copy if offline).
 async function handleGetRecipes(db) {
   const res = await db.prepare(`SELECT recipe_id, result_item_def, materials_json FROM recipes`).all();
   const recipes = (res.results || []).map((r) => {
@@ -438,6 +507,11 @@ async function handleGetRecipes(db) {
   return json({ recipes });
 }
 
+// Public, unauthenticated — same trust level as getGameConfig/getRecipes above. Per-monster
+// loot tables (Phase: monster loot design doc) — grouped by monster_id so the client can do
+// a single lookup per kill. Empty for any monster_id with no rows, which the client treats
+// as "use the existing generic floor-based roll" (fully backward compatible; nothing
+// changes for a monster until rows are added here).
 async function handleGetMonsterLoot(db) {
   const res = await db.prepare(`SELECT monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance FROM monster_loot`).all();
   const byMonster = {};
@@ -452,6 +526,10 @@ async function handleGetMonsterLoot(db) {
   return json({ monsterLoot: byMonster });
 }
 
+// Public, unauthenticated — same trust level as getRecipes/getMonsterLoot above. Client
+// merges this INTO the built-in JUNK_INFO defaults (enhancement.js) rather than replacing
+// it wholesale, so a material added here shows up without needing every existing one
+// re-declared, and nothing breaks if this table is ever emptied.
 async function handleGetJunkInfo(db) {
   const res = await db.prepare(`SELECT junk_id, name, icon FROM junk_info`).all();
   const junkInfo = {};
@@ -476,6 +554,9 @@ async function handleRegister(db, id, password) {
   return json({ ok: true });
 }
 
+// Safety-net migration for a single player: runs the same logic as migration_v2.sql's
+// bulk backfill, in case that player's row was created/played between the bulk
+// migration running and this deploy going live, or was otherwise missed.
 async function migratePlayerIfNeeded(db, id) {
   const already = await getRow(db, "characters", "player_id", id);
   if (already) return;
@@ -514,6 +595,8 @@ async function handleLogin(db, id, password) {
   const characters = await getRows(db, "characters", "player_id", id);
   characters.sort((a, b) => a.slot_index - b.slot_index);
 
+  // Items/run-state are intentionally NOT returned here — they belong to a specific
+  // character, and which one hasn't been chosen yet. See "enterCharacter".
   return json({
     ok: true,
     player: { diamonds: Number(player.diamonds) || 0, activeSlot: player.active_slot === null || player.active_slot === undefined ? null : Number(player.active_slot) },
@@ -566,6 +649,7 @@ async function handleDeleteCharacter(db, id, password, slotIndex) {
   await db.batch([
     db.prepare(`DELETE FROM items WHERE character_id = ?`).bind(row.character_id),
     db.prepare(`DELETE FROM run_state WHERE character_id = ?`).bind(row.character_id),
+    // NEW — clean up daily login state along with the rest of the character's data
     db.prepare(`DELETE FROM daily_login_claims WHERE character_id = ?`).bind(row.character_id),
     db.prepare(`DELETE FROM characters WHERE character_id = ?`).bind(row.character_id),
     db.prepare(`UPDATE players SET active_slot = NULL WHERE id = ? AND active_slot = ?`).bind(id, slot),
@@ -645,7 +729,7 @@ async function handleSyncItems(db, id, password, characterId, items) {
     const obj = {
       item_id: itemId,
       player_id: id,
-      character_id: characterId,
+      character_id: characterId, // always the authenticated/owned character — never trust a client-supplied value here
       slot_type: it.slotType || "",
       equipped: it.equipped ? 1 : 0,
       inventory_slot: it.inventorySlot === undefined ? "" : it.inventorySlot,
@@ -675,6 +759,9 @@ async function handleSyncItems(db, id, password, characterId, items) {
     );
   });
 
+  // Delete stale rows for THIS CHARACTER ONLY that aren't in the new payload — scoped
+  // by character_id (not just player_id), so syncing one character's inventory can
+  // never delete a different character's items on the same account.
   const placeholders = keepIds.map(() => "?").join(",") || "''";
   const deleteSql = keepIds.length
     ? `DELETE FROM items WHERE character_id = ? AND item_id NOT IN (${placeholders})`
@@ -738,7 +825,7 @@ async function handleSetInventorySlot(db, id, password, itemId, inventorySlot) {
   return json({ ok: true, itemId: String(itemId), inventorySlot: slot });
 }
 
-// ---------- daily login ----------
+// ---------- NEW: daily login ----------
 async function handleGetDailyLogin(db, id, password, characterId) {
   const auth = await verifyPlayer(db, id, password);
   if (auth.error) return json({ error: auth.error });
@@ -797,7 +884,13 @@ async function handleClaimDailyLogin(db, id, password, characterId) {
   });
 }
 
-// ---------- Mailbox ----------
+// ---------- Mailbox: generic reward delivery queue ----------
+// Server-side reward mutations (UPDATE characters/items directly) get silently
+// clobbered by this project's client-authoritative full-sync save model — the next
+// saveCharacterProgress/syncItems push from the client overwrites them with its own
+// stale local copy. So ANY server-granted reward (raid, and future PvP/guild/event)
+// must go through here instead: drop a mail row, let the client claim it and merge
+// the reward into its own local state, then the normal autosave persists it correctly.
 function newMailId() {
   return `mail-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -871,6 +964,9 @@ async function handleClaimAllMail(db, id, password, characterId) {
   const junk = Object.keys(junkTotals).map((junkId) => ({ junkId, quantity: junkTotals[junkId] }));
   return json({ ok: true, mailIds: rows.map((m) => m.mail_id), gold, diamonds, junk, items });
 }
+// Deletes only CLAIMED mail — deleting an unclaimed one would silently discard whatever
+// reward it was carrying, so the WHERE clause refuses to touch claimed=0 rows regardless
+// of what the client asks for.
 async function handleDeleteMail(db, id, password, characterId, mailId) {
   const auth = await verifyPlayer(db, id, password);
   if (auth.error) return json({ error: auth.error });
@@ -896,6 +992,8 @@ async function handleDeleteMails(db, id, password, characterId, mailIds) {
     .run();
   return json({ ok: true, deleted: result.meta ? result.meta.changes : 0 });
 }
+// Deletes ALL claimed mail for this character in one shot — the common "clean up my old
+// read mail" action, without the client needing to enumerate every id first.
 async function handleDeleteAllClaimedMail(db, id, password, characterId) {
   const auth = await verifyPlayer(db, id, password);
   if (auth.error) return json({ error: auth.error });
@@ -906,7 +1004,31 @@ async function handleDeleteAllClaimedMail(db, id, password, characterId) {
   return json({ ok: true, deleted: result.meta ? result.meta.changes : 0 });
 }
 
-// ---------- Crafting ----------
+// ---------- Phase 4: Crafting ----------
+// Recipes live in the `recipes` table (recipe_id, result_item_def JSON, materials_json
+// JSON, source, created_at). result_item_def only carries identity fields (type/rarity/
+// name/setId/empowerSlotCount) — NOT stat numbers. Stats are computed fresh at craft time
+// from the character's own unlocked_floor using CRAFTED_STAT_FORMULA below, so crafted
+// gear stays "current BiS" forever without needing a rebalance pass every time a new
+// floor is added. Mirrors generateDrop()'s per-type formulas in stats.js, pinned to
+// CRAFTED_RARITY_MULT.
+//
+// This formula table is keyed by item TYPE (weapon/helmet/chest/gloves/boots/accessory),
+// not by set — it's shared by every crafted set, present and future. Mythic is the
+// permanent rarity ceiling in this game (confirmed, no new rarity tier is ever planned
+// above it), so ALL crafted output — Azure today, any future set — is pinned to that same
+// ceiling (5.4, equal to mythic) regardless of which `rarity`/`setId` string a given
+// recipe's result_item_def uses. A new set just needs a `recipes` row; it does NOT need a
+// new rarity tier, a new RARITY_MULT/RARITY_STARS/SALVAGE_TABLE key, or a worker redeploy.
+// KEEP IN SYNC with CRAFTED_STAT_FORMULA in src/systems/crafting.js (client preview copy).
+// Note: every crafted item's DB `rarity` is hardcoded to the literal string "azure" below
+// (see the INSERT), regardless of what a recipe's result_item_def says or which visual
+// setId it uses — "azure" here means "crafted tier", not "the Azure set specifically". This
+// is deliberate: RARITY_MULT/RARITY_STARS/SALVAGE_TABLE only have entries for rare/unique/
+// elite/mythic/azure, so a future set accidentally introducing a new rarity string (e.g.
+// "crimson") would silently fall back to the weakest tier everywhere those tables are
+// read — the exact bug class already hit twice during this phase. A future set should use
+// a new `setId` for its visual identity/set-bonus grouping, but keep `rarity: "azure"`.
 const CRAFTED_RARITY_MULT = 5.4;
 const CRAFTED_STAT_FORMULA = {
   weapon: (floor) => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * CRAFTED_RARITY_MULT)) }),
@@ -917,6 +1039,14 @@ const CRAFTED_STAT_FORMULA = {
   accessory: (floor) => ({ dodgeChance: Math.round((1 + floor * 0.12) * CRAFTED_RARITY_MULT * 10) / 10 }),
 };
 
+// This is a real server-validated mutation (unlike enhance/salvage/shop, which are fully
+// client-authoritative and just ride the next full syncItems push) because Kimmie asked for
+// anti-cheat here specifically, and because "delete these exact item rows, then insert a new
+// one" is impossible to fake safely from a client that could just lie about which stacks it
+// spent. It checks materials/gold against THIS request's own fresh read of items/characters
+// (not anything the client asserts), consumes them, and returns the crafted item descriptor
+// for the client to materialize locally — same "server decides, client mirrors" shape as the
+// mailbox/raid systems, just without needing an actual mailbox row since there's no delay.
 async function handleCraftItem(db, id, password, characterId, recipeId) {
   const [auth, owned] = await Promise.all([verifyPlayer(db, id, password), verifyOwnedCharacter(db, id, characterId)]);
   if (auth.error) return json({ error: auth.error });
@@ -942,6 +1072,9 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
     .map((k) => ({ junkId: k, qty: Number(materials[k]) || 0 }))
     .filter((m) => m.qty > 0);
 
+  // Fresh read of this character's own junk stacks — junkId isn't its own column (rides
+  // inside extra_json, same as everywhere else junk items are read in this file), so we
+  // parse it out per row rather than trying to SQL-filter on it.
   const junkRowsRes = await db
     .prepare(`SELECT item_id, quantity, extra_json FROM items WHERE character_id = ? AND slot_type = 'junk'`)
     .bind(characterId)
@@ -977,6 +1110,8 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
     stmts.push(db.prepare(`UPDATE characters SET gold = MAX(0, gold - ?), updated_at = ? WHERE character_id = ?`).bind(goldCost, now, characterId));
   }
 
+  // Computed fresh from the character's OWN unlocked_floor (already loaded via
+  // verifyOwnedCharacter above) — never trusts a floor value from the client.
   const floor = Math.max(1, Number(character.unlocked_floor) || 1);
   const formula = CRAFTED_STAT_FORMULA[resultDef.type] || (() => ({}));
   const stats = formula(floor);
@@ -1018,29 +1153,42 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
   });
 }
 
-// ---------- Raid Boss ----------
+// ---------- Phase 3: Raid Boss ----------
+// One shared boss per day, rotates through this list as each one dies (spawnIndex =
+// how many have already spawned today, scales hpMax up a bit each respawn so later
+// bosses in the day are a bit tougher once the playerbase has more total damage output).
 const RAID_BOSS_DEFS = [
   { id: "azure_angel", name: "Azure Angel", hpBase: 150000 },
   { id: "robo_phoenix", name: "Robo Phoenix", hpBase: 260000 },
   { id: "dark_dragonlord", name: "Dark Dragonlord", hpBase: 420000 },
 ];
 const RAID_STAMINA_MAX = 10;
-const RAID_STAMINA_REGEN_MS = 15 * 60 * 1000;
-const RAID_DIAMOND_REFILL_COST = 50;
-const RAID_HITS_PER_ATTACK = 3;
+const RAID_STAMINA_REGEN_MS = 15 * 60 * 1000; // +1 every 15 minutes
+const RAID_DIAMOND_REFILL_COST = 50; // per extra attack once stamina hits 0
+const RAID_HITS_PER_ATTACK = 3; // mini combat round per attack, not a single flat hit
 
-// ---------- PvP Arena ----------
+// ---------- Phase 5: PvP Arena ----------
+// Tables (pvp_ranking, pvp_snapshots) existed from migration_v3.sql. migration_v9_arena.sql
+// adds characters.pvp_tickets / pvp_tickets_updated_at (same CAS-regen pattern as
+// raid_stamina above). migration_v10_arena_matches.sql adds pvp_matches — turn-based combat
+// now runs as a session (handleStartArenaMatch / handleSubmitArenaTurn) instead of the
+// original instant-resolve design, so the player picks attack/skill one turn at a time and
+// the defender bot + both pets act automatically around that choice.
 const PVP_TICKET_MAX = 5;
-const PVP_TICKET_REGEN_MS = 20 * 60 * 1000;
-const PVP_DIAMOND_REFILL_COST = 30;
+const PVP_TICKET_REGEN_MS = 20 * 60 * 1000; // +1 every 20 minutes
+const PVP_DIAMOND_REFILL_COST = 30; // per extra attack once tickets hit 0
 const PVP_RATING_K = 24;
-const PVP_RATING_FLOOR = 100;
-const PVP_RATING_MIN_DELTA = 5;
+const PVP_RATING_FLOOR = 100; // rating never drops below this
+const PVP_RATING_MIN_DELTA = 5; // guaranteed minimum rating swing on any decisive match
 const PVP_WIN_DIAMONDS = 15;
-const PVP_LOSS_DIAMONDS = 3;
-const PVP_MAX_TURNS = 40;
-const PVP_PET_TARGET_CHANCE = 0.3;
+const PVP_LOSS_DIAMONDS = 3; // small consolation so losing still feels worth attempting
+const PVP_MAX_TURNS = 40; // hard round cap so a near-tied matchup can't loop forever
+const PVP_PET_TARGET_CHANCE = 0.3; // matches the client's own monster-targets-pet odds
 
+// Trimmed copy of src/systems/skills.js's SKILLS — same reasoning as raidCombatStats
+// staying decoupled from combatPowerFromCharacter: PvP resolution must not silently shift
+// if PvE skill balance changes, so the worker keeps its own frozen copy. Only the fields
+// combat resolution actually needs are carried over (no icon/desc/name).
 const PVP_SKILLS = [
   { key: "power_strike", unlockLevel: 10, mp: 10, type: "damage", mult: 2.0, defPierce: 0 },
   { key: "fireball", unlockLevel: 20, mp: 14, type: "damage", mult: 2.4, defPierce: 0.3 },
@@ -1062,6 +1210,9 @@ function pvpSkillAtLevel(def, level) {
   return out;
 }
 
+// Same maxHp/atk/def/evasion/critChance formulas as the client's petCombatStats() in
+// src/systems/pets.js — kept as its own function (rather than reusing petCombatPower
+// above) so combat resolution gets the raw stat block instead of a single CP number.
 function petBattleStats(instance) {
   if (!instance || !instance.stats) return null;
   const mult = PET_STAR_MULT[(Number(instance.star) || 1) - 1] || 1;
@@ -1081,6 +1232,9 @@ function petBattleStats(instance) {
     critChance: Math.round(s.luk * 0.5 * 10) / 10,
   };
 }
+// Parses a character row's pets_json (see serialize.js's characterProgressToServer) for
+// its active pet instance + committed skill levels — the same envelope the client already
+// writes on every save, so no new column was needed for either.
 function parsePetsJson(character) {
   let parsed = {};
   try { parsed = character.pets_json ? JSON.parse(character.pets_json) : {}; } catch (e) { parsed = {}; }
@@ -1094,6 +1248,11 @@ function unlockedSkillRefs(level, skillLevels) {
   return PVP_SKILLS.filter((s) => s.unlockLevel <= lvl).map((s) => ({ key: s.key, level: Math.max(1, Math.min(SKILL_MAX_LEVEL, Math.floor(Number(skillLevels[s.key]) || 1))) }));
 }
 
+// Lazily resolves current stamina from a stored checkpoint (no cron needed — same
+// approach as most mobile energy systems). Only "spends" whole elapsed 15-min ticks
+// from the checkpoint so partial progress toward the next point is never lost; once
+// stamina is full there's nothing to track so updatedAt collapses back to "" (matches
+// the migration's default, and getOrCreateActiveRaid-style lazy init below).
 function resolveRaidStamina(stored, updatedAtIso) {
   const rawStamina = Number(stored);
   const storedStamina = Number.isFinite(rawStamina) ? Math.max(0, Math.min(RAID_STAMINA_MAX, Math.floor(rawStamina))) : RAID_STAMINA_MAX;
@@ -1101,6 +1260,8 @@ function resolveRaidStamina(stored, updatedAtIso) {
     return { stamina: RAID_STAMINA_MAX, updatedAt: "" };
   }
   const updatedAtMs = Date.parse(updatedAtIso || "");
+  // A missing/malformed checkpoint must not turn stamina into NaN and crash every Raid
+  // request. Start a fresh regeneration window while preserving the stored amount.
   if (!Number.isFinite(updatedAtMs)) {
     return { stamina: storedStamina, updatedAt: new Date(Date.now()).toISOString() };
   }
@@ -1120,6 +1281,8 @@ function raidStaminaSecondsToNext(updatedAtIso) {
   return Math.max(0, Math.round(remaining / 1000));
 }
 
+// Raid Wings — a separate 1-5★ tier exclusive to raid rewards (not the normal floor-drop
+// wings pool; client's buildDropItem() no longer rolls wings/accessory at all — see stats.js).
 const RAID_WING_DEFS = [
   { star: 1, name: "ปีกอัศวินฝึกหัด ★1", dodgeChance: 5 },
   { star: 2, name: "ปีกอัศวินฝึกหัด ★2", dodgeChance: 10 },
@@ -1135,13 +1298,15 @@ function randomRaidWingStar() {
   return 1 + Math.floor(Math.random() * 5);
 }
 
+// Azure set — 6 pieces (helmet/chest/gloves/boots/weapon/ring), set bonus at 2/4/6 equipped
+// (client-side bonus values live in stats.js SET_BONUS_DEFS.azure — keep both in sync).
 const AZURE_SET_DEFS = {
   azure_helmet: { type: "helmet", name: "หมวก Azure", def: 60 },
   azure_chest: { type: "chest", name: "เสื้อ Azure", def: 90 },
   azure_gloves: { type: "gloves", name: "ถุงมือ Azure", atk: 40 },
   azure_boots: { type: "boots", name: "รองเท้า Azure", def: 45 },
   azure_weapon: { type: "weapon", name: "อาวุธ Azure", atk: 120 },
-  azure_ring: { type: "accessory", name: "แหวน Azure", dodgeChance: 15 },
+  azure_ring: { type: "accessory", name: "แหวน Azure", dodgeChance: 15 }, // uses the existing "accessory" equip slot
 };
 function randomAzureItemDesc() {
   const keys = Object.keys(AZURE_SET_DEFS);
@@ -1149,31 +1314,46 @@ function randomAzureItemDesc() {
   const d = AZURE_SET_DEFS[key];
   return { type: d.type, rarity: "azure", name: d.name, atk: d.atk || 0, def: d.def || 0, dodgeChance: d.dodgeChance || 0, setId: "azure", empowerSlotCount: 5 };
 }
+// Recipes are inert placeholder items (stackable, riding the existing junk pipeline) until
+// the Crafting phase exists to consume them — see JUNK_INFO/recipe_* entries in enhancement.js.
 const AZURE_RECIPE_JUNK_IDS = ["recipe_azure_helmet", "recipe_azure_chest", "recipe_azure_gloves", "recipe_azure_boots", "recipe_azure_weapon", "recipe_azure_ring"];
 function randomAzureRecipeJunkId() {
   return AZURE_RECIPE_JUNK_IDS[Math.floor(Math.random() * AZURE_RECIPE_JUNK_IDS.length)];
 }
+// Boss horn/hide — a single shared material pool across all boss types (not per-boss for now).
 function randomBossMaterialJunkId() {
   return Math.random() < 0.5 ? "bossHorn" : "bossHide";
 }
 
+// Rank rewards, keyed by cumulative CONTRIBUTION (total_contribution) across the whole
+// raid instance — settled for EVERY participant (rank 1..last), not just a top-N cutoff.
+// Rank 1-3 get a fixed wing tier + boss materials + a random azure recipe; everyone ranked
+// 4th or lower gets 2 random boss materials as a consolation.
 const RAID_RANK_REWARDS = [
   { wingStar: 5, junk: [{ junkId: "bossHorn", quantity: 3 }, { junkId: "bossHide", quantity: 3 }], recipe: true },
   { wingStar: 3, junk: [{ junkId: "bossHorn", quantity: 2 }, { junkId: "bossHide", quantity: 2 }], recipe: true },
   { wingStar: 1, junk: [{ junkId: "bossHorn", quantity: 1 }, { junkId: "bossHide", quantity: 1 }], recipe: true },
 ];
 
-const RAID_MILESTONE_STEP = 5;
+// Milestones — % of boss hpMax the character has personally CONTRIBUTED this raid instance
+// (rewards the players who carry the server boss, not just whoever gets lucky crits).
+// Every 5% -> diamonds. Every 10% -> 1 random boss material (on top of the 5% diamonds).
+// 25% -> 1★ wing, 50% -> 3★ wing, 75% -> random azure recipe, 99% -> a full random azure item.
+const RAID_MILESTONE_STEP = 5; // percent
 const RAID_MILESTONE_DIAMOND_PER_STEP = 5;
 
 function raidBossDefById(defId) {
   return RAID_BOSS_DEFS.find((b) => b.id === defId) || RAID_BOSS_DEFS[0];
 }
 
+// Raid resets at Thai midnight specifically (not the UTC boundary todayDateKey() uses for
+// daily login), so it gets its own +7h-shifted date key.
 function raidDateKey() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+// Fetches today's live boss, or spawns the next one in rotation if there isn't one yet
+// or the last one is already dead. Never returns a dead boss.
 async function getOrCreateActiveRaid(db) {
   const today = raidDateKey();
   const row = await db
@@ -1198,6 +1378,13 @@ async function getOrCreateActiveRaid(db) {
   return { raid_id: raidId, date: today, boss_def_id: def.id, boss_hp_max: hpMax, boss_hp_current: hpMax, settled_at: "", created_at: now, updated_at: now };
 }
 
+// Settles (and closes out) any raid instance whose date has rolled past today — this is what
+// makes the "changes every midnight even if the boss is still alive" rule actually happen,
+// since getOrCreateActiveRaid alone would just silently start ignoring the old raid_id without
+// ever paying out its rank rewards. Call from scheduled() — see bottom of file. Needs the Cron
+// Trigger (Dashboard -> this worker -> Trigger Events) to fire at least roughly daily around
+// 17:00 UTC (00:00 ICT) for the reset to land on time; it's safe to run more often too, since
+// settleRaidRank() is idempotent (guarded by settled_at).
 async function closeOutExpiredRaids(db) {
   const today = raidDateKey();
   const stale = await db.prepare(`SELECT raid_id FROM raid_boss_state WHERE date != ? AND settled_at = ''`).bind(today).all();
@@ -1206,6 +1393,10 @@ async function closeOutExpiredRaids(db) {
   }
 }
 
+// Ported subset of characterBaseStats/itemBonus above — returns only what raid combat
+// needs (atk/crit) rather than the full CP number, so this stays decoupled from the
+// leaderboard CP formula (don't merge these; CP formula changes shouldn't silently
+// reshape raid damage and vice versa).
 function raidCombatStats(character, equippedItems) {
   const s = {
     str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
@@ -1227,6 +1418,8 @@ function raidCombatStats(character, equippedItems) {
   };
 }
 
+// One "attack" = a short simulated combat round (a few swings with crit rolls), not a
+// single flat hit — keeps some randomness/excitement per attempt like real combat.
 function simulateRaidAttack(stats) {
   let total = 0;
   let anyCrit = false;
@@ -1242,24 +1435,20 @@ function simulateRaidAttack(stats) {
   return { damage: Math.max(1, Math.round(total)), crit: anyCrit };
 }
 
-const RAID_PET_CRIT_MULT = 1.5;
-function simulateRaidPetAttack(pet) {
-  const variance = 0.85 + Math.random() * 0.3;
-  let dmg = (pet.atk || 0) * variance;
-  let crit = false;
-  if (Math.random() * 100 < (pet.critChance || 0)) {
-    dmg *= RAID_PET_CRIT_MULT;
-    crit = true;
-  }
-  return { damage: Math.max(0, Math.round(dmg)), crit };
-}
-
+// Grants rank-bonus rewards once, the instant the boss dies. Guarded by an atomic
+// UPDATE on settled_at (only succeeds for whichever concurrent attack request gets
+// there first) so two players killing it in the same instant can't double-pay rewards.
+// Grants rank rewards once, either the instant the boss dies OR when closeOutExpiredRaids()
+// force-closes an unfinished raid at the daily reset. Guarded by an atomic UPDATE on
+// settled_at so it can only ever run once per raid_id even under concurrent triggers.
+// Ranked by cumulative CONTRIBUTION (not best single hit) across ALL participants —
+// rank 1-3 get the big reward, everyone else (4th..last) gets a consolation.
 async function settleRaidRank(db, raidId) {
   const guard = await db
     .prepare(`UPDATE raid_boss_state SET settled_at = ? WHERE raid_id = ? AND settled_at = ''`)
     .bind(nowIso(), raidId)
     .run();
-  if (!guard.meta || !guard.meta.changes) return;
+  if (!guard.meta || !guard.meta.changes) return; // already settled
 
   const bossRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state WHERE raid_id = ?`).bind(raidId).first();
   const bossName = raidBossDefById(bossRow ? bossRow.boss_def_id : "").name;
@@ -1289,6 +1478,10 @@ async function settleRaidRank(db, raidId) {
 }
 
 async function handleGetRaidStatus(db, id, password, characterId) {
+  // These three are fully independent reads (auth check, ownership check, and the raid's
+  // own state don't depend on each other) — firing them together instead of one-after-
+  // another cuts several D1 round trips down to the time of the single slowest one. Same
+  // pattern below for the participant/leaderboard reads once raid_id is known.
   const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, password), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
   if (auth.error) return json({ error: auth.error });
   if (owned.error) return json({ error: owned.error });
@@ -1323,6 +1516,8 @@ async function handleGetRaidStatus(db, id, password, characterId) {
 }
 
 async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds) {
+  // See handleGetRaidStatus for why these four are safe to fire concurrently — the equipped-
+  // items read only needs characterId, so it doesn't have to wait for raid/ownership either.
   const [auth, owned, raid, itemsRes] = await Promise.all([
     verifyPlayer(db, id, password),
     verifyOwnedCharacter(db, id, characterId),
@@ -1335,6 +1530,13 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
 
   if (Number(raid.boss_hp_current) <= 0) return json({ error: "boss_already_dead" });
 
+  // Stamina is per-character and regenerates over time. Reserve it before applying damage
+  // with a compare-and-swap update, so two simultaneous taps cannot both spend the same
+  // final stamina point. Paid attacks are also charged atomically on the authoritative
+  // player row; never trust the client's paidDiamonds flag as proof of payment. This has to
+  // stay its own round trip (can't be folded into the batch below) — if the CAS/charge
+  // fails, the batch's damage + participant writes must not happen at all, and D1 batches
+  // don't support conditionally skipping later statements based on an earlier one's result.
   const staminaState = resolveRaidStamina(character.raid_stamina, character.raid_stamina_updated_at);
   let spentStamina = false;
   let diamondsSpent = 0;
@@ -1368,18 +1570,18 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
 
   const stats = raidCombatStats(character, itemsRes.results || []);
   const hit = simulateRaidAttack(stats);
-
-  const { active: activePet } = parsePetsJson(character);
-  const petStats = activePet ? petBattleStats(activePet) : null;
-  const petHit = petStats ? simulateRaidPetAttack(petStats) : { damage: 0, crit: false };
-
-  const totalDamage = hit.damage + petHit.damage;
   const hpBefore = Number(raid.boss_hp_current);
-  const appliedDamage = Math.min(totalDamage, hpBefore);
+  const appliedDamage = Math.min(hit.damage, hpBefore); // this character's actual contribution to the shared boss HP
   const now = nowIso();
 
+  // Both writes use RETURNING so this single batch also gets us the numbers we need back —
+  // no separate SELECT before (to know the participant's prior best/contribution) or after
+  // (to read the boss's post-hit HP). MAX()/+= happen in SQL against the live row, which is
+  // also correctness-safer than the old read-then-write-computed-value approach: two
+  // concurrent hits reading the same stale contribution total could otherwise silently lose
+  // one of them, the same race class the stamina CAS above exists to prevent.
   const [bossBatch, participantBatch] = await db.batch([
-    db.prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0 RETURNING boss_hp_current`).bind(totalDamage, now, raid.raid_id),
+    db.prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0 RETURNING boss_hp_current`).bind(hit.damage, now, raid.raid_id),
     db.prepare(
       `INSERT INTO raid_participants (raid_id, character_id, player_id, name, total_damage, total_contribution, attempts_used, milestone_claimed, last_hit_at)
        VALUES (?, ?, ?, ?, ?, ?, 1, '', ?)
@@ -1390,12 +1592,15 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
          name = excluded.name,
          last_hit_at = excluded.last_hit_at
        RETURNING total_damage, total_contribution`
-    ).bind(raid.raid_id, characterId, id, character.name || "", totalDamage, appliedDamage, now),
+    ).bind(raid.raid_id, characterId, id, character.name || "", hit.damage, appliedDamage, now),
   ]);
+  // If the WHERE didn't match (boss already hit 0 by someone else between our early check
+  // and this batch landing), RETURNING yields no row — treat that as "our damage didn't land"
+  // rather than crashing on a missing value.
   const bossRow = (bossBatch.results || [])[0];
   const bossHpAfter = bossRow ? Number(bossRow.boss_hp_current) : hpBefore;
   const participantRow = (participantBatch.results || [])[0];
-  const newBest = participantRow ? Number(participantRow.total_damage) : totalDamage;
+  const newBest = participantRow ? Number(participantRow.total_damage) : hit.damage;
   const newContribution = participantRow ? Number(participantRow.total_contribution) : appliedDamage;
 
   let bossDied = false;
@@ -1410,9 +1615,6 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
     ok: true,
     damage: hit.damage,
     crit: hit.crit,
-    petDamage: petHit.damage,
-    petCrit: petHit.crit,
-    totalDamage,
     appliedDamage,
     bossHpCurrent: bossHpAfter,
     bossDied,
@@ -1452,6 +1654,7 @@ async function handleClaimRaidMilestones(db, id, password, characterId) {
     if (pct === 50) items.push(raidWingItemDesc(3));
     if (pct === 75) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
   }
+  // 99% is its own checkpoint (not a multiple of 5) — a full random azure piece, not a recipe.
   if (pctReached >= 99 && claimed.indexOf("p99") === -1) {
     newKeys.push("p99");
     items.push(randomAzureItemDesc());
@@ -1467,7 +1670,7 @@ async function handleClaimRaidMilestones(db, id, password, characterId) {
   return json({ ok: true, claimed: newKeys });
 }
 
-// ---------- PvP Arena (turn-based) ----------
+// ---------- Phase 5: PvP Arena (turn-based) ----------
 function resolvePvpTickets(stored, updatedAtIso) {
   const rawTickets = Number(stored);
   const storedTickets = Number.isFinite(rawTickets) ? Math.max(0, Math.min(PVP_TICKET_MAX, Math.floor(rawTickets))) : PVP_TICKET_MAX;
@@ -1494,6 +1697,9 @@ function pvpTicketsSecondsToNext(updatedAtIso) {
   return Math.max(0, Math.round(remaining / 1000));
 }
 
+// Full fighter stat block (not just a single CP number) — this is what both sides of a
+// match are built from, live for the attacker and frozen (from pvp_snapshots) for the
+// defender bot, so a match never has to touch the opponent's live row mid-fight.
 function pvpFighterStats(character, equippedItems) {
   const s = {
     str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
@@ -1519,6 +1725,8 @@ function pvpFighterStats(character, equippedItems) {
     dodgeChance: Math.round((base.dodgeChance + eb.dodgeChance) * 10) / 10,
   };
 }
+// Builds everything a match needs from a live character row: fighter stats + active pet
+// (from pets_json, may be null) + which skills are unlocked at what committed level.
 function arenaLoadout(character, equippedItems) {
   const fighter = pvpFighterStats(character, equippedItems);
   const { active, skillLevels } = parsePetsJson(character);
@@ -1547,6 +1755,10 @@ async function upsertArenaSnapshot(db, characterId, playerId, name, loadout) {
     .run();
 }
 
+// Refreshes the caller's own ranking row + combat snapshot (so the opponent pool always
+// reflects roughly-current gear/level/skills/pet), then returns rating/rank/tickets/top-10
+// plus an activeMatchId if a match is already in progress so the client can resume it
+// instead of the opponent picker.
 async function handleGetArenaStatus(db, id, password, characterId) {
   const [auth, owned, itemsRes] = await Promise.all([
     verifyPlayer(db, id, password),
@@ -1588,6 +1800,10 @@ async function handleGetArenaStatus(db, id, password, characterId) {
   });
 }
 
+// Returns 3 opponents (never self), preferring characters within +-300 rating of the
+// caller and falling back to any ranked character if that band is too sparse. Only
+// level/rating/wins/losses go to the client — not the raw stat block — so there's no
+// point inspecting network traffic to preview a specific matchup before committing a ticket.
 async function handleGetArenaOpponents(db, id, password, characterId) {
   const auth = await verifyPlayer(db, id, password);
   if (auth.error) return json({ error: auth.error });
@@ -1636,6 +1852,9 @@ function fighterPublicState(fighter, pet) {
   };
 }
 
+// Starts (or resumes, if one is already active) a turn-based match against opponentCharacterId.
+// A ticket (or diamonds) is only spent when a brand-new match is created — resuming an
+// existing one is always free, so a dropped connection can't cost the player a second ticket.
 async function handleStartArenaMatch(db, id, password, characterId, opponentCharacterId, paidDiamonds) {
   const auth = await verifyPlayer(db, id, password);
   if (auth.error) return json({ error: auth.error });
@@ -1660,6 +1879,7 @@ async function handleStartArenaMatch(db, id, password, characterId, opponentChar
   try { oppLoadout = oppSnap.stats_json ? JSON.parse(oppSnap.stats_json) : {}; } catch (e) { oppLoadout = {}; }
   if (!oppLoadout.fighter) return json({ error: "opponent_not_found" });
 
+  // Ticket CAS — identical shape to the raid_stamina reservation in handleAttackRaidBoss.
   const ticketState = resolvePvpTickets(character.pvp_tickets, character.pvp_tickets_updated_at);
   let spentTicket = false;
   let diamondsSpent = 0;
@@ -1712,6 +1932,9 @@ async function handleStartArenaMatch(db, id, password, characterId, opponentChar
   });
 }
 
+// One damage/heal/status roll — shared by basic attacks, skills, and pet auto-attacks.
+// user/target are the live mutable state objects (state.atk / state.def / *Pet); dmg is
+// only meaningful when !dodged, heal only when skill.type === "heal".
 function rollAttack(user, target, skill) {
   const dodgeChance = target.evasion != null ? target.evasion : target.dodgeChance;
   const dodged = Math.random() * 100 < dodgeChance;
@@ -1728,6 +1951,8 @@ function rollAttack(user, target, skill) {
   return out;
 }
 
+// Resolves one fighter's chosen action (basic attack or a skill) against the opposing side.
+// `side` is 'atk' or 'def'; mutates state in place and pushes a log entry.
 function applyFighterAction(state, side, action, log) {
   const other = side === "atk" ? "def" : "atk";
   const user = state[side];
@@ -1738,6 +1963,7 @@ function applyFighterAction(state, side, action, log) {
     const skillDef = PVP_SKILLS.find((s) => s.key === action.skillKey);
     const userSkillRef = (user.skills || []).find((s) => s.key === action.skillKey);
     if (!skillDef || !userSkillRef || user.mp < skillDef.mp) {
+      // Invalid/unaffordable — silently falls back to a basic attack rather than wasting the turn.
       action = { type: "attack" };
     } else {
       const scaled = pvpSkillAtLevel(skillDef, userSkillRef.level);
@@ -1773,6 +1999,7 @@ function applyFighterAction(state, side, action, log) {
   else target.hp = Math.max(0, target.hp - roll.dmg);
   log.push({ side, type: "attack", target: targetIsPet ? "pet" : "main", dodged: roll.dodged, crit: roll.crit, dmg: roll.dmg });
 }
+// Pets always auto-attack the opposing fighter directly (never the opposing pet).
 function applyPetAttack(state, petSide, log) {
   const pet = state[petSide + "Pet"];
   const targetSide = petSide === "atk" ? "def" : "atk";
@@ -1784,6 +2011,8 @@ function applyPetAttack(state, petSide, log) {
 function battleOver(state) {
   return state.atk.hp <= 0 || state.def.hp <= 0;
 }
+// Random bot AI for the defender: prefers a random affordable skill ~50% of the time,
+// otherwise (or if no skill is affordable) falls back to a basic attack.
 function pickBotAction(fighter) {
   const affordable = (fighter.skills || []).filter((s) => {
     const def = PVP_SKILLS.find((d) => d.key === s.key);
@@ -1796,6 +2025,10 @@ function pickBotAction(fighter) {
   return { type: "attack" };
 }
 
+// One full round: attacker's chosen action -> attacker's pet -> defender bot's action ->
+// defender's pet -> poison ticks. Poison/freeze are resolved at the start of each side's
+// own action (poison damage always applies first, then a freeze check that can skip the
+// action entirely) — same order the client's own floor-combat monster-turn code uses.
 function processArenaTurn(state, playerAction) {
   const log = [];
   for (const side of ["atk", "def"]) {
@@ -1826,10 +2059,8 @@ function processArenaTurn(state, playerAction) {
 async function settleArenaMatch(db, match, state, attackerWon) {
   const characterId = match.attacker_character_id;
   const opponentCharacterId = match.defender_character_id;
-  const myRatingRow = await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first();
-  const oppRatingRow = await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(opponentCharacterId).first();
-  const myRating = Number(myRatingRow && myRatingRow.rating) || 1000;
-  const oppRating = Number(oppRatingRow && oppRatingRow.rating) || 1000;
+  const myRating = Number((await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first())?.rating) || 1000;
+  const oppRating = Number((await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(opponentCharacterId).first())?.rating) || 1000;
   const expected = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400));
   const actual = attackerWon ? 1 : 0;
   let delta = Math.round(PVP_RATING_K * (actual - expected));
@@ -1853,6 +2084,9 @@ async function settleArenaMatch(db, match, state, attackerWon) {
   return { win: attackerWon, ratingBefore: myRating, ratingAfter: myNewRating, ratingChange: delta, opponentName: oppName, diamondsEarned: diamonds };
 }
 
+// Resolves exactly one round for an already-started match: the player's chosen action,
+// then everything that happens automatically around it (both pets, the bot, status
+// ticks). If the round ends the fight, rating/mail settlement happens here too.
 async function handleSubmitArenaTurn(db, id, password, characterId, matchId, actionType, skillKey) {
   const auth = await verifyPlayer(db, id, password);
   if (auth.error) return json({ error: auth.error });
@@ -1876,6 +2110,8 @@ async function handleSubmitArenaTurn(db, id, password, characterId, matchId, act
     await db.prepare(`UPDATE pvp_matches SET status = 'done', turn = ?, state_json = ?, result_json = ?, updated_at = ? WHERE match_id = ?`)
       .bind(state.turn, JSON.stringify(state), JSON.stringify(result), nowIso(), matchId).run();
   } else if (state.turn >= PVP_MAX_TURNS) {
+    // Round cap reached without a knockout — tie-break by remaining HP%, same rule the
+    // old instant-resolve simulateArenaBattle() used.
     const attackerWon = state.atk.hp / state.atk.maxHp >= state.def.hp / state.def.maxHp;
     result = await settleArenaMatch(db, match, state, attackerWon);
     await db.prepare(`UPDATE pvp_matches SET status = 'done', turn = ?, state_json = ?, result_json = ?, updated_at = ? WHERE match_id = ?`)
@@ -1891,6 +2127,7 @@ async function handleSubmitArenaTurn(db, id, password, characterId, matchId, act
     result,
   });
 }
+
 
 // ---------- admin / QA ----------
 async function handleAdminGetPlayer(db, env, adminKey, id) {
@@ -1995,10 +2232,19 @@ async function handleAdminSetGameConfigItem(db, env, adminKey, key, value) {
   return json({ ok: true });
 }
 
+// ---------- admin: recipes + monster loot (admin.html) ----------
+// Reuses the existing ADMIN_API_KEY / verifyAdminKey infra above — no new secret needed.
+// Reading recipes/monster_loot as an admin already works via the existing generic
+// `getSheet` action (now that both tables are registered in TABLES); only writes need
+// dedicated handlers since getSheet is read-only by design.
 async function handleAdminUpsertRecipe(db, env, adminKey, recipeId, type, name, setId, empowerSlotCount, materials) {
   const auth = verifyAdminKey(env, adminKey);
   if (auth.error) return json(auth);
   if (!recipeId || !type || !name || !materials || typeof materials !== "object") return json({ error: "missing_fields" });
+  // rarity is ALWAYS "azure" regardless of set — see the design notes in handleCraftItem:
+  // this is a fixed "crafted tier" tag (== mythic), not literally the Azure set's name, so
+  // RARITY_MULT/RARITY_STARS/SALVAGE_TABLE lookups never hit an unregistered rarity key for
+  // a new set. Give the new set its own identity via `setId` instead.
   const resultDef = {
     type,
     rarity: "azure",
@@ -2191,6 +2437,10 @@ export default {
     }
   },
 
+  // Cron Trigger entry point (set up in Cloudflare Dashboard -> this worker -> Trigger
+  // Events, since there's no wrangler.toml here to declare it in). Not testable locally
+  // via bash (api.cloudflare.com isn't allowlisted) — use the runLeaderboardSnapshot
+  // admin GET action above to trigger it manually for testing/backfill.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runLeaderboardSnapshot(env.DB));
     ctx.waitUntil(closeOutExpiredRaids(env.DB));
