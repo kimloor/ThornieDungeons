@@ -934,12 +934,11 @@ function SkillScreen({
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
-// ---------- Phase 2: Leaderboard ----------
-// "Core" boards all come from the same leaderboard_stats row shape (max_floor/total_cp/
-// pet_cp together on every row), so they render as ONE table with sortable columns
-// instead of separate tabs that hide each other. Raid/PvP have a different row shape
-// (raid = current-instance participants only, pvp = arena ranking) so they stay as
-// their own separate view below the core table.
+// ---------- Phase 2/3/5: Leaderboard ----------
+// "Core" boards (floor/cp/pet_cp) all come from the same leaderboard_stats row shape, so
+// they render as ONE table with sortable columns instead of separate tabs that hide each
+// other. Raid/PvP have a different row shape (raid = current-instance participants only,
+// pvp = arena rating) so they're their own "category" with their own single-stat column.
 const LEADERBOARD_CORE_COLUMNS = [{
   key: "floor",
   icon: "🗺️",
@@ -959,45 +958,63 @@ const LEADERBOARD_CORE_COLUMNS = [{
   valueKey: "pet_cp",
   format: v => `${formatNumber(v)} CP`
 }];
-const LEADERBOARD_BOARDS = LEADERBOARD_CORE_COLUMNS.concat([{
-  key: "pvp",
-  icon: "⚔️",
-  label: "PvP",
-  disabled: true
+// Top-level categories, always one row of 3 buttons. "character" fans out into the core
+// sort buttons below it; raid/arena are single boards with their own stat column.
+const LEADERBOARD_CATEGORIES = [{
+  key: "character",
+  icon: "🧙",
+  label: "ตัวละคร",
+  boards: LEADERBOARD_CORE_COLUMNS
 }, {
   key: "raid",
   icon: "🐉",
-  label: "Raid Boss (ดาเมจสะสม)",
-  valueKey: "total_contribution",
-  format: v => `${formatNumber(v)} dmg`
-}]);
+  label: "Raid",
+  boards: [{
+    key: "raid",
+    valueKey: "total_contribution",
+    format: v => `${formatNumber(v)} dmg`
+  }],
+  supportsHistory: true
+}, {
+  key: "arena",
+  icon: "⚔️",
+  label: "Arena",
+  boards: [{
+    key: "pvp",
+    valueKey: "rating",
+    format: v => `Rating ${formatNumber(v)}`
+  }]
+}];
+function categoryForBoard(board) {
+  return LEADERBOARD_CATEGORIES.find(c => c.boards.some(b => b.key === board)) || LEADERBOARD_CATEGORIES[0];
+}
 function LeaderboardScreen({
   serverUrl,
   myCharacterId,
   onBack
 }) {
-  const [board, setBoard] = useState("floor"); // sort key when in core mode, or "raid"/"pvp" for the special views
+  const [board, setBoard] = useState("floor"); // "floor"/"cp"/"pet_cp" (character sort), "raid", or "pvp"
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(null); // null = live/today
-  const isCore = LEADERBOARD_CORE_COLUMNS.some(b => b.key === board);
+  const [selectedDate, setSelectedDate] = useState(""); // "" = live/today
+  const activeCategory = categoryForBoard(board);
+  const isCore = activeCategory.key === "character";
   React.useEffect(() => {
-    const def = LEADERBOARD_BOARDS.find(b => b.key === board);
-    if (!def || def.disabled) return undefined;
     let cancelled = false;
     setRows(null);
     setError(null);
     const url = serverUrl || DEFAULT_SERVER_URL;
-    const fetcher = selectedDate ? cloudGetLeaderboardHistory(url, board, selectedDate) : cloudGetLeaderboard(url, board);
+    const supportsHistory = isCore || activeCategory.supportsHistory;
+    const fetcher = selectedDate && supportsHistory ? cloudGetLeaderboardHistory(url, board, selectedDate) : cloudGetLeaderboard(url, board);
     fetcher.then(res => {
       if (cancelled) return;
       setSpinning(false);
       if (!res || !res.ok) { setError("โหลดอันดับไม่สำเร็จ ลองใหม่อีกครั้ง"); setRows([]); return; }
       setRows(res.rows || []);
-      if (res.availableDates) setAvailableDates(res.availableDates);
+      setAvailableDates(res.availableDates || []);
     });
     return () => { cancelled = true; };
   }, [board, serverUrl, refreshKey, selectedDate]);
@@ -1005,11 +1022,17 @@ function LeaderboardScreen({
     setSpinning(true);
     setRefreshKey(k => k + 1);
   };
-  const dateLabel = (d, idx) => idx === 0 ? "วันนี้" : idx === 1 ? "เมื่อวาน" : `${d.slice(5)}`; // "09-05" etc for 2+ days back
-  const activeDef = LEADERBOARD_BOARDS.find(b => b.key === board);
-  const coreTable = rows === null ? /*#__PURE__*/React.createElement("p", {
+  const handleSelectCategory = cat => {
+    setSelectedDate("");
+    setBoard(cat.boards[0].key);
+  };
+  const dateLabel = (d, idx) => idx === 0 ? "วันนี้" : idx === 1 ? "เมื่อวาน" : d.slice(5);
+  const activeBoardDef = activeCategory.boards.find(b => b.key === board) || activeCategory.boards[0];
+  const rowsBody = rows === null ? /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
-  }, "กำลังโหลด...") : rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
+  }, "กำลังโหลด...") : error ? /*#__PURE__*/React.createElement("p", {
+    className: "md-sub"
+  }, error) : rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
   }, selectedDate ? "ไม่มีข้อมูลของวันนี้" : "ยังไม่มีข้อมูลอันดับ") : /*#__PURE__*/React.createElement("div", {
     className: "md-inv-list",
@@ -1017,47 +1040,25 @@ function LeaderboardScreen({
   }, rows.map((row, idx) => {
     const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
     const isMe = row.character_id === myCharacterId;
-    const infoEl = /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-info"
-    }, medal, " ", row.name || "?", isMe ? " (คุณ)" : "");
-    const statsEl = /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-lv",
-      style: { display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }
+    const statsNode = isCore ? /*#__PURE__*/React.createElement("div", {
+      style: { display: "flex", gap: 10, flexShrink: 0 }
     }, LEADERBOARD_CORE_COLUMNS.map(col => /*#__PURE__*/React.createElement("span", {
       key: col.key,
-      style: board === col.key ? { fontWeight: 700, color: "var(--gold, #FFD700)" } : undefined
-    }, col.icon, " ", col.format(Number(row[col.valueKey]) || 0))));
+      style: board === col.key ? { fontWeight: 700, color: "var(--gold, #FFD700)" } : { opacity: 0.75 }
+    }, col.icon, " ", col.format(Number(row[col.valueKey]) || 0)))) : /*#__PURE__*/React.createElement("span", {
+      style: { fontWeight: 700, color: "var(--gold, #FFD700)", flexShrink: 0 }
+    }, activeBoardDef.format(Number(row[activeBoardDef.valueKey]) || 0));
     return /*#__PURE__*/React.createElement("div", {
       key: row.character_id,
       className: "md-shop-row",
-      style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
-    }, /*#__PURE__*/React.createElement("div", null, infoEl, statsEl));
-  }));
-  const specialTable = activeDef && activeDef.disabled ? /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, "บอร์ดนี้จะเปิดใช้งานในเฟสถัดไป") : error ? /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, error) : rows === null ? /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, "กำลังโหลด...") : rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, selectedDate ? "ไม่มีข้อมูลของวันนี้" : "ยังไม่มีข้อมูลอันดับ") : /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list",
-    style: { maxHeight: 420, overflowY: "auto" }
-  }, rows.map((row, idx) => {
-    const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
-    const isMe = row.character_id === myCharacterId;
-    const infoEl = /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-info"
-    }, medal, " ", row.name || "?", isMe ? " (คุณ)" : "");
-    const valueEl = /*#__PURE__*/React.createElement("div", {
-      className: "md-shop-lv"
-    }, activeDef.format(Number(row[activeDef.valueKey]) || 0));
-    return /*#__PURE__*/React.createElement("div", {
-      key: row.character_id,
-      className: "md-shop-row",
-      style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
-    }, /*#__PURE__*/React.createElement("div", null, infoEl, valueEl));
+      style: Object.assign(
+        { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%" },
+        isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : {}
+      )
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "md-shop-info",
+      style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
+    }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""), statsNode);
   }));
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
@@ -1085,28 +1086,36 @@ function LeaderboardScreen({
     style: {
       display: "flex",
       gap: 6,
-      flexWrap: "wrap",
+      marginBottom: 8
+    }
+  }, LEADERBOARD_CATEGORIES.map(cat => /*#__PURE__*/React.createElement("button", {
+    key: cat.key,
+    className: "md-btn small" + (activeCategory.key === cat.key ? " primary" : " flee"),
+    style: { flex: 1 },
+    onClick: () => handleSelectCategory(cat)
+  }, cat.icon, " ", cat.label))), isCore && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
       marginBottom: 10
     }
-  }, LEADERBOARD_BOARDS.map(b => /*#__PURE__*/React.createElement("button", {
-    key: b.key,
-    className: "md-btn small" + (board === b.key ? " primary" : " flee"),
-    disabled: b.disabled,
-    style: b.disabled ? { opacity: 0.45 } : undefined,
-    onClick: () => setBoard(b.key)
-  }, b.icon, " ", b.label, b.disabled ? " (เร็วๆนี้)" : ""))), isCore && /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: { margin: "0 0 6px" }
-  }, "เรียงตาม: ", LEADERBOARD_CORE_COLUMNS.find(c => c.key === board).label, " (แตะปุ่มด้านบนเพื่อเรียงคอลัมน์อื่น)"), availableDates.length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }
-  }, availableDates.map((d, idx) => /*#__PURE__*/React.createElement("button", {
+  }, LEADERBOARD_CORE_COLUMNS.map(col => /*#__PURE__*/React.createElement("button", {
+    key: col.key,
+    className: "md-btn small" + (board === col.key ? " primary" : " flee"),
+    style: { flex: 1 },
+    onClick: () => setBoard(col.key)
+  }, col.icon, " ", col.label))), (isCore || activeCategory.supportsHistory) && availableDates.length > 0 && /*#__PURE__*/React.createElement("select", {
+    className: "md-select",
+    value: selectedDate,
+    onChange: e => setSelectedDate(e.target.value),
+    style: { width: "100%", marginBottom: 10, padding: "8px 10px" }
+  }, availableDates.map((d, idx) => /*#__PURE__*/React.createElement("option", {
     key: d,
-    className: "md-btn small" + ((selectedDate === d || (!selectedDate && idx === 0)) ? " primary" : " flee"),
-    onClick: () => setSelectedDate(idx === 0 ? null : d)
+    value: idx === 0 ? "" : d
   }, dateLabel(d, idx)))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: { marginBottom: 10 }
-  }, isCore ? coreTable : specialTable), /*#__PURE__*/React.createElement("button", {
+  }, rowsBody), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
   }, "← Back"));
