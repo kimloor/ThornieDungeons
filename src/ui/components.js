@@ -1363,6 +1363,41 @@ function ArenaScreen({
   const [match, setMatch] = useState(null); // { matchId, you, opponent, opponentName, skills, turn, log:[], result:null }
   const [submitting, setSubmitting] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [stageAnim, setStageAnim] = useState({}); // { you, youPet, opp, oppPet } -> transient CSS class name
+  const stageTimeouts = React.useRef([]);
+
+  // Plays each log entry from the just-resolved round as a short staggered flourish on
+  // the placeholder stage (see the md-pvp-* CSS comment for why these are boxes, not
+  // real sprites). Purely cosmetic — match.you/match.opponent are already updated with
+  // the final numbers before this runs, so a slow network hiccup here never desyncs HP.
+  const playStageSequence = (log) => {
+    stageTimeouts.current.forEach(clearTimeout);
+    stageTimeouts.current = [];
+    const STEP_MS = 480;
+    (log || []).forEach((entry, i) => {
+      const t = setTimeout(() => {
+        const classes = {};
+        const actorUnit = entry.type === "pet" ? (entry.side === "atk" ? "youPet" : "oppPet") : (entry.side === "atk" ? "you" : "opp");
+        if (entry.type === "poison" || entry.type === "frozen") {
+          classes[actorUnit] = entry.type === "poison" ? "hurt" : "dodge";
+        } else if (entry.heal != null && entry.heal > 0) {
+          classes[actorUnit] = "heal";
+        } else {
+          classes[actorUnit] = entry.side === "atk" ? "attack-r" : "attack-l";
+          const otherSide = entry.side === "atk" ? "def" : "atk";
+          const targetUnit = entry.type === "pet"
+            ? (otherSide === "def" ? "opp" : "you")
+            : (entry.target === "pet" ? (otherSide === "def" ? "oppPet" : "youPet") : (otherSide === "def" ? "opp" : "you"));
+          classes[targetUnit] = entry.dodged ? "dodge" : entry.crit ? "hurt crit" : "hurt";
+        }
+        setStageAnim(classes);
+      }, i * STEP_MS);
+      stageTimeouts.current.push(t);
+    });
+    const clearT = setTimeout(() => setStageAnim({}), (log || []).length * STEP_MS + 300);
+    stageTimeouts.current.push(clearT);
+  };
+  React.useEffect(() => () => stageTimeouts.current.forEach(clearTimeout), []);
 
   const load = React.useCallback(() => {
     setError(null);
@@ -1427,6 +1462,7 @@ function ArenaScreen({
         log: [...res.log, ...m.log].slice(0, 30),
         result: res.result || null
       }));
+      playStageSequence(res.log);
       if (res.done) { load(); loadOpponents(); }
     }).catch(() => setError("ทำเทิร์นไม่สำเร็จ")).finally(() => setSubmitting(false));
   };
@@ -1454,6 +1490,18 @@ function ArenaScreen({
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 10 } },
           /*#__PURE__*/React.createElement(ArenaHpBar, { label: "คุณ", hp: match.you.hp, maxHp: match.you.maxHp, mp: match.you.mp, maxMp: match.you.maxMp, pet: match.you.pet }),
           /*#__PURE__*/React.createElement(ArenaHpBar, { label: match.opponentName || "คู่ต่อสู้", hp: match.opponent.hp, maxHp: match.opponent.maxHp, pet: match.opponent.pet }))),
+
+      // Placeholder battle stage — see the md-pvp-* CSS comment (src/data/styles.js) for
+      // why these are emoji boxes and not <HeroSprite>/<PetCombatSprite>.
+      /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, padding: "4px 8px" } },
+        /*#__PURE__*/React.createElement("div", { className: "md-pvp-stage" },
+          /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
+            /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.you.hp <= 0 ? "dead" : stageAnim.you || ""}` }, "🧙"),
+            match.you.pet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.you.pet.hp <= 0 ? "dead" : stageAnim.youPet || ""}` }, PET_ICON_FALLBACK)),
+          /*#__PURE__*/React.createElement("div", { className: "md-pvp-vs" }, "VS"),
+          /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
+            /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.opponent.hp <= 0 ? "dead" : stageAnim.opp || ""}` }, "👤"),
+            match.opponent.pet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.opponent.pet.hp <= 0 ? "dead" : stageAnim.oppPet || ""}` }, PET_ICON_FALLBACK)))),
 
       overCard,
 

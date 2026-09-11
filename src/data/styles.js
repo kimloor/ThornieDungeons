@@ -196,6 +196,27 @@ const STYLE = `
 @keyframes md-lunge-l { 0% { transform: translateX(0); } 40% { transform: translateX(-14px) rotate(6deg); } 100% { transform: translateX(0); } }
 @keyframes md-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 
+/* Phase 5 — Arena PvP battle stage placeholders. These are plain emoji-in-a-box units,
+   NOT the real hero/pet rig (HeroModularComposer / useHeroRig / PetCombatSprite are
+   ChatGPT's sprite territory, not touched here). Reuses the same md-idle/md-lunge/
+   md-lunge-l/md-shake keyframes as the dungeon-floor battle scene above so the feel is
+   consistent once this gets swapped for real sprites later.
+   TODO(art): once pvp_snapshots carries an opponent's equipped-item appearance data,
+   replace .md-pvp-unit's emoji content with <HeroSprite>/<PetCombatSprite> here. */
+.md-pvp-stage { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; padding: 16px 12px 22px; position: relative; min-height: 140px; }
+.md-pvp-side { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 1; }
+.md-pvp-vs { font-family: 'Baloo 2'; font-weight: 800; color: var(--gold); font-size: 13px; align-self: center; opacity: 0.7; }
+.md-pvp-unit { width: 54px; height: 54px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,209,102,0.18), rgba(10,6,22,0.45)); border: 2px solid var(--gold-deep); display: flex; align-items: center; justify-content: center; font-size: 26px; position: relative; animation: md-idle 2.2s ease-in-out infinite; transition: opacity 0.2s ease, filter 0.2s ease; }
+.md-pvp-unit.pet { width: 38px; height: 38px; font-size: 17px; opacity: 0.9; }
+.md-pvp-unit.dead { opacity: 0.3; filter: grayscale(1); animation: none; }
+.md-pvp-unit.attack-r { animation: md-lunge 0.35s ease; }
+.md-pvp-unit.attack-l { animation: md-lunge-l 0.35s ease; }
+.md-pvp-unit.hurt { animation: md-shake 0.35s ease; }
+.md-pvp-unit.dodge { animation: md-pvp-dodge 0.35s ease; }
+.md-pvp-unit.crit { box-shadow: 0 0 0 3px #FFD166, 0 0 14px rgba(255,209,102,0.8); }
+.md-pvp-unit.heal { box-shadow: 0 0 0 3px #7CFF9E, 0 0 14px rgba(124,255,158,0.8); }
+@keyframes md-pvp-dodge { 0%,100% { opacity: 1; transform: translateY(0); } 50% { opacity: 0.35; transform: translateY(-8px); } }
+
 .md-dmg-float { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-family: 'Baloo 2'; font-weight: 800; font-size: 16px; pointer-events: none; animation: md-float-up 0.9s ease forwards; z-index: 5; text-shadow: 0 2px 0 rgba(0,0,0,0.4); }
 @keyframes md-float-up { 0% { opacity: 1; transform: translate(-50%, 0);} 100% { opacity: 0; transform: translate(-50%, -34px);} }
 
