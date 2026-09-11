@@ -1072,17 +1072,21 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
     .map((k) => ({ junkId: k, qty: Number(materials[k]) || 0 }))
     .filter((m) => m.qty > 0);
 
-  // Fresh read of this character's own junk stacks — junkId isn't its own column (rides
-  // inside extra_json, same as everywhere else junk items are read in this file), so we
-  // parse it out per row rather than trying to SQL-filter on it.
+  // Fresh read of this character's own junk stacks — junkId AND the real stack quantity
+  // both ride inside extra_json (see itemsToServerList in serialize.js: the client never
+  // sends a top-level `quantity` at all for junk, only extra.quantity — the DB column just
+  // sits at its schema default of 1 for every junk row, decorative and unused elsewhere).
+  // BUG FIX: this used to read the top-level `quantity` column, which is always 1 no
+  // matter how large a stack actually is — that's what caused "have 1/6" even when a
+  // player had a real stack of e.g. 17.
   const junkRowsRes = await db
-    .prepare(`SELECT item_id, quantity, extra_json FROM items WHERE character_id = ? AND slot_type = 'junk'`)
+    .prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND slot_type = 'junk'`)
     .bind(characterId)
     .all();
   const junkRows = (junkRowsRes.results || []).map((r) => {
     let extra = {};
     try { extra = JSON.parse(r.extra_json || "{}"); } catch (e) { extra = {}; }
-    return { item_id: r.item_id, quantity: Number(r.quantity) || 0, junkId: extra.junkId };
+    return { item_id: r.item_id, quantity: Number(extra.quantity) || 0, junkId: extra.junkId, extra };
   });
 
   for (const need of junkNeeds) {
@@ -1100,7 +1104,10 @@ async function handleCraftItem(db, id, password, characterId, recipeId) {
       remaining -= take;
       const leftover = row.quantity - take;
       if (leftover > 0) {
-        stmts.push(db.prepare(`UPDATE items SET quantity = ?, updated_at = ? WHERE item_id = ? AND character_id = ?`).bind(leftover, now, row.item_id, characterId));
+        // Write the decremented amount back into extra_json.quantity (preserving every
+        // other extra field — icon, empowerSlots, etc.), NOT the top-level column.
+        const nextExtra = JSON.stringify({ ...row.extra, quantity: leftover });
+        stmts.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ?`).bind(nextExtra, now, row.item_id, characterId));
       } else {
         stmts.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND character_id = ?`).bind(row.item_id, characterId));
       }
