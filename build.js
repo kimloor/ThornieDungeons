@@ -17,6 +17,7 @@ const MODULE_ORDER = [
   "state/localCache.js",
   "state/configCache.js",
   "state/api.js",
+  "state/persistence.js",
   "data/gameConfig.js",
   "state/serialize.js",
   "data/constants.js",

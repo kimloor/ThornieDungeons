@@ -28,6 +28,20 @@ function ThornieDungeons() {
   const [rememberPassword, setRememberPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [persistenceStatus, setPersistenceStatus] = useState("saved");
+  const [persistenceMessage, setPersistenceMessage] = useState("");
+  const sessionGenerationRef = useRef(0);
+  const persistenceRef = useRef(null);
+  if (!persistenceRef.current) {
+    persistenceRef.current = createPersistenceManager({
+      onStatusChange: (status, detail) => {
+        setPersistenceStatus(status);
+        setPersistenceMessage(status === "failed"
+          ? `บันทึก Cloud ไม่สำเร็จ (${detail?.error?.code || "unknown_error"})`
+          : "");
+      }
+    });
+  }
   const [player, setPlayer] = useState(null); // ephemeral combat state, derived fresh from save each stage entry
   const [resumeRun, setResumeRun] = useState(null); // persisted current HP/MP + floor restored after entering a character
   const [equipped, setEquipped] = useState(emptyEquipped());
@@ -183,14 +197,13 @@ function ThornieDungeons() {
       }
     })();
   }, []);
-  const cloudWriteQueue = useRef(Promise.resolve());
-  const enqueueCloudWrite = useCallback(task => {
-    cloudWriteQueue.current = cloudWriteQueue.current
-      .catch(() => {})
-      .then(() => task())
-      .catch(() => {});
-    return cloudWriteQueue.current;
-  }, []);
+  const persistenceContextFor = useCallback(characterId => makePersistenceContext({
+    url: cred.url,
+    accountId: cred.id,
+    characterId,
+    credential: { kind: "legacy_password", password: cred.password },
+    sessionGeneration: sessionGenerationRef.current
+  }), [cred]);
   // Each of these now targets ONE specific character (by characterId), matching the schema-v2
   // API worker where every character has its own real row — the server itself refuses (403s)
   // any of these if characterId doesn't actually belong to the authenticated account, so there's
@@ -198,13 +211,17 @@ function ThornieDungeons() {
   // to live here as otherSlotsRawItemsRef / the character-count safety net; both are gone now
   // that the server enforces isolation directly).
   const pushCharacterProgress = useCallback((characterId, diamonds, progress) => {
-    if (!cred.url || !cred.id || !cred.password || !characterId) return;
-    enqueueCloudWrite(() => cloudSaveCharacterProgress(cred.url, cred.id, cred.password, characterId, diamonds, progress));
-  }, [cred, enqueueCloudWrite]);
+    const context = persistenceContextFor(characterId);
+    if (!context || !context.credential.password) return Promise.resolve(false);
+    return persistenceRef.current.enqueue(context, "character_progress", { diamonds, progress }, (snapshot, owner) =>
+      cloudSaveSnapshot(owner, "character_progress", snapshot));
+  }, [persistenceContextFor]);
   const pushItems = useCallback((inv, eq, characterId) => {
-    if (!cred.url || !cred.id || !cred.password || !characterId) return;
-    enqueueCloudWrite(() => cloudSyncItems(cred.url, cred.id, cred.password, characterId, itemsToServerList(inv, eq)));
-  }, [cred, enqueueCloudWrite]);
+    const context = persistenceContextFor(characterId);
+    if (!context || !context.credential.password) return Promise.resolve(false);
+    return persistenceRef.current.enqueue(context, "items", itemsToServerList(inv, eq), (snapshot, owner) =>
+      cloudSaveSnapshot(owner, "items", snapshot));
+  }, [persistenceContextFor]);
   // Applies a claimed mail's reward into local state (gold/diamonds/junk). The existing
   // autosave effect below then persists it via the normal saveCharacterProgress/syncItems
   // flow — the server never touches characters/items directly for rewards (see worker
@@ -232,16 +249,31 @@ function ThornieDungeons() {
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.
     // runState === null -> explicit request to clear the checkpoint (both local + cloud).
-    if (!cred.url || !cred.id || !cred.password || runState === undefined) return;
+    if (!cred.url || !cred.id || !cred.password || runState === undefined) return Promise.resolve(false);
     const characterId = save && save.characterId;
-    if (!characterId) return;
+    if (!characterId) return Promise.resolve(false);
     const key = `thornie-run-${cred.id}-${characterId}`;
     try {
       if (runState === null) window.localStorage?.removeItem(key);
       else window.localStorage?.setItem(key, JSON.stringify(runState));
     } catch (e) {}
-    enqueueCloudWrite(() => cloudSaveRunState(cred.url, cred.id, cred.password, characterId, runState));
-  }, [cred, save, enqueueCloudWrite]);
+    const context = persistenceContextFor(characterId);
+    return persistenceRef.current.enqueue(context, "run_state", runState, (snapshot, owner) =>
+      cloudSaveSnapshot(owner, "run_state", snapshot));
+  }, [cred, save, persistenceContextFor]);
+  useEffect(() => {
+    if (!save?.characterId) return undefined;
+    const retryCurrent = () => {
+      if (document.visibilityState && document.visibilityState !== "visible") return;
+      void persistenceRef.current.retry(persistenceContextFor(save.characterId));
+    };
+    window.addEventListener("online", retryCurrent);
+    document.addEventListener("visibilitychange", retryCurrent);
+    return () => {
+      window.removeEventListener("online", retryCurrent);
+      document.removeEventListener("visibilitychange", retryCurrent);
+    };
+  }, [save?.characterId, persistenceContextFor]);
   // Updates the runtime `save` view immediately, mirrors the change into the active character's
   // slot inside `account` (functional setState, so it always folds into the latest account
   // regardless of render timing), and pushes straight to that character's own row server-side.
@@ -257,9 +289,8 @@ function ThornieDungeons() {
         characters
       };
     });
-    if (next.characterId) {
-      pushCharacterProgress(next.characterId, next.diamonds, characterProgressToServer(next));
-    }
+    if (next.characterId) return pushCharacterProgress(next.characterId, next.diamonds, characterProgressToServer(next));
+    return Promise.resolve(false);
   }, [pushCharacterProgress]);
   // Raid responses arrive asynchronously, so deduct from the latest save snapshot and persist
   // immediately. A plain setSave() here used to leave the server balance unchanged until some
@@ -283,7 +314,8 @@ function ThornieDungeons() {
     });
   }, [pushCharacterProgress]);
   const persistItems = useCallback((inv, eq) => {
-    if (save && save.characterId) pushItems(inv, eq, save.characterId);
+    if (save && save.characterId) return pushItems(inv, eq, save.characterId);
+    return Promise.resolve(false);
   }, [pushItems, save]);
   // Applies a server-confirmed craft result (see CraftingOverlay/handleCraftItem): the
   // server already validated+consumed materials/gold on ITS copy of the items/characters
@@ -365,6 +397,7 @@ function ThornieDungeons() {
       password: rememberPassword ? cred.password : "",
       rememberPassword: rememberPassword
     });
+    sessionGenerationRef.current += 1;
     await beginCharacterSelect(accountFromLoginResponse(res));
   }
   async function handleRegister() {
@@ -390,6 +423,7 @@ function ThornieDungeons() {
       password: rememberPassword ? cred.password : "",
       rememberPassword: rememberPassword
     });
+    sessionGenerationRef.current += 1;
     await beginCharacterSelect(defaultSave());
   }
   async function handleCreateCharacter(slotIndex, name) {
@@ -459,6 +493,8 @@ function ThornieDungeons() {
       return;
     }
     const characterSlot = characterFromServerRow(res.character);
+    const enteredPersistenceContext = persistenceContextFor(characterSlot.id);
+    persistenceRef.current.setActiveContext(enteredPersistenceContext);
     const nextAccount = (() => {
       const characters = account.characters.slice();
       characters[slotIndex] = characterSlot;
@@ -524,20 +560,47 @@ function ThornieDungeons() {
     setSave(flattenCharacterForRuntime(nextAccount, slotIndex));
     setPhase("menu");
   }
-  function backToCharacterSelect() {
+  async function flushCurrentCharacter() {
+    if (!save?.characterId) return true;
+    persistSave(save);
+    persistItems(inventory, equipped);
+    if (player && !combatOutcomeRef.current) pushRunState(buildRunStateSnapshot(selectedFloor, player));
+    return persistenceRef.current.flush(persistenceContextFor(save.characterId), { retryFailed: true });
+  }
+  async function manualSave() {
+    const ok = await flushCurrentCharacter();
+    if (!ok) setPersistenceMessage("บันทึก Cloud ไม่สำเร็จ — ข้อมูลล่าสุดยังรอส่งและกดบันทึกเพื่อลองใหม่ได้");
+    return ok;
+  }
+  async function backToCharacterSelect() {
     // Fold any in-flight state back into the account before leaving, same as a normal save,
     // so switching characters never loses the last few seconds of progress.
-    if (save) persistSave(save);
+    const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
+    if (!(await flushCurrentCharacter())) {
+      window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง");
+      return false;
+    }
+    if (context) persistenceRef.current.invalidate(context);
+    persistenceRef.current.setActiveContext(null);
     setPlayer(null);
+    setSave(null);
     setResumeRun(null);
     setCharacterSelectEntry(false);
     setPhase("characterSelect");
+    return true;
   }
-  function logout() {
+  async function logout() {
     // Same safety-net flush as backToCharacterSelect — leaving the account context
     // entirely should never skip the final sync, even though every mutation already
     // persists immediately on its own.
-    if (save) persistSave(save);
+    const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
+    if (!(await flushCurrentCharacter())) {
+      window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ จึงยังไม่ออกจากระบบ กรุณาลองใหม่อีกครั้ง");
+      return false;
+    }
+    if (context) persistenceRef.current.invalidate(context);
+    persistenceRef.current.setActiveContext(null);
+    sessionGenerationRef.current += 1;
     setCred(c => ({
       ...c,
       password: rememberPassword ? c.password : ""
@@ -550,6 +613,7 @@ function ThornieDungeons() {
     setLoginTransitioning(false);
     setAuthError("");
     setPhase("login");
+    return true;
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
     const allowResume = options.allowResume !== false;
@@ -1900,7 +1964,10 @@ function ThornieDungeons() {
     className: isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
       : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && /*#__PURE__*/React.createElement(StatusBar, {
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), persistenceStatus !== "saved" && /*#__PURE__*/React.createElement("div", {
+    className: `md-save-state md-save-state-${persistenceStatus}`,
+    role: persistenceStatus === "failed" ? "alert" : "status"
+  }, persistenceStatus === "saving" ? "กำลังบันทึก…" : persistenceMessage || "บันทึก Cloud ไม่สำเร็จ — กดบันทึกเพื่อลองใหม่"), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -1938,7 +2005,7 @@ function ThornieDungeons() {
       setUtilityReturnPhase("menu");
       setPhase("mailbox");
     },
-    onSave: () => persistSave(save),
+    onSave: manualSave,
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
     dailyLogin: dailyLogin,
@@ -1980,7 +2047,7 @@ function ThornieDungeons() {
       setGachaReturnPhase("town");
       setPhase("gacha");
     },
-    onSave: () => persistSave(save),
+    onSave: manualSave,
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
     dailyLogin: dailyLogin,
@@ -2033,7 +2100,7 @@ function ThornieDungeons() {
       player && player.hp > 0 ? player : null,
       { encounter }
     ),
-    onSave: () => persistSave(save),
+    onSave: manualSave,
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,

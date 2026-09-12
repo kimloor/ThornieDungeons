@@ -1,23 +1,21 @@
 // ---------- HTTP helpers: retry + in-flight de-duplication ----------
-// Any transient network hiccup here previously just resolved to {error:"network_error"} and got
-// silently swallowed by the caller's write queue — with no retry, a single dropped packet during
-// a burst of Salvage/Enhance clicks permanently desyncs the client from the server. withRetry()
-// gives transient failures a couple of quick chances to recover before giving up for real.
-// IMPORTANT: only "network_error" (thrown fetch/parse failures) is retried. Definitive
-// server responses — wrong password, no_stamina, stamina_conflict, boss_already_dead, etc.
-// — are real answers, not transient failures, and used to get retried too: that added up to
-// ~900ms of pure wasted waiting (300ms + 600ms backoff) before the user ever saw the error,
-// which felt worst exactly when double-tapping the Raid attack button.
+// Reads are safe to retry. POSTs default to one attempt because this API also contains
+// non-idempotent transactions (Craft/Raid/Arena/Mail); safe snapshot writes are retried by the
+// persistence boundary instead, where account/character/domain ownership is known.
 async function withRetry(fn, { retries = 2, baseDelayMs = 300 } = {}) {
   let lastResult;
   for (let attempt = 0; attempt <= retries; attempt++) {
     lastResult = await fn();
-    if (!lastResult || lastResult.error !== "network_error") return lastResult;
+    if (!isTransientApiResult(lastResult)) return lastResult;
     if (attempt < retries) {
       await new Promise(r => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));
     }
   }
   return lastResult;
+}
+
+function isTransientApiResult(result) {
+  return !!result && (result.error === "network_error" || result.error === "server_error" || Number(result.status) >= 500);
 }
 
 // If an identical request (same URL + body) is already in flight, piggyback on that same
@@ -41,7 +39,9 @@ async function cloudGet(url, params) {
   return withDedupe(fullUrl, () => withRetry(async () => {
     try {
       const res = await fetch(fullUrl);
-      return await res.json();
+      const data = await res.json();
+      if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
+      return data;
     } catch (e) {
       return {
         error: "network_error"
@@ -49,20 +49,23 @@ async function cloudGet(url, params) {
     }
   }));
 }
-async function cloudPost(url, body) {
+async function cloudPost(url, body, { retries = 0, baseDelayMs = 300 } = {}) {
   return withDedupe(dedupeKey(url, body), () => withRetry(async () => {
     try {
       const res = await fetch(url, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
-      return await res.json();
+      const data = await res.json();
+      if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
+      return data;
     } catch (e) {
       return {
         error: "network_error"
       };
     }
-  }));
+  }, { retries, baseDelayMs }));
 }
 
 // ---------- calls ----------
@@ -132,6 +135,42 @@ function cloudSaveRunState(url, id, password, characterId, runState) {
     characterId,
     runState
   });
+}
+
+// Central authenticated boundary for safe persistence snapshots. Auth V2 can replace the
+// credential supplied by makePersistenceContext() without teaching UI/gameplay code about token
+// fields. The current worker still receives the legacy id+password shape in this release.
+function cloudSaveSnapshot(context, domain, snapshot) {
+  if (!context || !context.credential) return Promise.resolve({ error: "missing_auth_context" });
+  const auth = context.credential.kind === "session_token"
+    ? { sessionToken: context.credential.sessionToken }
+    : { id: context.accountId, password: context.credential.password };
+  if (domain === "character_progress") {
+    return cloudPost(context.url, {
+      action: "saveCharacterProgress",
+      ...auth,
+      characterId: context.characterId,
+      diamonds: snapshot.diamonds,
+      progress: snapshot.progress
+    });
+  }
+  if (domain === "items") {
+    return cloudPost(context.url, {
+      action: "syncItems",
+      ...auth,
+      characterId: context.characterId,
+      items: snapshot
+    });
+  }
+  if (domain === "run_state") {
+    return cloudPost(context.url, {
+      action: "saveRunState",
+      ...auth,
+      characterId: context.characterId,
+      runState: snapshot
+    });
+  }
+  return Promise.resolve({ error: "unknown_persistence_domain" });
 }
 function cloudGetConfig(url) {
   return cloudGet(url, {

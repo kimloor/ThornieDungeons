@@ -278,7 +278,7 @@ function HubScreen({
   onClaimDailyLogin,
   onClearDailyLoginResult
 }) {
-  const [saveFlash, setSaveFlash] = useState(false);
+  const [saveFlash, setSaveFlash] = useState("");
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const canClaimDaily = dailyLogin.canClaim;
@@ -286,10 +286,11 @@ function HubScreen({
   React.useEffect(() => {
     if (dailyLoginClaimResult) setDailyModalOpen(true);
   }, [dailyLoginClaimResult]);
-  const handleSave = () => {
-    onSave();
-    setSaveFlash(true);
-    setTimeout(() => setSaveFlash(false), 1200);
+  const handleSave = async () => {
+    setSaveFlash("saving");
+    const ok = await onSave();
+    setSaveFlash(ok ? "saved" : "failed");
+    setTimeout(() => setSaveFlash(""), 1600);
   };
   const openDaily = () => {
     setMoreOpen(false);
@@ -352,7 +353,7 @@ function HubScreen({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onArena }, "🥊", /*#__PURE__*/React.createElement("span", null, "อารีน่า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onArena }, "🥊", /*#__PURE__*/React.createElement("span", null, "อารีน่า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
     onCharacter: onCharacter,
     onOpenInv: onOpenInv,
     onPets: onPets,
@@ -393,7 +394,7 @@ function TownScreen({
 }) {
   const e = React.createElement;
   const [moreOpen, setMoreOpen] = useState(false);
-  const [saveFlash, setSaveFlash] = useState(false);
+  const [saveFlash, setSaveFlash] = useState("");
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const canClaimDaily = dailyLogin.canClaim;
@@ -410,10 +411,11 @@ function TownScreen({
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
     noticeTimer.current = setTimeout(() => setNotice(""), 1800);
   };
-  const handleSave = () => {
-    onSave();
-    setSaveFlash(true);
-    setTimeout(() => setSaveFlash(false), 1200);
+  const handleSave = async () => {
+    setSaveFlash("saving");
+    const ok = await onSave();
+    setSaveFlash(ok ? "saved" : "failed");
+    setTimeout(() => setSaveFlash(""), 1600);
   };
   const openDaily = () => {
     setMoreOpen(false);
@@ -475,7 +477,7 @@ function TownScreen({
           e("button", { type: "button", onClick: onArena }, "🥊", e("span", null, "อารีน่า")),
           e("button", { type: "button", onClick: onMailbox }, "📬", e("span", null, "จดหมาย")),
           e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
-          e("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", e("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก")),
+          e("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", e("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")),
           e("button", { type: "button", onClick: onSwitchCharacter }, "👥", e("span", null, "เปลี่ยนตัว")),
           e("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", e("span", null, "ออกจากระบบ"))
         )
@@ -1869,7 +1871,7 @@ function MapScreen({
   const encounterCache = useRef(new Map());
   const [detail, setDetail] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [saveFlash, setSaveFlash] = useState(false);
+  const [saveFlash, setSaveFlash] = useState("");
 
   const encounterFor = floor => {
     if (!encounterCache.current.has(floor)) encounterCache.current.set(floor, makeEncounter(floor));
@@ -1880,10 +1882,11 @@ function MapScreen({
     setMoreOpen(false);
     setDetail({ floor, monsters: encounterFor(floor) });
   };
-  const handleSave = () => {
-    onSave();
-    setSaveFlash(true);
-    setTimeout(() => setSaveFlash(false), 1200);
+  const handleSave = async () => {
+    setSaveFlash("saving");
+    const ok = await onSave();
+    setSaveFlash(ok ? "saved" : "failed");
+    setTimeout(() => setSaveFlash(""), 1600);
   };
   const enterSelectedFloor = () => {
     if (!detail || detail.floor > unlockedFloor) return;
@@ -1946,7 +1949,7 @@ function MapScreen({
       ),
       e("div", { className: "md-hub-more-grid" },
         e("button", { type: "button", onClick: onBack }, "⌂", e("span", null, "หน้าหลัก")),
-        e("button", { type: "button", onClick: handleSave }, saveFlash ? "✅" : "💾", e("span", null, saveFlash ? "บันทึกแล้ว" : "บันทึก"))
+        e("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", e("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก"))
       )
     ),
     e(GameDock, {
