@@ -1,32 +1,29 @@
-# Town Hub implementation note
+# Town Hub UI Contract
 
-The Town screen was implemented from the approved September 2026 mobile mockup.
+This document keeps only stable Town/Hub architecture rules. Feature availability should be read from current code, not duplicated here as a status list.
 
-## Artwork and UI separation
+## Artwork and interaction separation
 
-- `ui/town-background.webp` is a clean production background derived from the approved
-  bright-village concept. It intentionally contains no labels, buttons, currency values or
-  navigation UI.
-- All Town labels and hit targets are rendered in `src/ui/components.js` and styled in
-  `src/data/styles.js`. Keep them code-rendered so text, positions and routes can change
-  without regenerating the background.
-- The messenger bird is a separate vector asset at
-  `ui/town-icons/leaderboard-bird.svg`; the word `Leaderboard` is HTML below it.
+- Town background art must not contain interactive labels, currency values, buttons, or navigation text.
+- Labels, hit targets, routes, and interaction states remain code-rendered so they can change without regenerating artwork.
+- Decorative elements may be separate assets when they need independent positioning or animation.
 
-## Navigation
+## Navigation consistency
 
-- `phase === "town"` renders the Town hub.
-- The former character/status screen moved to `phase === "character"` and is opened by
-  the Character dock button.
-- `GameDock` is shared by Town and Main Hub so Character, Inventory, Pets and More use
-  one icon set and one interaction pattern.
-- Town links that already have systems are live: Shop, Enhancement, Summoning,
-  Leaderboard and the return to Main Hub/dungeon.
-- Home/Crafting, Guild, Arena and Chat remain visible placeholders and currently show a short
-  “กำลังพัฒนา” notice until their systems are implemented.
+- Main Hub and Town should share the same bottom-navigation interaction pattern and icon language.
+- Character, Inventory, Pets, and More must behave consistently between screens.
+- Page-specific destinations may differ, but shared navigation must not be independently reimplemented per page.
+
+## Mobile UI rules
+
+- Mobile-first layout; respect safe areas and avoid text overlap.
+- Keep the established ThornieDungeons visual language unless a redesign is explicitly approved.
+- Prefer reusable components over page-specific duplicated controls.
+- Background artwork and UI chrome should remain independent layers.
 
 ## Build rule
 
-Edit the source modules, never `index.html` or `app-v2.html` directly. Run
-`node build.js` after source changes; the build intentionally writes both generated
-entrypoints to keep the Cloudflare versioned-root workaround synchronized.
+- Edit source modules only.
+- Do not hand-edit generated `index.html`.
+- Run `node build.js` after source changes.
+- `index.html` is the single generated application entrypoint.
