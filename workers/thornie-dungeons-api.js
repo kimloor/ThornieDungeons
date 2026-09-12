@@ -1,16 +1,14 @@
 /**
  * THORNIE DUNGEONS — Cloud Save Backend (Cloudflare Worker + D1) — schema v2 + daily login
  * ---------------------------------------------------------------
- * This file mirrors the LIVE worker (fetched via Cloudflare MCP on 2026-09-04) with the
- * daily-login endpoints added on top (marked "NEW" below). Everything else is unchanged
- * from the deployed version.
+ * Repository source for the independently deployed gameplay API Worker. It includes the
+ * existing character/game systems plus Login/Auth V2's central session boundary.
  *
- * NOT YET DEPLOYED — Claude has read access to Workers via the Cloudflare MCP connector
- * (workers_get_worker_code) but no write/deploy tool, and api.cloudflare.com isn't in
- * Claude's bash network allowlist either. Deploy this manually:
+ * NOT YET DEPLOYED — the root wrangler.jsonc targets the frontend/static Worker, not this
+ * API file. After applying the reviewed D1 migration, deploy this API source manually:
  *   wrangler deploy workers/thornie-dungeons-api.js --name thornie-dungeons-api
  * or paste it into the Cloudflare Dashboard editor for the `thornie-dungeons-api` worker,
- * same as migration_v2.sql was applied by hand.
+ * while preserving the production Worker's DB binding, secrets and triggers.
  *
  * v2 change (see migration_v2.sql — RUN THAT FIRST): each account can now have up to
  * MAX_CHARACTER_SLOTS independent characters, each with its own row in `characters`
@@ -23,46 +21,26 @@
  * The v1 `progress` table is left in place untouched (harmless, no longer written
  * to) purely as a historical backfill source for the one-time migration.
  *
- * Endpoints:
- *   GET  ?action=login&id=&password=
+ * Auth V2 endpoints:
+ *   POST { action: "login"|"register"|"forgotPassword", ...credentials }
+ *   GET  ?action=validateSession          Authorization: Bearer <session token>
+ *   POST { action: "logout"|"changePassword"|"createRecoveryCode", ... }
+ * All character/gameplay endpoints below use the same Authorization header; player_id is
+ * derived from the validated session and id/password are never accepted as ownership proof.
+ * Public/admin endpoints remain unchanged:
  *   GET  ?action=getGameConfig
  *   GET  ?action=getRecipes                                                (NEW, Phase 4 refactor)
  *   GET  ?action=getMonsterLoot                                             (NEW, monster loot table)
  *   GET  ?action=getJunkInfo                                                (NEW, admin.html — material names/icons)
  *   POST { action: "adminUpsertJunkInfo", adminKey, junkId, name, icon }     (NEW, admin.html)
  *   POST { action: "adminDeleteJunkInfo", adminKey, junkId }                 (NEW, admin.html)
- *   GET  ?action=getInventory&id=&password=&characterId=&page=&pageSize=
- *   GET  ?action=getDailyLogin&id=&password=&characterId=                (NEW)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid|pvp            (pvp = NEW)
  *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD             (NEW, Phase 2.1, last 7 days)
- *   GET  ?action=getRaidStatus&id=&password=&characterId=                (NEW, Phase 3)
- *   GET  ?action=getMailbox&id=&password=&characterId=                   (NEW, Phase 3.1)
  *   GET  ?action=getPlayer&adminKey=&id=            (admin)
  *   GET  ?action=getAllPlayers&adminKey=            (admin)
  *   GET  ?action=getPlayerItems&adminKey=&id=        (admin)
  *   GET  ?action=getGameStats&adminKey=              (admin)
  *   GET  ?action=getSheet&adminKey=&sheet=           (admin — "sheet" name kept from before, means "table")
- *   POST { action: "register", id, password }
- *   POST { action: "createCharacter", id, password, slotIndex, name }
- *   POST { action: "deleteCharacter", id, password, slotIndex }
- *   POST { action: "enterCharacter", id, password, slotIndex }
- *   POST { action: "saveCharacterProgress", id, password, characterId, diamonds, progress }
- *   POST { action: "saveRunState", id, password, characterId, runState }
- *   POST { action: "syncItems", id, password, characterId, items }
- *   POST { action: "setInventorySlot", id, password, itemId, inventorySlot }
- *   POST { action: "claimDailyLogin", id, password, characterId }        (NEW)
- *   POST { action: "attackRaidBoss", id, password, characterId }          (NEW, Phase 3)
- *   POST { action: "claimRaidMilestones", id, password, characterId }     (NEW, Phase 3)
- *   POST { action: "claimMail", id, password, characterId, mailId }       (NEW, Phase 3.1)
- *   POST { action: "claimAllMail", id, password, characterId }            (NEW, Phase 3.1)
- *   POST { action: "deleteMail", id, password, characterId, mailId }       (NEW, Phase 3.6)
- *   POST { action: "deleteMails", id, password, characterId, mailIds }     (NEW, Phase 3.6)
- *   POST { action: "deleteAllClaimedMail", id, password, characterId }     (NEW, Phase 3.6)
- *   POST { action: "craftItem", id, password, characterId, recipeId }       (NEW, Phase 4)
- *   GET  ?action=getArenaStatus&id=&password=&characterId=               (NEW, Phase 5 — PvP Arena)
- *   GET  ?action=getArenaOpponents&id=&password=&characterId=             (NEW, Phase 5)
- *   POST { action: "startArenaMatch", id, password, characterId, opponentCharacterId, paidDiamonds }  (NEW, Phase 5, turn-based)
- *   POST { action: "submitArenaTurn", id, password, characterId, matchId, actionType, skillKey }        (NEW, Phase 5)
  *   POST { action: "saveGameConfig", adminKey, config }
  *   POST { action: "setGameConfigItem", adminKey, key, value }
  *   POST { action: "adminUpsertRecipe", adminKey, recipeId, type, name, setId, empowerSlotCount, materials }  (NEW, admin.html)
@@ -405,7 +383,7 @@ function json(obj, status = 200) {
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     },
   });
@@ -458,13 +436,153 @@ async function upsertRow(db, table, keyCol, obj) {
   await db.prepare(sql).bind(...values).run();
 }
 
-// ---------- auth ----------
-async function verifyPlayer(db, id, password) {
-  if (!id || !password) return { error: "missing_fields" };
-  const row = await getRow(db, "players", "id", id);
-  if (!row) return { error: "not_found" };
-  if (String(row.password) !== String(password)) return { error: "wrong_password" };
-  return { ok: true, row };
+// ---------- Login/Auth V2 ----------
+const PASSWORD_MIN = 4;
+const PASSWORD_MAX = 32;
+const PASSWORD_ITERATIONS = 210000;
+const SESSION_24H_MS = 24 * 60 * 60 * 1000;
+const SESSION_30D_MS = 30 * SESSION_24H_MS;
+const AUTH_ERRORS = new Set(["invalid_session", "session_expired", "session_revoked", "session_replaced"]);
+
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  bytes.forEach((value) => { binary += String.fromCharCode(value); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+function base64UrlToBytes(value) {
+  const normalized = String(value).replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+function randomToken(byteLength = 32) {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64Url(bytes);
+}
+async function sha256(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(value)));
+  return bytesToBase64Url(new Uint8Array(digest));
+}
+async function hashPassword(password, saltValue) {
+  const salt = saltValue ? base64UrlToBytes(saltValue) : crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(String(password)), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: PASSWORD_ITERATIONS, hash: "SHA-256" }, key, 256);
+  return `pbkdf2_sha256$${PASSWORD_ITERATIONS}$${bytesToBase64Url(salt)}$${bytesToBase64Url(new Uint8Array(bits))}`;
+}
+async function verifyPasswordHash(password, encoded) {
+  const parts = String(encoded || "").split("$");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2_sha256" || Number(parts[1]) !== PASSWORD_ITERATIONS) return false;
+  const candidate = await hashPassword(password, parts[2]);
+  const a = new TextEncoder().encode(candidate);
+  const b = new TextEncoder().encode(String(encoded));
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+function validPlayerId(id) {
+  return /^[A-Za-z0-9_]{4,20}$/.test(String(id || ""));
+}
+function validPassword(password) {
+  const length = String(password || "").length;
+  return length >= PASSWORD_MIN && length <= PASSWORD_MAX;
+}
+function normalizeRecoveryCode(code) {
+  return String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+function createRecoveryCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const random = new Uint8Array(16);
+  crypto.getRandomValues(random);
+  let body = "";
+  for (const value of random) body += alphabet[value % alphabet.length];
+  return `TD-${body.slice(0, 4)}-${body.slice(4, 8)}-${body.slice(8, 12)}-${body.slice(12, 16)}`;
+}
+async function recoveryCodeHash(code) {
+  return sha256(`thornie-recovery-v2:${normalizeRecoveryCode(code)}`);
+}
+function requestIp(request) {
+  return request.headers.get("CF-Connecting-IP") || "unknown";
+}
+function rateKey(kind, ip, id = "") {
+  return `${kind}:${String(ip)}:${String(id).trim().toLowerCase()}`;
+}
+async function checkRateLimit(db, key, limit, windowMs) {
+  const row = await db.prepare(`SELECT * FROM auth_rate_limits WHERE rate_key = ?`).bind(key).first();
+  const now = Date.now();
+  if (!row) return { ok: true, attempts: 0 };
+  const blockedUntil = Date.parse(row.blocked_until || "");
+  if (Number.isFinite(blockedUntil) && blockedUntil > now) return { error: "rate_limited", retryAfter: Math.ceil((blockedUntil - now) / 1000) };
+  const windowStart = Date.parse(row.window_started_at || "");
+  if (!Number.isFinite(windowStart) || now - windowStart >= windowMs) return { ok: true, attempts: 0, reset: true };
+  if (Number(row.attempts) >= limit) return { error: "rate_limited", retryAfter: 30 };
+  return { ok: true, attempts: Number(row.attempts) || 0 };
+}
+async function recordRateAttempt(db, key, limit, windowMs, success = false) {
+  if (success) {
+    await db.prepare(`DELETE FROM auth_rate_limits WHERE rate_key = ?`).bind(key).run();
+    return;
+  }
+  const current = await checkRateLimit(db, key, Number.MAX_SAFE_INTEGER, windowMs);
+  const attempts = (current.reset ? 0 : current.attempts || 0) + 1;
+  const cooldown = attempts < limit ? 0 : attempts === limit ? 30 : attempts === limit + 1 ? 120 : 300;
+  const now = new Date();
+  const blockedUntil = cooldown ? new Date(now.getTime() + cooldown * 1000).toISOString() : null;
+  await db.prepare(
+    `INSERT INTO auth_rate_limits (rate_key, attempts, window_started_at, blocked_until, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(rate_key) DO UPDATE SET attempts=excluded.attempts,
+       window_started_at=CASE WHEN auth_rate_limits.window_started_at < ? THEN excluded.window_started_at ELSE auth_rate_limits.window_started_at END,
+       blocked_until=excluded.blocked_until, updated_at=excluded.updated_at`
+  ).bind(key, attempts, now.toISOString(), blockedUntil, now.toISOString(), new Date(now.getTime() - windowMs).toISOString()).run();
+}
+async function playerByLoginId(db, id) {
+  return await db.prepare(`SELECT * FROM players WHERE LOWER(id) = LOWER(?) LIMIT 1`).bind(String(id || "").trim()).first() || null;
+}
+async function verifyPasswordCredentials(db, id, password) {
+  if (!id || !password) return { error: "invalid_credentials" };
+  const row = await playerByLoginId(db, id);
+  if (!row) return { error: "invalid_credentials" };
+  if (row.password_hash) {
+    if (!(await verifyPasswordHash(password, row.password_hash))) return { error: "invalid_credentials" };
+    return { ok: true, row, migrated: false };
+  }
+  if (String(row.password) !== String(password)) return { error: "invalid_credentials" };
+  const passwordHash = await hashPassword(password);
+  await db.prepare(`UPDATE players SET password_hash = ?, auth_version = 2 WHERE id = ? AND password_hash IS NULL`).bind(passwordHash, row.id).run();
+  return { ok: true, row: { ...row, password_hash: passwordHash, auth_version: 2 }, migrated: true };
+}
+async function issueSession(db, playerId, rememberLogin) {
+  const rawToken = randomToken(32);
+  const tokenHash = await sha256(rawToken);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + (rememberLogin ? SESSION_30D_MS : SESSION_24H_MS));
+  const sessionId = `sess-${randomToken(18)}`;
+  await db.batch([
+    db.prepare(`UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'replaced' WHERE player_id = ? AND revoked_at IS NULL`).bind(now.toISOString(), playerId),
+    db.prepare(`INSERT INTO auth_sessions (session_id, player_id, token_hash, created_at, expires_at, revoked_at, revoke_reason, remember_login) VALUES (?, ?, ?, ?, ?, NULL, NULL, ?)`)
+      .bind(sessionId, playerId, tokenHash, now.toISOString(), expiresAt.toISOString(), rememberLogin ? 1 : 0)
+  ]);
+  return { sessionToken: rawToken, expiresAt: expiresAt.toISOString(), rememberLogin: !!rememberLogin };
+}
+function bearerToken(request) {
+  const match = /^Bearer\s+(.+)$/i.exec(request.headers.get("Authorization") || "");
+  return match ? match[1].trim() : "";
+}
+async function verifySession(db, token) {
+  if (!token) return { error: "invalid_session" };
+  const tokenHash = await sha256(token);
+  const session = await db.prepare(`SELECT * FROM auth_sessions WHERE token_hash = ? LIMIT 1`).bind(tokenHash).first();
+  if (!session) return { error: "invalid_session" };
+  if (session.revoked_at) return { error: session.revoke_reason === "replaced" ? "session_replaced" : "session_revoked" };
+  if (Date.parse(session.expires_at) <= Date.now()) return { error: "session_expired" };
+  const row = await getRow(db, "players", "id", session.player_id);
+  if (!row) return { error: "invalid_session" };
+  return { ok: true, row, session };
+}
+async function verifyPlayer(db, id, trustedSession) {
+  if (!trustedSession?.ok || String(trustedSession.row?.id) !== String(id)) return { error: "invalid_session" };
+  return { ok: true, row: trustedSession.row };
 }
 
 // Confirms `characterId` actually belongs to `playerId` before letting any write
@@ -545,18 +663,28 @@ async function handleGetJunkInfo(db) {
 }
 
 // ---------- player / auth handlers ----------
-async function handleRegister(db, id, password) {
-  if (!id || !password) return json({ error: "missing_fields" });
-  const existing = await getRow(db, "players", "id", id);
-  if (existing) return json({ error: "id_taken" });
+async function handleRegister(db, id, password, confirmPassword, rememberLogin, ip) {
+  const registerKey = rateKey("register", ip);
+  const limited = await checkRateLimit(db, registerKey, 3, 60 * 60 * 1000);
+  if (limited.error) return json(limited, 429);
+  await recordRateAttempt(db, registerKey, 3, 60 * 60 * 1000);
+  const cleanId = String(id || "").trim();
+  if (!validPlayerId(cleanId)) return json({ error: "invalid_player_id" }, 400);
+  if (!validPassword(password)) return json({ error: "invalid_password_length" }, 400);
+  if (String(password) !== String(confirmPassword)) return json({ error: "password_mismatch" }, 400);
+  const existing = await playerByLoginId(db, cleanId);
+  if (existing) return json({ error: "id_unavailable" });
 
   const now = nowIso();
-  await db
-    .prepare(`INSERT INTO players (id, password, diamonds, active_slot, created_at) VALUES (?, ?, 0, NULL, ?)`)
-    .bind(id, password, now)
-    .run();
-
-  return json({ ok: true });
+  const passwordHash = await hashPassword(password);
+  const recoveryCode = createRecoveryCode();
+  const recoveryHash = await recoveryCodeHash(recoveryCode);
+  await db.prepare(
+    `INSERT INTO players (id, password, password_hash, recovery_code_hash, auth_version, diamonds, active_slot, created_at)
+     VALUES (?, '', ?, ?, 2, 0, NULL, ?)`
+  ).bind(cleanId, passwordHash, recoveryHash, now).run();
+  const session = await issueSession(db, cleanId, !!rememberLogin);
+  return json({ ok: true, playerId: cleanId, recoveryCode, recoveryConfigured: true, ...session });
 }
 
 // Safety-net migration for a single player: runs the same logic as migration_v2.sql's
@@ -590,28 +718,95 @@ async function migratePlayerIfNeeded(db, id) {
   await db.prepare(`UPDATE run_state SET character_id = ? WHERE character_id IS NULL AND EXISTS (SELECT 1 FROM players WHERE players.id = ?)`).bind(characterId, id).run();
 }
 
-async function handleLogin(db, id, password) {
-  const auth = await verifyPlayer(db, id, password);
-  if (auth.error) return json({ error: auth.error });
-
-  await migratePlayerIfNeeded(db, id);
-
+async function accountPayload(db, id) {
   const player = await getRow(db, "players", "id", id);
   const characters = await getRows(db, "characters", "player_id", id);
   characters.sort((a, b) => a.slot_index - b.slot_index);
-
-  // Items/run-state are intentionally NOT returned here — they belong to a specific
-  // character, and which one hasn't been chosen yet. See "enterCharacter".
-  return json({
-    ok: true,
+  return {
     player: { diamonds: Number(player.diamonds) || 0, activeSlot: player.active_slot === null || player.active_slot === undefined ? null : Number(player.active_slot) },
     characters,
-  });
+    playerId: player.id,
+    recoveryConfigured: !!player.recovery_code_hash
+  };
+}
+
+async function handleLogin(db, id, password, rememberLogin, ip) {
+  const loginKey = rateKey("login", ip, id);
+  const limited = await checkRateLimit(db, loginKey, 5, 5 * 60 * 1000);
+  if (limited.error) return json(limited, 429);
+  const auth = await verifyPasswordCredentials(db, id, password);
+  if (auth.error) {
+    await recordRateAttempt(db, loginKey, 5, 5 * 60 * 1000);
+    return json({ error: "invalid_credentials" });
+  }
+  await recordRateAttempt(db, loginKey, 5, 5 * 60 * 1000, true);
+  const playerId = auth.row.id;
+  await migratePlayerIfNeeded(db, playerId);
+  const session = await issueSession(db, playerId, !!rememberLogin);
+  return json({ ok: true, ...(await accountPayload(db, playerId)), ...session, legacyMigrated: auth.migrated });
+}
+
+async function handleValidateSession(db, auth) {
+  return json({ ok: true, ...(await accountPayload(db, auth.row.id)), expiresAt: auth.session.expires_at, rememberLogin: !!auth.session.remember_login });
+}
+
+async function handleLogout(db, auth) {
+  await db.prepare(`UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'logout' WHERE session_id = ? AND revoked_at IS NULL`)
+    .bind(nowIso(), auth.session.session_id).run();
+  return json({ ok: true });
+}
+
+async function handleRecoveryStatus(db, auth) {
+  return json({ ok: true, playerId: auth.row.id, recoveryConfigured: !!auth.row.recovery_code_hash });
+}
+
+async function handleCreateRecoveryCode(db, auth, currentPassword) {
+  const verified = await verifyPasswordCredentials(db, auth.row.id, currentPassword);
+  if (verified.error) return json({ error: "invalid_credentials" });
+  const recoveryCode = createRecoveryCode();
+  await db.prepare(`UPDATE players SET recovery_code_hash = ? WHERE id = ?`).bind(await recoveryCodeHash(recoveryCode), auth.row.id).run();
+  return json({ ok: true, recoveryCode, recoveryConfigured: true });
+}
+
+async function handleChangePassword(db, auth, currentPassword, newPassword, confirmPassword) {
+  if (!validPassword(newPassword)) return json({ error: "invalid_password_length" }, 400);
+  if (String(newPassword) !== String(confirmPassword)) return json({ error: "password_mismatch" }, 400);
+  const verified = await verifyPasswordCredentials(db, auth.row.id, currentPassword);
+  if (verified.error) return json({ error: "invalid_credentials" });
+  const now = nowIso();
+  await db.batch([
+    db.prepare(`UPDATE players SET password_hash = ?, auth_version = 2 WHERE id = ?`).bind(await hashPassword(newPassword), auth.row.id),
+    db.prepare(`UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'password_changed' WHERE player_id = ? AND revoked_at IS NULL`).bind(now, auth.row.id)
+  ]);
+  return json({ ok: true, requireLogin: true });
+}
+
+async function handleForgotPassword(db, id, recoveryCode, newPassword, confirmPassword, ip) {
+  const recoveryKey = rateKey("recovery", ip, id);
+  const limited = await checkRateLimit(db, recoveryKey, 5, 5 * 60 * 1000);
+  if (limited.error) return json(limited, 429);
+  if (!validPassword(newPassword)) return json({ error: "invalid_password_length" }, 400);
+  if (String(newPassword) !== String(confirmPassword)) return json({ error: "password_mismatch" }, 400);
+  const player = await playerByLoginId(db, id);
+  const suppliedHash = await recoveryCodeHash(recoveryCode);
+  if (!player?.recovery_code_hash || String(player.recovery_code_hash) !== String(suppliedHash)) {
+    await recordRateAttempt(db, recoveryKey, 5, 5 * 60 * 1000);
+    return json({ error: "invalid_recovery" });
+  }
+  const nextRecoveryCode = createRecoveryCode();
+  const now = nowIso();
+  await db.batch([
+    db.prepare(`UPDATE players SET password_hash = ?, recovery_code_hash = ?, auth_version = 2 WHERE id = ?`)
+      .bind(await hashPassword(newPassword), await recoveryCodeHash(nextRecoveryCode), player.id),
+    db.prepare(`UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'password_reset' WHERE player_id = ? AND revoked_at IS NULL`).bind(now, player.id)
+  ]);
+  await recordRateAttempt(db, recoveryKey, 5, 5 * 60 * 1000, true);
+  return json({ ok: true, recoveryCode: nextRecoveryCode, requireLogin: true });
 }
 
 // ---------- character slot handlers ----------
-async function handleCreateCharacter(db, id, password, slotIndex, name) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleCreateCharacter(db, id, session, slotIndex, name) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const slot = Number(slotIndex);
   if (!Number.isInteger(slot) || slot < 0 || slot >= MAX_CHARACTER_SLOTS) return json({ error: "invalid_slot" });
@@ -642,8 +837,8 @@ async function handleCreateCharacter(db, id, password, slotIndex, name) {
   return json({ ok: true, character });
 }
 
-async function handleDeleteCharacter(db, id, password, slotIndex) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleDeleteCharacter(db, id, session, slotIndex) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const slot = Number(slotIndex);
   if (!Number.isInteger(slot) || slot < 0 || slot >= MAX_CHARACTER_SLOTS) return json({ error: "invalid_slot" });
@@ -663,8 +858,8 @@ async function handleDeleteCharacter(db, id, password, slotIndex) {
   return json({ ok: true });
 }
 
-async function handleEnterCharacter(db, id, password, slotIndex) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleEnterCharacter(db, id, session, slotIndex) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const slot = Number(slotIndex);
   if (!Number.isInteger(slot) || slot < 0 || slot >= MAX_CHARACTER_SLOTS) return json({ error: "invalid_slot" });
@@ -681,8 +876,8 @@ async function handleEnterCharacter(db, id, password, slotIndex) {
 }
 
 // ---------- per-character progress / items / run-state ----------
-async function handleSaveCharacterProgress(db, id, password, characterId, diamonds, progress) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleSaveCharacterProgress(db, id, session, characterId, diamonds, progress) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -700,8 +895,8 @@ async function handleSaveCharacterProgress(db, id, password, characterId, diamon
   return json({ ok: true });
 }
 
-async function handleSaveRunState(db, id, password, characterId, runState) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleSaveRunState(db, id, session, characterId, runState) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -716,8 +911,8 @@ async function handleSaveRunState(db, id, password, characterId, runState) {
   return json({ ok: true });
 }
 
-async function handleSyncItems(db, id, password, characterId, items) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleSyncItems(db, id, session, characterId, items) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -786,8 +981,8 @@ async function handleSyncItems(db, id, password, characterId, items) {
   return json({ ok: true, count: items.length, added, removed });
 }
 
-async function handleGetInventory(db, id, password, characterId, page, pageSize) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleGetInventory(db, id, session, characterId, page, pageSize) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
 
   const p = Math.max(1, Number(page) || 1);
@@ -813,8 +1008,8 @@ async function handleGetInventory(db, id, password, characterId, page, pageSize)
   });
 }
 
-async function handleSetInventorySlot(db, id, password, itemId, inventorySlot) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleSetInventorySlot(db, id, session, itemId, inventorySlot) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   if (!itemId) return json({ error: "missing_fields" });
 
@@ -831,8 +1026,8 @@ async function handleSetInventorySlot(db, id, password, itemId, inventorySlot) {
 }
 
 // ---------- NEW: daily login ----------
-async function handleGetDailyLogin(db, id, password, characterId) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleGetDailyLogin(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -849,8 +1044,8 @@ async function handleGetDailyLogin(db, id, password, characterId) {
   return json({ ok: true, state, canClaim, preview: { streak: previewStreak, reward: dailyLoginReward(previewStreak) } });
 }
 
-async function handleClaimDailyLogin(db, id, password, characterId) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleClaimDailyLogin(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -905,8 +1100,8 @@ async function sendMail(db, characterId, title, body, reward) {
     .bind(newMailId(), characterId, title || "", body || "", Number(r.gold) || 0, Number(r.diamonds) || 0, r.junk && r.junk.length ? JSON.stringify(r.junk) : "", r.items && r.items.length ? JSON.stringify(r.items) : "", nowIso())
     .run();
 }
-async function handleGetMailbox(db, id, password, characterId) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleGetMailbox(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -921,8 +1116,8 @@ async function handleGetMailbox(db, id, password, characterId) {
   }));
   return json({ ok: true, mails });
 }
-async function handleClaimMail(db, id, password, characterId, mailId) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleClaimMail(db, id, session, characterId, mailId) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -940,8 +1135,8 @@ async function handleClaimMail(db, id, password, characterId, mailId) {
     junk: mail.junk_json ? JSON.parse(mail.junk_json) : [], items: mail.items_json ? JSON.parse(mail.items_json) : [],
   });
 }
-async function handleClaimAllMail(db, id, password, characterId) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleClaimAllMail(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -968,8 +1163,8 @@ async function handleClaimAllMail(db, id, password, characterId) {
 // Deletes only CLAIMED mail — deleting an unclaimed one would silently discard whatever
 // reward it was carrying, so the WHERE clause refuses to touch claimed=0 rows regardless
 // of what the client asks for.
-async function handleDeleteMail(db, id, password, characterId, mailId) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleDeleteMail(db, id, session, characterId, mailId) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -979,8 +1174,8 @@ async function handleDeleteMail(db, id, password, characterId, mailId) {
   if (!result.meta || !result.meta.changes) return json({ error: "not_found_or_unclaimed" });
   return json({ ok: true, mailId });
 }
-async function handleDeleteMails(db, id, password, characterId, mailIds) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleDeleteMails(db, id, session, characterId, mailIds) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -995,8 +1190,8 @@ async function handleDeleteMails(db, id, password, characterId, mailIds) {
 }
 // Deletes ALL claimed mail for this character in one shot — the common "clean up my old
 // read mail" action, without the client needing to enumerate every id first.
-async function handleDeleteAllClaimedMail(db, id, password, characterId) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleDeleteAllClaimedMail(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -1048,8 +1243,8 @@ const CRAFTED_STAT_FORMULA = {
 // (not anything the client asserts), consumes them, and returns the crafted item descriptor
 // for the client to materialize locally — same "server decides, client mirrors" shape as the
 // mailbox/raid systems, just without needing an actual mailbox row since there's no delay.
-async function handleCraftItem(db, id, password, characterId, recipeId) {
-  const [auth, owned] = await Promise.all([verifyPlayer(db, id, password), verifyOwnedCharacter(db, id, characterId)]);
+async function handleCraftItem(db, id, session, characterId, recipeId) {
+  const [auth, owned] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId)]);
   if (auth.error) return json({ error: auth.error });
   if (owned.error) return json({ error: owned.error });
   if (!recipeId) return json({ error: "missing_fields" });
@@ -1485,12 +1680,12 @@ async function settleRaidRank(db, raidId) {
   }
 }
 
-async function handleGetRaidStatus(db, id, password, characterId) {
+async function handleGetRaidStatus(db, id, session, characterId) {
   // These three are fully independent reads (auth check, ownership check, and the raid's
   // own state don't depend on each other) — firing them together instead of one-after-
   // another cuts several D1 round trips down to the time of the single slowest one. Same
   // pattern below for the participant/leaderboard reads once raid_id is known.
-  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, password), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
+  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
   if (auth.error) return json({ error: auth.error });
   if (owned.error) return json({ error: owned.error });
 
@@ -1523,11 +1718,11 @@ async function handleGetRaidStatus(db, id, password, characterId) {
   });
 }
 
-async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds) {
+async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) {
   // See handleGetRaidStatus for why these four are safe to fire concurrently — the equipped-
   // items read only needs characterId, so it doesn't have to wait for raid/ownership either.
   const [auth, owned, raid, itemsRes] = await Promise.all([
-    verifyPlayer(db, id, password),
+    verifyPlayer(db, id, session),
     verifyOwnedCharacter(db, id, characterId),
     getOrCreateActiveRaid(db),
     db.prepare(`SELECT atk, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
@@ -1636,8 +1831,8 @@ async function handleAttackRaidBoss(db, id, password, characterId, paidDiamonds)
   });
 }
 
-async function handleClaimRaidMilestones(db, id, password, characterId) {
-  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, password), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
+async function handleClaimRaidMilestones(db, id, session, characterId) {
+  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
   if (auth.error) return json({ error: auth.error });
   if (owned.error) return json({ error: owned.error });
 
@@ -1767,9 +1962,9 @@ async function upsertArenaSnapshot(db, characterId, playerId, name, loadout) {
 // reflects roughly-current gear/level/skills/pet), then returns rating/rank/tickets/top-10
 // plus an activeMatchId if a match is already in progress so the client can resume it
 // instead of the opponent picker.
-async function handleGetArenaStatus(db, id, password, characterId) {
+async function handleGetArenaStatus(db, id, session, characterId) {
   const [auth, owned, itemsRes] = await Promise.all([
-    verifyPlayer(db, id, password),
+    verifyPlayer(db, id, session),
     verifyOwnedCharacter(db, id, characterId),
     db.prepare(`SELECT atk, def, hp, mp, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
   ]);
@@ -1812,8 +2007,8 @@ async function handleGetArenaStatus(db, id, password, characterId) {
 // caller and falling back to any ranked character if that band is too sparse. Only
 // level/rating/wins/losses go to the client — not the raw stat block — so there's no
 // point inspecting network traffic to preview a specific matchup before committing a ticket.
-async function handleGetArenaOpponents(db, id, password, characterId) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleGetArenaOpponents(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -1863,8 +2058,8 @@ function fighterPublicState(fighter, pet) {
 // Starts (or resumes, if one is already active) a turn-based match against opponentCharacterId.
 // A ticket (or diamonds) is only spent when a brand-new match is created — resuming an
 // existing one is always free, so a dropped connection can't cost the player a second ticket.
-async function handleStartArenaMatch(db, id, password, characterId, opponentCharacterId, paidDiamonds) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleStartArenaMatch(db, id, session, characterId, opponentCharacterId, paidDiamonds) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -2095,8 +2290,8 @@ async function settleArenaMatch(db, match, state, attackerWon) {
 // Resolves exactly one round for an already-started match: the player's chosen action,
 // then everything that happens automatically around it (both pets, the bot, status
 // ticks). If the round ends the fight, rating/mail settlement happens here too.
-async function handleSubmitArenaTurn(db, id, password, characterId, matchId, actionType, skillKey) {
-  const auth = await verifyPlayer(db, id, password);
+async function handleSubmitArenaTurn(db, id, session, characterId, matchId, actionType, skillKey) {
+  const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
@@ -2138,6 +2333,11 @@ async function handleSubmitArenaTurn(db, id, password, characterId, matchId, act
 
 
 // ---------- admin / QA ----------
+function publicPlayerFields(player) {
+  if (!player) return player;
+  const { password, password_hash, recovery_code_hash, ...safe } = player;
+  return safe;
+}
 async function handleAdminGetPlayer(db, env, adminKey, id) {
   const auth = verifyAdminKey(env, adminKey);
   if (auth.error) return json(auth);
@@ -2148,7 +2348,7 @@ async function handleAdminGetPlayer(db, env, adminKey, id) {
   const characters = await getRows(db, "characters", "player_id", id);
   const items = await getRows(db, "items", "player_id", id);
 
-  return json({ ok: true, player, characters, items });
+  return json({ ok: true, player: publicPlayerFields(player), characters, items });
 }
 
 async function handleAdminGetAllPlayers(db, env, adminKey) {
@@ -2157,7 +2357,7 @@ async function handleAdminGetAllPlayers(db, env, adminKey) {
 
   const players = await db.prepare(`SELECT * FROM players`).all();
   const characters = await db.prepare(`SELECT * FROM characters`).all();
-  return json({ ok: true, players: players.results || [], characters: characters.results || [] });
+  return json({ ok: true, players: (players.results || []).map(publicPlayerFields), characters: characters.results || [] });
 }
 
 async function handleAdminGetPlayerItems(db, env, adminKey, id) {
@@ -2202,7 +2402,8 @@ async function handleAdminGetSheet(db, env, adminKey, tableName) {
 
   const table = TABLES[tableName] ? TABLES[tableName].name : tableName;
   const res = await db.prepare(`SELECT * FROM ${table}`).all();
-  return json({ ok: true, sheet: tableName, rows: res.results || [] });
+  const rows = tableName === "players" ? (res.results || []).map(publicPlayerFields) : (res.results || []);
+  return json({ ok: true, sheet: tableName, rows });
 }
 
 async function handleAdminSaveGameConfig(db, env, adminKey, config) {
@@ -2351,19 +2552,12 @@ export default {
       if (request.method === "GET") {
         const p = url.searchParams;
         const action = p.get("action");
-        if (action === "login") return await handleLogin(db, p.get("id"), p.get("password"));
         if (action === "getGameConfig") return await handleGetGameConfig(db);
         if (action === "getRecipes") return await handleGetRecipes(db);
         if (action === "getMonsterLoot") return await handleGetMonsterLoot(db);
         if (action === "getJunkInfo") return await handleGetJunkInfo(db);
-        if (action === "getInventory") return await handleGetInventory(db, p.get("id"), p.get("password"), p.get("characterId"), p.get("page"), p.get("pageSize"));
-        if (action === "getDailyLogin") return await handleGetDailyLogin(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));
         if (action === "getLeaderboardHistory") return await handleGetLeaderboardHistory(db, p.get("board"), p.get("date"));
-        if (action === "getRaidStatus") return await handleGetRaidStatus(db, p.get("id"), p.get("password"), p.get("characterId"));
-        if (action === "getMailbox") return await handleGetMailbox(db, p.get("id"), p.get("password"), p.get("characterId"));
-        if (action === "getArenaStatus") return await handleGetArenaStatus(db, p.get("id"), p.get("password"), p.get("characterId"));
-        if (action === "getArenaOpponents") return await handleGetArenaOpponents(db, p.get("id"), p.get("password"), p.get("characterId"));
         if (action === "runLeaderboardSnapshot") {
           const auth = verifyAdminKey(env, p.get("adminKey"));
           if (auth.error) return json(auth);
@@ -2374,66 +2568,84 @@ export default {
         if (action === "getPlayerItems") return await handleAdminGetPlayerItems(db, env, p.get("adminKey"), p.get("id"));
         if (action === "getGameStats") return await handleAdminGetGameStats(db, env, p.get("adminKey"));
         if (action === "getSheet") return await handleAdminGetSheet(db, env, p.get("adminKey"), p.get("sheet"));
+        const auth = await verifySession(db, bearerToken(request));
+        if (auth.error) return json({ error: auth.error }, 401);
+        const id = auth.row.id;
+        if (action === "validateSession") return await handleValidateSession(db, auth);
+        if (action === "getRecoveryStatus") return await handleRecoveryStatus(db, auth);
+        if (action === "getInventory") return await handleGetInventory(db, id, auth, p.get("characterId"), p.get("page"), p.get("pageSize"));
+        if (action === "getDailyLogin") return await handleGetDailyLogin(db, id, auth, p.get("characterId"));
+        if (action === "getRaidStatus") return await handleGetRaidStatus(db, id, auth, p.get("characterId"));
+        if (action === "getMailbox") return await handleGetMailbox(db, id, auth, p.get("characterId"));
+        if (action === "getArenaStatus") return await handleGetArenaStatus(db, id, auth, p.get("characterId"));
+        if (action === "getArenaOpponents") return await handleGetArenaOpponents(db, id, auth, p.get("characterId"));
         return json({ error: "unknown_action" });
       }
 
       if (request.method === "POST") {
         const body = await request.json();
+        const ip = requestIp(request);
+        if (body.action === "login") return await handleLogin(db, body.id, body.password, !!body.rememberLogin, ip);
+        if (body.action === "register") return await handleRegister(db, body.id, body.password, body.confirmPassword, !!body.rememberLogin, ip);
+        if (body.action === "forgotPassword") return await handleForgotPassword(db, body.id, body.recoveryCode, body.newPassword, body.confirmPassword, ip);
+        if (["saveGameConfig", "setGameConfigItem", "adminUpsertRecipe", "adminDeleteRecipe", "adminUpsertMonsterLootEntry", "adminDeleteMonsterLootEntry", "adminUpsertJunkInfo", "adminDeleteJunkInfo"].includes(body.action)) {
+          switch (body.action) {
+            case "saveGameConfig": return await handleAdminSaveGameConfig(db, env, body.adminKey, body.config);
+            case "setGameConfigItem": return await handleAdminSetGameConfigItem(db, env, body.adminKey, body.key, body.value);
+            case "adminUpsertRecipe": return await handleAdminUpsertRecipe(db, env, body.adminKey, body.recipeId, body.type, body.name, body.setId, body.empowerSlotCount, body.materials);
+            case "adminDeleteRecipe": return await handleAdminDeleteRecipe(db, env, body.adminKey, body.recipeId);
+            case "adminUpsertMonsterLootEntry": return await handleAdminUpsertMonsterLootEntry(db, env, body.adminKey, body.entry);
+            case "adminDeleteMonsterLootEntry": return await handleAdminDeleteMonsterLootEntry(db, env, body.adminKey, body.entryId);
+            case "adminUpsertJunkInfo": return await handleAdminUpsertJunkInfo(db, env, body.adminKey, body.junkId, body.name, body.icon);
+            case "adminDeleteJunkInfo": return await handleAdminDeleteJunkInfo(db, env, body.adminKey, body.junkId);
+          }
+        }
+        const auth = await verifySession(db, bearerToken(request));
+        if (auth.error) return json({ error: auth.error }, 401);
+        const id = auth.row.id;
         switch (body.action) {
-          case "register":
-            return await handleRegister(db, body.id, body.password);
+          case "logout":
+            return await handleLogout(db, auth);
+          case "createRecoveryCode":
+            return await handleCreateRecoveryCode(db, auth, body.currentPassword);
+          case "changePassword":
+            return await handleChangePassword(db, auth, body.currentPassword, body.newPassword, body.confirmPassword);
           case "createCharacter":
-            return await handleCreateCharacter(db, body.id, body.password, body.slotIndex, body.name);
+            return await handleCreateCharacter(db, id, auth, body.slotIndex, body.name);
           case "deleteCharacter":
-            return await handleDeleteCharacter(db, body.id, body.password, body.slotIndex);
+            return await handleDeleteCharacter(db, id, auth, body.slotIndex);
           case "enterCharacter":
-            return await handleEnterCharacter(db, body.id, body.password, body.slotIndex);
+            return await handleEnterCharacter(db, id, auth, body.slotIndex);
           case "saveCharacterProgress":
-            return await handleSaveCharacterProgress(db, body.id, body.password, body.characterId, body.diamonds, body.progress);
+            return await handleSaveCharacterProgress(db, id, auth, body.characterId, body.diamonds, body.progress);
           case "saveRunState":
-            return await handleSaveRunState(db, body.id, body.password, body.characterId, body.runState);
+            return await handleSaveRunState(db, id, auth, body.characterId, body.runState);
           case "syncItems":
-            return await handleSyncItems(db, body.id, body.password, body.characterId, body.items || []);
+            return await handleSyncItems(db, id, auth, body.characterId, body.items || []);
           case "setInventorySlot":
-            return await handleSetInventorySlot(db, body.id, body.password, body.itemId, body.inventorySlot);
+            return await handleSetInventorySlot(db, id, auth, body.itemId, body.inventorySlot);
           case "claimDailyLogin":
-            return await handleClaimDailyLogin(db, body.id, body.password, body.characterId);
+            return await handleClaimDailyLogin(db, id, auth, body.characterId);
           case "attackRaidBoss":
-            return await handleAttackRaidBoss(db, body.id, body.password, body.characterId, !!body.paidDiamonds);
+            return await handleAttackRaidBoss(db, id, auth, body.characterId, !!body.paidDiamonds);
           case "claimRaidMilestones":
-            return await handleClaimRaidMilestones(db, body.id, body.password, body.characterId);
+            return await handleClaimRaidMilestones(db, id, auth, body.characterId);
           case "startArenaMatch":
-            return await handleStartArenaMatch(db, body.id, body.password, body.characterId, body.opponentCharacterId, !!body.paidDiamonds);
+            return await handleStartArenaMatch(db, id, auth, body.characterId, body.opponentCharacterId, !!body.paidDiamonds);
           case "submitArenaTurn":
-            return await handleSubmitArenaTurn(db, body.id, body.password, body.characterId, body.matchId, body.actionType, body.skillKey);
+            return await handleSubmitArenaTurn(db, id, auth, body.characterId, body.matchId, body.actionType, body.skillKey);
           case "claimMail":
-            return await handleClaimMail(db, body.id, body.password, body.characterId, body.mailId);
+            return await handleClaimMail(db, id, auth, body.characterId, body.mailId);
           case "claimAllMail":
-            return await handleClaimAllMail(db, body.id, body.password, body.characterId);
+            return await handleClaimAllMail(db, id, auth, body.characterId);
           case "deleteMail":
-            return await handleDeleteMail(db, body.id, body.password, body.characterId, body.mailId);
+            return await handleDeleteMail(db, id, auth, body.characterId, body.mailId);
           case "deleteMails":
-            return await handleDeleteMails(db, body.id, body.password, body.characterId, body.mailIds);
+            return await handleDeleteMails(db, id, auth, body.characterId, body.mailIds);
           case "deleteAllClaimedMail":
-            return await handleDeleteAllClaimedMail(db, body.id, body.password, body.characterId);
+            return await handleDeleteAllClaimedMail(db, id, auth, body.characterId);
           case "craftItem":
-            return await handleCraftItem(db, body.id, body.password, body.characterId, body.recipeId);
-          case "saveGameConfig":
-            return await handleAdminSaveGameConfig(db, env, body.adminKey, body.config);
-          case "setGameConfigItem":
-            return await handleAdminSetGameConfigItem(db, env, body.adminKey, body.key, body.value);
-          case "adminUpsertRecipe":
-            return await handleAdminUpsertRecipe(db, env, body.adminKey, body.recipeId, body.type, body.name, body.setId, body.empowerSlotCount, body.materials);
-          case "adminDeleteRecipe":
-            return await handleAdminDeleteRecipe(db, env, body.adminKey, body.recipeId);
-          case "adminUpsertMonsterLootEntry":
-            return await handleAdminUpsertMonsterLootEntry(db, env, body.adminKey, body.entry);
-          case "adminDeleteMonsterLootEntry":
-            return await handleAdminDeleteMonsterLootEntry(db, env, body.adminKey, body.entryId);
-          case "adminUpsertJunkInfo":
-            return await handleAdminUpsertJunkInfo(db, env, body.adminKey, body.junkId, body.name, body.icon);
-          case "adminDeleteJunkInfo":
-            return await handleAdminDeleteJunkInfo(db, env, body.adminKey, body.junkId);
+            return await handleCraftItem(db, id, auth, body.characterId, body.recipeId);
           default:
             return json({ error: "unknown_action" });
         }

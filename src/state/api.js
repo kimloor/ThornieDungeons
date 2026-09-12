@@ -33,12 +33,12 @@ function withDedupe(key, fn) {
   return p;
 }
 
-async function cloudGet(url, params) {
+async function cloudGet(url, params, { headers = {} } = {}) {
   const qs = new URLSearchParams(params).toString();
   const fullUrl = `${url}?${qs}`;
-  return withDedupe(fullUrl, () => withRetry(async () => {
+  return withDedupe(dedupeKey(fullUrl, headers), () => withRetry(async () => {
     try {
-      const res = await fetch(fullUrl);
+      const res = await fetch(fullUrl, { headers });
       const data = await res.json();
       if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
       return data;
@@ -49,12 +49,12 @@ async function cloudGet(url, params) {
     }
   }));
 }
-async function cloudPost(url, body, { retries = 0, baseDelayMs = 300 } = {}) {
-  return withDedupe(dedupeKey(url, body), () => withRetry(async () => {
+async function cloudPost(url, body, { retries = 0, baseDelayMs = 300, headers = {} } = {}) {
+  return withDedupe(dedupeKey(url, { body, headers }), () => withRetry(async () => {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify(body)
       });
       const data = await res.json();
@@ -68,104 +68,124 @@ async function cloudPost(url, body, { retries = 0, baseDelayMs = 300 } = {}) {
   }, { retries, baseDelayMs }));
 }
 
-// ---------- calls ----------
-function cloudLogin(url, id, password) {
-  return cloudGet(url, {
+// ---------- central player-session API boundary ----------
+function cloudLogin(url, id, password, rememberLogin) {
+  return cloudPost(url, {
     action: "login",
     id,
-    password
+    password,
+    rememberLogin: !!rememberLogin
   });
 }
-function cloudRegister(url, id, password) {
+function cloudRegister(url, id, password, confirmPassword, rememberLogin) {
   return cloudPost(url, {
     action: "register",
     id,
-    password
+    password,
+    confirmPassword,
+    rememberLogin: !!rememberLogin
   });
 }
-function cloudCreateCharacter(url, id, password, slotIndex, name) {
-  return cloudPost(url, {
+function cloudForgotPassword(url, id, recoveryCode, newPassword, confirmPassword) {
+  return cloudPost(url, { action: "forgotPassword", id, recoveryCode, newPassword, confirmPassword });
+}
+function cloudAuthHeaders(token = AUTH_SESSION.getToken()) {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+async function cloudAuthGet(url, params) {
+  const token = AUTH_SESSION.getToken();
+  const generation = AUTH_SESSION.getGeneration();
+  if (!token) return AUTH_SESSION.handleApiResult({ error: "invalid_session" }, generation);
+  const result = await cloudGet(url, params, { headers: cloudAuthHeaders(token) });
+  return AUTH_SESSION.handleApiResult(result, generation);
+}
+async function cloudAuthPost(url, body) {
+  const token = AUTH_SESSION.getToken();
+  const generation = AUTH_SESSION.getGeneration();
+  if (!token) return AUTH_SESSION.handleApiResult({ error: "invalid_session" }, generation);
+  const result = await cloudPost(url, body, { headers: cloudAuthHeaders(token) });
+  return AUTH_SESSION.handleApiResult(result, generation);
+}
+function cloudValidateSession(url) {
+  return cloudAuthGet(url, { action: "validateSession" });
+}
+function cloudLogout(url) {
+  return cloudAuthPost(url, { action: "logout" });
+}
+function cloudGetRecoveryStatus(url) {
+  return cloudAuthGet(url, { action: "getRecoveryStatus" });
+}
+function cloudCreateRecoveryCode(url, currentPassword) {
+  return cloudAuthPost(url, { action: "createRecoveryCode", currentPassword });
+}
+function cloudChangePassword(url, currentPassword, newPassword, confirmPassword) {
+  return cloudAuthPost(url, { action: "changePassword", currentPassword, newPassword, confirmPassword });
+}
+function cloudCreateCharacter(url, slotIndex, name) {
+  return cloudAuthPost(url, {
     action: "createCharacter",
-    id,
-    password,
     slotIndex,
     name
   });
 }
-function cloudDeleteCharacter(url, id, password, slotIndex) {
-  return cloudPost(url, {
+function cloudDeleteCharacter(url, slotIndex) {
+  return cloudAuthPost(url, {
     action: "deleteCharacter",
-    id,
-    password,
     slotIndex
   });
 }
-function cloudEnterCharacter(url, id, password, slotIndex) {
-  return cloudPost(url, {
+function cloudEnterCharacter(url, slotIndex) {
+  return cloudAuthPost(url, {
     action: "enterCharacter",
-    id,
-    password,
     slotIndex
   });
 }
-function cloudSaveCharacterProgress(url, id, password, characterId, diamonds, progress) {
-  return cloudPost(url, {
+function cloudSaveCharacterProgress(url, characterId, diamonds, progress) {
+  return cloudAuthPost(url, {
     action: "saveCharacterProgress",
-    id,
-    password,
     characterId,
     diamonds,
     progress
   });
 }
-function cloudSyncItems(url, id, password, characterId, items) {
-  return cloudPost(url, {
+function cloudSyncItems(url, characterId, items) {
+  return cloudAuthPost(url, {
     action: "syncItems",
-    id,
-    password,
     characterId,
     items
   });
 }
-function cloudSaveRunState(url, id, password, characterId, runState) {
-  return cloudPost(url, {
+function cloudSaveRunState(url, characterId, runState) {
+  return cloudAuthPost(url, {
     action: "saveRunState",
-    id,
-    password,
     characterId,
     runState
   });
 }
 
-// Central authenticated boundary for safe persistence snapshots. Auth V2 can replace the
-// credential supplied by makePersistenceContext() without teaching UI/gameplay code about token
-// fields. The current worker still receives the legacy id+password shape in this release.
+// Central authenticated boundary for safe persistence snapshots. The persistence context owns
+// only a session generation; the raw token remains inside AUTH_SESSION and is never copied into
+// gameplay state or snapshot payloads.
 function cloudSaveSnapshot(context, domain, snapshot) {
-  if (!context || !context.credential) return Promise.resolve({ error: "missing_auth_context" });
-  const auth = context.credential.kind === "session_token"
-    ? { sessionToken: context.credential.sessionToken }
-    : { id: context.accountId, password: context.credential.password };
+  if (!context || context.sessionGeneration !== AUTH_SESSION.getGeneration()) return Promise.resolve({ error: "invalid_session" });
   if (domain === "character_progress") {
-    return cloudPost(context.url, {
+    return cloudAuthPost(context.url, {
       action: "saveCharacterProgress",
-      ...auth,
       characterId: context.characterId,
       diamonds: snapshot.diamonds,
       progress: snapshot.progress
     });
   }
   if (domain === "items") {
-    return cloudPost(context.url, {
+    return cloudAuthPost(context.url, {
       action: "syncItems",
-      ...auth,
       characterId: context.characterId,
       items: snapshot
     });
   }
   if (domain === "run_state") {
-    return cloudPost(context.url, {
+    return cloudAuthPost(context.url, {
       action: "saveRunState",
-      ...auth,
       characterId: context.characterId,
       runState: snapshot
     });
@@ -195,19 +215,15 @@ function cloudGetJunkInfo(url) {
     action: "getJunkInfo"
   });
 }
-function cloudGetDailyLogin(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetDailyLogin(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getDailyLogin",
-    id,
-    password,
     characterId
   });
 }
-function cloudClaimDailyLogin(url, id, password, characterId) {
-  return cloudPost(url, {
+function cloudClaimDailyLogin(url, characterId) {
+  return cloudAuthPost(url, {
     action: "claimDailyLogin",
-    id,
-    password,
     characterId
   });
 }
@@ -225,81 +241,63 @@ function cloudGetLeaderboardHistory(url, board, date) {
   return cloudGet(url, params);
 }
 // Phase 3 — Raid Boss
-function cloudGetRaidStatus(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetRaidStatus(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getRaidStatus",
-    id,
-    password,
     characterId
   });
 }
-function cloudAttackRaidBoss(url, id, password, characterId, paidDiamonds) {
-  return cloudPost(url, {
+function cloudAttackRaidBoss(url, characterId, paidDiamonds) {
+  return cloudAuthPost(url, {
     action: "attackRaidBoss",
-    id,
-    password,
     characterId,
     paidDiamonds: !!paidDiamonds
   });
 }
-function cloudClaimRaidMilestones(url, id, password, characterId) {
-  return cloudPost(url, {
+function cloudClaimRaidMilestones(url, characterId) {
+  return cloudAuthPost(url, {
     action: "claimRaidMilestones",
-    id,
-    password,
     characterId
   });
 }
 // Phase 3.1 — Mailbox (reward delivery queue; client applies gold/diamonds/junk locally
 // after claiming, then the normal autosave persists it — see worker comment for why).
-function cloudGetMailbox(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetMailbox(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getMailbox",
-    id,
-    password,
     characterId
   });
 }
-function cloudClaimMail(url, id, password, characterId, mailId) {
-  return cloudPost(url, {
+function cloudClaimMail(url, characterId, mailId) {
+  return cloudAuthPost(url, {
     action: "claimMail",
-    id,
-    password,
     characterId,
     mailId
   });
 }
-function cloudClaimAllMail(url, id, password, characterId) {
-  return cloudPost(url, {
+function cloudClaimAllMail(url, characterId) {
+  return cloudAuthPost(url, {
     action: "claimAllMail",
-    id,
-    password,
     characterId
   });
 }
-function cloudDeleteMail(url, id, password, characterId, mailId) {
-  return cloudPost(url, {
+function cloudDeleteMail(url, characterId, mailId) {
+  return cloudAuthPost(url, {
     action: "deleteMail",
-    id,
-    password,
     characterId,
     mailId
   });
 }
-function cloudDeleteMails(url, id, password, characterId, mailIds) {
-  return cloudPost(url, {
+function cloudDeleteMails(url, characterId, mailIds) {
+  return cloudAuthPost(url, {
     action: "deleteMails",
-    id,
-    password,
     characterId,
     mailIds
   });
 }
-function cloudDeleteAllClaimedMail(url, id, password, characterId) {
-  return cloudPost(url, {
+function cloudDeleteAllClaimedMail(url, characterId) {
+  return cloudAuthPost(url, {
     action: "deleteAllClaimedMail",
-    id,
-    password,
     characterId
   });
 }
@@ -307,11 +305,9 @@ function cloudDeleteAllClaimedMail(url, id, password, characterId) {
 // (never trusts the client), consumes them, and returns the crafted item as a plain
 // descriptor — same shape as a mail item reward — for materializeMailItem() to turn into
 // a real local item. See worker's handleCraftItem for the authoritative logic.
-function cloudCraftItem(url, id, password, characterId, recipeId) {
-  return cloudPost(url, {
+function cloudCraftItem(url, characterId, recipeId) {
+  return cloudAuthPost(url, {
     action: "craftItem",
-    id,
-    password,
     characterId,
     recipeId
   });
@@ -319,37 +315,29 @@ function cloudCraftItem(url, id, password, characterId, recipeId) {
 // Phase 5 — PvP Arena. Turn-based: startArenaMatch() opens a session, then
 // submitArenaTurn() is called once per player action (attack or skill) — the worker
 // resolves that whole round (both pets + the bot) and returns the updated state.
-function cloudGetArenaStatus(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetArenaStatus(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getArenaStatus",
-    id,
-    password,
     characterId
   });
 }
-function cloudGetArenaOpponents(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetArenaOpponents(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getArenaOpponents",
-    id,
-    password,
     characterId
   });
 }
-function cloudStartArenaMatch(url, id, password, characterId, opponentCharacterId, paidDiamonds) {
-  return cloudPost(url, {
+function cloudStartArenaMatch(url, characterId, opponentCharacterId, paidDiamonds) {
+  return cloudAuthPost(url, {
     action: "startArenaMatch",
-    id,
-    password,
     characterId,
     opponentCharacterId,
     paidDiamonds: !!paidDiamonds
   });
 }
-function cloudSubmitArenaTurn(url, id, password, characterId, matchId, actionType, skillKey) {
-  return cloudPost(url, {
+function cloudSubmitArenaTurn(url, characterId, matchId, actionType, skillKey) {
+  return cloudAuthPost(url, {
     action: "submitArenaTurn",
-    id,
-    password,
     characterId,
     matchId,
     actionType,

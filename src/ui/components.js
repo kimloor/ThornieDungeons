@@ -99,78 +99,102 @@ function StatusBar({
     className: "md-chip-icon"
   }, "🛡️"), formatNumber(save.protectionStones || 0))));
 }
-function LoginScreen({
-  cred,
-  setCred,
-  error,
-  busy,
-  departing,
-  rememberPassword,
-  onRememberPassword,
-  onLogin,
-  onRegister
-}) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: `md-login-wrap${departing ? " is-departing" : ""}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-menu-title md-login-brand"
-  }, /*#__PURE__*/React.createElement("img", {
-    className: "md-login-emblem",
-    src: "icons/icon-512.png",
-    alt: "ThornieDungeons"
-  }), /*#__PURE__*/React.createElement("h1", null, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "เข้าสู่ดันเจี้ยนของคุณ")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card md-login-card"
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-field-label"
-  }, "Player ID"), /*#__PURE__*/React.createElement("input", {
-    className: "md-field",
-    placeholder: "e.g. kimmie",
-    autoComplete: "username",
-    value: cred.id,
-    onChange: e => setCred(c => ({
-      ...c,
-      id: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "md-field-label"
-  }, "Password"), /*#__PURE__*/React.createElement("input", {
-    className: "md-field",
-    type: "password",
-    placeholder: "••••••",
-    autoComplete: "current-password",
-    value: cred.password,
-    onChange: e => setCred(c => ({
-      ...c,
-      password: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("label", {
-    className: "md-remember-password"
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "checkbox",
-    checked: rememberPassword,
-    disabled: busy,
-    onChange: e => onRememberPassword(e.target.checked)
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "md-remember-check",
-    "aria-hidden": "true"
-  }), /*#__PURE__*/React.createElement("span", null, "จำรหัสผ่านบนอุปกรณ์นี้")), error && /*#__PURE__*/React.createElement("p", {
-    className: "md-auth-error"
-  }, error), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row",
-    style: {
-      marginTop: 12
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary",
-    disabled: busy,
-    onClick: onLogin
-  }, busy ? "..." : "เข้าสู่ระบบ"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info",
-    disabled: busy,
-    onClick: onRegister
-  }, busy ? "..." : "สร้างบัญชีใหม่")), /*#__PURE__*/React.createElement("p", {
-    className: "md-hint"
-  }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")));
+function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onRememberLogin, onLogin, onRegister, onForgotPassword, registrationRecovery, onFinishRegistration, passwordResetRecovery, onClearPasswordResetRecovery }) {
+  const e = React.createElement;
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ id: "", password: "", confirmPassword: "" });
+  const [forgotForm, setForgotForm] = useState({ id: cred.id || "", recoveryCode: "", newPassword: "", confirmPassword: "" });
+  const [modalError, setModalError] = useState("");
+  const copyCode = code => navigator.clipboard?.writeText(code).catch(() => {});
+  const field = (label, type, value, update, autoComplete) => e(React.Fragment, null,
+    e("p", { className: "md-field-label" }, label),
+    e("input", { className: "md-field", type: type || "text", value, autoComplete, onChange: event => update(event.target.value) })
+  );
+  const recoveryPanel = (code, done) => e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" },
+    e("h2", { className: "md-title" }, "บันทึก Recovery Code"),
+    e("p", { className: "md-sub" }, "โค้ดนี้จะแสดงเพียงครั้งเดียว โปรดเก็บไว้ในที่ปลอดภัย"),
+    e("code", { className: "md-recovery-code" }, code),
+    e("button", { className: "md-btn info wide", onClick: () => copyCode(code) }, "คัดลอก"),
+    e("button", { className: "md-btn primary wide", onClick: done }, "เก็บโค้ดแล้ว")
+  ));
+  const submitRegister = async () => {
+    setModalError("");
+    if (!/^[A-Za-z0-9_]{4,20}$/.test(registerForm.id)) return setModalError("Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น");
+    if (registerForm.password.length < 4 || registerForm.password.length > 32) return setModalError("Password ต้องยาว 4–32 ตัว");
+    if (registerForm.password !== registerForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
+    const result = await onRegister(registerForm);
+    if (!result?.ok) setModalError(result?.error === "id_unavailable" ? "Player ID นี้ไม่สามารถใช้งานได้" : "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่");
+  };
+  const submitForgot = async () => {
+    setModalError("");
+    if (forgotForm.newPassword.length < 4 || forgotForm.newPassword.length > 32) return setModalError("Password ใหม่ต้องยาว 4–32 ตัว");
+    if (forgotForm.newPassword !== forgotForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
+    const result = await onForgotPassword(forgotForm);
+    if (!result.ok) setModalError(result.error === "invalid_recovery" ? "Player ID หรือ Recovery Code ไม่ถูกต้อง" : "ดำเนินการไม่สำเร็จ กรุณาลองใหม่");
+  };
+  return e("div", { className: `md-login-wrap${departing ? " is-departing" : ""}` },
+    e("div", { className: "md-menu-title md-login-brand" }, e("img", { className: "md-login-emblem", src: "icons/icon-512.png", alt: "ThornieDungeons" }), e("h1", null, "ThornieDungeons"), e("p", null, "เข้าสู่ดันเจี้ยนของคุณ")),
+    e("div", { className: "md-card md-login-card" },
+      field("Player ID", "text", cred.id, id => setCred(current => ({ ...current, id })), "username"),
+      field("Password", "password", cred.password, password => setCred(current => ({ ...current, password })), "current-password"),
+      e("label", { className: "md-remember-password" }, e("input", { type: "checkbox", checked: rememberLogin, disabled: busy, onChange: event => onRememberLogin(event.target.checked) }), e("span", { className: "md-remember-check", "aria-hidden": "true" }), e("span", null, "จดจำการเข้าสู่ระบบ")),
+      error && e("p", { className: "md-auth-error" }, error),
+      e("div", { className: "md-btn-row", style: { marginTop: 12 } }, e("button", { className: "md-btn primary", disabled: busy, onClick: onLogin }, busy ? "..." : "เข้าสู่ระบบ"), e("button", { className: "md-btn info", disabled: busy, onClick: () => { setModalError(""); setRegisterForm({ id: cred.id || "", password: "", confirmPassword: "" }); setRegisterOpen(true); } }, "สร้างบัญชีใหม่")),
+      e("button", { type: "button", className: "md-auth-link", onClick: () => { setModalError(""); setForgotForm(form => ({ ...form, id: cred.id || form.id })); setForgotOpen(true); } }, "ลืมรหัสผ่าน?"),
+      e("p", { className: "md-hint" }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")
+    ),
+    registerOpen && !registrationRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "สร้างบัญชีใหม่"), field("Player ID", "text", registerForm.id, id => setRegisterForm(form => ({ ...form, id })), "username"), field("Password", "password", registerForm.password, password => setRegisterForm(form => ({ ...form, password })), "new-password"), field("Confirm Password", "password", registerForm.confirmPassword, confirmPassword => setRegisterForm(form => ({ ...form, confirmPassword })), "new-password"), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setRegisterOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitRegister }, busy ? "..." : "สร้างบัญชี")))),
+    registrationRecovery && recoveryPanel(registrationRecovery.code, onFinishRegistration),
+    forgotOpen && !passwordResetRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "ลืมรหัสผ่าน"), field("Player ID", "text", forgotForm.id, id => setForgotForm(form => ({ ...form, id })), "username"), field("Recovery Code", "text", forgotForm.recoveryCode, recoveryCode => setForgotForm(form => ({ ...form, recoveryCode })), "one-time-code"), field("New Password", "password", forgotForm.newPassword, newPassword => setForgotForm(form => ({ ...form, newPassword })), "new-password"), field("Confirm Password", "password", forgotForm.confirmPassword, confirmPassword => setForgotForm(form => ({ ...form, confirmPassword })), "new-password"), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setForgotOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitForgot }, busy ? "..." : "รีเซ็ตรหัสผ่าน")))),
+    passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
+  );
+}
+function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onLogout, onClose }) {
+  const e = React.createElement;
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
+  const generateRecovery = async () => {
+    if (!recoveryPassword) return setMessage("กรุณากรอกรหัสผ่านปัจจุบัน");
+    setBusy(true); setMessage("");
+    const result = await cloudCreateRecoveryCode(serverUrl || DEFAULT_SERVER_URL, recoveryPassword);
+    setBusy(false);
+    if (!result?.ok) return setMessage(result?.error === "invalid_credentials" ? "รหัสผ่านปัจจุบันไม่ถูกต้อง" : "สร้าง Recovery Code ไม่สำเร็จ");
+    setRecoveryCode(result.recoveryCode);
+    setRecoveryPassword("");
+    onRecoveryConfigured(true);
+  };
+  const changePassword = async () => {
+    if (newPassword.length < 4 || newPassword.length > 32) return setMessage("Password ใหม่ต้องยาว 4–32 ตัว");
+    if (newPassword !== confirmPassword) return setMessage("Confirm Password ไม่ตรงกัน");
+    setBusy(true); setMessage("");
+    const result = await cloudChangePassword(serverUrl || DEFAULT_SERVER_URL, changeCurrentPassword, newPassword, confirmPassword);
+    setBusy(false);
+    if (!result?.ok) return setMessage(result?.error === "invalid_credentials" ? "รหัสผ่านปัจจุบันไม่ถูกต้อง" : "เปลี่ยน Password ไม่สำเร็จ");
+    onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
+  };
+  return e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
+    e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings > Account"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
+    recoveryCode ? e(React.Fragment, null, e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"), e("code", { className: "md-recovery-code" }, recoveryCode), e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")) : e(React.Fragment, null,
+      e("p", { className: "md-title", style: { marginTop: 12 } }, "Recovery Code"),
+      e("p", { className: "md-sub" }, recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code"),
+      e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: recoveryPassword, onChange: event => setRecoveryPassword(event.target.value), autoComplete: "current-password" }),
+      e("button", { className: "md-btn info wide", disabled: busy, onClick: generateRecovery }, recoveryConfigured ? "สร้าง Recovery Code ใหม่" : "สร้าง Recovery Code")
+    ),
+    e("p", { className: "md-title", style: { marginTop: 16 } }, "เปลี่ยน Password"),
+    e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: changeCurrentPassword, onChange: event => setChangeCurrentPassword(event.target.value), autoComplete: "current-password" }),
+    e("input", { className: "md-field", type: "password", placeholder: "Password ใหม่", value: newPassword, onChange: event => setNewPassword(event.target.value), autoComplete: "new-password" }),
+    e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), autoComplete: "new-password" }),
+    e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password"),
+    message && e("p", { className: "md-auth-error" }, message),
+    e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
+  ));
 }
 function GameDock({
   onCharacter,
@@ -272,6 +296,7 @@ function HubScreen({
   onMailbox,
   onSave,
   onSwitchCharacter,
+  onAccountSettings,
   onLogout,
   dailyLogin,
   dailyLoginClaimResult,
@@ -353,7 +378,7 @@ function HubScreen({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onArena }, "🥊", /*#__PURE__*/React.createElement("span", null, "อารีน่า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onArena }, "🥊", /*#__PURE__*/React.createElement("span", null, "อารีน่า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onAccountSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "บัญชี")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
     onCharacter: onCharacter,
     onOpenInv: onOpenInv,
     onPets: onPets,
@@ -386,6 +411,7 @@ function TownScreen({
   onSummoning,
   onSave,
   onSwitchCharacter,
+  onAccountSettings,
   onLogout,
   dailyLogin,
   dailyLoginClaimResult,
@@ -479,6 +505,7 @@ function TownScreen({
           e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
           e("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", e("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")),
           e("button", { type: "button", onClick: onSwitchCharacter }, "👥", e("span", null, "เปลี่ยนตัว")),
+          e("button", { type: "button", onClick: onAccountSettings }, "⚙️", e("span", null, "บัญชี")),
           e("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", e("span", null, "ออกจากระบบ"))
         )
       ),
@@ -1127,7 +1154,6 @@ function LeaderboardScreen({
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
 function RaidScreen({
   serverUrl,
-  cred,
   characterId,
   diamonds,
   onSpendDiamonds,
@@ -1145,12 +1171,12 @@ function RaidScreen({
 
   const load = React.useCallback(() => {
     setError(null);
-    cloudGetRaidStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetRaidStatus(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) { setError("โหลดข้อมูล Raid ไม่สำเร็จ"); return; }
       setStatus(res);
       setSecondsLeft((res.me && res.me.staminaRegenSeconds) || 0);
     }).catch(() => setError("โหลดข้อมูล Raid ไม่สำเร็จ"));
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   React.useEffect(() => { load(); }, [load]);
   // Use a one-second local timer only while regeneration is active. The previous interval
   // called load() every second whenever the value was already 0 (including at full stamina),
@@ -1170,14 +1196,14 @@ function RaidScreen({
   // run off the countdown-timer's periodic load() — contribution only changes from this
   // character's own attacks, so checking there too would just be wasted API calls.
   const checkMilestones = React.useCallback(() => {
-    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error || !res.claimed || !res.claimed.length) return;
       const pcts = res.claimed.map(k => k.replace("p", "") + "%").join(", ");
       setToast(`🎁 ถึงเกณฑ์ดาเมจสะสม ${pcts} — รางวัลส่งเข้ากล่องจดหมายแล้ว!`);
       setTimeout(() => setToast(null), 3500);
       load();
     });
-  }, [serverUrl, cred.id, cred.password, characterId, load]);
+  }, [serverUrl, characterId, load]);
   React.useEffect(() => { checkMilestones(); }, [checkMilestones]);
 
   const handleHurtComplete = React.useCallback(() => {
@@ -1198,7 +1224,7 @@ function RaidScreen({
     if (attacking || hurtPlaying) return;
     setAttacking(true);
     setLastResult(null);
-    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, useDiamonds).then(res => {
+    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, useDiamonds).then(res => {
       if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
       if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent || status.me.diamondRefillCost || 50);
       setLastResult(res);
@@ -1361,7 +1387,6 @@ function ArenaHpBar({ label, hp, maxHp, mp, maxMp, pet }) {
 
 function ArenaScreen({
   serverUrl,
-  cred,
   characterId,
   diamonds,
   onSpendDiamonds,
@@ -1413,25 +1438,25 @@ function ArenaScreen({
 
   const load = React.useCallback(() => {
     setError(null);
-    cloudGetArenaStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetArenaStatus(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) { setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"); return; }
       setStatus(res);
       setSecondsLeft(res.ticketsRegenSeconds || 0);
       if (res.activeMatchId && !match) {
-        cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, null, false).then(m => {
+        cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, characterId, null, false).then(m => {
           if (m && !m.error) setMatch({ matchId: m.matchId, you: m.you, opponent: m.opponent, opponentName: m.opponentName, skills: m.skills, turn: m.turn, log: [], result: null });
         });
       }
     }).catch(() => setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   const loadOpponents = React.useCallback(() => {
     setRefreshingOpp(true);
-    cloudGetArenaOpponents(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetArenaOpponents(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) return;
       setOpponents(res.opponents || []);
     }).finally(() => setRefreshingOpp(false));
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   React.useEffect(() => { load(); loadOpponents(); }, [load, loadOpponents]);
   React.useEffect(() => {
     if (match || secondsLeft <= 0) return undefined;
@@ -1456,7 +1481,7 @@ function ArenaScreen({
   const startFight = (opponentCharacterId, useDiamonds) => {
     if (startingId) return;
     setStartingId(opponentCharacterId);
-    cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, opponentCharacterId, useDiamonds).then(res => {
+    cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, characterId, opponentCharacterId, useDiamonds).then(res => {
       if (!res || res.error) { setError(errMsgMap[res && res.error] || "เริ่มการต่อสู้ไม่สำเร็จ"); return; }
       if (res.diamondsSpent && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent);
       setMatch({ matchId: res.matchId, you: res.you, opponent: res.opponent, opponentName: res.opponentName, skills: res.skills, turn: res.turn, log: [], result: null });
@@ -1467,7 +1492,7 @@ function ArenaScreen({
   const submitTurn = (actionType, skillKey) => {
     if (submitting || !match || match.result) return;
     setSubmitting(true);
-    cloudSubmitArenaTurn(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, match.matchId, actionType, skillKey).then(res => {
+    cloudSubmitArenaTurn(serverUrl || DEFAULT_SERVER_URL, characterId, match.matchId, actionType, skillKey).then(res => {
       if (!res || res.error) { setError(errMsgMap[res && res.error] || "ทำเทิร์นไม่สำเร็จ"); return; }
       setMatch(m => m && Object.assign({}, m, {
         you: res.you, opponent: res.opponent, turn: res.turn,
@@ -1647,7 +1672,6 @@ function formatMailDate(iso) {
 }
 function MailboxScreen({
   serverUrl,
-  cred,
   characterId,
   onApplyReward,
   onBack
@@ -1657,7 +1681,7 @@ function MailboxScreen({
   const [selected, setSelected] = useState({});
 
   const load = () => {
-    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) { setMails([]); return; }
       setMails(res.mails || []);
       // Drop selections for mail that no longer exists (e.g. after a delete).
@@ -1674,7 +1698,7 @@ function MailboxScreen({
   const handleClaim = (mailId) => {
     if (busy) return;
     setBusy(true);
-    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(res => {
+    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
       setBusy(false);
       if (!res || res.error) return;
       onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
@@ -1685,7 +1709,7 @@ function MailboxScreen({
   const handleClaimAll = () => {
     if (busy) return;
     setBusy(true);
-    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       setBusy(false);
       if (!res || res.error) return;
       if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
@@ -1698,7 +1722,7 @@ function MailboxScreen({
   const handleDeleteOne = (mailId) => {
     if (busy) return;
     setBusy(true);
-    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(() => {
+    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(() => {
       setBusy(false);
       load();
     });
@@ -1708,7 +1732,7 @@ function MailboxScreen({
     const ids = Object.keys(selected).filter(id => selected[id]);
     if (!ids.length || busy) return;
     setBusy(true);
-    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, ids).then(() => {
+    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids).then(() => {
       setBusy(false);
       setSelected({});
       load();
@@ -1718,7 +1742,7 @@ function MailboxScreen({
   const handleDeleteAllClaimed = () => {
     if (busy) return;
     setBusy(true);
-    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(() => {
+    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(() => {
       setBusy(false);
       setSelected({});
       load();
@@ -3473,7 +3497,6 @@ function BlacksmithOverlay({
 // component only ever applies what the server confirms actually happened.
 function CraftingOverlay({
   serverUrl,
-  cred,
   characterId,
   inventory,
   gold,
@@ -3489,7 +3512,7 @@ function CraftingOverlay({
     if (craftingId || busy) return;
     setCraftingId(recipe.recipeId);
     setMsg("");
-    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, recipe.recipeId)
+    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, characterId, recipe.recipeId)
       .then(res => {
         if (!res || res.error) {
           const errMsg = res && res.error === "insufficient_gold" ? /*#__PURE__*/React.createElement(React.Fragment, null, "ทองไม่พอ (ต้องการ ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), res.need, ")")

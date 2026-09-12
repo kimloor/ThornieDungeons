@@ -711,6 +711,13 @@ const STYLE = `
 .md-login-card .md-btn.primary { border: 1px solid #FFE49A; box-shadow: 0 4px 0 #9B691D, 0 0 15px rgba(255,209,102,.2); }
 .md-login-card .md-btn.info { background: rgba(8,31,70,.86); border: 1.5px solid #42C8FF; color: #DDF6FF; box-shadow: 0 3px 0 #174B78; }
 .md-auth-error { color: #FF9B9B; font-weight: 800; font-size: 12px; text-align: center; margin-top: 7px; }
+.md-auth-link { display:block; margin:10px auto 0; border:0; background:transparent; color:#8edcff; text-decoration:underline; font:inherit; font-size:12px; min-height:36px; padding:6px 12px; }
+.md-auth-sheet-overlay { position:fixed; z-index:120; inset:0; display:flex; align-items:flex-end; justify-content:center; padding:16px max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); background:rgba(5,7,18,.78); backdrop-filter:blur(4px); }
+.md-auth-sheet { width:min(100%,420px); max-height:min(88dvh,720px); overflow:auto; overscroll-behavior:contain; border-radius:22px 22px 16px 16px; padding:18px; }
+.md-auth-sheet .md-field { width:100%; margin-bottom:9px; }
+.md-auth-sheet .md-btn.wide { width:100%; margin-top:9px; }
+.md-recovery-code { display:block; margin:14px 0; padding:13px 8px; border:1px solid var(--gold); border-radius:10px; background:rgba(7,10,27,.72); color:#fff0a8; font-size:clamp(15px,5vw,20px); font-weight:900; letter-spacing:.06em; text-align:center; overflow-wrap:anywhere; user-select:all; }
+.md-account-sheet { align-self:center; }
 .md-hint { font-size: 10.5px; color: #AFC7E8; font-weight: 700; line-height: 1.45; margin: 11px 0 0; text-align: center; }
 .md-remember-password {
   display: flex; align-items: center; gap: 9px; width: fit-content; margin: 11px 0 2px;
@@ -2460,22 +2467,35 @@ async function kvSet(key, value) {
     if (window.localStorage) window.localStorage.setItem(key, value);
   } catch (e) {}
 }
+async function kvRemove(key) {
+  try {
+    if (window.storage && window.storage.delete) await window.storage.delete(key);
+  } catch (e) {}
+  try {
+    if (window.localStorage) window.localStorage.removeItem(key);
+  } catch (e) {}
+}
 
 // ===== state/configCache.js =====
 async function loadCachedConfig() {
   try {
     const v = await kvGet(CONFIG_CACHE_KEY);
-    if (v) return JSON.parse(v);
+    if (v) {
+      const parsed = JSON.parse(v);
+      // Auth V2 never restores the legacy raw password. Rewrite the cache immediately so a
+      // password left by an older frontend is removed on first V2 startup.
+      const safe = { url: parsed.url || "", id: parsed.id || "" };
+      if (parsed.password || parsed.rememberPassword) await writeCachedConfig(safe);
+      return safe;
+    }
   } catch (e) {}
   return {
     url: "",
-    id: "",
-    password: "",
-    rememberPassword: false
+    id: ""
   };
 }
 async function writeCachedConfig(cfg) {
-  await kvSet(CONFIG_CACHE_KEY, JSON.stringify(cfg));
+  await kvSet(CONFIG_CACHE_KEY, JSON.stringify({ url: cfg.url || "", id: cfg.id || "" }));
 }
 async function loadCachedGameConfig() {
   try {
@@ -2518,6 +2538,98 @@ async function writeCachedJunkInfo(info) {
   await kvSet(JUNK_INFO_CACHE_KEY, JSON.stringify(info));
 }
 
+// ===== state/auth.js =====
+const AUTH_REMEMBERED_SESSION_KEY = "thornie-auth-session-v2";
+const AUTH_TAB_SESSION_KEY = "thornie-auth-tab-session-v2";
+const SESSION_LIFECYCLE_ERRORS = new Set(["session_expired", "session_replaced", "session_revoked", "invalid_session"]);
+
+function createAuthSessionStore() {
+  let current = null;
+  let generation = 0;
+  const invalidListeners = new Set();
+
+  async function load() {
+    let raw = await kvGet(AUTH_REMEMBERED_SESSION_KEY);
+    if (!raw) {
+      try { raw = window.sessionStorage?.getItem(AUTH_TAB_SESSION_KEY); } catch (e) {}
+    }
+    try {
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed?.sessionToken && parsed?.playerId) {
+        current = parsed;
+        generation += 1;
+        return current;
+      }
+    } catch (e) {}
+    await clearStored();
+    return null;
+  }
+
+  async function clearStored() {
+    await kvRemove(AUTH_REMEMBERED_SESSION_KEY);
+    try { window.sessionStorage?.removeItem(AUTH_TAB_SESSION_KEY); } catch (e) {}
+  }
+
+  async function setSession(session, rememberLogin) {
+    current = {
+      sessionToken: session.sessionToken,
+      playerId: session.playerId,
+      expiresAt: session.expiresAt,
+      rememberLogin: !!rememberLogin,
+      recoveryConfigured: !!session.recoveryConfigured
+    };
+    generation += 1;
+    const serialized = JSON.stringify(current);
+    if (rememberLogin) {
+      await kvSet(AUTH_REMEMBERED_SESSION_KEY, serialized);
+      try { window.sessionStorage?.removeItem(AUTH_TAB_SESSION_KEY); } catch (e) {}
+    } else {
+      await kvRemove(AUTH_REMEMBERED_SESSION_KEY);
+      try { window.sessionStorage?.setItem(AUTH_TAB_SESSION_KEY, serialized); } catch (e) {}
+    }
+    return current;
+  }
+
+  async function clear(reason = "logout", notify = false) {
+    const previous = current;
+    current = null;
+    generation += 1;
+    await clearStored();
+    if (notify && previous) invalidListeners.forEach(listener => listener(reason, previous));
+  }
+
+  function handleApiResult(result, expectedGeneration = generation) {
+    // A response from an old/replaced session must never clear a newer session that was
+    // installed while the request was in flight.
+    if (expectedGeneration !== generation) return { error: "stale_session_response" };
+    if (result?.error && SESSION_LIFECYCLE_ERRORS.has(result.error)) {
+      void clear(result.error, true);
+    }
+    return result;
+  }
+
+  return {
+    load,
+    setSession,
+    clear,
+    getSession: () => current,
+    getToken: () => current?.sessionToken || "",
+    getPlayerId: () => current?.playerId || "",
+    getGeneration: () => generation,
+    handleApiResult,
+    onInvalid(listener) {
+      invalidListeners.add(listener);
+      return () => invalidListeners.delete(listener);
+    }
+  };
+}
+
+const AUTH_SESSION = createAuthSessionStore();
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { createAuthSessionStore, SESSION_LIFECYCLE_ERRORS };
+}
+
 // ===== state/api.js =====
 // ---------- HTTP helpers: retry + in-flight de-duplication ----------
 // Reads are safe to retry. POSTs default to one attempt because this API also contains
@@ -2554,12 +2666,12 @@ function withDedupe(key, fn) {
   return p;
 }
 
-async function cloudGet(url, params) {
+async function cloudGet(url, params, { headers = {} } = {}) {
   const qs = new URLSearchParams(params).toString();
   const fullUrl = `${url}?${qs}`;
-  return withDedupe(fullUrl, () => withRetry(async () => {
+  return withDedupe(dedupeKey(fullUrl, headers), () => withRetry(async () => {
     try {
-      const res = await fetch(fullUrl);
+      const res = await fetch(fullUrl, { headers });
       const data = await res.json();
       if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
       return data;
@@ -2570,12 +2682,12 @@ async function cloudGet(url, params) {
     }
   }));
 }
-async function cloudPost(url, body, { retries = 0, baseDelayMs = 300 } = {}) {
-  return withDedupe(dedupeKey(url, body), () => withRetry(async () => {
+async function cloudPost(url, body, { retries = 0, baseDelayMs = 300, headers = {} } = {}) {
+  return withDedupe(dedupeKey(url, { body, headers }), () => withRetry(async () => {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify(body)
       });
       const data = await res.json();
@@ -2589,104 +2701,124 @@ async function cloudPost(url, body, { retries = 0, baseDelayMs = 300 } = {}) {
   }, { retries, baseDelayMs }));
 }
 
-// ---------- calls ----------
-function cloudLogin(url, id, password) {
-  return cloudGet(url, {
+// ---------- central player-session API boundary ----------
+function cloudLogin(url, id, password, rememberLogin) {
+  return cloudPost(url, {
     action: "login",
     id,
-    password
+    password,
+    rememberLogin: !!rememberLogin
   });
 }
-function cloudRegister(url, id, password) {
+function cloudRegister(url, id, password, confirmPassword, rememberLogin) {
   return cloudPost(url, {
     action: "register",
     id,
-    password
+    password,
+    confirmPassword,
+    rememberLogin: !!rememberLogin
   });
 }
-function cloudCreateCharacter(url, id, password, slotIndex, name) {
-  return cloudPost(url, {
+function cloudForgotPassword(url, id, recoveryCode, newPassword, confirmPassword) {
+  return cloudPost(url, { action: "forgotPassword", id, recoveryCode, newPassword, confirmPassword });
+}
+function cloudAuthHeaders(token = AUTH_SESSION.getToken()) {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+async function cloudAuthGet(url, params) {
+  const token = AUTH_SESSION.getToken();
+  const generation = AUTH_SESSION.getGeneration();
+  if (!token) return AUTH_SESSION.handleApiResult({ error: "invalid_session" }, generation);
+  const result = await cloudGet(url, params, { headers: cloudAuthHeaders(token) });
+  return AUTH_SESSION.handleApiResult(result, generation);
+}
+async function cloudAuthPost(url, body) {
+  const token = AUTH_SESSION.getToken();
+  const generation = AUTH_SESSION.getGeneration();
+  if (!token) return AUTH_SESSION.handleApiResult({ error: "invalid_session" }, generation);
+  const result = await cloudPost(url, body, { headers: cloudAuthHeaders(token) });
+  return AUTH_SESSION.handleApiResult(result, generation);
+}
+function cloudValidateSession(url) {
+  return cloudAuthGet(url, { action: "validateSession" });
+}
+function cloudLogout(url) {
+  return cloudAuthPost(url, { action: "logout" });
+}
+function cloudGetRecoveryStatus(url) {
+  return cloudAuthGet(url, { action: "getRecoveryStatus" });
+}
+function cloudCreateRecoveryCode(url, currentPassword) {
+  return cloudAuthPost(url, { action: "createRecoveryCode", currentPassword });
+}
+function cloudChangePassword(url, currentPassword, newPassword, confirmPassword) {
+  return cloudAuthPost(url, { action: "changePassword", currentPassword, newPassword, confirmPassword });
+}
+function cloudCreateCharacter(url, slotIndex, name) {
+  return cloudAuthPost(url, {
     action: "createCharacter",
-    id,
-    password,
     slotIndex,
     name
   });
 }
-function cloudDeleteCharacter(url, id, password, slotIndex) {
-  return cloudPost(url, {
+function cloudDeleteCharacter(url, slotIndex) {
+  return cloudAuthPost(url, {
     action: "deleteCharacter",
-    id,
-    password,
     slotIndex
   });
 }
-function cloudEnterCharacter(url, id, password, slotIndex) {
-  return cloudPost(url, {
+function cloudEnterCharacter(url, slotIndex) {
+  return cloudAuthPost(url, {
     action: "enterCharacter",
-    id,
-    password,
     slotIndex
   });
 }
-function cloudSaveCharacterProgress(url, id, password, characterId, diamonds, progress) {
-  return cloudPost(url, {
+function cloudSaveCharacterProgress(url, characterId, diamonds, progress) {
+  return cloudAuthPost(url, {
     action: "saveCharacterProgress",
-    id,
-    password,
     characterId,
     diamonds,
     progress
   });
 }
-function cloudSyncItems(url, id, password, characterId, items) {
-  return cloudPost(url, {
+function cloudSyncItems(url, characterId, items) {
+  return cloudAuthPost(url, {
     action: "syncItems",
-    id,
-    password,
     characterId,
     items
   });
 }
-function cloudSaveRunState(url, id, password, characterId, runState) {
-  return cloudPost(url, {
+function cloudSaveRunState(url, characterId, runState) {
+  return cloudAuthPost(url, {
     action: "saveRunState",
-    id,
-    password,
     characterId,
     runState
   });
 }
 
-// Central authenticated boundary for safe persistence snapshots. Auth V2 can replace the
-// credential supplied by makePersistenceContext() without teaching UI/gameplay code about token
-// fields. The current worker still receives the legacy id+password shape in this release.
+// Central authenticated boundary for safe persistence snapshots. The persistence context owns
+// only a session generation; the raw token remains inside AUTH_SESSION and is never copied into
+// gameplay state or snapshot payloads.
 function cloudSaveSnapshot(context, domain, snapshot) {
-  if (!context || !context.credential) return Promise.resolve({ error: "missing_auth_context" });
-  const auth = context.credential.kind === "session_token"
-    ? { sessionToken: context.credential.sessionToken }
-    : { id: context.accountId, password: context.credential.password };
+  if (!context || context.sessionGeneration !== AUTH_SESSION.getGeneration()) return Promise.resolve({ error: "invalid_session" });
   if (domain === "character_progress") {
-    return cloudPost(context.url, {
+    return cloudAuthPost(context.url, {
       action: "saveCharacterProgress",
-      ...auth,
       characterId: context.characterId,
       diamonds: snapshot.diamonds,
       progress: snapshot.progress
     });
   }
   if (domain === "items") {
-    return cloudPost(context.url, {
+    return cloudAuthPost(context.url, {
       action: "syncItems",
-      ...auth,
       characterId: context.characterId,
       items: snapshot
     });
   }
   if (domain === "run_state") {
-    return cloudPost(context.url, {
+    return cloudAuthPost(context.url, {
       action: "saveRunState",
-      ...auth,
       characterId: context.characterId,
       runState: snapshot
     });
@@ -2716,19 +2848,15 @@ function cloudGetJunkInfo(url) {
     action: "getJunkInfo"
   });
 }
-function cloudGetDailyLogin(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetDailyLogin(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getDailyLogin",
-    id,
-    password,
     characterId
   });
 }
-function cloudClaimDailyLogin(url, id, password, characterId) {
-  return cloudPost(url, {
+function cloudClaimDailyLogin(url, characterId) {
+  return cloudAuthPost(url, {
     action: "claimDailyLogin",
-    id,
-    password,
     characterId
   });
 }
@@ -2746,81 +2874,63 @@ function cloudGetLeaderboardHistory(url, board, date) {
   return cloudGet(url, params);
 }
 // Phase 3 — Raid Boss
-function cloudGetRaidStatus(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetRaidStatus(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getRaidStatus",
-    id,
-    password,
     characterId
   });
 }
-function cloudAttackRaidBoss(url, id, password, characterId, paidDiamonds) {
-  return cloudPost(url, {
+function cloudAttackRaidBoss(url, characterId, paidDiamonds) {
+  return cloudAuthPost(url, {
     action: "attackRaidBoss",
-    id,
-    password,
     characterId,
     paidDiamonds: !!paidDiamonds
   });
 }
-function cloudClaimRaidMilestones(url, id, password, characterId) {
-  return cloudPost(url, {
+function cloudClaimRaidMilestones(url, characterId) {
+  return cloudAuthPost(url, {
     action: "claimRaidMilestones",
-    id,
-    password,
     characterId
   });
 }
 // Phase 3.1 — Mailbox (reward delivery queue; client applies gold/diamonds/junk locally
 // after claiming, then the normal autosave persists it — see worker comment for why).
-function cloudGetMailbox(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetMailbox(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getMailbox",
-    id,
-    password,
     characterId
   });
 }
-function cloudClaimMail(url, id, password, characterId, mailId) {
-  return cloudPost(url, {
+function cloudClaimMail(url, characterId, mailId) {
+  return cloudAuthPost(url, {
     action: "claimMail",
-    id,
-    password,
     characterId,
     mailId
   });
 }
-function cloudClaimAllMail(url, id, password, characterId) {
-  return cloudPost(url, {
+function cloudClaimAllMail(url, characterId) {
+  return cloudAuthPost(url, {
     action: "claimAllMail",
-    id,
-    password,
     characterId
   });
 }
-function cloudDeleteMail(url, id, password, characterId, mailId) {
-  return cloudPost(url, {
+function cloudDeleteMail(url, characterId, mailId) {
+  return cloudAuthPost(url, {
     action: "deleteMail",
-    id,
-    password,
     characterId,
     mailId
   });
 }
-function cloudDeleteMails(url, id, password, characterId, mailIds) {
-  return cloudPost(url, {
+function cloudDeleteMails(url, characterId, mailIds) {
+  return cloudAuthPost(url, {
     action: "deleteMails",
-    id,
-    password,
     characterId,
     mailIds
   });
 }
-function cloudDeleteAllClaimedMail(url, id, password, characterId) {
-  return cloudPost(url, {
+function cloudDeleteAllClaimedMail(url, characterId) {
+  return cloudAuthPost(url, {
     action: "deleteAllClaimedMail",
-    id,
-    password,
     characterId
   });
 }
@@ -2828,11 +2938,9 @@ function cloudDeleteAllClaimedMail(url, id, password, characterId) {
 // (never trusts the client), consumes them, and returns the crafted item as a plain
 // descriptor — same shape as a mail item reward — for materializeMailItem() to turn into
 // a real local item. See worker's handleCraftItem for the authoritative logic.
-function cloudCraftItem(url, id, password, characterId, recipeId) {
-  return cloudPost(url, {
+function cloudCraftItem(url, characterId, recipeId) {
+  return cloudAuthPost(url, {
     action: "craftItem",
-    id,
-    password,
     characterId,
     recipeId
   });
@@ -2840,37 +2948,29 @@ function cloudCraftItem(url, id, password, characterId, recipeId) {
 // Phase 5 — PvP Arena. Turn-based: startArenaMatch() opens a session, then
 // submitArenaTurn() is called once per player action (attack or skill) — the worker
 // resolves that whole round (both pets + the bot) and returns the updated state.
-function cloudGetArenaStatus(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetArenaStatus(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getArenaStatus",
-    id,
-    password,
     characterId
   });
 }
-function cloudGetArenaOpponents(url, id, password, characterId) {
-  return cloudGet(url, {
+function cloudGetArenaOpponents(url, characterId) {
+  return cloudAuthGet(url, {
     action: "getArenaOpponents",
-    id,
-    password,
     characterId
   });
 }
-function cloudStartArenaMatch(url, id, password, characterId, opponentCharacterId, paidDiamonds) {
-  return cloudPost(url, {
+function cloudStartArenaMatch(url, characterId, opponentCharacterId, paidDiamonds) {
+  return cloudAuthPost(url, {
     action: "startArenaMatch",
-    id,
-    password,
     characterId,
     opponentCharacterId,
     paidDiamonds: !!paidDiamonds
   });
 }
-function cloudSubmitArenaTurn(url, id, password, characterId, matchId, actionType, skillKey) {
-  return cloudPost(url, {
+function cloudSubmitArenaTurn(url, characterId, matchId, actionType, skillKey) {
+  return cloudAuthPost(url, {
     action: "submitArenaTurn",
-    id,
-    password,
     characterId,
     matchId,
     actionType,
@@ -4932,12 +5032,15 @@ function ThornieDungeons() {
     id: "",
     password: ""
   });
-  const [rememberPassword, setRememberPassword] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [registrationRecovery, setRegistrationRecovery] = useState(null);
+  const [passwordResetRecovery, setPasswordResetRecovery] = useState(null);
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
-  const sessionGenerationRef = useRef(0);
   const persistenceRef = useRef(null);
   if (!persistenceRef.current) {
     persistenceRef.current = createPersistenceManager({
@@ -5056,10 +5159,24 @@ function ThornieDungeons() {
         ...c,
         url: DEFAULT_SERVER_URL,
         id: cfg.id || "",
-        password: cfg.rememberPassword ? cfg.password || "" : ""
+        password: ""
       }));
-      setRememberPassword(!!cfg.rememberPassword && !!cfg.password);
+      setRememberLogin(false);
       setPhase("login");
+
+      const rememberedSession = await AUTH_SESSION.load();
+      if (rememberedSession) {
+        const sessionResult = await cloudValidateSession(DEFAULT_SERVER_URL);
+        if (sessionResult?.ok) {
+          setCred({ url: DEFAULT_SERVER_URL, id: sessionResult.playerId, password: "" });
+          setRememberLogin(!!rememberedSession.rememberLogin);
+          setRecoveryConfigured(!!sessionResult.recoveryConfigured);
+          writeCachedConfig({ url: DEFAULT_SERVER_URL, id: sessionResult.playerId });
+          await beginCharacterSelect(accountFromLoginResponse(sessionResult));
+        } else if (sessionResult?.error === "network_error") {
+          setAuthError("เชื่อมต่อ Server ไม่ได้ — Session เดิมยังไม่ถูกลบ กรุณาลองใหม่");
+        }
+      }
 
       // Prefer the latest server balance config; cache is only a fallback when offline.
       const freshConfig = await cloudGetConfig(DEFAULT_SERVER_URL);
@@ -5108,8 +5225,8 @@ function ThornieDungeons() {
     url: cred.url,
     accountId: cred.id,
     characterId,
-    credential: { kind: "legacy_password", password: cred.password },
-    sessionGeneration: sessionGenerationRef.current
+    credential: { kind: "session_token" },
+    sessionGeneration: AUTH_SESSION.getGeneration()
   }), [cred]);
   // Each of these now targets ONE specific character (by characterId), matching the schema-v2
   // API worker where every character has its own real row — the server itself refuses (403s)
@@ -5119,13 +5236,13 @@ function ThornieDungeons() {
   // that the server enforces isolation directly).
   const pushCharacterProgress = useCallback((characterId, diamonds, progress) => {
     const context = persistenceContextFor(characterId);
-    if (!context || !context.credential.password) return Promise.resolve(false);
+    if (!context || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     return persistenceRef.current.enqueue(context, "character_progress", { diamonds, progress }, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "character_progress", snapshot));
   }, [persistenceContextFor]);
   const pushItems = useCallback((inv, eq, characterId) => {
     const context = persistenceContextFor(characterId);
-    if (!context || !context.credential.password) return Promise.resolve(false);
+    if (!context || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     return persistenceRef.current.enqueue(context, "items", itemsToServerList(inv, eq), (snapshot, owner) =>
       cloudSaveSnapshot(owner, "items", snapshot));
   }, [persistenceContextFor]);
@@ -5156,7 +5273,7 @@ function ThornieDungeons() {
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.
     // runState === null -> explicit request to clear the checkpoint (both local + cloud).
-    if (!cred.url || !cred.id || !cred.password || runState === undefined) return Promise.resolve(false);
+    if (!cred.url || !cred.id || !AUTH_SESSION.getToken() || runState === undefined) return Promise.resolve(false);
     const characterId = save && save.characterId;
     if (!characterId) return Promise.resolve(false);
     const key = `thornie-run-${cred.id}-${characterId}`;
@@ -5168,6 +5285,20 @@ function ThornieDungeons() {
     return persistenceRef.current.enqueue(context, "run_state", runState, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "run_state", snapshot));
   }, [cred, save, persistenceContextFor]);
+  useEffect(() => AUTH_SESSION.onInvalid((reason) => {
+    const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
+    if (context) persistenceRef.current.invalidate(context);
+    persistenceRef.current.setActiveContext(null);
+    setAccount(null);
+    setSave(null);
+    setPlayer(null);
+    setAccountSettingsOpen(false);
+    setCred(current => ({ ...current, password: "" }));
+    setAuthError(reason === "session_replaced"
+      ? "บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น"
+      : reason === "session_expired" ? "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่" : "Session ไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่");
+    setPhase("login");
+  }), [save?.characterId, persistenceContextFor]);
   useEffect(() => {
     if (!save?.characterId) return undefined;
     const retryCurrent = () => {
@@ -5253,18 +5384,8 @@ function ThornieDungeons() {
     }]);
     setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 900);
   }
-  function handleRememberPassword(checked) {
-    setRememberPassword(checked);
-    if (!checked) {
-      // Clear an existing saved password immediately; the current in-memory value remains
-      // available until this page/session is closed or the user edits it.
-      writeCachedConfig({
-        url: cred.url || DEFAULT_SERVER_URL,
-        id: cred.id || "",
-        password: "",
-        rememberPassword: false
-      });
-    }
+  function handleRememberLogin(checked) {
+    setRememberLogin(checked);
   }
   async function beginCharacterSelect(nextAccount) {
     setAccount(nextAccount);
@@ -5284,54 +5405,61 @@ function ThornieDungeons() {
       return;
     }
     setAuthBusy(true);
-    const res = await cloudLogin(cred.url, cred.id, cred.password);
+    const res = await cloudLogin(cred.url, cred.id, cred.password, rememberLogin);
     setAuthBusy(false);
-    if (res.error === "not_found") {
-      setAuthError("ไม่พบ Player ID นี้ — กด \"สร้างบัญชีใหม่\" ก่อนนะคะ");
-      return;
-    }
-    if (res.error === "wrong_password") {
-      setAuthError("รหัสผ่านไม่ถูกต้อง");
+    if (res.error === "invalid_credentials") {
+      setAuthError("Player ID หรือรหัสผ่านไม่ถูกต้อง");
       return;
     }
     if (res.error) {
       setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
       return;
     }
-    writeCachedConfig({
-      url: cred.url,
-      id: cred.id,
-      password: rememberPassword ? cred.password : "",
-      rememberPassword: rememberPassword
-    });
-    sessionGenerationRef.current += 1;
+    await AUTH_SESSION.setSession(res, rememberLogin);
+    setCred(c => ({ ...c, id: res.playerId, password: "" }));
+    setRecoveryConfigured(!!res.recoveryConfigured);
+    writeCachedConfig({ url: cred.url, id: res.playerId });
     await beginCharacterSelect(accountFromLoginResponse(res));
   }
-  async function handleRegister() {
+  async function handleRegister(form) {
     setAuthError("");
-    if (!cred.url || !cred.id || !cred.password) {
+    if (!cred.url || !form?.id || !form?.password || !form?.confirmPassword) {
       setAuthError("กรอกให้ครบทุกช่องนะคะ");
-      return;
+      return { ok: false, error: "missing_fields" };
     }
     setAuthBusy(true);
-    const res = await cloudRegister(cred.url, cred.id, cred.password);
+    const res = await cloudRegister(cred.url, form.id, form.password, form.confirmPassword, rememberLogin);
     setAuthBusy(false);
-    if (res.error === "id_taken") {
-      setAuthError("Player ID นี้มีคนใช้แล้ว ลองชื่ออื่น หรือกด \"เข้าสู่ระบบ\" ถ้าเป็นของคุณเอง");
-      return;
+    if (res.error === "id_unavailable") {
+      setAuthError("Player ID นี้ไม่สามารถใช้งานได้");
+      return { ok: false, error: res.error };
     }
     if (res.error) {
       setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
-      return;
+      return { ok: false, error: res.error };
     }
-    writeCachedConfig({
-      url: cred.url,
-      id: cred.id,
-      password: rememberPassword ? cred.password : "",
-      rememberPassword: rememberPassword
-    });
-    sessionGenerationRef.current += 1;
-    await beginCharacterSelect(defaultSave());
+    await AUTH_SESSION.setSession(res, rememberLogin);
+    setCred(c => ({ ...c, id: res.playerId, password: "" }));
+    setRecoveryConfigured(true);
+    writeCachedConfig({ url: cred.url, id: res.playerId });
+    setRegistrationRecovery({ code: res.recoveryCode, account: defaultSave() });
+    return { ok: true };
+  }
+  async function finishRegistrationRecovery() {
+    const pending = registrationRecovery;
+    setRegistrationRecovery(null);
+    if (pending) await beginCharacterSelect(pending.account);
+  }
+  async function handleForgotPassword(form) {
+    setAuthBusy(true);
+    const res = await cloudForgotPassword(cred.url || DEFAULT_SERVER_URL, form.id, form.recoveryCode, form.newPassword, form.confirmPassword);
+    setAuthBusy(false);
+    if (!res?.ok) return { ok: false, error: res?.error || "network_error" };
+    await AUTH_SESSION.clear("password_reset", false);
+    setCred(c => ({ ...c, id: form.id, password: "" }));
+    setPasswordResetRecovery(res.recoveryCode);
+    writeCachedConfig({ url: cred.url || DEFAULT_SERVER_URL, id: form.id });
+    return { ok: true, recoveryCode: res.recoveryCode };
   }
   async function handleCreateCharacter(slotIndex, name) {
     if (!account) return {
@@ -5348,7 +5476,7 @@ function ThornieDungeons() {
         message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
       };
     }
-    const res = await cloudCreateCharacter(cred.url, cred.id, cred.password, slotIndex, name);
+    const res = await cloudCreateCharacter(cred.url, slotIndex, name);
     if (res.error === "name_taken") return {
       ok: false,
       message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
@@ -5376,7 +5504,7 @@ function ThornieDungeons() {
     };
   }
   async function handleDeleteCharacter(slotIndex) {
-    const res = await cloudDeleteCharacter(cred.url, cred.id, cred.password, slotIndex);
+    const res = await cloudDeleteCharacter(cred.url, slotIndex);
     if (res.error) {
       console.error("[ThornieDungeons] deleteCharacter failed:", res.error);
       return;
@@ -5394,7 +5522,7 @@ function ThornieDungeons() {
   }
   async function enterCharacterSlot(slotIndex) {
     if (!account || !account.characters[slotIndex]) return;
-    const res = await cloudEnterCharacter(cred.url, cred.id, cred.password, slotIndex);
+    const res = await cloudEnterCharacter(cred.url, slotIndex);
     if (res.error) {
       console.error("[ThornieDungeons] enterCharacter failed:", res.error);
       return;
@@ -5428,13 +5556,13 @@ function ThornieDungeons() {
     setEquipped(eq);
     setInventory(finalInv);
     loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
-    cloudGetDailyLogin(cred.url, cred.id, cred.password, characterSlot.id).then(async dlRes => {
+    cloudGetDailyLogin(cred.url, characterSlot.id).then(async dlRes => {
       if (!dlRes || !dlRes.ok) return;
       setDailyLogin({ state: dlRes.state, canClaim: dlRes.canClaim, preview: dlRes.preview });
       if (!dlRes.canClaim) return;
       // Auto-claim right away instead of waiting for the player to open a menu and press a
       // button — the popup below is what actually tells them they got it.
-      const claim = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, characterSlot.id);
+      const claim = await cloudClaimDailyLogin(cred.url, characterSlot.id);
       if (!claim || claim.error) return;
       setDailyLogin({ state: claim.state, canClaim: false, preview: dlRes.preview });
       setSave(s => s ? { ...s, gold: s.gold + (claim.reward.gold || 0), diamonds: s.diamonds + (claim.reward.diamonds || 0) } : s);
@@ -5505,12 +5633,17 @@ function ThornieDungeons() {
       window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ จึงยังไม่ออกจากระบบ กรุณาลองใหม่อีกครั้ง");
       return false;
     }
+    const logoutResult = await cloudLogout(cred.url || DEFAULT_SERVER_URL);
+    if (logoutResult?.error === "network_error" || logoutResult?.error === "server_error") {
+      window.alert("ยังเชื่อมต่อ Server เพื่อออกจากระบบไม่ได้ Session ยังไม่ถูกลบ กรุณาลองใหม่");
+      return false;
+    }
     if (context) persistenceRef.current.invalidate(context);
     persistenceRef.current.setActiveContext(null);
-    sessionGenerationRef.current += 1;
+    await AUTH_SESSION.clear("logout", false);
     setCred(c => ({
       ...c,
-      password: rememberPassword ? c.password : ""
+      password: ""
     }));
     setAccount(null);
     setSave(null);
@@ -5521,6 +5654,19 @@ function ThornieDungeons() {
     setAuthError("");
     setPhase("login");
     return true;
+  }
+  async function requireLoginAfterSecurityChange(message) {
+    const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
+    if (context) persistenceRef.current.invalidate(context);
+    persistenceRef.current.setActiveContext(null);
+    await AUTH_SESSION.clear("security_change", false);
+    setAccountSettingsOpen(false);
+    setAccount(null);
+    setSave(null);
+    setPlayer(null);
+    setCred(current => ({ ...current, password: "" }));
+    setAuthError(message || "กรุณาเข้าสู่ระบบใหม่");
+    setPhase("login");
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
     const allowResume = options.allowResume !== false;
@@ -5622,7 +5768,7 @@ function ThornieDungeons() {
     if (snapshot) pushRunState(snapshot);
   }
   useEffect(() => {
-    if (!player || !cred.url || !cred.id || !cred.password || !save || combatOutcomeRef.current) return;
+    if (!player || !cred.url || !cred.id || !AUTH_SESSION.getToken() || !save || combatOutcomeRef.current) return;
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     runStateSaveTimer.current = setTimeout(() => {
       if (!combatOutcomeRef.current) saveCombatRunState(selectedFloor, player);
@@ -5630,7 +5776,7 @@ function ThornieDungeons() {
     return () => {
       if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     };
-  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, cred.password, save, pushRunState]);
+  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, save, pushRunState]);
 
   function endCombatWin() {
     if (combatOutcomeRef.current) return;
@@ -6781,7 +6927,7 @@ function ThornieDungeons() {
   }
   async function claimDailyLogin() {
     if (!dailyLogin.canClaim) return { ok: false, alreadyClaimed: true };
-    const res = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, save.characterId);
+    const res = await cloudClaimDailyLogin(cred.url, save.characterId);
     if (!res || res.error) return { ok: false, error: res && res.error };
     setDailyLogin({ state: res.state, canClaim: false, preview: dailyLogin.preview });
     // The worker never touches characters.gold/players.diamonds directly for this reward —
@@ -6830,10 +6976,15 @@ function ThornieDungeons() {
       error: authError,
       busy: authBusy || loginTransitioning,
       departing: loginTransitioning,
-      rememberPassword: rememberPassword,
-      onRememberPassword: handleRememberPassword,
+      rememberLogin: rememberLogin,
+      onRememberLogin: handleRememberLogin,
       onLogin: handleLogin,
-      onRegister: handleRegister
+      onRegister: handleRegister,
+      onForgotPassword: handleForgotPassword,
+      registrationRecovery: registrationRecovery,
+      onFinishRegistration: finishRegistrationRecovery,
+      passwordResetRecovery: passwordResetRecovery,
+      onClearPasswordResetRecovery: () => setPasswordResetRecovery(null)
     }));
   }
   if (phase === "characterSelect") {
@@ -6914,6 +7065,7 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onSwitchCharacter: backToCharacterSelect,
+    onAccountSettings: () => setAccountSettingsOpen(true),
     onLogout: logout,
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
@@ -6956,6 +7108,7 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onSwitchCharacter: backToCharacterSelect,
+    onAccountSettings: () => setAccountSettingsOpen(true),
     onLogout: logout,
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
@@ -7025,21 +7178,18 @@ function ThornieDungeons() {
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "raid" && /*#__PURE__*/React.createElement(RaidScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     onApplyReward: applyMailReward,
     onBack: () => setPhase(utilityReturnPhase)
@@ -7085,6 +7235,14 @@ function ThornieDungeons() {
     floor: selectedFloor,
     onRetry: retryStage,
     onMap: backToMap
+  }), accountSettingsOpen && /*#__PURE__*/React.createElement(AccountSettingsOverlay, {
+    serverUrl: cred.url,
+    playerId: cred.id,
+    recoveryConfigured: recoveryConfigured,
+    onRecoveryConfigured: setRecoveryConfigured,
+    onRequireLogin: requireLoginAfterSecurityChange,
+    onLogout: logout,
+    onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
     inventory: inventory,
@@ -7115,7 +7273,6 @@ function ThornieDungeons() {
     onClose: () => setBlacksmithOpen(false)
   }), craftingOpen && /*#__PURE__*/React.createElement(CraftingOverlay, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     inventory: inventory,
     gold: save.gold,
@@ -7238,78 +7395,102 @@ function StatusBar({
     className: "md-chip-icon"
   }, "🛡️"), formatNumber(save.protectionStones || 0))));
 }
-function LoginScreen({
-  cred,
-  setCred,
-  error,
-  busy,
-  departing,
-  rememberPassword,
-  onRememberPassword,
-  onLogin,
-  onRegister
-}) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: `md-login-wrap${departing ? " is-departing" : ""}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-menu-title md-login-brand"
-  }, /*#__PURE__*/React.createElement("img", {
-    className: "md-login-emblem",
-    src: "icons/icon-512.png",
-    alt: "ThornieDungeons"
-  }), /*#__PURE__*/React.createElement("h1", null, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "เข้าสู่ดันเจี้ยนของคุณ")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card md-login-card"
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-field-label"
-  }, "Player ID"), /*#__PURE__*/React.createElement("input", {
-    className: "md-field",
-    placeholder: "e.g. kimmie",
-    autoComplete: "username",
-    value: cred.id,
-    onChange: e => setCred(c => ({
-      ...c,
-      id: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "md-field-label"
-  }, "Password"), /*#__PURE__*/React.createElement("input", {
-    className: "md-field",
-    type: "password",
-    placeholder: "••••••",
-    autoComplete: "current-password",
-    value: cred.password,
-    onChange: e => setCred(c => ({
-      ...c,
-      password: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("label", {
-    className: "md-remember-password"
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "checkbox",
-    checked: rememberPassword,
-    disabled: busy,
-    onChange: e => onRememberPassword(e.target.checked)
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "md-remember-check",
-    "aria-hidden": "true"
-  }), /*#__PURE__*/React.createElement("span", null, "จำรหัสผ่านบนอุปกรณ์นี้")), error && /*#__PURE__*/React.createElement("p", {
-    className: "md-auth-error"
-  }, error), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row",
-    style: {
-      marginTop: 12
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary",
-    disabled: busy,
-    onClick: onLogin
-  }, busy ? "..." : "เข้าสู่ระบบ"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info",
-    disabled: busy,
-    onClick: onRegister
-  }, busy ? "..." : "สร้างบัญชีใหม่")), /*#__PURE__*/React.createElement("p", {
-    className: "md-hint"
-  }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")));
+function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onRememberLogin, onLogin, onRegister, onForgotPassword, registrationRecovery, onFinishRegistration, passwordResetRecovery, onClearPasswordResetRecovery }) {
+  const e = React.createElement;
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ id: "", password: "", confirmPassword: "" });
+  const [forgotForm, setForgotForm] = useState({ id: cred.id || "", recoveryCode: "", newPassword: "", confirmPassword: "" });
+  const [modalError, setModalError] = useState("");
+  const copyCode = code => navigator.clipboard?.writeText(code).catch(() => {});
+  const field = (label, type, value, update, autoComplete) => e(React.Fragment, null,
+    e("p", { className: "md-field-label" }, label),
+    e("input", { className: "md-field", type: type || "text", value, autoComplete, onChange: event => update(event.target.value) })
+  );
+  const recoveryPanel = (code, done) => e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" },
+    e("h2", { className: "md-title" }, "บันทึก Recovery Code"),
+    e("p", { className: "md-sub" }, "โค้ดนี้จะแสดงเพียงครั้งเดียว โปรดเก็บไว้ในที่ปลอดภัย"),
+    e("code", { className: "md-recovery-code" }, code),
+    e("button", { className: "md-btn info wide", onClick: () => copyCode(code) }, "คัดลอก"),
+    e("button", { className: "md-btn primary wide", onClick: done }, "เก็บโค้ดแล้ว")
+  ));
+  const submitRegister = async () => {
+    setModalError("");
+    if (!/^[A-Za-z0-9_]{4,20}$/.test(registerForm.id)) return setModalError("Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น");
+    if (registerForm.password.length < 4 || registerForm.password.length > 32) return setModalError("Password ต้องยาว 4–32 ตัว");
+    if (registerForm.password !== registerForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
+    const result = await onRegister(registerForm);
+    if (!result?.ok) setModalError(result?.error === "id_unavailable" ? "Player ID นี้ไม่สามารถใช้งานได้" : "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่");
+  };
+  const submitForgot = async () => {
+    setModalError("");
+    if (forgotForm.newPassword.length < 4 || forgotForm.newPassword.length > 32) return setModalError("Password ใหม่ต้องยาว 4–32 ตัว");
+    if (forgotForm.newPassword !== forgotForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
+    const result = await onForgotPassword(forgotForm);
+    if (!result.ok) setModalError(result.error === "invalid_recovery" ? "Player ID หรือ Recovery Code ไม่ถูกต้อง" : "ดำเนินการไม่สำเร็จ กรุณาลองใหม่");
+  };
+  return e("div", { className: `md-login-wrap${departing ? " is-departing" : ""}` },
+    e("div", { className: "md-menu-title md-login-brand" }, e("img", { className: "md-login-emblem", src: "icons/icon-512.png", alt: "ThornieDungeons" }), e("h1", null, "ThornieDungeons"), e("p", null, "เข้าสู่ดันเจี้ยนของคุณ")),
+    e("div", { className: "md-card md-login-card" },
+      field("Player ID", "text", cred.id, id => setCred(current => ({ ...current, id })), "username"),
+      field("Password", "password", cred.password, password => setCred(current => ({ ...current, password })), "current-password"),
+      e("label", { className: "md-remember-password" }, e("input", { type: "checkbox", checked: rememberLogin, disabled: busy, onChange: event => onRememberLogin(event.target.checked) }), e("span", { className: "md-remember-check", "aria-hidden": "true" }), e("span", null, "จดจำการเข้าสู่ระบบ")),
+      error && e("p", { className: "md-auth-error" }, error),
+      e("div", { className: "md-btn-row", style: { marginTop: 12 } }, e("button", { className: "md-btn primary", disabled: busy, onClick: onLogin }, busy ? "..." : "เข้าสู่ระบบ"), e("button", { className: "md-btn info", disabled: busy, onClick: () => { setModalError(""); setRegisterForm({ id: cred.id || "", password: "", confirmPassword: "" }); setRegisterOpen(true); } }, "สร้างบัญชีใหม่")),
+      e("button", { type: "button", className: "md-auth-link", onClick: () => { setModalError(""); setForgotForm(form => ({ ...form, id: cred.id || form.id })); setForgotOpen(true); } }, "ลืมรหัสผ่าน?"),
+      e("p", { className: "md-hint" }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")
+    ),
+    registerOpen && !registrationRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "สร้างบัญชีใหม่"), field("Player ID", "text", registerForm.id, id => setRegisterForm(form => ({ ...form, id })), "username"), field("Password", "password", registerForm.password, password => setRegisterForm(form => ({ ...form, password })), "new-password"), field("Confirm Password", "password", registerForm.confirmPassword, confirmPassword => setRegisterForm(form => ({ ...form, confirmPassword })), "new-password"), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setRegisterOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitRegister }, busy ? "..." : "สร้างบัญชี")))),
+    registrationRecovery && recoveryPanel(registrationRecovery.code, onFinishRegistration),
+    forgotOpen && !passwordResetRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "ลืมรหัสผ่าน"), field("Player ID", "text", forgotForm.id, id => setForgotForm(form => ({ ...form, id })), "username"), field("Recovery Code", "text", forgotForm.recoveryCode, recoveryCode => setForgotForm(form => ({ ...form, recoveryCode })), "one-time-code"), field("New Password", "password", forgotForm.newPassword, newPassword => setForgotForm(form => ({ ...form, newPassword })), "new-password"), field("Confirm Password", "password", forgotForm.confirmPassword, confirmPassword => setForgotForm(form => ({ ...form, confirmPassword })), "new-password"), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setForgotOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitForgot }, busy ? "..." : "รีเซ็ตรหัสผ่าน")))),
+    passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
+  );
+}
+function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onLogout, onClose }) {
+  const e = React.createElement;
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
+  const generateRecovery = async () => {
+    if (!recoveryPassword) return setMessage("กรุณากรอกรหัสผ่านปัจจุบัน");
+    setBusy(true); setMessage("");
+    const result = await cloudCreateRecoveryCode(serverUrl || DEFAULT_SERVER_URL, recoveryPassword);
+    setBusy(false);
+    if (!result?.ok) return setMessage(result?.error === "invalid_credentials" ? "รหัสผ่านปัจจุบันไม่ถูกต้อง" : "สร้าง Recovery Code ไม่สำเร็จ");
+    setRecoveryCode(result.recoveryCode);
+    setRecoveryPassword("");
+    onRecoveryConfigured(true);
+  };
+  const changePassword = async () => {
+    if (newPassword.length < 4 || newPassword.length > 32) return setMessage("Password ใหม่ต้องยาว 4–32 ตัว");
+    if (newPassword !== confirmPassword) return setMessage("Confirm Password ไม่ตรงกัน");
+    setBusy(true); setMessage("");
+    const result = await cloudChangePassword(serverUrl || DEFAULT_SERVER_URL, changeCurrentPassword, newPassword, confirmPassword);
+    setBusy(false);
+    if (!result?.ok) return setMessage(result?.error === "invalid_credentials" ? "รหัสผ่านปัจจุบันไม่ถูกต้อง" : "เปลี่ยน Password ไม่สำเร็จ");
+    onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
+  };
+  return e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
+    e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings > Account"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
+    recoveryCode ? e(React.Fragment, null, e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"), e("code", { className: "md-recovery-code" }, recoveryCode), e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")) : e(React.Fragment, null,
+      e("p", { className: "md-title", style: { marginTop: 12 } }, "Recovery Code"),
+      e("p", { className: "md-sub" }, recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code"),
+      e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: recoveryPassword, onChange: event => setRecoveryPassword(event.target.value), autoComplete: "current-password" }),
+      e("button", { className: "md-btn info wide", disabled: busy, onClick: generateRecovery }, recoveryConfigured ? "สร้าง Recovery Code ใหม่" : "สร้าง Recovery Code")
+    ),
+    e("p", { className: "md-title", style: { marginTop: 16 } }, "เปลี่ยน Password"),
+    e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: changeCurrentPassword, onChange: event => setChangeCurrentPassword(event.target.value), autoComplete: "current-password" }),
+    e("input", { className: "md-field", type: "password", placeholder: "Password ใหม่", value: newPassword, onChange: event => setNewPassword(event.target.value), autoComplete: "new-password" }),
+    e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), autoComplete: "new-password" }),
+    e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password"),
+    message && e("p", { className: "md-auth-error" }, message),
+    e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
+  ));
 }
 function GameDock({
   onCharacter,
@@ -7411,6 +7592,7 @@ function HubScreen({
   onMailbox,
   onSave,
   onSwitchCharacter,
+  onAccountSettings,
   onLogout,
   dailyLogin,
   dailyLoginClaimResult,
@@ -7492,7 +7674,7 @@ function HubScreen({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "/assets/ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onArena }, "🥊", /*#__PURE__*/React.createElement("span", null, "อารีน่า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "/assets/ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onArena }, "🥊", /*#__PURE__*/React.createElement("span", null, "อารีน่า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onAccountSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "บัญชี")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
     onCharacter: onCharacter,
     onOpenInv: onOpenInv,
     onPets: onPets,
@@ -7525,6 +7707,7 @@ function TownScreen({
   onSummoning,
   onSave,
   onSwitchCharacter,
+  onAccountSettings,
   onLogout,
   dailyLogin,
   dailyLoginClaimResult,
@@ -7618,6 +7801,7 @@ function TownScreen({
           e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
           e("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", e("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")),
           e("button", { type: "button", onClick: onSwitchCharacter }, "👥", e("span", null, "เปลี่ยนตัว")),
+          e("button", { type: "button", onClick: onAccountSettings }, "⚙️", e("span", null, "บัญชี")),
           e("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", e("span", null, "ออกจากระบบ"))
         )
       ),
@@ -8266,7 +8450,6 @@ function LeaderboardScreen({
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
 function RaidScreen({
   serverUrl,
-  cred,
   characterId,
   diamonds,
   onSpendDiamonds,
@@ -8284,12 +8467,12 @@ function RaidScreen({
 
   const load = React.useCallback(() => {
     setError(null);
-    cloudGetRaidStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetRaidStatus(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) { setError("โหลดข้อมูล Raid ไม่สำเร็จ"); return; }
       setStatus(res);
       setSecondsLeft((res.me && res.me.staminaRegenSeconds) || 0);
     }).catch(() => setError("โหลดข้อมูล Raid ไม่สำเร็จ"));
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   React.useEffect(() => { load(); }, [load]);
   // Use a one-second local timer only while regeneration is active. The previous interval
   // called load() every second whenever the value was already 0 (including at full stamina),
@@ -8309,14 +8492,14 @@ function RaidScreen({
   // run off the countdown-timer's periodic load() — contribution only changes from this
   // character's own attacks, so checking there too would just be wasted API calls.
   const checkMilestones = React.useCallback(() => {
-    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error || !res.claimed || !res.claimed.length) return;
       const pcts = res.claimed.map(k => k.replace("p", "") + "%").join(", ");
       setToast(`🎁 ถึงเกณฑ์ดาเมจสะสม ${pcts} — รางวัลส่งเข้ากล่องจดหมายแล้ว!`);
       setTimeout(() => setToast(null), 3500);
       load();
     });
-  }, [serverUrl, cred.id, cred.password, characterId, load]);
+  }, [serverUrl, characterId, load]);
   React.useEffect(() => { checkMilestones(); }, [checkMilestones]);
 
   const handleHurtComplete = React.useCallback(() => {
@@ -8337,7 +8520,7 @@ function RaidScreen({
     if (attacking || hurtPlaying) return;
     setAttacking(true);
     setLastResult(null);
-    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, useDiamonds).then(res => {
+    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, useDiamonds).then(res => {
       if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
       if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent || status.me.diamondRefillCost || 50);
       setLastResult(res);
@@ -8500,7 +8683,6 @@ function ArenaHpBar({ label, hp, maxHp, mp, maxMp, pet }) {
 
 function ArenaScreen({
   serverUrl,
-  cred,
   characterId,
   diamonds,
   onSpendDiamonds,
@@ -8552,25 +8734,25 @@ function ArenaScreen({
 
   const load = React.useCallback(() => {
     setError(null);
-    cloudGetArenaStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetArenaStatus(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) { setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"); return; }
       setStatus(res);
       setSecondsLeft(res.ticketsRegenSeconds || 0);
       if (res.activeMatchId && !match) {
-        cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, null, false).then(m => {
+        cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, characterId, null, false).then(m => {
           if (m && !m.error) setMatch({ matchId: m.matchId, you: m.you, opponent: m.opponent, opponentName: m.opponentName, skills: m.skills, turn: m.turn, log: [], result: null });
         });
       }
     }).catch(() => setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   const loadOpponents = React.useCallback(() => {
     setRefreshingOpp(true);
-    cloudGetArenaOpponents(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetArenaOpponents(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) return;
       setOpponents(res.opponents || []);
     }).finally(() => setRefreshingOpp(false));
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   React.useEffect(() => { load(); loadOpponents(); }, [load, loadOpponents]);
   React.useEffect(() => {
     if (match || secondsLeft <= 0) return undefined;
@@ -8595,7 +8777,7 @@ function ArenaScreen({
   const startFight = (opponentCharacterId, useDiamonds) => {
     if (startingId) return;
     setStartingId(opponentCharacterId);
-    cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, opponentCharacterId, useDiamonds).then(res => {
+    cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, characterId, opponentCharacterId, useDiamonds).then(res => {
       if (!res || res.error) { setError(errMsgMap[res && res.error] || "เริ่มการต่อสู้ไม่สำเร็จ"); return; }
       if (res.diamondsSpent && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent);
       setMatch({ matchId: res.matchId, you: res.you, opponent: res.opponent, opponentName: res.opponentName, skills: res.skills, turn: res.turn, log: [], result: null });
@@ -8606,7 +8788,7 @@ function ArenaScreen({
   const submitTurn = (actionType, skillKey) => {
     if (submitting || !match || match.result) return;
     setSubmitting(true);
-    cloudSubmitArenaTurn(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, match.matchId, actionType, skillKey).then(res => {
+    cloudSubmitArenaTurn(serverUrl || DEFAULT_SERVER_URL, characterId, match.matchId, actionType, skillKey).then(res => {
       if (!res || res.error) { setError(errMsgMap[res && res.error] || "ทำเทิร์นไม่สำเร็จ"); return; }
       setMatch(m => m && Object.assign({}, m, {
         you: res.you, opponent: res.opponent, turn: res.turn,
@@ -8786,7 +8968,6 @@ function formatMailDate(iso) {
 }
 function MailboxScreen({
   serverUrl,
-  cred,
   characterId,
   onApplyReward,
   onBack
@@ -8796,7 +8977,7 @@ function MailboxScreen({
   const [selected, setSelected] = useState({});
 
   const load = () => {
-    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) { setMails([]); return; }
       setMails(res.mails || []);
       // Drop selections for mail that no longer exists (e.g. after a delete).
@@ -8813,7 +8994,7 @@ function MailboxScreen({
   const handleClaim = (mailId) => {
     if (busy) return;
     setBusy(true);
-    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(res => {
+    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
       setBusy(false);
       if (!res || res.error) return;
       onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
@@ -8824,7 +9005,7 @@ function MailboxScreen({
   const handleClaimAll = () => {
     if (busy) return;
     setBusy(true);
-    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       setBusy(false);
       if (!res || res.error) return;
       if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
@@ -8837,7 +9018,7 @@ function MailboxScreen({
   const handleDeleteOne = (mailId) => {
     if (busy) return;
     setBusy(true);
-    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(() => {
+    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(() => {
       setBusy(false);
       load();
     });
@@ -8847,7 +9028,7 @@ function MailboxScreen({
     const ids = Object.keys(selected).filter(id => selected[id]);
     if (!ids.length || busy) return;
     setBusy(true);
-    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, ids).then(() => {
+    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids).then(() => {
       setBusy(false);
       setSelected({});
       load();
@@ -8857,7 +9038,7 @@ function MailboxScreen({
   const handleDeleteAllClaimed = () => {
     if (busy) return;
     setBusy(true);
-    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(() => {
+    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(() => {
       setBusy(false);
       setSelected({});
       load();
@@ -10612,7 +10793,6 @@ function BlacksmithOverlay({
 // component only ever applies what the server confirms actually happened.
 function CraftingOverlay({
   serverUrl,
-  cred,
   characterId,
   inventory,
   gold,
@@ -10628,7 +10808,7 @@ function CraftingOverlay({
     if (craftingId || busy) return;
     setCraftingId(recipe.recipeId);
     setMsg("");
-    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, recipe.recipeId)
+    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, characterId, recipe.recipeId)
       .then(res => {
         if (!res || res.error) {
           const errMsg = res && res.error === "insufficient_gold" ? /*#__PURE__*/React.createElement(React.Fragment, null, "ทองไม่พอ (ต้องการ ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), res.need, ")")

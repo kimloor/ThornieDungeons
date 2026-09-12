@@ -15,7 +15,7 @@ const context = (accountId = "account-a", characterId = "char-a", generation = 1
     url: "https://example.test/api",
     accountId,
     characterId,
-    credential: { kind: "legacy_password", password: "secret" },
+    credential: { kind: "session_token" },
     sessionGeneration: generation
   });
 
@@ -94,7 +94,7 @@ test("character and session generations own independent queues", async () => {
   const charB = context("account-a", "char-b", 4);
   const nextSessionA = context("account-a", "char-a", 5);
   const write = async (snapshot, owner) => {
-    writes.push([owner.characterId, owner.sessionGeneration, owner.credential.password, snapshot.value]);
+    writes.push([owner.characterId, owner.sessionGeneration, snapshot.value]);
     return { ok: true };
   };
   await Promise.all([
@@ -102,12 +102,12 @@ test("character and session generations own independent queues", async () => {
     manager.enqueue(charB, "items", { value: "b" }, write),
     manager.enqueue(nextSessionA, "items", { value: "new-session" }, write)
   ]);
-  assert.deepEqual(new Set(writes.map(row => `${row[0]}:${row[1]}:${row[3]}`)), new Set([
+  assert.deepEqual(new Set(writes.map(row => `${row[0]}:${row[1]}:${row[2]}`)), new Set([
     "char-a:4:a", "char-b:4:b", "char-a:5:new-session"
   ]));
   manager.invalidate(charA);
   assert.equal(await manager.enqueue(charA, "items", { value: "stale" }, write), false);
-  assert.equal(writes.some(row => row[3] === "stale"), false);
+  assert.equal(writes.some(row => row[2] === "stale"), false);
 });
 
 test("generic POST does not replay a non-idempotent transaction", async () => {
@@ -128,32 +128,38 @@ test("generic POST does not replay a non-idempotent transaction", async () => {
   assert.equal(fetchCount, 1);
 });
 
-test("central snapshot API supplies legacy auth now and can accept session auth later", async () => {
+test("central snapshot API uses bearer token and never sends password/player id", async () => {
   const apiSource = fs.readFileSync(path.join(__dirname, "../src/state/api.js"), "utf8");
   const bodies = [];
+  const headers = [];
   const sandbox = {
     URLSearchParams,
     setTimeout: callback => callback(),
+    AUTH_SESSION: {
+      getToken: () => "token-1",
+      getGeneration: () => 2,
+      handleApiResult: result => result
+    },
     fetch: async (_url, options) => {
       bodies.push(JSON.parse(options.body));
+      headers.push(options.headers);
       return { status: 200, json: async () => ({ ok: true }) };
     }
   };
   vm.createContext(sandbox);
   vm.runInContext(apiSource, sandbox);
-  await sandbox.cloudSaveSnapshot(context(), "items", [{ itemId: "item-1" }]);
   const tokenContext = makePersistenceContext({
     url: "https://example.test/api",
     accountId: "account-a",
     characterId: "char-a",
-    credential: { kind: "session_token", sessionToken: "token-1" },
+    credential: { kind: "session_token" },
     sessionGeneration: 2
   });
   await sandbox.cloudSaveSnapshot(tokenContext, "run_state", { floor: 4, hp: 20 });
-  assert.equal(bodies[0].id, "account-a");
-  assert.equal(bodies[0].password, "secret");
-  assert.equal(bodies[1].sessionToken, "token-1");
-  assert.equal("password" in bodies[1], false);
+  assert.equal(headers[0].Authorization, "Bearer token-1");
+  assert.equal("password" in bodies[0], false);
+  assert.equal("id" in bodies[0], false);
+  assert.equal("sessionToken" in bodies[0], false);
 });
 
 test("existing character, skill, inventory and equipment shapes remain compatible", () => {

@@ -16,6 +16,7 @@ const MODULE_ORDER = [
   "assets/manifest.js",
   "state/localCache.js",
   "state/configCache.js",
+  "state/auth.js",
   "state/api.js",
   "state/persistence.js",
   "data/gameConfig.js",

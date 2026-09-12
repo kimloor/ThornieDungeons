@@ -25,12 +25,15 @@ function ThornieDungeons() {
     id: "",
     password: ""
   });
-  const [rememberPassword, setRememberPassword] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [registrationRecovery, setRegistrationRecovery] = useState(null);
+  const [passwordResetRecovery, setPasswordResetRecovery] = useState(null);
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
-  const sessionGenerationRef = useRef(0);
   const persistenceRef = useRef(null);
   if (!persistenceRef.current) {
     persistenceRef.current = createPersistenceManager({
@@ -149,10 +152,24 @@ function ThornieDungeons() {
         ...c,
         url: DEFAULT_SERVER_URL,
         id: cfg.id || "",
-        password: cfg.rememberPassword ? cfg.password || "" : ""
+        password: ""
       }));
-      setRememberPassword(!!cfg.rememberPassword && !!cfg.password);
+      setRememberLogin(false);
       setPhase("login");
+
+      const rememberedSession = await AUTH_SESSION.load();
+      if (rememberedSession) {
+        const sessionResult = await cloudValidateSession(DEFAULT_SERVER_URL);
+        if (sessionResult?.ok) {
+          setCred({ url: DEFAULT_SERVER_URL, id: sessionResult.playerId, password: "" });
+          setRememberLogin(!!rememberedSession.rememberLogin);
+          setRecoveryConfigured(!!sessionResult.recoveryConfigured);
+          writeCachedConfig({ url: DEFAULT_SERVER_URL, id: sessionResult.playerId });
+          await beginCharacterSelect(accountFromLoginResponse(sessionResult));
+        } else if (sessionResult?.error === "network_error") {
+          setAuthError("เชื่อมต่อ Server ไม่ได้ — Session เดิมยังไม่ถูกลบ กรุณาลองใหม่");
+        }
+      }
 
       // Prefer the latest server balance config; cache is only a fallback when offline.
       const freshConfig = await cloudGetConfig(DEFAULT_SERVER_URL);
@@ -201,8 +218,8 @@ function ThornieDungeons() {
     url: cred.url,
     accountId: cred.id,
     characterId,
-    credential: { kind: "legacy_password", password: cred.password },
-    sessionGeneration: sessionGenerationRef.current
+    credential: { kind: "session_token" },
+    sessionGeneration: AUTH_SESSION.getGeneration()
   }), [cred]);
   // Each of these now targets ONE specific character (by characterId), matching the schema-v2
   // API worker where every character has its own real row — the server itself refuses (403s)
@@ -212,13 +229,13 @@ function ThornieDungeons() {
   // that the server enforces isolation directly).
   const pushCharacterProgress = useCallback((characterId, diamonds, progress) => {
     const context = persistenceContextFor(characterId);
-    if (!context || !context.credential.password) return Promise.resolve(false);
+    if (!context || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     return persistenceRef.current.enqueue(context, "character_progress", { diamonds, progress }, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "character_progress", snapshot));
   }, [persistenceContextFor]);
   const pushItems = useCallback((inv, eq, characterId) => {
     const context = persistenceContextFor(characterId);
-    if (!context || !context.credential.password) return Promise.resolve(false);
+    if (!context || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     return persistenceRef.current.enqueue(context, "items", itemsToServerList(inv, eq), (snapshot, owner) =>
       cloudSaveSnapshot(owner, "items", snapshot));
   }, [persistenceContextFor]);
@@ -249,7 +266,7 @@ function ThornieDungeons() {
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.
     // runState === null -> explicit request to clear the checkpoint (both local + cloud).
-    if (!cred.url || !cred.id || !cred.password || runState === undefined) return Promise.resolve(false);
+    if (!cred.url || !cred.id || !AUTH_SESSION.getToken() || runState === undefined) return Promise.resolve(false);
     const characterId = save && save.characterId;
     if (!characterId) return Promise.resolve(false);
     const key = `thornie-run-${cred.id}-${characterId}`;
@@ -261,6 +278,20 @@ function ThornieDungeons() {
     return persistenceRef.current.enqueue(context, "run_state", runState, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "run_state", snapshot));
   }, [cred, save, persistenceContextFor]);
+  useEffect(() => AUTH_SESSION.onInvalid((reason) => {
+    const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
+    if (context) persistenceRef.current.invalidate(context);
+    persistenceRef.current.setActiveContext(null);
+    setAccount(null);
+    setSave(null);
+    setPlayer(null);
+    setAccountSettingsOpen(false);
+    setCred(current => ({ ...current, password: "" }));
+    setAuthError(reason === "session_replaced"
+      ? "บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น"
+      : reason === "session_expired" ? "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่" : "Session ไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่");
+    setPhase("login");
+  }), [save?.characterId, persistenceContextFor]);
   useEffect(() => {
     if (!save?.characterId) return undefined;
     const retryCurrent = () => {
@@ -346,18 +377,8 @@ function ThornieDungeons() {
     }]);
     setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 900);
   }
-  function handleRememberPassword(checked) {
-    setRememberPassword(checked);
-    if (!checked) {
-      // Clear an existing saved password immediately; the current in-memory value remains
-      // available until this page/session is closed or the user edits it.
-      writeCachedConfig({
-        url: cred.url || DEFAULT_SERVER_URL,
-        id: cred.id || "",
-        password: "",
-        rememberPassword: false
-      });
-    }
+  function handleRememberLogin(checked) {
+    setRememberLogin(checked);
   }
   async function beginCharacterSelect(nextAccount) {
     setAccount(nextAccount);
@@ -377,54 +398,61 @@ function ThornieDungeons() {
       return;
     }
     setAuthBusy(true);
-    const res = await cloudLogin(cred.url, cred.id, cred.password);
+    const res = await cloudLogin(cred.url, cred.id, cred.password, rememberLogin);
     setAuthBusy(false);
-    if (res.error === "not_found") {
-      setAuthError("ไม่พบ Player ID นี้ — กด \"สร้างบัญชีใหม่\" ก่อนนะคะ");
-      return;
-    }
-    if (res.error === "wrong_password") {
-      setAuthError("รหัสผ่านไม่ถูกต้อง");
+    if (res.error === "invalid_credentials") {
+      setAuthError("Player ID หรือรหัสผ่านไม่ถูกต้อง");
       return;
     }
     if (res.error) {
       setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
       return;
     }
-    writeCachedConfig({
-      url: cred.url,
-      id: cred.id,
-      password: rememberPassword ? cred.password : "",
-      rememberPassword: rememberPassword
-    });
-    sessionGenerationRef.current += 1;
+    await AUTH_SESSION.setSession(res, rememberLogin);
+    setCred(c => ({ ...c, id: res.playerId, password: "" }));
+    setRecoveryConfigured(!!res.recoveryConfigured);
+    writeCachedConfig({ url: cred.url, id: res.playerId });
     await beginCharacterSelect(accountFromLoginResponse(res));
   }
-  async function handleRegister() {
+  async function handleRegister(form) {
     setAuthError("");
-    if (!cred.url || !cred.id || !cred.password) {
+    if (!cred.url || !form?.id || !form?.password || !form?.confirmPassword) {
       setAuthError("กรอกให้ครบทุกช่องนะคะ");
-      return;
+      return { ok: false, error: "missing_fields" };
     }
     setAuthBusy(true);
-    const res = await cloudRegister(cred.url, cred.id, cred.password);
+    const res = await cloudRegister(cred.url, form.id, form.password, form.confirmPassword, rememberLogin);
     setAuthBusy(false);
-    if (res.error === "id_taken") {
-      setAuthError("Player ID นี้มีคนใช้แล้ว ลองชื่ออื่น หรือกด \"เข้าสู่ระบบ\" ถ้าเป็นของคุณเอง");
-      return;
+    if (res.error === "id_unavailable") {
+      setAuthError("Player ID นี้ไม่สามารถใช้งานได้");
+      return { ok: false, error: res.error };
     }
     if (res.error) {
       setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
-      return;
+      return { ok: false, error: res.error };
     }
-    writeCachedConfig({
-      url: cred.url,
-      id: cred.id,
-      password: rememberPassword ? cred.password : "",
-      rememberPassword: rememberPassword
-    });
-    sessionGenerationRef.current += 1;
-    await beginCharacterSelect(defaultSave());
+    await AUTH_SESSION.setSession(res, rememberLogin);
+    setCred(c => ({ ...c, id: res.playerId, password: "" }));
+    setRecoveryConfigured(true);
+    writeCachedConfig({ url: cred.url, id: res.playerId });
+    setRegistrationRecovery({ code: res.recoveryCode, account: defaultSave() });
+    return { ok: true };
+  }
+  async function finishRegistrationRecovery() {
+    const pending = registrationRecovery;
+    setRegistrationRecovery(null);
+    if (pending) await beginCharacterSelect(pending.account);
+  }
+  async function handleForgotPassword(form) {
+    setAuthBusy(true);
+    const res = await cloudForgotPassword(cred.url || DEFAULT_SERVER_URL, form.id, form.recoveryCode, form.newPassword, form.confirmPassword);
+    setAuthBusy(false);
+    if (!res?.ok) return { ok: false, error: res?.error || "network_error" };
+    await AUTH_SESSION.clear("password_reset", false);
+    setCred(c => ({ ...c, id: form.id, password: "" }));
+    setPasswordResetRecovery(res.recoveryCode);
+    writeCachedConfig({ url: cred.url || DEFAULT_SERVER_URL, id: form.id });
+    return { ok: true, recoveryCode: res.recoveryCode };
   }
   async function handleCreateCharacter(slotIndex, name) {
     if (!account) return {
@@ -441,7 +469,7 @@ function ThornieDungeons() {
         message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
       };
     }
-    const res = await cloudCreateCharacter(cred.url, cred.id, cred.password, slotIndex, name);
+    const res = await cloudCreateCharacter(cred.url, slotIndex, name);
     if (res.error === "name_taken") return {
       ok: false,
       message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
@@ -469,7 +497,7 @@ function ThornieDungeons() {
     };
   }
   async function handleDeleteCharacter(slotIndex) {
-    const res = await cloudDeleteCharacter(cred.url, cred.id, cred.password, slotIndex);
+    const res = await cloudDeleteCharacter(cred.url, slotIndex);
     if (res.error) {
       console.error("[ThornieDungeons] deleteCharacter failed:", res.error);
       return;
@@ -487,7 +515,7 @@ function ThornieDungeons() {
   }
   async function enterCharacterSlot(slotIndex) {
     if (!account || !account.characters[slotIndex]) return;
-    const res = await cloudEnterCharacter(cred.url, cred.id, cred.password, slotIndex);
+    const res = await cloudEnterCharacter(cred.url, slotIndex);
     if (res.error) {
       console.error("[ThornieDungeons] enterCharacter failed:", res.error);
       return;
@@ -521,13 +549,13 @@ function ThornieDungeons() {
     setEquipped(eq);
     setInventory(finalInv);
     loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
-    cloudGetDailyLogin(cred.url, cred.id, cred.password, characterSlot.id).then(async dlRes => {
+    cloudGetDailyLogin(cred.url, characterSlot.id).then(async dlRes => {
       if (!dlRes || !dlRes.ok) return;
       setDailyLogin({ state: dlRes.state, canClaim: dlRes.canClaim, preview: dlRes.preview });
       if (!dlRes.canClaim) return;
       // Auto-claim right away instead of waiting for the player to open a menu and press a
       // button — the popup below is what actually tells them they got it.
-      const claim = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, characterSlot.id);
+      const claim = await cloudClaimDailyLogin(cred.url, characterSlot.id);
       if (!claim || claim.error) return;
       setDailyLogin({ state: claim.state, canClaim: false, preview: dlRes.preview });
       setSave(s => s ? { ...s, gold: s.gold + (claim.reward.gold || 0), diamonds: s.diamonds + (claim.reward.diamonds || 0) } : s);
@@ -598,12 +626,17 @@ function ThornieDungeons() {
       window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ จึงยังไม่ออกจากระบบ กรุณาลองใหม่อีกครั้ง");
       return false;
     }
+    const logoutResult = await cloudLogout(cred.url || DEFAULT_SERVER_URL);
+    if (logoutResult?.error === "network_error" || logoutResult?.error === "server_error") {
+      window.alert("ยังเชื่อมต่อ Server เพื่อออกจากระบบไม่ได้ Session ยังไม่ถูกลบ กรุณาลองใหม่");
+      return false;
+    }
     if (context) persistenceRef.current.invalidate(context);
     persistenceRef.current.setActiveContext(null);
-    sessionGenerationRef.current += 1;
+    await AUTH_SESSION.clear("logout", false);
     setCred(c => ({
       ...c,
-      password: rememberPassword ? c.password : ""
+      password: ""
     }));
     setAccount(null);
     setSave(null);
@@ -614,6 +647,19 @@ function ThornieDungeons() {
     setAuthError("");
     setPhase("login");
     return true;
+  }
+  async function requireLoginAfterSecurityChange(message) {
+    const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
+    if (context) persistenceRef.current.invalidate(context);
+    persistenceRef.current.setActiveContext(null);
+    await AUTH_SESSION.clear("security_change", false);
+    setAccountSettingsOpen(false);
+    setAccount(null);
+    setSave(null);
+    setPlayer(null);
+    setCred(current => ({ ...current, password: "" }));
+    setAuthError(message || "กรุณาเข้าสู่ระบบใหม่");
+    setPhase("login");
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
     const allowResume = options.allowResume !== false;
@@ -715,7 +761,7 @@ function ThornieDungeons() {
     if (snapshot) pushRunState(snapshot);
   }
   useEffect(() => {
-    if (!player || !cred.url || !cred.id || !cred.password || !save || combatOutcomeRef.current) return;
+    if (!player || !cred.url || !cred.id || !AUTH_SESSION.getToken() || !save || combatOutcomeRef.current) return;
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     runStateSaveTimer.current = setTimeout(() => {
       if (!combatOutcomeRef.current) saveCombatRunState(selectedFloor, player);
@@ -723,7 +769,7 @@ function ThornieDungeons() {
     return () => {
       if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     };
-  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, cred.password, save, pushRunState]);
+  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, save, pushRunState]);
 
   function endCombatWin() {
     if (combatOutcomeRef.current) return;
@@ -1874,7 +1920,7 @@ function ThornieDungeons() {
   }
   async function claimDailyLogin() {
     if (!dailyLogin.canClaim) return { ok: false, alreadyClaimed: true };
-    const res = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, save.characterId);
+    const res = await cloudClaimDailyLogin(cred.url, save.characterId);
     if (!res || res.error) return { ok: false, error: res && res.error };
     setDailyLogin({ state: res.state, canClaim: false, preview: dailyLogin.preview });
     // The worker never touches characters.gold/players.diamonds directly for this reward —
@@ -1923,10 +1969,15 @@ function ThornieDungeons() {
       error: authError,
       busy: authBusy || loginTransitioning,
       departing: loginTransitioning,
-      rememberPassword: rememberPassword,
-      onRememberPassword: handleRememberPassword,
+      rememberLogin: rememberLogin,
+      onRememberLogin: handleRememberLogin,
       onLogin: handleLogin,
-      onRegister: handleRegister
+      onRegister: handleRegister,
+      onForgotPassword: handleForgotPassword,
+      registrationRecovery: registrationRecovery,
+      onFinishRegistration: finishRegistrationRecovery,
+      passwordResetRecovery: passwordResetRecovery,
+      onClearPasswordResetRecovery: () => setPasswordResetRecovery(null)
     }));
   }
   if (phase === "characterSelect") {
@@ -2007,6 +2058,7 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onSwitchCharacter: backToCharacterSelect,
+    onAccountSettings: () => setAccountSettingsOpen(true),
     onLogout: logout,
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
@@ -2049,6 +2101,7 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onSwitchCharacter: backToCharacterSelect,
+    onAccountSettings: () => setAccountSettingsOpen(true),
     onLogout: logout,
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
@@ -2118,21 +2171,18 @@ function ThornieDungeons() {
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "raid" && /*#__PURE__*/React.createElement(RaidScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     onApplyReward: applyMailReward,
     onBack: () => setPhase(utilityReturnPhase)
@@ -2178,6 +2228,14 @@ function ThornieDungeons() {
     floor: selectedFloor,
     onRetry: retryStage,
     onMap: backToMap
+  }), accountSettingsOpen && /*#__PURE__*/React.createElement(AccountSettingsOverlay, {
+    serverUrl: cred.url,
+    playerId: cred.id,
+    recoveryConfigured: recoveryConfigured,
+    onRecoveryConfigured: setRecoveryConfigured,
+    onRequireLogin: requireLoginAfterSecurityChange,
+    onLogout: logout,
+    onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
     inventory: inventory,
@@ -2208,7 +2266,6 @@ function ThornieDungeons() {
     onClose: () => setBlacksmithOpen(false)
   }), craftingOpen && /*#__PURE__*/React.createElement(CraftingOverlay, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     inventory: inventory,
     gold: save.gold,

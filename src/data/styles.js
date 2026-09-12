@@ -634,6 +634,13 @@ const STYLE = `
 .md-login-card .md-btn.primary { border: 1px solid #FFE49A; box-shadow: 0 4px 0 #9B691D, 0 0 15px rgba(255,209,102,.2); }
 .md-login-card .md-btn.info { background: rgba(8,31,70,.86); border: 1.5px solid #42C8FF; color: #DDF6FF; box-shadow: 0 3px 0 #174B78; }
 .md-auth-error { color: #FF9B9B; font-weight: 800; font-size: 12px; text-align: center; margin-top: 7px; }
+.md-auth-link { display:block; margin:10px auto 0; border:0; background:transparent; color:#8edcff; text-decoration:underline; font:inherit; font-size:12px; min-height:36px; padding:6px 12px; }
+.md-auth-sheet-overlay { position:fixed; z-index:120; inset:0; display:flex; align-items:flex-end; justify-content:center; padding:16px max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); background:rgba(5,7,18,.78); backdrop-filter:blur(4px); }
+.md-auth-sheet { width:min(100%,420px); max-height:min(88dvh,720px); overflow:auto; overscroll-behavior:contain; border-radius:22px 22px 16px 16px; padding:18px; }
+.md-auth-sheet .md-field { width:100%; margin-bottom:9px; }
+.md-auth-sheet .md-btn.wide { width:100%; margin-top:9px; }
+.md-recovery-code { display:block; margin:14px 0; padding:13px 8px; border:1px solid var(--gold); border-radius:10px; background:rgba(7,10,27,.72); color:#fff0a8; font-size:clamp(15px,5vw,20px); font-weight:900; letter-spacing:.06em; text-align:center; overflow-wrap:anywhere; user-select:all; }
+.md-account-sheet { align-self:center; }
 .md-hint { font-size: 10.5px; color: #AFC7E8; font-weight: 700; line-height: 1.45; margin: 11px 0 0; text-align: center; }
 .md-remember-password {
   display: flex; align-items: center; gap: 9px; width: fit-content; margin: 11px 0 2px;

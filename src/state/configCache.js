@@ -1,17 +1,22 @@
 async function loadCachedConfig() {
   try {
     const v = await kvGet(CONFIG_CACHE_KEY);
-    if (v) return JSON.parse(v);
+    if (v) {
+      const parsed = JSON.parse(v);
+      // Auth V2 never restores the legacy raw password. Rewrite the cache immediately so a
+      // password left by an older frontend is removed on first V2 startup.
+      const safe = { url: parsed.url || "", id: parsed.id || "" };
+      if (parsed.password || parsed.rememberPassword) await writeCachedConfig(safe);
+      return safe;
+    }
   } catch (e) {}
   return {
     url: "",
-    id: "",
-    password: "",
-    rememberPassword: false
+    id: ""
   };
 }
 async function writeCachedConfig(cfg) {
-  await kvSet(CONFIG_CACHE_KEY, JSON.stringify(cfg));
+  await kvSet(CONFIG_CACHE_KEY, JSON.stringify({ url: cfg.url || "", id: cfg.id || "" }));
 }
 async function loadCachedGameConfig() {
   try {
