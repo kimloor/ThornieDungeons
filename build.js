@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // ThornieDungeons build script
-// Concatenates the split source modules (in dependency order) back into
-// a single index.html, exactly matching the previous single-file structure.
+// Concatenates split source modules (dependency order) into index.html.
 // Run: node build.js
 
 const fs = require("fs");
@@ -10,8 +9,6 @@ const path = require("path");
 const ROOT = __dirname;
 const SRC = path.join(ROOT, "src");
 
-// Order matters: each file is plain global-scope JS (no import/export),
-// so later files can reference consts/functions declared in earlier ones.
 const MODULE_ORDER = [
   "data/styles.js",
   "state/save.js",
@@ -36,8 +33,6 @@ const MODULE_ORDER = [
   "ui/components.js",
 ];
 
-// Production UI artwork lives in Cloudflare R2 behind the Worker /assets/ route.
-// Keep source references readable as ui/<file>; the build rewrites only image asset paths.
 function mapR2UiAssetPaths(content) {
   return content.replace(
     /(?<!\/assets\/)ui\/([A-Za-z0-9_.\/-]+\.(?:png|webp|jpg|jpeg|gif|svg))/g,
@@ -47,32 +42,18 @@ function mapR2UiAssetPaths(content) {
 
 function readModule(relPath) {
   const fullPath = path.join(SRC, relPath);
-  if (!fs.existsSync(fullPath)) {
-    throw new Error(`Missing module: ${relPath}`);
-  }
+  if (!fs.existsSync(fullPath)) throw new Error(`Missing module: ${relPath}`);
   return fs.readFileSync(fullPath, "utf8");
 }
 
 function build() {
   const head = fs.readFileSync(path.join(ROOT, "head.html"), "utf8");
   const tail = fs.readFileSync(path.join(ROOT, "tail.html"), "utf8");
-
-  const body = MODULE_ORDER.map((m) => {
-    const code = readModule(m);
-    return `// ===== ${m} =====\n${code}`;
-  }).join("\n");
-
+  const body = MODULE_ORDER.map((m) => `// ===== ${m} =====\n${readModule(m)}`).join("\n");
   const output = mapR2UiAssetPaths(head + body + "\n" + tail);
 
-  // Basic sanity check: make sure the compiled JS block is syntactically valid.
-  const scriptMatch = output.match(/<script>\s*try\s*\{([\s\S]*?)\}\s*catch \(err\) \{/);
-
   fs.writeFileSync(path.join(ROOT, "index.html"), output, "utf8");
-  // worker.js routes "/" and "/index.html" to app-v2.html (see the "VERSIONED ROOT
-  // ENTRYPOINT WORKAROUND" comment there) — keep it byte-identical to index.html on
-  // every build so it can never silently drift stale again (it did, once, for Phase 3).
-  fs.writeFileSync(path.join(ROOT, "app-v2.html"), output, "utf8");
-  console.log(`Built index.html + app-v2.html (${output.split("\n").length} lines) from ${MODULE_ORDER.length} modules.`);
+  console.log(`Built index.html (${output.split("\n").length} lines) from ${MODULE_ORDER.length} modules.`);
 }
 
 build();
