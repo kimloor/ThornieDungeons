@@ -384,14 +384,19 @@ async function handleGetLeaderboardHistory(db, board, date) {
 
 // NEW — server-owned reward cycle (source of truth; client only displays what this returns,
 // never computes its own reward, so a tampered client can't grant itself diamonds).
+// Day 3/5 grant existing raid materials (see JUNK_INFO: iron/manaOre/bossHorn/bossHide),
+// day 7 resolves to one random Azure set piece via randomAzureItemDesc() (defined further
+// down, in the Raid Boss section) at claim time — the preview below just flags
+// `azureRandom: true` rather than pre-rolling it, so browsing the preview can't
+// waste/predetermine that roll before the player actually claims.
 const DAILY_LOGIN_REWARDS = [
-  { day: 1, gold: 50, diamonds: 0 },
-  { day: 2, gold: 80, diamonds: 0 },
-  { day: 3, gold: 0, diamonds: 20 },
-  { day: 4, gold: 150, diamonds: 0 },
-  { day: 5, gold: 0, diamonds: 30 },
-  { day: 6, gold: 250, diamonds: 0 },
-  { day: 7, gold: 0, diamonds: 120 }, // bonus day, cycle repeats after this
+  { day: 1, gold: 5000 },
+  { day: 2, diamonds: 150 },
+  { day: 3, junk: [{ junkId: "manaOre", quantity: 10 }, { junkId: "iron", quantity: 10 }] },
+  { day: 4, diamonds: 350 },
+  { day: 5, junk: [{ junkId: "bossHide", quantity: 3 }, { junkId: "bossHorn", quantity: 3 }] },
+  { day: 6, diamonds: 550 },
+  { day: 7, azureRandom: true }, // bonus day, cycle repeats after this
 ];
 
 function json(obj, status = 200) {
@@ -857,7 +862,10 @@ async function handleClaimDailyLogin(db, id, password, characterId) {
 
   const prevStreak = row ? Number(row.login_streak) || 0 : 0;
   const streak = lastClaimDate === yesterdayDateKey() ? prevStreak + 1 : 1;
-  const reward = dailyLoginReward(streak);
+  const rewardDef = dailyLoginReward(streak);
+  // Resolve any random component only at the moment of claiming, never at preview time.
+  const reward = { gold: rewardDef.gold, diamonds: rewardDef.diamonds, junk: rewardDef.junk };
+  if (rewardDef.azureRandom) reward.items = [randomAzureItemDesc()];
   const totalClaims = (row ? Number(row.total_claims) || 0 : 0) + 1;
   const now = nowIso();
 
@@ -868,13 +876,6 @@ async function handleClaimDailyLogin(db, id, password, characterId) {
     total_claims: totalClaims,
     updated_at: now,
   });
-
-  if (reward.gold) {
-    await db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ?`).bind(reward.gold, now, characterId).run();
-  }
-  if (reward.diamonds) {
-    await db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ?`).bind(reward.diamonds, id).run();
-  }
 
   return json({
     ok: true,

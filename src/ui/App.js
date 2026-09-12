@@ -1813,14 +1813,25 @@ function ThornieDungeons() {
     const res = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, save.characterId);
     if (!res || res.error) return { ok: false, error: res && res.error };
     setDailyLogin({ state: res.state, canClaim: false, preview: dailyLogin.preview });
-    // Reflect the reward locally right away instead of waiting for the next full reload —
-    // the worker already applied it server-side (characters.gold / players.diamonds), this
-    // just keeps the in-memory `save` in sync with what the server now has.
-    setSave(s => ({
+    // The worker never touches characters.gold/players.diamonds directly for this reward —
+    // same reasoning as the mailbox system: a server-side UPDATE gets silently reverted by
+    // this client's own next full-state autosave. This is the only place the reward
+    // actually "lands", exactly like a mailbox claim (applyMailReward).
+    setSave(s => s && ({
       ...s,
       gold: s.gold + (res.reward.gold || 0),
       diamonds: s.diamonds + (res.reward.diamonds || 0)
     }));
+    if (res.reward.junk && res.reward.junk.length) {
+      setInventory(inv => {
+        let next = inv;
+        res.reward.junk.forEach(j => { next = addJunkToInventory(next, j.junkId, Number(j.quantity) || 0); });
+        return next;
+      });
+    }
+    if (res.reward.items && res.reward.items.length) {
+      setInventory(inv => [...inv, ...res.reward.items.map(materializeMailItem)]);
+    }
     setDailyLoginClaimResult({ reward: res.reward, streak: res.streak });
     return { ok: true, reward: res.reward, streak: res.streak };
   }

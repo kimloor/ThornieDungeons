@@ -212,6 +212,49 @@ function GameDock({
   }), /*#__PURE__*/React.createElement("span", null, "เพิ่มเติม")));
 }
 
+// Renders the icon+amount chips for a daily-login reward (gold/diamonds/junk stacks/a
+// resolved Azure item, or "สุ่ม 1 ชิ้น" placeholder for the not-yet-claimed day-7 preview).
+// Shared between the preview (before claiming) and the result (after claiming) views.
+function dailyRewardIcons(reward, prefix) {
+  const out = [];
+  if (reward.gold) out.push(/*#__PURE__*/React.createElement("span", { key: "gold" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), ` ${prefix}${reward.gold} `));
+  if (reward.diamonds) out.push(/*#__PURE__*/React.createElement("span", { key: "diamonds" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), ` ${prefix}${reward.diamonds} `));
+  (reward.junk || []).forEach(j => out.push(/*#__PURE__*/React.createElement("span", { key: `junk-${j.junkId}` }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: j.junkId }, fallback: (JUNK_INFO[j.junkId] || {}).icon || "📦", className: "md-game-icon md-inline-item-icon", alt: (JUNK_INFO[j.junkId] || {}).name || j.junkId }), ` ${prefix}${j.quantity} `)));
+  (reward.items || []).forEach((it, i) => out.push(/*#__PURE__*/React.createElement("span", { key: `item-${i}` }, "🔷 ", it.name)));
+  if (reward.azureRandom && !(reward.items && reward.items.length)) out.push(/*#__PURE__*/React.createElement("span", { key: "azure-preview" }, "🔷 ไอเทมชุด Azure (สุ่ม 1 ชิ้น)"));
+  return out;
+}
+function DailyLoginToast({
+  open,
+  onClose,
+  dailyLogin,
+  dailyLoginClaimResult,
+  dailyPreview,
+  canClaimDaily,
+  onClaimDailyLogin
+}) {
+  if (!open) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-daily-toast-overlay",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-daily-toast-card",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("button", { className: "md-daily-toast-close", onClick: onClose, "aria-label": "ปิด" }, "✕"),
+  /*#__PURE__*/React.createElement("h3", { className: "md-title" }, "🎁 รางวัลรายวัน"),
+  dailyLoginClaimResult ? /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `รับแล้ว! Day ${dailyLoginClaimResult.streak}`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, dailyRewardIcons(dailyLoginClaimResult.reward, "+"))
+  ) : /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.state.loginStreak} วัน`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `, dailyRewardIcons(dailyPreview.reward, "")),
+    canClaimDaily ? /*#__PURE__*/React.createElement("button", {
+      className: "md-btn primary wide",
+      onClick: onClaimDailyLogin
+    }, "รับรางวัล") : /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" } }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
+  ),
+  /*#__PURE__*/React.createElement("p", { className: "md-daily-toast-hint" }, "แตะที่ใดก็ได้เพื่อปิด")));
+}
 function HubScreen({
   save,
   cp,
@@ -315,34 +358,15 @@ function HubScreen({
     onPets: onPets,
     moreOpen: moreOpen,
     onToggleMore: () => setMoreOpen(open => !open)
-  })), dailyModalOpen && /*#__PURE__*/React.createElement("div", {
-    className: "md-equip-overlay",
-    onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-equip-sheet",
-    onClick: e => e.stopPropagation()
-  }, /*#__PURE__*/React.createElement("h3", { className: "md-title" }, "🎁 รางวัลรายวัน"), dailyLoginClaimResult ? /*#__PURE__*/React.createElement(React.Fragment, null,
-    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `รับแล้ว! Day ${dailyLoginClaimResult.streak}`),
-    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
-      dailyLoginClaimResult.reward.gold ? /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " +", dailyLoginClaimResult.reward.gold, " ") : "",
-      dailyLoginClaimResult.reward.diamonds ? /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " +", dailyLoginClaimResult.reward.diamonds, " ") : "",
-      dailyLoginClaimResult.reward.potions ? /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: "hp_small" }, fallback: "🧪", className: "md-game-icon md-inline-item-icon", alt: "Potion" }), " +", dailyLoginClaimResult.reward.potions) : "")
-  ) : /*#__PURE__*/React.createElement(React.Fragment, null,
-    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.state.loginStreak} วัน`),
-    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
-      `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `,
-      dailyPreview.reward.gold ? /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", dailyPreview.reward.gold, " ") : "",
-      dailyPreview.reward.diamonds ? /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " ", dailyPreview.reward.diamonds, " ") : "",
-      dailyPreview.reward.potions ? /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: "hp_small" }, fallback: "🧪", className: "md-game-icon md-inline-item-icon", alt: "Potion" }), " ", dailyPreview.reward.potions) : ""),
-    canClaimDaily ? /*#__PURE__*/React.createElement("button", {
-      className: "md-btn primary wide",
-      onClick: onClaimDailyLogin
-    }, "รับรางวัล") : /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" } }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
-  ), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee wide",
-    style: { marginTop: 8 },
-    onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
-  }, "ปิด"))));
+  })), /*#__PURE__*/React.createElement(DailyLoginToast, {
+    open: dailyModalOpen,
+    onClose: () => { setDailyModalOpen(false); onClearDailyLoginResult(); },
+    dailyLogin: dailyLogin,
+    dailyLoginClaimResult: dailyLoginClaimResult,
+    dailyPreview: dailyPreview,
+    canClaimDaily: canClaimDaily,
+    onClaimDailyLogin: onClaimDailyLogin
+  }));
 }
 
 function TownScreen({
@@ -464,38 +488,15 @@ function TownScreen({
         onToggleMore: () => setMoreOpen(open => !open)
       })
     ),
-    dailyModalOpen && e("div", {
-      className: "md-equip-overlay",
-      onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
-    }, e("div", {
-      className: "md-equip-sheet",
-      onClick: event => event.stopPropagation()
-    }, e("h3", { className: "md-title" }, "🎁 รางวัลรายวัน"),
-    dailyLoginClaimResult ? e(React.Fragment, null,
-      e("p", { className: "md-sub" }, `รับแล้ว! Day ${dailyLoginClaimResult.streak}`),
-      e("p", { className: "md-sub" },
-        dailyLoginClaimResult.reward.gold ? e("span", null, e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " +", dailyLoginClaimResult.reward.gold, " ") : "",
-        dailyLoginClaimResult.reward.diamonds ? e("span", null, e(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " +", dailyLoginClaimResult.reward.diamonds, " ") : "",
-        dailyLoginClaimResult.reward.potions ? e("span", null, e(GameIcon, { item: { type: "potion", potionId: "hp_small" }, fallback: "🧪", className: "md-game-icon md-inline-item-icon", alt: "Potion" }), " +", dailyLoginClaimResult.reward.potions) : "")
-    ) : e(React.Fragment, null,
-      e("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.state.loginStreak} วัน`),
-      e("p", { className: "md-sub" },
-        `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `,
-        dailyPreview.reward.gold ? e("span", null, e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", dailyPreview.reward.gold, " ") : "",
-        dailyPreview.reward.diamonds ? e("span", null, e(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " ", dailyPreview.reward.diamonds, " ") : "",
-        dailyPreview.reward.potions ? e("span", null, e(GameIcon, { item: { type: "potion", potionId: "hp_small" }, fallback: "🧪", className: "md-game-icon md-inline-item-icon", alt: "Potion" }), " ", dailyPreview.reward.potions) : ""),
-      canClaimDaily ? e("button", {
-        className: "md-btn primary wide",
-        onClick: onClaimDailyLogin
-      }, "รับรางวัล") : e("p", {
-        className: "md-sub",
-        style: { color: "var(--gold)" }
-      }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
-    ), e("button", {
-      className: "md-btn flee wide",
-      style: { marginTop: 8 },
-      onClick: () => { setDailyModalOpen(false); onClearDailyLoginResult(); }
-    }, "ปิด")))
+    e(DailyLoginToast, {
+      open: dailyModalOpen,
+      onClose: () => { setDailyModalOpen(false); onClearDailyLoginResult(); },
+      dailyLogin,
+      dailyLoginClaimResult,
+      dailyPreview,
+      canClaimDaily,
+      onClaimDailyLogin
+    })
   );
 }
 
@@ -1632,6 +1633,16 @@ function materializeMailItem(desc) {
   };
 }
 // ---------- Phase 3.1: Mailbox ----------
+// Formats a mail's created_at (ISO, UTC) into the device's local date+time, e.g. "12 ก.ย. 10:57".
+function formatMailDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${d.getDate()} ${months[d.getMonth()]} ${hh}:${mm}`;
+}
 function MailboxScreen({
   serverUrl,
   cred,
@@ -1740,6 +1751,7 @@ function MailboxScreen({
       /*#__PURE__*/React.createElement("div", { style: { flex: 1 } },
         /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { fontWeight: "bold" } }, m.title),
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, m.body),
+        /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { fontSize: 11, opacity: 0.7 } }, "🕐 ", formatMailDate(m.createdAt)),
         (m.gold > 0 || m.diamonds > 0 || (m.junk && m.junk.length > 0) || (m.items && m.items.length > 0)) && /*#__PURE__*/React.createElement("div", { className: "md-sub md-mail-reward-icons" },
           m.gold > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), formatNumber(m.gold)),
           m.diamonds > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), formatNumber(m.diamonds)),

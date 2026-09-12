@@ -1365,6 +1365,10 @@ const STYLE = `
 .md-raid-boss-sprite { display:block; width:min(72vw, 280px); height:clamp(180px, 42vh, 310px); margin:10px auto 4px; object-fit:contain; object-position:center; user-select:none; -webkit-user-drag:none; }
 .md-raid-boss-fallback { display:flex; align-items:center; justify-content:center; min-height:180px; border:1px dashed rgba(255,209,102,.45); border-radius:18px; background:radial-gradient(circle, rgba(167,139,240,.22), rgba(16,18,32,.18) 70%); color:var(--gold); font-size:22px; font-weight:900; letter-spacing:.18em; }
 .md-toast { position: sticky; top: 4px; z-index: 20; margin: 0 auto 10px; padding: 10px 14px; border-radius: 12px; background: linear-gradient(135deg, var(--violet-deep), var(--violet)); border: 1px solid var(--gold-glow); color: var(--ink); font-size: 13px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); animation: mdToastIn 0.25s ease-out; }
+.md-daily-toast-overlay { position:absolute; inset:0; z-index:20; background:transparent; display:flex; align-items:center; justify-content:center; padding:20px; }
+.md-daily-toast-card { position:relative; width:100%; max-width:320px; background:linear-gradient(180deg,#30204f 0%,#1b1233 100%); border:1.5px solid var(--gold-deep); border-radius:18px; padding:18px 16px 14px; box-shadow:0 10px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,209,102,0.15); text-align:center; animation: mdToastIn 0.25s ease-out; }
+.md-daily-toast-close { position:absolute; top:8px; right:10px; background:none; border:none; color:var(--ink-soft); font-size:18px; line-height:1; padding:4px; cursor:pointer; }
+.md-daily-toast-hint { font-size:11px; color:var(--ink-soft); margin-top:10px; }
 @keyframes mdToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */
