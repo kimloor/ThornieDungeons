@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - "workers/thornie-dungeons-api.js"
+      - "workers/thornie-dungeons-api-entry.js"
+      - "wrangler.api.template.jsonc"
+      - ".github/workflows/deploy-api.yml"
       - "migrations/auto/*.sql"
   workflow_dispatch:
 
@@ -132,5 +135,6 @@ jobs:
             echo "- D1: \`${{ steps.config.outputs.database_name }}\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- Migration lane: \`migrations/auto\`"
-            echo "- Deploy source: \`workers/thornie-dungeons-api.js\`"
+            echo "- Deploy entrypoint: \`workers/thornie-dungeons-api-entry.js\`"
+            echo "- Core API source: \`workers/thornie-dungeons-api.js\`"
           } >> "$GITHUB_STEP_SUMMARY"
