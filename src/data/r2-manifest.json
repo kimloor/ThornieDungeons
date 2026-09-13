@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-13T12:01:06Z",
-  "count": 205,
+  "generatedAt": "2026-09-13T16:22:04Z",
+  "count": 208,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "47329317b64da7d47d33ee2acbedea04",
-      "last_modified": "2026-09-10T01:01:27.679Z",
-      "size": 15231,
+      "etag": "99332a431249a7cfc9e0b712d358aae5",
+      "last_modified": "2026-09-13T15:47:26.653Z",
+      "size": 15375,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -1852,6 +1852,17 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/battle/button_skip.png",
+      "etag": "abcec86ee631556193a1cc8af00aebec",
+      "last_modified": "2026-09-13T15:47:29.929Z",
+      "size": 58575,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/battle/hp_status_frame.png",
       "etag": "fb9d106eb2a5e1294e5905b62494b0e5",
       "last_modified": "2026-09-10T01:01:45.706Z",
@@ -1867,6 +1878,28 @@
       "etag": "5a73fbd953e3b30e81b05ab5ec6c194e",
       "last_modified": "2026-09-10T01:01:48.594Z",
       "size": 48636,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/target_selected_marker.png",
+      "etag": "aab556aca5b6f6fcaae6f37feada1f0a",
+      "last_modified": "2026-09-13T15:47:33.157Z",
+      "size": 84941,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/turn_order_slot.png",
+      "etag": "6dee78a6e6a2025a265def51ebcedca3",
+      "last_modified": "2026-09-13T15:47:37.215Z",
+      "size": 68551,
       "http_metadata": {
         "contentType": "image/png"
       },
