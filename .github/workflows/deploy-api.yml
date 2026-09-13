@@ -7,7 +7,6 @@ on:
     paths:
       - "workers/thornie-dungeons-api.js"
       - "migrations/auto/**"
-      - "wrangler.api.template.jsonc"
   workflow_dispatch:
 
 permissions:
