@@ -64,7 +64,7 @@ jobs:
             exit 1
           fi
 
-          runtime_config="$RUNNER_TEMP/wrangler.api.jsonc"
+          runtime_config="$GITHUB_WORKSPACE/.wrangler.api.runtime.jsonc"
           sed \
             -e "s/__D1_DATABASE_ID__/$CF_D1_DATABASE_ID/g" \
             -e "s/__D1_DATABASE_NAME__/$db_name/g" \
