@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "workers/thornie-dungeons-api.js"
-      - "migrations/auto/**"
+      - "migrations/auto/*.sql"
   workflow_dispatch:
 
 permissions:
