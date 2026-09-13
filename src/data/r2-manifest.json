@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-13T16:22:04Z",
-  "count": 208,
+  "generatedAt": "2026-09-13T19:29:13Z",
+  "count": 209,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "99332a431249a7cfc9e0b712d358aae5",
-      "last_modified": "2026-09-13T15:47:26.653Z",
-      "size": 15375,
+      "etag": "bf102e65c19be1021ca281c041d6def9",
+      "last_modified": "2026-09-13T16:31:57.449Z",
+      "size": 15423,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -1797,6 +1797,17 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/battle/battle_background.webp",
+      "etag": "d1b1d7de494386f7aad68e0cee95afad",
+      "last_modified": "2026-09-13T16:32:00.198Z",
+      "size": 286384,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/battle/battle_top_bar.png",
       "etag": "b0d6f09c7503654fae9b3da3a4b1eddd",
       "last_modified": "2026-09-10T01:01:30.753Z",
@@ -1886,9 +1897,9 @@
     },
     {
       "key": "ui/battle/target_selected_marker.png",
-      "etag": "aab556aca5b6f6fcaae6f37feada1f0a",
-      "last_modified": "2026-09-13T15:47:33.157Z",
-      "size": 84941,
+      "etag": "db29c1391c15c73934d71ff66dab4cab",
+      "last_modified": "2026-09-13T16:32:04.286Z",
+      "size": 76838,
       "http_metadata": {
         "contentType": "image/png"
       },
