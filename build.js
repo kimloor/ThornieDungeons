@@ -36,6 +36,7 @@ const MODULE_ORDER = [
   "systems/shop.js",
   "ui/App.js",
   "ui/components.js",
+  "ui/resumePreviewPatch.js",
 ];
 
 function mapR2UiAssetPaths(content) {
