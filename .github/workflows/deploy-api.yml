@@ -46,7 +46,6 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing GitHub secret CF_API_TOKEN"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing GitHub secret CF_ACCOUNT_ID"; exit 1; }
-          test -n "$CF_D1_DATABASE_ID" || { echo "Missing GitHub secret CF_D1_DATABASE_ID"; exit 1; }
           wrangler whoami >/dev/null
 
       - name: Resolve D1 and build runtime Wrangler config
@@ -58,18 +57,29 @@ jobs:
           d1_json="$RUNNER_TEMP/d1-list.json"
           wrangler d1 list --json > "$d1_json"
 
-          db_name="$(jq -r --arg id "$CF_D1_DATABASE_ID" '.[] | select((.uuid // .id // "") == $id) | .name' "$d1_json" | head -n1)"
-          if [ -z "$db_name" ] || [ "$db_name" = "null" ]; then
-            echo "Configured CF_D1_DATABASE_ID was not found in this Cloudflare account."
+          db_id="$CF_D1_DATABASE_ID"
+          if [ -z "$db_id" ]; then
+            db_count="$(jq 'length' "$d1_json")"
+            if [ "$db_count" -ne 1 ]; then
+              echo "CF_D1_DATABASE_ID is not set and the account has $db_count D1 databases; refusing to guess."
+              exit 1
+            fi
+            db_id="$(jq -r '.[0].uuid // .[0].id // empty' "$d1_json")"
+          fi
+
+          db_name="$(jq -r --arg id "$db_id" '.[] | select((.uuid // .id // "") == $id) | .name' "$d1_json" | head -n1)"
+          if [ -z "$db_id" ] || [ -z "$db_name" ] || [ "$db_name" = "null" ]; then
+            echo "Unable to resolve the production D1 database safely."
             exit 1
           fi
 
           runtime_config="$GITHUB_WORKSPACE/.wrangler.api.runtime.jsonc"
           sed \
-            -e "s/__D1_DATABASE_ID__/$CF_D1_DATABASE_ID/g" \
+            -e "s/__D1_DATABASE_ID__/$db_id/g" \
             -e "s/__D1_DATABASE_NAME__/$db_name/g" \
             wrangler.api.template.jsonc > "$runtime_config"
 
+          echo "database_id=$db_id" >> "$GITHUB_OUTPUT"
           echo "database_name=$db_name" >> "$GITHUB_OUTPUT"
           echo "runtime_config=$runtime_config" >> "$GITHUB_OUTPUT"
           echo "Resolved D1 database: $db_name"
