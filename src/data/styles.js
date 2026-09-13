@@ -976,23 +976,31 @@ const STYLE = `
 .md-turn-queue-item.active .md-turn-queue-icon { box-shadow: 0 0 0 2px var(--gold-glow); }
 .md-turn-queue-arrow { color: var(--ink-soft); font-size: 11px; opacity: 0.6; }
 
-/* Battle uses the shared dungeon backdrop too; these translucent arena lights keep units and
-   HP bars readable while allowing the global scene to remain visible underneath. */
+/* The dedicated Battle artwork is the scene presentation. CSS owns only the
+   responsive viewport and a light lower veil for control/text readability. */
 .md-scene.battle-bg {
-  background:
-    radial-gradient(ellipse 55% 35% at 18% 12%, rgba(80,190,255,.12), transparent 60%),
-    radial-gradient(circle at 82% 25%, rgba(255,209,102,.08), transparent 55%),
-    radial-gradient(circle at 30% 85%, rgba(0,0,0,.25), transparent 50%),
-    linear-gradient(180deg, rgba(11,28,59,.34) 0%, rgba(8,20,46,.47) 48%, rgba(4,12,31,.62) 100%);
+  background-color: #071126;
   border-radius: 0 0 18px 18px;
   padding-top: 50px;
 }
+.md-scene.battle-bg.md-battle-background-art {
+  background-image: linear-gradient(180deg, transparent 62%, rgba(2,7,18,.28) 100%), var(--battle-ui-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
 .md-scene.battle-bg .md-ground {
-  background: linear-gradient(180deg, rgba(18,53,83,.72) 0%, rgba(7,24,48,.84) 100%);
-  border-top: 3px solid rgba(78,190,236,.58);
-  opacity: .78;
+  height: 30%;
+  background: linear-gradient(180deg, transparent, rgba(2,7,18,.18));
+  border: 0;
+  opacity: 1;
 }
 .md-scene.battle-bg .md-arena { padding: 6px 6px 12px; min-height: clamp(300px, 52dvh, 430px); overflow: hidden; }
+.md-current-turn {
+  min-height: 18px; margin: 0 0 2px; text-align: center;
+  color: var(--ink-soft); font: 800 10.5px/18px 'Baloo 2';
+  text-shadow: 0 1px 2px rgba(0,0,0,.9);
+}
 
 /* Battlefield anchors use percentages of the arena itself. This keeps the formation stable
    across phone widths while leaving room for the Hero's widest wing overlays. */
@@ -1021,12 +1029,21 @@ const STYLE = `
 
 /* Monster scale is based on measured opaque pixels. HP/status are removed from
    normal flow so the unit's bottom edge is always the artwork's actual ground point. */
-.md-monster-unit { --monster-height: 68px; width: max-content; height: var(--monster-height); gap: 0; justify-content: flex-end; }
-.md-monster-unit.size-small { --monster-height: 52px; }
-.md-monster-unit.size-medium { --monster-height: 68px; }
-.md-monster-unit.size-large { --monster-height: 84px; }
-.md-monster-unit.size-elite { --monster-height: 104px; }
+.md-monster-unit { --monster-height: 68px; --target-marker-width: 86px; width: max-content; height: var(--monster-height); gap: 0; justify-content: flex-end; }
+.md-monster-unit.size-small { --monster-height: 52px; --target-marker-width: 70px; }
+.md-monster-unit.size-medium { --monster-height: 68px; --target-marker-width: 86px; }
+.md-monster-unit.size-large { --monster-height: 84px; --target-marker-width: 108px; }
+.md-monster-unit.size-elite { --monster-height: 104px; --target-marker-width: 132px; }
 .md-monster-unit > .md-enemy { width: var(--monster-height); height: var(--monster-height); }
+.md-monster-unit > .md-cropped-sprite-stage,
+.md-monster-unit > .md-enemy { position: relative; z-index: 2; }
+.md-target-selected-marker {
+  position: absolute; left: 50%; bottom: -9px; z-index: 1;
+  width: var(--target-marker-width); aspect-ratio: 2 / 1;
+  transform: translateX(-50%); pointer-events: none;
+  background-size: 100% 100%;
+}
+.md-monster-unit.anchor-flying > .md-target-selected-marker { bottom: -27px; }
 .md-monster-unit > .md-enemy-hpbar {
   position: absolute; left: 50%; bottom: calc(100% + 22px); transform: translateX(-50%); z-index: 5;
 }
@@ -1184,10 +1201,10 @@ const STYLE = `
   display: grid; grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)) 1.15fr;
   align-items: stretch; gap: 0; padding: 0; min-height: 58px; overflow: hidden;
 }
+.md-battle-top.md-battle-art { border: 0; border-radius: 0; box-shadow: none; background-color: transparent; }
 .md-combat-stats {
   grid-column: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;
-  padding: 5px 6px; border-right: 1px solid rgba(255,209,102,.28);
-  background: linear-gradient(180deg, rgba(255,209,102,.09), rgba(0,0,0,.08));
+  padding: 5px 6px; border: 0; background: transparent;
 }
 .md-combat-level { color: var(--gold); font: 800 8px/1 'Baloo 2'; letter-spacing: .5px; margin-bottom: 2px; }
 .md-combat-stats .md-hud-text { gap: 0; }
@@ -1199,26 +1216,27 @@ const STYLE = `
 }
 .md-turn-queue-item {
   position: relative; display: flex; align-items: center; justify-content: center; opacity: .65;
-  border-right: 1px solid rgba(255,209,102,.22); transform: none;
+  border: 0; transform: none;
 }
-.md-turn-queue-item.active { opacity: 1; transform: none; background: rgba(255,209,102,.09); }
+.md-turn-queue-item.active { opacity: 1; transform: none; filter: brightness(1.18) drop-shadow(0 0 4px rgba(255,209,102,.5)); }
 .md-turn-queue-item.empty { opacity: .2; }
 .md-turn-queue-icon { width: 28px; height: 28px; font-size: 15px; }
-.md-turn-queue-item.active .md-turn-queue-icon { transform: scale(1.12); box-shadow: 0 0 0 2px var(--gold-glow), 0 0 12px rgba(255,209,102,.3); }
+.md-turn-queue-item.active .md-turn-queue-icon { transform: scale(1.12); }
 .md-turn-queue-more {
   position: absolute; right: 2px; bottom: 2px; min-width: 14px; padding: 0 3px; border-radius: 8px;
   background: var(--violet-deep); color: #fff; font: 800 7px/14px 'Baloo 2'; text-align: center;
 }
 .md-combat-top-actions {
   grid-column: 6; display: grid; grid-auto-rows: minmax(0,1fr); min-width: 0;
-  background: rgba(0,0,0,.16);
+  background: transparent;
 }
 .md-combat-header-action {
   width: 100%; min-width: 0; padding: 0 4px; border: 0; background: transparent;
   color: var(--gold); font: 800 15px/1 'Baloo 2'; cursor: pointer;
 }
 .md-combat-header-action.skip { color: #fff; font-size: 11px; letter-spacing: .45px; }
-.md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 1px solid rgba(255,209,102,.24); font-size: 9px; }
+.md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 0; font-size: 9px; }
+.md-combat-header-action.skip.md-battle-art { color: transparent; font-size: 0; background-size: contain; }
 .md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
 
 .md-unit-status {
@@ -1257,6 +1275,28 @@ const STYLE = `
 .md-dock-mini:disabled { opacity: .4; cursor: not-allowed; }
 .md-battle-dock .md-dock-attack { justify-self: end; transform: none; }
 .md-battle-dock .md-dock-attack:active { transform: translateY(2px); }
+
+/* Released PNGs own the Battle control/frame presentation. These selectors
+   deliberately retain the CSS dimensions, hit areas and interaction states. */
+.md-quickslot-btn.battle.md-battle-art,
+.md-dock-auto.md-battle-art,
+.md-dock-mini.md-battle-art,
+.md-dock-attack.md-battle-art {
+  border: 0; background-color: transparent; box-shadow: none; background-size: contain;
+}
+.md-dock-auto.md-battle-art,
+.md-dock-mini.md-battle-art,
+.md-dock-attack.md-battle-art { color: transparent; font-size: 0; }
+.md-quickslot-btn.battle.md-battle-art.empty { border: 0; }
+.md-quickslot-btn.battle.md-battle-art.editing,
+.md-dock-mini.settings.md-battle-art.active {
+  outline: 2px solid #8ee0a8; outline-offset: -2px;
+}
+.md-dock-auto.md-battle-art.active { border: 0; background-color: transparent; filter: brightness(1.18) drop-shadow(0 0 5px rgba(142,224,168,.6)); }
+.md-dock-auto.md-battle-art:active,
+.md-dock-mini.md-battle-art:active,
+.md-dock-attack.md-battle-art:active,
+.md-quickslot-btn.battle.md-battle-art:active { box-shadow: none; }
 
 @media (max-width: 380px) {
   .md-battle-top { grid-template-columns: 1.45fr repeat(4, minmax(0, 1fr)) 1.1fr; min-height: 54px; }

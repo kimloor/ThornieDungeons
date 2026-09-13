@@ -2591,10 +2591,7 @@ function EnemySprite({
     onClick: !dead && onClick ? () => onClick(enemy.uid) : undefined,
     style: {
       cursor: !dead && onClick ? "pointer" : "default",
-      opacity: 1,
-      outline: selected && !dead ? "2px solid var(--gold)" : "none",
-      outlineOffset: 4,
-      borderRadius: 12
+      opacity: 1
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar md-battle-art",
@@ -2624,7 +2621,11 @@ function EnemySprite({
     title: `Silence · ${enemy.battleStatuses.silence.duration} turn(s)`
   }, "🤫", enemy.battleStatuses.silence.duration), enemy.battleStatuses?.def_up && /*#__PURE__*/React.createElement("span", {
     title: `DEF Up · ${enemy.battleStatuses.def_up.duration} turn(s)`
-  }, "🛡️", enemy.battleStatuses.def_up.duration)), spriteVisual || /*#__PURE__*/React.createElement("div", {
+  }, "🛡️", enemy.battleStatuses.def_up.duration)), selected && !dead && /*#__PURE__*/React.createElement("span", {
+    className: "md-target-selected-marker md-battle-art",
+    style: battleUiStyle("targetSelectedMarker"),
+    "aria-hidden": "true"
+  }), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
@@ -2722,7 +2723,8 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
   }, slots.map((item, i) => {
     if (!item) return /*#__PURE__*/React.createElement("div", {
       key: `empty-${i}`,
-      className: "md-turn-queue-item empty",
+      className: "md-turn-queue-item empty md-battle-art",
+      style: battleUiStyle("turnOrderSlot"),
       title: "Empty ATB slot"
     }, /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-icon"
@@ -2730,7 +2732,8 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
     const isActive = activeKey === item.key;
     return /*#__PURE__*/React.createElement("div", {
       key: item.key,
-      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""}`,
+      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} md-battle-art`,
+      style: battleUiStyle("turnOrderSlot"),
       title: `${item.name} · Speed ${item.speed}`
     }, /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-icon"
@@ -2776,6 +2779,10 @@ function CombatScreen({
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
   const skipUnlocked = (combatTurnCount || 0) >= 5;
+  const activeTurn = (turnQueue || []).find(item => item.key === activeTurnKey);
+  const activeTurnName = activeTurn
+    ? activeTurn.kind === "player" ? "You" : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
+    : "—";
   // Keep ground monsters in their encounter order. A verified flying monster is
   // placed last, which maps it to formation slot 3 in a three-enemy encounter.
   const formationMonsters = monsters.slice().sort((a, b) => {
@@ -2826,7 +2833,8 @@ function CombatScreen({
     return () => clearTimeout(t);
   }, [autoRun, busy, assignSlotIndex, onAction, combatSpeed]);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "md-scene battle-bg"
+    className: "md-scene battle-bg md-battle-background-art",
+    style: battleUiStyle("background")
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-battle-top md-battle-art",
     style: battleUiStyle("topBar")
@@ -2855,8 +2863,10 @@ function CombatScreen({
     title: "เปลี่ยนความเร็วการต่อสู้",
     onClick: onCycleCombatSpeed
   }, `×${combatSpeed || 1}`), skipUnlocked && /*#__PURE__*/React.createElement("button", {
-    className: "md-combat-header-action skip",
+    className: "md-combat-header-action skip md-battle-art",
+    style: battleUiStyle("buttons.skip"),
     disabled: busy,
+    "aria-label": "Skip battle",
     title: "จำลองการต่อสู้ที่เหลือด้วยระบบเดียวกัน",
     onClick: () => onAction("skip")
   }, "SKIP"))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
@@ -2873,9 +2883,10 @@ function CombatScreen({
       margin: "0 auto 4px"
     },
     title: bossOrModifier.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : bossOrModifier.modifier.desc
-  }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), monsters.length > 1 && /*#__PURE__*/React.createElement("div", {
-    style: { textAlign: "center", fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, margin: "0 0 2px" }
-  }, "แตะศัตรูเพื่อเลือกเป้าหมาย · เหลือ ", monsters.filter(m => m.hp > 0).length, "/", monsters.length), /*#__PURE__*/React.createElement("div", {
+  }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), /*#__PURE__*/React.createElement("div", {
+    className: "md-current-turn",
+    "aria-live": "polite"
+  }, "Turn: ", activeTurnName), /*#__PURE__*/React.createElement("div", {
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
@@ -2989,6 +3000,8 @@ function CombatScreen({
   }, /*#__PURE__*/React.createElement("button", {
     className: `md-dock-auto md-battle-art ${autoRun ? "active" : ""}`,
     style: battleUiStyle("buttons.auto"),
+    "aria-label": autoRun ? "หยุด Auto" : "เปิด Auto",
+    title: autoRun ? "หยุด Auto" : "เปิด Auto",
     onClick: () => setAutoRun(a => !a)
   }, autoRun ? "⏸ AUTO" : "▶ AUTO"), /*#__PURE__*/React.createElement("div", {
     className: "md-dock-half-row"
@@ -2996,11 +3009,13 @@ function CombatScreen({
     className: "md-dock-mini flee md-battle-art",
     style: battleUiStyle("buttons.flee"),
     disabled: busy,
+    "aria-label": "หลบหนี",
     title: "หลบหนีจากการต่อสู้",
     onClick: () => onAction("flee")
   }, "🏃"), /*#__PURE__*/React.createElement("button", {
     className: `md-dock-mini settings md-battle-art ${editSlots ? "active" : ""}`,
     style: battleUiStyle("buttons.settings"),
+    "aria-label": editSlots ? "ปิดการตั้งค่า Quick Slot" : "ตั้งค่า Quick Slot",
     title: editSlots ? "เสร็จสิ้นการตั้งค่า Quick Slot" : "ตั้งค่า Quick Slot",
     onClick: () => {
       setAssignSlotIndex(null);
@@ -3010,6 +3025,8 @@ function CombatScreen({
     className: "md-dock-attack md-battle-art",
     style: battleUiStyle("buttons.attack"),
     disabled: busy,
+    "aria-label": "โจมตี",
+    title: "โจมตี",
     onClick: () => {
       onAction("attack");
     }

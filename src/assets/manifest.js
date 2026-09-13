@@ -54,7 +54,11 @@ function spriteAnimationSources(config, names) {
 }
 
 function battleUiAssetUrls() {
-  return ["topBar", "quickSlotFrame", "buttons.auto", "buttons.flee", "buttons.settings", "buttons.attack", "hpStatusFrame"]
+  return [
+    "background", "topBar", "turnOrderSlot", "quickSlotFrame", "hpStatusFrame",
+    "targetSelectedMarker", "buttons.auto", "buttons.flee", "buttons.settings",
+    "buttons.attack", "buttons.skip"
+  ]
     .map(key => optionalAsset(`battleUi.${key}`)).filter(Boolean);
 }
 
