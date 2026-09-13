@@ -1,0 +1,127 @@
+name: Deploy ThornieDungeons API
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/thornie-dungeons-api.js"
+      - "migrations/auto/**"
+      - "wrangler.api.template.jsonc"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thornie-api-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
+      WORKER_NAME: thornie-dungeons-api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing GitHub secret CF_API_TOKEN"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing GitHub secret CF_ACCOUNT_ID"; exit 1; }
+          test -n "$CF_D1_DATABASE_ID" || { echo "Missing GitHub secret CF_D1_DATABASE_ID"; exit 1; }
+          wrangler whoami >/dev/null
+
+      - name: Resolve D1 and build runtime Wrangler config
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          d1_json="$RUNNER_TEMP/d1-list.json"
+          wrangler d1 list --json > "$d1_json"
+
+          db_name="$(jq -r --arg id "$CF_D1_DATABASE_ID" '.[] | select((.uuid // .id // "") == $id) | .name' "$d1_json" | head -n1)"
+          if [ -z "$db_name" ] || [ "$db_name" = "null" ]; then
+            echo "Configured CF_D1_DATABASE_ID was not found in this Cloudflare account."
+            exit 1
+          fi
+
+          runtime_config="$RUNNER_TEMP/wrangler.api.jsonc"
+          sed \
+            -e "s/__D1_DATABASE_ID__/$CF_D1_DATABASE_ID/g" \
+            -e "s/__D1_DATABASE_NAME__/$db_name/g" \
+            wrangler.api.template.jsonc > "$runtime_config"
+
+          echo "database_name=$db_name" >> "$GITHUB_OUTPUT"
+          echo "runtime_config=$runtime_config" >> "$GITHUB_OUTPUT"
+          echo "Resolved D1 database: $db_name"
+
+      - name: Apply pending D1 migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find migrations/auto -maxdepth 1 -type f -name '*.sql' -print -quit | grep -q .; then
+            wrangler d1 migrations apply DB \
+              --remote \
+              --config "${{ steps.config.outputs.runtime_config }}"
+          else
+            echo "No automated D1 migrations to apply."
+          fi
+
+      - name: Deploy API Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler deploy \
+            --config "${{ steps.config.outputs.runtime_config }}" \
+            --keep-vars
+
+      - name: Verify deployment exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler deployments list \
+            --name "$WORKER_NAME" \
+            --config "${{ steps.config.outputs.runtime_config }}" | head -n 40
+
+      - name: Optional live smoke test
+        if: ${{ vars.CF_API_SMOKE_URL != '' }}
+        env:
+          CF_API_SMOKE_URL: ${{ vars.CF_API_SMOKE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --max-time 20 "$CF_API_SMOKE_URL?action=getGameConfig")"
+          test -n "$response"
+          echo "Live API smoke test returned a response."
+
+      - name: Deployment summary
+        shell: bash
+        run: |
+          {
+            echo "## ThornieDungeons API deployment"
+            echo ""
+            echo "- Worker: \`$WORKER_NAME\`"
+            echo "- D1: \`${{ steps.config.outputs.database_name }}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Migration lane: \`migrations/auto\`"
+            echo "- Deploy source: \`workers/thornie-dungeons-api.js\`"
+          } >> "$GITHUB_STEP_SUMMARY"
