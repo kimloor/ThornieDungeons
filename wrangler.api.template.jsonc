@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "thornie-dungeons-api",
+  "main": "workers/thornie-dungeons-api.js",
+  "compatibility_date": "2026-08-25",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "__D1_DATABASE_NAME__",
+      "database_id": "__D1_DATABASE_ID__",
+      "migrations_dir": "migrations/auto"
+    }
+  ],
+  "triggers": {
+    "crons": ["0 17 * * *"]
+  }
+}
