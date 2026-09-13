@@ -142,7 +142,7 @@ const STYLE = `
 .md-root-dungeon.md-dungeon-modal-open { --md-dungeon-veil: .69; }
 /* Keep normal screens above the backdrop, but never rewrite overlay positioning. The inventory,
    blacksmith and daily-reward sheets rely on position:absolute to open over the current screen. */
-.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay) { position: relative; z-index: 2; }
+.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-daily-toast-overlay) { position: relative; z-index: 2; }
 @keyframes md-global-dungeon-breathe {
   0% { transform: scale(1.025) translate3d(0,0,0); filter: brightness(.92); }
   100% { transform: scale(1.055) translate3d(0,-.45%,0); filter: brightness(1.04); }
@@ -165,7 +165,7 @@ const STYLE = `
   box-shadow:inset 0 0 55px rgba(14,55,92,.12);
 }
 .md-root-town.md-town-modal-open::after { background:rgba(3,8,24,.58); }
-.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay) { position:relative; z-index:2; }
+.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-daily-toast-overlay) { position:relative; z-index:2; }
 @keyframes md-town-camera-breathe {
   0% { transform:scale(1.015) translate3d(0,0,0); filter:saturate(1.02) brightness(.98); }
   100% { transform:scale(1.04) translate3d(0,-.35%,0); filter:saturate(1.07) brightness(1.03); }
@@ -1414,8 +1414,8 @@ const STYLE = `
 .md-item-detail { margin-top:8px; padding:9px 10px; border:1px solid rgba(255,209,102,.28); border-radius:13px; background:rgba(0,0,0,.22); min-height:54px; }
 .md-item-detail-name { font-size:12px; font-weight:800; color:var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .md-item-detail-sub { font-size:10px; color:var(--ink-soft); font-weight:700; margin-top:2px; }
-.md-item-actions { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:7px; margin-top:8px; }
-.md-item-actions .md-btn { min-height:42px; padding:8px 6px; font-size:12px; }
+.md-item-actions { display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:8px; }
+.md-item-actions .md-btn { min-height:42px; padding:6px 3px; font-size:10.5px; }
 .md-equip-close { margin-top:8px; }
 @media (max-width:380px) {
   .md-equip-stage { min-height:300px; }
@@ -1458,8 +1458,19 @@ const STYLE = `
 .md-save-state-failed { background:rgba(82,20,35,.96); border-color:#ef7a8f; color:#fff; }
 .md-daily-toast-overlay { position:absolute; inset:0; z-index:20; background:transparent; display:flex; align-items:center; justify-content:center; padding:20px; }
 .md-daily-toast-card { position:relative; width:100%; max-width:320px; background:linear-gradient(180deg,#30204f 0%,#1b1233 100%); border:1.5px solid var(--gold-deep); border-radius:18px; padding:18px 16px 14px; box-shadow:0 10px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,209,102,0.15); text-align:center; animation: mdToastIn 0.25s ease-out; }
+.md-daily-toast-card-wide { max-width:360px; max-height:88vh; overflow-y:auto; }
 .md-daily-toast-close { position:absolute; top:8px; right:10px; background:none; border:none; color:var(--ink-soft); font-size:18px; line-height:1; padding:4px; cursor:pointer; }
 .md-daily-toast-hint { font-size:11px; color:var(--ink-soft); margin-top:10px; }
+.md-daily-calendar { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:12px; }
+.md-daily-day { border-radius:12px; padding:6px 3px 7px; border:1px solid rgba(255,209,102,.25); background:rgba(0,0,0,.22); display:flex; flex-direction:column; align-items:center; gap:3px; }
+.md-daily-day-num { font-size:9.5px; font-weight:800; color:var(--ink-soft); }
+.md-daily-day-reward { font-size:9px; color:var(--ink); min-height:14px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:1px; }
+.md-daily-day-badge { font-size:13px; }
+.md-daily-day-claimed { border-color:rgba(120,220,150,.55); background:rgba(70,180,110,.16); }
+.md-daily-day-claimed .md-daily-day-num { color:#9BE6B4; }
+.md-daily-day-claimable { border-color:var(--gold); background:rgba(255,209,102,.16); box-shadow:0 0 0 1px rgba(255,209,102,.3); animation: mdToastIn 0.4s ease-out; }
+.md-daily-day-claimable .md-daily-day-num { color:var(--gold); }
+.md-daily-day-locked { opacity:.55; }
 @keyframes mdToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */
@@ -8224,6 +8235,24 @@ function dailyRewardIcons(reward, prefix) {
   if (reward.azureRandom && !(reward.items && reward.items.length)) out.push(/*#__PURE__*/React.createElement("span", { key: "azure-preview" }, "🔷 ไอเทมชุด Azure (สุ่ม 1 ชิ้น)"));
   return out;
 }
+// Mirrors workers/thornie-dungeons-api.js's DAILY_LOGIN_REWARDS table, purely so the calendar
+// preview below can show what every day gives — the server remains the sole authority on what
+// actually gets granted (this table is never used to compute a real payout, only to render this
+// preview). If the server's table ever changes, update this to match or the preview goes stale.
+const DAILY_LOGIN_REWARDS_PREVIEW = [
+  { day: 1, gold: 5000 },
+  { day: 2, diamonds: 150 },
+  { day: 3, junk: [{ junkId: "manaOre", quantity: 10 }, { junkId: "iron", quantity: 10 }] },
+  { day: 4, diamonds: 350 },
+  { day: 5, junk: [{ junkId: "bossHide", quantity: 3 }, { junkId: "bossHorn", quantity: 3 }] },
+  { day: 6, diamonds: 550 },
+  { day: 7, azureRandom: true }
+];
+// Maps a raw (ever-increasing) login streak count onto its 1-7 position within the repeating
+// weekly cycle — e.g. streak 10 -> day 3 of the *second* lap.
+function dailyCyclePosition(streak) {
+  return ((Math.max(1, streak) - 1) % DAILY_LOGIN_REWARDS_PREVIEW.length) + 1;
+}
 function DailyLoginToast({
   open,
   onClose,
@@ -8234,11 +8263,17 @@ function DailyLoginToast({
   onClaimDailyLogin
 }) {
   if (!open) return null;
+  const loginStreak = (dailyLogin && dailyLogin.state && dailyLogin.state.loginStreak) || 0;
+  // A streak that just reset to day 1 (missed a day) means nothing in this fresh lap has been
+  // claimed yet, even though the stale loginStreak count from the old streak is still > 0.
+  const streakJustReset = canClaimDaily && dailyPreview.streak === 1 && loginStreak > 0;
+  const claimedCyclePos = streakJustReset ? 0 : loginStreak > 0 ? dailyCyclePosition(loginStreak) : 0;
+  const claimableCyclePos = canClaimDaily ? dailyCyclePosition(dailyPreview.streak) : null;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-daily-toast-overlay",
     onClick: onClose
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-daily-toast-card",
+    className: "md-daily-toast-card md-daily-toast-card-wide",
     onClick: e => e.stopPropagation()
   }, /*#__PURE__*/React.createElement("button", { className: "md-daily-toast-close", onClick: onClose, "aria-label": "ปิด" }, "✕"),
   /*#__PURE__*/React.createElement("h3", { className: "md-title" }, "🎁 รางวัลรายวัน"),
@@ -8246,13 +8281,25 @@ function DailyLoginToast({
     /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `รับแล้ว! Day ${dailyLoginClaimResult.streak}`),
     /*#__PURE__*/React.createElement("p", { className: "md-sub" }, dailyRewardIcons(dailyLoginClaimResult.reward, "+"))
   ) : /*#__PURE__*/React.createElement(React.Fragment, null,
-    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.state.loginStreak} วัน`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${loginStreak} วัน`),
     /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `, dailyRewardIcons(dailyPreview.reward, "")),
     canClaimDaily ? /*#__PURE__*/React.createElement("button", {
       className: "md-btn primary wide",
       onClick: onClaimDailyLogin
     }, "รับรางวัล") : /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" } }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
   ),
+  /*#__PURE__*/React.createElement("div", { className: "md-daily-calendar" }, DAILY_LOGIN_REWARDS_PREVIEW.map(r => {
+    const isClaimed = claimedCyclePos >= r.day;
+    const isClaimable = claimableCyclePos === r.day;
+    const status = isClaimed ? "claimed" : isClaimable ? "claimable" : "locked";
+    return /*#__PURE__*/React.createElement("div", {
+      key: r.day,
+      className: `md-daily-day md-daily-day-${status}`
+    },
+    /*#__PURE__*/React.createElement("div", { className: "md-daily-day-num" }, "Day ", r.day),
+    /*#__PURE__*/React.createElement("div", { className: "md-daily-day-reward" }, dailyRewardIcons(r, "")),
+    /*#__PURE__*/React.createElement("div", { className: "md-daily-day-badge" }, isClaimed ? "✅" : isClaimable ? "🎁" : "🔒"));
+  })),
   /*#__PURE__*/React.createElement("p", { className: "md-daily-toast-hint" }, "แตะที่ใดก็ได้เพื่อปิด")));
 }
 function HubScreen({
@@ -11308,15 +11355,6 @@ function InventoryOverlay({
         /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
         renderEmpowerSlotsReadOnly(detailTarget)
       ),
-      selectedItem && detailTarget.type !== "junk" && /*#__PURE__*/React.createElement("button", {
-        className: "md-btn flee small",
-        disabled: busy,
-        style: { marginTop: 6, minHeight: 38, fontSize: 10, width: "100%", opacity: busy ? 0.6 : 1 },
-        onClick: doSalvage
-      }, (() => {
-        const y = salvageYield(detailTarget.rarity);
-        return /*#__PURE__*/React.createElement(React.Fragment, null, "♻️ แยกชิ้นส่วน (", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }), y.iron, " ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }), y.manaOre, ")");
-      })()),
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
     /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
@@ -11355,7 +11393,15 @@ function InventoryOverlay({
     /*#__PURE__*/React.createElement("div", { className: "md-item-actions" },
       /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem || selectedItem.type === "junk" || busy, onClick: doEquip }, "⚔️ สวมใส่"),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem || busy, onClick: doSell }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), selectedItem ? ` ขาย ${sellPrice(selectedItem)}` : " ขาย"),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot || busy, onClick: doUnequip }, "↩️ ถอด")
+      /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot || busy, onClick: doUnequip }, "↩️ ถอด"),
+      /*#__PURE__*/React.createElement("button", {
+        className: "md-btn flee",
+        disabled: !selectedItem || selectedItem.type === "junk" || busy,
+        onClick: doSalvage
+      }, selectedItem && selectedItem.type !== "junk" ? (() => {
+        const y = salvageYield(selectedItem.rarity);
+        return /*#__PURE__*/React.createElement(React.Fragment, null, "♻️ ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }), y.iron, " ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }), y.manaOre);
+      })() : "♻️ ย่อย")
     ),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิด Inventory")
   ));
@@ -11638,6 +11684,86 @@ function CraftingOverlay({
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านประดิษฐ์")
   ));
 }
+
+// ===== ui/resumePreviewPatch.js =====
+// Keeps Dungeon Floor Preview aligned with an active Battle V1 checkpoint.
+// The map normally pre-rolls a fresh encounter for preview; when a safe cloud checkpoint
+// exists, continuing that floor must preview the checkpoint's exact enemy pack instead.
+(function installResumeFloorPreviewPatch(root) {
+  if (typeof cloudGetBattleState !== "function" || typeof makeEncounter !== "function") return;
+
+  let activeResume = null;
+
+  function encounterFromCheckpoint(payload) {
+    if (!payload || !Array.isArray(payload.enemyIds) || !payload.units) return null;
+    const monsters = payload.enemyIds.map((enemyId) => {
+      const unit = payload.units[enemyId];
+      if (!unit) return null;
+      return {
+        ...unit,
+        id: unit.monsterDefId || unit.id,
+        uid: unit.id,
+        hp: Number(unit.hp) || 0,
+        maxHp: Math.max(1, Number(unit.maxHp) || Number(unit.hp) || 1),
+        isBoss: unit.kind === "boss" || unit.kind === "raid_boss" || !!unit.isBoss,
+        isEliteBoss: !!unit.isEliteBoss,
+      };
+    }).filter(Boolean);
+    return monsters.length ? monsters : null;
+  }
+
+  function rememberCheckpoint(characterId, checkpoint) {
+    const payload = checkpoint && checkpoint.payload;
+    const encounter = encounterFromCheckpoint(payload);
+    if (!payload || !encounter) {
+      if (!characterId || activeResume?.characterId === String(characterId)) activeResume = null;
+      return;
+    }
+    activeResume = {
+      characterId: String(characterId || ""),
+      battleId: String(payload.battleId || checkpoint.battleId || ""),
+      floor: Math.max(1, Math.floor(Number(payload.floor) || 1)),
+      encounter,
+    };
+  }
+
+  const originalGetBattleState = cloudGetBattleState;
+  cloudGetBattleState = async function patchedCloudGetBattleState(serverUrl, characterId, ...rest) {
+    const result = await originalGetBattleState(serverUrl, characterId, ...rest);
+    if (result?.ok) rememberCheckpoint(characterId, result.checkpoint);
+    return result;
+  };
+
+  const originalMakeEncounter = makeEncounter;
+  makeEncounter = function patchedMakeEncounter(floor) {
+    if (activeResume && Number(floor) === activeResume.floor) {
+      return activeResume.encounter.map(monster => ({ ...monster }));
+    }
+    return originalMakeEncounter(floor);
+  };
+
+  if (typeof cloudCompleteBattle === "function") {
+    const originalCompleteBattle = cloudCompleteBattle;
+    cloudCompleteBattle = async function patchedCloudCompleteBattle(serverUrl, characterId, battleId, ...rest) {
+      const result = await originalCompleteBattle(serverUrl, characterId, battleId, ...rest);
+      if (result?.ok && activeResume && String(battleId) === activeResume.battleId) activeResume = null;
+      return result;
+    };
+  }
+
+  if (typeof cloudClearBattleCheckpoint === "function") {
+    const originalClearBattleCheckpoint = cloudClearBattleCheckpoint;
+    cloudClearBattleCheckpoint = async function patchedCloudClearBattleCheckpoint(serverUrl, characterId, battleId, ...rest) {
+      const result = await originalClearBattleCheckpoint(serverUrl, characterId, battleId, ...rest);
+      if (result?.ok && activeResume && String(battleId) === activeResume.battleId) activeResume = null;
+      return result;
+    };
+  }
+
+  root.__thornieResumeFloorPreview = {
+    getActive: () => activeResume ? { ...activeResume, encounter: activeResume.encounter.map(monster => ({ ...monster })) } : null,
+  };
+})(typeof globalThis !== "undefined" ? globalThis : this);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(ThornieDungeons));

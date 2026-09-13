@@ -248,6 +248,24 @@ function dailyRewardIcons(reward, prefix) {
   if (reward.azureRandom && !(reward.items && reward.items.length)) out.push(/*#__PURE__*/React.createElement("span", { key: "azure-preview" }, "🔷 ไอเทมชุด Azure (สุ่ม 1 ชิ้น)"));
   return out;
 }
+// Mirrors workers/thornie-dungeons-api.js's DAILY_LOGIN_REWARDS table, purely so the calendar
+// preview below can show what every day gives — the server remains the sole authority on what
+// actually gets granted (this table is never used to compute a real payout, only to render this
+// preview). If the server's table ever changes, update this to match or the preview goes stale.
+const DAILY_LOGIN_REWARDS_PREVIEW = [
+  { day: 1, gold: 5000 },
+  { day: 2, diamonds: 150 },
+  { day: 3, junk: [{ junkId: "manaOre", quantity: 10 }, { junkId: "iron", quantity: 10 }] },
+  { day: 4, diamonds: 350 },
+  { day: 5, junk: [{ junkId: "bossHide", quantity: 3 }, { junkId: "bossHorn", quantity: 3 }] },
+  { day: 6, diamonds: 550 },
+  { day: 7, azureRandom: true }
+];
+// Maps a raw (ever-increasing) login streak count onto its 1-7 position within the repeating
+// weekly cycle — e.g. streak 10 -> day 3 of the *second* lap.
+function dailyCyclePosition(streak) {
+  return ((Math.max(1, streak) - 1) % DAILY_LOGIN_REWARDS_PREVIEW.length) + 1;
+}
 function DailyLoginToast({
   open,
   onClose,
@@ -258,11 +276,17 @@ function DailyLoginToast({
   onClaimDailyLogin
 }) {
   if (!open) return null;
+  const loginStreak = (dailyLogin && dailyLogin.state && dailyLogin.state.loginStreak) || 0;
+  // A streak that just reset to day 1 (missed a day) means nothing in this fresh lap has been
+  // claimed yet, even though the stale loginStreak count from the old streak is still > 0.
+  const streakJustReset = canClaimDaily && dailyPreview.streak === 1 && loginStreak > 0;
+  const claimedCyclePos = streakJustReset ? 0 : loginStreak > 0 ? dailyCyclePosition(loginStreak) : 0;
+  const claimableCyclePos = canClaimDaily ? dailyCyclePosition(dailyPreview.streak) : null;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-daily-toast-overlay",
     onClick: onClose
   }, /*#__PURE__*/React.createElement("div", {
-    className: "md-daily-toast-card",
+    className: "md-daily-toast-card md-daily-toast-card-wide",
     onClick: e => e.stopPropagation()
   }, /*#__PURE__*/React.createElement("button", { className: "md-daily-toast-close", onClick: onClose, "aria-label": "ปิด" }, "✕"),
   /*#__PURE__*/React.createElement("h3", { className: "md-title" }, "🎁 รางวัลรายวัน"),
@@ -270,13 +294,25 @@ function DailyLoginToast({
     /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `รับแล้ว! Day ${dailyLoginClaimResult.streak}`),
     /*#__PURE__*/React.createElement("p", { className: "md-sub" }, dailyRewardIcons(dailyLoginClaimResult.reward, "+"))
   ) : /*#__PURE__*/React.createElement(React.Fragment, null,
-    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${dailyLogin.state.loginStreak} วัน`),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Streak ปัจจุบัน: ${loginStreak} วัน`),
     /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `วันนี้ (Day ${dailyPreview.streak}) จะได้รับ: `, dailyRewardIcons(dailyPreview.reward, "")),
     canClaimDaily ? /*#__PURE__*/React.createElement("button", {
       className: "md-btn primary wide",
       onClick: onClaimDailyLogin
     }, "รับรางวัล") : /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" } }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
   ),
+  /*#__PURE__*/React.createElement("div", { className: "md-daily-calendar" }, DAILY_LOGIN_REWARDS_PREVIEW.map(r => {
+    const isClaimed = claimedCyclePos >= r.day;
+    const isClaimable = claimableCyclePos === r.day;
+    const status = isClaimed ? "claimed" : isClaimable ? "claimable" : "locked";
+    return /*#__PURE__*/React.createElement("div", {
+      key: r.day,
+      className: `md-daily-day md-daily-day-${status}`
+    },
+    /*#__PURE__*/React.createElement("div", { className: "md-daily-day-num" }, "Day ", r.day),
+    /*#__PURE__*/React.createElement("div", { className: "md-daily-day-reward" }, dailyRewardIcons(r, "")),
+    /*#__PURE__*/React.createElement("div", { className: "md-daily-day-badge" }, isClaimed ? "✅" : isClaimable ? "🎁" : "🔒"));
+  })),
   /*#__PURE__*/React.createElement("p", { className: "md-daily-toast-hint" }, "แตะที่ใดก็ได้เพื่อปิด")));
 }
 function HubScreen({
@@ -3332,15 +3368,6 @@ function InventoryOverlay({
         /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
         renderEmpowerSlotsReadOnly(detailTarget)
       ),
-      selectedItem && detailTarget.type !== "junk" && /*#__PURE__*/React.createElement("button", {
-        className: "md-btn flee small",
-        disabled: busy,
-        style: { marginTop: 6, minHeight: 38, fontSize: 10, width: "100%", opacity: busy ? 0.6 : 1 },
-        onClick: doSalvage
-      }, (() => {
-        const y = salvageYield(detailTarget.rarity);
-        return /*#__PURE__*/React.createElement(React.Fragment, null, "♻️ แยกชิ้นส่วน (", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }), y.iron, " ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }), y.manaOre, ")");
-      })()),
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
     ) : /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { textAlign: "center" } }, "เลือกไอเทมเพื่อดูรายละเอียดและคำสั่ง")),
     /*#__PURE__*/React.createElement("div", { className: "md-inventory-header" },
@@ -3379,7 +3406,15 @@ function InventoryOverlay({
     /*#__PURE__*/React.createElement("div", { className: "md-item-actions" },
       /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: !selectedItem || selectedItem.type === "junk" || busy, onClick: doEquip }, "⚔️ สวมใส่"),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: !selectedItem || busy, onClick: doSell }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), selectedItem ? ` ขาย ${sellPrice(selectedItem)}` : " ขาย"),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot || busy, onClick: doUnequip }, "↩️ ถอด")
+      /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot || busy, onClick: doUnequip }, "↩️ ถอด"),
+      /*#__PURE__*/React.createElement("button", {
+        className: "md-btn flee",
+        disabled: !selectedItem || selectedItem.type === "junk" || busy,
+        onClick: doSalvage
+      }, selectedItem && selectedItem.type !== "junk" ? (() => {
+        const y = salvageYield(selectedItem.rarity);
+        return /*#__PURE__*/React.createElement(React.Fragment, null, "♻️ ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }), y.iron, " ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }), y.manaOre);
+      })() : "♻️ ย่อย")
     ),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิด Inventory")
   ));

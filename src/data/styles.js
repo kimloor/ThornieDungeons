@@ -65,7 +65,7 @@ const STYLE = `
 .md-root-dungeon.md-dungeon-modal-open { --md-dungeon-veil: .69; }
 /* Keep normal screens above the backdrop, but never rewrite overlay positioning. The inventory,
    blacksmith and daily-reward sheets rely on position:absolute to open over the current screen. */
-.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay) { position: relative; z-index: 2; }
+.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-daily-toast-overlay) { position: relative; z-index: 2; }
 @keyframes md-global-dungeon-breathe {
   0% { transform: scale(1.025) translate3d(0,0,0); filter: brightness(.92); }
   100% { transform: scale(1.055) translate3d(0,-.45%,0); filter: brightness(1.04); }
@@ -88,7 +88,7 @@ const STYLE = `
   box-shadow:inset 0 0 55px rgba(14,55,92,.12);
 }
 .md-root-town.md-town-modal-open::after { background:rgba(3,8,24,.58); }
-.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay) { position:relative; z-index:2; }
+.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-daily-toast-overlay) { position:relative; z-index:2; }
 @keyframes md-town-camera-breathe {
   0% { transform:scale(1.015) translate3d(0,0,0); filter:saturate(1.02) brightness(.98); }
   100% { transform:scale(1.04) translate3d(0,-.35%,0); filter:saturate(1.07) brightness(1.03); }
@@ -1337,8 +1337,8 @@ const STYLE = `
 .md-item-detail { margin-top:8px; padding:9px 10px; border:1px solid rgba(255,209,102,.28); border-radius:13px; background:rgba(0,0,0,.22); min-height:54px; }
 .md-item-detail-name { font-size:12px; font-weight:800; color:var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .md-item-detail-sub { font-size:10px; color:var(--ink-soft); font-weight:700; margin-top:2px; }
-.md-item-actions { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:7px; margin-top:8px; }
-.md-item-actions .md-btn { min-height:42px; padding:8px 6px; font-size:12px; }
+.md-item-actions { display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:8px; }
+.md-item-actions .md-btn { min-height:42px; padding:6px 3px; font-size:10.5px; }
 .md-equip-close { margin-top:8px; }
 @media (max-width:380px) {
   .md-equip-stage { min-height:300px; }
@@ -1381,8 +1381,19 @@ const STYLE = `
 .md-save-state-failed { background:rgba(82,20,35,.96); border-color:#ef7a8f; color:#fff; }
 .md-daily-toast-overlay { position:absolute; inset:0; z-index:20; background:transparent; display:flex; align-items:center; justify-content:center; padding:20px; }
 .md-daily-toast-card { position:relative; width:100%; max-width:320px; background:linear-gradient(180deg,#30204f 0%,#1b1233 100%); border:1.5px solid var(--gold-deep); border-radius:18px; padding:18px 16px 14px; box-shadow:0 10px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,209,102,0.15); text-align:center; animation: mdToastIn 0.25s ease-out; }
+.md-daily-toast-card-wide { max-width:360px; max-height:88vh; overflow-y:auto; }
 .md-daily-toast-close { position:absolute; top:8px; right:10px; background:none; border:none; color:var(--ink-soft); font-size:18px; line-height:1; padding:4px; cursor:pointer; }
 .md-daily-toast-hint { font-size:11px; color:var(--ink-soft); margin-top:10px; }
+.md-daily-calendar { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:12px; }
+.md-daily-day { border-radius:12px; padding:6px 3px 7px; border:1px solid rgba(255,209,102,.25); background:rgba(0,0,0,.22); display:flex; flex-direction:column; align-items:center; gap:3px; }
+.md-daily-day-num { font-size:9.5px; font-weight:800; color:var(--ink-soft); }
+.md-daily-day-reward { font-size:9px; color:var(--ink); min-height:14px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:1px; }
+.md-daily-day-badge { font-size:13px; }
+.md-daily-day-claimed { border-color:rgba(120,220,150,.55); background:rgba(70,180,110,.16); }
+.md-daily-day-claimed .md-daily-day-num { color:#9BE6B4; }
+.md-daily-day-claimable { border-color:var(--gold); background:rgba(255,209,102,.16); box-shadow:0 0 0 1px rgba(255,209,102,.3); animation: mdToastIn 0.4s ease-out; }
+.md-daily-day-claimable .md-daily-day-num { color:var(--gold); }
+.md-daily-day-locked { opacity:.55; }
 @keyframes mdToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */
