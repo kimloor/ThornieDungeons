@@ -99,78 +99,102 @@ function StatusBar({
     className: "md-chip-icon"
   }, "🛡️"), formatNumber(save.protectionStones || 0))));
 }
-function LoginScreen({
-  cred,
-  setCred,
-  error,
-  busy,
-  departing,
-  rememberPassword,
-  onRememberPassword,
-  onLogin,
-  onRegister
-}) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: `md-login-wrap${departing ? " is-departing" : ""}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-menu-title md-login-brand"
-  }, /*#__PURE__*/React.createElement("img", {
-    className: "md-login-emblem",
-    src: "icons/icon-512.png",
-    alt: "ThornieDungeons"
-  }), /*#__PURE__*/React.createElement("h1", null, "ThornieDungeons"), /*#__PURE__*/React.createElement("p", null, "เข้าสู่ดันเจี้ยนของคุณ")), /*#__PURE__*/React.createElement("div", {
-    className: "md-card md-login-card"
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-field-label"
-  }, "Player ID"), /*#__PURE__*/React.createElement("input", {
-    className: "md-field",
-    placeholder: "e.g. kimmie",
-    autoComplete: "username",
-    value: cred.id,
-    onChange: e => setCred(c => ({
-      ...c,
-      id: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "md-field-label"
-  }, "Password"), /*#__PURE__*/React.createElement("input", {
-    className: "md-field",
-    type: "password",
-    placeholder: "••••••",
-    autoComplete: "current-password",
-    value: cred.password,
-    onChange: e => setCred(c => ({
-      ...c,
-      password: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("label", {
-    className: "md-remember-password"
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "checkbox",
-    checked: rememberPassword,
-    disabled: busy,
-    onChange: e => onRememberPassword(e.target.checked)
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "md-remember-check",
-    "aria-hidden": "true"
-  }), /*#__PURE__*/React.createElement("span", null, "จำรหัสผ่านบนอุปกรณ์นี้")), error && /*#__PURE__*/React.createElement("p", {
-    className: "md-auth-error"
-  }, error), /*#__PURE__*/React.createElement("div", {
-    className: "md-btn-row",
-    style: {
-      marginTop: 12
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary",
-    disabled: busy,
-    onClick: onLogin
-  }, busy ? "..." : "เข้าสู่ระบบ"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn info",
-    disabled: busy,
-    onClick: onRegister
-  }, busy ? "..." : "สร้างบัญชีใหม่")), /*#__PURE__*/React.createElement("p", {
-    className: "md-hint"
-  }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")));
+function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onRememberLogin, onLogin, onRegister, onForgotPassword, registrationRecovery, onFinishRegistration, passwordResetRecovery, onClearPasswordResetRecovery }) {
+  const e = React.createElement;
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ id: "", password: "", confirmPassword: "" });
+  const [forgotForm, setForgotForm] = useState({ id: cred.id || "", recoveryCode: "", newPassword: "", confirmPassword: "" });
+  const [modalError, setModalError] = useState("");
+  const copyCode = code => navigator.clipboard?.writeText(code).catch(() => {});
+  const field = (label, type, value, update, autoComplete) => e(React.Fragment, null,
+    e("p", { className: "md-field-label" }, label),
+    e("input", { className: "md-field", type: type || "text", value, autoComplete, onChange: event => update(event.target.value) })
+  );
+  const recoveryPanel = (code, done) => e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" },
+    e("h2", { className: "md-title" }, "บันทึก Recovery Code"),
+    e("p", { className: "md-sub" }, "โค้ดนี้จะแสดงเพียงครั้งเดียว โปรดเก็บไว้ในที่ปลอดภัย"),
+    e("code", { className: "md-recovery-code" }, code),
+    e("button", { className: "md-btn info wide", onClick: () => copyCode(code) }, "คัดลอก"),
+    e("button", { className: "md-btn primary wide", onClick: done }, "เก็บโค้ดแล้ว")
+  ));
+  const submitRegister = async () => {
+    setModalError("");
+    if (!/^[A-Za-z0-9_]{4,20}$/.test(registerForm.id)) return setModalError("Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น");
+    if (registerForm.password.length < 4 || registerForm.password.length > 32) return setModalError("Password ต้องยาว 4–32 ตัว");
+    if (registerForm.password !== registerForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
+    const result = await onRegister(registerForm);
+    if (!result?.ok) setModalError(result?.error === "id_unavailable" ? "Player ID นี้ไม่สามารถใช้งานได้" : "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่");
+  };
+  const submitForgot = async () => {
+    setModalError("");
+    if (forgotForm.newPassword.length < 4 || forgotForm.newPassword.length > 32) return setModalError("Password ใหม่ต้องยาว 4–32 ตัว");
+    if (forgotForm.newPassword !== forgotForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
+    const result = await onForgotPassword(forgotForm);
+    if (!result.ok) setModalError(result.error === "invalid_recovery" ? "Player ID หรือ Recovery Code ไม่ถูกต้อง" : "ดำเนินการไม่สำเร็จ กรุณาลองใหม่");
+  };
+  return e("div", { className: `md-login-wrap${departing ? " is-departing" : ""}` },
+    e("div", { className: "md-menu-title md-login-brand" }, e("img", { className: "md-login-emblem", src: "icons/icon-512.png", alt: "ThornieDungeons" }), e("h1", null, "ThornieDungeons"), e("p", null, "เข้าสู่ดันเจี้ยนของคุณ")),
+    e("div", { className: "md-card md-login-card" },
+      field("Player ID", "text", cred.id, id => setCred(current => ({ ...current, id })), "username"),
+      field("Password", "password", cred.password, password => setCred(current => ({ ...current, password })), "current-password"),
+      e("label", { className: "md-remember-password" }, e("input", { type: "checkbox", checked: rememberLogin, disabled: busy, onChange: event => onRememberLogin(event.target.checked) }), e("span", { className: "md-remember-check", "aria-hidden": "true" }), e("span", null, "จดจำการเข้าสู่ระบบ")),
+      error && e("p", { className: "md-auth-error" }, error),
+      e("div", { className: "md-btn-row", style: { marginTop: 12 } }, e("button", { className: "md-btn primary", disabled: busy, onClick: onLogin }, busy ? "..." : "เข้าสู่ระบบ"), e("button", { className: "md-btn info", disabled: busy, onClick: () => { setModalError(""); setRegisterForm({ id: cred.id || "", password: "", confirmPassword: "" }); setRegisterOpen(true); } }, "สร้างบัญชีใหม่")),
+      e("button", { type: "button", className: "md-auth-link", onClick: () => { setModalError(""); setForgotForm(form => ({ ...form, id: cred.id || form.id })); setForgotOpen(true); } }, "ลืมรหัสผ่าน?"),
+      e("p", { className: "md-hint" }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")
+    ),
+    registerOpen && !registrationRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "สร้างบัญชีใหม่"), field("Player ID", "text", registerForm.id, id => setRegisterForm(form => ({ ...form, id })), "username"), field("Password", "password", registerForm.password, password => setRegisterForm(form => ({ ...form, password })), "new-password"), field("Confirm Password", "password", registerForm.confirmPassword, confirmPassword => setRegisterForm(form => ({ ...form, confirmPassword })), "new-password"), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setRegisterOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitRegister }, busy ? "..." : "สร้างบัญชี")))),
+    registrationRecovery && recoveryPanel(registrationRecovery.code, onFinishRegistration),
+    forgotOpen && !passwordResetRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "ลืมรหัสผ่าน"), field("Player ID", "text", forgotForm.id, id => setForgotForm(form => ({ ...form, id })), "username"), field("Recovery Code", "text", forgotForm.recoveryCode, recoveryCode => setForgotForm(form => ({ ...form, recoveryCode })), "one-time-code"), field("New Password", "password", forgotForm.newPassword, newPassword => setForgotForm(form => ({ ...form, newPassword })), "new-password"), field("Confirm Password", "password", forgotForm.confirmPassword, confirmPassword => setForgotForm(form => ({ ...form, confirmPassword })), "new-password"), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setForgotOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitForgot }, busy ? "..." : "รีเซ็ตรหัสผ่าน")))),
+    passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
+  );
+}
+function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onLogout, onClose }) {
+  const e = React.createElement;
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
+  const generateRecovery = async () => {
+    if (!recoveryPassword) return setMessage("กรุณากรอกรหัสผ่านปัจจุบัน");
+    setBusy(true); setMessage("");
+    const result = await cloudCreateRecoveryCode(serverUrl || DEFAULT_SERVER_URL, recoveryPassword);
+    setBusy(false);
+    if (!result?.ok) return setMessage(result?.error === "invalid_credentials" ? "รหัสผ่านปัจจุบันไม่ถูกต้อง" : "สร้าง Recovery Code ไม่สำเร็จ");
+    setRecoveryCode(result.recoveryCode);
+    setRecoveryPassword("");
+    onRecoveryConfigured(true);
+  };
+  const changePassword = async () => {
+    if (newPassword.length < 4 || newPassword.length > 32) return setMessage("Password ใหม่ต้องยาว 4–32 ตัว");
+    if (newPassword !== confirmPassword) return setMessage("Confirm Password ไม่ตรงกัน");
+    setBusy(true); setMessage("");
+    const result = await cloudChangePassword(serverUrl || DEFAULT_SERVER_URL, changeCurrentPassword, newPassword, confirmPassword);
+    setBusy(false);
+    if (!result?.ok) return setMessage(result?.error === "invalid_credentials" ? "รหัสผ่านปัจจุบันไม่ถูกต้อง" : "เปลี่ยน Password ไม่สำเร็จ");
+    onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
+  };
+  return e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
+    e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings > Account"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
+    recoveryCode ? e(React.Fragment, null, e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"), e("code", { className: "md-recovery-code" }, recoveryCode), e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")) : e(React.Fragment, null,
+      e("p", { className: "md-title", style: { marginTop: 12 } }, "Recovery Code"),
+      e("p", { className: "md-sub" }, recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code"),
+      e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: recoveryPassword, onChange: event => setRecoveryPassword(event.target.value), autoComplete: "current-password" }),
+      e("button", { className: "md-btn info wide", disabled: busy, onClick: generateRecovery }, recoveryConfigured ? "สร้าง Recovery Code ใหม่" : "สร้าง Recovery Code")
+    ),
+    e("p", { className: "md-title", style: { marginTop: 16 } }, "เปลี่ยน Password"),
+    e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: changeCurrentPassword, onChange: event => setChangeCurrentPassword(event.target.value), autoComplete: "current-password" }),
+    e("input", { className: "md-field", type: "password", placeholder: "Password ใหม่", value: newPassword, onChange: event => setNewPassword(event.target.value), autoComplete: "new-password" }),
+    e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), autoComplete: "new-password" }),
+    e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password"),
+    message && e("p", { className: "md-auth-error" }, message),
+    e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
+  ));
 }
 function GameDock({
   onCharacter,
@@ -935,6 +959,56 @@ function SkillScreen({
     ),
     /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onBack }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
+  );
+}
+function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onBack }) {
+  const [branch, setBranch] = useState("assault");
+  const [confirmReset, setConfirmReset] = useState(false);
+  const levels = save.character.skillLevels || {};
+  const spent = heroSkillSpentPoints(levels);
+  const total = heroSkillPointBudget(save.character.level);
+  const available = Math.max(0, total - spent);
+  const title = id => id.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+  const reasonText = reason => ({ level_gate: "Level ยังไม่ถึง", branch_points: "แต้มในสายยังไม่ถึง", prerequisite: "ยังขาดสกิล prerequisite", keystone_points: "ต้องใช้แต้มในสาย 40", keystone_t4: "ต้องมี T4 อย่างน้อย 1 Rank", not_enough_sp: "Skill Point ไม่พอ", max_rank: "เต็มแล้ว" }[reason] || "");
+  const visible = HERO_SKILLS_V1.filter(skill => skill.branch === branch);
+  const groups = [1, 2, 3, 4, 5];
+  return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
+    /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
+    /*#__PURE__*/React.createElement(CharacterTabs, { active: "skills", onStatus: onBack, onSkills: () => {} }),
+    /*#__PURE__*/React.createElement("section", { className: "md-character-scroll" },
+      /*#__PURE__*/React.createElement("div", { className: "md-skill-toolbar" }, /*#__PURE__*/React.createElement("strong", null, "✦ Skill Points ", available, "/", total)),
+      /*#__PURE__*/React.createElement("nav", { className: "md-skill-filters", "aria-label": "Hero skill branch" },
+        [["assault", "Assault"], ["guard", "Guard"], ["tactic", "Tactic"]].map(item => /*#__PURE__*/React.createElement("button", { type: "button", key: item[0], className: branch === item[0] ? "active" : "", onClick: () => setBranch(item[0]) }, item[1]))
+      ),
+      groups.map(tier => {
+        const rows = visible.filter(skill => skill.tier === tier);
+        if (!rows.length) return null;
+        return /*#__PURE__*/React.createElement("section", { className: "md-skill-list", key: tier },
+          /*#__PURE__*/React.createElement("h3", { className: "md-section-title" }, tier === 5 ? "Keystone" : `T${tier}`),
+          rows.map(skill => {
+            const current = heroSkillRank(levels, skill.id);
+            const check = canSpendHeroSkillPoint(save.character.level, levels, skill.id);
+            const rankLabel = skill.kind === "passive" ? "Lv" : "R";
+            return /*#__PURE__*/React.createElement("article", { className: `md-skill-upgrade${check.ok || current ? "" : " locked"}`, key: skill.id },
+              /*#__PURE__*/React.createElement("span", { className: "md-skill-upgrade-icon" }, skill.kind === "active" ? "⚔️" : skill.kind === "keystone" ? "🔶" : "✦"),
+              /*#__PURE__*/React.createElement("div", { className: "md-skill-upgrade-copy" },
+                /*#__PURE__*/React.createElement("strong", null, title(skill.id)),
+                /*#__PURE__*/React.createElement("small", null, skill.kind, " · ", rankLabel, current, "/", skill.maxRank, check.ok ? ` · ${check.cost} SP` : current >= skill.maxRank ? " · MAX" : ` · ${reasonText(check.reason)}`)
+              ),
+              /*#__PURE__*/React.createElement("div", { className: "md-skill-level-control" },
+                /*#__PURE__*/React.createElement("span", null, rankLabel, ". ", current),
+                /*#__PURE__*/React.createElement("button", { type: "button", disabled: !check.ok, onClick: () => onLearnSkill(skill.id), "aria-label": `Learn ${title(skill.id)}` }, "+")
+              )
+            );
+          })
+        );
+      }),
+      /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
+      )
+    ),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onBack }),
+    confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
   );
 }
 // ---------- Phase 2/3/5: Leaderboard ----------
@@ -2171,7 +2245,7 @@ function PetScreen({
       return;
     }
     if (res && res.maxed) {
-      setStarUpMsg(m => ({ ...m, [inst.instId]: { text: "★5 เต็มแล้ว", short: false } }));
+      setStarUpMsg(m => ({ ...m, [inst.instId]: { text: "★3 เต็มแล้ว", short: false } }));
       return;
     }
     const missing = (res.need || 0) - (res.have || 0);
@@ -2222,6 +2296,9 @@ function PetScreen({
     const star = inst.star || 1;
     const dupHave = petDuplicateCount(save.petDuplicates, inst.defId);
     const cost = petStarUpCost(star);
+    const petLevel = Math.max(1, Math.min(50, Number(inst.level) || 1));
+    const petXp = Math.max(0, Number(inst.xp) || 0);
+    const petXpNeed = petLevel < 50 ? petXpToNext(petLevel) : 0;
     const msg = starUpMsg[inst.instId];
     return /*#__PURE__*/React.createElement("div", {
       key: inst.instId,
@@ -2232,7 +2309,9 @@ function PetScreen({
       className: "md-shop-lv"
     }, PET_RARITY_LABEL[def.rarity]), isActive ? " ⭐" : ""), /*#__PURE__*/React.createElement("div", {
       className: "md-inv-stat"
-    }, "★".repeat(star), "☆".repeat(5 - star), " ", cost !== null ? `· ตัวซ้ำ ${dupHave}/${cost}` : "· ★5 สูงสุด"), /*#__PURE__*/React.createElement("div", {
+    }, "★".repeat(star), "☆".repeat(3 - star), " ", cost !== null ? `· ตัวซ้ำ ${dupHave}/${cost}` : "· ★3 สูงสุด"), /*#__PURE__*/React.createElement("div", {
+      className: "md-inv-stat"
+    }, `Lv.${petLevel}`, petLevel < 50 ? ` · EXP ${petXp}/${petXpNeed}` : " · MAX"), /*#__PURE__*/React.createElement("div", {
       className: "md-inv-stat"
     }, def.active.icon, " ", def.active.name, " — ", def.active.desc), def.passive && /*#__PURE__*/React.createElement("div", {
       className: "md-inv-stat"
@@ -2500,10 +2579,16 @@ function EnemySprite({
     className: "elite",
     title: "Elite Boss"
   }, "👑 ELITE"), enemy.frozenTurns > 0 && /*#__PURE__*/React.createElement("span", {
-    title: `Frozen · ${enemy.frozenTurns} turn(s)`
-  }, "❄️", enemy.frozenTurns), enemy.poisonTurns > 0 && /*#__PURE__*/React.createElement("span", {
+    title: `Stun · ${enemy.frozenTurns} turn(s)`
+  }, "💫", enemy.frozenTurns), enemy.poisonTurns > 0 && /*#__PURE__*/React.createElement("span", {
     title: `Poison · ${enemy.poisonTurns} turn(s)`
-  }, "☠️", enemy.poisonTurns)), spriteVisual || /*#__PURE__*/React.createElement("div", {
+  }, "☠️", enemy.poisonTurns), enemy.battleStatuses?.armor_break && /*#__PURE__*/React.createElement("span", {
+    title: `Armor Break · ${enemy.battleStatuses.armor_break.duration} turn(s)`
+  }, "🛡️↓", enemy.battleStatuses.armor_break.duration), enemy.battleStatuses?.silence && /*#__PURE__*/React.createElement("span", {
+    title: `Silence · ${enemy.battleStatuses.silence.duration} turn(s)`
+  }, "🤫", enemy.battleStatuses.silence.duration), enemy.battleStatuses?.def_up && /*#__PURE__*/React.createElement("span", {
+    title: `DEF Up · ${enemy.battleStatuses.def_up.duration} turn(s)`
+  }, "🛡️", enemy.battleStatuses.def_up.duration)), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${enemy.isBoss ? "boss" : ""} ${anim || ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "blob",
@@ -2553,7 +2638,17 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
   }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status pet",
     "aria-label": "Pet status"
-  }, pet.atkBuffTurns > 0 && /*#__PURE__*/React.createElement("span", {
+  }, pet.battleStatuses?.poison && /*#__PURE__*/React.createElement("span", {
+    title: `Poison · ${pet.battleStatuses.poison.duration} turn(s)`
+  }, "☠️", pet.battleStatuses.poison.duration), pet.battleStatuses?.stun && /*#__PURE__*/React.createElement("span", {
+    title: "Stun · loses one Action"
+  }, "💫1"), pet.battleStatuses?.silence && /*#__PURE__*/React.createElement("span", {
+    title: `Silence · ${pet.battleStatuses.silence.duration} turn(s)`
+  }, "🤫", pet.battleStatuses.silence.duration), pet.battleStatuses?.armor_break && /*#__PURE__*/React.createElement("span", {
+    title: `Armor Break · ${pet.battleStatuses.armor_break.duration} turn(s)`
+  }, "🛡️↓", pet.battleStatuses.armor_break.duration), pet.battleStatuses?.def_up && /*#__PURE__*/React.createElement("span", {
+    title: `DEF Up · ${pet.battleStatuses.def_up.duration} turn(s)`
+  }, "🛡️", pet.battleStatuses.def_up.duration), pet.atkBuffTurns > 0 && /*#__PURE__*/React.createElement("span", {
     title: `ATK Up · ${pet.atkBuffTurns} turn(s)`
   }, "⚔️", pet.atkBuffTurns), pet.defBuffTurns > 0 && /*#__PURE__*/React.createElement("span", {
     title: `DEF Up · ${pet.defBuffTurns} turn(s)`
@@ -2635,7 +2730,7 @@ function CombatScreen({
   const [editSlots, setEditSlots] = useState(false);
   const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [autoRun, setAutoRun] = useState(false);
-  const skills = unlockedSkills(player.level);
+  const skills = heroActiveSkillList(player.skillLevels || {});
   const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
   const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
@@ -2653,12 +2748,17 @@ function CombatScreen({
     return aFlying - bFlying;
   });
   const qs = quickSlots || [null, null, null, null];
+  const skillEfficiency = heroSkillRankData(player.skillLevels || {}, "skill_efficiency");
+  const skillCost = skill => Math.max(0, Math.ceil((Number(skill?.mp) || 0) * (1 - (Number(skillEfficiency?.spReductionPct) || 0) / 100)));
   function quickSlotVisual(entry) {
     if (!entry) return { icon: "➕", disabled: true, badge: null };
     if (entry.kind === "skill") {
       const sk = skills.find(s => s.key === entry.key);
       if (!sk) return { icon: "❓", disabled: true, badge: null };
-      return { icon: sk.icon, disabled: busy || player.mp < sk.mp, badge: sk.mp, title: `${sk.name} (${sk.mp}mp) — ${sk.desc}` };
+      const cooldown = Number(player.cooldowns && player.cooldowns[sk.key]) || 0;
+      const cost = skillCost(sk);
+      const silenced = !!player.battleStatuses?.silence;
+      return { icon: sk.icon, disabled: busy || silenced || player.mp < cost || cooldown > 0, badge: cooldown > 0 ? `CD${cooldown}` : cost, title: `${sk.name} (${cost} SP${cooldown ? `, CD ${cooldown}` : ""}${silenced ? ", Silenced" : ""}) — ${sk.desc}` };
     }
     const def = getPotionDef(entry.potionId);
     const qty = potionTotal(inventory || [], entry.potionId);
@@ -2714,11 +2814,16 @@ function CombatScreen({
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
   }, /*#__PURE__*/React.createElement("button", {
-    className: `md-combat-header-action ${skipUnlocked ? "skip" : "speed"}`,
+    className: "md-combat-header-action speed",
     disabled: busy,
-    title: skipUnlocked ? "ข้ามเทิร์นของฮีโร่" : "เปลี่ยนความเร็วการต่อสู้",
-    onClick: skipUnlocked ? () => onAction("skip") : onCycleCombatSpeed
-  }, skipUnlocked ? "SKIP" : `×${combatSpeed || 1}`))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
+    title: "เปลี่ยนความเร็วการต่อสู้",
+    onClick: onCycleCombatSpeed
+  }, `×${combatSpeed || 1}`), skipUnlocked && /*#__PURE__*/React.createElement("button", {
+    className: "md-combat-header-action skip",
+    disabled: busy,
+    title: "จำลองการต่อสู้ที่เหลือด้วยระบบเดียวกัน",
+    onClick: () => onAction("skip")
+  }, "SKIP"))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
@@ -2758,10 +2863,10 @@ function CombatScreen({
     anim: heroAnim,
     equipped: equipped,
     combatSpeed: combatSpeed
-  }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0) && /*#__PURE__*/React.createElement("div", {
+  }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0 || Object.keys(player.battleStatuses || {}).length || player.battleResources) && /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status hero",
     "aria-label": "Hero status"
-  }, player.atkBuffTurns > 0 ? `⚔️${player.atkBuffTurns}` : "", player.defBuffTurns > 0 ? `🛡️${player.defBuffTurns}` : "", player.regenTurns > 0 ? `💚${player.regenTurns}` : ""), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
+  }, player.atkBuffTurns > 0 ? `⚔️${player.atkBuffTurns} ` : "", player.defBuffTurns > 0 ? `🛡️${player.defBuffTurns} ` : "", player.regenTurns > 0 ? `💚${player.regenTurns} ` : "", player.battleStatuses?.poison ? `☠️${player.battleStatuses.poison.duration} ` : "", player.battleStatuses?.armor_break ? `🛡️↓${player.battleStatuses.armor_break.duration} ` : "", player.battleStatuses?.silence ? `🤫${player.battleStatuses.silence.duration} ` : "", player.battleStatuses?.stun ? "💫1 " : "", player.battleResources ? `🔥${player.battleResources.fury} 🛡${player.battleResources.aegis} 🎭${player.battleResources.scheme}` : ""), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {
@@ -2823,7 +2928,7 @@ function CombatScreen({
     key: `sk-${s.key}`,
     className: "md-quickslot-popover-item",
     onClick: () => assignTo(assignSlotIndex, { kind: "skill", key: s.key })
-  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "MP ", s.mp))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "SP ", skillCost(s)))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
     key: `pt-${p.id}`,
     className: "md-quickslot-popover-item",
     onClick: () => assignTo(assignSlotIndex, { kind: "potion", potionId: p.id })

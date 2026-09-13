@@ -15,7 +15,9 @@ const DEFAULT_SERVER_URL = "https://thornie-dungeons-api.ekqtjl.workers.dev";
 // anything not in it — confirmed by testing directly against the real worker logic with SQLite).
 // The server is now the authority on which characters exist; this file's job is just to hold
 // and safely shape whatever it returns, not to reconstruct/migrate that structure itself.
-const CURRENT_SAVE_VERSION = 4;
+// v5 keeps the same D1 character row and adds a versioned pets_json envelope for
+// Hero Skill V1/Pet V2 migration. Old array and v4 envelope shapes remain readable.
+const CURRENT_SAVE_VERSION = 5;
 const MAX_CHARACTER_SLOTS = 3;
 
 // ---------- safe parsing primitives ----------
@@ -70,6 +72,8 @@ const defaultCharacterSlot = () => ({
     luk: 0
   },
   skillLevels: {},
+  skillVersion: 1,
+  skillResetPoints: 0,
   gold: 0,
   unlockedFloor: 1,
   potions: 2,
@@ -92,6 +96,9 @@ function characterFromServerRow(row) {
   const pets = Array.isArray(petsRaw) ? petsRaw : (Array.isArray(petsRaw?.list) ? petsRaw.list : []);
   const petDuplicates = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.dup === "object" && petsRaw.dup ? petsRaw.dup : {});
   const skillLevels = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.skills === "object" && petsRaw.skills ? petsRaw.skills : {});
+  const skillVersion = Array.isArray(petsRaw) ? 0 : numOr(petsRaw && petsRaw.skillVersion, 0);
+  const migratedPets = typeof migratePetV2Instance === "function" ? pets.map(migratePetV2Instance) : pets;
+  const migratedDuplicates = typeof migratePetDuplicatePoolV2 === "function" ? migratePetDuplicatePoolV2(petDuplicates) : petDuplicates;
   return {
     id: row.character_id,
     name: row.name || "",
@@ -105,12 +112,14 @@ function characterFromServerRow(row) {
       dex: numOr(row.dex, 0),
       luk: numOr(row.luk, 0)
     },
-    skillLevels,
+    skillLevels: skillVersion === 1 ? skillLevels : {},
+    skillVersion: 1,
+    skillResetPoints: skillVersion === 1 ? numOr(petsRaw && petsRaw.skillResetPoints, 0) : Math.max(0, Math.min(98, numOr(row.level, 1) - 1)),
     gold: numOr(row.gold, 0),
     unlockedFloor: numOr(row.unlocked_floor, 1),
     potions: row.potions === undefined || row.potions === null ? 2 : numOr(row.potions, 0),
-    pets: Array.isArray(pets) ? pets : [],
-    petDuplicates,
+    pets: Array.isArray(migratedPets) ? migratedPets : [],
+    petDuplicates: migratedDuplicates,
     activePetId: row.active_pet_id || null,
     protectionStones: numOr(row.protection_stones, 0),
     chestPity: numOr(row.chest_pity, 0)
@@ -180,6 +189,8 @@ function flattenCharacterForRuntime(account, slotIndex) {
       xp: slot.xp,
       statPoints: slot.statPoints,
       skillLevels: { ...(slot.skillLevels || {}) },
+      skillVersion: 1,
+      skillResetPoints: numOr(slot.skillResetPoints, 0),
       stats: {
         ...slot.stats
       }
@@ -217,6 +228,8 @@ function packRuntimeIntoSlot(existingSlot, flatSave) {
     xp: flatSave.character.xp,
     statPoints: flatSave.character.statPoints,
     skillLevels: { ...(flatSave.character.skillLevels || {}) },
+    skillVersion: 1,
+    skillResetPoints: numOr(flatSave.character.skillResetPoints, 0),
     stats: {
       ...flatSave.character.stats
     },

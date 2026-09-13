@@ -1,5 +1,9 @@
 // ---------- pets ----------
 // R: 1 active skill only. SR: active + 1 passive. SSR: active + passive + 1 extra skill.
+const PET_V2_PLAYTEST = Object.freeze({
+  hellWolfPoisonAtkPct: 20,
+  hellWolfPoisonTurns: 3
+});
 let PET_POOL = [{
   id: "sprout",
   rarity: "r",
@@ -9,11 +13,12 @@ let PET_POOL = [{
   active: {
     name: "Regrowth",
     icon: "💚",
-    cooldown: 4,
+    cooldown: 3,
     type: "regen",
-    regenPct: 0.08,
-    regenTurns: 3,
-    desc: "ฟื้นฟู HP 8% ของ HP สูงสุด ต่อเนื่อง 3 เทิร์น"
+    healPetHpPct: 0.12,
+    vitScale: 0.8,
+    regenTurns: 2,
+    desc: "ฟื้นฟู Hero 12% Pet Max HP + 0.8×VIT นาน 2 เทิร์น"
   }
 }, {
   id: "flamekit",
@@ -21,12 +26,12 @@ let PET_POOL = [{
   name: "Flamekit",
   icon: "🔥",
   active: {
-    name: "Ember Spark",
+    name: "Flame Claw",
     icon: "🔥",
-    cooldown: 4,
+    cooldown: 2,
     type: "damage",
-    mult: 0.9,
-    desc: "ดาเมจไฟ 0.9x ATK"
+    mult: 1.35,
+    desc: "ดาเมจเป้าหมายเดียว 1.35× Pet ATK"
   }
 }, {
   id: "sparkpup",
@@ -34,12 +39,13 @@ let PET_POOL = [{
   name: "Sparkpup",
   icon: "⚡",
   active: {
-    name: "Static Nip",
+    name: "Static Bite",
     icon: "⚡",
-    cooldown: 3,
+    cooldown: 2,
     type: "damage",
-    mult: 0.7,
-    desc: "ดาเมจสายฟ้า 0.7x ATK คูลดาวน์สั้น"
+    mult: 1.0,
+    stunChance: 0.15,
+    desc: "ดาเมจ 1.0× Pet ATK และ Stun 15%"
   }
 }, {
   id: "ember_fox",
@@ -47,19 +53,20 @@ let PET_POOL = [{
   name: "Ember Fox",
   icon: "🦊",
   active: {
-    name: "Ember Spark+",
+    name: "Blazing Fang",
     icon: "🔥",
-    cooldown: 4,
+    cooldown: 2,
     type: "damage",
-    mult: 1.0,
-    desc: "ดาเมจไฟ 1.0x ATK"
+    mult: 1.55,
+    desc: "ดาเมจเป้าหมายเดียว 1.55× Pet ATK"
   },
   passive: {
-    name: "Warrior's Instinct",
+    name: "Predator Instinct",
     icon: "💪",
     type: "atkBoost",
-    pct: 0.10,
-    desc: "เพิ่ม ATK ถาวร +10%"
+    petCritPct: 0.10,
+    heroCritPct: 0.05,
+    desc: "Pet Crit +10% และ Hero Crit +5%"
   }
 }, {
   id: "moon_hare",
@@ -67,40 +74,44 @@ let PET_POOL = [{
   name: "Moon Hare",
   icon: "🐇",
   active: {
-    name: "Moonlit Regrowth",
+    name: "Moonlight Heal",
     icon: "💚",
-    cooldown: 4,
-    type: "regen",
-    regenPct: 0.09,
-    regenTurns: 3,
-    desc: "ฟื้นฟู HP 9% ของ HP สูงสุด ต่อเนื่อง 3 เทิร์น"
+    cooldown: 2,
+    type: "groupHeal",
+    healPetHpPct: 0.10,
+    vitScale: 1.0,
+    desc: "ฟื้นฟู Hero และ Pet 10% Pet Max HP + 1.0×VIT"
   },
   passive: {
     name: "Status Ward",
     icon: "🌙",
     type: "statusResist",
-    pct: 0.60,
-    desc: "60% โอกาสต้านทานสถานะผิดปกติจากบอส"
+    pct: 0.15,
+    desc: "Hero และ Pet Status Resist +15%"
   }
 }, {
-  id: "thunder_cub",
+  id: "hell_wolf",
   rarity: "sr",
-  name: "Thunder Cub",
+  name: "Hell Wolf",
   icon: "🐺",
   active: {
-    name: "Static Nip+",
+    name: "Hell Fang",
     icon: "⚡",
-    cooldown: 3,
+    cooldown: 2,
     type: "damage",
-    mult: 0.85,
-    desc: "ดาเมจสายฟ้า 0.85x ATK"
+    mult: 1.10,
+    armorBreakChance: 0.40,
+    poisonChance: 0.25,
+    poisonPct: 0.20,
+    poisonTurns: 3,
+    desc: "ดาเมจ 1.10× Pet ATK, Armor Break 40%, Poison 25%"
   },
   passive: {
-    name: "Pack Instinct",
+    name: "Hunter's Eye",
     icon: "💪",
-    type: "atkBoost",
+    type: "accuracyBoost",
     pct: 0.08,
-    desc: "เพิ่ม ATK ถาวร +8%"
+    desc: "Hero และ Pet Accuracy +8%"
   }
 }, {
   id: "inferno_drake",
@@ -108,26 +119,29 @@ let PET_POOL = [{
   name: "Inferno Drake",
   icon: "🐲",
   active: {
-    name: "Inferno Blast",
+    name: "Draconic Sweep",
     icon: "🔥",
-    cooldown: 4,
-    type: "damage",
-    mult: 1.2,
-    desc: "ดาเมจไฟ 1.2x ATK"
+    cooldown: 2,
+    type: "aoe",
+    mult: 0.75,
+    defUpChance: 0.35,
+    defUpTurns: 2,
+    desc: "โจมตีศัตรูสูงสุด 3 ตัว 0.75× Pet ATK และมีโอกาสให้ Hero DEF Up"
   },
   passive: {
-    name: "Dragon Might",
+    name: "Dragon Hide",
     icon: "💪",
-    type: "atkBoost",
-    pct: 0.15,
-    desc: "เพิ่ม ATK ถาวร +15%"
+    type: "defBoost",
+    petPct: 0.15,
+    heroPct: 0.08,
+    desc: "Pet DEF +15% และ Hero DEF +8%"
   },
   extra: {
-    name: "Guard",
+    name: "Guardian Scale",
     icon: "🛡️",
-    type: "block",
+    type: "heroBlock",
     pct: 0.20,
-    desc: "20% โอกาสป้องกันการโจมตีของศัตรูทั้งหมด"
+    desc: "20% โอกาสบล็อก direct damage ที่โจมตี Hero"
   }
 }, {
   id: "storm_phoenix",
@@ -135,41 +149,47 @@ let PET_POOL = [{
   name: "Storm Phoenix",
   icon: "🦅",
   active: {
-    name: "Storm Bolt",
+    name: "Tempest Strike",
     icon: "⚡",
     cooldown: 3,
-    type: "damage",
-    mult: 1.05,
-    desc: "ดาเมจสายฟ้า 1.05x ATK"
+    type: "aoe",
+    mult: 0.70,
+    silenceChance: 0.30,
+    desc: "โจมตีศัตรูสูงสุด 3 ตัว 0.70× Pet ATK และ Silence 30%"
   },
   passive: {
-    name: "Tempest Ward",
+    name: "Storm Step",
     icon: "🌙",
-    type: "statusResist",
-    pct: 0.70,
-    desc: "70% โอกาสต้านทานสถานะผิดปกติจากบอส"
+    type: "dodgeBoost",
+    pct: 0.08,
+    desc: "Hero และ Pet Dodge +8%"
   },
   extra: {
-    name: "Paralyze",
+    name: "Thunder Judgment",
     icon: "🌩️",
-    type: "stun",
-    pct: 0.30,
-    desc: "30% โอกาสทำให้ศัตรูมึนงง 1 เทิร์นเมื่อสกิลทำงาน"
+    type: "petCdrOnDebuff",
+    pct: 0.50,
+    desc: "เมื่อ Hero หรือ Pet ลง Debuff สำเร็จ มีโอกาส 50% ลด Pet Active CD 1"
   }
 }];
 // ---------- pet stats (STR/VIT/AGI/DEX/LUK) & level ----------
 // Base per-rarity stat lines a freshly-obtained pet starts with at level 1.
 const PET_BASE_STATS = {
-  r: { str: 4, vit: 4, agi: 4, dex: 4, luk: 4 },
-  sr: { str: 6, vit: 6, agi: 6, dex: 6, luk: 6 },
-  ssr: { str: 9, vit: 9, agi: 9, dex: 9, luk: 9 }
+  sprout: { str: 3, vit: 5, agi: 4, dex: 4, luk: 4 }, flamekit: { str: 5, vit: 3, agi: 4, dex: 4, luk: 4 },
+  sparkpup: { str: 4, vit: 3, agi: 5, dex: 5, luk: 3 }, ember_fox: { str: 8, vit: 5, agi: 6, dex: 6, luk: 5 },
+  moon_hare: { str: 4, vit: 8, agi: 6, dex: 7, luk: 5 }, hell_wolf: { str: 7, vit: 5, agi: 7, dex: 6, luk: 5 },
+  inferno_drake: { str: 11, vit: 11, agi: 7, dex: 8, luk: 8 }, storm_phoenix: { str: 9, vit: 7, agi: 11, dex: 10, luk: 8 }
+};
+const PET_GROWTH_STATS = {
+  sprout: [.10,.40,.20,.30,.20], flamekit: [.45,.10,.20,.25,.20], sparkpup: [.25,.10,.40,.30,.15],
+  ember_fox: [.45,.15,.20,.30,.25], moon_hare: [.10,.40,.20,.35,.25], hell_wolf: [.35,.15,.35,.30,.20],
+  inferno_drake: [.40,.45,.15,.25,.25], storm_phoenix: [.30,.15,.45,.35,.25]
 };
 // Creates a new pet instance (what gets stored in save.pets / pets_json) with
 // its own Level, EXP and 5-stat block, ready to be saved to D1 as-is.
 function newPetInstance(defId) {
   const def = getPetDef(defId);
-  const rarity = (def && def.rarity) || "r";
-  const base = PET_BASE_STATS[rarity] || PET_BASE_STATS.r;
+  const base = PET_BASE_STATS[defId] || PET_BASE_STATS.sprout;
   return {
     instId: `pet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     defId,
@@ -180,18 +200,27 @@ function newPetInstance(defId) {
   };
 }
 function petXpToNext(level) {
-  return level * 15 + 10;
+  const lv = Math.max(1, Math.min(49, Math.floor(Number(level) || 1)));
+  return Math.round(34 + 6 * lv + 0.32 * lv * lv);
 }
-// ---------- pet star-up (max 5★, spent from the duplicate pool, player-driven) ----------
-// Multiplier applied to a pet's 5-stat block per star. Kept modest and relative to the existing
-// per-rarity gap (r=20/sr=30/ssr=45 total at 1★) so a maxed-out lower rarity never overtakes the
-// next rarity up at 1★: r ★5 ≈ 29 (< sr ★1 = 30), sr ★5 ≈ 43.5 (< ssr ★1 = 45).
-const PET_STAR_MULT = [1.00, 1.08, 1.18, 1.30, 1.45]; // index 0 = ★1 ... index 4 = ★5
-// Duplicates required to go from star N to star N+1 (index 0 = ★1→★2 ... index 3 = ★4→★5).
-const PET_STAR_UP_COST = [1, 1, 1, 2];
+function grantActivePetBattleXp(pets, activePetId, heroBattleXp) {
+  const gained = Math.max(0, Math.round((Number(heroBattleXp) || 0) * 0.8));
+  return (pets || []).map(instance => {
+    if (!instance || instance.instId !== activePetId || (Number(instance.level) || 1) >= 50) return instance;
+    let level = Math.max(1, Number(instance.level) || 1);
+    let xp = Math.max(0, Number(instance.xp) || 0) + gained;
+    while (level < 50 && xp >= petXpToNext(level)) { xp -= petXpToNext(level); level += 1; }
+    if (level >= 50) xp = 0;
+    return { ...instance, level, xp };
+  });
+}
+// ---------- Pet V2 star-up (max 3★, spent from duplicate pool) ----------
+const PET_STAR_MULT = [1.00, 1.15, 1.35];
+// Duplicates required to go from star N to N+1 (★1→★2, ★2→★3).
+const PET_STAR_UP_COST = [1, 2];
 function petStarUpCost(star) {
   const idx = (star || 1) - 1;
-  return PET_STAR_UP_COST[idx] ?? null; // null = already ★5, nothing more to spend on
+  return PET_STAR_UP_COST[idx] ?? null; // null = already ★3
 }
 function petDuplicateCount(petDuplicates, defId) {
   return ((petDuplicates || {})[defId]) || 0;
@@ -199,24 +228,29 @@ function petDuplicateCount(petDuplicates, defId) {
 // Derived combat stats for a pet instance, following the same Speed/Evasion/
 // HitRate/CritChance/ItemDropBonus formulas used for the player character.
 function petCombatStats(instance) {
-  const base = (instance && instance.stats) || PET_BASE_STATS.r;
-  const mult = PET_STAR_MULT[((instance && instance.star) || 1) - 1] || 1;
-  const s = {
-    str: base.str * mult,
-    vit: base.vit * mult,
-    agi: base.agi * mult,
-    dex: base.dex * mult,
-    luk: base.luk * mult
+  const defId = (instance && instance.defId) || "sprout";
+  const base = PET_BASE_STATS[defId] || PET_BASE_STATS.sprout;
+  const growth = PET_GROWTH_STATS[defId] || PET_GROWTH_STATS.sprout;
+  const mult = PET_STAR_MULT[Math.max(0, Math.min(2, ((instance && instance.star) || 1) - 1))] || 1;
+  const lvl = Math.max(1, Math.min(50, Number(instance && instance.level) || 1));
+  const stored = instance && instance.stats;
+  const raw = stored && instance.statModel === "v2" ? stored : {
+    str: base.str + growth[0] * (lvl - 1), vit: base.vit + growth[1] * (lvl - 1),
+    agi: base.agi + growth[2] * (lvl - 1), dex: base.dex + growth[3] * (lvl - 1),
+    luk: base.luk + growth[4] * (lvl - 1)
   };
-  const lvl = (instance && instance.level) || 1;
+  const s = {
+    str: raw.str * mult, vit: raw.vit * mult, agi: raw.agi * mult, dex: raw.dex * mult, luk: raw.luk * mult
+  };
   return {
-    maxHp: roundInt(25 + lvl * 3 + s.vit * 8),
-    atk: roundInt(4 + Math.floor(lvl * 0.6) + s.str * 2),
-    def: roundInt(1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4)),
-    speed: roundInt(BASE_SPEED + s.agi * 2),
-    evasion: +(s.agi * 0.5).toFixed(1),
-    hitRate: Math.min(99, +(80 + s.dex * 0.5).toFixed(1)),
-    critChance: +(s.luk * 0.5).toFixed(1),
+    rawStats: s,
+    maxHp: roundInt(30 + lvl * 4 + s.vit * 7),
+    atk: roundInt(5 + lvl * 0.7 + s.str * 2),
+    def: roundInt(2 + lvl * 0.25 + s.vit * 0.5),
+    speed: roundInt(BASE_SPEED + s.agi * 1.5),
+    evasion: Math.min(20, +(s.agi * 0.35).toFixed(1)),
+    hitRate: Math.min(99, +(85 + s.dex * 0.4).toFixed(1)),
+    critChance: Math.min(25, +(s.luk * 0.4).toFixed(1)),
     dropBonus: +(s.luk * 0.2).toFixed(1)
   };
 }
