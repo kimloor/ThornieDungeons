@@ -33,7 +33,9 @@ function applyGameConfig(cfg) {
     }
   } catch (e) {}
   try {
-    if (Array.isArray(cfg.pets) && cfg.pets.length) {
+    // Pre-V2 remote rows contain the retired 5-star/Thunder Cub balance. Do not
+    // let that legacy config silently replace the Battle V1 Pet contract.
+    if (Number(cfg.petSystemVersion) >= 2 && Array.isArray(cfg.pets) && cfg.pets.length) {
       const valid = cfg.pets.filter(p => p && p.id && p.rarity && p.active && p.active.type);
       if (valid.length) PET_POOL = valid;
     }

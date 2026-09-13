@@ -12,4 +12,6 @@ Rules:
 - Backend changes that depend on a new schema must ship with the matching migration in this directory in the same merge.
 - GitHub Actions applies pending migrations before deploying `thornie-dungeons-api`.
 
-Login/Auth V2 `migration_v11_auth_v2.sql` currently lives on its feature branch under the historical migration directory. Before that feature is released, copy/finalize the approved V11 SQL into this automated lane as the release migration rather than replaying older migrations.
+Login/Auth V2 migration v11 is already applied in production and must not be replayed or recreated here.
+
+`0012_battle_persistence_v1.sql` is the first Battle V1 migration in this lane. It copies legacy player-keyed run state into an additive `character_run_state` table with the correct character key, and adds isolated Battle checkpoints, completion receipts, and per-character Quick Slots. Apply it only after duplicate/collision preflight and before deploying the matching Worker.

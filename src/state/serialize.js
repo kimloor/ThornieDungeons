@@ -24,7 +24,9 @@ function characterProgressToServer(flatSave) {
     pets_json: JSON.stringify({
       list: flatSave.pets || [],
       dup: flatSave.petDuplicates || {},
-      skills: flatSave.character.skillLevels || {}
+      skills: flatSave.character.skillLevels || {},
+      skillVersion: 1,
+      skillResetPoints: Number(flatSave.character.skillResetPoints) || 0
     }),
     active_pet_id: flatSave.activePetId || ""
   };

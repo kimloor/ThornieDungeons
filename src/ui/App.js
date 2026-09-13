@@ -25,12 +25,15 @@ function ThornieDungeons() {
     id: "",
     password: ""
   });
-  const [rememberPassword, setRememberPassword] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [registrationRecovery, setRegistrationRecovery] = useState(null);
+  const [passwordResetRecovery, setPasswordResetRecovery] = useState(null);
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
-  const sessionGenerationRef = useRef(0);
   const persistenceRef = useRef(null);
   if (!persistenceRef.current) {
     persistenceRef.current = createPersistenceManager({
@@ -44,6 +47,10 @@ function ThornieDungeons() {
   }
   const [player, setPlayer] = useState(null); // ephemeral combat state, derived fresh from save each stage entry
   const [resumeRun, setResumeRun] = useState(null); // persisted current HP/MP + floor restored after entering a character
+  const [resumeBattle, setResumeBattle] = useState(null); // Battle V1 safe Action-boundary checkpoint
+  const [battleState, setBattleState] = useState(null);
+  const battleStateRef = useRef(null);
+  const finishingBattleIdRef = useRef(null);
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
@@ -149,10 +156,24 @@ function ThornieDungeons() {
         ...c,
         url: DEFAULT_SERVER_URL,
         id: cfg.id || "",
-        password: cfg.rememberPassword ? cfg.password || "" : ""
+        password: ""
       }));
-      setRememberPassword(!!cfg.rememberPassword && !!cfg.password);
+      setRememberLogin(false);
       setPhase("login");
+
+      const rememberedSession = await AUTH_SESSION.load();
+      if (rememberedSession) {
+        const sessionResult = await cloudValidateSession(DEFAULT_SERVER_URL);
+        if (sessionResult?.ok) {
+          setCred({ url: DEFAULT_SERVER_URL, id: sessionResult.playerId, password: "" });
+          setRememberLogin(!!rememberedSession.rememberLogin);
+          setRecoveryConfigured(!!sessionResult.recoveryConfigured);
+          writeCachedConfig({ url: DEFAULT_SERVER_URL, id: sessionResult.playerId });
+          await beginCharacterSelect(accountFromLoginResponse(sessionResult));
+        } else if (sessionResult?.error === "network_error") {
+          setAuthError("เชื่อมต่อ Server ไม่ได้ — Session เดิมยังไม่ถูกลบ กรุณาลองใหม่");
+        }
+      }
 
       // Prefer the latest server balance config; cache is only a fallback when offline.
       const freshConfig = await cloudGetConfig(DEFAULT_SERVER_URL);
@@ -201,8 +222,8 @@ function ThornieDungeons() {
     url: cred.url,
     accountId: cred.id,
     characterId,
-    credential: { kind: "legacy_password", password: cred.password },
-    sessionGeneration: sessionGenerationRef.current
+    credential: { kind: "session_token" },
+    sessionGeneration: AUTH_SESSION.getGeneration()
   }), [cred]);
   // Each of these now targets ONE specific character (by characterId), matching the schema-v2
   // API worker where every character has its own real row — the server itself refuses (403s)
@@ -212,13 +233,13 @@ function ThornieDungeons() {
   // that the server enforces isolation directly).
   const pushCharacterProgress = useCallback((characterId, diamonds, progress) => {
     const context = persistenceContextFor(characterId);
-    if (!context || !context.credential.password) return Promise.resolve(false);
+    if (!context || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     return persistenceRef.current.enqueue(context, "character_progress", { diamonds, progress }, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "character_progress", snapshot));
   }, [persistenceContextFor]);
   const pushItems = useCallback((inv, eq, characterId) => {
     const context = persistenceContextFor(characterId);
-    if (!context || !context.credential.password) return Promise.resolve(false);
+    if (!context || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     return persistenceRef.current.enqueue(context, "items", itemsToServerList(inv, eq), (snapshot, owner) =>
       cloudSaveSnapshot(owner, "items", snapshot));
   }, [persistenceContextFor]);
@@ -249,7 +270,7 @@ function ThornieDungeons() {
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.
     // runState === null -> explicit request to clear the checkpoint (both local + cloud).
-    if (!cred.url || !cred.id || !cred.password || runState === undefined) return Promise.resolve(false);
+    if (!cred.url || !cred.id || !AUTH_SESSION.getToken() || runState === undefined) return Promise.resolve(false);
     const characterId = save && save.characterId;
     if (!characterId) return Promise.resolve(false);
     const key = `thornie-run-${cred.id}-${characterId}`;
@@ -261,6 +282,32 @@ function ThornieDungeons() {
     return persistenceRef.current.enqueue(context, "run_state", runState, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "run_state", snapshot));
   }, [cred, save, persistenceContextFor]);
+  const pushBattleCheckpoint = useCallback((checkpoint) => {
+    if (!checkpoint || !save?.characterId || !AUTH_SESSION.getToken()) return Promise.resolve(false);
+    const context = persistenceContextFor(save.characterId);
+    return persistenceRef.current.enqueue(context, "battle_checkpoint", checkpoint, (snapshot, owner) =>
+      cloudSaveSnapshot(owner, "battle_checkpoint", snapshot));
+  }, [save?.characterId, persistenceContextFor]);
+  const pushQuickSlots = useCallback((slots) => {
+    if (!save?.characterId || !AUTH_SESSION.getToken()) return Promise.resolve(false);
+    const context = persistenceContextFor(save.characterId);
+    return persistenceRef.current.enqueue(context, "quick_slots", slots, (snapshot, owner) =>
+      cloudSaveSnapshot(owner, "quick_slots", snapshot));
+  }, [save?.characterId, persistenceContextFor]);
+  useEffect(() => AUTH_SESSION.onInvalid((reason) => {
+    const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
+    if (context) persistenceRef.current.invalidate(context);
+    persistenceRef.current.setActiveContext(null);
+    setAccount(null);
+    setSave(null);
+    setPlayer(null);
+    setAccountSettingsOpen(false);
+    setCred(current => ({ ...current, password: "" }));
+    setAuthError(reason === "session_replaced"
+      ? "บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น"
+      : reason === "session_expired" ? "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่" : "Session ไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่");
+    setPhase("login");
+  }), [save?.characterId, persistenceContextFor]);
   useEffect(() => {
     if (!save?.characterId) return undefined;
     const retryCurrent = () => {
@@ -274,6 +321,20 @@ function ThornieDungeons() {
       document.removeEventListener("visibilitychange", retryCurrent);
     };
   }, [save?.characterId, persistenceContextFor]);
+  useEffect(() => {
+    if (!save?.characterId || !cred.url) return undefined;
+    const persistSafeBattleBoundary = () => {
+      const checkpoint = battleStateRef.current;
+      if (checkpoint && !checkpoint.result) void cloudSaveBattleCheckpointOnClose(cred.url, save.characterId, checkpoint);
+    };
+    const onVisibility = () => { if (document.visibilityState === "hidden") persistSafeBattleBoundary(); };
+    window.addEventListener("pagehide", persistSafeBattleBoundary);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", persistSafeBattleBoundary);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [cred.url, save?.characterId]);
   // Updates the runtime `save` view immediately, mirrors the change into the active character's
   // slot inside `account` (functional setState, so it always folds into the latest account
   // regardless of render timing), and pushes straight to that character's own row server-side.
@@ -346,18 +407,8 @@ function ThornieDungeons() {
     }]);
     setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 900);
   }
-  function handleRememberPassword(checked) {
-    setRememberPassword(checked);
-    if (!checked) {
-      // Clear an existing saved password immediately; the current in-memory value remains
-      // available until this page/session is closed or the user edits it.
-      writeCachedConfig({
-        url: cred.url || DEFAULT_SERVER_URL,
-        id: cred.id || "",
-        password: "",
-        rememberPassword: false
-      });
-    }
+  function handleRememberLogin(checked) {
+    setRememberLogin(checked);
   }
   async function beginCharacterSelect(nextAccount) {
     setAccount(nextAccount);
@@ -377,54 +428,61 @@ function ThornieDungeons() {
       return;
     }
     setAuthBusy(true);
-    const res = await cloudLogin(cred.url, cred.id, cred.password);
+    const res = await cloudLogin(cred.url, cred.id, cred.password, rememberLogin);
     setAuthBusy(false);
-    if (res.error === "not_found") {
-      setAuthError("ไม่พบ Player ID นี้ — กด \"สร้างบัญชีใหม่\" ก่อนนะคะ");
-      return;
-    }
-    if (res.error === "wrong_password") {
-      setAuthError("รหัสผ่านไม่ถูกต้อง");
+    if (res.error === "invalid_credentials") {
+      setAuthError("Player ID หรือรหัสผ่านไม่ถูกต้อง");
       return;
     }
     if (res.error) {
       setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
       return;
     }
-    writeCachedConfig({
-      url: cred.url,
-      id: cred.id,
-      password: rememberPassword ? cred.password : "",
-      rememberPassword: rememberPassword
-    });
-    sessionGenerationRef.current += 1;
+    await AUTH_SESSION.setSession(res, rememberLogin);
+    setCred(c => ({ ...c, id: res.playerId, password: "" }));
+    setRecoveryConfigured(!!res.recoveryConfigured);
+    writeCachedConfig({ url: cred.url, id: res.playerId });
     await beginCharacterSelect(accountFromLoginResponse(res));
   }
-  async function handleRegister() {
+  async function handleRegister(form) {
     setAuthError("");
-    if (!cred.url || !cred.id || !cred.password) {
+    if (!cred.url || !form?.id || !form?.password || !form?.confirmPassword) {
       setAuthError("กรอกให้ครบทุกช่องนะคะ");
-      return;
+      return { ok: false, error: "missing_fields" };
     }
     setAuthBusy(true);
-    const res = await cloudRegister(cred.url, cred.id, cred.password);
+    const res = await cloudRegister(cred.url, form.id, form.password, form.confirmPassword, rememberLogin);
     setAuthBusy(false);
-    if (res.error === "id_taken") {
-      setAuthError("Player ID นี้มีคนใช้แล้ว ลองชื่ออื่น หรือกด \"เข้าสู่ระบบ\" ถ้าเป็นของคุณเอง");
-      return;
+    if (res.error === "id_unavailable") {
+      setAuthError("Player ID นี้ไม่สามารถใช้งานได้");
+      return { ok: false, error: res.error };
     }
     if (res.error) {
       setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
-      return;
+      return { ok: false, error: res.error };
     }
-    writeCachedConfig({
-      url: cred.url,
-      id: cred.id,
-      password: rememberPassword ? cred.password : "",
-      rememberPassword: rememberPassword
-    });
-    sessionGenerationRef.current += 1;
-    await beginCharacterSelect(defaultSave());
+    await AUTH_SESSION.setSession(res, rememberLogin);
+    setCred(c => ({ ...c, id: res.playerId, password: "" }));
+    setRecoveryConfigured(true);
+    writeCachedConfig({ url: cred.url, id: res.playerId });
+    setRegistrationRecovery({ code: res.recoveryCode, account: defaultSave() });
+    return { ok: true };
+  }
+  async function finishRegistrationRecovery() {
+    const pending = registrationRecovery;
+    setRegistrationRecovery(null);
+    if (pending) await beginCharacterSelect(pending.account);
+  }
+  async function handleForgotPassword(form) {
+    setAuthBusy(true);
+    const res = await cloudForgotPassword(cred.url || DEFAULT_SERVER_URL, form.id, form.recoveryCode, form.newPassword, form.confirmPassword);
+    setAuthBusy(false);
+    if (!res?.ok) return { ok: false, error: res?.error || "network_error" };
+    await AUTH_SESSION.clear("password_reset", false);
+    setCred(c => ({ ...c, id: form.id, password: "" }));
+    setPasswordResetRecovery(res.recoveryCode);
+    writeCachedConfig({ url: cred.url || DEFAULT_SERVER_URL, id: form.id });
+    return { ok: true, recoveryCode: res.recoveryCode };
   }
   async function handleCreateCharacter(slotIndex, name) {
     if (!account) return {
@@ -441,7 +499,7 @@ function ThornieDungeons() {
         message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
       };
     }
-    const res = await cloudCreateCharacter(cred.url, cred.id, cred.password, slotIndex, name);
+    const res = await cloudCreateCharacter(cred.url, slotIndex, name);
     if (res.error === "name_taken") return {
       ok: false,
       message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
@@ -469,7 +527,7 @@ function ThornieDungeons() {
     };
   }
   async function handleDeleteCharacter(slotIndex) {
-    const res = await cloudDeleteCharacter(cred.url, cred.id, cred.password, slotIndex);
+    const res = await cloudDeleteCharacter(cred.url, slotIndex);
     if (res.error) {
       console.error("[ThornieDungeons] deleteCharacter failed:", res.error);
       return;
@@ -487,7 +545,7 @@ function ThornieDungeons() {
   }
   async function enterCharacterSlot(slotIndex) {
     if (!account || !account.characters[slotIndex]) return;
-    const res = await cloudEnterCharacter(cred.url, cred.id, cred.password, slotIndex);
+    const res = await cloudEnterCharacter(cred.url, slotIndex);
     if (res.error) {
       console.error("[ThornieDungeons] enterCharacter failed:", res.error);
       return;
@@ -520,14 +578,24 @@ function ThornieDungeons() {
     }
     setEquipped(eq);
     setInventory(finalInv);
-    loadQuickSlots(cred.id, characterSlot.id).then(setQuickSlots);
-    cloudGetDailyLogin(cred.url, cred.id, cred.password, characterSlot.id).then(async dlRes => {
+    // Cloud is authoritative for Battle V1 quick slots/checkpoints. Local slots
+    // remain a rollout fallback for characters that have not synced settings yet.
+    cloudGetBattleState(cred.url, characterSlot.id).then(async battleRes => {
+      if (battleRes && battleRes.ok) {
+        if (Array.isArray(battleRes.quickSlots) && battleRes.quickSlots.length === 4) setQuickSlots(battleRes.quickSlots);
+        else setQuickSlots(await loadQuickSlots(cred.id, characterSlot.id));
+        if (battleRes.checkpoint && battleRes.checkpoint.payload) setResumeBattle(battleRes.checkpoint.payload);
+      } else {
+        setQuickSlots(await loadQuickSlots(cred.id, characterSlot.id));
+      }
+    });
+    cloudGetDailyLogin(cred.url, characterSlot.id).then(async dlRes => {
       if (!dlRes || !dlRes.ok) return;
       setDailyLogin({ state: dlRes.state, canClaim: dlRes.canClaim, preview: dlRes.preview });
       if (!dlRes.canClaim) return;
       // Auto-claim right away instead of waiting for the player to open a menu and press a
       // button — the popup below is what actually tells them they got it.
-      const claim = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, characterSlot.id);
+      const claim = await cloudClaimDailyLogin(cred.url, characterSlot.id);
       if (!claim || claim.error) return;
       setDailyLogin({ state: claim.state, canClaim: false, preview: dlRes.preview });
       setSave(s => s ? { ...s, gold: s.gold + (claim.reward.gold || 0), diamonds: s.diamonds + (claim.reward.diamonds || 0) } : s);
@@ -598,12 +666,17 @@ function ThornieDungeons() {
       window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ จึงยังไม่ออกจากระบบ กรุณาลองใหม่อีกครั้ง");
       return false;
     }
+    const logoutResult = await cloudLogout(cred.url || DEFAULT_SERVER_URL);
+    if (logoutResult?.error === "network_error" || logoutResult?.error === "server_error") {
+      window.alert("ยังเชื่อมต่อ Server เพื่อออกจากระบบไม่ได้ Session ยังไม่ถูกลบ กรุณาลองใหม่");
+      return false;
+    }
     if (context) persistenceRef.current.invalidate(context);
     persistenceRef.current.setActiveContext(null);
-    sessionGenerationRef.current += 1;
+    await AUTH_SESSION.clear("logout", false);
     setCred(c => ({
       ...c,
-      password: rememberPassword ? c.password : ""
+      password: ""
     }));
     setAccount(null);
     setSave(null);
@@ -615,12 +688,154 @@ function ThornieDungeons() {
     setPhase("login");
     return true;
   }
+  async function requireLoginAfterSecurityChange(message) {
+    const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
+    if (context) persistenceRef.current.invalidate(context);
+    persistenceRef.current.setActiveContext(null);
+    await AUTH_SESSION.clear("security_change", false);
+    setAccountSettingsOpen(false);
+    setAccount(null);
+    setSave(null);
+    setPlayer(null);
+    setCred(current => ({ ...current, password: "" }));
+    setAuthError(message || "กรุณาเข้าสู่ระบบใหม่");
+    setPhase("login");
+  }
+  function battleQueueForUi(state) {
+    return BATTLE_CORE_V1.upcomingActions(state, 4).map(id => {
+      const unit = state.units[id];
+      return { key: unit.kind === "hero" ? "player" : id, kind: unit.kind === "hero" ? "player" : unit.kind === "pet" ? "pet" : "monster", uid: unit.side === "enemy" ? id : undefined, name: unit.name, icon: unit.kind === "hero" ? "🧙" : unit.kind === "pet" ? (unit.icon || "🐾") : "👹", speed: unit.speed };
+    });
+  }
+  function applyCoreBattleState(next, persistCheckpoint = true) {
+    battleStateRef.current = next;
+    setBattleState(next);
+    const heroUnit = next.units[next.heroId];
+    const nextPlayer = heroUnit && playerRef.current ? {
+      ...playerRef.current, hp: heroUnit.hp, mp: heroUnit.sp,
+      defBuffTurns: heroUnit.statuses.def_up?.duration || 0,
+      regenTurns: heroUnit.statuses.pet_regrowth?.duration || 0,
+      battleStatuses: heroUnit.statuses,
+      battleResources: next.resources,
+      skillLevels: heroUnit.skills,
+      cooldowns: heroUnit.cooldowns
+    } : playerRef.current;
+    if (nextPlayer) { playerRef.current = nextPlayer; setPlayer(nextPlayer); }
+    const nextMonsters = next.enemyIds.map(id => {
+      const unit = next.units[id];
+      const previous = monstersRef.current.find(monster => monster.uid === id) || {
+        ...unit,
+        id: unit.monsterDefId || unit.id,
+        uid: id
+      };
+      return { ...previous, hp: unit.hp, maxHp: unit.maxHp, poisonTurns: unit.statuses.poison?.duration || 0, poisonDmg: unit.statuses.poison?.damage || 0, frozenTurns: unit.statuses.stun?.duration || 0, battleStatuses: unit.statuses };
+    });
+    monstersRef.current = nextMonsters;
+    setMonsters(nextMonsters);
+    if (next.petId && next.units[next.petId]) {
+      const petUnit = next.units[next.petId];
+      const nextPet = { ...(petCombatRef.current || petUnit), hp: petUnit.hp, maxHp: petUnit.maxHp, cooldown: petUnit.cooldowns.pet_active || 0, battleStatuses: petUnit.statuses };
+      petCombatRef.current = nextPet; setPetCombat(nextPet);
+    }
+    const queue = battleQueueForUi(next);
+    turnQueueRef.current = queue; setTurnQueue(queue);
+    const acting = BATTLE_CORE_V1.currentUnit(next);
+    setActiveTurnKey(acting ? (acting.kind === "hero" ? "player" : acting.id) : null);
+    setCombatTurnCount(next.heroTurnCount);
+    if (next.selectedTargetId) setTargetUid(next.selectedTargetId);
+    const messages = next.log.slice(-3).reverse().map(entry => entry.text);
+    if (messages.length) setLogState(messages);
+    if (persistCheckpoint && !next.result) pushBattleCheckpoint(next);
+  }
+  async function finishCoreBattle(next) {
+    if (!next?.battleId || finishingBattleIdRef.current === next.battleId) return;
+    finishingBattleIdRef.current = next.battleId;
+    setBusy(false);
+    if (save?.characterId) {
+      const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, { result: next.result, safeActionSeq: next.safeActionSeq, floor: next.floor });
+      if (!receipt?.ok) {
+        finishingBattleIdRef.current = null;
+        setLog("Battle result sync failed — tap Attack to retry safely.");
+        return;
+      }
+    }
+    if (next.result === "victory") endCombatWin();
+    else if (next.result === "defeat") playerLost();
+    else if (next.result === "fled") backToMap();
+  }
+  function driveCoreBattle(inputState, heroCommand = null, immediate = false) {
+    const state = inputState || battleStateRef.current;
+    if (!state || state.result) { if (state?.result) finishCoreBattle(state); return; }
+    const actor = BATTLE_CORE_V1.currentUnit(state);
+    if (!actor) return;
+    if (actor.kind === "hero" && !heroCommand && !state.flags.auto && !state.flags.skipResolving) {
+      applyCoreBattleState(state, false); setBusy(false); return;
+    }
+    setBusy(true);
+    if (heroCommand?.type === "skip_battle") {
+      const resolved = BATTLE_CORE_V1.simulateBattle(state);
+      applyCoreBattleState(resolved, false); finishCoreBattle(resolved); return;
+    }
+    if (actor.kind === "hero" && ["basic", "active"].includes(heroCommand?.type)) setHeroAnim("attack");
+    else if (actor.kind === "pet") setPetAnim("attack");
+    else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
+    const result = BATTLE_CORE_V1.battleStep(state, actor.kind === "hero" ? heroCommand : undefined);
+    const next = result.state;
+    for (const [id, unit] of Object.entries(next.units)) {
+      const before = state.units[id];
+      if (before && unit.hp < before.hp) {
+        if (unit.kind === "hero") setHeroAnim("hurt");
+        else if (unit.kind === "pet") setPetAnim("hurt");
+        else setEnemyAnims(current => ({ ...current, [id]: unit.dead ? "death" : "hurt" }));
+      }
+    }
+    applyCoreBattleState(next, result.completedAction);
+    if (next.result) { finishCoreBattle(next); return; }
+    const delay = immediate ? 0 : combatDelay(actor.kind === "hero" ? 360 : 440);
+    setTimeout(() => {
+      setHeroAnim(""); setPetAnim("");
+      setEnemyAnims(current => Object.fromEntries(Object.keys(current).map(id => [id, next.units[id]?.dead ? "death" : ""])));
+      driveCoreBattle(next);
+    }, delay);
+  }
+  function playerTurn(action, value) {
+    if (busy || !battleStateRef.current) return;
+    const state = battleStateRef.current;
+    if (state.result) { void finishCoreBattle(state); return; }
+    const actor = BATTLE_CORE_V1.currentUnit(state);
+    if (!actor || actor.kind !== "hero") return;
+    if (action === "skip") {
+      if (state.heroTurnCount < 5) return;
+      driveCoreBattle(state, { type: "skip_battle" }, true);
+      return;
+    }
+    if (action === "item") {
+      const def = getPotionDef(value);
+      if (!def || potionTotal(inventory, value) <= 0) return;
+      const nextInventory = removePotionFromInventory(inventory, value, 1);
+      if (!nextInventory) return;
+      setInventory(nextInventory); persistItems(nextInventory, equipped);
+      const heroUnit = state.units[state.heroId];
+      const heal = def.kind === "hp" ? heroUnit.maxHp * def.healPct : 0;
+      const restoreSp = def.kind !== "hp" ? heroUnit.maxSp * def.healPct : 0;
+      driveCoreBattle(state, { type: "potion", count: 1, heal, restoreSp });
+      return;
+    }
+    const command = action === "skill" ? { type: "active", skillId: value, targetId: targetUid }
+      : action === "flee" ? { type: "flee" }
+      : { type: "basic", targetId: targetUid };
+    driveCoreBattle(state, command);
+  }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
     const allowResume = options.allowResume !== false;
     combatOutcomeRef.current = null;
+    finishingBattleIdRef.current = null;
     setSelectedFloor(floorNum);
     const resumeCarry = allowResume && !carryPlayer && resumeRun && Number(resumeRun.floor) === Number(floorNum) ? resumeRun : null;
     const nextPlayer = freshPlayerFromSave(save, carryPlayer || resumeCarry);
+    nextPlayer.skillLevels = { ...(save.character.skillLevels || {}) };
+    nextPlayer.cooldowns = {};
+    playerRef.current = nextPlayer;
     setPlayer(nextPlayer);
     // resumeRun is only meant to restore the session you left off at login.
     // Consume it on the very first stage entry no matter what (matched or
@@ -646,28 +861,85 @@ function ThornieDungeons() {
       ? options.encounter
       : makeEncounter(floorNum);
     setMonsters(spawned);
+    monstersRef.current = spawned;
     setTargetUid(spawned[0] ? spawned[0].uid : null);
-    const initialPet = buildPetCombatUnit();
+    const priorPetHp = petCombatRef.current && petCombatRef.current.instId === save.activePetId ? petCombatRef.current.hp : null;
+    const carryPetHp = Number(floorNum) % 5 === 0 || !carryPlayer || !(priorPetHp > 0) ? null : priorPetHp;
+    const initialPet = buildPetCombatUnit(carryPetHp);
     setPetCombat(initialPet);
-    const initItems = [{ key: "player", kind: "player", name: "You", icon: "🧙", speed: nextPlayer.baseSpeed || 0 }];
-    if (initialPet && initialPet.hp > 0) {
-      initItems.push({ key: "pet", kind: "pet", name: initialPet.name, icon: initialPet.icon, speed: initialPet.speed });
+    petCombatRef.current = initialPet;
+    const baseStats = getStats(nextPlayer, equipped);
+    const petDefId = initialPet?.defId;
+    const toughness = heroSkillRankData(save.character.skillLevels, "toughness");
+    const ironBody = heroSkillRankData(save.character.skillLevels, "iron_body");
+    const battleHardened = heroSkillRankData(save.character.skillLevels, "battle_hardened");
+    const stats = {
+      ...baseStats,
+      maxHp: Math.round(baseStats.maxHp * (1 + (toughness?.maxHpPct || 0) / 100)),
+      def: Math.round(baseStats.def * (1 + (ironBody?.defPct || 0) / 100 + (petDefId === "inferno_drake" ? 0.08 : 0))),
+      accuracy: Math.min(99, baseStats.accuracy + (petDefId === "hell_wolf" ? 8 : 0)),
+      dodgeChance: baseStats.dodgeChance + (petDefId === "storm_phoenix" ? 8 : 0),
+      critChance: baseStats.critChance + (petDefId === "ember_fox" ? 5 : 0),
+      statusResist: (battleHardened?.statusResist || 0) + (petDefId === "moon_hare" ? 15 : 0)
+    };
+    const heroStartHp = (carryPlayer || resumeCarry) ? Math.min(stats.maxHp, nextPlayer.hp) : stats.maxHp;
+    const learnedActives = heroActiveSkillList(save.character.skillLevels).map(skill => skill.key);
+    const equippedActives = quickSlots.filter(slot => slot && slot.kind === "skill" && learnedActives.includes(slot.key)).map(slot => slot.key);
+    let initialBattle;
+    let resetOldCheckpoint = null;
+    if (resumeBattle && Number(resumeBattle.floor) === Number(floorNum)) {
+      try { initialBattle = BATTLE_CORE_V1.restoreCheckpoint(resumeBattle); }
+      catch (e) {
+        initialBattle = null;
+        if (resumeBattle.battleId) resetOldCheckpoint = cloudClearBattleCheckpoint(cred.url, save.characterId, resumeBattle.battleId);
+      }
+      setResumeBattle(null);
+    } else if (resumeBattle?.battleId) {
+      resetOldCheckpoint = cloudClearBattleCheckpoint(cred.url, save.characterId, resumeBattle.battleId);
+      setResumeBattle(null);
     }
-    spawned.forEach(m => {
-      if (m.hp > 0) initItems.push({ key: m.uid, kind: "monster", uid: m.uid, name: m.name, icon: "👹", speed: m.speed });
+    if (!initialBattle) initialBattle = BATTLE_CORE_V1.createDungeonBattle({
+      battleId: `dungeon-${save.characterId}-${floorNum}-${Date.now()}`,
+      floor: floorNum,
+      mode: "dungeon",
+      seed: (Date.now() ^ Number(floorNum)) >>> 0,
+      hero: {
+        id: "hero", kind: "hero", side: "ally", name: "You", hp: heroStartHp, maxHp: stats.maxHp,
+        sp: nextPlayer.mp, maxSp: stats.maxMp, atk: stats.atk, def: stats.def, speed: stats.speed,
+        accuracy: stats.accuracy, dodge: stats.dodgeChance, crit: stats.critChance,
+        critDamage: 1 + stats.critDamage / 100, agi: save.character.stats.agi,
+        skills: save.character.skillLevels, activeSkills: equippedActives, statusResist: stats.statusResist
+      },
+      pet: initialPet && {
+        ...initialPet, id: "pet", kind: "pet", side: "ally", petDefId: initialPet.defId,
+        def: Math.round(initialPet.def * (petDefId === "inferno_drake" ? 1.15 : 1)),
+        accuracy: Math.min(99, initialPet.hitRate + (petDefId === "hell_wolf" ? 8 : 0)),
+        dodge: initialPet.evasion + (petDefId === "storm_phoenix" ? 8 : 0),
+        crit: initialPet.critChance + (petDefId === "ember_fox" ? 10 : 0),
+        statusResist: petDefId === "moon_hare" ? 15 : 0
+      },
+      enemies: spawned.map((monster, index) => ({
+        ...monster, monsterDefId: monster.id, id: monster.uid, kind: monster.isBoss ? "boss" : "monster", side: "enemy",
+        maxHp: monster.maxHp, accuracy: 92, dodge: 0, crit: 5, tieOrder: index + 2
+      }))
     });
-    const initRest = buildTurnQueue(initItems.filter(it => it.kind !== "player")).map(({ _r, ...r }) => r);
-    setTurnQueue([initItems[0], ...initRest]);
-    turnQueueRef.current = [initItems[0], ...initRest];
+    applyCoreBattleState(initialBattle, false);
+    if (resetOldCheckpoint) resetOldCheckpoint.then(result => {
+      if (result?.ok) pushBattleCheckpoint(initialBattle);
+      else setLog("Checkpoint reset failed — battle progress will retry after reconnect.");
+    });
+    else pushBattleCheckpoint(initialBattle);
     setActiveTurnKey(null);
     setCombatTurnCount(0);
     setDropItem(null);
-    const boss = spawned.find(m => m.isBoss);
-    setLog(boss ? `A ${boss.name} blocks the way!` : spawned.length > 1 ? `${spawned.length} monsters appear: ${spawned.map(m => m.name).join(", ")}!` : `A wild ${spawned[0].name} appears!`);
-    const battleAssets = { equipped: save?.equipped || {}, pet: initialPet, monsters: spawned };
+    const displayMonsters = monstersRef.current;
+    const boss = displayMonsters.find(m => m.isBoss);
+    setLog(boss ? `A ${boss.name} blocks the way!` : displayMonsters.length > 1 ? `${displayMonsters.length} monsters appear: ${displayMonsters.map(m => m.name).join(", ")}!` : `A wild ${displayMonsters[0].name} appears!`);
+    const battleAssets = { equipped: save?.equipped || {}, pet: initialPet, monsters: displayMonsters };
     const criticalAssets = preloadBattleCriticalAssets(battleAssets);
     criticalAssets.ready.finally(() => {
       setPhase("combat");
+      setTimeout(() => driveCoreBattle(initialBattle), 0);
       criticalAssets.settled.finally(() => warmBattleDeferredAssets(battleAssets));
     });
   }
@@ -692,6 +964,7 @@ function ThornieDungeons() {
       evasion: cs.evasion,
       hitRate: cs.hitRate,
       critChance: cs.critChance,
+      vit: cs.rawStats?.vit || 0,
       cooldown: 0
     };
   }
@@ -715,7 +988,7 @@ function ThornieDungeons() {
     if (snapshot) pushRunState(snapshot);
   }
   useEffect(() => {
-    if (!player || !cred.url || !cred.id || !cred.password || !save || combatOutcomeRef.current) return;
+    if (!player || !cred.url || !cred.id || !AUTH_SESSION.getToken() || !save || combatOutcomeRef.current) return;
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     runStateSaveTimer.current = setTimeout(() => {
       if (!combatOutcomeRef.current) saveCombatRunState(selectedFloor, player);
@@ -723,7 +996,7 @@ function ThornieDungeons() {
     return () => {
       if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     };
-  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, cred.password, save, pushRunState]);
+  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, save, pushRunState]);
 
   function endCombatWin() {
     if (combatOutcomeRef.current) return;
@@ -805,16 +1078,20 @@ function ThornieDungeons() {
       level = MAX_LEVEL;
       xp = 0;
     }
-    const newSkill = leveledUp ? SKILLS.find(s => s.unlockLevel > save.character.level && s.unlockLevel <= level) : null;
+    // Hero Skill V1 grants one point per level; skills are no longer auto-owned
+    // at legacy level milestones.
+    const newSkill = null;
     const unlockedNext = selectedFloor === save.unlockedFloor;
-    let newPets = save.pets;
+    // The equipped Pet participated even if it died, so it receives 80% of the
+    // total Hero battle EXP before any new starter Pet is awarded.
+    let newPets = grantActivePetBattleXp(save.pets, save.activePetId, xpGained);
     let newActivePetId = save.activePetId;
     let newPet = null;
     const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
     if (selectedFloor === 5 && bossMonster && unlockedNext && !alreadyHasStarter) {
       const starter = starterPetDef();
       const inst = newPetInstance(starter.id);
-      newPets = [...(save.pets || []), inst];
+      newPets = [...newPets, inst];
       if (!newActivePetId) newActivePetId = inst.instId;
       newPet = starter;
     }
@@ -839,7 +1116,7 @@ function ThornieDungeons() {
     // roll back when the next stage is entered or the game is reloaded.
     persistSave(nextSave);
     const postBattlePlayer = freshPlayerFromSave(nextSave, {
-      hp: currentPlayer.hp,
+      hp: battleStateRef.current?.flags.heroReviveNextFloor ? 1 : currentPlayer.hp,
       mp: currentPlayer.mp
     });
     setPlayer(postBattlePlayer);
@@ -878,505 +1155,22 @@ function ThornieDungeons() {
     setPhase("defeat");
   }
   // ---------- targeting helpers ----------
-  function firstAliveMonster() {
-    return monstersRef.current.find(m => m.hp > 0) || null;
-  }
-  function getTargetMonster() {
-    const explicit = monstersRef.current.find(m => m.uid === targetUid && m.hp > 0);
-    return explicit || firstAliveMonster();
-  }
-  function updateMonster(uid, updater) {
-    setMonsters(ms => ms.map(m => m.uid === uid ? updater(m) : m));
-  }
-  function setMonsterAnim(uid, anim) {
-    setEnemyAnims(prev => ({ ...prev, [uid]: anim }));
-  }
   function selectTarget(uid) {
     const m = monstersRef.current.find(x => x.uid === uid);
-    if (m && m.hp > 0) setTargetUid(uid);
-  }
-  // Builds the Turn Order Queue UI data for the round about to run: the Player
-  // always resolves first (their action is tap-driven), followed by Active Pet
-  // and every living Monster sorted by Speed (AGI-derived), highest first.
-  function computeRoundQueueDisplay() {
-    const p = playerRef.current || player;
-    const items = [{ key: "player", kind: "player", name: "You", icon: "🧙", speed: (p && p.baseSpeed) || 0 }];
-    const pet = petCombatRef.current;
-    if (pet && pet.hp > 0) {
-      items.push({ key: "pet", kind: "pet", name: pet.name, icon: pet.icon, speed: pet.speed });
+    if (m && m.hp > 0) {
+      setTargetUid(uid);
+      if (battleStateRef.current && battleStateRef.current.units[uid]) {
+        const next = { ...battleStateRef.current, selectedTargetId: uid };
+        battleStateRef.current = next;
+        setBattleState(next);
+      }
     }
-    monstersRef.current.forEach(m => {
-      if (m.hp > 0) items.push({ key: m.uid, kind: "monster", uid: m.uid, name: m.name, icon: "👹", speed: m.speed });
-    });
-    const rest = buildTurnQueue(items.filter(it => it.kind !== "player")).map(({ _r, ...r }) => r);
-    return [items[0], ...rest];
   }
-
   function combatDelay(ms) {
     return Math.max(60, Math.round(ms / combatSpeed));
   }
 
-  function playerTurn(action, skillKey) {
-    if (busy || !player) return;
-    const target = getTargetMonster();
-    if ((action === "attack" || action === "skill") && !target) return;
-    const stats = getStats(player, equipped);
-    if (action !== "flee") setCombatTurnCount(count => count + 1);
-    setBusy(true);
-    // Lock in this round's Turn Order Queue the moment the player commits to an action,
-    // so the queue bar reflects exactly what's about to resolve.
-    const roundQueue = computeRoundQueueDisplay();
-    setTurnQueue(roundQueue);
-    turnQueueRef.current = roundQueue;
-    setActiveTurnKey("player");
-    if (action === "skip") {
-      setLog("You wait and let the next unit act.");
-      setTimeout(() => runQueueAfterPlayer(), combatDelay(220));
-    } else if (action === "attack") {
-      const isMiss = Math.random() * 100 >= stats.accuracy;
-      const isCrit = !isMiss && Math.random() * 100 < stats.critChance;
-      let dmg = Math.max(2, Math.round(stats.atk - target.def * 0.6 + (Math.random() * 4 - 2)));
-      if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
-      setHeroAnim("attack");
-      setTimeout(() => {
-        if (isMiss) {
-          spawnFloat(target.uid, "MISS", "#B9AEDD");
-          setLog(`You attack but miss ${target.name}!`);
-        } else {
-          updateMonster(target.uid, m => {
-            const nh = Math.max(0, m.hp - dmg);
-            spawnFloat(target.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#FF6B6B");
-            setMonsterAnim(target.uid, "hurt");
-            return { ...m, hp: nh };
-          });
-          setLog(isCrit ? `You land a CRITICAL hit on ${target.name} for ${dmg}!` : `You attack ${target.name} for ${dmg}!`);
-        }
-        setHeroAnim("");
-        setTimeout(() => runQueueAfterPlayer(), combatDelay(350));
-      }, combatDelay(420));
-    } else if (action === "skill") {
-      const baseSkill = SKILLS.find(s => s.key === skillKey);
-      const skill = baseSkill ? skillAtLevel(baseSkill, committedSkillLevel(save, skillKey)) : null;
-      if (!skill || player.mp < skill.mp) {
-        setBusy(false);
-        return;
-      }
-      const isMiss = (skill.type === "damage" || skill.type === "aoe") && Math.random() * 100 >= stats.accuracy;
-      const isCrit = (skill.type === "damage" || skill.type === "aoe") && !isMiss && (skill.guaranteedCrit || Math.random() * 100 < stats.critChance);
-      setPlayer(p => ({
-        ...p,
-        mp: p.mp - skill.mp
-      }));
-      setHeroAnim("attack");
-      setTimeout(() => {
-        if (skill.type === "damage") {
-          if (isMiss) {
-            spawnFloat(target.uid, "MISS", "#B9AEDD");
-            setLog(`${skill.name} misses ${target.name}!`);
-          } else {
-            const pierce = skill.defPierce || 0;
-            let dmg = Math.max(4, Math.round(stats.atk * skill.mult - target.def * (1 - pierce) * 0.6 + (Math.random() * 5 - 2)));
-            if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
-            const freeze = skill.freezeChance ? Math.random() < skill.freezeChance : false;
-            updateMonster(target.uid, m => {
-              const nh = Math.max(0, m.hp - dmg);
-              spawnFloat(target.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
-              setMonsterAnim(target.uid, "hurt");
-              const next = { ...m, hp: nh };
-              if (freeze) next.frozenTurns = (m.frozenTurns || 0) + skill.freezeTurns;
-              if (skill.poisonTurns) {
-                next.poisonTurns = skill.poisonTurns;
-                next.poisonDmg = Math.max(1, Math.round(stats.atk * skill.poisonPct));
-              }
-              return next;
-            });
-            setLog(freeze ? `${skill.name} freezes ${target.name} solid!` : `You use ${skill.name} on ${target.name} for ${dmg}${isCrit ? " (CRIT!)" : ""}!`);
-          }
-        } else if (skill.type === "aoe") {
-          const targets = monstersRef.current.filter(m => m.hp > 0);
-          if (isMiss) {
-            setLog(`${skill.name} misses everyone!`);
-          } else {
-            const pierce = skill.defPierce || 0;
-            targets.forEach(m => {
-              let dmg = Math.max(3, Math.round(stats.atk * skill.mult - m.def * (1 - pierce) * 0.6 + (Math.random() * 4 - 2)));
-              if (isCrit) dmg = Math.round(dmg * (1 + stats.critDamage / 100));
-              updateMonster(m.uid, mm => {
-                const nh = Math.max(0, mm.hp - dmg);
-                spawnFloat(m.uid, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? "#FFD166" : "#8B6AE8");
-                setMonsterAnim(m.uid, "hurt");
-                return { ...mm, hp: nh };
-              });
-            });
-            setLog(`You unleash ${skill.name}, hitting ${targets.length} enem${targets.length === 1 ? "y" : "ies"}${isCrit ? " (CRIT!)" : ""}!`);
-          }
-        } else if (skill.type === "heal") {
-          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
-          setPlayer(p => {
-            const heal = Math.round(stats.maxHp * skill.healPct);
-            spawnFloat("hero", `+${heal}`, "#4CAF7D");
-            return {
-              ...p,
-              hp: Math.min(stats.maxHp, p.hp + heal)
-            };
-          });
-          if (petAlive) {
-            setPetCombat(pc => {
-              if (!pc) return pc;
-              const petHeal = Math.round(pc.maxHp * skill.healPct);
-              spawnFloat("pet", `+${petHeal}`, "#4CAF7D");
-              return { ...pc, hp: Math.min(pc.maxHp, pc.hp + petHeal) };
-            });
-          }
-          setLog(petAlive ? `You cast ${skill.name} — you and your pet recover HP.` : `You cast ${skill.name} and recover HP.`);
-        } else if (skill.type === "buffAtk") {
-          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
-          setPlayer(p => ({
-            ...p,
-            atkBuffPct: skill.pct,
-            atkBuffTurns: skill.turns
-          }));
-          spawnFloat("hero", "ATK UP", "#FFD166");
-          if (petAlive) {
-            setPetCombat(pc => pc ? { ...pc, atkBuffPct: skill.pct, atkBuffTurns: skill.turns } : pc);
-            spawnFloat("pet", "ATK UP", "#FFD166");
-          }
-          setLog(petAlive ? `You cast ${skill.name}! ATK increased for you and your pet, ${skill.turns} turns.` : `You cast ${skill.name}! ATK increased for ${skill.turns} turns.`);
-        } else if (skill.type === "buffDef") {
-          const petAlive = petCombatRef.current && petCombatRef.current.hp > 0;
-          setPlayer(p => ({
-            ...p,
-            defBuffPct: skill.pct,
-            defBuffTurns: skill.turns
-          }));
-          spawnFloat("hero", "DEF UP", "#7FB8E8");
-          if (petAlive) {
-            setPetCombat(pc => pc ? { ...pc, defBuffPct: skill.pct, defBuffTurns: skill.turns } : pc);
-            spawnFloat("pet", "DEF UP", "#7FB8E8");
-          }
-          setLog(petAlive ? `You cast ${skill.name}! DEF increased for you and your pet, ${skill.turns} turns.` : `You cast ${skill.name}! DEF increased for ${skill.turns} turns.`);
-        }
-        setHeroAnim("");
-        setTimeout(() => runQueueAfterPlayer(), combatDelay(350));
-      }, combatDelay(420));
-    } else if (action === "item") {
-      const potionId = skillKey;
-      const def = getPotionDef(potionId);
-      if (!def || potionTotal(inventory, potionId) <= 0) {
-        setBusy(false);
-        return;
-      }
-      const nextInv = removePotionFromInventory(inventory, potionId, 1);
-      if (!nextInv) {
-        setBusy(false);
-        return;
-      }
-      setInventory(nextInv);
-      persistItems(nextInv, equipped);
-      if (def.kind === "hp") {
-        setPlayer(p => {
-          const heal = Math.round(stats.maxHp * def.healPct);
-          spawnFloat("hero", `+${heal}`, "#4CAF7D");
-          return {
-            ...p,
-            hp: Math.min(stats.maxHp, p.hp + heal)
-          };
-        });
-        setLog(`You drink a ${def.name} and recover HP.`);
-      } else {
-        setPlayer(p => {
-          const heal = Math.round(stats.maxMp * def.healPct);
-          spawnFloat("hero", `+${heal}`, "#7FB8E8");
-          return {
-            ...p,
-            mp: Math.min(stats.maxMp, p.mp + heal)
-          };
-        });
-        setLog(`You drink a ${def.name} and recover SP.`);
-      }
-      setTimeout(() => runQueueAfterPlayer(), combatDelay(500));
-    } else if (action === "flee") {
-      const success = Math.random() < 0.55;
-      if (success) {
-        setLog("You escaped safely.");
-        setMonsters([]);
-        setPetCombat(null);
-        setTurnQueue([]);
-        turnQueueRef.current = [];
-        setActiveTurnKey(null);
-        pushRunState(null);
-        setPhase("map");
-        setBusy(false);
-      } else {
-        setLog("Couldn't escape!");
-        setTimeout(() => runQueueAfterPlayer(), combatDelay(500));
-      }
-    }
-  }
-  // ---------- Round-based Initiative Queue ----------
-  // After the player's own action resolves, every remaining living unit on the
-  // field (Active Pet + all Monsters) takes its action in order of Speed (AGI),
-  // highest first. Once the queue is drained, buffs/cooldowns tick and control
-  // returns to the player for the next round.
-  function runQueueAfterPlayer() {
-    if (combatOutcomeRef.current) return;
-    if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
-      endCombatWin();
-      return;
-    }
-    // Reuse the exact order already resolved for the Turn Order bar (turnQueueRef)
-    // instead of re-rolling buildTurnQueue's random tie-breaks here — otherwise the
-    // displayed icon order and the actual resolution order could diverge whenever
-    // two units share the same Speed.
-    const queue = (turnQueueRef.current || [])
-      .filter(item => item.kind !== "player")
-      .filter(item => {
-        if (item.kind === "pet") return petCombatRef.current && petCombatRef.current.hp > 0;
-        const m = monstersRef.current.find(mm => mm.uid === item.uid);
-        return !!m && m.hp > 0;
-      });
-    processQueue(queue, 0);
-  }
-  function processQueue(queue, index) {
-    if (combatOutcomeRef.current) return;
-    if (index >= queue.length) {
-      setActiveTurnKey(null);
-      if (monstersRef.current.length && monstersRef.current.every(m => m.hp <= 0)) {
-        setTurnQueue([]);
-        turnQueueRef.current = [];
-        endCombatWin();
-        return;
-      }
-      if ((playerRef.current?.hp || 0) <= 0) {
-        setTurnQueue([]);
-        turnQueueRef.current = [];
-        playerLost();
-        return;
-      }
-      {
-        const roundQueue = computeRoundQueueDisplay();
-        setTurnQueue(roundQueue);
-        turnQueueRef.current = roundQueue;
-      }
-      setBusy(false);
-      tickPlayerBuffs();
-      tickPetCooldown();
-      return;
-    }
-    const unit = queue[index];
-    setActiveTurnKey(unit.kind === "pet" ? "pet" : unit.uid);
-    const advance = () => {
-      if (combatOutcomeRef.current) return;
-      // Check outcome immediately after every single action, not just at round end,
-      // so combat stops the instant the player or all monsters are downed.
-      if ((playerRef.current?.hp || 0) <= 0) {
-        setActiveTurnKey(null);
-        playerLost();
-        return;
-      }
-      if (monstersRef.current.length && monstersRef.current.every(mm => mm.hp <= 0)) {
-        setActiveTurnKey(null);
-        endCombatWin();
-        return;
-      }
-      processQueue(queue, index + 1);
-    };
-    if (unit.kind === "pet") {
-      doPetAction(advance);
-    } else {
-      const m = monstersRef.current.find(mm => mm.uid === unit.uid);
-      if (!m || m.hp <= 0) {
-        advance();
-        return;
-      }
-      doMonsterAction(m, advance);
-    }
-  }
-  function doPetAction(cb) {
-    const pet = petCombatRef.current;
-    if (!pet || pet.hp <= 0 || pet.cooldown > 0) {
-      cb();
-      return;
-    }
-    const skill = pet.active;
-    setPetCombat(p => p ? { ...p, cooldown: skill.cooldown } : p);
-    setPetAnim("attack");
-    setTimeout(() => {
-      if (skill.type === "damage") {
-        const target = firstAliveMonster();
-        if (target) {
-          const petAtkMult = 1 + (pet.atkBuffPct || 0);
-          let dmg = Math.max(2, Math.round(pet.atk * petAtkMult * skill.mult - target.def * 0.5 + (Math.random() * 3 - 1)));
-          const hasStun = pet.extra && pet.extra.type === "stun";
-          const stun = hasStun ? Math.random() < pet.extra.pct : false;
-          updateMonster(target.uid, m => {
-            const nh = Math.max(0, m.hp - dmg);
-            spawnFloat(target.uid, `${pet.icon}-${dmg}`, "#7FE0B0");
-            setMonsterAnim(target.uid, "hurt");
-            const next = { ...m, hp: nh };
-            if (stun) next.frozenTurns = (m.frozenTurns || 0) + 1;
-            return next;
-          });
-          setLog(stun ? `${pet.name} uses ${skill.name} and stuns ${target.name}!` : `${pet.name} uses ${skill.name} on ${target.name} for ${dmg}!`);
-        }
-      } else if (skill.type === "regen") {
-        setPlayer(p => {
-          if (!p) return p;
-          const capStats = getStats(p, equipped);
-          const heal = Math.round(capStats.maxHp * skill.regenPct);
-          spawnFloat("hero", `+${heal}`, "#6FCF97");
-          return {
-            ...p,
-            hp: Math.min(capStats.maxHp, p.hp + heal),
-            regenAmount: heal,
-            regenTurns: Math.max(0, skill.regenTurns - 1)
-          };
-        });
-        setLog(`${pet.name} uses ${skill.name} on You!`);
-      }
-      setPetAnim("");
-      setTimeout(() => cb(), combatDelay(280));
-    // 3 attack frames at 120ms each, followed by a brief final-frame hold.
-    // The previous 220ms window reset to idle before the sequence was clearly visible.
-    }, combatDelay(420));
-  }
-  function doMonsterAction(m, cb) {
-    if (combatOutcomeRef.current) {
-      cb();
-      return;
-    }
-    if (m.poisonTurns > 0) {
-      const pdmg = m.poisonDmg || 0;
-      const nh = Math.max(0, m.hp - pdmg);
-      updateMonster(m.uid, mm => ({ ...mm, hp: nh, poisonTurns: mm.poisonTurns - 1 }));
-      spawnFloat(m.uid, `-${pdmg} ☠️`, "#6FCF97");
-      if (nh <= 0) {
-        setLog(`${m.name} succumbed to poison!`);
-        cb();
-        return;
-      }
-      setLog(`${m.name} takes ${pdmg} poison damage!`);
-    }
-    const fresh = monstersRef.current.find(x => x.uid === m.uid) || m;
-    if (fresh.frozenTurns > 0) {
-      updateMonster(m.uid, mm => ({ ...mm, frozenTurns: mm.frozenTurns - 1 }));
-      setLog(`${fresh.name} is frozen solid and can't move!`);
-      cb();
-      return;
-    }
-    const stats = getStats(playerRef.current || player, equipped);
-    const pet = petCombatRef.current;
-    const canHitPet = pet && pet.hp > 0;
-    // Monsters mostly go for the player, but may occasionally swing at the pet instead.
-    const targetIsPet = canHitPet && Math.random() < 0.3;
-    setMonsterAnim(m.uid, "attack");
-    setTimeout(() => {
-      if (combatOutcomeRef.current) {
-        setMonsterAnim(m.uid, "");
-        cb();
-        return;
-      }
-      if (targetIsPet) {
-        const dodged = Math.random() * 100 < (pet.evasion || 0);
-        const petDefMult = 1 + (pet.defBuffPct || 0);
-        const dmg = dodged ? 0 : Math.max(1, Math.round(fresh.atk - pet.def * petDefMult * 0.6 + (Math.random() * 3 - 1)));
-        if (dodged) {
-          spawnFloat("pet", "MISS", "#B9AEDD");
-          setLog(`${pet.name} dodged ${fresh.name}'s attack!`);
-        } else {
-          setPetCombat(p => p ? { ...p, hp: Math.max(0, p.hp - dmg) } : p);
-          spawnFloat("pet", `-${dmg}`, "#FF6B6B");
-          setPetAnim("hurt");
-          setLog(`${fresh.name} strikes your ${pet.name} for ${dmg}!`);
-        }
-      } else {
-        const hasGuard = pet && pet.hp > 0 && pet.extra && pet.extra.type === "block";
-        const blocked = hasGuard && Math.random() < pet.extra.pct;
-        const dodged = !blocked && Math.random() * 100 < stats.dodgeChance;
-        const dmg = blocked || dodged ? 0 : Math.max(1, Math.round(fresh.atk - stats.def * 0.6 + (Math.random() * 3 - 1)));
-        if (blocked) {
-          spawnFloat("hero", "BLOCKED 🛡️", "#B9AEDD");
-          setLog(`${pet.name} blocked the attack!`);
-        } else if (dodged) {
-          spawnFloat("hero", "MISS", "#B9AEDD");
-          setLog(`You dodged ${fresh.name}'s attack!`);
-        } else {
-          const hasStatusWard = pet && pet.passive && pet.passive.type === "statusResist";
-          const resisted = hasStatusWard && Math.random() < pet.passive.pct;
-          const weakenProc = fresh.isBoss && !resisted && Math.random() < 0.25;
-          const currentPlayer = playerRef.current || player;
-          const nh = Math.max(0, currentPlayer.hp - dmg);
-          setPlayer(p => {
-            if (!p || combatOutcomeRef.current) return p;
-            const next = { ...p, hp: nh };
-            setHeroAnim("hurt");
-            if (weakenProc && nh > 0) {
-              next.weakenPct = 0.2;
-              next.weakenTurns = 2;
-            }
-            return next;
-          });
-          // Keep playerRef in sync immediately: playerRef.current is normally
-          // updated by a useEffect on the next render, but advance() below
-          // (called synchronously via cb() in this same tick) reads
-          // playerRef.current right away to detect defeat. Without this, a
-          // lethal hit could be read as "still alive" and combat would keep
-          // going past 0 HP.
-          if (playerRef.current) playerRef.current = { ...playerRef.current, hp: nh };
-          spawnFloat("hero", `-${dmg}`, "#FF6B6B");
-          setLog(weakenProc && nh > 0 ? `${fresh.name} strikes You for ${dmg} and weakens you!` : `${fresh.name} strikes You for ${dmg}!`);
-        }
-      }
-      setMonsterAnim(m.uid, "");
-      setHeroAnim("");
-      setPetAnim("");
-      cb();
-    // 3 attack frames at 120ms each, followed by a brief final-frame hold.
-    }, combatDelay(420));
-  }
-  function tickPlayerBuffs() {
-    setPlayer(p => {
-      if (!p) return p;
-      const next = {
-        ...p
-      };
-      if (next.atkBuffTurns > 0) {
-        next.atkBuffTurns -= 1;
-        if (next.atkBuffTurns === 0) next.atkBuffPct = 0;
-      }
-      if (next.defBuffTurns > 0) {
-        next.defBuffTurns -= 1;
-        if (next.defBuffTurns === 0) next.defBuffPct = 0;
-      }
-      if (next.weakenTurns > 0) {
-        next.weakenTurns -= 1;
-        if (next.weakenTurns === 0) next.weakenPct = 0;
-      }
-      if (next.hp > 0 && next.regenTurns > 0 && next.regenAmount > 0 && !combatOutcomeRef.current) {
-        const capStats = getStats(next, equipped);
-        next.hp = Math.min(capStats.maxHp, next.hp + next.regenAmount);
-        next.regenTurns -= 1;
-        spawnFloat("hero", `+${next.regenAmount}`, "#6FCF97");
-      }
-      return next;
-    });
-  }
-  function tickPetCooldown() {
-    setPetCombat(p => {
-      if (!p) return p;
-      const next = { ...p };
-      if (next.cooldown > 0) next.cooldown -= 1;
-      if (next.atkBuffTurns > 0) {
-        next.atkBuffTurns -= 1;
-        if (next.atkBuffTurns === 0) next.atkBuffPct = 0;
-      }
-      if (next.defBuffTurns > 0) {
-        next.defBuffTurns -= 1;
-        if (next.defBuffTurns === 0) next.defBuffPct = 0;
-      }
-      return next;
-    });
-  }
+  // Legacy App.js combat loop removed: Battle Core V1 is the sole resolver.
   function retryStage() {
     // Defeat means HP hit 0 — always start the retry fully healed, since
     // carrying 0 HP over would just mean an instant loss again.
@@ -1433,27 +1227,26 @@ function ThornieDungeons() {
     return true;
   }
   function commitSkillDraft(draft) {
-    const unlocked = new Set(unlockedSkills(save.character.level).map(skill => skill.key));
     const currentLevels = { ...(save.character.skillLevels || {}) };
-    let used = 0;
-    Object.entries(draft || {}).forEach(([key, amount]) => {
-      if (!unlocked.has(key)) return;
-      const current = committedSkillLevel(save, key);
-      const add = Math.max(0, Math.min(SKILL_MAX_LEVEL - current, Math.floor(Number(amount) || 0)));
-      if (add) {
-        currentLevels[key] = current + add;
-        used += add;
+    let changed = false;
+    for (const [key, amount] of Object.entries(draft || {})) {
+      for (let index = 0; index < Math.floor(Number(amount) || 0); index++) {
+        const check = canSpendHeroSkillPoint(save.character.level, currentLevels, key);
+        if (!check.ok) break;
+        currentLevels[key] = heroSkillRank(currentLevels, key) + 1;
+        changed = true;
       }
-    });
-    if (!used || used > remainingSkillPoints(save)) return false;
+    }
+    if (!changed) return false;
     persistSave({
       ...save,
-      character: { ...save.character, skillLevels: currentLevels }
+      character: { ...save.character, skillVersion: 1, skillLevels: currentLevels }
     });
     return true;
   }
+  function learnHeroSkill(id) { return commitSkillDraft({ [id]: 1 }); }
   function resetAllSkills() {
-    if (!spentSkillPoints(save) || save.diamonds < SKILL_RESET_COST) return false;
+    if (!heroSkillSpentPoints(save.character.skillLevels) || save.diamonds < SKILL_RESET_COST) return false;
     persistSave({
       ...save,
       diamonds: save.diamonds - SKILL_RESET_COST,
@@ -1793,6 +1586,7 @@ function ThornieDungeons() {
       const next = qs.slice();
       next[index] = entry;
       if (save && save.characterId) saveQuickSlotsLocal(cred.id, save.characterId, next);
+      if (save && save.characterId) pushQuickSlots(next);
       return next;
     });
   }
@@ -1874,7 +1668,7 @@ function ThornieDungeons() {
   }
   async function claimDailyLogin() {
     if (!dailyLogin.canClaim) return { ok: false, alreadyClaimed: true };
-    const res = await cloudClaimDailyLogin(cred.url, cred.id, cred.password, save.characterId);
+    const res = await cloudClaimDailyLogin(cred.url, save.characterId);
     if (!res || res.error) return { ok: false, error: res && res.error };
     setDailyLogin({ state: res.state, canClaim: false, preview: dailyLogin.preview });
     // The worker never touches characters.gold/players.diamonds directly for this reward —
@@ -1923,10 +1717,15 @@ function ThornieDungeons() {
       error: authError,
       busy: authBusy || loginTransitioning,
       departing: loginTransitioning,
-      rememberPassword: rememberPassword,
-      onRememberPassword: handleRememberPassword,
+      rememberLogin: rememberLogin,
+      onRememberLogin: handleRememberLogin,
       onLogin: handleLogin,
-      onRegister: handleRegister
+      onRegister: handleRegister,
+      onForgotPassword: handleForgotPassword,
+      registrationRecovery: registrationRecovery,
+      onFinishRegistration: finishRegistrationRecovery,
+      passwordResetRecovery: passwordResetRecovery,
+      onClearPasswordResetRecovery: () => setPasswordResetRecovery(null)
     }));
   }
   if (phase === "characterSelect") {
@@ -2007,6 +1806,7 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onSwitchCharacter: backToCharacterSelect,
+    onAccountSettings: () => setAccountSettingsOpen(true),
     onLogout: logout,
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
@@ -2049,6 +1849,7 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onSwitchCharacter: backToCharacterSelect,
+    onAccountSettings: () => setAccountSettingsOpen(true),
     onLogout: logout,
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
@@ -2068,10 +1869,10 @@ function ThornieDungeons() {
     },
     onOpenSkill: () => setPhase("skill"),
     onBack: () => setPhase(characterReturnPhase)
-  }), phase === "skill" && /*#__PURE__*/React.createElement(SkillScreen, {
+  }), phase === "skill" && /*#__PURE__*/React.createElement(HeroSkillV1Screen, {
     save: save,
     cp: cp,
-    onCommitSkills: commitSkillDraft,
+    onLearnSkill: learnHeroSkill,
     onResetSkills: resetAllSkills,
     onOpenInv: () => setInvOpen(true),
     onOpenPets: () => {
@@ -2118,21 +1919,18 @@ function ThornieDungeons() {
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "raid" && /*#__PURE__*/React.createElement(RaidScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     onApplyReward: applyMailReward,
     onBack: () => setPhase(utilityReturnPhase)
@@ -2178,6 +1976,14 @@ function ThornieDungeons() {
     floor: selectedFloor,
     onRetry: retryStage,
     onMap: backToMap
+  }), accountSettingsOpen && /*#__PURE__*/React.createElement(AccountSettingsOverlay, {
+    serverUrl: cred.url,
+    playerId: cred.id,
+    recoveryConfigured: recoveryConfigured,
+    onRecoveryConfigured: setRecoveryConfigured,
+    onRequireLogin: requireLoginAfterSecurityChange,
+    onLogout: logout,
+    onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
     equipped: equipped,
     inventory: inventory,
@@ -2187,7 +1993,7 @@ function ThornieDungeons() {
     protectionStones: save.protectionStones || 0,
     characterName: save.characterName,
     quickSlots: quickSlots,
-    unlockedSkillList: unlockedSkills(save.character.level),
+    unlockedSkillList: heroActiveSkillList(save.character.skillLevels),
     onAssignQuickSlot: assignQuickSlot,
     onClearQuickSlot: clearQuickSlot,
     onEquip: guardItemAction(equipItem),
@@ -2208,7 +2014,6 @@ function ThornieDungeons() {
     onClose: () => setBlacksmithOpen(false)
   }), craftingOpen && /*#__PURE__*/React.createElement(CraftingOverlay, {
     serverUrl: cred.url,
-    cred: cred,
     characterId: save.characterId,
     inventory: inventory,
     gold: save.gold,

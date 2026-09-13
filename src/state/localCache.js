@@ -23,3 +23,11 @@ async function kvSet(key, value) {
     if (window.localStorage) window.localStorage.setItem(key, value);
   } catch (e) {}
 }
+async function kvRemove(key) {
+  try {
+    if (window.storage && window.storage.delete) await window.storage.delete(key);
+  } catch (e) {}
+  try {
+    if (window.localStorage) window.localStorage.removeItem(key);
+  } catch (e) {}
+}

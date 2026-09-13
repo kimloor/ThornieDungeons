@@ -82,7 +82,7 @@ const TABLES = {
     ],
   },
   run_state: {
-    name: "run_state",
+    name: "character_run_state",
     cols: ["character_id", "floor", "level", "xp", "hp", "mp", "base_atk", "base_def", "base_max_hp", "base_max_mp", "run_gold", "potions", "updated_at"],
   },
   items: {
@@ -190,32 +190,37 @@ function combatPowerFromCharacter(character, equippedItems) {
 }
 
 const PET_BASE_STATS = {
-  r: { str: 4, vit: 4, agi: 4, dex: 4, luk: 4 },
-  sr: { str: 6, vit: 6, agi: 6, dex: 6, luk: 6 },
-  ssr: { str: 9, vit: 9, agi: 9, dex: 9, luk: 9 },
+  sprout: [3,5,4,4,4], flamekit: [5,3,4,4,4], sparkpup: [4,3,5,5,3], ember_fox: [8,5,6,6,5],
+  moon_hare: [4,8,6,7,5], hell_wolf: [7,5,7,6,5], thunder_cub: [7,5,7,6,5],
+  inferno_drake: [11,11,7,8,8], storm_phoenix: [9,7,11,10,8],
 };
-const PET_STAR_MULT = [1.0, 1.08, 1.18, 1.3, 1.45];
+const PET_GROWTH_STATS = {
+  sprout: [.10,.40,.20,.30,.20], flamekit: [.45,.10,.20,.25,.20], sparkpup: [.25,.10,.40,.30,.15],
+  ember_fox: [.45,.15,.20,.30,.25], moon_hare: [.10,.40,.20,.35,.25], hell_wolf: [.35,.15,.35,.30,.20], thunder_cub: [.35,.15,.35,.30,.20],
+  inferno_drake: [.40,.45,.15,.25,.25], storm_phoenix: [.30,.15,.45,.35,.25],
+};
+const PET_STAR_MULT = [1.0, 1.15, 1.35];
 
 // instance: one entry from a character's parsed pets_json list; rarity comes from the
 // pet's def, which the worker doesn't have a copy of (PET_POOL lives client-side only)
 // — instance.stats already reflects the pet's own rolled base line, so we use that
 // directly rather than re-deriving it from rarity.
 function petCombatPower(instance) {
-  if (!instance || !instance.stats) return 0;
-  const mult = PET_STAR_MULT[(Number(instance.star) || 1) - 1] || 1;
-  const s = {
-    str: (Number(instance.stats.str) || 0) * mult,
-    vit: (Number(instance.stats.vit) || 0) * mult,
-    agi: (Number(instance.stats.agi) || 0) * mult,
-    dex: (Number(instance.stats.dex) || 0) * mult,
-    luk: (Number(instance.stats.luk) || 0) * mult,
-  };
-  const lvl = Number(instance.level) || 1;
-  const maxHp = Math.round(25 + lvl * 3 + s.vit * 8);
-  const atk = Math.round(4 + Math.floor(lvl * 0.6) + s.str * 2);
-  const def = Math.round(1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4));
-  const evasion = Math.round(s.agi * 0.5 * 10) / 10;
-  const critChance = Math.round(s.luk * 0.5 * 10) / 10;
+  if (!instance) return 0;
+  const defId = instance.defId === "thunder_cub" ? "hell_wolf" : instance.defId;
+  const base = PET_BASE_STATS[defId] || PET_BASE_STATS.sprout;
+  const growth = PET_GROWTH_STATS[defId] || PET_GROWTH_STATS.sprout;
+  const lvl = Math.max(1, Math.min(50, Number(instance.level) || 1));
+  const mult = PET_STAR_MULT[Math.max(0, Math.min(2, (Number(instance.star) || 1) - 1))] || 1;
+  const values = instance.statModel === "v2" && instance.stats
+    ? [instance.stats.str, instance.stats.vit, instance.stats.agi, instance.stats.dex, instance.stats.luk]
+    : base.map((value, index) => value + growth[index] * (lvl - 1));
+  const s = { str: values[0] * mult, vit: values[1] * mult, agi: values[2] * mult, dex: values[3] * mult, luk: values[4] * mult };
+  const maxHp = Math.round(30 + lvl * 4 + s.vit * 7);
+  const atk = Math.round(5 + lvl * 0.7 + s.str * 2);
+  const def = Math.round(2 + lvl * 0.25 + s.vit * 0.5);
+  const evasion = Math.min(20, Math.round(s.agi * 0.35 * 10) / 10);
+  const critChance = Math.min(25, Math.round(s.luk * 0.4 * 10) / 10);
   return Math.round(atk * 12 + def * 15 + maxHp * 2 + critChance * 8 + evasion * 6 + lvl * 50);
 }
 
@@ -716,7 +721,13 @@ async function migratePlayerIfNeeded(db, id) {
     .run();
   await db.prepare(`UPDATE players SET active_slot = 0, diamonds = ? WHERE id = ? AND active_slot IS NULL`).bind(Number(legacy.diamonds) || 0, id).run();
   await db.prepare(`UPDATE items SET character_id = ? WHERE player_id = ? AND character_id IS NULL`).bind(characterId, id).run();
-  await db.prepare(`UPDATE run_state SET character_id = ? WHERE character_id IS NULL AND EXISTS (SELECT 1 FROM players WHERE players.id = ?)`).bind(characterId, id).run();
+  await db.prepare(`UPDATE run_state SET character_id = ? WHERE character_id IS NULL AND player_id = ?`).bind(characterId, id).run();
+  await db.prepare(
+    `INSERT OR IGNORE INTO character_run_state
+      (character_id, floor, level, xp, hp, mp, base_atk, base_def, base_max_hp, base_max_mp, run_gold, potions, updated_at)
+     SELECT character_id, floor, level, xp, hp, mp, base_atk, base_def, base_max_hp, base_max_mp, run_gold, potions, updated_at
+     FROM run_state WHERE player_id = ? AND character_id = ?`
+  ).bind(id, characterId).run();
 }
 
 async function accountPayload(db, id) {
@@ -849,7 +860,10 @@ async function handleDeleteCharacter(db, id, session, slotIndex) {
 
   await db.batch([
     db.prepare(`DELETE FROM items WHERE character_id = ?`).bind(row.character_id),
-    db.prepare(`DELETE FROM run_state WHERE character_id = ?`).bind(row.character_id),
+    db.prepare(`DELETE FROM character_run_state WHERE character_id = ?`).bind(row.character_id),
+    db.prepare(`DELETE FROM battle_checkpoints WHERE character_id = ?`).bind(row.character_id),
+    db.prepare(`DELETE FROM battle_completions WHERE character_id = ?`).bind(row.character_id),
+    db.prepare(`DELETE FROM character_settings WHERE character_id = ?`).bind(row.character_id),
     // NEW — clean up daily login state along with the rest of the character's data
     db.prepare(`DELETE FROM daily_login_claims WHERE character_id = ?`).bind(row.character_id),
     db.prepare(`DELETE FROM characters WHERE character_id = ?`).bind(row.character_id),
@@ -871,12 +885,41 @@ async function handleEnterCharacter(db, id, session, slotIndex) {
   await db.prepare(`UPDATE players SET active_slot = ? WHERE id = ?`).bind(slot, id).run();
 
   const items = await getRows(db, "items", "character_id", character.character_id);
-  const runState = await getRow(db, "run_state", "character_id", character.character_id);
+  let runState = await getRow(db, "run_state", "character_id", character.character_id);
+  if (!runState) {
+    const legacyRun = await db.prepare(
+      `SELECT * FROM run_state
+       WHERE character_id = ? OR (player_id = ? AND (character_id IS NULL OR TRIM(character_id) = ''))
+       LIMIT 1`
+    ).bind(character.character_id, id).first();
+    if (legacyRun) {
+      runState = normalizedRunState(character.character_id, legacyRun);
+      await upsertRow(db, "run_state", "character_id", runState);
+    }
+  }
 
   return json({ ok: true, character, items, runState: runState || null });
 }
 
 // ---------- per-character progress / items / run-state ----------
+function normalizedRunState(characterId, runState) {
+  return {
+    character_id: characterId,
+    floor: Math.max(1, Number(runState.floor) || 1),
+    level: Math.max(1, Number(runState.level) || 1),
+    xp: Math.max(0, Number(runState.xp) || 0),
+    hp: Math.max(0, Number(runState.hp) || 0),
+    mp: Math.max(0, Number(runState.mp) || 0),
+    base_atk: Math.max(0, Number(runState.base_atk) || 0),
+    base_def: Math.max(0, Number(runState.base_def) || 0),
+    base_max_hp: Math.max(0, Number(runState.base_max_hp) || 0),
+    base_max_mp: Math.max(0, Number(runState.base_max_mp) || 0),
+    run_gold: Math.max(0, Number(runState.run_gold) || 0),
+    potions: Math.max(0, Number(runState.potions) || 0),
+    updated_at: runState.updated_at || nowIso()
+  };
+}
+
 async function handleSaveCharacterProgress(db, id, session, characterId, diamonds, progress) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
@@ -903,12 +946,129 @@ async function handleSaveRunState(db, id, session, characterId, runState) {
   if (owned.error) return json({ error: owned.error });
 
   if (!runState) {
-    await db.prepare(`DELETE FROM run_state WHERE character_id = ?`).bind(characterId).run();
+    await db.prepare(`DELETE FROM character_run_state WHERE character_id = ?`).bind(characterId).run();
     return json({ ok: true });
   }
 
-  const obj = { character_id: characterId, ...runState, updated_at: nowIso() };
+  // Migration v12 supplies this additive per-character table. The legacy
+  // player-keyed run_state table remains untouched for rollback compatibility.
+  const obj = normalizedRunState(characterId, { ...runState, updated_at: nowIso() });
   await upsertRow(db, "run_state", "character_id", obj);
+  return json({ ok: true });
+}
+
+// ---------- Battle V1 checkpoint / quick-slot / completion boundary ----------
+function parseJsonColumn(value, fallback) {
+  try { return value ? JSON.parse(value) : fallback; } catch (e) { return fallback; }
+}
+
+async function handleGetBattleState(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  const checkpoint = await db.prepare(
+    `SELECT battle_id, checkpoint_seq, payload_json, updated_at FROM battle_checkpoints
+     WHERE character_id = ? AND state = 'active' LIMIT 1`
+  ).bind(characterId).first();
+  const settings = await db.prepare(`SELECT quick_slots_json FROM character_settings WHERE character_id = ?`).bind(characterId).first();
+  return json({
+    ok: true,
+    checkpoint: checkpoint ? {
+      battleId: checkpoint.battle_id,
+      checkpointSeq: Number(checkpoint.checkpoint_seq) || 0,
+      payload: parseJsonColumn(checkpoint.payload_json, null),
+      updatedAt: checkpoint.updated_at
+    } : null,
+    quickSlots: parseJsonColumn(settings && settings.quick_slots_json, [null, null, null, null])
+  });
+}
+
+async function handleSaveBattleCheckpoint(db, id, session, characterId, battleId, checkpointSeq, payload) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  if (!battleId || !payload || String(payload.battleId || "") !== String(battleId)) return json({ error: "invalid_checkpoint" }, 400);
+  const seq = Math.max(0, Math.floor(Number(checkpointSeq) || 0));
+  const encoded = JSON.stringify(payload);
+  if (encoded.length > 512000) return json({ error: "checkpoint_too_large" }, 413);
+  const identity = await db.prepare(`SELECT character_id FROM battle_checkpoints WHERE battle_id = ? LIMIT 1`).bind(String(battleId)).first();
+  if (identity && identity.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
+  const existing = await db.prepare(`SELECT battle_id FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`).bind(characterId).first();
+  if (existing && existing.battle_id !== String(battleId)) return json({ error: "active_battle_conflict" }, 409);
+  const now = nowIso();
+  const result = await db.prepare(
+    `INSERT INTO battle_checkpoints (battle_id, character_id, checkpoint_seq, payload_json, state, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'active', ?, ?)
+     ON CONFLICT(battle_id) DO UPDATE SET
+       checkpoint_seq = excluded.checkpoint_seq,
+       payload_json = excluded.payload_json,
+       updated_at = excluded.updated_at
+     WHERE battle_checkpoints.character_id = excluded.character_id
+       AND battle_checkpoints.state = 'active'
+       AND excluded.checkpoint_seq > battle_checkpoints.checkpoint_seq`
+  ).bind(String(battleId), characterId, seq, encoded, now, now).run();
+  return json({ ok: true, accepted: !!(result.meta && result.meta.changes), checkpointSeq: seq });
+}
+
+async function handleClearBattleCheckpoint(db, id, session, characterId, battleId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  if (!battleId) return json({ error: "missing_fields" });
+  await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
+    .bind(nowIso(), String(battleId), characterId).run();
+  return json({ ok: true });
+}
+
+async function handleCompleteBattle(db, id, session, characterId, battleId, resultPayload) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  const resultName = resultPayload && resultPayload.result;
+  if (!battleId || !["victory", "defeat", "fled"].includes(resultName)) return json({ error: "invalid_battle_result" }, 400);
+  const prior = await db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(String(battleId)).first();
+  if (prior) {
+    if (prior.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
+    await db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`)
+      .bind(nowIso(), String(battleId), characterId).run();
+    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at });
+  }
+  const checkpoint = await db.prepare(
+    `SELECT checkpoint_seq FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`
+  ).bind(String(battleId), characterId).first();
+  if (!checkpoint) return json({ error: "battle_checkpoint_missing" }, 409);
+  if (Math.floor(Number(resultPayload.safeActionSeq) || 0) <= (Number(checkpoint.checkpoint_seq) || 0)) {
+    return json({ error: "battle_result_not_after_checkpoint" }, 409);
+  }
+  const encoded = JSON.stringify(resultPayload);
+  if (encoded.length > 512000) return json({ error: "battle_result_too_large" }, 413);
+  const now = nowIso();
+  const insert = await db.prepare(
+    `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at)
+     VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
+  ).bind(String(battleId), characterId, encoded, now).run();
+  const row = await db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(String(battleId)).first();
+  if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
+  await db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`)
+    .bind(now, String(battleId), characterId).run();
+  return json({ ok: true, firstCompletion: !!(insert.meta && insert.meta.changes), result: parseJsonColumn(row.result_json, null), completedAt: row.completed_at });
+}
+
+async function handleSaveQuickSlots(db, id, session, characterId, quickSlots) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  if (!Array.isArray(quickSlots) || quickSlots.length !== 4) return json({ error: "invalid_quick_slots" }, 400);
+  const encoded = JSON.stringify(quickSlots);
+  await db.prepare(
+    `INSERT INTO character_settings (character_id, quick_slots_json, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(character_id) DO UPDATE SET quick_slots_json = excluded.quick_slots_json, updated_at = excluded.updated_at`
+  ).bind(characterId, encoded, nowIso()).run();
   return json({ ok: true });
 }
 
@@ -2377,7 +2537,7 @@ async function handleAdminGetGameStats(db, env, adminKey) {
   const playerCount = await db.prepare(`SELECT COUNT(*) as c FROM players`).first();
   const characterCount = await db.prepare(`SELECT COUNT(*) as c FROM characters`).first();
   const itemCount = await db.prepare(`SELECT COUNT(*) as c FROM items`).first();
-  const runCount = await db.prepare(`SELECT COUNT(*) as c FROM run_state`).first();
+  const runCount = await db.prepare(`SELECT COUNT(*) as c FROM character_run_state`).first();
   const levelStats = await db.prepare(`SELECT AVG(level) as avgLevel, MAX(level) as maxLevel FROM characters`).first();
   const floorStats = await db.prepare(`SELECT MAX(unlocked_floor) as maxFloor FROM characters`).first();
 
@@ -2580,6 +2740,7 @@ export default {
         if (action === "getMailbox") return await handleGetMailbox(db, id, auth, p.get("characterId"));
         if (action === "getArenaStatus") return await handleGetArenaStatus(db, id, auth, p.get("characterId"));
         if (action === "getArenaOpponents") return await handleGetArenaOpponents(db, id, auth, p.get("characterId"));
+        if (action === "getBattleState") return await handleGetBattleState(db, id, auth, p.get("characterId"));
         return json({ error: "unknown_action" });
       }
 
@@ -2621,6 +2782,14 @@ export default {
             return await handleSaveCharacterProgress(db, id, auth, body.characterId, body.diamonds, body.progress);
           case "saveRunState":
             return await handleSaveRunState(db, id, auth, body.characterId, body.runState);
+          case "saveBattleCheckpoint":
+            return await handleSaveBattleCheckpoint(db, id, auth, body.characterId, body.battleId, body.checkpointSeq, body.payload);
+          case "clearBattleCheckpoint":
+            return await handleClearBattleCheckpoint(db, id, auth, body.characterId, body.battleId);
+          case "completeBattle":
+            return await handleCompleteBattle(db, id, auth, body.characterId, body.battleId, body.result);
+          case "saveQuickSlots":
+            return await handleSaveQuickSlots(db, id, auth, body.characterId, body.quickSlots);
           case "syncItems":
             return await handleSyncItems(db, id, auth, body.characterId, body.items || []);
           case "setInventorySlot":
