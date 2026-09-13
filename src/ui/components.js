@@ -2742,6 +2742,30 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
     }, "+", overflow));
   }));
 }
+
+// Presentation-only slot assignment. Slot 1 is the formation centre; a Boss
+// always claims it first while adds keep their encounter order on either side.
+function buildMonsterFormation(monsters) {
+  const ordered = monsters.map((monster, encounterIndex) => ({ monster, encounterIndex })).sort((a, b) => {
+    const aFlying = getMonsterPresentation(a.monster).anchorType === "flying" ? 1 : 0;
+    const bFlying = getMonsterPresentation(b.monster).anchorType === "flying" ? 1 : 0;
+    return aFlying - bFlying || a.encounterIndex - b.encounterIndex;
+  }).map(entry => entry.monster);
+  const count = Math.min(3, Math.max(1, ordered.length));
+  const boss = ordered.find(monster => monster.isBoss || monster.isEliteBoss);
+  if (boss) {
+    const adds = ordered.filter(monster => monster !== boss);
+    if (count === 1) return [{ monster: boss, slotIndex: 1 }];
+    if (count === 2) return [{ monster: adds[0], slotIndex: 0 }, { monster: boss, slotIndex: 1 }];
+    return [
+      { monster: adds[0], slotIndex: 0 },
+      { monster: boss, slotIndex: 1 },
+      { monster: adds[1], slotIndex: 2 }
+    ];
+  }
+  const slots = count === 1 ? [1] : count === 2 ? [0, 2] : [0, 1, 2];
+  return ordered.map((monster, index) => ({ monster, slotIndex: slots[Math.min(index, 2)] }));
+}
 function CombatScreen({
   player,
   monsters,
@@ -2762,6 +2786,7 @@ function CombatScreen({
   petCombat,
   turnQueue,
   activeTurnKey,
+  battleRound,
   combatSpeed,
   combatTurnCount,
   onCycleCombatSpeed
@@ -2783,13 +2808,7 @@ function CombatScreen({
   const activeTurnName = activeTurn
     ? activeTurn.kind === "player" ? "You" : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
     : "—";
-  // Keep ground monsters in their encounter order. A verified flying monster is
-  // placed last, which maps it to formation slot 3 in a three-enemy encounter.
-  const formationMonsters = monsters.slice().sort((a, b) => {
-    const aFlying = getMonsterPresentation(a).anchorType === "flying" ? 1 : 0;
-    const bFlying = getMonsterPresentation(b).anchorType === "flying" ? 1 : 0;
-    return aFlying - bFlying;
-  });
+  const formationMonsters = buildMonsterFormation(monsters);
   const qs = quickSlots || [null, null, null, null];
   const skillEfficiency = heroSkillRankData(player.skillLevels || {}, "skill_efficiency");
   const skillCost = skill => Math.max(0, Math.ceil((Number(skill?.mp) || 0) * (1 - (Number(skillEfficiency?.spReductionPct) || 0) / 100)));
@@ -2886,7 +2905,7 @@ function CombatScreen({
   }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), /*#__PURE__*/React.createElement("div", {
     className: "md-current-turn",
     "aria-live": "polite"
-  }, "Turn: ", activeTurnName), /*#__PURE__*/React.createElement("div", {
+  }, "Round ", Math.max(1, Number(battleRound) || 1), " · Turn: ", activeTurnName), /*#__PURE__*/React.createElement("div", {
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
@@ -2931,9 +2950,9 @@ function CombatScreen({
     style: { color: f.color }
   }, f.text)))), /*#__PURE__*/React.createElement("div", {
     className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`
-  }, formationMonsters.map((m, monsterIndex) => /*#__PURE__*/React.createElement("div", {
+  }, formationMonsters.map(({ monster: m, slotIndex }) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
-    className: `md-monster-slot md-monster-slot-${Math.min(monsterIndex, 2)} ${m.isEliteBoss ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
+    className: `md-monster-slot md-monster-slot-${slotIndex} ${m.isEliteBoss ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
     anim: enemyAnims[m.uid],

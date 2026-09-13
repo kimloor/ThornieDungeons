@@ -59,8 +59,8 @@ function ThornieDungeons() {
   // Combat-only state for the Active Pet as a real unit on the field (HP, cooldown).
   const [petCombat, setPetCombat] = useState(null); // { instId, defId, name, icon, hp, maxHp, atk, def, speed, cooldown, active, passive, extra }
   const [targetUid, setTargetUid] = useState(null); // uid of the monster the player is currently targeting
-  // Turn Order Queue UI: the planned action order for the current round (Player first,
-  // then Pet + Monsters sorted by Speed), plus which unit's action is currently resolving.
+  // Turn Order Queue UI mirrors the Battle Core's deterministic Speed queue for
+  // the current round, plus which unit's action is currently resolving.
   const [turnQueue, setTurnQueue] = useState([]); // [{key, kind, uid?, name, icon, speed}]
   const [activeTurnKey, setActiveTurnKey] = useState(null);
   const [log, setLogState] = useState([]);
@@ -1961,6 +1961,7 @@ function ThornieDungeons() {
     petCombat: petCombat,
     turnQueue: turnQueue,
     activeTurnKey: activeTurnKey,
+    battleRound: battleState?.round,
     combatSpeed: combatSpeed,
     combatTurnCount: combatTurnCount,
     onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)

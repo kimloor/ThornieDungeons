@@ -1013,19 +1013,21 @@ const STYLE = `
 .md-pet-slot { left: 17%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
 
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
-   Visual size therefore never changes where a walking monster's feet meet the lane. */
-.md-monster-count-1 .md-monster-slot-0 { left: 76%; top: 70%; }
-.md-monster-count-2 .md-monster-slot-0 { left: 80%; top: 73%; }
-.md-monster-count-2 .md-monster-slot-1 { left: 73%; top: 61%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 81%; top: 72%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 75%; top: 62%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 69%; top: 52%; }
+   Slot 1 is the explicit formation centre used by solo units and Bosses. The
+   upper/lower lanes have a little extra diagonal separation for large sprites. */
+.md-monster-count-1 .md-monster-slot-1 { left: 75%; top: 58%; }
+.md-monster-count-2 .md-monster-slot-0 { left: 82%; top: 65%; }
+.md-monster-count-2 .md-monster-slot-1 { left: 74%; top: 57%; }
+.md-monster-count-2 .md-monster-slot-2 { left: 67%; top: 54%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 84%; top: 67%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 75%; top: 57%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 66%; top: 47%; }
 .md-monster-slot { transform: translateX(-50%); }
 .md-monster-slot.flying { transform: translate(-50%, -18px); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
 .md-monster-slot-2 { z-index: 1; }
-.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 76%; }
+.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 58%; }
 
 /* Monster scale is based on measured opaque pixels. HP/status are removed from
    normal flow so the unit's bottom edge is always the artwork's actual ground point. */
@@ -1212,11 +1214,13 @@ const STYLE = `
 .md-combat-stats .md-hud-text-row.xp { font-size: 7.5px; }
 .md-turn-queue {
   grid-column: 2 / span 4; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent;
+  grid-template-rows: minmax(0, 1fr); grid-auto-flow: column; gap: 0; min-width: 0; min-height: 0;
+  margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent;
+  overflow: hidden; flex-wrap: nowrap; white-space: nowrap;
 }
 .md-turn-queue-item {
   position: relative; display: flex; align-items: center; justify-content: center; opacity: .65;
-  border: 0; transform: none;
+  width: 100%; min-width: 0; height: 100%; overflow: hidden; border: 0; transform: none;
 }
 .md-turn-queue-item.active { opacity: 1; transform: none; filter: brightness(1.18) drop-shadow(0 0 4px rgba(255,209,102,.5)); }
 .md-turn-queue-item.empty { opacity: .2; }

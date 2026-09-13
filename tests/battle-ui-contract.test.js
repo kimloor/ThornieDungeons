@@ -40,11 +40,27 @@ test("Battle rendering preserves manifest resolvers and App has one gameplay res
   assert.doesNotMatch(app, /function (processQueue|doPetAction|doMonsterAction|enemyTurn)/);
 });
 
-test("CombatScreen shows the current queued unit instead of target-count instructions", () => {
+test("CombatScreen shows the engine round and current queued unit", () => {
   assert.match(components, /find\(item => item\.key === activeTurnKey\)/);
   assert.match(components, /activeTurn\.kind === "player" \? "You"/);
-  assert.match(components, /"Turn: ", activeTurnName/);
+  assert.match(app, /battleRound: battleState\?\.round/);
+  assert.match(components, /"Round ", Math\.max\(1, Number\(battleRound\) \|\| 1\), " · Turn: ", activeTurnName/);
   assert.doesNotMatch(components, /แตะศัตรูเพื่อเลือกเป้าหมาย/);
+});
+
+test("monster formation reserves the centre slot for solo units and Bosses", () => {
+  assert.match(components, /function buildMonsterFormation\(monsters\)/);
+  assert.match(components, /monster\.isBoss \|\| monster\.isEliteBoss/);
+  assert.match(components, /\{ monster: boss, slotIndex: 1 \}/);
+  assert.match(components, /count === 2 \? \[0, 2\] : \[0, 1, 2\]/);
+  assert.match(styles, /\.md-monster-count-1 \.md-monster-slot-1/);
+  assert.match(styles, /\.md-monster-count-3 \.md-monster-slot-1/);
+});
+
+test("Turn Order remains a clipped single-row four-slot window", () => {
+  assert.match(components, /Array\.from\(\{ length: 4 \}/);
+  assert.match(styles, /grid-template-rows: minmax\(0, 1fr\)/);
+  assert.match(styles, /overflow: hidden; flex-wrap: nowrap; white-space: nowrap/);
 });
 
 test("selected target marker and Battle background use manifest art without changing hitboxes", () => {
