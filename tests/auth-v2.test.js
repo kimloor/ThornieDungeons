@@ -64,7 +64,7 @@ test("ID/password policy and secure password hash boundaries", async () => {
   assert.equal(auth.validPassword("123"), false);
   assert.equal(auth.validPassword("x".repeat(33)), false);
   const encoded = await auth.hashPassword("1234");
-  assert.match(encoded, /^pbkdf2_sha256\$210000\$/);
+  assert.match(encoded, /^pbkdf2_sha256\$100000\$/);
   assert.equal(await auth.verifyPasswordHash("1234", encoded), true);
   assert.equal(await auth.verifyPasswordHash("nope", encoded), false);
 });
@@ -104,6 +104,10 @@ test("legacy login lazily migrates hash and preserves progression/items/run stat
   assert.equal(db.raw.prepare(`SELECT level,gold FROM characters WHERE character_id='c1'`).get().level, 20);
   assert.equal(db.raw.prepare(`SELECT name FROM items WHERE item_id='i1'`).get().name, "Blade");
   assert.equal(db.raw.prepare(`SELECT floor,hp FROM run_state WHERE character_id='c1'`).get().floor, 8);
+  assert.match(player.password_hash, /^pbkdf2_sha256\$100000\$/);
+  db.raw.prepare(`UPDATE players SET password = 'legacy-fallback' WHERE id = 'Legacy'`).run();
+  assert.equal((await body(await auth.handleLogin(db, "Legacy", "legacy-fallback", false, "ip-legacy-2"))).error, "invalid_credentials");
+  assert.equal((await body(await auth.handleLogin(db, "Legacy", "pass", false, "ip-legacy-3"))).ok, true);
 });
 
 test("new login replaces old session, logout revokes, and ownership remains enforced", async () => {

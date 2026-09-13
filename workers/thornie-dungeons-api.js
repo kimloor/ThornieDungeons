@@ -439,7 +439,8 @@ async function upsertRow(db, table, keyCol, obj) {
 // ---------- Login/Auth V2 ----------
 const PASSWORD_MIN = 4;
 const PASSWORD_MAX = 32;
-const PASSWORD_ITERATIONS = 210000;
+// Cloudflare Workers Web Crypto rejects PBKDF2 counts above 100,000.
+const PASSWORD_ITERATIONS = 100000;
 const SESSION_24H_MS = 24 * 60 * 60 * 1000;
 const SESSION_30D_MS = 30 * SESSION_24H_MS;
 const AUTH_ERRORS = new Set(["invalid_session", "session_expired", "session_revoked", "session_replaced"]);
