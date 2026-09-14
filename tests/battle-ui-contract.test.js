@@ -55,13 +55,30 @@ test("monster formation reserves the centre slot for solo units and Bosses", () 
   assert.match(components, /count === 2 \? \[0, 2\] : \[0, 1, 2\]/);
   assert.match(styles, /\.md-monster-count-1 \.md-monster-slot-1/);
   assert.match(styles, /\.md-monster-count-3 \.md-monster-slot-1/);
+  const coords = [0, 1, 2].map(slot => {
+    const match = styles.match(new RegExp(`\\.md-monster-count-3 \\.md-monster-slot-${slot} \\{ left: (\\d+)%; top: (\\d+)%`));
+    assert.ok(match, `missing three-monster slot ${slot}`);
+    return { left: Number(match[1]), top: Number(match[2]) };
+  });
+  assert.equal(coords[0].left - coords[1].left, coords[1].left - coords[2].left);
+  assert.equal(coords[0].top - coords[1].top, coords[1].top - coords[2].top);
 });
 
 test("Turn Order remains a clipped single-row four-slot window", () => {
   assert.match(components, /Array\.from\(\{ length: 4 \}/);
+  assert.match(components, /const snapshotKey = `\$\{Number\(round\) \|\| 0\}/);
+  assert.match(components, /seenKeys\.has\(item\.key\)/);
   assert.match(styles, /grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(styles, /overflow: hidden; flex-wrap: nowrap; white-space: nowrap/);
-  assert.doesNotMatch(styles, /\.md-turn-queue\s*\{[^}]*flex-wrap: wrap/s);
+  assert.match(styles, /overflow: hidden; white-space: nowrap; contain: layout paint/);
+  assert.equal((styles.match(/\.md-turn-queue\s*\{/g) || []).length, 1);
+});
+
+test("Battle dock enlarges controls while retaining the compact 380px layout", () => {
+  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) 84px 92px/);
+  assert.match(styles, /grid-template-rows: 36px 36px/);
+  assert.match(styles, /\.md-battle-dock \.md-dock-attack \{ width: 92px; height: 92px/);
+  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) 80px 84px/);
+  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-battle-dock \.md-dock-attack \{ width: 84px; height: 84px/);
 });
 
 test("selected target marker and Battle background use manifest art without changing hitboxes", () => {

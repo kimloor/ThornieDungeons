@@ -1031,18 +1031,8 @@ const STYLE = `
 .md-pet-chip .cd { color: var(--ink-soft); font-weight: 700; }
 .md-pet-chip.ready { border-color: var(--leaf-deep); }
 
-/* turn order queue bar — shows action order for the current round, sorted by Speed */
-.md-turn-queue {
-  min-height: 30px;
-  display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; overflow: hidden;
-  background: rgba(10,6,22,0.5); border: 1px solid rgba(255,209,102,0.22); border-radius: 999px;
-  padding: 4px 8px; margin: 0 0 8px; position: relative; z-index: 6;
-}
-.md-turn-queue-item {
-  display: flex; align-items: center; gap: 2px; opacity: 0.55; transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.md-turn-queue-item.active { opacity: 1; transform: scale(1.18); }
-.md-turn-queue-item.done { opacity: 0.28; }
+/* Turn Order layout is owned by the Battle V2 header below. These are only the
+   dynamic icon accents shared by its four snapshot cells. */
 .md-turn-queue-icon {
   width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
   font-size: 11px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,209,102,0.35);
@@ -1051,7 +1041,6 @@ const STYLE = `
 .md-turn-queue-item.pet .md-turn-queue-icon { border-color: var(--violet-deep); }
 .md-turn-queue-item.monster .md-turn-queue-icon { border-color: var(--coral-deep); }
 .md-turn-queue-item.active .md-turn-queue-icon { box-shadow: 0 0 0 2px var(--gold-glow); }
-.md-turn-queue-arrow { color: var(--ink-soft); font-size: 11px; opacity: 0.6; }
 
 /* The dedicated Battle artwork is the scene presentation. CSS owns only the
    responsive viewport and a light lower veil for control/text readability. */
@@ -1092,19 +1081,19 @@ const STYLE = `
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
    Slot 1 is the explicit formation centre used by solo units and Bosses. The
    upper/lower lanes have a little extra diagonal separation for large sprites. */
-.md-monster-count-1 .md-monster-slot-1 { left: 75%; top: 55%; }
-.md-monster-count-2 .md-monster-slot-0 { left: 82%; top: 62%; }
-.md-monster-count-2 .md-monster-slot-1 { left: 74%; top: 54%; }
-.md-monster-count-2 .md-monster-slot-2 { left: 69%; top: 51%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 84%; top: 64%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 75%; top: 54%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 70%; top: 44%; }
+.md-monster-count-1 .md-monster-slot-1 { left: 76%; top: 53%; }
+.md-monster-count-2 .md-monster-slot-0 { left: 82%; top: 60%; }
+.md-monster-count-2 .md-monster-slot-1 { left: 78%; top: 51%; }
+.md-monster-count-2 .md-monster-slot-2 { left: 74%; top: 48%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 84%; top: 62%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 80%; top: 52%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 76%; top: 42%; }
 .md-monster-slot { transform: translateX(-50%); }
 .md-monster-slot.flying { transform: translate(-50%, -18px); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
 .md-monster-slot-2 { z-index: 1; }
-.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 55%; }
+.md-monster-count-1 .md-monster-slot.elite { left: 76%; top: 53%; }
 
 /* Monster scale is based on measured opaque pixels. HP/status are removed from
    normal flow so the unit's bottom edge is always the artwork's actual ground point. */
@@ -1293,11 +1282,11 @@ const STYLE = `
   grid-column: 2 / span 4; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: minmax(0, 1fr); grid-auto-flow: column; gap: 0; min-width: 0; min-height: 0;
   margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent;
-  overflow: hidden; flex-wrap: nowrap; white-space: nowrap;
+  overflow: hidden; white-space: nowrap; contain: layout paint; isolation: isolate;
 }
 .md-turn-queue-item {
   position: relative; display: flex; align-items: center; justify-content: center; opacity: .65;
-  width: 100%; min-width: 0; height: 100%; overflow: hidden; border: 0; transform: none;
+  grid-row: 1; width: 100%; min-width: 0; height: 100%; overflow: hidden; border: 0; transform: none;
 }
 .md-turn-queue-item.active { opacity: 1; transform: none; filter: brightness(1.18) drop-shadow(0 0 4px rgba(255,209,102,.5)); }
 .md-turn-queue-item.empty { opacity: .2; }
@@ -1334,19 +1323,19 @@ const STYLE = `
 .md-unit-status.hero { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); z-index: 5; }
 
 .md-battle-dock {
-  display: grid; grid-template-columns: minmax(0, 1fr) 70px 68px; align-items: center;
-  justify-content: stretch; gap: 6px; padding: 7px 10px 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) 84px 92px; align-items: center;
+  justify-content: stretch; gap: 4px; padding: 7px 6px 0;
 }
 .md-scene.battle-bg > .md-panel { flex:0 0 auto; padding:6px 10px max(7px,env(safe-area-inset-bottom,0px)); border-top-width:1px; }
 .md-scene.battle-bg .md-log { min-height:38px; max-height:52px; padding:5px 8px; gap:1px; }
 .md-scene.battle-bg .md-log-line { font-size:9px; line-height:1.25; }
 .md-scene.battle-bg .md-log-line.latest { font-size:10.5px; }
 .md-quickslot-bar.battle { min-width: 0; justify-content: space-between; gap: 4px; }
-.md-dock-side-controls { display: grid; grid-template-rows: 30px 30px; gap: 4px; }
-.md-dock-side-controls .md-dock-auto { width: 100%; padding: 2px 4px; border-radius: 8px; font-size: 9px; }
+.md-dock-side-controls { display: grid; grid-template-rows: 36px 36px; gap: 4px; }
+.md-dock-side-controls .md-dock-auto { width: 100%; min-height: 36px; padding: 2px 4px; border-radius: 8px; font-size: 9px; }
 .md-dock-half-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .md-dock-mini {
-  min-width: 0; height: 30px; padding: 0; border-radius: 8px; cursor: pointer;
+  min-width: 0; height: 36px; padding: 0; border-radius: 8px; cursor: pointer;
   border: 1.5px solid var(--gold-deep); background: linear-gradient(180deg, rgba(64,46,22,.92), rgba(28,18,8,.92));
   color: #fff; font-size: 13px; box-shadow: 0 2px 0 rgba(0,0,0,.5);
 }
@@ -1354,7 +1343,7 @@ const STYLE = `
 .md-dock-mini.settings { border-color: var(--violet-deep); }
 .md-dock-mini.settings.active { border-color: #8ee0a8; color: #8ee0a8; }
 .md-dock-mini:disabled { opacity: .4; cursor: not-allowed; }
-.md-battle-dock .md-dock-attack { justify-self: end; transform: none; }
+.md-battle-dock .md-dock-attack { width: 92px; height: 92px; justify-self: end; transform: none; }
 .md-battle-dock .md-dock-attack:active { transform: translateY(2px); }
 .md-battle-finishing {
   position: absolute; left: 50%; top: 48%; z-index: 8; transform: translate(-50%, -50%);
@@ -1392,10 +1381,13 @@ const STYLE = `
   .md-turn-queue-icon { width: 24px; height: 24px; font-size: 13px; }
   .md-combat-stats { padding-inline: 4px; }
   .md-combat-stats .md-hud-text-row { font-size: 7px; }
-  .md-battle-dock { grid-template-columns: minmax(0, 1fr) 64px 62px; padding-inline: 6px; gap: 4px; }
+  .md-battle-dock { grid-template-columns: minmax(0, 1fr) 80px 84px; padding-inline: 6px; gap: 4px; }
+  .md-dock-side-controls { grid-template-rows: 36px 36px; }
+  .md-dock-side-controls .md-dock-auto { min-height: 36px; }
+  .md-dock-mini { height: 36px; }
   .md-quickslot-bar.battle { gap: 3px; }
   .md-quickslot-btn { width: 32px; height: 36px; border-radius: 10px; font-size: 15px; }
-  .md-battle-dock .md-dock-attack { width: 62px; height: 62px; }
+  .md-battle-dock .md-dock-attack { width: 84px; height: 84px; }
 }
 
 /* quick slot panel inside the Inventory sheet */
@@ -10809,26 +10801,30 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
 // Four fixed ATB cells occupy the middle four sixths of the combat header. When
 // an action is resolving, the window follows the active unit so upcoming turns
 // remain readable even in a five-unit battle (hero + pet + three monsters).
-function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
-  const visible = queue.filter(item => {
+function TurnOrderBar({ queue, activeKey, round, monsters, petCombat }) {
+  const seenKeys = new Set();
+  const visible = (Array.isArray(queue) ? queue : []).filter(item => {
     if (item.kind === "monster") {
       const m = monsters.find(mm => mm.uid === item.uid);
-      return !!m && m.hp > 0;
+      if (!m || m.hp <= 0) return false;
     }
     if (item.kind === "pet") {
-      return !!petCombat && petCombat.hp > 0;
+      if (!petCombat || petCombat.hp <= 0) return false;
     }
+    if (!item.key || seenKeys.has(item.key)) return false;
+    seenKeys.add(item.key);
     return true;
   });
   const activeIndex = Math.max(0, visible.findIndex(item => item.key === activeKey));
   const ordered = visible.slice(activeIndex);
   const overflow = Math.max(0, ordered.length - 4);
   const slots = Array.from({ length: 4 }, (_, index) => ordered[index] || null);
+  const snapshotKey = `${Number(round) || 0}:${activeKey || "idle"}:${slots.map(item => item?.key || "empty").join("|")}`;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-turn-queue"
   }, slots.map((item, i) => {
     if (!item) return /*#__PURE__*/React.createElement("div", {
-      key: `empty-${i}`,
+      key: `${snapshotKey}:empty-${i}`,
       className: "md-turn-queue-item empty md-battle-art",
       style: battleUiStyle("turnOrderSlot"),
       title: "Empty ATB slot"
@@ -10837,7 +10833,7 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
     }, "·"));
     const isActive = activeKey === item.key;
     return /*#__PURE__*/React.createElement("div", {
-      key: item.key,
+      key: `${snapshotKey}:${i}:${item.key}`,
       className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} md-battle-art`,
       style: battleUiStyle("turnOrderSlot"),
       title: `${item.name} · Speed ${item.speed}`
@@ -10979,6 +10975,7 @@ function CombatScreen({
   }, "EXP ", Math.floor(xpPct), "%"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue || [],
     activeKey: activeTurnKey,
+    round: battleRound,
     monsters: monsters,
     petCombat: petCombat
   }), /*#__PURE__*/React.createElement("div", {

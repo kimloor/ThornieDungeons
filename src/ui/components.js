@@ -2703,26 +2703,30 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
 // Four fixed ATB cells occupy the middle four sixths of the combat header. When
 // an action is resolving, the window follows the active unit so upcoming turns
 // remain readable even in a five-unit battle (hero + pet + three monsters).
-function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
-  const visible = queue.filter(item => {
+function TurnOrderBar({ queue, activeKey, round, monsters, petCombat }) {
+  const seenKeys = new Set();
+  const visible = (Array.isArray(queue) ? queue : []).filter(item => {
     if (item.kind === "monster") {
       const m = monsters.find(mm => mm.uid === item.uid);
-      return !!m && m.hp > 0;
+      if (!m || m.hp <= 0) return false;
     }
     if (item.kind === "pet") {
-      return !!petCombat && petCombat.hp > 0;
+      if (!petCombat || petCombat.hp <= 0) return false;
     }
+    if (!item.key || seenKeys.has(item.key)) return false;
+    seenKeys.add(item.key);
     return true;
   });
   const activeIndex = Math.max(0, visible.findIndex(item => item.key === activeKey));
   const ordered = visible.slice(activeIndex);
   const overflow = Math.max(0, ordered.length - 4);
   const slots = Array.from({ length: 4 }, (_, index) => ordered[index] || null);
+  const snapshotKey = `${Number(round) || 0}:${activeKey || "idle"}:${slots.map(item => item?.key || "empty").join("|")}`;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-turn-queue"
   }, slots.map((item, i) => {
     if (!item) return /*#__PURE__*/React.createElement("div", {
-      key: `empty-${i}`,
+      key: `${snapshotKey}:empty-${i}`,
       className: "md-turn-queue-item empty md-battle-art",
       style: battleUiStyle("turnOrderSlot"),
       title: "Empty ATB slot"
@@ -2731,7 +2735,7 @@ function TurnOrderBar({ queue, activeKey, monsters, petCombat }) {
     }, "·"));
     const isActive = activeKey === item.key;
     return /*#__PURE__*/React.createElement("div", {
-      key: item.key,
+      key: `${snapshotKey}:${i}:${item.key}`,
       className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} md-battle-art`,
       style: battleUiStyle("turnOrderSlot"),
       title: `${item.name} · Speed ${item.speed}`
@@ -2873,6 +2877,7 @@ function CombatScreen({
   }, "EXP ", Math.floor(xpPct), "%"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue || [],
     activeKey: activeTurnKey,
+    round: battleRound,
     monsters: monsters,
     petCombat: petCombat
   }), /*#__PURE__*/React.createElement("div", {
