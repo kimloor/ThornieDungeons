@@ -1736,11 +1736,23 @@ async function getOrCreateActiveRaid(db) {
     .first();
   if (row && Number(row.boss_hp_current) > 0) return row;
 
+  // Which boss is next: continue the rotation from whichever boss spawned most recently,
+  // across ALL dates (not just today) — using "how many spawned today" as the rotation
+  // index always restarts at 0 every new calendar day, which is the bug that made every
+  // day show the same first boss (Azure Angel) regardless of how many days had passed.
+  // This only needs the single latest row, so it's unaffected by the 7-day retention
+  // cleanup pruning old raid_boss_state rows.
+  const lastRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state ORDER BY created_at DESC LIMIT 1`).first();
+  const lastIndex = lastRow ? RAID_BOSS_DEFS.findIndex((b) => b.id === lastRow.boss_def_id) : -1;
+  const nextIndex = (lastIndex + 1 + RAID_BOSS_DEFS.length) % RAID_BOSS_DEFS.length;
+  const def = RAID_BOSS_DEFS[nextIndex];
+
+  // HP scaling still escalates per spawn WITHIN today specifically (later respawns/resets
+  // the same day are tougher), independent of which boss it happens to be.
   const cntRow = await db.prepare(`SELECT COUNT(*) as c FROM raid_boss_state WHERE date = ?`).bind(today).first();
-  const spawnIndex = cntRow ? Number(cntRow.c) || 0 : 0;
-  const def = RAID_BOSS_DEFS[spawnIndex % RAID_BOSS_DEFS.length];
-  const hpMax = Math.round(def.hpBase * (1 + spawnIndex * 0.2));
-  const raidId = `raid-${today}-${spawnIndex}-${Math.random().toString(36).slice(2, 8)}`;
+  const spawnCountToday = cntRow ? Number(cntRow.c) || 0 : 0;
+  const hpMax = Math.round(def.hpBase * (1 + spawnCountToday * 0.2));
+  const raidId = `raid-${today}-${nextIndex}-${Math.random().toString(36).slice(2, 8)}`;
   const now = nowIso();
   await db
     .prepare(
