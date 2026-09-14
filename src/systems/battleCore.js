@@ -13,6 +13,10 @@
   const hpPct = unit => unit && unit.maxHp ? unit.hp / unit.maxHp * 100 : 0;
   const status = (unit, key) => unit.statuses && unit.statuses[key];
   const rank = (unit, id) => Math.max(0, Math.floor(Number(unit.skills && unit.skills[id]) || 0));
+  const unitName = unit => String(unit && (unit.name || unit.id) || "Unknown");
+  const title = id => String(id || "skill").split("_").map(word => word ? word[0].toUpperCase() + word.slice(1) : "").join(" ");
+  const attackActionName = (spec, context) => spec.actionName
+    || (spec.actionType === "active" ? title(spec.id || context.usedSkillId) : spec.actionType === "counter" ? "counter attack" : "basic attack");
 
   function nextRandom(state) {
     let x = (state.rngState >>> 0) || 0x6d2b79f5;
@@ -204,7 +208,7 @@
     const recovery = target.kind === "hero" ? skillData(target, "recovery") : null;
     const actual = Math.min(target.maxHp - target.hp, Math.max(0, Math.round(amount * (1 + pct(recovery ? recovery.receivedPct : 0)))));
     target.hp += actual;
-    if (actual) log(state, "heal", `${label} +${actual}`, { actorId: source && source.id, targetId: target.id, amount: actual });
+    if (actual) log(state, "heal", `${unitName(source)} use ${label} to ${unitName(target)} heal ${actual}.`, { actorId: source && source.id, targetId: target.id, amount: actual, actionName: label });
     return actual;
   }
 
@@ -220,7 +224,7 @@
   function markDead(state, target) {
     if (target.hp > 0 || target.dead) return;
     target.hp = 0; target.dead = true;
-    log(state, "death", `${target.name || target.id} was defeated`, { targetId: target.id });
+    log(state, "death", `${unitName(target)} defeated.`, { targetId: target.id });
   }
 
   function receiveDamage(state, actor, target, rawDamage, context = {}) {
@@ -264,7 +268,13 @@
         log(state, "status", "Last Stand granted DEF Up", { targetId: target.id });
       }
     }
-    if (amount) log(state, "damage", `${target.name || target.id} took ${before - target.hp}`, { actorId: actor.id, targetId: target.id, amount: before - target.hp, crit: !!context.crit });
+    if (amount) {
+      const dealt = before - target.hp;
+      const text = context.direct
+        ? `${unitName(actor)} ${context.actionName === "basic attack" || context.actionName === "counter attack" ? context.actionName : `use ${context.actionName || "skill"}`} to ${unitName(target)} damage ${dealt}.`
+        : `${unitName(target)} took ${dealt}.`;
+      log(state, "damage", text, { actorId: actor.id, targetId: target.id, amount: dealt, crit: !!context.crit, actionName: context.actionName || null });
+    }
     if (directHit && target.kind === "hero" && actor.side === "enemy" && before > target.hp && !context.indirect) {
       const survival = skillData(target, "survival_instinct");
       if (survival && living(actor)) {
@@ -282,7 +292,7 @@
   function attackHit(state, actor, target, spec, actionContext) {
     if (!living(actor) || !living(target)) return { hit: false, damage: 0 };
     if (!chance(state, clamp(actor.accuracy - target.dodge, 5, 99))) {
-      log(state, "miss", `${actor.name || actor.id} missed`, { actorId: actor.id, targetId: target.id });
+      log(state, "miss", `${unitName(actor)} missed.`, { actorId: actor.id, targetId: target.id, actionName: attackActionName(spec, actionContext) });
       return { hit: false, damage: 0 };
     }
     // Proc rolls must be known before damage for Boss conversion, but a newly
@@ -307,7 +317,7 @@
     const attackPower = actor.atk * (Number(spec.mult) || 1) * activeBuffDamageMultiplier(actor) * heroPassiveDamageMultiplier(state, actor, target);
     const critMult = crit ? actor.critDamage + pct(Number(spec.critDamageBonus) || 0) + pct((skillData(actor, "critical_mastery") || {}).critDamagePct || 0) : 1;
     const damage = Math.max(1, Math.round((attackPower - targetDefAtHitStart * (1 - pierce)) * critMult));
-    const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, crit, direct: true });
+    const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
     actionContext.totalDamage += dealt;
     actionContext.hitAny = true;
     if (target.kind === "hero" && dealt > 0) actionContext.heroStruck = true;
@@ -350,7 +360,7 @@
     if (!living(hero) || !living(enemy)) return;
     const data = skillData(hero, "counter") || { counterMult: 1 };
     const statuses = data.armorBreakChance ? [{ key: "armor_break", chance: data.armorBreakChance, duration: 2 }] : [];
-    const result = attackHit(state, hero, enemy, { mult: data.counterMult, statuses }, actionContext);
+    const result = attackHit(state, hero, enemy, { mult: data.counterMult, actionType: "counter", statuses }, actionContext);
     if (rank(hero, "thorned_aegis") >= 5 && result.hit) {
       const playtest = root.HERO_SKILL_V1_PLAYTEST || (typeof HERO_SKILL_V1_PLAYTEST !== "undefined" ? HERO_SKILL_V1_PLAYTEST : {});
       const stun = applyStatus(state, hero, enemy, "stun", { chance: Number(playtest.aegisCounterStunChance) || 35, duration: 1 }, actionContext);
@@ -491,14 +501,14 @@
     const activeName = actor.active?.name || "Pet Active";
     const needsHeal = living(hero) && (hpPct(hero) <= 60 || (id === "moon_hare" && hpPct(actor) <= 60));
     if ((id === "sprout" || id === "moon_hare") && activeReady && needsHeal) {
-      log(state, "pet_active", `${actor.name || "Pet"} uses ${activeName}`, { actorId: actor.id, skillName: activeName });
+      log(state, "pet_active", `${unitName(actor)} use ${activeName}.`, { actorId: actor.id, skillName: activeName });
       const amount = actor.maxHp * (id === "sprout" ? 0.12 : 0.10) + (Number(actor.vit) || 0) * (id === "sprout" ? 0.8 : 1);
       if (id === "sprout") hero.statuses.pet_regrowth = { key: "pet_regrowth", duration: 2, heal: Math.round(amount), sourceId: actor.id, stealable: false };
       else { heal(state, hero, amount, actor, "Moonlight Heal"); heal(state, actor, amount, actor, "Moonlight Heal"); }
       actor.cooldowns.pet_active = id === "sprout" ? 3 : 2; context.usedSkillId = "pet_active"; return;
     }
     if (!activeReady) { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
-    let spec = { mult: 1, actionType: "active", statuses: [] }, targets = [target], cd = 2;
+    let spec = { mult: 1, actionType: "active", actionName: activeName, statuses: [] }, targets = [target], cd = 2;
     if (id === "flamekit") spec.mult = 1.35;
     else if (id === "sparkpup") { spec.mult = 1; spec.statuses.push({ key: "stun", chance: 15, duration: 1 }); }
     else if (id === "ember_fox") spec.mult = 1.55;
@@ -512,7 +522,7 @@
     else if (id === "inferno_drake") { spec.mult = .75; targets = state.enemyIds.map(enemyId => state.units[enemyId]).filter(living).slice(0, 3); }
     else if (id === "storm_phoenix") { spec.mult = .70; spec.statuses.push({ key: "silence", chance: 30, duration: 2 }); targets = state.enemyIds.map(enemyId => state.units[enemyId]).filter(living).slice(0, 3); cd = 3; }
     else { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
-    log(state, "pet_active", `${actor.name || "Pet"} uses ${activeName}`, { actorId: actor.id, skillName: activeName });
+    log(state, "pet_active", `${unitName(actor)} use ${activeName}.`, { actorId: actor.id, skillName: activeName });
     targets.forEach(unit => attackHit(state, actor, unit, spec, context));
     if (id === "inferno_drake" && chance(state, 35)) applyStatus(state, actor, hero, "def_up", { chance: 100, duration: 2 }, context);
     actor.cooldowns.pet_active = cd; context.usedSkillId = "pet_active";

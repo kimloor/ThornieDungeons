@@ -133,9 +133,44 @@ test("Sparkpup logs its Active before preserving MISS/damage/status results", ()
   const next = battle.battleStep(state).state;
   const activeIndex = next.log.findIndex(entry => entry.type === "pet_active");
   const resultIndex = next.log.findIndex((entry, index) => index > activeIndex && ["miss", "damage", "status"].includes(entry.type));
-  assert.equal(next.log[activeIndex].text, "Sparkpup uses Static Bite");
+  assert.equal(next.log[activeIndex].text, "Sparkpup use Static Bite.");
   assert.ok(activeIndex >= 0);
   assert.ok(resultIndex > activeIndex);
+});
+
+test("Battle Log names Basic, Pet Skill, Miss, Defeat and Heal results", () => {
+  const basic = battle.battleStep(battle.createBattle({
+    seed: 21,
+    hero: hero({ name: "kim01", speed: 200, atk: 220 }),
+    enemies: [enemy("slime", { name: "Jelly Slime", speed: 50, hp: 210, maxHp: 210, def: 0 })]
+  }), { type: "basic", targetId: "slime" }).state;
+  assert.ok(basic.log.some(entry => entry.text === "kim01 basic attack to Jelly Slime damage 210."));
+  assert.ok(basic.log.some(entry => entry.text === "Jelly Slime defeated."));
+
+  const petSkill = battle.battleStep(battle.createBattle({
+    seed: 18,
+    hero: hero({ name: "kim01", speed: 50 }),
+    pet: pet({ name: "Flamekit", petDefId: "flamekit", speed: 200, atk: 10, active: { name: "Flame Claw" } }),
+    enemies: [enemy("spore", { name: "Spore Cap", speed: 80, hp: 100, maxHp: 100, def: 4 })]
+  })).state;
+  assert.ok(petSkill.log.some(entry => entry.text === "Flamekit use Flame Claw to Spore Cap damage 10."));
+
+  const missed = battle.battleStep(battle.createBattle({
+    seed: 4,
+    hero: hero({ name: "kim01", speed: 50 }),
+    enemies: [enemy("slime", { name: "Jelly Slime", speed: 200, accuracy: 0 })]
+  })).state;
+  assert.ok(missed.log.some(entry => entry.text === "Jelly Slime missed."));
+
+  let regrowth = battle.createBattle({
+    seed: 30,
+    hero: hero({ name: "kim01", speed: 100, hp: 100, maxHp: 200 }),
+    pet: pet({ name: "Sprout", petDefId: "sprout", speed: 200, hp: 200, maxHp: 200, vit: 1, active: { name: "Regrowth" } }),
+    enemies: [enemy("slime", { name: "Jelly Slime", speed: 50, hp: 500, maxHp: 500 })]
+  });
+  regrowth = battle.battleStep(regrowth).state;
+  regrowth = battle.battleStep(regrowth, { type: "basic", targetId: "slime" }).state;
+  assert.ok(regrowth.log.some(entry => entry.text === "Sprout use Regrowth to kim01 heal 25."));
 });
 
 test("Thorned Aegis lethal guard leaves Hero at 1 HP only once", () => {

@@ -2444,8 +2444,8 @@ function PetScreen({
     alt: selectedDef.name,
     idleFrameMs: 260,
     cropTransparent: true,
-    visualHeight: 112,
-    maxVisualWidth: 150
+    visualHeight: 124,
+    maxVisualWidth: 165
   }) : /*#__PURE__*/React.createElement("div", {
     className: "md-pet-profile-fallback",
     role: "img",

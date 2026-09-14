@@ -978,7 +978,7 @@ function ThornieDungeons() {
       mode: "dungeon",
       seed: (Date.now() ^ Number(floorNum)) >>> 0,
       hero: {
-        id: "hero", kind: "hero", side: "ally", name: "You", hp: heroStartHp, maxHp: stats.maxHp,
+        id: "hero", kind: "hero", side: "ally", name: save.characterName || "Hero", hp: heroStartHp, maxHp: stats.maxHp,
         sp: nextPlayer.mp, maxSp: stats.maxMp, atk: stats.atk, def: stats.def, speed: stats.speed,
         accuracy: stats.accuracy, dodge: stats.dodgeChance, crit: stats.critChance,
         critDamage: 1 + stats.critDamage / 100, agi: save.character.stats.agi,

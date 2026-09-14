@@ -8,6 +8,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, "r2-upload/manifest.
 const components = fs.readFileSync(path.join(root, "src/ui/components.js"), "utf8");
 const app = fs.readFileSync(path.join(root, "src/ui/App.js"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src/data/styles.js"), "utf8");
+const petsSource = fs.readFileSync(path.join(root, "src/systems/pets.js"), "utf8");
 
 test("Pet UI manifest keys resolve to committed Graphics files", () => {
   const ui = manifest.assets.petUi;
@@ -53,6 +54,19 @@ test("Pet profile labels, EXP, stats and skill descriptions remain centered and 
   assert.match(styles, /\.md-pet-primary-stats div\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);
   assert.match(styles, /\.md-pet-skill-copy p\s*\{[^}]*white-space:\s*normal[^}]*overflow-wrap:\s*anywhere/s);
   assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-exp-bar/s);
+});
+
+test("Pet artwork grows while every skill panel remains content-sized and padded", () => {
+  assert.match(components, /visualHeight: 124/);
+  assert.match(components, /maxVisualWidth: 165/);
+  assert.match(styles, /\.md-pet-skill-panel\s*\{[^}]*height:\s*auto[^}]*padding:\s*30px 14px 14px[^}]*overflow:\s*hidden/s);
+  assert.match(styles, /\.md-pet-skill-copy p\s*\{[^}]*max-width:\s*100%[^}]*line-height:\s*1\.45/s);
+  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-skill-panel\s*\{[^}]*padding:\s*28px 10px 12px/s);
+  const catalogSource = petsSource.slice(0, petsSource.indexOf("// ---------- pet stats"));
+  const skillCount = (catalogSource.match(/\b(?:active|passive|extra):\s*\{/g) || []).length;
+  const descriptions = [...catalogSource.matchAll(/\bdesc:\s*"([^"]+)"/g)].map(match => match[1]);
+  assert.equal(descriptions.length, skillCount);
+  descriptions.forEach(description => assert.ok(description.trim()));
 });
 
 test("result feedback consumes derived Pet progress and never invokes the EXP grant", () => {
