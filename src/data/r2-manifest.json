@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-14T01:09:40Z",
-  "count": 209,
+  "generatedAt": "2026-09-14T06:21:55Z",
+  "count": 222,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "bf102e65c19be1021ca281c041d6def9",
-      "last_modified": "2026-09-13T16:31:57.449Z",
-      "size": 15423,
+      "etag": "25df21ac85bcdee3de7b542e5952ff06",
+      "last_modified": "2026-09-14T04:34:29.834Z",
+      "size": 15961,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -2276,6 +2276,149 @@
       "size": 197928,
       "http_metadata": {
         "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/exp_bar_bg.png",
+      "etag": "40c477f982ed808863e57b0e8c458e7b",
+      "last_modified": "2026-09-14T04:34:33.189Z",
+      "size": 113639,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/exp_bar_fill.png",
+      "etag": "818efd002132d5025fe69a1f92492f0c",
+      "last_modified": "2026-09-14T04:34:36.649Z",
+      "size": 92159,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/exp_bar_frame.png",
+      "etag": "d11c3c38f1b435f2d724fab52bfeeb77",
+      "last_modified": "2026-09-14T04:34:39.992Z",
+      "size": 114291,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/main_frame.png",
+      "etag": "0e2164e9aa1e68386bd9f2247f1b291d",
+      "last_modified": "2026-09-14T04:34:43.332Z",
+      "size": 896485,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/role_attack.png",
+      "etag": "5449c9644301132cd9dd9ebf5eedeec1",
+      "last_modified": "2026-09-14T04:34:46.864Z",
+      "size": 83086,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/role_control.png",
+      "etag": "e47d93e7000dfa7d80455fe1063e87fd",
+      "last_modified": "2026-09-14T04:34:50.040Z",
+      "size": 86892,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/role_support.png",
+      "etag": "a448e5e31136478499d1ff1791b5e14b",
+      "last_modified": "2026-09-14T04:34:53.318Z",
+      "size": 73868,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/role_tank.png",
+      "etag": "e202074c0c3168af5699badbc69429f2",
+      "last_modified": "2026-09-14T04:34:56.519Z",
+      "size": 81744,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/skill_info_panel.png",
+      "etag": "e69b982716a14659b84549e1a7a2e5b3",
+      "last_modified": "2026-09-14T04:34:59.804Z",
+      "size": 180708,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/skill_title_plate.png",
+      "etag": "34ae79e68b502bc681189273f8d0ec52",
+      "last_modified": "2026-09-14T04:35:03.797Z",
+      "size": 53098,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/star_aura_2.png",
+      "etag": "75ee02f6b34e42ba2083897714938ec7",
+      "last_modified": "2026-09-14T04:35:07.178Z",
+      "size": 208643,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/star_aura_3.png",
+      "etag": "acc0bd520f7eeee79f4e3681e5a7e077",
+      "last_modified": "2026-09-14T04:35:10.727Z",
+      "size": 342716,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pets/star_icon.png",
+      "etag": "65fe476842cda1721fa39046de35fbdd",
+      "last_modified": "2026-09-14T04:35:14.466Z",
+      "size": 37465,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
