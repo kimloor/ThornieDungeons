@@ -1542,6 +1542,8 @@ const STYLE = `
 .md-daily-day-claimable { border-color:var(--gold); background:rgba(255,209,102,.16); box-shadow:0 0 0 1px rgba(255,209,102,.3); animation: mdToastIn 0.4s ease-out; }
 .md-daily-day-claimable .md-daily-day-num { color:var(--gold); }
 .md-daily-day-locked { opacity:.55; }
+.md-daily-countdown { font-size:12px; color:var(--ink-soft); margin:2px 0 0; font-weight:700; }
+.md-daily-countdown-time { font-family:'Baloo 2'; font-size:16px; font-weight:800; color:var(--gold); letter-spacing:0.5px; }
 @keyframes mdToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */
@@ -8413,6 +8415,21 @@ const DAILY_LOGIN_REWARDS_PREVIEW = [
 function dailyCyclePosition(streak) {
   return ((Math.max(1, streak) - 1) % DAILY_LOGIN_REWARDS_PREVIEW.length) + 1;
 }
+// Reset boundary matches the server exactly (workers/thornie-dungeons-api.js's
+// todayDateKey/yesterdayDateKey both key off UTC calendar dates) — the countdown must count
+// down to UTC midnight, not the player's local midnight, or it'll drift out of sync with when
+// canClaimDaily actually flips true server-side.
+function msUntilNextUtcMidnight() {
+  const now = new Date();
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0);
+  return next - now.getTime();
+}
+function formatCountdown(ms) {
+  const pad = n => String(n).padStart(2, "0");
+  if (ms <= 0) return "00:00:00";
+  const totalSec = Math.floor(ms / 1000);
+  return `${pad(Math.floor(totalSec / 3600))}:${pad(Math.floor(totalSec % 3600 / 60))}:${pad(totalSec % 60)}`;
+}
 function DailyLoginToast({
   open,
   onClose,
@@ -8422,6 +8439,17 @@ function DailyLoginToast({
   canClaimDaily,
   onClaimDailyLogin
 }) {
+  // Hooks must run unconditionally on every render (before the `if (!open) return null` below),
+  // or React's hook order breaks the moment `open` toggles — this live-ticking countdown only
+  // needs to actually run while the modal is open and today's reward is already claimed.
+  const [countdown, setCountdown] = useState(() => formatCountdown(msUntilNextUtcMidnight()));
+  useEffect(() => {
+    if (!open || canClaimDaily) return;
+    const tick = () => setCountdown(formatCountdown(msUntilNextUtcMidnight()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [open, canClaimDaily]);
   if (!open) return null;
   const loginStreak = (dailyLogin && dailyLogin.state && dailyLogin.state.loginStreak) || 0;
   // A streak that just reset to day 1 (missed a day) means nothing in this fresh lap has been
@@ -8446,7 +8474,10 @@ function DailyLoginToast({
     canClaimDaily ? /*#__PURE__*/React.createElement("button", {
       className: "md-btn primary wide",
       onClick: onClaimDailyLogin
-    }, "รับรางวัล") : /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" } }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
+    }, "รับรางวัล") : /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" }, margin: 0 }, "รับไปแล้ววันนี้"),
+      /*#__PURE__*/React.createElement("p", { className: "md-daily-countdown" }, "รอบถัดไปในอีก ", /*#__PURE__*/React.createElement("span", { className: "md-daily-countdown-time" }, countdown))
+    )
   ),
   /*#__PURE__*/React.createElement("div", { className: "md-daily-calendar" }, DAILY_LOGIN_REWARDS_PREVIEW.map(r => {
     const isClaimed = claimedCyclePos >= r.day;
@@ -11902,6 +11933,104 @@ function CraftingOverlay({
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านประดิษฐ์")
   ));
 }
+
+// ===== ui/combatPresentationFix.js =====
+// Presentation-only combat stability overrides.
+// Keeps the battle log from changing outer layout height on first multi-enemy action,
+// and renders a guaranteed-visible BEGIN! cue for the existing 800ms intro gate.
+(() => {
+  const STYLE_ID = "thornie-combat-presentation-fix-v1";
+
+  function installCombatPresentationFix() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+/* The combat log is a sibling of .md-scene, not its child. Target the real DOM shape so
+   long first-turn multi-monster messages cannot grow the bottom panel and shrink the arena. */
+.md-root-combat > .md-panel {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  padding: 6px 10px max(7px, env(safe-area-inset-bottom, 0px)) !important;
+  border-top-width: 1px !important;
+}
+.md-root-combat > .md-panel .md-log {
+  height: 50px !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  padding: 5px 8px !important;
+  gap: 1px !important;
+  contain: size layout paint !important;
+}
+.md-root-combat > .md-panel .md-log-line {
+  flex: 0 0 auto !important;
+  min-height: 12px !important;
+  font-size: 9px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.md-root-combat > .md-panel .md-log-line.latest {
+  font-size: 10.5px !important;
+}
+
+/* The original component already owns the 800ms gameplay presentation gate. Render the cue
+   from the battlefield itself so reduced-motion settings cannot collapse it to a 1ms flash. */
+.md-root-combat .md-battle-intro {
+  display: none !important;
+}
+.md-root-combat .md-scene.battle-bg::after {
+  content: "BEGIN!";
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  z-index: 40;
+  transform: translate(-50%, -50%) scale(1);
+  color: #fff1ad;
+  font: 800 clamp(34px, 11vw, 52px)/1 'Baloo 2', sans-serif;
+  letter-spacing: .08em;
+  text-shadow: 0 3px 0 #6c3d13, 0 0 18px rgba(255,209,102,.9);
+  pointer-events: none;
+  opacity: 0;
+  animation: md-battle-begin-stable 800ms linear both;
+}
+@keyframes md-battle-begin-stable {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.86); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  68% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -56%) scale(1.04); }
+}
+
+@media (max-width: 380px) {
+  .md-root-combat > .md-panel .md-log {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-root-combat .md-scene.battle-bg::after {
+    animation-name: md-battle-begin-reduced !important;
+  }
+  @keyframes md-battle-begin-reduced {
+    0%, 82% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+  }
+}
+`;
+    document.head.appendChild(style);
+  }
+
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", installCombatPresentationFix, { once: true });
+  } else {
+    installCombatPresentationFix();
+  }
+})();
 
 // ===== ui/resumePreviewPatch.js =====
 // Keeps Dungeon Floor Preview aligned with an active Battle V1 checkpoint.

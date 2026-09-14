@@ -266,6 +266,21 @@ const DAILY_LOGIN_REWARDS_PREVIEW = [
 function dailyCyclePosition(streak) {
   return ((Math.max(1, streak) - 1) % DAILY_LOGIN_REWARDS_PREVIEW.length) + 1;
 }
+// Reset boundary matches the server exactly (workers/thornie-dungeons-api.js's
+// todayDateKey/yesterdayDateKey both key off UTC calendar dates) — the countdown must count
+// down to UTC midnight, not the player's local midnight, or it'll drift out of sync with when
+// canClaimDaily actually flips true server-side.
+function msUntilNextUtcMidnight() {
+  const now = new Date();
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0);
+  return next - now.getTime();
+}
+function formatCountdown(ms) {
+  const pad = n => String(n).padStart(2, "0");
+  if (ms <= 0) return "00:00:00";
+  const totalSec = Math.floor(ms / 1000);
+  return `${pad(Math.floor(totalSec / 3600))}:${pad(Math.floor(totalSec % 3600 / 60))}:${pad(totalSec % 60)}`;
+}
 function DailyLoginToast({
   open,
   onClose,
@@ -275,6 +290,17 @@ function DailyLoginToast({
   canClaimDaily,
   onClaimDailyLogin
 }) {
+  // Hooks must run unconditionally on every render (before the `if (!open) return null` below),
+  // or React's hook order breaks the moment `open` toggles — this live-ticking countdown only
+  // needs to actually run while the modal is open and today's reward is already claimed.
+  const [countdown, setCountdown] = useState(() => formatCountdown(msUntilNextUtcMidnight()));
+  useEffect(() => {
+    if (!open || canClaimDaily) return;
+    const tick = () => setCountdown(formatCountdown(msUntilNextUtcMidnight()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [open, canClaimDaily]);
   if (!open) return null;
   const loginStreak = (dailyLogin && dailyLogin.state && dailyLogin.state.loginStreak) || 0;
   // A streak that just reset to day 1 (missed a day) means nothing in this fresh lap has been
@@ -299,7 +325,10 @@ function DailyLoginToast({
     canClaimDaily ? /*#__PURE__*/React.createElement("button", {
       className: "md-btn primary wide",
       onClick: onClaimDailyLogin
-    }, "รับรางวัล") : /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" } }, "รับไปแล้ววันนี้ พรุ่งนี้มาใหม่นะ")
+    }, "รับรางวัล") : /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "var(--gold)" }, margin: 0 }, "รับไปแล้ววันนี้"),
+      /*#__PURE__*/React.createElement("p", { className: "md-daily-countdown" }, "รอบถัดไปในอีก ", /*#__PURE__*/React.createElement("span", { className: "md-daily-countdown-time" }, countdown))
+    )
   ),
   /*#__PURE__*/React.createElement("div", { className: "md-daily-calendar" }, DAILY_LOGIN_REWARDS_PREVIEW.map(r => {
     const isClaimed = claimedCyclePos >= r.day;

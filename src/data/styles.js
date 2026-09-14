@@ -1465,6 +1465,8 @@ const STYLE = `
 .md-daily-day-claimable { border-color:var(--gold); background:rgba(255,209,102,.16); box-shadow:0 0 0 1px rgba(255,209,102,.3); animation: mdToastIn 0.4s ease-out; }
 .md-daily-day-claimable .md-daily-day-num { color:var(--gold); }
 .md-daily-day-locked { opacity:.55; }
+.md-daily-countdown { font-size:12px; color:var(--ink-soft); margin:2px 0 0; font-weight:700; }
+.md-daily-countdown-time { font-family:'Baloo 2'; font-size:16px; font-weight:800; color:var(--gold); letter-spacing:0.5px; }
 @keyframes mdToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 .md-fab, .md-buy-btn, select.md-select { touch-action: manipulation; }
 /* ---- blacksmith anvil result animation ---- */
