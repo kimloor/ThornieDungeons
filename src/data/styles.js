@@ -224,6 +224,27 @@ const STYLE = `
 .md-log-line { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-align: center; opacity: 0.6; overflow-wrap: break-word; word-break: break-word; padding: 0 4px; }
 .md-log-line:before { content: '💬 '; }
 .md-log-line.latest { font-size: 12.5px; color: var(--ink); opacity: 1; }
+.md-log-preview { width: 100%; color: inherit; font: inherit; cursor: pointer; position: relative; }
+.md-log-preview .md-log-line { display: block; width: 100%; }
+.md-log-hint { position: absolute; right: 7px; bottom: 2px; color: var(--gold); font-size: 7px; opacity: .72; }
+.md-battle-log-overlay {
+  position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+  padding: max(18px, env(safe-area-inset-top, 0px)) 14px max(18px, env(safe-area-inset-bottom, 0px));
+  background: rgba(3,4,14,.82); backdrop-filter: blur(3px);
+}
+.md-battle-log-expanded {
+  width: min(100%, 480px); max-height: min(72svh, 620px); display: flex; flex-direction: column;
+  border: 1px solid rgba(255,209,102,.48); border-radius: 14px; background: rgba(10,6,22,.97);
+  box-shadow: 0 14px 40px rgba(0,0,0,.62); overflow: hidden;
+}
+.md-battle-log-expanded header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; color: var(--gold); border-bottom: 1px solid rgba(255,209,102,.2); }
+.md-battle-log-close { width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; background: rgba(255,255,255,.06); color: var(--ink); cursor: pointer; }
+.md-battle-log-scroll { min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 8px 9px 12px; }
+.md-battle-log-scroll .md-log-line { text-align: left; opacity: .8; padding: 5px 4px; border-bottom: 1px solid rgba(255,255,255,.045); }
+.md-battle-log-scroll .md-log-line.latest { opacity: 1; }
+.md-battle-log-shell.result { margin: 8px 0; }
+.md-mail-error { margin-bottom: 10px; border-color: rgba(255,107,123,.5); text-align: center; }
+.md-mail-error .md-sub { color: #ffb5bf; margin-bottom: 7px; }
 
 .md-panel { position: relative; z-index: 2; background: rgba(10,6,22,0.5); border-top: 2px solid var(--gold-deep); padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .md-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -990,21 +1011,21 @@ const STYLE = `
 .md-pet-profile-fallback { position: relative; z-index: 2; font-size: 76px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
 .md-pet-profile > :not(.md-pet-showcase) { position: relative; z-index: 3; }
 .md-pet-name-row {
-  width: 92%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  width: 92%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px;
   margin-top: 0; color: #fff4cf;
 }
-.md-pet-name-row > div:first-child { display: flex; flex-direction: column; min-width: 0; }
+.md-pet-name-row > div:first-child { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; text-align: left; }
 .md-pet-name-row strong { font: 800 16px/1.05 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-pet-name-row span { color: var(--ink-soft); font-size: 9px; }
-.md-pet-role { flex: 0 0 auto; display: flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 800; }
+.md-pet-role { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 9px; font-weight: 800; text-align: center; }
 .md-pet-role-icon { width: 28px; height: 28px; background-size: contain; }
 .md-pet-stars { height: 24px; display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 3px; }
 .md-pet-star { width: 20px; height: 20px; background-size: contain; opacity: .2; filter: grayscale(1); }
 .md-pet-star.earned { opacity: 1; filter: none; }
-.md-pet-exp-copy { width: 86%; display: flex; justify-content: space-between; font-size: 9px; margin-top: 1px; color: var(--ink-soft); }
+.md-pet-exp-copy { width: 88%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px; font-size: 10px; margin-top: 4px; color: var(--ink-soft); }
 .md-pet-exp-copy strong { color: #a8fff2; }
 .md-pet-exp-bar {
-  width: 88%; aspect-ratio: 3 / 1; position: relative; overflow: visible; margin-top: -18px;
+  width: 92%; height: 50px; flex: 0 0 50px; position: relative; overflow: visible; margin-top: -12px;
   background-image: var(--pet-ui-image, none); background-size: 100% 100%; background-repeat: no-repeat;
 }
 .md-pet-exp-fill { position: absolute; left: 4%; top: 25%; height: 50%; max-width: 92%; background-size: 100% 100%; }
@@ -1012,7 +1033,7 @@ const STYLE = `
 .md-pet-primary-stats {
   width: 94%; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 5px; margin-top: 12px;
 }
-.md-pet-primary-stats div { min-width: 0; text-align: center; display: flex; flex-direction: column; padding: 5px 2px; border-radius: 7px; background: rgba(8,11,28,.42); }
+.md-pet-primary-stats div { min-width: 0; min-height: 38px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5px 2px; border-radius: 7px; background: rgba(8,11,28,.42); }
 .md-pet-primary-stats small { color: var(--ink-soft); font-size: 8px; }
 .md-pet-primary-stats strong { color: #fff4cf; font: 800 12px/1.2 'Baloo 2'; }
 .md-pet-details-panel { min-width: 0; padding: 9px; border: 1px solid rgba(255,209,102,.16); border-radius: 10px; background: rgba(8,11,28,.48); }
@@ -1030,14 +1051,15 @@ const STYLE = `
 }
 .md-pet-secondary-stats span { color: var(--ink-soft); }
 .md-pet-skill-list { display: flex; flex-direction: column; gap: 6px; }
-.md-pet-skill-panel { min-height: 70px; aspect-ratio: 3 / 1; position: relative; padding: 24px 12px 8px; background-size: 100% 100%; }
+.md-pet-skill-panel { min-height: 78px; height: auto; position: relative; padding: 25px 12px 10px; background-size: 100% 100%; overflow: visible; }
 .md-pet-skill-title {
   position: absolute; left: 5px; top: 2px; width: 88px; height: 24px; display: flex; align-items: center;
   justify-content: center; aspect-ratio: 5 / 2; color: #fff4cf; font: 800 9px 'Baloo 2';
 }
-.md-pet-skill-copy { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 6px; font-size: 9px; }
+.md-pet-skill-copy { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 6px; font-size: 9px; }
+.md-pet-skill-copy strong { min-width: 0; overflow-wrap: anywhere; }
 .md-pet-skill-copy > span { color: var(--gold); font-weight: 800; }
-.md-pet-skill-copy p { grid-column: 1/-1; margin: 0; color: var(--ink-soft); line-height: 1.35; }
+.md-pet-skill-copy p { grid-column: 1/-1; min-width: 0; margin: 0; color: var(--ink-soft); line-height: 1.35; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
 .md-pet-growth { display: flex; flex-direction: column; gap: 6px; color: var(--ink-soft); font-size: 10px; }
 .md-pet-message { color: var(--gold); font-size: 10px; font-weight: 800; text-align: center; }
 .md-pet-message.error { color: #ff6b7b; }
@@ -1049,10 +1071,20 @@ const STYLE = `
   .md-pet-layout { grid-template-columns: minmax(0, 1fr) 78px; gap: 6px; }
   .md-pet-roster-item { grid-template-columns: 24px minmax(0,1fr); min-height: 64px; padding: 4px 3px; }
   .md-pet-roster-icon { font-size: 20px; }
-  .md-pet-profile { padding: 22px 20px 18px; }
+  .md-pet-profile { padding: 22px 16px 18px; }
   .md-pet-showcase { height: 130px; }
+  .md-pet-name-row { width: 94%; gap: 4px; }
   .md-pet-name-row strong { font-size: 14px; }
+  .md-pet-role { font-size: 8px; gap: 1px; }
   .md-pet-role-icon { width: 24px; height: 24px; }
+  .md-pet-exp-copy { width: 92%; padding-inline: 4px; font-size: 9px; }
+  .md-pet-exp-bar { width: 96%; height: 46px; flex-basis: 46px; }
+  .md-pet-primary-stats { width: 96%; gap: 3px; margin-top: 8px; }
+  .md-pet-primary-stats div { min-height: 35px; padding-inline: 1px; }
+  .md-pet-primary-stats strong { font-size: 11px; }
+  .md-pet-details-panel { padding: 7px; }
+  .md-pet-skill-panel { min-height: 76px; padding: 24px 9px 9px; }
+  .md-pet-skill-copy { font-size: 8.5px; gap: 3px 4px; }
 }
 
 @media (max-width: 340px) {

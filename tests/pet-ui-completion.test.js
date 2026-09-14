@@ -47,6 +47,14 @@ test("Pet header does not duplicate the global diamond balance", () => {
   assert.doesNotMatch(petSource, /save\.diamonds/);
 });
 
+test("Pet profile labels, EXP, stats and skill descriptions remain centered and wrap on mobile", () => {
+  assert.match(styles, /\.md-pet-name-row\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/s);
+  assert.match(styles, /\.md-pet-exp-copy\s*\{[^}]*align-items:\s*center/s);
+  assert.match(styles, /\.md-pet-primary-stats div\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);
+  assert.match(styles, /\.md-pet-skill-copy p\s*\{[^}]*white-space:\s*normal[^}]*overflow-wrap:\s*anywhere/s);
+  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-exp-bar/s);
+});
+
 test("result feedback consumes derived Pet progress and never invokes the EXP grant", () => {
   const resultStart = components.indexOf("function ResultScreen");
   const resultSource = components.slice(resultStart);

@@ -77,8 +77,8 @@ function patchBattlePresentationSource(content) {
 
   patched = replaceOnce(
     patched,
-    "    const messages = next.log.slice(-3).reverse().map(entry => entry.text);\n",
-    "    const messages = next.log.slice().reverse().map(entry => battleLogForUi(entry, next)).filter(Boolean).slice(0, 3);\n",
+    "    const messages = next.log.slice().reverse().map(entry => entry.text);\n",
+    "    const messages = next.log.slice().reverse().map(entry => battleLogForUi(entry, next)).filter(Boolean);\n",
     "player-facing battle log"
   );
 

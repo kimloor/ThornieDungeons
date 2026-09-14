@@ -301,6 +301,27 @@ const STYLE = `
 .md-log-line { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-align: center; opacity: 0.6; overflow-wrap: break-word; word-break: break-word; padding: 0 4px; }
 .md-log-line:before { content: '💬 '; }
 .md-log-line.latest { font-size: 12.5px; color: var(--ink); opacity: 1; }
+.md-log-preview { width: 100%; color: inherit; font: inherit; cursor: pointer; position: relative; }
+.md-log-preview .md-log-line { display: block; width: 100%; }
+.md-log-hint { position: absolute; right: 7px; bottom: 2px; color: var(--gold); font-size: 7px; opacity: .72; }
+.md-battle-log-overlay {
+  position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+  padding: max(18px, env(safe-area-inset-top, 0px)) 14px max(18px, env(safe-area-inset-bottom, 0px));
+  background: rgba(3,4,14,.82); backdrop-filter: blur(3px);
+}
+.md-battle-log-expanded {
+  width: min(100%, 480px); max-height: min(72svh, 620px); display: flex; flex-direction: column;
+  border: 1px solid rgba(255,209,102,.48); border-radius: 14px; background: rgba(10,6,22,.97);
+  box-shadow: 0 14px 40px rgba(0,0,0,.62); overflow: hidden;
+}
+.md-battle-log-expanded header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; color: var(--gold); border-bottom: 1px solid rgba(255,209,102,.2); }
+.md-battle-log-close { width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; background: rgba(255,255,255,.06); color: var(--ink); cursor: pointer; }
+.md-battle-log-scroll { min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 8px 9px 12px; }
+.md-battle-log-scroll .md-log-line { text-align: left; opacity: .8; padding: 5px 4px; border-bottom: 1px solid rgba(255,255,255,.045); }
+.md-battle-log-scroll .md-log-line.latest { opacity: 1; }
+.md-battle-log-shell.result { margin: 8px 0; }
+.md-mail-error { margin-bottom: 10px; border-color: rgba(255,107,123,.5); text-align: center; }
+.md-mail-error .md-sub { color: #ffb5bf; margin-bottom: 7px; }
 
 .md-panel { position: relative; z-index: 2; background: rgba(10,6,22,0.5); border-top: 2px solid var(--gold-deep); padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .md-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1067,21 +1088,21 @@ const STYLE = `
 .md-pet-profile-fallback { position: relative; z-index: 2; font-size: 76px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
 .md-pet-profile > :not(.md-pet-showcase) { position: relative; z-index: 3; }
 .md-pet-name-row {
-  width: 92%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  width: 92%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px;
   margin-top: 0; color: #fff4cf;
 }
-.md-pet-name-row > div:first-child { display: flex; flex-direction: column; min-width: 0; }
+.md-pet-name-row > div:first-child { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; text-align: left; }
 .md-pet-name-row strong { font: 800 16px/1.05 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-pet-name-row span { color: var(--ink-soft); font-size: 9px; }
-.md-pet-role { flex: 0 0 auto; display: flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 800; }
+.md-pet-role { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 9px; font-weight: 800; text-align: center; }
 .md-pet-role-icon { width: 28px; height: 28px; background-size: contain; }
 .md-pet-stars { height: 24px; display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 3px; }
 .md-pet-star { width: 20px; height: 20px; background-size: contain; opacity: .2; filter: grayscale(1); }
 .md-pet-star.earned { opacity: 1; filter: none; }
-.md-pet-exp-copy { width: 86%; display: flex; justify-content: space-between; font-size: 9px; margin-top: 1px; color: var(--ink-soft); }
+.md-pet-exp-copy { width: 88%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px; font-size: 10px; margin-top: 4px; color: var(--ink-soft); }
 .md-pet-exp-copy strong { color: #a8fff2; }
 .md-pet-exp-bar {
-  width: 88%; aspect-ratio: 3 / 1; position: relative; overflow: visible; margin-top: -18px;
+  width: 92%; height: 50px; flex: 0 0 50px; position: relative; overflow: visible; margin-top: -12px;
   background-image: var(--pet-ui-image, none); background-size: 100% 100%; background-repeat: no-repeat;
 }
 .md-pet-exp-fill { position: absolute; left: 4%; top: 25%; height: 50%; max-width: 92%; background-size: 100% 100%; }
@@ -1089,7 +1110,7 @@ const STYLE = `
 .md-pet-primary-stats {
   width: 94%; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 5px; margin-top: 12px;
 }
-.md-pet-primary-stats div { min-width: 0; text-align: center; display: flex; flex-direction: column; padding: 5px 2px; border-radius: 7px; background: rgba(8,11,28,.42); }
+.md-pet-primary-stats div { min-width: 0; min-height: 38px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5px 2px; border-radius: 7px; background: rgba(8,11,28,.42); }
 .md-pet-primary-stats small { color: var(--ink-soft); font-size: 8px; }
 .md-pet-primary-stats strong { color: #fff4cf; font: 800 12px/1.2 'Baloo 2'; }
 .md-pet-details-panel { min-width: 0; padding: 9px; border: 1px solid rgba(255,209,102,.16); border-radius: 10px; background: rgba(8,11,28,.48); }
@@ -1107,14 +1128,15 @@ const STYLE = `
 }
 .md-pet-secondary-stats span { color: var(--ink-soft); }
 .md-pet-skill-list { display: flex; flex-direction: column; gap: 6px; }
-.md-pet-skill-panel { min-height: 70px; aspect-ratio: 3 / 1; position: relative; padding: 24px 12px 8px; background-size: 100% 100%; }
+.md-pet-skill-panel { min-height: 78px; height: auto; position: relative; padding: 25px 12px 10px; background-size: 100% 100%; overflow: visible; }
 .md-pet-skill-title {
   position: absolute; left: 5px; top: 2px; width: 88px; height: 24px; display: flex; align-items: center;
   justify-content: center; aspect-ratio: 5 / 2; color: #fff4cf; font: 800 9px 'Baloo 2';
 }
-.md-pet-skill-copy { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 6px; font-size: 9px; }
+.md-pet-skill-copy { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 6px; font-size: 9px; }
+.md-pet-skill-copy strong { min-width: 0; overflow-wrap: anywhere; }
 .md-pet-skill-copy > span { color: var(--gold); font-weight: 800; }
-.md-pet-skill-copy p { grid-column: 1/-1; margin: 0; color: var(--ink-soft); line-height: 1.35; }
+.md-pet-skill-copy p { grid-column: 1/-1; min-width: 0; margin: 0; color: var(--ink-soft); line-height: 1.35; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
 .md-pet-growth { display: flex; flex-direction: column; gap: 6px; color: var(--ink-soft); font-size: 10px; }
 .md-pet-message { color: var(--gold); font-size: 10px; font-weight: 800; text-align: center; }
 .md-pet-message.error { color: #ff6b7b; }
@@ -1126,10 +1148,20 @@ const STYLE = `
   .md-pet-layout { grid-template-columns: minmax(0, 1fr) 78px; gap: 6px; }
   .md-pet-roster-item { grid-template-columns: 24px minmax(0,1fr); min-height: 64px; padding: 4px 3px; }
   .md-pet-roster-icon { font-size: 20px; }
-  .md-pet-profile { padding: 22px 20px 18px; }
+  .md-pet-profile { padding: 22px 16px 18px; }
   .md-pet-showcase { height: 130px; }
+  .md-pet-name-row { width: 94%; gap: 4px; }
   .md-pet-name-row strong { font-size: 14px; }
+  .md-pet-role { font-size: 8px; gap: 1px; }
   .md-pet-role-icon { width: 24px; height: 24px; }
+  .md-pet-exp-copy { width: 92%; padding-inline: 4px; font-size: 9px; }
+  .md-pet-exp-bar { width: 96%; height: 46px; flex-basis: 46px; }
+  .md-pet-primary-stats { width: 96%; gap: 3px; margin-top: 8px; }
+  .md-pet-primary-stats div { min-height: 35px; padding-inline: 1px; }
+  .md-pet-primary-stats strong { font-size: 11px; }
+  .md-pet-details-panel { padding: 7px; }
+  .md-pet-skill-panel { min-height: 76px; padding: 24px 9px 9px; }
+  .md-pet-skill-copy { font-size: 8.5px; gap: 3px 4px; }
 }
 
 @media (max-width: 340px) {
@@ -4613,7 +4645,7 @@ if (typeof module !== "undefined") module.exports = {
       rules: { allowFlee: options.allowFlee !== false }
     };
     rebuildQueue(state);
-    log(state, "battle_start", `Battle ${state.battleId} started`);
+    log(state, "battle_start", "Battle started");
     return state;
   }
   function createDungeonBattle(options = {}) {
@@ -5002,8 +5034,10 @@ if (typeof module !== "undefined") module.exports = {
     if (!target) return;
     const id = actor.petDefId;
     const activeReady = (actor.cooldowns.pet_active || 0) === 0;
+    const activeName = actor.active?.name || "Pet Active";
     const needsHeal = living(hero) && (hpPct(hero) <= 60 || (id === "moon_hare" && hpPct(actor) <= 60));
     if ((id === "sprout" || id === "moon_hare") && activeReady && needsHeal) {
+      log(state, "pet_active", `${actor.name || "Pet"} uses ${activeName}`, { actorId: actor.id, skillName: activeName });
       const amount = actor.maxHp * (id === "sprout" ? 0.12 : 0.10) + (Number(actor.vit) || 0) * (id === "sprout" ? 0.8 : 1);
       if (id === "sprout") hero.statuses.pet_regrowth = { key: "pet_regrowth", duration: 2, heal: Math.round(amount), sourceId: actor.id, stealable: false };
       else { heal(state, hero, amount, actor, "Moonlight Heal"); heal(state, actor, amount, actor, "Moonlight Heal"); }
@@ -5024,6 +5058,7 @@ if (typeof module !== "undefined") module.exports = {
     else if (id === "inferno_drake") { spec.mult = .75; targets = state.enemyIds.map(enemyId => state.units[enemyId]).filter(living).slice(0, 3); }
     else if (id === "storm_phoenix") { spec.mult = .70; spec.statuses.push({ key: "silence", chance: 30, duration: 2 }); targets = state.enemyIds.map(enemyId => state.units[enemyId]).filter(living).slice(0, 3); cd = 3; }
     else { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
+    log(state, "pet_active", `${actor.name || "Pet"} uses ${activeName}`, { actorId: actor.id, skillName: activeName });
     targets.forEach(unit => attackHit(state, actor, unit, spec, context));
     if (id === "inferno_drake" && chance(state, 35)) applyStatus(state, actor, hero, "def_up", { chance: 100, duration: 2 }, context);
     actor.cooldowns.pet_active = cd; context.usedSkillId = "pet_active";
@@ -6228,6 +6263,12 @@ const emptyEquipped = () => ({
 });
 
 // ===== ui/App.js =====
+// Battle logs are session-only UI data. Checkpoints keep the deterministic combat state and
+// log sequence, but never copy the readable log history into D1.
+function battleCheckpointWithoutLog(checkpoint) {
+  return checkpoint ? { ...checkpoint, log: [] } : checkpoint;
+}
+
 function ThornieDungeons() {
   // `account` holds the multi-character save (up to MAX_CHARACTER_SLOTS characters + shared
   // diamonds), built fresh from the server's responses every session. `save` keeps the flat
@@ -6297,9 +6338,10 @@ function ThornieDungeons() {
   const [turnQueue, setTurnQueue] = useState([]); // [{key, kind, uid?, name, icon, speed}]
   const [activeTurnKey, setActiveTurnKey] = useState(null);
   const [log, setLogState] = useState([]);
-  // Keeps the last 3 combat messages, newest first, so the log panel can show
-  // a short scrolling history instead of overwriting a single line.
-  const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
+  const [finishedBattleLog, setFinishedBattleLog] = useState([]);
+  // Keep the current battle history newest-first. CombatScreen renders only the latest three
+  // until the player opens the full log.
+  const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 120));
   const [busy, setBusy] = useState(false);
   // Presentation gate only: combat order is already resolved by Battle Core, but the first
   // action waits briefly so the player can see the battlefield and upcoming queue.
@@ -6521,7 +6563,8 @@ function ThornieDungeons() {
   const pushBattleCheckpoint = useCallback((checkpoint) => {
     if (!checkpoint || !save?.characterId || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     const context = persistenceContextFor(save.characterId);
-    const pending = persistenceRef.current.enqueue(context, "battle_checkpoint", checkpoint, (snapshot, owner) =>
+    const checkpointSnapshot = battleCheckpointWithoutLog(checkpoint);
+    const pending = persistenceRef.current.enqueue(context, "battle_checkpoint", checkpointSnapshot, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "battle_checkpoint", snapshot));
     pending.then(saved => {
       if (!saved) return;
@@ -6590,7 +6633,7 @@ function ThornieDungeons() {
     if (!save?.characterId || !cred.url) return undefined;
     const persistSafeBattleBoundary = () => {
       const checkpoint = battleStateRef.current;
-      if (checkpoint && !checkpoint.result) void cloudSaveBattleCheckpointOnClose(cred.url, save.characterId, checkpoint);
+      if (checkpoint && !checkpoint.result) void cloudSaveBattleCheckpointOnClose(cred.url, save.characterId, battleCheckpointWithoutLog(checkpoint));
     };
     const onVisibility = () => { if (document.visibilityState === "hidden") persistSafeBattleBoundary(); };
     window.addEventListener("pagehide", persistSafeBattleBoundary);
@@ -7025,7 +7068,7 @@ function ThornieDungeons() {
     setActiveTurnKey(acting ? (acting.kind === "hero" ? "player" : acting.id) : null);
     setCombatTurnCount(next.heroTurnCount);
     if (next.selectedTargetId) setTargetUid(next.selectedTargetId);
-    const messages = next.log.slice().reverse().map(entry => battleLogForUi(entry, next)).filter(Boolean).slice(0, 3);
+    const messages = next.log.slice().reverse().map(entry => battleLogForUi(entry, next)).filter(Boolean);
     if (messages.length) setLogState(messages);
     if (persistCheckpoint && !next.result) pushBattleCheckpoint(next);
   }
@@ -7049,7 +7092,7 @@ function ThornieDungeons() {
           save.characterId,
           safeCheckpoint.battleId,
           safeCheckpoint.safeActionSeq,
-          safeCheckpoint
+          battleCheckpointWithoutLog(safeCheckpoint)
         );
         if (!checkpointReceipt?.ok) {
           finishingBattleIdRef.current = null;
@@ -7072,6 +7115,7 @@ function ThornieDungeons() {
         return;
       }
     }
+    setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
     if (next.result === "victory") endCombatWin();
     else if (next.result === "defeat") playerLost();
     else if (next.result === "fled") backToMap();
@@ -7143,6 +7187,8 @@ function ThornieDungeons() {
     const allowResume = options.allowResume !== false;
     combatOutcomeRef.current = null;
     finishingBattleIdRef.current = null;
+    setLogState([]);
+    setFinishedBattleLog([]);
     setSelectedFloor(floorNum);
     const resumeCarry = allowResume && !carryPlayer && resumeRun && Number(resumeRun.floor) === Number(floorNum) ? resumeRun : null;
     const nextPlayer = freshPlayerFromSave(save, carryPlayer || resumeCarry);
@@ -7244,7 +7290,8 @@ function ThornieDungeons() {
     setDropItem(null);
     const displayMonsters = monstersRef.current;
     const boss = displayMonsters.find(m => m.isBoss);
-    setLog(boss ? `A ${boss.name} blocks the way!` : displayMonsters.length > 1 ? `${displayMonsters.length} monsters appear: ${displayMonsters.map(m => m.name).join(", ")}!` : `A wild ${displayMonsters[0].name} appears!`);
+    const encounterLog = boss ? `A ${boss.name} blocks the way!` : displayMonsters.length > 1 ? `${displayMonsters.length} monsters appear: ${displayMonsters.map(m => m.name).join(", ")}!` : `A wild ${displayMonsters[0].name} appears!`;
+    setLogState([encounterLog, ...initialBattle.log.slice().reverse().map(entry => entry.text)]);
     const battleAssets = { equipped: save?.equipped || {}, pet: initialPet, monsters: displayMonsters };
     const criticalAssets = preloadBattleCriticalAssets(battleAssets);
     criticalAssets.ready.finally(() => {
@@ -8293,6 +8340,7 @@ function ThornieDungeons() {
     floor: selectedFloor,
     rewards: lastRewards,
     dropItem: dropItem,
+    battleLog: finishedBattleLog,
     onNext: nextStage,
     onRetry: retryStageAfterWin,
     onMap: backToMap,
@@ -10146,7 +10194,6 @@ function formatMailDate(iso) {
 }
 function MailboxScreen({
   serverUrl,
-  cred,
   characterId,
   onApplyReward,
   onBack
@@ -10154,10 +10201,21 @@ function MailboxScreen({
   const [mails, setMails] = useState(null);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState({});
+  const [mailError, setMailError] = useState("");
+
+  const mailboxErrorText = error => error === "invalid_session" || error === "session_expired" || error === "session_replaced"
+    ? "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่"
+    : "โหลดกล่องจดหมายไม่สำเร็จ กรุณาลองใหม่";
 
   const load = () => {
-    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
-      if (!res || res.error) { setMails([]); return; }
+    setMailError("");
+    setMails(null);
+    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
+      if (!res || res.error) {
+        setMailError(mailboxErrorText(res && res.error));
+        setMails([]);
+        return;
+      }
       setMails(res.mails || []);
       // Drop selections for mail that no longer exists (e.g. after a delete).
       setSelected(prev => {
@@ -10166,6 +10224,9 @@ function MailboxScreen({
         Object.keys(prev).forEach(id => { if (ids.has(id)) next[id] = prev[id]; });
         return next;
       });
+    }).catch(() => {
+      setMailError(mailboxErrorText("network_error"));
+      setMails([]);
     });
   };
   React.useEffect(() => { load(); }, [characterId]);
@@ -10173,23 +10234,25 @@ function MailboxScreen({
   const handleClaim = (mailId) => {
     if (busy) return;
     setBusy(true);
-    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(res => {
+    setMailError("");
+    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
       setBusy(false);
-      if (!res || res.error) return;
+      if (!res || res.error) { setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); return; }
       onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   const handleClaimAll = () => {
     if (busy) return;
     setBusy(true);
-    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    setMailError("");
+    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       setBusy(false);
-      if (!res || res.error) return;
+      if (!res || res.error) { setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); return; }
       if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   const toggleSelect = (mailId) => setSelected(prev => ({ ...prev, [mailId]: !prev[mailId] }));
@@ -10197,31 +10260,37 @@ function MailboxScreen({
   const handleDeleteOne = (mailId) => {
     if (busy) return;
     setBusy(true);
-    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(() => {
+    setMailError("");
+    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
       setBusy(false);
+      if (!res || res.error) { setMailError("ลบจดหมายไม่สำเร็จ กรุณาลองใหม่"); return; }
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("ลบจดหมายไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   const handleDeleteSelected = () => {
     const ids = Object.keys(selected).filter(id => selected[id]);
     if (!ids.length || busy) return;
     setBusy(true);
-    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, ids).then(() => {
+    setMailError("");
+    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids).then(res => {
       setBusy(false);
+      if (!res || res.error) { setMailError("ลบจดหมายที่เลือกไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("ลบจดหมายที่เลือกไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   const handleDeleteAllClaimed = () => {
     if (busy) return;
     setBusy(true);
-    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(() => {
+    setMailError("");
+    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       setBusy(false);
+      if (!res || res.error) { setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   if (!mails) {
@@ -10236,12 +10305,15 @@ function MailboxScreen({
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" } },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "📬 กล่องจดหมาย"),
       unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
+    mailError && /*#__PURE__*/React.createElement("div", { className: "md-card md-mail-error", role: "alert" },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, mailError),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn info small", disabled: busy, onClick: load }, "ลองใหม่")),
     claimedMails.length > 0 && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, selectedCount > 0 ? `เลือกแล้ว ${selectedCount} ฉบับ` : "จดหมายที่รับแล้ว"),
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6 } },
         selectedCount > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteSelected }, "🗑️ ลบที่เลือก"),
         /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteAllClaimed }, "🗑️ ลบที่รับแล้วทั้งหมด"))),
-    mails.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
+    mails.length === 0 && !mailError && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
     mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
       m.claimed && /*#__PURE__*/React.createElement("input", {
         type: "checkbox",
@@ -11239,6 +11311,41 @@ function buildMonsterFormation(monsters) {
   const slots = count === 1 ? [1] : count === 2 ? [0, 2] : [0, 1, 2];
   return ordered.map((monster, index) => ({ monster, slotIndex: slots[Math.min(index, 2)] }));
 }
+function BattleLogPanel({ entries, result = false }) {
+  const [expanded, setExpanded] = useState(false);
+  const lines = (Array.isArray(entries) ? entries : [entries]).filter(Boolean);
+  if (!lines.length) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    className: `md-battle-log-shell ${result ? "result" : ""}`
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "md-log md-log-preview",
+    "aria-expanded": expanded,
+    onClick: () => setExpanded(true)
+  }, lines.slice(0, 3).map((line, i) => /*#__PURE__*/React.createElement("span", {
+    key: `${i}-${line}`,
+    className: `md-log-line ${i === 0 ? "latest" : ""}`
+  }, line)), /*#__PURE__*/React.createElement("span", {
+    className: "md-log-hint"
+  }, "แตะเพื่อดูทั้งหมด")), expanded && /*#__PURE__*/React.createElement("div", {
+    className: "md-battle-log-overlay",
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-label": "Battle log"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "md-battle-log-expanded"
+  }, /*#__PURE__*/React.createElement("header", null, /*#__PURE__*/React.createElement("strong", null, "Battle Log"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "md-battle-log-close",
+    "aria-label": "ปิด Battle Log",
+    onClick: () => setExpanded(false)
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
+    className: "md-battle-log-scroll"
+  }, lines.map((line, i) => /*#__PURE__*/React.createElement("div", {
+    key: `${i}-${line}`,
+    className: `md-log-line ${i === 0 ? "latest" : ""}`
+  }, line))))));
+}
 function CombatScreen({
   player,
   heroName = "Hero",
@@ -11544,17 +11651,15 @@ function CombatScreen({
     }
   }, "👊"))), /*#__PURE__*/React.createElement("div", {
     className: "md-panel"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-log"
-  }, (Array.isArray(log) ? log : [log]).slice(0, 3).map((line, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: `md-log-line ${i === 0 ? "latest" : ""}`
-  }, line)))));
+  }, /*#__PURE__*/React.createElement(BattleLogPanel, {
+    entries: log
+  })));
 }
 function ResultScreen({
   floor,
   rewards,
   dropItem,
+  battleLog,
   onNext,
   onRetry,
   onMap,
@@ -11643,7 +11748,10 @@ function ResultScreen({
     style: {
       margin: 0
     }
-  }, "ไม่ได้วัตถุดิบจากศัตรูตัวนี้"))), showItemBanner && /*#__PURE__*/React.createElement("button", {
+  }, "ไม่ได้วัตถุดิบจากศัตรูตัวนี้"))), /*#__PURE__*/React.createElement(BattleLogPanel, {
+    entries: battleLog,
+    result: true
+  }), showItemBanner && /*#__PURE__*/React.createElement("button", {
     className: "md-btn info wide",
     onClick: onOpenInv
   }, "🎒 Open Equipment"), /*#__PURE__*/React.createElement("div", {
@@ -12144,7 +12252,6 @@ function BlacksmithOverlay({
 // component only ever applies what the server confirms actually happened.
 function CraftingOverlay({
   serverUrl,
-  cred,
   characterId,
   inventory,
   gold,
@@ -12160,7 +12267,7 @@ function CraftingOverlay({
     if (craftingId || busy) return;
     setCraftingId(recipe.recipeId);
     setMsg("");
-    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, recipe.recipeId)
+    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, characterId, recipe.recipeId)
       .then(res => {
         if (!res || res.error) {
           const errMsg = res && res.error === "insufficient_gold" ? /*#__PURE__*/React.createElement(React.Fragment, null, "ทองไม่พอ (ต้องการ ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), res.need, ")")

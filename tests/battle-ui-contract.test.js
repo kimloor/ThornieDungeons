@@ -91,6 +91,18 @@ test("combat viewport, log and BEGIN presentation stay bounded", () => {
   assert.match(components, /"BEGIN!"/);
 });
 
+test("current-battle log expands without persisting readable history to D1", () => {
+  assert.match(components, /function BattleLogPanel/);
+  assert.match(components, /lines\.slice\(0, 3\)/);
+  assert.match(components, /className: "md-battle-log-scroll"/);
+  assert.match(components, /onClick: \(\) => setExpanded\(false\)/);
+  assert.match(app, /setLogState\(\[\]\)/);
+  assert.match(app, /battleLog: finishedBattleLog/);
+  assert.match(app, /function battleCheckpointWithoutLog/);
+  assert.match(app, /return checkpoint \? \{ \.\.\.checkpoint, log: \[\] \}/);
+  assert.match(styles, /\.md-battle-log-scroll[^}]*overflow-y: auto/s);
+});
+
 test("normal background persistence is silent while failures remain visible", () => {
   assert.match(app, /persistenceStatus === "failed" &&/);
   assert.doesNotMatch(app, /persistenceStatus !== "saved" &&/);

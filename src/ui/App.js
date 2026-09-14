@@ -1,3 +1,9 @@
+// Battle logs are session-only UI data. Checkpoints keep the deterministic combat state and
+// log sequence, but never copy the readable log history into D1.
+function battleCheckpointWithoutLog(checkpoint) {
+  return checkpoint ? { ...checkpoint, log: [] } : checkpoint;
+}
+
 function ThornieDungeons() {
   // `account` holds the multi-character save (up to MAX_CHARACTER_SLOTS characters + shared
   // diamonds), built fresh from the server's responses every session. `save` keeps the flat
@@ -67,9 +73,10 @@ function ThornieDungeons() {
   const [turnQueue, setTurnQueue] = useState([]); // [{key, kind, uid?, name, icon, speed}]
   const [activeTurnKey, setActiveTurnKey] = useState(null);
   const [log, setLogState] = useState([]);
-  // Keeps the last 3 combat messages, newest first, so the log panel can show
-  // a short scrolling history instead of overwriting a single line.
-  const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 3));
+  const [finishedBattleLog, setFinishedBattleLog] = useState([]);
+  // Keep the current battle history newest-first. CombatScreen renders only the latest three
+  // until the player opens the full log.
+  const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 120));
   const [busy, setBusy] = useState(false);
   // Combat presentation speed. x1 keeps authored frame timing; x2 shortens the
   // action windows without changing damage, turn order, or cooldown rules.
@@ -288,7 +295,8 @@ function ThornieDungeons() {
   const pushBattleCheckpoint = useCallback((checkpoint) => {
     if (!checkpoint || !save?.characterId || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     const context = persistenceContextFor(save.characterId);
-    const pending = persistenceRef.current.enqueue(context, "battle_checkpoint", checkpoint, (snapshot, owner) =>
+    const checkpointSnapshot = battleCheckpointWithoutLog(checkpoint);
+    const pending = persistenceRef.current.enqueue(context, "battle_checkpoint", checkpointSnapshot, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "battle_checkpoint", snapshot));
     pending.then(saved => {
       if (!saved) return;
@@ -357,7 +365,7 @@ function ThornieDungeons() {
     if (!save?.characterId || !cred.url) return undefined;
     const persistSafeBattleBoundary = () => {
       const checkpoint = battleStateRef.current;
-      if (checkpoint && !checkpoint.result) void cloudSaveBattleCheckpointOnClose(cred.url, save.characterId, checkpoint);
+      if (checkpoint && !checkpoint.result) void cloudSaveBattleCheckpointOnClose(cred.url, save.characterId, battleCheckpointWithoutLog(checkpoint));
     };
     const onVisibility = () => { if (document.visibilityState === "hidden") persistSafeBattleBoundary(); };
     window.addEventListener("pagehide", persistSafeBattleBoundary);
@@ -780,7 +788,7 @@ function ThornieDungeons() {
     setActiveTurnKey(acting ? (acting.kind === "hero" ? "player" : acting.id) : null);
     setCombatTurnCount(next.heroTurnCount);
     if (next.selectedTargetId) setTargetUid(next.selectedTargetId);
-    const messages = next.log.slice(-3).reverse().map(entry => entry.text);
+    const messages = next.log.slice().reverse().map(entry => entry.text);
     if (messages.length) setLogState(messages);
     if (persistCheckpoint && !next.result) pushBattleCheckpoint(next);
   }
@@ -804,7 +812,7 @@ function ThornieDungeons() {
           save.characterId,
           safeCheckpoint.battleId,
           safeCheckpoint.safeActionSeq,
-          safeCheckpoint
+          battleCheckpointWithoutLog(safeCheckpoint)
         );
         if (!checkpointReceipt?.ok) {
           finishingBattleIdRef.current = null;
@@ -827,6 +835,7 @@ function ThornieDungeons() {
         return;
       }
     }
+    setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
     if (next.result === "victory") endCombatWin();
     else if (next.result === "defeat") playerLost();
     else if (next.result === "fled") backToMap();
@@ -898,6 +907,8 @@ function ThornieDungeons() {
     const allowResume = options.allowResume !== false;
     combatOutcomeRef.current = null;
     finishingBattleIdRef.current = null;
+    setLogState([]);
+    setFinishedBattleLog([]);
     setSelectedFloor(floorNum);
     const resumeCarry = allowResume && !carryPlayer && resumeRun && Number(resumeRun.floor) === Number(floorNum) ? resumeRun : null;
     const nextPlayer = freshPlayerFromSave(save, carryPlayer || resumeCarry);
@@ -999,7 +1010,8 @@ function ThornieDungeons() {
     setDropItem(null);
     const displayMonsters = monstersRef.current;
     const boss = displayMonsters.find(m => m.isBoss);
-    setLog(boss ? `A ${boss.name} blocks the way!` : displayMonsters.length > 1 ? `${displayMonsters.length} monsters appear: ${displayMonsters.map(m => m.name).join(", ")}!` : `A wild ${displayMonsters[0].name} appears!`);
+    const encounterLog = boss ? `A ${boss.name} blocks the way!` : displayMonsters.length > 1 ? `${displayMonsters.length} monsters appear: ${displayMonsters.map(m => m.name).join(", ")}!` : `A wild ${displayMonsters[0].name} appears!`;
+    setLogState([encounterLog, ...initialBattle.log.slice().reverse().map(entry => entry.text)]);
     const battleAssets = { equipped: save?.equipped || {}, pet: initialPet, monsters: displayMonsters };
     const criticalAssets = preloadBattleCriticalAssets(battleAssets);
     criticalAssets.ready.finally(() => {
@@ -2047,6 +2059,7 @@ function ThornieDungeons() {
     floor: selectedFloor,
     rewards: lastRewards,
     dropItem: dropItem,
+    battleLog: finishedBattleLog,
     onNext: nextStage,
     onRetry: retryStageAfterWin,
     onMap: backToMap,

@@ -123,6 +123,21 @@ test("Stunned Pet loses Action but its active cooldown still ticks", () => {
   assert.equal(state.units.pet.statuses.stun, undefined);
 });
 
+test("Sparkpup logs its Active before preserving MISS/damage/status results", () => {
+  const state = battle.createBattle({
+    seed: 18,
+    hero: hero({ speed: 50 }),
+    pet: pet({ name: "Sparkpup", petDefId: "sparkpup", speed: 200, active: { name: "Static Bite" } }),
+    enemies: [enemy("m", { speed: 80, hp: 500, maxHp: 500 })]
+  });
+  const next = battle.battleStep(state).state;
+  const activeIndex = next.log.findIndex(entry => entry.type === "pet_active");
+  const resultIndex = next.log.findIndex((entry, index) => index > activeIndex && ["miss", "damage", "status"].includes(entry.type));
+  assert.equal(next.log[activeIndex].text, "Sparkpup uses Static Bite");
+  assert.ok(activeIndex >= 0);
+  assert.ok(resultIndex > activeIndex);
+});
+
 test("Thorned Aegis lethal guard leaves Hero at 1 HP only once", () => {
   let state = battle.createBattle({ seed: 20, hero: hero({ speed: 50, hp: 20, skills: { thorned_aegis: 2 } }), enemies: [enemy("m", { speed: 200, atk: 999 })] });
   state = battle.battleStep(state).state;

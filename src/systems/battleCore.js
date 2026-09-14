@@ -99,7 +99,7 @@
       rules: { allowFlee: options.allowFlee !== false }
     };
     rebuildQueue(state);
-    log(state, "battle_start", `Battle ${state.battleId} started`);
+    log(state, "battle_start", "Battle started");
     return state;
   }
   function createDungeonBattle(options = {}) {
@@ -488,8 +488,10 @@
     if (!target) return;
     const id = actor.petDefId;
     const activeReady = (actor.cooldowns.pet_active || 0) === 0;
+    const activeName = actor.active?.name || "Pet Active";
     const needsHeal = living(hero) && (hpPct(hero) <= 60 || (id === "moon_hare" && hpPct(actor) <= 60));
     if ((id === "sprout" || id === "moon_hare") && activeReady && needsHeal) {
+      log(state, "pet_active", `${actor.name || "Pet"} uses ${activeName}`, { actorId: actor.id, skillName: activeName });
       const amount = actor.maxHp * (id === "sprout" ? 0.12 : 0.10) + (Number(actor.vit) || 0) * (id === "sprout" ? 0.8 : 1);
       if (id === "sprout") hero.statuses.pet_regrowth = { key: "pet_regrowth", duration: 2, heal: Math.round(amount), sourceId: actor.id, stealable: false };
       else { heal(state, hero, amount, actor, "Moonlight Heal"); heal(state, actor, amount, actor, "Moonlight Heal"); }
@@ -510,6 +512,7 @@
     else if (id === "inferno_drake") { spec.mult = .75; targets = state.enemyIds.map(enemyId => state.units[enemyId]).filter(living).slice(0, 3); }
     else if (id === "storm_phoenix") { spec.mult = .70; spec.statuses.push({ key: "silence", chance: 30, duration: 2 }); targets = state.enemyIds.map(enemyId => state.units[enemyId]).filter(living).slice(0, 3); cd = 3; }
     else { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
+    log(state, "pet_active", `${actor.name || "Pet"} uses ${activeName}`, { actorId: actor.id, skillName: activeName });
     targets.forEach(unit => attackHit(state, actor, unit, spec, context));
     if (id === "inferno_drake" && chance(state, 35)) applyStatus(state, actor, hero, "def_up", { chance: 100, duration: 2 }, context);
     actor.cooldowns.pet_active = cd; context.usedSkillId = "pet_active";

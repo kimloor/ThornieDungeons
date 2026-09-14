@@ -1784,7 +1784,6 @@ function formatMailDate(iso) {
 }
 function MailboxScreen({
   serverUrl,
-  cred,
   characterId,
   onApplyReward,
   onBack
@@ -1792,10 +1791,21 @@ function MailboxScreen({
   const [mails, setMails] = useState(null);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState({});
+  const [mailError, setMailError] = useState("");
+
+  const mailboxErrorText = error => error === "invalid_session" || error === "session_expired" || error === "session_replaced"
+    ? "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่"
+    : "โหลดกล่องจดหมายไม่สำเร็จ กรุณาลองใหม่";
 
   const load = () => {
-    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
-      if (!res || res.error) { setMails([]); return; }
+    setMailError("");
+    setMails(null);
+    cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
+      if (!res || res.error) {
+        setMailError(mailboxErrorText(res && res.error));
+        setMails([]);
+        return;
+      }
       setMails(res.mails || []);
       // Drop selections for mail that no longer exists (e.g. after a delete).
       setSelected(prev => {
@@ -1804,6 +1814,9 @@ function MailboxScreen({
         Object.keys(prev).forEach(id => { if (ids.has(id)) next[id] = prev[id]; });
         return next;
       });
+    }).catch(() => {
+      setMailError(mailboxErrorText("network_error"));
+      setMails([]);
     });
   };
   React.useEffect(() => { load(); }, [characterId]);
@@ -1811,23 +1824,25 @@ function MailboxScreen({
   const handleClaim = (mailId) => {
     if (busy) return;
     setBusy(true);
-    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(res => {
+    setMailError("");
+    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
       setBusy(false);
-      if (!res || res.error) return;
+      if (!res || res.error) { setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); return; }
       onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   const handleClaimAll = () => {
     if (busy) return;
     setBusy(true);
-    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    setMailError("");
+    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       setBusy(false);
-      if (!res || res.error) return;
+      if (!res || res.error) { setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); return; }
       if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   const toggleSelect = (mailId) => setSelected(prev => ({ ...prev, [mailId]: !prev[mailId] }));
@@ -1835,31 +1850,37 @@ function MailboxScreen({
   const handleDeleteOne = (mailId) => {
     if (busy) return;
     setBusy(true);
-    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, mailId).then(() => {
+    setMailError("");
+    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
       setBusy(false);
+      if (!res || res.error) { setMailError("ลบจดหมายไม่สำเร็จ กรุณาลองใหม่"); return; }
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("ลบจดหมายไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   const handleDeleteSelected = () => {
     const ids = Object.keys(selected).filter(id => selected[id]);
     if (!ids.length || busy) return;
     setBusy(true);
-    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, ids).then(() => {
+    setMailError("");
+    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids).then(res => {
       setBusy(false);
+      if (!res || res.error) { setMailError("ลบจดหมายที่เลือกไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("ลบจดหมายที่เลือกไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   const handleDeleteAllClaimed = () => {
     if (busy) return;
     setBusy(true);
-    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(() => {
+    setMailError("");
+    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       setBusy(false);
+      if (!res || res.error) { setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
       load();
-    });
+    }).catch(() => { setBusy(false); setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
   if (!mails) {
@@ -1874,12 +1895,15 @@ function MailboxScreen({
     /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" } },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "📬 กล่องจดหมาย"),
       unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
+    mailError && /*#__PURE__*/React.createElement("div", { className: "md-card md-mail-error", role: "alert" },
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, mailError),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn info small", disabled: busy, onClick: load }, "ลองใหม่")),
     claimedMails.length > 0 && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, selectedCount > 0 ? `เลือกแล้ว ${selectedCount} ฉบับ` : "จดหมายที่รับแล้ว"),
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6 } },
         selectedCount > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteSelected }, "🗑️ ลบที่เลือก"),
         /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteAllClaimed }, "🗑️ ลบที่รับแล้วทั้งหมด"))),
-    mails.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
+    mails.length === 0 && !mailError && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
     mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
       m.claimed && /*#__PURE__*/React.createElement("input", {
         type: "checkbox",
@@ -2877,6 +2901,41 @@ function buildMonsterFormation(monsters) {
   const slots = count === 1 ? [1] : count === 2 ? [0, 2] : [0, 1, 2];
   return ordered.map((monster, index) => ({ monster, slotIndex: slots[Math.min(index, 2)] }));
 }
+function BattleLogPanel({ entries, result = false }) {
+  const [expanded, setExpanded] = useState(false);
+  const lines = (Array.isArray(entries) ? entries : [entries]).filter(Boolean);
+  if (!lines.length) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    className: `md-battle-log-shell ${result ? "result" : ""}`
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "md-log md-log-preview",
+    "aria-expanded": expanded,
+    onClick: () => setExpanded(true)
+  }, lines.slice(0, 3).map((line, i) => /*#__PURE__*/React.createElement("span", {
+    key: `${i}-${line}`,
+    className: `md-log-line ${i === 0 ? "latest" : ""}`
+  }, line)), /*#__PURE__*/React.createElement("span", {
+    className: "md-log-hint"
+  }, "แตะเพื่อดูทั้งหมด")), expanded && /*#__PURE__*/React.createElement("div", {
+    className: "md-battle-log-overlay",
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-label": "Battle log"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "md-battle-log-expanded"
+  }, /*#__PURE__*/React.createElement("header", null, /*#__PURE__*/React.createElement("strong", null, "Battle Log"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "md-battle-log-close",
+    "aria-label": "ปิด Battle Log",
+    onClick: () => setExpanded(false)
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
+    className: "md-battle-log-scroll"
+  }, lines.map((line, i) => /*#__PURE__*/React.createElement("div", {
+    key: `${i}-${line}`,
+    className: `md-log-line ${i === 0 ? "latest" : ""}`
+  }, line))))));
+}
 function CombatScreen({
   player,
   heroName = "Hero",
@@ -3182,17 +3241,15 @@ function CombatScreen({
     }
   }, "👊"))), /*#__PURE__*/React.createElement("div", {
     className: "md-panel"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-log"
-  }, (Array.isArray(log) ? log : [log]).slice(0, 3).map((line, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: `md-log-line ${i === 0 ? "latest" : ""}`
-  }, line)))));
+  }, /*#__PURE__*/React.createElement(BattleLogPanel, {
+    entries: log
+  })));
 }
 function ResultScreen({
   floor,
   rewards,
   dropItem,
+  battleLog,
   onNext,
   onRetry,
   onMap,
@@ -3281,7 +3338,10 @@ function ResultScreen({
     style: {
       margin: 0
     }
-  }, "ไม่ได้วัตถุดิบจากศัตรูตัวนี้"))), showItemBanner && /*#__PURE__*/React.createElement("button", {
+  }, "ไม่ได้วัตถุดิบจากศัตรูตัวนี้"))), /*#__PURE__*/React.createElement(BattleLogPanel, {
+    entries: battleLog,
+    result: true
+  }), showItemBanner && /*#__PURE__*/React.createElement("button", {
     className: "md-btn info wide",
     onClick: onOpenInv
   }, "🎒 Open Equipment"), /*#__PURE__*/React.createElement("div", {
@@ -3782,7 +3842,6 @@ function BlacksmithOverlay({
 // component only ever applies what the server confirms actually happened.
 function CraftingOverlay({
   serverUrl,
-  cred,
   characterId,
   inventory,
   gold,
@@ -3798,7 +3857,7 @@ function CraftingOverlay({
     if (craftingId || busy) return;
     setCraftingId(recipe.recipeId);
     setMsg("");
-    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, recipe.recipeId)
+    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, characterId, recipe.recipeId)
       .then(res => {
         if (!res || res.error) {
           const errMsg = res && res.error === "insufficient_gold" ? /*#__PURE__*/React.createElement(React.Fragment, null, "ทองไม่พอ (ต้องการ ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), res.need, ")")
