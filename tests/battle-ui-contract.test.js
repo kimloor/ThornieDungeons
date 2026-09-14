@@ -61,6 +61,7 @@ test("Turn Order remains a clipped single-row four-slot window", () => {
   assert.match(components, /Array\.from\(\{ length: 4 \}/);
   assert.match(styles, /grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(styles, /overflow: hidden; flex-wrap: nowrap; white-space: nowrap/);
+  assert.doesNotMatch(styles, /\.md-turn-queue\s*\{[^}]*flex-wrap: wrap/s);
 });
 
 test("selected target marker and Battle background use manifest art without changing hitboxes", () => {
@@ -78,4 +79,21 @@ test("Battle critical preload includes every released GUI image directly", () =>
     assert.match(manifest, new RegExp(`"${key.replace(".", "\\.")}"`));
   }
   assert.doesNotMatch(build, /battleGuiCompletionPatch/);
+});
+
+test("Flee and Settings retain manifest artwork after legacy button CSS", () => {
+  assert.match(components, /battleUiStyle\("buttons\.flee"\)/);
+  assert.match(components, /battleUiStyle\("buttons\.settings"\)/);
+  assert.match(styles, /\.md-dock-mini\.md-battle-art,[\s\S]*background-image: var\(--battle-ui-image\)/);
+});
+
+test("battle completion confirms the last safe checkpoint before the receipt", () => {
+  const start = app.indexOf("async function finishCoreBattle(next)");
+  const end = app.indexOf("function driveCoreBattle", start);
+  const completion = app.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.ok(completion.indexOf("cloudSaveBattleCheckpoint(") < completion.indexOf("cloudCompleteBattle("));
+  assert.match(completion, /setBattleFinishing\(true\)/);
+  assert.match(completion, /setBusy\(true\)/);
+  assert.match(components, /className: "md-battle-finishing"/);
 });

@@ -957,7 +957,7 @@ const STYLE = `
 /* turn order queue bar — shows action order for the current round, sorted by Speed */
 .md-turn-queue {
   min-height: 30px;
-  display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; overflow: hidden;
   background: rgba(10,6,22,0.5); border: 1px solid rgba(255,209,102,0.22); border-radius: 999px;
   padding: 4px 8px; margin: 0 0 8px; position: relative; z-index: 6;
 }
@@ -1015,19 +1015,19 @@ const STYLE = `
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
    Slot 1 is the explicit formation centre used by solo units and Bosses. The
    upper/lower lanes have a little extra diagonal separation for large sprites. */
-.md-monster-count-1 .md-monster-slot-1 { left: 75%; top: 58%; }
-.md-monster-count-2 .md-monster-slot-0 { left: 82%; top: 65%; }
-.md-monster-count-2 .md-monster-slot-1 { left: 74%; top: 57%; }
-.md-monster-count-2 .md-monster-slot-2 { left: 67%; top: 54%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 84%; top: 67%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 75%; top: 57%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 66%; top: 47%; }
+.md-monster-count-1 .md-monster-slot-1 { left: 75%; top: 55%; }
+.md-monster-count-2 .md-monster-slot-0 { left: 82%; top: 62%; }
+.md-monster-count-2 .md-monster-slot-1 { left: 74%; top: 54%; }
+.md-monster-count-2 .md-monster-slot-2 { left: 69%; top: 51%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 84%; top: 64%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 75%; top: 54%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 70%; top: 44%; }
 .md-monster-slot { transform: translateX(-50%); }
 .md-monster-slot.flying { transform: translate(-50%, -18px); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
 .md-monster-slot-2 { z-index: 1; }
-.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 58%; }
+.md-monster-count-1 .md-monster-slot.elite { left: 75%; top: 55%; }
 
 /* Monster scale is based on measured opaque pixels. HP/status are removed from
    normal flow so the unit's bottom edge is always the artwork's actual ground point. */
@@ -1279,6 +1279,12 @@ const STYLE = `
 .md-dock-mini:disabled { opacity: .4; cursor: not-allowed; }
 .md-battle-dock .md-dock-attack { justify-self: end; transform: none; }
 .md-battle-dock .md-dock-attack:active { transform: translateY(2px); }
+.md-battle-finishing {
+  position: absolute; left: 50%; top: 48%; z-index: 8; transform: translate(-50%, -50%);
+  padding: 5px 11px; border-radius: 999px; background: rgba(3,8,22,.82);
+  color: var(--gold); font: 800 10px/1.2 'Baloo 2'; white-space: nowrap;
+  pointer-events: none; text-shadow: 0 1px 2px #000;
+}
 
 /* Released PNGs own the Battle control/frame presentation. These selectors
    deliberately retain the CSS dimensions, hit areas and interaction states. */
@@ -1286,7 +1292,9 @@ const STYLE = `
 .md-dock-auto.md-battle-art,
 .md-dock-mini.md-battle-art,
 .md-dock-attack.md-battle-art {
-  border: 0; background-color: transparent; box-shadow: none; background-size: contain;
+  border: 0; background-color: transparent; box-shadow: none;
+  background-image: var(--battle-ui-image); background-repeat: no-repeat;
+  background-position: center; background-size: contain;
 }
 .md-dock-auto.md-battle-art,
 .md-dock-mini.md-battle-art,

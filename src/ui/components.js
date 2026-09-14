@@ -2787,6 +2787,7 @@ function CombatScreen({
   turnQueue,
   activeTurnKey,
   battleRound,
+  battleFinishing,
   combatSpeed,
   combatTurnCount,
   onCycleCombatSpeed
@@ -2909,7 +2910,11 @@ function CombatScreen({
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
-  }), /*#__PURE__*/React.createElement("div", {
+  }), battleFinishing && /*#__PURE__*/React.createElement("div", {
+    className: "md-battle-finishing",
+    role: "status",
+    "aria-live": "polite"
+  }, "Confirming result…"), /*#__PURE__*/React.createElement("div", {
     className: "md-party-board"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hero-slot"

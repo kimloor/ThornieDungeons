@@ -50,7 +50,10 @@ function ThornieDungeons() {
   const [resumeBattle, setResumeBattle] = useState(null); // Battle V1 safe Action-boundary checkpoint
   const [battleState, setBattleState] = useState(null);
   const battleStateRef = useRef(null);
+  const lastSafeBattleCheckpointRef = useRef(null);
+  const confirmedBattleCheckpointRef = useRef({ battleId: null, safeActionSeq: -1 });
   const finishingBattleIdRef = useRef(null);
+  const [battleFinishing, setBattleFinishing] = useState(false);
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
   const [selectedFloor, setSelectedFloor] = useState(1);
@@ -285,8 +288,16 @@ function ThornieDungeons() {
   const pushBattleCheckpoint = useCallback((checkpoint) => {
     if (!checkpoint || !save?.characterId || !AUTH_SESSION.getToken()) return Promise.resolve(false);
     const context = persistenceContextFor(save.characterId);
-    return persistenceRef.current.enqueue(context, "battle_checkpoint", checkpoint, (snapshot, owner) =>
+    const pending = persistenceRef.current.enqueue(context, "battle_checkpoint", checkpoint, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "battle_checkpoint", snapshot));
+    pending.then(saved => {
+      if (!saved) return;
+      const confirmed = confirmedBattleCheckpointRef.current;
+      if (confirmed.battleId !== checkpoint.battleId || checkpoint.safeActionSeq > confirmed.safeActionSeq) {
+        confirmedBattleCheckpointRef.current = { battleId: checkpoint.battleId, safeActionSeq: checkpoint.safeActionSeq };
+      }
+    });
+    return pending;
   }, [save?.characterId, persistenceContextFor]);
   const pushQuickSlots = useCallback((slots) => {
     if (!save?.characterId || !AUTH_SESSION.getToken()) return Promise.resolve(false);
@@ -709,6 +720,7 @@ function ThornieDungeons() {
   }
   function applyCoreBattleState(next, persistCheckpoint = true) {
     battleStateRef.current = next;
+    if (!next.result) lastSafeBattleCheckpointRef.current = next;
     setBattleState(next);
     const heroUnit = next.units[next.heroId];
     const nextPlayer = heroUnit && playerRef.current ? {
@@ -750,11 +762,42 @@ function ThornieDungeons() {
   async function finishCoreBattle(next) {
     if (!next?.battleId || finishingBattleIdRef.current === next.battleId) return;
     finishingBattleIdRef.current = next.battleId;
-    setBusy(false);
+    setBattleFinishing(true);
+    setBusy(true);
+    setLog("Confirming battle result…");
     if (save?.characterId) {
+      // Completion requires a previously persisted safe Action boundary. If the
+      // persistence queue has not confirmed it yet, write that idempotent snapshot
+      // directly; cloud request de-duplication piggybacks an identical in-flight write.
+      const safeCheckpoint = lastSafeBattleCheckpointRef.current;
+      const confirmed = confirmedBattleCheckpointRef.current;
+      if (safeCheckpoint?.battleId === next.battleId
+          && safeCheckpoint.safeActionSeq < next.safeActionSeq
+          && (confirmed.battleId !== next.battleId || confirmed.safeActionSeq < safeCheckpoint.safeActionSeq)) {
+        const checkpointReceipt = await cloudSaveBattleCheckpoint(
+          cred.url,
+          save.characterId,
+          safeCheckpoint.battleId,
+          safeCheckpoint.safeActionSeq,
+          safeCheckpoint
+        );
+        if (!checkpointReceipt?.ok) {
+          finishingBattleIdRef.current = null;
+          setBattleFinishing(false);
+          setBusy(false);
+          setLog("Battle checkpoint sync failed — tap Attack to retry safely.");
+          return;
+        }
+        confirmedBattleCheckpointRef.current = {
+          battleId: safeCheckpoint.battleId,
+          safeActionSeq: safeCheckpoint.safeActionSeq
+        };
+      }
       const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, { result: next.result, safeActionSeq: next.safeActionSeq, floor: next.floor });
       if (!receipt?.ok) {
         finishingBattleIdRef.current = null;
+        setBattleFinishing(false);
+        setBusy(false);
         setLog("Battle result sync failed — tap Attack to retry safely.");
         return;
       }
@@ -931,6 +974,8 @@ function ThornieDungeons() {
     else pushBattleCheckpoint(initialBattle);
     setActiveTurnKey(null);
     setCombatTurnCount(0);
+    setBattleFinishing(false);
+    confirmedBattleCheckpointRef.current = { battleId: initialBattle.battleId, safeActionSeq: -1 };
     setDropItem(null);
     const displayMonsters = monstersRef.current;
     const boss = displayMonsters.find(m => m.isBoss);
@@ -1962,6 +2007,7 @@ function ThornieDungeons() {
     turnQueue: turnQueue,
     activeTurnKey: activeTurnKey,
     battleRound: battleState?.round,
+    battleFinishing: battleFinishing,
     combatSpeed: combatSpeed,
     combatTurnCount: combatTurnCount,
     onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
