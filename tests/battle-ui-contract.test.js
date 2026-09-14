@@ -42,7 +42,8 @@ test("Battle rendering preserves manifest resolvers and App has one gameplay res
 
 test("CombatScreen shows the engine round and current queued unit", () => {
   assert.match(components, /find\(item => item\.key === activeTurnKey\)/);
-  assert.match(components, /activeTurn\.kind === "player" \? "You"/);
+  assert.match(components, /activeTurn\.kind === "player" \? heroName/);
+  assert.match(components, /label: heroName/);
   assert.match(app, /battleRound: battleState\?\.round/);
   assert.match(components, /"Round ", Math\.max\(1, Number\(battleRound\) \|\| 1\), " · Turn: ", activeTurnName/);
   assert.doesNotMatch(components, /แตะศัตรูเพื่อเลือกเป้าหมาย/);
@@ -74,11 +75,25 @@ test("Turn Order remains a clipped single-row four-slot window", () => {
 });
 
 test("Battle dock enlarges controls while retaining the compact 380px layout", () => {
-  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) 84px 92px/);
-  assert.match(styles, /grid-template-rows: 36px 36px/);
-  assert.match(styles, /\.md-battle-dock \.md-dock-attack \{ width: 92px; height: 92px/);
-  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) 80px 84px/);
-  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-battle-dock \.md-dock-attack \{ width: 84px; height: 84px/);
+  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) 90px 100px/);
+  assert.match(styles, /grid-template-rows: 42px 42px/);
+  assert.match(styles, /\.md-battle-dock \.md-dock-attack \{ width: 100px; height: 100px/);
+  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) 88px 96px/);
+  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-battle-dock \.md-dock-attack \{ width: 96px; height: 96px/);
+});
+
+test("combat viewport, log and BEGIN presentation stay bounded", () => {
+  assert.match(app, /phase !== "combat"/);
+  assert.match(app, /bodyStyle\.overscrollBehavior = "none"/);
+  assert.match(styles, /\.md-root-combat \{ height:100svh; min-height:100svh; max-height:100svh; overflow:hidden/);
+  assert.match(styles, /\.md-scene\.battle-bg \.md-log \{ height:50px; min-height:50px; max-height:50px; overflow-y:auto/);
+  assert.match(components, /showBattleIntro &&/);
+  assert.match(components, /"BEGIN!"/);
+});
+
+test("normal background persistence is silent while failures remain visible", () => {
+  assert.match(app, /persistenceStatus === "failed" &&/);
+  assert.doesNotMatch(app, /persistenceStatus !== "saved" &&/);
 });
 
 test("selected target marker and Battle background use manifest art without changing hitboxes", () => {

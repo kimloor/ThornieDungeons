@@ -70,7 +70,7 @@ function patchBattlePresentationSource(content) {
   patched = replaceOnce(
     patched,
     "  function applyCoreBattleState(next, persistCheckpoint = true) {\n",
-    `  function battleLogForUi(entry, state) {\n    if (!entry || entry.type === "battle_start" || entry.type === "round") return "";\n    let text = String(entry.text || "");\n    const units = Object.values(state?.units || {}).sort((a, b) => String(b?.id || "").length - String(a?.id || "").length);\n    units.forEach(unit => {\n      const internalId = String(unit?.id || "");\n      if (!internalId) return;\n      const displayName = unit.kind === "hero" ? "You" : String(unit.name || (unit.kind === "pet" ? "Pet" : "Monster"));\n      text = text.split(internalId).join(displayName);\n    });\n    return text;\n  }\n  function applyCoreBattleState(next, persistCheckpoint = true) {\n`,
+    `  function battleLogForUi(entry, state) {\n    if (!entry || entry.type === "battle_start" || entry.type === "round") return "";\n    let text = String(entry.text || "");\n    const units = Object.values(state?.units || {}).sort((a, b) => String(b?.id || "").length - String(a?.id || "").length);\n    units.forEach(unit => {\n      const internalId = String(unit?.id || "");\n      if (!internalId) return;\n      const displayName = unit.kind === "hero" ? String(save?.characterName || "Hero") : String(unit.name || (unit.kind === "pet" ? "Pet" : "Monster"));\n      text = text.split(internalId).join(displayName);\n    });\n    return text;\n  }\n  function applyCoreBattleState(next, persistCheckpoint = true) {\n`,
     "battle log formatter"
   );
 

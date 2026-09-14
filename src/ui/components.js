@@ -1237,7 +1237,6 @@ function LeaderboardScreen({
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
 function RaidScreen({
   serverUrl,
-  cred,
   characterId,
   diamonds,
   onSpendDiamonds,
@@ -1255,12 +1254,12 @@ function RaidScreen({
 
   const load = React.useCallback(() => {
     setError(null);
-    cloudGetRaidStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetRaidStatus(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) { setError("โหลดข้อมูล Raid ไม่สำเร็จ"); return; }
       setStatus(res);
       setSecondsLeft((res.me && res.me.staminaRegenSeconds) || 0);
     }).catch(() => setError("โหลดข้อมูล Raid ไม่สำเร็จ"));
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   React.useEffect(() => { load(); }, [load]);
   // Use a one-second local timer only while regeneration is active. The previous interval
   // called load() every second whenever the value was already 0 (including at full stamina),
@@ -1280,14 +1279,14 @@ function RaidScreen({
   // run off the countdown-timer's periodic load() — contribution only changes from this
   // character's own attacks, so checking there too would just be wasted API calls.
   const checkMilestones = React.useCallback(() => {
-    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudClaimRaidMilestones(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error || !res.claimed || !res.claimed.length) return;
       const pcts = res.claimed.map(k => k.replace("p", "") + "%").join(", ");
       setToast(`🎁 ถึงเกณฑ์ดาเมจสะสม ${pcts} — รางวัลส่งเข้ากล่องจดหมายแล้ว!`);
       setTimeout(() => setToast(null), 3500);
       load();
     });
-  }, [serverUrl, cred.id, cred.password, characterId, load]);
+  }, [serverUrl, characterId, load]);
   React.useEffect(() => { checkMilestones(); }, [checkMilestones]);
 
   const handleHurtComplete = React.useCallback(() => {
@@ -1308,7 +1307,7 @@ function RaidScreen({
     if (attacking || hurtPlaying) return;
     setAttacking(true);
     setLastResult(null);
-    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, useDiamonds).then(res => {
+    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, useDiamonds).then(res => {
       if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
       if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent || status.me.diamondRefillCost || 50);
       setLastResult(res);
@@ -1471,7 +1470,6 @@ function ArenaHpBar({ label, hp, maxHp, mp, maxMp, pet }) {
 
 function ArenaScreen({
   serverUrl,
-  cred,
   characterId,
   diamonds,
   onSpendDiamonds,
@@ -1523,25 +1521,25 @@ function ArenaScreen({
 
   const load = React.useCallback(() => {
     setError(null);
-    cloudGetArenaStatus(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetArenaStatus(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) { setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"); return; }
       setStatus(res);
       setSecondsLeft(res.ticketsRegenSeconds || 0);
       if (res.activeMatchId && !match) {
-        cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, null, false).then(m => {
+        cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, characterId, null, false).then(m => {
           if (m && !m.error) setMatch({ matchId: m.matchId, you: m.you, opponent: m.opponent, opponentName: m.opponentName, skills: m.skills, turn: m.turn, log: [], result: null });
         });
       }
     }).catch(() => setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   const loadOpponents = React.useCallback(() => {
     setRefreshingOpp(true);
-    cloudGetArenaOpponents(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId).then(res => {
+    cloudGetArenaOpponents(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
       if (!res || res.error) return;
       setOpponents(res.opponents || []);
     }).finally(() => setRefreshingOpp(false));
-  }, [serverUrl, cred.id, cred.password, characterId]);
+  }, [serverUrl, characterId]);
   React.useEffect(() => { load(); loadOpponents(); }, [load, loadOpponents]);
   React.useEffect(() => {
     if (match || secondsLeft <= 0) return undefined;
@@ -1566,7 +1564,7 @@ function ArenaScreen({
   const startFight = (opponentCharacterId, useDiamonds) => {
     if (startingId) return;
     setStartingId(opponentCharacterId);
-    cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, opponentCharacterId, useDiamonds).then(res => {
+    cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, characterId, opponentCharacterId, useDiamonds).then(res => {
       if (!res || res.error) { setError(errMsgMap[res && res.error] || "เริ่มการต่อสู้ไม่สำเร็จ"); return; }
       if (res.diamondsSpent && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent);
       setMatch({ matchId: res.matchId, you: res.you, opponent: res.opponent, opponentName: res.opponentName, skills: res.skills, turn: res.turn, log: [], result: null });
@@ -1577,7 +1575,7 @@ function ArenaScreen({
   const submitTurn = (actionType, skillKey) => {
     if (submitting || !match || match.result) return;
     setSubmitting(true);
-    cloudSubmitArenaTurn(serverUrl || DEFAULT_SERVER_URL, cred.id, cred.password, characterId, match.matchId, actionType, skillKey).then(res => {
+    cloudSubmitArenaTurn(serverUrl || DEFAULT_SERVER_URL, characterId, match.matchId, actionType, skillKey).then(res => {
       if (!res || res.error) { setError(errMsgMap[res && res.error] || "ทำเทิร์นไม่สำเร็จ"); return; }
       setMatch(m => m && Object.assign({}, m, {
         you: res.you, opponent: res.opponent, turn: res.turn,
@@ -2703,7 +2701,7 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
 // Four fixed ATB cells occupy the middle four sixths of the combat header. When
 // an action is resolving, the window follows the active unit so upcoming turns
 // remain readable even in a five-unit battle (hero + pet + three monsters).
-function TurnOrderBar({ queue, activeKey, round, monsters, petCombat }) {
+function TurnOrderBar({ queue, activeKey, round, monsters, petCombat, heroName }) {
   const seenKeys = new Set();
   const visible = (Array.isArray(queue) ? queue : []).filter(item => {
     if (item.kind === "monster") {
@@ -2738,7 +2736,7 @@ function TurnOrderBar({ queue, activeKey, round, monsters, petCombat }) {
       key: `${snapshotKey}:${i}:${item.key}`,
       className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} md-battle-art`,
       style: battleUiStyle("turnOrderSlot"),
-      title: `${item.name} · Speed ${item.speed}`
+      title: `${item.kind === "player" ? heroName : item.name} · Speed ${item.speed}`
     }, /*#__PURE__*/React.createElement("span", {
       className: "md-turn-queue-icon"
     }, item.icon), i === 3 && overflow > 0 && /*#__PURE__*/React.createElement("i", {
@@ -2772,6 +2770,7 @@ function buildMonsterFormation(monsters) {
 }
 function CombatScreen({
   player,
+  heroName = "Hero",
   monsters,
   targetUid,
   onSelectTarget,
@@ -2799,6 +2798,7 @@ function CombatScreen({
   const [editSlots, setEditSlots] = useState(false);
   const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [autoRun, setAutoRun] = useState(false);
+  const [showBattleIntro, setShowBattleIntro] = useState(true);
   const skills = heroActiveSkillList(player.skillLevels || {});
   const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
@@ -2811,7 +2811,7 @@ function CombatScreen({
   const skipUnlocked = (combatTurnCount || 0) >= 5;
   const activeTurn = (turnQueue || []).find(item => item.key === activeTurnKey);
   const activeTurnName = activeTurn
-    ? activeTurn.kind === "player" ? "You" : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
+    ? activeTurn.kind === "player" ? heroName : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
     : "—";
   const formationMonsters = buildMonsterFormation(monsters);
   const qs = quickSlots || [null, null, null, null];
@@ -2852,10 +2852,16 @@ function CombatScreen({
     // Auto Run: keep throwing basic attacks on its own while enabled, as long
     // as we're not mid-animation and no picker is open (so a manual pick doesn't
     // get raced by an auto attack).
-    if (!autoRun || busy || assignSlotIndex !== null) return;
+    if (showBattleIntro || !autoRun || busy || assignSlotIndex !== null) return;
     const t = setTimeout(() => onAction("attack"), Math.round(550 / (combatSpeed || 1)));
     return () => clearTimeout(t);
-  }, [autoRun, busy, assignSlotIndex, onAction, combatSpeed]);
+  }, [showBattleIntro, autoRun, busy, assignSlotIndex, onAction, combatSpeed]);
+  useEffect(() => {
+    // Label the existing 800ms intro presentation gate without changing who
+    // Battle Core selects to act first or when its action resolves.
+    const timer = setTimeout(() => setShowBattleIntro(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-scene battle-bg md-battle-background-art",
     style: battleUiStyle("background")
@@ -2879,7 +2885,8 @@ function CombatScreen({
     activeKey: activeTurnKey,
     round: battleRound,
     monsters: monsters,
-    petCombat: petCombat
+    petCombat: petCombat,
+    heroName: heroName
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
   }, /*#__PURE__*/React.createElement("button", {
@@ -2915,7 +2922,11 @@ function CombatScreen({
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
-  }), battleFinishing && /*#__PURE__*/React.createElement("div", {
+  }), showBattleIntro && /*#__PURE__*/React.createElement("div", {
+    className: "md-battle-intro",
+    role: "status",
+    "aria-live": "polite"
+  }, "BEGIN!"), battleFinishing && /*#__PURE__*/React.createElement("div", {
     className: "md-battle-finishing",
     role: "status",
     "aria-live": "polite"
@@ -2938,6 +2949,7 @@ function CombatScreen({
   }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim,
     equipped: equipped,
+    label: heroName,
     combatSpeed: combatSpeed
   }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0 || Object.keys(player.battleStatuses || {}).length || player.battleResources) && /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status hero",

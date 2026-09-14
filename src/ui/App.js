@@ -333,6 +333,27 @@ function ThornieDungeons() {
     };
   }, [save?.characterId, persistenceContextFor]);
   useEffect(() => {
+    if (phase !== "combat") return undefined;
+    const rootStyle = document.documentElement.style;
+    const bodyStyle = document.body.style;
+    const previous = {
+      rootOverflow: rootStyle.overflow,
+      rootOverscroll: rootStyle.overscrollBehavior,
+      bodyOverflow: bodyStyle.overflow,
+      bodyOverscroll: bodyStyle.overscrollBehavior
+    };
+    rootStyle.overflow = "hidden";
+    rootStyle.overscrollBehavior = "none";
+    bodyStyle.overflow = "hidden";
+    bodyStyle.overscrollBehavior = "none";
+    return () => {
+      rootStyle.overflow = previous.rootOverflow;
+      rootStyle.overscrollBehavior = previous.rootOverscroll;
+      bodyStyle.overflow = previous.bodyOverflow;
+      bodyStyle.overscrollBehavior = previous.bodyOverscroll;
+    };
+  }, [phase]);
+  useEffect(() => {
     if (!save?.characterId || !cred.url) return undefined;
     const persistSafeBattleBoundary = () => {
       const checkpoint = battleStateRef.current;
@@ -1807,8 +1828,8 @@ function ThornieDungeons() {
   return /*#__PURE__*/React.createElement("div", {
     className: isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
-      : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), persistenceStatus !== "saved" && /*#__PURE__*/React.createElement("div", {
+      : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${phase === "combat" ? " md-root-combat" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), persistenceStatus === "failed" && /*#__PURE__*/React.createElement("div", {
     className: `md-save-state md-save-state-${persistenceStatus}`,
     role: persistenceStatus === "failed" ? "alert" : "status"
   }, persistenceStatus === "saving" ? "กำลังบันทึก…" : persistenceMessage || "บันทึก Cloud ไม่สำเร็จ — กดบันทึกเพื่อลองใหม่"), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && /*#__PURE__*/React.createElement(StatusBar, {
@@ -1988,6 +2009,7 @@ function ThornieDungeons() {
     onBack: () => setPhase(gachaReturnPhase)
   }), phase === "combat" && monsters.length > 0 && player && /*#__PURE__*/React.createElement(CombatScreen, {
     player: player,
+    heroName: save.characterName || "Hero",
     monsters: monsters,
     targetUid: targetUid,
     onSelectTarget: selectTarget,
