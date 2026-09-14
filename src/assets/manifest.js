@@ -30,6 +30,15 @@ function battleUiStyle(key) {
   return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
 }
 
+function petUiUrl(key) {
+  return optionalAsset(`petUi.${key}`);
+}
+
+function petUiStyle(key) {
+  const src = petUiUrl(key);
+  return src ? { "--pet-ui-image": `url("${src}")` } : undefined;
+}
+
 const IMAGE_PRELOAD_CACHE = new Map();
 function preloadAssetImage(src) {
   if (!src || typeof Image === "undefined") return Promise.resolve();

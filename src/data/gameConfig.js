@@ -36,7 +36,10 @@ function applyGameConfig(cfg) {
     // Pre-V2 remote rows contain the retired 5-star/Thunder Cub balance. Do not
     // let that legacy config silently replace the Battle V1 Pet contract.
     if (Number(cfg.petSystemVersion) >= 2 && Array.isArray(cfg.pets) && cfg.pets.length) {
-      const valid = cfg.pets.filter(p => p && p.id && p.rarity && p.active && p.active.type);
+      const roleById = Object.fromEntries((PET_POOL || []).map(p => [p.id, p.role]));
+      const valid = cfg.pets
+        .filter(p => p && p.id && p.rarity && p.active && p.active.type)
+        .map(p => ({ ...p, role: p.role || roleById[p.id] || "attack" }));
       if (valid.length) PET_POOL = valid;
     }
   } catch (e) {}

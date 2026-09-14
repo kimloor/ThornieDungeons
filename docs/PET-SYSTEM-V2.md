@@ -219,6 +219,12 @@ Approved V2 direction:
 
 This rule intentionally gives Pet attrition meaning without forcing the Hero potion economy onto Pets.
 
+The per-character compact run snapshot stores this carry state as
+`pet_state_json = { activePetId, currentHp, wasDead }`. The identity is mandatory:
+a different newly equipped Pet must never inherit the previous Pet's HP. Old rows
+without this field use the historical full-HP fallback. Rich Battle checkpoints
+remain authoritative during an active battle and are not replaced by this snapshot.
+
 Playtest watch item: verify players cannot exploit deliberate Pet death/revive in a way that is stronger than intended. If that becomes a real issue, adjust the revive rule later rather than adding Pet potions immediately.
 
 ## 8. Cooldown semantics
@@ -419,7 +425,9 @@ Any redesign of Pet target priority beyond the skills explicitly described here 
 
 ## 14. Pet page UI direction
 
-The final graphics pass is deferred, but the approved interaction direction is:
+The Pet UI graphics pack is wired as a presentation layer through the `petUi`
+manifest keys; CSS remains responsible for responsive layout, text and hit areas.
+The approved interaction direction is:
 
 - Portrait/mobile-first web layout.
 - Follow existing ThornieDungeons dark navy/gold fantasy visual language.

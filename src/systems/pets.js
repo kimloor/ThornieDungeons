@@ -6,6 +6,7 @@ const PET_V2_PLAYTEST = Object.freeze({
 });
 let PET_POOL = [{
   id: "sprout",
+  role: "support",
   rarity: "r",
   isStarter: true,
   name: "Sprout",
@@ -22,6 +23,7 @@ let PET_POOL = [{
   }
 }, {
   id: "flamekit",
+  role: "attack",
   rarity: "r",
   name: "Flamekit",
   icon: "🔥",
@@ -35,6 +37,7 @@ let PET_POOL = [{
   }
 }, {
   id: "sparkpup",
+  role: "control",
   rarity: "r",
   name: "Sparkpup",
   icon: "⚡",
@@ -49,6 +52,7 @@ let PET_POOL = [{
   }
 }, {
   id: "ember_fox",
+  role: "attack",
   rarity: "sr",
   name: "Ember Fox",
   icon: "🦊",
@@ -70,6 +74,7 @@ let PET_POOL = [{
   }
 }, {
   id: "moon_hare",
+  role: "support",
   rarity: "sr",
   name: "Moon Hare",
   icon: "🐇",
@@ -91,6 +96,7 @@ let PET_POOL = [{
   }
 }, {
   id: "hell_wolf",
+  role: "control",
   rarity: "sr",
   name: "Hell Wolf",
   icon: "🐺",
@@ -115,6 +121,7 @@ let PET_POOL = [{
   }
 }, {
   id: "inferno_drake",
+  role: "tank",
   rarity: "ssr",
   name: "Inferno Drake",
   icon: "🐲",
@@ -145,6 +152,7 @@ let PET_POOL = [{
   }
 }, {
   id: "storm_phoenix",
+  role: "control",
   rarity: "ssr",
   name: "Storm Phoenix",
   icon: "🦅",
@@ -213,6 +221,69 @@ function grantActivePetBattleXp(pets, activePetId, heroBattleXp) {
     if (level >= 50) xp = 0;
     return { ...instance, level, xp };
   });
+}
+
+// Compact Pet run-state that travels with the existing per-character run snapshot.
+// Battle checkpoints remain authoritative while a battle is in progress; this only
+// carries the active Pet's HP between completed floors and across a reload.
+function petRunStateSnapshot(petCombat, activePetId) {
+  if (!petCombat || !activePetId || petCombat.instId !== activePetId) return null;
+  return {
+    activePetId,
+    currentHp: Math.max(0, Math.round(Number(petCombat.hp) || 0)),
+    wasDead: !(Number(petCombat.hp) > 0)
+  };
+}
+
+function normalizePetRunState(value) {
+  let state = value;
+  if (typeof state === "string") {
+    try { state = JSON.parse(state); } catch (e) { return null; }
+  }
+  if (!state || typeof state !== "object" || !String(state.activePetId || "").trim()) return null;
+  const currentHp = Number(state.currentHp);
+  if (!Number.isFinite(currentHp)) return null;
+  return {
+    activePetId: String(state.activePetId),
+    currentHp: Math.max(0, Math.round(currentHp)),
+    wasDead: state.wasDead === true || currentHp <= 0
+  };
+}
+
+function petCarryHpForFloor(floor, activePetId, runtimePet, savedPetState, continuingRun) {
+  // Boss floors always refill, and entering a fresh/retried run does not inherit HP.
+  if (!activePetId || Number(floor) % 5 === 0 || !continuingRun) return null;
+  const runtime = runtimePet && runtimePet.instId === activePetId
+    ? { activePetId, currentHp: runtimePet.hp, wasDead: !(runtimePet.hp > 0) }
+    : null;
+  const saved = normalizePetRunState(savedPetState);
+  const source = runtime || (saved?.activePetId === activePetId ? saved : null);
+  // A dead Pet revives at full HP on the next floor; null tells the unit builder
+  // to use max HP. It also safely handles older saves with no Pet fields.
+  return source && !source.wasDead && source.currentHp > 0 ? source.currentHp : null;
+}
+
+function petLifetimeXp(instance) {
+  if (!instance) return 0;
+  const level = Math.max(1, Math.min(50, Number(instance.level) || 1));
+  let total = Math.max(0, Number(instance.xp) || 0);
+  for (let lv = 1; lv < level; lv += 1) total += petXpToNext(lv);
+  return total;
+}
+
+function petProgressChange(beforePets, afterPets, activePetId) {
+  const before = (beforePets || []).find(p => p?.instId === activePetId);
+  const after = (afterPets || []).find(p => p?.instId === activePetId);
+  if (!before || !after || (Number(before.level) || 1) >= 50) return null;
+  const xpGained = Math.max(0, petLifetimeXp(after) - petLifetimeXp(before));
+  if (!xpGained) return null;
+  return {
+    instId: activePetId,
+    defId: after.defId,
+    xpGained,
+    startLevel: Math.max(1, Number(before.level) || 1),
+    endLevel: Math.max(1, Number(after.level) || 1)
+  };
 }
 // ---------- Pet V2 star-up (max 3★, spent from duplicate pool) ----------
 const PET_STAR_MULT = [1.00, 1.15, 1.35];

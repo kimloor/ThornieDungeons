@@ -15,3 +15,5 @@ Rules:
 Login/Auth V2 migration v11 is already applied in production and must not be replayed or recreated here.
 
 `0012_battle_persistence_v1.sql` is the first Battle V1 migration in this lane. It copies legacy player-keyed run state into an additive `character_run_state` table with the correct character key, and adds isolated Battle checkpoints, completion receipts, and per-character Quick Slots. Apply it only after duplicate/collision preflight and before deploying the matching Worker.
+
+`0013_pet_run_state_v1.sql` additively extends `character_run_state` with `pet_state_json`. Existing rows default to `{}`, preserving the old full-HP Pet fallback until the client writes its first Pet-aware snapshot. Apply it only after `0012_battle_persistence_v1.sql`; it does not alter legacy `run_state` or Auth v11.

@@ -1022,6 +1022,113 @@ const STYLE = `
 .md-fab.active { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-glow), 0 4px 10px rgba(0,0,0,0.4); }
 .md-fab-icon { line-height: 1; }
 
+/* Pet V2 page: PNGs provide the ornamental presentation while CSS owns all
+   layout, labels, progress values and tap targets. */
+.md-pet-page { min-width: 0; overflow-x: hidden; }
+.md-pet-ui-art {
+  background-image: var(--pet-ui-image, none);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+}
+.md-pet-layout { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; min-width: 0; }
+.md-pet-roster {
+  display: flex; flex-direction: column; gap: 6px; max-height: 570px; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin; padding-right: 2px;
+}
+.md-pet-roster-item {
+  width: 100%; min-height: 70px; border: 1px solid rgba(255,209,102,.22); border-radius: 10px;
+  background: rgba(8,11,28,.72); color: var(--ink); padding: 6px 4px; cursor: pointer;
+  display: grid; grid-template-columns: 28px minmax(0,1fr); align-items: center; gap: 4px;
+  position: relative; text-align: left; font: inherit;
+}
+.md-pet-roster-item.selected { border-color: var(--gold); background: rgba(255,209,102,.1); }
+.md-pet-roster-item.active { box-shadow: inset 0 0 0 1px rgba(76,175,125,.5); }
+.md-pet-roster-icon { font-size: 24px; text-align: center; }
+.md-pet-roster-copy { min-width: 0; display: flex; flex-direction: column; }
+.md-pet-roster-copy strong { font: 800 10px/1.2 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-pet-roster-copy small { color: var(--ink-soft); font-size: 8.5px; line-height: 1.25; }
+.md-pet-active-dot { position: absolute; right: 4px; top: 3px; color: var(--leaf); font-size: 8px; }
+.md-pet-detail { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.md-pet-profile {
+  width: 100%; min-height: 0; aspect-ratio: 2 / 3; position: relative; overflow: hidden; padding: 24px 24px 22px;
+  display: flex; flex-direction: column; align-items: center; isolation: isolate;
+}
+.md-pet-showcase {
+  width: 100%; height: 142px; position: relative; display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.md-pet-star-aura {
+  position: absolute; z-index: -1; width: 84%; max-width: 200px; height: auto; left: 50%; top: 52%;
+  transform: translate(-50%, -50%); pointer-events: none; user-select: none;
+}
+.md-pet-profile-sprite { position: relative; z-index: 1; max-width: 90%; }
+.md-pet-profile-fallback { position: relative; z-index: 1; font-size: 76px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
+.md-pet-name-row {
+  width: 92%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  margin-top: 0; color: #fff4cf;
+}
+.md-pet-name-row > div:first-child { display: flex; flex-direction: column; min-width: 0; }
+.md-pet-name-row strong { font: 800 16px/1.05 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-pet-name-row span { color: var(--ink-soft); font-size: 9px; }
+.md-pet-role { flex: 0 0 auto; display: flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 800; }
+.md-pet-role-icon { width: 28px; height: 28px; background-size: contain; }
+.md-pet-stars { height: 24px; display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 3px; }
+.md-pet-star { width: 20px; height: 20px; background-size: contain; opacity: .2; filter: grayscale(1); }
+.md-pet-star.earned { opacity: 1; filter: none; }
+.md-pet-exp-copy { width: 86%; display: flex; justify-content: space-between; font-size: 9px; margin-top: 1px; color: var(--ink-soft); }
+.md-pet-exp-copy strong { color: #a8fff2; }
+.md-pet-exp-bar {
+  width: 88%; aspect-ratio: 3 / 1; position: relative; overflow: visible; margin-top: -18px;
+  background-image: var(--pet-ui-image, none); background-size: 100% 100%; background-repeat: no-repeat;
+}
+.md-pet-exp-fill { position: absolute; left: 4%; top: 25%; height: 50%; max-width: 92%; background-size: 100% 100%; }
+.md-pet-exp-frame { position: absolute; inset: 0; pointer-events: none; }
+.md-pet-primary-stats {
+  width: 94%; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 4px; margin-top: 9px;
+}
+.md-pet-primary-stats div { min-width: 0; text-align: center; display: flex; flex-direction: column; }
+.md-pet-primary-stats small { color: var(--ink-soft); font-size: 8px; }
+.md-pet-primary-stats strong { color: #fff4cf; font: 800 12px/1.2 'Baloo 2'; }
+.md-pet-detail-tabs { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.md-pet-detail-tabs button {
+  min-height: 34px; border: 1px solid rgba(255,209,102,.25); border-radius: 8px; background: rgba(8,11,28,.72);
+  color: var(--ink-soft); font: 800 10px 'Nunito'; cursor: pointer;
+}
+.md-pet-detail-tabs button.active { color: var(--gold); border-color: var(--gold); background: rgba(255,209,102,.1); }
+.md-pet-tab-content { min-height: 84px; }
+.md-pet-secondary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+.md-pet-secondary-stats div {
+  display: flex; justify-content: space-between; gap: 6px; padding: 7px 8px; border-radius: 8px;
+  background: rgba(255,255,255,.045); font-size: 10px;
+}
+.md-pet-secondary-stats span { color: var(--ink-soft); }
+.md-pet-skill-list { display: flex; flex-direction: column; gap: 6px; }
+.md-pet-skill-panel { min-height: 70px; aspect-ratio: 3 / 1; position: relative; padding: 24px 12px 8px; background-size: 100% 100%; }
+.md-pet-skill-title {
+  position: absolute; left: 5px; top: 2px; width: 88px; height: 24px; display: flex; align-items: center;
+  justify-content: center; aspect-ratio: 5 / 2; color: #fff4cf; font: 800 9px 'Baloo 2';
+}
+.md-pet-skill-copy { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 6px; font-size: 9px; }
+.md-pet-skill-copy > span { color: var(--gold); font-weight: 800; }
+.md-pet-skill-copy p { grid-column: 1/-1; margin: 0; color: var(--ink-soft); line-height: 1.35; }
+.md-pet-growth { display: flex; flex-direction: column; gap: 6px; color: var(--ink-soft); font-size: 10px; }
+.md-pet-message { color: var(--gold); font-size: 10px; font-weight: 800; text-align: center; }
+.md-pet-message.error { color: #ff6b7b; }
+.md-pet-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; }
+.md-pet-actions > :only-child { grid-column: 1/-1; }
+.md-pet-result-exp { background: rgba(92,224,202,.14); color: #c9fff6; }
+
+@media (max-width: 380px) {
+  .md-pet-layout { grid-template-columns: 78px minmax(0, 1fr); gap: 5px; }
+  .md-pet-roster-item { grid-template-columns: 24px minmax(0,1fr); min-height: 64px; padding: 4px 3px; }
+  .md-pet-roster-icon { font-size: 20px; }
+  .md-pet-profile { padding: 22px 20px 18px; }
+  .md-pet-showcase { height: 130px; }
+  .md-pet-name-row strong { font-size: 14px; }
+  .md-pet-role-icon { width: 24px; height: 24px; }
+}
+
 /* pet status readout in combat */
 .md-pet-chip {
   display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; color: var(--ink);
@@ -1886,6 +1993,15 @@ function optionalAsset(key) {
 function battleUiStyle(key) {
   const src = optionalAsset(`battleUi.${key}`);
   return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
+}
+
+function petUiUrl(key) {
+  return optionalAsset(`petUi.${key}`);
+}
+
+function petUiStyle(key) {
+  const src = petUiUrl(key);
+  return src ? { "--pet-ui-image": `url("${src}")` } : undefined;
 }
 
 const IMAGE_PRELOAD_CACHE = new Map();
@@ -3353,7 +3469,10 @@ function applyGameConfig(cfg) {
     // Pre-V2 remote rows contain the retired 5-star/Thunder Cub balance. Do not
     // let that legacy config silently replace the Battle V1 Pet contract.
     if (Number(cfg.petSystemVersion) >= 2 && Array.isArray(cfg.pets) && cfg.pets.length) {
-      const valid = cfg.pets.filter(p => p && p.id && p.rarity && p.active && p.active.type);
+      const roleById = Object.fromEntries((PET_POOL || []).map(p => [p.id, p.role]));
+      const valid = cfg.pets
+        .filter(p => p && p.id && p.rarity && p.active && p.active.type)
+        .map(p => ({ ...p, role: p.role || roleById[p.id] || "attack" }));
       if (valid.length) PET_POOL = valid;
     }
   } catch (e) {}
@@ -3851,6 +3970,7 @@ const PET_V2_PLAYTEST = Object.freeze({
 });
 let PET_POOL = [{
   id: "sprout",
+  role: "support",
   rarity: "r",
   isStarter: true,
   name: "Sprout",
@@ -3867,6 +3987,7 @@ let PET_POOL = [{
   }
 }, {
   id: "flamekit",
+  role: "attack",
   rarity: "r",
   name: "Flamekit",
   icon: "🔥",
@@ -3880,6 +4001,7 @@ let PET_POOL = [{
   }
 }, {
   id: "sparkpup",
+  role: "control",
   rarity: "r",
   name: "Sparkpup",
   icon: "⚡",
@@ -3894,6 +4016,7 @@ let PET_POOL = [{
   }
 }, {
   id: "ember_fox",
+  role: "attack",
   rarity: "sr",
   name: "Ember Fox",
   icon: "🦊",
@@ -3915,6 +4038,7 @@ let PET_POOL = [{
   }
 }, {
   id: "moon_hare",
+  role: "support",
   rarity: "sr",
   name: "Moon Hare",
   icon: "🐇",
@@ -3936,6 +4060,7 @@ let PET_POOL = [{
   }
 }, {
   id: "hell_wolf",
+  role: "control",
   rarity: "sr",
   name: "Hell Wolf",
   icon: "🐺",
@@ -3960,6 +4085,7 @@ let PET_POOL = [{
   }
 }, {
   id: "inferno_drake",
+  role: "tank",
   rarity: "ssr",
   name: "Inferno Drake",
   icon: "🐲",
@@ -3990,6 +4116,7 @@ let PET_POOL = [{
   }
 }, {
   id: "storm_phoenix",
+  role: "control",
   rarity: "ssr",
   name: "Storm Phoenix",
   icon: "🦅",
@@ -4058,6 +4185,69 @@ function grantActivePetBattleXp(pets, activePetId, heroBattleXp) {
     if (level >= 50) xp = 0;
     return { ...instance, level, xp };
   });
+}
+
+// Compact Pet run-state that travels with the existing per-character run snapshot.
+// Battle checkpoints remain authoritative while a battle is in progress; this only
+// carries the active Pet's HP between completed floors and across a reload.
+function petRunStateSnapshot(petCombat, activePetId) {
+  if (!petCombat || !activePetId || petCombat.instId !== activePetId) return null;
+  return {
+    activePetId,
+    currentHp: Math.max(0, Math.round(Number(petCombat.hp) || 0)),
+    wasDead: !(Number(petCombat.hp) > 0)
+  };
+}
+
+function normalizePetRunState(value) {
+  let state = value;
+  if (typeof state === "string") {
+    try { state = JSON.parse(state); } catch (e) { return null; }
+  }
+  if (!state || typeof state !== "object" || !String(state.activePetId || "").trim()) return null;
+  const currentHp = Number(state.currentHp);
+  if (!Number.isFinite(currentHp)) return null;
+  return {
+    activePetId: String(state.activePetId),
+    currentHp: Math.max(0, Math.round(currentHp)),
+    wasDead: state.wasDead === true || currentHp <= 0
+  };
+}
+
+function petCarryHpForFloor(floor, activePetId, runtimePet, savedPetState, continuingRun) {
+  // Boss floors always refill, and entering a fresh/retried run does not inherit HP.
+  if (!activePetId || Number(floor) % 5 === 0 || !continuingRun) return null;
+  const runtime = runtimePet && runtimePet.instId === activePetId
+    ? { activePetId, currentHp: runtimePet.hp, wasDead: !(runtimePet.hp > 0) }
+    : null;
+  const saved = normalizePetRunState(savedPetState);
+  const source = runtime || (saved?.activePetId === activePetId ? saved : null);
+  // A dead Pet revives at full HP on the next floor; null tells the unit builder
+  // to use max HP. It also safely handles older saves with no Pet fields.
+  return source && !source.wasDead && source.currentHp > 0 ? source.currentHp : null;
+}
+
+function petLifetimeXp(instance) {
+  if (!instance) return 0;
+  const level = Math.max(1, Math.min(50, Number(instance.level) || 1));
+  let total = Math.max(0, Number(instance.xp) || 0);
+  for (let lv = 1; lv < level; lv += 1) total += petXpToNext(lv);
+  return total;
+}
+
+function petProgressChange(beforePets, afterPets, activePetId) {
+  const before = (beforePets || []).find(p => p?.instId === activePetId);
+  const after = (afterPets || []).find(p => p?.instId === activePetId);
+  if (!before || !after || (Number(before.level) || 1) >= 50) return null;
+  const xpGained = Math.max(0, petLifetimeXp(after) - petLifetimeXp(before));
+  if (!xpGained) return null;
+  return {
+    instId: activePetId,
+    defId: after.defId,
+    xpGained,
+    startLevel: Math.max(1, Number(before.level) || 1),
+    endLevel: Math.max(1, Number(after.level) || 1)
+  };
 }
 // ---------- Pet V2 star-up (max 3★, spent from duplicate pool) ----------
 const PET_STAR_MULT = [1.00, 1.15, 1.35];
@@ -6674,12 +6864,16 @@ function ThornieDungeons() {
       savedRun = {
         floor: Number(rs.floor) || 1,
         hp: Number(rs.hp),
-        mp: Number(rs.mp)
+        mp: Number(rs.mp),
+        petState: normalizePetRunState(rs.pet_state_json || rs.petState)
       };
     } else {
       try {
         savedRun = safeJsonParse(window.localStorage?.getItem(runKey), null);
       } catch (e) {}
+    }
+    if (savedRun && !savedRun.petState) {
+      savedRun.petState = normalizePetRunState(savedRun.pet_state_json);
     }
     if (savedRun && Number.isFinite(savedRun.hp) && Number.isFinite(savedRun.mp)) {
       setResumeRun(savedRun);
@@ -6949,17 +7143,6 @@ function ThornieDungeons() {
     // later in the session (e.g. on Retry Stage for a floor number that
     // happens to coincide with it).
     if (resumeRun) setResumeRun(null);
-    pushRunState({
-      floor: Number(floorNum) || 1,
-      level: nextPlayer.level,
-      xp: nextPlayer.xp,
-      hp: nextPlayer.hp,
-      mp: nextPlayer.mp,
-      base_atk: nextPlayer.baseAtk,
-      base_def: nextPlayer.baseDef,
-      base_max_hp: nextPlayer.baseMaxHp,
-      base_max_mp: nextPlayer.baseMaxMp
-    });
     // Dungeon Select pre-rolls a real encounter so its modifier, monster sprites and
     // reward preview are the same ones the player actually fights. All other entry
     // paths (retry/next/resume) keep generating encounters exactly as before.
@@ -6969,11 +7152,17 @@ function ThornieDungeons() {
     setMonsters(spawned);
     monstersRef.current = spawned;
     setTargetUid(spawned[0] ? spawned[0].uid : null);
-    const priorPetHp = petCombatRef.current && petCombatRef.current.instId === save.activePetId ? petCombatRef.current.hp : null;
-    const carryPetHp = Number(floorNum) % 5 === 0 || !carryPlayer || !(priorPetHp > 0) ? null : priorPetHp;
+    const carryPetHp = petCarryHpForFloor(
+      floorNum,
+      save.activePetId,
+      petCombatRef.current,
+      resumeCarry?.petState,
+      !!(carryPlayer || resumeCarry)
+    );
     const initialPet = buildPetCombatUnit(carryPetHp);
     setPetCombat(initialPet);
     petCombatRef.current = initialPet;
+    pushRunState(buildRunStateSnapshot(floorNum, nextPlayer, initialPet));
     const baseStats = getStats(nextPlayer, equipped);
     const petDefId = initialPet?.defId;
     const toughness = heroSkillRankData(save.character.skillLevels, "toughness");
@@ -7078,8 +7267,9 @@ function ThornieDungeons() {
     };
   }
   const runStateSaveTimer = useRef(null);
-  function buildRunStateSnapshot(floor, p) {
+  function buildRunStateSnapshot(floor, p, currentPet = petCombatRef.current) {
     if (!p) return null;
+    const petState = petRunStateSnapshot(currentPet, save?.activePetId);
     return {
       floor: Number(floor) || 1,
       level: Number(p.level) || 1,
@@ -7089,7 +7279,8 @@ function ThornieDungeons() {
       base_atk: Number(p.baseAtk) || 0,
       base_def: Number(p.baseDef) || 0,
       base_max_hp: Number(p.baseMaxHp) || 0,
-      base_max_mp: Number(p.baseMaxMp) || 0
+      base_max_mp: Number(p.baseMaxMp) || 0,
+      pet_state_json: JSON.stringify(petState || {})
     };
   }
   function saveCombatRunState(floor, p) {
@@ -7105,7 +7296,7 @@ function ThornieDungeons() {
     return () => {
       if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     };
-  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, save, pushRunState]);
+  }, [player?.hp, player?.mp, petCombat?.hp, petCombat?.instId, selectedFloor, cred.url, cred.id, save, pushRunState]);
 
   function endCombatWin() {
     if (combatOutcomeRef.current) return;
@@ -7194,6 +7385,7 @@ function ThornieDungeons() {
     // The equipped Pet participated even if it died, so it receives 80% of the
     // total Hero battle EXP before any new starter Pet is awarded.
     let newPets = grantActivePetBattleXp(save.pets, save.activePetId, xpGained);
+    const petProgress = petProgressChange(save.pets, newPets, save.activePetId);
     let newActivePetId = save.activePetId;
     let newPet = null;
     const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
@@ -7241,7 +7433,11 @@ function ThornieDungeons() {
       junkDrop,
       modifier,
       isEliteBoss: !!(bossMonster && bossMonster.isEliteBoss),
-      diamonds: diamondsGained
+      diamonds: diamondsGained,
+      petProgress: petProgress ? {
+        ...petProgress,
+        name: getPetDef(petProgress.defId)?.name || petCombatRef.current?.name || "Pet"
+      } : null
     });
     setLog(newPet ? `Victory! You received a companion: ${newPet.name}!` : newSkill ? `Victory! Level up! New skill: ${newSkill.name}!` : leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
     setPhase("result");
@@ -7703,12 +7899,16 @@ function ThornieDungeons() {
     assignQuickSlot(index, null);
   }
   function equipPet(instId) {
+    petCombatRef.current = null;
+    setPetCombat(null);
     persistSave({
       ...save,
       activePetId: instId
     });
   }
   function unequipPet() {
+    petCombatRef.current = null;
+    setPetCombat(null);
     persistSave({
       ...save,
       activePetId: null
@@ -10444,12 +10644,29 @@ function PetScreen({
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
+  const [selectedPetId, setSelectedPetId] = React.useState(save.activePetId || save.pets?.[0]?.instId || null);
+  const [detailTab, setDetailTab] = React.useState("info");
   const rarityRank = { r: 0, sr: 1, ssr: 2 };
   const owned = [...(save.pets || [])].sort((a, b) => {
     const da = getPetDef(a.defId);
     const db = getPetDef(b.defId);
     return (rarityRank[db?.rarity] ?? 0) - (rarityRank[da?.rarity] ?? 0);
   });
+  React.useEffect(() => {
+    if (!owned.some(p => p.instId === selectedPetId)) setSelectedPetId(save.activePetId || owned[0]?.instId || null);
+  }, [save.activePetId, save.pets, selectedPetId]);
+  const selected = owned.find(p => p.instId === selectedPetId) || owned[0] || null;
+  const selectedDef = selected ? getPetDef(selected.defId) : null;
+  const selectedStats = selected ? petCombatStats(selected) : null;
+  const selectedLevel = selected ? Math.max(1, Math.min(50, Number(selected.level) || 1)) : 1;
+  const selectedXp = selected ? Math.max(0, Number(selected.xp) || 0) : 0;
+  const selectedXpNeed = selectedLevel < 50 ? petXpToNext(selectedLevel) : 0;
+  const selectedXpPct = selectedLevel < 50 && selectedXpNeed > 0 ? Math.min(100, selectedXp / selectedXpNeed * 100) : 100;
+  const selectedStar = selected ? Math.max(1, Math.min(3, Number(selected.star) || 1)) : 1;
+  const selectedRole = selectedDef?.role || "attack";
+  const roleLabel = { attack: "Attack", support: "Support", tank: "Tank", control: "Control" }[selectedRole] || "Attack";
+  const spriteConfig = selectedDef ? getPetSpriteConfig(selectedDef.id) : null;
+  const auraUrl = selectedStar === 3 ? petUiUrl("starAuras.threeStar") : selectedStar === 2 ? petUiUrl("starAuras.twoStar") : "";
   function handleStarUp(inst) {
     const res = onStarUp(inst.instId);
     if (res && res.ok) {
@@ -10466,8 +10683,20 @@ function PetScreen({
       [inst.instId]: { text: `ตัวซ้ำไม่พอ ขาดอีก ${missing} ตัว (มี ${res.have}/${res.need})`, short: true }
     }));
   }
+  function skillPanel(kind, skill) {
+    if (!skill) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "md-pet-skill-panel md-pet-ui-art",
+      style: petUiStyle("skillInfoPanel")
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "md-pet-skill-title md-pet-ui-art",
+      style: petUiStyle("skillTitlePlate")
+    }, kind), /*#__PURE__*/React.createElement("div", {
+      className: "md-pet-skill-copy"
+    }, /*#__PURE__*/React.createElement("strong", null, skill.icon, " ", skill.name), skill.cooldown ? /*#__PURE__*/React.createElement("span", null, "CD ", skill.cooldown) : null, /*#__PURE__*/React.createElement("p", null, skill.desc)));
+  }
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-panel",
+    className: "md-panel md-pet-page",
     style: {
       flex: 1
     }
@@ -10481,7 +10710,7 @@ function PetScreen({
     style: {
       margin: 0
     }
-  }, "🐾 Pets ", /*#__PURE__*/React.createElement("span", {
+  }, "Pets ", /*#__PURE__*/React.createElement("span", {
     className: "md-shop-lv"
   }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), save.diamonds || 0))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
@@ -10499,64 +10728,115 @@ function PetScreen({
     style: {
       margin: 0
     }
-  }, "ยังไม่มีสัตว์เลี้ยง — เอาชนะบอสด่าน 5 เพื่อรับสัตว์เลี้ยงตัวแรก!"), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list"
+  }, "ยังไม่มีสัตว์เลี้ยง — เอาชนะบอสด่าน 5 เพื่อรับสัตว์เลี้ยงตัวแรก!"), owned.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-layout"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-roster",
+    "aria-label": "Owned pets"
   }, owned.map(inst => {
     const def = getPetDef(inst.defId);
     if (!def) return null;
     const isActive = save.activePetId === inst.instId;
     const star = inst.star || 1;
-    const dupHave = petDuplicateCount(save.petDuplicates, inst.defId);
-    const cost = petStarUpCost(star);
     const petLevel = Math.max(1, Math.min(50, Number(inst.level) || 1));
-    const petXp = Math.max(0, Number(inst.xp) || 0);
-    const petXpNeed = petLevel < 50 ? petXpToNext(petLevel) : 0;
-    const msg = starUpMsg[inst.instId];
-    return /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement("button", {
       key: inst.instId,
-      className: `md-inv-item ${def.rarity === "ssr" ? "epic" : def.rarity === "sr" ? "rare" : ""}`
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-name"
-    }, def.icon, " ", def.name, " ", /*#__PURE__*/React.createElement("span", {
-      className: "md-shop-lv"
-    }, PET_RARITY_LABEL[def.rarity]), isActive ? " ⭐" : ""), /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, "★".repeat(star), "☆".repeat(3 - star), " ", cost !== null ? `· ตัวซ้ำ ${dupHave}/${cost}` : "· ★3 สูงสุด"), /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, `Lv.${petLevel}`, petLevel < 50 ? ` · EXP ${petXp}/${petXpNeed}` : " · MAX"), /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, def.active.icon, " ", def.active.name, " — ", def.active.desc), def.passive && /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, def.passive.icon, " ", def.passive.name, " — ", def.passive.desc), def.extra && /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, def.extra.icon, " ", def.extra.name, " — ", def.extra.desc), msg && /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat",
-      style: msg.short ? { color: "#ff5566", fontWeight: 700 } : { color: "var(--gold)" }
-    }, msg.text)), /*#__PURE__*/React.createElement("div", {
-      style: { display: "flex", flexDirection: "column", gap: 4, alignItems: "stretch" }
-    }, isActive ? /*#__PURE__*/React.createElement("button", {
-      className: "md-buy-btn",
-      style: {
-        background: "var(--panel-soft)",
-        color: "var(--ink)",
-        boxShadow: "none",
-        border: "1px solid var(--gold-deep)"
-      },
-      onClick: onUnequip
-    }, "Unequip") : /*#__PURE__*/React.createElement("button", {
-      className: "md-buy-btn",
-      onClick: () => onEquip(inst.instId)
-    }, "Equip"), cost !== null && /*#__PURE__*/React.createElement("button", {
-      className: "md-buy-btn",
-      style: dupHave < cost ? {
-        background: "var(--panel-soft)",
-        color: "#ff5566",
-        boxShadow: "none",
-        border: "1px solid #ff5566"
-      } : undefined,
-      onClick: () => handleStarUp(inst)
-    }, `⭐ อัพดาว (${cost})`)));
-  }))), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: `md-pet-roster-item ${selected?.instId === inst.instId ? "selected" : ""} ${isActive ? "active" : ""}`,
+      onClick: () => setSelectedPetId(inst.instId)
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-roster-icon"
+    }, def.icon), /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-roster-copy"
+    }, /*#__PURE__*/React.createElement("strong", null, def.name), /*#__PURE__*/React.createElement("small", null, PET_RARITY_LABEL[def.rarity], " · Lv.", petLevel, " · ", "★".repeat(star)), /*#__PURE__*/React.createElement("small", null, "Dup ", petDuplicateCount(save.petDuplicates, inst.defId))), isActive && /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-active-dot",
+      title: "Active Pet"
+    }, "●"));
+  })), selected && selectedDef && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-detail"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "md-pet-profile md-pet-ui-art",
+    style: petUiStyle("mainFrame")
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-showcase"
+  }, auraUrl && /*#__PURE__*/React.createElement("img", {
+    className: "md-pet-star-aura",
+    src: auraUrl,
+    alt: "",
+    "aria-hidden": "true",
+    draggable: false
+  }), spriteConfig ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+    config: spriteConfig,
+    className: "md-pet-profile-sprite",
+    alt: selectedDef.name,
+    idleFrameMs: 260,
+    cropTransparent: true,
+    visualHeight: 112,
+    maxVisualWidth: 150
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-profile-fallback",
+    role: "img",
+    "aria-label": selectedDef.name
+  }, selectedDef.icon)), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-name-row"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, selectedDef.name), /*#__PURE__*/React.createElement("span", null, PET_RARITY_LABEL[selectedDef.rarity], " · Lv.", selectedLevel)), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-role"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-pet-role-icon md-pet-ui-art",
+    style: petUiStyle(`roles.${selectedRole}`),
+    "aria-hidden": "true"
+  }), roleLabel)), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-stars",
+    "aria-label": `${selectedStar} of 3 stars`
+  }, [1, 2, 3].map(index => /*#__PURE__*/React.createElement("span", {
+    key: index,
+    className: `md-pet-star md-pet-ui-art ${index <= selectedStar ? "earned" : ""}`,
+    style: petUiStyle("starIcon")
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-exp-copy"
+  }, /*#__PURE__*/React.createElement("span", null, "EXP"), /*#__PURE__*/React.createElement("strong", null, selectedLevel < 50 ? `${selectedXp} / ${selectedXpNeed}` : "MAX")), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-exp-bar",
+    style: petUiStyle("expBar.background")
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-exp-fill md-pet-ui-art",
+    style: { ...petUiStyle("expBar.fill"), width: `${selectedXpPct}%` }
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-pet-exp-frame md-pet-ui-art",
+    style: petUiStyle("expBar.frame"),
+    "aria-hidden": "true"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-primary-stats"
+  }, [["HP", selectedStats.maxHp], ["ATK", selectedStats.atk], ["DEF", selectedStats.def], ["SPD", selectedStats.speed]].map(([label, value]) => /*#__PURE__*/React.createElement("div", {
+    key: label
+  }, /*#__PURE__*/React.createElement("small", null, label), /*#__PURE__*/React.createElement("strong", null, value))))), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-detail-tabs"
+  }, ["info", "skills", "growth"].map(tab => /*#__PURE__*/React.createElement("button", {
+    key: tab,
+    type: "button",
+    className: detailTab === tab ? "active" : "",
+    onClick: () => setDetailTab(tab)
+  }, tab === "info" ? "Info" : tab === "skills" ? "Skills" : "Growth"))), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-tab-content"
+  }, detailTab === "info" && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-secondary-stats"
+  }, [["Accuracy", `${selectedStats.hitRate}%`], ["Dodge", `${selectedStats.evasion}%`], ["Crit", `${selectedStats.critChance}%`], ["Drop", `+${selectedStats.dropBonus}%`]].map(([label, value]) => /*#__PURE__*/React.createElement("div", { key: label }, /*#__PURE__*/React.createElement("span", null, label), /*#__PURE__*/React.createElement("strong", null, value)))), detailTab === "skills" && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-skill-list"
+  }, skillPanel("ACTIVE", selectedDef.active), skillPanel("PASSIVE", selectedDef.passive), skillPanel("EXTRA", selectedDef.extra)), detailTab === "growth" && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-growth"
+  }, /*#__PURE__*/React.createElement("div", null, "STR ", selectedStats.rawStats.str.toFixed(1), " · VIT ", selectedStats.rawStats.vit.toFixed(1), " · AGI ", selectedStats.rawStats.agi.toFixed(1)), /*#__PURE__*/React.createElement("div", null, "DEX ", selectedStats.rawStats.dex.toFixed(1), " · LUK ", selectedStats.rawStats.luk.toFixed(1)), /*#__PURE__*/React.createElement("div", null, petStarUpCost(selectedStar) === null ? "★3 สูงสุด" : `ตัวซ้ำ ${petDuplicateCount(save.petDuplicates, selected.defId)}/${petStarUpCost(selectedStar)}`))), starUpMsg[selected.instId] && /*#__PURE__*/React.createElement("div", {
+    className: `md-pet-message ${starUpMsg[selected.instId].short ? "error" : ""}`
+  }, starUpMsg[selected.instId].text), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-actions"
+  }, save.activePetId === selected.instId ? /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: onUnequip
+  }, "Unequip") : /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: () => onEquip(selected.instId)
+  }, "Equip"), petStarUpCost(selectedStar) !== null && /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: () => handleStarUp(selected)
+  }, `อัพดาว (${petStarUpCost(selectedStar)})`))))), /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     style: {
       marginBottom: 8
@@ -11290,7 +11570,9 @@ function ResultScreen({
     style: {
       background: "rgba(255,209,102,0.22)"
     }
-  }, "👑🔥 Elite Boss Defeated! Chest guarantees Elite/Mythic gear + bonus 💎"), rewards.modifier && /*#__PURE__*/React.createElement("div", {
+  }, "👑🔥 Elite Boss Defeated! Chest guarantees Elite/Mythic gear + bonus 💎"), rewards.petProgress?.xpGained > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "md-drop-banner md-pet-result-exp"
+  }, /*#__PURE__*/React.createElement("strong", null, "Pet EXP +", rewards.petProgress.xpGained), rewards.petProgress.endLevel > rewards.petProgress.startLevel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), rewards.petProgress.name, " Lv.", rewards.petProgress.startLevel, " → Lv.", rewards.petProgress.endLevel)), rewards.modifier && /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
     style: {
       background: `${rewards.modifier.color}22`

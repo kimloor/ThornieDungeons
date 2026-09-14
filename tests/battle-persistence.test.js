@@ -37,6 +37,7 @@ function database() {
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
   db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0012_battle_persistence_v1.sql"), "utf8"));
+  db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0013_pet_run_state_v1.sql"), "utf8"));
   return db;
 }
 
@@ -59,9 +60,10 @@ test("saveRunState, Battle checkpoint, quick slots and completion are character-
   const createdB = await post(api, db, tokenA, { action: "createCharacter", slotIndex: 1, name: "B" });
   const charA = createdA.body.character.character_id, charB = createdB.body.character.character_id;
 
-  assert.equal((await post(api, db, tokenA, { action: "saveRunState", characterId: charA, runState: { floor: 4, hp: 33, mp: 8 } })).body.ok, true);
+  assert.equal((await post(api, db, tokenA, { action: "saveRunState", characterId: charA, runState: { floor: 4, hp: 33, mp: 8, pet_state_json: JSON.stringify({ activePetId: "pet-a", currentHp: 17, wasDead: false }) } })).body.ok, true);
   const entered = await post(api, db, tokenA, { action: "enterCharacter", slotIndex: 0 });
   assert.equal(entered.body.runState.floor, 4);
+  assert.deepEqual(JSON.parse(entered.body.runState.pet_state_json), { activePetId: "pet-a", currentHp: 17, wasDead: false });
 
   const checkpoint = { version: 1, battleId: "battle-a", floor: 4, safeActionSeq: 1, units: { hero: { hp: 33 } } };
   assert.equal((await post(api, db, tokenA, { action: "saveBattleCheckpoint", characterId: charA, battleId: "battle-a", checkpointSeq: 1, payload: checkpoint })).body.accepted, true);

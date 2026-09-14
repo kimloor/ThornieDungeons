@@ -8,6 +8,10 @@ const migrationSql = fs.readFileSync(
   path.join(__dirname, "../migrations/auto/0012_battle_persistence_v1.sql"),
   "utf8"
 );
+const petMigrationSql = fs.readFileSync(
+  path.join(__dirname, "../migrations/auto/0013_pet_run_state_v1.sql"),
+  "utf8"
+);
 
 function legacyDatabase() {
   const db = new DatabaseSync(":memory:");
@@ -119,4 +123,23 @@ test("V12 refuses ambiguous duplicate character checkpoints", () => {
   `);
 
   assert.throws(() => db.exec(migrationSql), /UNIQUE constraint failed/);
+});
+
+test("Pet V2 migration additively defaults old rows and stores per-character Pet state", () => {
+  const db = legacyDatabase();
+  db.exec(`
+    INSERT INTO players (id, active_slot) VALUES ('player-a', 0);
+    INSERT INTO characters (character_id, player_id, slot_index) VALUES ('char-a0', 'player-a', 0);
+    INSERT INTO run_state (player_id, floor, hp, updated_at, character_id)
+      VALUES ('player-a', 3, 25, 'old', 'char-a0');
+  `);
+  db.exec(migrationSql);
+  db.exec(petMigrationSql);
+  assert.equal(db.prepare("SELECT pet_state_json FROM character_run_state WHERE character_id = 'char-a0'").get().pet_state_json, "{}");
+  db.prepare("UPDATE character_run_state SET pet_state_json = ? WHERE character_id = ?")
+    .run(JSON.stringify({ activePetId: "pet-a", currentHp: 12, wasDead: false }), "char-a0");
+  assert.deepEqual(
+    JSON.parse(db.prepare("SELECT pet_state_json FROM character_run_state WHERE character_id = 'char-a0'").get().pet_state_json),
+    { activePetId: "pet-a", currentHp: 12, wasDead: false }
+  );
 });

@@ -644,12 +644,16 @@ function ThornieDungeons() {
       savedRun = {
         floor: Number(rs.floor) || 1,
         hp: Number(rs.hp),
-        mp: Number(rs.mp)
+        mp: Number(rs.mp),
+        petState: normalizePetRunState(rs.pet_state_json || rs.petState)
       };
     } else {
       try {
         savedRun = safeJsonParse(window.localStorage?.getItem(runKey), null);
       } catch (e) {}
+    }
+    if (savedRun && !savedRun.petState) {
+      savedRun.petState = normalizePetRunState(savedRun.pet_state_json);
     }
     if (savedRun && Number.isFinite(savedRun.hp) && Number.isFinite(savedRun.mp)) {
       setResumeRun(savedRun);
@@ -907,17 +911,6 @@ function ThornieDungeons() {
     // later in the session (e.g. on Retry Stage for a floor number that
     // happens to coincide with it).
     if (resumeRun) setResumeRun(null);
-    pushRunState({
-      floor: Number(floorNum) || 1,
-      level: nextPlayer.level,
-      xp: nextPlayer.xp,
-      hp: nextPlayer.hp,
-      mp: nextPlayer.mp,
-      base_atk: nextPlayer.baseAtk,
-      base_def: nextPlayer.baseDef,
-      base_max_hp: nextPlayer.baseMaxHp,
-      base_max_mp: nextPlayer.baseMaxMp
-    });
     // Dungeon Select pre-rolls a real encounter so its modifier, monster sprites and
     // reward preview are the same ones the player actually fights. All other entry
     // paths (retry/next/resume) keep generating encounters exactly as before.
@@ -927,11 +920,17 @@ function ThornieDungeons() {
     setMonsters(spawned);
     monstersRef.current = spawned;
     setTargetUid(spawned[0] ? spawned[0].uid : null);
-    const priorPetHp = petCombatRef.current && petCombatRef.current.instId === save.activePetId ? petCombatRef.current.hp : null;
-    const carryPetHp = Number(floorNum) % 5 === 0 || !carryPlayer || !(priorPetHp > 0) ? null : priorPetHp;
+    const carryPetHp = petCarryHpForFloor(
+      floorNum,
+      save.activePetId,
+      petCombatRef.current,
+      resumeCarry?.petState,
+      !!(carryPlayer || resumeCarry)
+    );
     const initialPet = buildPetCombatUnit(carryPetHp);
     setPetCombat(initialPet);
     petCombatRef.current = initialPet;
+    pushRunState(buildRunStateSnapshot(floorNum, nextPlayer, initialPet));
     const baseStats = getStats(nextPlayer, equipped);
     const petDefId = initialPet?.defId;
     const toughness = heroSkillRankData(save.character.skillLevels, "toughness");
@@ -1035,8 +1034,9 @@ function ThornieDungeons() {
     };
   }
   const runStateSaveTimer = useRef(null);
-  function buildRunStateSnapshot(floor, p) {
+  function buildRunStateSnapshot(floor, p, currentPet = petCombatRef.current) {
     if (!p) return null;
+    const petState = petRunStateSnapshot(currentPet, save?.activePetId);
     return {
       floor: Number(floor) || 1,
       level: Number(p.level) || 1,
@@ -1046,7 +1046,8 @@ function ThornieDungeons() {
       base_atk: Number(p.baseAtk) || 0,
       base_def: Number(p.baseDef) || 0,
       base_max_hp: Number(p.baseMaxHp) || 0,
-      base_max_mp: Number(p.baseMaxMp) || 0
+      base_max_mp: Number(p.baseMaxMp) || 0,
+      pet_state_json: JSON.stringify(petState || {})
     };
   }
   function saveCombatRunState(floor, p) {
@@ -1062,7 +1063,7 @@ function ThornieDungeons() {
     return () => {
       if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     };
-  }, [player?.hp, player?.mp, selectedFloor, cred.url, cred.id, save, pushRunState]);
+  }, [player?.hp, player?.mp, petCombat?.hp, petCombat?.instId, selectedFloor, cred.url, cred.id, save, pushRunState]);
 
   function endCombatWin() {
     if (combatOutcomeRef.current) return;
@@ -1151,6 +1152,7 @@ function ThornieDungeons() {
     // The equipped Pet participated even if it died, so it receives 80% of the
     // total Hero battle EXP before any new starter Pet is awarded.
     let newPets = grantActivePetBattleXp(save.pets, save.activePetId, xpGained);
+    const petProgress = petProgressChange(save.pets, newPets, save.activePetId);
     let newActivePetId = save.activePetId;
     let newPet = null;
     const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
@@ -1198,7 +1200,11 @@ function ThornieDungeons() {
       junkDrop,
       modifier,
       isEliteBoss: !!(bossMonster && bossMonster.isEliteBoss),
-      diamonds: diamondsGained
+      diamonds: diamondsGained,
+      petProgress: petProgress ? {
+        ...petProgress,
+        name: getPetDef(petProgress.defId)?.name || petCombatRef.current?.name || "Pet"
+      } : null
     });
     setLog(newPet ? `Victory! You received a companion: ${newPet.name}!` : newSkill ? `Victory! Level up! New skill: ${newSkill.name}!` : leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
     setPhase("result");
@@ -1660,12 +1666,16 @@ function ThornieDungeons() {
     assignQuickSlot(index, null);
   }
   function equipPet(instId) {
+    petCombatRef.current = null;
+    setPetCombat(null);
     persistSave({
       ...save,
       activePetId: instId
     });
   }
   function unequipPet() {
+    petCombatRef.current = null;
+    setPetCombat(null);
     persistSave({
       ...save,
       activePetId: null

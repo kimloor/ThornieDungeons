@@ -2295,12 +2295,29 @@ function PetScreen({
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
+  const [selectedPetId, setSelectedPetId] = React.useState(save.activePetId || save.pets?.[0]?.instId || null);
+  const [detailTab, setDetailTab] = React.useState("info");
   const rarityRank = { r: 0, sr: 1, ssr: 2 };
   const owned = [...(save.pets || [])].sort((a, b) => {
     const da = getPetDef(a.defId);
     const db = getPetDef(b.defId);
     return (rarityRank[db?.rarity] ?? 0) - (rarityRank[da?.rarity] ?? 0);
   });
+  React.useEffect(() => {
+    if (!owned.some(p => p.instId === selectedPetId)) setSelectedPetId(save.activePetId || owned[0]?.instId || null);
+  }, [save.activePetId, save.pets, selectedPetId]);
+  const selected = owned.find(p => p.instId === selectedPetId) || owned[0] || null;
+  const selectedDef = selected ? getPetDef(selected.defId) : null;
+  const selectedStats = selected ? petCombatStats(selected) : null;
+  const selectedLevel = selected ? Math.max(1, Math.min(50, Number(selected.level) || 1)) : 1;
+  const selectedXp = selected ? Math.max(0, Number(selected.xp) || 0) : 0;
+  const selectedXpNeed = selectedLevel < 50 ? petXpToNext(selectedLevel) : 0;
+  const selectedXpPct = selectedLevel < 50 && selectedXpNeed > 0 ? Math.min(100, selectedXp / selectedXpNeed * 100) : 100;
+  const selectedStar = selected ? Math.max(1, Math.min(3, Number(selected.star) || 1)) : 1;
+  const selectedRole = selectedDef?.role || "attack";
+  const roleLabel = { attack: "Attack", support: "Support", tank: "Tank", control: "Control" }[selectedRole] || "Attack";
+  const spriteConfig = selectedDef ? getPetSpriteConfig(selectedDef.id) : null;
+  const auraUrl = selectedStar === 3 ? petUiUrl("starAuras.threeStar") : selectedStar === 2 ? petUiUrl("starAuras.twoStar") : "";
   function handleStarUp(inst) {
     const res = onStarUp(inst.instId);
     if (res && res.ok) {
@@ -2317,8 +2334,20 @@ function PetScreen({
       [inst.instId]: { text: `ตัวซ้ำไม่พอ ขาดอีก ${missing} ตัว (มี ${res.have}/${res.need})`, short: true }
     }));
   }
+  function skillPanel(kind, skill) {
+    if (!skill) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "md-pet-skill-panel md-pet-ui-art",
+      style: petUiStyle("skillInfoPanel")
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "md-pet-skill-title md-pet-ui-art",
+      style: petUiStyle("skillTitlePlate")
+    }, kind), /*#__PURE__*/React.createElement("div", {
+      className: "md-pet-skill-copy"
+    }, /*#__PURE__*/React.createElement("strong", null, skill.icon, " ", skill.name), skill.cooldown ? /*#__PURE__*/React.createElement("span", null, "CD ", skill.cooldown) : null, /*#__PURE__*/React.createElement("p", null, skill.desc)));
+  }
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-panel",
+    className: "md-panel md-pet-page",
     style: {
       flex: 1
     }
@@ -2332,7 +2361,7 @@ function PetScreen({
     style: {
       margin: 0
     }
-  }, "🐾 Pets ", /*#__PURE__*/React.createElement("span", {
+  }, "Pets ", /*#__PURE__*/React.createElement("span", {
     className: "md-shop-lv"
   }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), save.diamonds || 0))), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
@@ -2350,64 +2379,115 @@ function PetScreen({
     style: {
       margin: 0
     }
-  }, "ยังไม่มีสัตว์เลี้ยง — เอาชนะบอสด่าน 5 เพื่อรับสัตว์เลี้ยงตัวแรก!"), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-list"
+  }, "ยังไม่มีสัตว์เลี้ยง — เอาชนะบอสด่าน 5 เพื่อรับสัตว์เลี้ยงตัวแรก!"), owned.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-layout"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-roster",
+    "aria-label": "Owned pets"
   }, owned.map(inst => {
     const def = getPetDef(inst.defId);
     if (!def) return null;
     const isActive = save.activePetId === inst.instId;
     const star = inst.star || 1;
-    const dupHave = petDuplicateCount(save.petDuplicates, inst.defId);
-    const cost = petStarUpCost(star);
     const petLevel = Math.max(1, Math.min(50, Number(inst.level) || 1));
-    const petXp = Math.max(0, Number(inst.xp) || 0);
-    const petXpNeed = petLevel < 50 ? petXpToNext(petLevel) : 0;
-    const msg = starUpMsg[inst.instId];
-    return /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement("button", {
       key: inst.instId,
-      className: `md-inv-item ${def.rarity === "ssr" ? "epic" : def.rarity === "sr" ? "rare" : ""}`
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-name"
-    }, def.icon, " ", def.name, " ", /*#__PURE__*/React.createElement("span", {
-      className: "md-shop-lv"
-    }, PET_RARITY_LABEL[def.rarity]), isActive ? " ⭐" : ""), /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, "★".repeat(star), "☆".repeat(3 - star), " ", cost !== null ? `· ตัวซ้ำ ${dupHave}/${cost}` : "· ★3 สูงสุด"), /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, `Lv.${petLevel}`, petLevel < 50 ? ` · EXP ${petXp}/${petXpNeed}` : " · MAX"), /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, def.active.icon, " ", def.active.name, " — ", def.active.desc), def.passive && /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, def.passive.icon, " ", def.passive.name, " — ", def.passive.desc), def.extra && /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat"
-    }, def.extra.icon, " ", def.extra.name, " — ", def.extra.desc), msg && /*#__PURE__*/React.createElement("div", {
-      className: "md-inv-stat",
-      style: msg.short ? { color: "#ff5566", fontWeight: 700 } : { color: "var(--gold)" }
-    }, msg.text)), /*#__PURE__*/React.createElement("div", {
-      style: { display: "flex", flexDirection: "column", gap: 4, alignItems: "stretch" }
-    }, isActive ? /*#__PURE__*/React.createElement("button", {
-      className: "md-buy-btn",
-      style: {
-        background: "var(--panel-soft)",
-        color: "var(--ink)",
-        boxShadow: "none",
-        border: "1px solid var(--gold-deep)"
-      },
-      onClick: onUnequip
-    }, "Unequip") : /*#__PURE__*/React.createElement("button", {
-      className: "md-buy-btn",
-      onClick: () => onEquip(inst.instId)
-    }, "Equip"), cost !== null && /*#__PURE__*/React.createElement("button", {
-      className: "md-buy-btn",
-      style: dupHave < cost ? {
-        background: "var(--panel-soft)",
-        color: "#ff5566",
-        boxShadow: "none",
-        border: "1px solid #ff5566"
-      } : undefined,
-      onClick: () => handleStarUp(inst)
-    }, `⭐ อัพดาว (${cost})`)));
-  }))), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: `md-pet-roster-item ${selected?.instId === inst.instId ? "selected" : ""} ${isActive ? "active" : ""}`,
+      onClick: () => setSelectedPetId(inst.instId)
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-roster-icon"
+    }, def.icon), /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-roster-copy"
+    }, /*#__PURE__*/React.createElement("strong", null, def.name), /*#__PURE__*/React.createElement("small", null, PET_RARITY_LABEL[def.rarity], " · Lv.", petLevel, " · ", "★".repeat(star)), /*#__PURE__*/React.createElement("small", null, "Dup ", petDuplicateCount(save.petDuplicates, inst.defId))), isActive && /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-active-dot",
+      title: "Active Pet"
+    }, "●"));
+  })), selected && selectedDef && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-detail"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "md-pet-profile md-pet-ui-art",
+    style: petUiStyle("mainFrame")
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-showcase"
+  }, auraUrl && /*#__PURE__*/React.createElement("img", {
+    className: "md-pet-star-aura",
+    src: auraUrl,
+    alt: "",
+    "aria-hidden": "true",
+    draggable: false
+  }), spriteConfig ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
+    config: spriteConfig,
+    className: "md-pet-profile-sprite",
+    alt: selectedDef.name,
+    idleFrameMs: 260,
+    cropTransparent: true,
+    visualHeight: 112,
+    maxVisualWidth: 150
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-profile-fallback",
+    role: "img",
+    "aria-label": selectedDef.name
+  }, selectedDef.icon)), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-name-row"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, selectedDef.name), /*#__PURE__*/React.createElement("span", null, PET_RARITY_LABEL[selectedDef.rarity], " · Lv.", selectedLevel)), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-role"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "md-pet-role-icon md-pet-ui-art",
+    style: petUiStyle(`roles.${selectedRole}`),
+    "aria-hidden": "true"
+  }), roleLabel)), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-stars",
+    "aria-label": `${selectedStar} of 3 stars`
+  }, [1, 2, 3].map(index => /*#__PURE__*/React.createElement("span", {
+    key: index,
+    className: `md-pet-star md-pet-ui-art ${index <= selectedStar ? "earned" : ""}`,
+    style: petUiStyle("starIcon")
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-exp-copy"
+  }, /*#__PURE__*/React.createElement("span", null, "EXP"), /*#__PURE__*/React.createElement("strong", null, selectedLevel < 50 ? `${selectedXp} / ${selectedXpNeed}` : "MAX")), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-exp-bar",
+    style: petUiStyle("expBar.background")
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-exp-fill md-pet-ui-art",
+    style: { ...petUiStyle("expBar.fill"), width: `${selectedXpPct}%` }
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "md-pet-exp-frame md-pet-ui-art",
+    style: petUiStyle("expBar.frame"),
+    "aria-hidden": "true"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-primary-stats"
+  }, [["HP", selectedStats.maxHp], ["ATK", selectedStats.atk], ["DEF", selectedStats.def], ["SPD", selectedStats.speed]].map(([label, value]) => /*#__PURE__*/React.createElement("div", {
+    key: label
+  }, /*#__PURE__*/React.createElement("small", null, label), /*#__PURE__*/React.createElement("strong", null, value))))), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-detail-tabs"
+  }, ["info", "skills", "growth"].map(tab => /*#__PURE__*/React.createElement("button", {
+    key: tab,
+    type: "button",
+    className: detailTab === tab ? "active" : "",
+    onClick: () => setDetailTab(tab)
+  }, tab === "info" ? "Info" : tab === "skills" ? "Skills" : "Growth"))), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-tab-content"
+  }, detailTab === "info" && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-secondary-stats"
+  }, [["Accuracy", `${selectedStats.hitRate}%`], ["Dodge", `${selectedStats.evasion}%`], ["Crit", `${selectedStats.critChance}%`], ["Drop", `+${selectedStats.dropBonus}%`]].map(([label, value]) => /*#__PURE__*/React.createElement("div", { key: label }, /*#__PURE__*/React.createElement("span", null, label), /*#__PURE__*/React.createElement("strong", null, value)))), detailTab === "skills" && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-skill-list"
+  }, skillPanel("ACTIVE", selectedDef.active), skillPanel("PASSIVE", selectedDef.passive), skillPanel("EXTRA", selectedDef.extra)), detailTab === "growth" && /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-growth"
+  }, /*#__PURE__*/React.createElement("div", null, "STR ", selectedStats.rawStats.str.toFixed(1), " · VIT ", selectedStats.rawStats.vit.toFixed(1), " · AGI ", selectedStats.rawStats.agi.toFixed(1)), /*#__PURE__*/React.createElement("div", null, "DEX ", selectedStats.rawStats.dex.toFixed(1), " · LUK ", selectedStats.rawStats.luk.toFixed(1)), /*#__PURE__*/React.createElement("div", null, petStarUpCost(selectedStar) === null ? "★3 สูงสุด" : `ตัวซ้ำ ${petDuplicateCount(save.petDuplicates, selected.defId)}/${petStarUpCost(selectedStar)}`))), starUpMsg[selected.instId] && /*#__PURE__*/React.createElement("div", {
+    className: `md-pet-message ${starUpMsg[selected.instId].short ? "error" : ""}`
+  }, starUpMsg[selected.instId].text), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-actions"
+  }, save.activePetId === selected.instId ? /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: onUnequip
+  }, "Unequip") : /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: () => onEquip(selected.instId)
+  }, "Equip"), petStarUpCost(selectedStar) !== null && /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn",
+    onClick: () => handleStarUp(selected)
+  }, `อัพดาว (${petStarUpCost(selectedStar)})`))))), /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     style: {
       marginBottom: 8
@@ -3141,7 +3221,9 @@ function ResultScreen({
     style: {
       background: "rgba(255,209,102,0.22)"
     }
-  }, "👑🔥 Elite Boss Defeated! Chest guarantees Elite/Mythic gear + bonus 💎"), rewards.modifier && /*#__PURE__*/React.createElement("div", {
+  }, "👑🔥 Elite Boss Defeated! Chest guarantees Elite/Mythic gear + bonus 💎"), rewards.petProgress?.xpGained > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "md-drop-banner md-pet-result-exp"
+  }, /*#__PURE__*/React.createElement("strong", null, "Pet EXP +", rewards.petProgress.xpGained), rewards.petProgress.endLevel > rewards.petProgress.startLevel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), rewards.petProgress.name, " Lv.", rewards.petProgress.startLevel, " → Lv.", rewards.petProgress.endLevel)), rewards.modifier && /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
     style: {
       background: `${rewards.modifier.color}22`

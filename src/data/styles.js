@@ -945,6 +945,113 @@ const STYLE = `
 .md-fab.active { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-glow), 0 4px 10px rgba(0,0,0,0.4); }
 .md-fab-icon { line-height: 1; }
 
+/* Pet V2 page: PNGs provide the ornamental presentation while CSS owns all
+   layout, labels, progress values and tap targets. */
+.md-pet-page { min-width: 0; overflow-x: hidden; }
+.md-pet-ui-art {
+  background-image: var(--pet-ui-image, none);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+}
+.md-pet-layout { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; min-width: 0; }
+.md-pet-roster {
+  display: flex; flex-direction: column; gap: 6px; max-height: 570px; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin; padding-right: 2px;
+}
+.md-pet-roster-item {
+  width: 100%; min-height: 70px; border: 1px solid rgba(255,209,102,.22); border-radius: 10px;
+  background: rgba(8,11,28,.72); color: var(--ink); padding: 6px 4px; cursor: pointer;
+  display: grid; grid-template-columns: 28px minmax(0,1fr); align-items: center; gap: 4px;
+  position: relative; text-align: left; font: inherit;
+}
+.md-pet-roster-item.selected { border-color: var(--gold); background: rgba(255,209,102,.1); }
+.md-pet-roster-item.active { box-shadow: inset 0 0 0 1px rgba(76,175,125,.5); }
+.md-pet-roster-icon { font-size: 24px; text-align: center; }
+.md-pet-roster-copy { min-width: 0; display: flex; flex-direction: column; }
+.md-pet-roster-copy strong { font: 800 10px/1.2 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-pet-roster-copy small { color: var(--ink-soft); font-size: 8.5px; line-height: 1.25; }
+.md-pet-active-dot { position: absolute; right: 4px; top: 3px; color: var(--leaf); font-size: 8px; }
+.md-pet-detail { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.md-pet-profile {
+  width: 100%; min-height: 0; aspect-ratio: 2 / 3; position: relative; overflow: hidden; padding: 24px 24px 22px;
+  display: flex; flex-direction: column; align-items: center; isolation: isolate;
+}
+.md-pet-showcase {
+  width: 100%; height: 142px; position: relative; display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.md-pet-star-aura {
+  position: absolute; z-index: -1; width: 84%; max-width: 200px; height: auto; left: 50%; top: 52%;
+  transform: translate(-50%, -50%); pointer-events: none; user-select: none;
+}
+.md-pet-profile-sprite { position: relative; z-index: 1; max-width: 90%; }
+.md-pet-profile-fallback { position: relative; z-index: 1; font-size: 76px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
+.md-pet-name-row {
+  width: 92%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  margin-top: 0; color: #fff4cf;
+}
+.md-pet-name-row > div:first-child { display: flex; flex-direction: column; min-width: 0; }
+.md-pet-name-row strong { font: 800 16px/1.05 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-pet-name-row span { color: var(--ink-soft); font-size: 9px; }
+.md-pet-role { flex: 0 0 auto; display: flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 800; }
+.md-pet-role-icon { width: 28px; height: 28px; background-size: contain; }
+.md-pet-stars { height: 24px; display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 3px; }
+.md-pet-star { width: 20px; height: 20px; background-size: contain; opacity: .2; filter: grayscale(1); }
+.md-pet-star.earned { opacity: 1; filter: none; }
+.md-pet-exp-copy { width: 86%; display: flex; justify-content: space-between; font-size: 9px; margin-top: 1px; color: var(--ink-soft); }
+.md-pet-exp-copy strong { color: #a8fff2; }
+.md-pet-exp-bar {
+  width: 88%; aspect-ratio: 3 / 1; position: relative; overflow: visible; margin-top: -18px;
+  background-image: var(--pet-ui-image, none); background-size: 100% 100%; background-repeat: no-repeat;
+}
+.md-pet-exp-fill { position: absolute; left: 4%; top: 25%; height: 50%; max-width: 92%; background-size: 100% 100%; }
+.md-pet-exp-frame { position: absolute; inset: 0; pointer-events: none; }
+.md-pet-primary-stats {
+  width: 94%; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 4px; margin-top: 9px;
+}
+.md-pet-primary-stats div { min-width: 0; text-align: center; display: flex; flex-direction: column; }
+.md-pet-primary-stats small { color: var(--ink-soft); font-size: 8px; }
+.md-pet-primary-stats strong { color: #fff4cf; font: 800 12px/1.2 'Baloo 2'; }
+.md-pet-detail-tabs { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.md-pet-detail-tabs button {
+  min-height: 34px; border: 1px solid rgba(255,209,102,.25); border-radius: 8px; background: rgba(8,11,28,.72);
+  color: var(--ink-soft); font: 800 10px 'Nunito'; cursor: pointer;
+}
+.md-pet-detail-tabs button.active { color: var(--gold); border-color: var(--gold); background: rgba(255,209,102,.1); }
+.md-pet-tab-content { min-height: 84px; }
+.md-pet-secondary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+.md-pet-secondary-stats div {
+  display: flex; justify-content: space-between; gap: 6px; padding: 7px 8px; border-radius: 8px;
+  background: rgba(255,255,255,.045); font-size: 10px;
+}
+.md-pet-secondary-stats span { color: var(--ink-soft); }
+.md-pet-skill-list { display: flex; flex-direction: column; gap: 6px; }
+.md-pet-skill-panel { min-height: 70px; aspect-ratio: 3 / 1; position: relative; padding: 24px 12px 8px; background-size: 100% 100%; }
+.md-pet-skill-title {
+  position: absolute; left: 5px; top: 2px; width: 88px; height: 24px; display: flex; align-items: center;
+  justify-content: center; aspect-ratio: 5 / 2; color: #fff4cf; font: 800 9px 'Baloo 2';
+}
+.md-pet-skill-copy { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 6px; font-size: 9px; }
+.md-pet-skill-copy > span { color: var(--gold); font-weight: 800; }
+.md-pet-skill-copy p { grid-column: 1/-1; margin: 0; color: var(--ink-soft); line-height: 1.35; }
+.md-pet-growth { display: flex; flex-direction: column; gap: 6px; color: var(--ink-soft); font-size: 10px; }
+.md-pet-message { color: var(--gold); font-size: 10px; font-weight: 800; text-align: center; }
+.md-pet-message.error { color: #ff6b7b; }
+.md-pet-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; }
+.md-pet-actions > :only-child { grid-column: 1/-1; }
+.md-pet-result-exp { background: rgba(92,224,202,.14); color: #c9fff6; }
+
+@media (max-width: 380px) {
+  .md-pet-layout { grid-template-columns: 78px minmax(0, 1fr); gap: 5px; }
+  .md-pet-roster-item { grid-template-columns: 24px minmax(0,1fr); min-height: 64px; padding: 4px 3px; }
+  .md-pet-roster-icon { font-size: 20px; }
+  .md-pet-profile { padding: 22px 20px 18px; }
+  .md-pet-showcase { height: 130px; }
+  .md-pet-name-row strong { font-size: 14px; }
+  .md-pet-role-icon { width: 24px; height: 24px; }
+}
+
 /* pet status readout in combat */
 .md-pet-chip {
   display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; color: var(--ink);

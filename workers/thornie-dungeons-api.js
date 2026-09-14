@@ -83,7 +83,7 @@ const TABLES = {
   },
   run_state: {
     name: "character_run_state",
-    cols: ["character_id", "floor", "level", "xp", "hp", "mp", "base_atk", "base_def", "base_max_hp", "base_max_mp", "run_gold", "potions", "updated_at"],
+    cols: ["character_id", "floor", "level", "xp", "hp", "mp", "base_atk", "base_def", "base_max_hp", "base_max_mp", "run_gold", "potions", "pet_state_json", "updated_at"],
   },
   items: {
     name: "items",
@@ -903,6 +903,15 @@ async function handleEnterCharacter(db, id, session, slotIndex) {
 
 // ---------- per-character progress / items / run-state ----------
 function normalizedRunState(characterId, runState) {
+  let petState = runState.pet_state_json ?? runState.petState ?? null;
+  if (typeof petState === "string") {
+    try { petState = JSON.parse(petState); } catch (e) { petState = null; }
+  }
+  const petId = String(petState?.activePetId || "").trim().slice(0, 128);
+  const petHp = Number(petState?.currentHp);
+  const safePetState = petId && Number.isFinite(petHp)
+    ? { activePetId: petId, currentHp: Math.max(0, Math.round(petHp)), wasDead: petState?.wasDead === true || petHp <= 0 }
+    : {};
   return {
     character_id: characterId,
     floor: Math.max(1, Number(runState.floor) || 1),
@@ -916,6 +925,7 @@ function normalizedRunState(characterId, runState) {
     base_max_mp: Math.max(0, Number(runState.base_max_mp) || 0),
     run_gold: Math.max(0, Number(runState.run_gold) || 0),
     potions: Math.max(0, Number(runState.potions) || 0),
+    pet_state_json: JSON.stringify(safePetState),
     updated_at: runState.updated_at || nowIso()
   };
 }
