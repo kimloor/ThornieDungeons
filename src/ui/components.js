@@ -2361,9 +2361,7 @@ function PetScreen({
     style: {
       margin: 0
     }
-  }, "Pets ", /*#__PURE__*/React.createElement("span", {
-    className: "md-shop-lv"
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), save.diamonds || 0))), /*#__PURE__*/React.createElement("div", {
+  }, "Pets"), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -2459,7 +2457,9 @@ function PetScreen({
     className: "md-pet-primary-stats"
   }, [["HP", selectedStats.maxHp], ["ATK", selectedStats.atk], ["DEF", selectedStats.def], ["SPD", selectedStats.speed]].map(([label, value]) => /*#__PURE__*/React.createElement("div", {
     key: label
-  }, /*#__PURE__*/React.createElement("small", null, label), /*#__PURE__*/React.createElement("strong", null, value))))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("small", null, label), /*#__PURE__*/React.createElement("strong", null, value)))))), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-details-panel"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-pet-detail-tabs"
   }, ["info", "skills", "growth"].map(tab => /*#__PURE__*/React.createElement("button", {
     key: tab,
@@ -2496,7 +2496,7 @@ function PetScreen({
   }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
-  }, "← Back"));
+  }, "← Back")));
 }
 function GachaScreen({
   save,

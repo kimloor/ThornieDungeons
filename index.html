@@ -1031,10 +1031,10 @@ const STYLE = `
   background-position: center;
   background-size: 100% 100%;
 }
-.md-pet-layout { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; min-width: 0; }
+.md-pet-layout { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; min-width: 0; align-items: start; }
 .md-pet-roster {
-  display: flex; flex-direction: column; gap: 6px; max-height: 570px; overflow-y: auto;
-  overscroll-behavior: contain; scrollbar-width: thin; padding-right: 2px;
+  grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 7px; max-height: 510px; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin; padding: 2px 2px 2px 0;
 }
 .md-pet-roster-item {
   width: 100%; min-height: 70px; border: 1px solid rgba(255,209,102,.22); border-radius: 10px;
@@ -1042,28 +1042,30 @@ const STYLE = `
   display: grid; grid-template-columns: 28px minmax(0,1fr); align-items: center; gap: 4px;
   position: relative; text-align: left; font: inherit;
 }
-.md-pet-roster-item.selected { border-color: var(--gold); background: rgba(255,209,102,.1); }
+.md-pet-roster-item.selected { border-color: var(--gold); background: rgba(255,209,102,.12); box-shadow: 0 0 0 1px rgba(255,209,102,.22), 0 0 12px rgba(255,209,102,.14); }
 .md-pet-roster-item.active { box-shadow: inset 0 0 0 1px rgba(76,175,125,.5); }
+.md-pet-roster-item.selected.active { box-shadow: inset 0 0 0 1px rgba(76,175,125,.55), 0 0 0 1px rgba(255,209,102,.22), 0 0 12px rgba(255,209,102,.14); }
 .md-pet-roster-icon { font-size: 24px; text-align: center; }
 .md-pet-roster-copy { min-width: 0; display: flex; flex-direction: column; }
 .md-pet-roster-copy strong { font: 800 10px/1.2 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-pet-roster-copy small { color: var(--ink-soft); font-size: 8.5px; line-height: 1.25; }
 .md-pet-active-dot { position: absolute; right: 4px; top: 3px; color: var(--leaf); font-size: 8px; }
-.md-pet-detail { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.md-pet-detail { grid-column: 1; grid-row: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .md-pet-profile {
-  width: 100%; min-height: 0; aspect-ratio: 2 / 3; position: relative; overflow: hidden; padding: 24px 24px 22px;
+  width: 100%; min-height: 0; aspect-ratio: 2 / 3; position: relative; z-index: 0; overflow: visible; padding: 26px 24px 24px;
   display: flex; flex-direction: column; align-items: center; isolation: isolate;
 }
 .md-pet-showcase {
-  width: 100%; height: 142px; position: relative; display: flex; align-items: center; justify-content: center;
-  margin-top: 1px;
+  width: 100%; height: 150px; position: relative; z-index: 0; display: flex; align-items: center; justify-content: center;
+  margin-top: 2px;
 }
 .md-pet-star-aura {
-  position: absolute; z-index: -1; width: 84%; max-width: 200px; height: auto; left: 50%; top: 52%;
+  position: absolute; z-index: 1; width: 94%; max-width: 220px; height: auto; left: 50%; top: 50%;
   transform: translate(-50%, -50%); pointer-events: none; user-select: none;
 }
-.md-pet-profile-sprite { position: relative; z-index: 1; max-width: 90%; }
-.md-pet-profile-fallback { position: relative; z-index: 1; font-size: 76px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
+.md-pet-profile-sprite { position: relative; z-index: 2; max-width: 90%; }
+.md-pet-profile-fallback { position: relative; z-index: 2; font-size: 76px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
+.md-pet-profile > :not(.md-pet-showcase) { position: relative; z-index: 3; }
 .md-pet-name-row {
   width: 92%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
   margin-top: 0; color: #fff4cf;
@@ -1085,18 +1087,19 @@ const STYLE = `
 .md-pet-exp-fill { position: absolute; left: 4%; top: 25%; height: 50%; max-width: 92%; background-size: 100% 100%; }
 .md-pet-exp-frame { position: absolute; inset: 0; pointer-events: none; }
 .md-pet-primary-stats {
-  width: 94%; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 4px; margin-top: 9px;
+  width: 94%; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 5px; margin-top: 12px;
 }
-.md-pet-primary-stats div { min-width: 0; text-align: center; display: flex; flex-direction: column; }
+.md-pet-primary-stats div { min-width: 0; text-align: center; display: flex; flex-direction: column; padding: 5px 2px; border-radius: 7px; background: rgba(8,11,28,.42); }
 .md-pet-primary-stats small { color: var(--ink-soft); font-size: 8px; }
 .md-pet-primary-stats strong { color: #fff4cf; font: 800 12px/1.2 'Baloo 2'; }
-.md-pet-detail-tabs { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.md-pet-details-panel { min-width: 0; padding: 9px; border: 1px solid rgba(255,209,102,.16); border-radius: 10px; background: rgba(8,11,28,.48); }
+.md-pet-detail-tabs { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 8px; }
 .md-pet-detail-tabs button {
   min-height: 34px; border: 1px solid rgba(255,209,102,.25); border-radius: 8px; background: rgba(8,11,28,.72);
   color: var(--ink-soft); font: 800 10px 'Nunito'; cursor: pointer;
 }
 .md-pet-detail-tabs button.active { color: var(--gold); border-color: var(--gold); background: rgba(255,209,102,.1); }
-.md-pet-tab-content { min-height: 84px; }
+.md-pet-tab-content { min-height: 84px; margin-bottom: 8px; }
 .md-pet-secondary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
 .md-pet-secondary-stats div {
   display: flex; justify-content: space-between; gap: 6px; padding: 7px 8px; border-radius: 8px;
@@ -1120,13 +1123,23 @@ const STYLE = `
 .md-pet-result-exp { background: rgba(92,224,202,.14); color: #c9fff6; }
 
 @media (max-width: 380px) {
-  .md-pet-layout { grid-template-columns: 78px minmax(0, 1fr); gap: 5px; }
+  .md-pet-layout { grid-template-columns: minmax(0, 1fr) 78px; gap: 6px; }
   .md-pet-roster-item { grid-template-columns: 24px minmax(0,1fr); min-height: 64px; padding: 4px 3px; }
   .md-pet-roster-icon { font-size: 20px; }
   .md-pet-profile { padding: 22px 20px 18px; }
   .md-pet-showcase { height: 130px; }
   .md-pet-name-row strong { font-size: 14px; }
   .md-pet-role-icon { width: 24px; height: 24px; }
+}
+
+@media (max-width: 340px) {
+  .md-pet-layout { grid-template-columns: minmax(0, 1fr); }
+  .md-pet-detail { grid-column: 1; grid-row: 1; }
+  .md-pet-roster {
+    grid-column: 1; grid-row: 2; max-height: none; flex-direction: row; overflow-x: auto; overflow-y: hidden;
+    padding: 2px 0 5px; scroll-snap-type: x proximity;
+  }
+  .md-pet-roster-item { flex: 0 0 88px; scroll-snap-align: start; }
 }
 
 /* pet status readout in combat */
@@ -10710,9 +10723,7 @@ function PetScreen({
     style: {
       margin: 0
     }
-  }, "Pets ", /*#__PURE__*/React.createElement("span", {
-    className: "md-shop-lv"
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), save.diamonds || 0))), /*#__PURE__*/React.createElement("div", {
+  }, "Pets"), /*#__PURE__*/React.createElement("div", {
     className: "md-card",
     style: {
       marginBottom: 10
@@ -10808,7 +10819,9 @@ function PetScreen({
     className: "md-pet-primary-stats"
   }, [["HP", selectedStats.maxHp], ["ATK", selectedStats.atk], ["DEF", selectedStats.def], ["SPD", selectedStats.speed]].map(([label, value]) => /*#__PURE__*/React.createElement("div", {
     key: label
-  }, /*#__PURE__*/React.createElement("small", null, label), /*#__PURE__*/React.createElement("strong", null, value))))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("small", null, label), /*#__PURE__*/React.createElement("strong", null, value)))))), /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-details-panel"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "md-pet-detail-tabs"
   }, ["info", "skills", "growth"].map(tab => /*#__PURE__*/React.createElement("button", {
     key: tab,
@@ -10845,7 +10858,7 @@ function PetScreen({
   }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
-  }, "← Back"));
+  }, "← Back")));
 }
 function GachaScreen({
   save,
