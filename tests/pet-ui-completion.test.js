@@ -60,9 +60,9 @@ test("Pet profile labels, EXP, stats and skill descriptions remain centered and 
   assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-layout\s*\{[^}]*minmax\(0,\s*1fr\)\s+72px/s);
 });
 
-test("Pet artwork grows while every skill panel remains content-sized and padded", () => {
-  assert.match(components, /visualHeight: 150/);
-  assert.match(components, /maxVisualWidth: 200/);
+test("Pet artwork stays inside its showcase while every skill panel remains content-sized and padded", () => {
+  assert.match(components, /visualHeight: 118/);
+  assert.match(components, /maxVisualWidth: 145/);
   assert.match(styles, /\.md-pet-profile\s*\{[^}]*aspect-ratio:\s*2\s*\/\s*3[^}]*padding:\s*0/s);
   assert.match(styles, /\.md-pet-showcase\s*\{[^}]*left:\s*14%[^}]*top:\s*5\.5%[^}]*width:\s*72%[^}]*height:\s*40%/s);
   assert.match(styles, /\.md-pet-skill-panel\s*\{[^}]*min-height:\s*108px[^}]*height:\s*auto[^}]*padding:\s*38px 18px 18px[^}]*overflow:\s*hidden/s);

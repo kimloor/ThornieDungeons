@@ -2444,8 +2444,8 @@ function PetScreen({
     alt: selectedDef.name,
     idleFrameMs: 260,
     cropTransparent: true,
-    visualHeight: 150,
-    maxVisualWidth: 200,
+    visualHeight: 118,
+    maxVisualWidth: 145,
     fallback: selectedDef.icon
   }) : /*#__PURE__*/React.createElement("div", {
     className: "md-pet-profile-fallback",
@@ -2682,6 +2682,14 @@ const MONSTER_VISUAL_SIZES = {
   large: { height: 84, maxWidth: 120 },
   elite: { height: 104, maxWidth: 144 }
 };
+// Pets use the same manifest-driven crop and anchor pipeline as monsters, but
+// need a larger presentation envelope to read clearly beside the Hero.
+const PET_COMBAT_VISUAL_SIZES = {
+  small: { height: 68, maxWidth: 98 },
+  medium: { height: 82, maxWidth: 116 },
+  large: { height: 96, maxWidth: 134 },
+  elite: { height: 108, maxWidth: 150 }
+};
 function getMonsterPresentation(enemy) {
   const config = getMonsterSpriteConfig(enemy);
   const configuredSize = config?.presentation?.sizeClass;
@@ -2775,9 +2783,9 @@ function EnemySprite({
 
 function getPetPresentation(pet, config = getPetSpriteConfig(pet?.defId)) {
   const configuredSize = config?.presentation?.sizeClass;
-  const sizeClass = MONSTER_VISUAL_SIZES[configuredSize] ? configuredSize : "small";
+  const sizeClass = PET_COMBAT_VISUAL_SIZES[configuredSize] ? configuredSize : "small";
   const anchorType = config?.presentation?.anchorType === "flying" ? "flying" : "ground";
-  return { sizeClass, anchorType, ...MONSTER_VISUAL_SIZES[sizeClass] };
+  return { sizeClass, anchorType, ...PET_COMBAT_VISUAL_SIZES[sizeClass] };
 }
 
 function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
@@ -2785,6 +2793,12 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
   const hpPct = Math.max(0, Math.min(100, pet.hp / pet.maxHp * 100));
   const spriteConfig = getPetSpriteConfig(pet.defId);
   const presentation = getPetPresentation(pet, spriteConfig);
+  const hasVisibleStatus = Boolean(
+    pet.cooldown > 0 ||
+    pet.atkBuffTurns > 0 ||
+    pet.defBuffTurns > 0 ||
+    Object.keys(pet.battleStatuses || {}).length
+  );
   const spriteVisual = spriteConfig
     ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
         key: `${pet.instId}:${dead ? "death" : anim === "attack" ? "attack" : "idle"}`,
@@ -2816,7 +2830,7 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
     style: { width: `${hpPct}%` }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, pet.hp, "/", pet.maxHp)), /*#__PURE__*/React.createElement("div", {
+  }, pet.hp, "/", pet.maxHp)), hasVisibleStatus && /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status pet",
     "aria-label": "Pet status"
   }, pet.battleStatuses?.poison && /*#__PURE__*/React.createElement("span", {
@@ -2833,10 +2847,10 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
     title: `ATK Up · ${pet.atkBuffTurns} turn(s)`
   }, "⚔️", pet.atkBuffTurns), pet.defBuffTurns > 0 && /*#__PURE__*/React.createElement("span", {
     title: `DEF Up · ${pet.defBuffTurns} turn(s)`
-  }, "🛡️", pet.defBuffTurns), /*#__PURE__*/React.createElement("span", {
-    className: pet.cooldown > 0 ? "cooldown" : "ready",
+  }, "🛡️", pet.defBuffTurns), pet.cooldown > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "cooldown",
     title: pet.active && pet.active.desc
-  }, pet.cooldown > 0 ? `CD ${pet.cooldown}` : "READY")), spriteVisual || /*#__PURE__*/React.createElement("div", {
+  }, `CD ${pet.cooldown}`)), spriteVisual || /*#__PURE__*/React.createElement("div", {
     className: `md-enemy ${anim || ""}`,
     style: { display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, background: "none", border: "none" }
   }, pet.icon), /*#__PURE__*/React.createElement("div", {
@@ -2984,6 +2998,19 @@ function CombatScreen({
   const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
   const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
+  const battleResources = player.battleResources || {};
+  const activeBattleResources = [
+    ["fury", "🔥"],
+    ["aegis", "🛡"],
+    ["scheme", "🎭"]
+  ].filter(([key]) => Number(battleResources[key]) > 0);
+  const hasHeroStatus = Boolean(
+    player.atkBuffTurns > 0 ||
+    player.defBuffTurns > 0 ||
+    player.regenTurns > 0 ||
+    Object.keys(player.battleStatuses || {}).length ||
+    activeBattleResources.length
+  );
   const mpPct = Math.max(0, Math.min(100, player.mp / stats.maxMp * 100));
   const xpNeed = xpToNext(player.level);
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
@@ -3132,10 +3159,10 @@ function CombatScreen({
     equipped: equipped,
     label: heroName,
     combatSpeed: combatSpeed
-  }), (player.atkBuffTurns > 0 || player.defBuffTurns > 0 || player.regenTurns > 0 || Object.keys(player.battleStatuses || {}).length || player.battleResources) && /*#__PURE__*/React.createElement("div", {
+  }), hasHeroStatus && /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status hero",
     "aria-label": "Hero status"
-  }, player.atkBuffTurns > 0 ? `⚔️${player.atkBuffTurns} ` : "", player.defBuffTurns > 0 ? `🛡️${player.defBuffTurns} ` : "", player.regenTurns > 0 ? `💚${player.regenTurns} ` : "", player.battleStatuses?.poison ? `☠️${player.battleStatuses.poison.duration} ` : "", player.battleStatuses?.armor_break ? `🛡️↓${player.battleStatuses.armor_break.duration} ` : "", player.battleStatuses?.silence ? `🤫${player.battleStatuses.silence.duration} ` : "", player.battleStatuses?.stun ? "💫1 " : "", player.battleResources ? `🔥${player.battleResources.fury} 🛡${player.battleResources.aegis} 🎭${player.battleResources.scheme}` : ""), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
+  }, player.atkBuffTurns > 0 ? `⚔️${player.atkBuffTurns} ` : "", player.defBuffTurns > 0 ? `🛡️${player.defBuffTurns} ` : "", player.regenTurns > 0 ? `💚${player.regenTurns} ` : "", player.battleStatuses?.poison ? `☠️${player.battleStatuses.poison.duration} ` : "", player.battleStatuses?.armor_break ? `🛡️↓${player.battleStatuses.armor_break.duration} ` : "", player.battleStatuses?.silence ? `🤫${player.battleStatuses.silence.duration} ` : "", player.battleStatuses?.stun ? "💫1 " : "", activeBattleResources.map(([key, icon]) => `${icon}${battleResources[key]}`).join(" ")), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {

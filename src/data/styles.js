@@ -1174,19 +1174,19 @@ const STYLE = `
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
    Slot 1 is the explicit formation centre used by solo units and Bosses. The
    upper/lower lanes have a little extra diagonal separation for large sprites. */
-.md-monster-count-1 .md-monster-slot-1 { left: 79%; top: 52%; }
-.md-monster-count-2 .md-monster-slot-0 { left: 86%; top: 64%; }
-.md-monster-count-2 .md-monster-slot-1 { left: 79%; top: 52%; }
-.md-monster-count-2 .md-monster-slot-2 { left: 72%; top: 40%; }
-.md-monster-count-3 .md-monster-slot-0 { left: 86%; top: 64%; }
-.md-monster-count-3 .md-monster-slot-1 { left: 79%; top: 52%; }
-.md-monster-count-3 .md-monster-slot-2 { left: 72%; top: 40%; }
+.md-monster-count-1 .md-monster-slot-1 { left: 79%; top: 50%; }
+.md-monster-count-2 .md-monster-slot-0 { left: 85%; top: 63%; }
+.md-monster-count-2 .md-monster-slot-1 { left: 79%; top: 50%; }
+.md-monster-count-2 .md-monster-slot-2 { left: 75%; top: 41%; }
+.md-monster-count-3 .md-monster-slot-0 { left: 86%; top: 70%; }
+.md-monster-count-3 .md-monster-slot-1 { left: 79%; top: 50%; }
+.md-monster-count-3 .md-monster-slot-2 { left: 72%; top: 30%; }
 .md-monster-slot { transform: translateX(-50%); }
 .md-monster-slot.flying { transform: translate(-50%, -18px); }
 .md-monster-slot-0 { z-index: 3; }
 .md-monster-slot-1 { z-index: 2; }
 .md-monster-slot-2 { z-index: 1; }
-.md-monster-count-1 .md-monster-slot.elite { left: 79%; top: 52%; }
+.md-monster-count-1 .md-monster-slot.elite { left: 79%; top: 50%; }
 
 /* Monster scale is based on measured opaque pixels. HP/status are removed from
    normal flow so the unit's bottom edge is always the artwork's actual ground point. */

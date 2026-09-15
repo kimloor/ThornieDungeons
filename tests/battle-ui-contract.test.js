@@ -63,6 +63,23 @@ test("monster formation reserves the centre slot for solo units and Bosses", () 
   });
   assert.equal(coords[0].left - coords[1].left, coords[1].left - coords[2].left);
   assert.equal(coords[0].top - coords[1].top, coords[1].top - coords[2].top);
+  assert.ok(coords[0].top - coords[1].top >= 18, "three-monster lanes keep a readable vertical gap");
+});
+
+test("inactive Hero and Pet status rows stay hidden while active resources remain visible", () => {
+  assert.match(components, /const hasHeroStatus = Boolean\(/);
+  assert.match(components, /Number\(battleResources\[key\]\) > 0/);
+  assert.match(components, /activeBattleResources\.map/);
+  assert.doesNotMatch(components, /\|\| player\.battleResources\)/);
+  assert.match(components, /const hasVisibleStatus = Boolean\(/);
+  assert.match(components, /hasVisibleStatus &&[\s\S]{0,100}className: "md-unit-status pet"/);
+  assert.doesNotMatch(components, /: "READY"/);
+});
+
+test("Pet combat sprites use a larger manifest-size presentation envelope", () => {
+  assert.match(components, /const PET_COMBAT_VISUAL_SIZES = \{/);
+  assert.match(components, /small: \{ height: 68, maxWidth: 98 \}/);
+  assert.match(components, /return \{ sizeClass, anchorType, \.\.\.PET_COMBAT_VISUAL_SIZES\[sizeClass\] \}/);
 });
 
 test("Turn Order remains a clipped single-row four-slot window", () => {
