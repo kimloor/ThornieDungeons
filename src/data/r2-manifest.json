@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-15T01:31:05Z",
-  "count": 222,
+  "generatedAt": "2026-09-15T07:48:13Z",
+  "count": 236,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "25df21ac85bcdee3de7b542e5952ff06",
-      "last_modified": "2026-09-14T04:34:29.834Z",
-      "size": 15961,
+      "etag": "df0b5c544ad027f0a2f002c0da937d46",
+      "last_modified": "2026-09-15T05:37:00.664Z",
+      "size": 17914,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -1484,6 +1484,160 @@
       "size": 0,
       "http_metadata": {
         "contentType": "application/octet-stream"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/flamekit/animations/flamekit_attack_0.png",
+      "etag": "2566e2c6c45501620f203a67c7d5143b",
+      "last_modified": "2026-09-15T05:37:03.846Z",
+      "size": 43902,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/flamekit/animations/flamekit_attack_1.png",
+      "etag": "022127df887b19d8066239719deac44b",
+      "last_modified": "2026-09-15T05:37:07.017Z",
+      "size": 46105,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/flamekit/animations/flamekit_attack_2.png",
+      "etag": "71353498b42f501381a872f90e02824a",
+      "last_modified": "2026-09-15T05:37:10.116Z",
+      "size": 46899,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/flamekit/animations/flamekit_death_0.png",
+      "etag": "17b2733c9659051f52d5ea63adec7cca",
+      "last_modified": "2026-09-15T05:37:13.188Z",
+      "size": 33449,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/flamekit/animations/flamekit_idle_0.png",
+      "etag": "0b07db0a38285f7983a038fc0d45e693",
+      "last_modified": "2026-09-15T05:37:16.371Z",
+      "size": 39725,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/flamekit/animations/flamekit_idle_1.png",
+      "etag": "9023c228516ed9a780e569bdcac463ae",
+      "last_modified": "2026-09-15T05:37:19.498Z",
+      "size": 40664,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/flamekit/animations/flamekit_idle_2.png",
+      "etag": "8d23cdd84122f65505ebe8bf07281315",
+      "last_modified": "2026-09-15T05:37:22.607Z",
+      "size": 41041,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sparkpup/animations/sparkpup_attack_0.png",
+      "etag": "9fb74fbb0570db88c322e6313e162e20",
+      "last_modified": "2026-09-15T05:37:25.792Z",
+      "size": 43957,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sparkpup/animations/sparkpup_attack_1.png",
+      "etag": "00c8e1cc56049de35d6dc83f964988b2",
+      "last_modified": "2026-09-15T05:37:29.049Z",
+      "size": 47139,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sparkpup/animations/sparkpup_attack_2.png",
+      "etag": "45cb48feed17507b6aacc023356a5b6b",
+      "last_modified": "2026-09-15T05:37:32.167Z",
+      "size": 44021,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sparkpup/animations/sparkpup_death_0.png",
+      "etag": "b5a7a2dfe3ddaa7a4a0e2df4ccafe37a",
+      "last_modified": "2026-09-15T05:37:35.239Z",
+      "size": 28943,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sparkpup/animations/sparkpup_idle_0.png",
+      "etag": "8fe7fd68123f479a03f063c2b5f9d37a",
+      "last_modified": "2026-09-15T05:37:38.315Z",
+      "size": 43668,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sparkpup/animations/sparkpup_idle_1.png",
+      "etag": "cf7f4aba42aca8e46c2f06fb2b359ff4",
+      "last_modified": "2026-09-15T05:37:41.694Z",
+      "size": 45132,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/sparkpup/animations/sparkpup_idle_2.png",
+      "etag": "de4e64d22c75b15d70518617a567c6dc",
+      "last_modified": "2026-09-15T05:37:45.222Z",
+      "size": 42355,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
