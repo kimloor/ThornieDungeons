@@ -50,10 +50,10 @@ test("Pet header does not duplicate the global diamond balance", () => {
 
 test("Pet profile labels, EXP, stats and skill descriptions remain centered and wrap on mobile", () => {
   assert.match(styles, /\.md-pet-name-row\s*\{[^}]*position:\s*absolute[^}]*left:\s*15%[^}]*top:\s*46\.5%/s);
-  assert.match(styles, /\.md-pet-role\s*\{[^}]*position:\s*absolute[^}]*right:\s*13\.5%[^}]*top:\s*55\.5%/s);
-  assert.match(styles, /\.md-pet-stars\s*\{[^}]*position:\s*absolute[^}]*top:\s*58\.2%/s);
+  assert.match(styles, /\.md-pet-role\s*\{[^}]*position:\s*absolute[^}]*right:\s*13\.5%[^}]*top:\s*56\.8%/s);
+  assert.match(styles, /\.md-pet-stars\s*\{[^}]*position:\s*absolute[^}]*top:\s*59\.4%/s);
   assert.match(styles, /\.md-pet-exp-copy\s*\{[^}]*align-items:\s*center/s);
-  assert.match(styles, /\.md-pet-exp-bar\s*\{[^}]*position:\s*absolute[^}]*top:\s*64\.5%/s);
+  assert.match(styles, /\.md-pet-exp-bar\s*\{[^}]*position:\s*absolute[^}]*top:\s*65\.9%/s);
   assert.match(styles, /\.md-pet-primary-stats div\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);
   assert.match(styles, /\.md-pet-skill-copy p\s*\{[^}]*white-space:\s*normal[^}]*overflow-wrap:\s*anywhere/s);
   assert.match(styles, /\.md-pet-page\s*\{[^}]*overflow-x:\s*hidden/s);

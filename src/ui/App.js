@@ -868,7 +868,7 @@ function ThornieDungeons() {
     }
     applyCoreBattleState(next, result.completedAction);
     if (next.result) { finishCoreBattle(next); return; }
-    const delay = immediate ? 0 : combatDelay(actor.kind === "hero" ? 360 : 440);
+    const delay = immediate ? 0 : combatDelay(actor.kind === "hero" ? 420 : 520);
     setTimeout(() => {
       setHeroAnim(""); setPetAnim("");
       setEnemyAnims(current => Object.fromEntries(Object.keys(current).map(id => [id, next.units[id]?.dead ? "death" : ""])));

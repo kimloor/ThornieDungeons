@@ -664,7 +664,7 @@ function HeroOverlayComposer({
       nextFrame += 1;
       setAttackFrameIndex(Math.min(nextFrame, attackFrameCount - 1));
       if (nextFrame >= attackFrameCount - 1) clearInterval(timer);
-    }, Math.max(40, Number(config?.attackFrameMs || 105) / Math.max(1, playbackRate)));
+    }, Math.max(40, Number(config?.attackFrameMs || 105) * 1.15 / Math.max(1, playbackRate)));
 
     return () => clearInterval(timer);
   }, [anim, attackFrameCount, config?.attackFrameMs, playbackRate]);

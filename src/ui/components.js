@@ -2652,7 +2652,7 @@ function HeroSprite({
     ? /*#__PURE__*/React.createElement(HeroOverlayComposer, {
       characterId: "hero001",
       selection: heroVisualSelectionFromEquipment(equipped),
-      anim: anim || "",
+      anim: anim || "idle",
       playbackRate: combatSpeed
     })
     : /*#__PURE__*/React.createElement("div", {
@@ -2709,7 +2709,7 @@ function EnemySprite({
         anim: anim || "",
         dead,
         // Match the combat action window so all three attack frames are readable.
-        attackFrameMs: 120 / combatSpeed,
+        attackFrameMs: 150 / combatSpeed,
         cropTransparent: true,
         visualHeight: presentation.height,
         maxVisualWidth: presentation.maxWidth,
@@ -2784,9 +2784,9 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
         anim: anim || "",
         dead,
         // Keep all three attack frames visible long enough to read in combat.
-        // The pet action state is held for 420ms in App.js.
-        attackFrameMs: 120 / combatSpeed,
-        className: `md-enemy-img md-pet-img ${anim || ""}`,
+        // The pet action state is held for 520ms at normal speed in App.js.
+        attackFrameMs: 150 / combatSpeed,
+        className: `md-enemy-img md-pet-img ${dead ? "death" : anim || ""}`,
         alt: pet.name,
         fallback: pet.icon
       })
@@ -3023,7 +3023,7 @@ function CombatScreen({
     // as we're not mid-animation and no picker is open (so a manual pick doesn't
     // get raced by an auto attack).
     if (showBattleIntro || !autoRun || busy || assignSlotIndex !== null) return;
-    const t = setTimeout(() => onAction("attack"), Math.round(550 / (combatSpeed || 1)));
+    const t = setTimeout(() => onAction("attack"), Math.round(650 / (combatSpeed || 1)));
     return () => clearTimeout(t);
   }, [showBattleIntro, autoRun, busy, assignSlotIndex, onAction, combatSpeed]);
   useEffect(() => {

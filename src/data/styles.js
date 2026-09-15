@@ -157,8 +157,10 @@ const STYLE = `
   justify-content: center;
   overflow: visible;
   filter: drop-shadow(0 0 8px var(--gold-glow));
-  animation: md-idle 2.2s ease-in-out infinite;
+  transform-origin: center bottom;
+  animation: none;
 }
+.md-hero-v3-canvas.idle { animation: md-hero-idle-breathe 1.9s ease-in-out infinite; }
 .md-hero-v3-canvas.attack { animation: none; }
 .md-hero-v3-canvas.hurt { animation: md-shake 0.35s ease; }
 .md-hero-v3-master {
@@ -189,10 +191,17 @@ const STYLE = `
 .md-enemy-img.attack { animation: none; }
 .md-enemy-img.hurt { animation: md-shake 0.35s ease; }
 .md-enemy-img.boss { width: 84px; height: 84px; }
+.md-pet-img { transform: scale(1.15); transform-origin: center bottom; animation: md-pet-idle 2s ease-in-out infinite; }
+.md-pet-img.attack { transform: scale(1.15); animation: none; }
+.md-pet-img.hurt { animation: md-pet-shake 0.4s ease; }
+.md-pet-img.death { transform: scale(1.15); animation: none; }
 .md-cropped-sprite-stage { position: relative; display: block; overflow: hidden; flex: 0 0 auto; }
 .md-cropped-sprite-image { position: absolute; display: block; max-width: none; image-rendering: -webkit-optimize-contrast; }
 
 @keyframes md-idle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes md-hero-idle-breathe { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-7px) scale(1.025); } }
+@keyframes md-pet-idle { 0%,100% { transform: translateY(0) scale(1.15); } 50% { transform: translateY(-5px) scale(1.15); } }
+@keyframes md-pet-shake { 0%,100% { transform: translateX(0) scale(1.15); } 25% { transform: translateX(-6px) scale(1.15); } 75% { transform: translateX(6px) scale(1.15); } }
 @keyframes md-lunge { 0% { transform: translateX(0); } 40% { transform: translateX(14px) rotate(-6deg); } 100% { transform: translateX(0); } }
 @keyframes md-lunge-l { 0% { transform: translateX(0); } 40% { transform: translateX(-14px) rotate(6deg); } 100% { transform: translateX(0); } }
 @keyframes md-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
@@ -1019,15 +1028,15 @@ const STYLE = `
 .md-pet-name-row > div:first-child { min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 7px; text-align: center; }
 .md-pet-name-row strong { font: 800 17px/1 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-pet-name-row span { flex: 0 0 auto; color: var(--ink-soft); font-size: 9px; }
-.md-pet-role { position: absolute !important; right: 13.5%; top: 55.5%; width: 15%; height: 11%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; font-size: 8px; line-height: 1; font-weight: 800; text-align: center; }
+.md-pet-role { position: absolute !important; right: 13.5%; top: 56.8%; width: 15%; height: 11%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; font-size: 8px; line-height: 1; font-weight: 800; text-align: center; }
 .md-pet-role-icon { width: 29px; height: 29px; background-size: contain; }
-.md-pet-stars { position: absolute !important; left: 30%; top: 58.2%; width: 40%; height: 6%; display: flex; align-items: center; justify-content: center; gap: 3px; }
+.md-pet-stars { position: absolute !important; left: 30%; top: 59.4%; width: 40%; height: 6%; display: flex; align-items: center; justify-content: center; gap: 3px; }
 .md-pet-star { width: 20px; height: 20px; background-size: contain; opacity: .2; filter: grayscale(1); }
 .md-pet-star.earned { opacity: 1; filter: none; }
-.md-pet-exp-copy { position: absolute !important; z-index: 5 !important; left: 21%; top: 66%; width: 58%; height: 4%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4%; font-size: 9px; color: #eafffb; text-shadow: 0 1px 2px #001b18; }
+.md-pet-exp-copy { position: absolute !important; z-index: 5 !important; left: 21%; top: 67.4%; width: 58%; height: 4%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4%; font-size: 9px; color: #eafffb; text-shadow: 0 1px 2px #001b18; }
 .md-pet-exp-copy strong { color: #a8fff2; }
 .md-pet-exp-bar {
-  position: absolute !important; left: 17%; top: 64.5%; width: 66%; height: 7.5%; overflow: visible;
+  position: absolute !important; left: 17%; top: 65.9%; width: 66%; height: 7.5%; overflow: visible;
   background-image: var(--pet-ui-image, none); background-size: 100% 100%; background-repeat: no-repeat;
 }
 .md-pet-exp-fill { position: absolute; left: 4%; top: 25%; height: 50%; max-width: 92%; background-size: 100% 100%; }
@@ -1056,7 +1065,7 @@ const STYLE = `
 .md-pet-skill-list { display: flex; flex-direction: column; gap: 6px; }
 .md-pet-skill-panel { box-sizing: border-box; width: 100%; min-height: 108px; height: auto; position: relative; padding: 38px 18px 18px; background-size: 100% 100%; overflow: hidden; }
 .md-pet-skill-title {
-  position: absolute; left: 5px; top: 2px; width: 88px; height: 24px; display: flex; align-items: center;
+  position: absolute; left: 7px; top: 6px; width: 82px; height: 33px; display: flex; align-items: center;
   justify-content: center; aspect-ratio: 5 / 2; color: #fff4cf; font: 800 9px 'Baloo 2';
 }
 .md-pet-skill-copy { min-width: 0; width: 100%; display: grid; grid-template-columns: minmax(0,1fr) max-content; align-items: start; gap: 5px 7px; font-size: 9.5px; }
@@ -1084,8 +1093,16 @@ const STYLE = `
   .md-pet-primary-stats strong { font-size: 11px; }
   .md-pet-details-panel { padding: 7px; }
   .md-pet-skill-panel { min-height: 104px; padding: 36px 13px 15px; }
+  .md-pet-skill-title { left: 6px; top: 6px; width: 74px; height: 30px; }
   .md-pet-skill-copy { font-size: 8.5px; gap: 4px; }
+  .md-pet-img { animation-name: md-pet-idle-mobile; }
+  .md-pet-img.attack { transform: scale(1.1); animation: none; }
+  .md-pet-img.hurt { animation-name: md-pet-shake-mobile; }
+  .md-pet-img.death { transform: scale(1.1); animation: none; }
 }
+
+@keyframes md-pet-idle-mobile { 0%,100% { transform: translateY(0) scale(1.1); } 50% { transform: translateY(-4px) scale(1.1); } }
+@keyframes md-pet-shake-mobile { 0%,100% { transform: translateX(0) scale(1.1); } 25% { transform: translateX(-5px) scale(1.1); } 75% { transform: translateX(5px) scale(1.1); } }
 
 @media (max-width: 340px) {
   .md-pet-layout { grid-template-columns: minmax(0, 1fr); }
