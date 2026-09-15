@@ -78,6 +78,8 @@ function ThornieDungeons() {
   // until the player opens the full log.
   const setLog = msg => setLogState(prev => [msg, ...prev].slice(0, 120));
   const [busy, setBusy] = useState(false);
+  const [battleVfx, setBattleVfx] = useState([]);
+  const battleVfxSeqRef = useRef(0);
   // Combat presentation speed. x1 keeps authored frame timing; x2 shortens the
   // action windows without changing damage, turn order, or cooldown rules.
   const [combatSpeed, setCombatSpeed] = useState(1);
@@ -850,6 +852,7 @@ function ThornieDungeons() {
     }
     setBusy(true);
     if (heroCommand?.type === "skip_battle") {
+      setBattleVfx([]);
       const resolved = BATTLE_CORE_V1.simulateBattle(state);
       applyCoreBattleState(resolved, false); finishCoreBattle(resolved); return;
     }
@@ -858,6 +861,13 @@ function ThornieDungeons() {
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
     const result = BATTLE_CORE_V1.battleStep(state, actor.kind === "hero" ? heroCommand : undefined);
     const next = result.state;
+    const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(state, next, actor, heroCommand, result.completedAction);
+    const vfxToken = ++battleVfxSeqRef.current;
+    setBattleVfx(resolvedVfx.map((event, index) => ({
+      ...event,
+      id: `${vfxToken}:${index}`,
+      targetKey: event.targetId === next.heroId ? "hero" : event.targetId === next.petId ? "pet" : event.targetId
+    })));
     for (const [id, unit] of Object.entries(next.units)) {
       const before = state.units[id];
       if (before && unit.hp < before.hp) {
@@ -870,6 +880,7 @@ function ThornieDungeons() {
     if (next.result) { finishCoreBattle(next); return; }
     const delay = immediate ? 0 : combatDelay(actor.kind === "hero" ? 420 : 520);
     setTimeout(() => {
+      setBattleVfx([]);
       setHeroAnim(""); setPetAnim("");
       setEnemyAnims(current => Object.fromEntries(Object.keys(current).map(id => [id, next.units[id]?.dead ? "death" : ""])));
       driveCoreBattle(next);
@@ -908,6 +919,7 @@ function ThornieDungeons() {
     combatOutcomeRef.current = null;
     finishingBattleIdRef.current = null;
     setLogState([]);
+    setBattleVfx([]);
     setFinishedBattleLog([]);
     setSelectedFloor(floorNum);
     const resumeCarry = allowResume && !carryPlayer && resumeRun && Number(resumeRun.floor) === Number(floorNum) ? resumeRun : null;
@@ -2053,6 +2065,7 @@ function ThornieDungeons() {
     battleRound: battleState?.round,
     battleFinishing: battleFinishing,
     combatSpeed: combatSpeed,
+    battleVfx: battleVfx,
     combatTurnCount: combatTurnCount,
     onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {

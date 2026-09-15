@@ -30,6 +30,17 @@ function battleUiStyle(key) {
   return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
 }
 
+function battleVfxFrames(key) {
+  const frames = String(key || "").split(".").reduce((obj, part) => obj?.[part], ASSETS?.battleVfx);
+  return Array.isArray(frames) ? frames.filter(path => typeof path === "string" && path).map(assetUrl) : [];
+}
+
+function battleVfxAssetUrls(group = ASSETS?.battleVfx) {
+  if (Array.isArray(group)) return group.filter(path => typeof path === "string" && path).map(assetUrl);
+  if (!group || typeof group !== "object") return [];
+  return Object.values(group).flatMap(battleVfxAssetUrls);
+}
+
 function petUiUrl(key) {
   return optionalAsset(`petUi.${key}`);
 }
@@ -66,13 +77,14 @@ function battleUiAssetUrls() {
   return [
     "background", "topBar", "turnOrderSlot", "quickSlotFrame", "hpStatusFrame",
     "targetSelectedMarker", "buttons.auto", "buttons.flee", "buttons.settings",
-    "buttons.attack", "buttons.skip"
+    "buttons.attack", "buttons.skip", "buttons.speedX1", "buttons.speedX2"
   ]
     .map(key => optionalAsset(`battleUi.${key}`)).filter(Boolean);
 }
 
 function battleEncounterSources({ equipped = {}, pet = null, monsters = [] } = {}, deferred = false) {
   const sources = deferred ? [] : battleUiAssetUrls();
+  if (deferred) sources.push(...battleVfxAssetUrls());
   const selection = heroVisualSelectionFromEquipment(equipped);
   const heroConfig = getHeroV3Config("hero001");
   if (deferred) {

@@ -1479,7 +1479,39 @@ const STYLE = `
 .md-combat-header-action.skip { color: #fff; font-size: 11px; letter-spacing: .45px; }
 .md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 0; font-size: 9px; }
 .md-combat-header-action.skip.md-battle-art { color: transparent; font-size: 0; background-size: contain; }
+.md-combat-header-action.speed.md-battle-art {
+  color: transparent; font-size: 0; background-size: contain; background-position: center; background-repeat: no-repeat;
+}
 .md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
+
+/* Resolved-action VFX sits above unit art (z2) and below HP/status/name UI (z5).
+   It is never interactive and missing frames simply render nothing. */
+.md-battle-vfx {
+  position: absolute; left: 50%; top: 50%; z-index: 4; width: 112px; max-width: 30vw;
+  aspect-ratio: 1; object-fit: contain; transform: translate(-50%, -50%);
+  pointer-events: none; user-select: none;
+}
+.md-battle-vfx.kind-status { width: 100px; }
+.md-battle-vfx.kind-aura { width: 138px; }
+.md-battle-vfx.kind-aoe { width: 126px; }
+.md-hero-slot > .md-sprite-wrap,
+.md-pet-slot .md-pet-unit,
+.md-monster-slot .md-monster-unit { z-index: auto; }
+.md-hero-slot > .md-sprite-wrap > .md-hero-v3-canvas,
+.md-hero-slot > .md-sprite-wrap > .md-hero { position: relative; z-index: 2; }
+.md-hero-slot > .md-sprite-wrap > .md-sprite-name,
+.md-hero-slot > .md-enemy-hpbar,
+.md-pet-unit > .md-enemy-hpbar,
+.md-pet-unit > .md-unit-status,
+.md-pet-unit > .md-sprite-name { position: relative; z-index: 5; }
+.md-pet-unit > .md-cropped-sprite-stage,
+.md-pet-unit > .md-enemy { position: relative; z-index: 2; }
+@media (max-width: 380px) {
+  .md-battle-vfx { width: 102px; max-width: 29vw; }
+  .md-battle-vfx.kind-status { width: 92px; }
+  .md-battle-vfx.kind-aura { width: 124px; }
+  .md-battle-vfx.kind-aoe { width: 112px; }
+}
 
 .md-unit-status {
   min-height: 16px; display: flex; align-items: center; justify-content: center; gap: 3px;
@@ -2059,6 +2091,17 @@ function battleUiStyle(key) {
   return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
 }
 
+function battleVfxFrames(key) {
+  const frames = String(key || "").split(".").reduce((obj, part) => obj?.[part], ASSETS?.battleVfx);
+  return Array.isArray(frames) ? frames.filter(path => typeof path === "string" && path).map(assetUrl) : [];
+}
+
+function battleVfxAssetUrls(group = ASSETS?.battleVfx) {
+  if (Array.isArray(group)) return group.filter(path => typeof path === "string" && path).map(assetUrl);
+  if (!group || typeof group !== "object") return [];
+  return Object.values(group).flatMap(battleVfxAssetUrls);
+}
+
 function petUiUrl(key) {
   return optionalAsset(`petUi.${key}`);
 }
@@ -2095,13 +2138,14 @@ function battleUiAssetUrls() {
   return [
     "background", "topBar", "turnOrderSlot", "quickSlotFrame", "hpStatusFrame",
     "targetSelectedMarker", "buttons.auto", "buttons.flee", "buttons.settings",
-    "buttons.attack", "buttons.skip"
+    "buttons.attack", "buttons.skip", "buttons.speedX1", "buttons.speedX2"
   ]
     .map(key => optionalAsset(`battleUi.${key}`)).filter(Boolean);
 }
 
 function battleEncounterSources({ equipped = {}, pet = null, monsters = [] } = {}, deferred = false) {
   const sources = deferred ? [] : battleUiAssetUrls();
+  if (deferred) sources.push(...battleVfxAssetUrls());
   const selection = heroVisualSelectionFromEquipment(equipped);
   const heroConfig = getHeroV3Config("hero001");
   if (deferred) {
@@ -6451,6 +6495,62 @@ const emptyEquipped = () => ({
   accessory: null
 });
 
+// ===== ui/battleVfx.js =====
+// Battle VFX observes completed Battle Core output. It never resolves hits,
+// statuses, damage, cooldowns or turns; future modes should reuse this bridge.
+const BATTLE_VFX_PRESENTATION = (() => {
+  const SKILL_EFFECTS = Object.freeze({
+    power_strike: { effectKey: "slash_basic", kind: "single" },
+    heavy_blow: { effectKey: "slash_heavy", kind: "single" },
+    toxic_strike: { effectKey: "slash_status.toxic", kind: "single", status: "poison", statusEffectKey: "poison_hit" },
+    silent_edge: { effectKey: "slash_status.silence", kind: "single", status: "silence", statusEffectKey: "silence_hit" },
+    guard: { effectKey: "buff_aura", kind: "aura", self: true },
+    blade_storm: { effectKey: "blade_storm", kind: "aoe" }
+  });
+
+  function unique(values) {
+    return [...new Set(values.filter(Boolean))];
+  }
+
+  function resolvedEvents(previous, next, actor, command, completedAction = true) {
+    const skillId = command?.type === "active" ? command.skillId : null;
+    const mapping = SKILL_EFFECTS[skillId];
+    if (!completedAction || actor?.kind !== "hero" || !mapping) return [];
+
+    const newLogs = (next?.log || []).filter(entry => Number(entry.seq) > Number(previous?.logSeq || 0));
+    const actionTargets = unique(newLogs
+      .filter(entry => entry.actorId === actor.id && (entry.type === "damage" || entry.type === "miss"))
+      .map(entry => entry.targetId)
+      .filter(targetId => next?.units?.[targetId]?.side !== actor.side));
+    const beforeActor = previous?.units?.[actor.id];
+    const nextActor = next?.units?.[actor.id];
+    const cooldownAdvanced = Number(nextActor?.cooldowns?.[skillId] || 0) > Number(beforeActor?.cooldowns?.[skillId] || 0);
+    const spentSp = Number(nextActor?.sp || 0) < Number(beforeActor?.sp || 0);
+
+    // A start-of-Action status can defeat the actor before the command executes.
+    // In that case completedAction is true, but no skill VFX should be invented.
+    if (!actionTargets.length && !cooldownAdvanced && !spentSp) return [];
+
+    const fallbackTarget = command?.targetId && next?.units?.[command.targetId]?.side !== actor.side
+      ? command.targetId
+      : next?.selectedTargetIds?.[actor.side] || next?.selectedTargetId;
+    const targetIds = mapping.self ? [actor.id] : (actionTargets.length ? actionTargets : [fallbackTarget]);
+    const events = unique(targetIds).map(targetId => ({ effectKey: mapping.effectKey, kind: mapping.kind, targetId, skillId }));
+
+    if (mapping.status) {
+      const appliedTargets = unique(newLogs
+        .filter(entry => entry.type === "status" && entry.actorId === actor.id && entry.status === mapping.status)
+        .map(entry => entry.targetId));
+      appliedTargets.forEach(targetId => events.push({ effectKey: mapping.statusEffectKey, kind: "status", targetId, skillId }));
+    }
+    return events;
+  }
+
+  return Object.freeze({ SKILL_EFFECTS, resolvedEvents });
+})();
+
+if (typeof module !== "undefined" && module.exports) module.exports = BATTLE_VFX_PRESENTATION;
+
 // ===== ui/App.js =====
 // Battle logs are session-only UI data. Checkpoints keep the deterministic combat state and
 // log sequence, but never copy the readable log history into D1.
@@ -6535,6 +6635,8 @@ function ThornieDungeons() {
   // Presentation gate only: combat order is already resolved by Battle Core, but the first
   // action waits briefly so the player can see the battlefield and upcoming queue.
   const battleIntroUntilRef = useRef(0);
+  const [battleVfx, setBattleVfx] = useState([]);
+  const battleVfxSeqRef = useRef(0);
   // Combat presentation speed. x1 keeps authored frame timing; x2 shortens the
   // action windows without changing damage, turn order, or cooldown rules.
   const [combatSpeed, setCombatSpeed] = useState(1);
@@ -7319,6 +7421,7 @@ function ThornieDungeons() {
     }
     setBusy(true);
     if (heroCommand?.type === "skip_battle") {
+      setBattleVfx([]);
       const resolved = BATTLE_CORE_V1.simulateBattle(state);
       applyCoreBattleState(resolved, false); finishCoreBattle(resolved); return;
     }
@@ -7327,6 +7430,13 @@ function ThornieDungeons() {
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
     const result = BATTLE_CORE_V1.battleStep(state, actor.kind === "hero" ? heroCommand : undefined);
     const next = result.state;
+    const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(state, next, actor, heroCommand, result.completedAction);
+    const vfxToken = ++battleVfxSeqRef.current;
+    setBattleVfx(resolvedVfx.map((event, index) => ({
+      ...event,
+      id: `${vfxToken}:${index}`,
+      targetKey: event.targetId === next.heroId ? "hero" : event.targetId === next.petId ? "pet" : event.targetId
+    })));
     for (const [id, unit] of Object.entries(next.units)) {
       const before = state.units[id];
       if (before && unit.hp < before.hp) {
@@ -7339,6 +7449,7 @@ function ThornieDungeons() {
     if (next.result) { finishCoreBattle(next); return; }
     const delay = immediate ? 0 : combatDelay(actor.kind === "hero" ? 420 : 520);
     setTimeout(() => {
+      setBattleVfx([]);
       setHeroAnim(""); setPetAnim("");
       setEnemyAnims(current => Object.fromEntries(Object.keys(current).map(id => [id, next.units[id]?.dead ? "death" : ""])));
       driveCoreBattle(next);
@@ -7377,6 +7488,7 @@ function ThornieDungeons() {
     combatOutcomeRef.current = null;
     finishingBattleIdRef.current = null;
     setLogState([]);
+    setBattleVfx([]);
     setFinishedBattleLog([]);
     setSelectedFloor(floorNum);
     const resumeCarry = allowResume && !carryPlayer && resumeRun && Number(resumeRun.floor) === Number(floorNum) ? resumeRun : null;
@@ -8523,6 +8635,7 @@ function ThornieDungeons() {
     battleRound: battleState?.round,
     battleFinishing: battleFinishing,
     combatSpeed: combatSpeed,
+    battleVfx: battleVfx,
     combatTurnCount: combatTurnCount,
     onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
@@ -11457,6 +11570,35 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
   }, pet.name, dead ? " 💤" : ""));
 }
 
+function BattleVfx({ event, combatSpeed = 1 }) {
+  const frames = battleVfxFrames(event?.effectKey);
+  const [failedSources, setFailedSources] = useState([]);
+  const playableFrames = frames.filter(src => !failedSources.includes(src));
+  const [frameIndex, setFrameIndex] = useState(0);
+  const frameKey = frames.join("|");
+  const playableKey = playableFrames.join("|");
+  useEffect(() => {
+    setFailedSources([]);
+    setFrameIndex(0);
+  }, [event?.id, frameKey]);
+  useEffect(() => {
+    if (playableFrames.length <= 1) return undefined;
+    const frameMs = Math.max(65, Math.round(125 / (combatSpeed || 1)));
+    const timer = setInterval(() => setFrameIndex(index => Math.min(index + 1, playableFrames.length - 1)), frameMs);
+    return () => clearInterval(timer);
+  }, [event?.id, playableKey, combatSpeed]);
+  if (!playableFrames.length) return null;
+  const currentSrc = playableFrames[Math.min(frameIndex, playableFrames.length - 1)];
+  return /*#__PURE__*/React.createElement("img", {
+    className: `md-battle-vfx kind-${event.kind || "single"}`,
+    src: currentSrc,
+    alt: "",
+    "aria-hidden": "true",
+    draggable: false,
+    onError: () => setFailedSources(current => current.includes(currentSrc) ? current : [...current, currentSrc])
+  });
+}
+
 // Four fixed ATB cells occupy the middle four sixths of the combat header. When
 // an action is resolving, the window follows the active unit so upcoming turns
 // remain readable even in a five-unit battle (hero + pet + three monsters).
@@ -11586,6 +11728,7 @@ function CombatScreen({
   battleRound,
   battleFinishing,
   combatSpeed,
+  battleVfx = [],
   combatTurnCount,
   onCycleCombatSpeed
 }) {
@@ -11622,6 +11765,7 @@ function CombatScreen({
     : "—";
   const formationMonsters = buildMonsterFormation(monsters);
   const qs = quickSlots || [null, null, null, null];
+  const vfxFor = targetKey => battleVfx.filter(event => event.targetKey === targetKey);
   const skillEfficiency = heroSkillRankData(player.skillLevels || {}, "skill_efficiency");
   const skillCost = skill => Math.max(0, Math.ceil((Number(skill?.mp) || 0) * (1 - (Number(skillEfficiency?.spReductionPct) || 0) / 100)));
   function quickSlotVisual(entry) {
@@ -11697,10 +11841,12 @@ function CombatScreen({
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
   }, /*#__PURE__*/React.createElement("button", {
-    className: "md-combat-header-action speed",
+    className: "md-combat-header-action speed md-battle-art",
+    style: battleUiStyle(combatSpeed === 2 ? "buttons.speedX2" : "buttons.speedX1"),
     disabled: busy,
     title: "เปลี่ยนความเร็วการต่อสู้",
-    onClick: onCycleCombatSpeed
+    onClick: onCycleCombatSpeed,
+    "aria-label": `Battle speed x${combatSpeed || 1}`
   }, `×${combatSpeed || 1}`), skipUnlocked && /*#__PURE__*/React.createElement("button", {
     className: "md-combat-header-action skip md-battle-art",
     style: battleUiStyle("buttons.skip"),
@@ -11758,7 +11904,11 @@ function CombatScreen({
     equipped: equipped,
     label: heroName,
     combatSpeed: combatSpeed
-  }), hasHeroStatus && /*#__PURE__*/React.createElement("div", {
+  }), vfxFor("hero").map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+    key: event.id,
+    event: event,
+    combatSpeed: combatSpeed
+  })), hasHeroStatus && /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status hero",
     "aria-label": "Hero status"
   }, player.atkBuffTurns > 0 ? `⚔️${player.atkBuffTurns} ` : "", player.defBuffTurns > 0 ? `🛡️${player.defBuffTurns} ` : "", player.regenTurns > 0 ? `💚${player.regenTurns} ` : "", player.battleStatuses?.poison ? `☠️${player.battleStatuses.poison.duration} ` : "", player.battleStatuses?.armor_break ? `🛡️↓${player.battleStatuses.armor_break.duration} ` : "", player.battleStatuses?.silence ? `🤫${player.battleStatuses.silence.duration} ` : "", player.battleStatuses?.stun ? "💫1 " : "", activeBattleResources.map(([key, icon]) => `${icon}${battleResources[key]}`).join(" ")), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
@@ -11773,7 +11923,11 @@ function CombatScreen({
     pet: petCombat,
     anim: petAnim,
     combatSpeed: combatSpeed
-  }), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
+  }), vfxFor("pet").map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+    key: event.id,
+    event: event,
+    combatSpeed: combatSpeed
+  })), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: { color: f.color }
@@ -11788,7 +11942,11 @@ function CombatScreen({
     selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
     onClick: onSelectTarget,
     combatSpeed: combatSpeed
-  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
+  }), vfxFor(m.uid).map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+    key: event.id,
+    event: event,
+    combatSpeed: combatSpeed
+  })), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {

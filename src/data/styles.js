@@ -1402,7 +1402,39 @@ const STYLE = `
 .md-combat-header-action.skip { color: #fff; font-size: 11px; letter-spacing: .45px; }
 .md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 0; font-size: 9px; }
 .md-combat-header-action.skip.md-battle-art { color: transparent; font-size: 0; background-size: contain; }
+.md-combat-header-action.speed.md-battle-art {
+  color: transparent; font-size: 0; background-size: contain; background-position: center; background-repeat: no-repeat;
+}
 .md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
+
+/* Resolved-action VFX sits above unit art (z2) and below HP/status/name UI (z5).
+   It is never interactive and missing frames simply render nothing. */
+.md-battle-vfx {
+  position: absolute; left: 50%; top: 50%; z-index: 4; width: 112px; max-width: 30vw;
+  aspect-ratio: 1; object-fit: contain; transform: translate(-50%, -50%);
+  pointer-events: none; user-select: none;
+}
+.md-battle-vfx.kind-status { width: 100px; }
+.md-battle-vfx.kind-aura { width: 138px; }
+.md-battle-vfx.kind-aoe { width: 126px; }
+.md-hero-slot > .md-sprite-wrap,
+.md-pet-slot .md-pet-unit,
+.md-monster-slot .md-monster-unit { z-index: auto; }
+.md-hero-slot > .md-sprite-wrap > .md-hero-v3-canvas,
+.md-hero-slot > .md-sprite-wrap > .md-hero { position: relative; z-index: 2; }
+.md-hero-slot > .md-sprite-wrap > .md-sprite-name,
+.md-hero-slot > .md-enemy-hpbar,
+.md-pet-unit > .md-enemy-hpbar,
+.md-pet-unit > .md-unit-status,
+.md-pet-unit > .md-sprite-name { position: relative; z-index: 5; }
+.md-pet-unit > .md-cropped-sprite-stage,
+.md-pet-unit > .md-enemy { position: relative; z-index: 2; }
+@media (max-width: 380px) {
+  .md-battle-vfx { width: 102px; max-width: 29vw; }
+  .md-battle-vfx.kind-status { width: 92px; }
+  .md-battle-vfx.kind-aura { width: 124px; }
+  .md-battle-vfx.kind-aoe { width: 112px; }
+}
 
 .md-unit-status {
   min-height: 16px; display: flex; align-items: center; justify-content: center; gap: 3px;

@@ -2858,6 +2858,35 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
   }, pet.name, dead ? " 💤" : ""));
 }
 
+function BattleVfx({ event, combatSpeed = 1 }) {
+  const frames = battleVfxFrames(event?.effectKey);
+  const [failedSources, setFailedSources] = useState([]);
+  const playableFrames = frames.filter(src => !failedSources.includes(src));
+  const [frameIndex, setFrameIndex] = useState(0);
+  const frameKey = frames.join("|");
+  const playableKey = playableFrames.join("|");
+  useEffect(() => {
+    setFailedSources([]);
+    setFrameIndex(0);
+  }, [event?.id, frameKey]);
+  useEffect(() => {
+    if (playableFrames.length <= 1) return undefined;
+    const frameMs = Math.max(65, Math.round(125 / (combatSpeed || 1)));
+    const timer = setInterval(() => setFrameIndex(index => Math.min(index + 1, playableFrames.length - 1)), frameMs);
+    return () => clearInterval(timer);
+  }, [event?.id, playableKey, combatSpeed]);
+  if (!playableFrames.length) return null;
+  const currentSrc = playableFrames[Math.min(frameIndex, playableFrames.length - 1)];
+  return /*#__PURE__*/React.createElement("img", {
+    className: `md-battle-vfx kind-${event.kind || "single"}`,
+    src: currentSrc,
+    alt: "",
+    "aria-hidden": "true",
+    draggable: false,
+    onError: () => setFailedSources(current => current.includes(currentSrc) ? current : [...current, currentSrc])
+  });
+}
+
 // Four fixed ATB cells occupy the middle four sixths of the combat header. When
 // an action is resolving, the window follows the active unit so upcoming turns
 // remain readable even in a five-unit battle (hero + pet + three monsters).
@@ -2987,6 +3016,7 @@ function CombatScreen({
   battleRound,
   battleFinishing,
   combatSpeed,
+  battleVfx = [],
   combatTurnCount,
   onCycleCombatSpeed
 }) {
@@ -3023,6 +3053,7 @@ function CombatScreen({
     : "—";
   const formationMonsters = buildMonsterFormation(monsters);
   const qs = quickSlots || [null, null, null, null];
+  const vfxFor = targetKey => battleVfx.filter(event => event.targetKey === targetKey);
   const skillEfficiency = heroSkillRankData(player.skillLevels || {}, "skill_efficiency");
   const skillCost = skill => Math.max(0, Math.ceil((Number(skill?.mp) || 0) * (1 - (Number(skillEfficiency?.spReductionPct) || 0) / 100)));
   function quickSlotVisual(entry) {
@@ -3098,10 +3129,12 @@ function CombatScreen({
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
   }, /*#__PURE__*/React.createElement("button", {
-    className: "md-combat-header-action speed",
+    className: "md-combat-header-action speed md-battle-art",
+    style: battleUiStyle(combatSpeed === 2 ? "buttons.speedX2" : "buttons.speedX1"),
     disabled: busy,
     title: "เปลี่ยนความเร็วการต่อสู้",
-    onClick: onCycleCombatSpeed
+    onClick: onCycleCombatSpeed,
+    "aria-label": `Battle speed x${combatSpeed || 1}`
   }, `×${combatSpeed || 1}`), skipUnlocked && /*#__PURE__*/React.createElement("button", {
     className: "md-combat-header-action skip md-battle-art",
     style: battleUiStyle("buttons.skip"),
@@ -3159,7 +3192,11 @@ function CombatScreen({
     equipped: equipped,
     label: heroName,
     combatSpeed: combatSpeed
-  }), hasHeroStatus && /*#__PURE__*/React.createElement("div", {
+  }), vfxFor("hero").map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+    key: event.id,
+    event: event,
+    combatSpeed: combatSpeed
+  })), hasHeroStatus && /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status hero",
     "aria-label": "Hero status"
   }, player.atkBuffTurns > 0 ? `⚔️${player.atkBuffTurns} ` : "", player.defBuffTurns > 0 ? `🛡️${player.defBuffTurns} ` : "", player.regenTurns > 0 ? `💚${player.regenTurns} ` : "", player.battleStatuses?.poison ? `☠️${player.battleStatuses.poison.duration} ` : "", player.battleStatuses?.armor_break ? `🛡️↓${player.battleStatuses.armor_break.duration} ` : "", player.battleStatuses?.silence ? `🤫${player.battleStatuses.silence.duration} ` : "", player.battleStatuses?.stun ? "💫1 " : "", activeBattleResources.map(([key, icon]) => `${icon}${battleResources[key]}`).join(" ")), floats.filter(f => f.side === "hero").map(f => /*#__PURE__*/React.createElement("div", {
@@ -3174,7 +3211,11 @@ function CombatScreen({
     pet: petCombat,
     anim: petAnim,
     combatSpeed: combatSpeed
-  }), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
+  }), vfxFor("pet").map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+    key: event.id,
+    event: event,
+    combatSpeed: combatSpeed
+  })), floats.filter(f => f.side === "pet").map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: { color: f.color }
@@ -3189,7 +3230,11 @@ function CombatScreen({
     selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
     onClick: onSelectTarget,
     combatSpeed: combatSpeed
-  }), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
+  }), vfxFor(m.uid).map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+    key: event.id,
+    event: event,
+    combatSpeed: combatSpeed
+  })), floats.filter(f => f.side === m.uid).map(f => /*#__PURE__*/React.createElement("div", {
     key: f.id,
     className: "md-dmg-float",
     style: {

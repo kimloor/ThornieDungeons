@@ -12,7 +12,7 @@ const build = read("build.js");
 
 test("Battle UI keeps four quick slots, independent speed/Skip controls and Silence rules", () => {
   assert.match(components, /\[0, 1, 2, 3\]\.map/);
-  assert.match(components, /className: "md-combat-header-action speed"/);
+  assert.match(components, /className: "md-combat-header-action speed md-battle-art"/);
   assert.match(components, /className: "md-combat-header-action skip md-battle-art"/);
   assert.match(components, /player\.battleStatuses\?\.silence/);
   assert.match(components, /onAction\("flee"\)/);

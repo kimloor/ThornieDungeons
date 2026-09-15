@@ -34,6 +34,7 @@ const MODULE_ORDER = [
   "systems/floorModifier.js",
   "systems/stats.js",
   "systems/shop.js",
+  "ui/battleVfx.js",
   "ui/App.js",
   "ui/components.js",
   "ui/combatPresentationFix.js",
