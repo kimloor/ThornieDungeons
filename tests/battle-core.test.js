@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 global.HERO_SKILLS_V1_BY_ID = require("../src/systems/heroSkillsV1.js").HERO_SKILLS_V1_BY_ID;
+global.PET_COMBAT_SKILLS_V2 = require("../src/systems/pets.js").PET_COMBAT_SKILLS_V2;
 const battle = require("../src/systems/battleCore.js");
 
 function hero(extra = {}) { return { id: "hero", kind: "hero", side: "ally", name: "Hero", hp: 200, maxHp: 200, sp: 100, maxSp: 100, atk: 45, def: 8, speed: 100, accuracy: 99, dodge: 0, crit: 0, agi: 20, activeSkills: [], skills: {}, ...extra }; }

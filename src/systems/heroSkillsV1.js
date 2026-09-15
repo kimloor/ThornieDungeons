@@ -1,4 +1,6 @@
 // ---------- Hero Skill System V1 ----------
+// Shared skill catalog/data layer for Dungeon, Arena and Raid. Modes must import
+// these ranks and values rather than freezing or duplicating their own copies.
 // Battle values that were not locked in the source-of-truth documents live in
 // one playtest object. They can be tuned later without changing resolver logic.
 const HERO_SKILL_V1_PLAYTEST = Object.freeze({

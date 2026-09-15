@@ -1,5 +1,6 @@
 // ---------- Battle Core V1 ----------
-// Pure, serializable combat engine. UI, Auto and Skip all call battleStep().
+// Generic, pure and serializable combat resolver. Dungeon, future Arena/Raid
+// adapters, UI, Auto and Skip must call this core instead of forking skill logic.
 (function battleCoreFactory(root) {
   const STATUS_PROC_CAP = 90;
   const STATUS_KEYS = new Set(["poison", "stun", "silence", "armor_break", "def_up"]);
@@ -17,6 +18,15 @@
   const title = id => String(id || "skill").split("_").map(word => word ? word[0].toUpperCase() + word.slice(1) : "").join(" ");
   const attackActionName = (spec, context) => spec.actionName
     || (spec.actionType === "active" ? title(spec.id || context.usedSkillId) : spec.actionType === "counter" ? "counter attack" : "basic attack");
+  const freshResources = () => ({ fury: 0, aegis: 0, scheme: 0, schemeConsumed: 0, nextActiveDebuffBonus: 0 });
+
+  // Mode adapters own entry rules only. Damage, status, skills, cooldowns and
+  // turn resolution remain shared below for every mode.
+  const BATTLE_MODE_ADAPTERS = Object.freeze({
+    dungeon: Object.freeze({ controlledSide: "ally", allowFlee: true, bossControlStatusConversion: true }),
+    arena: Object.freeze({ controlledSide: "team_a", allowFlee: false, bossControlStatusConversion: true }),
+    raid: Object.freeze({ controlledSide: "ally", allowFlee: false, bossControlStatusConversion: true })
+  });
 
   function nextRandom(state) {
     let x = (state.rngState >>> 0) || 0x6d2b79f5;
@@ -41,11 +51,11 @@
     if (state.log.length > 120) state.log.splice(0, state.log.length - 120);
   }
 
-  function normalizeUnit(raw, index) {
+  function normalizeUnit(raw, index, defaultSide) {
     const unit = copy(raw || {});
     unit.id = String(unit.id || `unit-${index}`);
     unit.kind = unit.kind || "monster";
-    unit.side = unit.side || (unit.kind === "monster" || unit.kind === "boss" || unit.kind === "raid_boss" ? "enemy" : "ally");
+    unit.side = String(defaultSide || unit.side || (unit.kind === "monster" || unit.kind === "boss" || unit.kind === "raid_boss" ? "enemy" : "ally"));
     unit.maxHp = Math.max(1, Math.round(Number(unit.maxHp) || Number(unit.hp) || 1));
     unit.hp = clamp(Math.round(Number(unit.hp == null ? unit.maxHp : unit.hp)), 0, unit.maxHp);
     unit.maxSp = Math.max(0, Math.round(Number(unit.maxSp) || 0));
@@ -69,45 +79,135 @@
     return unit;
   }
 
-  function buildHeroUnit(raw = {}) { return normalizeUnit({ ...raw, kind: "hero", side: "ally" }, 0); }
-  function buildPetUnit(raw = {}) { return normalizeUnit({ ...raw, kind: "pet", side: "ally" }, 1); }
-  function buildMonsterUnit(raw = {}, index = 0) {
+  function buildHeroUnit(raw = {}, index = 0, side) { return normalizeUnit({ ...raw, kind: "hero" }, index, side || raw.side || "ally"); }
+  function buildPetUnit(raw = {}, index = 1, side) { return normalizeUnit({ ...raw, kind: "pet" }, index, side || raw.side || "ally"); }
+  function buildMonsterUnit(raw = {}, index = 0, side) {
     const kind = raw.kind === "boss" || raw.kind === "raid_boss" ? raw.kind : "monster";
-    return normalizeUnit({ ...raw, kind, side: "enemy" }, index + 2);
+    return normalizeUnit({ ...raw, kind }, index + 2, side || raw.side || "enemy");
   }
 
-  function createBattle(options = {}) {
-    const input = [
-      options.hero && buildHeroUnit(options.hero),
-      options.pet && buildPetUnit(options.pet),
-      ...(options.enemies || []).map((enemy, index) => buildMonsterUnit(enemy, index))
-    ].filter(Boolean);
+  // The team/side model is the reusable boundary: exactly two sides, each with
+  // any supported unit kinds. Legacy Dungeon ids remain compatibility aliases.
+  function teamUnits(state, side) {
+    return Object.values(state.units || {}).filter(unit => unit.side === side);
+  }
+  function livingTeamUnits(state, side) { return teamUnits(state, side).filter(living); }
+  function opposingUnits(state, actorOrSide) {
+    const side = typeof actorOrSide === "string" ? actorOrSide : actorOrSide && actorOrSide.side;
+    return Object.values(state.units || {}).filter(unit => living(unit) && unit.side !== side);
+  }
+  function heroForSide(state, side) { return teamUnits(state, side).find(unit => unit.kind === "hero") || null; }
+  function petForSide(state, side) { return teamUnits(state, side).find(unit => unit.kind === "pet") || null; }
+  function resourcesFor(state, actorOrSide) {
+    const side = typeof actorOrSide === "string" ? actorOrSide : actorOrSide && actorOrSide.side;
+    if (side === state.controlledSide) return state.resources;
+    state.teamResources = state.teamResources || {};
+    state.teamResources[side] = state.teamResources[side] || freshResources();
+    return state.teamResources[side];
+  }
+  function resetBattleResources(state) {
+    for (const side of state.teamIds || []) Object.assign(resourcesFor(state, side), freshResources());
+  }
+  function ensureTeamModel(state) {
+    const sides = Array.from(new Set(Object.values(state.units || {}).map(unit => unit.side)));
+    state.teamIds = Array.isArray(state.teamIds) && state.teamIds.length ? state.teamIds : sides;
+    state.controlledSide = state.controlledSide || (state.heroId && state.units[state.heroId] && state.units[state.heroId].side) || state.teamIds[0];
+    state.teams = state.teams || Object.fromEntries(state.teamIds.map(side => [side, { id: side, unitIds: teamUnits(state, side).map(unit => unit.id) }]));
+    state.teamResources = state.teamResources || {};
+    state.resources = state.resources || state.teamResources[state.controlledSide] || freshResources();
+    state.teamResources[state.controlledSide] = state.resources;
+    for (const side of state.teamIds) state.teamResources[side] = state.teamResources[side] || freshResources();
+    state.selectedTargetIds = state.selectedTargetIds || {};
+    for (const side of state.teamIds) {
+      if (!state.selectedTargetIds[side]) state.selectedTargetIds[side] = opposingUnits(state, side)[0]?.id || null;
+    }
+    state.selectedTargetId = state.selectedTargetId || state.selectedTargetIds[state.controlledSide] || null;
+    state.selectedTargetIds[state.controlledSide] = state.selectedTargetId;
+    state.heroTurnCounts = state.heroTurnCounts || (state.heroId ? { [state.heroId]: Number(state.heroTurnCount) || 0 } : {});
+    return state;
+  }
+
+  function createBattleState(options, input, adapter) {
     const units = {};
-    input.forEach(unit => { units[unit.id] = unit; });
-    const hero = Object.values(units).find(unit => unit.kind === "hero");
-    const pet = Object.values(units).find(unit => unit.kind === "pet");
-    const enemies = Object.values(units).filter(unit => unit.side === "enemy");
-    if (!hero || !enemies.length) throw new Error("battle_requires_hero_and_enemy");
+    input.forEach(unit => {
+      if (units[unit.id]) throw new Error("battle_duplicate_unit_id");
+      units[unit.id] = unit;
+    });
+    const teamIds = Array.from(new Set(input.map(unit => unit.side)));
+    if (teamIds.length !== 2 || teamIds.some(side => !input.some(unit => unit.side === side))) throw new Error("battle_requires_two_teams");
+    const controlledSide = String(options.controlledSide || adapter.controlledSide || teamIds[0]);
+    if (!teamIds.includes(controlledSide)) throw new Error("battle_invalid_controlled_side");
+    const controlledUnits = input.filter(unit => unit.side === controlledSide);
+    const hero = controlledUnits.find(unit => unit.kind === "hero") || null;
+    const pet = controlledUnits.find(unit => unit.kind === "pet") || null;
+    const enemies = input.filter(unit => unit.side !== controlledSide);
+    const teamResources = Object.fromEntries(teamIds.map(side => [side, freshResources()]));
     const state = {
       version: 1,
       battleId: String(options.battleId || `battle-${Date.now()}`),
       mode: options.mode || "dungeon",
       floor: Math.max(1, Math.floor(Number(options.floor) || 1)),
       round: 0, queue: [], queueIndex: 0, speedSnapshot: {},
-      units, heroId: hero.id, petId: pet ? pet.id : null, enemyIds: enemies.map(unit => unit.id),
-      selectedTargetId: enemies[0].id, heroTurnCount: 0,
-      resources: { fury: 0, aegis: 0, scheme: 0, schemeConsumed: 0, nextActiveDebuffBonus: 0 },
+      teamIds,
+      teams: Object.fromEntries(teamIds.map(side => [side, { id: side, unitIds: input.filter(unit => unit.side === side).map(unit => unit.id) }])),
+      controlledSide,
+      teamResources,
+      units, heroId: hero ? hero.id : null, petId: pet ? pet.id : null, enemyIds: enemies.map(unit => unit.id),
+      selectedTargetId: enemies[0].id,
+      selectedTargetIds: Object.fromEntries(teamIds.map(side => [side, input.find(unit => unit.side !== side)?.id || null])),
+      heroTurnCount: 0, heroTurnCounts: {},
+      resources: teamResources[controlledSide],
       flags: { auto: false, skipResolving: false, heroReviveNextFloor: false, fled: false },
       result: null, safeActionSeq: 0, logSeq: 0,
       rngState: (Number(options.seed) >>> 0) || 0x12345678, log: [],
-      rules: { allowFlee: options.allowFlee !== false }
+      rules: {
+        allowFlee: options.allowFlee == null ? adapter.allowFlee : options.allowFlee !== false,
+        bossControlStatusConversion: adapter.bossControlStatusConversion !== false,
+        ...(options.rules || {})
+      }
     };
     rebuildQueue(state);
     log(state, "battle_start", "Battle started");
     return state;
   }
+  function createTeamBattle(options = {}) {
+    const mode = options.mode || "arena";
+    const adapter = BATTLE_MODE_ADAPTERS[mode] || BATTLE_MODE_ADAPTERS.arena;
+    const teams = Array.isArray(options.teams) ? options.teams : [];
+    const input = teams.flatMap((team, teamIndex) => (team.units || []).map((raw, unitIndex) => {
+      const index = teamIndex * 100 + unitIndex;
+      const side = String(team.id || `team_${teamIndex + 1}`);
+      if (raw.kind === "hero") return buildHeroUnit(raw, index, side);
+      if (raw.kind === "pet") return buildPetUnit(raw, index, side);
+      return buildMonsterUnit(raw, index, side);
+    }));
+    return createBattleState({ ...options, mode }, input, adapter);
+  }
+  function createBattle(options = {}) {
+    if (Array.isArray(options.teams)) return createTeamBattle(options);
+    const input = [
+      options.hero && buildHeroUnit(options.hero, 0, "ally"),
+      options.pet && buildPetUnit(options.pet, 1, "ally"),
+      ...(options.enemies || []).map((enemy, index) => buildMonsterUnit(enemy, index, "enemy"))
+    ].filter(Boolean);
+    const hero = input.find(unit => unit.kind === "hero" && unit.side === "ally");
+    const enemies = input.filter(unit => unit.side === "enemy");
+    if (!hero || !enemies.length) throw new Error("battle_requires_hero_and_enemy");
+    const modeAdapter = BATTLE_MODE_ADAPTERS[options.mode] || BATTLE_MODE_ADAPTERS.dungeon;
+    return createBattleState({ ...options, mode: options.mode || "dungeon" }, input, { ...modeAdapter, controlledSide: "ally" });
+  }
   function createDungeonBattle(options = {}) {
     return createBattle({ ...options, mode: "dungeon", allowFlee: true });
+  }
+  function createArenaBattle(options = {}) {
+    return createTeamBattle({ ...options, mode: "arena", controlledSide: options.controlledSide || "team_a", teams: [
+      { id: "team_a", units: [options.teamA?.hero && { ...options.teamA.hero, kind: "hero" }, options.teamA?.pet && { ...options.teamA.pet, kind: "pet" }, ...(options.teamA?.units || [])].filter(Boolean) },
+      { id: "team_b", units: [options.teamB?.hero && { ...options.teamB.hero, kind: "hero" }, options.teamB?.pet && { ...options.teamB.pet, kind: "pet" }, ...(options.teamB?.units || [])].filter(Boolean) }
+    ] });
+  }
+  function createRaidBattle(options = {}) {
+    const boss = options.raidBoss || options.boss || (options.enemies || [])[0];
+    return createBattle({ ...options, mode: "raid", allowFlee: false, enemies: boss ? [{ ...boss, kind: "raid_boss" }] : [] });
   }
 
   function rebuildQueue(state) {
@@ -149,6 +249,7 @@
   }
   function heroPassiveDamageMultiplier(state, actor, target) {
     if (actor.kind !== "hero") return 1;
+    const resources = resourcesFor(state, actor);
     let bonus = 0;
     const wm = skillData(actor, "weapon_mastery"); if (wm) bonus += wm.damagePct;
     const bloodlust = skillData(actor, "bloodlust"); if (bloodlust && hpPct(actor) <= 40) bonus += bloodlust.damagePct;
@@ -156,7 +257,7 @@
     const exploit = skillData(actor, "exploit_weakness"); if (exploit && hasDebuff(target)) bonus += exploit.damagePct;
     const furyRank = rank(actor, "relentless_fury");
     if (furyRank) {
-      bonus += state.resources.fury * 3;
+      bonus += resources.fury * 3;
       if (furyRank >= 2 && hpPct(actor) <= 40) bonus += 5;
       if (furyRank >= 4 && hpPct(actor) <= 40) bonus += 5;
     }
@@ -168,24 +269,36 @@
     const learned = rank(unit, id);
     return skill && learned ? skill.ranks[learned - 1] : null;
   }
+  function petSkillData(unit) {
+    const catalog = root.PET_COMBAT_SKILLS_V2 || (typeof PET_COMBAT_SKILLS_V2 !== "undefined" ? PET_COMBAT_SKILLS_V2 : {});
+    const defined = catalog[unit.petDefId] || {};
+    return {
+      active: { ...(defined.active || {}), ...(unit.active || {}) },
+      passive: { ...(defined.passive || {}), ...(unit.passive || {}) },
+      extra: { ...(defined.extra || {}), ...(unit.extra || {}) }
+    };
+  }
+  const chancePercent = value => Math.abs(Number(value) || 0) <= 1 ? (Number(value) || 0) * 100 : Number(value) || 0;
 
   function procChance(state, actor, target, base, type, options = {}) {
     let value = Number(base) || 0;
     if (!options.fixed && actor.kind === "hero") {
+      const resources = resourcesFor(state, actor);
       const edge = skillData(actor, "debilitating_edge"); if (edge) value += edge.procBonus;
       if (type === "armor_break") { const mastery = skillData(actor, "armor_break_mastery"); if (mastery) value += mastery.procBonus; }
-      value += state.resources.scheme * 3;
-      if (options.active) value += Number(options.activeDebuffBonus) || Number(state.resources.nextActiveDebuffBonus) || 0;
+      value += resources.scheme * 3;
+      if (options.active) value += Number(options.activeDebuffBonus) || Number(resources.nextActiveDebuffBonus) || 0;
     }
     if (!HARMFUL.has(type)) return clamp(value, 0, 100);
     return Math.max(0, Math.min(STATUS_PROC_CAP, value) - (Number(target.statusResist) || 0));
   }
 
   function applyStatus(state, actor, target, key, spec = {}, context = {}) {
+    ensureTeamModel(state);
     if (!STATUS_KEYS.has(key) || !living(target)) return { applied: false };
     const finalChance = procChance(state, actor, target, spec.chance == null ? 100 : spec.chance, key, context);
     if (!chance(state, finalChance)) return { applied: false, resisted: true };
-    if ((target.kind === "boss" || target.kind === "raid_boss") && (key === "stun" || key === "silence")) {
+    if (state.rules?.bossControlStatusConversion !== false && (target.kind === "boss" || target.kind === "raid_boss") && (key === "stun" || key === "silence")) {
       const conversion = key === "stun" ? "critical" : "armor_pierce";
       log(state, "boss_conversion", `${key === "stun" ? "Stun" : "Silence"} converted to ${conversion === "critical" ? "Critical Hit" : "30% Armor Pierce"}`, { actorId: actor.id, targetId: target.id, status: key, conversion });
       return { applied: false, converted: conversion };
@@ -230,9 +343,9 @@
   function receiveDamage(state, actor, target, rawDamage, context = {}) {
     let amount = Math.max(0, Math.round(rawDamage));
     const directHit = !!context.direct;
-    const hero = state.units[state.heroId];
-    const pet = state.petId && state.units[state.petId];
-    if (directHit && target.kind === "hero" && actor.side === "enemy" && pet && living(pet) && pet.petDefId === "inferno_drake" && chance(state, 20)) {
+    const pet = petForSide(state, target.side);
+    const guardian = pet && petSkillData(pet).extra;
+    if (directHit && target.kind === "hero" && actor.side !== target.side && pet && living(pet) && guardian.type === "heroBlock" && chance(state, chancePercent(guardian.pct))) {
       log(state, "block", "Guardian Scale blocked direct damage", { actorId: actor.id, targetId: target.id });
       amount = 0;
     }
@@ -246,11 +359,12 @@
     const before = target.hp;
     target.hp = Math.max(0, target.hp - amount);
     if (directHit && target.kind === "hero" && target.hp <= 0 && rank(target, "thorned_aegis") >= 2 && !target.flags.aegisLethalUsed) {
-      const priorAegis = state.resources.aegis;
-      target.hp = 1; target.flags.aegisLethalUsed = true; state.resources.aegis = 3;
+      const resources = resourcesFor(state, target);
+      const priorAegis = resources.aegis;
+      target.hp = 1; target.flags.aegisLethalUsed = true; resources.aegis = 3;
       log(state, "survive", "Thorned Aegis prevented lethal damage", { targetId: target.id });
       if (rank(target, "thorned_aegis") >= 3 && priorAegis === 3) {
-        performCounter(state, target, actor, context); state.resources.aegis = 0;
+        performCounter(state, target, actor, context); resources.aegis = 0;
       } else if (rank(target, "thorned_aegis") >= 4 && priorAegis < 3 && living(actor)) {
         performCounter(state, target, actor, context);
       }
@@ -275,7 +389,7 @@
         : `${unitName(target)} took ${dealt}.`;
       log(state, "damage", text, { actorId: actor.id, targetId: target.id, amount: dealt, crit: !!context.crit, actionName: context.actionName || null });
     }
-    if (directHit && target.kind === "hero" && actor.side === "enemy" && before > target.hp && !context.indirect) {
+    if (directHit && target.kind === "hero" && actor.side !== target.side && before > target.hp && !context.indirect) {
       const survival = skillData(target, "survival_instinct");
       if (survival && living(actor)) {
         const playtest = root.HERO_SKILL_V1_PLAYTEST || (typeof HERO_SKILL_V1_PLAYTEST !== "undefined" ? HERO_SKILL_V1_PLAYTEST : {});
@@ -311,7 +425,7 @@
       const bloodlust = skillData(actor, "bloodlust"); if (bloodlust && hpPct(actor) <= 40) critChance += bloodlust.critPct || 0;
       if (status(actor, "rampage")) critChance += Number(status(actor, "rampage").critPct) || 0;
     }
-    if (target.kind === "hero") critChance -= state.resources.aegis * 5;
+    if (target.kind === "hero") critChance -= resourcesFor(state, target).aegis * 5;
     const crit = conversions.includes("critical") || !!spec.guaranteedCrit || chance(state, critChance);
     const pierce = Math.max(Number(spec.defPierce) || 0, conversions.includes("armor_pierce") ? 0.3 : 0);
     const attackPower = actor.atk * (Number(spec.mult) || 1) * activeBuffDamageMultiplier(actor) * heroPassiveDamageMultiplier(state, actor, target);
@@ -320,13 +434,16 @@
     const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
     actionContext.totalDamage += dealt;
     actionContext.hitAny = true;
-    if (target.kind === "hero" && dealt > 0) actionContext.heroStruck = true;
+    if (target.kind === "hero" && dealt > 0) {
+      actionContext.heroStruck = true;
+      actionContext.struckHeroIds.add(target.id);
+    }
     if (target.dead) actionContext.killed = true;
     return { hit: true, crit, damage: dealt };
   }
 
   function basicTarget(state, actor, requestedId) {
-    const targets = Object.values(state.units).filter(unit => living(unit) && unit.side !== actor.side);
+    const targets = opposingUnits(state, actor);
     const requested = requestedId && state.units[requestedId];
     if (living(requested) && requested.side !== actor.side) return requested;
     return targets.sort((a, b) => a.hp - b.hp || a.tieOrder - b.tieOrder)[0] || null;
@@ -364,7 +481,10 @@
     if (rank(hero, "thorned_aegis") >= 5 && result.hit) {
       const playtest = root.HERO_SKILL_V1_PLAYTEST || (typeof HERO_SKILL_V1_PLAYTEST !== "undefined" ? HERO_SKILL_V1_PLAYTEST : {});
       const stun = applyStatus(state, hero, enemy, "stun", { chance: Number(playtest.aegisCounterStunChance) || 35, duration: 1 }, actionContext);
-      if (stun.applied) state.resources.aegis = Math.max(0, state.resources.aegis - 1);
+      if (stun.applied) {
+        const resources = resourcesFor(state, hero);
+        resources.aegis = Math.max(0, resources.aegis - 1);
+      }
     }
     log(state, "counter", "Hero countered", { actorId: hero.id, targetId: enemy.id });
   }
@@ -382,7 +502,8 @@
   }
 
   function consumeScheme(state, actor, target, context) {
-    if (rank(actor, "usurper") < 3 || state.resources.scheme < 3) return false;
+    const resources = resourcesFor(state, actor);
+    if (rank(actor, "usurper") < 3 || resources.scheme < 3) return false;
     const buffKey = Object.keys(target.statuses || {}).find(key => !HARMFUL.has(key) && !STEALABLE_BLOCKLIST.has(key) && target.statuses[key].stealable !== false);
     if (buffKey) {
       actor.statuses[buffKey] = copy(target.statuses[buffKey]); delete target.statuses[buffKey];
@@ -394,17 +515,18 @@
       target.statuses[key].duration += 1;
       log(state, "scheme", `Extended ${key}`, { actorId: actor.id, targetId: target.id });
     }
-    state.resources.scheme -= 1; state.resources.schemeConsumed += 1;
+    resources.scheme -= 1; resources.schemeConsumed += 1;
     context.schemeConsumed = true;
-    if (rank(actor, "usurper") >= 4) state.resources.nextActiveDebuffBonus = 10;
-    if (rank(actor, "usurper") >= 5 && state.resources.schemeConsumed >= 3) {
+    if (rank(actor, "usurper") >= 4) resources.nextActiveDebuffBonus = 10;
+    if (rank(actor, "usurper") >= 5 && resources.schemeConsumed >= 3) {
       if (!context.cdrUsed && reduceAllCooldowns(actor, context.usedSkillId)) context.cdrUsed = true;
-      state.resources.schemeConsumed = 0;
+      resources.schemeConsumed = 0;
     }
     return true;
   }
 
   function resolveHeroAction(state, actor, command, context) {
+    const resources = resourcesFor(state, actor);
     const type = command.type || "basic";
     if (type === "flee") {
       if (!state.rules.allowFlee) { log(state, "flee", "Flee is not allowed"); return; }
@@ -418,7 +540,7 @@
       if (command.restoreSp) restoreSp(state, actor, Number(command.restoreSp), actor, "Potion SP");
       context.consumePotion = true; return;
     }
-    const target = basicTarget(state, actor, command.targetId || state.selectedTargetId);
+    const target = basicTarget(state, actor, command.targetId || state.selectedTargetIds?.[actor.side] || state.selectedTargetId);
     if (!target) return;
     context.targetHadDebuff = hasDebuff(target);
     if (type === "active") {
@@ -431,8 +553,8 @@
       actor.sp -= cost; context.usedSkillId = id; context.wasActive = true;
       context.attackAction = Number(spec.mult) > 0;
       const schemeEligible = context.attackAction || id === "disruption";
-      context.activeDebuffBonus = schemeEligible ? state.resources.nextActiveDebuffBonus : 0;
-      if (schemeEligible) state.resources.nextActiveDebuffBonus = 0;
+      context.activeDebuffBonus = schemeEligible ? resources.nextActiveDebuffBonus : 0;
+      if (schemeEligible) resources.nextActiveDebuffBonus = 0;
       if (id === "rampage") { actor.statuses.rampage = { key: "rampage", duration: spec.duration, damagePct: spec.damagePct, critPct: spec.critPct || 0, takenPct: spec.takenPct, stealable: false }; context.appliedStatuses.add(`${actor.id}:rampage`); }
       else if (id === "shield_wall") {
         actor.statuses.shield_wall = { key: "shield_wall", duration: spec.duration, damagePenaltyPct: spec.damagePenaltyPct, stealable: false };
@@ -454,14 +576,14 @@
         }
       } else {
         const distributedTargets = id === "blade_storm"
-          ? [target, ...state.enemyIds.map(enemyId => state.units[enemyId]).filter(unit => living(unit) && unit.id !== target.id)]
+          ? [target, ...opposingUnits(state, actor).filter(unit => unit.id !== target.id)]
           : [target];
         for (let hit = 0; hit < spec.hits; hit++) {
           let hitTarget = distributedTargets[hit % distributedTargets.length];
           if (!living(hitTarget)) hitTarget = distributedTargets.find(living) || basicTarget(state, actor, null);
           if (!hitTarget) break;
           const hitSpec = { ...spec, statuses: spec.statuses.slice() };
-          if (hit === 0 && rank(actor, "relentless_fury") >= 3 && state.resources.fury === 3) hitSpec.statuses.push({ key: "stun", chance: 5, duration: 1, fixed: true });
+          if (hit === 0 && rank(actor, "relentless_fury") >= 3 && resources.fury === 3) hitSpec.statuses.push({ key: "stun", chance: 5, duration: 1, fixed: true });
           if (id === "blade_storm" && spec.stunChancePerHit) hitSpec.statuses.push({ key: "stun", chance: spec.stunChancePerHit, duration: 1, fixed: true });
           attackHit(state, actor, hitTarget, hitSpec, context);
         }
@@ -471,106 +593,101 @@
       if (schemeEligible) consumeScheme(state, actor, target, context);
     } else {
       context.attackAction = true;
-      const statuses = rank(actor, "relentless_fury") >= 3 && state.resources.fury === 3 ? [{ key: "stun", chance: 5, duration: 1, fixed: true }] : [];
+      const statuses = rank(actor, "relentless_fury") >= 3 && resources.fury === 3 ? [{ key: "stun", chance: 5, duration: 1, fixed: true }] : [];
       const hit = attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses }, context);
       const drain = skillData(actor, "life_drain");
       if (hit.damage && drain) heal(state, actor, Math.min(hit.damage * pct(drain.drainPct), actor.maxHp * 0.10), actor, "Life Drain");
       const spirit = skillData(actor, "spirit_drain"); if (hit.hit && spirit) restoreSp(state, actor, spirit.spRestore, actor, "Spirit Drain");
     }
     if (context.attackAction) {
-      const furyRank = rank(actor, "relentless_fury"); if (furyRank) state.resources.fury = Math.min(3, state.resources.fury + 1);
+      const furyRank = rank(actor, "relentless_fury"); if (furyRank) resources.fury = Math.min(3, resources.fury + 1);
       const quick = skillData(actor, "quick_recovery");
-      if (quick && context.targetHadDebuff && !context.cdrUsed && chance(state, quick.chance + (rank(actor, "usurper") >= 2 ? state.resources.scheme * 2 : 0)) && reduceOneCooldown(actor, context.usedSkillId, state)) context.cdrUsed = true;
+      if (quick && context.targetHadDebuff && !context.cdrUsed && chance(state, quick.chance + (rank(actor, "usurper") >= 2 ? resources.scheme * 2 : 0)) && reduceOneCooldown(actor, context.usedSkillId, state)) context.cdrUsed = true;
     }
-    if (context.debuffApplied && rank(actor, "usurper")) state.resources.scheme = Math.min(3, state.resources.scheme + 1);
+    if (context.debuffApplied && rank(actor, "usurper")) resources.scheme = Math.min(3, resources.scheme + 1);
     const tactician = skillData(actor, "master_tactician");
     if (tactician && context.targetHadDebuff && chance(state, tactician.chance)) {
       const extendable = Object.keys(target.statuses || {}).filter(key => HARMFUL.has(key) && key !== "stun");
       const key = choose(state, extendable);
       if (key) { target.statuses[key].duration += 1; log(state, "status", `Master Tactician extended ${key}`, { actorId: actor.id, targetId: target.id }); }
     }
-    if (context.killed && rank(actor, "relentless_fury") >= 5 && state.resources.fury > 0 && !context.cdrUsed && reduceOneCooldown(actor, context.usedSkillId, state)) { state.resources.fury -= 1; context.cdrUsed = true; }
+    if (context.killed && rank(actor, "relentless_fury") >= 5 && resources.fury > 0 && !context.cdrUsed && reduceOneCooldown(actor, context.usedSkillId, state)) { resources.fury -= 1; context.cdrUsed = true; }
   }
 
   function resolvePetAction(state, actor, context) {
-    const hero = state.units[state.heroId];
-    const target = basicTarget(state, actor, state.selectedTargetId);
+    const hero = heroForSide(state, actor.side);
+    const target = basicTarget(state, actor, state.selectedTargetIds?.[actor.side] || state.selectedTargetId);
     if (!target) return;
-    const id = actor.petDefId;
+    const { active } = petSkillData(actor);
     const activeReady = (actor.cooldowns.pet_active || 0) === 0;
-    const activeName = actor.active?.name || "Pet Active";
-    const needsHeal = living(hero) && (hpPct(hero) <= 60 || (id === "moon_hare" && hpPct(actor) <= 60));
-    if ((id === "sprout" || id === "moon_hare") && activeReady && needsHeal) {
+    const activeName = active.name || "Pet Active";
+    const isSupport = active.type === "regen" || active.type === "groupHeal";
+    const needsHeal = living(hero) && (hpPct(hero) <= 60 || (active.type === "groupHeal" && hpPct(actor) <= 60));
+    if (isSupport && activeReady && needsHeal) {
       log(state, "pet_active", `${unitName(actor)} use ${activeName}.`, { actorId: actor.id, skillName: activeName });
-      const amount = actor.maxHp * (id === "sprout" ? 0.12 : 0.10) + (Number(actor.vit) || 0) * (id === "sprout" ? 0.8 : 1);
-      if (id === "sprout") hero.statuses.pet_regrowth = { key: "pet_regrowth", duration: 2, heal: Math.round(amount), sourceId: actor.id, stealable: false };
+      const amount = actor.maxHp * (Number(active.healPetHpPct) || 0) + (Number(actor.vit) || 0) * (Number(active.vitScale) || 0);
+      if (active.type === "regen") hero.statuses.pet_regrowth = { key: "pet_regrowth", duration: Math.max(1, Number(active.regenTurns) || 1), heal: Math.round(amount), sourceId: actor.id, stealable: false };
       else { heal(state, hero, amount, actor, "Moonlight Heal"); heal(state, actor, amount, actor, "Moonlight Heal"); }
-      actor.cooldowns.pet_active = id === "sprout" ? 3 : 2; context.usedSkillId = "pet_active"; return;
+      actor.cooldowns.pet_active = Number(active.cooldown) || 0; context.usedSkillId = "pet_active"; return;
     }
     if (!activeReady) { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
-    let spec = { mult: 1, actionType: "active", actionName: activeName, statuses: [] }, targets = [target], cd = 2;
-    if (id === "flamekit") spec.mult = 1.35;
-    else if (id === "sparkpup") { spec.mult = 1; spec.statuses.push({ key: "stun", chance: 15, duration: 1 }); }
-    else if (id === "ember_fox") spec.mult = 1.55;
-    else if (id === "hell_wolf") {
-      const playtest = root.PET_V2_PLAYTEST || (typeof PET_V2_PLAYTEST !== "undefined" ? PET_V2_PLAYTEST : {});
-      const poisonPct = Number(playtest.hellWolfPoisonAtkPct) || 20;
-      const poisonTurns = Number(playtest.hellWolfPoisonTurns) || 3;
-      spec.mult = 1.10;
-      spec.statuses.push({ key: "armor_break", chance: 40, duration: 2 }, { key: "poison", chance: 25, duration: poisonTurns, damage: Math.round(actor.atk * pct(poisonPct)) });
-    }
-    else if (id === "inferno_drake") { spec.mult = .75; targets = state.enemyIds.map(enemyId => state.units[enemyId]).filter(living).slice(0, 3); }
-    else if (id === "storm_phoenix") { spec.mult = .70; spec.statuses.push({ key: "silence", chance: 30, duration: 2 }); targets = state.enemyIds.map(enemyId => state.units[enemyId]).filter(living).slice(0, 3); cd = 3; }
-    else { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
+    if (active.type !== "damage" && active.type !== "aoe") { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
+    const spec = { mult: Number(active.mult) || 1, actionType: "active", actionName: activeName, statuses: [] };
+    if (active.stunChance) spec.statuses.push({ key: "stun", chance: chancePercent(active.stunChance), duration: 1 });
+    if (active.armorBreakChance) spec.statuses.push({ key: "armor_break", chance: chancePercent(active.armorBreakChance), duration: 2 });
+    if (active.poisonChance) spec.statuses.push({ key: "poison", chance: chancePercent(active.poisonChance), duration: Math.max(1, Number(active.poisonTurns) || 1), damage: Math.round(actor.atk * (Number(active.poisonPct) || 0)) });
+    if (active.silenceChance) spec.statuses.push({ key: "silence", chance: chancePercent(active.silenceChance), duration: 2 });
+    const targets = active.type === "aoe" ? opposingUnits(state, actor).slice(0, 3) : [target];
     log(state, "pet_active", `${unitName(actor)} use ${activeName}.`, { actorId: actor.id, skillName: activeName });
     targets.forEach(unit => attackHit(state, actor, unit, spec, context));
-    if (id === "inferno_drake" && chance(state, 35)) applyStatus(state, actor, hero, "def_up", { chance: 100, duration: 2 }, context);
-    actor.cooldowns.pet_active = cd; context.usedSkillId = "pet_active";
+    if (living(hero) && active.defUpChance && chance(state, chancePercent(active.defUpChance))) applyStatus(state, actor, hero, "def_up", { chance: 100, duration: Math.max(1, Number(active.defUpTurns) || 1) }, context);
+    actor.cooldowns.pet_active = Number(active.cooldown) || 0; context.usedSkillId = "pet_active";
   }
 
   function resolveEnemyAction(state, actor, context) {
-    const targets = [state.units[state.heroId], state.petId && state.units[state.petId]].filter(living);
+    const targets = opposingUnits(state, actor);
     if (!targets.length) return;
     const target = choose(state, targets);
     const hits = Math.max(1, Math.floor(Number(actor.ai.hits) || 1));
     for (let hit = 0; hit < hits && living(target); hit++) attackHit(state, actor, target, { mult: Number(actor.ai.mult) || 1, actionType: "enemy", statuses: actor.ai.statuses || [] }, context);
-    const hero = state.units[state.heroId];
-    if (context.heroStruck && status(hero, "counter")) { performCounter(state, hero, actor, context); delete hero.statuses.counter; }
   }
 
   function startEffects(state, actor, context) {
     const poison = status(actor, "poison");
     if (poison) {
-      receiveDamage(state, { id: poison.sourceId || "poison", side: actor.side === "enemy" ? "ally" : "enemy" }, actor, poison.damage, context);
+      const source = state.units[poison.sourceId] || { id: poison.sourceId || "poison", side: state.teamIds.find(side => side !== actor.side) };
+      receiveDamage(state, source, actor, poison.damage, context);
       poison.duration -= 1; if (poison.duration <= 0) delete actor.statuses.poison;
     }
     const regen = status(actor, "pet_regrowth"); if (regen) heal(state, actor, regen.heal, state.units[regen.sourceId], "Regrowth");
   }
 
-  function resolveAegisAfterEnemyAction(state, actor, context) {
-    const hero = state.units[state.heroId];
-    if (!living(hero) || actor.side !== "enemy" || !rank(hero, "thorned_aegis")) return;
-    if (context.heroStruck) hero.flags.hitSinceLastHeroAction = true;
-    if (context.heroStruck && status(hero, "def_up")) {
-      const before = state.resources.aegis; state.resources.aegis = Math.min(3, before + 1);
-      if (rank(hero, "thorned_aegis") >= 4 && before < 3 && state.resources.aegis === 3 && living(actor)) performCounter(state, hero, actor, context);
+  function resolveHeroReactionsAfterAction(state, actor, context) {
+    for (const heroId of context.struckHeroIds) {
+      const hero = state.units[heroId];
+      if (!living(hero) || hero.side === actor.side) continue;
+      if (status(hero, "counter") && living(actor)) { performCounter(state, hero, actor, context); delete hero.statuses.counter; }
+      if (!rank(hero, "thorned_aegis")) continue;
+      hero.flags.hitSinceLastHeroAction = true;
+      if (status(hero, "def_up")) {
+        const resources = resourcesFor(state, hero);
+        const before = resources.aegis; resources.aegis = Math.min(3, before + 1);
+        if (rank(hero, "thorned_aegis") >= 4 && before < 3 && resources.aegis === 3 && living(actor)) performCounter(state, hero, actor, context);
+      }
     }
   }
 
   function checkBattleEnd(state) {
-    const enemiesAlive = state.enemyIds.some(id => living(state.units[id]));
-    const heroAlive = living(state.units[state.heroId]);
-    const petAlive = state.petId && living(state.units[state.petId]);
-    if (!enemiesAlive) {
-      state.result = "victory"; state.flags.auto = false;
-      if (!heroAlive && petAlive) state.flags.heroReviveNextFloor = true;
-      state.resources.fury = 0; state.resources.aegis = 0; state.resources.scheme = 0;
-      log(state, "battle_end", "Victory");
-    } else if (!heroAlive && !petAlive) {
-      state.result = "defeat"; state.flags.auto = false;
-      state.resources.fury = 0; state.resources.aegis = 0; state.resources.scheme = 0;
-      log(state, "battle_end", "Defeat");
-    }
+    const aliveSides = state.teamIds.filter(side => livingTeamUnits(state, side).length);
+    if (aliveSides.length > 1) return;
+    state.winnerSide = aliveSides[0] || null;
+    state.result = state.winnerSide === state.controlledSide ? "victory" : "defeat";
+    state.flags.auto = false;
+    const hero = heroForSide(state, state.controlledSide);
+    const pet = petForSide(state, state.controlledSide);
+    if (state.mode === "dungeon" && !living(hero) && living(pet) && state.result === "victory") state.flags.heroReviveNextFloor = true;
+    resetBattleResources(state);
+    log(state, "battle_end", state.result === "victory" ? "Victory" : "Defeat");
   }
 
   function validateHeroCommand(state, actor, command) {
@@ -588,41 +705,47 @@
   }
 
   function battleStep(inputState, command) {
-    const state = copy(inputState);
+    // Presentation only observes the returned state/log. Animation timing, UI
+    // speed and VFX must never decide queue order or gameplay resolution here.
+    const state = ensureTeamModel(copy(inputState));
     if (state.result) return { state, waiting: false, completedAction: false };
     const actor = currentUnit(state);
     if (!actor) { checkBattleEnd(state); return { state, waiting: false, completedAction: false }; }
-    if (actor.kind === "hero" && !command && !state.flags.auto && !state.flags.skipResolving) return { state, waiting: true, completedAction: false };
-    if (actor.kind === "hero" && command) {
+    const manualActor = actor.kind === "hero" && actor.side === state.controlledSide;
+    if (manualActor && !command && !state.flags.auto && !state.flags.skipResolving) return { state, waiting: true, completedAction: false };
+    if (manualActor && command) {
       const invalid = validateHeroCommand(state, actor, command);
       if (invalid) {
         log(state, "invalid", invalid);
         return { state, waiting: true, completedAction: false, error: invalid };
       }
     }
-    const context = { appliedStatuses: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false };
+    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false };
     startEffects(state, actor, context);
     if (living(actor)) {
       if (status(actor, "stun")) { delete actor.statuses.stun; log(state, "stun", `${actor.name || actor.id} lost the Action`); }
       else if (actor.kind === "hero") {
-        state.heroTurnCount += 1;
-        resolveHeroAction(state, actor, command || { type: "basic" }, context);
+        state.heroTurnCounts[actor.id] = (Number(state.heroTurnCounts[actor.id]) || 0) + 1;
+        if (actor.id === state.heroId) state.heroTurnCount += 1;
+        resolveHeroAction(state, actor, manualActor && command ? command : { type: "basic" }, context);
       } else if (actor.kind === "pet") resolvePetAction(state, actor, context);
       else resolveEnemyAction(state, actor, context);
     }
-    const pet = state.petId && state.units[state.petId];
-    if (context.debuffApplied && (actor.kind === "hero" || actor.kind === "pet") && pet && living(pet) && pet.petDefId === "storm_phoenix" && !context.cdrUsed && !(actor.id === pet.id && context.usedSkillId === "pet_active") && Number(pet.cooldowns.pet_active) > 0 && chance(state, 50)) {
+    resolveHeroReactionsAfterAction(state, actor, context);
+    const pet = petForSide(state, actor.side);
+    const petCdr = pet && petSkillData(pet).extra;
+    if (context.debuffApplied && (actor.kind === "hero" || actor.kind === "pet") && pet && living(pet) && petCdr.type === "petCdrOnDebuff" && !context.cdrUsed && !(actor.id === pet.id && context.usedSkillId === "pet_active") && Number(pet.cooldowns.pet_active) > 0 && chance(state, chancePercent(petCdr.pct))) {
       pet.cooldowns.pet_active -= 1; context.cdrUsed = true;
       log(state, "cooldown", "Thunder Judgment reduced Pet Active cooldown", { actorId: actor.id, targetId: pet.id });
     }
     tickCooldowns(actor, context.usedSkillId);
     tickStatuses(actor, context.appliedStatuses);
     if (actor.kind === "hero") {
+      const resources = resourcesFor(state, actor);
       actor.flags.lastStandCooldown = Math.max(0, Number(actor.flags.lastStandCooldown) - 1);
-      if (!actor.flags.hitSinceLastHeroAction && state.resources.aegis > 0) state.resources.aegis -= 1;
+      if (!actor.flags.hitSinceLastHeroAction && resources.aegis > 0) resources.aegis -= 1;
       actor.flags.hitSinceLastHeroAction = false;
     }
-    resolveAegisAfterEnemyAction(state, actor, context);
     checkBattleEnd(state);
     state.queueIndex += 1; state.safeActionSeq += 1;
     return { state, waiting: false, completedAction: true, consumePotion: !!context.consumePotion };
@@ -639,16 +762,24 @@
 
   function serializeCheckpoint(state) {
     if (!state || state.version !== 1 || !state.battleId || state.result) throw new Error("invalid_checkpoint_state");
-    return JSON.stringify({ ...copy(state), flags: { ...state.flags, auto: false, skipResolving: false } });
+    const checkpoint = ensureTeamModel(copy(state));
+    return JSON.stringify({ ...checkpoint, flags: { ...checkpoint.flags, auto: false, skipResolving: false } });
   }
   function restoreCheckpoint(raw) {
     const state = typeof raw === "string" ? JSON.parse(raw) : copy(raw);
-    if (!state || state.version !== 1 || !state.battleId || !state.units || !state.heroId || !Array.isArray(state.queue)) throw new Error("corrupt_checkpoint");
+    if (!state || state.version !== 1 || !state.battleId || !state.units || (!state.heroId && !Array.isArray(state.teamIds)) || !Array.isArray(state.queue)) throw new Error("corrupt_checkpoint");
+    ensureTeamModel(state);
     state.flags = { ...(state.flags || {}), auto: false, skipResolving: false };
     return state;
   }
 
-  const api = { buildHeroUnit, buildPetUnit, buildMonsterUnit, createBattle, createDungeonBattle, rebuildQueue, currentUnit, upcomingActions, applyStatus, battleStep, simulateBattle, serializeCheckpoint, restoreCheckpoint };
+  const api = {
+    BATTLE_MODE_ADAPTERS,
+    buildHeroUnit, buildPetUnit, buildMonsterUnit,
+    createBattle, createTeamBattle, createDungeonBattle, createArenaBattle, createRaidBattle,
+    rebuildQueue, currentUnit, upcomingActions, applyStatus, battleStep, simulateBattle,
+    serializeCheckpoint, restoreCheckpoint
+  };
   Object.assign(root, { BATTLE_CORE_V1: api });
   if (typeof module !== "undefined") module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

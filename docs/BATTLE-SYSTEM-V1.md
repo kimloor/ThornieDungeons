@@ -891,3 +891,23 @@ Battle V1 should therefore establish shared combat foundations that future modes
 - Boss/Raid conversion where applicable
 
 Future Raid/Arena mode rules may override mode-specific behavior, but must not require copying the entire Dungeon Battle implementation.
+
+## 26. Shared Combat Core implementation contract
+
+`src/systems/battleCore.js` is the single gameplay resolver for Dungeon and the
+future Arena/Raid integrations. `src/systems/heroSkillsV1.js` remains the Hero
+skill value/rank catalog, while `src/systems/pets.js` remains the Pet catalog and
+progression source. Modes must not copy those rules.
+
+- Canonical state uses exactly two `teamIds`, `teams`, `controlledSide`, and
+  per-side `teamResources`.
+- `createDungeonBattle()` preserves the production `heroId`, `petId`,
+  `enemyIds`, `selectedTargetId`, and `resources` aliases for V1 callers and old
+  checkpoints.
+- `createTeamBattle()` is the generic boundary. `createArenaBattle()` and
+  `createRaidBattle()` are configuration adapters only; they do not implement a
+  second damage/status/skill resolver.
+- Hero and Pet targeting, ally support, AoE, reactions, passives and keystone
+  resources resolve relative to each unit's `side`.
+- Presentation consumes state/log output only. UI timing, animations, speed and
+  VFX must never drive queue order, cooldowns, status duration, AI, or damage.

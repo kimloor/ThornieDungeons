@@ -1,4 +1,6 @@
 // ---------- pets ----------
+// Shared Pet catalog/progression data. Mode adapters feed these Pet units into
+// Battle Core; Pet skill behavior must not be forked into Arena or Raid code.
 // R: 1 active skill only. SR: active + 1 passive. SSR: active + passive + 1 extra skill.
 const PET_V2_PLAYTEST = Object.freeze({
   hellWolfPoisonAtkPct: 20,
@@ -180,6 +182,14 @@ let PET_POOL = [{
     desc: "เมื่อ Hero หรือ Pet ลง Debuff สำเร็จ มีโอกาส 50% ลด Pet Active CD 1"
   }
 }];
+// Battle Core consumes this catalog in every mode. Keep combat values in the
+// Pet definitions above so Dungeon/Arena/Raid never maintain separate copies.
+const PET_COMBAT_SKILLS_V2 = Object.freeze(Object.fromEntries(PET_POOL.map(def => [def.id, Object.freeze({
+  active: def.active,
+  passive: def.passive,
+  extra: def.extra
+})])));
+if (typeof globalThis !== "undefined") globalThis.PET_COMBAT_SKILLS_V2 = PET_COMBAT_SKILLS_V2;
 // ---------- pet stats (STR/VIT/AGI/DEX/LUK) & level ----------
 // Base per-rarity stat lines a freshly-obtained pet starts with at level 1.
 const PET_BASE_STATS = {
@@ -481,3 +491,5 @@ const RARITY_STARS = {
   mythic: 7,
   azure: 5
 };
+
+if (typeof module !== "undefined") module.exports = { PET_V2_PLAYTEST, PET_POOL, PET_COMBAT_SKILLS_V2, getPetDef };
