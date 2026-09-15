@@ -438,17 +438,25 @@ function AnimatedFrameSprite({
   attackFrameMs = 80,
   cropTransparent = false,
   visualHeight = 64,
-  maxVisualWidth = 104
+  maxVisualWidth = 104,
+  fallback = null
 }) {
   const effectiveAnim = dead ? "death" : anim === "attack" ? "attack" : "idle";
   const frames = getSpriteAnimationFrames(config, effectiveAnim, dead);
+  const [failedSources, setFailedSources] = React.useState([]);
+  const playableFrames = frames.filter(src => !failedSources.includes(src));
   const [frameIndex, setFrameIndex] = React.useState(0);
   const frameKey = frames.join("|");
+  const playableFrameKey = playableFrames.join("|");
   const stableBoundsKey = JSON.stringify(config?.presentation?.bounds?.[effectiveAnim] || null);
   const [opaqueBounds, setOpaqueBounds] = React.useState(() => getStableSpriteOpaqueBounds(config, effectiveAnim));
 
   React.useEffect(() => {
-    if (!cropTransparent || !frames.length) {
+    setFailedSources([]);
+  }, [frameKey]);
+
+  React.useEffect(() => {
+    if (!cropTransparent || !playableFrames.length) {
       setOpaqueBounds(null);
       return undefined;
     }
@@ -458,28 +466,33 @@ function AnimatedFrameSprite({
       return undefined;
     }
     let cancelled = false;
-    measureSpriteOpaqueBounds(frames).then(bounds => {
+    measureSpriteOpaqueBounds(playableFrames).then(bounds => {
       if (!cancelled) setOpaqueBounds(bounds);
     });
     return () => { cancelled = true; };
-  }, [cropTransparent, frameKey, stableBoundsKey, effectiveAnim]);
+  }, [cropTransparent, playableFrameKey, stableBoundsKey, effectiveAnim]);
 
   React.useEffect(() => {
     setFrameIndex(0);
-    if (frames.length <= 1) return undefined;
+    if (playableFrames.length <= 1) return undefined;
 
     const loop = effectiveAnim === "idle";
     const delay = effectiveAnim === "attack" ? attackFrameMs : idleFrameMs;
     const timer = setInterval(() => {
-      setFrameIndex(i => loop ? (i + 1) % frames.length : Math.min(i + 1, frames.length - 1));
+      setFrameIndex(i => loop ? (i + 1) % playableFrames.length : Math.min(i + 1, playableFrames.length - 1));
     }, delay);
 
     return () => clearInterval(timer);
-  }, [effectiveAnim, frameKey, idleFrameMs, attackFrameMs]);
+  }, [effectiveAnim, playableFrameKey, idleFrameMs, attackFrameMs]);
 
-  if (!frames.length) return null;
+  if (!playableFrames.length) return fallback == null ? null : /*#__PURE__*/React.createElement("span", {
+    className: `${className} md-frame-sprite-fallback`,
+    role: "img",
+    "aria-label": alt
+  }, fallback);
 
-  const currentSrc = frames[Math.min(frameIndex, frames.length - 1)];
+  const currentSrc = playableFrames[Math.min(frameIndex, playableFrames.length - 1)];
+  const handleFrameError = () => setFailedSources(current => current.includes(currentSrc) ? current : [...current, currentSrc]);
   if (cropTransparent && opaqueBounds) {
     let contentHeight = visualHeight;
     let contentWidth = contentHeight * opaqueBounds.contentAspect;
@@ -497,6 +510,7 @@ function AnimatedFrameSprite({
       src: currentSrc,
       alt,
       draggable: false,
+      onError: handleFrameError,
       style: {
         width: imageWidth,
         height: imageHeight,
@@ -510,7 +524,8 @@ function AnimatedFrameSprite({
     className,
     src: currentSrc,
     alt,
-    draggable: false
+    draggable: false,
+    onError: handleFrameError
   });
 }
 

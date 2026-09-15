@@ -35,7 +35,7 @@ test("Pet page uses one-, two-, and three-star aura contract without battle aura
 });
 
 test("Pet roster is the right-side secondary navigation and very narrow screens stack safely", () => {
-  assert.match(styles, /\.md-pet-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+96px/s);
+  assert.match(styles, /\.md-pet-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+88px/s);
   assert.match(styles, /\.md-pet-roster\s*\{[^}]*grid-column:\s*2/s);
   assert.match(styles, /@media\s*\(max-width:\s*340px\)[\s\S]*\.md-pet-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/s);
 });
@@ -49,19 +49,25 @@ test("Pet header does not duplicate the global diamond balance", () => {
 });
 
 test("Pet profile labels, EXP, stats and skill descriptions remain centered and wrap on mobile", () => {
-  assert.match(styles, /\.md-pet-name-row\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/s);
+  assert.match(styles, /\.md-pet-name-row\s*\{[^}]*position:\s*absolute[^}]*left:\s*15%[^}]*top:\s*46\.5%/s);
+  assert.match(styles, /\.md-pet-role\s*\{[^}]*position:\s*absolute[^}]*right:\s*13\.5%[^}]*top:\s*55\.5%/s);
+  assert.match(styles, /\.md-pet-stars\s*\{[^}]*position:\s*absolute[^}]*top:\s*58\.2%/s);
   assert.match(styles, /\.md-pet-exp-copy\s*\{[^}]*align-items:\s*center/s);
+  assert.match(styles, /\.md-pet-exp-bar\s*\{[^}]*position:\s*absolute[^}]*top:\s*64\.5%/s);
   assert.match(styles, /\.md-pet-primary-stats div\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);
   assert.match(styles, /\.md-pet-skill-copy p\s*\{[^}]*white-space:\s*normal[^}]*overflow-wrap:\s*anywhere/s);
-  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-exp-bar/s);
+  assert.match(styles, /\.md-pet-page\s*\{[^}]*overflow-x:\s*hidden/s);
+  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-layout\s*\{[^}]*minmax\(0,\s*1fr\)\s+72px/s);
 });
 
 test("Pet artwork grows while every skill panel remains content-sized and padded", () => {
-  assert.match(components, /visualHeight: 124/);
-  assert.match(components, /maxVisualWidth: 165/);
-  assert.match(styles, /\.md-pet-skill-panel\s*\{[^}]*height:\s*auto[^}]*padding:\s*30px 14px 14px[^}]*overflow:\s*hidden/s);
+  assert.match(components, /visualHeight: 150/);
+  assert.match(components, /maxVisualWidth: 200/);
+  assert.match(styles, /\.md-pet-profile\s*\{[^}]*aspect-ratio:\s*2\s*\/\s*3[^}]*padding:\s*0/s);
+  assert.match(styles, /\.md-pet-showcase\s*\{[^}]*left:\s*14%[^}]*top:\s*5\.5%[^}]*width:\s*72%[^}]*height:\s*40%/s);
+  assert.match(styles, /\.md-pet-skill-panel\s*\{[^}]*min-height:\s*108px[^}]*height:\s*auto[^}]*padding:\s*38px 18px 18px[^}]*overflow:\s*hidden/s);
   assert.match(styles, /\.md-pet-skill-copy p\s*\{[^}]*max-width:\s*100%[^}]*line-height:\s*1\.45/s);
-  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-skill-panel\s*\{[^}]*padding:\s*28px 10px 12px/s);
+  assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-skill-panel\s*\{[^}]*min-height:\s*104px[^}]*padding:\s*36px 13px 15px/s);
   const catalogSource = petsSource.slice(0, petsSource.indexOf("// ---------- pet stats"));
   const skillCount = (catalogSource.match(/\b(?:active|passive|extra):\s*\{/g) || []).length;
   const descriptions = [...catalogSource.matchAll(/\bdesc:\s*"([^"]+)"/g)].map(match => match[1]);

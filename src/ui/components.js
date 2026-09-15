@@ -2386,7 +2386,7 @@ function PetScreen({
       margin: 0
     }
   }, "Pets"), /*#__PURE__*/React.createElement("div", {
-    className: "md-card",
+    className: "md-card md-pet-card",
     style: {
       marginBottom: 10
     }
@@ -2444,21 +2444,22 @@ function PetScreen({
     alt: selectedDef.name,
     idleFrameMs: 260,
     cropTransparent: true,
-    visualHeight: 124,
-    maxVisualWidth: 165
+    visualHeight: 150,
+    maxVisualWidth: 200,
+    fallback: selectedDef.icon
   }) : /*#__PURE__*/React.createElement("div", {
     className: "md-pet-profile-fallback",
     role: "img",
     "aria-label": selectedDef.name
   }, selectedDef.icon)), /*#__PURE__*/React.createElement("div", {
     className: "md-pet-name-row"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, selectedDef.name), /*#__PURE__*/React.createElement("span", null, PET_RARITY_LABEL[selectedDef.rarity], " · Lv.", selectedLevel)), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, selectedDef.name), /*#__PURE__*/React.createElement("span", null, "Lv.", selectedLevel, " · ", PET_RARITY_LABEL[selectedDef.rarity]))), /*#__PURE__*/React.createElement("div", {
     className: "md-pet-role"
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-pet-role-icon md-pet-ui-art",
     style: petUiStyle(`roles.${selectedRole}`),
     "aria-hidden": "true"
-  }), roleLabel)), /*#__PURE__*/React.createElement("div", {
+  }), roleLabel), /*#__PURE__*/React.createElement("div", {
     className: "md-pet-stars",
     "aria-label": `${selectedStar} of 3 stars`
   }, [1, 2, 3].map(index => /*#__PURE__*/React.createElement("span", {
@@ -2786,7 +2787,8 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
         // The pet action state is held for 420ms in App.js.
         attackFrameMs: 120 / combatSpeed,
         className: `md-enemy-img md-pet-img ${anim || ""}`,
-        alt: pet.name
+        alt: pet.name,
+        fallback: pet.icon
       })
     : null;
 

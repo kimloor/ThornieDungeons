@@ -185,6 +185,7 @@ const STYLE = `
 .md-enemy.boss { width: 84px; height: 84px; }
 
 .md-enemy-img { width: 64px; height: 64px; position: relative; display: block; animation: md-idle 1.8s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,107,107,0.35)); image-rendering: -webkit-optimize-contrast; }
+.md-frame-sprite-fallback { display: flex; align-items: center; justify-content: center; font-size: 42px; }
 .md-enemy-img.attack { animation: none; }
 .md-enemy-img.hurt { animation: md-shake 0.35s ease; }
 .md-enemy-img.boss { width: 84px; height: 84px; }
@@ -969,13 +970,14 @@ const STYLE = `
 /* Pet V2 page: PNGs provide the ornamental presentation while CSS owns all
    layout, labels, progress values and tap targets. */
 .md-pet-page { min-width: 0; overflow-x: hidden; }
+.md-pet-card { padding: 8px 6px 10px; overflow: hidden; }
 .md-pet-ui-art {
   background-image: var(--pet-ui-image, none);
   background-repeat: no-repeat;
   background-position: center;
   background-size: 100% 100%;
 }
-.md-pet-layout { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; min-width: 0; align-items: start; }
+.md-pet-layout { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 6px; min-width: 0; align-items: start; }
 .md-pet-roster {
   grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 7px; max-height: 510px; overflow-y: auto;
   overscroll-behavior: contain; scrollbar-width: thin; padding: 2px 2px 2px 0;
@@ -994,46 +996,47 @@ const STYLE = `
 .md-pet-roster-copy strong { font: 800 10px/1.2 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-pet-roster-copy small { color: var(--ink-soft); font-size: 8.5px; line-height: 1.25; }
 .md-pet-active-dot { position: absolute; right: 4px; top: 3px; color: var(--leaf); font-size: 8px; }
-.md-pet-detail { grid-column: 1; grid-row: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.md-pet-detail { grid-column: 1; grid-row: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .md-pet-profile {
-  width: 100%; min-height: 0; aspect-ratio: 2 / 3; position: relative; z-index: 0; overflow: visible; padding: 22px 20px 20px;
-  display: flex; flex-direction: column; align-items: center; isolation: isolate;
+  width: 100%; min-height: 0; aspect-ratio: 2 / 3; position: relative; z-index: 0; overflow: visible; padding: 0;
+  isolation: isolate;
 }
 .md-pet-showcase {
-  width: 100%; height: 142px; position: relative; z-index: 0; display: flex; align-items: center; justify-content: center;
-  margin-top: 0;
+  position: absolute; z-index: 0; left: 14%; top: 5.5%; width: 72%; height: 40%;
+  display: flex; align-items: center; justify-content: center;
 }
 .md-pet-star-aura {
-  position: absolute; z-index: 1; width: 94%; max-width: 220px; height: auto; left: 50%; top: 50%;
+  position: absolute; z-index: 1; width: 105%; max-width: 250px; height: auto; left: 50%; top: 50%;
   transform: translate(-50%, -50%); pointer-events: none; user-select: none;
 }
-.md-pet-profile-sprite { position: relative; z-index: 2; max-width: 90%; }
-.md-pet-profile-fallback { position: relative; z-index: 2; font-size: 76px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
+.md-pet-profile-sprite { position: relative; z-index: 2; max-width: 100%; }
+.md-pet-profile-fallback, .md-pet-profile-sprite.md-frame-sprite-fallback { position: relative; z-index: 2; font-size: 92px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 6px 8px rgba(0,0,0,.45)); }
 .md-pet-profile > :not(.md-pet-showcase) { position: relative; z-index: 3; }
 .md-pet-name-row {
-  width: 92%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px;
-  margin-top: 0; color: #fff4cf;
+  position: absolute !important; left: 15%; top: 46.5%; width: 70%; height: 8%;
+  display: flex; align-items: center; justify-content: center; color: #fff4cf; padding: 0 5%;
 }
-.md-pet-name-row > div:first-child { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; text-align: left; }
-.md-pet-name-row strong { font: 800 16px/1.05 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.md-pet-name-row span { color: var(--ink-soft); font-size: 9px; }
-.md-pet-role { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 9px; font-weight: 800; text-align: center; }
-.md-pet-role-icon { width: 28px; height: 28px; background-size: contain; }
-.md-pet-stars { height: 24px; display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 3px; }
+.md-pet-name-row > div:first-child { min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 7px; text-align: center; }
+.md-pet-name-row strong { font: 800 17px/1 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-pet-name-row span { flex: 0 0 auto; color: var(--ink-soft); font-size: 9px; }
+.md-pet-role { position: absolute !important; right: 13.5%; top: 55.5%; width: 15%; height: 11%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; font-size: 8px; line-height: 1; font-weight: 800; text-align: center; }
+.md-pet-role-icon { width: 29px; height: 29px; background-size: contain; }
+.md-pet-stars { position: absolute !important; left: 30%; top: 58.2%; width: 40%; height: 6%; display: flex; align-items: center; justify-content: center; gap: 3px; }
 .md-pet-star { width: 20px; height: 20px; background-size: contain; opacity: .2; filter: grayscale(1); }
 .md-pet-star.earned { opacity: 1; filter: none; }
-.md-pet-exp-copy { width: 88%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px; font-size: 10px; margin-top: 4px; color: var(--ink-soft); }
+.md-pet-exp-copy { position: absolute !important; z-index: 5 !important; left: 21%; top: 66%; width: 58%; height: 4%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4%; font-size: 9px; color: #eafffb; text-shadow: 0 1px 2px #001b18; }
 .md-pet-exp-copy strong { color: #a8fff2; }
 .md-pet-exp-bar {
-  width: 92%; height: 50px; flex: 0 0 50px; position: relative; overflow: visible; margin-top: -12px;
+  position: absolute !important; left: 17%; top: 64.5%; width: 66%; height: 7.5%; overflow: visible;
   background-image: var(--pet-ui-image, none); background-size: 100% 100%; background-repeat: no-repeat;
 }
 .md-pet-exp-fill { position: absolute; left: 4%; top: 25%; height: 50%; max-width: 92%; background-size: 100% 100%; }
 .md-pet-exp-frame { position: absolute; inset: 0; pointer-events: none; }
 .md-pet-primary-stats {
-  width: 94%; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 5px; margin-top: 12px;
+  position: absolute !important; left: 20.5%; top: 75.5%; width: 59%; height: 11.5%;
+  display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 4%;
 }
-.md-pet-primary-stats div { min-width: 0; min-height: 38px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5px 2px; border-radius: 7px; background: rgba(8,11,28,.42); }
+.md-pet-primary-stats div { min-width: 0; height: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1px; background: transparent; }
 .md-pet-primary-stats small { color: var(--ink-soft); font-size: 8px; }
 .md-pet-primary-stats strong { color: #fff4cf; font: 800 12px/1.2 'Baloo 2'; }
 .md-pet-details-panel { min-width: 0; padding: 9px; border: 1px solid rgba(255,209,102,.16); border-radius: 10px; background: rgba(8,11,28,.48); }
@@ -1043,7 +1046,7 @@ const STYLE = `
   color: var(--ink-soft); font: 800 10px 'Nunito'; cursor: pointer;
 }
 .md-pet-detail-tabs button.active { color: var(--gold); border-color: var(--gold); background: rgba(255,209,102,.1); }
-.md-pet-tab-content { min-height: 84px; margin-bottom: 8px; }
+.md-pet-tab-content { min-height: 0; margin-bottom: 8px; }
 .md-pet-secondary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
 .md-pet-secondary-stats div {
   display: flex; justify-content: space-between; gap: 6px; padding: 7px 8px; border-radius: 8px;
@@ -1051,12 +1054,12 @@ const STYLE = `
 }
 .md-pet-secondary-stats span { color: var(--ink-soft); }
 .md-pet-skill-list { display: flex; flex-direction: column; gap: 6px; }
-.md-pet-skill-panel { box-sizing: border-box; width: 100%; min-height: 92px; height: auto; position: relative; padding: 30px 14px 14px; background-size: 100% 100%; overflow: hidden; }
+.md-pet-skill-panel { box-sizing: border-box; width: 100%; min-height: 108px; height: auto; position: relative; padding: 38px 18px 18px; background-size: 100% 100%; overflow: hidden; }
 .md-pet-skill-title {
   position: absolute; left: 5px; top: 2px; width: 88px; height: 24px; display: flex; align-items: center;
   justify-content: center; aspect-ratio: 5 / 2; color: #fff4cf; font: 800 9px 'Baloo 2';
 }
-.md-pet-skill-copy { min-width: 0; width: 100%; display: grid; grid-template-columns: minmax(0,1fr) max-content; align-items: start; gap: 4px 7px; font-size: 9px; }
+.md-pet-skill-copy { min-width: 0; width: 100%; display: grid; grid-template-columns: minmax(0,1fr) max-content; align-items: start; gap: 5px 7px; font-size: 9.5px; }
 .md-pet-skill-copy strong { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .md-pet-skill-copy > span { color: var(--gold); font-weight: 800; }
 .md-pet-skill-copy p { grid-column: 1/-1; min-width: 0; max-width: 100%; margin: 0; color: var(--ink-soft); line-height: 1.45; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
@@ -1068,23 +1071,20 @@ const STYLE = `
 .md-pet-result-exp { background: rgba(92,224,202,.14); color: #c9fff6; }
 
 @media (max-width: 380px) {
-  .md-pet-layout { grid-template-columns: minmax(0, 1fr) 78px; gap: 6px; }
+  .md-pet-card { padding-inline: 4px; }
+  .md-pet-layout { grid-template-columns: minmax(0, 1fr) 72px; gap: 4px; }
   .md-pet-roster-item { grid-template-columns: 24px minmax(0,1fr); min-height: 64px; padding: 4px 3px; }
   .md-pet-roster-icon { font-size: 20px; }
-  .md-pet-profile { padding: 19px 13px 16px; }
-  .md-pet-showcase { height: 125px; }
-  .md-pet-name-row { width: 94%; gap: 4px; }
-  .md-pet-name-row strong { font-size: 14px; }
-  .md-pet-role { font-size: 8px; gap: 1px; }
-  .md-pet-role-icon { width: 24px; height: 24px; }
-  .md-pet-exp-copy { width: 92%; padding-inline: 4px; font-size: 9px; }
-  .md-pet-exp-bar { width: 96%; height: 46px; flex-basis: 46px; }
-  .md-pet-primary-stats { width: 96%; gap: 3px; margin-top: 8px; }
-  .md-pet-primary-stats div { min-height: 35px; padding-inline: 1px; }
+  .md-pet-name-row strong { font-size: 15px; }
+  .md-pet-name-row > div:first-child { gap: 4px; }
+  .md-pet-role { font-size: 7px; }
+  .md-pet-role-icon { width: 25px; height: 25px; }
+  .md-pet-star { width: 18px; height: 18px; }
+  .md-pet-exp-copy { font-size: 8px; }
   .md-pet-primary-stats strong { font-size: 11px; }
   .md-pet-details-panel { padding: 7px; }
-  .md-pet-skill-panel { min-height: 88px; padding: 28px 10px 12px; }
-  .md-pet-skill-copy { font-size: 8.5px; gap: 3px 4px; }
+  .md-pet-skill-panel { min-height: 104px; padding: 36px 13px 15px; }
+  .md-pet-skill-copy { font-size: 8.5px; gap: 4px; }
 }
 
 @media (max-width: 340px) {
