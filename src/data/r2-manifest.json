@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-15T07:48:13Z",
-  "count": 236,
+  "generatedAt": "2026-09-15T13:37:22Z",
+  "count": 297,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "df0b5c544ad027f0a2f002c0da937d46",
-      "last_modified": "2026-09-15T05:37:00.664Z",
-      "size": 17914,
+      "etag": "7068b9576e8f5f221653b3b5f897239b",
+      "last_modified": "2026-09-15T13:32:07.674Z",
+      "size": 24652,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -1489,6 +1489,83 @@
       "storage_class": "Standard"
     },
     {
+      "key": "sprite/pet/ember_fox/animations/ember_fox_attack_0.png",
+      "etag": "2ef9ab24ab2ab504d42bf0473c964b13",
+      "last_modified": "2026-09-15T10:56:56.390Z",
+      "size": 193997,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/ember_fox/animations/ember_fox_attack_1.png",
+      "etag": "909e533101ad361a8979075aaa37426d",
+      "last_modified": "2026-09-15T10:57:00.147Z",
+      "size": 200903,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/ember_fox/animations/ember_fox_attack_2.png",
+      "etag": "3cf7ca8095d4948dc82cd6c4ac87fbdf",
+      "last_modified": "2026-09-15T10:57:03.615Z",
+      "size": 186907,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/ember_fox/animations/ember_fox_death_0.png",
+      "etag": "ef7a23d23f6e1f47cfe2bd548fdd349a",
+      "last_modified": "2026-09-15T10:57:07.330Z",
+      "size": 99723,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/ember_fox/animations/ember_fox_idle_0.png",
+      "etag": "5b5d05cf6e4147baa9d70f76f00cc723",
+      "last_modified": "2026-09-15T10:57:10.845Z",
+      "size": 188026,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/ember_fox/animations/ember_fox_idle_1.png",
+      "etag": "ebbdb84d09922fcce0d3a00c8ff3cf97",
+      "last_modified": "2026-09-15T10:57:14.293Z",
+      "size": 193941,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/ember_fox/animations/ember_fox_idle_2.png",
+      "etag": "5000e24a8cc9bd70a02dc67dda352507",
+      "last_modified": "2026-09-15T10:57:17.699Z",
+      "size": 187181,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "sprite/pet/flamekit/animations/flamekit_attack_0.png",
       "etag": "2566e2c6c45501620f203a67c7d5143b",
       "last_modified": "2026-09-15T05:37:03.846Z",
@@ -1559,6 +1636,237 @@
       "etag": "8d23cdd84122f65505ebe8bf07281315",
       "last_modified": "2026-09-15T05:37:22.607Z",
       "size": 41041,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/hell_wolf/animations/hell_wolf_attack_0.png",
+      "etag": "db01ebaed00a90f6691da74b00808ecd",
+      "last_modified": "2026-09-15T10:57:21.419Z",
+      "size": 185321,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/hell_wolf/animations/hell_wolf_attack_1.png",
+      "etag": "9e193bff2440f4dfc3ea35f3777f9b8c",
+      "last_modified": "2026-09-15T10:57:25.323Z",
+      "size": 195946,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/hell_wolf/animations/hell_wolf_attack_2.png",
+      "etag": "6a7a96058b67f10749b76a2ab353ba58",
+      "last_modified": "2026-09-15T10:57:28.854Z",
+      "size": 208704,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/hell_wolf/animations/hell_wolf_death_0.png",
+      "etag": "e213f51b10f60a765d3e4597306de6ee",
+      "last_modified": "2026-09-15T10:57:32.340Z",
+      "size": 123184,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/hell_wolf/animations/hell_wolf_idle_0.png",
+      "etag": "e4830d91c77372d0ec6f5456833157c9",
+      "last_modified": "2026-09-15T10:57:35.704Z",
+      "size": 183227,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/hell_wolf/animations/hell_wolf_idle_1.png",
+      "etag": "2000c8aa5fe6dfcf00332c973cd945c8",
+      "last_modified": "2026-09-15T10:57:39.010Z",
+      "size": 191813,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/hell_wolf/animations/hell_wolf_idle_2.png",
+      "etag": "486022114532833f59307c065f0fdb41",
+      "last_modified": "2026-09-15T10:57:42.554Z",
+      "size": 189406,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/inferno_drake/animations/inferno_drake_attack_0.png",
+      "etag": "2d110f115a87cd73205f6bc5707f5ba3",
+      "last_modified": "2026-09-15T10:57:45.965Z",
+      "size": 195340,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/inferno_drake/animations/inferno_drake_attack_1.png",
+      "etag": "7b3c270dbe0b9c531112fa179a7cae2c",
+      "last_modified": "2026-09-15T10:57:49.418Z",
+      "size": 196751,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/inferno_drake/animations/inferno_drake_attack_2.png",
+      "etag": "1218e5915cbaf013e59adacad986eea0",
+      "last_modified": "2026-09-15T10:57:53.117Z",
+      "size": 197149,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/inferno_drake/animations/inferno_drake_death_0.png",
+      "etag": "775bb1a57a9f4e0bac4ac08127e61987",
+      "last_modified": "2026-09-15T10:57:56.360Z",
+      "size": 152005,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/inferno_drake/animations/inferno_drake_idle_0.png",
+      "etag": "43d849b782665a4909097d94d6918a68",
+      "last_modified": "2026-09-15T10:57:59.829Z",
+      "size": 197356,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/inferno_drake/animations/inferno_drake_idle_1.png",
+      "etag": "e899134a3654b272b6aa3dc192ccef6e",
+      "last_modified": "2026-09-15T10:58:03.577Z",
+      "size": 199953,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/inferno_drake/animations/inferno_drake_idle_2.png",
+      "etag": "758ba2f6957e901d61d080699ce22396",
+      "last_modified": "2026-09-15T10:58:07.330Z",
+      "size": 190848,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/moon_hare/animations/moon_hare_attack_0.png",
+      "etag": "3495c800625b08b7eb9bc36da6db88dc",
+      "last_modified": "2026-09-15T10:58:10.759Z",
+      "size": 169643,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/moon_hare/animations/moon_hare_attack_1.png",
+      "etag": "e0657d9914e900ceda9148d7f3bb4587",
+      "last_modified": "2026-09-15T10:58:14.239Z",
+      "size": 193012,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/moon_hare/animations/moon_hare_attack_2.png",
+      "etag": "8b7977778f77f659f5db5ca7e9fa9f40",
+      "last_modified": "2026-09-15T10:58:17.835Z",
+      "size": 191436,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/moon_hare/animations/moon_hare_death_0.png",
+      "etag": "1127b2a93b7ee809a55d80bfa55bcca9",
+      "last_modified": "2026-09-15T10:58:21.230Z",
+      "size": 103310,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/moon_hare/animations/moon_hare_idle_0.png",
+      "etag": "c92df3e066988bdddaef5a2d75aa56ae",
+      "last_modified": "2026-09-15T10:58:24.560Z",
+      "size": 144784,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/moon_hare/animations/moon_hare_idle_1.png",
+      "etag": "28092f162605e82c54217598708d9728",
+      "last_modified": "2026-09-15T10:58:27.915Z",
+      "size": 144560,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/moon_hare/animations/moon_hare_idle_2.png",
+      "etag": "17494aa855872e4dd1c24228fb5da0a3",
+      "last_modified": "2026-09-15T10:58:31.680Z",
+      "size": 143659,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1735,6 +2043,83 @@
       "etag": "07b6c83a2c7c3c7e8425019d29e00bd9",
       "last_modified": "2026-09-08T23:43:28.070Z",
       "size": 133046,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/storm_phoenix/animations/storm_phoenix_attack_0.png",
+      "etag": "113bde76a5daacbf5aeaaa8a3f58125b",
+      "last_modified": "2026-09-15T10:58:35.069Z",
+      "size": 220522,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/storm_phoenix/animations/storm_phoenix_attack_1.png",
+      "etag": "36efd21cae76d5233416709f112a1061",
+      "last_modified": "2026-09-15T10:58:38.483Z",
+      "size": 208921,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/storm_phoenix/animations/storm_phoenix_attack_2.png",
+      "etag": "8223abac9e2660c31f7218106dcdb5dc",
+      "last_modified": "2026-09-15T10:58:41.874Z",
+      "size": 238450,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/storm_phoenix/animations/storm_phoenix_death_0.png",
+      "etag": "5ec6877479df71819f59287159a5e14b",
+      "last_modified": "2026-09-15T10:58:45.470Z",
+      "size": 140437,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/storm_phoenix/animations/storm_phoenix_idle_0.png",
+      "etag": "f539c4ace03d1d018925ad4769beae9c",
+      "last_modified": "2026-09-15T10:58:48.776Z",
+      "size": 205911,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/storm_phoenix/animations/storm_phoenix_idle_1.png",
+      "etag": "965ee89e843c8224d88768ddb91bb127",
+      "last_modified": "2026-09-15T10:58:52.289Z",
+      "size": 218221,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/pet/storm_phoenix/animations/storm_phoenix_idle_2.png",
+      "etag": "181594a0dfb7b46e288e9e320285d92b",
+      "last_modified": "2026-09-15T10:58:55.686Z",
+      "size": 209455,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2021,6 +2406,28 @@
       "etag": "abcec86ee631556193a1cc8af00aebec",
       "last_modified": "2026-09-13T15:47:29.929Z",
       "size": 58575,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/button_speed_x1.png",
+      "etag": "a572a8dcf8f5ab15423f742b20e3b973",
+      "last_modified": "2026-09-15T13:32:10.551Z",
+      "size": 50841,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/button_speed_x2.png",
+      "etag": "c9626984751bbbdfd63e4e96e6de9a9f",
+      "last_modified": "2026-09-15T13:32:13.316Z",
+      "size": 52548,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2595,6 +3002,270 @@
       "size": 1587,
       "http_metadata": {
         "contentType": "image/svg+xml"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/blade_storm/blade_storm_0.png",
+      "etag": "cbe217423131ed3d1f378669bf1a1a6a",
+      "last_modified": "2026-09-15T13:32:16.095Z",
+      "size": 175915,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/blade_storm/blade_storm_1.png",
+      "etag": "ab8e73c135468fe1c2e93fbc614568c6",
+      "last_modified": "2026-09-15T13:32:18.969Z",
+      "size": 274724,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/blade_storm/blade_storm_2.png",
+      "etag": "ceddaf421bca2c14168cda268e739de8",
+      "last_modified": "2026-09-15T13:32:23.457Z",
+      "size": 296698,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/buff_aura/buff_aura_0.png",
+      "etag": "9c2b997ebd6480f098bb2c2938bf9330",
+      "last_modified": "2026-09-15T13:32:26.343Z",
+      "size": 153074,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/buff_aura/buff_aura_1.png",
+      "etag": "e85da1c6d28b78e96971339ea5eeb1ca",
+      "last_modified": "2026-09-15T13:32:29.550Z",
+      "size": 245533,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/buff_aura/buff_aura_2.png",
+      "etag": "1aa01428e12364792a6bdb8694fd1326",
+      "last_modified": "2026-09-15T13:32:38.522Z",
+      "size": 278215,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/debuff_burst/poison_hit/poison_hit_0.png",
+      "etag": "5f050bd4dc5085991669cc3d44a2ba3c",
+      "last_modified": "2026-09-15T13:32:41.451Z",
+      "size": 32800,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/debuff_burst/poison_hit/poison_hit_1.png",
+      "etag": "64ad4e2e1a95285caa2c1ef7a9785237",
+      "last_modified": "2026-09-15T13:32:44.176Z",
+      "size": 61735,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/debuff_burst/poison_hit/poison_hit_2.png",
+      "etag": "639c96f53ce5de914f86fddcafe52efb",
+      "last_modified": "2026-09-15T13:32:47.081Z",
+      "size": 81371,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/debuff_burst/silence_hit/silence_hit_0.png",
+      "etag": "733fee0fe6c9e848d672879ce54d0b32",
+      "last_modified": "2026-09-15T13:32:50.133Z",
+      "size": 41663,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/debuff_burst/silence_hit/silence_hit_1.png",
+      "etag": "c8f04f10084eed627c521612334fbbdd",
+      "last_modified": "2026-09-15T13:32:52.838Z",
+      "size": 79647,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/debuff_burst/silence_hit/silence_hit_2.png",
+      "etag": "39e9e8b6225ec82cd4b872232cd18e8c",
+      "last_modified": "2026-09-15T13:32:55.744Z",
+      "size": 104465,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_basic/slash_basic_0.png",
+      "etag": "5bdff7a3f645ff40cd0a8e21072083ad",
+      "last_modified": "2026-09-15T13:32:58.844Z",
+      "size": 64732,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_basic/slash_basic_1.png",
+      "etag": "13f06a14e2ce14722e408ddc428be1fe",
+      "last_modified": "2026-09-15T13:33:01.706Z",
+      "size": 105838,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_basic/slash_basic_2.png",
+      "etag": "be06806dad1cb4eacb481e0f3696a449",
+      "last_modified": "2026-09-15T13:33:04.725Z",
+      "size": 116941,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_heavy/slash_heavy_0.png",
+      "etag": "ad653dfa6126dffdd3849dd6349f6fcf",
+      "last_modified": "2026-09-15T13:33:07.984Z",
+      "size": 103684,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_heavy/slash_heavy_1.png",
+      "etag": "cc6a779cae6ee566975d6ca4df2f1ff6",
+      "last_modified": "2026-09-15T13:33:10.976Z",
+      "size": 169581,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_heavy/slash_heavy_2.png",
+      "etag": "d5ac2eb385734c08cc70754d915d1d82",
+      "last_modified": "2026-09-15T13:33:13.901Z",
+      "size": 188983,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_status/silence/slash_status_silence_0.png",
+      "etag": "5ccbd700c2061e1b674cb54e2d6ce282",
+      "last_modified": "2026-09-15T13:33:16.890Z",
+      "size": 57192,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_status/silence/slash_status_silence_1.png",
+      "etag": "64e2cfe808af8ed1abbdd09aa707bdcb",
+      "last_modified": "2026-09-15T13:33:19.779Z",
+      "size": 92895,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_status/silence/slash_status_silence_2.png",
+      "etag": "76f4b3d1a76e9318394c1c6c3cc1f0b3",
+      "last_modified": "2026-09-15T13:33:22.663Z",
+      "size": 102602,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_status/toxic/slash_status_toxic_0.png",
+      "etag": "d1a5d5ddd1983a4412cba00308aa7af0",
+      "last_modified": "2026-09-15T13:33:25.708Z",
+      "size": 75718,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_status/toxic/slash_status_toxic_1.png",
+      "etag": "dad887c2464d3d2daa274e2958dcde18",
+      "last_modified": "2026-09-15T13:33:28.592Z",
+      "size": 125092,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "vfx/battle/slash_status/toxic/slash_status_toxic_2.png",
+      "etag": "918c8251e7dc3d260f733bfca4f66c98",
+      "last_modified": "2026-09-15T13:33:31.699Z",
+      "size": 139336,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
