@@ -48,7 +48,7 @@ test("resolved hit, miss and crit logs all keep the attack-attempt VFX", () => {
   ]) {
     const next = battleState({ log: [entry], logSeq: 1, heroSp: 90 });
     assert.deepEqual(vfx.resolvedEvents(previous, next, previous.units.hero, { type: "active", skillId: "power_strike", targetId: "m1" }), [
-      { effectKey: "slash_basic", kind: "single", targetId: "m1", skillId: "power_strike" }
+      { effectKey: "slash_basic", kind: "single", placement: "lane", targetId: "m1", skillId: "power_strike" }
     ]);
   }
 });
@@ -65,11 +65,11 @@ test("status confirmation appears only for an actual resolved application", () =
   assert.deepEqual(vfx.resolvedEvents(previous, converted, previous.units.hero, { type: "active", skillId: "silent_edge", targetId: "m1" }).map(event => event.effectKey), ["slash_status.silence"]);
 });
 
-test("Guard targets Hero and Blade Storm presents each resolved target once", () => {
+test("Guard stays on Hero and Blade Storm uses one shared arena presentation", () => {
   const previous = battleState();
   const guardNext = battleState({ logSeq: 0, heroSp: 90, cooldown: 2 });
   assert.deepEqual(vfx.resolvedEvents(previous, guardNext, previous.units.hero, { type: "active", skillId: "guard", targetId: "m1" }), [
-    { effectKey: "buff_aura", kind: "aura", targetId: "hero", skillId: "guard" }
+    { effectKey: "buff_aura", kind: "aura", placement: "target", targetId: "hero", skillId: "guard" }
   ]);
 
   const bladeNext = battleState({
@@ -81,20 +81,29 @@ test("Guard targets Hero and Blade Storm presents each resolved target once", ()
       { seq: 3, type: "damage", actorId: "hero", targetId: "m1" }
     ]
   });
-  assert.deepEqual(vfx.resolvedEvents(previous, bladeNext, previous.units.hero, { type: "active", skillId: "blade_storm", targetId: "m1" }).map(event => event.targetId), ["m1", "m2"]);
+  assert.deepEqual(vfx.resolvedEvents(previous, bladeNext, previous.units.hero, { type: "active", skillId: "blade_storm", targetId: "m1" }), [{
+    effectKey: "blade_storm", kind: "aoe", placement: "arena", targetId: null,
+    targetIds: ["m1", "m2"], skillId: "blade_storm"
+  }]);
 });
 
-test("invalid/unexecuted commands, Auto basics and Skip create no Pack 01 VFX", () => {
+test("Basic Attack is manifest-gated for Manual/Auto while invalid and Skip stay empty", () => {
   const previous = battleState();
+  const basicLog = { seq: 1, type: "damage", actorId: "hero", targetId: "m1", actionName: "basic attack" };
+  const resolvedBasic = battleState({ log: [basicLog], logSeq: 1 });
   assert.deepEqual(vfx.resolvedEvents(previous, battleState(), previous.units.hero, { type: "active", skillId: "guard", targetId: "m1" }), []);
-  assert.deepEqual(vfx.resolvedEvents(previous, battleState(), previous.units.hero, { type: "basic", targetId: "m1" }), []);
+  assert.deepEqual(vfx.resolvedEvents(previous, resolvedBasic, previous.units.hero, { type: "basic", targetId: "m1" }), []);
+  const expected = [{ effectKey: "slash_normal", kind: "single", placement: "lane", targetId: "m1", skillId: "basic_attack" }];
+  assert.deepEqual(vfx.resolvedEvents(previous, resolvedBasic, previous.units.hero, { type: "basic", targetId: "m1" }, true, { basicEffectKey: "slash_normal" }), expected);
+  assert.deepEqual(vfx.resolvedEvents(previous, resolvedBasic, previous.units.hero, null, true, { basicEffectKey: "slash_normal" }), expected);
   assert.deepEqual(vfx.resolvedEvents(previous, battleState(), previous.units.hero, { type: "skip_battle" }), []);
 });
 
 test("manifest assets, speed artwork and safe presentation layer are wired", () => {
   const manifest = JSON.parse(read("r2-upload/manifest.json"));
-  const expected = ["slash_basic", "slash_heavy", "poison_hit", "silence_hit", "buff_aura", "blade_storm"];
+  const expected = ["slash_normal", "slash_basic", "slash_heavy", "poison_hit", "silence_hit", "buff_aura", "blade_storm"];
   expected.forEach(key => assert.equal(manifest.assets.battleVfx[key].length, 3));
+  manifest.assets.battleVfx.slash_normal.forEach(assetPath => assert.equal(fs.existsSync(path.join(root, "r2-upload", assetPath)), true));
   assert.equal(manifest.assets.battleVfx.slash_status.toxic.length, 3);
   assert.equal(manifest.assets.battleVfx.slash_status.silence.length, 3);
   assert.ok(manifest.assets.battleUi.buttons.speedX1);
@@ -106,7 +115,10 @@ test("manifest assets, speed artwork and safe presentation layer are wired", () 
   assert.match(components, /battleUiStyle\(combatSpeed === 2 \? "buttons\.speedX2" : "buttons\.speedX1"\)/);
   assert.match(components, /onError: \(\) => setFailedSources/);
   assert.match(styles, /\.md-battle-vfx[\s\S]*z-index: 4[\s\S]*pointer-events: none/);
+  assert.match(styles, /\.md-battle-vfx\.placement-lane[\s\S]*left: calc\(50% - clamp\(/);
+  assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-arena[\s\S]*left: 58%/);
   assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-battle-vfx/);
+  assert.match(app, /battleVfxFrames\(optionalBasicKey\)\.length \? optionalBasicKey : ""/);
   assert.match(app, /if \(heroCommand\?\.type === "skip_battle"\) \{\s*setBattleVfx\(\[\]\);\s*const resolved = BATTLE_CORE_V1\.simulateBattle/);
   assert.doesNotMatch(read("src/systems/battleCore.js"), /battleVfx|slash_basic|buff_aura/);
 });

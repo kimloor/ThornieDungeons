@@ -861,12 +861,19 @@ function ThornieDungeons() {
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
     const result = BATTLE_CORE_V1.battleStep(state, actor.kind === "hero" ? heroCommand : undefined);
     const next = result.state;
-    const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(state, next, actor, heroCommand, result.completedAction);
+    const optionalBasicKey = BATTLE_VFX_PRESENTATION.OPTIONAL_BASIC_EFFECT_KEY;
+    const basicEffectKey = battleVfxFrames(optionalBasicKey).length ? optionalBasicKey : "";
+    const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(
+      state, next, actor, heroCommand, result.completedAction, { basicEffectKey }
+    );
     const vfxToken = ++battleVfxSeqRef.current;
     setBattleVfx(resolvedVfx.map((event, index) => ({
       ...event,
       id: `${vfxToken}:${index}`,
-      targetKey: event.targetId === next.heroId ? "hero" : event.targetId === next.petId ? "pet" : event.targetId
+      targetKey: event.placement === "arena" ? "battle-lane"
+        : event.targetId === next.heroId ? "hero"
+        : event.targetId === next.petId ? "pet"
+        : event.targetId
     })));
     for (const [id, unit] of Object.entries(next.units)) {
       const before = state.units[id];

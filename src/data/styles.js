@@ -1417,6 +1417,12 @@ const STYLE = `
 .md-battle-vfx.kind-status { width: 100px; }
 .md-battle-vfx.kind-aura { width: 138px; }
 .md-battle-vfx.kind-aoe { width: 126px; }
+.md-battle-vfx.placement-lane {
+  left: calc(50% - clamp(74px, 22vw, 100px));
+}
+.md-arena > .md-battle-vfx.placement-arena {
+  left: 58%; top: 50%; z-index: 5;
+}
 .md-hero-slot > .md-sprite-wrap,
 .md-pet-slot .md-pet-unit,
 .md-monster-slot .md-monster-unit { z-index: auto; }

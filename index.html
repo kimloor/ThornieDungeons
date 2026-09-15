@@ -1494,6 +1494,12 @@ const STYLE = `
 .md-battle-vfx.kind-status { width: 100px; }
 .md-battle-vfx.kind-aura { width: 138px; }
 .md-battle-vfx.kind-aoe { width: 126px; }
+.md-battle-vfx.placement-lane {
+  left: calc(50% - clamp(74px, 22vw, 100px));
+}
+.md-arena > .md-battle-vfx.placement-arena {
+  left: 58%; top: 50%; z-index: 5;
+}
 .md-hero-slot > .md-sprite-wrap,
 .md-pet-slot .md-pet-unit,
 .md-monster-slot .md-monster-unit { z-index: auto; }
@@ -6499,32 +6505,42 @@ const emptyEquipped = () => ({
 // Battle VFX observes completed Battle Core output. It never resolves hits,
 // statuses, damage, cooldowns or turns; future modes should reuse this bridge.
 const BATTLE_VFX_PRESENTATION = (() => {
+  const OPTIONAL_BASIC_EFFECT_KEY = "slash_normal";
   const SKILL_EFFECTS = Object.freeze({
-    power_strike: { effectKey: "slash_basic", kind: "single" },
-    heavy_blow: { effectKey: "slash_heavy", kind: "single" },
-    toxic_strike: { effectKey: "slash_status.toxic", kind: "single", status: "poison", statusEffectKey: "poison_hit" },
-    silent_edge: { effectKey: "slash_status.silence", kind: "single", status: "silence", statusEffectKey: "silence_hit" },
-    guard: { effectKey: "buff_aura", kind: "aura", self: true },
-    blade_storm: { effectKey: "blade_storm", kind: "aoe" }
+    power_strike: { effectKey: "slash_basic", kind: "single", placement: "lane" },
+    heavy_blow: { effectKey: "slash_heavy", kind: "single", placement: "lane" },
+    toxic_strike: { effectKey: "slash_status.toxic", kind: "single", placement: "lane", status: "poison", statusEffectKey: "poison_hit" },
+    silent_edge: { effectKey: "slash_status.silence", kind: "single", placement: "lane", status: "silence", statusEffectKey: "silence_hit" },
+    guard: { effectKey: "buff_aura", kind: "aura", placement: "target", self: true },
+    blade_storm: { effectKey: "blade_storm", kind: "aoe", placement: "arena" }
   });
 
   function unique(values) {
     return [...new Set(values.filter(Boolean))];
   }
 
-  function resolvedEvents(previous, next, actor, command, completedAction = true) {
-    const skillId = command?.type === "active" ? command.skillId : null;
-    const mapping = SKILL_EFFECTS[skillId];
-    if (!completedAction || actor?.kind !== "hero" || !mapping) return [];
-
+  function resolvedEvents(previous, next, actor, command, completedAction = true, options = {}) {
+    if (!completedAction || actor?.kind !== "hero") return [];
     const newLogs = (next?.log || []).filter(entry => Number(entry.seq) > Number(previous?.logSeq || 0));
     const actionTargets = unique(newLogs
-      .filter(entry => entry.actorId === actor.id && (entry.type === "damage" || entry.type === "miss"))
+      .filter(entry => entry.actorId === actor.id && (entry.type === "damage" || entry.type === "miss" || entry.type === "block"))
       .map(entry => entry.targetId)
       .filter(targetId => next?.units?.[targetId]?.side !== actor.side));
+    const requestedBasic = !command || command.type === "basic";
+    const resolvedBasic = requestedBasic && newLogs.some(entry =>
+      entry.actorId === actor.id && (
+        ((entry.type === "damage" || entry.type === "miss") && entry.actionName === "basic attack") || entry.type === "block"
+      )
+    );
+    const skillId = command?.type === "active" ? command.skillId : resolvedBasic ? "basic_attack" : null;
+    const mapping = skillId === "basic_attack"
+      ? (options.basicEffectKey ? { effectKey: options.basicEffectKey, kind: "single", placement: "lane" } : null)
+      : SKILL_EFFECTS[skillId];
+    if (!mapping) return [];
+
     const beforeActor = previous?.units?.[actor.id];
     const nextActor = next?.units?.[actor.id];
-    const cooldownAdvanced = Number(nextActor?.cooldowns?.[skillId] || 0) > Number(beforeActor?.cooldowns?.[skillId] || 0);
+    const cooldownAdvanced = skillId !== "basic_attack" && Number(nextActor?.cooldowns?.[skillId] || 0) > Number(beforeActor?.cooldowns?.[skillId] || 0);
     const spentSp = Number(nextActor?.sp || 0) < Number(beforeActor?.sp || 0);
 
     // A start-of-Action status can defeat the actor before the command executes.
@@ -6535,18 +6551,20 @@ const BATTLE_VFX_PRESENTATION = (() => {
       ? command.targetId
       : next?.selectedTargetIds?.[actor.side] || next?.selectedTargetId;
     const targetIds = mapping.self ? [actor.id] : (actionTargets.length ? actionTargets : [fallbackTarget]);
-    const events = unique(targetIds).map(targetId => ({ effectKey: mapping.effectKey, kind: mapping.kind, targetId, skillId }));
+    const events = mapping.placement === "arena"
+      ? [{ effectKey: mapping.effectKey, kind: mapping.kind, placement: mapping.placement, targetId: null, targetIds: unique(targetIds), skillId }]
+      : unique(targetIds).map(targetId => ({ effectKey: mapping.effectKey, kind: mapping.kind, placement: mapping.placement, targetId, skillId }));
 
     if (mapping.status) {
       const appliedTargets = unique(newLogs
         .filter(entry => entry.type === "status" && entry.actorId === actor.id && entry.status === mapping.status)
         .map(entry => entry.targetId));
-      appliedTargets.forEach(targetId => events.push({ effectKey: mapping.statusEffectKey, kind: "status", targetId, skillId }));
+      appliedTargets.forEach(targetId => events.push({ effectKey: mapping.statusEffectKey, kind: "status", placement: "target", targetId, skillId }));
     }
     return events;
   }
 
-  return Object.freeze({ SKILL_EFFECTS, resolvedEvents });
+  return Object.freeze({ OPTIONAL_BASIC_EFFECT_KEY, SKILL_EFFECTS, resolvedEvents });
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = BATTLE_VFX_PRESENTATION;
@@ -7430,12 +7448,19 @@ function ThornieDungeons() {
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
     const result = BATTLE_CORE_V1.battleStep(state, actor.kind === "hero" ? heroCommand : undefined);
     const next = result.state;
-    const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(state, next, actor, heroCommand, result.completedAction);
+    const optionalBasicKey = BATTLE_VFX_PRESENTATION.OPTIONAL_BASIC_EFFECT_KEY;
+    const basicEffectKey = battleVfxFrames(optionalBasicKey).length ? optionalBasicKey : "";
+    const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(
+      state, next, actor, heroCommand, result.completedAction, { basicEffectKey }
+    );
     const vfxToken = ++battleVfxSeqRef.current;
     setBattleVfx(resolvedVfx.map((event, index) => ({
       ...event,
       id: `${vfxToken}:${index}`,
-      targetKey: event.targetId === next.heroId ? "hero" : event.targetId === next.petId ? "pet" : event.targetId
+      targetKey: event.placement === "arena" ? "battle-lane"
+        : event.targetId === next.heroId ? "hero"
+        : event.targetId === next.petId ? "pet"
+        : event.targetId
     })));
     for (const [id, unit] of Object.entries(next.units)) {
       const before = state.units[id];
@@ -11590,7 +11615,7 @@ function BattleVfx({ event, combatSpeed = 1 }) {
   if (!playableFrames.length) return null;
   const currentSrc = playableFrames[Math.min(frameIndex, playableFrames.length - 1)];
   return /*#__PURE__*/React.createElement("img", {
-    className: `md-battle-vfx kind-${event.kind || "single"}`,
+    className: `md-battle-vfx kind-${event.kind || "single"} placement-${event.placement || "target"}`,
     src: currentSrc,
     alt: "",
     "aria-hidden": "true",
@@ -11875,7 +11900,11 @@ function CombatScreen({
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
-  }), showBattleIntro && /*#__PURE__*/React.createElement("div", {
+  }), vfxFor("battle-lane").map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+    key: event.id,
+    event: event,
+    combatSpeed: combatSpeed
+  })), showBattleIntro && /*#__PURE__*/React.createElement("div", {
     className: "md-battle-intro",
     role: "status",
     "aria-live": "polite"

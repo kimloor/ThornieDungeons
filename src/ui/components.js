@@ -2878,7 +2878,7 @@ function BattleVfx({ event, combatSpeed = 1 }) {
   if (!playableFrames.length) return null;
   const currentSrc = playableFrames[Math.min(frameIndex, playableFrames.length - 1)];
   return /*#__PURE__*/React.createElement("img", {
-    className: `md-battle-vfx kind-${event.kind || "single"}`,
+    className: `md-battle-vfx kind-${event.kind || "single"} placement-${event.placement || "target"}`,
     src: currentSrc,
     alt: "",
     "aria-hidden": "true",
@@ -3163,7 +3163,11 @@ function CombatScreen({
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
-  }), showBattleIntro && /*#__PURE__*/React.createElement("div", {
+  }), vfxFor("battle-lane").map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+    key: event.id,
+    event: event,
+    combatSpeed: combatSpeed
+  })), showBattleIntro && /*#__PURE__*/React.createElement("div", {
     className: "md-battle-intro",
     role: "status",
     "aria-live": "polite"

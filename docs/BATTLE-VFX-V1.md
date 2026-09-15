@@ -64,6 +64,12 @@ So VFX is:
 
 VFX should be short, readable, and not cover the whole screen unless the skill is intentionally AoE.
 
+Placement contract:
+- single-target slash families render in the open lane between attacker and target, biased toward the target side rather than covering the target sprite
+- `blade_storm` renders once in the central shared combat lane for AoE readability
+- `buff_aura` remains centered on the Hero
+- `poison_hit` and `silence_hit` remain centered on the actual resolved target
+
 ---
 
 ## 3. Timing / x1 / x2
@@ -96,6 +102,8 @@ Visual:
 
 Primary V1 skill:
 - Power Strike
+
+An optional weaker `slash_normal` family may represent Hero Basic Attack. Runtime must use it only when that exact key exists in the loaded manifest; otherwise Basic Attack has no extra VFX.
 
 ### 4.2 `slash_heavy`
 Use for heavier impact attacks.
@@ -265,6 +273,11 @@ Boss/Raid conversions follow Battle Core output. Example: a successful Silence p
 Miss:
 - action VFX may still show the attack attempt if appropriate
 - do not show a successful status confirmation overlay on failed/missed proc
+
+Basic Attack:
+- use manifest key `slash_normal` only when present
+- Manual and Auto consume the same resolved Basic Attack output
+- missing `slash_normal` falls back to no VFX without warning, delay, or gameplay impact
 
 Multi-hit:
 - visual timing may represent multiple hits
