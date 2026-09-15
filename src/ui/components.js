@@ -2773,10 +2773,18 @@ function EnemySprite({
   }, enemy.name));
 }
 
+function getPetPresentation(pet, config = getPetSpriteConfig(pet?.defId)) {
+  const configuredSize = config?.presentation?.sizeClass;
+  const sizeClass = MONSTER_VISUAL_SIZES[configuredSize] ? configuredSize : "small";
+  const anchorType = config?.presentation?.anchorType === "flying" ? "flying" : "ground";
+  return { sizeClass, anchorType, ...MONSTER_VISUAL_SIZES[sizeClass] };
+}
+
 function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
   const dead = pet.hp <= 0;
   const hpPct = Math.max(0, Math.min(100, pet.hp / pet.maxHp * 100));
   const spriteConfig = getPetSpriteConfig(pet.defId);
+  const presentation = getPetPresentation(pet, spriteConfig);
   const spriteVisual = spriteConfig
     ? /*#__PURE__*/React.createElement(AnimatedFrameSprite, {
         key: `${pet.instId}:${dead ? "death" : anim === "attack" ? "attack" : "idle"}`,
@@ -2786,6 +2794,9 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
         // Keep all three attack frames visible long enough to read in combat.
         // The pet action state is held for 520ms at normal speed in App.js.
         attackFrameMs: 150 / combatSpeed,
+        cropTransparent: true,
+        visualHeight: presentation.height,
+        maxVisualWidth: presentation.maxWidth,
         className: `md-enemy-img md-pet-img ${dead ? "death" : anim || ""}`,
         alt: pet.name,
         fallback: pet.icon
@@ -2793,7 +2804,7 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
     : null;
 
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-sprite-wrap",
+    className: `md-sprite-wrap md-pet-unit size-${presentation.sizeClass} anchor-${presentation.anchorType}`,
     style: { opacity: 1 }
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar md-battle-art",
@@ -3131,7 +3142,7 @@ function CombatScreen({
       color: f.color
     }
   }, f.text))), petCombat && /*#__PURE__*/React.createElement("div", {
-    className: "md-pet-slot"
+    className: `md-pet-slot ${getPetPresentation(petCombat).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(PetCombatSprite, {
     pet: petCombat,
     anim: petAnim,

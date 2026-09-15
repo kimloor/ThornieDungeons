@@ -1169,6 +1169,7 @@ const STYLE = `
 .md-monster-slot { position: absolute; pointer-events: auto; }
 .md-hero-slot { left: 23%; top: 55%; transform: translate(-50%, -50%); }
 .md-pet-slot { left: 17%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
+.md-pet-slot.flying { top: 68%; }
 
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
    Slot 1 is the explicit formation centre used by solo units and Bosses. The
@@ -1219,6 +1220,7 @@ const STYLE = `
   .md-scene.battle-bg .md-arena { min-height: clamp(286px, 49dvh, 360px); }
   .md-hero-slot { left: 22%; top: 53%; }
   .md-pet-slot { left: 13%; top: 76%; transform: translate(-50%, -50%) scale(0.61); }
+  .md-pet-slot.flying { top: 69%; }
 }
 
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
