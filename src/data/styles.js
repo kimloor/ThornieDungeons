@@ -1698,6 +1698,9 @@ const STYLE = `
 .md-inv2-enchants > div { padding:3px 0; font-size:11px; color:#d8c8ff; }
 .md-inv2-compare { margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,209,102,.28); }
 .md-inv2-compare-head { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:8px; text-align:center; color:var(--gold); font-size:11px; font-weight:800; }
+.md-inv2-compare-item { min-width:0; display:flex; align-items:center; justify-content:center; gap:6px; }
+.md-inv2-compare-copy { min-width:0; overflow-wrap:anywhere; }
+.md-inv2-compare-icon { width:30px; height:30px; flex:0 0 30px; }
 .md-inv2-compare-head small { display:block; margin-top:2px; color:var(--ink-soft); font-size:8px; font-weight:700; }
 .md-inv2-lock { width:100%; margin-top:12px; } .md-inv2-lock.active { color:var(--gold); border-color:var(--gold); }
 .md-inv2-detail-actions button:disabled,.md-inv2-overflow-row button:disabled { opacity:.38; cursor:not-allowed; }
@@ -1731,6 +1734,9 @@ const STYLE = `
   .md-inv2-hero .md-sprite-wrap { transform:scale(1.42); }
   .md-inv2-grid { gap:5px; }
   .md-inv2-detail { padding:14px 12px; }
+  .md-inv2-compare-head { gap:4px; }
+  .md-inv2-compare-item { gap:3px; }
+  .md-inv2-compare-icon { width:24px; height:24px; flex-basis:24px; }
 }
 
 /* ---- manifest-backed item icons ---- */

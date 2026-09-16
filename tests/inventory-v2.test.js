@@ -54,3 +54,12 @@ test("Inventory V2 wiring removes duplicate inventory chrome and prewires option
   assert.match(styles, /--safe-top:\s*env\(safe-area-inset-top/);
   assert.match(styles, /@media \(min-width:431px\) and \(max-width:700px\)/);
 });
+
+test("Equipment comparison renders GameIcon on current and new sides", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const compare = components.slice(components.indexOf("compareRows.length > 0"), components.indexOf("md-inv2-lock", components.indexOf("compareRows.length > 0")));
+  assert.match(compare, /item:currentEquipped/);
+  assert.match(compare, /item:currentDetail/);
+  assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 2);
+  assert.match(compare, /currentEquipped \? itemDisplayName\(currentEquipped\) : "Empty Slot"/);
+});
