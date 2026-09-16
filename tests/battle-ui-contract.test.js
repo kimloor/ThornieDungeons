@@ -14,7 +14,8 @@ test("Battle UI keeps four quick slots, independent speed/Skip controls and Sile
   assert.match(components, /\[0, 1, 2, 3\]\.map/);
   assert.match(components, /className: `md-combat-header-action speed \$\{showSpeedArt \? "has-art" : ""\}`/);
   assert.match(components, /className:"md-combat-speed-art"/);
-  assert.match(components, /className: "md-combat-header-action skip md-battle-art"/);
+  assert.match(components, /className: `md-combat-header-action skip \$\{showSkipArt \? "has-art" : ""\}`/);
+  assert.match(components, /className:"md-combat-skip-art"/);
   assert.match(components, /player\.battleStatuses\?\.silence/);
   assert.match(components, /onAction\("flee"\)/);
   assert.match(components, /setAutoRun\(a => !a\)/);

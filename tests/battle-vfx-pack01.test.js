@@ -108,12 +108,14 @@ test("manifest assets, speed artwork and safe presentation layer are wired", () 
   assert.equal(manifest.assets.battleVfx.slash_status.silence.length, 3);
   assert.ok(manifest.assets.battleUi.buttons.speedX1);
   assert.ok(manifest.assets.battleUi.buttons.speedX2);
+  assert.equal(manifest.assets.battleUi.buttons.skip, "ui/battle/button_skip.png");
   assert.equal(fs.existsSync(path.join(root, "r2-upload", manifest.assets.battleUi.buttons.speedX1)), true);
   assert.equal(fs.existsSync(path.join(root, "r2-upload", manifest.assets.battleUi.buttons.speedX2)), true);
   const r2Snapshot = JSON.parse(read("src/data/r2-manifest.json"));
   const deployedKeys = new Set((r2Snapshot.objects || []).map(object => object.key));
   assert.equal(deployedKeys.has(manifest.assets.battleUi.buttons.speedX1), true);
   assert.equal(deployedKeys.has(manifest.assets.battleUi.buttons.speedX2), true);
+  assert.equal(deployedKeys.has(manifest.assets.battleUi.buttons.skip), true);
 
   const components = read("src/ui/components.js");
   const styles = read("src/data/styles.js");
@@ -122,6 +124,9 @@ test("manifest assets, speed artwork and safe presentation layer are wired", () 
   assert.match(components, /optionalAsset\(`battleUi\.\$\{speedAssetKey\}`\)/);
   assert.match(components, /className:"md-combat-speed-art"[\s\S]*onError:\(\) => setFailedSpeedAsset\(speedAssetSrc\)/);
   assert.match(components, /className:"md-combat-speed-fallback"/);
+  assert.match(components, /optionalAsset\("battleUi\.buttons\.skip"\)/);
+  assert.match(components, /className:"md-combat-skip-art"[\s\S]*onError:\(\) => setFailedSkipAsset\(skipAssetSrc\)/);
+  assert.match(components, /className:"md-combat-skip-fallback"/);
   assert.match(components, /onError: \(\) => setFailedSources/);
   assert.match(styles, /\.md-battle-vfx[\s\S]*z-index: 4[\s\S]*pointer-events: none/);
   assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-anchor\.anchor-hero \{ left: 41%; top: 54%; \}/);

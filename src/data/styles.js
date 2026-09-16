@@ -1408,7 +1408,7 @@ const STYLE = `
 }
 .md-combat-header-action.skip { color: #fff; font-size: 11px; letter-spacing: .45px; }
 .md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 0; font-size: 9px; }
-.md-combat-header-action.skip.md-battle-art { color: transparent; font-size: 0; background-size: contain; }
+.md-combat-header-action.skip.has-art { font-size:0; }
 .md-combat-header-action.speed {
   color:var(--gold); font-size:13px;
   text-shadow:0 1px 3px #000,0 0 5px #000; position:relative; z-index:8; min-height:28px;
@@ -1416,6 +1416,8 @@ const STYLE = `
 .md-combat-header-action.speed.has-art { text-shadow:none; }
 .md-combat-speed-art { display:block; width:100%; height:100%; max-height:56px; object-fit:contain; }
 .md-combat-speed-fallback { display:block; }
+.md-combat-skip-art { display:block; width:100%; height:100%; max-height:32px; object-fit:contain; }
+.md-combat-skip-fallback { display:block; }
 .md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
 
 /* Resolved-action VFX sits above unit art (z2) and below HP/status/name UI (z5).
@@ -1688,7 +1690,7 @@ const STYLE = `
 .md-inv2-modal-layer { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left)); background:rgba(2,1,9,.76); }
 .md-inv2-popup { position:relative; width:min(100%,420px); max-height:min(86vh,700px); max-height:min(86dvh,700px); overflow-y:auto; padding:18px; border:1.5px solid var(--gold-deep); border-radius:20px; background-color:#18102d; color:var(--ink); box-shadow:0 16px 45px rgba(0,0,0,.55); }
 .md-inv2-popup h3 { margin:0 0 10px; color:var(--gold); font:800 19px 'Baloo 2'; }
-.md-inv2-popup-close { position:absolute; right:10px; top:10px; width:32px; height:32px; z-index:2; }
+.md-inv2-popup-close { position:absolute !important; right:10px; top:10px; width:32px; height:32px; z-index:4 !important; }
 .md-inv2-filter-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; color:var(--ink-soft); font-size:12px; font-weight:800; }
 .md-inv2-filter-row select { width:54%; min-height:36px; border:1px solid rgba(255,209,102,.35); border-radius:9px; background:#100a20; color:var(--ink); padding:5px 8px; }
 .md-inv2-popup-actions,.md-inv2-detail-actions { display:flex; gap:8px; margin-top:14px; }
@@ -1696,7 +1698,7 @@ const STYLE = `
 .md-inv2-detail { padding:24px 28px 22px; isolation:isolate; border-color:#aaa; } .md-inv2-detail.rare { border-color:#459cff; } .md-inv2-detail.unique { border-color:#a66cff; }
 .md-inv2-detail.elite { border-color:#ff9a3d; } .md-inv2-detail.mythic { border-color:#ffd166; }
 .md-inv2-detail::before { content:""; position:absolute; z-index:0; inset:18px; border-radius:14px; background:rgba(17,11,37,.9); box-shadow:inset 0 0 22px rgba(0,0,0,.24); pointer-events:none; }
-.md-inv2-detail > * { position:relative; z-index:1; }
+.md-inv2-detail > :not(.md-inv2-popup-close):not(.md-inv2-favorite-toggle) { position:relative; z-index:1; }
 .md-inv2-detail-head { display:flex; align-items:center; gap:12px; margin-top:24px; }
 .md-inv2-detail-head h3 { margin:0; overflow-wrap:anywhere; } .md-inv2-detail-head p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
 .md-inv2-detail.rare .md-inv2-detail-head h3 { color:#65adff; }
@@ -1725,6 +1727,9 @@ const STYLE = `
 .md-inv2-favorite-toggle { position:absolute !important; z-index:3 !important; top:10px; left:10px; width:32px; height:32px; padding:2px; border:1px solid rgba(255,209,102,.45); border-radius:50%; background-color:rgba(12,8,27,.92); background-size:contain; color:var(--gold); font-size:19px; cursor:pointer; }
 .md-inv2-favorite-toggle.has-art { color:transparent; font-size:0; }
 .md-inv2-favorite-toggle.active { filter:brightness(1.25) drop-shadow(0 0 7px rgba(255,209,102,.75)); }
+.md-inv2-salvage-preview { margin-top:12px; padding:9px 10px; display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:8px; border:1px solid rgba(86,205,231,.35); border-radius:10px; background:rgba(4,31,55,.52); color:#dcecff; font-size:10px; }
+.md-inv2-salvage-preview strong { color:#71e8ff; }
+.md-inv2-salvage-preview span { display:inline-flex; align-items:center; gap:3px; white-space:nowrap; }
 .md-inv2-detail-actions button:disabled,.md-inv2-overflow-row button:disabled { opacity:.38; cursor:not-allowed; }
 .md-inv2-message { color:#ff9b9b; font-size:11px; text-align:center; }
 .md-inv2-overflow-popup > p { color:var(--ink-soft); font-size:11px; }
@@ -1759,7 +1764,9 @@ const STYLE = `
   .md-inv2-compare-head { gap:4px; }
   .md-inv2-compare-item { gap:3px; }
   .md-inv2-compare-icon { width:28px; height:28px; flex-basis:28px; }
-  .md-inv2-compare-row { grid-template-columns:40px minmax(0,1fr) 50px; padding-inline:6px; }
+  .md-inv2-compare-columns,.md-inv2-compare-row { grid-template-columns:minmax(64px,1fr) minmax(58px,.8fr) minmax(58px,.8fr); padding-inline:6px; }
+  .md-inv2-salvage-preview { grid-template-columns:1fr 1fr; }
+  .md-inv2-salvage-preview strong { grid-column:1 / -1; }
 }
 
 /* ---- manifest-backed item icons ---- */

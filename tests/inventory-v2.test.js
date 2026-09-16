@@ -57,7 +57,7 @@ test("Inventory V2 wiring removes duplicate inventory chrome and prewires option
 
 test("Equipment comparison renders GameIcon on current and new sides", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
-  const compare = components.slice(components.indexOf("compareRows.length > 0"), components.indexOf("md-inv2-message", components.indexOf("compareRows.length > 0")));
+  const compare = components.slice(components.indexOf("compareRows.length > 0"), components.indexOf("salvagePreview &&", components.indexOf("compareRows.length > 0")));
   assert.match(compare, /item:currentEquipped/);
   assert.match(compare, /item:currentDetail/);
   assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 2);
@@ -90,4 +90,17 @@ test("Inventory compare uses enhanced item bonuses rather than total character s
   assert.match(inventory, /row\.current > row\.next \? "positive"/);
   assert.match(inventory, /row\.next > row\.current \? "positive"/);
   assert.doesNotMatch(inventory, /const delta = row\.next - row\.current/);
+});
+
+test("Inventory detail keeps corner controls separate and previews salvage yield from the shared table", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
+  const inventory = components.slice(components.indexOf("function InventoryOverlayV2"), components.indexOf("function InventoryOverlay({"));
+  assert.match(styles, /\.md-inv2-popup-close \{ position:absolute !important; right:10px; top:10px/);
+  assert.match(styles, /\.md-inv2-favorite-toggle[^}]*top:10px; left:10px/);
+  assert.match(inventory, /const salvagePreview = [\s\S]*salvageYield\(currentDetail\.rarity\)/);
+  assert.match(inventory, /className:"md-inv2-salvage-preview"/);
+  assert.match(inventory, /junkId:"iron"/);
+  assert.match(inventory, /junkId:"manaOre"/);
+  assert.match(inventory, /ได้รับ \$\{yieldText\}/);
 });
