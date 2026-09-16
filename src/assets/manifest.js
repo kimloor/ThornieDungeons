@@ -449,6 +449,7 @@ function AnimatedFrameSprite({
   idleFrameMs = 220,
   attackFrameMs = 80,
   cropTransparent = false,
+  cropPadding = 0,
   visualHeight = 64,
   maxVisualWidth = 104,
   fallback = null
@@ -506,14 +507,33 @@ function AnimatedFrameSprite({
   const currentSrc = playableFrames[Math.min(frameIndex, playableFrames.length - 1)];
   const handleFrameError = () => setFailedSources(current => current.includes(currentSrc) ? current : [...current, currentSrc]);
   if (cropTransparent && opaqueBounds) {
+    const padding = typeof cropPadding === "object" && cropPadding
+      ? cropPadding
+      : { top: cropPadding, right: cropPadding, bottom: cropPadding, left: cropPadding };
+    const padTop = Math.max(0, Number(padding.top) || 0) * opaqueBounds.height;
+    const padRight = Math.max(0, Number(padding.right) || 0) * opaqueBounds.width;
+    const padBottom = Math.max(0, Number(padding.bottom) || 0) * opaqueBounds.height;
+    const padLeft = Math.max(0, Number(padding.left) || 0) * opaqueBounds.width;
+    const left = Math.max(0, opaqueBounds.left - padLeft);
+    const top = Math.max(0, opaqueBounds.top - padTop);
+    const right = Math.min(1, opaqueBounds.left + opaqueBounds.width + padRight);
+    const bottom = Math.min(1, opaqueBounds.top + opaqueBounds.height + padBottom);
+    const displayBounds = {
+      left,
+      top,
+      width: Math.max(0.001, right - left),
+      height: Math.max(0.001, bottom - top),
+      canvasAspect: opaqueBounds.canvasAspect,
+      contentAspect: opaqueBounds.canvasAspect * (right - left) / Math.max(0.001, bottom - top)
+    };
     let contentHeight = visualHeight;
-    let contentWidth = contentHeight * opaqueBounds.contentAspect;
+    let contentWidth = contentHeight * displayBounds.contentAspect;
     if (contentWidth > maxVisualWidth) {
       contentHeight *= maxVisualWidth / contentWidth;
       contentWidth = maxVisualWidth;
     }
-    const imageHeight = contentHeight / opaqueBounds.height;
-    const imageWidth = imageHeight * opaqueBounds.canvasAspect;
+    const imageHeight = contentHeight / displayBounds.height;
+    const imageWidth = imageHeight * displayBounds.canvasAspect;
     return /*#__PURE__*/React.createElement("span", {
       className: `${className} md-cropped-sprite-stage`,
       style: { width: contentWidth, height: contentHeight }
@@ -526,8 +546,8 @@ function AnimatedFrameSprite({
       style: {
         width: imageWidth,
         height: imageHeight,
-        left: -opaqueBounds.left * imageWidth,
-        top: -opaqueBounds.top * imageHeight
+        left: -displayBounds.left * imageWidth,
+        top: -displayBounds.top * imageHeight
       }
     }));
   }

@@ -65,9 +65,12 @@ So VFX is:
 VFX should be short, readable, and not cover the whole screen unless the skill is intentionally AoE.
 
 Placement contract:
-- single-target slash families render in the open lane between attacker and target, biased toward the target side rather than covering the target sprite
-- `blade_storm` renders once in the central shared combat lane for AoE readability
-- `buff_aura` remains centered on the Hero
+- main attack VFX use fixed presentation anchors and never follow a target's live coordinate
+- Hero attacks use the fixed center-left Hero lane anchor
+- Pet attacks use a fixed lane anchor in the same area, slightly lower than the Hero anchor
+- Monster attacks use the mirrored center-right Monster lane anchor and face the opposite direction
+- `blade_storm` renders once at the fixed central shared combat-lane anchor for AoE readability
+- `buff_aura` remains centered on the acting unit
 - `poison_hit` and `silence_hit` remain centered on the actual resolved target
 
 ---
@@ -82,6 +85,8 @@ VFX duration belongs to the **presentation timing layer**, not gameplay timing.
 - Skip Battle can resolve without waiting for VFX
 
 Animation speed should remain readable on mobile; do not compress 3-frame effects so aggressively that frames are visually indistinguishable.
+
+The production Pack 01 frame cadence is approximately 1.5× slower than its initial integration. x2 still divides presentation timing only; it never changes Battle Core resolution.
 
 Exact milliseconds may be tuned by DEV after real-device testing without changing the asset contract.
 
@@ -103,7 +108,7 @@ Visual:
 Primary V1 skill:
 - Power Strike
 
-An optional weaker `slash_normal` family may represent Hero Basic Attack. Runtime must use it only when that exact key exists in the loaded manifest; otherwise Basic Attack has no extra VFX.
+An optional weaker `slash_normal` family may represent Hero, Pet, and Monster Basic Attacks. Runtime must use it only when that exact key exists in the loaded manifest; otherwise Basic Attack has no extra VFX.
 
 ### 4.2 `slash_heavy`
 Use for heavier impact attacks.
@@ -278,6 +283,14 @@ Basic Attack:
 - use manifest key `slash_normal` only when present
 - Manual and Auto consume the same resolved Basic Attack output
 - missing `slash_normal` falls back to no VFX without warning, delay, or gameplay impact
+
+Pet / Monster reuse:
+- Pet and Monster action VFX are derived only from completed Battle Core logs, using the same presentation bridge as Hero actions
+- Pet direct-damage skills may reuse `slash_basic`; Poison/Silence identities may reuse the matching `slash_status` family
+- Pet AoE may reuse `blade_storm`; support/heal/buff presentation may reuse `buff_aura` when appropriate
+- `poison_hit` / `silence_hit` play only for actual resolved status applications, including Pet or Monster sources; failed, missed, resisted, or boss-converted outcomes do not invent confirmations
+- Monster Basic Attack uses `slash_normal` at the mirrored Monster anchor when the asset exists
+- if no appropriate reusable family or manifest asset exists, presentation emits nothing and Battle continues normally
 
 Multi-hit:
 - visual timing may represent multiple hits

@@ -48,7 +48,7 @@ test("resolved hit, miss and crit logs all keep the attack-attempt VFX", () => {
   ]) {
     const next = battleState({ log: [entry], logSeq: 1, heroSp: 90 });
     assert.deepEqual(vfx.resolvedEvents(previous, next, previous.units.hero, { type: "active", skillId: "power_strike", targetId: "m1" }), [
-      { effectKey: "slash_basic", kind: "single", placement: "lane", targetId: "m1", skillId: "power_strike" }
+      { effectKey: "slash_basic", kind: "single", placement: "anchor", anchor: "hero", targetId: null, targetIds: ["m1"], skillId: "power_strike" }
     ]);
   }
 });
@@ -69,7 +69,7 @@ test("Guard stays on Hero and Blade Storm uses one shared arena presentation", (
   const previous = battleState();
   const guardNext = battleState({ logSeq: 0, heroSp: 90, cooldown: 2 });
   assert.deepEqual(vfx.resolvedEvents(previous, guardNext, previous.units.hero, { type: "active", skillId: "guard", targetId: "m1" }), [
-    { effectKey: "buff_aura", kind: "aura", placement: "target", targetId: "hero", skillId: "guard" }
+    { effectKey: "buff_aura", kind: "aura", placement: "target", anchor: "target", targetId: "hero", skillId: "guard" }
   ]);
 
   const bladeNext = battleState({
@@ -82,7 +82,7 @@ test("Guard stays on Hero and Blade Storm uses one shared arena presentation", (
     ]
   });
   assert.deepEqual(vfx.resolvedEvents(previous, bladeNext, previous.units.hero, { type: "active", skillId: "blade_storm", targetId: "m1" }), [{
-    effectKey: "blade_storm", kind: "aoe", placement: "arena", targetId: null,
+    effectKey: "blade_storm", kind: "aoe", placement: "arena", anchor: "arena", targetId: null,
     targetIds: ["m1", "m2"], skillId: "blade_storm"
   }]);
 });
@@ -93,7 +93,7 @@ test("Basic Attack is manifest-gated for Manual/Auto while invalid and Skip stay
   const resolvedBasic = battleState({ log: [basicLog], logSeq: 1 });
   assert.deepEqual(vfx.resolvedEvents(previous, battleState(), previous.units.hero, { type: "active", skillId: "guard", targetId: "m1" }), []);
   assert.deepEqual(vfx.resolvedEvents(previous, resolvedBasic, previous.units.hero, { type: "basic", targetId: "m1" }), []);
-  const expected = [{ effectKey: "slash_normal", kind: "single", placement: "lane", targetId: "m1", skillId: "basic_attack" }];
+  const expected = [{ effectKey: "slash_normal", kind: "single", placement: "anchor", anchor: "hero", targetId: null, targetIds: ["m1"], skillId: "basic_attack" }];
   assert.deepEqual(vfx.resolvedEvents(previous, resolvedBasic, previous.units.hero, { type: "basic", targetId: "m1" }, true, { basicEffectKey: "slash_normal" }), expected);
   assert.deepEqual(vfx.resolvedEvents(previous, resolvedBasic, previous.units.hero, null, true, { basicEffectKey: "slash_normal" }), expected);
   assert.deepEqual(vfx.resolvedEvents(previous, battleState(), previous.units.hero, { type: "skip_battle" }), []);
@@ -115,12 +115,74 @@ test("manifest assets, speed artwork and safe presentation layer are wired", () 
   assert.match(components, /battleUiStyle\(combatSpeed === 2 \? "buttons\.speedX2" : "buttons\.speedX1"\)/);
   assert.match(components, /onError: \(\) => setFailedSources/);
   assert.match(styles, /\.md-battle-vfx[\s\S]*z-index: 4[\s\S]*pointer-events: none/);
-  assert.match(styles, /\.md-battle-vfx\.placement-lane[\s\S]*left: calc\(50% - clamp\(/);
-  assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-arena[\s\S]*left: 58%/);
+  assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-anchor\.anchor-hero \{ left: 41%; top: 54%; \}/);
+  assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-anchor\.anchor-pet \{ left: 40%; top: 68%; \}/);
+  assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-anchor\.anchor-monster[\s\S]*left: 59%; top: 54%; transform: translate\(-50%, -50%\) scaleX\(-1\)/);
+  assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-arena[\s\S]*left: 50%; top: 53%/);
   assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-battle-vfx/);
+  assert.match(components, /Math\.round\(188 \/ \(combatSpeed \|\| 1\)\)/);
+  assert.match(components, /cropPadding: \{ top: 0\.04, right: 0\.08, bottom: 0\.07, left: 0\.04 \}/);
   assert.match(app, /battleVfxFrames\(optionalBasicKey\)\.length \? optionalBasicKey : ""/);
+  assert.match(app, /event\.anchor === "hero" \? "vfx-hero"[\s\S]*event\.anchor === "monster" \? "vfx-monster"/);
   assert.match(app, /if \(heroCommand\?\.type === "skip_battle"\) \{\s*setBattleVfx\(\[\]\);\s*const resolved = BATTLE_CORE_V1\.simulateBattle/);
   assert.doesNotMatch(read("src/systems/battleCore.js"), /battleVfx|slash_basic|buff_aura/);
+});
+
+test("Pet actions use fixed Pet/AoE anchors and resolved-only confirmations", () => {
+  const previous = battleState();
+  previous.units.pet.active = { name: "Hell Fang", type: "damage", poisonChance: 0.25 };
+  const hit = { seq: 1, type: "pet_active", actorId: "pet", skillName: "Hell Fang" };
+  const damage = { seq: 2, type: "damage", actorId: "pet", targetId: "m1", actionName: "Hell Fang" };
+  const success = battleState({ log: [hit, damage, { seq: 3, type: "status", actorId: "pet", targetId: "m1", status: "poison" }], logSeq: 3 });
+  const failed = battleState({ log: [hit, damage], logSeq: 2 });
+
+  assert.deepEqual(vfx.resolvedEvents(previous, success, previous.units.pet, null, true, { basicEffectKey: "slash_normal" }).map(event => [event.effectKey, event.anchor]), [
+    ["slash_status.toxic", "pet"],
+    ["poison_hit", "target"]
+  ]);
+  assert.deepEqual(vfx.resolvedEvents(previous, failed, previous.units.pet, null, true, { basicEffectKey: "slash_normal" }).map(event => event.effectKey), ["slash_status.toxic"]);
+
+  previous.units.pet.active = { name: "Regrowth", type: "regen" };
+  const support = battleState({ log: [{ seq: 1, type: "pet_active", actorId: "pet", skillName: "Regrowth" }], logSeq: 1 });
+  assert.deepEqual(vfx.resolvedEvents(previous, support, previous.units.pet), [
+    { effectKey: "buff_aura", kind: "aura", placement: "target", anchor: "target", targetId: "pet", skillId: "pet_active" }
+  ]);
+
+  previous.units.pet.active = { name: "Tempest Strike", type: "aoe", silenceChance: 0.3 };
+  const aoe = battleState({
+    log: [
+      { seq: 1, type: "pet_active", actorId: "pet", skillName: "Tempest Strike" },
+      { seq: 2, type: "damage", actorId: "pet", targetId: "m1", actionName: "Tempest Strike" },
+      { seq: 3, type: "damage", actorId: "pet", targetId: "m2", actionName: "Tempest Strike" },
+      { seq: 4, type: "status", actorId: "pet", targetId: "m1", status: "silence" }
+    ],
+    logSeq: 4
+  });
+  assert.deepEqual(vfx.resolvedEvents(previous, aoe, previous.units.pet).map(event => [event.effectKey, event.anchor]), [
+    ["blade_storm", "arena"],
+    ["silence_hit", "target"]
+  ]);
+
+  delete previous.units.pet.active;
+  previous.units.pet.petDefId = "flamekit";
+  const catalogFallback = battleState({
+    log: [
+      { seq: 1, type: "pet_active", actorId: "pet", skillName: "Flame Claw" },
+      { seq: 2, type: "damage", actorId: "pet", targetId: "m1", actionName: "Flame Claw" }
+    ],
+    logSeq: 2
+  });
+  assert.deepEqual(vfx.resolvedEvents(previous, catalogFallback, previous.units.pet).map(event => event.effectKey), ["slash_basic"]);
+});
+
+test("Pet and Monster Basic Attack share optional VFX with opposite fixed anchors", () => {
+  const previous = battleState();
+  const petNext = battleState({ log: [{ seq: 1, type: "damage", actorId: "pet", targetId: "m1", actionName: "basic attack" }], logSeq: 1 });
+  const monsterNext = battleState({ log: [{ seq: 1, type: "miss", actorId: "m1", targetId: "hero", actionName: "basic attack" }], logSeq: 1 });
+
+  assert.deepEqual(vfx.resolvedEvents(previous, petNext, previous.units.pet, null, true, { basicEffectKey: "slash_normal" }).map(event => event.anchor), ["pet"]);
+  assert.deepEqual(vfx.resolvedEvents(previous, monsterNext, previous.units.m1, null, true, { basicEffectKey: "slash_normal" }).map(event => event.anchor), ["monster"]);
+  assert.deepEqual(vfx.resolvedEvents(previous, monsterNext, previous.units.m1), []);
 });
 
 test("real Battle Core outcomes drive Toxic success/fail and Silence boss conversion", () => {

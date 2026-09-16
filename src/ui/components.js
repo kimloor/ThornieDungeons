@@ -2809,6 +2809,9 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
         // The pet action state is held for 520ms at normal speed in App.js.
         attackFrameMs: 150 / combatSpeed,
         cropTransparent: true,
+        // One manifest-driven viewport rule gives every Pet extra room in the
+        // forward/bottom directions without pet-specific position hacks.
+        cropPadding: { top: 0.04, right: 0.08, bottom: 0.07, left: 0.04 },
         visualHeight: presentation.height,
         maxVisualWidth: presentation.maxWidth,
         className: `md-enemy-img md-pet-img ${dead ? "death" : anim || ""}`,
@@ -2871,14 +2874,14 @@ function BattleVfx({ event, combatSpeed = 1 }) {
   }, [event?.id, frameKey]);
   useEffect(() => {
     if (playableFrames.length <= 1) return undefined;
-    const frameMs = Math.max(65, Math.round(125 / (combatSpeed || 1)));
+    const frameMs = Math.max(80, Math.round(188 / (combatSpeed || 1)));
     const timer = setInterval(() => setFrameIndex(index => Math.min(index + 1, playableFrames.length - 1)), frameMs);
     return () => clearInterval(timer);
   }, [event?.id, playableKey, combatSpeed]);
   if (!playableFrames.length) return null;
   const currentSrc = playableFrames[Math.min(frameIndex, playableFrames.length - 1)];
   return /*#__PURE__*/React.createElement("img", {
-    className: `md-battle-vfx kind-${event.kind || "single"} placement-${event.placement || "target"}`,
+    className: `md-battle-vfx kind-${event.kind || "single"} placement-${event.placement || "target"} anchor-${event.anchor || "target"}`,
     src: currentSrc,
     alt: "",
     "aria-hidden": "true",
@@ -3163,7 +3166,7 @@ function CombatScreen({
     className: "md-arena"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
-  }), vfxFor("battle-lane").map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+  }), battleVfx.filter(event => String(event.targetKey || "").startsWith("vfx-")).map(event => /*#__PURE__*/React.createElement(BattleVfx, {
     key: event.id,
     event: event,
     combatSpeed: combatSpeed

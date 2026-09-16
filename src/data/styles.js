@@ -1417,11 +1417,13 @@ const STYLE = `
 .md-battle-vfx.kind-status { width: 100px; }
 .md-battle-vfx.kind-aura { width: 138px; }
 .md-battle-vfx.kind-aoe { width: 126px; }
-.md-battle-vfx.placement-lane {
-  left: calc(50% - clamp(74px, 22vw, 100px));
+.md-arena > .md-battle-vfx.placement-anchor.anchor-hero { left: 41%; top: 54%; }
+.md-arena > .md-battle-vfx.placement-anchor.anchor-pet { left: 40%; top: 68%; }
+.md-arena > .md-battle-vfx.placement-anchor.anchor-monster {
+  left: 59%; top: 54%; transform: translate(-50%, -50%) scaleX(-1);
 }
 .md-arena > .md-battle-vfx.placement-arena {
-  left: 58%; top: 50%; z-index: 5;
+  left: 50%; top: 53%; z-index: 5;
 }
 .md-hero-slot > .md-sprite-wrap,
 .md-pet-slot .md-pet-unit,
@@ -1440,6 +1442,9 @@ const STYLE = `
   .md-battle-vfx.kind-status { width: 92px; }
   .md-battle-vfx.kind-aura { width: 124px; }
   .md-battle-vfx.kind-aoe { width: 112px; }
+  .md-arena > .md-battle-vfx.placement-anchor.anchor-hero { left: 39%; top: 53%; }
+  .md-arena > .md-battle-vfx.placement-anchor.anchor-pet { left: 38%; top: 68%; }
+  .md-arena > .md-battle-vfx.placement-anchor.anchor-monster { left: 61%; top: 53%; }
 }
 
 .md-unit-status {

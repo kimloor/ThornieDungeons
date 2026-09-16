@@ -870,7 +870,10 @@ function ThornieDungeons() {
     setBattleVfx(resolvedVfx.map((event, index) => ({
       ...event,
       id: `${vfxToken}:${index}`,
-      targetKey: event.placement === "arena" ? "battle-lane"
+      targetKey: event.anchor === "arena" ? "vfx-arena"
+        : event.anchor === "hero" ? "vfx-hero"
+        : event.anchor === "pet" ? "vfx-pet"
+        : event.anchor === "monster" ? "vfx-monster"
         : event.targetId === next.heroId ? "hero"
         : event.targetId === next.petId ? "pet"
         : event.targetId
