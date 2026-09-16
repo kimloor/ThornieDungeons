@@ -1,13 +1,13 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-16T06:05:00Z",
-  "count": 300,
+  "generatedAt": "2026-09-16T11:41:38Z",
+  "count": 308,
   "objects": [
     {
       "key": "manifest.json",
-      "etag": "c8372e8be021b0cda2fe317155f9539d",
-      "last_modified": "2026-09-15T16:40:35.134Z",
-      "size": 24804,
+      "etag": "387c7dd77eeb33ecb27d68bc3f237313",
+      "last_modified": "2026-09-16T07:33:13.405Z",
+      "size": 25185,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -2650,6 +2650,94 @@
       "size": 1259,
       "http_metadata": {
         "contentType": "image/svg+xml"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/inventory/equipment_slot_frame.png",
+      "etag": "3c6b0025a9d0861d35d6f2169a19c06a",
+      "last_modified": "2026-09-16T07:33:16.382Z",
+      "size": 192022,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/inventory/icon_expand.png",
+      "etag": "dfd72d9a785b2321451e118de6767732",
+      "last_modified": "2026-09-16T07:33:19.402Z",
+      "size": 41885,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/inventory/icon_favorite.png",
+      "etag": "c96a782b80860cd4b62c8760a08ff16c",
+      "last_modified": "2026-09-16T07:33:22.527Z",
+      "size": 67271,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/inventory/icon_filter.png",
+      "etag": "f6b4cf959a4061cd5f38505d38c12b07",
+      "last_modified": "2026-09-16T07:33:25.836Z",
+      "size": 55424,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/inventory/icon_overflow.png",
+      "etag": "555f16ba0281d101ac41854e9d7aeaa5",
+      "last_modified": "2026-09-16T07:33:29.343Z",
+      "size": 59971,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/inventory/icon_sort.png",
+      "etag": "a5c11b9a4343f56c32e7599aa4b5e4df",
+      "last_modified": "2026-09-16T07:33:32.318Z",
+      "size": 48672,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/inventory/mythic_frame.png",
+      "etag": "cfd05b5a81752cb4ce0ab4400b0174cf",
+      "last_modified": "2026-09-16T07:33:35.448Z",
+      "size": 269114,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/inventory/popup_frame.png",
+      "etag": "d12ce50072ad8f4b19958c24d8eb771e",
+      "last_modified": "2026-09-16T07:33:38.743Z",
+      "size": 177183,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
