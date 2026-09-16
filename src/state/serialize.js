@@ -38,7 +38,7 @@ function characterProgressToServer(flatSave) {
 // with THAT value server-side rather than trusting anything the client puts in extra_json. This
 // is what makes it structurally impossible for syncing one character's inventory to touch
 // another's: the server's delete-stale-rows query is scoped by character_id, not just player_id.
-function itemsToServerList(inventory, equipped) {
+function itemsToServerList(inventory, equipped, overflow = []) {
   const list = [];
   const pack = (it, equippedFlag) => ({
     itemId: it.id,
@@ -50,6 +50,7 @@ function itemsToServerList(inventory, equipped) {
     def: it.def,
     hp: it.hp,
     mp: it.mp,
+    itemLevel: it.level || it.itemLevel || 0,
     enhanceLevel: it.enhanceLevel || 0,
     // dodgeChance/critChance/critDamage (accessory base rolls) and junk/potion stack data
     // (junkId/potionId/quantity/icon) don't have their own server columns, so they ride along
@@ -66,21 +67,26 @@ function itemsToServerList(inventory, equipped) {
       icon: it.icon || undefined,
       setId: it.setId || undefined,
       star: it.star || undefined,
-      craftRecipeId: it.craftRecipeId || undefined
+      craftRecipeId: it.craftRecipeId || undefined,
+      favorite: it.favorite === true || undefined,
+      overflow: it.overflow === true || undefined
     }
   });
   Object.values(equipped).forEach(it => {
     if (it) list.push(pack(it, true));
   });
   inventory.forEach(it => list.push(pack(it, false)));
+  overflow.forEach(it => list.push(pack({ ...it, overflow: true }, false)));
   return list;
 }
 function itemsFromServerList(rows) {
   const equipped = emptyEquipped();
   const inventory = [];
+  const overflow = [];
   if (!Array.isArray(rows)) return {
     equipped,
-    inventory
+    inventory,
+    overflow
   };
   rows.forEach(r => {
     // A single malformed row (bad JSON, unexpected type, etc) should never take down the whole
@@ -88,27 +94,29 @@ function itemsFromServerList(rows) {
     try {
       const extra = safeJsonParse(r.extra_json, {});
       if (r.slot_type === "junk") {
-        inventory.push({
+        (extra.overflow ? overflow : inventory).push({
           id: r.item_id,
           type: "junk",
           junkId: extra.junkId,
           name: r.name,
           icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
           rarity: r.rarity || "common",
-          quantity: numOr(extra.quantity, 1)
+          quantity: numOr(extra.quantity, 1),
+          favorite: extra.favorite === true
         });
         return;
       }
       if (r.slot_type === "potion") {
         const def = getPotionDef(extra.potionId);
-        inventory.push({
+        (extra.overflow ? overflow : inventory).push({
           id: r.item_id,
           type: "potion",
           potionId: extra.potionId,
           name: r.name || (def && def.name) || "Potion",
           icon: extra.icon || (def && def.icon) || "🧪",
           rarity: r.rarity || "common",
-          quantity: numOr(extra.quantity, 1)
+          quantity: numOr(extra.quantity, 1),
+          favorite: extra.favorite === true
         });
         return;
       }
@@ -125,6 +133,8 @@ function itemsFromServerList(rows) {
         critChance: numOr(extra.critChance, 0),
         critDamage: numOr(extra.critDamage, 0),
         enhanceLevel: numOr(r.enhance_level, 0),
+        level: numOr(r.item_level, 0),
+        favorite: extra.favorite === true,
         empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
       };
       if (extra.setId) it.setId = extra.setId;
@@ -133,13 +143,16 @@ function itemsFromServerList(rows) {
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });
-      if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;else inventory.push(it);
+      if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;
+      else if (extra.overflow) overflow.push(it);
+      else inventory.push(it);
     } catch (e) {
       console.warn("[ThornieDungeons] Skipped a corrupted item row:", e);
     }
   });
   return {
     equipped,
-    inventory
+    inventory,
+    overflow
   };
 }

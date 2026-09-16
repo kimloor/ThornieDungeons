@@ -33,7 +33,7 @@ test("battle Pet grows from its ground edge and remains restrained on mobile", (
   assert.match(styles, /\.md-pet-img\s*\{[^}]*scale\(1\.15\)[^}]*transform-origin:\s*center bottom/s);
   assert.match(styles, /\.md-pet-img\.death\s*\{[^}]*scale\(1\.15\)[^}]*animation:\s*none/s);
   assert.match(styles, /@media \(max-width: 380px\)[\s\S]*\.md-pet-img\.attack\s*\{[^}]*scale\(1\.1\)/s);
-  assert.match(styles, /\.md-pet-slot\s*\{[^}]*left:\s*17%[^}]*top:\s*75%/s);
+  assert.match(styles, /\.md-pet-slot\s*\{[^}]*left:clamp\(54px,18%,90px\)[^}]*top:73%/s);
 });
 
 test("Pet artwork zones and ACTIVE title plate use the tuned offsets", () => {

@@ -56,5 +56,6 @@ const emptyEquipped = () => ({
   chest: null,
   gloves: null,
   boots: null,
-  accessory: null
+  accessory: null,
+  wings: null
 });

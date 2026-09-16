@@ -50,6 +50,17 @@ function petUiStyle(key) {
   return src ? { "--pet-ui-image": `url("${src}")` } : undefined;
 }
 
+// Inventory art is optional until Graphics publishes the inventoryUi manifest group.
+// Structural CSS remains the fallback; no screen depends on an asset request succeeding.
+function inventoryUiUrl(key) {
+  return optionalAsset(`inventoryUi.${key}`);
+}
+
+function inventoryUiStyle(key) {
+  const src = inventoryUiUrl(key);
+  return src ? { "--inventory-ui-image": `url("${src}")` } : undefined;
+}
+
 const IMAGE_PRELOAD_CACHE = new Map();
 function preloadAssetImage(src) {
   if (!src || typeof Image === "undefined") return Promise.resolve();
