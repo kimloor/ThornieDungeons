@@ -112,7 +112,8 @@ test("manifest assets, speed artwork and safe presentation layer are wired", () 
   const components = read("src/ui/components.js");
   const styles = read("src/data/styles.js");
   const app = read("src/ui/App.js");
-  assert.match(components, /battleUiStyle\(combatSpeed === 2 \? "buttons\.speedX2" : "buttons\.speedX1"\)/);
+  assert.match(components, /const speedAssetKey = combatSpeed === 2 \? "buttons\.speedX2" : "buttons\.speedX1"/);
+  assert.match(components, /speedAssetStyle \? null : `×\$\{combatSpeed \|\| 1\}`/);
   assert.match(components, /onError: \(\) => setFailedSources/);
   assert.match(styles, /\.md-battle-vfx[\s\S]*z-index: 4[\s\S]*pointer-events: none/);
   assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-anchor\.anchor-hero \{ left: 41%; top: 54%; \}/);

@@ -837,6 +837,12 @@ function ThornieDungeons() {
   async function finishCoreBattle(next) {
     if (!next?.battleId || finishingBattleIdRef.current === next.battleId) return;
     finishingBattleIdRef.current = next.battleId;
+    // Battle resolution owns gameplay state; presentation must be reset before
+    // leaving the scene so a terminal attack frame cannot leak into the next fight.
+    setHeroAnim("");
+    setPetAnim("");
+    setEnemyAnims({});
+    setBattleVfx([]);
     setBattleFinishing(true);
     setBusy(true);
     setLog("Confirming battle result…");
@@ -968,6 +974,9 @@ function ThornieDungeons() {
     const allowResume = options.allowResume !== false;
     combatOutcomeRef.current = null;
     finishingBattleIdRef.current = null;
+    setHeroAnim("");
+    setPetAnim("");
+    setEnemyAnims({});
     setLogState([]);
     setBattleVfx([]);
     setFinishedBattleLog([]);
@@ -2152,6 +2161,16 @@ function ThornieDungeons() {
     onSort: guardItemAction(sortInventoryNow),
     onClaimOverflow: guardItemAction(claimOverflowOne),
     onClaimAllOverflow: guardItemAction(claimOverflowAll),
+    onCharacter: () => {
+      setInvOpen(false);
+      setCharacterReturnPhase(phase);
+      setPhase("character");
+    },
+    onPets: () => {
+      setInvOpen(false);
+      setPetReturnPhase(phase);
+      setPhase("pets");
+    },
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,

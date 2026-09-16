@@ -57,9 +57,24 @@ test("Inventory V2 wiring removes duplicate inventory chrome and prewires option
 
 test("Equipment comparison renders GameIcon on current and new sides", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
-  const compare = components.slice(components.indexOf("compareRows.length > 0"), components.indexOf("md-inv2-lock", components.indexOf("compareRows.length > 0")));
+  const compare = components.slice(components.indexOf("compareRows.length > 0"), components.indexOf("md-inv2-message", components.indexOf("compareRows.length > 0")));
   assert.match(compare, /item:currentEquipped/);
   assert.match(compare, /item:currentDetail/);
   assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 2);
   assert.match(compare, /currentEquipped \? itemDisplayName\(currentEquipped\) : "Empty Slot"/);
+});
+
+test("Inventory V2 uses the standard authenticated shell and icon-only tools", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const inventory = components.slice(components.indexOf("function InventoryOverlayV2"), components.indexOf("function InventoryOverlay({"));
+  assert.match(inventory, /React\.createElement\(StatusBar/);
+  assert.match(inventory, /React\.createElement\(GameDock/);
+  assert.match(inventory, /activeKey:"inventory"/);
+  assert.match(inventory, /aria-label":"Filter"/);
+  assert.match(inventory, /aria-label":"Sort"/);
+  assert.doesNotMatch(inventory, />Filter</);
+  assert.doesNotMatch(inventory, />Sort</);
+  assert.equal((inventory.match(/\$\{inventory\.length\}\/\$\{INVENTORY_CAPACITY\}/g) || []).length, 1);
+  assert.doesNotMatch(inventory, /md-inv2-lock/);
+  assert.match(inventory, /md-inv2-favorite-toggle/);
 });

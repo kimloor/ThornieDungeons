@@ -12,7 +12,7 @@ const build = read("build.js");
 
 test("Battle UI keeps four quick slots, independent speed/Skip controls and Silence rules", () => {
   assert.match(components, /\[0, 1, 2, 3\]\.map/);
-  assert.match(components, /className: "md-combat-header-action speed md-battle-art"/);
+  assert.match(components, /className: `md-combat-header-action speed md-battle-art \$\{speedAssetStyle \? "has-art" : ""\}`/);
   assert.match(components, /className: "md-combat-header-action skip md-battle-art"/);
   assert.match(components, /player\.battleStatuses\?\.silence/);
   assert.match(components, /onAction\("flee"\)/);
@@ -157,4 +157,13 @@ test("battle completion confirms the last safe checkpoint before the receipt", (
   assert.match(completion, /setBattleFinishing\(true\)/);
   assert.match(completion, /setBusy\(true\)/);
   assert.match(components, /className: "md-battle-finishing"/);
+});
+
+test("battle presentation resets Hero to idle at completion and before stage entry", () => {
+  const finishStart = app.indexOf("async function finishCoreBattle(next)");
+  const finishEnd = app.indexOf("function driveCoreBattle", finishStart);
+  const enterStart = app.indexOf("function enterStage(");
+  const enterEnd = app.indexOf("function buildPetCombatUnit", enterStart);
+  assert.match(app.slice(finishStart, finishEnd), /setHeroAnim\(""\)/);
+  assert.match(app.slice(enterStart, enterEnd), /setHeroAnim\(""\)/);
 });
