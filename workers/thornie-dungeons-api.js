@@ -1541,13 +1541,954 @@ const RAID_STAMINA_REGEN_MS = 15 * 60 * 1000; // +1 every 15 minutes
 const RAID_DIAMOND_REFILL_COST = 50; // per extra attack once stamina hits 0
 const RAID_HITS_PER_ATTACK = 3; // mini combat round per attack, not a single flat hit
 
-// ---------- Phase 5: PvP Arena ----------
-// Tables (pvp_ranking, pvp_snapshots) existed from migration_v3.sql. migration_v9_arena.sql
-// adds characters.pvp_tickets / pvp_tickets_updated_at (same CAS-regen pattern as
-// raid_stamina above). migration_v10_arena_matches.sql adds pvp_matches — turn-based combat
-// now runs as a session (handleStartArenaMatch / handleSubmitArenaTurn) instead of the
-// original instant-resolve design, so the player picks attack/skill one turn at a time and
-// the defender bot + both pets act automatically around that choice.
+// ---------- Phase 5: PvP Arena (Battle Core V1, symmetric) ----------
+// Ported verbatim from src/systems/heroSkillsV1.js, src/systems/pets.js's
+// PET_COMBAT_SKILLS_V2, and src/systems/battleCore.js. These three are the shared,
+// authoritative combat data + resolver used by Dungeon/Raid/Arena on the client — Arena
+// reuses them as-is (no forked damage/status/skill logic) rather than freezing a second
+// copy, per docs/BATTLE-SYSTEM-V1.md's "modes are configuration adapters only" rule.
+// Keep these three blocks byte-for-byte in sync with their src/systems/ source files —
+// re-paste on any upstream change to skill/pet/battle-core balance or mechanics.
+
+// ===== ported: src/systems/heroSkillsV1.js =====
+// ---------- Hero Skill System V1 ----------
+// Shared skill catalog/data layer for Dungeon, Arena and Raid. Modes must import
+// these ranks and values rather than freezing or duplicating their own copies.
+// Battle values that were not locked in the source-of-truth documents live in
+// one playtest object. They can be tuned later without changing resolver logic.
+const HERO_SKILL_V1_PLAYTEST = Object.freeze({
+  toxicStrike: { sp: 12, cooldown: 2 },
+  stunningBlow: { sp: 16, cooldown: 3 },
+  silentEdge: { sp: 18, cooldown: 3 },
+  counter: { sp: 18, cooldown: 4 },
+  disruption: { sp: 22, cooldown: 5, stunWeight: 0.5 },
+  aegisCounterStunChance: 35,
+  survivalReflectCapMaxHpPct: 10,
+  globalStatusProcCap: 90
+});
+
+function heroSkill(id, branch, tier, kind, ranks, extra = {}) {
+  return Object.freeze({ id, branch, tier, kind, maxRank: kind === "passive" ? 5 : kind === "keystone" ? 5 : 3, ranks, ...extra });
+}
+
+const HERO_SKILLS_V1 = Object.freeze([
+  heroSkill("power_strike", "assault", 1, "active", [
+    { mult: 1.45, sp: 10, cooldown: 0 }, { mult: 1.65, sp: 10, cooldown: 0 },
+    { mult: 1.85, sp: 10, cooldown: 0, critDamageBonus: 15 }
+  ]),
+  heroSkill("weapon_mastery", "assault", 1, "passive", [2, 4, 6, 8, 10].map(damagePct => ({ damagePct }))),
+  heroSkill("killer_instinct", "assault", 1, "passive", [2, 4, 6, 8, 10].map(critPct => ({ critPct, targetBelowPct: 50 }))),
+  heroSkill("heavy_blow", "assault", 2, "active", [
+    { mult: 1.7, armorBreakChance: 35 }, { mult: 1.9, armorBreakChance: 45 }, { mult: 2.1, armorBreakChance: 55 }
+  ].map(rank => ({ ...rank, sp: 16, cooldown: 2 }))),
+  heroSkill("bloodlust", "assault", 2, "passive", [4, 6, 8, 10, 12].map((damagePct, index) => ({ damagePct, hpAtMostPct: 40, critPct: index === 4 ? 5 : 0 }))),
+  heroSkill("armor_break_mastery", "assault", 2, "passive", [5, 10, 15, 20, 25].map(procBonus => ({ procBonus }))),
+  heroSkill("blade_storm", "assault", 3, "active", [
+    { mult: 0.6 }, { mult: 0.7 }, { mult: 0.75, stunChancePerHit: 5 }
+  ].map(rank => ({ ...rank, hits: 3, distribution: "living", sp: 24, cooldown: 3 }))),
+  heroSkill("life_drain", "assault", 3, "passive", [1, 2, 3, 4, 5].map(drainPct => ({ drainPct, capMaxHpPct: 10 }))),
+  heroSkill("finishing_blow", "assault", 3, "passive", [4, 7, 10, 13, 16].map(damagePct => ({ damagePct, targetAtMostPct: 40 }))),
+  heroSkill("rampage", "assault", 4, "active", [
+    { damagePct: 15, takenPct: 15 }, { damagePct: 18, critPct: 5, takenPct: 10 }, { damagePct: 20, critPct: 5, takenPct: 0 }
+  ].map(rank => ({ ...rank, duration: 3, sp: 25, cooldown: 6, buff: "rampage" }))),
+  heroSkill("critical_mastery", "assault", 4, "passive", [5, 10, 15, 20, 25].map(critDamagePct => ({ critDamagePct }))),
+  heroSkill("relentless_fury", "assault", 5, "keystone", [1, 2, 3, 4, 5].map(rank => ({ rank }))),
+
+  heroSkill("guard", "guard", 1, "active", [
+    { mult: 1.05, duration: 1 }, { mult: 1.2, duration: 2 }, { mult: 1.35, duration: 2 }
+  ].map(rank => ({ ...rank, sp: 10, cooldown: 2, status: "def_up" }))),
+  heroSkill("toughness", "guard", 1, "passive", [3, 6, 9, 12, 15].map(maxHpPct => ({ maxHpPct }))),
+  heroSkill("iron_body", "guard", 1, "passive", [2, 4, 6, 8, 10].map(defPct => ({ defPct }))),
+  heroSkill("shield_wall", "guard", 2, "active", [
+    { damagePenaltyPct: 20 }, { damagePenaltyPct: 10 }, { damagePenaltyPct: 0 }
+  ].map(rank => ({ ...rank, sp: 18, cooldown: 4, duration: 3, status: "def_up" }))),
+  heroSkill("recovery", "guard", 2, "passive", [4, 8, 12, 16, 20].map(receivedPct => ({ receivedPct }))),
+  heroSkill("last_stand", "guard", 2, "passive", [20, 40, 60, 80, 100].map(chance => ({ chance, hpAtMostPct: 40, internalCooldown: 3 }))),
+  heroSkill("counter", "guard", 3, "active", [
+    { counterMult: 1 }, { counterMult: 1.3 }, { counterMult: 1.6, armorBreakChance: 35 }
+  ].map(rank => ({ ...rank, sp: HERO_SKILL_V1_PLAYTEST.counter.sp, cooldown: HERO_SKILL_V1_PLAYTEST.counter.cooldown, duration: 1, buff: "counter" }))),
+  heroSkill("battle_hardened", "guard", 3, "passive", [5, 10, 15, 20, 25].map(statusResist => ({ statusResist }))),
+  heroSkill("second_wind", "guard", 3, "passive", [5, 7, 9, 11, 15].map(healMaxHpPct => ({ healMaxHpPct, oncePerBattle: true }))),
+  heroSkill("fortress", "guard", 4, "active", [
+    { defPct: 20, damagePenaltyPct: 20 }, { defPct: 25, damagePenaltyPct: 10 }, { defPct: 30, damagePenaltyPct: 0 }
+  ].map(rank => ({ ...rank, sp: 28, cooldown: 7, duration: 2, buff: "fortress" }))),
+  heroSkill("survival_instinct", "guard", 4, "passive", [
+    [10, 5], [15, 7], [20, 9], [25, 12], [30, 15]
+  ].map(([excessReductionPct, reflectPct]) => ({ thresholdMaxHpPct: 25, excessReductionPct, reflectPct }))),
+  heroSkill("thorned_aegis", "guard", 5, "keystone", [1, 2, 3, 4, 5].map(rank => ({ rank }))),
+
+  heroSkill("toxic_strike", "tactic", 1, "active", [
+    { mult: 1.2, poisonChance: 30 }, { mult: 1.4, poisonChance: 40 }, { mult: 1.6, poisonChance: 50 }
+  ].map(rank => ({ ...rank, ...HERO_SKILL_V1_PLAYTEST.toxicStrike }))),
+  heroSkill("exploit_weakness", "tactic", 1, "passive", [2, 4, 6, 8, 10].map(damagePct => ({ damagePct }))),
+  heroSkill("debilitating_edge", "tactic", 1, "passive", [3, 6, 9, 12, 15].map(procBonus => ({ procBonus }))),
+  heroSkill("stunning_blow", "tactic", 2, "active", [
+    { mult: 1.45, stunChance: 15 }, { mult: 1.65, stunChance: 25 }, { mult: 1.85, stunChance: 35 }
+  ].map(rank => ({ ...rank, ...HERO_SKILL_V1_PLAYTEST.stunningBlow }))),
+  heroSkill("spirit_drain", "tactic", 2, "passive", [1, 2, 3, 4, 5].map(spRestore => ({ spRestore }))),
+  heroSkill("toxic_mastery", "tactic", 2, "passive", [5, 10, 15, 20, 25].map((poisonDamagePct, index) => ({ poisonDamagePct, durationBonus: index === 4 ? 1 : 0 }))),
+  heroSkill("silent_edge", "tactic", 3, "active", [
+    { mult: 1.5, silenceChance: 25 }, { mult: 1.7, silenceChance: 35 }, { mult: 1.9, silenceChance: 45 }
+  ].map(rank => ({ ...rank, ...HERO_SKILL_V1_PLAYTEST.silentEdge }))),
+  heroSkill("quick_recovery", "tactic", 3, "passive", [5, 8, 11, 14, 18].map(chance => ({ chance }))),
+  heroSkill("skill_efficiency", "tactic", 3, "passive", [2, 4, 6, 8, 10].map(spReductionPct => ({ spReductionPct }))),
+  heroSkill("disruption", "tactic", 4, "active", [
+    { count: 2, procChance: 30 }, { count: 3, procChance: 35 }, { count: 4, procChance: 40 }
+  ].map(rank => ({ ...rank, ...HERO_SKILL_V1_PLAYTEST.disruption, debuffOnly: true })), {
+    prerequisites: { toxic_strike: 1, stunning_blow: 1, silent_edge: 1 }
+  }),
+  heroSkill("master_tactician", "tactic", 4, "passive", [5, 8, 11, 15, 20].map(chance => ({ chance })), {
+    prerequisites: { skill_efficiency: 1 }
+  }),
+  heroSkill("usurper", "tactic", 5, "keystone", [1, 2, 3, 4, 5].map(rank => ({ rank })))
+]);
+
+const HERO_SKILLS_V1_BY_ID = Object.freeze(Object.fromEntries(HERO_SKILLS_V1.map(skill => [skill.id, skill])));
+const HERO_SKILL_TIER_GATES = Object.freeze({ 1: { level: 1, points: 0 }, 2: { level: 15, points: 8 }, 3: { level: 30, points: 20 }, 4: { level: 50, points: 35 } });
+
+function heroSkillPointBudget(level) { return Math.max(0, Math.min(98, Math.floor(Number(level) || 1) - 1)); }
+function heroSkillRank(levels, id) { return Math.max(0, Math.floor(Number((levels || {})[id]) || 0)); }
+function heroSkillBranchPoints(levels, branch) {
+  return HERO_SKILLS_V1.filter(skill => skill.branch === branch).reduce((sum, skill) => sum + heroSkillRank(levels, skill.id) * (skill.kind === "keystone" ? 2 : 1), 0);
+}
+function heroSkillSpentPoints(levels) {
+  return HERO_SKILLS_V1.reduce((sum, skill) => sum + heroSkillRank(levels, skill.id) * (skill.kind === "keystone" ? 2 : 1), 0);
+}
+function canSpendHeroSkillPoint(level, levels, id) {
+  const skill = HERO_SKILLS_V1_BY_ID[id];
+  if (!skill) return { ok: false, reason: "unknown_skill" };
+  const rank = heroSkillRank(levels, id);
+  if (rank >= skill.maxRank) return { ok: false, reason: "max_rank" };
+  const cost = skill.kind === "keystone" ? 2 : 1;
+  if (heroSkillSpentPoints(levels) + cost > heroSkillPointBudget(level)) return { ok: false, reason: "not_enough_sp" };
+  const branchPoints = heroSkillBranchPoints(levels, skill.branch);
+  if (skill.kind === "keystone") {
+    if (branchPoints < 40) return { ok: false, reason: "keystone_points" };
+    if (!HERO_SKILLS_V1.some(candidate => candidate.branch === skill.branch && candidate.tier === 4 && heroSkillRank(levels, candidate.id) > 0)) return { ok: false, reason: "keystone_t4" };
+  } else {
+    const gate = HERO_SKILL_TIER_GATES[skill.tier] || HERO_SKILL_TIER_GATES[1];
+    if ((Number(level) || 1) < gate.level) return { ok: false, reason: "level_gate" };
+    if (branchPoints < gate.points) return { ok: false, reason: "branch_points" };
+  }
+  for (const [requiredId, requiredRank] of Object.entries(skill.prerequisites || {})) {
+    if (heroSkillRank(levels, requiredId) < requiredRank) return { ok: false, reason: "prerequisite", requiredId };
+  }
+  return { ok: true, cost };
+}
+
+function heroSkillRankData(levels, id) {
+  const skill = HERO_SKILLS_V1_BY_ID[id];
+  const rank = heroSkillRank(levels, id);
+  return skill && rank ? skill.ranks[rank - 1] : null;
+}
+function heroActiveSkillList(levels) {
+  const icons = { power_strike: "⚔️", heavy_blow: "🔨", blade_storm: "🌪️", rampage: "🔥", guard: "🛡️", shield_wall: "🏰", counter: "↩️", fortress: "🏯", toxic_strike: "☠️", stunning_blow: "💫", silent_edge: "🤫", disruption: "🎭" };
+  return HERO_SKILLS_V1.filter(skill => skill.kind === "active" && heroSkillRank(levels, skill.id) > 0).map(skill => {
+    const data = heroSkillRankData(levels, skill.id);
+    return { key: skill.id, name: skill.id.split("_").map(word => word[0].toUpperCase() + word.slice(1)).join(" "), icon: icons[skill.id] || "✨", mp: data.sp || 0, cooldown: data.cooldown || 0, desc: `${skill.branch} Rank ${heroSkillRank(levels, skill.id)}` };
+  });
+}
+
+if (typeof module !== "undefined") module.exports = {
+  HERO_SKILL_V1_PLAYTEST, HERO_SKILLS_V1, HERO_SKILLS_V1_BY_ID, HERO_SKILL_TIER_GATES,
+  heroSkillPointBudget, heroSkillRank, heroSkillBranchPoints, heroSkillSpentPoints,
+  canSpendHeroSkillPoint, heroSkillRankData, heroActiveSkillList
+};
+
+// ===== ported: src/systems/pets.js (PET_COMBAT_SKILLS_V2 data only) =====
+const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚","cooldown":3,"type":"regen","healPetHpPct":0.12,"vitScale":0.8,"regenTurns":2,"desc":"ฟื้นฟู Hero 12% Pet Max HP + 0.8×VIT นาน 2 เทิร์น"}},"flamekit":{"active":{"name":"Flame Claw","icon":"🔥","cooldown":2,"type":"damage","mult":1.35,"desc":"ดาเมจเป้าหมายเดียว 1.35× Pet ATK"}},"sparkpup":{"active":{"name":"Static Bite","icon":"⚡","cooldown":2,"type":"damage","mult":1,"stunChance":0.15,"desc":"ดาเมจ 1.0× Pet ATK และ Stun 15%"}},"ember_fox":{"active":{"name":"Blazing Fang","icon":"🔥","cooldown":2,"type":"damage","mult":1.55,"desc":"ดาเมจเป้าหมายเดียว 1.55× Pet ATK"},"passive":{"name":"Predator Instinct","icon":"💪","type":"atkBoost","petCritPct":0.1,"heroCritPct":0.05,"desc":"Pet Crit +10% และ Hero Crit +5%"}},"moon_hare":{"active":{"name":"Moonlight Heal","icon":"💚","cooldown":2,"type":"groupHeal","healPetHpPct":0.1,"vitScale":1,"desc":"ฟื้นฟู Hero และ Pet 10% Pet Max HP + 1.0×VIT"},"passive":{"name":"Status Ward","icon":"🌙","type":"statusResist","pct":0.15,"desc":"Hero และ Pet Status Resist +15%"}},"hell_wolf":{"active":{"name":"Hell Fang","icon":"⚡","cooldown":2,"type":"damage","mult":1.1,"armorBreakChance":0.4,"poisonChance":0.25,"poisonPct":0.2,"poisonTurns":3,"desc":"ดาเมจ 1.10× Pet ATK, Armor Break 40%, Poison 25%"},"passive":{"name":"Hunter's Eye","icon":"💪","type":"accuracyBoost","pct":0.08,"desc":"Hero และ Pet Accuracy +8%"}},"inferno_drake":{"active":{"name":"Draconic Sweep","icon":"🔥","cooldown":2,"type":"aoe","mult":0.75,"defUpChance":0.35,"defUpTurns":2,"desc":"โจมตีศัตรูสูงสุด 3 ตัว 0.75× Pet ATK และมีโอกาสให้ Hero DEF Up"},"passive":{"name":"Dragon Hide","icon":"💪","type":"defBoost","petPct":0.15,"heroPct":0.08,"desc":"Pet DEF +15% และ Hero DEF +8%"},"extra":{"name":"Guardian Scale","icon":"🛡️","type":"heroBlock","pct":0.2,"desc":"20% โอกาสบล็อก direct damage ที่โจมตี Hero"}},"storm_phoenix":{"active":{"name":"Tempest Strike","icon":"⚡","cooldown":3,"type":"aoe","mult":0.7,"silenceChance":0.3,"desc":"โจมตีศัตรูสูงสุด 3 ตัว 0.70× Pet ATK และ Silence 30%"},"passive":{"name":"Storm Step","icon":"🌙","type":"dodgeBoost","pct":0.08,"desc":"Hero และ Pet Dodge +8%"},"extra":{"name":"Thunder Judgment","icon":"🌩️","type":"petCdrOnDebuff","pct":0.5,"desc":"เมื่อ Hero หรือ Pet ลง Debuff สำเร็จ มีโอกาส 50% ลด Pet Active CD 1"}}}
+;
+
+// ===== ported: src/systems/battleCore.js =====
+// ---------- Battle Core V1 ----------
+// Generic, pure and serializable combat resolver. Dungeon, future Arena/Raid
+// adapters, UI, Auto and Skip must call this core instead of forking skill logic.
+(function battleCoreFactory(root) {
+  const STATUS_PROC_CAP = 90;
+  const STATUS_KEYS = new Set(["poison", "stun", "silence", "armor_break", "def_up"]);
+  const HARMFUL = new Set(["poison", "stun", "silence", "armor_break"]);
+  const STEALABLE_BLOCKLIST = new Set(["fury", "aegis", "scheme", "phase", "immunity", "boss_mechanic"]);
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
+  const pct = value => clamp(value, 0, 100) / 100;
+  const copy = value => JSON.parse(JSON.stringify(value));
+  const living = unit => unit && !unit.dead && unit.hp > 0;
+  const hpPct = unit => unit && unit.maxHp ? unit.hp / unit.maxHp * 100 : 0;
+  const status = (unit, key) => unit.statuses && unit.statuses[key];
+  const rank = (unit, id) => Math.max(0, Math.floor(Number(unit.skills && unit.skills[id]) || 0));
+  const unitName = unit => String(unit && (unit.name || unit.id) || "Unknown");
+  const title = id => String(id || "skill").split("_").map(word => word ? word[0].toUpperCase() + word.slice(1) : "").join(" ");
+  const attackActionName = (spec, context) => spec.actionName
+    || (spec.actionType === "active" ? title(spec.id || context.usedSkillId) : spec.actionType === "counter" ? "counter attack" : "basic attack");
+  const freshResources = () => ({ fury: 0, aegis: 0, scheme: 0, schemeConsumed: 0, nextActiveDebuffBonus: 0 });
+
+  // Mode adapters own entry rules only. Damage, status, skills, cooldowns and
+  // turn resolution remain shared below for every mode.
+  const BATTLE_MODE_ADAPTERS = Object.freeze({
+    dungeon: Object.freeze({ controlledSide: "ally", allowFlee: true, bossControlStatusConversion: true }),
+    arena: Object.freeze({ controlledSide: "team_a", allowFlee: false, bossControlStatusConversion: true }),
+    raid: Object.freeze({ controlledSide: "ally", allowFlee: false, bossControlStatusConversion: true })
+  });
+
+  function nextRandom(state) {
+    let x = (state.rngState >>> 0) || 0x6d2b79f5;
+    x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+    state.rngState = x >>> 0;
+    return state.rngState / 4294967296;
+  }
+  function chance(state, percent) { return nextRandom(state) * 100 < clamp(percent, 0, 100); }
+  function choose(state, list) { return list.length ? list[Math.floor(nextRandom(state) * list.length)] : null; }
+  function chooseWeighted(state, list, weightFor) {
+    const total = list.reduce((sum, item) => sum + Math.max(0, Number(weightFor(item)) || 0), 0);
+    if (!list.length || total <= 0) return null;
+    let roll = nextRandom(state) * total;
+    for (const item of list) {
+      roll -= Math.max(0, Number(weightFor(item)) || 0);
+      if (roll <= 0) return item;
+    }
+    return list[list.length - 1];
+  }
+  function log(state, type, text, data = {}) {
+    state.log.push({ seq: ++state.logSeq, round: state.round, type, text, ...data });
+    if (state.log.length > 120) state.log.splice(0, state.log.length - 120);
+  }
+
+  function normalizeUnit(raw, index, defaultSide) {
+    const unit = copy(raw || {});
+    unit.id = String(unit.id || `unit-${index}`);
+    unit.kind = unit.kind || "monster";
+    unit.side = String(defaultSide || unit.side || (unit.kind === "monster" || unit.kind === "boss" || unit.kind === "raid_boss" ? "enemy" : "ally"));
+    unit.maxHp = Math.max(1, Math.round(Number(unit.maxHp) || Number(unit.hp) || 1));
+    unit.hp = clamp(Math.round(Number(unit.hp == null ? unit.maxHp : unit.hp)), 0, unit.maxHp);
+    unit.maxSp = Math.max(0, Math.round(Number(unit.maxSp) || 0));
+    unit.sp = clamp(Math.round(Number(unit.sp == null ? unit.maxSp : unit.sp)), 0, unit.maxSp);
+    unit.atk = Math.max(1, Number(unit.atk) || 1);
+    unit.def = Math.max(0, Number(unit.def) || 0);
+    unit.speed = Math.max(0, Number(unit.speed) || 0);
+    unit.accuracy = clamp(unit.accuracy == null ? unit.hitRate == null ? 95 : unit.hitRate : unit.accuracy, 0, 99);
+    unit.dodge = clamp(unit.dodge == null ? unit.evasion || 0 : unit.dodge, 0, 95);
+    unit.crit = clamp(unit.crit == null ? unit.critChance || 0 : unit.crit, 0, 100);
+    unit.critDamage = Math.max(1, Number(unit.critDamage) || 1.5);
+    unit.statusResist = clamp(unit.statusResist || 0, 0, 100);
+    unit.statuses = copy(unit.statuses || {});
+    unit.cooldowns = copy(unit.cooldowns || {});
+    unit.skills = copy(unit.skills || {});
+    unit.activeSkills = Array.isArray(unit.activeSkills) ? unit.activeSkills.slice(0, 4) : [];
+    unit.ai = copy(unit.ai || {});
+    unit.flags = copy(unit.flags || {});
+    unit.tieOrder = Number.isFinite(unit.tieOrder) ? unit.tieOrder : index;
+    unit.dead = unit.hp <= 0 || !!unit.dead;
+    return unit;
+  }
+
+  function buildHeroUnit(raw = {}, index = 0, side) { return normalizeUnit({ ...raw, kind: "hero" }, index, side || raw.side || "ally"); }
+  function buildPetUnit(raw = {}, index = 1, side) { return normalizeUnit({ ...raw, kind: "pet" }, index, side || raw.side || "ally"); }
+  function buildMonsterUnit(raw = {}, index = 0, side) {
+    const kind = raw.kind === "boss" || raw.kind === "raid_boss" ? raw.kind : "monster";
+    return normalizeUnit({ ...raw, kind }, index + 2, side || raw.side || "enemy");
+  }
+
+  // The team/side model is the reusable boundary: exactly two sides, each with
+  // any supported unit kinds. Legacy Dungeon ids remain compatibility aliases.
+  function teamUnits(state, side) {
+    return Object.values(state.units || {}).filter(unit => unit.side === side);
+  }
+  function livingTeamUnits(state, side) { return teamUnits(state, side).filter(living); }
+  function opposingUnits(state, actorOrSide) {
+    const side = typeof actorOrSide === "string" ? actorOrSide : actorOrSide && actorOrSide.side;
+    return Object.values(state.units || {}).filter(unit => living(unit) && unit.side !== side);
+  }
+  function heroForSide(state, side) { return teamUnits(state, side).find(unit => unit.kind === "hero") || null; }
+  function petForSide(state, side) { return teamUnits(state, side).find(unit => unit.kind === "pet") || null; }
+  function resourcesFor(state, actorOrSide) {
+    const side = typeof actorOrSide === "string" ? actorOrSide : actorOrSide && actorOrSide.side;
+    if (side === state.controlledSide) return state.resources;
+    state.teamResources = state.teamResources || {};
+    state.teamResources[side] = state.teamResources[side] || freshResources();
+    return state.teamResources[side];
+  }
+  function resetBattleResources(state) {
+    for (const side of state.teamIds || []) Object.assign(resourcesFor(state, side), freshResources());
+  }
+  function ensureTeamModel(state) {
+    const sides = Array.from(new Set(Object.values(state.units || {}).map(unit => unit.side)));
+    state.teamIds = Array.isArray(state.teamIds) && state.teamIds.length ? state.teamIds : sides;
+    state.controlledSide = state.controlledSide || (state.heroId && state.units[state.heroId] && state.units[state.heroId].side) || state.teamIds[0];
+    state.teams = state.teams || Object.fromEntries(state.teamIds.map(side => [side, { id: side, unitIds: teamUnits(state, side).map(unit => unit.id) }]));
+    state.teamResources = state.teamResources || {};
+    state.resources = state.resources || state.teamResources[state.controlledSide] || freshResources();
+    state.teamResources[state.controlledSide] = state.resources;
+    for (const side of state.teamIds) state.teamResources[side] = state.teamResources[side] || freshResources();
+    state.selectedTargetIds = state.selectedTargetIds || {};
+    for (const side of state.teamIds) {
+      if (!state.selectedTargetIds[side]) state.selectedTargetIds[side] = opposingUnits(state, side)[0]?.id || null;
+    }
+    state.selectedTargetId = state.selectedTargetId || state.selectedTargetIds[state.controlledSide] || null;
+    state.selectedTargetIds[state.controlledSide] = state.selectedTargetId;
+    state.heroTurnCounts = state.heroTurnCounts || (state.heroId ? { [state.heroId]: Number(state.heroTurnCount) || 0 } : {});
+    return state;
+  }
+
+  function createBattleState(options, input, adapter) {
+    const units = {};
+    input.forEach(unit => {
+      if (units[unit.id]) throw new Error("battle_duplicate_unit_id");
+      units[unit.id] = unit;
+    });
+    const teamIds = Array.from(new Set(input.map(unit => unit.side)));
+    if (teamIds.length !== 2 || teamIds.some(side => !input.some(unit => unit.side === side))) throw new Error("battle_requires_two_teams");
+    const controlledSide = String(options.controlledSide || adapter.controlledSide || teamIds[0]);
+    if (!teamIds.includes(controlledSide)) throw new Error("battle_invalid_controlled_side");
+    const controlledUnits = input.filter(unit => unit.side === controlledSide);
+    const hero = controlledUnits.find(unit => unit.kind === "hero") || null;
+    const pet = controlledUnits.find(unit => unit.kind === "pet") || null;
+    const enemies = input.filter(unit => unit.side !== controlledSide);
+    const teamResources = Object.fromEntries(teamIds.map(side => [side, freshResources()]));
+    const state = {
+      version: 1,
+      battleId: String(options.battleId || `battle-${Date.now()}`),
+      mode: options.mode || "dungeon",
+      floor: Math.max(1, Math.floor(Number(options.floor) || 1)),
+      round: 0, queue: [], queueIndex: 0, speedSnapshot: {},
+      teamIds,
+      teams: Object.fromEntries(teamIds.map(side => [side, { id: side, unitIds: input.filter(unit => unit.side === side).map(unit => unit.id) }])),
+      controlledSide,
+      teamResources,
+      units, heroId: hero ? hero.id : null, petId: pet ? pet.id : null, enemyIds: enemies.map(unit => unit.id),
+      selectedTargetId: enemies[0].id,
+      selectedTargetIds: Object.fromEntries(teamIds.map(side => [side, input.find(unit => unit.side !== side)?.id || null])),
+      heroTurnCount: 0, heroTurnCounts: {},
+      resources: teamResources[controlledSide],
+      flags: { auto: false, skipResolving: false, heroReviveNextFloor: false, fled: false },
+      result: null, safeActionSeq: 0, logSeq: 0,
+      rngState: (Number(options.seed) >>> 0) || 0x12345678, log: [],
+      rules: {
+        allowFlee: options.allowFlee == null ? adapter.allowFlee : options.allowFlee !== false,
+        bossControlStatusConversion: adapter.bossControlStatusConversion !== false,
+        ...(options.rules || {})
+      }
+    };
+    rebuildQueue(state);
+    log(state, "battle_start", "Battle started");
+    return state;
+  }
+  function createTeamBattle(options = {}) {
+    const mode = options.mode || "arena";
+    const adapter = BATTLE_MODE_ADAPTERS[mode] || BATTLE_MODE_ADAPTERS.arena;
+    const teams = Array.isArray(options.teams) ? options.teams : [];
+    const input = teams.flatMap((team, teamIndex) => (team.units || []).map((raw, unitIndex) => {
+      const index = teamIndex * 100 + unitIndex;
+      const side = String(team.id || `team_${teamIndex + 1}`);
+      if (raw.kind === "hero") return buildHeroUnit(raw, index, side);
+      if (raw.kind === "pet") return buildPetUnit(raw, index, side);
+      return buildMonsterUnit(raw, index, side);
+    }));
+    return createBattleState({ ...options, mode }, input, adapter);
+  }
+  function createBattle(options = {}) {
+    if (Array.isArray(options.teams)) return createTeamBattle(options);
+    const input = [
+      options.hero && buildHeroUnit(options.hero, 0, "ally"),
+      options.pet && buildPetUnit(options.pet, 1, "ally"),
+      ...(options.enemies || []).map((enemy, index) => buildMonsterUnit(enemy, index, "enemy"))
+    ].filter(Boolean);
+    const hero = input.find(unit => unit.kind === "hero" && unit.side === "ally");
+    const enemies = input.filter(unit => unit.side === "enemy");
+    if (!hero || !enemies.length) throw new Error("battle_requires_hero_and_enemy");
+    const modeAdapter = BATTLE_MODE_ADAPTERS[options.mode] || BATTLE_MODE_ADAPTERS.dungeon;
+    return createBattleState({ ...options, mode: options.mode || "dungeon" }, input, { ...modeAdapter, controlledSide: "ally" });
+  }
+  function createDungeonBattle(options = {}) {
+    return createBattle({ ...options, mode: "dungeon", allowFlee: true });
+  }
+  function createArenaBattle(options = {}) {
+    return createTeamBattle({ ...options, mode: "arena", controlledSide: options.controlledSide || "team_a", teams: [
+      { id: "team_a", units: [options.teamA?.hero && { ...options.teamA.hero, kind: "hero" }, options.teamA?.pet && { ...options.teamA.pet, kind: "pet" }, ...(options.teamA?.units || [])].filter(Boolean) },
+      { id: "team_b", units: [options.teamB?.hero && { ...options.teamB.hero, kind: "hero" }, options.teamB?.pet && { ...options.teamB.pet, kind: "pet" }, ...(options.teamB?.units || [])].filter(Boolean) }
+    ] });
+  }
+  function createRaidBattle(options = {}) {
+    const boss = options.raidBoss || options.boss || (options.enemies || [])[0];
+    return createBattle({ ...options, mode: "raid", allowFlee: false, enemies: boss ? [{ ...boss, kind: "raid_boss" }] : [] });
+  }
+
+  function rebuildQueue(state) {
+    state.round += 1;
+    const candidates = Object.values(state.units).filter(living);
+    state.speedSnapshot = Object.fromEntries(candidates.map(unit => [unit.id, Number(unit.speed) || 0]));
+    state.queue = candidates.sort((a, b) => state.speedSnapshot[b.id] - state.speedSnapshot[a.id] || a.tieOrder - b.tieOrder || a.id.localeCompare(b.id)).map(unit => unit.id);
+    state.queueIndex = 0;
+    log(state, "round", `Round ${state.round}`);
+  }
+
+  function currentUnit(state) {
+    while (state.queueIndex < state.queue.length && !living(state.units[state.queue[state.queueIndex]])) state.queueIndex += 1;
+    if (state.queueIndex >= state.queue.length && !state.result) rebuildQueue(state);
+    return state.units[state.queue[state.queueIndex]] || null;
+  }
+
+  function upcomingActions(state, count = 4) {
+    if (state.result) return [];
+    const visible = state.queue.slice(state.queueIndex).filter(id => living(state.units[id]));
+    if (visible.length >= count) return visible.slice(0, count);
+    const next = Object.values(state.units).filter(living).sort((a, b) => Number(b.speed) - Number(a.speed) || a.tieOrder - b.tieOrder || a.id.localeCompare(b.id)).map(unit => unit.id);
+    return visible.concat(next).slice(0, count);
+  }
+
+  function hasDebuff(unit) { return Object.keys(unit.statuses || {}).some(key => HARMFUL.has(key)); }
+  function effectiveDef(unit) {
+    let value = unit.def;
+    if (status(unit, "armor_break")) value *= 0.85;
+    if (status(unit, "fortress")) value *= 1 + pct(status(unit, "fortress").defPct);
+    return Math.max(0, value);
+  }
+  function activeBuffDamageMultiplier(unit) {
+    let mult = 1;
+    if (status(unit, "rampage")) mult *= 1 + pct(status(unit, "rampage").damagePct);
+    if (status(unit, "shield_wall")) mult *= 1 - pct(status(unit, "shield_wall").damagePenaltyPct);
+    if (status(unit, "fortress")) mult *= 1 - pct(status(unit, "fortress").damagePenaltyPct);
+    return mult;
+  }
+  function heroPassiveDamageMultiplier(state, actor, target) {
+    if (actor.kind !== "hero") return 1;
+    const resources = resourcesFor(state, actor);
+    let bonus = 0;
+    const wm = skillData(actor, "weapon_mastery"); if (wm) bonus += wm.damagePct;
+    const bloodlust = skillData(actor, "bloodlust"); if (bloodlust && hpPct(actor) <= 40) bonus += bloodlust.damagePct;
+    const finish = skillData(actor, "finishing_blow"); if (finish && hpPct(target) <= 40) bonus += finish.damagePct;
+    const exploit = skillData(actor, "exploit_weakness"); if (exploit && hasDebuff(target)) bonus += exploit.damagePct;
+    const furyRank = rank(actor, "relentless_fury");
+    if (furyRank) {
+      bonus += resources.fury * 3;
+      if (furyRank >= 2 && hpPct(actor) <= 40) bonus += 5;
+      if (furyRank >= 4 && hpPct(actor) <= 40) bonus += 5;
+    }
+    return 1 + pct(bonus);
+  }
+  function skillData(unit, id) {
+    const catalog = root.HERO_SKILLS_V1_BY_ID || (typeof HERO_SKILLS_V1_BY_ID !== "undefined" ? HERO_SKILLS_V1_BY_ID : {});
+    const skill = catalog[id];
+    const learned = rank(unit, id);
+    return skill && learned ? skill.ranks[learned - 1] : null;
+  }
+  function petSkillData(unit) {
+    const catalog = root.PET_COMBAT_SKILLS_V2 || (typeof PET_COMBAT_SKILLS_V2 !== "undefined" ? PET_COMBAT_SKILLS_V2 : {});
+    const defined = catalog[unit.petDefId] || {};
+    return {
+      active: { ...(defined.active || {}), ...(unit.active || {}) },
+      passive: { ...(defined.passive || {}), ...(unit.passive || {}) },
+      extra: { ...(defined.extra || {}), ...(unit.extra || {}) }
+    };
+  }
+  const chancePercent = value => Math.abs(Number(value) || 0) <= 1 ? (Number(value) || 0) * 100 : Number(value) || 0;
+
+  function procChance(state, actor, target, base, type, options = {}) {
+    let value = Number(base) || 0;
+    if (!options.fixed && actor.kind === "hero") {
+      const resources = resourcesFor(state, actor);
+      const edge = skillData(actor, "debilitating_edge"); if (edge) value += edge.procBonus;
+      if (type === "armor_break") { const mastery = skillData(actor, "armor_break_mastery"); if (mastery) value += mastery.procBonus; }
+      value += resources.scheme * 3;
+      if (options.active) value += Number(options.activeDebuffBonus) || Number(resources.nextActiveDebuffBonus) || 0;
+    }
+    if (!HARMFUL.has(type)) return clamp(value, 0, 100);
+    return Math.max(0, Math.min(STATUS_PROC_CAP, value) - (Number(target.statusResist) || 0));
+  }
+
+  function applyStatus(state, actor, target, key, spec = {}, context = {}) {
+    ensureTeamModel(state);
+    if (!STATUS_KEYS.has(key) || !living(target)) return { applied: false };
+    const finalChance = procChance(state, actor, target, spec.chance == null ? 100 : spec.chance, key, context);
+    if (!chance(state, finalChance)) return { applied: false, resisted: true };
+    if (state.rules?.bossControlStatusConversion !== false && (target.kind === "boss" || target.kind === "raid_boss") && (key === "stun" || key === "silence")) {
+      const conversion = key === "stun" ? "critical" : "armor_pierce";
+      log(state, "boss_conversion", `${key === "stun" ? "Stun" : "Silence"} converted to ${conversion === "critical" ? "Critical Hit" : "30% Armor Pierce"}`, { actorId: actor.id, targetId: target.id, status: key, conversion });
+      return { applied: false, converted: conversion };
+    }
+    const duration = Math.max(1, Math.floor(Number(spec.duration) || (key === "armor_break" ? 2 : 1)));
+    if (key === "stun" && target.statuses.stun) return { applied: false, unchanged: true };
+    if (key === "poison") {
+      const existing = target.statuses.poison;
+      target.statuses.poison = { key, duration, damage: Math.max(Number(existing && existing.damage) || 0, Number(spec.damage) || 1), sourceId: actor.id, harmful: true };
+    } else {
+      target.statuses[key] = { ...(target.statuses[key] || {}), ...copy(spec), key, duration, harmful: HARMFUL.has(key) };
+    }
+    context.appliedStatuses && context.appliedStatuses.add(`${target.id}:${key}`);
+    log(state, "status", `${target.name || target.id} gained ${key}`, { actorId: actor.id, targetId: target.id, status: key });
+    return { applied: true };
+  }
+
+  function heal(state, target, amount, source, label = "Heal") {
+    if (!living(target)) return 0;
+    const recovery = target.kind === "hero" ? skillData(target, "recovery") : null;
+    const actual = Math.min(target.maxHp - target.hp, Math.max(0, Math.round(amount * (1 + pct(recovery ? recovery.receivedPct : 0)))));
+    target.hp += actual;
+    if (actual) log(state, "heal", `${unitName(source)} use ${label} to ${unitName(target)} heal ${actual}.`, { actorId: source && source.id, targetId: target.id, amount: actual, actionName: label });
+    return actual;
+  }
+
+  function restoreSp(state, target, amount, source, label = "SP") {
+    if (!living(target) || !target.maxSp) return 0;
+    const recovery = target.kind === "hero" ? skillData(target, "recovery") : null;
+    const actual = Math.min(target.maxSp - target.sp, Math.max(0, Math.round(amount * (1 + pct(recovery ? recovery.receivedPct : 0)))));
+    target.sp += actual;
+    if (actual) log(state, "sp", `${label} +${actual}`, { actorId: source && source.id, targetId: target.id, amount: actual });
+    return actual;
+  }
+
+  function markDead(state, target) {
+    if (target.hp > 0 || target.dead) return;
+    target.hp = 0; target.dead = true;
+    log(state, "death", `${unitName(target)} defeated.`, { targetId: target.id });
+  }
+
+  function receiveDamage(state, actor, target, rawDamage, context = {}) {
+    let amount = Math.max(0, Math.round(rawDamage));
+    const directHit = !!context.direct;
+    const pet = petForSide(state, target.side);
+    const guardian = pet && petSkillData(pet).extra;
+    if (directHit && target.kind === "hero" && actor.side !== target.side && pet && living(pet) && guardian.type === "heroBlock" && chance(state, chancePercent(guardian.pct))) {
+      log(state, "block", "Guardian Scale blocked direct damage", { actorId: actor.id, targetId: target.id });
+      amount = 0;
+    }
+    if (status(target, "def_up")) amount = Math.round(amount * 0.7);
+    if (status(target, "rampage")) amount = Math.round(amount * (1 + pct(status(target, "rampage").takenPct)));
+    if (directHit && target.kind === "hero") {
+      const survival = skillData(target, "survival_instinct");
+      const threshold = target.maxHp * 0.25;
+      if (survival && amount > threshold) amount = Math.round(threshold + (amount - threshold) * (1 - pct(survival.excessReductionPct)));
+    }
+    const before = target.hp;
+    target.hp = Math.max(0, target.hp - amount);
+    if (directHit && target.kind === "hero" && target.hp <= 0 && rank(target, "thorned_aegis") >= 2 && !target.flags.aegisLethalUsed) {
+      const resources = resourcesFor(state, target);
+      const priorAegis = resources.aegis;
+      target.hp = 1; target.flags.aegisLethalUsed = true; resources.aegis = 3;
+      log(state, "survive", "Thorned Aegis prevented lethal damage", { targetId: target.id });
+      if (rank(target, "thorned_aegis") >= 3 && priorAegis === 3) {
+        performCounter(state, target, actor, context); resources.aegis = 0;
+      } else if (rank(target, "thorned_aegis") >= 4 && priorAegis < 3 && living(actor)) {
+        performCounter(state, target, actor, context);
+      }
+    }
+    if (target.kind === "hero" && target.hp > 0 && amount > 0) {
+      const secondWind = skillData(target, "second_wind");
+      if (secondWind && hpPct(target) <= 40 && !target.flags.secondWindUsed) {
+        heal(state, target, target.maxHp * pct(secondWind.healMaxHpPct), target, "Second Wind");
+        target.flags.secondWindUsed = true;
+      }
+      const lastStand = directHit ? skillData(target, "last_stand") : null;
+      if (lastStand && hpPct(target) <= 40 && !(target.flags.lastStandCooldown > 0) && chance(state, lastStand.chance)) {
+        target.statuses.def_up = { key: "def_up", duration: 2, harmful: false };
+        target.flags.lastStandCooldown = lastStand.internalCooldown;
+        log(state, "status", "Last Stand granted DEF Up", { targetId: target.id });
+      }
+    }
+    if (amount) {
+      const dealt = before - target.hp;
+      const text = context.direct
+        ? `${unitName(actor)} ${context.actionName === "basic attack" || context.actionName === "counter attack" ? context.actionName : `use ${context.actionName || "skill"}`} to ${unitName(target)} damage ${dealt}.`
+        : `${unitName(target)} took ${dealt}.`;
+      log(state, "damage", text, { actorId: actor.id, targetId: target.id, amount: dealt, crit: !!context.crit, actionName: context.actionName || null });
+    }
+    if (directHit && target.kind === "hero" && actor.side !== target.side && before > target.hp && !context.indirect) {
+      const survival = skillData(target, "survival_instinct");
+      if (survival && living(actor)) {
+        const playtest = root.HERO_SKILL_V1_PLAYTEST || (typeof HERO_SKILL_V1_PLAYTEST !== "undefined" ? HERO_SKILL_V1_PLAYTEST : {});
+        const reflectCap = target.maxHp * pct(Number(playtest.survivalReflectCapMaxHpPct) || 10);
+        const reflected = Math.max(1, Math.round(Math.min((before - target.hp) * pct(survival.reflectPct), reflectCap)));
+        receiveDamage(state, target, actor, reflected, { ...context, indirect: true });
+        log(state, "reflect", `Reflected ${reflected} damage`, { actorId: target.id, targetId: actor.id });
+      }
+    }
+    markDead(state, target);
+    return before - target.hp;
+  }
+
+  function attackHit(state, actor, target, spec, actionContext) {
+    if (!living(actor) || !living(target)) return { hit: false, damage: 0 };
+    if (!chance(state, clamp(actor.accuracy - target.dodge, 5, 99))) {
+      log(state, "miss", `${unitName(actor)} missed.`, { actorId: actor.id, targetId: target.id, actionName: attackActionName(spec, actionContext) });
+      return { hit: false, damage: 0 };
+    }
+    // Proc rolls must be known before damage for Boss conversion, but a newly
+    // applied Armor Break affects subsequent hits/actions rather than the hit
+    // that created it. Snapshot DEF before applying this hit's statuses.
+    const targetDefAtHitStart = effectiveDef(target);
+    const conversions = [];
+    for (const statusSpec of spec.statuses || []) {
+      const result = applyStatus(state, actor, target, statusSpec.key, statusSpec, { ...actionContext, active: spec.actionType === "active", fixed: !!statusSpec.fixed });
+      if (result.converted) conversions.push(result.converted);
+      if (result.applied) actionContext.debuffApplied = actionContext.debuffApplied || HARMFUL.has(statusSpec.key);
+    }
+    let critChance = actor.crit + (Number(spec.critBonus) || 0);
+    if (actor.kind === "hero") {
+      const killer = skillData(actor, "killer_instinct"); if (killer && hpPct(target) < 50) critChance += killer.critPct;
+      const bloodlust = skillData(actor, "bloodlust"); if (bloodlust && hpPct(actor) <= 40) critChance += bloodlust.critPct || 0;
+      if (status(actor, "rampage")) critChance += Number(status(actor, "rampage").critPct) || 0;
+    }
+    if (target.kind === "hero") critChance -= resourcesFor(state, target).aegis * 5;
+    const crit = conversions.includes("critical") || !!spec.guaranteedCrit || chance(state, critChance);
+    const pierce = Math.max(Number(spec.defPierce) || 0, conversions.includes("armor_pierce") ? 0.3 : 0);
+    const attackPower = actor.atk * (Number(spec.mult) || 1) * activeBuffDamageMultiplier(actor) * heroPassiveDamageMultiplier(state, actor, target);
+    const critMult = crit ? actor.critDamage + pct(Number(spec.critDamageBonus) || 0) + pct((skillData(actor, "critical_mastery") || {}).critDamagePct || 0) : 1;
+    const damage = Math.max(1, Math.round((attackPower - targetDefAtHitStart * (1 - pierce)) * critMult));
+    const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
+    actionContext.totalDamage += dealt;
+    actionContext.hitAny = true;
+    if (target.kind === "hero" && dealt > 0) {
+      actionContext.heroStruck = true;
+      actionContext.struckHeroIds.add(target.id);
+    }
+    if (target.dead) actionContext.killed = true;
+    return { hit: true, crit, damage: dealt };
+  }
+
+  function basicTarget(state, actor, requestedId) {
+    const targets = opposingUnits(state, actor);
+    const requested = requestedId && state.units[requestedId];
+    if (living(requested) && requested.side !== actor.side) return requested;
+    return targets.sort((a, b) => a.hp - b.hp || a.tieOrder - b.tieOrder)[0] || null;
+  }
+  function tickCooldowns(unit, justUsedId) {
+    for (const key of Object.keys(unit.cooldowns)) if (key !== justUsedId) unit.cooldowns[key] = Math.max(0, Number(unit.cooldowns[key]) - 1);
+  }
+  function tickStatuses(unit, appliedStatuses) {
+    for (const [key, value] of Object.entries(unit.statuses || {})) {
+      if (key === "poison" || appliedStatuses.has(`${unit.id}:${key}`)) continue;
+      value.duration -= 1;
+      if (value.duration <= 0) delete unit.statuses[key];
+    }
+  }
+  function reduceOneCooldown(unit, excludedId, state) {
+    const candidates = Object.entries(unit.cooldowns).filter(([id, cd]) => id !== excludedId && Number(cd) > 0);
+    if (!candidates.length) return false;
+    const selected = state ? choose(state, candidates) : candidates.sort((a, b) => Number(b[1]) - Number(a[1]) || a[0].localeCompare(b[0]))[0];
+    unit.cooldowns[selected[0]] -= 1;
+    return true;
+  }
+  function reduceAllCooldowns(unit, excludedId) {
+    let changed = false;
+    for (const [id, cooldown] of Object.entries(unit.cooldowns)) {
+      if (id !== excludedId && Number(cooldown) > 0) { unit.cooldowns[id] -= 1; changed = true; }
+    }
+    return changed;
+  }
+
+  function performCounter(state, hero, enemy, actionContext) {
+    if (!living(hero) || !living(enemy)) return;
+    const data = skillData(hero, "counter") || { counterMult: 1 };
+    const statuses = data.armorBreakChance ? [{ key: "armor_break", chance: data.armorBreakChance, duration: 2 }] : [];
+    const result = attackHit(state, hero, enemy, { mult: data.counterMult, actionType: "counter", statuses }, actionContext);
+    if (rank(hero, "thorned_aegis") >= 5 && result.hit) {
+      const playtest = root.HERO_SKILL_V1_PLAYTEST || (typeof HERO_SKILL_V1_PLAYTEST !== "undefined" ? HERO_SKILL_V1_PLAYTEST : {});
+      const stun = applyStatus(state, hero, enemy, "stun", { chance: Number(playtest.aegisCounterStunChance) || 35, duration: 1 }, actionContext);
+      if (stun.applied) {
+        const resources = resourcesFor(state, hero);
+        resources.aegis = Math.max(0, resources.aegis - 1);
+      }
+    }
+    log(state, "counter", "Hero countered", { actorId: hero.id, targetId: enemy.id });
+  }
+
+  function heroActiveSpec(state, actor, id) {
+    const data = skillData(actor, id);
+    if (!data) return null;
+    const base = { id, actionType: "active", mult: data.mult || 0, hits: data.hits || 1, statuses: [], ...data };
+    if (id === "heavy_blow") base.statuses.push({ key: "armor_break", chance: data.armorBreakChance, duration: 2 });
+    if (id === "toxic_strike") base.statuses.push({ key: "poison", chance: data.poisonChance, duration: 3 + ((skillData(actor, "toxic_mastery") || {}).durationBonus || 0), damage: Math.max(1, Math.round(actor.atk * 0.2 * (1 + pct((skillData(actor, "toxic_mastery") || {}).poisonDamagePct || 0)))) });
+    if (id === "stunning_blow") base.statuses.push({ key: "stun", chance: data.stunChance, duration: 1 });
+    if (id === "silent_edge") base.statuses.push({ key: "silence", chance: data.silenceChance, duration: 2 });
+    if (id === "guard") base.statuses = [];
+    return base;
+  }
+
+  function consumeScheme(state, actor, target, context) {
+    const resources = resourcesFor(state, actor);
+    if (rank(actor, "usurper") < 3 || resources.scheme < 3) return false;
+    const buffKey = Object.keys(target.statuses || {}).find(key => !HARMFUL.has(key) && !STEALABLE_BLOCKLIST.has(key) && target.statuses[key].stealable !== false);
+    if (buffKey) {
+      actor.statuses[buffKey] = copy(target.statuses[buffKey]); delete target.statuses[buffKey];
+      log(state, "scheme", `Stole ${buffKey}`, { actorId: actor.id, targetId: target.id });
+    } else {
+      const extendable = Object.keys(target.statuses || {}).filter(key => HARMFUL.has(key) && key !== "stun");
+      const key = choose(state, extendable);
+      if (!key) return false;
+      target.statuses[key].duration += 1;
+      log(state, "scheme", `Extended ${key}`, { actorId: actor.id, targetId: target.id });
+    }
+    resources.scheme -= 1; resources.schemeConsumed += 1;
+    context.schemeConsumed = true;
+    if (rank(actor, "usurper") >= 4) resources.nextActiveDebuffBonus = 10;
+    if (rank(actor, "usurper") >= 5 && resources.schemeConsumed >= 3) {
+      if (!context.cdrUsed && reduceAllCooldowns(actor, context.usedSkillId)) context.cdrUsed = true;
+      resources.schemeConsumed = 0;
+    }
+    return true;
+  }
+
+  function resolveHeroAction(state, actor, command, context) {
+    const resources = resourcesFor(state, actor);
+    const type = command.type || "basic";
+    if (type === "flee") {
+      if (!state.rules.allowFlee) { log(state, "flee", "Flee is not allowed"); return; }
+      if (chance(state, Math.min(99, 50 + (Number(actor.agi) || 0) * 0.5))) { state.flags.fled = true; state.result = "fled"; log(state, "flee", "Escaped successfully"); }
+      else log(state, "flee", "Escape Failed!");
+      return;
+    }
+    if (type === "potion") {
+      if ((Number(command.count) || 0) <= 0) { log(state, "invalid", "No potion available"); return; }
+      heal(state, actor, Number(command.heal) || actor.maxHp * 0.35, actor, "Potion");
+      if (command.restoreSp) restoreSp(state, actor, Number(command.restoreSp), actor, "Potion SP");
+      context.consumePotion = true; return;
+    }
+    const target = basicTarget(state, actor, command.targetId || state.selectedTargetIds?.[actor.side] || state.selectedTargetId);
+    if (!target) return;
+    context.targetHadDebuff = hasDebuff(target);
+    if (type === "active") {
+      const id = command.skillId;
+      const spec = heroActiveSpec(state, actor, id);
+      if (!spec || !actor.activeSkills.includes(id) || (actor.cooldowns[id] || 0) > 0 || status(actor, "silence")) { log(state, "invalid", "Active skill unavailable"); return; }
+      const efficiency = skillData(actor, "skill_efficiency");
+      const cost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+      if (actor.sp < cost) { log(state, "invalid", "Not enough SP"); return; }
+      actor.sp -= cost; context.usedSkillId = id; context.wasActive = true;
+      context.attackAction = Number(spec.mult) > 0;
+      const schemeEligible = context.attackAction || id === "disruption";
+      context.activeDebuffBonus = schemeEligible ? resources.nextActiveDebuffBonus : 0;
+      if (schemeEligible) resources.nextActiveDebuffBonus = 0;
+      if (id === "rampage") { actor.statuses.rampage = { key: "rampage", duration: spec.duration, damagePct: spec.damagePct, critPct: spec.critPct || 0, takenPct: spec.takenPct, stealable: false }; context.appliedStatuses.add(`${actor.id}:rampage`); }
+      else if (id === "shield_wall") {
+        actor.statuses.shield_wall = { key: "shield_wall", duration: spec.duration, damagePenaltyPct: spec.damagePenaltyPct, stealable: false };
+        actor.statuses.def_up = { key: "def_up", duration: spec.duration, harmful: false };
+        context.appliedStatuses.add(`${actor.id}:shield_wall`); context.appliedStatuses.add(`${actor.id}:def_up`);
+      }
+      else if (id === "fortress") { actor.statuses.fortress = { key: "fortress", duration: spec.duration, defPct: spec.defPct, damagePenaltyPct: spec.damagePenaltyPct, stealable: false }; context.appliedStatuses.add(`${actor.id}:fortress`); }
+      else if (id === "counter") { actor.statuses.counter = { key: "counter", duration: 1, counterMult: spec.counterMult, stealable: false }; context.appliedStatuses.add(`${actor.id}:counter`); }
+      else if (id === "disruption") {
+        const pool = ["poison", "armor_break", "silence", "stun"];
+        const picked = [];
+        while (picked.length < spec.count && pool.length) {
+          const key = chooseWeighted(state, pool, candidate => candidate === "stun" && spec.count < 4 ? spec.stunWeight : 1);
+          picked.push(key); pool.splice(pool.indexOf(key), 1);
+        }
+        for (const key of picked) {
+          const applied = applyStatus(state, actor, target, key, { chance: spec.procChance, duration: key === "stun" ? 1 : key === "armor_break" ? 2 : 3, damage: key === "poison" ? Math.round(actor.atk * 0.2) : undefined }, { ...context, active: true });
+          if (applied.applied) context.debuffApplied = true;
+        }
+      } else {
+        const distributedTargets = id === "blade_storm"
+          ? [target, ...opposingUnits(state, actor).filter(unit => unit.id !== target.id)]
+          : [target];
+        for (let hit = 0; hit < spec.hits; hit++) {
+          let hitTarget = distributedTargets[hit % distributedTargets.length];
+          if (!living(hitTarget)) hitTarget = distributedTargets.find(living) || basicTarget(state, actor, null);
+          if (!hitTarget) break;
+          const hitSpec = { ...spec, statuses: spec.statuses.slice() };
+          if (hit === 0 && rank(actor, "relentless_fury") >= 3 && resources.fury === 3) hitSpec.statuses.push({ key: "stun", chance: 5, duration: 1, fixed: true });
+          if (id === "blade_storm" && spec.stunChancePerHit) hitSpec.statuses.push({ key: "stun", chance: spec.stunChancePerHit, duration: 1, fixed: true });
+          attackHit(state, actor, hitTarget, hitSpec, context);
+        }
+        if (id === "guard") { actor.statuses.def_up = { key: "def_up", duration: spec.duration, harmful: false }; context.appliedStatuses.add(`${actor.id}:def_up`); }
+      }
+      actor.cooldowns[id] = Number(spec.cooldown) || 0;
+      if (schemeEligible) consumeScheme(state, actor, target, context);
+    } else {
+      context.attackAction = true;
+      const statuses = rank(actor, "relentless_fury") >= 3 && resources.fury === 3 ? [{ key: "stun", chance: 5, duration: 1, fixed: true }] : [];
+      const hit = attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses }, context);
+      const drain = skillData(actor, "life_drain");
+      if (hit.damage && drain) heal(state, actor, Math.min(hit.damage * pct(drain.drainPct), actor.maxHp * 0.10), actor, "Life Drain");
+      const spirit = skillData(actor, "spirit_drain"); if (hit.hit && spirit) restoreSp(state, actor, spirit.spRestore, actor, "Spirit Drain");
+    }
+    if (context.attackAction) {
+      const furyRank = rank(actor, "relentless_fury"); if (furyRank) resources.fury = Math.min(3, resources.fury + 1);
+      const quick = skillData(actor, "quick_recovery");
+      if (quick && context.targetHadDebuff && !context.cdrUsed && chance(state, quick.chance + (rank(actor, "usurper") >= 2 ? resources.scheme * 2 : 0)) && reduceOneCooldown(actor, context.usedSkillId, state)) context.cdrUsed = true;
+    }
+    if (context.debuffApplied && rank(actor, "usurper")) resources.scheme = Math.min(3, resources.scheme + 1);
+    const tactician = skillData(actor, "master_tactician");
+    if (tactician && context.targetHadDebuff && chance(state, tactician.chance)) {
+      const extendable = Object.keys(target.statuses || {}).filter(key => HARMFUL.has(key) && key !== "stun");
+      const key = choose(state, extendable);
+      if (key) { target.statuses[key].duration += 1; log(state, "status", `Master Tactician extended ${key}`, { actorId: actor.id, targetId: target.id }); }
+    }
+    if (context.killed && rank(actor, "relentless_fury") >= 5 && resources.fury > 0 && !context.cdrUsed && reduceOneCooldown(actor, context.usedSkillId, state)) { resources.fury -= 1; context.cdrUsed = true; }
+  }
+
+  function resolvePetAction(state, actor, context) {
+    const hero = heroForSide(state, actor.side);
+    const target = basicTarget(state, actor, state.selectedTargetIds?.[actor.side] || state.selectedTargetId);
+    if (!target) return;
+    const { active } = petSkillData(actor);
+    const activeReady = (actor.cooldowns.pet_active || 0) === 0;
+    const activeName = active.name || "Pet Active";
+    const isSupport = active.type === "regen" || active.type === "groupHeal";
+    const needsHeal = living(hero) && (hpPct(hero) <= 60 || (active.type === "groupHeal" && hpPct(actor) <= 60));
+    if (isSupport && activeReady && needsHeal) {
+      log(state, "pet_active", `${unitName(actor)} use ${activeName}.`, { actorId: actor.id, skillName: activeName });
+      const amount = actor.maxHp * (Number(active.healPetHpPct) || 0) + (Number(actor.vit) || 0) * (Number(active.vitScale) || 0);
+      if (active.type === "regen") hero.statuses.pet_regrowth = { key: "pet_regrowth", duration: Math.max(1, Number(active.regenTurns) || 1), heal: Math.round(amount), sourceId: actor.id, stealable: false };
+      else { heal(state, hero, amount, actor, "Moonlight Heal"); heal(state, actor, amount, actor, "Moonlight Heal"); }
+      actor.cooldowns.pet_active = Number(active.cooldown) || 0; context.usedSkillId = "pet_active"; return;
+    }
+    if (!activeReady) { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
+    if (active.type !== "damage" && active.type !== "aoe") { attackHit(state, actor, target, { mult: 1, actionType: "basic", statuses: [] }, context); return; }
+    const spec = { mult: Number(active.mult) || 1, actionType: "active", actionName: activeName, statuses: [] };
+    if (active.stunChance) spec.statuses.push({ key: "stun", chance: chancePercent(active.stunChance), duration: 1 });
+    if (active.armorBreakChance) spec.statuses.push({ key: "armor_break", chance: chancePercent(active.armorBreakChance), duration: 2 });
+    if (active.poisonChance) spec.statuses.push({ key: "poison", chance: chancePercent(active.poisonChance), duration: Math.max(1, Number(active.poisonTurns) || 1), damage: Math.round(actor.atk * (Number(active.poisonPct) || 0)) });
+    if (active.silenceChance) spec.statuses.push({ key: "silence", chance: chancePercent(active.silenceChance), duration: 2 });
+    const targets = active.type === "aoe" ? opposingUnits(state, actor).slice(0, 3) : [target];
+    log(state, "pet_active", `${unitName(actor)} use ${activeName}.`, { actorId: actor.id, skillName: activeName });
+    targets.forEach(unit => attackHit(state, actor, unit, spec, context));
+    if (living(hero) && active.defUpChance && chance(state, chancePercent(active.defUpChance))) applyStatus(state, actor, hero, "def_up", { chance: 100, duration: Math.max(1, Number(active.defUpTurns) || 1) }, context);
+    actor.cooldowns.pet_active = Number(active.cooldown) || 0; context.usedSkillId = "pet_active";
+  }
+
+  function resolveEnemyAction(state, actor, context) {
+    const targets = opposingUnits(state, actor);
+    if (!targets.length) return;
+    const target = choose(state, targets);
+    const hits = Math.max(1, Math.floor(Number(actor.ai.hits) || 1));
+    for (let hit = 0; hit < hits && living(target); hit++) attackHit(state, actor, target, { mult: Number(actor.ai.mult) || 1, actionType: "enemy", statuses: actor.ai.statuses || [] }, context);
+  }
+
+  function startEffects(state, actor, context) {
+    const poison = status(actor, "poison");
+    if (poison) {
+      const source = state.units[poison.sourceId] || { id: poison.sourceId || "poison", side: state.teamIds.find(side => side !== actor.side) };
+      receiveDamage(state, source, actor, poison.damage, context);
+      poison.duration -= 1; if (poison.duration <= 0) delete actor.statuses.poison;
+    }
+    const regen = status(actor, "pet_regrowth"); if (regen) heal(state, actor, regen.heal, state.units[regen.sourceId], "Regrowth");
+  }
+
+  function resolveHeroReactionsAfterAction(state, actor, context) {
+    for (const heroId of context.struckHeroIds) {
+      const hero = state.units[heroId];
+      if (!living(hero) || hero.side === actor.side) continue;
+      if (status(hero, "counter") && living(actor)) { performCounter(state, hero, actor, context); delete hero.statuses.counter; }
+      if (!rank(hero, "thorned_aegis")) continue;
+      hero.flags.hitSinceLastHeroAction = true;
+      if (status(hero, "def_up")) {
+        const resources = resourcesFor(state, hero);
+        const before = resources.aegis; resources.aegis = Math.min(3, before + 1);
+        if (rank(hero, "thorned_aegis") >= 4 && before < 3 && resources.aegis === 3 && living(actor)) performCounter(state, hero, actor, context);
+      }
+    }
+  }
+
+  function checkBattleEnd(state) {
+    const aliveSides = state.teamIds.filter(side => livingTeamUnits(state, side).length);
+    if (aliveSides.length > 1) return;
+    state.winnerSide = aliveSides[0] || null;
+    state.result = state.winnerSide === state.controlledSide ? "victory" : "defeat";
+    state.flags.auto = false;
+    const hero = heroForSide(state, state.controlledSide);
+    const pet = petForSide(state, state.controlledSide);
+    if (state.mode === "dungeon" && !living(hero) && living(pet) && state.result === "victory") state.flags.heroReviveNextFloor = true;
+    resetBattleResources(state);
+    log(state, "battle_end", state.result === "victory" ? "Victory" : "Defeat");
+  }
+
+  function validateHeroCommand(state, actor, command) {
+    const type = command && command.type || "basic";
+    if (type === "basic") return null;
+    if (type === "potion") return (Number(command.count) || 0) > 0 ? null : "No potion available";
+    if (type === "flee") return state.rules.allowFlee ? null : "Flee is not allowed";
+    if (type !== "active") return "Unknown Hero action";
+    const id = command.skillId;
+    const spec = heroActiveSpec(state, actor, id);
+    if (!spec || !actor.activeSkills.includes(id) || (actor.cooldowns[id] || 0) > 0 || status(actor, "silence")) return "Active skill unavailable";
+    const efficiency = skillData(actor, "skill_efficiency");
+    const cost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+    return actor.sp >= cost ? null : "Not enough SP";
+  }
+
+  function battleStep(inputState, command) {
+    // Presentation only observes the returned state/log. Animation timing, UI
+    // speed and VFX must never decide queue order or gameplay resolution here.
+    const state = ensureTeamModel(copy(inputState));
+    if (state.result) return { state, waiting: false, completedAction: false };
+    const actor = currentUnit(state);
+    if (!actor) { checkBattleEnd(state); return { state, waiting: false, completedAction: false }; }
+    const manualActor = actor.kind === "hero" && actor.side === state.controlledSide;
+    if (manualActor && !command && !state.flags.auto && !state.flags.skipResolving) return { state, waiting: true, completedAction: false };
+    if (manualActor && command) {
+      const invalid = validateHeroCommand(state, actor, command);
+      if (invalid) {
+        log(state, "invalid", invalid);
+        return { state, waiting: true, completedAction: false, error: invalid };
+      }
+    }
+    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false };
+    startEffects(state, actor, context);
+    if (living(actor)) {
+      if (status(actor, "stun")) { delete actor.statuses.stun; log(state, "stun", `${actor.name || actor.id} lost the Action`); }
+      else if (actor.kind === "hero") {
+        state.heroTurnCounts[actor.id] = (Number(state.heroTurnCounts[actor.id]) || 0) + 1;
+        if (actor.id === state.heroId) state.heroTurnCount += 1;
+        resolveHeroAction(state, actor, manualActor && command ? command : { type: "basic" }, context);
+      } else if (actor.kind === "pet") resolvePetAction(state, actor, context);
+      else resolveEnemyAction(state, actor, context);
+    }
+    resolveHeroReactionsAfterAction(state, actor, context);
+    const pet = petForSide(state, actor.side);
+    const petCdr = pet && petSkillData(pet).extra;
+    if (context.debuffApplied && (actor.kind === "hero" || actor.kind === "pet") && pet && living(pet) && petCdr.type === "petCdrOnDebuff" && !context.cdrUsed && !(actor.id === pet.id && context.usedSkillId === "pet_active") && Number(pet.cooldowns.pet_active) > 0 && chance(state, chancePercent(petCdr.pct))) {
+      pet.cooldowns.pet_active -= 1; context.cdrUsed = true;
+      log(state, "cooldown", "Thunder Judgment reduced Pet Active cooldown", { actorId: actor.id, targetId: pet.id });
+    }
+    tickCooldowns(actor, context.usedSkillId);
+    tickStatuses(actor, context.appliedStatuses);
+    if (actor.kind === "hero") {
+      const resources = resourcesFor(state, actor);
+      actor.flags.lastStandCooldown = Math.max(0, Number(actor.flags.lastStandCooldown) - 1);
+      if (!actor.flags.hitSinceLastHeroAction && resources.aegis > 0) resources.aegis -= 1;
+      actor.flags.hitSinceLastHeroAction = false;
+    }
+    checkBattleEnd(state);
+    state.queueIndex += 1; state.safeActionSeq += 1;
+    return { state, waiting: false, completedAction: true, consumePotion: !!context.consumePotion };
+  }
+
+  function simulateBattle(inputState, maxActions = 10000) {
+    let state = copy(inputState); state.flags.skipResolving = true; state.flags.auto = false;
+    let actions = 0;
+    while (!state.result && actions < maxActions) { const result = battleStep(state, { type: "basic" }); state = result.state; actions += result.completedAction ? 1 : 0; }
+    state.flags.skipResolving = false;
+    if (!state.result) { state.result = "invalid"; log(state, "error", "Simulation action limit reached"); }
+    return state;
+  }
+
+  function serializeCheckpoint(state) {
+    if (!state || state.version !== 1 || !state.battleId || state.result) throw new Error("invalid_checkpoint_state");
+    const checkpoint = ensureTeamModel(copy(state));
+    return JSON.stringify({ ...checkpoint, flags: { ...checkpoint.flags, auto: false, skipResolving: false } });
+  }
+  function restoreCheckpoint(raw) {
+    const state = typeof raw === "string" ? JSON.parse(raw) : copy(raw);
+    if (!state || state.version !== 1 || !state.battleId || !state.units || (!state.heroId && !Array.isArray(state.teamIds)) || !Array.isArray(state.queue)) throw new Error("corrupt_checkpoint");
+    ensureTeamModel(state);
+    state.flags = { ...(state.flags || {}), auto: false, skipResolving: false };
+    return state;
+  }
+
+  const api = {
+    BATTLE_MODE_ADAPTERS,
+    buildHeroUnit, buildPetUnit, buildMonsterUnit,
+    createBattle, createTeamBattle, createDungeonBattle, createArenaBattle, createRaidBattle,
+    rebuildQueue, currentUnit, upcomingActions, applyStatus, battleStep, simulateBattle,
+    serializeCheckpoint, restoreCheckpoint
+  };
+  Object.assign(root, { BATTLE_CORE_V1: api });
+  if (typeof module !== "undefined") module.exports = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+// ---------- Phase 5: PvP Arena orchestration ----------
+// Everything below calls ONLY the public BATTLE_CORE_V1 API (createArenaBattle,
+// currentUnit, battleStep) — it does not reimplement damage/status/skill resolution.
 const PVP_TICKET_MAX = 5;
 const PVP_TICKET_REGEN_MS = 20 * 60 * 1000; // +1 every 20 minutes
 const PVP_DIAMOND_REFILL_COST = 30; // per extra attack once tickets hit 0
@@ -1556,507 +2497,9 @@ const PVP_RATING_FLOOR = 100; // rating never drops below this
 const PVP_RATING_MIN_DELTA = 5; // guaranteed minimum rating swing on any decisive match
 const PVP_WIN_DIAMONDS = 15;
 const PVP_LOSS_DIAMONDS = 3; // small consolation so losing still feels worth attempting
-const PVP_MAX_TURNS = 40; // hard round cap so a near-tied matchup can't loop forever
-const PVP_PET_TARGET_CHANCE = 0.3; // matches the client's own monster-targets-pet odds
+const PVP_BASE_SPEED = 10; // matches src/systems/stats.js's speedFromAgi() base (worker's
+// own BASE_SPEED=100 above is an unrelated legacy constant — don't reuse it here)
 
-// Trimmed copy of src/systems/skills.js's SKILLS — same reasoning as raidCombatStats
-// staying decoupled from combatPowerFromCharacter: PvP resolution must not silently shift
-// if PvE skill balance changes, so the worker keeps its own frozen copy. Only the fields
-// combat resolution actually needs are carried over (no icon/desc/name).
-const PVP_SKILLS = [
-  { key: "power_strike", unlockLevel: 10, mp: 10, type: "damage", mult: 2.0, defPierce: 0 },
-  { key: "fireball", unlockLevel: 20, mp: 14, type: "damage", mult: 2.4, defPierce: 0.3 },
-  { key: "healing_light", unlockLevel: 30, mp: 16, type: "heal", healPct: 0.45 },
-  { key: "war_cry", unlockLevel: 40, mp: 12, type: "damage", mult: 1.1, defPierce: 0 },
-  { key: "ice_lance", unlockLevel: 50, mp: 18, type: "damage", mult: 2.2, freezeChance: 0.3, freezeTurns: 1 },
-  { key: "iron_skin", unlockLevel: 60, mp: 14, type: "damage", mult: 1.3, defPierce: 0.15 },
-  { key: "venom_strike", unlockLevel: 70, mp: 16, type: "damage", mult: 1.6, poisonTurns: 3, poisonPct: 0.35 },
-  { key: "meteor", unlockLevel: 80, mp: 26, type: "damage", mult: 3.2, defPierce: 0.5 },
-  { key: "dragons_wrath", unlockLevel: 90, mp: 30, type: "damage", mult: 4.0, guaranteedCrit: true },
-];
-const SKILL_MAX_LEVEL = 10;
-function pvpSkillAtLevel(def, level) {
-  const lv = Math.max(1, Math.min(SKILL_MAX_LEVEL, Math.floor(Number(level) || 1)));
-  const bonus = lv - 1;
-  const out = Object.assign({}, def);
-  if (Number.isFinite(def.mult)) out.mult = Math.round(def.mult * (1 + bonus * 0.08) * 100) / 100;
-  if (Number.isFinite(def.healPct)) out.healPct = Math.round((def.healPct + bonus * 0.03) * 100) / 100;
-  return out;
-}
-
-// Same maxHp/atk/def/evasion/critChance formulas as the client's petCombatStats() in
-// src/systems/pets.js — kept as its own function (rather than reusing petCombatPower
-// above) so combat resolution gets the raw stat block instead of a single CP number.
-function petBattleStats(instance) {
-  if (!instance || !instance.stats) return null;
-  const mult = PET_STAR_MULT[(Number(instance.star) || 1) - 1] || 1;
-  const s = {
-    str: (Number(instance.stats.str) || 0) * mult,
-    vit: (Number(instance.stats.vit) || 0) * mult,
-    agi: (Number(instance.stats.agi) || 0) * mult,
-    luk: (Number(instance.stats.luk) || 0) * mult,
-  };
-  const lvl = Number(instance.level) || 1;
-  return {
-    defId: instance.defId || "",
-    maxHp: Math.round(25 + lvl * 3 + s.vit * 8),
-    atk: Math.round(4 + Math.floor(lvl * 0.6) + s.str * 2),
-    def: Math.round(1 + Math.floor(lvl * 0.3) + Math.floor(s.vit * 0.4)),
-    evasion: Math.round(s.agi * 0.5 * 10) / 10,
-    critChance: Math.round(s.luk * 0.5 * 10) / 10,
-  };
-}
-// Parses a character row's pets_json (see serialize.js's characterProgressToServer) for
-// its active pet instance + committed skill levels — the same envelope the client already
-// writes on every save, so no new column was needed for either.
-function parsePetsJson(character) {
-  let parsed = {};
-  try { parsed = character.pets_json ? JSON.parse(character.pets_json) : {}; } catch (e) { parsed = {}; }
-  const list = Array.isArray(parsed.list) ? parsed.list : [];
-  const skillLevels = parsed.skills && typeof parsed.skills === "object" ? parsed.skills : {};
-  const active = list.find((p) => p && p.id === character.active_pet_id) || null;
-  return { active, skillLevels };
-}
-function unlockedSkillRefs(level, skillLevels) {
-  const lvl = Number(level) || 1;
-  return PVP_SKILLS.filter((s) => s.unlockLevel <= lvl).map((s) => ({ key: s.key, level: Math.max(1, Math.min(SKILL_MAX_LEVEL, Math.floor(Number(skillLevels[s.key]) || 1))) }));
-}
-
-// Lazily resolves current stamina from a stored checkpoint (no cron needed — same
-// approach as most mobile energy systems). Only "spends" whole elapsed 15-min ticks
-// from the checkpoint so partial progress toward the next point is never lost; once
-// stamina is full there's nothing to track so updatedAt collapses back to "" (matches
-// the migration's default, and getOrCreateActiveRaid-style lazy init below).
-function resolveRaidStamina(stored, updatedAtIso) {
-  const rawStamina = Number(stored);
-  const storedStamina = Number.isFinite(rawStamina) ? Math.max(0, Math.min(RAID_STAMINA_MAX, Math.floor(rawStamina))) : RAID_STAMINA_MAX;
-  if (storedStamina >= RAID_STAMINA_MAX) {
-    return { stamina: RAID_STAMINA_MAX, updatedAt: "" };
-  }
-  const updatedAtMs = Date.parse(updatedAtIso || "");
-  // A missing/malformed checkpoint must not turn stamina into NaN and crash every Raid
-  // request. Start a fresh regeneration window while preserving the stored amount.
-  if (!Number.isFinite(updatedAtMs)) {
-    return { stamina: storedStamina, updatedAt: new Date(Date.now()).toISOString() };
-  }
-  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
-  const ticks = Math.floor(elapsedMs / RAID_STAMINA_REGEN_MS);
-  if (ticks <= 0) return { stamina: storedStamina, updatedAt: updatedAtIso };
-  const stamina = Math.min(RAID_STAMINA_MAX, storedStamina + ticks);
-  const updatedAt = stamina >= RAID_STAMINA_MAX ? "" : new Date(updatedAtMs + ticks * RAID_STAMINA_REGEN_MS).toISOString();
-  return { stamina, updatedAt };
-}
-function raidStaminaSecondsToNext(updatedAtIso) {
-  if (!updatedAtIso) return 0;
-  const updatedAtMs = Date.parse(updatedAtIso);
-  if (!Number.isFinite(updatedAtMs)) return Math.round(RAID_STAMINA_REGEN_MS / 1000);
-  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
-  const remaining = RAID_STAMINA_REGEN_MS - (elapsedMs % RAID_STAMINA_REGEN_MS);
-  return Math.max(0, Math.round(remaining / 1000));
-}
-
-// Raid Wings — a separate 1-5★ tier exclusive to raid rewards (not the normal floor-drop
-// wings pool; client's buildDropItem() no longer rolls wings/accessory at all — see stats.js).
-const RAID_WING_DEFS = [
-  { star: 1, name: "ปีกอัศวินฝึกหัด ★1", dodgeChance: 5 },
-  { star: 2, name: "ปีกอัศวินฝึกหัด ★2", dodgeChance: 10 },
-  { star: 3, name: "ปีกนักรบราชวงศ์ ★3", dodgeChance: 18 },
-  { star: 4, name: "ปีกนักรบราชวงศ์ ★4", dodgeChance: 28 },
-  { star: 5, name: "ปีกเทพประจัญบาน ★5", dodgeChance: 40 },
-];
-function raidWingItemDesc(star) {
-  const def = RAID_WING_DEFS[Math.max(1, Math.min(5, star)) - 1];
-  return { type: "wings", rarity: "raid", name: def.name, dodgeChance: def.dodgeChance, star: def.star, empowerSlotCount: def.star };
-}
-function randomRaidWingStar() {
-  return 1 + Math.floor(Math.random() * 5);
-}
-
-// Azure set — 6 pieces (helmet/chest/gloves/boots/weapon/ring), set bonus at 2/4/6 equipped
-// (client-side bonus values live in stats.js SET_BONUS_DEFS.azure — keep both in sync).
-const AZURE_SET_DEFS = {
-  azure_helmet: { type: "helmet", name: "หมวก Azure", def: 60 },
-  azure_chest: { type: "chest", name: "เสื้อ Azure", def: 90 },
-  azure_gloves: { type: "gloves", name: "ถุงมือ Azure", atk: 40 },
-  azure_boots: { type: "boots", name: "รองเท้า Azure", def: 45 },
-  azure_weapon: { type: "weapon", name: "อาวุธ Azure", atk: 120 },
-  azure_ring: { type: "accessory", name: "แหวน Azure", dodgeChance: 15 }, // uses the existing "accessory" equip slot
-};
-function randomAzureItemDesc() {
-  const keys = Object.keys(AZURE_SET_DEFS);
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  const d = AZURE_SET_DEFS[key];
-  return { type: d.type, rarity: "azure", name: d.name, atk: d.atk || 0, def: d.def || 0, dodgeChance: d.dodgeChance || 0, setId: "azure", empowerSlotCount: 5 };
-}
-// Recipes are inert placeholder items (stackable, riding the existing junk pipeline) until
-// the Crafting phase exists to consume them — see JUNK_INFO/recipe_* entries in enhancement.js.
-const AZURE_RECIPE_JUNK_IDS = ["recipe_azure_helmet", "recipe_azure_chest", "recipe_azure_gloves", "recipe_azure_boots", "recipe_azure_weapon", "recipe_azure_ring"];
-function randomAzureRecipeJunkId() {
-  return AZURE_RECIPE_JUNK_IDS[Math.floor(Math.random() * AZURE_RECIPE_JUNK_IDS.length)];
-}
-// Boss horn/hide — a single shared material pool across all boss types (not per-boss for now).
-function randomBossMaterialJunkId() {
-  return Math.random() < 0.5 ? "bossHorn" : "bossHide";
-}
-
-// Rank rewards, keyed by cumulative CONTRIBUTION (total_contribution) across the whole
-// raid instance — settled for EVERY participant (rank 1..last), not just a top-N cutoff.
-// Rank 1-3 get a fixed wing tier + boss materials + a random azure recipe; everyone ranked
-// 4th or lower gets 2 random boss materials as a consolation.
-const RAID_RANK_REWARDS = [
-  { wingStar: 5, junk: [{ junkId: "bossHorn", quantity: 3 }, { junkId: "bossHide", quantity: 3 }], recipe: true },
-  { wingStar: 3, junk: [{ junkId: "bossHorn", quantity: 2 }, { junkId: "bossHide", quantity: 2 }], recipe: true },
-  { wingStar: 1, junk: [{ junkId: "bossHorn", quantity: 1 }, { junkId: "bossHide", quantity: 1 }], recipe: true },
-];
-
-// Milestones — % of boss hpMax the character has personally CONTRIBUTED this raid instance
-// (rewards the players who carry the server boss, not just whoever gets lucky crits).
-// Every 5% -> diamonds. Every 10% -> 1 random boss material (on top of the 5% diamonds).
-// 25% -> 1★ wing, 50% -> 3★ wing, 75% -> random azure recipe, 99% -> a full random azure item.
-const RAID_MILESTONE_STEP = 5; // percent
-const RAID_MILESTONE_DIAMOND_PER_STEP = 5;
-
-function raidBossDefById(defId) {
-  return RAID_BOSS_DEFS.find((b) => b.id === defId) || RAID_BOSS_DEFS[0];
-}
-
-// Raid resets at Thai midnight specifically (not the UTC boundary todayDateKey() uses for
-// daily login), so it gets its own +7h-shifted date key.
-function raidDateKey() {
-  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
-
-// Fetches today's live boss, or spawns the next one in rotation if there isn't one yet
-// or the last one is already dead. Never returns a dead boss.
-async function getOrCreateActiveRaid(db) {
-  const today = raidDateKey();
-  const row = await db
-    .prepare(`SELECT * FROM raid_boss_state WHERE date = ? ORDER BY created_at DESC LIMIT 1`)
-    .bind(today)
-    .first();
-  if (row && Number(row.boss_hp_current) > 0) return row;
-
-  // Which boss is next: continue the rotation from whichever boss spawned most recently,
-  // across ALL dates (not just today) — using "how many spawned today" as the rotation
-  // index always restarts at 0 every new calendar day, which is the bug that made every
-  // day show the same first boss (Azure Angel) regardless of how many days had passed.
-  // This only needs the single latest row, so it's unaffected by the 7-day retention
-  // cleanup pruning old raid_boss_state rows.
-  const lastRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state ORDER BY created_at DESC LIMIT 1`).first();
-  const lastIndex = lastRow ? RAID_BOSS_DEFS.findIndex((b) => b.id === lastRow.boss_def_id) : -1;
-  const nextIndex = (lastIndex + 1 + RAID_BOSS_DEFS.length) % RAID_BOSS_DEFS.length;
-  const def = RAID_BOSS_DEFS[nextIndex];
-
-  // HP scaling still escalates per spawn WITHIN today specifically (later respawns/resets
-  // the same day are tougher), independent of which boss it happens to be.
-  const cntRow = await db.prepare(`SELECT COUNT(*) as c FROM raid_boss_state WHERE date = ?`).bind(today).first();
-  const spawnCountToday = cntRow ? Number(cntRow.c) || 0 : 0;
-  const hpMax = Math.round(def.hpBase * (1 + spawnCountToday * 0.2));
-  const raidId = `raid-${today}-${nextIndex}-${Math.random().toString(36).slice(2, 8)}`;
-  const now = nowIso();
-  await db
-    .prepare(
-      `INSERT INTO raid_boss_state (raid_id, date, boss_def_id, boss_hp_max, boss_hp_current, settled_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, '', ?, ?)`
-    )
-    .bind(raidId, today, def.id, hpMax, hpMax, now, now)
-    .run();
-  return { raid_id: raidId, date: today, boss_def_id: def.id, boss_hp_max: hpMax, boss_hp_current: hpMax, settled_at: "", created_at: now, updated_at: now };
-}
-
-// Settles (and closes out) any raid instance whose date has rolled past today — this is what
-// makes the "changes every midnight even if the boss is still alive" rule actually happen,
-// since getOrCreateActiveRaid alone would just silently start ignoring the old raid_id without
-// ever paying out its rank rewards. Call from scheduled() — see bottom of file. Needs the Cron
-// Trigger (Dashboard -> this worker -> Trigger Events) to fire at least roughly daily around
-// 17:00 UTC (00:00 ICT) for the reset to land on time; it's safe to run more often too, since
-// settleRaidRank() is idempotent (guarded by settled_at).
-async function closeOutExpiredRaids(db) {
-  const today = raidDateKey();
-  const stale = await db.prepare(`SELECT raid_id FROM raid_boss_state WHERE date != ? AND settled_at = ''`).bind(today).all();
-  for (const row of stale.results || []) {
-    await settleRaidRank(db, row.raid_id);
-  }
-}
-
-// Ported subset of characterBaseStats/itemBonus above — returns only what raid combat
-// needs (atk/crit) rather than the full CP number, so this stays decoupled from the
-// leaderboard CP formula (don't merge these; CP formula changes shouldn't silently
-// reshape raid damage and vice versa).
-function raidCombatStats(character, equippedItems) {
-  const s = {
-    str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
-    dex: Number(character.dex) || 0, luk: Number(character.luk) || 0,
-  };
-  const level = Number(character.level) || 1;
-  const base = characterBaseStats(level, s);
-  const eb = { atk: 0, critChance: 0, critDamage: 0 };
-  (equippedItems || []).forEach((it) => {
-    const ib = itemBonus(it);
-    eb.atk += ib.atk;
-    eb.critChance += ib.critChance || 0;
-    eb.critDamage += ib.critDamage || 0;
-  });
-  return {
-    atk: Math.round(base.atk + eb.atk),
-    critChance: Math.min(100, Math.round((base.critChance + eb.critChance) * 10) / 10),
-    critDamage: Math.round((base.critDamage + eb.critDamage) * 10) / 10,
-  };
-}
-
-// One "attack" = a short simulated combat round (a few swings with crit rolls), not a
-// single flat hit — keeps some randomness/excitement per attempt like real combat.
-function simulateRaidAttack(stats) {
-  let total = 0;
-  let anyCrit = false;
-  for (let i = 0; i < RAID_HITS_PER_ATTACK; i++) {
-    const variance = 0.85 + Math.random() * 0.3;
-    let dmg = stats.atk * variance;
-    if (Math.random() * 100 < stats.critChance) {
-      dmg *= 1 + stats.critDamage / 100;
-      anyCrit = true;
-    }
-    total += dmg;
-  }
-  return { damage: Math.max(1, Math.round(total)), crit: anyCrit };
-}
-
-// Grants rank-bonus rewards once, the instant the boss dies. Guarded by an atomic
-// UPDATE on settled_at (only succeeds for whichever concurrent attack request gets
-// there first) so two players killing it in the same instant can't double-pay rewards.
-// Grants rank rewards once, either the instant the boss dies OR when closeOutExpiredRaids()
-// force-closes an unfinished raid at the daily reset. Guarded by an atomic UPDATE on
-// settled_at so it can only ever run once per raid_id even under concurrent triggers.
-// Ranked by cumulative CONTRIBUTION (not best single hit) across ALL participants —
-// rank 1-3 get the big reward, everyone else (4th..last) gets a consolation.
-async function settleRaidRank(db, raidId) {
-  const guard = await db
-    .prepare(`UPDATE raid_boss_state SET settled_at = ? WHERE raid_id = ? AND settled_at = ''`)
-    .bind(nowIso(), raidId)
-    .run();
-  if (!guard.meta || !guard.meta.changes) return; // already settled
-
-  const bossRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state WHERE raid_id = ?`).bind(raidId).first();
-  const bossName = raidBossDefById(bossRow ? bossRow.boss_def_id : "").name;
-  const allRes = await db
-    .prepare(`SELECT character_id, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC`)
-    .bind(raidId)
-    .all();
-  const rows = allRes.results || [];
-
-  for (let i = 0; i < rows.length; i++) {
-    const top = RAID_RANK_REWARDS[i];
-    if (top) {
-      const junk = top.junk.slice();
-      if (top.recipe) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
-      await sendMail(
-        db, rows[i].character_id, `🏆 อันดับ ${i + 1} ศึก ${bossName}`,
-        `คุณจบการล่า ${bossName} ในอันดับที่ ${i + 1} ด้วยดาเมจสะสม ${rows[i].total_contribution}`,
-        { junk, items: [raidWingItemDesc(top.wingStar)] }
-      );
-    } else {
-      await sendMail(
-        db, rows[i].character_id, `⚔️ ร่วมศึก ${bossName}`, `อันดับที่ ${i + 1} ในการล่าครั้งนี้ — ได้วัตถุดิบติดไม้ติดมือ`,
-        { junk: [{ junkId: randomBossMaterialJunkId(), quantity: 1 }, { junkId: randomBossMaterialJunkId(), quantity: 1 }] }
-      );
-    }
-  }
-}
-
-async function handleGetRaidStatus(db, id, session, characterId) {
-  // These three are fully independent reads (auth check, ownership check, and the raid's
-  // own state don't depend on each other) — firing them together instead of one-after-
-  // another cuts several D1 round trips down to the time of the single slowest one. Same
-  // pattern below for the participant/leaderboard reads once raid_id is known.
-  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
-  if (auth.error) return json({ error: auth.error });
-  if (owned.error) return json({ error: owned.error });
-
-  const def = raidBossDefById(raid.boss_def_id);
-  const [participant, topRes] = await Promise.all([
-    db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first(),
-    db.prepare(`SELECT character_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC LIMIT 10`).bind(raid.raid_id).all(),
-  ]);
-
-  const staminaState = resolveRaidStamina(owned.row.raid_stamina, owned.row.raid_stamina_updated_at);
-  const contribution = participant ? Number(participant.total_contribution) || 0 : 0;
-  return json({
-    ok: true,
-    boss: { raidId: raid.raid_id, defId: def.id, name: def.name, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
-    me: {
-      stamina: staminaState.stamina,
-      staminaMax: RAID_STAMINA_MAX,
-      staminaRegenSeconds: raidStaminaSecondsToNext(staminaState.updatedAt),
-      diamondRefillCost: RAID_DIAMOND_REFILL_COST,
-      bestHit: participant ? Number(participant.total_damage) || 0 : 0,
-      contribution,
-      contributionPct: Math.min(100, Math.round((contribution / Number(raid.boss_hp_max)) * 1000) / 10),
-      milestonesClaimed: participant ? (participant.milestone_claimed || "").split(",").filter(Boolean) : [],
-    },
-    milestoneStep: RAID_MILESTONE_STEP,
-    milestoneSpecials: [
-      { pct: 25, label: "ปีก 1★" }, { pct: 50, label: "ปีก 3★" }, { pct: 75, label: "แบบร่างชุด Azure" }, { pct: 99, label: "ไอเทมชุด Azure" },
-    ],
-    top: topRes.results || [],
-  });
-}
-
-async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) {
-  // See handleGetRaidStatus for why these four are safe to fire concurrently — the equipped-
-  // items read only needs characterId, so it doesn't have to wait for raid/ownership either.
-  const [auth, owned, raid, itemsRes] = await Promise.all([
-    verifyPlayer(db, id, session),
-    verifyOwnedCharacter(db, id, characterId),
-    getOrCreateActiveRaid(db),
-    db.prepare(`SELECT atk, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
-  ]);
-  if (auth.error) return json({ error: auth.error });
-  if (owned.error) return json({ error: owned.error });
-  const character = owned.row;
-
-  if (Number(raid.boss_hp_current) <= 0) return json({ error: "boss_already_dead" });
-
-  // Stamina is per-character and regenerates over time. Reserve it before applying damage
-  // with a compare-and-swap update, so two simultaneous taps cannot both spend the same
-  // final stamina point. Paid attacks are also charged atomically on the authoritative
-  // player row; never trust the client's paidDiamonds flag as proof of payment. This has to
-  // stay its own round trip (can't be folded into the batch below) — if the CAS/charge
-  // fails, the batch's damage + participant writes must not happen at all, and D1 batches
-  // don't support conditionally skipping later statements based on an earlier one's result.
-  const staminaState = resolveRaidStamina(character.raid_stamina, character.raid_stamina_updated_at);
-  let spentStamina = false;
-  let diamondsSpent = 0;
-  let newStamina = staminaState.stamina;
-  let newStaminaUpdatedAt = staminaState.updatedAt;
-  if (staminaState.stamina >= 1) {
-    spentStamina = true;
-    newStamina = staminaState.stamina - 1;
-    newStaminaUpdatedAt = staminaState.updatedAt || nowIso();
-    const storedStamina = Number.isFinite(Number(character.raid_stamina)) ? Number(character.raid_stamina) : RAID_STAMINA_MAX;
-    const storedUpdatedAt = character.raid_stamina_updated_at || "";
-    const reserved = await db
-      .prepare(`UPDATE characters SET raid_stamina = ?, raid_stamina_updated_at = ? WHERE character_id = ? AND raid_stamina = ? AND raid_stamina_updated_at = ?`)
-      .bind(newStamina, newStaminaUpdatedAt, characterId, storedStamina, storedUpdatedAt)
-      .run();
-    if (!reserved.meta || !reserved.meta.changes) {
-      return json({ error: "stamina_conflict", retry: true });
-    }
-  } else if (!paidDiamonds) {
-    return json({ error: "no_stamina", diamondRefillCost: RAID_DIAMOND_REFILL_COST, staminaRegenSeconds: raidStaminaSecondsToNext(staminaState.updatedAt) });
-  } else {
-    const charged = await db
-      .prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ?`)
-      .bind(RAID_DIAMOND_REFILL_COST, id, RAID_DIAMOND_REFILL_COST)
-      .run();
-    if (!charged.meta || !charged.meta.changes) {
-      return json({ error: "insufficient_diamonds", diamondRefillCost: RAID_DIAMOND_REFILL_COST });
-    }
-    diamondsSpent = RAID_DIAMOND_REFILL_COST;
-  }
-
-  const stats = raidCombatStats(character, itemsRes.results || []);
-  const hit = simulateRaidAttack(stats);
-  const hpBefore = Number(raid.boss_hp_current);
-  const appliedDamage = Math.min(hit.damage, hpBefore); // this character's actual contribution to the shared boss HP
-  const now = nowIso();
-
-  // Both writes use RETURNING so this single batch also gets us the numbers we need back —
-  // no separate SELECT before (to know the participant's prior best/contribution) or after
-  // (to read the boss's post-hit HP). MAX()/+= happen in SQL against the live row, which is
-  // also correctness-safer than the old read-then-write-computed-value approach: two
-  // concurrent hits reading the same stale contribution total could otherwise silently lose
-  // one of them, the same race class the stamina CAS above exists to prevent.
-  const [bossBatch, participantBatch] = await db.batch([
-    db.prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0 RETURNING boss_hp_current`).bind(hit.damage, now, raid.raid_id),
-    db.prepare(
-      `INSERT INTO raid_participants (raid_id, character_id, player_id, name, total_damage, total_contribution, attempts_used, milestone_claimed, last_hit_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, '', ?)
-       ON CONFLICT(raid_id, character_id) DO UPDATE SET
-         total_damage = MAX(total_damage, excluded.total_damage),
-         total_contribution = total_contribution + excluded.total_contribution,
-         attempts_used = attempts_used + 1,
-         name = excluded.name,
-         last_hit_at = excluded.last_hit_at
-       RETURNING total_damage, total_contribution`
-    ).bind(raid.raid_id, characterId, id, character.name || "", hit.damage, appliedDamage, now),
-  ]);
-  // If the WHERE didn't match (boss already hit 0 by someone else between our early check
-  // and this batch landing), RETURNING yields no row — treat that as "our damage didn't land"
-  // rather than crashing on a missing value.
-  const bossRow = (bossBatch.results || [])[0];
-  const bossHpAfter = bossRow ? Number(bossRow.boss_hp_current) : hpBefore;
-  const participantRow = (participantBatch.results || [])[0];
-  const newBest = participantRow ? Number(participantRow.total_damage) : hit.damage;
-  const newContribution = participantRow ? Number(participantRow.total_contribution) : appliedDamage;
-
-  let bossDied = false;
-  if (bossRow && bossHpAfter <= 0 && hpBefore > 0) {
-    bossDied = true;
-    const lastHitStar = randomRaidWingStar();
-    await sendMail(db, characterId, `💥 Last Hit! ${raidBossDefById(raid.boss_def_id).name}`, `คุณคือผู้ปิดจ๊อบ! ได้รับปีกสุ่ม ★${lastHitStar}`, { items: [raidWingItemDesc(lastHitStar)] });
-    await settleRaidRank(db, raid.raid_id);
-  }
-
-  return json({
-    ok: true,
-    damage: hit.damage,
-    crit: hit.crit,
-    appliedDamage,
-    bossHpCurrent: bossHpAfter,
-    bossDied,
-    paidDiamonds: !spentStamina,
-    diamondsSpent,
-    stamina: newStamina,
-    staminaMax: RAID_STAMINA_MAX,
-    staminaRegenSeconds: raidStaminaSecondsToNext(newStaminaUpdatedAt),
-    bestHit: newBest,
-    contribution: newContribution,
-  });
-}
-
-async function handleClaimRaidMilestones(db, id, session, characterId) {
-  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
-  if (auth.error) return json({ error: auth.error });
-  if (owned.error) return json({ error: owned.error });
-
-  const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
-  if (!participant) return json({ error: "no_participation" });
-
-  const claimed = (participant.milestone_claimed || "").split(",").filter(Boolean);
-  const hpMax = Number(raid.boss_hp_max) || 1;
-  const pctReached = ((Number(participant.total_contribution) || 0) / hpMax) * 100;
-
-  const newKeys = [];
-  let diamonds = 0;
-  const junk = [];
-  const items = [];
-  for (let pct = RAID_MILESTONE_STEP; pct <= 100; pct += RAID_MILESTONE_STEP) {
-    const key = `p${pct}`;
-    if (pctReached < pct || claimed.indexOf(key) !== -1) continue;
-    newKeys.push(key);
-    diamonds += RAID_MILESTONE_DIAMOND_PER_STEP;
-    if (pct % 10 === 0) junk.push({ junkId: randomBossMaterialJunkId(), quantity: 1 });
-    if (pct === 25) items.push(raidWingItemDesc(1));
-    if (pct === 50) items.push(raidWingItemDesc(3));
-    if (pct === 75) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
-  }
-  // 99% is its own checkpoint (not a multiple of 5) — a full random azure piece, not a recipe.
-  if (pctReached >= 99 && claimed.indexOf("p99") === -1) {
-    newKeys.push("p99");
-    items.push(randomAzureItemDesc());
-  }
-  if (!newKeys.length) return json({ ok: true, claimed: [] });
-
-  const def = raidBossDefById(raid.boss_def_id);
-  await sendMail(db, characterId, `🎁 รางวัลดาเมจสะสม ${def.name}`, `คุณสะสมดาเมจถึง ${newKeys.map((k) => k.replace("p", "")).join("%, ")}%`, { diamonds, junk, items });
-
-  const allClaimed = claimed.concat(newKeys).join(",");
-  await db.prepare(`UPDATE raid_participants SET milestone_claimed = ? WHERE raid_id = ? AND character_id = ?`).bind(allClaimed, raid.raid_id, characterId).run();
-
-  return json({ ok: true, claimed: newKeys });
-}
-
-// ---------- Phase 5: PvP Arena (turn-based) ----------
 function resolvePvpTickets(stored, updatedAtIso) {
   const rawTickets = Number(stored);
   const storedTickets = Number.isFinite(rawTickets) ? Math.max(0, Math.min(PVP_TICKET_MAX, Math.floor(rawTickets))) : PVP_TICKET_MAX;
@@ -2083,10 +2526,50 @@ function pvpTicketsSecondsToNext(updatedAtIso) {
   return Math.max(0, Math.round(remaining / 1000));
 }
 
-// Full fighter stat block (not just a single CP number) — this is what both sides of a
-// match are built from, live for the attacker and frozen (from pvp_snapshots) for the
-// defender bot, so a match never has to touch the opponent's live row mid-fight.
-function pvpFighterStats(character, equippedItems) {
+// Mirrors petCombatPower()'s own internal stat derivation (defId alias, v1-growth-curve
+// vs v2-rolled-stats, 3-tier star mult) exactly, returning the raw stat block a
+// BATTLE_CORE_V1 pet unit needs (including agi/vit, since Pet Actives like Sprout's heal
+// or the speed formula both read those directly) instead of collapsing to a single CP.
+function petBattleStats(instance) {
+  if (!instance) return null;
+  const defId = instance.defId === "thunder_cub" ? "hell_wolf" : instance.defId;
+  const base = PET_BASE_STATS[defId] || PET_BASE_STATS.sprout;
+  const growth = PET_GROWTH_STATS[defId] || PET_GROWTH_STATS.sprout;
+  const lvl = Math.max(1, Math.min(50, Number(instance.level) || 1));
+  const mult = PET_STAR_MULT[Math.max(0, Math.min(PET_STAR_MULT.length - 1, (Number(instance.star) || 1) - 1))] || 1;
+  const values = instance.statModel === "v2" && instance.stats
+    ? [instance.stats.str, instance.stats.vit, instance.stats.agi, instance.stats.dex, instance.stats.luk]
+    : base.map((value, index) => value + growth[index] * (lvl - 1));
+  const s = { str: values[0] * mult, vit: values[1] * mult, agi: values[2] * mult, dex: values[3] * mult, luk: values[4] * mult };
+  return {
+    defId: instance.defId || "",
+    maxHp: Math.round(30 + lvl * 4 + s.vit * 7),
+    atk: Math.round(5 + lvl * 0.7 + s.str * 2),
+    def: Math.round(2 + lvl * 0.25 + s.vit * 0.5),
+    evasion: Math.min(20, Math.round(s.agi * 0.35 * 10) / 10),
+    critChance: Math.min(25, Math.round(s.luk * 0.4 * 10) / 10),
+    agi: s.agi, vit: s.vit,
+  };
+}
+// Parses a character row's pets_json (see serialize.js's characterProgressToServer) for
+// its active pet instance + committed Hero Skill V1 ranks — the same envelope the client
+// already writes on every save, so no new column was needed for either.
+function parsePetsJson(character) {
+  let parsed = {};
+  try { parsed = character.pets_json ? JSON.parse(character.pets_json) : {}; } catch (e) { parsed = {}; }
+  const list = Array.isArray(parsed.list) ? parsed.list : [];
+  const skillLevels = parsed.skills && typeof parsed.skills === "object" ? parsed.skills : {};
+  const active = list.find((p) => p && p.id === character.active_pet_id) || null;
+  return { active, skillLevels };
+}
+
+// Builds a raw hero unit for BATTLE_CORE_V1.buildHeroUnit()/createArenaBattle() from a
+// live character row. toughness/iron_body/battle_hardened are applied the same way
+// src/ui/App.js's own stat calc applies them (multiplicative on top of base+equipment),
+// so a snapshot taken here matches what the character would show on their own status
+// screen. `level` is carried along for opponent-list display only — battleCore ignores
+// unknown fields on a unit.
+function pvpHeroUnit(character, equippedItems, id, name, skillLevels) {
   const s = {
     str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
     dex: Number(character.dex) || 0, luk: Number(character.luk) || 0,
@@ -2099,24 +2582,36 @@ function pvpFighterStats(character, equippedItems) {
     eb.atk += ib.atk; eb.def += ib.def; eb.hp += ib.hp; eb.mp += ib.mp;
     eb.critChance += ib.critChance || 0; eb.critDamage += ib.critDamage || 0; eb.dodgeChance += ib.dodgeChance || 0;
   });
+  const toughness = heroSkillRankData(skillLevels, "toughness");
+  const ironBody = heroSkillRankData(skillLevels, "iron_body");
+  const battleHardened = heroSkillRankData(skillLevels, "battle_hardened");
+  const maxHp = Math.round((base.maxHp + eb.hp) * (1 + (toughness ? toughness.maxHpPct : 0) / 100));
+  const def = Math.round((base.def + eb.def) * (1 + (ironBody ? ironBody.defPct : 0) / 100));
   return {
-    level,
-    atk: Math.round(base.atk + eb.atk),
-    def: Math.round(base.def + eb.def),
-    maxHp: Math.round(base.maxHp + eb.hp),
-    maxMp: Math.round(base.maxMp + eb.mp),
+    id, name, kind: "hero", level,
+    maxHp, hp: maxHp,
+    maxSp: Math.round(base.maxMp + eb.mp), sp: Math.round(base.maxMp + eb.mp),
+    atk: Math.round(base.atk + eb.atk), def,
+    speed: Math.round(PVP_BASE_SPEED + s.agi * 2),
     accuracy: base.accuracy,
-    critChance: Math.round((base.critChance + eb.critChance) * 10) / 10,
-    critDamage: Math.round((base.critDamage + eb.critDamage) * 10) / 10,
-    dodgeChance: Math.round((base.dodgeChance + eb.dodgeChance) * 10) / 10,
+    dodge: Math.round((base.dodgeChance + eb.dodgeChance) * 10) / 10,
+    crit: Math.round((base.critChance + eb.critChance) * 10) / 10,
+    critDamage: 1 + (base.critDamage + eb.critDamage) / 100,
+    statusResist: battleHardened ? battleHardened.statusResist : 0,
+    skills: skillLevels,
+    activeSkills: heroActiveSkillList(skillLevels).map((sk) => sk.key),
   };
 }
-// Builds everything a match needs from a live character row: fighter stats + active pet
-// (from pets_json, may be null) + which skills are unlocked at what committed level.
-function arenaLoadout(character, equippedItems) {
-  const fighter = pvpFighterStats(character, equippedItems);
-  const { active, skillLevels } = parsePetsJson(character);
-  return { fighter, pet: petBattleStats(active), skills: unlockedSkillRefs(fighter.level, skillLevels) };
+function pvpPetUnit(instance, id) {
+  const bs = petBattleStats(instance);
+  if (!bs) return null;
+  return {
+    id, kind: "pet", name: "Pet", petDefId: bs.defId,
+    maxHp: bs.maxHp, hp: bs.maxHp,
+    atk: bs.atk, def: bs.def,
+    speed: Math.round(PVP_BASE_SPEED + bs.agi * 1.5),
+    dodge: bs.evasion, crit: bs.critChance, vit: bs.vit,
+  };
 }
 
 async function ensureArenaRanking(db, characterId, playerId, name) {
@@ -2143,8 +2638,7 @@ async function upsertArenaSnapshot(db, characterId, playerId, name, loadout) {
 
 // Refreshes the caller's own ranking row + combat snapshot (so the opponent pool always
 // reflects roughly-current gear/level/skills/pet), then returns rating/rank/tickets/top-10
-// plus an activeMatchId if a match is already in progress so the client can resume it
-// instead of the opponent picker.
+// plus an activeMatchId if a match is already in progress so the client can resume it.
 async function handleGetArenaStatus(db, id, session, characterId) {
   const [auth, owned, itemsRes] = await Promise.all([
     verifyPlayer(db, id, session),
@@ -2154,11 +2648,13 @@ async function handleGetArenaStatus(db, id, session, characterId) {
   if (auth.error) return json({ error: auth.error });
   if (owned.error) return json({ error: owned.error });
   const character = owned.row;
-  const loadout = arenaLoadout(character, itemsRes.results || []);
+  const { active, skillLevels } = parsePetsJson(character);
+  const heroUnit = pvpHeroUnit(character, itemsRes.results || [], "snap_hero", character.name || "", skillLevels);
+  const petUnit = active ? pvpPetUnit(active, "snap_pet") : null;
 
   const [, , activeMatch] = await Promise.all([
     ensureArenaRanking(db, characterId, id, character.name || ""),
-    upsertArenaSnapshot(db, characterId, id, character.name || "", loadout),
+    upsertArenaSnapshot(db, characterId, id, character.name || "", { hero: heroUnit, pet: petUnit }),
     db.prepare(`SELECT match_id FROM pvp_matches WHERE attacker_character_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`).bind(characterId).first(),
   ]);
 
@@ -2187,9 +2683,7 @@ async function handleGetArenaStatus(db, id, session, characterId) {
 }
 
 // Returns 3 opponents (never self), preferring characters within +-300 rating of the
-// caller and falling back to any ranked character if that band is too sparse. Only
-// level/rating/wins/losses go to the client — not the raw stat block — so there's no
-// point inspecting network traffic to preview a specific matchup before committing a ticket.
+// caller and falling back to any ranked character if that band is too sparse.
 async function handleGetArenaOpponents(db, id, session, characterId) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
@@ -2224,227 +2718,84 @@ async function handleGetArenaOpponents(db, id, session, characterId) {
     let loadout = {};
     try { loadout = r.stats_json ? JSON.parse(r.stats_json) : {}; } catch (e) { loadout = {}; }
     return {
-      characterId: r.character_id, name: r.name, level: (loadout.fighter && loadout.fighter.level) || 1,
+      characterId: r.character_id, name: r.name, level: (loadout.hero && loadout.hero.level) || 1,
       hasPet: !!loadout.pet, rating: Number(r.rating), wins: Number(r.wins), losses: Number(r.losses),
     };
   });
   return json({ ok: true, opponents });
 }
 
-function fighterPublicState(fighter, pet) {
-  return {
-    hp: fighter.hp, maxHp: fighter.maxHp, mp: fighter.mp, maxMp: fighter.maxMp,
-    pet: pet ? { defId: pet.defId, hp: pet.hp, maxHp: pet.maxHp } : null,
-  };
+// ---- session driver: wraps BATTLE_CORE_V1, adds zero resolver logic of its own ----
+function pvpIsPlayerHeroTurn(actor) { return !!actor && actor.kind === "hero" && actor.side === "team_a"; }
+// battleStep() only accepts a real command from state.controlledSide's hero — anyone
+// else defaults to a basic attack (see src/systems/battleCore.js's battleStep). Flipping
+// controlledSide immediately before every step, and re-aliasing state.resources to match
+// (the exact invariant ensureTeamModel itself maintains), is how BOTH PvP fighters get to
+// use real active skills through that same, unmodified resolver — no forked logic here.
+function pvpSetControlledSide(state, side) {
+  if (state.controlledSide !== side) {
+    state.controlledSide = side;
+    state.teamResources = state.teamResources || {};
+    state.teamResources[side] = state.teamResources[side] || { fury: 0, aegis: 0, scheme: 0, schemeConsumed: 0, nextActiveDebuffBonus: 0 };
+    state.resources = state.teamResources[side];
+  }
+  return state;
 }
-
-// Starts (or resumes, if one is already active) a turn-based match against opponentCharacterId.
-// A ticket (or diamonds) is only spent when a brand-new match is created — resuming an
-// existing one is always free, so a dropped connection can't cost the player a second ticket.
-async function handleStartArenaMatch(db, id, session, characterId, opponentCharacterId, paidDiamonds) {
-  const auth = await verifyPlayer(db, id, session);
-  if (auth.error) return json({ error: auth.error });
-  const owned = await verifyOwnedCharacter(db, id, characterId);
-  if (owned.error) return json({ error: owned.error });
-  const character = owned.row;
-
-  const existing = await db.prepare(`SELECT * FROM pvp_matches WHERE attacker_character_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`).bind(characterId).first();
-  if (existing) {
-    const state = JSON.parse(existing.state_json);
-    return json({ ok: true, matchId: existing.match_id, resumed: true, turn: existing.turn, you: fighterPublicState(state.atk, state.atkPet), opponent: fighterPublicState(state.def, state.defPet), opponentName: state.defName, skills: state.atk.skills });
-  }
-
-  if (!opponentCharacterId) return json({ error: "missing_fields" });
-  if (opponentCharacterId === characterId) return json({ error: "cannot_attack_self" });
-  const [itemsRes, oppSnap] = await Promise.all([
-    db.prepare(`SELECT atk, def, hp, mp, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
-    db.prepare(`SELECT * FROM pvp_snapshots WHERE character_id = ?`).bind(opponentCharacterId).first(),
-  ]);
-  if (!oppSnap) return json({ error: "opponent_not_found" });
-  let oppLoadout = {};
-  try { oppLoadout = oppSnap.stats_json ? JSON.parse(oppSnap.stats_json) : {}; } catch (e) { oppLoadout = {}; }
-  if (!oppLoadout.fighter) return json({ error: "opponent_not_found" });
-
-  // Ticket CAS — identical shape to the raid_stamina reservation in handleAttackRaidBoss.
-  const ticketState = resolvePvpTickets(character.pvp_tickets, character.pvp_tickets_updated_at);
-  let spentTicket = false;
-  let diamondsSpent = 0;
-  let newTickets = ticketState.tickets;
-  let newTicketsUpdatedAt = ticketState.updatedAt;
-  if (ticketState.tickets >= 1) {
-    spentTicket = true;
-    newTickets = ticketState.tickets - 1;
-    newTicketsUpdatedAt = ticketState.updatedAt || nowIso();
-    const storedTickets = Number.isFinite(Number(character.pvp_tickets)) ? Number(character.pvp_tickets) : PVP_TICKET_MAX;
-    const storedUpdatedAt = character.pvp_tickets_updated_at || "";
-    const reserved = await db
-      .prepare(`UPDATE characters SET pvp_tickets = ?, pvp_tickets_updated_at = ? WHERE character_id = ? AND pvp_tickets = ? AND pvp_tickets_updated_at = ?`)
-      .bind(newTickets, newTicketsUpdatedAt, characterId, storedTickets, storedUpdatedAt)
-      .run();
-    if (!reserved.meta || !reserved.meta.changes) return json({ error: "ticket_conflict", retry: true });
-  } else if (!paidDiamonds) {
-    return json({ error: "no_tickets", diamondRefillCost: PVP_DIAMOND_REFILL_COST, ticketsRegenSeconds: pvpTicketsSecondsToNext(ticketState.updatedAt) });
-  } else {
-    const charged = await db.prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ?`).bind(PVP_DIAMOND_REFILL_COST, id, PVP_DIAMOND_REFILL_COST).run();
-    if (!charged.meta || !charged.meta.changes) return json({ error: "insufficient_diamonds", diamondRefillCost: PVP_DIAMOND_REFILL_COST });
-    diamondsSpent = PVP_DIAMOND_REFILL_COST;
-  }
-
-  const myLoadout = arenaLoadout(character, itemsRes.results || []);
-  const state = {
-    turn: 0,
-    atk: Object.assign({ hp: myLoadout.fighter.maxHp, mp: myLoadout.fighter.maxMp, skills: myLoadout.skills }, myLoadout.fighter),
-    def: Object.assign({ hp: oppLoadout.fighter.maxHp, mp: oppLoadout.fighter.maxMp, skills: oppLoadout.skills || [] }, oppLoadout.fighter),
-    atkPet: myLoadout.pet ? Object.assign({ hp: myLoadout.pet.maxHp }, myLoadout.pet) : null,
-    defPet: oppLoadout.pet ? Object.assign({ hp: oppLoadout.pet.maxHp }, oppLoadout.pet) : null,
-    atkStatus: { freezeTurns: 0, poisonTurns: 0, poisonDmg: 0 },
-    defStatus: { freezeTurns: 0, poisonTurns: 0, poisonDmg: 0 },
-    defName: oppSnap.name || "คู่ต่อสู้",
-    spentTicket,
-    diamondsSpent,
-  };
-  const matchId = crypto.randomUUID();
-  const now = nowIso();
-  await db
-    .prepare(`INSERT INTO pvp_matches (match_id, attacker_character_id, attacker_player_id, defender_character_id, status, turn, state_json, result_json, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', 0, ?, '', ?, ?)`)
-    .bind(matchId, characterId, id, opponentCharacterId, JSON.stringify(state), now, now)
-    .run();
-
-  return json({
-    ok: true, matchId, resumed: false, turn: 0,
-    you: fighterPublicState(state.atk, state.atkPet), opponent: fighterPublicState(state.def, state.defPet),
-    opponentName: state.defName, skills: state.atk.skills,
-    tickets: newTickets, ticketsMax: PVP_TICKET_MAX, ticketsRegenSeconds: pvpTicketsSecondsToNext(newTicketsUpdatedAt),
+// Ordinary "which button would this side press" decision-making — the same category of
+// logic a client UI already does to decide which skill buttons are enabled. Not a
+// duplicate of any battleCore damage/status resolution.
+function pvpPickBotCommand(actor) {
+  if (actor.statuses && actor.statuses.silence) return { type: "basic" };
+  const candidates = (actor.activeSkills || []).filter((skillId) => {
+    const data = heroSkillRankData(actor.skills, skillId);
+    if (!data) return false;
+    if ((actor.cooldowns[skillId] || 0) > 0) return false;
+    if (actor.sp < (Number(data.sp) || 0)) return false;
+    return true;
   });
-}
-
-// One damage/heal/status roll — shared by basic attacks, skills, and pet auto-attacks.
-// user/target are the live mutable state objects (state.atk / state.def / *Pet); dmg is
-// only meaningful when !dodged, heal only when skill.type === "heal".
-function rollAttack(user, target, skill) {
-  const dodgeChance = target.evasion != null ? target.evasion : target.dodgeChance;
-  const dodged = Math.random() * 100 < dodgeChance;
-  const out = { dodged, dmg: 0, crit: false, heal: 0 };
-  if (dodged) return out;
-  const critChance = skill && skill.guaranteedCrit ? 100 : (user.critChance || 0);
-  out.crit = Math.random() * 100 < critChance;
-  const defPierce = (skill && skill.defPierce) || 0;
-  const mult = (skill && skill.mult) || 1;
-  const effectiveDef = (target.def || 0) * (1 - defPierce);
-  let dmg = Math.max(2, Math.round(user.atk * mult - effectiveDef * 0.6 + (Math.random() * 4 - 2)));
-  if (out.crit) dmg = Math.round(dmg * (1 + (user.critDamage || 50) / 100));
-  out.dmg = dmg;
-  return out;
-}
-
-// Resolves one fighter's chosen action (basic attack or a skill) against the opposing side.
-// `side` is 'atk' or 'def'; mutates state in place and pushes a log entry.
-function applyFighterAction(state, side, action, log) {
-  const other = side === "atk" ? "def" : "atk";
-  const user = state[side];
-  const target = state[other];
-  const targetPet = state[other + "Pet"];
-
-  if (action.type === "skill") {
-    const skillDef = PVP_SKILLS.find((s) => s.key === action.skillKey);
-    const userSkillRef = (user.skills || []).find((s) => s.key === action.skillKey);
-    if (!skillDef || !userSkillRef || user.mp < skillDef.mp) {
-      // Invalid/unaffordable — silently falls back to a basic attack rather than wasting the turn.
-      action = { type: "attack" };
-    } else {
-      const scaled = pvpSkillAtLevel(skillDef, userSkillRef.level);
-      user.mp -= scaled.mp;
-      if (scaled.type === "heal") {
-        const healAmt = Math.round(user.maxHp * scaled.healPct);
-        user.hp = Math.min(user.maxHp, user.hp + healAmt);
-        const userPet = state[side + "Pet"];
-        if (userPet && userPet.hp > 0) userPet.hp = Math.min(userPet.maxHp, userPet.hp + Math.round(userPet.maxHp * scaled.healPct));
-        log.push({ side, type: "skill", skillKey: action.skillKey, heal: healAmt });
-        return;
-      }
-      const targetIsPet = targetPet && targetPet.hp > 0 && Math.random() < PVP_PET_TARGET_CHANCE;
-      const roll = rollAttack(user, targetIsPet ? targetPet : target, scaled);
-      if (targetIsPet) targetPet.hp = Math.max(0, targetPet.hp - roll.dmg);
-      else target.hp = Math.max(0, target.hp - roll.dmg);
-      if (!roll.dodged && scaled.freezeChance && Math.random() < scaled.freezeChance) {
-        const otherStatus = state[other + "Status"];
-        otherStatus.freezeTurns += scaled.freezeTurns || 1;
-      }
-      if (!roll.dodged && scaled.poisonTurns) {
-        const otherStatus = state[other + "Status"];
-        otherStatus.poisonTurns = scaled.poisonTurns;
-        otherStatus.poisonDmg = Math.max(1, Math.round(user.atk * scaled.poisonPct));
-      }
-      log.push({ side, type: "skill", skillKey: action.skillKey, target: targetIsPet ? "pet" : "main", dodged: roll.dodged, crit: roll.crit, dmg: roll.dmg });
-      return;
-    }
+  if (candidates.length && Math.random() < 0.5) {
+    return { type: "active", skillId: candidates[Math.floor(Math.random() * candidates.length)] };
   }
-  const targetIsPet = targetPet && targetPet.hp > 0 && Math.random() < PVP_PET_TARGET_CHANCE;
-  const roll = rollAttack(user, targetIsPet ? targetPet : target, null);
-  if (targetIsPet) targetPet.hp = Math.max(0, targetPet.hp - roll.dmg);
-  else target.hp = Math.max(0, target.hp - roll.dmg);
-  log.push({ side, type: "attack", target: targetIsPet ? "pet" : "main", dodged: roll.dodged, crit: roll.crit, dmg: roll.dmg });
+  return { type: "basic" };
 }
-// Pets always auto-attack the opposing fighter directly (never the opposing pet).
-function applyPetAttack(state, petSide, log) {
-  const pet = state[petSide + "Pet"];
-  const targetSide = petSide === "atk" ? "def" : "atk";
-  const target = state[targetSide];
-  const roll = rollAttack(pet, target, null);
-  target.hp = Math.max(0, target.hp - roll.dmg);
-  log.push({ side: petSide, type: "pet", dodged: roll.dodged, crit: roll.crit, dmg: roll.dmg });
-}
-function battleOver(state) {
-  return state.atk.hp <= 0 || state.def.hp <= 0;
-}
-// Random bot AI for the defender: prefers a random affordable skill ~50% of the time,
-// otherwise (or if no skill is affordable) falls back to a basic attack.
-function pickBotAction(fighter) {
-  const affordable = (fighter.skills || []).filter((s) => {
-    const def = PVP_SKILLS.find((d) => d.key === s.key);
-    return def && fighter.mp >= def.mp;
-  });
-  if (affordable.length && Math.random() < 0.5) {
-    const pick = affordable[Math.floor(Math.random() * affordable.length)];
-    return { type: "skill", skillKey: pick.key };
+function pvpAutoAdvance(state, maxSteps = 30) {
+  let steps = 0;
+  while (steps++ < maxSteps && !state.result) {
+    const actor = BATTLE_CORE_V1.currentUnit(state);
+    if (!actor) break;
+    if (pvpIsPlayerHeroTurn(actor)) break;
+    pvpSetControlledSide(state, actor.side);
+    const command = actor.kind === "hero" ? pvpPickBotCommand(actor) : undefined;
+    state = BATTLE_CORE_V1.battleStep(state, command).state;
   }
-  return { type: "attack" };
+  return state;
+}
+function pvpSubmitPlayerTurn(state, command) {
+  const actor = BATTLE_CORE_V1.currentUnit(state);
+  if (!pvpIsPlayerHeroTurn(actor)) return { state, error: "not_your_turn" };
+  pvpSetControlledSide(state, actor.side);
+  const result = BATTLE_CORE_V1.battleStep(state, command);
+  if (result.error) return { state: result.state, error: result.error };
+  return { state: pvpAutoAdvance(result.state) };
+}
+function pvpUnitPublic(state, id) {
+  const u = state.units[id];
+  if (!u) return null;
+  return { hp: u.hp, maxHp: u.maxHp, mp: u.sp, maxMp: u.maxSp, statuses: Object.keys(u.statuses || {}) };
+}
+function pvpHeroSkillsPublic(actor) {
+  if (!actor) return [];
+  return heroActiveSkillList(actor.skills).map((s) => ({ ...s, cooldownRemaining: actor.cooldowns[s.key] || 0 }));
+}
+// Trims a battleCore log entry (which also carries internal bookkeeping fields) down to
+// what the client needs: the human-readable text plus enough structure (actorId/targetId/
+// crit) to drive the placeholder battle-stage animation.
+function pvpPublicLogEntry(e) {
+  return { type: e.type, text: e.text, actorId: e.actorId || null, targetId: e.targetId || null, crit: !!e.crit };
 }
 
-// One full round: attacker's chosen action -> attacker's pet -> defender bot's action ->
-// defender's pet -> poison ticks. Poison/freeze are resolved at the start of each side's
-// own action (poison damage always applies first, then a freeze check that can skip the
-// action entirely) — same order the client's own floor-combat monster-turn code uses.
-function processArenaTurn(state, playerAction) {
-  const log = [];
-  for (const side of ["atk", "def"]) {
-    if (battleOver(state)) break;
-    const status = state[side + "Status"];
-    if (status.poisonTurns > 0) {
-      state[side].hp = Math.max(0, state[side].hp - status.poisonDmg);
-      status.poisonTurns--;
-      log.push({ side, type: "poison", dmg: status.poisonDmg });
-      if (battleOver(state)) break;
-    }
-    if (status.freezeTurns > 0) {
-      status.freezeTurns--;
-      log.push({ side, type: "frozen" });
-    } else if (side === "atk") {
-      applyFighterAction(state, "atk", playerAction, log);
-    } else {
-      applyFighterAction(state, "def", pickBotAction(state.def), log);
-    }
-    if (battleOver(state)) break;
-    const pet = state[side + "Pet"];
-    if (pet && pet.hp > 0) applyPetAttack(state, side, log);
-  }
-  state.turn++;
-  return log;
-}
-
-async function settleArenaMatch(db, match, state, attackerWon) {
-  const characterId = match.attacker_character_id;
-  const opponentCharacterId = match.defender_character_id;
+async function settleArenaMatch(db, characterId, opponentCharacterId, state) {
+  const attackerWon = state.winnerSide === "team_a";
   const myRating = Number((await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first())?.rating) || 1000;
   const oppRating = Number((await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(opponentCharacterId).first())?.rating) || 1000;
   const expected = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400));
@@ -2462,7 +2813,7 @@ async function settleArenaMatch(db, match, state, attackerWon) {
       .bind(oppNewRating, attackerWon ? 0 : 1, attackerWon ? 1 : 0, now, opponentCharacterId),
   ]);
 
-  const oppName = state.defName || "คู่ต่อสู้";
+  const oppName = (state.units.team_b_hero && state.units.team_b_hero.name) || "คู่ต่อสู้";
   const diamonds = attackerWon ? PVP_WIN_DIAMONDS : PVP_LOSS_DIAMONDS;
   if (attackerWon) await sendMail(db, characterId, `🏆 ชนะศึกอารีน่า!`, `คุณเอาชนะ ${oppName} ได้สำเร็จ (Rating ${myRating} → ${myNewRating})`, { diamonds });
   else await sendMail(db, characterId, `💢 แพ้ศึกอารีน่า`, `คุณแพ้ให้กับ ${oppName} (Rating ${myRating} → ${myNewRating})`, { diamonds });
@@ -2470,10 +2821,104 @@ async function settleArenaMatch(db, match, state, attackerWon) {
   return { win: attackerWon, ratingBefore: myRating, ratingAfter: myNewRating, ratingChange: delta, opponentName: oppName, diamondsEarned: diamonds };
 }
 
-// Resolves exactly one round for an already-started match: the player's chosen action,
-// then everything that happens automatically around it (both pets, the bot, status
-// ticks). If the round ends the fight, rating/mail settlement happens here too.
-async function handleSubmitArenaTurn(db, id, session, characterId, matchId, actionType, skillKey) {
+// Starts (or resumes, if one is already active) a match against opponentCharacterId. A
+// ticket (or diamonds) is only spent when a brand-new match is created — resuming an
+// existing one is always free, so a dropped connection can't cost the player a second
+// ticket. pvpAutoAdvance() runs once up front too, in case the opponent's side happens to
+// act (or their Pet auto-acts) before the player's very first move.
+async function handleStartArenaMatch(db, id, session, characterId, opponentCharacterId, paidDiamonds) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  const character = owned.row;
+
+  const existing = await db.prepare(`SELECT * FROM pvp_matches WHERE attacker_character_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`).bind(characterId).first();
+  if (existing) {
+    const state = JSON.parse(existing.state_json);
+    return json({
+      ok: true, matchId: existing.match_id, resumed: true, turn: state.round, done: false,
+      you: pvpUnitPublic(state, "team_a_hero"), yourPet: pvpUnitPublic(state, "team_a_pet"),
+      opponent: pvpUnitPublic(state, "team_b_hero"), opponentPet: pvpUnitPublic(state, "team_b_pet"),
+      opponentName: (state.units.team_b_hero && state.units.team_b_hero.name) || "คู่ต่อสู้",
+      skills: pvpHeroSkillsPublic(state.units.team_a_hero),
+      log: [],
+    });
+  }
+
+  if (!opponentCharacterId) return json({ error: "missing_fields" });
+  if (opponentCharacterId === characterId) return json({ error: "cannot_attack_self" });
+  const [itemsRes, oppSnap] = await Promise.all([
+    db.prepare(`SELECT atk, def, hp, mp, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
+    db.prepare(`SELECT * FROM pvp_snapshots WHERE character_id = ?`).bind(opponentCharacterId).first(),
+  ]);
+  if (!oppSnap) return json({ error: "opponent_not_found" });
+  let oppLoadout = {};
+  try { oppLoadout = oppSnap.stats_json ? JSON.parse(oppSnap.stats_json) : {}; } catch (e) { oppLoadout = {}; }
+  if (!oppLoadout.hero) return json({ error: "opponent_not_found" });
+
+  // Ticket CAS — identical shape to the raid_stamina reservation in handleAttackRaidBoss.
+  const ticketState = resolvePvpTickets(character.pvp_tickets, character.pvp_tickets_updated_at);
+  let newTickets = ticketState.tickets;
+  let newTicketsUpdatedAt = ticketState.updatedAt;
+  let diamondsSpent = 0;
+  if (ticketState.tickets >= 1) {
+    newTickets = ticketState.tickets - 1;
+    newTicketsUpdatedAt = ticketState.updatedAt || nowIso();
+    const storedTickets = Number.isFinite(Number(character.pvp_tickets)) ? Number(character.pvp_tickets) : PVP_TICKET_MAX;
+    const storedUpdatedAt = character.pvp_tickets_updated_at || "";
+    const reserved = await db
+      .prepare(`UPDATE characters SET pvp_tickets = ?, pvp_tickets_updated_at = ? WHERE character_id = ? AND pvp_tickets = ? AND pvp_tickets_updated_at = ?`)
+      .bind(newTickets, newTicketsUpdatedAt, characterId, storedTickets, storedUpdatedAt)
+      .run();
+    if (!reserved.meta || !reserved.meta.changes) return json({ error: "ticket_conflict", retry: true });
+  } else if (!paidDiamonds) {
+    return json({ error: "no_tickets", diamondRefillCost: PVP_DIAMOND_REFILL_COST, ticketsRegenSeconds: pvpTicketsSecondsToNext(ticketState.updatedAt) });
+  } else {
+    const charged = await db.prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ?`).bind(PVP_DIAMOND_REFILL_COST, id, PVP_DIAMOND_REFILL_COST).run();
+    if (!charged.meta || !charged.meta.changes) return json({ error: "insufficient_diamonds", diamondRefillCost: PVP_DIAMOND_REFILL_COST });
+    diamondsSpent = PVP_DIAMOND_REFILL_COST;
+  }
+
+  const { active, skillLevels } = parsePetsJson(character);
+  const myHero = pvpHeroUnit(character, itemsRes.results || [], "team_a_hero", character.name || "You", skillLevels);
+  const myPet = active ? pvpPetUnit(active, "team_a_pet") : null;
+  const oppHero = { ...oppLoadout.hero, id: "team_b_hero" };
+  const oppPet = oppLoadout.pet ? { ...oppLoadout.pet, id: "team_b_pet" } : null;
+
+  let state = BATTLE_CORE_V1.createArenaBattle({
+    seed: Math.floor(Math.random() * 0xffffffff),
+    teamA: { hero: myHero, pet: myPet },
+    teamB: { hero: oppHero, pet: oppPet },
+  });
+  state = pvpAutoAdvance(state);
+
+  const matchId = crypto.randomUUID();
+  const now = nowIso();
+  let result = null;
+  if (state.result) result = await settleArenaMatch(db, characterId, opponentCharacterId, state);
+  await db
+    .prepare(`INSERT INTO pvp_matches (match_id, attacker_character_id, attacker_player_id, defender_character_id, status, turn, state_json, result_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(matchId, characterId, id, opponentCharacterId, result ? "done" : "active", state.round, JSON.stringify(state), result ? JSON.stringify(result) : "", now, now)
+    .run();
+
+  return json({
+    ok: true, matchId, resumed: false, turn: state.round, done: !!result,
+    you: pvpUnitPublic(state, "team_a_hero"), yourPet: pvpUnitPublic(state, "team_a_pet"),
+    opponent: pvpUnitPublic(state, "team_b_hero"), opponentPet: pvpUnitPublic(state, "team_b_pet"),
+    opponentName: oppHero.name || "คู่ต่อสู้",
+    skills: pvpHeroSkillsPublic(state.units.team_a_hero),
+    log: state.log.map(pvpPublicLogEntry),
+    result,
+    tickets: newTickets, ticketsMax: PVP_TICKET_MAX, ticketsRegenSeconds: pvpTicketsSecondsToNext(newTicketsUpdatedAt),
+    diamondsSpent,
+  });
+}
+
+// Resolves exactly the player's next hero action, then auto-advances (both Pets, the
+// bot's own real active-skill usage) until it's the player's turn again or the match
+// ends — settling rating/mailbox here if it does.
+async function handleSubmitArenaTurn(db, id, session, characterId, matchId, actionType, skillId) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
@@ -2484,35 +2929,33 @@ async function handleSubmitArenaTurn(db, id, session, characterId, matchId, acti
   if (!match) return json({ error: "match_not_found" });
   if (match.status !== "active") return json({ error: "match_already_done" });
 
-  const state = JSON.parse(match.state_json);
-  const playerAction = actionType === "skill" ? { type: "skill", skillKey } : { type: "attack" };
-  const log = processArenaTurn(state, playerAction);
-  const done = battleOver(state);
+  let state = JSON.parse(match.state_json);
+  const beforeSeq = state.logSeq;
+  const command = actionType === "active" ? { type: "active", skillId } : { type: "basic" };
+  const advance = pvpSubmitPlayerTurn(state, command);
+  if (advance.error) return json({ error: advance.error });
+  state = advance.state;
+  const newLog = state.log.filter((e) => e.seq > beforeSeq).map(pvpPublicLogEntry);
 
   let result = null;
-  if (done) {
-    const attackerWon = state.def.hp <= 0 && state.atk.hp > 0;
-    result = await settleArenaMatch(db, match, state, attackerWon);
+  if (state.result) {
+    result = await settleArenaMatch(db, characterId, match.defender_character_id, state);
     await db.prepare(`UPDATE pvp_matches SET status = 'done', turn = ?, state_json = ?, result_json = ?, updated_at = ? WHERE match_id = ?`)
-      .bind(state.turn, JSON.stringify(state), JSON.stringify(result), nowIso(), matchId).run();
-  } else if (state.turn >= PVP_MAX_TURNS) {
-    // Round cap reached without a knockout — tie-break by remaining HP%, same rule the
-    // old instant-resolve simulateArenaBattle() used.
-    const attackerWon = state.atk.hp / state.atk.maxHp >= state.def.hp / state.def.maxHp;
-    result = await settleArenaMatch(db, match, state, attackerWon);
-    await db.prepare(`UPDATE pvp_matches SET status = 'done', turn = ?, state_json = ?, result_json = ?, updated_at = ? WHERE match_id = ?`)
-      .bind(state.turn, JSON.stringify(state), JSON.stringify(result), nowIso(), matchId).run();
+      .bind(state.round, JSON.stringify(state), JSON.stringify(result), nowIso(), matchId).run();
   } else {
     await db.prepare(`UPDATE pvp_matches SET turn = ?, state_json = ?, updated_at = ? WHERE match_id = ?`)
-      .bind(state.turn, JSON.stringify(state), nowIso(), matchId).run();
+      .bind(state.round, JSON.stringify(state), nowIso(), matchId).run();
   }
 
   return json({
-    ok: true, log, turn: state.turn, done: !!result,
-    you: fighterPublicState(state.atk, state.atkPet), opponent: fighterPublicState(state.def, state.defPet),
+    ok: true, log: newLog, turn: state.round, done: !!result,
+    you: pvpUnitPublic(state, "team_a_hero"), yourPet: pvpUnitPublic(state, "team_a_pet"),
+    opponent: pvpUnitPublic(state, "team_b_hero"), opponentPet: pvpUnitPublic(state, "team_b_pet"),
+    skills: pvpHeroSkillsPublic(state.units.team_a_hero),
     result,
   });
 }
+
 
 
 // ---------- admin / QA ----------

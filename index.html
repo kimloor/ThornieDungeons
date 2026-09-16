@@ -10625,34 +10625,11 @@ function RaidScreen({
 
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
 }
+
 const PVP_TICKET_MAX_CLIENT = 5; // fallback only — server response's ticketsMax is authoritative
 const PET_ICON_FALLBACK = "🐾";
-// ---------- Phase 5: PvP Arena (turn-based) ----------
-// Describes one entry from a submitArenaTurn() log for display. `side` is 'atk' (you) or
-// 'def' (opponent); pet auto-attacks reuse the same side value with type 'pet'.
-function describeArenaLogEntry(entry, opponentName) {
-  const who = entry.side === "atk" ? "คุณ" : opponentName || "คู่ต่อสู้";
-  const petWho = entry.side === "atk" ? "สัตว์เลี้ยงของคุณ" : `สัตว์เลี้ยงของ${opponentName || "คู่ต่อสู้"}`;
-  if (entry.type === "poison") return `${who} โดนพิษ -${entry.dmg} HP`;
-  if (entry.type === "frozen") return `${who} ถูกแช่แข็ง ข้ามเทิร์น`;
-  if (entry.dodged) {
-    const actor = entry.type === "pet" ? petWho : who;
-    return `${actor} โจมตี... คู่ต่อสู้หลบทัน!`;
-  }
-  if (entry.heal != null && entry.heal > 0) {
-    const skill = SKILLS.find(s => s.key === entry.skillKey);
-    return `${who} ใช้ ${skill ? skill.name : entry.skillKey} ฟื้นฟู +${entry.heal} HP`;
-  }
-  const actor = entry.type === "pet" ? petWho : who;
-  const targetTxt = entry.target === "pet" ? (entry.side === "atk" ? "สัตว์เลี้ยงของคู่ต่อสู้" : "สัตว์เลี้ยงของคุณ") : "";
-  const critTxt = entry.crit ? " (คริติคอล!)" : "";
-  if (entry.type === "skill") {
-    const skill = SKILLS.find(s => s.key === entry.skillKey);
-    return `${actor} ใช้ ${skill ? skill.name : entry.skillKey} ใส่${targetTxt} -${entry.dmg} HP${critTxt}`;
-  }
-  return `${actor} โจมตี${targetTxt} -${entry.dmg} HP${critTxt}`;
-}
-
+const PVP_UNIT_SLOT = { team_a_hero: "you", team_a_pet: "youPet", team_b_hero: "opp", team_b_pet: "oppPet" };
+// ---------- Phase 5: PvP Arena (Battle Core V1, turn-based) ----------
 function ArenaHpBar({ label, hp, maxHp, mp, maxMp, pet }) {
   const pct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((hp / maxHp) * 100))) : 0;
   const mpPct = maxMp > 0 ? Math.max(0, Math.min(100, Math.round((mp / maxMp) * 100))) : 0;
@@ -10662,7 +10639,7 @@ function ArenaHpBar({ label, hp, maxHp, mp, maxMp, pet }) {
     /*#__PURE__*/React.createElement("p", { className: "md-bar-label" }, hp, "/", maxHp),
     maxMp != null && /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-bar-track", style: { marginTop: 3 } }, /*#__PURE__*/React.createElement("div", { className: "md-bar-fill", style: { width: mpPct + "%", background: "#4a90d9" } })),
-      /*#__PURE__*/React.createElement("p", { className: "md-bar-label" }, mp, "/", maxMp, " MP")),
+      /*#__PURE__*/React.createElement("p", { className: "md-bar-label" }, mp, "/", maxMp, " SP")),
     pet && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 4 } }, PET_ICON_FALLBACK, " ", pet.hp, "/", pet.maxHp));
 }
 
@@ -10678,16 +10655,20 @@ function ArenaScreen({
   const [error, setError] = useState(null);
   const [startingId, setStartingId] = useState(null);
   const [refreshingOpp, setRefreshingOpp] = useState(false);
-  const [match, setMatch] = useState(null); // { matchId, you, opponent, opponentName, skills, turn, log:[], result:null }
+  // match: { matchId, you, yourPet, opponent, opponentPet, opponentName, skills, turn, log:[], result:null }
+  const [match, setMatch] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [stageAnim, setStageAnim] = useState({}); // { you, youPet, opp, oppPet } -> transient CSS class name
   const stageTimeouts = React.useRef([]);
 
   // Plays each log entry from the just-resolved round as a short staggered flourish on
-  // the placeholder stage (see the md-pvp-* CSS comment for why these are boxes, not
-  // real sprites). Purely cosmetic — match.you/match.opponent are already updated with
-  // the final numbers before this runs, so a slow network hiccup here never desyncs HP.
+  // the placeholder stage (see the md-pvp-* CSS comment for why these are boxes, not real
+  // sprites). Purely cosmetic — match.you/match.opponent are already updated with the
+  // final numbers before this runs, so a slow network hiccup here never desyncs HP.
+  // Log entries come straight from Battle Core V1 (see workers/thornie-dungeons-api.js's
+  // pvpPublicLogEntry) — actorId/targetId are one of team_a_hero/team_a_pet/team_b_hero/
+  // team_b_pet, mapped to a stage slot via PVP_UNIT_SLOT.
   const playStageSequence = (log) => {
     stageTimeouts.current.forEach(clearTimeout);
     stageTimeouts.current = [];
@@ -10695,18 +10676,19 @@ function ArenaScreen({
     (log || []).forEach((entry, i) => {
       const t = setTimeout(() => {
         const classes = {};
-        const actorUnit = entry.type === "pet" ? (entry.side === "atk" ? "youPet" : "oppPet") : (entry.side === "atk" ? "you" : "opp");
-        if (entry.type === "poison" || entry.type === "frozen") {
-          classes[actorUnit] = entry.type === "poison" ? "hurt" : "dodge";
-        } else if (entry.heal != null && entry.heal > 0) {
-          classes[actorUnit] = "heal";
-        } else {
-          classes[actorUnit] = entry.side === "atk" ? "attack-r" : "attack-l";
-          const otherSide = entry.side === "atk" ? "def" : "atk";
-          const targetUnit = entry.type === "pet"
-            ? (otherSide === "def" ? "opp" : "you")
-            : (entry.target === "pet" ? (otherSide === "def" ? "oppPet" : "youPet") : (otherSide === "def" ? "opp" : "you"));
-          classes[targetUnit] = entry.dodged ? "dodge" : entry.crit ? "hurt crit" : "hurt";
+        const actorSlot = PVP_UNIT_SLOT[entry.actorId];
+        const targetSlot = PVP_UNIT_SLOT[entry.targetId];
+        const lunge = actorSlot && actorSlot.startsWith("you") ? "attack-r" : "attack-l";
+        if (entry.type === "damage") {
+          if (actorSlot) classes[actorSlot] = lunge;
+          if (targetSlot) classes[targetSlot] = entry.crit ? "hurt crit" : "hurt";
+        } else if (entry.type === "miss") {
+          if (actorSlot) classes[actorSlot] = lunge;
+          if (targetSlot) classes[targetSlot] = "dodge";
+        } else if (entry.type === "heal" || entry.type === "sp") {
+          if (targetSlot) classes[targetSlot] = "heal";
+        } else if (entry.type === "status" || entry.type === "stun") {
+          if (targetSlot || actorSlot) classes[targetSlot || actorSlot] = "dodge";
         }
         setStageAnim(classes);
       }, i * STEP_MS);
@@ -10725,7 +10707,7 @@ function ArenaScreen({
       setSecondsLeft(res.ticketsRegenSeconds || 0);
       if (res.activeMatchId && !match) {
         cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, characterId, null, false).then(m => {
-          if (m && !m.error) setMatch({ matchId: m.matchId, you: m.you, opponent: m.opponent, opponentName: m.opponentName, skills: m.skills, turn: m.turn, log: [], result: null });
+          if (m && !m.error) setMatch({ matchId: m.matchId, you: m.you, yourPet: m.yourPet, opponent: m.opponent, opponentPet: m.opponentPet, opponentName: m.opponentName, skills: m.skills, turn: m.turn, log: [], result: null });
         });
       }
     }).catch(() => setError("โหลดข้อมูลอารีน่าไม่สำเร็จ"));
@@ -10754,6 +10736,7 @@ function ArenaScreen({
     insufficient_diamonds: "เพชรไม่พอสำหรับโจมตี",
     opponent_not_found: "หาคู่ต่อสู้นี้ไม่เจอแล้ว กรุณาสุ่มใหม่",
     cannot_attack_self: "โจมตีตัวเองไม่ได้",
+    not_your_turn: "ยังไม่ถึงตาคุณ กรุณาลองใหม่",
     network_error: "เชื่อมต่ออารีน่าไม่สำเร็จ กรุณาลองใหม่",
     match_not_found: "ไม่พบการต่อสู้นี้แล้ว",
     match_already_done: "การต่อสู้นี้จบไปแล้ว"
@@ -10765,7 +10748,7 @@ function ArenaScreen({
     cloudStartArenaMatch(serverUrl || DEFAULT_SERVER_URL, characterId, opponentCharacterId, useDiamonds).then(res => {
       if (!res || res.error) { setError(errMsgMap[res && res.error] || "เริ่มการต่อสู้ไม่สำเร็จ"); return; }
       if (res.diamondsSpent && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent);
-      setMatch({ matchId: res.matchId, you: res.you, opponent: res.opponent, opponentName: res.opponentName, skills: res.skills, turn: res.turn, log: [], result: null });
+      setMatch({ matchId: res.matchId, you: res.you, yourPet: res.yourPet, opponent: res.opponent, opponentPet: res.opponentPet, opponentName: res.opponentName, skills: res.skills, turn: res.turn, log: [], result: res.result || null });
       if (res.tickets != null) setStatus(s => s ? Object.assign({}, s, { tickets: res.tickets }) : s);
     }).catch(() => setError("เริ่มการต่อสู้ไม่สำเร็จ")).finally(() => setStartingId(null));
   };
@@ -10776,7 +10759,8 @@ function ArenaScreen({
     cloudSubmitArenaTurn(serverUrl || DEFAULT_SERVER_URL, characterId, match.matchId, actionType, skillKey).then(res => {
       if (!res || res.error) { setError(errMsgMap[res && res.error] || "ทำเทิร์นไม่สำเร็จ"); return; }
       setMatch(m => m && Object.assign({}, m, {
-        you: res.you, opponent: res.opponent, turn: res.turn,
+        you: res.you, yourPet: res.yourPet, opponent: res.opponent, opponentPet: res.opponentPet, turn: res.turn,
+        skills: res.skills || m.skills,
         log: [...res.log, ...m.log].slice(0, 30),
         result: res.result || null
       }));
@@ -10806,8 +10790,8 @@ function ArenaScreen({
     return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
       /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 10 } },
-          /*#__PURE__*/React.createElement(ArenaHpBar, { label: "คุณ", hp: match.you.hp, maxHp: match.you.maxHp, mp: match.you.mp, maxMp: match.you.maxMp, pet: match.you.pet }),
-          /*#__PURE__*/React.createElement(ArenaHpBar, { label: match.opponentName || "คู่ต่อสู้", hp: match.opponent.hp, maxHp: match.opponent.maxHp, pet: match.opponent.pet }))),
+          /*#__PURE__*/React.createElement(ArenaHpBar, { label: "คุณ", hp: match.you.hp, maxHp: match.you.maxHp, mp: match.you.mp, maxMp: match.you.maxMp, pet: match.yourPet }),
+          /*#__PURE__*/React.createElement(ArenaHpBar, { label: match.opponentName || "คู่ต่อสู้", hp: match.opponent.hp, maxHp: match.opponent.maxHp, pet: match.opponentPet }))),
 
       // Placeholder battle stage — see the md-pvp-* CSS comment (src/data/styles.js) for
       // why these are emoji boxes and not <HeroSprite>/<PetCombatSprite>.
@@ -10815,11 +10799,11 @@ function ArenaScreen({
         /*#__PURE__*/React.createElement("div", { className: "md-pvp-stage" },
           /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
             /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.you.hp <= 0 ? "dead" : stageAnim.you || ""}` }, "🧙"),
-            match.you.pet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.you.pet.hp <= 0 ? "dead" : stageAnim.youPet || ""}` }, PET_ICON_FALLBACK)),
+            match.yourPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.yourPet.hp <= 0 ? "dead" : stageAnim.youPet || ""}` }, PET_ICON_FALLBACK)),
           /*#__PURE__*/React.createElement("div", { className: "md-pvp-vs" }, "VS"),
           /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
             /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.opponent.hp <= 0 ? "dead" : stageAnim.opp || ""}` }, "👤"),
-            match.opponent.pet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.opponent.pet.hp <= 0 ? "dead" : stageAnim.oppPet || ""}` }, PET_ICON_FALLBACK)))),
+            match.opponentPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.opponentPet.hp <= 0 ? "dead" : stageAnim.oppPet || ""}` }, PET_ICON_FALLBACK)))),
 
       overCard,
 
@@ -10828,25 +10812,24 @@ function ArenaScreen({
           /*#__PURE__*/React.createElement("button", {
             className: "md-btn attack small",
             disabled: submitting,
-            onClick: () => submitTurn("attack")
+            onClick: () => submitTurn("basic")
           }, "⚔️ โจมตี"),
           (match.skills || []).map(s => {
-            const def = SKILLS.find(sk => sk.key === s.key);
-            if (!def) return null;
-            const canAfford = match.you.mp >= def.mp;
+            const canAfford = match.you.mp >= s.mp;
+            const onCooldown = (s.cooldownRemaining || 0) > 0;
             return /*#__PURE__*/React.createElement("button", {
               key: s.key,
               className: "md-btn small",
-              disabled: submitting || !canAfford,
-              title: def.desc,
-              onClick: () => submitTurn("skill", s.key)
-            }, def.icon, " ", def.name, " (", def.mp, "MP)");
+              disabled: submitting || !canAfford || onCooldown,
+              title: s.desc,
+              onClick: () => submitTurn("active", s.key)
+            }, s.icon, " ", s.name, " (", s.mp, "SP)", onCooldown ? ` [${s.cooldownRemaining}]` : "");
           })),
         error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 6, color: "#FF6B6B" } }, error)),
 
       /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, maxHeight: 220, overflowY: "auto" } },
         match.log.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "เลือกท่าโจมตีเพื่อเริ่มต่อสู้"),
-        match.log.map((entry, i) => /*#__PURE__*/React.createElement("p", { key: i, className: "md-sub", style: { marginBottom: 3 } }, describeArenaLogEntry(entry, match.opponentName)))),
+        match.log.map((entry, i) => /*#__PURE__*/React.createElement("p", { key: i, className: "md-sub", style: { marginBottom: 3 } }, entry.text))),
 
       !match.result && /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back (การต่อสู้จะค้างไว้)"));
   }
