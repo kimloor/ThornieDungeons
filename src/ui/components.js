@@ -3035,7 +3035,9 @@ function CombatScreen({
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
   const skipUnlocked = (combatTurnCount || 0) >= 5;
   const speedAssetKey = combatSpeed === 2 ? "buttons.speedX2" : "buttons.speedX1";
-  const speedAssetStyle = battleUiStyle(speedAssetKey);
+  const speedAssetSrc = optionalAsset(`battleUi.${speedAssetKey}`);
+  const [failedSpeedAsset, setFailedSpeedAsset] = useState("");
+  const showSpeedArt = Boolean(speedAssetSrc && failedSpeedAsset !== speedAssetSrc);
   const activeTurn = (turnQueue || []).find(item => item.key === activeTurnKey);
   const activeTurnName = activeTurn
     ? activeTurn.kind === "player" ? heroName : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
@@ -3090,6 +3092,9 @@ function CombatScreen({
     const timer = setTimeout(() => setShowBattleIntro(false), 800);
     return () => clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    setFailedSpeedAsset("");
+  }, [speedAssetSrc]);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "md-scene battle-bg md-battle-background-art",
     style: battleUiStyle("background")
@@ -3118,13 +3123,12 @@ function CombatScreen({
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
   }, /*#__PURE__*/React.createElement("button", {
-    className: `md-combat-header-action speed md-battle-art ${speedAssetStyle ? "has-art" : ""}`,
-    style: speedAssetStyle,
+    className: `md-combat-header-action speed ${showSpeedArt ? "has-art" : ""}`,
     disabled: busy,
     title: "เปลี่ยนความเร็วการต่อสู้",
     onClick: onCycleCombatSpeed,
     "aria-label": `Battle speed x${combatSpeed || 1}`
-  }, speedAssetStyle ? null : `×${combatSpeed || 1}`), skipUnlocked && /*#__PURE__*/React.createElement("button", {
+  }, showSpeedArt ? /*#__PURE__*/React.createElement("img", { className:"md-combat-speed-art", src:speedAssetSrc, alt:"", "aria-hidden":"true", draggable:false, onError:() => setFailedSpeedAsset(speedAssetSrc) }) : /*#__PURE__*/React.createElement("span", { className:"md-combat-speed-fallback" }, `×${combatSpeed || 1}`)), skipUnlocked && /*#__PURE__*/React.createElement("button", {
     className: "md-combat-header-action skip md-battle-art",
     style: battleUiStyle("buttons.skip"),
     disabled: busy,
@@ -3482,22 +3486,23 @@ function inventoryStatRows(item) {
   return Object.keys(labels).filter(key => Number(finalStats[key])).map(key => ({ key, label: labels[key], value: Math.round(Number(finalStats[key]) * 10) / 10 }));
 }
 
-function inventoryComparisonRows(save, equipped, item) {
-  if (!save || !item || !SLOT_ORDER.includes(item.type)) return [];
-  const basePlayer = freshPlayerFromSave(save);
-  const currentStats = getStats(basePlayer, equipped);
-  const nextStats = getStats(basePlayer, { ...equipped, [item.type]: item });
+function inventoryComparisonRows(currentItem, nextItem) {
+  if (!nextItem || !SLOT_ORDER.includes(nextItem.type)) return [];
+  const currentStats = itemBonus(currentItem) || {};
+  const nextStats = itemBonus(nextItem) || {};
   const definitions = [
-    ["maxHp", "HP"], ["maxMp", "SP"], ["atk", "ATK"], ["def", "DEF"], ["speed", "SPD"],
+    ["hp", "HP"], ["mp", "SP"], ["atk", "ATK"], ["def", "DEF"],
     ["accuracy", "Accuracy"], ["dodgeChance", "Dodge"], ["critChance", "Crit"],
     ["critDamage", "Crit DMG"], ["dropBonus", "Drop"]
   ];
-  const rows = definitions.map(([key, label]) => ({ key, label, current: Number(currentStats[key]) || 0, next: Number(nextStats[key]) || 0 }))
-    .filter(row => Math.abs(row.next - row.current) > 0.0001);
-  const currentCp = combatPower(currentStats, basePlayer.level);
-  const nextCp = combatPower(nextStats, basePlayer.level);
-  if (currentCp !== nextCp) rows.unshift({ key: "cp", label: "CP", current: currentCp, next: nextCp });
-  return rows;
+  return definitions
+    .map(([key, label]) => ({
+      key,
+      label,
+      current: Math.round((Number(currentStats[key]) || 0) * 10) / 10,
+      next: Math.round((Number(nextStats[key]) || 0) * 10) / 10
+    }))
+    .filter(row => Math.abs(row.current) > 0.0001 || Math.abs(row.next) > 0.0001);
 }
 
 function InventoryOverlayV2({
@@ -3541,7 +3546,7 @@ function InventoryOverlayV2({
   const slotCount = expanded ? INVENTORY_CAPACITY : 10;
   const currentDetail = detail?.location === "equipped" ? equipped[detail.slot] : inventory.find(item => item.id === detail?.id);
   const currentEquipped = currentDetail && SLOT_ORDER.includes(currentDetail.type) ? equipped[currentDetail.type] : null;
-  const compareRows = detail?.location === "inventory" ? inventoryComparisonRows(save, equipped, currentDetail) : [];
+  const compareRows = detail?.location === "inventory" ? inventoryComparisonRows(currentEquipped, currentDetail) : [];
   const rarityLabel = item => ({ common: "Common", junk: "Junk", rare: "Rare", unique: "Unique", elite: "Elite", mythic: "Mythic" })[inventoryRarityKey(item)] || "Common";
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
   const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
@@ -3596,9 +3601,9 @@ function InventoryOverlayV2({
   return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay md-inv2-overlay" },
     /*#__PURE__*/React.createElement(StatusBar, { player:null, save, phase:"inventory", equipped }),
     /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
-    /*#__PURE__*/React.createElement("header", { className: "md-inv2-header" }, /*#__PURE__*/React.createElement("div", null,
-      /*#__PURE__*/React.createElement("h2", null, "Inventory"), /*#__PURE__*/React.createElement("span", { className:"md-inv2-ornament md-inventory-art", style:inventoryUiStyle("sectionOrnament") }), /*#__PURE__*/React.createElement("p", null, characterName || "Adventurer")),
-      /*#__PURE__*/React.createElement("button", { className: "md-inv2-close", onClick: onClose, "aria-label": "Back" }, "‹")),
+    /*#__PURE__*/React.createElement("header", { className: "md-character-page-title md-inv2-header" },
+      /*#__PURE__*/React.createElement("button", { className: "md-inv2-close", type:"button", onClick: onClose, "aria-label": "ย้อนกลับ" }, "‹"),
+      /*#__PURE__*/React.createElement("div", { className:"md-inv2-title" }, /*#__PURE__*/React.createElement("h2", null, "Inventory"), /*#__PURE__*/React.createElement("span", { className:"md-inv2-ornament md-inventory-art", style:inventoryUiStyle("sectionOrnament") }), /*#__PURE__*/React.createElement("p", null, characterName || "Adventurer"))),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-equipment" },
       /*#__PURE__*/React.createElement("div", { className: "md-inv2-hero", "aria-hidden": "true" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", equipped, label: characterName || "Adventurer" })),
       /*#__PURE__*/React.createElement("div", { className: "md-inv2-slots" }, SLOT_ORDER.map(renderSlot))),
@@ -3631,7 +3636,7 @@ function InventoryOverlayV2({
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-head" }, /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[currentDetail.type] || "📦", className:"md-game-icon md-inv2-detail-icon" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", null, itemDisplayName(currentDetail)), /*#__PURE__*/React.createElement("p", null, `${rarityLabel(currentDetail)} • ${SLOT_LABEL[currentDetail.type] || currentDetail.type} • Lv.${currentDetail.level || 1}`))),
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-stat-list" }, inventoryStatRows(currentDetail).map(row => /*#__PURE__*/React.createElement("div", { key:row.key }, /*#__PURE__*/React.createElement("span", null, row.label), /*#__PURE__*/React.createElement("b", { className:row.value >= 0 ? "positive" : "negative" }, `${row.value >= 0 ? "+" : ""}${row.value}`)))),
       Array.isArray(currentDetail.empowerSlots) && currentDetail.empowerSlots.some(Boolean) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-enchants" }, /*#__PURE__*/React.createElement("h4", null, "ENCHANT OPTIONS"), currentDetail.empowerSlots.filter(Boolean).map((option,index) => /*#__PURE__*/React.createElement("div", { key:index }, `${option.icon || "✦"} ${option.label || option.stat || "Option"} +${option.value || 0}`))),
-      compareRows.length > 0 && /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare" }, /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" }, /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" }, currentEquipped && /*#__PURE__*/React.createElement(GameIcon, { item:currentEquipped, fallback:currentEquipped.icon || SLOT_ICON[currentEquipped.type] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentEquipped) }), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" }, /*#__PURE__*/React.createElement("strong", null, currentEquipped ? itemDisplayName(currentEquipped) : "Empty Slot"), /*#__PURE__*/React.createElement("small", null, currentEquipped ? `Lv.${currentEquipped.level || 1} • ${isItemEnchanted(currentEquipped) ? "Enchanted" : "No Enchant"}` : "Current"))), /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-arrow" }, ">"), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" }, /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[currentDetail.type] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentDetail) }), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" }, /*#__PURE__*/React.createElement("strong", null, itemDisplayName(currentDetail)), /*#__PURE__*/React.createElement("small", null, `Lv.${currentDetail.level || 1} • ${isItemEnchanted(currentDetail) ? "Enchanted" : "No Enchant"}`)))), compareRows.map(row => { const delta = row.next - row.current; return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key }, /*#__PURE__*/React.createElement("span", null, row.label), /*#__PURE__*/React.createElement("span", null, `${row.current} → ${row.next}`), /*#__PURE__*/React.createElement("b", { className:delta > 0 ? "positive" : delta < 0 ? "negative" : "" }, `${delta > 0 ? "+" : ""}${Math.round(delta * 10) / 10}`)); })),
+      compareRows.length > 0 && /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare" }, /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" }, /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" }, currentEquipped && /*#__PURE__*/React.createElement(GameIcon, { item:currentEquipped, fallback:currentEquipped.icon || SLOT_ICON[currentEquipped.type] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentEquipped) }), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" }, /*#__PURE__*/React.createElement("strong", null, currentEquipped ? itemDisplayName(currentEquipped) : "Empty Slot"), /*#__PURE__*/React.createElement("small", null, currentEquipped ? `Lv.${currentEquipped.level || 1} • ${isItemEnchanted(currentEquipped) ? "Enchanted" : "No Enchant"}` : "Current"))), /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-arrow" }, ">"), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" }, /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[currentDetail.type] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentDetail) }), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" }, /*#__PURE__*/React.createElement("strong", null, itemDisplayName(currentDetail)), /*#__PURE__*/React.createElement("small", null, `Lv.${currentDetail.level || 1} • ${isItemEnchanted(currentDetail) ? "Enchanted" : "No Enchant"}`)))), /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" }, /*#__PURE__*/React.createElement("span", null, "Stat"), /*#__PURE__*/React.createElement("span", null, "Current"), /*#__PURE__*/React.createElement("span", null, "New")), compareRows.map(row => { const currentClass = row.current > row.next ? "positive" : row.current < row.next ? "negative" : ""; const nextClass = row.next > row.current ? "positive" : row.next < row.current ? "negative" : ""; return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key }, /*#__PURE__*/React.createElement("span", null, row.label), /*#__PURE__*/React.createElement("b", { className:currentClass }, row.current), /*#__PURE__*/React.createElement("b", { className:nextClass }, row.next)); })),
       message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" }, detail.location === "inventory" && SLOT_ORDER.includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); closeDetail(); } }, "Equip"), detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); closeDetail(); } }, "Unequip"), detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSell }, "Sell"), detail.location === "inventory" && !["junk","potion"].includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSalvage }, "Salvage"))))
     ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", moreOpen:false, onToggleMore:onClose }));

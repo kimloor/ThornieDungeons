@@ -78,3 +78,16 @@ test("Inventory V2 uses the standard authenticated shell and icon-only tools", (
   assert.doesNotMatch(inventory, /md-inv2-lock/);
   assert.match(inventory, /md-inv2-favorite-toggle/);
 });
+
+test("Inventory compare uses enhanced item bonuses rather than total character stats", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const compareFn = components.slice(components.indexOf("function inventoryComparisonRows"), components.indexOf("function InventoryOverlayV2"));
+  assert.match(compareFn, /itemBonus\(currentItem\)/);
+  assert.match(compareFn, /itemBonus\(nextItem\)/);
+  assert.doesNotMatch(compareFn, /getStats|combatPower|freshPlayerFromSave/);
+  const inventory = components.slice(components.indexOf("function InventoryOverlayV2"), components.indexOf("function InventoryOverlay({"));
+  assert.match(inventory, /className:"md-inv2-compare-columns"/);
+  assert.match(inventory, /row\.current > row\.next \? "positive"/);
+  assert.match(inventory, /row\.next > row\.current \? "positive"/);
+  assert.doesNotMatch(inventory, /const delta = row\.next - row\.current/);
+});
