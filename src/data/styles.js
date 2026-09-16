@@ -2,6 +2,12 @@ const STYLE = `
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@500;700;800&display=swap');
 
 .md-root {
+  /* Shared safe-area shell: artwork remains full-bleed while interactive layouts
+     consume these tokens instead of guessing device notch/home-indicator sizes. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
   --bg-top: #1B1233;
   --bg-mid: #2C1E4A;
   --bg-bot: #402C63;
@@ -32,7 +38,8 @@ const STYLE = `
   overflow: hidden;
   box-shadow: 0 10px 34px rgba(0,0,0,0.5);
   background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bot) 100%);
-  min-height: 640px;
+  min-height: max(640px, 100vh);
+  min-height: max(640px, 100dvh);
   display: flex;
   flex-direction: column;
 }
@@ -101,7 +108,7 @@ const STYLE = `
 .md-status {
   position: relative; z-index: 2;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px;
+  padding:calc(10px + var(--safe-top)) calc(12px + var(--safe-right)) 10px calc(12px + var(--safe-left));
   background: rgba(10,6,22,0.55);
   backdrop-filter: blur(3px);
   border-bottom: 2px solid var(--gold-deep);
@@ -123,7 +130,7 @@ const STYLE = `
 .md-bar-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease; }
 .md-bar-label { font-size: 9px; font-weight: 800; color: var(--ink-soft); letter-spacing: 0.3px; }
 
-.md-scene { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; padding: 14px 16px 8px; min-height: 240px; }
+.md-scene { position:relative; z-index:1; flex:1; display:flex; flex-direction:column; padding:14px calc(16px + var(--safe-right)) calc(8px + var(--safe-bottom)) calc(16px + var(--safe-left)); min-height:240px; }
 .md-floor-tag {
   align-self: center; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 13px; color: var(--bg-top);
   background: linear-gradient(180deg, #FFE49A, var(--gold)); padding: 4px 18px; border-radius: 999px;
@@ -1168,7 +1175,7 @@ const STYLE = `
 .md-pet-slot,
 .md-monster-slot { position: absolute; pointer-events: auto; }
 .md-hero-slot { left: 23%; top: 55%; transform: translate(-50%, -50%); }
-.md-pet-slot { left: 17%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
+.md-pet-slot { left:clamp(54px,18%,90px); top:73%; transform:translate(-50%,-50%) scale(.61); transform-origin:center; max-width:34%; }
 .md-pet-slot.flying { top: 68%; }
 
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
@@ -1219,7 +1226,7 @@ const STYLE = `
 @media (max-width: 380px) {
   .md-scene.battle-bg .md-arena { min-height: clamp(286px, 49dvh, 360px); }
   .md-hero-slot { left: 22%; top: 53%; }
-  .md-pet-slot { left: 13%; top: 76%; transform: translate(-50%, -50%) scale(0.61); }
+  .md-pet-slot { left:clamp(50px,17%,70px); top:72%; transform:translate(-50%,-50%) scale(.57); max-width:36%; }
   .md-pet-slot.flying { top: 69%; }
 }
 
@@ -1403,7 +1410,8 @@ const STYLE = `
 .md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 0; font-size: 9px; }
 .md-combat-header-action.skip.md-battle-art { color: transparent; font-size: 0; background-size: contain; }
 .md-combat-header-action.speed.md-battle-art {
-  color: transparent; font-size: 0; background-size: contain; background-position: center; background-repeat: no-repeat;
+  color:var(--gold); font-size:13px; background-size:contain; background-position:center; background-repeat:no-repeat;
+  text-shadow:0 1px 3px #000,0 0 5px #000; position:relative; z-index:8; min-height:28px;
 }
 .md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
 
@@ -1629,6 +1637,100 @@ const STYLE = `
   .md-equip-stage { min-height:300px; }
   .md-equip-slot { width:65px; min-height:65px; }
   .md-equip-character .md-sprite-wrap { transform:scale(1.35); }
+}
+
+/* ---- Inventory V2: responsive equipment stage + popup details ---- */
+.md-inventory-art { background-image:var(--inventory-ui-image); background-repeat:no-repeat; background-position:center; background-size:100% 100%; }
+.md-inv2-overlay { align-items:stretch; padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); background:rgba(4,3,13,.72); }
+.md-inv2-sheet { max-height:100%; border-radius:0; border:0; padding:12px 14px calc(18px + var(--safe-bottom)); background:linear-gradient(180deg,rgba(15,10,33,.88),rgba(8,5,22,.96)),url("ui/character-select-background.webp") center/cover; }
+.md-inv2-header { display:flex; align-items:center; justify-content:space-between; min-height:54px; padding:4px 2px 8px; }
+.md-inv2-header h2 { margin:0; color:var(--gold); font:800 22px/1.1 'Baloo 2'; }
+.md-inv2-header p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
+.md-inv2-ornament { display:block; width:110px; height:8px; margin-top:2px; }
+.md-inv2-close,.md-inv2-popup-close { width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,209,102,.45); background:rgba(12,8,27,.9); color:var(--ink); font-size:18px; cursor:pointer; }
+.md-inv2-equipment { position:relative; height:330px; margin:0 0 10px; overflow:hidden; border:1px solid rgba(255,209,102,.28); border-radius:20px; background:radial-gradient(circle at 50% 40%,rgba(68,188,199,.15),transparent 28%),rgba(4,3,14,.42); }
+.md-inv2-hero { position:absolute; z-index:1; left:50%; bottom:24px; width:150px; height:235px; transform:translateX(-50%); display:flex; align-items:flex-end; justify-content:center; pointer-events:none; }
+.md-inv2-hero .md-sprite-wrap { transform:scale(1.6); transform-origin:center bottom; }
+.md-inv2-hero .md-sprite-name { display:none; }
+.md-inv2-slots { position:absolute; inset:10px; z-index:2; }
+.md-inv2-equip-slot { position:absolute; width:76px; height:66px; padding:4px; border:1.5px solid rgba(255,209,102,.52); border-radius:13px; background-color:rgba(9,6,24,.86); color:var(--ink); cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.md-inv2-equip-slot.left { left:0; } .md-inv2-equip-slot.right { right:0; }
+.md-inv2-equip-slot.l1,.md-inv2-equip-slot.r1 { top:0; }
+.md-inv2-equip-slot.l2,.md-inv2-equip-slot.r2 { top:78px; }
+.md-inv2-equip-slot.l3,.md-inv2-equip-slot.r3 { top:156px; }
+.md-inv2-equip-slot.l4 { top:234px; }
+.md-inv2-equip-slot.empty { opacity:.7; border-style:dashed; }
+.md-inv2-equip-slot.rare { border-color:#459cff; } .md-inv2-equip-slot.unique { border-color:#a66cff; }
+.md-inv2-equip-slot.elite { border-color:#ff9a3d; } .md-inv2-equip-slot.mythic { border-color:#ffd166; box-shadow:0 0 12px rgba(255,209,102,.25); }
+.md-inv2-slot-icon { height:32px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+.md-inv2-slot-label { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft); font-size:8px; font-weight:800; }
+.md-inv2-badge { position:absolute; right:4px; bottom:3px; color:var(--gold); font:800 9px 'Baloo 2'; }
+.md-inv2-overflow-banner { width:100%; min-height:38px; margin:0 0 8px; border:1px solid #ef8b62; border-radius:12px; background-color:rgba(112,31,26,.72); color:#ffe2d2; font-weight:900; cursor:pointer; }
+.md-inv2-tools { margin-top:4px; }
+.md-inv2-tool-buttons { display:flex; gap:6px; }
+.md-inv2-icon-btn { min-height:36px; min-width:62px; padding:5px 8px; border:1px solid rgba(255,209,102,.42); border-radius:10px; background-color:rgba(15,9,31,.82); color:var(--ink); font-weight:800; cursor:pointer; }
+.md-inv2-cell { overflow:hidden; }
+.md-inv2-cell.rare { border-color:#459cff; } .md-inv2-cell.unique { border-color:#a66cff; }
+.md-inv2-cell.elite { border-color:#ff9a3d; } .md-inv2-cell.mythic { border-color:#ffd166; box-shadow:inset 0 0 10px rgba(255,209,102,.18); }
+.md-inv2-rarity-dot { position:absolute; left:4px; bottom:4px; width:7px; height:7px; border-radius:50%; background:#aaa; }
+.md-inv2-rarity-dot.rare { background:#459cff; } .md-inv2-rarity-dot.unique { background:#a66cff; }
+.md-inv2-rarity-dot.elite { background:#ff9a3d; } .md-inv2-rarity-dot.mythic { background:#ffd166; }
+.md-inv2-favorite { position:absolute; top:1px; right:4px; color:var(--gold); font-size:11px; }
+.md-inventory-cell-qty.enhance { right:auto; left:4px; color:#68dfe8; }
+.md-inv2-modal-layer { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left)); background:rgba(2,1,9,.76); }
+.md-inv2-popup { position:relative; width:min(100%,420px); max-height:min(86vh,700px); max-height:min(86dvh,700px); overflow-y:auto; padding:18px; border:1.5px solid var(--gold-deep); border-radius:20px; background-color:#18102d; color:var(--ink); box-shadow:0 16px 45px rgba(0,0,0,.55); }
+.md-inv2-popup h3 { margin:0 0 10px; color:var(--gold); font:800 19px 'Baloo 2'; }
+.md-inv2-popup-close { position:absolute; right:10px; top:10px; width:32px; height:32px; z-index:2; }
+.md-inv2-filter-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; color:var(--ink-soft); font-size:12px; font-weight:800; }
+.md-inv2-filter-row select { width:54%; min-height:36px; border:1px solid rgba(255,209,102,.35); border-radius:9px; background:#100a20; color:var(--ink); padding:5px 8px; }
+.md-inv2-popup-actions,.md-inv2-detail-actions { display:flex; gap:8px; margin-top:14px; }
+.md-inv2-popup-actions button,.md-inv2-detail-actions button,.md-inv2-lock,.md-inv2-overflow-row button { flex:1; min-height:40px; border:1px solid rgba(255,209,102,.5); border-radius:11px; background:#27183d; color:var(--ink); font-weight:800; cursor:pointer; }
+.md-inv2-detail { border-color:#aaa; } .md-inv2-detail.rare { border-color:#459cff; } .md-inv2-detail.unique { border-color:#a66cff; }
+.md-inv2-detail.elite { border-color:#ff9a3d; } .md-inv2-detail.mythic { border-color:#ffd166; }
+.md-inv2-detail-head { display:flex; align-items:center; gap:12px; padding-right:34px; }
+.md-inv2-detail-head h3 { margin:0; overflow-wrap:anywhere; } .md-inv2-detail-head p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
+.md-inv2-detail-icon { width:62px; height:62px; }
+.md-inv2-stat-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:14px; }
+.md-inv2-stat-list > div,.md-inv2-compare-row { display:flex; justify-content:space-between; gap:8px; padding:7px 9px; border-radius:9px; background:rgba(255,255,255,.055); font-size:11px; }
+.positive { color:#49e3ff !important; } .negative { color:#ff6b6b !important; }
+.md-inv2-enchants { margin-top:12px; padding:10px; border:1px solid rgba(166,108,255,.38); border-radius:11px; }
+.md-inv2-enchants h4 { margin:0 0 6px; color:#b893ff; font-size:10px; letter-spacing:.08em; }
+.md-inv2-enchants > div { padding:3px 0; font-size:11px; color:#d8c8ff; }
+.md-inv2-compare { margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,209,102,.28); }
+.md-inv2-compare-head { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:8px; text-align:center; color:var(--gold); font-size:11px; font-weight:800; }
+.md-inv2-compare-head small { display:block; margin-top:2px; color:var(--ink-soft); font-size:8px; font-weight:700; }
+.md-inv2-lock { width:100%; margin-top:12px; } .md-inv2-lock.active { color:var(--gold); border-color:var(--gold); }
+.md-inv2-detail-actions button:disabled,.md-inv2-overflow-row button:disabled { opacity:.38; cursor:not-allowed; }
+.md-inv2-message { color:#ff9b9b; font-size:11px; text-align:center; }
+.md-inv2-overflow-popup > p { color:var(--ink-soft); font-size:11px; }
+.md-inv2-overflow-list { display:flex; flex-direction:column; gap:6px; max-height:45vh; overflow-y:auto; }
+.md-inv2-overflow-row { display:grid; grid-template-columns:34px 1fr auto; align-items:center; gap:8px; padding:7px; border-radius:10px; background:rgba(255,255,255,.05); font-size:11px; }
+.md-inv2-overflow-row button { min-width:65px; min-height:34px; padding:4px 8px; }
+
+/* Responsive tokens are layout-specific: never scale the complete mobile UI. */
+@media (min-width:431px) and (max-width:700px) {
+  .md-root { max-width:700px; }
+  .md-inv2-sheet { padding-left:max(22px,var(--safe-left)); padding-right:max(22px,var(--safe-right)); }
+  .md-inv2-equipment { height:360px; }
+  .md-inv2-grid { grid-template-columns:repeat(6,1fr); }
+}
+@media (min-width:701px) {
+  .md-root { max-width:820px; }
+  .md-inv2-sheet { padding-left:max(34px,var(--safe-left)); padding-right:max(34px,var(--safe-right)); }
+  .md-inv2-equipment { width:min(100%,600px); height:380px; margin-left:auto; margin-right:auto; }
+  .md-inv2-grid { grid-template-columns:repeat(8,1fr); }
+}
+@media (max-width:380px) {
+  .md-inv2-sheet { padding-left:9px; padding-right:9px; }
+  .md-inv2-equipment { height:306px; }
+  .md-inv2-equip-slot { width:66px; height:60px; }
+  .md-inv2-equip-slot.l2,.md-inv2-equip-slot.r2 { top:71px; }
+  .md-inv2-equip-slot.l3,.md-inv2-equip-slot.r3 { top:142px; }
+  .md-inv2-equip-slot.l4 { top:213px; }
+  .md-inv2-hero { width:124px; height:215px; bottom:20px; }
+  .md-inv2-hero .md-sprite-wrap { transform:scale(1.42); }
+  .md-inv2-grid { gap:5px; }
+  .md-inv2-detail { padding:14px 12px; }
 }
 
 /* ---- manifest-backed item icons ---- */

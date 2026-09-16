@@ -194,7 +194,8 @@ test("existing character, skill, inventory and equipment shapes remain compatibl
 
   const equipped = { weapon: { id: "w1", type: "weapon", rarity: "common", name: "Sword", atk: 3 }, armor: null };
   const inventory = [{ id: "j1", type: "junk", junkId: "iron", rarity: "common", name: "Iron", quantity: 4 }];
-  const list = sandbox.itemsToServerList(inventory, equipped);
+  const overflow = [{ id: "o1", type: "weapon", rarity: "rare", name: "Overflow Sword", atk: 9, favorite: true }];
+  const list = sandbox.itemsToServerList(inventory, equipped, overflow);
   const rows = list.map(item => ({
     item_id: item.itemId, slot_type: item.slotType, equipped: item.equipped ? 1 : 0,
     rarity: item.rarity, name: item.name, atk: item.atk, def: item.def, hp: item.hp, mp: item.mp,
@@ -203,4 +204,6 @@ test("existing character, skill, inventory and equipment shapes remain compatibl
   const restored = sandbox.itemsFromServerList(rows);
   assert.equal(restored.equipped.weapon.id, "w1");
   assert.equal(restored.inventory[0].quantity, 4);
+  assert.equal(restored.overflow[0].id, "o1");
+  assert.equal(restored.overflow[0].favorite, true);
 });

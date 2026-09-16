@@ -62,6 +62,10 @@ function ThornieDungeons() {
   const [battleFinishing, setBattleFinishing] = useState(false);
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
+  const [inventoryOverflow, setInventoryOverflow] = useState([]);
+  const equippedRef = useRef(equipped);
+  const inventoryRef = useRef(inventory);
+  const inventoryOverflowRef = useRef(inventoryOverflow);
   const [selectedFloor, setSelectedFloor] = useState(1);
   // Encounter now supports 1-3 monsters on the field at once.
   const [monsters, setMonsters] = useState([]);
@@ -122,6 +126,9 @@ function ThornieDungeons() {
   useEffect(() => { monstersRef.current = monsters; }, [monsters]);
   useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
   useEffect(() => { playerRef.current = player; }, [player]);
+  useEffect(() => { equippedRef.current = equipped; }, [equipped]);
+  useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
+  useEffect(() => { inventoryOverflowRef.current = inventoryOverflow; }, [inventoryOverflow]);
   const [heroAnim, setHeroAnim] = useState("");
   const [petAnim, setPetAnim] = useState("");
   const [enemyAnims, setEnemyAnims] = useState({}); // uid -> anim class
@@ -249,12 +256,37 @@ function ThornieDungeons() {
     return persistenceRef.current.enqueue(context, "character_progress", { diamonds, progress }, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "character_progress", snapshot));
   }, [persistenceContextFor]);
-  const pushItems = useCallback((inv, eq, characterId) => {
+  const pushItems = useCallback((inv, eq, ov, characterId) => {
     const context = persistenceContextFor(characterId);
     if (!context || !AUTH_SESSION.getToken()) return Promise.resolve(false);
-    return persistenceRef.current.enqueue(context, "items", itemsToServerList(inv, eq), (snapshot, owner) =>
+    return persistenceRef.current.enqueue(context, "items", itemsToServerList(inv, eq, ov), (snapshot, owner) =>
       cloudSaveSnapshot(owner, "items", snapshot));
   }, [persistenceContextFor]);
+
+  const persistInventorySnapshot = useCallback((inv, eq, ov) => {
+    if (save?.characterId) return pushItems(inv, eq, ov, save.characterId);
+    return Promise.resolve(false);
+  }, [pushItems, save]);
+
+  const commitInventorySnapshot = useCallback((snapshot, eq = equippedRef.current) => {
+    inventoryRef.current = snapshot.inventory;
+    inventoryOverflowRef.current = snapshot.overflow;
+    equippedRef.current = eq;
+    setInventory(snapshot.inventory);
+    setInventoryOverflow(snapshot.overflow);
+    setEquipped(eq);
+    persistInventorySnapshot(snapshot.inventory, eq, snapshot.overflow);
+    return snapshot;
+  }, [persistInventorySnapshot]);
+
+  // Capacity-safe insertion boundary: battle, mail, daily, shop and crafting rewards
+  // all use this path so a full bag can only move items to persistent Overflow.
+  const insertCarriedItems = useCallback((items, inventoryBase = inventoryRef.current, eq = equippedRef.current) => {
+    return commitInventorySnapshot(
+      insertInventoryItems(inventoryBase, inventoryOverflowRef.current, items, INVENTORY_CAPACITY),
+      eq
+    );
+  }, [commitInventorySnapshot]);
   // Applies a claimed mail's reward into local state (gold/diamonds/junk). The existing
   // autosave effect below then persists it via the normal saveCharacterProgress/syncItems
   // flow — the server never touches characters/items directly for rewards (see worker
@@ -268,17 +300,11 @@ function ThornieDungeons() {
         diamonds: s.diamonds + (Number(reward.diamonds) || 0)
       }));
     }
-    if (reward.junk && reward.junk.length) {
-      setInventory(inv => {
-        let next = inv;
-        reward.junk.forEach(j => { next = addJunkToInventory(next, j.junkId, Number(j.quantity) || 0); });
-        return next;
-      });
-    }
-    if (reward.items && reward.items.length) {
-      setInventory(inv => [...inv, ...reward.items.map(materializeMailItem)]);
-    }
-  }, []);
+    const incoming = [];
+    (reward.junk || []).forEach(j => incoming.push({ ...makeJunkItem(j.junkId, 1), quantity: Number(j.quantity) || 1 }));
+    (reward.items || []).forEach(item => incoming.push(materializeMailItem(item)));
+    if (incoming.length) insertCarriedItems(incoming);
+  }, [insertCarriedItems]);
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.
     // runState === null -> explicit request to clear the checkpoint (both local + cloud).
@@ -322,6 +348,8 @@ function ThornieDungeons() {
     setAccount(null);
     setSave(null);
     setPlayer(null);
+    setInventory([]);
+    setInventoryOverflow([]);
     setAccountSettingsOpen(false);
     setCred(current => ({ ...current, password: "" }));
     setAuthError(reason === "session_replaced"
@@ -416,29 +444,27 @@ function ThornieDungeons() {
       return next;
     });
   }, [pushCharacterProgress]);
-  const persistItems = useCallback((inv, eq) => {
-    if (save && save.characterId) return pushItems(inv, eq, save.characterId);
-    return Promise.resolve(false);
-  }, [pushItems, save]);
+  const persistItems = useCallback((inv, eq, ov = inventoryOverflowRef.current) => {
+    inventoryRef.current = inv;
+    equippedRef.current = eq;
+    inventoryOverflowRef.current = ov;
+    return persistInventorySnapshot(inv, eq, ov);
+  }, [persistInventorySnapshot]);
   // Applies a server-confirmed craft result (see CraftingOverlay/handleCraftItem): the
   // server already validated+consumed materials/gold on ITS copy of the items/characters
   // rows, so this only needs to mirror that same removal locally, add the crafted item,
   // then push the resulting inventory/gold back up so both sides stay in sync.
   const applyCraftResult = useCallback((res) => {
     if (!res || !res.item) return;
-    setInventory(inv => {
-      let next = inv;
-      (res.consumed || []).forEach(m => {
-        next = removeJunkFromInventory(next, m.junkId, m.qty) || next;
-      });
-      next = [...next, materializeMailItem(res.item)];
-      persistItems(next, equipped);
-      return next;
+    let next = inventoryRef.current;
+    (res.consumed || []).forEach(m => {
+      next = removeJunkFromInventory(next, m.junkId, m.qty) || next;
     });
+    insertCarriedItems([materializeMailItem(res.item)], next);
     if (res.goldSpent) {
       persistSave({ ...save, gold: Math.max(0, save.gold - res.goldSpent) });
     }
-  }, [persistItems, equipped, save, persistSave]);
+  }, [insertCarriedItems, save, persistSave]);
   function spawnFloat(side, text, color) {
     const id = ++floatId.current;
     setFloats(f => [...f, {
@@ -607,19 +633,27 @@ function ThornieDungeons() {
     setAccount(nextAccount);
     const {
       equipped: eq,
-      inventory: inv
+      inventory: inv,
+      overflow: savedOverflow
     } = itemsFromServerList(res.items || []);
+    let normalized = normalizeInventoryCapacity(inv, savedOverflow, INVENTORY_CAPACITY);
     // One-time migration: the old flat `potions` counter becomes real Small HP Potion stacks
     // in the inventory the first time this character loads post-update, then gets zeroed out
     // so it doesn't keep resurrecting extra potions on every future login.
-    let finalInv = inv;
-    if (characterSlot.potions > 0) {
-      finalInv = addPotionToInventory(inv, "hp_small", characterSlot.potions);
-      pushItems(finalInv, eq, characterSlot.id);
+    const migratedPotionCounter = characterSlot.potions > 0;
+    if (migratedPotionCounter) {
+      normalized = insertInventoryItems(normalized.inventory, normalized.overflow, [{ ...makePotionItem("hp_small", 1), quantity: characterSlot.potions }], INVENTORY_CAPACITY);
       characterSlot.potions = 0;
     }
+    if (normalized.inventory.length !== inv.length || normalized.overflow.length !== savedOverflow.length || migratedPotionCounter) {
+      pushItems(normalized.inventory, eq, normalized.overflow, characterSlot.id);
+    }
+    equippedRef.current = eq;
+    inventoryRef.current = normalized.inventory;
+    inventoryOverflowRef.current = normalized.overflow;
     setEquipped(eq);
-    setInventory(finalInv);
+    setInventory(normalized.inventory);
+    setInventoryOverflow(normalized.overflow);
     // Cloud is authoritative for Battle V1 quick slots/checkpoints. Local slots
     // remain a rollout fallback for characters that have not synced settings yet.
     cloudGetBattleState(cred.url, characterSlot.id).then(async battleRes => {
@@ -699,6 +733,8 @@ function ThornieDungeons() {
     setPlayer(null);
     setSave(null);
     setResumeRun(null);
+    setInventory([]);
+    setInventoryOverflow([]);
     setCharacterSelectEntry(false);
     setPhase("characterSelect");
     return true;
@@ -728,6 +764,8 @@ function ThornieDungeons() {
     setSave(null);
     setPlayer(null);
     setResumeRun(null);
+    setInventory([]);
+    setInventoryOverflow([]);
     setCharacterSelectEntry(false);
     setLoginTransitioning(false);
     setAuthError("");
@@ -743,6 +781,8 @@ function ThornieDungeons() {
     setAccount(null);
     setSave(null);
     setPlayer(null);
+    setInventory([]);
+    setInventoryOverflow([]);
     setCred(current => ({ ...current, password: "" }));
     setAuthError(message || "กรุณาเข้าสู่ระบบใหม่");
     setPhase("login");
@@ -1117,7 +1157,7 @@ function ThornieDungeons() {
     // wood/iron/mana stone) used for crafting, selling, and the Enhancement/Empowerment systems.
     let drop = null;
     let junkDrop = null;
-    let nextInvAfterCombat = inventory;
+    const incomingItems = [];
     let nextChestPity = save.chestPity || 0;
     if (bossMonster) {
       const chestRarity = rollChestRarity(bossMonster.isEliteBoss, nextChestPity);
@@ -1125,7 +1165,7 @@ function ThornieDungeons() {
       drop = generateDropForMonster(selectedFloor, bossMonster.id, {
         forceRarity: chestRarity
       });
-      nextInvAfterCombat = [...inventory, drop];
+      incomingItems.push(drop);
     } else {
       // Each defeated monster in the pack gets its own independent roll for junk material.
       const junkDrops = [];
@@ -1134,7 +1174,7 @@ function ThornieDungeons() {
         if (Math.random() < matChance) {
           const jd = rollJunkDrop(selectedFloor, m.modifier);
           junkDrops.push(jd);
-          nextInvAfterCombat = addJunkToInventory(nextInvAfterCombat, jd.type, jd.amount);
+          incomingItems.push({ ...makeJunkItem(jd.type, 1), quantity: jd.amount });
         }
       });
       if (junkDrops.length) {
@@ -1152,17 +1192,14 @@ function ThornieDungeons() {
     const bonusJunk = [];
     currentMonsters.forEach(m => { bonusJunk.push(...rollMonsterBonusJunk(m.id)); });
     if (bonusJunk.length) {
-      bonusJunk.forEach(jd => { nextInvAfterCombat = addJunkToInventory(nextInvAfterCombat, jd.type, jd.amount); });
+      bonusJunk.forEach(jd => { incomingItems.push({ ...makeJunkItem(jd.type, 1), quantity: jd.amount }); });
       const merged = {};
       if (junkDrop) merged[junkDrop.type] = junkDrop.amount;
       bonusJunk.forEach(jd => { merged[jd.type] = (merged[jd.type] || 0) + jd.amount; });
       const [type, amount] = Object.entries(merged)[0];
       junkDrop = { type, amount };
     }
-    if (nextInvAfterCombat !== inventory) {
-      setInventory(nextInvAfterCombat);
-      persistItems(nextInvAfterCombat, equipped);
-    }
+    if (incomingItems.length) insertCarriedItems(incomingItems);
     setDropItem(drop);
     const diamondsGained = bossMonster && bossMonster.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
     let xp = save.character.xp + xpGained;
@@ -1367,11 +1404,9 @@ function ThornieDungeons() {
       ...equipped,
       [slot]: item
     };
-    let nextInv = inventory.filter(i => i.id !== item.id);
-    if (prevItem) nextInv = [...nextInv, prevItem];
-    setEquipped(newEq);
-    setInventory(nextInv);
-    persistItems(nextInv, newEq);
+    const nextInv = inventoryRef.current.filter(i => i.id !== item.id);
+    if (prevItem) insertCarriedItems([prevItem], nextInv, newEq);
+    else commitInventorySnapshot({ inventory: nextInv, overflow: inventoryOverflowRef.current }, newEq);
   }
   function unequipItem(slot) {
     const item = equipped[slot];
@@ -1380,14 +1415,12 @@ function ThornieDungeons() {
       ...equipped,
       [slot]: null
     };
-    const nextInv = [...inventory, item];
-    setEquipped(newEq);
-    setInventory(nextInv);
-    persistItems(nextInv, newEq);
+    insertCarriedItems([item], inventoryRef.current, newEq);
   }
   function sellItem(item) {
+    if (item?.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนขาย" };
     const price = sellPrice(item);
-    const nextInv = inventory.filter(i => i.id !== item.id);
+    const nextInv = inventoryRef.current.filter(i => i.id !== item.id);
     setInventory(nextInv);
     persistItems(nextInv, equipped);
     persistSave({
@@ -1431,6 +1464,21 @@ function ThornieDungeons() {
       setInventory(nextInventory);
     }
     persistItems(nextInventory, nextEquipped);
+  }
+  function toggleItemFavorite(itemId) {
+    const found = findItemAndLocation(itemId);
+    if (!found) return;
+    applyItemUpdate(itemId, item => ({ ...item, favorite: !item.favorite }));
+  }
+  function sortInventoryNow() {
+    const next = sortInventoryDeterministic(inventoryRef.current);
+    commitInventorySnapshot({ inventory: next, overflow: inventoryOverflowRef.current });
+  }
+  function claimOverflowOne(itemId) {
+    return commitInventorySnapshot(claimOverflowItem(inventoryRef.current, inventoryOverflowRef.current, itemId));
+  }
+  function claimOverflowAll() {
+    return commitInventorySnapshot(claimAllOverflowThatFits(inventoryRef.current, inventoryOverflowRef.current));
   }
   function enhanceItem(itemId) {
     const found = findItemAndLocation(itemId);
@@ -1574,20 +1622,22 @@ function ThornieDungeons() {
       message: "ถอดอุปกรณ์ก่อนแยกชิ้นส่วน"
     };
     const it = found.item;
+    if (it.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนแยกชิ้นส่วน" };
     const y = salvageYield(it.rarity);
     let nextInv = inventory.filter(i => i.id !== itemId);
-    nextInv = addJunkToInventory(nextInv, "iron", y.iron);
-    nextInv = addJunkToInventory(nextInv, "manaOre", y.manaOre);
+    const incoming = [
+      { ...makeJunkItem("iron", 1), quantity: y.iron },
+      { ...makeJunkItem("manaOre", 1), quantity: y.manaOre }
+    ];
     // Crafted (Azure) gear also returns a cut of its original materials + the recipe
     // scroll in full — see craftSalvageRefund() in crafting.js for the split.
     const refund = craftSalvageRefund(it);
     let refundMsg = "";
     if (refund && refund.length) {
-      refund.forEach(r => { nextInv = addJunkToInventory(nextInv, r.junkId, r.qty); });
+      refund.forEach(r => incoming.push({ ...makeJunkItem(r.junkId, 1), quantity: r.qty }));
       refundMsg = " + คืน " + refund.map(r => `${(JUNK_INFO[r.junkId] || {}).icon || "📦"}${r.qty}`).join(" ");
     }
-    setInventory(nextInv);
-    persistItems(nextInv, equipped);
+    insertCarriedItems(incoming, nextInv);
     return {
       ok: true,
       message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}${refundMsg}`
@@ -1604,9 +1654,7 @@ function ThornieDungeons() {
   function buyMaterial(type) {
     const price = MATERIAL_SHOP_PRICE[type];
     if (!price || save.gold < price) return;
-    const nextInv = addJunkToInventory(inventory, type, 1);
-    setInventory(nextInv);
-    persistItems(nextInv, equipped);
+    insertCarriedItems([makeJunkItem(type, 1)]);
     persistSave({
       ...save,
       gold: save.gold - price
@@ -1663,9 +1711,7 @@ function ThornieDungeons() {
       price,
       ...pureItem
     } = item;
-    const nextInv = [...inventory, pureItem];
-    setInventory(nextInv);
-    persistItems(nextInv, equipped);
+    insertCarriedItems([pureItem]);
     persistSave({
       ...save,
       gold: save.gold - item.price
@@ -1678,9 +1724,7 @@ function ThornieDungeons() {
   function buyShopPotionTier(potionId) {
     const def = getPotionDef(potionId);
     if (!def || save.gold < def.price) return;
-    const nextInv = addPotionToInventory(inventory, potionId, 1);
-    setInventory(nextInv);
-    persistItems(nextInv, equipped);
+    insertCarriedItems([makePotionItem(potionId, 1)]);
     persistSave({
       ...save,
       gold: save.gold - def.price
@@ -1790,16 +1834,10 @@ function ThornieDungeons() {
       gold: s.gold + (res.reward.gold || 0),
       diamonds: s.diamonds + (res.reward.diamonds || 0)
     }));
-    if (res.reward.junk && res.reward.junk.length) {
-      setInventory(inv => {
-        let next = inv;
-        res.reward.junk.forEach(j => { next = addJunkToInventory(next, j.junkId, Number(j.quantity) || 0); });
-        return next;
-      });
-    }
-    if (res.reward.items && res.reward.items.length) {
-      setInventory(inv => [...inv, ...res.reward.items.map(materializeMailItem)]);
-    }
+    const incoming = [];
+    (res.reward.junk || []).forEach(j => incoming.push({ ...makeJunkItem(j.junkId, 1), quantity: Number(j.quantity) || 1 }));
+    (res.reward.items || []).forEach(item => incoming.push(materializeMailItem(item)));
+    if (incoming.length) insertCarriedItems(incoming);
     setDailyLoginClaimResult({ reward: res.reward, streak: res.streak });
     return { ok: true, reward: res.reward, streak: res.streak };
   }
@@ -2099,22 +2137,21 @@ function ThornieDungeons() {
     onRequireLogin: requireLoginAfterSecurityChange,
     onLogout: logout,
     onClose: () => setAccountSettingsOpen(false)
-  }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
+  }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlayV2, {
     equipped: equipped,
     inventory: inventory,
+    overflow: inventoryOverflow,
     busy: itemActionBusy,
-    gold: save.gold,
-    diamonds: save.diamonds,
-    protectionStones: save.protectionStones || 0,
     characterName: save.characterName,
-    quickSlots: quickSlots,
-    unlockedSkillList: heroActiveSkillList(save.character.skillLevels),
-    onAssignQuickSlot: assignQuickSlot,
-    onClearQuickSlot: clearQuickSlot,
+    save: save,
     onEquip: guardItemAction(equipItem),
     onUnequip: guardItemAction(unequipItem),
     onSell: guardItemAction(sellItem),
     onSalvage: guardItemAction(salvageItem),
+    onToggleFavorite: guardItemAction(toggleItemFavorite),
+    onSort: guardItemAction(sortInventoryNow),
+    onClaimOverflow: guardItemAction(claimOverflowOne),
+    onClaimAllOverflow: guardItemAction(claimOverflowAll),
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,

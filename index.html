@@ -79,6 +79,12 @@ const STYLE = `
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@500;700;800&display=swap');
 
 .md-root {
+  /* Shared safe-area shell: artwork remains full-bleed while interactive layouts
+     consume these tokens instead of guessing device notch/home-indicator sizes. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
   --bg-top: #1B1233;
   --bg-mid: #2C1E4A;
   --bg-bot: #402C63;
@@ -109,7 +115,8 @@ const STYLE = `
   overflow: hidden;
   box-shadow: 0 10px 34px rgba(0,0,0,0.5);
   background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bot) 100%);
-  min-height: 640px;
+  min-height: max(640px, 100vh);
+  min-height: max(640px, 100dvh);
   display: flex;
   flex-direction: column;
 }
@@ -178,7 +185,7 @@ const STYLE = `
 .md-status {
   position: relative; z-index: 2;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px;
+  padding:calc(10px + var(--safe-top)) calc(12px + var(--safe-right)) 10px calc(12px + var(--safe-left));
   background: rgba(10,6,22,0.55);
   backdrop-filter: blur(3px);
   border-bottom: 2px solid var(--gold-deep);
@@ -200,7 +207,7 @@ const STYLE = `
 .md-bar-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease; }
 .md-bar-label { font-size: 9px; font-weight: 800; color: var(--ink-soft); letter-spacing: 0.3px; }
 
-.md-scene { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; padding: 14px 16px 8px; min-height: 240px; }
+.md-scene { position:relative; z-index:1; flex:1; display:flex; flex-direction:column; padding:14px calc(16px + var(--safe-right)) calc(8px + var(--safe-bottom)) calc(16px + var(--safe-left)); min-height:240px; }
 .md-floor-tag {
   align-self: center; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 13px; color: var(--bg-top);
   background: linear-gradient(180deg, #FFE49A, var(--gold)); padding: 4px 18px; border-radius: 999px;
@@ -1245,7 +1252,7 @@ const STYLE = `
 .md-pet-slot,
 .md-monster-slot { position: absolute; pointer-events: auto; }
 .md-hero-slot { left: 23%; top: 55%; transform: translate(-50%, -50%); }
-.md-pet-slot { left: 17%; top: 75%; transform: translate(-50%, -50%) scale(0.65); transform-origin: center; }
+.md-pet-slot { left:clamp(54px,18%,90px); top:73%; transform:translate(-50%,-50%) scale(.61); transform-origin:center; max-width:34%; }
 .md-pet-slot.flying { top: 68%; }
 
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
@@ -1296,7 +1303,7 @@ const STYLE = `
 @media (max-width: 380px) {
   .md-scene.battle-bg .md-arena { min-height: clamp(286px, 49dvh, 360px); }
   .md-hero-slot { left: 22%; top: 53%; }
-  .md-pet-slot { left: 13%; top: 76%; transform: translate(-50%, -50%) scale(0.61); }
+  .md-pet-slot { left:clamp(50px,17%,70px); top:72%; transform:translate(-50%,-50%) scale(.57); max-width:36%; }
   .md-pet-slot.flying { top: 69%; }
 }
 
@@ -1480,7 +1487,8 @@ const STYLE = `
 .md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 0; font-size: 9px; }
 .md-combat-header-action.skip.md-battle-art { color: transparent; font-size: 0; background-size: contain; }
 .md-combat-header-action.speed.md-battle-art {
-  color: transparent; font-size: 0; background-size: contain; background-position: center; background-repeat: no-repeat;
+  color:var(--gold); font-size:13px; background-size:contain; background-position:center; background-repeat:no-repeat;
+  text-shadow:0 1px 3px #000,0 0 5px #000; position:relative; z-index:8; min-height:28px;
 }
 .md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
 
@@ -1706,6 +1714,100 @@ const STYLE = `
   .md-equip-stage { min-height:300px; }
   .md-equip-slot { width:65px; min-height:65px; }
   .md-equip-character .md-sprite-wrap { transform:scale(1.35); }
+}
+
+/* ---- Inventory V2: responsive equipment stage + popup details ---- */
+.md-inventory-art { background-image:var(--inventory-ui-image); background-repeat:no-repeat; background-position:center; background-size:100% 100%; }
+.md-inv2-overlay { align-items:stretch; padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); background:rgba(4,3,13,.72); }
+.md-inv2-sheet { max-height:100%; border-radius:0; border:0; padding:12px 14px calc(18px + var(--safe-bottom)); background:linear-gradient(180deg,rgba(15,10,33,.88),rgba(8,5,22,.96)),url("/assets/ui/character-select-background.webp") center/cover; }
+.md-inv2-header { display:flex; align-items:center; justify-content:space-between; min-height:54px; padding:4px 2px 8px; }
+.md-inv2-header h2 { margin:0; color:var(--gold); font:800 22px/1.1 'Baloo 2'; }
+.md-inv2-header p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
+.md-inv2-ornament { display:block; width:110px; height:8px; margin-top:2px; }
+.md-inv2-close,.md-inv2-popup-close { width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,209,102,.45); background:rgba(12,8,27,.9); color:var(--ink); font-size:18px; cursor:pointer; }
+.md-inv2-equipment { position:relative; height:330px; margin:0 0 10px; overflow:hidden; border:1px solid rgba(255,209,102,.28); border-radius:20px; background:radial-gradient(circle at 50% 40%,rgba(68,188,199,.15),transparent 28%),rgba(4,3,14,.42); }
+.md-inv2-hero { position:absolute; z-index:1; left:50%; bottom:24px; width:150px; height:235px; transform:translateX(-50%); display:flex; align-items:flex-end; justify-content:center; pointer-events:none; }
+.md-inv2-hero .md-sprite-wrap { transform:scale(1.6); transform-origin:center bottom; }
+.md-inv2-hero .md-sprite-name { display:none; }
+.md-inv2-slots { position:absolute; inset:10px; z-index:2; }
+.md-inv2-equip-slot { position:absolute; width:76px; height:66px; padding:4px; border:1.5px solid rgba(255,209,102,.52); border-radius:13px; background-color:rgba(9,6,24,.86); color:var(--ink); cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.md-inv2-equip-slot.left { left:0; } .md-inv2-equip-slot.right { right:0; }
+.md-inv2-equip-slot.l1,.md-inv2-equip-slot.r1 { top:0; }
+.md-inv2-equip-slot.l2,.md-inv2-equip-slot.r2 { top:78px; }
+.md-inv2-equip-slot.l3,.md-inv2-equip-slot.r3 { top:156px; }
+.md-inv2-equip-slot.l4 { top:234px; }
+.md-inv2-equip-slot.empty { opacity:.7; border-style:dashed; }
+.md-inv2-equip-slot.rare { border-color:#459cff; } .md-inv2-equip-slot.unique { border-color:#a66cff; }
+.md-inv2-equip-slot.elite { border-color:#ff9a3d; } .md-inv2-equip-slot.mythic { border-color:#ffd166; box-shadow:0 0 12px rgba(255,209,102,.25); }
+.md-inv2-slot-icon { height:32px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+.md-inv2-slot-label { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft); font-size:8px; font-weight:800; }
+.md-inv2-badge { position:absolute; right:4px; bottom:3px; color:var(--gold); font:800 9px 'Baloo 2'; }
+.md-inv2-overflow-banner { width:100%; min-height:38px; margin:0 0 8px; border:1px solid #ef8b62; border-radius:12px; background-color:rgba(112,31,26,.72); color:#ffe2d2; font-weight:900; cursor:pointer; }
+.md-inv2-tools { margin-top:4px; }
+.md-inv2-tool-buttons { display:flex; gap:6px; }
+.md-inv2-icon-btn { min-height:36px; min-width:62px; padding:5px 8px; border:1px solid rgba(255,209,102,.42); border-radius:10px; background-color:rgba(15,9,31,.82); color:var(--ink); font-weight:800; cursor:pointer; }
+.md-inv2-cell { overflow:hidden; }
+.md-inv2-cell.rare { border-color:#459cff; } .md-inv2-cell.unique { border-color:#a66cff; }
+.md-inv2-cell.elite { border-color:#ff9a3d; } .md-inv2-cell.mythic { border-color:#ffd166; box-shadow:inset 0 0 10px rgba(255,209,102,.18); }
+.md-inv2-rarity-dot { position:absolute; left:4px; bottom:4px; width:7px; height:7px; border-radius:50%; background:#aaa; }
+.md-inv2-rarity-dot.rare { background:#459cff; } .md-inv2-rarity-dot.unique { background:#a66cff; }
+.md-inv2-rarity-dot.elite { background:#ff9a3d; } .md-inv2-rarity-dot.mythic { background:#ffd166; }
+.md-inv2-favorite { position:absolute; top:1px; right:4px; color:var(--gold); font-size:11px; }
+.md-inventory-cell-qty.enhance { right:auto; left:4px; color:#68dfe8; }
+.md-inv2-modal-layer { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left)); background:rgba(2,1,9,.76); }
+.md-inv2-popup { position:relative; width:min(100%,420px); max-height:min(86vh,700px); max-height:min(86dvh,700px); overflow-y:auto; padding:18px; border:1.5px solid var(--gold-deep); border-radius:20px; background-color:#18102d; color:var(--ink); box-shadow:0 16px 45px rgba(0,0,0,.55); }
+.md-inv2-popup h3 { margin:0 0 10px; color:var(--gold); font:800 19px 'Baloo 2'; }
+.md-inv2-popup-close { position:absolute; right:10px; top:10px; width:32px; height:32px; z-index:2; }
+.md-inv2-filter-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; color:var(--ink-soft); font-size:12px; font-weight:800; }
+.md-inv2-filter-row select { width:54%; min-height:36px; border:1px solid rgba(255,209,102,.35); border-radius:9px; background:#100a20; color:var(--ink); padding:5px 8px; }
+.md-inv2-popup-actions,.md-inv2-detail-actions { display:flex; gap:8px; margin-top:14px; }
+.md-inv2-popup-actions button,.md-inv2-detail-actions button,.md-inv2-lock,.md-inv2-overflow-row button { flex:1; min-height:40px; border:1px solid rgba(255,209,102,.5); border-radius:11px; background:#27183d; color:var(--ink); font-weight:800; cursor:pointer; }
+.md-inv2-detail { border-color:#aaa; } .md-inv2-detail.rare { border-color:#459cff; } .md-inv2-detail.unique { border-color:#a66cff; }
+.md-inv2-detail.elite { border-color:#ff9a3d; } .md-inv2-detail.mythic { border-color:#ffd166; }
+.md-inv2-detail-head { display:flex; align-items:center; gap:12px; padding-right:34px; }
+.md-inv2-detail-head h3 { margin:0; overflow-wrap:anywhere; } .md-inv2-detail-head p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
+.md-inv2-detail-icon { width:62px; height:62px; }
+.md-inv2-stat-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:14px; }
+.md-inv2-stat-list > div,.md-inv2-compare-row { display:flex; justify-content:space-between; gap:8px; padding:7px 9px; border-radius:9px; background:rgba(255,255,255,.055); font-size:11px; }
+.positive { color:#49e3ff !important; } .negative { color:#ff6b6b !important; }
+.md-inv2-enchants { margin-top:12px; padding:10px; border:1px solid rgba(166,108,255,.38); border-radius:11px; }
+.md-inv2-enchants h4 { margin:0 0 6px; color:#b893ff; font-size:10px; letter-spacing:.08em; }
+.md-inv2-enchants > div { padding:3px 0; font-size:11px; color:#d8c8ff; }
+.md-inv2-compare { margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,209,102,.28); }
+.md-inv2-compare-head { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:8px; text-align:center; color:var(--gold); font-size:11px; font-weight:800; }
+.md-inv2-compare-head small { display:block; margin-top:2px; color:var(--ink-soft); font-size:8px; font-weight:700; }
+.md-inv2-lock { width:100%; margin-top:12px; } .md-inv2-lock.active { color:var(--gold); border-color:var(--gold); }
+.md-inv2-detail-actions button:disabled,.md-inv2-overflow-row button:disabled { opacity:.38; cursor:not-allowed; }
+.md-inv2-message { color:#ff9b9b; font-size:11px; text-align:center; }
+.md-inv2-overflow-popup > p { color:var(--ink-soft); font-size:11px; }
+.md-inv2-overflow-list { display:flex; flex-direction:column; gap:6px; max-height:45vh; overflow-y:auto; }
+.md-inv2-overflow-row { display:grid; grid-template-columns:34px 1fr auto; align-items:center; gap:8px; padding:7px; border-radius:10px; background:rgba(255,255,255,.05); font-size:11px; }
+.md-inv2-overflow-row button { min-width:65px; min-height:34px; padding:4px 8px; }
+
+/* Responsive tokens are layout-specific: never scale the complete mobile UI. */
+@media (min-width:431px) and (max-width:700px) {
+  .md-root { max-width:700px; }
+  .md-inv2-sheet { padding-left:max(22px,var(--safe-left)); padding-right:max(22px,var(--safe-right)); }
+  .md-inv2-equipment { height:360px; }
+  .md-inv2-grid { grid-template-columns:repeat(6,1fr); }
+}
+@media (min-width:701px) {
+  .md-root { max-width:820px; }
+  .md-inv2-sheet { padding-left:max(34px,var(--safe-left)); padding-right:max(34px,var(--safe-right)); }
+  .md-inv2-equipment { width:min(100%,600px); height:380px; margin-left:auto; margin-right:auto; }
+  .md-inv2-grid { grid-template-columns:repeat(8,1fr); }
+}
+@media (max-width:380px) {
+  .md-inv2-sheet { padding-left:9px; padding-right:9px; }
+  .md-inv2-equipment { height:306px; }
+  .md-inv2-equip-slot { width:66px; height:60px; }
+  .md-inv2-equip-slot.l2,.md-inv2-equip-slot.r2 { top:71px; }
+  .md-inv2-equip-slot.l3,.md-inv2-equip-slot.r3 { top:142px; }
+  .md-inv2-equip-slot.l4 { top:213px; }
+  .md-inv2-hero { width:124px; height:215px; bottom:20px; }
+  .md-inv2-hero .md-sprite-wrap { transform:scale(1.42); }
+  .md-inv2-grid { gap:5px; }
+  .md-inv2-detail { padding:14px 12px; }
 }
 
 /* ---- manifest-backed item icons ---- */
@@ -2120,6 +2222,17 @@ function petUiUrl(key) {
 function petUiStyle(key) {
   const src = petUiUrl(key);
   return src ? { "--pet-ui-image": `url("${src}")` } : undefined;
+}
+
+// Inventory art is optional until Graphics publishes the inventoryUi manifest group.
+// Structural CSS remains the fallback; no screen depends on an asset request succeeding.
+function inventoryUiUrl(key) {
+  return optionalAsset(`inventoryUi.${key}`);
+}
+
+function inventoryUiStyle(key) {
+  const src = inventoryUiUrl(key);
+  return src ? { "--inventory-ui-image": `url("${src}")` } : undefined;
 }
 
 const IMAGE_PRELOAD_CACHE = new Map();
@@ -3706,7 +3819,7 @@ function characterProgressToServer(flatSave) {
 // with THAT value server-side rather than trusting anything the client puts in extra_json. This
 // is what makes it structurally impossible for syncing one character's inventory to touch
 // another's: the server's delete-stale-rows query is scoped by character_id, not just player_id.
-function itemsToServerList(inventory, equipped) {
+function itemsToServerList(inventory, equipped, overflow = []) {
   const list = [];
   const pack = (it, equippedFlag) => ({
     itemId: it.id,
@@ -3718,6 +3831,7 @@ function itemsToServerList(inventory, equipped) {
     def: it.def,
     hp: it.hp,
     mp: it.mp,
+    itemLevel: it.level || it.itemLevel || 0,
     enhanceLevel: it.enhanceLevel || 0,
     // dodgeChance/critChance/critDamage (accessory base rolls) and junk/potion stack data
     // (junkId/potionId/quantity/icon) don't have their own server columns, so they ride along
@@ -3734,21 +3848,26 @@ function itemsToServerList(inventory, equipped) {
       icon: it.icon || undefined,
       setId: it.setId || undefined,
       star: it.star || undefined,
-      craftRecipeId: it.craftRecipeId || undefined
+      craftRecipeId: it.craftRecipeId || undefined,
+      favorite: it.favorite === true || undefined,
+      overflow: it.overflow === true || undefined
     }
   });
   Object.values(equipped).forEach(it => {
     if (it) list.push(pack(it, true));
   });
   inventory.forEach(it => list.push(pack(it, false)));
+  overflow.forEach(it => list.push(pack({ ...it, overflow: true }, false)));
   return list;
 }
 function itemsFromServerList(rows) {
   const equipped = emptyEquipped();
   const inventory = [];
+  const overflow = [];
   if (!Array.isArray(rows)) return {
     equipped,
-    inventory
+    inventory,
+    overflow
   };
   rows.forEach(r => {
     // A single malformed row (bad JSON, unexpected type, etc) should never take down the whole
@@ -3756,27 +3875,29 @@ function itemsFromServerList(rows) {
     try {
       const extra = safeJsonParse(r.extra_json, {});
       if (r.slot_type === "junk") {
-        inventory.push({
+        (extra.overflow ? overflow : inventory).push({
           id: r.item_id,
           type: "junk",
           junkId: extra.junkId,
           name: r.name,
           icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
           rarity: r.rarity || "common",
-          quantity: numOr(extra.quantity, 1)
+          quantity: numOr(extra.quantity, 1),
+          favorite: extra.favorite === true
         });
         return;
       }
       if (r.slot_type === "potion") {
         const def = getPotionDef(extra.potionId);
-        inventory.push({
+        (extra.overflow ? overflow : inventory).push({
           id: r.item_id,
           type: "potion",
           potionId: extra.potionId,
           name: r.name || (def && def.name) || "Potion",
           icon: extra.icon || (def && def.icon) || "🧪",
           rarity: r.rarity || "common",
-          quantity: numOr(extra.quantity, 1)
+          quantity: numOr(extra.quantity, 1),
+          favorite: extra.favorite === true
         });
         return;
       }
@@ -3793,6 +3914,8 @@ function itemsFromServerList(rows) {
         critChance: numOr(extra.critChance, 0),
         critDamage: numOr(extra.critDamage, 0),
         enhanceLevel: numOr(r.enhance_level, 0),
+        level: numOr(r.item_level, 0),
+        favorite: extra.favorite === true,
         empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
       };
       if (extra.setId) it.setId = extra.setId;
@@ -3801,14 +3924,17 @@ function itemsFromServerList(rows) {
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });
-      if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;else inventory.push(it);
+      if (String(r.equipped) === "1" || r.equipped === true) equipped[r.slot_type] = it;
+      else if (extra.overflow) overflow.push(it);
+      else inventory.push(it);
     } catch (e) {
       console.warn("[ThornieDungeons] Skipped a corrupted item row:", e);
     }
   });
   return {
     equipped,
-    inventory
+    inventory,
+    overflow
   };
 }
 
@@ -5879,6 +6005,159 @@ function ownedPotionStacks(inventory) {
   return out;
 }
 
+// ===== systems/inventory.js =====
+// ---------- Inventory V2 capacity / overflow ----------
+// All reward and purchase insertion must cross this boundary. It is intentionally
+// presentation-agnostic so future Storage can reuse the same slot policy safely.
+const INVENTORY_CAPACITY = 30;
+const INVENTORY_STACK_MAX = 99;
+const INVENTORY_EQUIPMENT_TYPES = ["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"];
+
+function inventoryStackKey(item) {
+  if (!item) return "";
+  if (item.type === "junk" && item.junkId) return `junk:${item.junkId}`;
+  if (item.type === "potion" && item.potionId) return `potion:${item.potionId}`;
+  return "";
+}
+
+function cloneInventoryItem(item, quantity, suffix = "") {
+  const next = { ...item };
+  if (quantity !== undefined) next.quantity = quantity;
+  if (suffix) next.id = `${item.id || "item"}-${suffix}`;
+  return next;
+}
+
+function mergeStackInto(list, incoming) {
+  const key = inventoryStackKey(incoming);
+  let remaining = Math.max(0, Number(incoming.quantity) || 0);
+  if (!key || !remaining) return { list: list.slice(), remaining };
+  const next = list.map(item => {
+    if (!remaining || inventoryStackKey(item) !== key) return item;
+    const quantity = Math.max(0, Number(item.quantity) || 0);
+    const add = Math.min(INVENTORY_STACK_MAX - quantity, remaining);
+    if (add <= 0) return item;
+    remaining -= add;
+    return { ...item, quantity: quantity + add };
+  });
+  return { list: next, remaining };
+}
+
+function appendToOverflow(overflow, item, quantity) {
+  const initial = cloneInventoryItem(item, quantity);
+  const merged = mergeStackInto(overflow, initial);
+  const next = merged.list;
+  let remaining = merged.remaining;
+  if (!inventoryStackKey(item)) {
+    next.push(cloneInventoryItem(item));
+    return next;
+  }
+  let part = 0;
+  while (remaining > 0) {
+    const chunk = Math.min(INVENTORY_STACK_MAX, remaining);
+    next.push(cloneInventoryItem(item, chunk, `overflow-${Date.now()}-${part++}`));
+    remaining -= chunk;
+  }
+  return next;
+}
+
+function insertInventoryItems(inventory, overflow, items, capacity = INVENTORY_CAPACITY) {
+  let nextInventory = (inventory || []).slice();
+  let nextOverflow = (overflow || []).slice();
+  let insertedCount = 0;
+  let overflowedCount = 0;
+  (Array.isArray(items) ? items : [items]).filter(Boolean).forEach((item, itemIndex) => {
+    const stackKey = inventoryStackKey(item);
+    if (!stackKey) {
+      if (nextInventory.length < capacity) {
+        nextInventory.push(cloneInventoryItem(item));
+        insertedCount += 1;
+      } else {
+        nextOverflow = appendToOverflow(nextOverflow, item);
+        overflowedCount += 1;
+      }
+      return;
+    }
+    const quantity = Math.max(1, Number(item.quantity) || 1);
+    const merged = mergeStackInto(nextInventory, { ...item, quantity });
+    nextInventory = merged.list;
+    let remaining = merged.remaining;
+    insertedCount += quantity - remaining;
+    let part = 0;
+    while (remaining > 0 && nextInventory.length < capacity) {
+      const chunk = Math.min(INVENTORY_STACK_MAX, remaining);
+      nextInventory.push(cloneInventoryItem(item, chunk, `slot-${Date.now()}-${itemIndex}-${part++}`));
+      remaining -= chunk;
+      insertedCount += chunk;
+    }
+    if (remaining > 0) {
+      nextOverflow = appendToOverflow(nextOverflow, item, remaining);
+      overflowedCount += remaining;
+    }
+  });
+  return { inventory: nextInventory, overflow: nextOverflow, insertedCount, overflowedCount };
+}
+
+function normalizeInventoryCapacity(inventory, overflow, capacity = INVENTORY_CAPACITY) {
+  return insertInventoryItems([], overflow || [], inventory || [], capacity);
+}
+
+function claimOverflowItem(inventory, overflow, itemId, capacity = INVENTORY_CAPACITY) {
+  const index = (overflow || []).findIndex(item => item.id === itemId);
+  if (index < 0) return { inventory: (inventory || []).slice(), overflow: (overflow || []).slice(), claimed: 0 };
+  const item = overflow[index];
+  const without = overflow.filter((_, i) => i !== index);
+  const result = insertInventoryItems(inventory, [], [item], capacity);
+  let nextOverflow = without;
+  if (result.overflow.length) nextOverflow.splice(index, 0, ...result.overflow);
+  return { inventory: result.inventory, overflow: nextOverflow, claimed: result.insertedCount };
+}
+
+function claimAllOverflowThatFits(inventory, overflow, capacity = INVENTORY_CAPACITY) {
+  let nextInventory = (inventory || []).slice();
+  let remaining = [];
+  let claimed = 0;
+  (overflow || []).forEach(item => {
+    const result = insertInventoryItems(nextInventory, [], [item], capacity);
+    nextInventory = result.inventory;
+    remaining.push(...result.overflow);
+    claimed += result.insertedCount;
+  });
+  return { inventory: nextInventory, overflow: remaining, claimed };
+}
+
+function inventoryRarityKey(item) {
+  const rarity = String(item?.rarity || "common").toLowerCase();
+  return rarity === "azure" || rarity === "legendary" ? "mythic" : rarity;
+}
+
+function inventoryItemCategory(item) {
+  if (INVENTORY_EQUIPMENT_TYPES.includes(item?.type)) return "equipment";
+  return item?.type === "potion" ? "consumable" : item?.type === "junk" ? "material" : "other";
+}
+
+function isItemEnchanted(item) {
+  return Array.isArray(item?.empowerSlots) && item.empowerSlots.some(Boolean);
+}
+
+function sortInventoryDeterministic(inventory) {
+  const categories = { equipment: 0, consumable: 1, material: 2, other: 3 };
+  const rarities = { mythic: 5, elite: 4, unique: 3, rare: 2, common: 1, junk: 0 };
+  return (inventory || []).slice().sort((a, b) =>
+    (categories[inventoryItemCategory(a)] ?? 9) - (categories[inventoryItemCategory(b)] ?? 9)
+    || (rarities[inventoryRarityKey(b)] || 0) - (rarities[inventoryRarityKey(a)] || 0)
+    || (Number(b.enhanceLevel) || 0) - (Number(a.enhanceLevel) || 0)
+    || String(a.type || "").localeCompare(String(b.type || ""))
+    || String(a.name || "").localeCompare(String(b.name || ""))
+    || String(a.id || "").localeCompare(String(b.id || ""))
+  );
+}
+
+if (typeof module !== "undefined" && module.exports) module.exports = {
+  INVENTORY_CAPACITY, inventoryStackKey, insertInventoryItems, normalizeInventoryCapacity,
+  claimOverflowItem, claimAllOverflowThatFits, inventoryRarityKey, inventoryItemCategory,
+  isItemEnchanted, sortInventoryDeterministic
+};
+
 // ===== systems/salvage.js =====
 // ---------- salvage, protection stone, empower reroll/lock, chest pity, material shop ----------
 // Salvaging gear now yields junk items (iron / mana stone) directly into the inventory.
@@ -6523,7 +6802,8 @@ const emptyEquipped = () => ({
   chest: null,
   gloves: null,
   boots: null,
-  accessory: null
+  accessory: null,
+  wings: null
 });
 
 // ===== ui/battleVfx.js =====
@@ -6740,6 +7020,10 @@ function ThornieDungeons() {
   const [battleFinishing, setBattleFinishing] = useState(false);
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
+  const [inventoryOverflow, setInventoryOverflow] = useState([]);
+  const equippedRef = useRef(equipped);
+  const inventoryRef = useRef(inventory);
+  const inventoryOverflowRef = useRef(inventoryOverflow);
   const [selectedFloor, setSelectedFloor] = useState(1);
   // Encounter now supports 1-3 monsters on the field at once.
   const [monsters, setMonsters] = useState([]);
@@ -6803,6 +7087,9 @@ function ThornieDungeons() {
   useEffect(() => { monstersRef.current = monsters; }, [monsters]);
   useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
   useEffect(() => { playerRef.current = player; }, [player]);
+  useEffect(() => { equippedRef.current = equipped; }, [equipped]);
+  useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
+  useEffect(() => { inventoryOverflowRef.current = inventoryOverflow; }, [inventoryOverflow]);
   const [heroAnim, setHeroAnim] = useState("");
   const [petAnim, setPetAnim] = useState("");
   const [enemyAnims, setEnemyAnims] = useState({}); // uid -> anim class
@@ -6930,12 +7217,37 @@ function ThornieDungeons() {
     return persistenceRef.current.enqueue(context, "character_progress", { diamonds, progress }, (snapshot, owner) =>
       cloudSaveSnapshot(owner, "character_progress", snapshot));
   }, [persistenceContextFor]);
-  const pushItems = useCallback((inv, eq, characterId) => {
+  const pushItems = useCallback((inv, eq, ov, characterId) => {
     const context = persistenceContextFor(characterId);
     if (!context || !AUTH_SESSION.getToken()) return Promise.resolve(false);
-    return persistenceRef.current.enqueue(context, "items", itemsToServerList(inv, eq), (snapshot, owner) =>
+    return persistenceRef.current.enqueue(context, "items", itemsToServerList(inv, eq, ov), (snapshot, owner) =>
       cloudSaveSnapshot(owner, "items", snapshot));
   }, [persistenceContextFor]);
+
+  const persistInventorySnapshot = useCallback((inv, eq, ov) => {
+    if (save?.characterId) return pushItems(inv, eq, ov, save.characterId);
+    return Promise.resolve(false);
+  }, [pushItems, save]);
+
+  const commitInventorySnapshot = useCallback((snapshot, eq = equippedRef.current) => {
+    inventoryRef.current = snapshot.inventory;
+    inventoryOverflowRef.current = snapshot.overflow;
+    equippedRef.current = eq;
+    setInventory(snapshot.inventory);
+    setInventoryOverflow(snapshot.overflow);
+    setEquipped(eq);
+    persistInventorySnapshot(snapshot.inventory, eq, snapshot.overflow);
+    return snapshot;
+  }, [persistInventorySnapshot]);
+
+  // Capacity-safe insertion boundary: battle, mail, daily, shop and crafting rewards
+  // all use this path so a full bag can only move items to persistent Overflow.
+  const insertCarriedItems = useCallback((items, inventoryBase = inventoryRef.current, eq = equippedRef.current) => {
+    return commitInventorySnapshot(
+      insertInventoryItems(inventoryBase, inventoryOverflowRef.current, items, INVENTORY_CAPACITY),
+      eq
+    );
+  }, [commitInventorySnapshot]);
   // Applies a claimed mail's reward into local state (gold/diamonds/junk). The existing
   // autosave effect below then persists it via the normal saveCharacterProgress/syncItems
   // flow — the server never touches characters/items directly for rewards (see worker
@@ -6949,17 +7261,11 @@ function ThornieDungeons() {
         diamonds: s.diamonds + (Number(reward.diamonds) || 0)
       }));
     }
-    if (reward.junk && reward.junk.length) {
-      setInventory(inv => {
-        let next = inv;
-        reward.junk.forEach(j => { next = addJunkToInventory(next, j.junkId, Number(j.quantity) || 0); });
-        return next;
-      });
-    }
-    if (reward.items && reward.items.length) {
-      setInventory(inv => [...inv, ...reward.items.map(materializeMailItem)]);
-    }
-  }, []);
+    const incoming = [];
+    (reward.junk || []).forEach(j => incoming.push({ ...makeJunkItem(j.junkId, 1), quantity: Number(j.quantity) || 1 }));
+    (reward.items || []).forEach(item => incoming.push(materializeMailItem(item)));
+    if (incoming.length) insertCarriedItems(incoming);
+  }, [insertCarriedItems]);
   const pushRunState = useCallback((runState) => {
     // runState === undefined -> caller has nothing to save yet, skip.
     // runState === null -> explicit request to clear the checkpoint (both local + cloud).
@@ -7003,6 +7309,8 @@ function ThornieDungeons() {
     setAccount(null);
     setSave(null);
     setPlayer(null);
+    setInventory([]);
+    setInventoryOverflow([]);
     setAccountSettingsOpen(false);
     setCred(current => ({ ...current, password: "" }));
     setAuthError(reason === "session_replaced"
@@ -7097,29 +7405,27 @@ function ThornieDungeons() {
       return next;
     });
   }, [pushCharacterProgress]);
-  const persistItems = useCallback((inv, eq) => {
-    if (save && save.characterId) return pushItems(inv, eq, save.characterId);
-    return Promise.resolve(false);
-  }, [pushItems, save]);
+  const persistItems = useCallback((inv, eq, ov = inventoryOverflowRef.current) => {
+    inventoryRef.current = inv;
+    equippedRef.current = eq;
+    inventoryOverflowRef.current = ov;
+    return persistInventorySnapshot(inv, eq, ov);
+  }, [persistInventorySnapshot]);
   // Applies a server-confirmed craft result (see CraftingOverlay/handleCraftItem): the
   // server already validated+consumed materials/gold on ITS copy of the items/characters
   // rows, so this only needs to mirror that same removal locally, add the crafted item,
   // then push the resulting inventory/gold back up so both sides stay in sync.
   const applyCraftResult = useCallback((res) => {
     if (!res || !res.item) return;
-    setInventory(inv => {
-      let next = inv;
-      (res.consumed || []).forEach(m => {
-        next = removeJunkFromInventory(next, m.junkId, m.qty) || next;
-      });
-      next = [...next, materializeMailItem(res.item)];
-      persistItems(next, equipped);
-      return next;
+    let next = inventoryRef.current;
+    (res.consumed || []).forEach(m => {
+      next = removeJunkFromInventory(next, m.junkId, m.qty) || next;
     });
+    insertCarriedItems([materializeMailItem(res.item)], next);
     if (res.goldSpent) {
       persistSave({ ...save, gold: Math.max(0, save.gold - res.goldSpent) });
     }
-  }, [persistItems, equipped, save, persistSave]);
+  }, [insertCarriedItems, save, persistSave]);
   function spawnFloat(side, text, color) {
     const id = ++floatId.current;
     setFloats(f => [...f, {
@@ -7288,19 +7594,27 @@ function ThornieDungeons() {
     setAccount(nextAccount);
     const {
       equipped: eq,
-      inventory: inv
+      inventory: inv,
+      overflow: savedOverflow
     } = itemsFromServerList(res.items || []);
+    let normalized = normalizeInventoryCapacity(inv, savedOverflow, INVENTORY_CAPACITY);
     // One-time migration: the old flat `potions` counter becomes real Small HP Potion stacks
     // in the inventory the first time this character loads post-update, then gets zeroed out
     // so it doesn't keep resurrecting extra potions on every future login.
-    let finalInv = inv;
-    if (characterSlot.potions > 0) {
-      finalInv = addPotionToInventory(inv, "hp_small", characterSlot.potions);
-      pushItems(finalInv, eq, characterSlot.id);
+    const migratedPotionCounter = characterSlot.potions > 0;
+    if (migratedPotionCounter) {
+      normalized = insertInventoryItems(normalized.inventory, normalized.overflow, [{ ...makePotionItem("hp_small", 1), quantity: characterSlot.potions }], INVENTORY_CAPACITY);
       characterSlot.potions = 0;
     }
+    if (normalized.inventory.length !== inv.length || normalized.overflow.length !== savedOverflow.length || migratedPotionCounter) {
+      pushItems(normalized.inventory, eq, normalized.overflow, characterSlot.id);
+    }
+    equippedRef.current = eq;
+    inventoryRef.current = normalized.inventory;
+    inventoryOverflowRef.current = normalized.overflow;
     setEquipped(eq);
-    setInventory(finalInv);
+    setInventory(normalized.inventory);
+    setInventoryOverflow(normalized.overflow);
     // Cloud is authoritative for Battle V1 quick slots/checkpoints. Local slots
     // remain a rollout fallback for characters that have not synced settings yet.
     cloudGetBattleState(cred.url, characterSlot.id).then(async battleRes => {
@@ -7380,6 +7694,8 @@ function ThornieDungeons() {
     setPlayer(null);
     setSave(null);
     setResumeRun(null);
+    setInventory([]);
+    setInventoryOverflow([]);
     setCharacterSelectEntry(false);
     setPhase("characterSelect");
     return true;
@@ -7409,6 +7725,8 @@ function ThornieDungeons() {
     setSave(null);
     setPlayer(null);
     setResumeRun(null);
+    setInventory([]);
+    setInventoryOverflow([]);
     setCharacterSelectEntry(false);
     setLoginTransitioning(false);
     setAuthError("");
@@ -7424,6 +7742,8 @@ function ThornieDungeons() {
     setAccount(null);
     setSave(null);
     setPlayer(null);
+    setInventory([]);
+    setInventoryOverflow([]);
     setCred(current => ({ ...current, password: "" }));
     setAuthError(message || "กรุณาเข้าสู่ระบบใหม่");
     setPhase("login");
@@ -7811,7 +8131,7 @@ function ThornieDungeons() {
     // wood/iron/mana stone) used for crafting, selling, and the Enhancement/Empowerment systems.
     let drop = null;
     let junkDrop = null;
-    let nextInvAfterCombat = inventory;
+    const incomingItems = [];
     let nextChestPity = save.chestPity || 0;
     if (bossMonster) {
       const chestRarity = rollChestRarity(bossMonster.isEliteBoss, nextChestPity);
@@ -7819,7 +8139,7 @@ function ThornieDungeons() {
       drop = generateDropForMonster(selectedFloor, bossMonster.id, {
         forceRarity: chestRarity
       });
-      nextInvAfterCombat = [...inventory, drop];
+      incomingItems.push(drop);
     } else {
       // Each defeated monster in the pack gets its own independent roll for junk material.
       const junkDrops = [];
@@ -7828,7 +8148,7 @@ function ThornieDungeons() {
         if (Math.random() < matChance) {
           const jd = rollJunkDrop(selectedFloor, m.modifier);
           junkDrops.push(jd);
-          nextInvAfterCombat = addJunkToInventory(nextInvAfterCombat, jd.type, jd.amount);
+          incomingItems.push({ ...makeJunkItem(jd.type, 1), quantity: jd.amount });
         }
       });
       if (junkDrops.length) {
@@ -7846,17 +8166,14 @@ function ThornieDungeons() {
     const bonusJunk = [];
     currentMonsters.forEach(m => { bonusJunk.push(...rollMonsterBonusJunk(m.id)); });
     if (bonusJunk.length) {
-      bonusJunk.forEach(jd => { nextInvAfterCombat = addJunkToInventory(nextInvAfterCombat, jd.type, jd.amount); });
+      bonusJunk.forEach(jd => { incomingItems.push({ ...makeJunkItem(jd.type, 1), quantity: jd.amount }); });
       const merged = {};
       if (junkDrop) merged[junkDrop.type] = junkDrop.amount;
       bonusJunk.forEach(jd => { merged[jd.type] = (merged[jd.type] || 0) + jd.amount; });
       const [type, amount] = Object.entries(merged)[0];
       junkDrop = { type, amount };
     }
-    if (nextInvAfterCombat !== inventory) {
-      setInventory(nextInvAfterCombat);
-      persistItems(nextInvAfterCombat, equipped);
-    }
+    if (incomingItems.length) insertCarriedItems(incomingItems);
     setDropItem(drop);
     const diamondsGained = bossMonster && bossMonster.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
     let xp = save.character.xp + xpGained;
@@ -8061,11 +8378,9 @@ function ThornieDungeons() {
       ...equipped,
       [slot]: item
     };
-    let nextInv = inventory.filter(i => i.id !== item.id);
-    if (prevItem) nextInv = [...nextInv, prevItem];
-    setEquipped(newEq);
-    setInventory(nextInv);
-    persistItems(nextInv, newEq);
+    const nextInv = inventoryRef.current.filter(i => i.id !== item.id);
+    if (prevItem) insertCarriedItems([prevItem], nextInv, newEq);
+    else commitInventorySnapshot({ inventory: nextInv, overflow: inventoryOverflowRef.current }, newEq);
   }
   function unequipItem(slot) {
     const item = equipped[slot];
@@ -8074,14 +8389,12 @@ function ThornieDungeons() {
       ...equipped,
       [slot]: null
     };
-    const nextInv = [...inventory, item];
-    setEquipped(newEq);
-    setInventory(nextInv);
-    persistItems(nextInv, newEq);
+    insertCarriedItems([item], inventoryRef.current, newEq);
   }
   function sellItem(item) {
+    if (item?.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนขาย" };
     const price = sellPrice(item);
-    const nextInv = inventory.filter(i => i.id !== item.id);
+    const nextInv = inventoryRef.current.filter(i => i.id !== item.id);
     setInventory(nextInv);
     persistItems(nextInv, equipped);
     persistSave({
@@ -8125,6 +8438,21 @@ function ThornieDungeons() {
       setInventory(nextInventory);
     }
     persistItems(nextInventory, nextEquipped);
+  }
+  function toggleItemFavorite(itemId) {
+    const found = findItemAndLocation(itemId);
+    if (!found) return;
+    applyItemUpdate(itemId, item => ({ ...item, favorite: !item.favorite }));
+  }
+  function sortInventoryNow() {
+    const next = sortInventoryDeterministic(inventoryRef.current);
+    commitInventorySnapshot({ inventory: next, overflow: inventoryOverflowRef.current });
+  }
+  function claimOverflowOne(itemId) {
+    return commitInventorySnapshot(claimOverflowItem(inventoryRef.current, inventoryOverflowRef.current, itemId));
+  }
+  function claimOverflowAll() {
+    return commitInventorySnapshot(claimAllOverflowThatFits(inventoryRef.current, inventoryOverflowRef.current));
   }
   function enhanceItem(itemId) {
     const found = findItemAndLocation(itemId);
@@ -8268,20 +8596,22 @@ function ThornieDungeons() {
       message: "ถอดอุปกรณ์ก่อนแยกชิ้นส่วน"
     };
     const it = found.item;
+    if (it.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนแยกชิ้นส่วน" };
     const y = salvageYield(it.rarity);
     let nextInv = inventory.filter(i => i.id !== itemId);
-    nextInv = addJunkToInventory(nextInv, "iron", y.iron);
-    nextInv = addJunkToInventory(nextInv, "manaOre", y.manaOre);
+    const incoming = [
+      { ...makeJunkItem("iron", 1), quantity: y.iron },
+      { ...makeJunkItem("manaOre", 1), quantity: y.manaOre }
+    ];
     // Crafted (Azure) gear also returns a cut of its original materials + the recipe
     // scroll in full — see craftSalvageRefund() in crafting.js for the split.
     const refund = craftSalvageRefund(it);
     let refundMsg = "";
     if (refund && refund.length) {
-      refund.forEach(r => { nextInv = addJunkToInventory(nextInv, r.junkId, r.qty); });
+      refund.forEach(r => incoming.push({ ...makeJunkItem(r.junkId, 1), quantity: r.qty }));
       refundMsg = " + คืน " + refund.map(r => `${(JUNK_INFO[r.junkId] || {}).icon || "📦"}${r.qty}`).join(" ");
     }
-    setInventory(nextInv);
-    persistItems(nextInv, equipped);
+    insertCarriedItems(incoming, nextInv);
     return {
       ok: true,
       message: `♻️ แยกชิ้นส่วนได้ 🔩${y.iron} 🔮${y.manaOre}${refundMsg}`
@@ -8298,9 +8628,7 @@ function ThornieDungeons() {
   function buyMaterial(type) {
     const price = MATERIAL_SHOP_PRICE[type];
     if (!price || save.gold < price) return;
-    const nextInv = addJunkToInventory(inventory, type, 1);
-    setInventory(nextInv);
-    persistItems(nextInv, equipped);
+    insertCarriedItems([makeJunkItem(type, 1)]);
     persistSave({
       ...save,
       gold: save.gold - price
@@ -8357,9 +8685,7 @@ function ThornieDungeons() {
       price,
       ...pureItem
     } = item;
-    const nextInv = [...inventory, pureItem];
-    setInventory(nextInv);
-    persistItems(nextInv, equipped);
+    insertCarriedItems([pureItem]);
     persistSave({
       ...save,
       gold: save.gold - item.price
@@ -8372,9 +8698,7 @@ function ThornieDungeons() {
   function buyShopPotionTier(potionId) {
     const def = getPotionDef(potionId);
     if (!def || save.gold < def.price) return;
-    const nextInv = addPotionToInventory(inventory, potionId, 1);
-    setInventory(nextInv);
-    persistItems(nextInv, equipped);
+    insertCarriedItems([makePotionItem(potionId, 1)]);
     persistSave({
       ...save,
       gold: save.gold - def.price
@@ -8484,16 +8808,10 @@ function ThornieDungeons() {
       gold: s.gold + (res.reward.gold || 0),
       diamonds: s.diamonds + (res.reward.diamonds || 0)
     }));
-    if (res.reward.junk && res.reward.junk.length) {
-      setInventory(inv => {
-        let next = inv;
-        res.reward.junk.forEach(j => { next = addJunkToInventory(next, j.junkId, Number(j.quantity) || 0); });
-        return next;
-      });
-    }
-    if (res.reward.items && res.reward.items.length) {
-      setInventory(inv => [...inv, ...res.reward.items.map(materializeMailItem)]);
-    }
+    const incoming = [];
+    (res.reward.junk || []).forEach(j => incoming.push({ ...makeJunkItem(j.junkId, 1), quantity: Number(j.quantity) || 1 }));
+    (res.reward.items || []).forEach(item => incoming.push(materializeMailItem(item)));
+    if (incoming.length) insertCarriedItems(incoming);
     setDailyLoginClaimResult({ reward: res.reward, streak: res.streak });
     return { ok: true, reward: res.reward, streak: res.streak };
   }
@@ -8793,22 +9111,21 @@ function ThornieDungeons() {
     onRequireLogin: requireLoginAfterSecurityChange,
     onLogout: logout,
     onClose: () => setAccountSettingsOpen(false)
-  }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlay, {
+  }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlayV2, {
     equipped: equipped,
     inventory: inventory,
+    overflow: inventoryOverflow,
     busy: itemActionBusy,
-    gold: save.gold,
-    diamonds: save.diamonds,
-    protectionStones: save.protectionStones || 0,
     characterName: save.characterName,
-    quickSlots: quickSlots,
-    unlockedSkillList: heroActiveSkillList(save.character.skillLevels),
-    onAssignQuickSlot: assignQuickSlot,
-    onClearQuickSlot: clearQuickSlot,
+    save: save,
     onEquip: guardItemAction(equipItem),
     onUnequip: guardItemAction(unequipItem),
     onSell: guardItemAction(sellItem),
     onSalvage: guardItemAction(salvageItem),
+    onToggleFavorite: guardItemAction(toggleItemFavorite),
+    onSort: guardItemAction(sortInventoryNow),
+    onClaimOverflow: guardItemAction(claimOverflowOne),
+    onClaimAllOverflow: guardItemAction(claimOverflowAll),
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,
@@ -12336,6 +12653,162 @@ function DefeatScreen({
     onClick: onMap
   }, "🗺️ Back to Map")));
 }
+function inventoryStatRows(item) {
+  const labels = { hp: "HP", mp: "SP", atk: "ATK", def: "DEF", accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit", critDamage: "Crit DMG", dropBonus: "Drop" };
+  const finalStats = itemBonus(item) || {};
+  return Object.keys(labels).filter(key => Number(finalStats[key])).map(key => ({ key, label: labels[key], value: Math.round(Number(finalStats[key]) * 10) / 10 }));
+}
+
+function inventoryComparisonRows(save, equipped, item) {
+  if (!save || !item || !SLOT_ORDER.includes(item.type)) return [];
+  const basePlayer = freshPlayerFromSave(save);
+  const currentStats = getStats(basePlayer, equipped);
+  const nextStats = getStats(basePlayer, { ...equipped, [item.type]: item });
+  const definitions = [
+    ["maxHp", "HP"], ["maxMp", "SP"], ["atk", "ATK"], ["def", "DEF"], ["speed", "SPD"],
+    ["accuracy", "Accuracy"], ["dodgeChance", "Dodge"], ["critChance", "Crit"],
+    ["critDamage", "Crit DMG"], ["dropBonus", "Drop"]
+  ];
+  const rows = definitions.map(([key, label]) => ({ key, label, current: Number(currentStats[key]) || 0, next: Number(nextStats[key]) || 0 }))
+    .filter(row => Math.abs(row.next - row.current) > 0.0001);
+  const currentCp = combatPower(currentStats, basePlayer.level);
+  const nextCp = combatPower(nextStats, basePlayer.level);
+  if (currentCp !== nextCp) rows.unshift({ key: "cp", label: "CP", current: currentCp, next: nextCp });
+  return rows;
+}
+
+function InventoryOverlayV2({
+  equipped,
+  inventory,
+  overflow,
+  busy,
+  characterName,
+  save,
+  onEquip,
+  onUnequip,
+  onSell,
+  onSalvage,
+  onToggleFavorite,
+  onSort,
+  onClaimOverflow,
+  onClaimAllOverflow,
+  onClose
+}) {
+  const [detail, setDetail] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [filters, setFilters] = useState({ category: "all", type: "all", rarity: "all", enhanced: "all", enchanted: "all" });
+  const updateFilter = (key, value) => setFilters(current => ({ ...current, [key]: value }));
+  const filtered = inventory.filter(item => {
+    const category = inventoryItemCategory(item);
+    if (filters.category !== "all" && category !== filters.category) return false;
+    if (filters.type !== "all" && item.type !== filters.type) return false;
+    if (filters.rarity !== "all" && inventoryRarityKey(item) !== filters.rarity) return false;
+    if (filters.enhanced === "yes" && !(Number(item.enhanceLevel) > 0)) return false;
+    if (filters.enhanced === "no" && Number(item.enhanceLevel) > 0) return false;
+    if (filters.enchanted === "yes" && !isItemEnchanted(item)) return false;
+    if (filters.enchanted === "no" && isItemEnchanted(item)) return false;
+    return true;
+  });
+  const visibleCount = expanded ? INVENTORY_CAPACITY : 10;
+  const slotCount = expanded ? INVENTORY_CAPACITY : 10;
+  const currentDetail = detail?.location === "equipped" ? equipped[detail.slot] : inventory.find(item => item.id === detail?.id);
+  const currentEquipped = currentDetail && SLOT_ORDER.includes(currentDetail.type) ? equipped[currentDetail.type] : null;
+  const compareRows = detail?.location === "inventory" ? inventoryComparisonRows(save, equipped, currentDetail) : [];
+  const rarityLabel = item => ({ common: "Common", junk: "Junk", rare: "Rare", unique: "Unique", elite: "Elite", mythic: "Mythic" })[inventoryRarityKey(item)] || "Common";
+  const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
+  const frameStyle = inventoryUiStyle("equipmentSlotFrame");
+  const closeDetail = () => { setDetail(null); setMessage(""); };
+  const destructiveConfirm = (item, action) => {
+    if (!item) return false;
+    if (["elite", "mythic"].includes(inventoryRarityKey(item)) || Number(item.enhanceLevel) > 0) {
+      return window.confirm(`${action} ${itemDisplayName(item)} หรือไม่?`);
+    }
+    return true;
+  };
+  const runSell = () => {
+    if (!currentDetail || currentDetail.favorite || !destructiveConfirm(currentDetail, "ขาย")) return;
+    const result = onSell(currentDetail);
+    if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้"); else closeDetail();
+  };
+  const runSalvage = () => {
+    if (!currentDetail || currentDetail.favorite || !destructiveConfirm(currentDetail, "แยกชิ้นส่วน")) return;
+    const result = onSalvage(currentDetail.id);
+    if (result?.ok === false) setMessage(result.message || "ไม่สามารถแยกชิ้นส่วนได้"); else closeDetail();
+  };
+  const SLOT_POSITIONS = {
+    helmet: "left l1", chest: "left l2", boots: "left l3", wings: "left l4",
+    gloves: "right r1", weapon: "right r2", accessory: "right r3"
+  };
+  const renderSlot = slot => {
+    const item = equipped[slot];
+    return /*#__PURE__*/React.createElement("button", {
+      key: slot,
+      type: "button",
+      className: `md-inv2-equip-slot md-inventory-art ${SLOT_POSITIONS[slot]} ${item ? `filled ${inventoryRarityKey(item)}` : "empty"}`,
+      style: frameStyle,
+      onClick: () => item && setDetail({ location: "equipped", slot })
+    }, /*#__PURE__*/React.createElement("span", { className: "md-inv2-slot-icon" }, item
+      ? /*#__PURE__*/React.createElement(GameIcon, { item, fallback: item.icon || SLOT_ICON[slot], className: "md-game-icon md-equipped-item-icon", alt: itemDisplayName(item) })
+      : SLOT_ICON[slot]), /*#__PURE__*/React.createElement("span", { className: "md-inv2-slot-label" }, SLOT_LABEL[slot]), item?.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inv2-badge" }, `+${item.enhanceLevel}`));
+  };
+  const renderCell = (item, index) => /*#__PURE__*/React.createElement("button", {
+    key: item ? item.id : `empty-${index}`,
+    type: "button",
+    className: `md-inventory-cell md-inv2-cell ${item ? inventoryRarityKey(item) : "empty"}`,
+    onClick: () => item && setDetail({ location: "inventory", id: item.id })
+  }, item ? /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, /*#__PURE__*/React.createElement(GameIcon, { item, fallback: item.icon || SLOT_ICON[item.type] || "📦", className: "md-game-icon md-inventory-item-icon", alt: itemDisplayName(item) })),
+    /*#__PURE__*/React.createElement("span", { className: `md-inv2-rarity-dot ${inventoryRarityKey(item)}` }),
+    item.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty enhance" }, `+${item.enhanceLevel}`),
+    item.quantity > 1 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, `x${item.quantity}`)
+  ) : null);
+  const select = (key, label, values) => /*#__PURE__*/React.createElement("label", { className: "md-inv2-filter-row", key }, /*#__PURE__*/React.createElement("span", null, label), /*#__PURE__*/React.createElement("select", { value: filters[key], onChange: event => updateFilter(key, event.target.value) }, values.map(([value, text]) => /*#__PURE__*/React.createElement("option", { key: value, value }, text))));
+
+  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay md-inv2-overlay" }, /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
+    /*#__PURE__*/React.createElement("header", { className: "md-inv2-header" }, /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("h2", null, "Inventory"), /*#__PURE__*/React.createElement("span", { className:"md-inv2-ornament md-inventory-art", style:inventoryUiStyle("sectionOrnament") }), /*#__PURE__*/React.createElement("p", null, `${characterName || "Adventurer"} • ${inventory.length}/${INVENTORY_CAPACITY}`)),
+      /*#__PURE__*/React.createElement("button", { className: "md-inv2-close", onClick: onClose, "aria-label": "Close Inventory" }, "✕")),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-equipment" },
+      /*#__PURE__*/React.createElement("div", { className: "md-inv2-hero", "aria-hidden": "true" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", equipped, label: characterName || "Adventurer" })),
+      /*#__PURE__*/React.createElement("div", { className: "md-inv2-slots" }, SLOT_ORDER.map(renderSlot))),
+    overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner md-inventory-art", style: iconButtonStyle("overflow"), onClick: () => setOverflowOpen(true) }, `⚠ Overflow ${overflow.length}`),
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-header md-inv2-tools" }, /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "Items"), /*#__PURE__*/React.createElement("span", { className: "md-inventory-count" }, ` ${filtered.length}/${INVENTORY_CAPACITY}`)),
+      /*#__PURE__*/React.createElement("div", { className: "md-inv2-tool-buttons" },
+        /*#__PURE__*/React.createElement("button", { className: "md-inv2-icon-btn md-inventory-art", style: iconButtonStyle("filter"), onClick: () => setFilterOpen(true) }, "Filter"),
+        /*#__PURE__*/React.createElement("button", { className: "md-inv2-icon-btn md-inventory-art", style: iconButtonStyle("sort"), onClick: onSort }, "Sort"))),
+    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid md-inv2-grid" }, Array.from({ length: slotCount }, (_, index) => renderCell(filtered.slice(0, visibleCount)[index], index))),
+    (filtered.length > 10 || expanded) && /*#__PURE__*/React.createElement("button", { className: "md-inventory-toggle md-inventory-art", style: iconButtonStyle("expand"), onClick: () => setExpanded(value => !value) }, expanded ? "▲ Collapse" : `▼ View All (${filtered.length})`),
+
+    filterOpen && /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup md-inventory-art", style: inventoryUiStyle("popupFrame") },
+      /*#__PURE__*/React.createElement("h3", null, "Filter"),
+      select("category", "Category", [["all","All"],["equipment","Equipment"],["consumable","Consumable"],["material","Material"]]),
+      select("type", "Equipment Type", [["all","All"], ...SLOT_ORDER.map(slot => [slot, SLOT_LABEL[slot]])]),
+      select("rarity", "Rarity", [["all","All"],["common","Common/Junk"],["rare","Rare"],["unique","Unique"],["elite","Elite"],["mythic","Mythic"]]),
+      select("enhanced", "Enhance", [["all","All"],["yes","Enhanced"],["no","Not Enhanced"]]),
+      select("enchanted", "Enchant", [["all","All"],["yes","Enchanted"],["no","No Enchant"]]),
+      /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup-actions" }, /*#__PURE__*/React.createElement("button", { onClick: () => setFilters({ category:"all", type:"all", rarity:"all", enhanced:"all", enchanted:"all" }) }, "Reset"), /*#__PURE__*/React.createElement("button", { onClick: () => setFilterOpen(false) }, "Apply")))),
+
+    overflowOpen && /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup md-inv2-overflow-popup md-inventory-art", style: inventoryUiStyle("popupFrame") },
+      /*#__PURE__*/React.createElement("h3", null, `Overflow ${overflow.length}`), /*#__PURE__*/React.createElement("p", null, "ไอเท็มเหล่านี้ถูกเก็บไว้อย่างปลอดภัย เคลียร์ช่องในกระเป๋าแล้วจึง Claim"),
+      /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-list" }, overflow.map(item => /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-row", key: item.id }, /*#__PURE__*/React.createElement(GameIcon, { item, fallback:item.icon || SLOT_ICON[item.type] || "📦" }), /*#__PURE__*/React.createElement("span", null, itemDisplayName(item), item.quantity > 1 ? ` x${item.quantity}` : ""), /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => onClaimOverflow(item.id) }, "Claim")))),
+      /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup-actions" }, /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:onClaimAllOverflow }, "Claim All That Fits"), /*#__PURE__*/React.createElement("button", { onClick:() => setOverflowOpen(false) }, "Close")))),
+
+    currentDetail && /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art`, style: inventoryRarityKey(currentDetail) === "mythic" ? inventoryUiStyle("mythicFrame") || inventoryUiStyle("popupFrame") : inventoryUiStyle("popupFrame") },
+      /*#__PURE__*/React.createElement("button", { className:"md-inv2-popup-close", onClick:closeDetail }, "✕"),
+      /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-head" }, /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[currentDetail.type] || "📦", className:"md-game-icon md-inv2-detail-icon" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", null, itemDisplayName(currentDetail)), /*#__PURE__*/React.createElement("p", null, `${rarityLabel(currentDetail)} • ${SLOT_LABEL[currentDetail.type] || currentDetail.type} • Lv.${currentDetail.level || 1}`))),
+      /*#__PURE__*/React.createElement("div", { className:"md-inv2-stat-list" }, inventoryStatRows(currentDetail).map(row => /*#__PURE__*/React.createElement("div", { key:row.key }, /*#__PURE__*/React.createElement("span", null, row.label), /*#__PURE__*/React.createElement("b", { className:row.value >= 0 ? "positive" : "negative" }, `${row.value >= 0 ? "+" : ""}${row.value}`)))),
+      Array.isArray(currentDetail.empowerSlots) && currentDetail.empowerSlots.some(Boolean) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-enchants" }, /*#__PURE__*/React.createElement("h4", null, "ENCHANT OPTIONS"), currentDetail.empowerSlots.filter(Boolean).map((option,index) => /*#__PURE__*/React.createElement("div", { key:index }, `${option.icon || "✦"} ${option.label || option.stat || "Option"} +${option.value || 0}`))),
+      compareRows.length > 0 && /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare" }, /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" }, /*#__PURE__*/React.createElement("span", null, currentEquipped ? itemDisplayName(currentEquipped) : "Empty", /*#__PURE__*/React.createElement("small", null, currentEquipped ? `Lv.${currentEquipped.level || 1} • ${isItemEnchanted(currentEquipped) ? "Enchanted" : "No Enchant"}` : "Current")), /*#__PURE__*/React.createElement("b", null, ">"), /*#__PURE__*/React.createElement("span", null, itemDisplayName(currentDetail), /*#__PURE__*/React.createElement("small", null, `Lv.${currentDetail.level || 1} • ${isItemEnchanted(currentDetail) ? "Enchanted" : "No Enchant"}`))), compareRows.map(row => { const delta = row.next - row.current; return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key }, /*#__PURE__*/React.createElement("span", null, row.label), /*#__PURE__*/React.createElement("span", null, `${row.current} → ${row.next}`), /*#__PURE__*/React.createElement("b", { className:delta > 0 ? "positive" : "negative" }, `${delta > 0 ? "+" : ""}${Math.round(delta * 10) / 10}`)); })),
+      /*#__PURE__*/React.createElement("button", { className:`md-inv2-lock md-inventory-art ${currentDetail.favorite ? "active" : ""}`, style:iconButtonStyle("favorite"), onClick:() => onToggleFavorite(currentDetail.id) }, `${currentDetail.favorite ? "★" : "☆"} Favorite / Lock`),
+      message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
+      /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" }, detail.location === "inventory" && SLOT_ORDER.includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); closeDetail(); } }, "Equip"), detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); closeDetail(); } }, "Unequip"), detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSell }, "Sell"), detail.location === "inventory" && !["junk","potion"].includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSalvage }, "Salvage"))))
+  ));
+}
+
 function InventoryOverlay({
   equipped,
   inventory,

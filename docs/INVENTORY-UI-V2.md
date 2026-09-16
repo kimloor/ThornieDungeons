@@ -357,3 +357,26 @@ Inventory UI V2 does NOT authorize:
 - redesigning unrelated pages beyond what is necessary for shared Safe Area/responsive foundations.
 
 Implementation should preserve existing gameplay/data behavior unless this document explicitly replaces it (notably Inventory capacity/Overflow handling and Inventory presentation behavior).
+
+## 18. Optional Graphics manifest contract
+
+Inventory V2 follows the existing camelCase `battleUi` / `petUi` convention. Every entry is
+optional; CSS remains the runtime fallback until Graphics publishes it.
+
+```json
+{
+  "inventoryUi": {
+    "equipmentSlotFrame": "ui/inventory/equipment_slot_frame.png",
+    "popupFrame": "ui/inventory/popup_frame.png",
+    "mythicFrame": "ui/inventory/mythic_frame.png",
+    "icons": {
+      "filter": "ui/inventory/icon_filter.png",
+      "sort": "ui/inventory/icon_sort.png",
+      "expand": "ui/inventory/icon_expand.png",
+      "favorite": "ui/inventory/icon_favorite.png",
+      "overflow": "ui/inventory/icon_overflow.png"
+    },
+    "sectionOrnament": "ui/inventory/section_ornament.png"
+  }
+}
+```

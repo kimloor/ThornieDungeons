@@ -30,6 +30,7 @@ const MODULE_ORDER = [
   "systems/enhancement.js",
   "systems/crafting.js",
   "systems/potions.js",
+  "systems/inventory.js",
   "systems/salvage.js",
   "systems/floorModifier.js",
   "systems/stats.js",
