@@ -150,7 +150,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
     passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
   );
 }
-function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onLogout, onClose }) {
+function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, onClose }) {
   const e = React.createElement;
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
@@ -180,7 +180,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
     onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
   };
   return e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
-    e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings > Account"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
+    e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings"), e("p", { className: "md-sub" }, "ACCOUNT & SECURITY"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
     recoveryCode ? e(React.Fragment, null, e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"), e("code", { className: "md-recovery-code" }, recoveryCode), e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")) : e(React.Fragment, null,
       e("p", { className: "md-title", style: { marginTop: 12 } }, "Recovery Code"),
       e("p", { className: "md-sub" }, recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code"),
@@ -193,6 +193,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
     e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), autoComplete: "new-password" }),
     e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password"),
     message && e("p", { className: "md-auth-error" }, message),
+    e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร"),
     e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
   ));
 }
@@ -201,10 +202,33 @@ function GameDock({
   onOpenInv,
   onPets,
   activeKey,
-  moreOpen,
-  onToggleMore
+  onSettings,
+  onSave
 }) {
-  return /*#__PURE__*/React.createElement("nav", {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [saveFlash, setSaveFlash] = useState("");
+  const handleSave = async () => {
+    if (!onSave || saveFlash === "saving") return;
+    setSaveFlash("saving");
+    const ok = await onSave();
+    setSaveFlash(ok ? "saved" : "failed");
+    setTimeout(() => setSaveFlash(""), 1600);
+  };
+  const openSettings = () => {
+    setMoreOpen(false);
+    onSettings?.();
+  };
+  return /*#__PURE__*/React.createElement(React.Fragment, null, moreOpen && /*#__PURE__*/React.createElement("div", {
+    className: "md-hub-more-panel"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-hub-more-head"
+  }, /*#__PURE__*/React.createElement("strong", null, "เมนูเพิ่มเติม"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setMoreOpen(false),
+    "aria-label": "ปิดเมนู"
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
+    className: "md-hub-more-grid"
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
@@ -223,6 +247,7 @@ function GameDock({
     alt: ""
   }), /*#__PURE__*/React.createElement("span", null, "กระเป๋า")), /*#__PURE__*/React.createElement("button", {
     type: "button",
+    className: activeKey === "pets" ? "active" : "",
     onClick: onPets
   }, /*#__PURE__*/React.createElement("img", {
     src: "ui/hub-icons/pet.svg",
@@ -230,11 +255,11 @@ function GameDock({
   }), /*#__PURE__*/React.createElement("span", null, "สัตว์เลี้ยง")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: moreOpen ? "active" : "",
-    onClick: onToggleMore
+    onClick: () => setMoreOpen(open => !open)
   }, /*#__PURE__*/React.createElement("img", {
     src: "ui/hub-icons/more.svg",
     alt: ""
-  }), /*#__PURE__*/React.createElement("span", null, "เพิ่มเติม")));
+  }), /*#__PURE__*/React.createElement("span", null, "เพิ่มเติม"))));
 }
 
 // Renders the icon+amount chips for a daily-login reward (gold/diamonds/junk stacks/a
@@ -361,29 +386,19 @@ function HubScreen({
   onArena,
   onMailbox,
   onSave,
-  onSwitchCharacter,
-  onLogout,
+  onAccountSettings,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
   onClearDailyLoginResult
 }) {
-  const [saveFlash, setSaveFlash] = useState("");
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const canClaimDaily = dailyLogin.canClaim;
   const dailyPreview = dailyLogin.preview || { streak: 1, reward: {} };
   React.useEffect(() => {
     if (dailyLoginClaimResult) setDailyModalOpen(true);
   }, [dailyLoginClaimResult]);
-  const handleSave = async () => {
-    setSaveFlash("saving");
-    const ok = await onSave();
-    setSaveFlash(ok ? "saved" : "failed");
-    setTimeout(() => setSaveFlash(""), 1600);
-  };
   const openDaily = () => {
-    setMoreOpen(false);
     setDailyModalOpen(true);
   };
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("main", {
@@ -433,22 +448,12 @@ function HubScreen({
     type: "button",
     className: "md-hub-enter-btn",
     onClick: onMap
-  }, /*#__PURE__*/React.createElement("span", null, "เข้าสู่ดันเจี้ยน"), /*#__PURE__*/React.createElement("small", null, "เลือกชั้นและเริ่มการเดินทาง", "  ›")))), moreOpen && /*#__PURE__*/React.createElement("div", {
-    className: "md-hub-more-panel"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-hub-more-head"
-  }, /*#__PURE__*/React.createElement("strong", null, "เมนูเพิ่มเติม"), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    onClick: () => setMoreOpen(false),
-    "aria-label": "ปิดเมนู"
-  }, "✕")), /*#__PURE__*/React.createElement("div", {
-    className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: onLeaderboard }, "🏆", /*#__PURE__*/React.createElement("span", null, "อันดับ")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onShop }, "🛒", /*#__PURE__*/React.createElement("span", null, "ร้านค้า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onEnhance }, "⚒️", /*#__PURE__*/React.createElement("span", null, "ตีบวก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onCraft }, "🛠️", /*#__PURE__*/React.createElement("span", null, "ประดิษฐ์")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onRaid }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("span", null, "Raid")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onArena }, "🥊", /*#__PURE__*/React.createElement("span", null, "อารีน่า")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onMailbox }, "📬", /*#__PURE__*/React.createElement("span", null, "จดหมาย")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", /*#__PURE__*/React.createElement("span", null, "รายวัน")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: onSwitchCharacter }, "👥", /*#__PURE__*/React.createElement("span", null, "เปลี่ยนตัว")), /*#__PURE__*/React.createElement("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", /*#__PURE__*/React.createElement("span", null, "ออกจากระบบ")))), /*#__PURE__*/React.createElement(GameDock, {
+  }, /*#__PURE__*/React.createElement("span", null, "เข้าสู่ดันเจี้ยน"), /*#__PURE__*/React.createElement("small", null, "เลือกชั้นและเริ่มการเดินทาง", "  ›")))), /*#__PURE__*/React.createElement(GameDock, {
     onCharacter: onCharacter,
     onOpenInv: onOpenInv,
     onPets: onPets,
-    moreOpen: moreOpen,
-    onToggleMore: () => setMoreOpen(open => !open)
+    onSettings: onAccountSettings,
+    onSave: onSave
   })), /*#__PURE__*/React.createElement(DailyLoginToast, {
     open: dailyModalOpen,
     onClose: () => { setDailyModalOpen(false); onClearDailyLoginResult(); },
@@ -475,16 +480,13 @@ function TownScreen({
   onMailbox,
   onSummoning,
   onSave,
-  onSwitchCharacter,
-  onLogout,
+  onAccountSettings,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
   onClearDailyLoginResult
 }) {
   const e = React.createElement;
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [saveFlash, setSaveFlash] = useState("");
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const canClaimDaily = dailyLogin.canClaim;
@@ -501,14 +503,7 @@ function TownScreen({
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
     noticeTimer.current = setTimeout(() => setNotice(""), 1800);
   };
-  const handleSave = async () => {
-    setSaveFlash("saving");
-    const ok = await onSave();
-    setSaveFlash(ok ? "saved" : "failed");
-    setTimeout(() => setSaveFlash(""), 1600);
-  };
   const openDaily = () => {
-    setMoreOpen(false);
     setDailyModalOpen(true);
   };
   const hotspot = (className, label, icon, onClick) => e("button", {
@@ -553,31 +548,12 @@ function TownScreen({
         }, e("span", { "aria-hidden": "true" }, "•••"), e("b", null, "แชท")),
         notice && e("div", { className: "md-town-notice", role: "status" }, notice)
       ),
-      moreOpen && e("div", { className: "md-hub-more-panel md-town-more-panel" },
-        e("div", { className: "md-hub-more-head" },
-          e("strong", null, "เมนูเพิ่มเติม"),
-          e("button", { type: "button", onClick: () => setMoreOpen(false), "aria-label": "ปิดเมนู" }, "✕")
-        ),
-        e("div", { className: "md-hub-more-grid" },
-          e("button", { type: "button", onClick: onLeaderboard }, "✉️", e("span", null, "อันดับ")),
-          e("button", { type: "button", onClick: onShop }, "🛒", e("span", null, "ร้านค้า")),
-          e("button", { type: "button", onClick: onEnhance }, "⚒️", e("span", null, "ตีบวก")),
-          e("button", { type: "button", onClick: onCraft }, "🛠️", e("span", null, "ประดิษฐ์")),
-          e("button", { type: "button", onClick: onRaid }, e("img", { src: "ui/hub-icons/raid.svg", alt: "" }), e("span", null, "Raid")),
-          e("button", { type: "button", onClick: onArena }, "🥊", e("span", null, "อารีน่า")),
-          e("button", { type: "button", onClick: onMailbox }, "📬", e("span", null, "จดหมาย")),
-          e("button", { type: "button", onClick: openDaily }, canClaimDaily ? "🎁" : "📅", e("span", null, "รายวัน")),
-          e("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", e("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก")),
-          e("button", { type: "button", onClick: onSwitchCharacter }, "👥", e("span", null, "เปลี่ยนตัว")),
-          e("button", { type: "button", className: "danger", onClick: onLogout }, "🚪", e("span", null, "ออกจากระบบ"))
-        )
-      ),
       e(GameDock, {
         onCharacter,
         onOpenInv,
         onPets,
-        moreOpen,
-        onToggleMore: () => setMoreOpen(open => !open)
+        onSettings: onAccountSettings,
+        onSave
       })
     ),
     e(DailyLoginToast, {
@@ -812,21 +788,15 @@ function CharacterTabs({ active, onStatus, onSkills }) {
   );
 }
 
-function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onBack }) {
-  const [moreOpen, setMoreOpen] = useState(false);
-  return /*#__PURE__*/React.createElement(React.Fragment, null,
-    moreOpen && /*#__PURE__*/React.createElement("div", { className: "md-character-more" },
-      /*#__PURE__*/React.createElement("button", { type: "button", onClick: onBack }, "↩ กลับหน้าก่อนหน้า")
-    ),
-    /*#__PURE__*/React.createElement(GameDock, {
-      activeKey: "character",
-      onCharacter,
-      onOpenInv,
-      onPets: onOpenPets,
-      moreOpen,
-      onToggleMore: () => setMoreOpen(open => !open)
-    })
-  );
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave }) {
+  return /*#__PURE__*/React.createElement(GameDock, {
+    activeKey: "character",
+    onCharacter,
+    onOpenInv,
+    onPets: onOpenPets,
+    onSettings,
+    onSave
+  });
 }
 
 function PaidResetConfirm({ type, diamonds, onCancel, onConfirm }) {
@@ -853,6 +823,8 @@ function StatusScreen({
   onOpenInv,
   onOpenPets,
   onOpenSkill,
+  onSettings,
+  onSave,
   onBack
 }) {
   const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
@@ -945,7 +917,7 @@ function StatusScreen({
         )
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onBack }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
@@ -957,6 +929,8 @@ function SkillScreen({
   onResetSkills,
   onOpenInv,
   onOpenPets,
+  onSettings,
+  onSave,
   onBack
 }) {
   const [draft, setDraft] = useState({});
@@ -1023,11 +997,11 @@ function SkillScreen({
         /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสกิล")
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onBack }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
-function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onBack }) {
+function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
   const levels = save.character.skillLevels || {};
@@ -1073,7 +1047,7 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
         /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onBack }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
   );
 }
@@ -2004,7 +1978,8 @@ function MapScreen({
   onBack,
   onCharacter,
   onOpenInv,
-  onPets
+  onPets,
+  onSettings
 }) {
   const e = React.createElement;
   // Five fixed perspective slots match the stair landings painted into
@@ -2022,8 +1997,6 @@ function MapScreen({
   const floors = Array.from({ length: topFloor - bottomFloor + 1 }, (_, index) => topFloor - index);
   const encounterCache = useRef(new Map());
   const [detail, setDetail] = useState(null);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [saveFlash, setSaveFlash] = useState("");
 
   const encounterFor = floor => {
     if (!encounterCache.current.has(floor)) encounterCache.current.set(floor, makeEncounter(floor));
@@ -2031,14 +2004,7 @@ function MapScreen({
   };
   const openFloor = floor => {
     if (floor > unlockedFloor) return;
-    setMoreOpen(false);
     setDetail({ floor, monsters: encounterFor(floor) });
-  };
-  const handleSave = async () => {
-    setSaveFlash("saving");
-    const ok = await onSave();
-    setSaveFlash(ok ? "saved" : "failed");
-    setTimeout(() => setSaveFlash(""), 1600);
   };
   const enterSelectedFloor = () => {
     if (!detail || detail.floor > unlockedFloor) return;
@@ -2094,22 +2060,12 @@ function MapScreen({
         );
       })
     ),
-    moreOpen && e("div", { className: "md-hub-more-panel md-dungeon-more-panel" },
-      e("div", { className: "md-hub-more-head" },
-        e("strong", null, "เมนูเพิ่มเติม"),
-        e("button", { type: "button", onClick: () => setMoreOpen(false), "aria-label": "ปิดเมนู" }, "✕")
-      ),
-      e("div", { className: "md-hub-more-grid" },
-        e("button", { type: "button", onClick: onBack }, "⌂", e("span", null, "หน้าหลัก")),
-        e("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", e("span", null, saveFlash === "saving" ? "กำลังบันทึก" : saveFlash === "saved" ? "บันทึกแล้ว" : saveFlash === "failed" ? "ลองใหม่" : "บันทึก"))
-      )
-    ),
     e(GameDock, {
       onCharacter,
       onOpenInv,
       onPets,
-      moreOpen,
-      onToggleMore: () => setMoreOpen(open => !open)
+      onSettings,
+      onSave
     }),
     detail && e("div", { className: "md-floor-detail-backdrop", onClick: () => setDetail(null) },
       e("section", {
@@ -2307,6 +2263,10 @@ function PetScreen({
   onUnequip,
   onStarUp,
   onOpenGacha,
+  onCharacter,
+  onOpenInv,
+  onSettings,
+  onSave,
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
@@ -2512,7 +2472,14 @@ function PetScreen({
   }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
-  }, "← Back")));
+  }, "← Back"), /*#__PURE__*/React.createElement(GameDock, {
+    activeKey: "pets",
+    onCharacter,
+    onOpenInv,
+    onPets: () => {},
+    onSettings,
+    onSave
+  }));
 }
 function GachaScreen({
   save,
@@ -3534,6 +3501,8 @@ function InventoryOverlayV2({
   onClaimAllOverflow,
   onCharacter,
   onPets,
+  onSettings,
+  onSave,
   onClose
 }) {
   const [detail, setDetail] = useState(null);
@@ -3655,7 +3624,7 @@ function InventoryOverlayV2({
       salvagePreview && /*#__PURE__*/React.createElement("div", { className:"md-inv2-salvage-preview" }, /*#__PURE__*/React.createElement("strong", null, "Salvage Yield"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"iron" }, fallback:JUNK_INFO.iron.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.iron.name }), "Iron ", salvagePreview.iron), salvagePreview.manaOre > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"manaOre" }, fallback:JUNK_INFO.manaOre.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.manaOre.name }), "Mana Stone ", salvagePreview.manaOre)),
       message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" }, detail.location === "inventory" && SLOT_ORDER.includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); closeDetail(); } }, "Equip"), detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); closeDetail(); } }, "Unequip"), detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSell }, "Sell"), detail.location === "inventory" && !["junk","potion"].includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSalvage }, "Salvage"))))
-    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", moreOpen:false, onToggleMore:onClose }));
+    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave }));
 }
 
 function InventoryOverlay({

@@ -361,7 +361,7 @@ const STYLE = `
 .md-hub-more-panel { position:absolute; z-index:12; left:10px; right:10px; bottom:91px; padding:10px; border:1px solid var(--gold-deep); border-radius:18px; background:linear-gradient(180deg,rgba(20,30,66,.98),rgba(8,13,36,.99)); box-shadow:0 -8px 32px rgba(0,0,0,.55); backdrop-filter:blur(12px); animation:md-hub-more-in .18s ease-out both; }
 .md-hub-more-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; color:var(--gold); font-family:'Baloo 2'; }
 .md-hub-more-head button { width:36px; height:36px; border:0; border-radius:10px; background:rgba(255,255,255,.06); color:var(--ink); cursor:pointer; }
-.md-hub-more-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.md-hub-more-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
 .md-hub-more-grid button { min-width:0; min-height:57px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:1px solid rgba(110,198,255,.24); border-radius:12px; background:rgba(255,255,255,.035); color:var(--ink); font-size:19px; cursor:pointer; }
 .md-hub-more-grid button > img { width:29px; height:29px; }
 .md-hub-more-grid button span { font-family:'Baloo 2'; font-size:8.5px; font-weight:800; white-space:nowrap; }
@@ -415,8 +415,6 @@ const STYLE = `
 .md-character-actions .apply { border:1.5px solid #fff0a8; background:linear-gradient(180deg,#ffe894,#f2bb43); color:#20142d; box-shadow:inset 0 0 9px rgba(255,255,255,.25),0 3px 0 #8b5a18; }
 .md-character-page > .md-hub-dock { flex:0 0 auto; min-height:67px; }
 .md-character-page > .md-hub-dock button { min-height:51px; }
-.md-character-more { position:absolute; z-index:15; left:8px; right:8px; bottom:82px; padding:8px; border:1px solid #d3a844; border-radius:14px; background:rgba(4,17,44,.98); box-shadow:0 -5px 22px rgba(0,0,0,.45); }
-.md-character-more button { width:100%; min-height:42px; border:1px solid rgba(91,196,255,.38); border-radius:10px; background:rgba(255,255,255,.04); color:#e2f3ff; font-family:'Baloo 2'; font-weight:800; }
 .md-character-confirm { position:absolute; z-index:50; inset:0; padding:18px; display:grid; place-items:center; background:rgba(1,5,17,.8); backdrop-filter:blur(5px); }
 .md-character-confirm-card { width:100%; max-width:340px; padding:18px; border:1.5px solid #e1b13e; border-radius:17px; background:linear-gradient(180deg,#0c2451,#06132f); text-align:center; box-shadow:0 16px 45px rgba(0,0,0,.62); }
 .md-character-confirm-card h3 { margin:0; color:#ffe297; font-family:'Baloo 2'; font-size:20px; }
@@ -1001,7 +999,9 @@ const STYLE = `
 
 /* Pet V2 page: PNGs provide the ornamental presentation while CSS owns all
    layout, labels, progress values and tap targets. */
-.md-pet-page { min-width: 0; overflow-x: hidden; }
+.md-pet-page { min-width: 0; min-height:640px; overflow-x:hidden; }
+.md-pet-page > .md-hub-dock { flex:0 0 auto; min-height:67px; margin-top:auto; }
+.md-pet-page > .md-hub-dock button { min-height:51px; }
 .md-pet-card { padding: 8px 6px 10px; overflow: hidden; }
 .md-pet-ui-art {
   background-image: var(--pet-ui-image, none);

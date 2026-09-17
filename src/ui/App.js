@@ -350,7 +350,7 @@ function ThornieDungeons() {
     setPlayer(null);
     setInventory([]);
     setInventoryOverflow([]);
-    setAccountSettingsOpen(false);
+    closeTransientOverlays();
     setCred(current => ({ ...current, password: "" }));
     setAuthError(reason === "session_replaced"
       ? "บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น"
@@ -720,6 +720,13 @@ function ThornieDungeons() {
     if (!ok) setPersistenceMessage("บันทึก Cloud ไม่สำเร็จ — ข้อมูลล่าสุดยังรอส่งและกดบันทึกเพื่อลองใหม่ได้");
     return ok;
   }
+  function closeTransientOverlays() {
+    setAccountSettingsOpen(false);
+    setInvOpen(false);
+    setShopOpen(false);
+    setBlacksmithOpen(false);
+    setCraftingOpen(false);
+  }
   async function backToCharacterSelect() {
     // Fold any in-flight state back into the account before leaving, same as a normal save,
     // so switching characters never loses the last few seconds of progress.
@@ -735,6 +742,7 @@ function ThornieDungeons() {
     setResumeRun(null);
     setInventory([]);
     setInventoryOverflow([]);
+    closeTransientOverlays();
     setCharacterSelectEntry(false);
     setPhase("characterSelect");
     return true;
@@ -766,6 +774,7 @@ function ThornieDungeons() {
     setResumeRun(null);
     setInventory([]);
     setInventoryOverflow([]);
+    closeTransientOverlays();
     setCharacterSelectEntry(false);
     setLoginTransitioning(false);
     setAuthError("");
@@ -777,7 +786,7 @@ function ThornieDungeons() {
     if (context) persistenceRef.current.invalidate(context);
     persistenceRef.current.setActiveContext(null);
     await AUTH_SESSION.clear("security_change", false);
-    setAccountSettingsOpen(false);
+    closeTransientOverlays();
     setAccount(null);
     setSave(null);
     setPlayer(null);
@@ -1962,9 +1971,7 @@ function ThornieDungeons() {
       setPhase("mailbox");
     },
     onSave: manualSave,
-    onSwitchCharacter: backToCharacterSelect,
     onAccountSettings: () => setAccountSettingsOpen(true),
-    onLogout: logout,
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -2005,9 +2012,7 @@ function ThornieDungeons() {
       setPhase("gacha");
     },
     onSave: manualSave,
-    onSwitchCharacter: backToCharacterSelect,
     onAccountSettings: () => setAccountSettingsOpen(true),
-    onLogout: logout,
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -2025,6 +2030,8 @@ function ThornieDungeons() {
       setPhase("pets");
     },
     onOpenSkill: () => setPhase("skill"),
+    onSettings: () => setAccountSettingsOpen(true),
+    onSave: manualSave,
     onBack: () => setPhase(characterReturnPhase)
   }), phase === "skill" && /*#__PURE__*/React.createElement(HeroSkillV1Screen, {
     save: save,
@@ -2036,6 +2043,8 @@ function ThornieDungeons() {
       setPetReturnPhase("skill");
       setPhase("pets");
     },
+    onSettings: () => setAccountSettingsOpen(true),
+    onSave: manualSave,
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     save: save,
@@ -2059,6 +2068,7 @@ function ThornieDungeons() {
       { encounter }
     ),
     onSave: manualSave,
+    onSettings: () => setAccountSettingsOpen(true),
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,
@@ -2069,6 +2079,13 @@ function ThornieDungeons() {
       setGachaReturnPhase("pets");
       setPhase("gacha");
     },
+    onCharacter: () => {
+      setCharacterReturnPhase("pets");
+      setPhase("character");
+    },
+    onOpenInv: () => setInvOpen(true),
+    onSettings: () => setAccountSettingsOpen(true),
+    onSave: manualSave,
     onBack: () => setPhase(petReturnPhase)
   }), phase === "leaderboard" && /*#__PURE__*/React.createElement(LeaderboardScreen, {
     serverUrl: cred.url,
@@ -2144,6 +2161,7 @@ function ThornieDungeons() {
     recoveryConfigured: recoveryConfigured,
     onRecoveryConfigured: setRecoveryConfigured,
     onRequireLogin: requireLoginAfterSecurityChange,
+    onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
     onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlayV2, {
@@ -2171,6 +2189,8 @@ function ThornieDungeons() {
       setPetReturnPhase(phase);
       setPhase("pets");
     },
+    onSettings: () => setAccountSettingsOpen(true),
+    onSave: manualSave,
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,
