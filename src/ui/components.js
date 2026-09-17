@@ -2472,7 +2472,7 @@ function PetScreen({
   }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn flee wide small",
     onClick: onBack
-  }, "← Back"), /*#__PURE__*/React.createElement(GameDock, {
+  }, "← Back")), /*#__PURE__*/React.createElement(GameDock, {
     activeKey: "pets",
     onCharacter,
     onOpenInv,
