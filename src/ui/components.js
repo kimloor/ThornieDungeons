@@ -2300,6 +2300,49 @@ function ShopOverlay({
     onClick: () => guardBuy(gold >= MATERIAL_SHOP_PRICE[type], () => onBuyMaterial(type))
   }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), /*#__PURE__*/React.createElement("span", { className: gold < MATERIAL_SHOP_PRICE[type] ? "md-cost-insufficient" : "" }, MATERIAL_SHOP_PRICE[type])))))));
 }
+function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect }) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-roster",
+    "aria-label": "Owned pets"
+  }, owned.map(inst => {
+    const def = getPetDef(inst.defId);
+    if (!def) return null;
+    const isActive = activePetId === inst.instId;
+    const star = inst.star || 1;
+    const petLevel = Math.max(1, Math.min(50, Number(inst.level) || 1));
+    return /*#__PURE__*/React.createElement("button", {
+      key: inst.instId,
+      type: "button",
+      className: `md-pet-roster-item ${selectedPetId === inst.instId ? "selected" : ""} ${isActive ? "active" : ""}`,
+      onClick: () => onSelect(inst.instId)
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-roster-icon"
+    }, def.icon), /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-roster-copy"
+    }, /*#__PURE__*/React.createElement("strong", null, def.name), /*#__PURE__*/React.createElement("small", null, PET_RARITY_LABEL[def.rarity], " · Lv.", petLevel, " · ", "★".repeat(star)), /*#__PURE__*/React.createElement("small", null, "Dup ", petDuplicateCount(petDuplicates, inst.defId))), isActive && /*#__PURE__*/React.createElement("span", {
+      className: "md-pet-active-dot",
+      title: "Active Pet"
+    }, "●"));
+  }));
+}
+
+function PetDetailPanel({ children }) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-pet-detail"
+  }, children);
+}
+
+function PetPageActions({ onOpenGacha, onBack }) {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "md-btn primary wide",
+    style: { marginBottom: 8 },
+    onClick: onOpenGacha
+  }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("button", {
+    className: "md-btn flee wide small",
+    onClick: onBack
+  }, "← Back"));
+}
+
 function PetScreen({
   save,
   onEquip,
@@ -2379,7 +2422,7 @@ function PetScreen({
     style: {
       margin: 0
     }
-  }, "Pets"), /*#__PURE__*/React.createElement("div", {
+  }, "Pets")), /*#__PURE__*/React.createElement("div", {
     className: "md-card md-pet-card",
     style: {
       marginBottom: 10
@@ -2397,31 +2440,13 @@ function PetScreen({
     }
   }, "ยังไม่มีสัตว์เลี้ยง — เอาชนะบอสด่าน 5 เพื่อรับสัตว์เลี้ยงตัวแรก!"), owned.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "md-pet-layout"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md-pet-roster",
-    "aria-label": "Owned pets"
-  }, owned.map(inst => {
-    const def = getPetDef(inst.defId);
-    if (!def) return null;
-    const isActive = save.activePetId === inst.instId;
-    const star = inst.star || 1;
-    const petLevel = Math.max(1, Math.min(50, Number(inst.level) || 1));
-    return /*#__PURE__*/React.createElement("button", {
-      key: inst.instId,
-      type: "button",
-      className: `md-pet-roster-item ${selected?.instId === inst.instId ? "selected" : ""} ${isActive ? "active" : ""}`,
-      onClick: () => setSelectedPetId(inst.instId)
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "md-pet-roster-icon"
-    }, def.icon), /*#__PURE__*/React.createElement("span", {
-      className: "md-pet-roster-copy"
-    }, /*#__PURE__*/React.createElement("strong", null, def.name), /*#__PURE__*/React.createElement("small", null, PET_RARITY_LABEL[def.rarity], " · Lv.", petLevel, " · ", "★".repeat(star)), /*#__PURE__*/React.createElement("small", null, "Dup ", petDuplicateCount(save.petDuplicates, inst.defId))), isActive && /*#__PURE__*/React.createElement("span", {
-      className: "md-pet-active-dot",
-      title: "Active Pet"
-    }, "●"));
-  })), selected && selectedDef && /*#__PURE__*/React.createElement("div", {
-    className: "md-pet-detail"
-  }, /*#__PURE__*/React.createElement("section", {
+  }, /*#__PURE__*/React.createElement(PetRoster, {
+    owned,
+    activePetId: save.activePetId,
+    selectedPetId: selected?.instId,
+    petDuplicates: save.petDuplicates,
+    onSelect: setSelectedPetId
+  }), selected && selectedDef && /*#__PURE__*/React.createElement(PetDetailPanel, null, /*#__PURE__*/React.createElement("section", {
     className: "md-pet-profile md-pet-ui-art",
     style: petUiStyle("mainFrame")
   }, /*#__PURE__*/React.createElement("div", {
@@ -2506,16 +2531,10 @@ function PetScreen({
   }, "Equip"), petStarUpCost(selectedStar) !== null && /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
     onClick: () => handleStarUp(selected)
-  }, `อัพดาว (${petStarUpCost(selectedStar)})`))))), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn primary wide",
-    style: {
-      marginBottom: 8
-    },
-    onClick: onOpenGacha
-  }, "🎰 Pet Gacha"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee wide small",
-    onClick: onBack
-  }, "← Back")), /*#__PURE__*/React.createElement(GameDock, {
+  }, `อัพดาว (${petStarUpCost(selectedStar)})`))))), /*#__PURE__*/React.createElement(PetPageActions, {
+    onOpenGacha,
+    onBack
+  }), /*#__PURE__*/React.createElement(GameDock, {
     activeKey: "pets",
     onCharacter,
     onOpenInv,

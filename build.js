@@ -5,6 +5,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 
 const ROOT = __dirname;
 const SRC = path.join(ROOT, "src");
@@ -109,14 +110,34 @@ function readModule(relPath) {
   return content;
 }
 
+function validateInlineJavaScript(html) {
+  let inlineScriptCount = 0;
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  for (const match of html.matchAll(scriptPattern)) {
+    const attributes = match[1] || "";
+    const source = match[2] || "";
+    if (/\bsrc\s*=/i.test(attributes) || !source.trim()) continue;
+    inlineScriptCount += 1;
+    try {
+      new vm.Script(source, { filename: `index.inline-${inlineScriptCount}.js` });
+    } catch (error) {
+      throw new Error(`Generated JavaScript syntax validation failed: ${error.message}`);
+    }
+  }
+  if (!inlineScriptCount) throw new Error("Generated JavaScript syntax validation failed: no inline scripts found");
+}
+
 function build() {
   const head = fs.readFileSync(path.join(ROOT, "head.html"), "utf8");
   const tail = fs.readFileSync(path.join(ROOT, "tail.html"), "utf8");
   const body = MODULE_ORDER.map((m) => `// ===== ${m} =====\n${readModule(m)}`).join("\n");
   const output = mapR2UiAssetPaths(head + body + "\n" + tail);
 
+  validateInlineJavaScript(output);
   fs.writeFileSync(path.join(ROOT, "index.html"), output, "utf8");
   console.log(`Built index.html (${output.split("\n").length} lines) from ${MODULE_ORDER.length} modules.`);
 }
 
-build();
+if (require.main === module) build();
+
+module.exports = { validateInlineJavaScript };

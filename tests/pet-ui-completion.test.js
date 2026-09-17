@@ -48,6 +48,22 @@ test("Pet header does not duplicate the global diamond balance", () => {
   assert.doesNotMatch(petSource, /save\.diamonds/);
 });
 
+test("PetScreen keeps page-level sections and callbacks structurally separate", () => {
+  const helpersStart = components.indexOf("function PetRoster");
+  const gachaStart = components.indexOf("function GachaScreen", helpersStart);
+  const petSource = components.slice(helpersStart, gachaStart);
+  for (const componentName of ["PetRoster", "PetDetailPanel", "PetPageActions", "PetScreen"]) {
+    assert.match(petSource, new RegExp(`function ${componentName}\\b`));
+  }
+  assert.match(petSource, /onClick: \(\) => onSelect\(inst\.instId\)/);
+  assert.match(petSource, /onClick: onUnequip/);
+  assert.match(petSource, /onClick: \(\) => onEquip\(selected\.instId\)/);
+  assert.match(petSource, /onClick: \(\) => handleStarUp\(selected\)/);
+  assert.match(petSource, /onClick: \(\) => setDetailTab\(tab\)/);
+  assert.match(petSource, /React\.createElement\(PetPageActions,[\s\S]*React\.createElement\(GameDock,/);
+  assert.match(petSource, /activeKey: "pets"[\s\S]*onSettings,[\s\S]*onSave/);
+});
+
 test("Pet profile labels, EXP, stats and skill descriptions remain centered and wrap on mobile", () => {
   assert.match(styles, /\.md-pet-name-row\s*\{[^}]*position:\s*absolute[^}]*left:\s*15%[^}]*top:\s*46\.5%/s);
   assert.match(styles, /\.md-pet-role\s*\{[^}]*position:\s*absolute[^}]*right:\s*13\.5%[^}]*top:\s*56\.8%/s);
