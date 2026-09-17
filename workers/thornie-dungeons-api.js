@@ -2693,11 +2693,15 @@ async function handleGetArenaOpponents(db, id, session, characterId) {
   const myRank = await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first();
   const myRating = myRank ? Number(myRank.rating) : 1000;
 
+  // json_extract(...) IS NOT NULL filters out snapshots still in an older stats_json
+  // shape (e.g. written before a combat-engine migration, before that character's own
+  // owner has reopened Arena to refresh it) — without this, a listed opponent could
+  // 404 with "opponent_not_found" the moment you actually tried to fight them.
   const nearby = await db
     .prepare(
       `SELECT s.character_id, s.name, s.stats_json, r.rating, r.wins, r.losses
        FROM pvp_snapshots s JOIN pvp_ranking r ON r.character_id = s.character_id
-       WHERE s.character_id != ? AND r.rating BETWEEN ? AND ?
+       WHERE s.character_id != ? AND r.rating BETWEEN ? AND ? AND json_extract(s.stats_json, '$.hero') IS NOT NULL
        ORDER BY RANDOM() LIMIT 3`
     )
     .bind(characterId, myRating - 300, myRating + 300)
@@ -2708,7 +2712,7 @@ async function handleGetArenaOpponents(db, id, session, characterId) {
       .prepare(
         `SELECT s.character_id, s.name, s.stats_json, r.rating, r.wins, r.losses
          FROM pvp_snapshots s JOIN pvp_ranking r ON r.character_id = s.character_id
-         WHERE s.character_id != ? ORDER BY RANDOM() LIMIT 3`
+         WHERE s.character_id != ? AND json_extract(s.stats_json, '$.hero') IS NOT NULL ORDER BY RANDOM() LIMIT 3`
       )
       .bind(characterId)
       .all();
