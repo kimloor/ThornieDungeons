@@ -2559,9 +2559,17 @@ function parsePetsJson(character) {
   try { parsed = character.pets_json ? JSON.parse(character.pets_json) : {}; } catch (e) { parsed = {}; }
   const list = Array.isArray(parsed.list) ? parsed.list : [];
   const skillLevels = parsed.skills && typeof parsed.skills === "object" ? parsed.skills : {};
-  const active = list.find((p) => p && p.id === character.active_pet_id) || null;
+  // Pet instances key on instId (see src/systems/pets.js's newPetInstance()), NOT id.
+  const active = list.find((p) => p && p.instId === character.active_pet_id) || null;
   return { active, skillLevels };
 }
+// Small display-name lookup (src/systems/pets.js's PET_POOL lives client-side only) —
+// just enough to build a readable pvpPetUnit name like "kim01's Sprout" for battle log
+// text. Keep in sync if a new pet species is added to PET_POOL.
+const PET_DISPLAY_NAMES = {
+  sprout: "Sprout", flamekit: "Flamekit", sparkpup: "Sparkpup", ember_fox: "Ember Fox",
+  moon_hare: "Moon Hare", hell_wolf: "Hell Wolf", inferno_drake: "Inferno Drake", storm_phoenix: "Storm Phoenix",
+};
 
 // Builds a raw hero unit for BATTLE_CORE_V1.buildHeroUnit()/createArenaBattle() from a
 // live character row. toughness/iron_body/battle_hardened are applied the same way
@@ -2602,11 +2610,12 @@ function pvpHeroUnit(character, equippedItems, id, name, skillLevels) {
     activeSkills: heroActiveSkillList(skillLevels).map((sk) => sk.key),
   };
 }
-function pvpPetUnit(instance, id) {
+function pvpPetUnit(instance, id, ownerName) {
   const bs = petBattleStats(instance);
   if (!bs) return null;
+  const speciesName = PET_DISPLAY_NAMES[bs.defId] || "Pet";
   return {
-    id, kind: "pet", name: "Pet", petDefId: bs.defId,
+    id, kind: "pet", name: ownerName ? `${ownerName}'s ${speciesName}` : speciesName, petDefId: bs.defId,
     maxHp: bs.maxHp, hp: bs.maxHp,
     atk: bs.atk, def: bs.def,
     speed: Math.round(PVP_BASE_SPEED + bs.agi * 1.5),
@@ -2650,7 +2659,7 @@ async function handleGetArenaStatus(db, id, session, characterId) {
   const character = owned.row;
   const { active, skillLevels } = parsePetsJson(character);
   const heroUnit = pvpHeroUnit(character, itemsRes.results || [], "snap_hero", character.name || "", skillLevels);
-  const petUnit = active ? pvpPetUnit(active, "snap_pet") : null;
+  const petUnit = active ? pvpPetUnit(active, "snap_pet", character.name || "") : null;
 
   const [, , activeMatch] = await Promise.all([
     ensureArenaRanking(db, characterId, id, character.name || ""),
@@ -2785,7 +2794,7 @@ function pvpSubmitPlayerTurn(state, command) {
 function pvpUnitPublic(state, id) {
   const u = state.units[id];
   if (!u) return null;
-  return { hp: u.hp, maxHp: u.maxHp, mp: u.sp, maxMp: u.maxSp, statuses: Object.keys(u.statuses || {}) };
+  return { name: u.name || null, hp: u.hp, maxHp: u.maxHp, mp: u.sp, maxMp: u.maxSp, statuses: Object.keys(u.statuses || {}) };
 }
 function pvpHeroSkillsPublic(actor) {
   if (!actor) return [];
@@ -2794,8 +2803,30 @@ function pvpHeroSkillsPublic(actor) {
 // Trims a battleCore log entry (which also carries internal bookkeeping fields) down to
 // what the client needs: the human-readable text plus enough structure (actorId/targetId/
 // crit) to drive the placeholder battle-stage animation.
+// ---- Arena battle log pipeline (worker -> client) ----
+// battleCore.js's log(state, type, text, data) already writes a decent human-readable
+// `.text` for most entry types — e.g. "damage": "{actor} use {actionName} to {target}
+// damage {N}." — built from unitName(unit) (unit.name, which is why pvpHeroUnit/
+// pvpPetUnit above are given real, distinguishable names: "kim01", "kim01's Sprout").
+// We pass that `.text` straight through for entry types where it's already complete
+// (damage/heal/death/pet_active/counter/reflect/round/battle_end/...).
+// Two entry types come out of battleCore too terse to stand alone even with good unit
+// names, because the text template just doesn't include everything the `data` already
+// carries:
+//   - "miss": text is only "{actor} missed." — no target, no which skill. `actionName`
+//     and `targetId` ARE in the data, just not folded into the text.
+//   - "status": text is only "{target} gained {status}." — no actor/skill that caused it.
+// For those two, the CLIENT (src/ui/components.js's pvpFormatLogEntry) rebuilds a fuller
+// sentence itself from the structured fields below, in the same style battleCore's own
+// "damage" text already uses ("{actor} use {action} to {target} ..."), rather than this
+// worker inventing a second copy of battleCore's phrasing. Everything below is just
+// trimming battleCore's own log entry down to what the client needs — no resolver logic.
 function pvpPublicLogEntry(e) {
-  return { type: e.type, text: e.text, actorId: e.actorId || null, targetId: e.targetId || null, crit: !!e.crit };
+  return {
+    type: e.type, text: e.text, actorId: e.actorId || null, targetId: e.targetId || null,
+    crit: !!e.crit, amount: e.amount != null ? e.amount : null, actionName: e.actionName || null,
+    status: e.status || null, skillName: e.skillName || null,
+  };
 }
 
 async function settleArenaMatch(db, characterId, opponentCharacterId, state) {
@@ -2886,7 +2917,7 @@ async function handleStartArenaMatch(db, id, session, characterId, opponentChara
 
   const { active, skillLevels } = parsePetsJson(character);
   const myHero = pvpHeroUnit(character, itemsRes.results || [], "team_a_hero", character.name || "You", skillLevels);
-  const myPet = active ? pvpPetUnit(active, "team_a_pet") : null;
+  const myPet = active ? pvpPetUnit(active, "team_a_pet", character.name || "You") : null;
   const oppHero = { ...oppLoadout.hero, id: "team_b_hero" };
   const oppPet = oppLoadout.pet ? { ...oppLoadout.pet, id: "team_b_pet" } : null;
 

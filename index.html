@@ -11048,6 +11048,43 @@ const PVP_TICKET_MAX_CLIENT = 5; // fallback only — server response's ticketsM
 const PET_ICON_FALLBACK = "🐾";
 const PVP_UNIT_SLOT = { team_a_hero: "you", team_a_pet: "youPet", team_b_hero: "opp", team_b_pet: "oppPet" };
 // ---------- Phase 5: PvP Arena (Battle Core V1, turn-based) ----------
+
+// ---- Arena battle log — display layer ----
+// This is the OTHER half of the log pipeline documented in workers/thornie-dungeons-
+// api.js's pvpPublicLogEntry(): battleCore.js already writes a full, readable `.text`
+// for most entry types (built from each unit's real .name — "kim01", "kim01's Sprout" —
+// which is why the worker names pet units "{owner}'s {species}" instead of just "Pet").
+// We use that `.text` as-is for types where it's already a complete sentence:
+//   damage / heal / sp / death / block / survive / reflect / counter / pet_active /
+//   scheme / flee / cooldown / round / battle_start / battle_end / stun / invalid
+// Two types are NOT reformatted here but ARE incomplete straight from battleCore, because
+// its own text template omits fields that ARE present in the entry's data:
+//   "miss"   -> battleCore text: "{actor} missed."                (no target, no skill)
+//   "status" -> battleCore text: "{target} gained {status}."      (no actor/cause)
+// pvpFormatLogEntry() rebuilds a full sentence for just those two, in the same
+// "{actor} use {action} to {target} ..." shape battleCore's own "damage" text already
+// uses — so the whole log reads consistently even though half of it is battleCore's
+// literal text and half is assembled here from its structured fields (actorId/targetId/
+// actionName/status/amount). This is a display concern only — no combat/status logic
+// lives here, just sentence assembly from data battleCore already computed.
+const PVP_STATUS_LABEL = {
+  stun: "Stun", poison: "Poison", silence: "Silence", armor_break: "Armor Break", def_up: "DEF Up",
+  rampage: "Rampage", fortress: "Fortress", counter: "Counter Stance",
+};
+function pvpFormatLogEntry(entry, names) {
+  const actor = (entry.actorId && names[entry.actorId]) || "";
+  const target = (entry.targetId && names[entry.targetId]) || "";
+  if (entry.type === "miss") {
+    const action = entry.actionName || "attack";
+    return actor && target ? `${actor} use ${action} to ${target} — missed.` : entry.text;
+  }
+  if (entry.type === "status") {
+    const label = PVP_STATUS_LABEL[entry.status] || entry.status || "a status effect";
+    return actor && target ? `${actor} inflicts ${label} on ${target}!` : entry.text;
+  }
+  return entry.text;
+}
+
 function ArenaHpBar({ label, hp, maxHp, mp, maxMp, pet }) {
   const pct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((hp / maxHp) * 100))) : 0;
   const mpPct = maxMp > 0 ? Math.max(0, Math.min(100, Math.round((mp / maxMp) * 100))) : 0;
@@ -11199,6 +11236,12 @@ function ArenaScreen({
 
   // ---- Fight mode ----
   if (match) {
+    const pvpUnitNames = {
+      team_a_hero: (match.you && match.you.name) || "คุณ",
+      team_a_pet: match.yourPet && match.yourPet.name,
+      team_b_hero: match.opponentName || (match.opponent && match.opponent.name) || "คู่ต่อสู้",
+      team_b_pet: match.opponentPet && match.opponentPet.name,
+    };
     const overCard = match.result && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
       /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 16, color: match.result.win ? "#7CFF9E" : "#FF6B6B" } }, match.result.win ? "🏆 ชนะ!" : "💢 แพ้"),
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating ", match.result.ratingBefore, " → ", match.result.ratingAfter, " (", match.result.ratingChange >= 0 ? "+" : "", match.result.ratingChange, ")"),
@@ -11254,7 +11297,7 @@ function ArenaScreen({
 
       /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, maxHeight: 220, overflowY: "auto" } },
         match.log.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "เลือกท่าโจมตีเพื่อเริ่มต่อสู้"),
-        match.log.map((entry, i) => /*#__PURE__*/React.createElement("p", { key: i, className: "md-sub", style: { marginBottom: 3 } }, entry.text))),
+        match.log.map((entry, i) => /*#__PURE__*/React.createElement("p", { key: i, className: "md-sub", style: { marginBottom: 3 } }, pvpFormatLogEntry(entry, pvpUnitNames)))),
 
       !match.result && /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back (การต่อสู้จะค้างไว้)"));
   }
