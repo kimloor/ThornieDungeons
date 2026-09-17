@@ -2643,10 +2643,10 @@ const MONSTER_VISUAL_SIZES = {
 // Pets use the same manifest-driven crop and anchor pipeline as monsters, but
 // need a larger presentation envelope to read clearly beside the Hero.
 const PET_COMBAT_VISUAL_SIZES = {
-  small: { height: 68, maxWidth: 98 },
-  medium: { height: 82, maxWidth: 116 },
-  large: { height: 96, maxWidth: 134 },
-  elite: { height: 108, maxWidth: 150 }
+  small: { height: 78, maxWidth: 114 },
+  medium: { height: 94, maxWidth: 136 },
+  large: { height: 108, maxWidth: 154 },
+  elite: { height: 120, maxWidth: 168 }
 };
 function getMonsterPresentation(enemy) {
   const config = getMonsterSpriteConfig(enemy);
@@ -2767,8 +2767,9 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
         // The pet action state is held for 520ms at normal speed in App.js.
         attackFrameMs: 150 / combatSpeed,
         cropTransparent: true,
-        // One manifest-driven viewport rule gives every Pet extra room in the
-        // forward/bottom directions without pet-specific position hacks.
+        // One shared crop box keeps Idle/Attack/Death anchored to the same
+        // canvas area, including wide attacks and low death poses.
+        stableBoundsAnimations: ["idle", "attack", "death"],
         cropPadding: { top: 0.04, right: 0.08, bottom: 0.07, left: 0.04 },
         visualHeight: presentation.height,
         maxVisualWidth: presentation.maxWidth,

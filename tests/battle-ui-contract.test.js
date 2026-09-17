@@ -80,8 +80,16 @@ test("inactive Hero and Pet status rows stay hidden while active resources remai
 
 test("Pet combat sprites use a larger manifest-size presentation envelope", () => {
   assert.match(components, /const PET_COMBAT_VISUAL_SIZES = \{/);
-  assert.match(components, /small: \{ height: 68, maxWidth: 98 \}/);
+  assert.match(components, /small: \{ height: 78, maxWidth: 114 \}/);
+  assert.match(components, /medium: \{ height: 94, maxWidth: 136 \}/);
   assert.match(components, /return \{ sizeClass, anchorType, \.\.\.PET_COMBAT_VISUAL_SIZES\[sizeClass\] \}/);
+});
+
+test("Skip artwork matches the speed artwork envelope without changing behavior wiring", () => {
+  assert.match(styles, /\.md-combat-speed-art \{[^}]*max-height:56px/);
+  assert.match(styles, /\.md-combat-skip-art \{[^}]*max-height:56px/);
+  assert.match(components, /onClick: \(\) => onAction\("skip"\)/);
+  assert.match(components, /skipUnlocked &&/);
 });
 
 test("Turn Order remains a clipped single-row four-slot window", () => {

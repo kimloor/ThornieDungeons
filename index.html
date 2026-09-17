@@ -1286,7 +1286,7 @@ const STYLE = `
 .md-pet-slot,
 .md-monster-slot { position: absolute; pointer-events: auto; }
 .md-hero-slot { left: 23%; top: 55%; transform: translate(-50%, -50%); }
-.md-pet-slot { left:clamp(54px,18%,90px); top:73%; transform:translate(-50%,-50%) scale(.61); transform-origin:center; max-width:34%; }
+.md-pet-slot { left:clamp(64px,19%,104px); top:75%; transform:translate(-50%,-50%) scale(.82); transform-origin:center bottom; max-width:40%; }
 .md-pet-slot.flying { top: 68%; }
 
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
@@ -1337,8 +1337,14 @@ const STYLE = `
 @media (max-width: 380px) {
   .md-scene.battle-bg .md-arena { min-height: clamp(286px, 49dvh, 360px); }
   .md-hero-slot { left: 22%; top: 53%; }
-  .md-pet-slot { left:clamp(50px,17%,70px); top:72%; transform:translate(-50%,-50%) scale(.57); max-width:36%; }
+  .md-pet-slot { left:clamp(62px,19%,76px); top:75%; transform:translate(-50%,-50%) scale(.8); max-width:42%; }
   .md-pet-slot.flying { top: 69%; }
+}
+@media (min-width: 431px) and (max-width: 700px) {
+  .md-pet-slot { left:clamp(78px,18%,118px); transform:translate(-50%,-50%) scale(.9); max-width:40%; }
+}
+@media (min-width: 701px) {
+  .md-pet-slot { left:clamp(112px,17%,142px); transform:translate(-50%,-50%) scale(.96); max-width:38%; }
 }
 
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
@@ -1527,7 +1533,7 @@ const STYLE = `
 .md-combat-header-action.speed.has-art { text-shadow:none; }
 .md-combat-speed-art { display:block; width:100%; height:100%; max-height:56px; object-fit:contain; }
 .md-combat-speed-fallback { display:block; }
-.md-combat-skip-art { display:block; width:100%; height:100%; max-height:32px; object-fit:contain; }
+.md-combat-skip-art { display:block; width:100%; height:100%; max-height:56px; object-fit:contain; }
 .md-combat-skip-fallback { display:block; }
 .md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
 
@@ -1561,6 +1567,7 @@ const STYLE = `
 .md-pet-unit > .md-sprite-name { position: relative; z-index: 5; }
 .md-pet-unit > .md-cropped-sprite-stage,
 .md-pet-unit > .md-enemy { position: relative; z-index: 2; }
+.md-pet-unit > .md-cropped-sprite-stage { overflow:visible; transform-origin:center bottom; }
 @media (max-width: 380px) {
   .md-battle-vfx { width: 102px; max-width: 29vw; }
   .md-battle-vfx.kind-status { width: 92px; }
@@ -2981,6 +2988,24 @@ function getStableSpriteOpaqueBounds(config, anim) {
   return { left, top, width, height, canvasAspect, contentAspect: canvasAspect * width / height };
 }
 
+function getStableSpriteOpaqueBoundsUnion(config, animations) {
+  const bounds = animations.map(anim => getStableSpriteOpaqueBounds(config, anim)).filter(Boolean);
+  if (bounds.length !== animations.length || !bounds.length) return null;
+  const left = Math.min(...bounds.map(bound => bound.left));
+  const top = Math.min(...bounds.map(bound => bound.top));
+  const right = Math.max(...bounds.map(bound => bound.left + bound.width));
+  const bottom = Math.max(...bounds.map(bound => bound.top + bound.height));
+  const canvasAspect = bounds[0].canvasAspect;
+  return {
+    left,
+    top,
+    width: Math.max(0.001, right - left),
+    height: Math.max(0.001, bottom - top),
+    canvasAspect,
+    contentAspect: canvasAspect * (right - left) / Math.max(0.001, bottom - top)
+  };
+}
+
 function measureSpriteOpaqueBounds(sources) {
   const key = sources.join("|");
   if (!SPRITE_OPAQUE_BOUNDS_CACHE.has(key)) {
@@ -3015,6 +3040,7 @@ function AnimatedFrameSprite({
   attackFrameMs = 80,
   cropTransparent = false,
   cropPadding = 0,
+  stableBoundsAnimations = null,
   visualHeight = 64,
   maxVisualWidth = 104,
   fallback = null
@@ -3026,8 +3052,12 @@ function AnimatedFrameSprite({
   const [frameIndex, setFrameIndex] = React.useState(0);
   const frameKey = frames.join("|");
   const playableFrameKey = playableFrames.join("|");
-  const stableBoundsKey = JSON.stringify(config?.presentation?.bounds?.[effectiveAnim] || null);
-  const [opaqueBounds, setOpaqueBounds] = React.useState(() => getStableSpriteOpaqueBounds(config, effectiveAnim));
+  const boundsAnimations = Array.isArray(stableBoundsAnimations) && stableBoundsAnimations.length
+    ? stableBoundsAnimations
+    : [effectiveAnim];
+  const stableBoundsKey = JSON.stringify(boundsAnimations.map(name => config?.presentation?.bounds?.[name] || null));
+  const stableBounds = getStableSpriteOpaqueBoundsUnion(config, boundsAnimations);
+  const [opaqueBounds, setOpaqueBounds] = React.useState(() => stableBounds);
 
   React.useEffect(() => {
     setFailedSources([]);
@@ -3038,7 +3068,7 @@ function AnimatedFrameSprite({
       setOpaqueBounds(null);
       return undefined;
     }
-    const stable = getStableSpriteOpaqueBounds(config, effectiveAnim);
+    const stable = getStableSpriteOpaqueBoundsUnion(config, boundsAnimations);
     if (stable) {
       setOpaqueBounds(stable);
       return undefined;
@@ -12225,10 +12255,10 @@ const MONSTER_VISUAL_SIZES = {
 // Pets use the same manifest-driven crop and anchor pipeline as monsters, but
 // need a larger presentation envelope to read clearly beside the Hero.
 const PET_COMBAT_VISUAL_SIZES = {
-  small: { height: 68, maxWidth: 98 },
-  medium: { height: 82, maxWidth: 116 },
-  large: { height: 96, maxWidth: 134 },
-  elite: { height: 108, maxWidth: 150 }
+  small: { height: 78, maxWidth: 114 },
+  medium: { height: 94, maxWidth: 136 },
+  large: { height: 108, maxWidth: 154 },
+  elite: { height: 120, maxWidth: 168 }
 };
 function getMonsterPresentation(enemy) {
   const config = getMonsterSpriteConfig(enemy);
@@ -12349,8 +12379,9 @@ function PetCombatSprite({ pet, anim, combatSpeed = 1 }) {
         // The pet action state is held for 520ms at normal speed in App.js.
         attackFrameMs: 150 / combatSpeed,
         cropTransparent: true,
-        // One manifest-driven viewport rule gives every Pet extra room in the
-        // forward/bottom directions without pet-specific position hacks.
+        // One shared crop box keeps Idle/Attack/Death anchored to the same
+        // canvas area, including wide attacks and low death poses.
+        stableBoundsAnimations: ["idle", "attack", "death"],
         cropPadding: { top: 0.04, right: 0.08, bottom: 0.07, left: 0.04 },
         visualHeight: presentation.height,
         maxVisualWidth: presentation.maxWidth,

@@ -1209,7 +1209,7 @@ const STYLE = `
 .md-pet-slot,
 .md-monster-slot { position: absolute; pointer-events: auto; }
 .md-hero-slot { left: 23%; top: 55%; transform: translate(-50%, -50%); }
-.md-pet-slot { left:clamp(54px,18%,90px); top:73%; transform:translate(-50%,-50%) scale(.61); transform-origin:center; max-width:34%; }
+.md-pet-slot { left:clamp(64px,19%,104px); top:75%; transform:translate(-50%,-50%) scale(.82); transform-origin:center bottom; max-width:40%; }
 .md-pet-slot.flying { top: 68%; }
 
 /* These coordinates are shared centre-bottom ground anchors, not canvas centres.
@@ -1260,8 +1260,14 @@ const STYLE = `
 @media (max-width: 380px) {
   .md-scene.battle-bg .md-arena { min-height: clamp(286px, 49dvh, 360px); }
   .md-hero-slot { left: 22%; top: 53%; }
-  .md-pet-slot { left:clamp(50px,17%,70px); top:72%; transform:translate(-50%,-50%) scale(.57); max-width:36%; }
+  .md-pet-slot { left:clamp(62px,19%,76px); top:75%; transform:translate(-50%,-50%) scale(.8); max-width:42%; }
   .md-pet-slot.flying { top: 69%; }
+}
+@media (min-width: 431px) and (max-width: 700px) {
+  .md-pet-slot { left:clamp(78px,18%,118px); transform:translate(-50%,-50%) scale(.9); max-width:40%; }
+}
+@media (min-width: 701px) {
+  .md-pet-slot { left:clamp(112px,17%,142px); transform:translate(-50%,-50%) scale(.96); max-width:38%; }
 }
 
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
@@ -1450,7 +1456,7 @@ const STYLE = `
 .md-combat-header-action.speed.has-art { text-shadow:none; }
 .md-combat-speed-art { display:block; width:100%; height:100%; max-height:56px; object-fit:contain; }
 .md-combat-speed-fallback { display:block; }
-.md-combat-skip-art { display:block; width:100%; height:100%; max-height:32px; object-fit:contain; }
+.md-combat-skip-art { display:block; width:100%; height:100%; max-height:56px; object-fit:contain; }
 .md-combat-skip-fallback { display:block; }
 .md-combat-header-action:disabled { opacity: .38; cursor: not-allowed; }
 
@@ -1484,6 +1490,7 @@ const STYLE = `
 .md-pet-unit > .md-sprite-name { position: relative; z-index: 5; }
 .md-pet-unit > .md-cropped-sprite-stage,
 .md-pet-unit > .md-enemy { position: relative; z-index: 2; }
+.md-pet-unit > .md-cropped-sprite-stage { overflow:visible; transform-origin:center bottom; }
 @media (max-width: 380px) {
   .md-battle-vfx { width: 102px; max-width: 29vw; }
   .md-battle-vfx.kind-status { width: 92px; }

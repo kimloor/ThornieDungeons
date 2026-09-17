@@ -55,9 +55,49 @@ test("battle pet animation wiring preserves Sprout and supports safe frame fallb
   assert.match(assetSource, /onError: handleFrameError/);
   assert.match(components, /function PetCombatSprite[\s\S]*const dead = pet\.hp <= 0[\s\S]*anim: anim \|\| ""[\s\S]*dead,[\s\S]*fallback: pet\.icon/s);
   assert.match(components, /function getPetPresentation[\s\S]*presentation\?\.sizeClass[\s\S]*presentation\?\.anchorType === "flying"/s);
-  assert.match(components, /function PetCombatSprite[\s\S]*cropTransparent: true[\s\S]*visualHeight: presentation\.height[\s\S]*maxVisualWidth: presentation\.maxWidth/s);
+  assert.match(components, /function PetCombatSprite[\s\S]*cropTransparent: true[\s\S]*stableBoundsAnimations: \["idle", "attack", "death"\][\s\S]*visualHeight: presentation\.height[\s\S]*maxVisualWidth: presentation\.maxWidth/s);
+  assert.match(assetSource, /function getStableSpriteOpaqueBoundsUnion/);
+  assert.match(styles, /\.md-pet-unit > \.md-cropped-sprite-stage \{ overflow:visible; transform-origin:center bottom; \}/);
   assert.match(app, /actor\.kind === "pet"\) setPetAnim\("attack"\)/);
   assert.match(app, /setHeroAnim\(""\); setPetAnim\(""\)/);
+});
+
+test("all Pet animation bounds share a stable union crop", () => {
+  for (const petId of ["sprout001", "flamekit", "sparkpup", "ember_fox", "moon_hare", "hell_wolf", "inferno_drake", "storm_phoenix"]) {
+    const bounds = manifest.assets.pets[petId].presentation.bounds;
+    const frames = Object.values(bounds);
+    const left = Math.min(...frames.map(frame => frame.left));
+    const top = Math.min(...frames.map(frame => frame.top));
+    const right = Math.max(...frames.map(frame => frame.left + frame.width));
+    const bottom = Math.max(...frames.map(frame => frame.top + frame.height));
+    for (const frame of frames) {
+      assert.ok(frame.left >= left && frame.top >= top, `${petId}: frame starts inside union`);
+      assert.ok(frame.left + frame.width <= right && frame.top + frame.height <= bottom, `${petId}: frame ends inside union`);
+      assert.ok(right <= frame.canvasWidth && bottom <= frame.canvasHeight, `${petId}: union stays on canvas`);
+    }
+  }
+});
+
+test("ground and flying Pet envelopes stay inside requested battle viewports", () => {
+  const layouts = [
+    { width:375, height:286, x:71.25, scale:.8 },
+    { width:390, height:300, x:74.1, scale:.82 },
+    { width:430, height:300, x:81.7, scale:.82 },
+    { width:600, height:300, x:108, scale:.9 },
+    { width:700, height:300, x:118, scale:.9 },
+    { width:820, height:300, x:139.4, scale:.96 },
+    { width:820, height:286, x:139.4, scale:.96 }
+  ];
+  for (const layout of layouts) {
+    const width = 136 * layout.scale * 1.15;
+    const height = 94 * layout.scale * 1.15;
+    assert.ok(layout.x - width / 2 > 0, `${layout.width}: left edge remains visible`);
+    assert.ok(layout.x + width / 2 < layout.width, `${layout.width}: right edge remains visible`);
+    for (const top of [.75, layout.width <= 380 ? .69 : .68]) {
+      assert.ok(layout.height * top - height / 2 > 0, `${layout.width}: top edge remains visible`);
+      assert.ok(layout.height * top + height / 2 < layout.height, `${layout.width}: bottom edge remains visible`);
+    }
+  }
 });
 
 test("all equipped Pet V2 ids resolve directly and Storm Phoenix uses its flying slot", () => {

@@ -427,6 +427,24 @@ function getStableSpriteOpaqueBounds(config, anim) {
   return { left, top, width, height, canvasAspect, contentAspect: canvasAspect * width / height };
 }
 
+function getStableSpriteOpaqueBoundsUnion(config, animations) {
+  const bounds = animations.map(anim => getStableSpriteOpaqueBounds(config, anim)).filter(Boolean);
+  if (bounds.length !== animations.length || !bounds.length) return null;
+  const left = Math.min(...bounds.map(bound => bound.left));
+  const top = Math.min(...bounds.map(bound => bound.top));
+  const right = Math.max(...bounds.map(bound => bound.left + bound.width));
+  const bottom = Math.max(...bounds.map(bound => bound.top + bound.height));
+  const canvasAspect = bounds[0].canvasAspect;
+  return {
+    left,
+    top,
+    width: Math.max(0.001, right - left),
+    height: Math.max(0.001, bottom - top),
+    canvasAspect,
+    contentAspect: canvasAspect * (right - left) / Math.max(0.001, bottom - top)
+  };
+}
+
 function measureSpriteOpaqueBounds(sources) {
   const key = sources.join("|");
   if (!SPRITE_OPAQUE_BOUNDS_CACHE.has(key)) {
@@ -461,6 +479,7 @@ function AnimatedFrameSprite({
   attackFrameMs = 80,
   cropTransparent = false,
   cropPadding = 0,
+  stableBoundsAnimations = null,
   visualHeight = 64,
   maxVisualWidth = 104,
   fallback = null
@@ -472,8 +491,12 @@ function AnimatedFrameSprite({
   const [frameIndex, setFrameIndex] = React.useState(0);
   const frameKey = frames.join("|");
   const playableFrameKey = playableFrames.join("|");
-  const stableBoundsKey = JSON.stringify(config?.presentation?.bounds?.[effectiveAnim] || null);
-  const [opaqueBounds, setOpaqueBounds] = React.useState(() => getStableSpriteOpaqueBounds(config, effectiveAnim));
+  const boundsAnimations = Array.isArray(stableBoundsAnimations) && stableBoundsAnimations.length
+    ? stableBoundsAnimations
+    : [effectiveAnim];
+  const stableBoundsKey = JSON.stringify(boundsAnimations.map(name => config?.presentation?.bounds?.[name] || null));
+  const stableBounds = getStableSpriteOpaqueBoundsUnion(config, boundsAnimations);
+  const [opaqueBounds, setOpaqueBounds] = React.useState(() => stableBounds);
 
   React.useEffect(() => {
     setFailedSources([]);
@@ -484,7 +507,7 @@ function AnimatedFrameSprite({
       setOpaqueBounds(null);
       return undefined;
     }
-    const stable = getStableSpriteOpaqueBounds(config, effectiveAnim);
+    const stable = getStableSpriteOpaqueBoundsUnion(config, boundsAnimations);
     if (stable) {
       setOpaqueBounds(stable);
       return undefined;
