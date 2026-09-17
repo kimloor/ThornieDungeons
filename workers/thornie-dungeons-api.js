@@ -1541,6 +1541,435 @@ const RAID_STAMINA_REGEN_MS = 15 * 60 * 1000; // +1 every 15 minutes
 const RAID_DIAMOND_REFILL_COST = 50; // per extra attack once stamina hits 0
 const RAID_HITS_PER_ATTACK = 3; // mini combat round per attack, not a single flat hit
 
+function resolveRaidStamina(stored, updatedAtIso) {
+  const rawStamina = Number(stored);
+  const storedStamina = Number.isFinite(rawStamina) ? Math.max(0, Math.min(RAID_STAMINA_MAX, Math.floor(rawStamina))) : RAID_STAMINA_MAX;
+  if (storedStamina >= RAID_STAMINA_MAX) {
+    return { stamina: RAID_STAMINA_MAX, updatedAt: "" };
+  }
+  const updatedAtMs = Date.parse(updatedAtIso || "");
+  // A missing/malformed checkpoint must not turn stamina into NaN and crash every Raid
+  // request. Start a fresh regeneration window while preserving the stored amount.
+  if (!Number.isFinite(updatedAtMs)) {
+    return { stamina: storedStamina, updatedAt: new Date(Date.now()).toISOString() };
+  }
+  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
+  const ticks = Math.floor(elapsedMs / RAID_STAMINA_REGEN_MS);
+  if (ticks <= 0) return { stamina: storedStamina, updatedAt: updatedAtIso };
+  const stamina = Math.min(RAID_STAMINA_MAX, storedStamina + ticks);
+  const updatedAt = stamina >= RAID_STAMINA_MAX ? "" : new Date(updatedAtMs + ticks * RAID_STAMINA_REGEN_MS).toISOString();
+  return { stamina, updatedAt };
+}
+function raidStaminaSecondsToNext(updatedAtIso) {
+  if (!updatedAtIso) return 0;
+  const updatedAtMs = Date.parse(updatedAtIso);
+  if (!Number.isFinite(updatedAtMs)) return Math.round(RAID_STAMINA_REGEN_MS / 1000);
+  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
+  const remaining = RAID_STAMINA_REGEN_MS - (elapsedMs % RAID_STAMINA_REGEN_MS);
+  return Math.max(0, Math.round(remaining / 1000));
+}
+
+// Raid Wings — a separate 1-5★ tier exclusive to raid rewards (not the normal floor-drop
+// wings pool; client's buildDropItem() no longer rolls wings/accessory at all — see stats.js).
+const RAID_WING_DEFS = [
+  { star: 1, name: "ปีกอัศวินฝึกหัด ★1", dodgeChance: 5 },
+  { star: 2, name: "ปีกอัศวินฝึกหัด ★2", dodgeChance: 10 },
+  { star: 3, name: "ปีกนักรบราชวงศ์ ★3", dodgeChance: 18 },
+  { star: 4, name: "ปีกนักรบราชวงศ์ ★4", dodgeChance: 28 },
+  { star: 5, name: "ปีกเทพประจัญบาน ★5", dodgeChance: 40 },
+];
+function raidWingItemDesc(star) {
+  const def = RAID_WING_DEFS[Math.max(1, Math.min(5, star)) - 1];
+  return { type: "wings", rarity: "raid", name: def.name, dodgeChance: def.dodgeChance, star: def.star, empowerSlotCount: def.star };
+}
+function randomRaidWingStar() {
+  return 1 + Math.floor(Math.random() * 5);
+}
+
+// Azure set — 6 pieces (helmet/chest/gloves/boots/weapon/ring), set bonus at 2/4/6 equipped
+// (client-side bonus values live in stats.js SET_BONUS_DEFS.azure — keep both in sync).
+const AZURE_SET_DEFS = {
+  azure_helmet: { type: "helmet", name: "หมวก Azure", def: 60 },
+  azure_chest: { type: "chest", name: "เสื้อ Azure", def: 90 },
+  azure_gloves: { type: "gloves", name: "ถุงมือ Azure", atk: 40 },
+  azure_boots: { type: "boots", name: "รองเท้า Azure", def: 45 },
+  azure_weapon: { type: "weapon", name: "อาวุธ Azure", atk: 120 },
+  azure_ring: { type: "accessory", name: "แหวน Azure", dodgeChance: 15 }, // uses the existing "accessory" equip slot
+};
+function randomAzureItemDesc() {
+  const keys = Object.keys(AZURE_SET_DEFS);
+  const key = keys[Math.floor(Math.random() * keys.length)];
+  const d = AZURE_SET_DEFS[key];
+  return { type: d.type, rarity: "azure", name: d.name, atk: d.atk || 0, def: d.def || 0, dodgeChance: d.dodgeChance || 0, setId: "azure", empowerSlotCount: 5 };
+}
+// Recipes are inert placeholder items (stackable, riding the existing junk pipeline) until
+// the Crafting phase exists to consume them — see JUNK_INFO/recipe_* entries in enhancement.js.
+const AZURE_RECIPE_JUNK_IDS = ["recipe_azure_helmet", "recipe_azure_chest", "recipe_azure_gloves", "recipe_azure_boots", "recipe_azure_weapon", "recipe_azure_ring"];
+function randomAzureRecipeJunkId() {
+  return AZURE_RECIPE_JUNK_IDS[Math.floor(Math.random() * AZURE_RECIPE_JUNK_IDS.length)];
+}
+// Boss horn/hide — a single shared material pool across all boss types (not per-boss for now).
+function randomBossMaterialJunkId() {
+  return Math.random() < 0.5 ? "bossHorn" : "bossHide";
+}
+
+// Rank rewards, keyed by cumulative CONTRIBUTION (total_contribution) across the whole
+// raid instance — settled for EVERY participant (rank 1..last), not just a top-N cutoff.
+// Rank 1-3 get a fixed wing tier + boss materials + a random azure recipe; everyone ranked
+// 4th or lower gets 2 random boss materials as a consolation.
+const RAID_RANK_REWARDS = [
+  { wingStar: 5, junk: [{ junkId: "bossHorn", quantity: 3 }, { junkId: "bossHide", quantity: 3 }], recipe: true },
+  { wingStar: 3, junk: [{ junkId: "bossHorn", quantity: 2 }, { junkId: "bossHide", quantity: 2 }], recipe: true },
+  { wingStar: 1, junk: [{ junkId: "bossHorn", quantity: 1 }, { junkId: "bossHide", quantity: 1 }], recipe: true },
+];
+
+// Milestones — % of boss hpMax the character has personally CONTRIBUTED this raid instance
+// (rewards the players who carry the server boss, not just whoever gets lucky crits).
+// Every 5% -> diamonds. Every 10% -> 1 random boss material (on top of the 5% diamonds).
+// 25% -> 1★ wing, 50% -> 3★ wing, 75% -> random azure recipe, 99% -> a full random azure item.
+const RAID_MILESTONE_STEP = 5; // percent
+const RAID_MILESTONE_DIAMOND_PER_STEP = 5;
+
+function raidBossDefById(defId) {
+  return RAID_BOSS_DEFS.find((b) => b.id === defId) || RAID_BOSS_DEFS[0];
+}
+
+// Raid resets at Thai midnight specifically (not the UTC boundary todayDateKey() uses for
+// daily login), so it gets its own +7h-shifted date key.
+function raidDateKey() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// Fetches today's live boss, or spawns the next one in rotation if there isn't one yet
+// or the last one is already dead. Never returns a dead boss.
+async function getOrCreateActiveRaid(db) {
+  const today = raidDateKey();
+  const row = await db
+    .prepare(`SELECT * FROM raid_boss_state WHERE date = ? ORDER BY created_at DESC LIMIT 1`)
+    .bind(today)
+    .first();
+  if (row && Number(row.boss_hp_current) > 0) return row;
+
+  // Which boss is next: continue the rotation from whichever boss spawned most recently,
+  // across ALL dates (not just today) — using "how many spawned today" as the rotation
+  // index always restarts at 0 every new calendar day, which is the bug that made every
+  // day show the same first boss (Azure Angel) regardless of how many days had passed.
+  // This only needs the single latest row, so it's unaffected by the 7-day retention
+  // cleanup pruning old raid_boss_state rows.
+  const lastRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state ORDER BY created_at DESC LIMIT 1`).first();
+  const lastIndex = lastRow ? RAID_BOSS_DEFS.findIndex((b) => b.id === lastRow.boss_def_id) : -1;
+  const nextIndex = (lastIndex + 1 + RAID_BOSS_DEFS.length) % RAID_BOSS_DEFS.length;
+  const def = RAID_BOSS_DEFS[nextIndex];
+
+  // HP scaling still escalates per spawn WITHIN today specifically (later respawns/resets
+  // the same day are tougher), independent of which boss it happens to be.
+  const cntRow = await db.prepare(`SELECT COUNT(*) as c FROM raid_boss_state WHERE date = ?`).bind(today).first();
+  const spawnCountToday = cntRow ? Number(cntRow.c) || 0 : 0;
+  const hpMax = Math.round(def.hpBase * (1 + spawnCountToday * 0.2));
+  const raidId = `raid-${today}-${nextIndex}-${Math.random().toString(36).slice(2, 8)}`;
+  const now = nowIso();
+  await db
+    .prepare(
+      `INSERT INTO raid_boss_state (raid_id, date, boss_def_id, boss_hp_max, boss_hp_current, settled_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, '', ?, ?)`
+    )
+    .bind(raidId, today, def.id, hpMax, hpMax, now, now)
+    .run();
+  return { raid_id: raidId, date: today, boss_def_id: def.id, boss_hp_max: hpMax, boss_hp_current: hpMax, settled_at: "", created_at: now, updated_at: now };
+}
+
+// Settles (and closes out) any raid instance whose date has rolled past today — this is what
+// makes the "changes every midnight even if the boss is still alive" rule actually happen,
+// since getOrCreateActiveRaid alone would just silently start ignoring the old raid_id without
+// ever paying out its rank rewards. Call from scheduled() — see bottom of file. Needs the Cron
+// Trigger (Dashboard -> this worker -> Trigger Events) to fire at least roughly daily around
+// 17:00 UTC (00:00 ICT) for the reset to land on time; it's safe to run more often too, since
+// settleRaidRank() is idempotent (guarded by settled_at).
+async function closeOutExpiredRaids(db) {
+  const today = raidDateKey();
+  const stale = await db.prepare(`SELECT raid_id FROM raid_boss_state WHERE date != ? AND settled_at = ''`).bind(today).all();
+  for (const row of stale.results || []) {
+    await settleRaidRank(db, row.raid_id);
+  }
+}
+
+// Ported subset of characterBaseStats/itemBonus above — returns only what raid combat
+// needs (atk/crit) rather than the full CP number, so this stays decoupled from the
+// leaderboard CP formula (don't merge these; CP formula changes shouldn't silently
+// reshape raid damage and vice versa).
+function raidCombatStats(character, equippedItems) {
+  const s = {
+    str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
+    dex: Number(character.dex) || 0, luk: Number(character.luk) || 0,
+  };
+  const level = Number(character.level) || 1;
+  const base = characterBaseStats(level, s);
+  const eb = { atk: 0, critChance: 0, critDamage: 0 };
+  (equippedItems || []).forEach((it) => {
+    const ib = itemBonus(it);
+    eb.atk += ib.atk;
+    eb.critChance += ib.critChance || 0;
+    eb.critDamage += ib.critDamage || 0;
+  });
+  return {
+    atk: Math.round(base.atk + eb.atk),
+    critChance: Math.min(100, Math.round((base.critChance + eb.critChance) * 10) / 10),
+    critDamage: Math.round((base.critDamage + eb.critDamage) * 10) / 10,
+  };
+}
+
+// One "attack" = a short simulated combat round (a few swings with crit rolls), not a
+// single flat hit — keeps some randomness/excitement per attempt like real combat.
+function simulateRaidAttack(stats) {
+  let total = 0;
+  let anyCrit = false;
+  for (let i = 0; i < RAID_HITS_PER_ATTACK; i++) {
+    const variance = 0.85 + Math.random() * 0.3;
+    let dmg = stats.atk * variance;
+    if (Math.random() * 100 < stats.critChance) {
+      dmg *= 1 + stats.critDamage / 100;
+      anyCrit = true;
+    }
+    total += dmg;
+  }
+  return { damage: Math.max(1, Math.round(total)), crit: anyCrit };
+}
+
+// Grants rank-bonus rewards once, the instant the boss dies. Guarded by an atomic
+// UPDATE on settled_at (only succeeds for whichever concurrent attack request gets
+// there first) so two players killing it in the same instant can't double-pay rewards.
+// Grants rank rewards once, either the instant the boss dies OR when closeOutExpiredRaids()
+// force-closes an unfinished raid at the daily reset. Guarded by an atomic UPDATE on
+// settled_at so it can only ever run once per raid_id even under concurrent triggers.
+// Ranked by cumulative CONTRIBUTION (not best single hit) across ALL participants —
+// rank 1-3 get the big reward, everyone else (4th..last) gets a consolation.
+async function settleRaidRank(db, raidId) {
+  const guard = await db
+    .prepare(`UPDATE raid_boss_state SET settled_at = ? WHERE raid_id = ? AND settled_at = ''`)
+    .bind(nowIso(), raidId)
+    .run();
+  if (!guard.meta || !guard.meta.changes) return; // already settled
+
+  const bossRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state WHERE raid_id = ?`).bind(raidId).first();
+  const bossName = raidBossDefById(bossRow ? bossRow.boss_def_id : "").name;
+  const allRes = await db
+    .prepare(`SELECT character_id, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC`)
+    .bind(raidId)
+    .all();
+  const rows = allRes.results || [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const top = RAID_RANK_REWARDS[i];
+    if (top) {
+      const junk = top.junk.slice();
+      if (top.recipe) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
+      await sendMail(
+        db, rows[i].character_id, `🏆 อันดับ ${i + 1} ศึก ${bossName}`,
+        `คุณจบการล่า ${bossName} ในอันดับที่ ${i + 1} ด้วยดาเมจสะสม ${rows[i].total_contribution}`,
+        { junk, items: [raidWingItemDesc(top.wingStar)] }
+      );
+    } else {
+      await sendMail(
+        db, rows[i].character_id, `⚔️ ร่วมศึก ${bossName}`, `อันดับที่ ${i + 1} ในการล่าครั้งนี้ — ได้วัตถุดิบติดไม้ติดมือ`,
+        { junk: [{ junkId: randomBossMaterialJunkId(), quantity: 1 }, { junkId: randomBossMaterialJunkId(), quantity: 1 }] }
+      );
+    }
+  }
+}
+
+async function handleGetRaidStatus(db, id, session, characterId) {
+  // These three are fully independent reads (auth check, ownership check, and the raid's
+  // own state don't depend on each other) — firing them together instead of one-after-
+  // another cuts several D1 round trips down to the time of the single slowest one. Same
+  // pattern below for the participant/leaderboard reads once raid_id is known.
+  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
+  if (auth.error) return json({ error: auth.error });
+  if (owned.error) return json({ error: owned.error });
+
+  const def = raidBossDefById(raid.boss_def_id);
+  const [participant, topRes] = await Promise.all([
+    db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first(),
+    db.prepare(`SELECT character_id, name, total_damage, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC LIMIT 10`).bind(raid.raid_id).all(),
+  ]);
+
+  const staminaState = resolveRaidStamina(owned.row.raid_stamina, owned.row.raid_stamina_updated_at);
+  const contribution = participant ? Number(participant.total_contribution) || 0 : 0;
+  return json({
+    ok: true,
+    boss: { raidId: raid.raid_id, defId: def.id, name: def.name, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
+    me: {
+      stamina: staminaState.stamina,
+      staminaMax: RAID_STAMINA_MAX,
+      staminaRegenSeconds: raidStaminaSecondsToNext(staminaState.updatedAt),
+      diamondRefillCost: RAID_DIAMOND_REFILL_COST,
+      bestHit: participant ? Number(participant.total_damage) || 0 : 0,
+      contribution,
+      contributionPct: Math.min(100, Math.round((contribution / Number(raid.boss_hp_max)) * 1000) / 10),
+      milestonesClaimed: participant ? (participant.milestone_claimed || "").split(",").filter(Boolean) : [],
+    },
+    milestoneStep: RAID_MILESTONE_STEP,
+    milestoneSpecials: [
+      { pct: 25, label: "ปีก 1★" }, { pct: 50, label: "ปีก 3★" }, { pct: 75, label: "แบบร่างชุด Azure" }, { pct: 99, label: "ไอเทมชุด Azure" },
+    ],
+    top: topRes.results || [],
+  });
+}
+
+async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) {
+  // See handleGetRaidStatus for why these four are safe to fire concurrently — the equipped-
+  // items read only needs characterId, so it doesn't have to wait for raid/ownership either.
+  const [auth, owned, raid, itemsRes] = await Promise.all([
+    verifyPlayer(db, id, session),
+    verifyOwnedCharacter(db, id, characterId),
+    getOrCreateActiveRaid(db),
+    db.prepare(`SELECT atk, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
+  ]);
+  if (auth.error) return json({ error: auth.error });
+  if (owned.error) return json({ error: owned.error });
+  const character = owned.row;
+
+  if (Number(raid.boss_hp_current) <= 0) return json({ error: "boss_already_dead" });
+
+  // Stamina is per-character and regenerates over time. Reserve it before applying damage
+  // with a compare-and-swap update, so two simultaneous taps cannot both spend the same
+  // final stamina point. Paid attacks are also charged atomically on the authoritative
+  // player row; never trust the client's paidDiamonds flag as proof of payment. This has to
+  // stay its own round trip (can't be folded into the batch below) — if the CAS/charge
+  // fails, the batch's damage + participant writes must not happen at all, and D1 batches
+  // don't support conditionally skipping later statements based on an earlier one's result.
+  const staminaState = resolveRaidStamina(character.raid_stamina, character.raid_stamina_updated_at);
+  let spentStamina = false;
+  let diamondsSpent = 0;
+  let newStamina = staminaState.stamina;
+  let newStaminaUpdatedAt = staminaState.updatedAt;
+  if (staminaState.stamina >= 1) {
+    spentStamina = true;
+    newStamina = staminaState.stamina - 1;
+    newStaminaUpdatedAt = staminaState.updatedAt || nowIso();
+    const storedStamina = Number.isFinite(Number(character.raid_stamina)) ? Number(character.raid_stamina) : RAID_STAMINA_MAX;
+    const storedUpdatedAt = character.raid_stamina_updated_at || "";
+    const reserved = await db
+      .prepare(`UPDATE characters SET raid_stamina = ?, raid_stamina_updated_at = ? WHERE character_id = ? AND raid_stamina = ? AND raid_stamina_updated_at = ?`)
+      .bind(newStamina, newStaminaUpdatedAt, characterId, storedStamina, storedUpdatedAt)
+      .run();
+    if (!reserved.meta || !reserved.meta.changes) {
+      return json({ error: "stamina_conflict", retry: true });
+    }
+  } else if (!paidDiamonds) {
+    return json({ error: "no_stamina", diamondRefillCost: RAID_DIAMOND_REFILL_COST, staminaRegenSeconds: raidStaminaSecondsToNext(staminaState.updatedAt) });
+  } else {
+    const charged = await db
+      .prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ?`)
+      .bind(RAID_DIAMOND_REFILL_COST, id, RAID_DIAMOND_REFILL_COST)
+      .run();
+    if (!charged.meta || !charged.meta.changes) {
+      return json({ error: "insufficient_diamonds", diamondRefillCost: RAID_DIAMOND_REFILL_COST });
+    }
+    diamondsSpent = RAID_DIAMOND_REFILL_COST;
+  }
+
+  const stats = raidCombatStats(character, itemsRes.results || []);
+  const hit = simulateRaidAttack(stats);
+  const hpBefore = Number(raid.boss_hp_current);
+  const appliedDamage = Math.min(hit.damage, hpBefore); // this character's actual contribution to the shared boss HP
+  const now = nowIso();
+
+  // Both writes use RETURNING so this single batch also gets us the numbers we need back —
+  // no separate SELECT before (to know the participant's prior best/contribution) or after
+  // (to read the boss's post-hit HP). MAX()/+= happen in SQL against the live row, which is
+  // also correctness-safer than the old read-then-write-computed-value approach: two
+  // concurrent hits reading the same stale contribution total could otherwise silently lose
+  // one of them, the same race class the stamina CAS above exists to prevent.
+  const [bossBatch, participantBatch] = await db.batch([
+    db.prepare(`UPDATE raid_boss_state SET boss_hp_current = MAX(0, boss_hp_current - ?), updated_at = ? WHERE raid_id = ? AND boss_hp_current > 0 RETURNING boss_hp_current`).bind(hit.damage, now, raid.raid_id),
+    db.prepare(
+      `INSERT INTO raid_participants (raid_id, character_id, player_id, name, total_damage, total_contribution, attempts_used, milestone_claimed, last_hit_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, '', ?)
+       ON CONFLICT(raid_id, character_id) DO UPDATE SET
+         total_damage = MAX(total_damage, excluded.total_damage),
+         total_contribution = total_contribution + excluded.total_contribution,
+         attempts_used = attempts_used + 1,
+         name = excluded.name,
+         last_hit_at = excluded.last_hit_at
+       RETURNING total_damage, total_contribution`
+    ).bind(raid.raid_id, characterId, id, character.name || "", hit.damage, appliedDamage, now),
+  ]);
+  // If the WHERE didn't match (boss already hit 0 by someone else between our early check
+  // and this batch landing), RETURNING yields no row — treat that as "our damage didn't land"
+  // rather than crashing on a missing value.
+  const bossRow = (bossBatch.results || [])[0];
+  const bossHpAfter = bossRow ? Number(bossRow.boss_hp_current) : hpBefore;
+  const participantRow = (participantBatch.results || [])[0];
+  const newBest = participantRow ? Number(participantRow.total_damage) : hit.damage;
+  const newContribution = participantRow ? Number(participantRow.total_contribution) : appliedDamage;
+
+  let bossDied = false;
+  if (bossRow && bossHpAfter <= 0 && hpBefore > 0) {
+    bossDied = true;
+    const lastHitStar = randomRaidWingStar();
+    await sendMail(db, characterId, `💥 Last Hit! ${raidBossDefById(raid.boss_def_id).name}`, `คุณคือผู้ปิดจ๊อบ! ได้รับปีกสุ่ม ★${lastHitStar}`, { items: [raidWingItemDesc(lastHitStar)] });
+    await settleRaidRank(db, raid.raid_id);
+  }
+
+  return json({
+    ok: true,
+    damage: hit.damage,
+    crit: hit.crit,
+    appliedDamage,
+    bossHpCurrent: bossHpAfter,
+    bossDied,
+    paidDiamonds: !spentStamina,
+    diamondsSpent,
+    stamina: newStamina,
+    staminaMax: RAID_STAMINA_MAX,
+    staminaRegenSeconds: raidStaminaSecondsToNext(newStaminaUpdatedAt),
+    bestHit: newBest,
+    contribution: newContribution,
+  });
+}
+
+async function handleClaimRaidMilestones(db, id, session, characterId) {
+  const [auth, owned, raid] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId), getOrCreateActiveRaid(db)]);
+  if (auth.error) return json({ error: auth.error });
+  if (owned.error) return json({ error: owned.error });
+
+  const participant = await db.prepare(`SELECT * FROM raid_participants WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
+  if (!participant) return json({ error: "no_participation" });
+
+  const claimed = (participant.milestone_claimed || "").split(",").filter(Boolean);
+  const hpMax = Number(raid.boss_hp_max) || 1;
+  const pctReached = ((Number(participant.total_contribution) || 0) / hpMax) * 100;
+
+  const newKeys = [];
+  let diamonds = 0;
+  const junk = [];
+  const items = [];
+  for (let pct = RAID_MILESTONE_STEP; pct <= 100; pct += RAID_MILESTONE_STEP) {
+    const key = `p${pct}`;
+    if (pctReached < pct || claimed.indexOf(key) !== -1) continue;
+    newKeys.push(key);
+    diamonds += RAID_MILESTONE_DIAMOND_PER_STEP;
+    if (pct % 10 === 0) junk.push({ junkId: randomBossMaterialJunkId(), quantity: 1 });
+    if (pct === 25) items.push(raidWingItemDesc(1));
+    if (pct === 50) items.push(raidWingItemDesc(3));
+    if (pct === 75) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
+  }
+  // 99% is its own checkpoint (not a multiple of 5) — a full random azure piece, not a recipe.
+  if (pctReached >= 99 && claimed.indexOf("p99") === -1) {
+    newKeys.push("p99");
+    items.push(randomAzureItemDesc());
+  }
+  if (!newKeys.length) return json({ ok: true, claimed: [] });
+
+  const def = raidBossDefById(raid.boss_def_id);
+  await sendMail(db, characterId, `🎁 รางวัลดาเมจสะสม ${def.name}`, `คุณสะสมดาเมจถึง ${newKeys.map((k) => k.replace("p", "")).join("%, ")}%`, { diamonds, junk, items });
+
+  const allClaimed = claimed.concat(newKeys).join(",");
+  await db.prepare(`UPDATE raid_participants SET milestone_claimed = ? WHERE raid_id = ? AND character_id = ?`).bind(allClaimed, raid.raid_id, characterId).run();
+
+  return json({ ok: true, claimed: newKeys });
+}
+
 // ---------- Phase 5: PvP Arena (Battle Core V1, symmetric) ----------
 // Ported verbatim from src/systems/heroSkillsV1.js, src/systems/pets.js's
 // PET_COMBAT_SKILLS_V2, and src/systems/battleCore.js. These three are the shared,
