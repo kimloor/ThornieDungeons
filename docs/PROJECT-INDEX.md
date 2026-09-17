@@ -16,6 +16,10 @@ Use this order when deciding which instruction governs:
 4. Current production code and configuration.
 5. Implementation or temporary notes.
 
+A user-approved task overrides documentation only within its explicit scope. Contracts not mentioned by that task remain unchanged, and a narrow task must not be treated as permission to redesign adjacent systems.
+
+Production code/configuration describes the current implementation, but does not automatically redefine intended behavior. If production code conflicts with an **ACTIVE** contract, treat it as a discrepancy to investigate. Do not silently assume the documentation is obsolete, and do not silently change design/gameplay to match the code.
+
 If a meaningful conflict exists, report it instead of silently choosing one source.
 
 ## 3. Active core documentation
@@ -48,6 +52,8 @@ Repository-wide references:
 | **TEMPORARY** | [`TEMP-REFACTOR-ROADMAP.md`](TEMP-REFACTOR-ROADMAP.md) | Pending transition/refactor roadmap. It is not a permanent source of truth and must be rechecked against latest `main`. |
 
 ## 5. Read-by-task map
+
+Read only the documents relevant to the requested scope. Do not load unrelated system specifications unless a dependency or conflict requires them.
 
 ### Battle / Combat
 
@@ -105,7 +111,19 @@ Repository-wide references:
 - [`TOWN-HUB.md`](TOWN-HUB.md)
 - The relevant page or system specification
 
-## 6. Role guidance
+## 6. Documentation gaps / unmapped systems
+
+The following important areas do not currently have a dedicated **ACTIVE** system document in `docs/`:
+
+- **Raid**
+- **Dungeon / Floor Select**
+- **Navigation / Settings**
+- **Arena**
+- **Shop / Crafting / Summoning**
+
+Until a dedicated contract exists, inspect latest `main`, the latest approved task/decision, and directly related code/configuration before changing behavior. Do not invent missing game rules or infer them from unrelated systems.
+
+## 7. Role guidance
 
 ### Project Lead
 
@@ -128,16 +146,28 @@ Repository-wide references:
 - Validate implementation against the approved task and applicable **ACTIVE** specifications.
 - Flag task/document/code conflicts instead of silently resolving them.
 
-## 7. Document status definitions
+## 8. Document status definitions
 
-- **ACTIVE** — current reusable contract.
+- **ACTIVE-PRODUCTION** — approved reusable contract intended to describe current production behavior.
+- **ACTIVE-DESIGN** — approved design/future contract that may not yet be fully implemented in production.
+- **ACTIVE** — current reusable contract when production/design distinction has not yet been explicitly classified.
 - **SUPPORTING** — useful implementation context but not authoritative.
 - **TEMPORARY** — task or transition document that should later be removed or archived.
 - **RETIRED** — must not be used for new implementation.
 
+Do not guess status transitions. If implementation state is uncertain, keep the existing classification and verify latest `main` before changing it.
+
 No current document is marked **RETIRED** by this index.
 
-## 8. Maintenance rule
+## 9. Documentation health
+
+**Known documentation conflicts:** None currently verified.
+
+**Documentation gaps:** Raid; Dungeon / Floor Select; Navigation / Settings; Arena; Shop / Crafting / Summoning.
+
+When a conflict is resolved, remove it from unresolved conflicts rather than leaving stale warnings in this index.
+
+## 10. Maintenance rule
 
 When an approved production contract changes:
 
