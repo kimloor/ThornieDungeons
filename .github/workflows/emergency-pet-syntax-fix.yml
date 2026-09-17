@@ -1,0 +1,51 @@
+name: Emergency PetScreen syntax fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/emergency-pet-syntax-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Patch PetScreen source only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/ui/components.js')
+          s = p.read_text(encoding='utf-8')
+          old = '  }, "← Back"), /*#__PURE__*/React.createElement(GameDock, {'
+          new = '  }, "← Back")), /*#__PURE__*/React.createElement(GameDock, {'
+          count = s.count(old)
+          if count != 1:
+              raise SystemExit(f'Expected exactly 1 PetScreen patch target, found {count}')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Build and syntax check
+        run: |
+          set -euo pipefail
+          node --check src/ui/components.js
+          node build.js
+          node --test tests/navigation-settings.test.js
+
+      - name: Commit hotfix and remove temporary workflow
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/emergency-pet-syntax-fix.yml
+          git add src/ui/components.js index.html
+          git diff --cached --check
+          git commit -m "hotfix: restore PetScreen syntax"
+          git push origin main
