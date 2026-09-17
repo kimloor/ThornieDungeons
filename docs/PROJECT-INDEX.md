@@ -25,7 +25,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
-| [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. See the conflict note below before Auth migration work. |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. |
 | [`HERO-OVERLAY-V4.md`](HERO-OVERLAY-V4.md) | Current Hero overlay composition, equipment mapping, combat presentation, anchors, asset loading, and R2 paths. |
 | [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md) | Hero skill branches, ranks, statuses, prerequisites, UI contract, and combat checks. |
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked modular floating Hero V5 visual/animation architecture and future production reference; it does not itself authorize replacing the current production Hero. |
@@ -145,7 +145,3 @@ When an approved production contract changes:
 - Update `PROJECT-INDEX.md` if document status or task mapping changes.
 - Avoid creating duplicate, competing specifications.
 - Retire or remove obsolete documents when safe.
-
-## 9. Known documentation conflict
-
-- [`DEPLOYMENT.md`](DEPLOYMENT.md) says `migration_v11_auth_v2.sql` is still on a Login/Auth V2 feature branch and should enter the automated migration lane when released. Current repository migration guidance in `migrations/auto/README.md` says Auth V2 migration v11 is already applied in production and must not be replayed or recreated. Treat this as unresolved documentation drift: verify production migration state and update `DEPLOYMENT.md` in a separately approved documentation change before any Auth migration work.

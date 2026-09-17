@@ -75,7 +75,9 @@ Do not ask the user to manually paste `workers/thornie-dungeons-api.js` into Clo
 
 ## Login/Auth V2 note
 
-`migration_v11_auth_v2.sql` currently exists on the Login/Auth V2 feature branch. When Login/Auth V2 is released, its finalized production migration should enter the automated migration lane (`migrations/auto/`) in the release change so D1 is updated before the Auth V2 Worker code is deployed.
+Login/Auth V2 migration v11 is already applied in production. It must not be replayed, recreated, or added to `migrations/auto/`.
+
+`migrations/auto/` remains the deployment lane for future new, forward-only production migrations. Any later Auth schema change must use a new migration rather than modifying or reproducing migration v11, and it must continue through the existing migration-before-Worker deployment flow above.
 
 ## R2 asset deployment
 
