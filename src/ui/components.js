@@ -1640,22 +1640,29 @@ function ArenaScreen({
       overCard,
 
       !match.result && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-        /*#__PURE__*/React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } },
-          /*#__PURE__*/React.createElement("button", {
-            className: "md-btn attack small",
-            disabled: submitting,
-            onClick: () => submitTurn("basic")
-          }, "⚔️ โจมตี"),
+        /*#__PURE__*/React.createElement("button", {
+          className: "md-pvp-attack-btn",
+          disabled: submitting,
+          onClick: () => submitTurn("basic")
+        }, "⚔️ โจมตี"),
+        /*#__PURE__*/React.createElement("div", { className: "md-pvp-skill-grid" },
           (match.skills || []).map(s => {
-            const canAfford = match.you.mp >= s.mp;
-            const onCooldown = (s.cooldownRemaining || 0) > 0;
+            const cost = Number(s.mp) || 0;
+            const canAfford = match.you.mp >= cost;
+            const cdLeft = s.cooldownRemaining || 0;
+            const onCooldown = cdLeft > 0;
+            const ready = canAfford && !onCooldown;
             return /*#__PURE__*/React.createElement("button", {
               key: s.key,
-              className: "md-btn small",
+              className: `md-pvp-skill-btn ${ready ? "ready" : ""} ${onCooldown ? "cooldown" : ""}`,
+              "data-cd": onCooldown ? cdLeft : undefined,
               disabled: submitting || !canAfford || onCooldown,
-              title: s.desc,
+              title: s.desc || "",
               onClick: () => submitTurn("active", s.key)
-            }, s.icon, " ", s.name, " (", s.mp, "SP)", onCooldown ? ` [${s.cooldownRemaining}]` : "");
+            },
+              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-icon" }, s.icon || "✨"),
+              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-name" }, s.name || s.key),
+              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-cost" }, cost, " SP"));
           })),
         error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 6, color: "#FF6B6B" } }, error)),
 

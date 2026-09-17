@@ -223,6 +223,22 @@ const STYLE = `
 .md-pvp-stage { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; padding: 16px 12px 22px; position: relative; min-height: 140px; }
 .md-pvp-side { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 1; }
 .md-pvp-vs { font-family: 'Baloo 2'; font-weight: 800; color: var(--gold); font-size: 13px; align-self: center; opacity: 0.7; }
+
+/* Arena action buttons — attack full-width on top, skills in a 3-col grid below so a
+   long skill list (multiple Hero Skill V1 branches) stays legible instead of cramming
+   into one wrapping row of tiny buttons. */
+.md-pvp-attack-btn { width: 100%; padding: 12px; border-radius: 14px; background: linear-gradient(180deg, #ff8a7a, #e05353); border: 2px solid #FFD166; color: #fff; font-family: 'Baloo 2'; font-weight: 800; font-size: 15px; cursor: pointer; }
+.md-pvp-attack-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.md-pvp-skill-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.md-pvp-skill-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; border: 2px solid var(--gold-deep); background: linear-gradient(180deg, rgba(255,209,102,0.14), rgba(10,6,22,0.55)); color: var(--ink); font-family: 'Baloo 2'; cursor: pointer; position: relative; transition: transform 0.15s ease, opacity 0.15s ease; }
+.md-pvp-skill-btn:active:not(:disabled) { transform: scale(0.95); }
+.md-pvp-skill-btn .md-pvp-skill-icon { font-size: 22px; line-height: 1; }
+.md-pvp-skill-btn .md-pvp-skill-name { font-size: 10.5px; font-weight: 800; text-align: center; line-height: 1.15; }
+.md-pvp-skill-btn .md-pvp-skill-cost { font-size: 9px; color: var(--gold); font-weight: 700; }
+.md-pvp-skill-btn.ready { border-color: #7CFF9E; }
+.md-pvp-skill-btn:disabled { opacity: 0.4; filter: grayscale(0.6); cursor: not-allowed; border-color: rgba(255,255,255,0.18); }
+.md-pvp-skill-btn.cooldown::after { content: attr(data-cd); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); border-radius: 10px; font-size: 18px; font-weight: 800; color: #fff; }
+
 .md-pvp-unit { width: 54px; height: 54px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,209,102,0.18), rgba(10,6,22,0.45)); border: 2px solid var(--gold-deep); display: flex; align-items: center; justify-content: center; font-size: 26px; position: relative; animation: md-idle 2.2s ease-in-out infinite; transition: opacity 0.2s ease, filter 0.2s ease; }
 .md-pvp-unit.pet { width: 38px; height: 38px; font-size: 17px; opacity: 0.9; }
 .md-pvp-unit.dead { opacity: 0.3; filter: grayscale(1); animation: none; }
