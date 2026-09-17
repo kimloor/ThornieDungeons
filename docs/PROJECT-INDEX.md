@@ -30,12 +30,15 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. |
+| [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md) | Dungeon Floor Select, Floor Detail, floor event/modifier presentation, monster preview, door states, and responsive entry flow. |
 | [`HERO-OVERLAY-V4.md`](HERO-OVERLAY-V4.md) | Current Hero overlay composition, equipment mapping, combat presentation, anchors, asset loading, and R2 paths. |
 | [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md) | Hero skill branches, ranks, statuses, prerequisites, UI contract, and combat checks. |
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked modular floating Hero V5 visual/animation architecture and future production reference; it does not itself authorize replacing the current production Hero. |
 | [`INVENTORY-UI-V2.md`](INVENTORY-UI-V2.md) | Inventory/equipment layout, item popup, compare rules, rarity presentation, capacity, overflow, and responsive behavior. |
 | [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) | Login/Auth V2 account, session, password, recovery, migration, frontend, and backend security contract. |
+| [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
 | [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |
+| [`RAID-SYSTEM-V1.md`](RAID-SYSTEM-V1.md) | Raid boss roster/rotation, HP scaling, Raid asset contract, persistence boundaries, auth/backend safety, and Raid verification. |
 | [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) | Ordered persistence, retries, save state, session ownership, battle checkpoints, and transaction safety. |
 | [`TOWN-HUB.md`](TOWN-HUB.md) | Stable Town/Main Hub artwork separation, navigation consistency, mobile UI, and build rules. |
 
@@ -63,6 +66,29 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 - [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md)
 - [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md)
 - [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) when persistence is affected
+
+### Raid
+
+- [`AGENTS.md`](../AGENTS.md)
+- [`RAID-SYSTEM-V1.md`](RAID-SYSTEM-V1.md)
+- [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) only when shared combat behavior is affected
+- [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) when persistence is affected
+- [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) when auth/session behavior is affected
+- [`r2-upload/README.md`](../r2-upload/README.md) when Raid assets are affected
+
+### Dungeon / Floor Select
+
+- [`AGENTS.md`](../AGENTS.md)
+- [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md)
+- [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) when entry/battle behavior is affected
+- [`r2-upload/README.md`](../r2-upload/README.md) when Dungeon assets are affected
+
+### Navigation / Settings
+
+- [`AGENTS.md`](../AGENTS.md)
+- [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md)
+- [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) when account/security behavior is affected
+- [`TOWN-HUB.md`](TOWN-HUB.md) when Main/Town shell behavior is affected
 
 ### Hero / Equipment Sprite
 
@@ -109,15 +135,13 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 
 - [`AGENTS.md`](../AGENTS.md)
 - [`TOWN-HUB.md`](TOWN-HUB.md)
+- [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) when shared navigation/settings is affected
 - The relevant page or system specification
 
 ## 6. Documentation gaps / unmapped systems
 
 The following important areas do not currently have a dedicated **ACTIVE** system document in `docs/`:
 
-- **Raid**
-- **Dungeon / Floor Select**
-- **Navigation / Settings**
 - **Arena**
 - **Shop / Crafting / Summoning**
 
@@ -163,7 +187,7 @@ No current document is marked **RETIRED** by this index.
 
 **Known documentation conflicts:** None currently verified.
 
-**Documentation gaps:** Raid; Dungeon / Floor Select; Navigation / Settings; Arena; Shop / Crafting / Summoning.
+**Documentation gaps:** Arena; Shop / Crafting / Summoning.
 
 When a conflict is resolved, remove it from unresolved conflicts rather than leaving stale warnings in this index.
 
