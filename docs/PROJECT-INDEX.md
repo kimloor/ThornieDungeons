@@ -31,6 +31,10 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. |
 | [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md) | Dungeon Floor Select, Floor Detail, floor event/modifier presentation, monster preview, door states, and responsive entry flow. |
+| [`SOCIAL-SYSTEM-V1.md`](SOCIAL-SYSTEM-V1.md) | **ACTIVE-DESIGN** shared character-scoped Social foundation: identity, presence, block, unread, lifecycle, security, and shared errors. |
+| [`FRIEND-SYSTEM-V1.md`](FRIEND-SYSTEM-V1.md) | **ACTIVE-DESIGN** Friend search/requests, 50-friend cap, remove/block, presence, profile, and DM eligibility. |
+| [`CHAT-SYSTEM-V1.md`](CHAT-SYSTEM-V1.md) | **ACTIVE-DESIGN** Global/Guild/Direct chat channels, polling, retention, unread, rate limits, and Sticker placeholder. |
+| [`GUILD-SYSTEM-V1.md`](GUILD-SYSTEM-V1.md) | **ACTIVE-DESIGN** Guild lifecycle, Leader/Member permissions, applications, level/capacity, donation progression, succession, and Guild Chat integration. |
 | [`HERO-OVERLAY-V4.md`](HERO-OVERLAY-V4.md) | Current Hero overlay composition, equipment mapping, combat presentation, anchors, asset loading, and R2 paths. |
 | [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md) | Hero skill branches, ranks, statuses, prerequisites, UI contract, and combat checks. |
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked modular floating Hero V5 visual/animation architecture and future production reference; it does not itself authorize replacing the current production Hero. |
@@ -109,6 +113,18 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 - [`AGENTS.md`](../AGENTS.md)
 - [`INVENTORY-UI-V2.md`](INVENTORY-UI-V2.md)
 - [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) and [`HERO-OVERLAY-V4.md`](HERO-OVERLAY-V4.md) when equipped appearance is affected
+
+### Social / Friend / Chat / Guild
+
+- [`AGENTS.md`](../AGENTS.md)
+- [`SOCIAL-SYSTEM-V1.md`](SOCIAL-SYSTEM-V1.md)
+- [`FRIEND-SYSTEM-V1.md`](FRIEND-SYSTEM-V1.md) for Friend behavior
+- [`CHAT-SYSTEM-V1.md`](CHAT-SYSTEM-V1.md) for Chat behavior
+- [`GUILD-SYSTEM-V1.md`](GUILD-SYSTEM-V1.md) for Guild behavior
+- [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) for session/account-to-character authorization boundaries
+- [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) when persistence/transaction safety is affected
+- [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) when adding/changing Friend/Chat/Guild routes or badges
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) for backend/D1 migration or release work
 
 ### Login / Auth
 
