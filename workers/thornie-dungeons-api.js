@@ -4,11 +4,10 @@
  * Repository source for the independently deployed gameplay API Worker. It includes the
  * existing character/game systems plus Login/Auth V2's central session boundary.
  *
- * NOT YET DEPLOYED — the root wrangler.jsonc targets the frontend/static Worker, not this
- * API file. After applying the reviewed D1 migration, deploy this API source manually:
- *   wrangler deploy workers/thornie-dungeons-api.js --name thornie-dungeons-api
- * or paste it into the Cloudflare Dashboard editor for the `thornie-dungeons-api` worker,
- * while preserving the production Worker's DB binding, secrets and triggers.
+ * Release path (see docs/DEPLOYMENT.md): merge an approved backend change to `main` ->
+ * GitHub Actions applies pending migrations/auto/*.sql -> deploys the `thornie-dungeons-api`
+ * Worker -> verification. Do not deploy this file manually or paste it into the Cloudflare
+ * Dashboard editor; the automated pipeline is the only supported release path.
  *
  * v2 change (see migration_v2.sql — RUN THAT FIRST): each account can now have up to
  * MAX_CHARACTER_SLOTS independent characters, each with its own row in `characters`
@@ -616,8 +615,10 @@ function verifyAdminKey(env, adminKey) {
 // Phase 1 shared foundation only — no Friend/Chat/Guild feature endpoints yet.
 // See docs/PROJECT-INDEX.md "Documentation gaps" note: Arena and Shop/Crafting/
 // Summoning still lack ACTIVE docs; guilds/guild_members/chat_messages tables already
-// exist in production D1 (all empty) but were never created through migrations/auto/ —
-// untracked drift, left untouched here, flagged in the branch handoff for review.
+// exist in production D1 (all empty) — created by migrations/migration_v3.sql (applied
+// 2026-09-04, before migrations/auto/ existed), not untracked. Known/legacy schema, left
+// untouched here; future Social phases must evolve these tables with new forward-only
+// migrations under migrations/auto/ — never recreate or replay migration_v3.sql.
 
 // Composes verifyPlayer + verifyOwnedCharacter into the one call every future Social
 // endpoint needs (§1: "authenticated session -> verify character ownership -> social

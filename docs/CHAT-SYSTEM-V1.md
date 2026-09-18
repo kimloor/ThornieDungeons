@@ -126,7 +126,7 @@ Backend must also protect against bursts/retry abuse.
 
 Exact implementation constants may be tuned without changing gameplay contract as long as they preserve anti-spam intent and user usability.
 
-Rate-limit failure uses `CHAT_RATE_LIMITED`.
+Rate-limit failure uses `chat_rate_limited`.
 
 ## 10. Read/unread
 
