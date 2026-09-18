@@ -9711,6 +9711,14 @@ function StatusBar({
     className: "md-chip-icon"
   }, "🛡️"), formatNumber(save.protectionStones || 0))));
 }
+// Shared "← Back" action used by sub-screens (Raid, Arena, error states, etc). Pass `label`
+// to override the text (e.g. a warning that in-progress state will be left as-is).
+function BackButton({ onClick, label = "← Back", className = "" }) {
+  return /*#__PURE__*/React.createElement("button", {
+    className: `md-btn flee wide small${className ? ` ${className}` : ""}`,
+    onClick
+  }, label);
+}
 function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onRememberLogin, onLogin, onRegister, onForgotPassword, registrationRecovery, onFinishRegistration, passwordResetRecovery, onClearPasswordResetRecovery }) {
   const e = React.createElement;
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -10940,7 +10948,7 @@ function RaidScreen({
   if (error) {
     return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, error),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+      /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
   }
   if (!status) {
     return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
@@ -11041,7 +11049,7 @@ function RaidScreen({
            /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_contribution)));
       })),
 
-    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+    /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
 }
 
 const PVP_TICKET_MAX_CLIENT = 5; // fallback only — server response's ticketsMax is authoritative
@@ -11227,7 +11235,7 @@ function ArenaScreen({
   if (error && !match) {
     return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, error),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+      /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
   }
   if (!status) {
     return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
@@ -11299,7 +11307,7 @@ function ArenaScreen({
         match.log.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "เลือกท่าโจมตีเพื่อเริ่มต่อสู้"),
         match.log.map((entry, i) => /*#__PURE__*/React.createElement("p", { key: i, className: "md-sub", style: { marginBottom: 3 } }, pvpFormatLogEntry(entry, pvpUnitNames)))),
 
-      !match.result && /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back (การต่อสู้จะค้างไว้)"));
+      !match.result && /*#__PURE__*/React.createElement(BackButton, { onClick: onBack, label: "← Back (การต่อสู้จะค้างไว้)" }));
   }
 
   // ---- Lobby mode ----
@@ -11364,7 +11372,7 @@ function ArenaScreen({
            /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.rating), " (", row.wins, "W ", row.losses, "L)"));
       })),
 
-    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+    /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
 }
 
 // Turns a mail's item descriptor (worker-side plain data: type/rarity/name/stats/setId/star)
