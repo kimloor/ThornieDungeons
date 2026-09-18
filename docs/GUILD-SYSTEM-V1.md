@@ -99,11 +99,11 @@ A character not in a Guild may have at most **5 pending Guild applications** at 
 
 When a character successfully joins any Guild:
 - all other pending applications for that character are cancelled;
-- stale concurrent acceptance attempts must fail with `ALREADY_IN_GUILD`.
+- stale concurrent acceptance attempts must fail with `already_in_guild`.
 
 If a Guild is full while an application is pending:
 - application may remain pending;
-- Accept fails with `GUILD_FULL`;
+- Accept fails with `guild_full`;
 - the application is not automatically deleted solely because the Guild is temporarily full.
 
 ## 6. Guild Level and member capacity

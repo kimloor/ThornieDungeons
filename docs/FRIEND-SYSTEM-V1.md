@@ -40,7 +40,7 @@ This value must be defined centrally/configurably so V2 can change it without sc
 A Friend Request may still be sent to a character whose Friend List is currently full.
 
 Capacity is checked again at **Accept** time for both characters:
-- if either side is at cap, Accept fails with `FRIEND_LIMIT_REACHED`;
+- if either side is at cap, Accept fails with `friend_limit_reached`;
 - the request remains pending and may be accepted later if a slot opens.
 
 ## 3. Search

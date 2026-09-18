@@ -151,18 +151,20 @@ Frontend button disabling is not sufficient protection.
 
 Frontend behavior must use stable error codes rather than parsing human-readable backend text.
 
-Expected V1 codes include:
-- `FRIEND_LIMIT_REACHED`
-- `REQUEST_ALREADY_EXISTS`
-- `BLOCKED_RELATIONSHIP`
-- `NOT_FRIENDS`
-- `GUILD_FULL`
-- `ALREADY_IN_GUILD`
-- `APPLICATION_LIMIT_REACHED`
-- `NOT_GUILD_LEADER`
-- `CHAT_RATE_LIMITED`
-- `MESSAGE_TOO_LONG`
-- `CHANNEL_ACCESS_DENIED`
+Production API convention is lower_snake_case (matching all existing error codes in
+`workers/thornie-dungeons-api.js`, e.g. `character_not_found`, `missing_fields`). Canonical
+Social V1 codes follow the same convention:
+- `friend_limit_reached`
+- `request_already_exists`
+- `blocked_relationship`
+- `not_friends`
+- `guild_full`
+- `already_in_guild`
+- `application_limit_reached`
+- `not_guild_leader`
+- `chat_rate_limited`
+- `message_too_long`
+- `channel_access_denied`
 
 Implementation may add narrowly-scoped codes, but must not silently redefine these meanings.
 
