@@ -79,6 +79,9 @@ const TABLES = {
       "level", "xp", "stat_points", "str", "vit", "agi", "dex", "luk",
       "gold", "unlocked_floor", "potions", "protection_stones", "chest_pity",
       "pets_json", "active_pet_id", "updated_at",
+      // Social Foundation V1 (migration 0014) — server-derived only, like updated_at
+      // below; never accept a client-supplied value for this column.
+      "last_active_at",
     ],
   },
   run_state: {
@@ -609,6 +612,79 @@ function verifyAdminKey(env, adminKey) {
   return { ok: true };
 }
 
+// ---------- Social Foundation V1 (docs/SOCIAL-SYSTEM-V1.md) ----------
+// Phase 1 shared foundation only — no Friend/Chat/Guild feature endpoints yet.
+// See docs/PROJECT-INDEX.md "Documentation gaps" note: Arena and Shop/Crafting/
+// Summoning still lack ACTIVE docs; guilds/guild_members/chat_messages tables already
+// exist in production D1 (all empty) but were never created through migrations/auto/ —
+// untracked drift, left untouched here, flagged in the branch handoff for review.
+
+// Composes verifyPlayer + verifyOwnedCharacter into the one call every future Social
+// endpoint needs (§1: "authenticated session -> verify character ownership -> social
+// action"). Deliberately thin — it reuses the exact same two primitives every existing
+// gameplay handler already calls, so Social endpoints get identical session+ownership
+// guarantees without a parallel identity system (§1: "reuse the production character
+// key... do not create a parallel social user identity layer").
+async function verifySocialActor(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return auth;
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return owned;
+  return { ok: true, playerRow: auth.row, character: owned.row };
+}
+
+// Shared presence source (§4). Friend V1 "Online" = activity within this window;
+// Guild V1 succession uses its own separate 36h/24h thresholds (GUILD-SYSTEM-V1.md §15)
+// and must not reuse this constant. Not wired to any endpoint yet — no Friend UI exists
+// to read it in Phase 1 — but last_active_at is already being written (see
+// handleEnterCharacter/handleSaveCharacterProgress) so it has real data once needed.
+const PRESENCE_ONLINE_WINDOW_MS = 5 * 60 * 1000;
+function isRecentlyActive(lastActiveAtIso) {
+  const t = Date.parse(lastActiveAtIso || "");
+  return Number.isFinite(t) && Date.now() - t <= PRESENCE_ONLINE_WINDOW_MS;
+}
+
+// Shared directional block primitive (§5). Character-scoped on both sides.
+//
+// Reusable idempotency pattern this establishes for later high-risk Social mutations
+// (dev prompt §7): a natural composite-PK constraint + `ON CONFLICT DO NOTHING` is
+// enough for simple set-membership mutations like this one (also fits future Guild
+// join). A mutation with a payout/side-effect that must never double-apply (Guild
+// Donation, Chat send dedup) should instead follow the existing `battle_completions`
+// pattern — a dedicated receipt row keyed by a client-supplied idempotency id, checked
+// before the effect runs. Two established patterns already in this codebase; future
+// Social endpoints should pick whichever fits instead of inventing a third.
+async function isBlockedEitherDirection(db, a, b) {
+  if (!a || !b) return false;
+  const row = await db.prepare(
+    `SELECT 1 FROM character_blocks
+     WHERE (blocker_character_id = ? AND blocked_character_id = ?)
+        OR (blocker_character_id = ? AND blocked_character_id = ?)
+     LIMIT 1`
+  ).bind(a, b, b, a).first();
+  return !!row;
+}
+async function blockCharacter(db, actorCharacterId, targetCharacterId) {
+  if (!actorCharacterId || !targetCharacterId) return { error: "missing_fields" };
+  if (String(actorCharacterId) === String(targetCharacterId)) return { error: "cannot_block_self" };
+  await db.prepare(
+    `INSERT INTO character_blocks (blocker_character_id, blocked_character_id, created_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(blocker_character_id, blocked_character_id) DO NOTHING`
+  ).bind(actorCharacterId, targetCharacterId, nowIso()).run();
+  return { ok: true };
+}
+// Unblock is intentionally idempotent — deleting a relation that no longer exists is
+// still success (§9: "Idempotency and duplicate input... must not duplicate social
+// mutations", same principle applied to removal).
+async function unblockCharacter(db, actorCharacterId, targetCharacterId) {
+  if (!actorCharacterId || !targetCharacterId) return { error: "missing_fields" };
+  await db.prepare(
+    `DELETE FROM character_blocks WHERE blocker_character_id = ? AND blocked_character_id = ?`
+  ).bind(actorCharacterId, targetCharacterId).run();
+  return { ok: true };
+}
+
 // ---------- game config ----------
 async function handleGetGameConfig(db) {
   const res = await db.prepare(`SELECT key, value_json FROM game_config`).all();
@@ -866,6 +942,11 @@ async function handleDeleteCharacter(db, id, session, slotIndex) {
     db.prepare(`DELETE FROM character_settings WHERE character_id = ?`).bind(row.character_id),
     // NEW — clean up daily login state along with the rest of the character's data
     db.prepare(`DELETE FROM daily_login_claims WHERE character_id = ?`).bind(row.character_id),
+    // Social Foundation V1 (§8 deletion lifecycle) — blocks have no audit/history value
+    // the way Guild donation/chat records do, so plain removal (not anonymization) is
+    // correct here. Friend/Guild cleanup isn't added because those tables don't exist
+    // yet as real features.
+    db.prepare(`DELETE FROM character_blocks WHERE blocker_character_id = ? OR blocked_character_id = ?`).bind(row.character_id, row.character_id),
     db.prepare(`DELETE FROM characters WHERE character_id = ?`).bind(row.character_id),
     db.prepare(`UPDATE players SET active_slot = NULL WHERE id = ? AND active_slot = ?`).bind(id, slot),
   ]);
@@ -882,7 +963,12 @@ async function handleEnterCharacter(db, id, session, slotIndex) {
   const character = await db.prepare(`SELECT * FROM characters WHERE player_id = ? AND slot_index = ?`).bind(id, slot).first();
   if (!character) return json({ error: "character_not_found" });
 
-  await db.prepare(`UPDATE players SET active_slot = ? WHERE id = ?`).bind(slot, id).run();
+  // Social Foundation V1 presence touch (§4) — batched with the existing active_slot
+  // write so entering a character costs no extra round trip.
+  await db.batch([
+    db.prepare(`UPDATE players SET active_slot = ? WHERE id = ?`).bind(slot, id),
+    db.prepare(`UPDATE characters SET last_active_at = ? WHERE character_id = ?`).bind(nowIso(), character.character_id),
+  ]);
 
   const items = await getRows(db, "items", "character_id", character.character_id);
   let runState = await getRow(db, "run_state", "character_id", character.character_id);
@@ -939,7 +1025,11 @@ async function handleSaveCharacterProgress(db, id, session, characterId, diamond
 
   const editableCols = TABLES.characters.cols.filter((c) => c !== "character_id" && c !== "player_id" && c !== "slot_index" && c !== "name");
   const sets = editableCols.map((c) => `${c} = ?`).join(",");
-  const values = editableCols.map((c) => (c === "updated_at" ? nowIso() : progress[c] === undefined ? null : progress[c]));
+  // updated_at/last_active_at are server-derived timestamps, never taken from the
+  // client's progress payload (last_active_at is the Social Foundation V1 presence
+  // source — SOCIAL-SYSTEM-V1.md §4 — piggybacked onto this existing write so presence
+  // tracking adds no extra round trip).
+  const values = editableCols.map((c) => (c === "updated_at" || c === "last_active_at" ? nowIso() : progress[c] === undefined ? null : progress[c]));
   await db.prepare(`UPDATE characters SET ${sets} WHERE character_id = ?`).bind(...values, characterId).run();
 
   if (diamonds !== undefined) {
