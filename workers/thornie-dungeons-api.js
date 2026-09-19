@@ -115,6 +115,17 @@ const TABLES = {
     name: "leaderboard_history",
     cols: ["date", "character_id", "player_id", "name", "max_floor", "total_cp", "pet_cp", "created_at"],
   },
+  // Friend System V1 (migration 0015). Registered for getRow()/getRows() — every write
+  // path uses direct SQL (see the Friend System V1 section below), so `cols` here is
+  // informational/for future use rather than load-bearing.
+  friend_requests: {
+    name: "friend_requests",
+    cols: ["request_id", "sender_character_id", "receiver_character_id", "status", "created_at", "expires_at", "resolved_at"],
+  },
+  friendships: {
+    name: "friendships",
+    cols: ["character_id_a", "character_id_b", "created_at"],
+  },
 };
 
 // ---------- Phase 2: combat-power formulas ----------
