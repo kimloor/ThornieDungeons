@@ -3914,6 +3914,84 @@ function cloudSubmitArenaTurn(url, characterId, matchId, actionType, skillKey) {
     skillKey
   });
 }
+// Phase 6.2 — Friend System V1. characterId is always the acting character; the target
+// of an action (search result, request, existing friend/block) is identified by its own
+// characterId/requestId param. See worker's Friend System V1 section for the
+// authoritative logic (caps, cross-request handling, block side effects, etc).
+function cloudSearchCharacters(url, characterId, query) {
+  return cloudAuthGet(url, {
+    action: "searchCharacters",
+    characterId,
+    query
+  });
+}
+function cloudGetFriendList(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getFriendList",
+    characterId
+  });
+}
+function cloudGetFriendRequests(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getFriendRequests",
+    characterId
+  });
+}
+function cloudGetBlockedList(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getBlockedList",
+    characterId
+  });
+}
+function cloudSendFriendRequest(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "sendFriendRequest",
+    characterId,
+    targetCharacterId
+  });
+}
+function cloudAcceptFriendRequest(url, characterId, requestId) {
+  return cloudAuthPost(url, {
+    action: "acceptFriendRequest",
+    characterId,
+    requestId
+  });
+}
+function cloudRejectFriendRequest(url, characterId, requestId) {
+  return cloudAuthPost(url, {
+    action: "rejectFriendRequest",
+    characterId,
+    requestId
+  });
+}
+function cloudCancelFriendRequest(url, characterId, requestId) {
+  return cloudAuthPost(url, {
+    action: "cancelFriendRequest",
+    characterId,
+    requestId
+  });
+}
+function cloudRemoveFriend(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "removeFriend",
+    characterId,
+    targetCharacterId
+  });
+}
+function cloudBlockCharacter(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "blockCharacter",
+    characterId,
+    targetCharacterId
+  });
+}
+function cloudUnblockCharacter(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "unblockCharacter",
+    characterId,
+    targetCharacterId
+  });
+}
 
 // ===== state/persistence.js =====
 // Ordered, context-owned persistence for idempotent full-snapshot saves.
@@ -9356,6 +9434,10 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onAccountSettings: () => setAccountSettingsOpen(true),
+    onFriend: () => {
+      setUtilityReturnPhase("menu");
+      setPhase("friend");
+    },
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -9397,6 +9479,10 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onAccountSettings: () => setAccountSettingsOpen(true),
+    onFriend: () => {
+      setUtilityReturnPhase("town");
+      setPhase("friend");
+    },
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -9416,6 +9502,10 @@ function ThornieDungeons() {
     onOpenSkill: () => setPhase("skill"),
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onFriend: () => {
+      setUtilityReturnPhase("character");
+      setPhase("friend");
+    },
     onBack: () => setPhase(characterReturnPhase)
   }), phase === "skill" && /*#__PURE__*/React.createElement(HeroSkillV1Screen, {
     save: save,
@@ -9429,6 +9519,10 @@ function ThornieDungeons() {
     },
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onFriend: () => {
+      setUtilityReturnPhase("skill");
+      setPhase("friend");
+    },
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     save: save,
@@ -9453,6 +9547,10 @@ function ThornieDungeons() {
     ),
     onSave: manualSave,
     onSettings: () => setAccountSettingsOpen(true),
+    onFriend: () => {
+      setUtilityReturnPhase("map");
+      setPhase("friend");
+    },
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,
@@ -9470,6 +9568,10 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true),
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onFriend: () => {
+      setUtilityReturnPhase("pets");
+      setPhase("friend");
+    },
     onBack: () => setPhase(petReturnPhase)
   }), phase === "leaderboard" && /*#__PURE__*/React.createElement(LeaderboardScreen, {
     serverUrl: cred.url,
@@ -9491,6 +9593,10 @@ function ThornieDungeons() {
     serverUrl: cred.url,
     characterId: save.characterId,
     onApplyReward: applyMailReward,
+    onBack: () => setPhase(utilityReturnPhase)
+  }), phase === "friend" && /*#__PURE__*/React.createElement(FriendScreen, {
+    serverUrl: cred.url,
+    characterId: save.characterId,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
@@ -9575,6 +9681,11 @@ function ThornieDungeons() {
     },
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onFriend: () => {
+      setInvOpen(false);
+      setUtilityReturnPhase(phase);
+      setPhase("friend");
+    },
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,
@@ -9823,7 +9934,8 @@ function GameDock({
   onPets,
   activeKey,
   onSettings,
-  onSave
+  onSave,
+  onFriend
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [saveFlash, setSaveFlash] = useState("");
@@ -9838,6 +9950,10 @@ function GameDock({
     setMoreOpen(false);
     onSettings?.();
   };
+  const openFriend = () => {
+    setMoreOpen(false);
+    onFriend?.();
+  };
   return /*#__PURE__*/React.createElement(React.Fragment, null, moreOpen && /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-panel"
   }, /*#__PURE__*/React.createElement("div", {
@@ -9848,7 +9964,7 @@ function GameDock({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")))), /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
@@ -10007,6 +10123,7 @@ function HubScreen({
   onMailbox,
   onSave,
   onAccountSettings,
+  onFriend,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -10073,7 +10190,8 @@ function HubScreen({
     onOpenInv: onOpenInv,
     onPets: onPets,
     onSettings: onAccountSettings,
-    onSave: onSave
+    onSave: onSave,
+    onFriend: onFriend
   })), /*#__PURE__*/React.createElement(DailyLoginToast, {
     open: dailyModalOpen,
     onClose: () => { setDailyModalOpen(false); onClearDailyLoginResult(); },
@@ -10101,6 +10219,7 @@ function TownScreen({
   onSummoning,
   onSave,
   onAccountSettings,
+  onFriend,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -10173,7 +10292,8 @@ function TownScreen({
         onOpenInv,
         onPets,
         onSettings: onAccountSettings,
-        onSave
+        onSave,
+        onFriend
       })
     ),
     e(DailyLoginToast, {
@@ -10408,14 +10528,15 @@ function CharacterTabs({ active, onStatus, onSkills }) {
   );
 }
 
-function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave }) {
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend }) {
   return /*#__PURE__*/React.createElement(GameDock, {
     activeKey: "character",
     onCharacter,
     onOpenInv,
     onPets: onOpenPets,
     onSettings,
-    onSave
+    onSave,
+    onFriend
   });
 }
 
@@ -10445,6 +10566,7 @@ function StatusScreen({
   onOpenSkill,
   onSettings,
   onSave,
+  onFriend,
   onBack
 }) {
   const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
@@ -10537,7 +10659,7 @@ function StatusScreen({
         )
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
@@ -10551,6 +10673,7 @@ function SkillScreen({
   onOpenPets,
   onSettings,
   onSave,
+  onFriend,
   onBack
 }) {
   const [draft, setDraft] = useState({});
@@ -10617,11 +10740,11 @@ function SkillScreen({
         /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสกิล")
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
-function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onBack }) {
+function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
   const levels = save.character.skillLevels || {};
@@ -10667,7 +10790,7 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
         /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
   );
 }
@@ -10857,6 +10980,203 @@ function LeaderboardScreen({
     onClick: onBack
   }, "← Back"));
 }
+// ---------- Phase 6.2: Friend System V1 ----------
+function friendErrorText(error) {
+  const map = {
+    invalid_session: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    session_expired: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    session_replaced: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    cannot_request_self: "ส่งคำขอหาตัวเองไม่ได้",
+    cannot_block_self: "บล็อกตัวเองไม่ได้",
+    already_friends: "เป็นเพื่อนกันอยู่แล้ว",
+    blocked_relationship: "ทำรายการนี้ไม่ได้เนื่องจากมีการบล็อกอยู่",
+    request_already_exists: "มีคำขอเป็นเพื่อนค้างอยู่แล้ว",
+    outgoing_request_cap_reached: "ส่งคำขอเป็นเพื่อนค้างไว้ครบจำนวนสูงสุดแล้ว (20 คำขอ)",
+    friend_limit_reached: "เพื่อนเต็มจำนวนสูงสุดแล้ว (50 คน)",
+    request_not_pending: "คำขอนี้ถูกดำเนินการไปแล้วหรือหมดอายุ",
+    request_expired: "คำขอนี้หมดอายุแล้ว",
+    request_not_found: "ไม่พบคำขอนี้",
+    character_not_found: "ไม่พบผู้เล่นนี้",
+    forbidden: "ไม่มีสิทธิ์ทำรายการนี้",
+  };
+  return map[error] || "เกิดข้อผิดพลาด กรุณาลองใหม่";
+}
+const FRIEND_TABS = [
+  { key: "friends", label: "เพื่อน" },
+  { key: "requests", label: "คำขอ" },
+  { key: "blocked", label: "บล็อก" },
+];
+function FriendScreen({
+  serverUrl,
+  characterId,
+  onBack
+}) {
+  const e = React.createElement;
+  const url = serverUrl || DEFAULT_SERVER_URL;
+  const [tab, setTab] = useState("friends");
+  const [friends, setFriends] = useState(null);
+  const [requestsData, setRequestsData] = useState(null);
+  const [blocked, setBlocked] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [busyKey, setBusyKey] = useState("");
+  const [toast, setToast] = useState("");
+
+  const loadAll = React.useCallback(() => {
+    setLoadError("");
+    Promise.all([
+      cloudGetFriendList(url, characterId),
+      cloudGetFriendRequests(url, characterId),
+      cloudGetBlockedList(url, characterId),
+    ]).then(([friendRes, reqRes, blockedRes]) => {
+      if (!friendRes || friendRes.error || !reqRes || reqRes.error || !blockedRes || blockedRes.error) {
+        setLoadError(friendErrorText((friendRes && friendRes.error) || (reqRes && reqRes.error) || (blockedRes && blockedRes.error)));
+      }
+      setFriends((friendRes && friendRes.friends) || []);
+      setRequestsData({ incoming: (reqRes && reqRes.incoming) || [], outgoing: (reqRes && reqRes.outgoing) || [] });
+      setBlocked((blockedRes && blockedRes.blocked) || []);
+    }).catch(() => setLoadError(friendErrorText("network_error")));
+  }, [url, characterId]);
+
+  React.useEffect(() => { loadAll(); }, [loadAll]);
+
+  // Debounced live search — fires 300ms after typing stops instead of per keystroke.
+  React.useEffect(() => {
+    const q = query.trim();
+    if (!q) { setSearchResults(null); setSearching(false); return; }
+    setSearching(true);
+    const handle = setTimeout(() => {
+      cloudSearchCharacters(url, characterId, q).then(res => {
+        setSearching(false);
+        setSearchResults(res && res.results ? res.results : []);
+      }).catch(() => { setSearching(false); setSearchResults([]); });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [query, url, characterId]);
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(t => t === msg ? "" : t), 2200); };
+
+  const runAction = (key, promise) => {
+    if (busyKey) return;
+    setBusyKey(key);
+    promise.then(res => {
+      setBusyKey("");
+      if (!res || res.error) { showToast(friendErrorText(res && res.error)); return; }
+      loadAll();
+      const q = query.trim();
+      if (q) cloudSearchCharacters(url, characterId, q).then(r => setSearchResults(r && r.results ? r.results : []));
+    }).catch(() => { setBusyKey(""); showToast(friendErrorText("network_error")); });
+  };
+
+  const handleSendRequest = (targetCharacterId) => runAction(`send:${targetCharacterId}`, cloudSendFriendRequest(url, characterId, targetCharacterId));
+  const handleAccept = (requestId) => runAction(`accept:${requestId}`, cloudAcceptFriendRequest(url, characterId, requestId));
+  const handleReject = (requestId) => runAction(`reject:${requestId}`, cloudRejectFriendRequest(url, characterId, requestId));
+  const handleCancel = (requestId) => runAction(`cancel:${requestId}`, cloudCancelFriendRequest(url, characterId, requestId));
+  const handleRemove = (targetCharacterId) => runAction(`remove:${targetCharacterId}`, cloudRemoveFriend(url, characterId, targetCharacterId));
+  const handleBlock = (targetCharacterId) => runAction(`block:${targetCharacterId}`, cloudBlockCharacter(url, characterId, targetCharacterId));
+  const handleUnblock = (targetCharacterId) => runAction(`unblock:${targetCharacterId}`, cloudUnblockCharacter(url, characterId, targetCharacterId));
+
+  const onlineDot = (online) => online ? "🟢" : "⚪";
+
+  const row = (key, left, right) => e("div", { key, className: "md-shop-row" },
+    e("div", { className: "md-shop-info" }, left),
+    e("div", { style: { display: "flex", gap: 6, flexShrink: 0 } }, right));
+
+  const actionBtn = (label, onClick, variant, disabled) => e("button", {
+    className: `md-btn small ${variant || "info"}`,
+    disabled: !!disabled,
+    onClick,
+  }, label);
+
+  // Search results take over the list area whenever there's an active query, regardless
+  // of which tab is selected — the tabs themselves stay visible so switching away clears
+  // the search naturally.
+  const searchBody = () => {
+    if (searching && searchResults === null) return e("p", { className: "md-sub" }, "กำลังค้นหา...");
+    if (!searchResults || !searchResults.length) return e("p", { className: "md-sub" }, "ไม่พบผู้เล่น");
+    return e("div", { className: "md-inv-list" }, searchResults.map((r) => {
+      let actions;
+      if (r.relationship === "friend") actions = [actionBtn("เพื่อนแล้ว", null, "info", true)];
+      else if (r.relationship === "blocked_by_me") actions = [actionBtn("เลิกบล็อก", () => handleUnblock(r.characterId), "primary", busyKey === `unblock:${r.characterId}`)];
+      else if (r.relationship === "blocking_me") actions = [actionBtn("-", null, "info", true)];
+      else if (r.relationship === "outgoing_pending") actions = [actionBtn("ส่งคำขอแล้ว", () => handleCancel(r.requestId), "flee", busyKey === `cancel:${r.requestId}`)];
+      else if (r.relationship === "incoming_pending") actions = [
+        actionBtn("ยอมรับ", () => handleAccept(r.requestId), "primary", busyKey === `accept:${r.requestId}`),
+        actionBtn("ปฏิเสธ", () => handleReject(r.requestId), "flee", busyKey === `reject:${r.requestId}`),
+      ];
+      else actions = [actionBtn("เพิ่มเพื่อน", () => handleSendRequest(r.characterId), "primary", busyKey === `send:${r.characterId}`)];
+      return row(r.characterId, `${onlineDot(r.online)} ${r.name} (Lv.${r.level})`, actions);
+    }));
+  };
+
+  const friendsBody = () => {
+    if (friends === null) return e("p", { className: "md-sub" }, "กำลังโหลด...");
+    if (!friends.length) return e("p", { className: "md-sub" }, "ยังไม่มีเพื่อน ลองค้นหาชื่อผู้เล่นด้านบนดูสิ");
+    return e("div", { className: "md-inv-list" }, friends.map((f) => row(f.characterId,
+      `${onlineDot(f.online)} ${f.name} (Lv.${f.level})`,
+      [
+        actionBtn("ลบ", () => handleRemove(f.characterId), "flee", busyKey === `remove:${f.characterId}`),
+        actionBtn("บล็อก", () => handleBlock(f.characterId), "flee", busyKey === `block:${f.characterId}`),
+      ])));
+  };
+
+  const requestsBody = () => {
+    if (requestsData === null) return e("p", { className: "md-sub" }, "กำลังโหลด...");
+    const incoming = requestsData.incoming || [];
+    const outgoing = requestsData.outgoing || [];
+    if (!incoming.length && !outgoing.length) return e("p", { className: "md-sub" }, "ไม่มีคำขอเป็นเพื่อน");
+    return e(React.Fragment, null,
+      incoming.length > 0 && e("div", { style: { marginBottom: 10 } },
+        e("p", { className: "md-sub", style: { margin: "0 0 4px" } }, "ได้รับคำขอ"),
+        e("div", { className: "md-inv-list" }, incoming.map((r) => row(r.requestId,
+          `${onlineDot(r.online)} ${r.name} (Lv.${r.level})`,
+          [
+            actionBtn("ยอมรับ", () => handleAccept(r.requestId), "primary", busyKey === `accept:${r.requestId}`),
+            actionBtn("ปฏิเสธ", () => handleReject(r.requestId), "flee", busyKey === `reject:${r.requestId}`),
+          ])))),
+      outgoing.length > 0 && e("div", null,
+        e("p", { className: "md-sub", style: { margin: "0 0 4px" } }, `คำขอที่ส่งไป (${outgoing.length}/${FRIEND_OUTGOING_PENDING_CAP_CLIENT})`),
+        e("div", { className: "md-inv-list" }, outgoing.map((r) => row(r.requestId,
+          `${onlineDot(r.online)} ${r.name} (Lv.${r.level})`,
+          [actionBtn("ยกเลิก", () => handleCancel(r.requestId), "flee", busyKey === `cancel:${r.requestId}`)])))));
+  };
+
+  const blockedBody = () => {
+    if (blocked === null) return e("p", { className: "md-sub" }, "กำลังโหลด...");
+    if (!blocked.length) return e("p", { className: "md-sub" }, "ไม่มีผู้เล่นที่ถูกบล็อก");
+    return e("div", { className: "md-inv-list" }, blocked.map((b) => row(b.characterId,
+      `${b.name} (Lv.${b.level})`,
+      [actionBtn("เลิกบล็อก", () => handleUnblock(b.characterId), "primary", busyKey === `unblock:${b.characterId}`)])));
+  };
+
+  const incomingCount = (requestsData && requestsData.incoming && requestsData.incoming.length) || 0;
+
+  return e("div", { className: "md-panel", style: { flex: 1 } },
+    toast && e("div", { className: "md-toast" }, toast),
+    e("div", { className: "md-card", style: { marginBottom: 10 } },
+      e("p", { className: "md-title" }, "👥 เพื่อน"),
+      e("input", {
+        className: "md-field",
+        style: { width: "100%" },
+        placeholder: "ค้นหาชื่อผู้เล่น...",
+        value: query,
+        onChange: (ev) => setQuery(ev.target.value),
+      })),
+    !query.trim() && e("div", { style: { display: "flex", gap: 6, marginBottom: 8 } },
+      FRIEND_TABS.map(t => e("button", {
+        key: t.key,
+        className: "md-btn small" + (tab === t.key ? " primary" : " flee"),
+        style: { flex: 1 },
+        onClick: () => setTab(t.key),
+      }, t.label, t.key === "requests" && incomingCount > 0 ? ` (${incomingCount})` : ""))),
+    loadError && e("p", { className: "md-sub" }, loadError),
+    e("div", { className: "md-card", style: { marginBottom: 10 } },
+      query.trim() ? searchBody() : tab === "friends" ? friendsBody() : tab === "requests" ? requestsBody() : blockedBody()),
+    e(BackButton, { onClick: onBack }));
+}
+const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEND_OUTGOING_PENDING_CAP) is authoritative
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
 function RaidScreen({
@@ -11642,7 +11962,8 @@ function MapScreen({
   onCharacter,
   onOpenInv,
   onPets,
-  onSettings
+  onSettings,
+  onFriend
 }) {
   const e = React.createElement;
   // Five fixed perspective slots match the stair landings painted into
@@ -11728,7 +12049,8 @@ function MapScreen({
       onOpenInv,
       onPets,
       onSettings,
-      onSave
+      onSave,
+      onFriend
     }),
     detail && e("div", { className: "md-floor-detail-backdrop", onClick: () => setDetail(null) },
       e("section", {
@@ -11973,6 +12295,7 @@ function PetScreen({
   onOpenInv,
   onSettings,
   onSave,
+  onFriend,
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
@@ -12160,7 +12483,8 @@ function PetScreen({
     onOpenInv,
     onPets: () => {},
     onSettings,
-    onSave
+    onSave,
+    onFriend
   }));
 }
 function GachaScreen({
@@ -13186,6 +13510,7 @@ function InventoryOverlayV2({
   onPets,
   onSettings,
   onSave,
+  onFriend,
   onClose
 }) {
   const [detail, setDetail] = useState(null);
@@ -13307,7 +13632,7 @@ function InventoryOverlayV2({
       salvagePreview && /*#__PURE__*/React.createElement("div", { className:"md-inv2-salvage-preview" }, /*#__PURE__*/React.createElement("strong", null, "Salvage Yield"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"iron" }, fallback:JUNK_INFO.iron.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.iron.name }), "Iron ", salvagePreview.iron), salvagePreview.manaOre > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"manaOre" }, fallback:JUNK_INFO.manaOre.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.manaOre.name }), "Mana Stone ", salvagePreview.manaOre)),
       message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" }, detail.location === "inventory" && SLOT_ORDER.includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); closeDetail(); } }, "Equip"), detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); closeDetail(); } }, "Unequip"), detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSell }, "Sell"), detail.location === "inventory" && !["junk","potion"].includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSalvage }, "Salvage"))))
-    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave }));
+    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend }));
 }
 
 function InventoryOverlay({

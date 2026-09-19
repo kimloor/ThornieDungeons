@@ -1,6 +1,6 @@
 # Social System V1 — Shared Foundation
 
-Status: **ACTIVE-DESIGN**
+Status: **ACTIVE-PRODUCTION — shared foundation live in production; identity/presence/block consumed by Friend System V1**
 
 This document is the shared contract for Friend V1, Chat V1, and Guild V1. It defines cross-system identity, presence, block, unread, lifecycle, security, and error rules. Feature-specific behavior belongs in:
 - `FRIEND-SYSTEM-V1.md`

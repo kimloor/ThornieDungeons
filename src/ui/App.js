@@ -1972,6 +1972,10 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onAccountSettings: () => setAccountSettingsOpen(true),
+    onFriend: () => {
+      setUtilityReturnPhase("menu");
+      setPhase("friend");
+    },
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -2013,6 +2017,10 @@ function ThornieDungeons() {
     },
     onSave: manualSave,
     onAccountSettings: () => setAccountSettingsOpen(true),
+    onFriend: () => {
+      setUtilityReturnPhase("town");
+      setPhase("friend");
+    },
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -2032,6 +2040,10 @@ function ThornieDungeons() {
     onOpenSkill: () => setPhase("skill"),
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onFriend: () => {
+      setUtilityReturnPhase("character");
+      setPhase("friend");
+    },
     onBack: () => setPhase(characterReturnPhase)
   }), phase === "skill" && /*#__PURE__*/React.createElement(HeroSkillV1Screen, {
     save: save,
@@ -2045,6 +2057,10 @@ function ThornieDungeons() {
     },
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onFriend: () => {
+      setUtilityReturnPhase("skill");
+      setPhase("friend");
+    },
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     save: save,
@@ -2069,6 +2085,10 @@ function ThornieDungeons() {
     ),
     onSave: manualSave,
     onSettings: () => setAccountSettingsOpen(true),
+    onFriend: () => {
+      setUtilityReturnPhase("map");
+      setPhase("friend");
+    },
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,
@@ -2086,6 +2106,10 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true),
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onFriend: () => {
+      setUtilityReturnPhase("pets");
+      setPhase("friend");
+    },
     onBack: () => setPhase(petReturnPhase)
   }), phase === "leaderboard" && /*#__PURE__*/React.createElement(LeaderboardScreen, {
     serverUrl: cred.url,
@@ -2107,6 +2131,10 @@ function ThornieDungeons() {
     serverUrl: cred.url,
     characterId: save.characterId,
     onApplyReward: applyMailReward,
+    onBack: () => setPhase(utilityReturnPhase)
+  }), phase === "friend" && /*#__PURE__*/React.createElement(FriendScreen, {
+    serverUrl: cred.url,
+    characterId: save.characterId,
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
@@ -2191,6 +2219,11 @@ function ThornieDungeons() {
     },
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onFriend: () => {
+      setInvOpen(false);
+      setUtilityReturnPhase(phase);
+      setPhase("friend");
+    },
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
     equipped: equipped,

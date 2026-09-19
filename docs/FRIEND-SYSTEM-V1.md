@@ -1,6 +1,6 @@
 # Friend System V1
 
-Status: **ACTIVE-DESIGN**
+Status: **ACTIVE-PRODUCTION — current Friend System V1 contract and implementation reference**
 
 Depends on `SOCIAL-SYSTEM-V1.md`. Friend relationships are character-scoped.
 

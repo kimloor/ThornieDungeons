@@ -382,3 +382,81 @@ function cloudSubmitArenaTurn(url, characterId, matchId, actionType, skillKey) {
     skillKey
   });
 }
+// Phase 6.2 — Friend System V1. characterId is always the acting character; the target
+// of an action (search result, request, existing friend/block) is identified by its own
+// characterId/requestId param. See worker's Friend System V1 section for the
+// authoritative logic (caps, cross-request handling, block side effects, etc).
+function cloudSearchCharacters(url, characterId, query) {
+  return cloudAuthGet(url, {
+    action: "searchCharacters",
+    characterId,
+    query
+  });
+}
+function cloudGetFriendList(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getFriendList",
+    characterId
+  });
+}
+function cloudGetFriendRequests(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getFriendRequests",
+    characterId
+  });
+}
+function cloudGetBlockedList(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getBlockedList",
+    characterId
+  });
+}
+function cloudSendFriendRequest(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "sendFriendRequest",
+    characterId,
+    targetCharacterId
+  });
+}
+function cloudAcceptFriendRequest(url, characterId, requestId) {
+  return cloudAuthPost(url, {
+    action: "acceptFriendRequest",
+    characterId,
+    requestId
+  });
+}
+function cloudRejectFriendRequest(url, characterId, requestId) {
+  return cloudAuthPost(url, {
+    action: "rejectFriendRequest",
+    characterId,
+    requestId
+  });
+}
+function cloudCancelFriendRequest(url, characterId, requestId) {
+  return cloudAuthPost(url, {
+    action: "cancelFriendRequest",
+    characterId,
+    requestId
+  });
+}
+function cloudRemoveFriend(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "removeFriend",
+    characterId,
+    targetCharacterId
+  });
+}
+function cloudBlockCharacter(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "blockCharacter",
+    characterId,
+    targetCharacterId
+  });
+}
+function cloudUnblockCharacter(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "unblockCharacter",
+    characterId,
+    targetCharacterId
+  });
+}

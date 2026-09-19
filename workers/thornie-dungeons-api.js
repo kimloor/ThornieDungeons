@@ -686,6 +686,302 @@ async function unblockCharacter(db, actorCharacterId, targetCharacterId) {
   return { ok: true };
 }
 
+// ---------- Friend System V1 (docs/FRIEND-SYSTEM-V1.md) — Phase 2 ----------
+// Built on Social Foundation V1 above: verifySocialActor for auth, isBlockedEitherDirection
+// for block checks, character_blocks/last_active_at untouched by anything below.
+const FRIEND_CAP = 50; // §2 — defined once so a future cap change isn't a grep-and-replace
+const FRIEND_OUTGOING_PENDING_CAP = 20; // §4
+const FRIEND_REQUEST_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // §4
+
+// friendships stores one row per pair with character_id_a < character_id_b (migration
+// 0015's CHECK constraint enforces this) — normalize before every read/write so lookups
+// never have to try both column orders.
+function normalizeFriendPair(a, b) {
+  return a < b ? [a, b] : [b, a];
+}
+
+// Phase 3 Chat contract hook (§15) — DM send must verify this at send time. Exact name
+// kept close to isBlockedEitherDirection's naming above for consistency.
+async function areFriends(db, characterIdA, characterIdB) {
+  if (!characterIdA || !characterIdB || characterIdA === characterIdB) return false;
+  const [a, b] = normalizeFriendPair(characterIdA, characterIdB);
+  const row = await db.prepare(`SELECT 1 FROM friendships WHERE character_id_a = ? AND character_id_b = ? LIMIT 1`).bind(a, b).first();
+  return !!row;
+}
+
+async function handleSearchCharacters(db, id, session, characterId, query) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const q = String(query || "").trim();
+  if (!q) return json({ ok: true, results: [] });
+  // Escape LIKE wildcards in the user's own search text so a literal % or _ in what they
+  // typed can't act as a wildcard against the index (migration 0015: idx_characters_name_lower).
+  const escaped = q.replace(/[\\%_]/g, (m) => "\\" + m);
+  const rows = await db.prepare(
+    `SELECT character_id, name, level, last_active_at FROM characters
+     WHERE LOWER(name) LIKE LOWER(?) || '%' ESCAPE '\\' AND character_id != ?
+     ORDER BY name LIMIT 20`
+  ).bind(escaped, characterId).all();
+  const results = rows.results || [];
+  if (!results.length) return json({ ok: true, results: [] });
+  const [friendRows, reqRows, blockRows] = await Promise.all([
+    db.prepare(`SELECT character_id_a, character_id_b FROM friendships WHERE character_id_a = ? OR character_id_b = ?`).bind(characterId, characterId).all(),
+    db.prepare(`SELECT request_id, sender_character_id, receiver_character_id FROM friend_requests WHERE status = 'pending' AND (sender_character_id = ? OR receiver_character_id = ?)`).bind(characterId, characterId).all(),
+    db.prepare(`SELECT blocker_character_id, blocked_character_id FROM character_blocks WHERE blocker_character_id = ? OR blocked_character_id = ?`).bind(characterId, characterId).all(),
+  ]);
+  const friendSet = new Set((friendRows.results || []).map((r) => (r.character_id_a === characterId ? r.character_id_b : r.character_id_a)));
+  const outgoingMap = new Map();
+  const incomingMap = new Map();
+  (reqRows.results || []).forEach((r) => {
+    if (r.sender_character_id === characterId) outgoingMap.set(r.receiver_character_id, r.request_id);
+    else incomingMap.set(r.sender_character_id, r.request_id);
+  });
+  const blockedByMe = new Set();
+  const blockingMe = new Set();
+  (blockRows.results || []).forEach((r) => {
+    if (r.blocker_character_id === characterId) blockedByMe.add(r.blocked_character_id);
+    else blockingMe.add(r.blocker_character_id);
+  });
+  return json({
+    ok: true,
+    results: results.map((r) => ({
+      characterId: r.character_id,
+      name: r.name,
+      level: r.level,
+      guildName: null, // Guild V1 not implemented yet — §3/FRIEND-SYSTEM-V1.md §3 "otherwise null/omit"
+      online: isRecentlyActive(r.last_active_at),
+      relationship: friendSet.has(r.character_id) ? "friend"
+        : blockedByMe.has(r.character_id) ? "blocked_by_me"
+        : blockingMe.has(r.character_id) ? "blocking_me"
+        : outgoingMap.has(r.character_id) ? "outgoing_pending"
+        : incomingMap.has(r.character_id) ? "incoming_pending"
+        : "none",
+      requestId: outgoingMap.get(r.character_id) || incomingMap.get(r.character_id) || null,
+    })),
+  });
+}
+
+async function handleGetFriendList(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const rows = await db.prepare(
+    `SELECT c.character_id AS other_id, c.name, c.level, c.last_active_at
+     FROM friendships f
+     JOIN characters c ON c.character_id = CASE WHEN f.character_id_a = ? THEN f.character_id_b ELSE f.character_id_a END
+     WHERE f.character_id_a = ? OR f.character_id_b = ?`
+  ).bind(characterId, characterId, characterId).all();
+  const friends = (rows.results || []).map((r) => ({
+    characterId: r.other_id,
+    name: r.name,
+    level: r.level,
+    guildName: null,
+    online: isRecentlyActive(r.last_active_at),
+  }));
+  // §7 — Online first, stable name-ordering secondary.
+  friends.sort((a, b) => (b.online - a.online) || String(a.name).localeCompare(String(b.name)));
+  return json({ ok: true, friends, cap: FRIEND_CAP });
+}
+
+async function handleGetFriendRequests(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const now = nowIso();
+  const [incomingRows, outgoingRows] = await Promise.all([
+    db.prepare(
+      `SELECT r.request_id, r.created_at, r.expires_at, c.character_id, c.name, c.level, c.last_active_at
+       FROM friend_requests r JOIN characters c ON c.character_id = r.sender_character_id
+       WHERE r.receiver_character_id = ? AND r.status = 'pending' AND r.expires_at > ?
+       ORDER BY r.created_at DESC`
+    ).bind(characterId, now).all(),
+    db.prepare(
+      `SELECT r.request_id, r.created_at, r.expires_at, c.character_id, c.name, c.level, c.last_active_at
+       FROM friend_requests r JOIN characters c ON c.character_id = r.receiver_character_id
+       WHERE r.sender_character_id = ? AND r.status = 'pending' AND r.expires_at > ?
+       ORDER BY r.created_at DESC`
+    ).bind(characterId, now).all(),
+  ]);
+  const shape = (r) => ({ requestId: r.request_id, characterId: r.character_id, name: r.name, level: r.level, online: isRecentlyActive(r.last_active_at), createdAt: r.created_at, expiresAt: r.expires_at });
+  return json({
+    ok: true,
+    incoming: (incomingRows.results || []).map(shape),
+    outgoing: (outgoingRows.results || []).map(shape),
+    outgoingCap: FRIEND_OUTGOING_PENDING_CAP,
+  });
+}
+
+async function handleGetBlockedList(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const rows = await db.prepare(
+    `SELECT cb.blocked_character_id, cb.created_at, c.name, c.level
+     FROM character_blocks cb JOIN characters c ON c.character_id = cb.blocked_character_id
+     WHERE cb.blocker_character_id = ? ORDER BY cb.created_at DESC`
+  ).bind(characterId).all();
+  return json({ ok: true, blocked: (rows.results || []).map((r) => ({ characterId: r.blocked_character_id, name: r.name, level: r.level })) });
+}
+
+async function handleSendFriendRequest(db, id, session, characterId, targetCharacterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!targetCharacterId) return json({ error: "missing_fields" });
+  if (targetCharacterId === characterId) return json({ error: "cannot_request_self" });
+
+  const target = await getRow(db, "characters", "character_id", targetCharacterId);
+  if (!target) return json({ error: "character_not_found" });
+  if (await isBlockedEitherDirection(db, characterId, targetCharacterId)) return json({ error: "blocked_relationship" });
+  if (await areFriends(db, characterId, targetCharacterId)) return json({ error: "already_friends" });
+
+  const now = nowIso();
+  // Cross-request handling (§4): a pending request already existing in EITHER direction
+  // must not create a second row — report what exists so the UI can Accept/Reject the
+  // reverse-direction request instead, or just show "already sent" for the same direction.
+  const existing = await db.prepare(
+    `SELECT request_id, sender_character_id FROM friend_requests
+     WHERE status = 'pending' AND ((sender_character_id = ? AND receiver_character_id = ?) OR (sender_character_id = ? AND receiver_character_id = ?))
+     LIMIT 1`
+  ).bind(characterId, targetCharacterId, targetCharacterId, characterId).first();
+  if (existing) {
+    return json({
+      error: "request_already_exists",
+      existingRequestId: existing.request_id,
+      reverseDirection: existing.sender_character_id === targetCharacterId,
+    });
+  }
+
+  const outgoingCount = await db.prepare(
+    `SELECT COUNT(*) AS c FROM friend_requests WHERE sender_character_id = ? AND status = 'pending' AND expires_at > ?`
+  ).bind(characterId, now).first();
+  if (Number(outgoingCount?.c || 0) >= FRIEND_OUTGOING_PENDING_CAP) return json({ error: "outgoing_request_cap_reached" });
+
+  const requestId = `freq-${randomToken(16)}`;
+  const expiresAt = new Date(Date.now() + FRIEND_REQUEST_EXPIRY_MS).toISOString();
+  try {
+    await db.prepare(
+      `INSERT INTO friend_requests (request_id, sender_character_id, receiver_character_id, status, created_at, expires_at) VALUES (?, ?, ?, 'pending', ?, ?)`
+    ).bind(requestId, characterId, targetCharacterId, now, expiresAt).run();
+  } catch (e) {
+    // Belt-and-suspenders: migration 0015's partial unique index catches a genuine race
+    // between two near-simultaneous sends that both passed the pre-check above.
+    if (String((e && e.message) || e).includes("UNIQUE constraint failed")) return json({ error: "request_already_exists" });
+    throw e;
+  }
+  return json({ ok: true, requestId, expiresAt });
+}
+
+async function handleAcceptFriendRequest(db, id, session, characterId, requestId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!requestId) return json({ error: "missing_fields" });
+
+  const request = await getRow(db, "friend_requests", "request_id", requestId);
+  if (!request) return json({ error: "request_not_found" });
+  if (String(request.receiver_character_id) !== String(characterId)) return json({ error: "forbidden" });
+  if (request.status !== "pending") return json({ error: "request_not_pending" });
+  if (Date.parse(request.expires_at) <= Date.now()) return json({ error: "request_expired" });
+
+  const senderId = request.sender_character_id;
+  if (await isBlockedEitherDirection(db, characterId, senderId)) return json({ error: "blocked_relationship" });
+
+  const now = nowIso();
+  // Single atomic statement carries the whole Accept transaction (§5/§6/§13): it
+  // re-verifies the request is still pending+unexpired, enforces both friend caps, and
+  // creates exactly one normalized friendship row — all inside one INSERT...SELECT, so a
+  // concurrent double-Accept or a capacity race can't land between a read and a later
+  // write. ON CONFLICT DO NOTHING also turns an already-existing friendship into a clean
+  // no-op instead of a thrown constraint error.
+  const [a, b] = normalizeFriendPair(characterId, senderId);
+  const created = await db.prepare(
+    `INSERT INTO friendships (character_id_a, character_id_b, created_at)
+     SELECT ?, ?, ?
+     WHERE EXISTS (SELECT 1 FROM friend_requests WHERE request_id = ? AND status = 'pending' AND expires_at > ?)
+       AND (SELECT COUNT(*) FROM friendships WHERE character_id_a = ? OR character_id_b = ?) < ?
+       AND (SELECT COUNT(*) FROM friendships WHERE character_id_a = ? OR character_id_b = ?) < ?
+     ON CONFLICT(character_id_a, character_id_b) DO NOTHING`
+  ).bind(a, b, now, requestId, now, characterId, characterId, FRIEND_CAP, senderId, senderId, FRIEND_CAP).run();
+
+  if (!created.meta || !created.meta.changes) {
+    // Disambiguate only on this rare failure path — one extra read so the client gets a
+    // specific, actionable error instead of a generic one. The request is left exactly as
+    // it was (still pending, unless it was independently resolved elsewhere) — §2 requires
+    // it to remain pending when the failure is capacity.
+    const [stillPending, alreadyFriends, myCount, senderCount] = await Promise.all([
+      db.prepare(`SELECT 1 FROM friend_requests WHERE request_id = ? AND status = 'pending' AND expires_at > ?`).bind(requestId, nowIso()).first(),
+      db.prepare(`SELECT 1 FROM friendships WHERE character_id_a = ? AND character_id_b = ?`).bind(a, b).first(),
+      db.prepare(`SELECT COUNT(*) AS c FROM friendships WHERE character_id_a = ? OR character_id_b = ?`).bind(characterId, characterId).first(),
+      db.prepare(`SELECT COUNT(*) AS c FROM friendships WHERE character_id_a = ? OR character_id_b = ?`).bind(senderId, senderId).first(),
+    ]);
+    if (alreadyFriends) return json({ error: "already_friends" });
+    if (!stillPending) return json({ error: "request_not_pending" });
+    if (Number(myCount?.c || 0) >= FRIEND_CAP || Number(senderCount?.c || 0) >= FRIEND_CAP) return json({ error: "friend_limit_reached" });
+    return json({ error: "friend_limit_reached" });
+  }
+
+  // Friendship now exists — resolve the request. Guarded by status='pending' as a second
+  // layer of defense, even though the INSERT above already re-verified this the instant before.
+  await db.prepare(`UPDATE friend_requests SET status = 'accepted', resolved_at = ? WHERE request_id = ? AND status = 'pending'`).bind(now, requestId).run();
+  return json({ ok: true, characterId: senderId });
+}
+
+async function handleRejectFriendRequest(db, id, session, characterId, requestId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!requestId) return json({ error: "missing_fields" });
+  const updated = await db.prepare(
+    `UPDATE friend_requests SET status = 'rejected', resolved_at = ? WHERE request_id = ? AND receiver_character_id = ? AND status = 'pending'`
+  ).bind(nowIso(), requestId, characterId).run();
+  if (!updated.meta || !updated.meta.changes) return json({ error: "request_not_pending" });
+  return json({ ok: true });
+}
+
+async function handleCancelFriendRequest(db, id, session, characterId, requestId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!requestId) return json({ error: "missing_fields" });
+  const updated = await db.prepare(
+    `UPDATE friend_requests SET status = 'cancelled', resolved_at = ? WHERE request_id = ? AND sender_character_id = ? AND status = 'pending'`
+  ).bind(nowIso(), requestId, characterId).run();
+  if (!updated.meta || !updated.meta.changes) return json({ error: "request_not_pending" });
+  return json({ ok: true });
+}
+
+async function handleRemoveFriend(db, id, session, characterId, targetCharacterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!targetCharacterId) return json({ error: "missing_fields" });
+  const [a, b] = normalizeFriendPair(characterId, targetCharacterId);
+  await db.prepare(`DELETE FROM friendships WHERE character_id_a = ? AND character_id_b = ?`).bind(a, b).run();
+  return json({ ok: true }); // idempotent — succeeds even with no existing friendship (§7)
+}
+
+// Friend-facing block: reuses the Phase 1 character_blocks primitive but additionally
+// removes any active friendship and cancels pending requests in BOTH directions (§8/§9),
+// all as one atomic batch so a request can never be left pointing at a now-blocked pair.
+async function handleBlockCharacter(db, id, session, characterId, targetCharacterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!targetCharacterId) return json({ error: "missing_fields" });
+  if (targetCharacterId === characterId) return json({ error: "cannot_block_self" });
+  const [a, b] = normalizeFriendPair(characterId, targetCharacterId);
+  const now = nowIso();
+  await db.batch([
+    db.prepare(`DELETE FROM friendships WHERE character_id_a = ? AND character_id_b = ?`).bind(a, b),
+    db.prepare(
+      `UPDATE friend_requests SET status = 'cancelled', resolved_at = ? WHERE status = 'pending' AND ((sender_character_id = ? AND receiver_character_id = ?) OR (sender_character_id = ? AND receiver_character_id = ?))`
+    ).bind(now, characterId, targetCharacterId, targetCharacterId, characterId),
+    db.prepare(
+      `INSERT INTO character_blocks (blocker_character_id, blocked_character_id, created_at) VALUES (?, ?, ?) ON CONFLICT(blocker_character_id, blocked_character_id) DO NOTHING`
+    ).bind(characterId, targetCharacterId, now),
+  ]);
+  return json({ ok: true });
+}
+async function handleUnblockCharacter(db, id, session, characterId, targetCharacterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const result = await unblockCharacter(db, characterId, targetCharacterId);
+  if (result.error) return json(result);
+  return json({ ok: true }); // does not restore friendship or resend a request (§8)
+}
+
 // ---------- game config ----------
 async function handleGetGameConfig(db) {
   const res = await db.prepare(`SELECT key, value_json FROM game_config`).all();
@@ -3761,6 +4057,11 @@ export default {
         if (action === "getArenaStatus") return await handleGetArenaStatus(db, id, auth, p.get("characterId"));
         if (action === "getArenaOpponents") return await handleGetArenaOpponents(db, id, auth, p.get("characterId"));
         if (action === "getBattleState") return await handleGetBattleState(db, id, auth, p.get("characterId"));
+        // Friend System V1 (Phase 2) — read actions
+        if (action === "searchCharacters") return await handleSearchCharacters(db, id, auth, p.get("characterId"), p.get("query"));
+        if (action === "getFriendList") return await handleGetFriendList(db, id, auth, p.get("characterId"));
+        if (action === "getFriendRequests") return await handleGetFriendRequests(db, id, auth, p.get("characterId"));
+        if (action === "getBlockedList") return await handleGetBlockedList(db, id, auth, p.get("characterId"));
         return json({ error: "unknown_action" });
       }
 
@@ -3836,6 +4137,21 @@ export default {
             return await handleDeleteAllClaimedMail(db, id, auth, body.characterId);
           case "craftItem":
             return await handleCraftItem(db, id, auth, body.characterId, body.recipeId);
+          // Friend System V1 (Phase 2) — write actions
+          case "sendFriendRequest":
+            return await handleSendFriendRequest(db, id, auth, body.characterId, body.targetCharacterId);
+          case "acceptFriendRequest":
+            return await handleAcceptFriendRequest(db, id, auth, body.characterId, body.requestId);
+          case "rejectFriendRequest":
+            return await handleRejectFriendRequest(db, id, auth, body.characterId, body.requestId);
+          case "cancelFriendRequest":
+            return await handleCancelFriendRequest(db, id, auth, body.characterId, body.requestId);
+          case "removeFriend":
+            return await handleRemoveFriend(db, id, auth, body.characterId, body.targetCharacterId);
+          case "blockCharacter":
+            return await handleBlockCharacter(db, id, auth, body.characterId, body.targetCharacterId);
+          case "unblockCharacter":
+            return await handleUnblockCharacter(db, id, auth, body.characterId, body.targetCharacterId);
           default:
             return json({ error: "unknown_action" });
         }
