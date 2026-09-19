@@ -720,6 +720,20 @@ function ThornieDungeons() {
     if (!ok) setPersistenceMessage("บันทึก Cloud ไม่สำเร็จ — ข้อมูลล่าสุดยังรอส่งและกดบันทึกเพื่อลองใหม่ได้");
     return ok;
   }
+  // Shared GameDock prop bundle for standalone utility pages (Friend now; Chat/Guild
+  // later can reuse this too) — one call instead of hand-writing the same five
+  // near-identical onCharacter/onOpenInv/onPets/onSettings/onSave closures per page.
+  // `fromPhase` is the phase to return to when leaving via the dock (matches the
+  // existing characterReturnPhase/petReturnPhase/utilityReturnPhase convention).
+  function utilityDockProps(fromPhase) {
+    return {
+      onCharacter: () => { setCharacterReturnPhase(fromPhase); setPhase("character"); },
+      onOpenInv: () => setInvOpen(true),
+      onPets: () => { setPetReturnPhase(fromPhase); setPhase("pets"); },
+      onSettings: () => setAccountSettingsOpen(true),
+      onSave: manualSave,
+    };
+  }
   function closeTransientOverlays() {
     setAccountSettingsOpen(false);
     setInvOpen(false);
@@ -2135,6 +2149,7 @@ function ThornieDungeons() {
   }), phase === "friend" && /*#__PURE__*/React.createElement(FriendScreen, {
     serverUrl: cred.url,
     characterId: save.characterId,
+    ...utilityDockProps("friend"),
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,

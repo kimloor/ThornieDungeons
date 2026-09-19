@@ -1284,9 +1284,17 @@ const FRIEND_TABS = [
   { key: "requests", label: "คำขอ" },
   { key: "blocked", label: "บล็อก" },
 ];
+function sortFriendsOnlineFirst(a, b) {
+  return (b.online - a.online) || String(a.name).localeCompare(String(b.name));
+}
 function FriendScreen({
   serverUrl,
   characterId,
+  onCharacter,
+  onOpenInv,
+  onPets,
+  onSettings,
+  onSave,
   onBack
 }) {
   const e = React.createElement;
@@ -1318,9 +1326,11 @@ function FriendScreen({
     }).catch(() => setLoadError(friendErrorText("network_error")));
   }, [url, characterId]);
 
+  // Full reload only on mount and on character switch (characterId changes) — every
+  // in-page action below is optimistic/local instead, per the Friend V1 UX hotfix.
   React.useEffect(() => { loadAll(); }, [loadAll]);
 
-  // Debounced live search — fires 300ms after typing stops instead of per keystroke.
+  // Debounced live search — ~190ms after typing stops instead of per keystroke.
   React.useEffect(() => {
     const q = query.trim();
     if (!q) { setSearchResults(null); setSearching(false); return; }
@@ -1330,37 +1340,144 @@ function FriendScreen({
         setSearching(false);
         setSearchResults(res && res.results ? res.results : []);
       }).catch(() => { setSearching(false); setSearchResults([]); });
-    }, 300);
+    }, 190);
     return () => clearTimeout(handle);
   }, [query, url, characterId]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(t => t === msg ? "" : t), 2200); };
 
-  const runAction = (key, promise) => {
-    if (busyKey) return;
+  // Applies `apply()` immediately (already called by the caller before this runs), then
+  // fires the real request in the background. On failure or network error, `revert()`
+  // restores the exact pre-action snapshot the caller captured — no full reload either way.
+  const runOptimistic = (key, revert, promise) => {
     setBusyKey(key);
     promise.then(res => {
       setBusyKey("");
-      if (!res || res.error) { showToast(friendErrorText(res && res.error)); return; }
-      loadAll();
-      const q = query.trim();
-      if (q) cloudSearchCharacters(url, characterId, q).then(r => setSearchResults(r && r.results ? r.results : []));
-    }).catch(() => { setBusyKey(""); showToast(friendErrorText("network_error")); });
+      if (!res || res.error) {
+        revert();
+        showToast(friendErrorText(res && res.error));
+      }
+    }).catch(() => {
+      setBusyKey("");
+      revert();
+      showToast(friendErrorText("network_error"));
+    });
   };
 
-  const handleSendRequest = (targetCharacterId) => runAction(`send:${targetCharacterId}`, cloudSendFriendRequest(url, characterId, targetCharacterId));
-  const handleAccept = (requestId) => runAction(`accept:${requestId}`, cloudAcceptFriendRequest(url, characterId, requestId));
-  const handleReject = (requestId) => runAction(`reject:${requestId}`, cloudRejectFriendRequest(url, characterId, requestId));
-  const handleCancel = (requestId) => runAction(`cancel:${requestId}`, cloudCancelFriendRequest(url, characterId, requestId));
-  const handleRemove = (targetCharacterId) => runAction(`remove:${targetCharacterId}`, cloudRemoveFriend(url, characterId, targetCharacterId));
-  const handleBlock = (targetCharacterId) => runAction(`block:${targetCharacterId}`, cloudBlockCharacter(url, characterId, targetCharacterId));
-  const handleUnblock = (targetCharacterId) => runAction(`unblock:${targetCharacterId}`, cloudUnblockCharacter(url, characterId, targetCharacterId));
+  const handleSendRequest = (row) => {
+    const key = `send:${row.characterId}`;
+    if (busyKey) return;
+    const prevSearch = searchResults;
+    const prevOutgoing = requestsData.outgoing;
+    if (searchResults) setSearchResults(searchResults.map(r => r.characterId === row.characterId ? { ...r, relationship: "outgoing_pending", requestId: null } : r));
+    const promise = cloudSendFriendRequest(url, characterId, row.characterId).then(res => {
+      if (res && res.ok) {
+        setRequestsData(rd => ({ ...rd, outgoing: [...rd.outgoing, { requestId: res.requestId, characterId: row.characterId, name: row.name, level: row.level, online: row.online, createdAt: new Date().toISOString(), expiresAt: res.expiresAt }] }));
+        setSearchResults(sr => sr ? sr.map(r => r.characterId === row.characterId ? { ...r, requestId: res.requestId } : r) : sr);
+      }
+      return res;
+    });
+    runOptimistic(key, () => {
+      if (prevSearch) setSearchResults(prevSearch);
+      setRequestsData(rd => ({ ...rd, outgoing: prevOutgoing }));
+    }, promise);
+  };
+
+  const handleAccept = (req) => {
+    const key = `accept:${req.requestId}`;
+    if (busyKey) return;
+    const prevIncoming = requestsData.incoming;
+    const prevFriends = friends;
+    const prevSearch = searchResults;
+    setRequestsData({ ...requestsData, incoming: requestsData.incoming.filter(r => r.requestId !== req.requestId) });
+    setFriends([...(friends || []), { characterId: req.characterId, name: req.name, level: req.level, guildName: null, online: req.online }].sort(sortFriendsOnlineFirst));
+    if (searchResults) setSearchResults(searchResults.map(r => r.characterId === req.characterId ? { ...r, relationship: "friend", requestId: null } : r));
+    runOptimistic(key, () => {
+      setRequestsData(rd => ({ ...rd, incoming: prevIncoming }));
+      setFriends(prevFriends);
+      if (prevSearch) setSearchResults(prevSearch);
+    }, cloudAcceptFriendRequest(url, characterId, req.requestId));
+  };
+
+  const handleReject = (req) => {
+    const key = `reject:${req.requestId}`;
+    if (busyKey || !req.requestId) return;
+    const prevIncoming = requestsData.incoming;
+    const prevSearch = searchResults;
+    setRequestsData({ ...requestsData, incoming: requestsData.incoming.filter(r => r.requestId !== req.requestId) });
+    if (searchResults) setSearchResults(searchResults.map(r => r.characterId === req.characterId ? { ...r, relationship: "none", requestId: null } : r));
+    runOptimistic(key, () => {
+      setRequestsData(rd => ({ ...rd, incoming: prevIncoming }));
+      if (prevSearch) setSearchResults(prevSearch);
+    }, cloudRejectFriendRequest(url, characterId, req.requestId));
+  };
+
+  const handleCancel = (req) => {
+    const key = `cancel:${req.requestId}`;
+    if (busyKey || !req.requestId) return;
+    const prevOutgoing = requestsData.outgoing;
+    const prevSearch = searchResults;
+    setRequestsData({ ...requestsData, outgoing: requestsData.outgoing.filter(r => r.requestId !== req.requestId) });
+    if (searchResults) setSearchResults(searchResults.map(r => r.characterId === req.characterId ? { ...r, relationship: "none", requestId: null } : r));
+    runOptimistic(key, () => {
+      setRequestsData(rd => ({ ...rd, outgoing: prevOutgoing }));
+      if (prevSearch) setSearchResults(prevSearch);
+    }, cloudCancelFriendRequest(url, characterId, req.requestId));
+  };
+
+  const handleRemove = (friend) => {
+    const key = `remove:${friend.characterId}`;
+    if (busyKey) return;
+    const prevFriends = friends;
+    const prevSearch = searchResults;
+    setFriends(friends.filter(f => f.characterId !== friend.characterId));
+    if (searchResults) setSearchResults(searchResults.map(r => r.characterId === friend.characterId ? { ...r, relationship: "none", requestId: null } : r));
+    runOptimistic(key, () => {
+      setFriends(prevFriends);
+      if (prevSearch) setSearchResults(prevSearch);
+    }, cloudRemoveFriend(url, characterId, friend.characterId));
+  };
+
+  const handleBlock = (entity) => {
+    const key = `block:${entity.characterId}`;
+    if (busyKey) return;
+    const prevFriends = friends;
+    const prevRequests = requestsData;
+    const prevBlocked = blocked;
+    const prevSearch = searchResults;
+    setFriends((friends || []).filter(f => f.characterId !== entity.characterId));
+    setRequestsData({
+      incoming: requestsData.incoming.filter(r => r.characterId !== entity.characterId),
+      outgoing: requestsData.outgoing.filter(r => r.characterId !== entity.characterId),
+    });
+    setBlocked([...(blocked || []), { characterId: entity.characterId, name: entity.name, level: entity.level }]);
+    if (searchResults) setSearchResults(searchResults.map(r => r.characterId === entity.characterId ? { ...r, relationship: "blocked_by_me", requestId: null } : r));
+    runOptimistic(key, () => {
+      setFriends(prevFriends);
+      setRequestsData(prevRequests);
+      setBlocked(prevBlocked);
+      if (prevSearch) setSearchResults(prevSearch);
+    }, cloudBlockCharacter(url, characterId, entity.characterId));
+  };
+
+  const handleUnblock = (entity) => {
+    const key = `unblock:${entity.characterId}`;
+    if (busyKey) return;
+    const prevBlocked = blocked;
+    const prevSearch = searchResults;
+    setBlocked((blocked || []).filter(b => b.characterId !== entity.characterId));
+    if (searchResults) setSearchResults(searchResults.map(r => r.characterId === entity.characterId ? { ...r, relationship: "none", requestId: null } : r));
+    runOptimistic(key, () => {
+      setBlocked(prevBlocked);
+      if (prevSearch) setSearchResults(prevSearch);
+    }, cloudUnblockCharacter(url, characterId, entity.characterId));
+  };
 
   const onlineDot = (online) => online ? "🟢" : "⚪";
 
   const row = (key, left, right) => e("div", { key, className: "md-shop-row" },
     e("div", { className: "md-shop-info" }, left),
-    e("div", { style: { display: "flex", gap: 6, flexShrink: 0 } }, right));
+    e("div", { style: { display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" } }, right));
 
   const actionBtn = (label, onClick, variant, disabled) => e("button", {
     className: `md-btn small ${variant || "info"}`,
@@ -1370,21 +1487,32 @@ function FriendScreen({
 
   // Search results take over the list area whenever there's an active query, regardless
   // of which tab is selected — the tabs themselves stay visible so switching away clears
-  // the search naturally.
+  // the search naturally. Every relationship state gets a Block action alongside its
+  // primary action(s), per the Friend V1 UX hotfix.
   const searchBody = () => {
     if (searching && searchResults === null) return e("p", { className: "md-sub" }, "กำลังค้นหา...");
     if (!searchResults || !searchResults.length) return e("p", { className: "md-sub" }, "ไม่พบผู้เล่น");
     return e("div", { className: "md-inv-list" }, searchResults.map((r) => {
       let actions;
-      if (r.relationship === "friend") actions = [actionBtn("เพื่อนแล้ว", null, "info", true)];
-      else if (r.relationship === "blocked_by_me") actions = [actionBtn("เลิกบล็อก", () => handleUnblock(r.characterId), "primary", busyKey === `unblock:${r.characterId}`)];
-      else if (r.relationship === "blocking_me") actions = [actionBtn("-", null, "info", true)];
-      else if (r.relationship === "outgoing_pending") actions = [actionBtn("ส่งคำขอแล้ว", () => handleCancel(r.requestId), "flee", busyKey === `cancel:${r.requestId}`)];
-      else if (r.relationship === "incoming_pending") actions = [
-        actionBtn("ยอมรับ", () => handleAccept(r.requestId), "primary", busyKey === `accept:${r.requestId}`),
-        actionBtn("ปฏิเสธ", () => handleReject(r.requestId), "flee", busyKey === `reject:${r.requestId}`),
+      if (r.relationship === "friend") actions = [
+        actionBtn("ลบ", () => handleRemove(r), "flee", busyKey === `remove:${r.characterId}`),
+        actionBtn("บล็อก", () => handleBlock(r), "flee", busyKey === `block:${r.characterId}`),
       ];
-      else actions = [actionBtn("เพิ่มเพื่อน", () => handleSendRequest(r.characterId), "primary", busyKey === `send:${r.characterId}`)];
+      else if (r.relationship === "blocked_by_me") actions = [actionBtn("เลิกบล็อก", () => handleUnblock(r), "primary", busyKey === `unblock:${r.characterId}`)];
+      else if (r.relationship === "blocking_me") actions = [actionBtn("-", null, "info", true)];
+      else if (r.relationship === "outgoing_pending") actions = [
+        actionBtn("ส่งคำขอแล้ว", () => handleCancel(r), "flee", busyKey === `cancel:${r.requestId}` || !r.requestId),
+        actionBtn("บล็อก", () => handleBlock(r), "flee", busyKey === `block:${r.characterId}`),
+      ];
+      else if (r.relationship === "incoming_pending") actions = [
+        actionBtn("ยอมรับ", () => handleAccept(r), "primary", busyKey === `accept:${r.requestId}`),
+        actionBtn("ปฏิเสธ", () => handleReject(r), "flee", busyKey === `reject:${r.requestId}`),
+        actionBtn("บล็อก", () => handleBlock(r), "flee", busyKey === `block:${r.characterId}`),
+      ];
+      else actions = [
+        actionBtn("เพิ่มเพื่อน", () => handleSendRequest(r), "primary", busyKey === `send:${r.characterId}`),
+        actionBtn("บล็อก", () => handleBlock(r), "flee", busyKey === `block:${r.characterId}`),
+      ];
       return row(r.characterId, `${onlineDot(r.online)} ${r.name} (Lv.${r.level})`, actions);
     }));
   };
@@ -1395,8 +1523,8 @@ function FriendScreen({
     return e("div", { className: "md-inv-list" }, friends.map((f) => row(f.characterId,
       `${onlineDot(f.online)} ${f.name} (Lv.${f.level})`,
       [
-        actionBtn("ลบ", () => handleRemove(f.characterId), "flee", busyKey === `remove:${f.characterId}`),
-        actionBtn("บล็อก", () => handleBlock(f.characterId), "flee", busyKey === `block:${f.characterId}`),
+        actionBtn("ลบ", () => handleRemove(f), "flee", busyKey === `remove:${f.characterId}`),
+        actionBtn("บล็อก", () => handleBlock(f), "flee", busyKey === `block:${f.characterId}`),
       ])));
   };
 
@@ -1411,14 +1539,18 @@ function FriendScreen({
         e("div", { className: "md-inv-list" }, incoming.map((r) => row(r.requestId,
           `${onlineDot(r.online)} ${r.name} (Lv.${r.level})`,
           [
-            actionBtn("ยอมรับ", () => handleAccept(r.requestId), "primary", busyKey === `accept:${r.requestId}`),
-            actionBtn("ปฏิเสธ", () => handleReject(r.requestId), "flee", busyKey === `reject:${r.requestId}`),
+            actionBtn("ยอมรับ", () => handleAccept(r), "primary", busyKey === `accept:${r.requestId}`),
+            actionBtn("ปฏิเสธ", () => handleReject(r), "flee", busyKey === `reject:${r.requestId}`),
+            actionBtn("บล็อก", () => handleBlock(r), "flee", busyKey === `block:${r.characterId}`),
           ])))),
       outgoing.length > 0 && e("div", null,
         e("p", { className: "md-sub", style: { margin: "0 0 4px" } }, `คำขอที่ส่งไป (${outgoing.length}/${FRIEND_OUTGOING_PENDING_CAP_CLIENT})`),
         e("div", { className: "md-inv-list" }, outgoing.map((r) => row(r.requestId,
           `${onlineDot(r.online)} ${r.name} (Lv.${r.level})`,
-          [actionBtn("ยกเลิก", () => handleCancel(r.requestId), "flee", busyKey === `cancel:${r.requestId}`)])))));
+          [
+            actionBtn("ยกเลิก", () => handleCancel(r), "flee", busyKey === `cancel:${r.requestId}`),
+            actionBtn("บล็อก", () => handleBlock(r), "flee", busyKey === `block:${r.characterId}`),
+          ])))));
   };
 
   const blockedBody = () => {
@@ -1426,12 +1558,12 @@ function FriendScreen({
     if (!blocked.length) return e("p", { className: "md-sub" }, "ไม่มีผู้เล่นที่ถูกบล็อก");
     return e("div", { className: "md-inv-list" }, blocked.map((b) => row(b.characterId,
       `${b.name} (Lv.${b.level})`,
-      [actionBtn("เลิกบล็อก", () => handleUnblock(b.characterId), "primary", busyKey === `unblock:${b.characterId}`)])));
+      [actionBtn("เลิกบล็อก", () => handleUnblock(b), "primary", busyKey === `unblock:${b.characterId}`)])));
   };
 
   const incomingCount = (requestsData && requestsData.incoming && requestsData.incoming.length) || 0;
 
-  return e("div", { className: "md-panel", style: { flex: 1 } },
+  return e("div", { className: "md-panel md-friend-page" },
     toast && e("div", { className: "md-toast" }, toast),
     e("div", { className: "md-card", style: { marginBottom: 10 } },
       e("p", { className: "md-title" }, "👥 เพื่อน"),
@@ -1450,9 +1582,10 @@ function FriendScreen({
         onClick: () => setTab(t.key),
       }, t.label, t.key === "requests" && incomingCount > 0 ? ` (${incomingCount})` : ""))),
     loadError && e("p", { className: "md-sub" }, loadError),
-    e("div", { className: "md-card", style: { marginBottom: 10 } },
+    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0 } },
       query.trim() ? searchBody() : tab === "friends" ? friendsBody() : tab === "requests" ? requestsBody() : blockedBody()),
-    e(BackButton, { onClick: onBack }));
+    e(BackButton, { onClick: onBack }),
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave }));
 }
 const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEND_OUTGOING_PENDING_CAP) is authoritative
 // ---------- Phase 3: Raid Boss ----------
