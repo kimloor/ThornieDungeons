@@ -15,12 +15,13 @@ function sourceBetween(start, end) {
   return components.slice(from, to);
 }
 
-test("shared GameDock owns the only More menu with Settings, Save, and Friend", () => {
+test("shared GameDock owns the only More menu with Settings, Save, Friend, and Chat", () => {
   const dock = sourceBetween("function GameDock", "// Renders the icon+amount chips");
   const panel = dock.slice(dock.indexOf("moreOpen &&"), dock.indexOf('React.createElement("nav"'));
   assert.match(panel, /Settings/);
   assert.match(panel, /Save/);
   assert.match(panel, /Friend/);
+  assert.match(panel, /Chat/);
   assert.doesNotMatch(panel, /Daily|Mail|Shop|Enhance|Craft|Raid|Arena|Leaderboard|Switch Character|Logout|รายวัน|จดหมาย|อันดับ|ร้านค้า|ตีบวก|ประดิษฐ์|เปลี่ยนตัว|ออกจากระบบ/);
   assert.equal((components.match(/className: "md-hub-more-panel"/g) || []).length, 1);
 });
@@ -31,11 +32,11 @@ test("Character, Inventory, Pet, and Map use shared non-navigating More behavior
   const inventory = sourceBetween("function InventoryOverlayV2", "function InventoryOverlay(");
   const map = sourceBetween("function MapScreen", "function ShopOverlay");
   assert.doesNotMatch(components, /md-character-more/);
-  assert.match(characterDock, /onSettings[\s\S]*onSave[\s\S]*onFriend/);
-  assert.match(pet, /activeKey: "pets"[\s\S]*onSettings[\s\S]*onSave[\s\S]*onFriend/);
-  assert.match(inventory, /activeKey:"inventory", onSettings, onSave, onFriend/);
+  assert.match(characterDock, /onSettings[\s\S]*onSave[\s\S]*onFriend[\s\S]*onChat/);
+  assert.match(pet, /activeKey: "pets"[\s\S]*onSettings[\s\S]*onSave[\s\S]*onFriend[\s\S]*onChat/);
+  assert.match(inventory, /activeKey:"inventory", onSettings, onSave, onFriend, onChat/);
   assert.doesNotMatch(inventory, /onToggleMore:onClose/);
-  assert.match(map, /e\(GameDock,[\s\S]*onSettings,[\s\S]*onSave,[\s\S]*onFriend/);
+  assert.match(map, /e\(GameDock,[\s\S]*onSettings,[\s\S]*onSave,[\s\S]*onFriend,[\s\S]*onChat/);
 });
 
 test("Settings is the account and security hub", () => {

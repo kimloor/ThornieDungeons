@@ -993,6 +993,207 @@ async function handleUnblockCharacter(db, id, session, characterId, targetCharac
   return json({ ok: true }); // does not restore friendship or resend a request (§8)
 }
 
+// ---------- Chat System V1 (docs/CHAT-SYSTEM-V1.md) — Phase 3 ----------
+// Global + Direct only this phase — no Guild Chat, no sticker backend (see the Phase 3
+// dev prompt's explicit scope). Reuses the legacy chat_messages table from
+// migration_v3.sql (channel/from_character_id/to_character_id/message/created_at) via
+// migration 0016's additive conversation_key column + chat_read_state table, rather than
+// a separate chat_channels/chat_channel_members architecture — avoids duplicate storage
+// for a table that already covers the 'world'/'whisper' channels V1 needs.
+const CHAT_GLOBAL_MAX_LEN = 200; // §8
+const CHAT_DIRECT_MAX_LEN = 300; // §8
+const CHAT_GLOBAL_RATE_MS = 3000; // §9 "~1 send / 3s"
+const CHAT_DIRECT_RATE_MS = 1500; // §9 "~1 send / 1-2s"
+const CHAT_GLOBAL_RETENTION_DAYS = 7; // §7
+const CHAT_DIRECT_RETENTION_DAYS = 30; // §7
+const CHAT_POLL_PAGE_SIZE = 50; // §6 "initial latest ~50 messages"
+
+// Same normalization convention as friendships.character_id_a/b: always the
+// lexicographically-smaller id first, so a conversation has exactly one key regardless
+// of who's asking or who sent which message.
+function normalizeConversationKey(a, b) {
+  return a < b ? `${a}:${b}` : `${b}:${a}`;
+}
+
+// §8 sanitation: no trusted HTML (plain text only — nothing here interprets markup),
+// normalize/collapse whitespace, strip unsafe control characters, bound newlines.
+// Returns "" for anything that sanitizes down to nothing — caller treats that as
+// message_empty. Length is checked separately by the caller against the channel's own
+// max (Global 200 / Direct 300) so the error is message_too_long, not a silent truncation.
+function sanitizeChatMessage(raw) {
+  if (typeof raw !== "string") return "";
+  let s = raw.replace(/\r\n?/g, "\n");
+  // eslint-disable-next-line no-control-regex
+  s = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ""); // strip control chars, keep \n
+  s = s.replace(/[ \t]+/g, " "); // collapse horizontal whitespace runs
+  s = s.replace(/\n{2,}/g, "\n"); // bound consecutive newlines to one
+  s = s.split("\n").map((line) => line.trim()).join("\n").trim();
+  return s;
+}
+
+async function getBlockedCharacterIds(db, characterId) {
+  const rows = await db.prepare(`SELECT blocked_character_id FROM character_blocks WHERE blocker_character_id = ?`).bind(characterId).all();
+  return (rows.results || []).map((r) => r.blocked_character_id);
+}
+
+function shapeChatRow(m) {
+  return { id: m.id, characterId: m.from_character_id, name: m.from_name, text: m.message, createdAt: m.created_at };
+}
+
+async function handleGetGlobalChat(db, id, session, characterId, afterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const after = Number(afterId) || 0;
+  const rows = after > 0
+    ? await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='world' AND id > ? ORDER BY id ASC LIMIT 200`).bind(after).all()
+    : await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='world' ORDER BY id DESC LIMIT ?`).bind(CHAT_POLL_PAGE_SIZE).all();
+  let results = rows.results || [];
+  if (!after) results = results.reverse(); // oldest -> newest for initial load; incremental is already ASC
+  const blockedIds = await getBlockedCharacterIds(db, characterId);
+  if (blockedIds.length) results = results.filter((m) => !blockedIds.includes(m.from_character_id)); // §5 — directional, my blocks only
+  return json({ ok: true, messages: results.map(shapeChatRow) });
+}
+
+async function handleSendGlobalMessage(db, id, session, characterId, text) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const clean = sanitizeChatMessage(text);
+  if (!clean) return json({ error: "message_empty" });
+  if (clean.length > CHAT_GLOBAL_MAX_LEN) return json({ error: "message_too_long" });
+  const last = await db.prepare(`SELECT created_at FROM chat_messages WHERE channel='world' AND from_character_id=? ORDER BY id DESC LIMIT 1`).bind(characterId).first();
+  if (last && Date.now() - Date.parse(last.created_at) < CHAT_GLOBAL_RATE_MS) return json({ error: "chat_rate_limited" });
+  const now = nowIso();
+  const result = await db.prepare(
+    `INSERT INTO chat_messages (channel, from_character_id, from_name, message, created_at) VALUES ('world', ?, ?, ?, ?)`
+  ).bind(characterId, auth.character.name, clean, now).run();
+  return json({ ok: true, id: result.meta.last_row_id, createdAt: now });
+}
+
+async function handleGetDirectMessages(db, id, session, characterId, withCharacterId, afterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!withCharacterId) return json({ error: "missing_fields" });
+  const convKey = normalizeConversationKey(characterId, withCharacterId);
+  const after = Number(afterId) || 0;
+  const rows = after > 0
+    ? await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='whisper' AND conversation_key=? AND id > ? ORDER BY id ASC LIMIT 200`).bind(convKey, after).all()
+    : await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='whisper' AND conversation_key=? ORDER BY id DESC LIMIT ?`).bind(convKey, CHAT_POLL_PAGE_SIZE).all();
+  let results = rows.results || [];
+  if (!after) results = results.reverse();
+  // canSend told to the client up front so the thread UI can disable the composer
+  // without a separate round trip — mirrors exactly what handleSendDirectMessage itself
+  // enforces server-side at send time (§3: unfriend keeps history but disables send;
+  // either-direction block denies send).
+  const canSend = (await areFriends(db, characterId, withCharacterId)) && !(await isBlockedEitherDirection(db, characterId, withCharacterId));
+  return json({ ok: true, messages: results.map(shapeChatRow), canSend });
+}
+
+async function handleSendDirectMessage(db, id, session, characterId, toCharacterId, text) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!toCharacterId || toCharacterId === characterId) return json({ error: "invalid_recipient" });
+  const target = await getRow(db, "characters", "character_id", toCharacterId);
+  if (!target) return json({ error: "character_not_found" });
+  if (!(await areFriends(db, characterId, toCharacterId))) return json({ error: "not_friends" }); // §3 — DM is friend-only
+  if (await isBlockedEitherDirection(db, characterId, toCharacterId)) return json({ error: "blocked_relationship" });
+  const clean = sanitizeChatMessage(text);
+  if (!clean) return json({ error: "message_empty" });
+  if (clean.length > CHAT_DIRECT_MAX_LEN) return json({ error: "message_too_long" });
+  const last = await db.prepare(`SELECT created_at FROM chat_messages WHERE channel='whisper' AND from_character_id=? ORDER BY id DESC LIMIT 1`).bind(characterId).first();
+  if (last && Date.now() - Date.parse(last.created_at) < CHAT_DIRECT_RATE_MS) return json({ error: "chat_rate_limited" });
+  const convKey = normalizeConversationKey(characterId, toCharacterId);
+  const now = nowIso();
+  const result = await db.prepare(
+    `INSERT INTO chat_messages (channel, from_character_id, from_name, to_character_id, conversation_key, message, created_at) VALUES ('whisper', ?, ?, ?, ?, ?, ?)`
+  ).bind(characterId, auth.character.name, toCharacterId, convKey, clean, now).run();
+  return json({ ok: true, id: result.meta.last_row_id, createdAt: now, conversationKey: convKey });
+}
+
+async function handleGetDirectConversations(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const rows = await db.prepare(
+    `SELECT conversation_key,
+            MAX(id) AS last_id,
+            (SELECT message FROM chat_messages m2 WHERE m2.conversation_key = m.conversation_key AND m2.channel='whisper' ORDER BY m2.id DESC LIMIT 1) AS last_message,
+            (SELECT created_at FROM chat_messages m3 WHERE m3.conversation_key = m.conversation_key AND m3.channel='whisper' ORDER BY m3.id DESC LIMIT 1) AS last_created_at,
+            (SELECT from_character_id FROM chat_messages m4 WHERE m4.conversation_key = m.conversation_key AND m4.channel='whisper' ORDER BY m4.id DESC LIMIT 1) AS last_sender
+     FROM chat_messages m
+     WHERE channel='whisper' AND (from_character_id = ? OR to_character_id = ?)
+     GROUP BY conversation_key`
+  ).bind(characterId, characterId).all();
+  const conversations = rows.results || [];
+  if (!conversations.length) return json({ ok: true, conversations: [] });
+
+  // conversation_key is "smaller_id:larger_id" — neither half is guaranteed to be
+  // `characterId` positionally, so split and take whichever half isn't me.
+  const otherIds = conversations.map((c) => {
+    const [a, b] = c.conversation_key.split(":");
+    return a === characterId ? b : a;
+  });
+  const uniqueOtherIds = [...new Set(otherIds)];
+  const placeholders = uniqueOtherIds.map(() => "?").join(",");
+  const charRows = uniqueOtherIds.length
+    ? await db.prepare(`SELECT character_id, name, level, last_active_at FROM characters WHERE character_id IN (${placeholders})`).bind(...uniqueOtherIds).all()
+    : { results: [] };
+  const charMap = new Map((charRows.results || []).map((c) => [c.character_id, c]));
+
+  const readRows = await db.prepare(`SELECT conversation_key, last_read_message_id FROM chat_read_state WHERE character_id = ?`).bind(characterId).all();
+  const readMap = new Map((readRows.results || []).map((r) => [r.conversation_key, r.last_read_message_id]));
+
+  const result = [];
+  for (let i = 0; i < conversations.length; i++) {
+    const c = conversations[i];
+    const otherId = otherIds[i];
+    const other = charMap.get(otherId);
+    if (!other) continue; // other character deleted — skip rather than crash the list (§11: no cascade-delete of history, but nothing left to show a name for)
+    const lastRead = readMap.get(c.conversation_key) || 0;
+    result.push({
+      characterId: otherId,
+      name: other.name,
+      level: other.level,
+      online: isRecentlyActive(other.last_active_at),
+      lastMessage: c.last_message,
+      lastMessageAt: c.last_created_at,
+      lastSenderIsMe: c.last_sender === characterId,
+      unread: Number(c.last_id) > Number(lastRead),
+    });
+  }
+  result.sort((a, b) => (a.lastMessageAt < b.lastMessageAt ? 1 : a.lastMessageAt > b.lastMessageAt ? -1 : 0));
+  return json({ ok: true, conversations: result });
+}
+
+async function handleMarkConversationRead(db, id, session, characterId, withCharacterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!withCharacterId) return json({ error: "missing_fields" });
+  const convKey = normalizeConversationKey(characterId, withCharacterId);
+  const latest = await db.prepare(`SELECT MAX(id) AS max_id FROM chat_messages WHERE channel='whisper' AND conversation_key=?`).bind(convKey).first();
+  const maxId = Number((latest && latest.max_id) || 0);
+  await db.prepare(
+    `INSERT INTO chat_read_state (character_id, conversation_key, last_read_message_id, updated_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(character_id, conversation_key) DO UPDATE SET last_read_message_id = MAX(last_read_message_id, excluded.last_read_message_id), updated_at = excluded.updated_at`
+  ).bind(characterId, convKey, maxId, nowIso()).run();
+  return json({ ok: true, lastReadMessageId: maxId });
+}
+
+// §7 retention. Piggybacks on the existing nightly cron (see scheduled() at the bottom of
+// this file, alongside runLeaderboardSnapshot/closeOutExpiredRaids) rather than adding a
+// new trigger. AUTOINCREMENT ids are never reused after deletion, so purging old rows
+// never invalidates an in-flight polling cursor (afterId) for newer messages.
+async function runChatRetentionCleanup(db) {
+  const globalCutoff = new Date(Date.now() - CHAT_GLOBAL_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const directCutoff = new Date(Date.now() - CHAT_DIRECT_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const globalResult = await db.prepare(`DELETE FROM chat_messages WHERE channel = 'world' AND created_at < ?`).bind(globalCutoff).run();
+  const directResult = await db.prepare(`DELETE FROM chat_messages WHERE channel = 'whisper' AND created_at < ?`).bind(directCutoff).run();
+  // Conversations with zero remaining messages leave their read-state row harmless but
+  // unbounded-growing — prune it rather than let it accumulate forever.
+  await db.prepare(
+    `DELETE FROM chat_read_state WHERE conversation_key NOT IN (SELECT DISTINCT conversation_key FROM chat_messages WHERE channel = 'whisper')`
+  ).run();
+  return { globalDeleted: (globalResult.meta && globalResult.meta.changes) || 0, directDeleted: (directResult.meta && directResult.meta.changes) || 0 };
+}
+
 // ---------- game config ----------
 async function handleGetGameConfig(db) {
   const res = await db.prepare(`SELECT key, value_json FROM game_config`).all();
@@ -4073,6 +4274,15 @@ export default {
         if (action === "getFriendList") return await handleGetFriendList(db, id, auth, p.get("characterId"));
         if (action === "getFriendRequests") return await handleGetFriendRequests(db, id, auth, p.get("characterId"));
         if (action === "getBlockedList") return await handleGetBlockedList(db, id, auth, p.get("characterId"));
+        // Chat System V1 (Phase 3) — read actions
+        if (action === "getGlobalChat") return await handleGetGlobalChat(db, id, auth, p.get("characterId"), p.get("afterId"));
+        if (action === "getDirectMessages") return await handleGetDirectMessages(db, id, auth, p.get("characterId"), p.get("withCharacterId"), p.get("afterId"));
+        if (action === "getDirectConversations") return await handleGetDirectConversations(db, id, auth, p.get("characterId"));
+        if (action === "runChatRetentionCleanup") {
+          const adminAuth = verifyAdminKey(env, p.get("adminKey"));
+          if (adminAuth.error) return json(adminAuth);
+          return json({ ok: true, ...(await runChatRetentionCleanup(db)) });
+        }
         return json({ error: "unknown_action" });
       }
 
@@ -4163,6 +4373,13 @@ export default {
             return await handleBlockCharacter(db, id, auth, body.characterId, body.targetCharacterId);
           case "unblockCharacter":
             return await handleUnblockCharacter(db, id, auth, body.characterId, body.targetCharacterId);
+          // Chat System V1 (Phase 3) — write actions
+          case "sendGlobalMessage":
+            return await handleSendGlobalMessage(db, id, auth, body.characterId, body.text);
+          case "sendDirectMessage":
+            return await handleSendDirectMessage(db, id, auth, body.characterId, body.toCharacterId, body.text);
+          case "markConversationRead":
+            return await handleMarkConversationRead(db, id, auth, body.characterId, body.withCharacterId);
           default:
             return json({ error: "unknown_action" });
         }
@@ -4181,5 +4398,6 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runLeaderboardSnapshot(env.DB));
     ctx.waitUntil(closeOutExpiredRaids(env.DB));
+    ctx.waitUntil(runChatRetentionCleanup(env.DB));
   },
 };

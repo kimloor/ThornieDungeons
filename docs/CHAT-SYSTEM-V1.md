@@ -1,6 +1,6 @@
 # Chat System V1
 
-Status: **ACTIVE-DESIGN**
+Status: **ACTIVE-PRODUCTION for Global + Direct — current Chat System V1 contract and implementation reference. Guild Chat sections below remain design-only (not implemented).**
 
 Depends on `SOCIAL-SYSTEM-V1.md` and, for Direct Message access, `FRIEND-SYSTEM-V1.md`.
 

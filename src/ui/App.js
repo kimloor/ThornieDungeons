@@ -21,6 +21,10 @@ function ThornieDungeons() {
   const [petReturnPhase, setPetReturnPhase] = useState("menu");
   const [gachaReturnPhase, setGachaReturnPhase] = useState("pets");
   const [utilityReturnPhase, setUtilityReturnPhase] = useState("menu");
+  // One-shot deep link set only by Friend's "Chat" action, consumed once by ChatScreen on
+  // mount to open straight into that DM thread. Every other way of opening Chat clears
+  // this first so a stale target can't resurface later.
+  const [chatDirectTarget, setChatDirectTarget] = useState(null);
   // True only when character selection follows a successful login/register. It lets the
   // screen bridge from the login artwork without replaying that transition when switching
   // characters from inside the game.
@@ -1990,6 +1994,11 @@ function ThornieDungeons() {
       setUtilityReturnPhase("menu");
       setPhase("friend");
     },
+    onChat: () => {
+      setChatDirectTarget(null);
+      setUtilityReturnPhase("menu");
+      setPhase("chat");
+    },
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -2035,6 +2044,11 @@ function ThornieDungeons() {
       setUtilityReturnPhase("town");
       setPhase("friend");
     },
+    onChat: () => {
+      setChatDirectTarget(null);
+      setUtilityReturnPhase("town");
+      setPhase("chat");
+    },
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -2058,6 +2072,11 @@ function ThornieDungeons() {
       setUtilityReturnPhase("character");
       setPhase("friend");
     },
+    onChat: () => {
+      setChatDirectTarget(null);
+      setUtilityReturnPhase("character");
+      setPhase("chat");
+    },
     onBack: () => setPhase(characterReturnPhase)
   }), phase === "skill" && /*#__PURE__*/React.createElement(HeroSkillV1Screen, {
     save: save,
@@ -2074,6 +2093,11 @@ function ThornieDungeons() {
     onFriend: () => {
       setUtilityReturnPhase("skill");
       setPhase("friend");
+    },
+    onChat: () => {
+      setChatDirectTarget(null);
+      setUtilityReturnPhase("skill");
+      setPhase("chat");
     },
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
@@ -2103,6 +2127,11 @@ function ThornieDungeons() {
       setUtilityReturnPhase("map");
       setPhase("friend");
     },
+    onChat: () => {
+      setChatDirectTarget(null);
+      setUtilityReturnPhase("map");
+      setPhase("chat");
+    },
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,
@@ -2123,6 +2152,11 @@ function ThornieDungeons() {
     onFriend: () => {
       setUtilityReturnPhase("pets");
       setPhase("friend");
+    },
+    onChat: () => {
+      setChatDirectTarget(null);
+      setUtilityReturnPhase("pets");
+      setPhase("chat");
     },
     onBack: () => setPhase(petReturnPhase)
   }), phase === "leaderboard" && /*#__PURE__*/React.createElement(LeaderboardScreen, {
@@ -2150,6 +2184,27 @@ function ThornieDungeons() {
     serverUrl: cred.url,
     characterId: save.characterId,
     ...utilityDockProps("friend"),
+    onChat: () => {
+      setChatDirectTarget(null);
+      setUtilityReturnPhase("friend");
+      setPhase("chat");
+    },
+    onChatWith: (friend) => {
+      setChatDirectTarget({ characterId: friend.characterId, name: friend.name });
+      setUtilityReturnPhase("friend");
+      setPhase("chat");
+    },
+    onBack: () => setPhase(utilityReturnPhase)
+  }), phase === "chat" && /*#__PURE__*/React.createElement(ChatScreen, {
+    serverUrl: cred.url,
+    characterId: save.characterId,
+    characterName: save.characterName,
+    initialDirectTarget: chatDirectTarget,
+    ...utilityDockProps("chat"),
+    onFriend: () => {
+      setUtilityReturnPhase("chat");
+      setPhase("friend");
+    },
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
@@ -2238,6 +2293,12 @@ function ThornieDungeons() {
       setInvOpen(false);
       setUtilityReturnPhase(phase);
       setPhase("friend");
+    },
+    onChat: () => {
+      setInvOpen(false);
+      setChatDirectTarget(null);
+      setUtilityReturnPhase(phase);
+      setPhase("chat");
     },
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {

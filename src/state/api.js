@@ -460,3 +460,49 @@ function cloudUnblockCharacter(url, characterId, targetCharacterId) {
     targetCharacterId
   });
 }
+// Phase 6.3 — Chat System V1 (Global + Direct). afterId is omitted/0 for the initial
+// latest-~50 load, then the highest id already seen for incremental polling — see the
+// worker's Chat System V1 section for the authoritative logic (caps, retention, etc).
+function cloudGetGlobalChat(url, characterId, afterId) {
+  return cloudAuthGet(url, {
+    action: "getGlobalChat",
+    characterId,
+    afterId: afterId || 0
+  });
+}
+function cloudSendGlobalMessage(url, characterId, text) {
+  return cloudAuthPost(url, {
+    action: "sendGlobalMessage",
+    characterId,
+    text
+  });
+}
+function cloudGetDirectMessages(url, characterId, withCharacterId, afterId) {
+  return cloudAuthGet(url, {
+    action: "getDirectMessages",
+    characterId,
+    withCharacterId,
+    afterId: afterId || 0
+  });
+}
+function cloudSendDirectMessage(url, characterId, toCharacterId, text) {
+  return cloudAuthPost(url, {
+    action: "sendDirectMessage",
+    characterId,
+    toCharacterId,
+    text
+  });
+}
+function cloudGetDirectConversations(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getDirectConversations",
+    characterId
+  });
+}
+function cloudMarkConversationRead(url, characterId, withCharacterId) {
+  return cloudAuthPost(url, {
+    action: "markConversationRead",
+    characterId,
+    withCharacterId
+  });
+}

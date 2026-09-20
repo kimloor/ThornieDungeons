@@ -212,7 +212,8 @@ function GameDock({
   activeKey,
   onSettings,
   onSave,
-  onFriend
+  onFriend,
+  onChat
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [saveFlash, setSaveFlash] = useState("");
@@ -231,6 +232,10 @@ function GameDock({
     setMoreOpen(false);
     onFriend?.();
   };
+  const openChat = () => {
+    setMoreOpen(false);
+    onChat?.();
+  };
   return /*#__PURE__*/React.createElement(React.Fragment, null, moreOpen && /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-panel"
   }, /*#__PURE__*/React.createElement("div", {
@@ -241,7 +246,7 @@ function GameDock({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")))), /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
@@ -401,6 +406,7 @@ function HubScreen({
   onSave,
   onAccountSettings,
   onFriend,
+  onChat,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -468,7 +474,8 @@ function HubScreen({
     onPets: onPets,
     onSettings: onAccountSettings,
     onSave: onSave,
-    onFriend: onFriend
+    onFriend: onFriend,
+    onChat: onChat
   })), /*#__PURE__*/React.createElement(DailyLoginToast, {
     open: dailyModalOpen,
     onClose: () => { setDailyModalOpen(false); onClearDailyLoginResult(); },
@@ -497,6 +504,7 @@ function TownScreen({
   onSave,
   onAccountSettings,
   onFriend,
+  onChat,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -570,7 +578,8 @@ function TownScreen({
         onPets,
         onSettings: onAccountSettings,
         onSave,
-        onFriend
+        onFriend,
+        onChat
       })
     ),
     e(DailyLoginToast, {
@@ -805,7 +814,7 @@ function CharacterTabs({ active, onStatus, onSkills }) {
   );
 }
 
-function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend }) {
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat }) {
   return /*#__PURE__*/React.createElement(GameDock, {
     activeKey: "character",
     onCharacter,
@@ -813,7 +822,8 @@ function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onS
     onPets: onOpenPets,
     onSettings,
     onSave,
-    onFriend
+    onFriend,
+    onChat
   });
 }
 
@@ -844,6 +854,7 @@ function StatusScreen({
   onSettings,
   onSave,
   onFriend,
+  onChat,
   onBack
 }) {
   const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
@@ -936,7 +947,7 @@ function StatusScreen({
         )
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
@@ -1017,11 +1028,11 @@ function SkillScreen({
         /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสกิล")
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
-function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onBack }) {
+function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
   const levels = save.character.skillLevels || {};
@@ -1067,7 +1078,7 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
         /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
   );
 }
@@ -1295,6 +1306,8 @@ function FriendScreen({
   onPets,
   onSettings,
   onSave,
+  onChat,
+  onChatWith,
   onBack
 }) {
   const e = React.createElement;
@@ -1523,6 +1536,7 @@ function FriendScreen({
     return e("div", { className: "md-inv-list" }, friends.map((f) => row(f.characterId,
       `${onlineDot(f.online)} ${f.name} (Lv.${f.level})`,
       [
+        onChatWith && actionBtn("แชท", () => onChatWith(f), "primary", false),
         actionBtn("ลบ", () => handleRemove(f), "flee", busyKey === `remove:${f.characterId}`),
         actionBtn("บล็อก", () => handleBlock(f), "flee", busyKey === `block:${f.characterId}`),
       ])));
@@ -1585,9 +1599,276 @@ function FriendScreen({
     e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0 } },
       query.trim() ? searchBody() : tab === "friends" ? friendsBody() : tab === "requests" ? requestsBody() : blockedBody()),
     e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat }));
 }
 const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEND_OUTGOING_PENDING_CAP) is authoritative
+// ---------- Phase 6.3: Chat System V1 ----------
+function chatErrorText(error) {
+  const map = {
+    invalid_session: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    session_expired: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    session_replaced: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    message_empty: "กรุณาพิมพ์ข้อความ",
+    message_too_long: "ข้อความยาวเกินไป",
+    chat_rate_limited: "ส่งข้อความเร็วเกินไป กรุณารอสักครู่",
+    not_friends: "ส่งข้อความได้เฉพาะเพื่อนเท่านั้น",
+    blocked_relationship: "ไม่สามารถส่งข้อความได้เนื่องจากมีการบล็อกอยู่",
+    invalid_recipient: "ผู้รับไม่ถูกต้อง",
+    character_not_found: "ไม่พบผู้เล่นนี้",
+    server_error: "ระบบแชทขัดข้อง กรุณาลองใหม่",
+  };
+  return map[error] || "เกิดข้อผิดพลาด กรุณาลองใหม่";
+}
+const CHAT_TABS = [
+  { key: "global", label: "โลก" },
+  { key: "direct", label: "ส่วนตัว" },
+  { key: "sticker", label: "สติกเกอร์" },
+];
+function ChatScreen({
+  serverUrl,
+  characterId,
+  characterName,
+  initialDirectTarget,
+  onCharacter,
+  onOpenInv,
+  onPets,
+  onSettings,
+  onSave,
+  onFriend,
+  onBack
+}) {
+  const e = React.createElement;
+  const url = serverUrl || DEFAULT_SERVER_URL;
+  const [tab, setTab] = useState(initialDirectTarget ? "direct" : "global");
+  const [activeConversation, setActiveConversation] = useState(initialDirectTarget || null);
+  const [globalMessages, setGlobalMessages] = useState([]);
+  const [globalLoaded, setGlobalLoaded] = useState(false);
+  const [globalInput, setGlobalInput] = useState("");
+  const [globalError, setGlobalError] = useState("");
+  const [globalSending, setGlobalSending] = useState(false);
+  const [conversations, setConversations] = useState(null);
+  const [threadMessages, setThreadMessages] = useState([]);
+  const [threadLoaded, setThreadLoaded] = useState(false);
+  const [threadCanSend, setThreadCanSend] = useState(true);
+  const [threadInput, setThreadInput] = useState("");
+  const [threadError, setThreadError] = useState("");
+  const [threadSending, setThreadSending] = useState(false);
+  const [pollError, setPollError] = useState(false);
+
+  const lastGlobalIdRef = React.useRef(0);
+  const lastThreadIdRef = React.useRef(0);
+  const pollTimerRef = React.useRef(null);
+
+  // Single active poller at a time — Global tab, or an open Direct thread, or (Direct tab
+  // with no thread open) the conversation list. Cleared on unmount and whenever tab/
+  // activeConversation/characterId changes, so nothing polls once Chat isn't showing it
+  // (CHAT-SYSTEM-V1.md §6). Baseline ~3s, backs off 3s -> 5s -> 10s on failure and resets
+  // to baseline the moment a poll succeeds again; old messages are never cleared on
+  // failure, only appended to on success.
+  React.useEffect(() => {
+    let cancelled = false;
+    let delay = 3000;
+    lastGlobalIdRef.current = 0;
+    lastThreadIdRef.current = 0;
+    setPollError(false);
+
+    const loadInitial = async () => {
+      if (tab === "global") {
+        const res = await cloudGetGlobalChat(url, characterId, 0);
+        if (cancelled) return;
+        if (res && res.ok) {
+          setGlobalMessages(res.messages);
+          if (res.messages.length) lastGlobalIdRef.current = res.messages[res.messages.length - 1].id;
+          setGlobalLoaded(true);
+        }
+      } else if (tab === "direct" && activeConversation) {
+        const res = await cloudGetDirectMessages(url, characterId, activeConversation.characterId, 0);
+        if (cancelled) return;
+        if (res && res.ok) {
+          setThreadMessages(res.messages);
+          setThreadCanSend(!!res.canSend);
+          if (res.messages.length) lastThreadIdRef.current = res.messages[res.messages.length - 1].id;
+          setThreadLoaded(true);
+          // Only mark read after a confirmed successful render — never on a failed fetch
+          // (§10/§14).
+          cloudMarkConversationRead(url, characterId, activeConversation.characterId);
+        }
+      } else if (tab === "direct" && !activeConversation) {
+        const res = await cloudGetDirectConversations(url, characterId);
+        if (cancelled) return;
+        if (res && res.ok) setConversations(res.conversations);
+      }
+    };
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        if (tab === "global") {
+          const res = await cloudGetGlobalChat(url, characterId, lastGlobalIdRef.current);
+          if (cancelled) return;
+          if (!res || res.error) throw new Error("poll_failed");
+          if (res.messages.length) {
+            setGlobalMessages((prev) => [...prev, ...res.messages]);
+            lastGlobalIdRef.current = res.messages[res.messages.length - 1].id;
+          }
+          setPollError(false);
+          delay = 3000;
+        } else if (tab === "direct" && activeConversation) {
+          const res = await cloudGetDirectMessages(url, characterId, activeConversation.characterId, lastThreadIdRef.current);
+          if (cancelled) return;
+          if (!res || res.error) throw new Error("poll_failed");
+          if (res.messages.length) {
+            setThreadMessages((prev) => [...prev, ...res.messages]);
+            lastThreadIdRef.current = res.messages[res.messages.length - 1].id;
+            cloudMarkConversationRead(url, characterId, activeConversation.characterId);
+          }
+          setThreadCanSend(!!res.canSend);
+          setPollError(false);
+          delay = 3000;
+        } else if (tab === "direct" && !activeConversation) {
+          const res = await cloudGetDirectConversations(url, characterId);
+          if (cancelled) return;
+          if (!res || res.error) throw new Error("poll_failed");
+          setConversations(res.conversations);
+          setPollError(false);
+          delay = 3000;
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setPollError(true);
+        delay = delay >= 10000 ? 10000 : delay === 3000 ? 5000 : 10000;
+      }
+      if (!cancelled) pollTimerRef.current = setTimeout(poll, delay);
+    };
+
+    loadInitial().then(() => { if (!cancelled) pollTimerRef.current = setTimeout(poll, delay); });
+
+    return () => {
+      cancelled = true;
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, [tab, activeConversation, url, characterId]);
+
+  const handleSendGlobal = () => {
+    const text = globalInput.trim();
+    if (!text || globalSending) return;
+    setGlobalSending(true);
+    setGlobalError("");
+    cloudSendGlobalMessage(url, characterId, text).then((res) => {
+      setGlobalSending(false);
+      if (!res || res.error) { setGlobalError(chatErrorText(res && res.error)); return; }
+      setGlobalInput("");
+      setGlobalMessages((prev) => [...prev, { id: res.id, characterId, name: characterName, text, createdAt: res.createdAt }]);
+      lastGlobalIdRef.current = res.id;
+    }).catch(() => { setGlobalSending(false); setGlobalError(chatErrorText("network_error")); });
+  };
+
+  const handleSendDirect = () => {
+    const text = threadInput.trim();
+    if (!text || threadSending || !activeConversation || !threadCanSend) return;
+    setThreadSending(true);
+    setThreadError("");
+    cloudSendDirectMessage(url, characterId, activeConversation.characterId, text).then((res) => {
+      setThreadSending(false);
+      if (!res || res.error) { setThreadError(chatErrorText(res && res.error)); return; }
+      setThreadInput("");
+      setThreadMessages((prev) => [...prev, { id: res.id, characterId, name: characterName, text, createdAt: res.createdAt }]);
+      lastThreadIdRef.current = res.id;
+    }).catch(() => { setThreadSending(false); setThreadError(chatErrorText("network_error")); });
+  };
+
+  const openConversation = (conv) => {
+    setThreadMessages([]);
+    setThreadLoaded(false);
+    setThreadError("");
+    setActiveConversation({ characterId: conv.characterId, name: conv.name });
+  };
+
+  const bubble = (m) => e("div", {
+    key: m.id,
+    className: "md-shop-row",
+    style: { flexDirection: "column", alignItems: m.characterId === characterId ? "flex-end" : "flex-start" }
+  },
+    m.characterId !== characterId && e("div", { className: "md-sub", style: { margin: 0 } }, m.name),
+    e("div", { className: "md-shop-info", style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }, m.text));
+
+  const messageList = (messages, loaded, emptyText) => {
+    if (!loaded) return e("p", { className: "md-sub" }, "กำลังโหลด...");
+    if (!messages.length) return e("p", { className: "md-sub" }, emptyText);
+    return e("div", { className: "md-inv-list" }, messages.map(bubble));
+  };
+
+  const globalPane = () => e(React.Fragment, null,
+    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+      messageList(globalMessages, globalLoaded, "ยังไม่มีข้อความ")),
+    pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
+    globalError && e("p", { className: "md-sub" }, globalError),
+    e("div", { className: "md-card", style: { display: "flex", gap: 6 } },
+      e("input", {
+        className: "md-field",
+        style: { flex: 1 },
+        placeholder: "พิมพ์ข้อความ... (สูงสุด 200 ตัวอักษร)",
+        value: globalInput,
+        maxLength: 200,
+        onChange: (ev) => setGlobalInput(ev.target.value),
+        onKeyDown: (ev) => { if (ev.key === "Enter") handleSendGlobal(); },
+      }),
+      e("button", { className: "md-btn small primary", disabled: globalSending || !globalInput.trim(), onClick: handleSendGlobal }, "ส่ง")));
+
+  const conversationListPane = () => {
+    if (conversations === null) return e("p", { className: "md-sub" }, "กำลังโหลด...");
+    if (!conversations.length) return e("p", { className: "md-sub" }, "ยังไม่มีการสนทนา — เริ่มแชทได้จากหน้าเพื่อน");
+    return e("div", { className: "md-card", style: { overflowY: "auto", minHeight: 0, flex: 1 } },
+      e("div", { className: "md-inv-list" }, conversations.map((c) => e("div", {
+        key: c.characterId,
+        className: "md-shop-row",
+        style: { cursor: "pointer" },
+        onClick: () => openConversation(c),
+      },
+        e("div", { className: "md-shop-info" },
+          `${c.online ? "🟢" : "⚪"} ${c.name} (Lv.${c.level})`, c.unread && e("span", { style: { marginLeft: 6 } }, "🔴"),
+          e("div", { className: "md-sub", style: { margin: "2px 0 0" } }, `${c.lastSenderIsMe ? "คุณ: " : ""}${c.lastMessage || ""}`)),
+      ))));
+  };
+
+  const threadPane = () => e(React.Fragment, null,
+    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+      messageList(threadMessages, threadLoaded, "ยังไม่มีข้อความ — ส่งข้อความแรกได้เลย")),
+    pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
+    !threadCanSend && e("p", { className: "md-sub" }, "ไม่สามารถส่งข้อความได้ในขณะนี้ (ไม่ได้เป็นเพื่อนหรือมีการบล็อก)"),
+    threadError && e("p", { className: "md-sub" }, threadError),
+    e("div", { className: "md-card", style: { display: "flex", gap: 6 } },
+      e("input", {
+        className: "md-field",
+        style: { flex: 1 },
+        placeholder: "พิมพ์ข้อความ... (สูงสุด 300 ตัวอักษร)",
+        value: threadInput,
+        maxLength: 300,
+        disabled: !threadCanSend,
+        onChange: (ev) => setThreadInput(ev.target.value),
+        onKeyDown: (ev) => { if (ev.key === "Enter") handleSendDirect(); },
+      }),
+      e("button", { className: "md-btn small primary", disabled: threadSending || !threadInput.trim() || !threadCanSend, onClick: handleSendDirect }, "ส่ง")));
+
+  const stickerPane = () => e("div", { className: "md-card", style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center" } },
+    e("p", { className: "md-sub" }, "😄 สติกเกอร์ — เร็วๆ นี้"));
+
+  return e("div", { className: "md-panel md-chat-page" },
+    e("div", { className: "md-card", style: { marginBottom: 10 } },
+      e("p", { className: "md-title" }, "💬 แชท")),
+    e("div", { style: { display: "flex", gap: 6, marginBottom: 8 } },
+      CHAT_TABS.map((t) => e("button", {
+        key: t.key,
+        className: "md-btn small" + (tab === t.key ? " primary" : " flee"),
+        style: { flex: 1 },
+        onClick: () => { setTab(t.key); if (t.key !== "direct") setActiveConversation(null); },
+      }, t.label))),
+    tab === "global" && globalPane(),
+    tab === "direct" && (activeConversation ? threadPane() : conversationListPane()),
+    tab === "sticker" && stickerPane(),
+    e(BackButton, { onClick: () => (tab === "direct" && activeConversation) ? setActiveConversation(null) : onBack() }),
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend }));
+}
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
 function RaidScreen({
@@ -2374,7 +2655,8 @@ function MapScreen({
   onOpenInv,
   onPets,
   onSettings,
-  onFriend
+  onFriend,
+  onChat
 }) {
   const e = React.createElement;
   // Five fixed perspective slots match the stair landings painted into
@@ -2461,7 +2743,8 @@ function MapScreen({
       onPets,
       onSettings,
       onSave,
-      onFriend
+      onFriend,
+      onChat
     }),
     detail && e("div", { className: "md-floor-detail-backdrop", onClick: () => setDetail(null) },
       e("section", {
@@ -2707,6 +2990,7 @@ function PetScreen({
   onSettings,
   onSave,
   onFriend,
+  onChat,
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
@@ -2895,7 +3179,8 @@ function PetScreen({
     onPets: () => {},
     onSettings,
     onSave,
-    onFriend
+    onFriend,
+    onChat
   }));
 }
 function GachaScreen({
@@ -3922,6 +4207,7 @@ function InventoryOverlayV2({
   onSettings,
   onSave,
   onFriend,
+  onChat,
   onClose
 }) {
   const [detail, setDetail] = useState(null);
@@ -4043,7 +4329,7 @@ function InventoryOverlayV2({
       salvagePreview && /*#__PURE__*/React.createElement("div", { className:"md-inv2-salvage-preview" }, /*#__PURE__*/React.createElement("strong", null, "Salvage Yield"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"iron" }, fallback:JUNK_INFO.iron.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.iron.name }), "Iron ", salvagePreview.iron), salvagePreview.manaOre > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"manaOre" }, fallback:JUNK_INFO.manaOre.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.manaOre.name }), "Mana Stone ", salvagePreview.manaOre)),
       message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" }, detail.location === "inventory" && SLOT_ORDER.includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); closeDetail(); } }, "Equip"), detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); closeDetail(); } }, "Unequip"), detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSell }, "Sell"), detail.location === "inventory" && !["junk","potion"].includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSalvage }, "Salvage"))))
-    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend }));
+    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat }));
 }
 
 function InventoryOverlay({
