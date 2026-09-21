@@ -126,6 +126,17 @@ const TABLES = {
     name: "friendships",
     cols: ["character_id_a", "character_id_b", "created_at"],
   },
+  // Guild System V1 Core (migration 0017). Registered for getRow()/getRows() —
+  // guild_members isn't listed here since every access to it uses direct SQL (composite
+  // key, no single-PK getRow lookups).
+  guilds: {
+    name: "guilds",
+    cols: ["guild_id", "name", "normalized_name", "leader_character_id", "created_at", "description", "join_policy", "level", "exp"],
+  },
+  guild_applications: {
+    name: "guild_applications",
+    cols: ["application_id", "guild_id", "character_id", "status", "created_at", "resolved_at"],
+  },
 };
 
 // ---------- Phase 2: combat-power formulas ----------
@@ -1194,6 +1205,398 @@ async function runChatRetentionCleanup(db) {
   return { globalDeleted: (globalResult.meta && globalResult.meta.changes) || 0, directDeleted: (directResult.meta && directResult.meta.changes) || 0 };
 }
 
+// ---------- Guild System V1 Core (docs/GUILD-SYSTEM-V1.md) — Phase 4 ----------
+// Core only: create/search/profile, join policy, applications, leave/kick/transfer/
+// disband, auto succession. No donation, no Guild Chat, no rename (all explicitly
+// out of scope for this phase). Extends the legacy guilds/guild_members tables from
+// migration_v3.sql via migration 0017 rather than recreating them.
+const GUILD_LEVEL_CAP = 10; // §6
+const GUILD_NAME_MIN_LEN = 3; // §3
+const GUILD_NAME_MAX_LEN = 20; // §3
+const GUILD_CREATE_MIN_LEVEL = 30; // §3
+const GUILD_APPLICATION_MAX_PENDING = 5; // §5
+const GUILD_LEADER_INACTIVE_HOURS = 36; // §15
+const GUILD_SUCCESSION_ACTIVE_HOURS = 24; // §15
+// §6 — index 0 unused (levels are 1-based); one central table, never scattered literals.
+const GUILD_MEMBER_CAP_BY_LEVEL = [0, 10, 15, 20, 25, 30, 35, 40, 40, 40, 40];
+function guildMemberCap(level) {
+  const lv = Math.max(1, Math.min(GUILD_LEVEL_CAP, Number(level) || 1));
+  return GUILD_MEMBER_CAP_BY_LEVEL[lv];
+}
+
+function normalizeGuildName(raw) {
+  return String(raw || "").trim().toLowerCase();
+}
+// §3 — 3-20 chars, trimmed, no control characters. Returns the trimmed display name (not
+// normalized) or null if invalid; caller normalizes separately for the uniqueness check.
+function validateGuildName(raw) {
+  const trimmed = String(raw || "").trim();
+  if (trimmed.length < GUILD_NAME_MIN_LEN || trimmed.length > GUILD_NAME_MAX_LEN) return null;
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F]/.test(trimmed)) return null;
+  return trimmed;
+}
+
+// §5 — called after any successful join (open or application-accept) so no other
+// pending application for that character can be accepted afterward.
+async function cancelOtherPendingApplications(db, characterId, now) {
+  await db.prepare(
+    `UPDATE guild_applications SET status = 'cancelled', resolved_at = ? WHERE character_id = ? AND status = 'pending'`
+  ).bind(now, characterId).run();
+}
+
+// Shared cleanup for both explicit Disband and "sole leader leaves" (§14). Explicit
+// deletes rather than relying on the tables' declared ON DELETE CASCADE, matching this
+// codebase's established convention elsewhere (e.g. handleDeleteCharacter).
+async function disbandGuildInternal(db, guildId) {
+  const now = nowIso();
+  await db.batch([
+    db.prepare(`DELETE FROM guild_members WHERE guild_id = ?`).bind(guildId),
+    db.prepare(`UPDATE guild_applications SET status = 'cancelled', resolved_at = ? WHERE guild_id = ? AND status = 'pending'`).bind(now, guildId),
+    db.prepare(`DELETE FROM guilds WHERE guild_id = ?`).bind(guildId),
+  ]);
+}
+
+async function verifyGuildLeader(db, characterId, guildId) {
+  const membership = await db.prepare(`SELECT role FROM guild_members WHERE guild_id = ? AND character_id = ?`).bind(guildId, characterId).first();
+  if (!membership) return { error: "not_guild_member" };
+  if (membership.role !== "leader") return { error: "not_guild_leader" };
+  return { ok: true };
+}
+
+// §15-16 — single shared succession check, called lazily from guild-viewing endpoints
+// (getMyGuild/getGuildProfile) rather than a scheduled job. Race-safe: the leader-update
+// is a guarded CAS (WHERE leader_character_id = the leader we just read), so if
+// leadership already changed between the read and this write, the role updates below
+// are skipped instead of clobbering a newer transfer.
+async function evaluateGuildSuccession(db, guildId) {
+  const guild = await db.prepare(`SELECT guild_id, leader_character_id FROM guilds WHERE guild_id = ?`).bind(guildId).first();
+  if (!guild) return;
+  const leader = await db.prepare(`SELECT last_active_at FROM characters WHERE character_id = ?`).bind(guild.leader_character_id).first();
+  if (!leader) return;
+  const inactiveMs = GUILD_LEADER_INACTIVE_HOURS * 60 * 60 * 1000;
+  if (Date.now() - Date.parse(leader.last_active_at || "") < inactiveMs) return;
+  const activeCutoff = new Date(Date.now() - GUILD_SUCCESSION_ACTIVE_HOURS * 60 * 60 * 1000).toISOString();
+  const candidates = await db.prepare(
+    `SELECT gm.character_id, gm.joined_at, c.level, c.last_active_at
+     FROM guild_members gm JOIN characters c ON c.character_id = gm.character_id
+     WHERE gm.guild_id = ? AND gm.character_id != ? AND gm.role = 'member' AND c.last_active_at >= ?
+     ORDER BY c.level DESC, c.last_active_at DESC, gm.joined_at ASC, gm.character_id ASC
+     LIMIT 1`
+  ).bind(guildId, guild.leader_character_id, activeCutoff).all();
+  const winner = (candidates.results || [])[0];
+  if (!winner) return; // no eligible member — try again next time this is evaluated
+  const guildUpdate = await db.prepare(
+    `UPDATE guilds SET leader_character_id = ? WHERE guild_id = ? AND leader_character_id = ?`
+  ).bind(winner.character_id, guildId, guild.leader_character_id).run();
+  if (!guildUpdate.meta || !guildUpdate.meta.changes) return; // already transferred by something else
+  await db.batch([
+    db.prepare(`UPDATE guild_members SET role = 'member' WHERE guild_id = ? AND character_id = ?`).bind(guildId, guild.leader_character_id),
+    db.prepare(`UPDATE guild_members SET role = 'leader' WHERE guild_id = ? AND character_id = ?`).bind(guildId, winner.character_id),
+  ]);
+}
+
+// Shared shaping for both getMyGuild and getGuildProfile.
+async function buildGuildProfileResponse(db, guildId, viewerCharacterId) {
+  const guild = await getRow(db, "guilds", "guild_id", guildId);
+  if (!guild) return json({ error: "guild_not_found" });
+  const memberRows = await db.prepare(
+    `SELECT gm.character_id, gm.role, gm.joined_at, gm.contribution, c.name, c.level, c.last_active_at
+     FROM guild_members gm JOIN characters c ON c.character_id = gm.character_id
+     WHERE gm.guild_id = ? ORDER BY (gm.role = 'leader') DESC, gm.contribution DESC, gm.joined_at ASC`
+  ).bind(guildId).all();
+  const members = (memberRows.results || []).map((m) => ({
+    characterId: m.character_id, name: m.name, level: m.level, role: m.role,
+    online: isRecentlyActive(m.last_active_at), contribution: m.contribution, joinedAt: m.joined_at,
+  }));
+  const viewerMembership = viewerCharacterId ? members.find((m) => m.characterId === viewerCharacterId) : null;
+  return json({
+    ok: true,
+    guild: {
+      guildId: guild.guild_id, name: guild.name, description: guild.description,
+      level: guild.level, exp: guild.exp, joinPolicy: guild.join_policy,
+      leaderCharacterId: guild.leader_character_id,
+      memberCount: members.length, memberCap: guildMemberCap(guild.level),
+      members,
+      viewerRole: viewerMembership ? viewerMembership.role : null,
+    },
+  });
+}
+
+async function handleSearchGuilds(db, id, session, characterId, query) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const q = String(query || "").trim();
+  const rows = q
+    ? await db.prepare(
+        `SELECT guild_id, name, level, join_policy FROM guilds WHERE normalized_name LIKE ? || '%' ESCAPE '\\' ORDER BY name LIMIT 20`
+      ).bind(normalizeGuildName(q).replace(/[\\%_]/g, (m) => "\\" + m)).all()
+    : await db.prepare(`SELECT guild_id, name, level, join_policy FROM guilds ORDER BY level DESC, name ASC LIMIT 20`).all();
+  const list = rows.results || [];
+  if (!list.length) return json({ ok: true, guilds: [] });
+  const ids = list.map((g) => g.guild_id);
+  const placeholders = ids.map(() => "?").join(",");
+  const countRows = await db.prepare(`SELECT guild_id, COUNT(*) AS c FROM guild_members WHERE guild_id IN (${placeholders}) GROUP BY guild_id`).bind(...ids).all();
+  const countMap = new Map((countRows.results || []).map((r) => [r.guild_id, r.c]));
+  return json({
+    ok: true,
+    guilds: list.map((g) => ({
+      guildId: g.guild_id, name: g.name, level: g.level, joinPolicy: g.join_policy,
+      memberCount: countMap.get(g.guild_id) || 0, memberCap: guildMemberCap(g.level),
+    })),
+  });
+}
+
+async function handleGetMyGuild(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const membership = await db.prepare(`SELECT guild_id FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (!membership) return json({ ok: true, guild: null });
+  await evaluateGuildSuccession(db, membership.guild_id);
+  return await buildGuildProfileResponse(db, membership.guild_id, characterId);
+}
+
+async function handleGetGuildProfile(db, id, session, characterId, guildId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!guildId) return json({ error: "missing_fields" });
+  await evaluateGuildSuccession(db, guildId);
+  return await buildGuildProfileResponse(db, guildId, characterId);
+}
+
+async function handleGetMyApplications(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const rows = await db.prepare(
+    `SELECT a.application_id, a.guild_id, a.created_at, g.name, g.level
+     FROM guild_applications a JOIN guilds g ON g.guild_id = a.guild_id
+     WHERE a.character_id = ? AND a.status = 'pending' ORDER BY a.created_at DESC`
+  ).bind(characterId).all();
+  return json({
+    ok: true,
+    applications: (rows.results || []).map((r) => ({
+      applicationId: r.application_id, guildId: r.guild_id, guildName: r.name, guildLevel: r.level, createdAt: r.created_at,
+    })),
+  });
+}
+
+async function handleGetGuildApplications(db, id, session, characterId, guildId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!guildId) return json({ error: "missing_fields" });
+  const leaderCheck = await verifyGuildLeader(db, characterId, guildId);
+  if (leaderCheck.error) return json(leaderCheck);
+  const rows = await db.prepare(
+    `SELECT a.application_id, a.character_id, a.created_at, c.name, c.level, c.last_active_at
+     FROM guild_applications a JOIN characters c ON c.character_id = a.character_id
+     WHERE a.guild_id = ? AND a.status = 'pending' ORDER BY a.created_at ASC`
+  ).bind(guildId).all();
+  return json({
+    ok: true,
+    applications: (rows.results || []).map((r) => ({
+      applicationId: r.application_id, characterId: r.character_id, name: r.name, level: r.level, online: isRecentlyActive(r.last_active_at), createdAt: r.created_at,
+    })),
+  });
+}
+
+async function handleCreateGuild(db, id, session, characterId, name, description) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (Number(auth.character.level || 0) < GUILD_CREATE_MIN_LEVEL) return json({ error: "guild_create_level_too_low" });
+  const validName = validateGuildName(name);
+  if (!validName) return json({ error: "invalid_guild_name" });
+  const normalized = normalizeGuildName(validName);
+  const existing = await db.prepare(`SELECT 1 FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (existing) return json({ error: "already_in_guild" });
+  const desc = String(description || "").trim().slice(0, 200);
+  const guildId = `guild-${randomToken(16)}`;
+  const now = nowIso();
+  try {
+    await db.prepare(
+      `INSERT INTO guilds (guild_id, name, normalized_name, leader_character_id, created_at, description, join_policy, level, exp) VALUES (?, ?, ?, ?, ?, ?, 'open', 1, 0)`
+    ).bind(guildId, validName, normalized, characterId, now, desc).run();
+  } catch (e) {
+    if (String((e && e.message) || e).includes("UNIQUE constraint failed")) return json({ error: "guild_name_taken" });
+    throw e;
+  }
+  const memberInsert = await db.prepare(
+    `INSERT INTO guild_members (guild_id, character_id, role, joined_at, contribution) VALUES (?, ?, 'leader', ?, 0) ON CONFLICT(character_id) DO NOTHING`
+  ).bind(guildId, characterId, now).run();
+  if (!memberInsert.meta || !memberInsert.meta.changes) {
+    // Extremely rare double-tap/concurrent race: character joined another Guild between
+    // the pre-check above and this insert. Roll back the just-created (now orphaned,
+    // leaderless) Guild rather than leaving it behind.
+    await db.prepare(`DELETE FROM guilds WHERE guild_id = ?`).bind(guildId).run();
+    return json({ error: "already_in_guild" });
+  }
+  return json({ ok: true, guildId });
+}
+
+async function handleRequestGuildJoin(db, id, session, characterId, guildId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!guildId) return json({ error: "missing_fields" });
+  const existing = await db.prepare(`SELECT 1 FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (existing) return json({ error: "already_in_guild" });
+  const guild = await getRow(db, "guilds", "guild_id", guildId);
+  if (!guild) return json({ error: "guild_not_found" });
+  if (guild.join_policy === "closed") return json({ error: "guild_closed" });
+
+  const now = nowIso();
+  if (guild.join_policy === "open") {
+    const cap = guildMemberCap(guild.level);
+    // §13 — one atomic INSERT...SELECT enforces capacity AND the one-character-one-guild
+    // rule (via ON CONFLICT on guild_members' legacy character_id unique index) together,
+    // so a concurrent double-join attempt or a last-slot race can't both succeed.
+    const insert = await db.prepare(
+      `INSERT INTO guild_members (guild_id, character_id, role, joined_at, contribution)
+       SELECT ?, ?, 'member', ?, 0
+       WHERE (SELECT COUNT(*) FROM guild_members WHERE guild_id = ?) < ?
+       ON CONFLICT(character_id) DO NOTHING`
+    ).bind(guildId, characterId, now, guildId, cap).run();
+    if (!insert.meta || !insert.meta.changes) {
+      const stillFree = await db.prepare(`SELECT 1 FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+      return json({ error: stillFree ? "already_in_guild" : "guild_full" });
+    }
+    await cancelOtherPendingApplications(db, characterId, now);
+    return json({ ok: true, status: "joined", guildId });
+  }
+
+  // 'application'
+  const pendingCount = await db.prepare(`SELECT COUNT(*) AS c FROM guild_applications WHERE character_id = ? AND status = 'pending'`).bind(characterId).first();
+  if (Number((pendingCount && pendingCount.c) || 0) >= GUILD_APPLICATION_MAX_PENDING) return json({ error: "application_limit_reached" });
+  const applicationId = `gapp-${randomToken(16)}`;
+  try {
+    await db.prepare(
+      `INSERT INTO guild_applications (application_id, guild_id, character_id, status, created_at) VALUES (?, ?, ?, 'pending', ?)`
+    ).bind(applicationId, guildId, characterId, now).run();
+  } catch (e) {
+    // Belt-and-suspenders: migration 0017's partial unique index catches a genuine race
+    // between two near-simultaneous applies that both passed an (absent, here) pre-check.
+    if (String((e && e.message) || e).includes("UNIQUE constraint failed")) return json({ error: "application_already_exists" });
+    throw e;
+  }
+  return json({ ok: true, status: "pending", applicationId });
+}
+
+async function handleCancelGuildApplication(db, id, session, characterId, applicationId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!applicationId) return json({ error: "missing_fields" });
+  const updated = await db.prepare(
+    `UPDATE guild_applications SET status = 'cancelled', resolved_at = ? WHERE application_id = ? AND character_id = ? AND status = 'pending'`
+  ).bind(nowIso(), applicationId, characterId).run();
+  if (!updated.meta || !updated.meta.changes) return json({ error: "application_not_pending" });
+  return json({ ok: true });
+}
+
+async function handleAcceptGuildApplication(db, id, session, characterId, applicationId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!applicationId) return json({ error: "missing_fields" });
+  const application = await getRow(db, "guild_applications", "application_id", applicationId);
+  if (!application) return json({ error: "application_not_found" });
+  const leaderCheck = await verifyGuildLeader(db, characterId, application.guild_id);
+  if (leaderCheck.error) return json(leaderCheck);
+  if (application.status !== "pending") return json({ error: "application_not_pending" });
+
+  const guild = await getRow(db, "guilds", "guild_id", application.guild_id);
+  if (!guild) return json({ error: "guild_not_found" });
+  const cap = guildMemberCap(guild.level);
+  const now = nowIso();
+  // Same atomic pattern as handleRequestGuildJoin/Friend's Accept: re-verify the
+  // application is still pending AND enforce capacity AND the one-guild rule, all inside
+  // one statement, so this can't land between a read and a later write.
+  const insert = await db.prepare(
+    `INSERT INTO guild_members (guild_id, character_id, role, joined_at, contribution)
+     SELECT ?, ?, 'member', ?, 0
+     WHERE EXISTS (SELECT 1 FROM guild_applications WHERE application_id = ? AND status = 'pending')
+       AND (SELECT COUNT(*) FROM guild_members WHERE guild_id = ?) < ?
+     ON CONFLICT(character_id) DO NOTHING`
+  ).bind(application.guild_id, application.character_id, now, applicationId, application.guild_id, cap).run();
+
+  if (!insert.meta || !insert.meta.changes) {
+    // §5 — application remains pending on guild_full; §13 — stale concurrent acceptance
+    // (character joined elsewhere first) fails already_in_guild, also leaving it pending.
+    const alreadyInGuild = await db.prepare(`SELECT 1 FROM guild_members WHERE character_id = ?`).bind(application.character_id).first();
+    return json({ error: alreadyInGuild ? "already_in_guild" : "guild_full" });
+  }
+
+  await db.prepare(`UPDATE guild_applications SET status = 'accepted', resolved_at = ? WHERE application_id = ? AND status = 'pending'`).bind(now, applicationId).run();
+  await cancelOtherPendingApplications(db, application.character_id, now);
+  return json({ ok: true, characterId: application.character_id });
+}
+
+async function handleRejectGuildApplication(db, id, session, characterId, applicationId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!applicationId) return json({ error: "missing_fields" });
+  const application = await getRow(db, "guild_applications", "application_id", applicationId);
+  if (!application) return json({ error: "application_not_found" });
+  const leaderCheck = await verifyGuildLeader(db, characterId, application.guild_id);
+  if (leaderCheck.error) return json(leaderCheck);
+  const updated = await db.prepare(
+    `UPDATE guild_applications SET status = 'rejected', resolved_at = ? WHERE application_id = ? AND status = 'pending'`
+  ).bind(nowIso(), applicationId).run();
+  if (!updated.meta || !updated.meta.changes) return json({ error: "application_not_pending" });
+  return json({ ok: true });
+}
+
+async function handleLeaveGuild(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const membership = await db.prepare(`SELECT guild_id, role FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (!membership) return json({ error: "not_guild_member" });
+  if (membership.role === "leader") {
+    const memberCount = await db.prepare(`SELECT COUNT(*) AS c FROM guild_members WHERE guild_id = ?`).bind(membership.guild_id).first();
+    if (Number((memberCount && memberCount.c) || 0) > 1) return json({ error: "leader_must_transfer_first" }); // §14
+    await disbandGuildInternal(db, membership.guild_id); // sole leader leaving IS disbanding (§14)
+    return json({ ok: true, disbanded: true });
+  }
+  await db.prepare(`DELETE FROM guild_members WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, characterId).run();
+  return json({ ok: true });
+}
+
+async function handleKickGuildMember(db, id, session, characterId, targetCharacterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!targetCharacterId || targetCharacterId === characterId) return json({ error: "invalid_target" });
+  const membership = await db.prepare(`SELECT guild_id, role FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (!membership || membership.role !== "leader") return json({ error: "not_guild_leader" });
+  const deleted = await db.prepare(`DELETE FROM guild_members WHERE guild_id = ? AND character_id = ? AND role != 'leader'`).bind(membership.guild_id, targetCharacterId).run();
+  if (!deleted.meta || !deleted.meta.changes) return json({ error: "not_guild_member" });
+  return json({ ok: true });
+}
+
+async function handleTransferGuildLeadership(db, id, session, characterId, targetCharacterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!targetCharacterId || targetCharacterId === characterId) return json({ error: "invalid_target" });
+  const membership = await db.prepare(`SELECT guild_id, role FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (!membership || membership.role !== "leader") return json({ error: "not_guild_leader" });
+  const target = await db.prepare(`SELECT role FROM guild_members WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, targetCharacterId).first();
+  if (!target) return json({ error: "target_not_guild_member" });
+  const guildUpdate = await db.prepare(
+    `UPDATE guilds SET leader_character_id = ? WHERE guild_id = ? AND leader_character_id = ?`
+  ).bind(targetCharacterId, membership.guild_id, characterId).run();
+  if (!guildUpdate.meta || !guildUpdate.meta.changes) return json({ error: "not_guild_leader" }); // raced out of leadership since the read above
+  await db.batch([
+    db.prepare(`UPDATE guild_members SET role = 'member' WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, characterId),
+    db.prepare(`UPDATE guild_members SET role = 'leader' WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, targetCharacterId),
+  ]);
+  return json({ ok: true }); // old Leader remains a Member (§14) — no row removed
+}
+
+async function handleDisbandGuild(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const membership = await db.prepare(`SELECT guild_id, role FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (!membership) return json({ error: "not_guild_member" });
+  if (membership.role !== "leader") return json({ error: "not_guild_leader" });
+  await disbandGuildInternal(db, membership.guild_id);
+  return json({ ok: true });
+}
+
 // ---------- game config ----------
 async function handleGetGameConfig(db) {
   const res = await db.prepare(`SELECT key, value_json FROM game_config`).all();
@@ -1443,6 +1846,19 @@ async function handleDeleteCharacter(db, id, session, slotIndex) {
   const row = await db.prepare(`SELECT * FROM characters WHERE player_id = ? AND slot_index = ?`).bind(id, slot).first();
   if (!row) return json({ error: "character_not_found" });
 
+  // Guild System V1 §17 — a Leader with other Guild members cannot delete the Leader
+  // character without resolving leadership first (manual transfer, or disband if sole
+  // member). This check must not wait for the 36h auto-succession window.
+  const guildMembership = await db.prepare(`SELECT guild_id, role FROM guild_members WHERE character_id = ?`).bind(row.character_id).first();
+  if (guildMembership && guildMembership.role === "leader") {
+    const memberCount = await db.prepare(`SELECT COUNT(*) AS c FROM guild_members WHERE guild_id = ?`).bind(guildMembership.guild_id).first();
+    if (Number((memberCount && memberCount.c) || 0) > 1) return json({ error: "guild_leader_must_transfer_first" });
+    // Sole leader: deleting the character IS the exit path a sole leader would otherwise
+    // take via explicit Disband (§14) — do it here so no guild is left pointing at a
+    // character that's about to stop existing.
+    await disbandGuildInternal(db, guildMembership.guild_id);
+  }
+
   await db.batch([
     db.prepare(`DELETE FROM items WHERE character_id = ?`).bind(row.character_id),
     db.prepare(`DELETE FROM character_run_state WHERE character_id = ?`).bind(row.character_id),
@@ -1453,9 +1869,15 @@ async function handleDeleteCharacter(db, id, session, slotIndex) {
     db.prepare(`DELETE FROM daily_login_claims WHERE character_id = ?`).bind(row.character_id),
     // Social Foundation V1 (§8 deletion lifecycle) — blocks have no audit/history value
     // the way Guild donation/chat records do, so plain removal (not anonymization) is
-    // correct here. Friend/Guild cleanup isn't added because those tables don't exist
-    // yet as real features.
+    // correct here.
     db.prepare(`DELETE FROM character_blocks WHERE blocker_character_id = ? OR blocked_character_id = ?`).bind(row.character_id, row.character_id),
+    // Guild System V1 §17 — a normal Member deletion removes membership as part of safe
+    // deletion cleanup (the sole-leader case was already fully resolved above, via
+    // disbandGuildInternal, before this batch runs — this DELETE is then a harmless
+    // no-op for that character). Also cancel their own pending applications so they
+    // don't linger unreachable.
+    db.prepare(`DELETE FROM guild_members WHERE character_id = ?`).bind(row.character_id),
+    db.prepare(`UPDATE guild_applications SET status = 'cancelled', resolved_at = ? WHERE character_id = ? AND status = 'pending'`).bind(nowIso(), row.character_id),
     db.prepare(`DELETE FROM characters WHERE character_id = ?`).bind(row.character_id),
     db.prepare(`UPDATE players SET active_slot = NULL WHERE id = ? AND active_slot = ?`).bind(id, slot),
   ]);
@@ -4283,6 +4705,12 @@ export default {
           if (adminAuth.error) return json(adminAuth);
           return json({ ok: true, ...(await runChatRetentionCleanup(db)) });
         }
+        // Guild System V1 Core (Phase 4) — read actions
+        if (action === "searchGuilds") return await handleSearchGuilds(db, id, auth, p.get("characterId"), p.get("query"));
+        if (action === "getMyGuild") return await handleGetMyGuild(db, id, auth, p.get("characterId"));
+        if (action === "getGuildProfile") return await handleGetGuildProfile(db, id, auth, p.get("characterId"), p.get("guildId"));
+        if (action === "getMyApplications") return await handleGetMyApplications(db, id, auth, p.get("characterId"));
+        if (action === "getGuildApplications") return await handleGetGuildApplications(db, id, auth, p.get("characterId"), p.get("guildId"));
         return json({ error: "unknown_action" });
       }
 
@@ -4380,6 +4808,25 @@ export default {
             return await handleSendDirectMessage(db, id, auth, body.characterId, body.toCharacterId, body.text);
           case "markConversationRead":
             return await handleMarkConversationRead(db, id, auth, body.characterId, body.withCharacterId);
+          // Guild System V1 Core (Phase 4) — write actions
+          case "createGuild":
+            return await handleCreateGuild(db, id, auth, body.characterId, body.name, body.description);
+          case "requestGuildJoin":
+            return await handleRequestGuildJoin(db, id, auth, body.characterId, body.guildId);
+          case "cancelGuildApplication":
+            return await handleCancelGuildApplication(db, id, auth, body.characterId, body.applicationId);
+          case "acceptGuildApplication":
+            return await handleAcceptGuildApplication(db, id, auth, body.characterId, body.applicationId);
+          case "rejectGuildApplication":
+            return await handleRejectGuildApplication(db, id, auth, body.characterId, body.applicationId);
+          case "leaveGuild":
+            return await handleLeaveGuild(db, id, auth, body.characterId);
+          case "kickGuildMember":
+            return await handleKickGuildMember(db, id, auth, body.characterId, body.targetCharacterId);
+          case "transferGuildLeadership":
+            return await handleTransferGuildLeadership(db, id, auth, body.characterId, body.targetCharacterId);
+          case "disbandGuild":
+            return await handleDisbandGuild(db, id, auth, body.characterId);
           default:
             return json({ error: "unknown_action" });
         }

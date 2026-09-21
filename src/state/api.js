@@ -506,3 +506,100 @@ function cloudMarkConversationRead(url, characterId, withCharacterId) {
     withCharacterId
   });
 }
+// Phase 6.4 — Guild System V1 Core. See the worker's Guild System V1 Core section for
+// the authoritative logic (caps, join policy, succession, etc).
+function cloudSearchGuilds(url, characterId, query) {
+  return cloudAuthGet(url, {
+    action: "searchGuilds",
+    characterId,
+    query
+  });
+}
+function cloudGetMyGuild(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getMyGuild",
+    characterId
+  });
+}
+function cloudGetGuildProfile(url, characterId, guildId) {
+  return cloudAuthGet(url, {
+    action: "getGuildProfile",
+    characterId,
+    guildId
+  });
+}
+function cloudGetMyApplications(url, characterId) {
+  return cloudAuthGet(url, {
+    action: "getMyApplications",
+    characterId
+  });
+}
+function cloudGetGuildApplications(url, characterId, guildId) {
+  return cloudAuthGet(url, {
+    action: "getGuildApplications",
+    characterId,
+    guildId
+  });
+}
+function cloudCreateGuild(url, characterId, name, description) {
+  return cloudAuthPost(url, {
+    action: "createGuild",
+    characterId,
+    name,
+    description
+  });
+}
+function cloudRequestGuildJoin(url, characterId, guildId) {
+  return cloudAuthPost(url, {
+    action: "requestGuildJoin",
+    characterId,
+    guildId
+  });
+}
+function cloudCancelGuildApplication(url, characterId, applicationId) {
+  return cloudAuthPost(url, {
+    action: "cancelGuildApplication",
+    characterId,
+    applicationId
+  });
+}
+function cloudAcceptGuildApplication(url, characterId, applicationId) {
+  return cloudAuthPost(url, {
+    action: "acceptGuildApplication",
+    characterId,
+    applicationId
+  });
+}
+function cloudRejectGuildApplication(url, characterId, applicationId) {
+  return cloudAuthPost(url, {
+    action: "rejectGuildApplication",
+    characterId,
+    applicationId
+  });
+}
+function cloudLeaveGuild(url, characterId) {
+  return cloudAuthPost(url, {
+    action: "leaveGuild",
+    characterId
+  });
+}
+function cloudKickGuildMember(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "kickGuildMember",
+    characterId,
+    targetCharacterId
+  });
+}
+function cloudTransferGuildLeadership(url, characterId, targetCharacterId) {
+  return cloudAuthPost(url, {
+    action: "transferGuildLeadership",
+    characterId,
+    targetCharacterId
+  });
+}
+function cloudDisbandGuild(url, characterId) {
+  return cloudAuthPost(url, {
+    action: "disbandGuild",
+    characterId
+  });
+}

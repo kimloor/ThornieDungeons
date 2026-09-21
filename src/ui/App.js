@@ -1999,6 +1999,10 @@ function ThornieDungeons() {
       setUtilityReturnPhase("menu");
       setPhase("chat");
     },
+    onGuild: () => {
+      setUtilityReturnPhase("menu");
+      setPhase("guild");
+    },
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -2049,6 +2053,10 @@ function ThornieDungeons() {
       setUtilityReturnPhase("town");
       setPhase("chat");
     },
+    onGuild: () => {
+      setUtilityReturnPhase("town");
+      setPhase("guild");
+    },
     dailyLogin: dailyLogin,
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
@@ -2077,6 +2085,10 @@ function ThornieDungeons() {
       setUtilityReturnPhase("character");
       setPhase("chat");
     },
+    onGuild: () => {
+      setUtilityReturnPhase("character");
+      setPhase("guild");
+    },
     onBack: () => setPhase(characterReturnPhase)
   }), phase === "skill" && /*#__PURE__*/React.createElement(HeroSkillV1Screen, {
     save: save,
@@ -2098,6 +2110,10 @@ function ThornieDungeons() {
       setChatDirectTarget(null);
       setUtilityReturnPhase("skill");
       setPhase("chat");
+    },
+    onGuild: () => {
+      setUtilityReturnPhase("skill");
+      setPhase("guild");
     },
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
@@ -2132,6 +2148,10 @@ function ThornieDungeons() {
       setUtilityReturnPhase("map");
       setPhase("chat");
     },
+    onGuild: () => {
+      setUtilityReturnPhase("map");
+      setPhase("guild");
+    },
     onBack: () => setPhase("menu")
   }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,
@@ -2157,6 +2177,10 @@ function ThornieDungeons() {
       setChatDirectTarget(null);
       setUtilityReturnPhase("pets");
       setPhase("chat");
+    },
+    onGuild: () => {
+      setUtilityReturnPhase("pets");
+      setPhase("guild");
     },
     onBack: () => setPhase(petReturnPhase)
   }), phase === "leaderboard" && /*#__PURE__*/React.createElement(LeaderboardScreen, {
@@ -2189,6 +2213,10 @@ function ThornieDungeons() {
       setUtilityReturnPhase("friend");
       setPhase("chat");
     },
+    onGuild: () => {
+      setUtilityReturnPhase("friend");
+      setPhase("guild");
+    },
     onChatWith: (friend) => {
       setChatDirectTarget({ characterId: friend.characterId, name: friend.name });
       setUtilityReturnPhase("friend");
@@ -2204,6 +2232,25 @@ function ThornieDungeons() {
     onFriend: () => {
       setUtilityReturnPhase("chat");
       setPhase("friend");
+    },
+    onGuild: () => {
+      setUtilityReturnPhase("chat");
+      setPhase("guild");
+    },
+    onBack: () => setPhase(utilityReturnPhase)
+  }), phase === "guild" && /*#__PURE__*/React.createElement(GuildScreen, {
+    serverUrl: cred.url,
+    characterId: save.characterId,
+    characterLevel: save.character.level,
+    ...utilityDockProps("guild"),
+    onFriend: () => {
+      setUtilityReturnPhase("guild");
+      setPhase("friend");
+    },
+    onChat: () => {
+      setChatDirectTarget(null);
+      setUtilityReturnPhase("guild");
+      setPhase("chat");
     },
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
@@ -2299,6 +2346,11 @@ function ThornieDungeons() {
       setChatDirectTarget(null);
       setUtilityReturnPhase(phase);
       setPhase("chat");
+    },
+    onGuild: () => {
+      setInvOpen(false);
+      setUtilityReturnPhase(phase);
+      setPhase("guild");
     },
     onClose: () => setInvOpen(false)
   }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {

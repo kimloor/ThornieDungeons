@@ -1,6 +1,6 @@
 # Guild System V1
 
-Status: **ACTIVE-DESIGN**
+Status: **ACTIVE-PRODUCTION for Core — current Guild System V1 Core contract and implementation reference. Donation and Guild Chat sections below remain design-only (not implemented).**
 
 Depends on `SOCIAL-SYSTEM-V1.md`. Guild membership is character-scoped.
 

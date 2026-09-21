@@ -213,7 +213,8 @@ function GameDock({
   onSettings,
   onSave,
   onFriend,
-  onChat
+  onChat,
+  onGuild
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [saveFlash, setSaveFlash] = useState("");
@@ -236,6 +237,10 @@ function GameDock({
     setMoreOpen(false);
     onChat?.();
   };
+  const openGuild = () => {
+    setMoreOpen(false);
+    onGuild?.();
+  };
   return /*#__PURE__*/React.createElement(React.Fragment, null, moreOpen && /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-panel"
   }, /*#__PURE__*/React.createElement("div", {
@@ -246,7 +251,7 @@ function GameDock({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")))), /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openGuild }, "🏰", /*#__PURE__*/React.createElement("span", null, "Guild")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
@@ -407,6 +412,7 @@ function HubScreen({
   onAccountSettings,
   onFriend,
   onChat,
+  onGuild,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -475,7 +481,8 @@ function HubScreen({
     onSettings: onAccountSettings,
     onSave: onSave,
     onFriend: onFriend,
-    onChat: onChat
+    onChat: onChat,
+    onGuild: onGuild
   })), /*#__PURE__*/React.createElement(DailyLoginToast, {
     open: dailyModalOpen,
     onClose: () => { setDailyModalOpen(false); onClearDailyLoginResult(); },
@@ -505,6 +512,7 @@ function TownScreen({
   onAccountSettings,
   onFriend,
   onChat,
+  onGuild,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -579,7 +587,8 @@ function TownScreen({
         onSettings: onAccountSettings,
         onSave,
         onFriend,
-        onChat
+        onChat,
+        onGuild
       })
     ),
     e(DailyLoginToast, {
@@ -814,7 +823,7 @@ function CharacterTabs({ active, onStatus, onSkills }) {
   );
 }
 
-function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat }) {
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }) {
   return /*#__PURE__*/React.createElement(GameDock, {
     activeKey: "character",
     onCharacter,
@@ -823,7 +832,8 @@ function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onS
     onSettings,
     onSave,
     onFriend,
-    onChat
+    onChat,
+    onGuild
   });
 }
 
@@ -855,6 +865,7 @@ function StatusScreen({
   onSave,
   onFriend,
   onChat,
+  onGuild,
   onBack
 }) {
   const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
@@ -947,7 +958,7 @@ function StatusScreen({
         )
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
@@ -1032,7 +1043,7 @@ function SkillScreen({
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
-function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onBack }) {
+function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
   const levels = save.character.skillLevels || {};
@@ -1078,7 +1089,7 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
         /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
   );
 }
@@ -1307,6 +1318,7 @@ function FriendScreen({
   onSettings,
   onSave,
   onChat,
+  onGuild,
   onChatWith,
   onBack
 }) {
@@ -1599,7 +1611,7 @@ function FriendScreen({
     e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0 } },
       query.trim() ? searchBody() : tab === "friends" ? friendsBody() : tab === "requests" ? requestsBody() : blockedBody()),
     e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat, onGuild }));
 }
 const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEND_OUTGOING_PENDING_CAP) is authoritative
 // ---------- Phase 6.3: Chat System V1 ----------
@@ -1635,6 +1647,7 @@ function ChatScreen({
   onSettings,
   onSave,
   onFriend,
+  onGuild,
   onBack
 }) {
   const e = React.createElement;
@@ -1867,7 +1880,243 @@ function ChatScreen({
     tab === "direct" && (activeConversation ? threadPane() : conversationListPane()),
     tab === "sticker" && stickerPane(),
     e(BackButton, { onClick: () => (tab === "direct" && activeConversation) ? setActiveConversation(null) : onBack() }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onGuild }));
+}
+// ---------- Phase 6.4: Guild System V1 Core ----------
+function guildErrorText(error) {
+  const map = {
+    invalid_session: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    session_expired: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    session_replaced: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+    guild_create_level_too_low: "ต้องมีเลเวล 30 ขึ้นไปจึงจะสร้างกิลด์ได้",
+    invalid_guild_name: "ชื่อกิลด์ต้องมี 3-20 ตัวอักษร และห้ามมีอักขระควบคุม",
+    guild_name_taken: "มีกิลด์ชื่อนี้อยู่แล้ว",
+    already_in_guild: "อยู่ในกิลด์อื่นอยู่แล้ว",
+    guild_not_found: "ไม่พบกิลด์นี้",
+    guild_closed: "กิลด์นี้ปิดรับสมัคร",
+    guild_full: "กิลด์เต็มแล้ว",
+    application_limit_reached: "ส่งคำขอเข้ากิลด์ค้างไว้ครบจำนวนสูงสุดแล้ว (5 คำขอ)",
+    application_already_exists: "สมัครกิลด์นี้ไปแล้ว",
+    application_not_pending: "คำขอนี้ถูกดำเนินการไปแล้ว",
+    application_not_found: "ไม่พบคำขอนี้",
+    not_guild_member: "ไม่ได้เป็นสมาชิกกิลด์นี้",
+    not_guild_leader: "ต้องเป็นหัวหน้ากิลด์เท่านั้น",
+    target_not_guild_member: "ผู้เล่นนี้ไม่ได้อยู่ในกิลด์",
+    leader_must_transfer_first: "ต้องโอนตำแหน่งหัวหน้าก่อนออกจากกิลด์",
+    invalid_target: "เป้าหมายไม่ถูกต้อง",
+    server_error: "ระบบกิลด์ขัดข้อง กรุณาลองใหม่",
+  };
+  return map[error] || "เกิดข้อผิดพลาด กรุณาลองใหม่";
+}
+const GUILD_CREATE_MIN_LEVEL_CLIENT = 30; // display only — server (GUILD_CREATE_MIN_LEVEL) is authoritative
+function GuildScreen({
+  serverUrl,
+  characterId,
+  characterLevel,
+  onCharacter,
+  onOpenInv,
+  onPets,
+  onSettings,
+  onSave,
+  onFriend,
+  onChat,
+  onBack
+}) {
+  const e = React.createElement;
+  const url = serverUrl || DEFAULT_SERVER_URL;
+  const [myGuild, setMyGuild] = useState(undefined); // undefined=loading, null=none, object=profile
+  const [loadError, setLoadError] = useState("");
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [myApplications, setMyApplications] = useState(null);
+  const [applications, setApplications] = useState(null); // leader's pending-applications view
+  const [showCreate, setShowCreate] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createDesc, setCreateDesc] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [busyKey, setBusyKey] = useState("");
+  const [toast, setToast] = useState("");
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast((t) => (t === msg ? "" : t)), 2200); };
+
+  const loadMyGuild = React.useCallback(() => {
+    setLoadError("");
+    cloudGetMyGuild(url, characterId).then((res) => {
+      if (!res || res.error) { setLoadError(guildErrorText(res && res.error)); setMyGuild(null); return; }
+      setMyGuild(res.guild);
+      if (res.guild && res.guild.viewerRole === "leader") {
+        cloudGetGuildApplications(url, characterId, res.guild.guildId).then((r) => setApplications(r && r.applications ? r.applications : []));
+      } else {
+        setApplications(null);
+      }
+    }).catch(() => { setLoadError(guildErrorText("network_error")); setMyGuild(null); });
+  }, [url, characterId]);
+
+  React.useEffect(() => { loadMyGuild(); }, [loadMyGuild]);
+
+  React.useEffect(() => {
+    if (myGuild) return; // only relevant when browsing without a Guild
+    cloudGetMyApplications(url, characterId).then((res) => setMyApplications(res && res.applications ? res.applications : []));
+  }, [myGuild, url, characterId]);
+
+  React.useEffect(() => {
+    if (myGuild) return;
+    const handle = setTimeout(() => {
+      cloudSearchGuilds(url, characterId, query.trim()).then((res) => setSearchResults(res && res.guilds ? res.guilds : []));
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [query, myGuild, url, characterId]);
+
+  const runAction = (key, promise, onSuccess) => {
+    if (busyKey) return;
+    setBusyKey(key);
+    promise.then((res) => {
+      setBusyKey("");
+      if (!res || res.error) { showToast(guildErrorText(res && res.error)); return; }
+      if (onSuccess) onSuccess(res);
+    }).catch(() => { setBusyKey(""); showToast(guildErrorText("network_error")); });
+  };
+
+  const refreshMyApplications = () => cloudGetMyApplications(url, characterId).then((r) => setMyApplications(r && r.applications ? r.applications : []));
+
+  const handleJoin = (guildId) => runAction(`join:${guildId}`, cloudRequestGuildJoin(url, characterId, guildId), (res) => {
+    showToast(res.status === "joined" ? "เข้าร่วมกิลด์แล้ว!" : "ส่งคำขอเข้ากิลด์แล้ว");
+    loadMyGuild();
+    refreshMyApplications();
+  });
+  const handleCancelApplication = (applicationId) => runAction(`cancelapp:${applicationId}`, cloudCancelGuildApplication(url, characterId, applicationId), () => {
+    setMyApplications((prev) => (prev || []).filter((a) => a.applicationId !== applicationId));
+  });
+  const handleCreateGuild = () => {
+    const name = createName.trim();
+    if (!name || busyKey) return;
+    setBusyKey("create");
+    setCreateError("");
+    cloudCreateGuild(url, characterId, name, createDesc.trim()).then((res) => {
+      setBusyKey("");
+      if (!res || res.error) { setCreateError(guildErrorText(res && res.error)); return; }
+      setShowCreate(false);
+      setCreateName("");
+      setCreateDesc("");
+      loadMyGuild();
+    }).catch(() => { setBusyKey(""); setCreateError(guildErrorText("network_error")); });
+  };
+  const handleAcceptApplication = (applicationId) => runAction(`accept:${applicationId}`, cloudAcceptGuildApplication(url, characterId, applicationId), () => {
+    setApplications((prev) => (prev || []).filter((a) => a.applicationId !== applicationId));
+    loadMyGuild();
+  });
+  const handleRejectApplication = (applicationId) => runAction(`reject:${applicationId}`, cloudRejectGuildApplication(url, characterId, applicationId), () => {
+    setApplications((prev) => (prev || []).filter((a) => a.applicationId !== applicationId));
+  });
+  const handleLeave = () => runAction("leave", cloudLeaveGuild(url, characterId), () => { setMyGuild(null); loadMyGuild(); });
+  const handleKick = (targetCharacterId) => runAction(`kick:${targetCharacterId}`, cloudKickGuildMember(url, characterId, targetCharacterId), () => loadMyGuild());
+  const handleTransfer = (targetCharacterId) => runAction(`transfer:${targetCharacterId}`, cloudTransferGuildLeadership(url, characterId, targetCharacterId), () => loadMyGuild());
+  const handleDisband = () => runAction("disband", cloudDisbandGuild(url, characterId), () => setMyGuild(null));
+
+  const actionBtn = (label, onClick, variant, disabled) => e("button", {
+    className: `md-btn small ${variant || "info"}`,
+    disabled: !!disabled,
+    onClick,
+  }, label);
+
+  const row = (key, left, right) => e("div", { key, className: "md-shop-row" },
+    e("div", { className: "md-shop-info" }, left),
+    e("div", { style: { display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" } }, right));
+
+  const joinPolicyLabel = (policy) => (policy === "open" ? "เปิดรับ" : policy === "application" ? "ต้องสมัคร" : "ปิดรับ");
+  const appliedGuildIds = new Set((myApplications || []).map((a) => a.guildId));
+
+  const noGuildView = () => {
+    const searchBody = !searchResults
+      ? e("p", { className: "md-sub" }, "กำลังโหลด...")
+      : !searchResults.length
+        ? e("p", { className: "md-sub" }, "ไม่พบกิลด์")
+        : e("div", { className: "md-inv-list" }, searchResults.map((g) => {
+          let action;
+          if (g.joinPolicy === "closed") action = actionBtn("ปิดรับ", null, "info", true);
+          else if (appliedGuildIds.has(g.guildId)) action = actionBtn("สมัครแล้ว", null, "info", true);
+          else action = actionBtn(g.joinPolicy === "open" ? "เข้าร่วม" : "สมัคร", () => handleJoin(g.guildId), "primary", busyKey === `join:${g.guildId}`);
+          return row(g.guildId, `${g.name} (Lv.${g.level}) — ${g.memberCount}/${g.memberCap} — ${joinPolicyLabel(g.joinPolicy)}`, [action]);
+        }));
+
+    const applicationsCard = (myApplications && myApplications.length > 0) ? e("div", { className: "md-card", style: { marginBottom: 10 } },
+      e("p", { className: "md-sub", style: { margin: "0 0 4px" } }, "คำขอที่ส่งไป"),
+      e("div", { className: "md-inv-list" }, myApplications.map((a) => row(a.applicationId,
+        `${a.guildName} (Lv.${a.guildLevel})`,
+        [actionBtn("ยกเลิก", () => handleCancelApplication(a.applicationId), "flee", busyKey === `cancelapp:${a.applicationId}`)])))) : null;
+
+    const createCard = !showCreate
+      ? e("button", {
+        className: "md-btn primary wide small",
+        disabled: Number(characterLevel || 0) < GUILD_CREATE_MIN_LEVEL_CLIENT,
+        onClick: () => setShowCreate(true),
+      }, Number(characterLevel || 0) < GUILD_CREATE_MIN_LEVEL_CLIENT ? "สร้างกิลด์ (ต้องเลเวล 30+)" : "สร้างกิลด์")
+      : e(React.Fragment, null,
+        e("input", { className: "md-field", style: { width: "100%", marginBottom: 6 }, placeholder: "ชื่อกิลด์ (3-20 ตัวอักษร)", value: createName, maxLength: 20, onChange: (ev) => setCreateName(ev.target.value) }),
+        e("input", { className: "md-field", style: { width: "100%", marginBottom: 6 }, placeholder: "คำอธิบาย (ไม่บังคับ)", value: createDesc, maxLength: 200, onChange: (ev) => setCreateDesc(ev.target.value) }),
+        createError && e("p", { className: "md-sub" }, createError),
+        e("div", { style: { display: "flex", gap: 6 } },
+          actionBtn("ยืนยัน", handleCreateGuild, "primary", busyKey === "create" || !createName.trim()),
+          actionBtn("ยกเลิก", () => { setShowCreate(false); setCreateError(""); }, "flee", false)));
+
+    return e(React.Fragment, null,
+      e("div", { className: "md-card", style: { marginBottom: 10 } },
+        e("input", {
+          className: "md-field",
+          style: { width: "100%" },
+          placeholder: "ค้นหาชื่อกิลด์...",
+          value: query,
+          onChange: (ev) => setQuery(ev.target.value),
+        })),
+      e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } }, searchBody),
+      applicationsCard,
+      e("div", { className: "md-card" }, createCard));
+  };
+
+  const memberView = () => {
+    const g = myGuild;
+    const isLeader = g.viewerRole === "leader";
+
+    const applicationsCard = (isLeader && applications && applications.length > 0) ? e("div", { className: "md-card", style: { marginBottom: 10 } },
+      e("p", { className: "md-sub", style: { margin: "0 0 4px" } }, "คำขอเข้ากิลด์"),
+      e("div", { className: "md-inv-list" }, applications.map((a) => row(a.applicationId,
+        `${a.online ? "🟢" : "⚪"} ${a.name} (Lv.${a.level})`,
+        [
+          actionBtn("ยอมรับ", () => handleAcceptApplication(a.applicationId), "primary", busyKey === `accept:${a.applicationId}`),
+          actionBtn("ปฏิเสธ", () => handleRejectApplication(a.applicationId), "flee", busyKey === `reject:${a.applicationId}`),
+        ])))) : null;
+
+    const memberRows = g.members.map((m) => {
+      const actions = (isLeader && m.characterId !== characterId) ? [
+        actionBtn("โอนหัวหน้า", () => handleTransfer(m.characterId), "info", busyKey === `transfer:${m.characterId}`),
+        actionBtn("เตะออก", () => handleKick(m.characterId), "flee", busyKey === `kick:${m.characterId}`),
+      ] : [];
+      return row(m.characterId, `${m.online ? "🟢" : "⚪"} ${m.role === "leader" ? "👑 " : ""}${m.name} (Lv.${m.level})`, actions);
+    });
+
+    const footerBtn = isLeader
+      ? actionBtn("ยุบกิลด์", handleDisband, "flee", busyKey === "disband")
+      : actionBtn("ออกจากกิลด์", handleLeave, "flee", busyKey === "leave");
+
+    return e(React.Fragment, null,
+      e("div", { className: "md-card", style: { marginBottom: 10 } },
+        e("p", { className: "md-title" }, `🏰 ${g.name}`),
+        e("p", { className: "md-sub" }, g.description || "ไม่มีคำอธิบาย"),
+        e("p", { className: "md-sub" }, `Lv.${g.level} — ${g.memberCount}/${g.memberCap} สมาชิก — ${joinPolicyLabel(g.joinPolicy)}`),
+        e("button", { className: "md-btn info small", disabled: true }, "💬 แชทกิลด์ (เร็วๆ นี้)")),
+      applicationsCard,
+      e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+        e("div", { className: "md-inv-list" }, memberRows)),
+      e("div", { className: "md-card", style: { display: "flex", gap: 6 } }, footerBtn));
+  };
+
+  return e("div", { className: "md-panel md-guild-page" },
+    toast && e("div", { className: "md-toast" }, toast),
+    myGuild === undefined ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, "กำลังโหลด..."))
+      : loadError ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, loadError))
+        : myGuild ? memberView() : noGuildView(),
+    e(BackButton, { onClick: onBack }),
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat }));
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
@@ -2656,7 +2905,8 @@ function MapScreen({
   onPets,
   onSettings,
   onFriend,
-  onChat
+  onChat,
+  onGuild
 }) {
   const e = React.createElement;
   // Five fixed perspective slots match the stair landings painted into
@@ -2744,7 +2994,8 @@ function MapScreen({
       onSettings,
       onSave,
       onFriend,
-      onChat
+      onChat,
+      onGuild
     }),
     detail && e("div", { className: "md-floor-detail-backdrop", onClick: () => setDetail(null) },
       e("section", {
@@ -2991,6 +3242,7 @@ function PetScreen({
   onSave,
   onFriend,
   onChat,
+  onGuild,
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
@@ -3180,7 +3432,8 @@ function PetScreen({
     onSettings,
     onSave,
     onFriend,
-    onChat
+    onChat,
+    onGuild
   }));
 }
 function GachaScreen({
@@ -4208,6 +4461,7 @@ function InventoryOverlayV2({
   onSave,
   onFriend,
   onChat,
+  onGuild,
   onClose
 }) {
   const [detail, setDetail] = useState(null);
@@ -4329,7 +4583,7 @@ function InventoryOverlayV2({
       salvagePreview && /*#__PURE__*/React.createElement("div", { className:"md-inv2-salvage-preview" }, /*#__PURE__*/React.createElement("strong", null, "Salvage Yield"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"iron" }, fallback:JUNK_INFO.iron.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.iron.name }), "Iron ", salvagePreview.iron), salvagePreview.manaOre > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"manaOre" }, fallback:JUNK_INFO.manaOre.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.manaOre.name }), "Mana Stone ", salvagePreview.manaOre)),
       message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" }, detail.location === "inventory" && SLOT_ORDER.includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); closeDetail(); } }, "Equip"), detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); closeDetail(); } }, "Unequip"), detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSell }, "Sell"), detail.location === "inventory" && !["junk","potion"].includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSalvage }, "Salvage"))))
-    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat }));
+    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild }));
 }
 
 function InventoryOverlay({

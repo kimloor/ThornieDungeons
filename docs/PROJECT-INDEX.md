@@ -34,7 +34,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`SOCIAL-SYSTEM-V1.md`](SOCIAL-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** shared character-scoped Social foundation: identity, presence, block, unread, lifecycle, security, and shared errors. Live; consumed by Friend V1. |
 | [`FRIEND-SYSTEM-V1.md`](FRIEND-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** Friend search/requests, 50-friend cap, remove/block, presence, profile, and DM eligibility. |
 | [`CHAT-SYSTEM-V1.md`](CHAT-SYSTEM-V1.md) | **ACTIVE-PRODUCTION for Global + Direct** — polling, retention, unread, rate limits, Sticker placeholder. Guild Chat not implemented. |
-| [`GUILD-SYSTEM-V1.md`](GUILD-SYSTEM-V1.md) | **ACTIVE-DESIGN** Guild lifecycle, Leader/Member permissions, applications, level/capacity, donation progression, succession, and Guild Chat integration. |
+| [`GUILD-SYSTEM-V1.md`](GUILD-SYSTEM-V1.md) | **ACTIVE-PRODUCTION for Core** — lifecycle, Leader/Member roles, applications, level/capacity, succession. Donation and Guild Chat not implemented. |
 | [`HERO-OVERLAY-V4.md`](HERO-OVERLAY-V4.md) | Current Hero overlay composition, equipment mapping, combat presentation, anchors, asset loading, and R2 paths. |
 | [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md) | Hero skill branches, ranks, statuses, prerequisites, UI contract, and combat checks. |
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked modular floating Hero V5 visual/animation architecture and future production reference; it does not itself authorize replacing the current production Hero. |
