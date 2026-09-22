@@ -73,65 +73,124 @@ Do not create a fixed terminal delay that ignores x1/x2.
 
 ## 4. Result state machine
 
-The Result page owns post-battle presentation.
+Victory and Defeat intentionally use different post-terminal flows.
 
-Recommended Result states:
+### 4.1 Victory
 
 ```text
 TERMINAL_PRESENTATION
         ↓
-RESULT_CONFIRMING
-        ↓
+VICTORY_CONFIRMING_ANIMATION
+        ↓ server commit succeeds
 RESULT_READY
 ```
 
-Optional failure/retry sub-state:
+During `VICTORY_CONFIRMING_ANIMATION`:
+
+- show only the Victory emblem animation;
+- do not show reward panels;
+- do not show EXP/progress;
+- do not show Floor Unlock/New Pet/Level Up highlights;
+- do not show action buttons;
+- do not show extra saving/confirming text;
+- keep the Victory animation alive/loopable until the server commit succeeds.
+
+Approved Victory visual direction:
+
+- ancient ThornieDungeons-style shield;
+- thorn/spike silhouette;
+- wings progressively unfold from the shield;
+- `VICTORY` is revealed as the wings open;
+- background uses the existing ThornieDungeons game visual theme rather than a new unrelated environment.
+
+The Result page must feel alive while confirmation is pending, but it must not reveal uncommitted reward values.
+
+### 4.2 Victory RESULT_READY
+
+After the server commit succeeds, reveal the Result content.
+
+Display:
+
+- Gold gained, only when non-zero;
+- Diamonds gained, only when non-zero;
+- actual item/material drops;
+- Hero level + EXP progress;
+- active Pet level + EXP progress when an active Pet exists;
+- progression/highlight events;
+- Next Floor / Retry / Map actions.
+
+Do **not** show duplicate Hero EXP or Pet EXP amounts in the Rewards row.
+
+Hero/Pet EXP is communicated in the progress area only.
+
+### 4.3 Hero/Pet EXP presentation
+
+EXP progress uses the numeric value on the EXP progress area as the primary animation.
+
+The number should count smoothly from the pre-battle value to the committed post-battle value.
+
+Example:
 
 ```text
-RESULT_CONFIRMING
-        ↓
-RESULT_RETRY_REQUIRED
-        ↓ retry same battleId / same completion intent
-RESULT_READY
+320 / 1000
+321 / 1000
+322 / 1000
+...
 ```
 
-### 4.1 RESULT_CONFIRMING
+The visual bar may track the same committed numeric progression, but there must not be a second `+EXP` number elsewhere on the Result page.
 
-Show immediately after terminal action presentation finishes.
+If a level-up occurs:
 
-The battlefield should no longer display `Confirming battle result…`.
+1. count to the current level threshold;
+2. advance the displayed level;
+3. continue from the new level's EXP value;
+4. show the Level Up highlight according to the priority rules below.
 
-Result Confirming may show:
+The display animation is presentation-only. It must not alter the committed EXP state.
 
-- VICTORY / DEFEAT;
-- cleared floor / encounter summary;
-- Hero/Pet victory/idle presentation if available;
-- reward placeholders/shimmer;
-- concise `Confirming rewards…` / `Saving result…` state.
+### 4.4 Result highlight priority
 
-Navigation/actions that could begin another battle remain disabled until the final commit is confirmed.
+If multiple progression events occur in the same Victory result, show them in this order:
 
-### 4.2 RESULT_READY
+1. **Floor Unlock**
+2. **New Pet**
+3. **Hero Level Up**
+4. **Pet Level Up**
 
-After final commit succeeds, display confirmed values:
+Events may reveal sequentially in one shared highlight area.
 
-- Hero EXP gained;
-- Pet EXP gained;
-- Gold gained;
-- Diamonds if applicable;
-- item/material drops;
-- Level Up;
-- new Pet if applicable;
-- floor unlock/progression;
-- relevant boss/event/modifier summary.
+Do not reorder committed gameplay outcomes; this is presentation priority only.
 
-Buttons become available only in READY state:
+### 4.5 Defeat
 
-- Next Floor;
-- Retry Floor;
-- Map / Floor Select.
+Defeat does not use the Victory reward-confirming presentation.
 
-The Result screen must display data from the committed completion result/receipt, not independently reroll or recalculate random rewards.
+Flow:
+
+```text
+TERMINAL_PRESENTATION
+        ↓
+DEFEATED_ANIMATION
+        ↓
+DEFEAT_ACTIONS_READY
+```
+
+Approved Defeat visual direction:
+
+- the same ThornieDungeons shield visual family;
+- shield breaks/shatters;
+- fragments progressively scatter outward;
+- `DEFEATED` is revealed with the broken-shield presentation.
+
+After the Defeated animation finishes:
+
+- show `Retry` as the primary action;
+- show `Map` as the secondary action;
+- do not show Victory rewards/progression panels;
+- do not wait on a separate reward-confirming screen because Defeat grants no Victory reward reveal.
+
+Battle completion persistence still follows the applicable Battle/Save contract and must not be corrupted by navigation.
 
 ## 5. Final Battle Commit direction
 
@@ -287,36 +346,72 @@ Flee:
 
 ## 12. Navigation locks
 
-Until Result reaches READY:
+Victory:
 
-- Next Floor disabled;
-- Retry disabled;
-- Map/exit actions that could race persistence disabled, unless explicitly designed as safe recovery actions;
-- no second battle can start from the Result screen.
+- while the Victory confirming animation is active, show no action buttons;
+- no second battle can start before Final Battle Commit succeeds;
+- after commit succeeds, reveal Next Floor / Retry / Map together with Result Ready content.
 
-If confirmation fails:
+If Victory confirmation fails:
 
-- keep the user on Result;
-- provide Retry Confirmation;
+- remain on the Victory result presentation;
 - retry the same completion identity;
+- do not reroll rewards;
 - never restart/re-simulate the finished battle merely to recover the Result.
+
+Defeat:
+
+- after the Defeated animation finishes, reveal Retry / Map;
+- no Victory reward-confirming state is shown;
+- navigation must still preserve the existing safe completion/persistence contract.
 
 ## 13. Result UI information hierarchy
 
-Recommended Victory layout:
+### 13.1 Victory confirming
 
-1. Victory title.
-2. Floor/encounter cleared.
-3. Hero EXP / Level progress.
-4. Pet EXP / Pet progress.
-5. Gold / Diamonds.
-6. Drops/materials.
-7. Level Up / unlocked floor / new Pet highlights.
-8. Actions: Next Floor / Retry / Map.
+Show only:
 
-The page should be usable on mobile without vertical overflow hiding primary actions.
+1. existing ThornieDungeons-themed background;
+2. animated thorned ancient shield;
+3. unfolding wings;
+4. `VICTORY` / cleared-floor identity.
 
-Reward reveal animations are presentation-only and must not delay persistence.
+Do not show rewards, progress panels, highlights, buttons, or extra saving text until commit succeeds.
+
+### 13.2 Victory ready
+
+Recommended information hierarchy:
+
+1. Victory title / cleared floor.
+2. Rewards: Gold / Diamonds / Drops.
+3. Hero level + EXP numeric progress.
+4. Active Pet level + EXP numeric progress.
+5. Shared highlight area using priority:
+   - Floor Unlock;
+   - New Pet;
+   - Hero Level Up;
+   - Pet Level Up.
+6. Actions:
+   - Next Floor — primary;
+   - Retry;
+   - Map.
+
+Hide zero/non-applicable reward fields instead of rendering `+0`.
+
+If no active Pet exists, omit the Pet progress panel.
+
+The page must remain mobile-safe and keep the primary action visible.
+
+### 13.3 Defeat ready
+
+Show:
+
+1. Defeated shield/shatter result presentation;
+2. floor identity where useful;
+3. Retry — primary;
+4. Map — secondary.
+
+Do not show Victory reward/progression panels.
 
 ## 14. Failure/recovery cases
 
@@ -350,12 +445,16 @@ Recommended implementation split:
 
 Scope:
 - preserve final action/VFX/death animation;
-- move confirmation presentation from Battle scene to Result page;
-- Result Confirming -> Result Ready state;
-- display EXP/Pet EXP/Gold/drop/progression clearly;
+- Victory confirming is animation-only until server commit succeeds;
+- use ThornieDungeons shield + unfolding-wing Victory visual direction;
+- use broken/shattering shield Defeated visual direction;
+- reveal Victory rewards only after commit;
+- Hero/Pet EXP uses numeric count-up progress, with no duplicate +EXP reward amount;
+- apply progression highlight priority: Floor Unlock -> New Pet -> Hero Level Up -> Pet Level Up;
+- Defeat reveals Retry / Map immediately after its animation finishes;
 - preserve current reward formulas and Battle Core.
 
-This phase should avoid changing reward authority unless required for correctness.
+Because Dungeon presentation will migrate to Phaser, terminal-action timing/death/VFX work should be implemented together with the production Dungeon presentation path rather than duplicated in a temporary renderer when practical.
 
 ### Phase B — Final Battle Commit / Completion Reliability V2
 
