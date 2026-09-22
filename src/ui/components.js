@@ -2120,6 +2120,151 @@ function GuildScreen({
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
+function RaidBossCard({
+  boss,
+  hpPct,
+  hpCurrent,
+  hpMax,
+  bossSpriteConfig,
+  hurtToken,
+  onHurtComplete,
+  isDead
+}) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
+    /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.name || "Raid Boss"),
+    /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
+      /*#__PURE__*/React.createElement("div", {
+        className: "md-bar-fill",
+        style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
+      })),
+    /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
+    /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
+      config: bossSpriteConfig,
+      hurtToken,
+      className: "md-raid-boss-sprite",
+      alt: boss.name || "Raid Boss",
+      onHurtComplete
+    }),
+    isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา"));
+}
+
+function RaidAttackActions({
+  supportsStamina,
+  outOfStamina,
+  attacking,
+  hurtPlaying,
+  isDead,
+  canAffordRefill,
+  me,
+  onAttack
+}) {
+  return /*#__PURE__*/React.createElement(React.Fragment, null,
+    (!outOfStamina || !supportsStamina) && /*#__PURE__*/React.createElement("button", {
+      className: "md-btn attack wide",
+      style: { marginTop: 8 },
+      disabled: attacking || hurtPlaying || isDead || (!supportsStamina && outOfStamina),
+      onClick: () => onAttack(false)
+    }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี"),
+    supportsStamina && outOfStamina && /*#__PURE__*/React.createElement("button", {
+      className: "md-btn attack wide",
+      style: { marginTop: 8 },
+      disabled: attacking || hurtPlaying || isDead || !canAffordRefill,
+      onClick: () => onAttack(true)
+    }, attacking ? "กำลังโจมตี..." : /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement(GameIcon, {
+        category: "currency",
+        iconKey: "diamond",
+        fallback: "💎",
+        className: "md-game-icon md-inline-item-icon",
+        alt: "Diamond"
+      }),
+      ` จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`)));
+}
+
+function RaidPlayerStatus({
+  supportsStamina,
+  me,
+  outOfStamina,
+  mm,
+  ss,
+  legacyAttemptsLeft,
+  lastResult,
+  attacking,
+  hurtPlaying,
+  isDead,
+  canAffordRefill,
+  onAttack
+}) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between" } },
+      supportsStamina
+        ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "⚡ ", me.stamina, "/", me.staminaMax, outOfStamina ? ` (เติมอีกใน ${mm}:${ss})` : "")
+        : /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "โจมตีเหลือ ", legacyAttemptsLeft, "/", me.attemptsMax),
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "สูงสุด ", formatNumber(me.bestHit))),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสะสม: ", formatNumber(me.contribution)),
+    lastResult && !lastResult.error && /*#__PURE__*/React.createElement("p", {
+      className: "md-sub",
+      style: { color: lastResult.crit ? "#FFD166" : undefined, fontWeight: "bold" }
+    }, lastResult.crit ? "💥 CRIT! " : "", "ดาเมจ ", formatNumber(lastResult.damage)),
+    lastResult && !lastResult.error && lastResult.petDamage > 0 && /*#__PURE__*/React.createElement("p", {
+      className: "md-sub",
+      style: { color: lastResult.petCrit ? "#FFD166" : undefined }
+    }, "🐾 pet ", lastResult.petCrit ? "💥 " : "", formatNumber(lastResult.petDamage)),
+    lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่"
+        : lastResult.error === "no_attempts_left" ? "หมดจำนวนครั้งโจมตีวันนี้แล้ว"
+        : lastResult.error === "no_stamina" ? "พลัง Raid หมดแล้ว กรุณารอให้ฟื้น"
+        : lastResult.error === "stamina_conflict" ? "พลัง Raid มีการเปลี่ยนแปลง กรุณากดใหม่"
+        : lastResult.error === "insufficient_diamonds" ? "เพชรไม่พอสำหรับโจมตี"
+        : lastResult.error === "network_error" ? "เชื่อมต่อ Raid ไม่สำเร็จ กรุณาลองใหม่"
+        : lastResult.error),
+    /*#__PURE__*/React.createElement(RaidAttackActions, {
+      supportsStamina,
+      outOfStamina,
+      attacking,
+      hurtPlaying,
+      isDead,
+      canAffordRefill,
+      me,
+      onAttack
+    }));
+}
+
+function RaidMilestonePanel({ me, milestoneSpecials }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ — แจกอัตโนมัติ)"),
+    /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
+      /*#__PURE__*/React.createElement("div", {
+        className: "md-bar-fill",
+        style: { width: `${me.contributionPct}%`, background: "linear-gradient(90deg,#6EC6FF,#4A7CFF)" }
+      })),
+    /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, me.contributionPct, "%"),
+    milestoneSpecials.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "(อัปเดต server แล้วรายละเอียดจะขึ้นตรงนี้)"),
+    milestoneSpecials.map(m => {
+      const key = `p${m.pct}`;
+      const done = me.contributionPct >= m.pct;
+      const claimed = me.milestonesClaimed.indexOf(key) !== -1;
+      return /*#__PURE__*/React.createElement("div", { key: m.pct, className: "md-shop-row" },
+        /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.pct, "% — ", m.label),
+        /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ ส่งแล้ว" : done ? "⏳ กำลังส่ง..." : "🔒"));
+    }));
+}
+
+function RaidRanking({ rows, characterId }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "อันดับดาเมจ"),
+    rows.map((row, idx) => {
+      const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+      const isMe = row.character_id === characterId;
+      return /*#__PURE__*/React.createElement("div", {
+        key: row.character_id,
+        className: "md-shop-row",
+        style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
+      }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
+         /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_contribution)));
+    }));
+}
+
 function RaidScreen({
   serverUrl,
   characterId,
@@ -2236,80 +2381,32 @@ function RaidScreen({
 
   return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
     toast && /*#__PURE__*/React.createElement("div", { className: "md-toast" }, toast),
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.name || "Raid Boss"),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
-        /*#__PURE__*/React.createElement("div", {
-          className: "md-bar-fill",
-          style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
-        })),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
-      /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
-        config: bossSpriteConfig,
-        hurtToken,
-        className: "md-raid-boss-sprite",
-        alt: boss.name || "Raid Boss",
-        onHurtComplete: handleHurtComplete
-      }),
-      isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา")),
-
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between" } },
-        supportsStamina
-          ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "⚡ ", me.stamina, "/", me.staminaMax, outOfStamina ? ` (เติมอีกใน ${mm}:${ss})` : "")
-          : /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "โจมตีเหลือ ", legacyAttemptsLeft, "/", me.attemptsMax),
-        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "สูงสุด ", formatNumber(me.bestHit))),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสะสม: ", formatNumber(me.contribution)),
-      lastResult && !lastResult.error && /*#__PURE__*/React.createElement("p", {
-        className: "md-sub",
-        style: { color: lastResult.crit ? "#FFD166" : undefined, fontWeight: "bold" }
-      }, lastResult.crit ? "💥 CRIT! " : "", "ดาเมจ ", formatNumber(lastResult.damage)),
-      lastResult && !lastResult.error && lastResult.petDamage > 0 && /*#__PURE__*/React.createElement("p", {
-        className: "md-sub",
-        style: { color: lastResult.petCrit ? "#FFD166" : undefined }
-      }, "🐾 pet ", lastResult.petCrit ? "💥 " : "", formatNumber(lastResult.petDamage)),
-      lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่" : lastResult.error === "no_attempts_left" ? "หมดจำนวนครั้งโจมตีวันนี้แล้ว" : lastResult.error === "no_stamina" ? "พลัง Raid หมดแล้ว กรุณารอให้ฟื้น" : lastResult.error === "stamina_conflict" ? "พลัง Raid มีการเปลี่ยนแปลง กรุณากดใหม่" : lastResult.error === "insufficient_diamonds" ? "เพชรไม่พอสำหรับโจมตี" : lastResult.error === "network_error" ? "เชื่อมต่อ Raid ไม่สำเร็จ กรุณาลองใหม่" : lastResult.error),
-      (!outOfStamina || !supportsStamina) && /*#__PURE__*/React.createElement("button", {
-        className: "md-btn attack wide",
-        style: { marginTop: 8 },
-        disabled: attacking || hurtPlaying || isDead || (!supportsStamina && outOfStamina),
-        onClick: () => handleAttack(false)
-      }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี"),
-      supportsStamina && outOfStamina && /*#__PURE__*/React.createElement("button", {
-        className: "md-btn attack wide",
-        style: { marginTop: 8 },
-        disabled: attacking || hurtPlaying || isDead || !canAffordRefill,
-        onClick: () => handleAttack(true)
-      }, attacking ? "กำลังโจมตี..." : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), ` จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`))),
-
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ — แจกอัตโนมัติ)"),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
-        /*#__PURE__*/React.createElement("div", { className: "md-bar-fill", style: { width: `${me.contributionPct}%`, background: "linear-gradient(90deg,#6EC6FF,#4A7CFF)" } })),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, me.contributionPct, "%"),
-      milestoneSpecials.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "(อัปเดต server แล้วรายละเอียดจะขึ้นตรงนี้)"),
-      milestoneSpecials.map(m => {
-        const key = `p${m.pct}`;
-        const done = me.contributionPct >= m.pct;
-        const claimed = me.milestonesClaimed.indexOf(key) !== -1;
-        return /*#__PURE__*/React.createElement("div", { key: m.pct, className: "md-shop-row" },
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.pct, "% — ", m.label),
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ ส่งแล้ว" : done ? "⏳ กำลังส่ง..." : "🔒"));
-      })),
-
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "อันดับดาเมจ"),
-      (status.top || []).map((row, idx) => {
-        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
-        const isMe = row.character_id === characterId;
-        return /*#__PURE__*/React.createElement("div", {
-          key: row.character_id,
-          className: "md-shop-row",
-          style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
-        }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
-           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_contribution)));
-      })),
-
+    /*#__PURE__*/React.createElement(RaidBossCard, {
+      boss,
+      hpPct,
+      hpCurrent,
+      hpMax,
+      bossSpriteConfig,
+      hurtToken,
+      onHurtComplete: handleHurtComplete,
+      isDead
+    }),
+    /*#__PURE__*/React.createElement(RaidPlayerStatus, {
+      supportsStamina,
+      me,
+      outOfStamina,
+      mm,
+      ss,
+      legacyAttemptsLeft,
+      lastResult,
+      attacking,
+      hurtPlaying,
+      isDead,
+      canAffordRefill,
+      onAttack: handleAttack
+    }),
+    /*#__PURE__*/React.createElement(RaidMilestonePanel, { me, milestoneSpecials }),
+    /*#__PURE__*/React.createElement(RaidRanking, { rows: status.top || [], characterId }),
     /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
 }
 
