@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-DESIGN** current execution roadmap covering Hero V5, Inventory V2 refactor, Phaser Dungeon/Arena migration, and final architecture cleanup. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-DESIGN** master execution roadmap split into CHAT / WORK / GRAPHICS lanes, covering Social completion, Inventory V2, Phaser Dungeon/Arena, Hero V5 and final architecture cleanup. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
@@ -62,7 +62,7 @@ Repository-wide references:
 
 ## 5. Read-by-task map
 
-For active sequencing/priorities across Hero V5, Inventory refactor, Phaser migration, and final architecture cleanup, read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
+For active sequencing/priorities across Social completion, Inventory refactor, Phaser migration, Hero V5 and final architecture cleanup, read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
 
 Read only the documents relevant to the requested scope. Do not load unrelated system specifications unless a dependency or conflict requires them.
 
