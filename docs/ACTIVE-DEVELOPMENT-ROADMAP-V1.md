@@ -229,11 +229,17 @@ Lock responsive anchors:
 - VFX_PET_ANCHOR
 - VFX_MONSTER_ANCHOR
 
+PresentationQueue must also expose a clean action-visual-complete/drained boundary. W6 uses it so a terminal attack/VFX/death sequence is not cut off before Result transition.
+
 No gameplay logic moves into Phaser.
 
 ---
 
-## W6 — Dungeon Combat -> Phaser
+## W6 — Dungeon Combat -> Phaser + Battle Result / Final Commit
+
+Execute as one Battle-focused WORK package to avoid reopening the same App/Battle/Worker/save context twice. Keep two internal commits/gates.
+
+### W6-A — Dungeon presentation + Result
 
 Move battlefield presentation only:
 - Hero;
@@ -245,23 +251,58 @@ Move battlefield presentation only:
 - hit/death feedback;
 - battlefield positions.
 
-Keep DOM:
+Also implement the approved `BATTLE-RESULT-COMMIT-V1.md` presentation contract:
+- final Basic/skill/Pet action finishes animation/VFX/death before Result;
+- Blade Storm kill-all visibly completes;
+- Victory confirming is animation-only;
+- thorned ancient shield + unfolding wings + VICTORY;
+- no reward/progress/buttons/saving text while commit is pending;
+- after commit reveal Gold/Diamonds/Drops + Hero/Pet progress;
+- Hero/Pet EXP uses numeric count-up in the progress area only;
+- highlight order: Floor Unlock -> New Pet -> Hero Level Up -> Pet Level Up;
+- Defeat uses broken/shattering shield, then Retry / Map after animation.
+
+Keep React/DOM:
 - top bar / turn queue;
 - quick slots;
 - Attack/Auto/Flee/Settings;
 - x1/x2/Skip;
 - combat log;
-- modal/result UI.
+- modal/result UI shell.
 
 Keep DOM battlefield fallback until QA/user approval.
 
+### W6-B — Final Battle Commit / Completion Reliability V2
+
+After W6-A gate passes on the same branch:
+- remove the crash window between accepted completion and reward persistence;
+- immutable/idempotent completion reward receipt per battle identity;
+- repeated completion returns the same committed result;
+- no reward reroll or duplicate Gold/EXP/items/Pet EXP/floor progression;
+- Result Ready renders committed receipt values;
+- preserve safe Action-boundary checkpoint rules;
+- skip redundant checkpoint round trip when the required safe checkpoint is already confirmed;
+- consolidate post-battle network round trips where safe;
+- additive D1 migration only if required;
+- keep existing reward formulas/balance unless separately approved.
+
+No Battle gameplay resolution moves into Phaser or server logic.
+
 Gate:
 - Battle Core output unchanged;
-- target switching;
-- 1/2/3-monster layout;
+- target switching and 1/2/3-monster layout;
+- final Basic Attack / Blade Storm / Pet final-hit presentation;
 - VFX/hit/death;
 - x1/x2/Auto/Skip;
-- checkpoint/resume.
+- checkpoint/resume;
+- Victory Confirming -> Ready;
+- Defeat animation -> Retry/Map;
+- duplicate completion/retry safety;
+- reload/recovery after committed completion;
+- receipt values match Result;
+- no reward reroll/duplication;
+- build/persistence/backend tests;
+- authenticated staging E2E before release.
 
 ---
 
