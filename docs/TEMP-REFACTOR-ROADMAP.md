@@ -128,6 +128,8 @@ Do not change:
 
 Risk: HIGH
 
+> UPDATE: The Combat presentation portion of this scope is now superseded where applicable by `PHASER-COMBAT-ARENA-V1.md`. Do not continue a DOM-only Battle Stage refactor that conflicts with the approved Phaser migration. Inventory refactor remains independent. Shared HUD/control decomposition may still proceed only when it does not duplicate or conflict with the Phaser renderer boundary.
+
 ### Inventory V2 target shape
 
 ```text
