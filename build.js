@@ -37,6 +37,7 @@ const MODULE_ORDER = [
   "systems/stats.js",
   "systems/shop.js",
   "ui/battleVfx.js",
+  "ui/phaserBattlefield.js",
   "ui/App.js",
   "ui/components.js",
   "ui/combatPresentationFix.js",
