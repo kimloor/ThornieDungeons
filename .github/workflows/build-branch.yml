@@ -1,0 +1,100 @@
+name: Build frontend branch
+
+on:
+  push:
+    branches:
+      - "experiment/**"
+      - "feat/**"
+      - "fix/**"
+      - "refactor/**"
+    paths:
+      - "src/**"
+      - "head.html"
+      - "tail.html"
+      - "build.js"
+      - ".github/workflows/build-branch.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: frontend-branch-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build generated frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          node build.js
+
+      - name: Verify generated output scope
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -s index.html || {
+            echo "index.html was not generated or is empty"
+            exit 1
+          }
+
+          changed="$(git status --short)"
+          echo "$changed"
+
+          unexpected="$(
+            git status --porcelain |
+              awk '{print $2}' |
+              grep -v '^index.html$' || true
+          )"
+
+          if [ -n "$unexpected" ]; then
+            echo "Build changed unexpected file(s):"
+            echo "$unexpected"
+            exit 1
+          fi
+
+      - name: Commit generated index when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- index.html; then
+            echo "Generated index.html already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "build: regenerate index.html [branch-build]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Build summary
+        shell: bash
+        run: |
+          {
+            echo "## Frontend branch build"
+            echo ""
+            echo "- Branch: \`${GITHUB_REF_NAME}\`"
+            echo "- Source commit: \`${GITHUB_SHA}\`"
+            echo "- Command: \`node build.js\`"
+            echo "- Generated file: \`index.html\`"
+            echo "- Production main: **not targeted**"
+          } >> "$GITHUB_STEP_SUMMARY"
