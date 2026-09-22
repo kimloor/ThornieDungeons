@@ -26,6 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-DESIGN** current execution roadmap covering Hero V5, Inventory V2 refactor, Phaser Dungeon/Arena migration, and final architecture cleanup. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
@@ -57,9 +58,11 @@ Repository-wide references:
 | Status | Document | Use |
 | --- | --- | --- |
 | **SUPPORTING** | [`BATTLE-V1-IMPLEMENTATION-NOTES.md`](BATTLE-V1-IMPLEMENTATION-NOTES.md) | Battle V1 implementation and rollout context. It does not override the active Battle contract. |
-| **TEMPORARY** | [`TEMP-REFACTOR-ROADMAP.md`](TEMP-REFACTOR-ROADMAP.md) | Pending transition/refactor roadmap. It is not a permanent source of truth and must be rechecked against latest `main`. |
+| **TEMPORARY / SUPERSEDED** | [`TEMP-REFACTOR-ROADMAP.md`](TEMP-REFACTOR-ROADMAP.md) | Historical refactor plan. Superseded for active execution by `ACTIVE-DEVELOPMENT-ROADMAP-V1.md`; use only for implementation-history context. |
 
 ## 5. Read-by-task map
+
+For active sequencing/priorities across Hero V5, Inventory refactor, Phaser migration, and final architecture cleanup, read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
 
 Read only the documents relevant to the requested scope. Do not load unrelated system specifications unless a dependency or conflict requires them.
 
