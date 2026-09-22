@@ -184,7 +184,7 @@ Keep in React/DOM:
 - Attack / Auto / Flee / Settings
 - Battle Log
 - modal/overlay UI
-- result-confirm/reward flow unless separately approved
+- result-confirm/reward flow, governed by `BATTLE-RESULT-COMMIT-V1.md` when implemented with the Dungeon migration
 
 ---
 
@@ -309,6 +309,8 @@ The existing gameplay result is authoritative before visual playback completes.
 
 Presentation may sequence resolved events for readability, but must not delay or alter gameplay rules.
 
+For terminal Dungeon actions, the resolved visual sequence must be allowed to finish before transitioning to Result, as defined by `BATTLE-RESULT-COMMIT-V1.md`. This delays presentation/navigation only; the Battle Core result is already authoritative.
+
 x1/x2 changes presentation timing only.
 
 Skip continues using the existing fast resolver and does not wait for Phaser animation.
@@ -352,6 +354,8 @@ No gameplay changes.
 - verify x1/x2
 - verify Auto and Skip do not depend on animation
 - verify resume/checkpoint behavior
+- integrate terminal-action presentation completion with the approved Result flow
+- integrate the Result/Final Battle Commit contract when W6 is executed as the combined roadmap package
 
 Keep the DOM battlefield available behind a temporary fallback during verification.
 
