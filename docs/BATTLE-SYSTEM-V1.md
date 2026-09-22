@@ -678,6 +678,21 @@ Examples:
 - Fury consumed -> cooldown reduction
 - Escape Failed
 
+### 18.7A Renderer boundary
+
+Dungeon Battle may migrate its **battlefield presentation layer** to Phaser under `PHASER-COMBAT-ARENA-V1.md`.
+
+This does not change Battle V1 gameplay ownership.
+
+- Battle Core remains the source of truth for queue, actions, damage, status, cooldown, targeting legality, outcomes and checkpoint state.
+- React/DOM remains the default owner of Battle HUD/controls unless a separate approved task changes that boundary.
+- Phaser may render Hero, Pet, Monsters, target marker, VFX, hit/death feedback and responsive battlefield placement.
+- x1/x2 remains presentation speed only.
+- Skip must not wait for Phaser animation.
+- A renderer failure must not alter or re-resolve gameplay.
+
+During migration, the existing DOM battlefield may remain as a temporary fallback until Phaser QA is complete.
+
 ### 18.8 Animation semantics
 
 Hero: Idle / Attack / Death
