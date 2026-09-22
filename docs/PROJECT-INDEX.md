@@ -42,6 +42,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) | Login/Auth V2 account, session, password, recovery, migration, frontend, and backend security contract. |
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
 | [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |
+| [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) | **ACTIVE-DESIGN** migration contract for moving Dungeon Combat battlefield and Arena battle-stage presentation to Phaser while preserving gameplay, API, save, and resolver behavior. |
 | [`RAID-SYSTEM-V1.md`](RAID-SYSTEM-V1.md) | Raid boss roster/rotation, HP scaling, Raid asset contract, persistence boundaries, auth/backend safety, and Raid verification. |
 | [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) | Ordered persistence, retries, save state, session ownership, battle checkpoints, and transaction safety. |
 | [`TOWN-HUB.md`](TOWN-HUB.md) | Stable Town/Main Hub artwork separation, navigation consistency, mobile UI, and build rules. |
@@ -69,7 +70,15 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 - [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md)
 - [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md)
 - [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md)
+- [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) when battlefield renderer/presentation is affected
 - [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) when persistence is affected
+
+### Arena
+
+- [`AGENTS.md`](../AGENTS.md)
+- [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) for Arena battle-stage presentation migration
+- [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) only for shared combat rules already reused by Arena
+- Latest Arena code/API behavior remains authoritative until a dedicated Arena gameplay contract is approved
 
 ### Raid
 
@@ -158,7 +167,7 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 
 The following important areas do not currently have a dedicated **ACTIVE** system document in `docs/`:
 
-- **Arena**
+- **Arena gameplay contract** (presentation migration is covered by `PHASER-COMBAT-ARENA-V1.md`)
 - **Shop / Crafting / Summoning**
 
 Until a dedicated contract exists, inspect latest `main`, the latest approved task/decision, and directly related code/configuration before changing behavior. Do not invent missing game rules or infer them from unrelated systems.
@@ -203,7 +212,7 @@ No current document is marked **RETIRED** by this index.
 
 **Known documentation conflicts:** None currently verified.
 
-**Documentation gaps:** Arena; Shop / Crafting / Summoning.
+**Documentation gaps:** Arena gameplay contract; Shop / Crafting / Summoning. Arena presentation migration is now mapped by `PHASER-COMBAT-ARENA-V1.md`.
 
 When a conflict is resolved, remove it from unresolved conflicts rather than leaving stale warnings in this index.
 
