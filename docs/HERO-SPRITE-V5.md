@@ -440,7 +440,19 @@ Future UI work may use broader tablet/desktop battle layouts. The `768 x 768` ma
 
 Responsive implementation is outside this document's scope.
 
-## 24. Scope boundary
+## 24. V4 → V5 transition boundary
+
+Hero Overlay V4 remains the current production Hero contract until V5 is separately implemented and approved.
+
+- Do not overwrite, resize, or reinterpret existing V4 production assets while producing V5.
+- V4 uses its existing `1254 x 1254` production canvas and runtime contract.
+- V5 uses the new `768 x 768` master canvas defined in this document.
+- V5 artwork must be produced as a separate asset set.
+- Do not mix V4 and V5 frame layers in one runtime composite.
+- A future DEV task must explicitly define migration, manifest keys, fallbacks, and release strategy before V5 can replace V4.
+- Graphics work for V5 is design/asset production only until that migration task is approved.
+
+## 25. Scope boundary
 
 This document defines Hero V5 visual/animation architecture and production reference only.
 
