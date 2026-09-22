@@ -28,3 +28,32 @@ test("Arena uses the central session-token API signatures", () => {
   assert.match(source, /cloudStartArenaMatch\(serverUrl \|\| DEFAULT_SERVER_URL, characterId,/);
   assert.match(source, /cloudSubmitArenaTurn\(serverUrl \|\| DEFAULT_SERVER_URL, characterId,/);
 });
+
+test("Arena battle presentation is decomposed while orchestration stays in ArenaScreen", () => {
+  const presentation = screenSource("ArenaBattleHud", "ArenaScreen");
+  const controller = screenSource("ArenaScreen", "MailboxScreen");
+
+  for (const componentName of [
+    "ArenaBattleHud",
+    "ArenaBattleStage",
+    "ArenaActionPanel",
+    "ArenaBattleLog",
+    "ArenaResult",
+    "ArenaBattle"
+  ]) {
+    assert.match(presentation, new RegExp(`function ${componentName}\\b`));
+  }
+
+  assert.doesNotMatch(presentation, /cloud(?:Get|Start|Submit)Arena/);
+  assert.match(controller, /const stageTimeouts = React\.useRef\(\[\]\)/);
+  assert.match(controller, /const playStageSequence = \(log\) =>/);
+  assert.match(controller, /const startFight = \(opponentCharacterId, useDiamonds\) =>/);
+  assert.match(controller, /const submitTurn = \(actionType, skillKey\) =>/);
+  assert.match(controller, /playStageSequence\(res\.log\)/);
+  assert.match(controller, /React\.createElement\(ArenaBattle,[\s\S]*onSubmitTurn: submitTurn[\s\S]*onExitResult: \(\) => setMatch\(null\)[\s\S]*onBack/);
+
+  assert.match(presentation, /onSubmitTurn\("basic"\)/);
+  assert.match(presentation, /onSubmitTurn\("active", s\.key\)/);
+  assert.match(presentation, /pvpFormatLogEntry\(entry, unitNames\)/);
+  assert.match(presentation, /label: "← Back \(การต่อสู้จะค้างไว้\)"/);
+});

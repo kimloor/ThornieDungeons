@@ -2583,6 +2583,119 @@ function ArenaLobby({
     /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
 }
 
+function ArenaBattleHud({ match }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 10 } },
+      /*#__PURE__*/React.createElement(ArenaHpBar, {
+        label: "คุณ",
+        hp: match.you.hp,
+        maxHp: match.you.maxHp,
+        mp: match.you.mp,
+        maxMp: match.you.maxMp,
+        pet: match.yourPet
+      }),
+      /*#__PURE__*/React.createElement(ArenaHpBar, {
+        label: match.opponentName || "คู่ต่อสู้",
+        hp: match.opponent.hp,
+        maxHp: match.opponent.maxHp,
+        pet: match.opponentPet
+      })));
+}
+
+function ArenaBattleStage({ match, stageAnim }) {
+  // Placeholder battle stage — see the md-pvp-* CSS comment (src/data/styles.js) for
+  // why these are emoji boxes and not <HeroSprite>/<PetCombatSprite>.
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, padding: "4px 8px" } },
+    /*#__PURE__*/React.createElement("div", { className: "md-pvp-stage" },
+      /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
+        /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.you.hp <= 0 ? "dead" : stageAnim.you || ""}` }, "🧙"),
+        match.yourPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.yourPet.hp <= 0 ? "dead" : stageAnim.youPet || ""}` }, PET_ICON_FALLBACK)),
+      /*#__PURE__*/React.createElement("div", { className: "md-pvp-vs" }, "VS"),
+      /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
+        /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.opponent.hp <= 0 ? "dead" : stageAnim.opp || ""}` }, "👤"),
+        match.opponentPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.opponentPet.hp <= 0 ? "dead" : stageAnim.oppPet || ""}` }, PET_ICON_FALLBACK))));
+}
+
+function ArenaActionPanel({ match, submitting, error, onSubmitTurn }) {
+  if (match.result) return null;
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("button", {
+      className: "md-pvp-attack-btn",
+      disabled: submitting,
+      onClick: () => onSubmitTurn("basic")
+    }, "⚔️ โจมตี"),
+    /*#__PURE__*/React.createElement("div", { className: "md-pvp-skill-grid" },
+      (match.skills || []).map(s => {
+        const cost = Number(s.mp) || 0;
+        const canAfford = match.you.mp >= cost;
+        const cdLeft = s.cooldownRemaining || 0;
+        const onCooldown = cdLeft > 0;
+        const ready = canAfford && !onCooldown;
+        return /*#__PURE__*/React.createElement("button", {
+          key: s.key,
+          className: `md-pvp-skill-btn ${ready ? "ready" : ""} ${onCooldown ? "cooldown" : ""}`,
+          "data-cd": onCooldown ? cdLeft : undefined,
+          disabled: submitting || !canAfford || onCooldown,
+          title: s.desc || "",
+          onClick: () => onSubmitTurn("active", s.key)
+        },
+          /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-icon" }, s.icon || "✨"),
+          /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-name" }, s.name || s.key),
+          /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-cost" }, cost, " SP"));
+      })),
+    error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 6, color: "#FF6B6B" } }, error));
+}
+
+function ArenaBattleLog({ entries, unitNames }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, maxHeight: 220, overflowY: "auto" } },
+    entries.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "เลือกท่าโจมตีเพื่อเริ่มต่อสู้"),
+    entries.map((entry, i) => /*#__PURE__*/React.createElement("p", {
+      key: i,
+      className: "md-sub",
+      style: { marginBottom: 3 }
+    }, pvpFormatLogEntry(entry, unitNames))));
+}
+
+function ArenaResult({ result, onExit }) {
+  if (!result) return null;
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
+    /*#__PURE__*/React.createElement("p", {
+      className: "md-title",
+      style: { fontSize: 16, color: result.win ? "#7CFF9E" : "#FF6B6B" }
+    }, result.win ? "🏆 ชนะ!" : "💢 แพ้"),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      "Rating ", result.ratingBefore, " → ", result.ratingAfter, " (", result.ratingChange >= 0 ? "+" : "", result.ratingChange, ")"),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      /*#__PURE__*/React.createElement(GameIcon, {
+        category: "currency",
+        iconKey: "diamond",
+        fallback: "💎",
+        className: "md-game-icon md-inline-item-icon",
+        alt: "Diamond"
+      }), " +", result.diamondsEarned || 0),
+    /*#__PURE__*/React.createElement("button", {
+      className: "md-btn wide small",
+      style: { marginTop: 8 },
+      onClick: onExit
+    }, "กลับไปหน้าอารีน่า"));
+}
+
+function ArenaBattle({ match, stageAnim, submitting, error, onSubmitTurn, onExitResult, onBack }) {
+  const unitNames = {
+    team_a_hero: (match.you && match.you.name) || "คุณ",
+    team_a_pet: match.yourPet && match.yourPet.name,
+    team_b_hero: match.opponentName || (match.opponent && match.opponent.name) || "คู่ต่อสู้",
+    team_b_pet: match.opponentPet && match.opponentPet.name,
+  };
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
+    /*#__PURE__*/React.createElement(ArenaBattleHud, { match }),
+    /*#__PURE__*/React.createElement(ArenaBattleStage, { match, stageAnim }),
+    /*#__PURE__*/React.createElement(ArenaResult, { result: match.result, onExit: onExitResult }),
+    /*#__PURE__*/React.createElement(ArenaActionPanel, { match, submitting, error, onSubmitTurn }),
+    /*#__PURE__*/React.createElement(ArenaBattleLog, { entries: match.log, unitNames }),
+    !match.result && /*#__PURE__*/React.createElement(BackButton, { onClick: onBack, label: "← Back (การต่อสู้จะค้างไว้)" }));
+}
+
 function ArenaScreen({
   serverUrl,
   characterId,
@@ -2721,70 +2834,15 @@ function ArenaScreen({
 
   // ---- Fight mode ----
   if (match) {
-    const pvpUnitNames = {
-      team_a_hero: (match.you && match.you.name) || "คุณ",
-      team_a_pet: match.yourPet && match.yourPet.name,
-      team_b_hero: match.opponentName || (match.opponent && match.opponent.name) || "คู่ต่อสู้",
-      team_b_pet: match.opponentPet && match.opponentPet.name,
-    };
-    const overCard = match.result && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 16, color: match.result.win ? "#7CFF9E" : "#FF6B6B" } }, match.result.win ? "🏆 ชนะ!" : "💢 แพ้"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating ", match.result.ratingBefore, " → ", match.result.ratingAfter, " (", match.result.ratingChange >= 0 ? "+" : "", match.result.ratingChange, ")"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " +", match.result.diamondsEarned || 0),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn wide small", style: { marginTop: 8 }, onClick: () => setMatch(null) }, "กลับไปหน้าอารีน่า"));
-
-    return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
-      /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-        /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 10 } },
-          /*#__PURE__*/React.createElement(ArenaHpBar, { label: "คุณ", hp: match.you.hp, maxHp: match.you.maxHp, mp: match.you.mp, maxMp: match.you.maxMp, pet: match.yourPet }),
-          /*#__PURE__*/React.createElement(ArenaHpBar, { label: match.opponentName || "คู่ต่อสู้", hp: match.opponent.hp, maxHp: match.opponent.maxHp, pet: match.opponentPet }))),
-
-      // Placeholder battle stage — see the md-pvp-* CSS comment (src/data/styles.js) for
-      // why these are emoji boxes and not <HeroSprite>/<PetCombatSprite>.
-      /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, padding: "4px 8px" } },
-        /*#__PURE__*/React.createElement("div", { className: "md-pvp-stage" },
-          /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
-            /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.you.hp <= 0 ? "dead" : stageAnim.you || ""}` }, "🧙"),
-            match.yourPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.yourPet.hp <= 0 ? "dead" : stageAnim.youPet || ""}` }, PET_ICON_FALLBACK)),
-          /*#__PURE__*/React.createElement("div", { className: "md-pvp-vs" }, "VS"),
-          /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
-            /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.opponent.hp <= 0 ? "dead" : stageAnim.opp || ""}` }, "👤"),
-            match.opponentPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.opponentPet.hp <= 0 ? "dead" : stageAnim.oppPet || ""}` }, PET_ICON_FALLBACK)))),
-
-      overCard,
-
-      !match.result && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-        /*#__PURE__*/React.createElement("button", {
-          className: "md-pvp-attack-btn",
-          disabled: submitting,
-          onClick: () => submitTurn("basic")
-        }, "⚔️ โจมตี"),
-        /*#__PURE__*/React.createElement("div", { className: "md-pvp-skill-grid" },
-          (match.skills || []).map(s => {
-            const cost = Number(s.mp) || 0;
-            const canAfford = match.you.mp >= cost;
-            const cdLeft = s.cooldownRemaining || 0;
-            const onCooldown = cdLeft > 0;
-            const ready = canAfford && !onCooldown;
-            return /*#__PURE__*/React.createElement("button", {
-              key: s.key,
-              className: `md-pvp-skill-btn ${ready ? "ready" : ""} ${onCooldown ? "cooldown" : ""}`,
-              "data-cd": onCooldown ? cdLeft : undefined,
-              disabled: submitting || !canAfford || onCooldown,
-              title: s.desc || "",
-              onClick: () => submitTurn("active", s.key)
-            },
-              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-icon" }, s.icon || "✨"),
-              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-name" }, s.name || s.key),
-              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-cost" }, cost, " SP"));
-          })),
-        error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 6, color: "#FF6B6B" } }, error)),
-
-      /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, maxHeight: 220, overflowY: "auto" } },
-        match.log.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "เลือกท่าโจมตีเพื่อเริ่มต่อสู้"),
-        match.log.map((entry, i) => /*#__PURE__*/React.createElement("p", { key: i, className: "md-sub", style: { marginBottom: 3 } }, pvpFormatLogEntry(entry, pvpUnitNames)))),
-
-      !match.result && /*#__PURE__*/React.createElement(BackButton, { onClick: onBack, label: "← Back (การต่อสู้จะค้างไว้)" }));
+    return /*#__PURE__*/React.createElement(ArenaBattle, {
+      match,
+      stageAnim,
+      submitting,
+      error,
+      onSubmitTurn: submitTurn,
+      onExitResult: () => setMatch(null),
+      onBack
+    });
   }
 
   // ---- Lobby mode ----
