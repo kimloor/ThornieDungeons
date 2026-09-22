@@ -12,6 +12,7 @@ on:
       - "head.html"
       - "tail.html"
       - "build.js"
+      - "wrangler.jsonc"
       - ".github/workflows/build-branch.yml"
   workflow_dispatch:
 
@@ -96,7 +97,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           WORKER_NAME: thorniedungeons-phaser-preview
-          PREVIEW_URL: https://thorniedungeons-phaser-preview.ekqtjl.workers.dev/index.html
+          PREVIEW_URL: https://thorniedungeons-phaser-preview.ekqtjl.workers.dev
         shell: bash
         run: |
           set -euo pipefail
@@ -118,6 +119,7 @@ jobs:
             --config wrangler.jsonc | head -n 40
 
           curl --fail --silent --show-error --max-time 30 \
+            -H "Sec-Fetch-Mode: navigate" \
             --output /dev/null \
             "$PREVIEW_URL/?phaserBattle=1"
 
