@@ -4210,6 +4210,8 @@ function CombatScreen({
     ? activeTurn.kind === "player" ? heroName : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
     : "—";
   const formationMonsters = buildMonsterFormation(monsters);
+  // Experimental renderer toggle. Gameplay stays in Battle Core; only the battlefield presentation changes.
+  const phaserPrototype = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("phaserBattle") === "1";
   const qs = quickSlots || [null, null, null, null];
   const vfxFor = targetKey => battleVfx.filter(event => event.targetKey === targetKey);
   const skillEfficiency = heroSkillRankData(player.skillLevels || {}, "skill_efficiency");
@@ -4322,10 +4324,23 @@ function CombatScreen({
     className: "md-current-turn",
     "aria-live": "polite"
   }, "Round ", Math.max(1, Number(battleRound) || 1), " · Turn: ", activeTurnName), /*#__PURE__*/React.createElement("div", {
-    className: "md-arena"
+    className: `md-arena ${phaserPrototype ? "phaser-prototype" : ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-ground"
-  }), battleVfx.filter(event => String(event.targetKey || "").startsWith("vfx-")).map(event => /*#__PURE__*/React.createElement(BattleVfx, {
+  }), phaserPrototype && /*#__PURE__*/React.createElement(PhaserBattlefieldPrototype, {
+    player: player,
+    heroName: heroName,
+    equipped: equipped,
+    heroAnim: heroAnim,
+    petCombat: petCombat,
+    petAnim: petAnim,
+    monsters: monsters,
+    targetUid: targetUid,
+    onSelectTarget: onSelectTarget,
+    enemyAnims: enemyAnims,
+    battleVfx: battleVfx,
+    combatSpeed: combatSpeed
+  }), !phaserPrototype && battleVfx.filter(event => String(event.targetKey || "").startsWith("vfx-")).map(event => /*#__PURE__*/React.createElement(BattleVfx, {
     key: event.id,
     event: event,
     combatSpeed: combatSpeed
@@ -4338,7 +4353,8 @@ function CombatScreen({
     role: "status",
     "aria-live": "polite"
   }, "Confirming result…"), /*#__PURE__*/React.createElement("div", {
-    className: "md-party-board"
+    className: "md-party-board",
+    style: phaserPrototype ? { visibility: "hidden", pointerEvents: "none" } : undefined
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hero-slot"
   }, /*#__PURE__*/React.createElement("div", {
@@ -4386,7 +4402,8 @@ function CombatScreen({
     className: "md-dmg-float",
     style: { color: f.color }
   }, f.text)))), /*#__PURE__*/React.createElement("div", {
-    className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`
+    className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`,
+    style: phaserPrototype ? { visibility: "hidden", pointerEvents: "none" } : undefined
   }, formationMonsters.map(({ monster: m, slotIndex }) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
     className: `md-monster-slot md-monster-slot-${slotIndex} ${m.isEliteBoss ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
