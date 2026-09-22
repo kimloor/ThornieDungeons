@@ -96,7 +96,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           WORKER_NAME: thorniedungeons-phaser-preview
-          PREVIEW_URL: https://thorniedungeons-phaser-preview.ekqtjl.workers.dev
+          PREVIEW_URL: https://thorniedungeons-phaser-preview.ekqtjl.workers.dev/index.html
         shell: bash
         run: |
           set -euo pipefail
