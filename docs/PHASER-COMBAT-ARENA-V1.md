@@ -454,9 +454,10 @@ The following work should be tracked so implementation does not conflict with ot
    - this migration may change Arena presentation only
    - current Arena gameplay/API behavior must be preserved from latest code until a separate Arena gameplay contract is approved
 
-5. **Social/Guild remaining work**
-   - Guild donation and Guild Chat remain separate pending features
-   - they do not block Phaser migration and must not be mixed into this scope
+5. **Inventory V2 refactor**
+   - Inventory remains DOM/React and does not move into Phaser
+   - Inventory refactor should remain a separate scope
+   - active sequencing is defined in `ACTIVE-DEVELOPMENT-ROADMAP-V1.md`
 
 ---
 
