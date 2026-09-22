@@ -1,6 +1,6 @@
 // Phaser battlefield experiment.
 // Presentation-only: Battle Core remains the sole gameplay resolver; preview deploys are isolated from production.
-// Enabled only with ?phaserBattle=1 on the experiment branch.
+// Enabled only with ?phaserBattle=1 on the experiment branch; branch CI builds and deploys the isolated preview.
 
 const PHASER_RUNTIME_URL = "https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js";
 let phaserRuntimePromise = null;
