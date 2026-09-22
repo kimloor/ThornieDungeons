@@ -28,6 +28,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | --- | --- |
 | [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-DESIGN** master execution roadmap split into CHAT / WORK / GRAPHICS lanes, covering Social completion, Inventory V2, Phaser Dungeon/Arena, Hero V5 and final architecture cleanup. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
+| [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. |
@@ -70,6 +71,7 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 
 - [`AGENTS.md`](../AGENTS.md)
 - [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md)
+- [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) when final-hit presentation, Result UI, completion receipt, or reward persistence is affected
 - [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md)
 - [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md)
 - [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md)
