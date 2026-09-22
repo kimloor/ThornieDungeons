@@ -12139,6 +12139,158 @@ function GuildScreen({
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
+function RaidBossCard({
+  boss,
+  hpPct,
+  hpCurrent,
+  hpMax,
+  bossSpriteConfig,
+  hurtToken,
+  onHurtComplete,
+  isDead
+}) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
+    /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.name || "Raid Boss"),
+    /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
+      /*#__PURE__*/React.createElement("div", {
+        className: "md-bar-fill",
+        style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
+      })),
+    /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
+    /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
+      config: bossSpriteConfig,
+      hurtToken,
+      className: "md-raid-boss-sprite",
+      alt: boss.name || "Raid Boss",
+      onHurtComplete
+    }),
+    isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา"));
+}
+
+function RaidAttackActions({
+  supportsStamina,
+  outOfStamina,
+  attacking,
+  hurtPlaying,
+  isDead,
+  canAffordRefill,
+  me,
+  onAttack
+}) {
+  return /*#__PURE__*/React.createElement(React.Fragment, null,
+    (!outOfStamina || !supportsStamina) && /*#__PURE__*/React.createElement("button", {
+      className: "md-btn attack wide",
+      style: { marginTop: 8 },
+      disabled: attacking || hurtPlaying || isDead || (!supportsStamina && outOfStamina),
+      onClick: () => onAttack(false)
+    }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี"),
+    supportsStamina && outOfStamina && /*#__PURE__*/React.createElement("button", {
+      className: "md-btn attack wide",
+      style: { marginTop: 8 },
+      disabled: attacking || hurtPlaying || isDead || !canAffordRefill,
+      onClick: () => onAttack(true)
+    }, attacking ? "กำลังโจมตี..." : /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement(GameIcon, {
+        category: "currency",
+        iconKey: "diamond",
+        fallback: "💎",
+        className: "md-game-icon md-inline-item-icon",
+        alt: "Diamond"
+      }),
+      ` จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`)));
+}
+
+function RaidPlayerStatus({
+  supportsStamina,
+  me,
+  outOfStamina,
+  mm,
+  ss,
+  legacyAttemptsLeft,
+  lastResult,
+  attacking,
+  hurtPlaying,
+  isDead,
+  canAffordRefill,
+  onAttack
+}) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between" } },
+      supportsStamina
+        ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "⚡ ", me.stamina, "/", me.staminaMax, outOfStamina ? ` (เติมอีกใน ${mm}:${ss})` : "")
+        : /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "โจมตีเหลือ ", legacyAttemptsLeft, "/", me.attemptsMax),
+      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "สูงสุด ", formatNumber(me.bestHit))),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสะสม: ", formatNumber(me.contribution)),
+    lastResult && !lastResult.error && /*#__PURE__*/React.createElement("p", {
+      className: "md-sub",
+      style: { color: lastResult.crit ? "#FFD166" : undefined, fontWeight: "bold" }
+    }, lastResult.crit ? "💥 CRIT! " : "", "ดาเมจ ", formatNumber(lastResult.damage)),
+    lastResult && !lastResult.error && lastResult.petDamage > 0 && /*#__PURE__*/React.createElement("p", {
+      className: "md-sub",
+      style: { color: lastResult.petCrit ? "#FFD166" : undefined }
+    }, "🐾 pet ", lastResult.petCrit ? "💥 " : "", formatNumber(lastResult.petDamage)),
+    lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่"
+        : lastResult.error === "no_attempts_left" ? "หมดจำนวนครั้งโจมตีวันนี้แล้ว"
+        : lastResult.error === "no_stamina" ? "พลัง Raid หมดแล้ว กรุณารอให้ฟื้น"
+        : lastResult.error === "stamina_conflict" ? "พลัง Raid มีการเปลี่ยนแปลง กรุณากดใหม่"
+        : lastResult.error === "insufficient_diamonds" ? "เพชรไม่พอสำหรับโจมตี"
+        : lastResult.error === "network_error" ? "เชื่อมต่อ Raid ไม่สำเร็จ กรุณาลองใหม่"
+        : lastResult.error),
+    /*#__PURE__*/React.createElement(RaidAttackActions, {
+      supportsStamina,
+      outOfStamina,
+      attacking,
+      hurtPlaying,
+      isDead,
+      canAffordRefill,
+      me,
+      onAttack
+    }));
+}
+
+function RaidMilestonePanel({ me, milestoneSpecials }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ — แจกอัตโนมัติ)"),
+    /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
+      /*#__PURE__*/React.createElement("div", {
+        className: "md-bar-fill",
+        style: { width: `${me.contributionPct}%`, background: "linear-gradient(90deg,#6EC6FF,#4A7CFF)" }
+      })),
+    /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, me.contributionPct, "%"),
+    milestoneSpecials.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "(อัปเดต server แล้วรายละเอียดจะขึ้นตรงนี้)"),
+    milestoneSpecials.map(m => {
+      const key = `p${m.pct}`;
+      const done = me.contributionPct >= m.pct;
+      const claimed = me.milestonesClaimed.indexOf(key) !== -1;
+      return /*#__PURE__*/React.createElement("div", { key: m.pct, className: "md-shop-row" },
+        /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.pct, "% — ", m.label),
+        /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ ส่งแล้ว" : done ? "⏳ กำลังส่ง..." : "🔒"));
+    }));
+}
+
+function RankRow({ rowKey, medal, name, isMe, value }) {
+  return /*#__PURE__*/React.createElement("div", {
+    key: rowKey,
+    className: "md-shop-row",
+    style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
+  }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", name || "?", isMe ? " (คุณ)" : ""),
+     /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, value));
+}
+
+function RaidRanking({ rows, characterId }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "อันดับดาเมจ"),
+    rows.map((row, idx) => /*#__PURE__*/React.createElement(RankRow, {
+      key: row.character_id,
+      rowKey: row.character_id,
+      medal: idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`,
+      name: row.name,
+      isMe: row.character_id === characterId,
+      value: formatNumber(row.total_contribution)
+    })));
+}
+
 function RaidScreen({
   serverUrl,
   characterId,
@@ -12255,80 +12407,32 @@ function RaidScreen({
 
   return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
     toast && /*#__PURE__*/React.createElement("div", { className: "md-toast" }, toast),
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.name || "Raid Boss"),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
-        /*#__PURE__*/React.createElement("div", {
-          className: "md-bar-fill",
-          style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
-        })),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
-      /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
-        config: bossSpriteConfig,
-        hurtToken,
-        className: "md-raid-boss-sprite",
-        alt: boss.name || "Raid Boss",
-        onHurtComplete: handleHurtComplete
-      }),
-      isDead && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "บอสตายแล้ว! กำลังจะมีตัวใหม่มา")),
-
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between" } },
-        supportsStamina
-          ? /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "⚡ ", me.stamina, "/", me.staminaMax, outOfStamina ? ` (เติมอีกใน ${mm}:${ss})` : "")
-          : /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "โจมตีเหลือ ", legacyAttemptsLeft, "/", me.attemptsMax),
-        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "สูงสุด ", formatNumber(me.bestHit))),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ดาเมจสะสม: ", formatNumber(me.contribution)),
-      lastResult && !lastResult.error && /*#__PURE__*/React.createElement("p", {
-        className: "md-sub",
-        style: { color: lastResult.crit ? "#FFD166" : undefined, fontWeight: "bold" }
-      }, lastResult.crit ? "💥 CRIT! " : "", "ดาเมจ ", formatNumber(lastResult.damage)),
-      lastResult && !lastResult.error && lastResult.petDamage > 0 && /*#__PURE__*/React.createElement("p", {
-        className: "md-sub",
-        style: { color: lastResult.petCrit ? "#FFD166" : undefined }
-      }, "🐾 pet ", lastResult.petCrit ? "💥 " : "", formatNumber(lastResult.petDamage)),
-      lastResult && lastResult.error && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, lastResult.error === "boss_already_dead" ? "บอสตายแล้ว รอตัวใหม่" : lastResult.error === "no_attempts_left" ? "หมดจำนวนครั้งโจมตีวันนี้แล้ว" : lastResult.error === "no_stamina" ? "พลัง Raid หมดแล้ว กรุณารอให้ฟื้น" : lastResult.error === "stamina_conflict" ? "พลัง Raid มีการเปลี่ยนแปลง กรุณากดใหม่" : lastResult.error === "insufficient_diamonds" ? "เพชรไม่พอสำหรับโจมตี" : lastResult.error === "network_error" ? "เชื่อมต่อ Raid ไม่สำเร็จ กรุณาลองใหม่" : lastResult.error),
-      (!outOfStamina || !supportsStamina) && /*#__PURE__*/React.createElement("button", {
-        className: "md-btn attack wide",
-        style: { marginTop: 8 },
-        disabled: attacking || hurtPlaying || isDead || (!supportsStamina && outOfStamina),
-        onClick: () => handleAttack(false)
-      }, attacking ? "กำลังโจมตี..." : "⚔️ โจมตี"),
-      supportsStamina && outOfStamina && /*#__PURE__*/React.createElement("button", {
-        className: "md-btn attack wide",
-        style: { marginTop: 8 },
-        disabled: attacking || hurtPlaying || isDead || !canAffordRefill,
-        onClick: () => handleAttack(true)
-      }, attacking ? "กำลังโจมตี..." : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), ` จ่าย ${me.diamondRefillCost} เพชรเพื่อโจมตี`))),
-
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "ดาเมจสะสม (ทุก 5% ได้เพชร, ทุก 10% ได้วัตถุดิบ — แจกอัตโนมัติ)"),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
-        /*#__PURE__*/React.createElement("div", { className: "md-bar-fill", style: { width: `${me.contributionPct}%`, background: "linear-gradient(90deg,#6EC6FF,#4A7CFF)" } })),
-      /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, me.contributionPct, "%"),
-      milestoneSpecials.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "(อัปเดต server แล้วรายละเอียดจะขึ้นตรงนี้)"),
-      milestoneSpecials.map(m => {
-        const key = `p${m.pct}`;
-        const done = me.contributionPct >= m.pct;
-        const claimed = me.milestonesClaimed.indexOf(key) !== -1;
-        return /*#__PURE__*/React.createElement("div", { key: m.pct, className: "md-shop-row" },
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, m.pct, "% — ", m.label),
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, claimed ? "✅ ส่งแล้ว" : done ? "⏳ กำลังส่ง..." : "🔒"));
-      })),
-
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "อันดับดาเมจ"),
-      (status.top || []).map((row, idx) => {
-        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
-        const isMe = row.character_id === characterId;
-        return /*#__PURE__*/React.createElement("div", {
-          key: row.character_id,
-          className: "md-shop-row",
-          style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
-        }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
-           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.total_contribution)));
-      })),
-
+    /*#__PURE__*/React.createElement(RaidBossCard, {
+      boss,
+      hpPct,
+      hpCurrent,
+      hpMax,
+      bossSpriteConfig,
+      hurtToken,
+      onHurtComplete: handleHurtComplete,
+      isDead
+    }),
+    /*#__PURE__*/React.createElement(RaidPlayerStatus, {
+      supportsStamina,
+      me,
+      outOfStamina,
+      mm,
+      ss,
+      legacyAttemptsLeft,
+      lastResult,
+      attacking,
+      hurtPlaying,
+      isDead,
+      canAffordRefill,
+      onAttack: handleAttack
+    }),
+    /*#__PURE__*/React.createElement(RaidMilestonePanel, { me, milestoneSpecials }),
+    /*#__PURE__*/React.createElement(RaidRanking, { rows: status.top || [], characterId }),
     /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
 }
 
@@ -12384,6 +12488,231 @@ function ArenaHpBar({ label, hp, maxHp, mp, maxMp, pet }) {
       /*#__PURE__*/React.createElement("div", { className: "md-bar-track", style: { marginTop: 3 } }, /*#__PURE__*/React.createElement("div", { className: "md-bar-fill", style: { width: mpPct + "%", background: "#4a90d9" } })),
       /*#__PURE__*/React.createElement("p", { className: "md-bar-label" }, mp, "/", maxMp, " SP")),
     pet && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 4 } }, PET_ICON_FALLBACK, " ", pet.hp, "/", pet.maxHp));
+}
+
+function ArenaPlayerSummary({ status, ticketsMax, outOfTickets, mm, ss }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
+    /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 อารีน่า"),
+    /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-around", marginTop: 6 } },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating"),
+        /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, formatNumber(status.rating))),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "อันดับ"),
+        /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, "#", status.rank)),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "W / L"),
+        /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, status.wins, " / ", status.losses))),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 8 } },
+      "⚡ ตั๋ว ", status.tickets, "/", ticketsMax, outOfTickets ? ` (เติมอีกใน ${mm}:${ss})` : ""));
+}
+
+function ArenaOpponentList({
+  opponents,
+  refreshingOpp,
+  onRefresh,
+  outOfTickets,
+  startingId,
+  canAffordRefill,
+  diamondRefillCost,
+  onStartFight
+}) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "คู่ต่อสู้"),
+      /*#__PURE__*/React.createElement("button", {
+        className: "md-btn wide small",
+        disabled: refreshingOpp,
+        onClick: onRefresh
+      }, refreshingOpp ? "..." : "🔄 สุ่มใหม่")),
+    (!opponents || opponents.length === 0) && /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      refreshingOpp ? "กำลังหาคู่ต่อสู้..." : "ไม่พบคู่ต่อสู้ในตอนนี้"),
+    (opponents || []).map(opp => /*#__PURE__*/React.createElement("div", { key: opp.characterId, className: "md-shop-row" },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, opp.name || "?", " (Lv.", opp.level, ")", opp.hasPet ? " 🐾" : ""),
+        /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, "Rating ", formatNumber(opp.rating), " · ", opp.wins, "W ", opp.losses, "L")),
+      !outOfTickets
+        ? /*#__PURE__*/React.createElement("button", {
+            className: "md-btn attack small",
+            disabled: !!startingId,
+            onClick: () => onStartFight(opp.characterId, false)
+          }, startingId === opp.characterId ? "..." : "⚔️ โจมตี")
+        : /*#__PURE__*/React.createElement("button", {
+            className: "md-btn attack small",
+            disabled: !!startingId || !canAffordRefill,
+            onClick: () => onStartFight(opp.characterId, true)
+          }, startingId === opp.characterId ? "..." : /*#__PURE__*/React.createElement(React.Fragment, null,
+            /*#__PURE__*/React.createElement(GameIcon, {
+              category: "currency",
+              iconKey: "diamond",
+              fallback: "💎",
+              className: "md-game-icon md-inline-item-icon",
+              alt: "Diamond"
+            }),
+            diamondRefillCost)))));
+}
+
+function ArenaRanking({ rows, characterId }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "จัดอันดับ"),
+    rows.map((row, idx) => /*#__PURE__*/React.createElement(RankRow, {
+      key: row.characterId,
+      rowKey: row.characterId,
+      medal: idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`,
+      name: row.name,
+      isMe: row.characterId === characterId,
+      value: /*#__PURE__*/React.createElement(React.Fragment, null,
+        formatNumber(row.rating), " (", row.wins, "W ", row.losses, "L)")
+    })));
+}
+
+function ArenaLobby({
+  status,
+  characterId,
+  error,
+  opponents,
+  refreshingOpp,
+  onRefreshOpponents,
+  outOfTickets,
+  startingId,
+  canAffordRefill,
+  onStartFight,
+  ticketsMax,
+  mm,
+  ss,
+  onBack
+}) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
+    /*#__PURE__*/React.createElement(ArenaPlayerSummary, { status, ticketsMax, outOfTickets, mm, ss }),
+    error && /*#__PURE__*/React.createElement("p", {
+      className: "md-sub",
+      style: { color: "#FF6B6B", marginBottom: 8 }
+    }, error),
+    /*#__PURE__*/React.createElement(ArenaOpponentList, {
+      opponents,
+      refreshingOpp,
+      onRefresh: onRefreshOpponents,
+      outOfTickets,
+      startingId,
+      canAffordRefill,
+      diamondRefillCost: status.diamondRefillCost || 30,
+      onStartFight
+    }),
+    /*#__PURE__*/React.createElement(ArenaRanking, { rows: status.top || [], characterId }),
+    /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
+}
+
+function ArenaBattleHud({ match }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 10 } },
+      /*#__PURE__*/React.createElement(ArenaHpBar, {
+        label: "คุณ",
+        hp: match.you.hp,
+        maxHp: match.you.maxHp,
+        mp: match.you.mp,
+        maxMp: match.you.maxMp,
+        pet: match.yourPet
+      }),
+      /*#__PURE__*/React.createElement(ArenaHpBar, {
+        label: match.opponentName || "คู่ต่อสู้",
+        hp: match.opponent.hp,
+        maxHp: match.opponent.maxHp,
+        pet: match.opponentPet
+      })));
+}
+
+function ArenaBattleStage({ match, stageAnim }) {
+  // Placeholder battle stage — see the md-pvp-* CSS comment (src/data/styles.js) for
+  // why these are emoji boxes and not <HeroSprite>/<PetCombatSprite>.
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, padding: "4px 8px" } },
+    /*#__PURE__*/React.createElement("div", { className: "md-pvp-stage" },
+      /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
+        /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.you.hp <= 0 ? "dead" : stageAnim.you || ""}` }, "🧙"),
+        match.yourPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.yourPet.hp <= 0 ? "dead" : stageAnim.youPet || ""}` }, PET_ICON_FALLBACK)),
+      /*#__PURE__*/React.createElement("div", { className: "md-pvp-vs" }, "VS"),
+      /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
+        /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.opponent.hp <= 0 ? "dead" : stageAnim.opp || ""}` }, "👤"),
+        match.opponentPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.opponentPet.hp <= 0 ? "dead" : stageAnim.oppPet || ""}` }, PET_ICON_FALLBACK))));
+}
+
+function ArenaActionPanel({ match, submitting, error, onSubmitTurn }) {
+  if (match.result) return null;
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
+    /*#__PURE__*/React.createElement("button", {
+      className: "md-pvp-attack-btn",
+      disabled: submitting,
+      onClick: () => onSubmitTurn("basic")
+    }, "⚔️ โจมตี"),
+    /*#__PURE__*/React.createElement("div", { className: "md-pvp-skill-grid" },
+      (match.skills || []).map(s => {
+        const cost = Number(s.mp) || 0;
+        const canAfford = match.you.mp >= cost;
+        const cdLeft = s.cooldownRemaining || 0;
+        const onCooldown = cdLeft > 0;
+        const ready = canAfford && !onCooldown;
+        return /*#__PURE__*/React.createElement("button", {
+          key: s.key,
+          className: `md-pvp-skill-btn ${ready ? "ready" : ""} ${onCooldown ? "cooldown" : ""}`,
+          "data-cd": onCooldown ? cdLeft : undefined,
+          disabled: submitting || !canAfford || onCooldown,
+          title: s.desc || "",
+          onClick: () => onSubmitTurn("active", s.key)
+        },
+          /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-icon" }, s.icon || "✨"),
+          /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-name" }, s.name || s.key),
+          /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-cost" }, cost, " SP"));
+      })),
+    error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 6, color: "#FF6B6B" } }, error));
+}
+
+function ArenaBattleLog({ entries, unitNames }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, maxHeight: 220, overflowY: "auto" } },
+    entries.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "เลือกท่าโจมตีเพื่อเริ่มต่อสู้"),
+    entries.map((entry, i) => /*#__PURE__*/React.createElement("p", {
+      key: i,
+      className: "md-sub",
+      style: { marginBottom: 3 }
+    }, pvpFormatLogEntry(entry, unitNames))));
+}
+
+function ArenaResult({ result, onExit }) {
+  if (!result) return null;
+  return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
+    /*#__PURE__*/React.createElement("p", {
+      className: "md-title",
+      style: { fontSize: 16, color: result.win ? "#7CFF9E" : "#FF6B6B" }
+    }, result.win ? "🏆 ชนะ!" : "💢 แพ้"),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      "Rating ", result.ratingBefore, " → ", result.ratingAfter, " (", result.ratingChange >= 0 ? "+" : "", result.ratingChange, ")"),
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" },
+      /*#__PURE__*/React.createElement(GameIcon, {
+        category: "currency",
+        iconKey: "diamond",
+        fallback: "💎",
+        className: "md-game-icon md-inline-item-icon",
+        alt: "Diamond"
+      }), " +", result.diamondsEarned || 0),
+    /*#__PURE__*/React.createElement("button", {
+      className: "md-btn wide small",
+      style: { marginTop: 8 },
+      onClick: onExit
+    }, "กลับไปหน้าอารีน่า"));
+}
+
+function ArenaBattle({ match, stageAnim, submitting, error, onSubmitTurn, onExitResult, onBack }) {
+  const unitNames = {
+    team_a_hero: (match.you && match.you.name) || "คุณ",
+    team_a_pet: match.yourPet && match.yourPet.name,
+    team_b_hero: match.opponentName || (match.opponent && match.opponent.name) || "คู่ต่อสู้",
+    team_b_pet: match.opponentPet && match.opponentPet.name,
+  };
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
+    /*#__PURE__*/React.createElement(ArenaBattleHud, { match }),
+    /*#__PURE__*/React.createElement(ArenaBattleStage, { match, stageAnim }),
+    /*#__PURE__*/React.createElement(ArenaResult, { result: match.result, onExit: onExitResult }),
+    /*#__PURE__*/React.createElement(ArenaActionPanel, { match, submitting, error, onSubmitTurn }),
+    /*#__PURE__*/React.createElement(ArenaBattleLog, { entries: match.log, unitNames }),
+    !match.result && /*#__PURE__*/React.createElement(BackButton, { onClick: onBack, label: "← Back (การต่อสู้จะค้างไว้)" }));
 }
 
 function ArenaScreen({
@@ -12524,70 +12853,15 @@ function ArenaScreen({
 
   // ---- Fight mode ----
   if (match) {
-    const pvpUnitNames = {
-      team_a_hero: (match.you && match.you.name) || "คุณ",
-      team_a_pet: match.yourPet && match.yourPet.name,
-      team_b_hero: match.opponentName || (match.opponent && match.opponent.name) || "คู่ต่อสู้",
-      team_b_pet: match.opponentPet && match.opponentPet.name,
-    };
-    const overCard = match.result && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 16, color: match.result.win ? "#7CFF9E" : "#FF6B6B" } }, match.result.win ? "🏆 ชนะ!" : "💢 แพ้"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating ", match.result.ratingBefore, " → ", match.result.ratingAfter, " (", match.result.ratingChange >= 0 ? "+" : "", match.result.ratingChange, ")"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " +", match.result.diamondsEarned || 0),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn wide small", style: { marginTop: 8 }, onClick: () => setMatch(null) }, "กลับไปหน้าอารีน่า"));
-
-    return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
-      /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-        /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 10 } },
-          /*#__PURE__*/React.createElement(ArenaHpBar, { label: "คุณ", hp: match.you.hp, maxHp: match.you.maxHp, mp: match.you.mp, maxMp: match.you.maxMp, pet: match.yourPet }),
-          /*#__PURE__*/React.createElement(ArenaHpBar, { label: match.opponentName || "คู่ต่อสู้", hp: match.opponent.hp, maxHp: match.opponent.maxHp, pet: match.opponentPet }))),
-
-      // Placeholder battle stage — see the md-pvp-* CSS comment (src/data/styles.js) for
-      // why these are emoji boxes and not <HeroSprite>/<PetCombatSprite>.
-      /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, padding: "4px 8px" } },
-        /*#__PURE__*/React.createElement("div", { className: "md-pvp-stage" },
-          /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
-            /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.you.hp <= 0 ? "dead" : stageAnim.you || ""}` }, "🧙"),
-            match.yourPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.yourPet.hp <= 0 ? "dead" : stageAnim.youPet || ""}` }, PET_ICON_FALLBACK)),
-          /*#__PURE__*/React.createElement("div", { className: "md-pvp-vs" }, "VS"),
-          /*#__PURE__*/React.createElement("div", { className: "md-pvp-side" },
-            /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit ${match.opponent.hp <= 0 ? "dead" : stageAnim.opp || ""}` }, "👤"),
-            match.opponentPet && /*#__PURE__*/React.createElement("div", { className: `md-pvp-unit pet ${match.opponentPet.hp <= 0 ? "dead" : stageAnim.oppPet || ""}` }, PET_ICON_FALLBACK)))),
-
-      overCard,
-
-      !match.result && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-        /*#__PURE__*/React.createElement("button", {
-          className: "md-pvp-attack-btn",
-          disabled: submitting,
-          onClick: () => submitTurn("basic")
-        }, "⚔️ โจมตี"),
-        /*#__PURE__*/React.createElement("div", { className: "md-pvp-skill-grid" },
-          (match.skills || []).map(s => {
-            const cost = Number(s.mp) || 0;
-            const canAfford = match.you.mp >= cost;
-            const cdLeft = s.cooldownRemaining || 0;
-            const onCooldown = cdLeft > 0;
-            const ready = canAfford && !onCooldown;
-            return /*#__PURE__*/React.createElement("button", {
-              key: s.key,
-              className: `md-pvp-skill-btn ${ready ? "ready" : ""} ${onCooldown ? "cooldown" : ""}`,
-              "data-cd": onCooldown ? cdLeft : undefined,
-              disabled: submitting || !canAfford || onCooldown,
-              title: s.desc || "",
-              onClick: () => submitTurn("active", s.key)
-            },
-              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-icon" }, s.icon || "✨"),
-              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-name" }, s.name || s.key),
-              /*#__PURE__*/React.createElement("span", { className: "md-pvp-skill-cost" }, cost, " SP"));
-          })),
-        error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 6, color: "#FF6B6B" } }, error)),
-
-      /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, maxHeight: 220, overflowY: "auto" } },
-        match.log.length === 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "เลือกท่าโจมตีเพื่อเริ่มต่อสู้"),
-        match.log.map((entry, i) => /*#__PURE__*/React.createElement("p", { key: i, className: "md-sub", style: { marginBottom: 3 } }, pvpFormatLogEntry(entry, pvpUnitNames)))),
-
-      !match.result && /*#__PURE__*/React.createElement(BackButton, { onClick: onBack, label: "← Back (การต่อสู้จะค้างไว้)" }));
+    return /*#__PURE__*/React.createElement(ArenaBattle, {
+      match,
+      stageAnim,
+      submitting,
+      error,
+      onSubmitTurn: submitTurn,
+      onExitResult: () => setMatch(null),
+      onBack
+    });
   }
 
   // ---- Lobby mode ----
@@ -12597,62 +12871,22 @@ function ArenaScreen({
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 อารีน่า"),
-      /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-around", marginTop: 6 } },
-        /*#__PURE__*/React.createElement("div", null,
-          /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating"),
-          /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, formatNumber(status.rating))),
-        /*#__PURE__*/React.createElement("div", null,
-          /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "อันดับ"),
-          /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, "#", status.rank)),
-        /*#__PURE__*/React.createElement("div", null,
-          /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "W / L"),
-          /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 18 } }, status.wins, " / ", status.losses))),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { marginTop: 8 } }, "⚡ ตั๋ว ", status.tickets, "/", ticketsMax, outOfTickets ? ` (เติมอีกใน ${mm}:${ss})` : "")),
-
-    error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "#FF6B6B", marginBottom: 8 } }, error),
-
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
-        /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "คู่ต่อสู้"),
-        /*#__PURE__*/React.createElement("button", {
-          className: "md-btn wide small",
-          disabled: refreshingOpp,
-          onClick: loadOpponents
-        }, refreshingOpp ? "..." : "🔄 สุ่มใหม่")),
-      (!opponents || opponents.length === 0) && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, refreshingOpp ? "กำลังหาคู่ต่อสู้..." : "ไม่พบคู่ต่อสู้ในตอนนี้"),
-      (opponents || []).map(opp => /*#__PURE__*/React.createElement("div", { key: opp.characterId, className: "md-shop-row" },
-        /*#__PURE__*/React.createElement("div", null,
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, opp.name || "?", " (Lv.", opp.level, ")", opp.hasPet ? " 🐾" : ""),
-          /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, "Rating ", formatNumber(opp.rating), " · ", opp.wins, "W ", opp.losses, "L")),
-        !outOfTickets
-          ? /*#__PURE__*/React.createElement("button", {
-              className: "md-btn attack small",
-              disabled: !!startingId,
-              onClick: () => startFight(opp.characterId, false)
-            }, startingId === opp.characterId ? "..." : "⚔️ โจมตี")
-          : /*#__PURE__*/React.createElement("button", {
-              className: "md-btn attack small",
-              disabled: !!startingId || !canAffordRefill,
-              onClick: () => startFight(opp.characterId, true)
-            }, startingId === opp.characterId ? "..." : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), status.diamondRefillCost || 30))))),
-
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10 } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title", style: { fontSize: 14 } }, "จัดอันดับ"),
-      (status.top || []).map((row, idx) => {
-        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
-        const isMe = row.characterId === characterId;
-        return /*#__PURE__*/React.createElement("div", {
-          key: row.characterId,
-          className: "md-shop-row",
-          style: isMe ? { background: "rgba(255,215,0,0.12)", borderRadius: 8 } : undefined
-        }, /*#__PURE__*/React.createElement("div", { className: "md-shop-info" }, medal, " ", row.name || "?", isMe ? " (คุณ)" : ""),
-           /*#__PURE__*/React.createElement("div", { className: "md-shop-lv" }, formatNumber(row.rating), " (", row.wins, "W ", row.losses, "L)"));
-      })),
-
-    /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
+  return /*#__PURE__*/React.createElement(ArenaLobby, {
+    status,
+    characterId,
+    error,
+    opponents,
+    refreshingOpp,
+    onRefreshOpponents: loadOpponents,
+    outOfTickets,
+    startingId,
+    canAffordRefill,
+    onStartFight: startFight,
+    ticketsMax,
+    mm,
+    ss,
+    onBack
+  });
 }
 
 // Turns a mail's item descriptor (worker-side plain data: type/rarity/name/stats/setId/star)
