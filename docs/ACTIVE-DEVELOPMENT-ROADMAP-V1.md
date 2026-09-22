@@ -1,116 +1,105 @@
-# ThornieDungeons — Active Development Roadmap V1
+# ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-DESIGN — current execution roadmap**
+Status: **ACTIVE-DESIGN — current master execution roadmap**
 
-This document is the current high-level roadmap for the active development track discussed on 2026-09-22.
+This roadmap merges the remaining Social/Guild/Chat work with the active Hero V5, Inventory V2 and Phaser migration tracks.
 
-It intentionally focuses only on the work that directly affects the current frontend/game presentation architecture:
+Work is split into three execution lanes:
 
-1. Hero V5
-2. Inventory V2 refactor
-3. Phaser migration for Dungeon Combat + Arena
-4. Final architecture cleanup after those systems stabilize
+1. **CHAT** — low-complexity / low-risk work the Project Lead can handle directly.
+2. **WORK** — medium/high-complexity implementation, transactional/backend work, large refactors and renderer migration.
+3. **GRAPHICS** — visual asset production and approval.
 
-Social, Guild, Chat, Raid feature expansion, Shop, Crafting, Summoning, and unrelated backend work are **outside this roadmap** unless explicitly added later.
-
----
-
-## 1. Guiding principles
-
-- Do not rewrite working gameplay systems just to adopt Phaser.
-- Keep Battle Core, Arena resolver/API, save/checkpoint, rewards, skill rules and Pet rules unchanged unless separately approved.
-- React/DOM remains the application/page UI layer.
-- Phaser is used only for real-time battlefield presentation in Dungeon Combat and Arena.
-- Hero V5 remains modular, layered and frame-based.
-- Inventory remains DOM/React.
-- Refactors must preserve behavior unless the task explicitly includes a behavior change.
-- Source-first workflow: edit source -> `node build.js` -> syntax/tests -> staging/user check -> QA -> merge/release.
-- Do not remove fallbacks or old renderers until the replacement is verified.
+The lanes may run in parallel where dependencies allow.
 
 ---
 
-## 2. Current state
+## 1. Global rules
 
-### Completed / stable enough to build on
-
-- Raid + Arena UI decomposition from Scope B is complete and merged.
-- Arena already has separated battle presentation components including `ArenaBattleStage`.
-- Phaser prototype exists in Draft PR #10 and has a working isolated preview.
-- Phaser experiment confirms the current Battle Core can remain authoritative while Phaser renders battlefield visuals.
-- Hero V5 design direction is documented and locked as a modular frame-based sprite system.
-- Inventory UI V2 production behavior/design contract exists.
-
-### Still pending
-
-- Hero V5 artwork/runtime replacement is not complete.
-- Inventory V2 structural refactor is not complete.
-- Phaser prototype is not yet production architecture.
-- Production battle anchors/layout for Phaser are not finalized.
-- Arena still uses placeholder DOM battle-stage visuals.
-- Final App/styles architecture cleanup should wait until the three major tracks above stabilize.
+- Check latest `main` before every task.
+- Source first -> `node build.js`; never hand-edit generated `index.html`.
+- Do not restore `app-v2.html`.
+- Do not overwrite unrelated work.
+- Existing Battle Core, Arena resolver/API, save/checkpoint, rewards, skill rules and Pet rules remain authoritative unless separately approved.
+- React/DOM remains application/page UI.
+- Phaser is presentation-only for Dungeon Combat and Arena battlefield rendering.
+- Inventory remains React/DOM.
+- Hero V5 remains modular, layered, synchronized frame-based animation; no skeletal/Spine runtime.
+- High-risk scopes use branch + focused QA + user verification before release.
+- Do not remove fallbacks until replacements are verified.
 
 ---
 
-## 3. Track A — Hero V5
+# PART 1 — CHAT LANE
+## Low-complexity work the Project Lead can do directly
 
-### Goal
+These tasks do not require a large coding agent/Work handoff unless audit findings expand the scope.
 
-Produce and integrate the future Hero visual system without mixing it into unrelated gameplay changes.
+### C1 — Documentation / roadmap maintenance
+- keep this roadmap and `PROJECT-INDEX.md` aligned;
+- update ACTIVE-PRODUCTION / ACTIVE-DESIGN status after verified releases;
+- archive or mark superseded temporary docs when safe;
+- keep implementation prompts compact and scoped.
 
-### A1 — Base Hero production
+### C2 — Read-only audits and smoke checks
+After each WORK handoff:
+- verify latest `main` SHA;
+- inspect changed files/migrations;
+- verify GitHub Actions/deploy result;
+- audit source against the active contract;
+- run non-destructive smoke checks where available;
+- classify findings as PASS / HOTFIX / NEED_AUTH_E2E.
 
-- lock final Base Hero concept/proportions;
-- produce Idle 3 frames;
-- produce Attack 3 frames;
-- produce Death 2–3 frames;
-- verify mobile readability;
-- lock master canvas and frame alignment.
+### C3 — Focused QA review
+- review Chat/Guild/Inventory/Phaser handoffs;
+- confirm no unrelated changes;
+- compare implementation against source-of-truth docs;
+- produce small manual test checklists for user verification.
 
-### A2 — Layer/export validation
+### C4 — Low-risk polish only
+May be handled directly when isolated and clearly LOW risk:
+- text/copy fixes;
+- disabled/Coming Soon labels;
+- tiny CSS alignment or safe-area corrections;
+- documentation-only cleanup;
+- navigation label/order cleanup that does not change routing/state behavior.
 
-- verify synchronized layer composition;
-- verify hair/head/body/arm/weapon/wings ordering;
-- verify equipment overlay coverage;
-- define manifest keys/paths;
-- create first complete equipment test set.
-
-### A3 — Phaser-ready runtime adapter
-
-Only after A1/A2 are approved:
-
-- implement HeroActor V5 layer composition in Phaser;
-- preserve frame-based animation;
-- do not synthesize Attack using limb rotation/bone animation;
-- support equipment layer swapping from existing equipment state;
-- verify V4 fallback remains available during rollout.
-
-### A4 — Hero V5 production replacement
-
-After QA:
-
-- switch Phaser Hero renderer from V4-compatible/fallback rendering to V5;
-- verify equipment appearance;
-- verify Idle/Attack/Death;
-- verify mobile/tablet/desktop;
-- keep rollback path until production verification is complete.
-
-Reference:
-- `HERO-SPRITE-V5.md`
-- `HERO-OVERLAY-V4.md`
-- `PHASER-COMBAT-ARENA-V1.md`
+Do not use CHAT lane for:
+- D1 schema changes;
+- economy/item consumption;
+- concurrency/idempotency;
+- large component refactors;
+- Phaser runtime changes;
+- Battle/Arena gameplay-sensitive code.
 
 ---
 
-## 4. Track B — Inventory V2 refactor
+# PART 2 — WORK LANE
+## Complex implementation requiring Work/DEV
 
-### Goal
+## W0 — Social Phase 3+4 Audit Hotfix
+**Priority: first**
 
-Reduce Inventory component complexity while preserving all current Inventory behavior and layout rules.
+Fix the six confirmed issues before Phase 5:
+1. DM unread must ignore the current character's own sent messages.
+2. Global blocked-message filtering must not stall the polling cursor.
+3. Global/Direct send must be retry-safe/idempotent server-side.
+4. Guild Leader must be able to edit description and set OPEN / APPLICATION / CLOSED.
+5. Max 5 pending Guild applications must be enforced race-safely.
+6. Manual + automatic leadership transfer must keep guild leader reference and member roles consistent atomically/race-safely.
 
-### B1 — Component decomposition
+Gate:
+- relevant tests pass;
+- migration/deploy verified if schema changes;
+- Phase 5 not started inside this hotfix.
 
-Target structure:
+---
 
+## W1 — Inventory V2 Structural Refactor + Donation-ready Boundary
+
+Decompose `InventoryOverlayV2` while preserving behavior.
+
+Target:
 ```text
 InventoryOverlayV2
 ├─ InventoryHeader
@@ -128,60 +117,91 @@ InventoryOverlayV2
 └─ GameDock
 ```
 
-### B2 — Dead/duplicate code cleanup
+Also prepare clean reusable boundaries needed by Guild Donation:
+- authoritative item identity/category access;
+- quantity access;
+- equipped/locked state access;
+- reusable item-selection/list presentation where genuinely shared.
 
-- confirm whether legacy `InventoryOverlay` is unused;
-- remove only after repo-wide reference check;
-- consolidate item/icon/slot presentation only when there are real shared callers;
-- preserve capacity/overflow semantics;
-- preserve compare logic;
-- preserve sell/salvage/equip behavior.
+Do **not** implement donation/economy behavior in this refactor.
 
-### B3 — Responsive verification
-
-Verify:
-
-- mobile <=430;
-- tablet 431–700;
-- desktop >700;
-- equipment stage;
-- inventory grid expansion/collapse;
-- compare popup;
-- toolbar;
-- GameDock;
-- safe area and overflow.
-
-### B4 — Inventory completion gate
-
-Inventory refactor is complete only when:
-
-- behavior is unchanged;
-- build/syntax/tests pass;
-- focused Inventory smoke test passes;
-- no unrelated battle/Phaser code is changed.
-
-Reference:
-- `INVENTORY-UI-V2.md`
+Gate:
+- behavior unchanged;
+- mobile/tablet/desktop responsive checks pass;
+- focused Inventory smoke + build/tests pass.
 
 ---
 
-## 5. Track C — Phaser Combat + Arena migration
+## W2 — Guild Donation V1
 
-### Goal
+Implement after W1 is stable.
 
-Move only real-time battlefield presentation to Phaser while preserving existing gameplay ownership.
+Required:
+- inspect real production item IDs/categories; never guess whitelist keys;
+- explicit donation whitelist;
+- quantity 1–999;
+- equipped/locked items denied;
+- authenticated current Guild membership required;
+- atomic/idempotent inventory consumption;
+- Guild EXP;
+- configurable EXP/item mapping;
+- configurable level thresholds;
+- Guild level cap 10;
+- cumulative personal contribution;
+- donation audit/history;
+- Level 10: donation still allowed, contribution increases, Guild EXP cannot progress beyond cap.
 
-### C0 — Prototype review / design lock
+This is economy-sensitive and must remain separate from the Inventory refactor.
 
-- keep Draft PR #10 as experiment;
-- collect visual feedback;
-- keep prototype coordinates provisional;
-- do not merge prototype directly as final production architecture.
+---
 
-### C1 — Shared Phaser foundation
+## W3 — Guild Chat + Social Integration / UX
 
-Create reusable runtime pieces:
+Combine the old Guild Chat phase with the old Social UX-polish phase to avoid touching the same navigation/state twice.
 
+Implement:
+- Guild channel using the existing Chat engine;
+- current Guild membership authorization;
+- latest 50 initial messages for new/rejoining members, subject to retention;
+- Guild retention 14 days;
+- persistent Guild unread;
+- leave/disband immediately invalidates old Guild access/unread;
+- rejoin follows new membership rules;
+- Guild Page shortcut and Chat Page Guild tab open the same channel state;
+- block may hide messages for the blocker but must not alter Guild authority;
+- shared loading/error/empty/reconnect behavior;
+- Friend/Chat/Guild navigation consistency;
+- character-switch isolation;
+- unread badge integration where approved;
+- mobile/safe-area polish.
+
+Do not add Sticker backend, Party/Trade/Raid Chat, Guild Quest/Shop/War.
+
+---
+
+## W4 — Social Production E2E / Release QA
+
+After W0-W3:
+- Friend request/accept/remove/block;
+- Global Chat + block filtering;
+- Direct Chat + unread + unfriend/re-friend history;
+- Guild create/search/policy/apply/accept/kick/transfer/disband;
+- Donation retry/double-tap safety;
+- Guild EXP/contribution;
+- Guild Chat membership/unread/leave/rejoin;
+- logout/login persistence;
+- character switching;
+- navigation/mobile safe areas.
+
+Authenticated production E2E may use test credentials only when explicitly authorized.
+
+---
+
+## W5 — Phaser Shared Foundation + Production Anchors
+
+Turn the prototype into reusable production architecture.
+
+Create:
 ```text
 src/phaser/
 ├─ runtime/
@@ -201,99 +221,101 @@ src/phaser/
    └─ ResponsiveAnchors
 ```
 
+Lock responsive anchors:
+- HERO_ANCHOR
+- PET_ANCHOR
+- MONSTER_SLOT_1/2/3
+- VFX_HERO_ANCHOR
+- VFX_PET_ANCHOR
+- VFX_MONSTER_ANCHOR
+
 No gameplay logic moves into Phaser.
 
-### C2 — Production Battle anchors
+---
 
-Define and lock:
+## W6 — Dungeon Combat -> Phaser
 
-- `HERO_ANCHOR`
-- `PET_ANCHOR`
-- `MONSTER_SLOT_1`
-- `MONSTER_SLOT_2`
-- `MONSTER_SLOT_3`
-- `VFX_HERO_ANCHOR`
-- `VFX_PET_ANCHOR`
-- `VFX_MONSTER_ANCHOR`
-
-Verify 1/2/3-monster layouts and responsive scaling.
-
-### C3 — Dungeon Battle migration
-
-Move into Phaser:
-
+Move battlefield presentation only:
 - Hero;
 - Pet;
-- Monsters;
+- 1–3 Monsters;
 - target marker;
 - VFX;
-- hit/death feedback;
 - floating feedback;
-- battlefield positioning.
+- hit/death feedback;
+- battlefield positions.
 
-Keep in DOM:
-
-- top bar;
-- queue;
+Keep DOM:
+- top bar / turn queue;
 - quick slots;
 - Attack/Auto/Flee/Settings;
-- x1/x2/Skip controls;
+- x1/x2/Skip;
 - combat log;
 - modal/result UI.
 
-Keep DOM battlefield fallback during verification.
+Keep DOM battlefield fallback until QA/user approval.
 
-### C4 — Arena Battle Stage migration
+Gate:
+- Battle Core output unchanged;
+- target switching;
+- 1/2/3-monster layout;
+- VFX/hit/death;
+- x1/x2/Auto/Skip;
+- checkpoint/resume.
 
-Replace only `ArenaBattleStage` visual implementation.
+---
 
-Reuse:
+## W7 — Arena Battle Stage -> Phaser
 
+Replace only Arena battlefield presentation.
+
+Reuse shared:
 - HeroActor;
 - PetActor;
 - presentation queue;
 - VFX;
-- responsive layout infrastructure.
+- responsive anchors.
 
 Preserve:
-
-- Arena lobby;
+- lobby/opponent list;
 - tickets;
-- opponent search/list;
-- Arena API;
+- Arena APIs;
 - server-resolved actions;
-- Battle HUD;
-- Action Panel;
-- Battle Log;
-- Result;
+- HUD/action panel/log/result;
 - rating/rewards.
-
-### C5 — Phaser production cutover
-
-After Dungeon + Arena QA:
-
-- Phaser becomes default battlefield renderer;
-- remove temporary renderer flag;
-- remove obsolete DOM battlefield-only rendering;
-- keep DOM HUD/page UI;
-- remove experiment-only code;
-- verify production.
-
-Reference:
-- `PHASER-COMBAT-ARENA-V1.md`
-- `BATTLE-SYSTEM-V1.md`
-- `BATTLE-VFX-V1.md`
 
 ---
 
-## 6. Track D — Final architecture cleanup
+## W8 — Hero V5 Phaser Runtime Integration
 
-Start only after Hero V5, Inventory refactor and Phaser renderer boundaries are stable.
+Starts only after GRAPHICS G1/G2 approval.
 
-### D1 — App/controller cleanup
+Implement:
+- synchronized Hero V5 layered composition;
+- Idle/Attack/Death frame playback;
+- hair/head/body/arm/weapon/wings ordering;
+- equipment layer swapping from current equipment state;
+- no bone/limb tween animation;
+- V4 fallback retained during rollout.
 
-Incrementally move toward:
+---
 
+## W9 — Phaser Production Cutover
+
+After Dungeon + Arena + Hero V5 QA:
+- Phaser becomes default battlefield renderer;
+- remove temporary experiment flag/code;
+- remove obsolete DOM battlefield-only renderer only after verification;
+- keep DOM HUD/page UI;
+- preserve rollback path until production check completes.
+
+---
+
+## W10 — Final Architecture Cleanup
+
+Only after Social, Inventory and Phaser boundaries are stable.
+
+Controller direction:
 ```text
 App
 ├─ AuthController
@@ -301,21 +323,20 @@ App
 ├─ NavigationController
 ├─ InventoryController
 ├─ PetController
+├─ SocialController
 └─ BattleController
 ```
 
-Do not rewrite the full application in one pass.
-
-### D2 — Feature folder stabilization
-
-Target direction:
-
+Feature direction:
 ```text
 src/ui/
   shared/
   character/
   inventory/
   pet/
+  friend/
+  chat/
+  guild/
   battle/
   raid/
   arena/
@@ -334,163 +355,116 @@ src/styles/
   character.js
   inventory.js
   pet.js
+  social.js
   battle.js
   raid.js
   arena.js
 ```
 
-Move files only after dependencies are clear; avoid repeated churn.
-
-### D3 — Shared helper cleanup
-
-- shared config fetch/cache fallback helper;
-- shared loading/error/back primitives only when real reuse exists;
+Also:
+- consolidate real shared fetch/cache helpers;
 - remove confirmed dead legacy symbols;
-- do not create speculative abstractions.
+- avoid speculative abstractions;
+- avoid moving files repeatedly.
 
 ---
 
-## 7. Recommended execution order
+# PART 3 — GRAPHICS LANE
+## Visual production that can run in parallel
 
-The recommended order is:
+## G1 — Hero V5 Base Hero
+
+Produce/approve:
+- final Base Hero proportions;
+- master canvas 768x768;
+- Idle 3 frames;
+- Attack 3 frames;
+- Death 2–3 frames;
+- facing/right presentation per Hero V5 contract;
+- mobile readability;
+- frame alignment.
+
+This may run in parallel with W0-W7.
+
+---
+
+## G2 — Hero V5 Layer / Equipment Validation
+
+After G1 direction is approved:
+- verify shared coordinate space;
+- hair/head/body/right-arm/torso-leg/weapon layer structure;
+- wings behind all;
+- frame-specific ordering where required;
+- first complete equipment overlay test set;
+- verify full armor coverage where intended;
+- define real manifest keys/paths;
+- transparency/alignment checks.
+
+G2 approval is the gate for W8.
+
+---
+
+## G3 — Phaser Visual QA / Asset Gaps
+
+During W5-W9:
+- inspect actual presentation for scale/clarity;
+- produce only missing presentation assets explicitly identified by implementation/QA;
+- target marker/VFX/feedback adjustments if existing assets are insufficient;
+- never redesign gameplay from Graphics scope;
+- update R2/manifest using real paths only.
+
+---
+
+# 4. Master execution order
 
 ```text
-1. Inventory V2 refactor
-   ↓
-2. Phaser shared foundation + production anchors
-   ↓
-3. Dungeon Battle Phaser migration
-   ↓
-4. Arena Battle Stage Phaser migration
-   ↓
-5. Hero V5 artwork approval
-   ↓
-6. Hero V5 Phaser integration
-   ↓
-7. Phaser production cutover
-   ↓
-8. Final App/styles/repository cleanup
+W0  Social 3+4 Hotfix
+ ↓
+W1  Inventory Refactor + Donation-ready Boundary
+ ↓
+W2  Guild Donation
+ ↓
+W3  Guild Chat + Social Integration/UX
+ ↓
+W4  Social Production E2E
+ ↓
+W5  Phaser Foundation + Anchors
+ ↓
+W6  Dungeon -> Phaser
+ ↓
+W7  Arena -> Phaser
+ ↓
+W8  Hero V5 Runtime Integration
+ ↓
+W9  Phaser Production Cutover
+ ↓
+W10 Final Architecture Cleanup
 ```
 
-Hero V5 artwork production can run in parallel with steps 1–4 because Graphics work is largely independent.
+Parallel Graphics path:
 
-Do **not** block Phaser foundation work waiting for final Hero V5 art. Use current/fallback Hero assets until V5 is approved.
+```text
+G1 Hero V5 Base
+ ↓
+G2 Layer/Equipment Validation
+ └──────────────> required before W8
 
----
+G3 Visual asset support runs only when W5-W9 identifies a real need.
+```
 
-## 8. Why Inventory comes first
-
-Inventory is included before the main Phaser migration because:
-
-- it is a self-contained DOM/React refactor;
-- it reduces current UI complexity before the battle renderer changes;
-- it avoids mixing Inventory cleanup with high-risk Phaser work;
-- it gives the codebase a cleaner boundary before final architecture cleanup.
-
-Inventory does not move into Phaser.
+CHAT lane C1-C4 runs continuously between WORK/GRAPHICS milestones for audit, documentation, QA and small low-risk polish.
 
 ---
 
-## 9. Milestone gates
+# 5. Completion condition
 
-### Gate 1 — Inventory stable
-
-Required before moving to the main high-risk renderer migration:
-
-- component decomposition complete;
-- no Inventory behavior regression;
-- responsive checks pass;
-- build/tests pass.
-
-### Gate 2 — Phaser foundation stable
-
-Required before replacing production Dungeon battlefield:
-
-- scene lifecycle stable;
-- actor lifecycle stable;
-- responsive anchor system locked;
-- event bridge proven;
-- no gameplay state duplication.
-
-### Gate 3 — Dungeon Battle approved
-
-Required before Arena cutover:
-
-- Battle Core output unchanged;
-- 1/2/3-monster layouts pass;
-- target switching works;
-- VFX/hit/death feedback works;
-- x1/x2/Auto/Skip still behave correctly;
-- checkpoint/resume unaffected;
-- user visual approval + QA.
-
-### Gate 4 — Arena approved
-
-Required before removing DOM battlefield fallback:
-
-- Arena stage renders Hero/Pet teams correctly;
-- action/log replay matches server results;
-- Arena API/tickets/rating/rewards unchanged;
-- user visual approval + QA.
-
-### Gate 5 — Hero V5 approved
-
-Required before V5 replaces V4:
-
-- Base Hero frames approved;
-- equipment test set approved;
-- Phaser layer composition matches reference;
-- no layer drift;
-- mobile readability passes.
-
-### Gate 6 — Final cleanup
-
-Only after all above gates:
-
-- remove temporary flags;
-- remove obsolete battle renderer code;
-- archive experiment docs/branches when safe;
-- finalize architecture docs.
-
----
-
-## 10. Risk classification
-
-- Inventory V2 refactor: **MEDIUM-HIGH**
-- Phaser shared foundation: **HIGH**
-- Dungeon Battle Phaser migration: **HIGH**
-- Arena Battle Stage Phaser migration: **HIGH**
-- Hero V5 runtime integration: **HIGH**
-- final App/styles architecture cleanup: **HIGH**
-
-All HIGH-risk scopes require branch + focused QA + user verification before release.
-
----
-
-## 11. Out of scope
-
-This roadmap does not include:
-
-- Guild/Chat/Social work;
-- Raid feature redesign;
-- Raid Phaser migration;
-- Battle Core rewrite;
-- Arena gameplay redesign;
-- Pet rebalance;
-- economy changes;
-- Shop/Crafting/Summoning feature work;
-- Spine/skeletal animation;
-- moving Inventory to Phaser.
-
----
-
-## 12. Roadmap completion condition
-
-This roadmap is complete when:
-
+The active roadmap is complete when:
+- Social Phase 3/4 audit issues are fixed;
+- Guild Donation and Guild Chat V1 are production-verified;
+- Friend/Chat/Guild integration passes E2E;
 - Inventory V2 is structurally clean and behavior-stable;
 - Dungeon Combat battlefield uses Phaser in production;
 - Arena battle stage uses Phaser in production;
-- Hero V5 is approved and integrated into the Phaser Hero renderer;
-- temporary DOM battlefield/fallback code is removed safely;
-- final App/styles/folder architecture is documented and stable.
+- Hero V5 is approved and integrated in Phaser;
+- temporary DOM battlefield/experiment code is safely removed;
+- App/styles/folder architecture is stabilized and documented.
