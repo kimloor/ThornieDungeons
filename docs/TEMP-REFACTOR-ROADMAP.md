@@ -1,8 +1,10 @@
 # ThornieDungeons — Temporary Refactor Roadmap
 
-STATUS: PENDING / TEMPORARY
+STATUS: SUPERSEDED / TEMPORARY
 
-Purpose: keep the agreed refactor + cleanup plan available across new chats until implementation is complete.
+Purpose: preserve the older refactor + cleanup plan for implementation-history context.
+
+> SUPERSEDED: Active execution order now lives in `ACTIVE-DEVELOPMENT-ROADMAP-V1.md`. Do not use this file as the current roadmap where the two differ.
 
 Last checked main when this document was created:
 `cd8fd10ea636e69c4926bc2ed0b8899cf5d355cc` (`hotfix: restore PetScreen syntax`)
@@ -255,6 +257,8 @@ Avoid moving files multiple times. Prefer final-path moves once dependencies are
 
 ## Execution Order
 
+Historical order:
+
 ```text
 A. Safety + Pet
 → B. Raid + Arena
@@ -262,7 +266,9 @@ A. Safety + Pet
 → D. App / Styles / Repository Structure
 ```
 
-If Scope C proves too large during implementation, split only that scope into C1 Inventory and C2 Combat. Do not pre-split unless necessary.
+Current execution order is superseded by `ACTIVE-DEVELOPMENT-ROADMAP-V1.md`.
+
+Inventory remains an active refactor track. Combat presentation now follows the Phaser migration plan instead of the old DOM-only stage direction.
 
 ## Definition of Done for each scope
 
