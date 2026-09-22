@@ -432,6 +432,32 @@ For Hero V5 production:
 
 A future project version may reevaluate skeletal animation only if the animation library becomes large enough that frame-based production is no longer practical. That would require a separate design/technical decision and does not alter V5.
 
+## 22A. Phaser renderer compatibility
+
+Hero V5 is compatible with the planned Phaser battlefield renderer defined in `PHASER-COMBAT-ARENA-V1.md`.
+
+Phaser integration does **not** change the Hero V5 animation model.
+
+The renderer should treat one Hero as a logical actor composed from synchronized frame layers that share the V5 768 × 768 coordinate space.
+
+Allowed Phaser responsibilities:
+
+- place/scale the whole Hero actor;
+- display the correct synchronized frame index;
+- swap equipment layers from approved manifest/config state;
+- apply whole-actor presentation transforms such as battlefield placement, temporary knockback, fade, or camera-relative movement where approved;
+- honor explicit per-frame layer-order metadata.
+
+Not allowed as a replacement for authored V5 animation:
+
+- rotating limbs to synthesize Attack frames;
+- bone-driven wing flaps;
+- skeletal interpolation;
+- runtime weapon rotation to replace authored weapon poses;
+- mesh deformation or IK.
+
+If an Attack/Idle/Death pose changes, the matching authored V5 frame remains the visual source of truth.
+
 ## 23. Future responsive breakpoint note
 
 Hero V5 master assets must remain independent from the current mobile layout width.
