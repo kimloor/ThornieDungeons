@@ -45,6 +45,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
 | [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |
 | [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) | **ACTIVE-DESIGN** migration contract for moving Dungeon Combat battlefield and Arena battle-stage presentation to Phaser while preserving gameplay, API, save, and resolver behavior. |
+| [`PIXELLAB-WORKFLOW.md`](PIXELLAB-WORKFLOW.md) | **ACTIVE-TOOLING** reusable PixelLab GitHub Actions workflow, inputs, image/animation generation flow, GIF preview, review rules, and R2 handoff guardrails. |
 | [`RAID-SYSTEM-V1.md`](RAID-SYSTEM-V1.md) | Raid boss roster/rotation, HP scaling, Raid asset contract, persistence boundaries, auth/backend safety, and Raid verification. |
 | [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) | Ordered persistence, retries, save state, session ownership, battle checkpoints, and transaction safety. |
 | [`TOWN-HUB.md`](TOWN-HUB.md) | Stable Town/Main Hub artwork separation, navigation consistency, mobile UI, and build rules. |
@@ -157,6 +158,7 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 ### Graphics / R2
 
 - [`AGENTS.md`](../AGENTS.md)
+- [`PIXELLAB-WORKFLOW.md`](PIXELLAB-WORKFLOW.md) when generating or animating assets with PixelLab
 - [`r2-upload/README.md`](../r2-upload/README.md)
 - The relevant visual or system specification
 - Verify paths in `r2-upload/manifest.json`; do not guess asset keys or paths
