@@ -1,0 +1,194 @@
+name: PixelLab Result Animation Test
+
+on:
+  push:
+    branches:
+      - test/pixellab-result-animation
+    paths:
+      - ".github/workflows/pixellab-result-animation-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PIXELLAB_BASE: https://api.pixellab.ai/v2
+      PXL_API_TOKEN: ${{ secrets.PXL_API_TOKEN }}
+
+    steps:
+      - name: Validate PixelLab secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PXL_API_TOKEN" || { echo "::error::PXL_API_TOKEN is missing"; exit 1; }
+          code=$(curl -sS -o /tmp/balance.json -w "%{http_code}" \
+            -H "Authorization: Bearer $PXL_API_TOKEN" \
+            "$PIXELLAB_BASE/balance")
+          test "$code" = "200" || { echo "::error::PixelLab auth failed: HTTP $code"; exit 1; }
+          echo "PixelLab authentication succeeded."
+
+      - name: Generate PixelLab victory emblem
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pixellab-output
+
+          cat > /tmp/create.json <<'JSON'
+          {
+            "description": "fantasy RPG victory emblem for ThornieDungeons result screen, ancient dark steel shield with gold thorn trim and a bright four-point golden star in the center, celebratory magical sparkles, clean readable game UI asset, centered composition",
+            "image_size": {"width": 128, "height": 128},
+            "no_background": true
+          }
+          JSON
+
+          code=$(curl -sS -o /tmp/create-response.json -w "%{http_code}" \
+            -X POST "$PIXELLAB_BASE/create-image-pixen" \
+            -H "Authorization: Bearer $PXL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/create.json)
+
+          test "$code" = "200" || {
+            echo "::error::PixelLab create-image-pixen failed: HTTP $code"
+            jq '{detail,error,message}' /tmp/create-response.json || true
+            exit 1
+          }
+
+          python3 - <<'PY'
+          import base64, json
+          from pathlib import Path
+          d=json.load(open("/tmp/create-response.json"))
+          s=d["image"]["base64"]
+          if "," in s and s.startswith("data:"):
+              s=s.split(",",1)[1]
+          Path("pixellab-output/victory_emblem_start.png").write_bytes(base64.b64decode(s))
+          Path("/tmp/first-frame.b64").write_text(s)
+          print("Starter image saved.")
+          PY
+
+      - name: Submit PixelLab animation v3
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          b64=open("/tmp/first-frame.b64").read().strip()
+          payload={
+            "first_frame":{"type":"base64","base64":b64,"format":"png"},
+            "action":"the golden star and shield pulse with victory energy in place; golden rays expand outward, sparkles burst and drift around the emblem, then the glow settles while the shield remains centered and stable",
+            "frame_count":8,
+            "no_background":True
+          }
+          json.dump(payload, open("/tmp/animate.json","w"))
+          PY
+
+          code=$(curl -sS -o /tmp/animate-response.json -w "%{http_code}" \
+            -X POST "$PIXELLAB_BASE/animate-with-text-v3" \
+            -H "Authorization: Bearer $PXL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/animate.json)
+
+          if [ "$code" != "200" ] && [ "$code" != "202" ]; then
+            echo "::error::PixelLab animate-with-text-v3 failed: HTTP $code"
+            jq '{detail,error,message}' /tmp/animate-response.json || true
+            exit 1
+          fi
+
+          JOB_ID=$(jq -r '.background_job_id // .job_id // empty' /tmp/animate-response.json)
+          test -n "$JOB_ID" || { echo "::error::No PixelLab background job id returned"; exit 1; }
+          echo "PIXELLAB_JOB_ID=$JOB_ID" >> "$GITHUB_ENV"
+          echo "$JOB_ID" > pixellab-output/job_id.txt
+          echo "PixelLab animation job submitted: $JOB_ID"
+
+      - name: Poll PixelLab job
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 90); do
+            code=$(curl -sS -o /tmp/job.json -w "%{http_code}" \
+              -H "Authorization: Bearer $PXL_API_TOKEN" \
+              "$PIXELLAB_BASE/background-jobs/$PIXELLAB_JOB_ID")
+
+            if [ "$code" -ge 500 ]; then
+              echo "Transient PixelLab HTTP $code; polling same job again."
+              sleep 5
+              continue
+            fi
+            test "$code" = "200" || {
+              echo "::error::PixelLab poll failed: HTTP $code"
+              exit 1
+            }
+
+            status=$(jq -r '.status // empty' /tmp/job.json)
+            inner=$(jq -r '.last_response.status // empty' /tmp/job.json)
+            echo "Poll $i: status=$status inner=$inner"
+
+            if [ "$status" = "failed" ] || [ "$inner" = "failed" ]; then
+              echo "::error::PixelLab animation job failed."
+              jq '{status,last_response:{status:.last_response.status,error:.last_response.error,message:.last_response.message}}' /tmp/job.json || true
+              exit 1
+            fi
+
+            if [ "$status" = "completed" ] || [ "$inner" = "completed" ] || [ "$inner" = "done" ]; then
+              cp /tmp/job.json pixellab-output/job-result.json
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Timed out polling PixelLab job $PIXELLAB_JOB_ID"
+          exit 1
+
+      - name: Decode frames and build preview GIF
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import base64, json
+          from pathlib import Path
+          from PIL import Image
+
+          root=Path("pixellab-output")
+          d=json.load(open(root/"job-result.json"))
+          images=(d.get("last_response") or {}).get("images") or []
+          if not images:
+              raise SystemExit("No images found in PixelLab last_response.images")
+
+          frame_paths=[]
+          for i,item in enumerate(images):
+              s=item.get("base64") if isinstance(item,dict) else None
+              if not s:
+                  raise SystemExit(f"Frame {i} has no base64 data")
+              if "," in s and s.startswith("data:"):
+                  s=s.split(",",1)[1]
+              p=root/f"frame_{i:02d}.png"
+              p.write_bytes(base64.b64decode(s))
+              frame_paths.append(p)
+
+          frames=[Image.open(p).convert("RGBA") for p in frame_paths]
+          frames[0].save(root/"victory_animation.gif", save_all=True,
+                         append_images=frames[1:], duration=120, loop=0,
+                         disposal=2, transparency=0)
+
+          manifest={
+              "provider":"PixelLab",
+              "route":"POST /v2/animate-with-text-v3",
+              "job_id":open(root/"job_id.txt").read().strip(),
+              "returned_frame_count":len(frame_paths),
+              "requested_generated_frames":8,
+              "note":"PixelLab may echo the supplied first frame at index 0."
+          }
+          json.dump(manifest, open(root/"manifest.json","w"), indent=2)
+          print(f"Decoded {len(frame_paths)} PixelLab frames.")
+          PY
+
+      - name: Upload PixelLab test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixellab-result-animation-test
+          path: pixellab-output/
+          if-no-files-found: error
+          retention-days: 7
