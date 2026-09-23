@@ -4027,11 +4027,12 @@ function cloudGetGlobalChat(url, characterId, afterId) {
     afterId: afterId || 0
   });
 }
-function cloudSendGlobalMessage(url, characterId, text) {
+function cloudSendGlobalMessage(url, characterId, text, nonce) {
   return cloudAuthPost(url, {
     action: "sendGlobalMessage",
     characterId,
-    text
+    text,
+    nonce
   });
 }
 function cloudGetDirectMessages(url, characterId, withCharacterId, afterId) {
@@ -4042,12 +4043,13 @@ function cloudGetDirectMessages(url, characterId, withCharacterId, afterId) {
     afterId: afterId || 0
   });
 }
-function cloudSendDirectMessage(url, characterId, toCharacterId, text) {
+function cloudSendDirectMessage(url, characterId, toCharacterId, text, nonce) {
   return cloudAuthPost(url, {
     action: "sendDirectMessage",
     characterId,
     toCharacterId,
-    text
+    text,
+    nonce
   });
 }
 function cloudGetDirectConversations(url, characterId) {
@@ -4158,6 +4160,14 @@ function cloudDisbandGuild(url, characterId) {
   return cloudAuthPost(url, {
     action: "disbandGuild",
     characterId
+  });
+}
+function cloudUpdateGuildSettings(url, characterId, description, joinPolicy) {
+  return cloudAuthPost(url, {
+    action: "updateGuildSettings",
+    characterId,
+    description,
+    joinPolicy
   });
 }
 
@@ -11786,7 +11796,11 @@ function ChatScreen({
     if (!text || globalSending) return;
     setGlobalSending(true);
     setGlobalError("");
-    cloudSendGlobalMessage(url, characterId, text).then((res) => {
+    // §3 — one nonce per logical send attempt; the server dedupes retries of this exact
+    // attempt against it (see workers' handleSendGlobalMessage), so a lost response +
+    // resend (or the client's own retry layer) can't create a duplicate message.
+    const nonce = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `n-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    cloudSendGlobalMessage(url, characterId, text, nonce).then((res) => {
       setGlobalSending(false);
       if (!res || res.error) { setGlobalError(chatErrorText(res && res.error)); return; }
       setGlobalInput("");
@@ -11800,7 +11814,8 @@ function ChatScreen({
     if (!text || threadSending || !activeConversation || !threadCanSend) return;
     setThreadSending(true);
     setThreadError("");
-    cloudSendDirectMessage(url, characterId, activeConversation.characterId, text).then((res) => {
+    const nonce = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `n-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    cloudSendDirectMessage(url, characterId, activeConversation.characterId, text, nonce).then((res) => {
       setThreadSending(false);
       if (!res || res.error) { setThreadError(chatErrorText(res && res.error)); return; }
       setThreadInput("");
@@ -11909,6 +11924,7 @@ function guildErrorText(error) {
     session_replaced: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
     guild_create_level_too_low: "ต้องมีเลเวล 30 ขึ้นไปจึงจะสร้างกิลด์ได้",
     invalid_guild_name: "ชื่อกิลด์ต้องมี 3-20 ตัวอักษร และห้ามมีอักขระควบคุม",
+    invalid_join_policy: "นโยบายการรับสมาชิกไม่ถูกต้อง",
     guild_name_taken: "มีกิลด์ชื่อนี้อยู่แล้ว",
     already_in_guild: "อยู่ในกิลด์อื่นอยู่แล้ว",
     guild_not_found: "ไม่พบกิลด์นี้",
@@ -11928,6 +11944,11 @@ function guildErrorText(error) {
   return map[error] || "เกิดข้อผิดพลาด กรุณาลองใหม่";
 }
 const GUILD_CREATE_MIN_LEVEL_CLIENT = 30; // display only — server (GUILD_CREATE_MIN_LEVEL) is authoritative
+const GUILD_JOIN_POLICY_OPTIONS = [
+  { value: "open", label: "เปิดรับ" },
+  { value: "application", label: "ต้องสมัคร" },
+  { value: "closed", label: "ปิดรับ" },
+];
 function GuildScreen({
   serverUrl,
   characterId,
@@ -11955,6 +11976,10 @@ function GuildScreen({
   const [createError, setCreateError] = useState("");
   const [busyKey, setBusyKey] = useState("");
   const [toast, setToast] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsDesc, setSettingsDesc] = useState("");
+  const [settingsPolicy, setSettingsPolicy] = useState("open");
+  const [settingsError, setSettingsError] = useState("");
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast((t) => (t === msg ? "" : t)), 2200); };
 
@@ -12031,6 +12056,23 @@ function GuildScreen({
   const handleKick = (targetCharacterId) => runAction(`kick:${targetCharacterId}`, cloudKickGuildMember(url, characterId, targetCharacterId), () => loadMyGuild());
   const handleTransfer = (targetCharacterId) => runAction(`transfer:${targetCharacterId}`, cloudTransferGuildLeadership(url, characterId, targetCharacterId), () => loadMyGuild());
   const handleDisband = () => runAction("disband", cloudDisbandGuild(url, characterId), () => setMyGuild(null));
+  const openSettings = () => {
+    setSettingsDesc((myGuild && myGuild.description) || "");
+    setSettingsPolicy((myGuild && myGuild.joinPolicy) || "open");
+    setSettingsError("");
+    setShowSettings(true);
+  };
+  const handleUpdateSettings = () => {
+    if (busyKey) return;
+    setBusyKey("settings");
+    setSettingsError("");
+    cloudUpdateGuildSettings(url, characterId, settingsDesc.trim(), settingsPolicy).then((res) => {
+      setBusyKey("");
+      if (!res || res.error) { setSettingsError(guildErrorText(res && res.error)); return; }
+      setShowSettings(false);
+      loadMyGuild();
+    }).catch(() => { setBusyKey(""); setSettingsError(guildErrorText("network_error")); });
+  };
 
   const actionBtn = (label, onClick, variant, disabled) => e("button", {
     className: `md-btn small ${variant || "info"}`,
@@ -12117,12 +12159,26 @@ function GuildScreen({
       ? actionBtn("ยุบกิลด์", handleDisband, "flee", busyKey === "disband")
       : actionBtn("ออกจากกิลด์", handleLeave, "flee", busyKey === "leave");
 
+    const settingsCard = isLeader ? (
+      showSettings
+        ? e("div", { className: "md-card", style: { marginBottom: 10 } },
+          e("input", { className: "md-field", style: { width: "100%", marginBottom: 6 }, placeholder: "คำอธิบาย (ไม่บังคับ)", value: settingsDesc, maxLength: 200, onChange: (ev) => setSettingsDesc(ev.target.value) }),
+          e("div", { style: { display: "flex", gap: 6, marginBottom: 6 } }, GUILD_JOIN_POLICY_OPTIONS.map((opt) => actionBtn(opt.label, () => setSettingsPolicy(opt.value), settingsPolicy === opt.value ? "primary" : "flee", false))),
+          settingsError && e("p", { className: "md-sub" }, settingsError),
+          e("div", { style: { display: "flex", gap: 6 } },
+            actionBtn("บันทึก", handleUpdateSettings, "primary", busyKey === "settings"),
+            actionBtn("ยกเลิก", () => setShowSettings(false), "flee", false)))
+        : e("div", { className: "md-card", style: { marginBottom: 10 } },
+          actionBtn("⚙️ ตั้งค่ากิลด์", openSettings, "info", false))
+    ) : null;
+
     return e(React.Fragment, null,
       e("div", { className: "md-card", style: { marginBottom: 10 } },
         e("p", { className: "md-title" }, `🏰 ${g.name}`),
         e("p", { className: "md-sub" }, g.description || "ไม่มีคำอธิบาย"),
         e("p", { className: "md-sub" }, `Lv.${g.level} — ${g.memberCount}/${g.memberCap} สมาชิก — ${joinPolicyLabel(g.joinPolicy)}`),
         e("button", { className: "md-btn info small", disabled: true }, "💬 แชทกิลด์ (เร็วๆ นี้)")),
+      settingsCard,
       applicationsCard,
       e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
         e("div", { className: "md-inv-list" }, memberRows)),

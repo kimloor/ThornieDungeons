@@ -470,11 +470,12 @@ function cloudGetGlobalChat(url, characterId, afterId) {
     afterId: afterId || 0
   });
 }
-function cloudSendGlobalMessage(url, characterId, text) {
+function cloudSendGlobalMessage(url, characterId, text, nonce) {
   return cloudAuthPost(url, {
     action: "sendGlobalMessage",
     characterId,
-    text
+    text,
+    nonce
   });
 }
 function cloudGetDirectMessages(url, characterId, withCharacterId, afterId) {
@@ -485,12 +486,13 @@ function cloudGetDirectMessages(url, characterId, withCharacterId, afterId) {
     afterId: afterId || 0
   });
 }
-function cloudSendDirectMessage(url, characterId, toCharacterId, text) {
+function cloudSendDirectMessage(url, characterId, toCharacterId, text, nonce) {
   return cloudAuthPost(url, {
     action: "sendDirectMessage",
     characterId,
     toCharacterId,
-    text
+    text,
+    nonce
   });
 }
 function cloudGetDirectConversations(url, characterId) {
@@ -601,5 +603,13 @@ function cloudDisbandGuild(url, characterId) {
   return cloudAuthPost(url, {
     action: "disbandGuild",
     characterId
+  });
+}
+function cloudUpdateGuildSettings(url, characterId, description, joinPolicy) {
+  return cloudAuthPost(url, {
+    action: "updateGuildSettings",
+    characterId,
+    description,
+    joinPolicy
   });
 }

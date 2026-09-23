@@ -1055,29 +1055,51 @@ async function handleGetGlobalChat(db, id, session, characterId, afterId) {
   const auth = await verifySocialActor(db, id, session, characterId);
   if (auth.error) return json(auth);
   const after = Number(afterId) || 0;
+  const blockedIds = await getBlockedCharacterIds(db, characterId);
+  // §2 fix — filter blocked senders in SQL BEFORE LIMIT, not after fetching. Filtering
+  // in JS after the LIMIT let an entire page get consumed by a blocked sender's
+  // messages, leaving the client with an empty visible batch and no way to advance its
+  // polling cursor past that blocked range — it would re-fetch the same stuck window
+  // forever. Every row this query returns is now guaranteed visible, so its max id is
+  // always safe to advance the cursor to.
+  const blockedClause = blockedIds.length ? ` AND from_character_id NOT IN (${blockedIds.map(() => "?").join(",")})` : "";
   const rows = after > 0
-    ? await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='world' AND id > ? ORDER BY id ASC LIMIT 200`).bind(after).all()
-    : await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='world' ORDER BY id DESC LIMIT ?`).bind(CHAT_POLL_PAGE_SIZE).all();
+    ? await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='world' AND id > ?${blockedClause} ORDER BY id ASC LIMIT 200`).bind(after, ...blockedIds).all()
+    : await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='world'${blockedClause} ORDER BY id DESC LIMIT ?`).bind(...blockedIds, CHAT_POLL_PAGE_SIZE).all();
   let results = rows.results || [];
   if (!after) results = results.reverse(); // oldest -> newest for initial load; incremental is already ASC
-  const blockedIds = await getBlockedCharacterIds(db, characterId);
-  if (blockedIds.length) results = results.filter((m) => !blockedIds.includes(m.from_character_id)); // §5 — directional, my blocks only
   return json({ ok: true, messages: results.map(shapeChatRow) });
 }
 
-async function handleSendGlobalMessage(db, id, session, characterId, text) {
+async function handleSendGlobalMessage(db, id, session, characterId, text, nonce) {
   const auth = await verifySocialActor(db, id, session, characterId);
   if (auth.error) return json(auth);
+  // §3 — idempotency check first, before any validation, so a genuine retry of an
+  // already-successful send is never rejected by that send's own rate-limit footprint.
+  if (nonce) {
+    const existing = await db.prepare(`SELECT id, created_at FROM chat_messages WHERE channel='world' AND from_character_id=? AND client_nonce=?`).bind(characterId, nonce).first();
+    if (existing) return json({ ok: true, id: existing.id, createdAt: existing.created_at, replay: true });
+  }
   const clean = sanitizeChatMessage(text);
   if (!clean) return json({ error: "message_empty" });
   if (clean.length > CHAT_GLOBAL_MAX_LEN) return json({ error: "message_too_long" });
   const last = await db.prepare(`SELECT created_at FROM chat_messages WHERE channel='world' AND from_character_id=? ORDER BY id DESC LIMIT 1`).bind(characterId).first();
   if (last && Date.now() - Date.parse(last.created_at) < CHAT_GLOBAL_RATE_MS) return json({ error: "chat_rate_limited" });
   const now = nowIso();
-  const result = await db.prepare(
-    `INSERT INTO chat_messages (channel, from_character_id, from_name, message, created_at) VALUES ('world', ?, ?, ?, ?)`
-  ).bind(characterId, auth.character.name, clean, now).run();
-  return json({ ok: true, id: result.meta.last_row_id, createdAt: now });
+  try {
+    const result = await db.prepare(
+      `INSERT INTO chat_messages (channel, from_character_id, from_name, message, created_at, client_nonce) VALUES ('world', ?, ?, ?, ?, ?)`
+    ).bind(characterId, auth.character.name, clean, now, nonce || null).run();
+    return json({ ok: true, id: result.meta.last_row_id, createdAt: now });
+  } catch (e) {
+    // Belt-and-suspenders: migration 0018's partial unique index catches a genuine race
+    // between two near-simultaneous retries that both passed the pre-check above.
+    if (nonce && String((e && e.message) || e).includes("UNIQUE constraint failed")) {
+      const existing = await db.prepare(`SELECT id, created_at FROM chat_messages WHERE channel='world' AND from_character_id=? AND client_nonce=?`).bind(characterId, nonce).first();
+      if (existing) return json({ ok: true, id: existing.id, createdAt: existing.created_at, replay: true });
+    }
+    throw e;
+  }
 }
 
 async function handleGetDirectMessages(db, id, session, characterId, withCharacterId, afterId) {
@@ -1099,10 +1121,15 @@ async function handleGetDirectMessages(db, id, session, characterId, withCharact
   return json({ ok: true, messages: results.map(shapeChatRow), canSend });
 }
 
-async function handleSendDirectMessage(db, id, session, characterId, toCharacterId, text) {
+async function handleSendDirectMessage(db, id, session, characterId, toCharacterId, text, nonce) {
   const auth = await verifySocialActor(db, id, session, characterId);
   if (auth.error) return json(auth);
   if (!toCharacterId || toCharacterId === characterId) return json({ error: "invalid_recipient" });
+  // §3 — idempotency check first, same reasoning as handleSendGlobalMessage above.
+  if (nonce) {
+    const existing = await db.prepare(`SELECT id, created_at, conversation_key FROM chat_messages WHERE channel='whisper' AND from_character_id=? AND client_nonce=?`).bind(characterId, nonce).first();
+    if (existing) return json({ ok: true, id: existing.id, createdAt: existing.created_at, conversationKey: existing.conversation_key, replay: true });
+  }
   const target = await getRow(db, "characters", "character_id", toCharacterId);
   if (!target) return json({ error: "character_not_found" });
   if (!(await areFriends(db, characterId, toCharacterId))) return json({ error: "not_friends" }); // §3 — DM is friend-only
@@ -1114,10 +1141,18 @@ async function handleSendDirectMessage(db, id, session, characterId, toCharacter
   if (last && Date.now() - Date.parse(last.created_at) < CHAT_DIRECT_RATE_MS) return json({ error: "chat_rate_limited" });
   const convKey = normalizeConversationKey(characterId, toCharacterId);
   const now = nowIso();
-  const result = await db.prepare(
-    `INSERT INTO chat_messages (channel, from_character_id, from_name, to_character_id, conversation_key, message, created_at) VALUES ('whisper', ?, ?, ?, ?, ?, ?)`
-  ).bind(characterId, auth.character.name, toCharacterId, convKey, clean, now).run();
-  return json({ ok: true, id: result.meta.last_row_id, createdAt: now, conversationKey: convKey });
+  try {
+    const result = await db.prepare(
+      `INSERT INTO chat_messages (channel, from_character_id, from_name, to_character_id, conversation_key, message, created_at, client_nonce) VALUES ('whisper', ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(characterId, auth.character.name, toCharacterId, convKey, clean, now, nonce || null).run();
+    return json({ ok: true, id: result.meta.last_row_id, createdAt: now, conversationKey: convKey });
+  } catch (e) {
+    if (nonce && String((e && e.message) || e).includes("UNIQUE constraint failed")) {
+      const existing = await db.prepare(`SELECT id, created_at, conversation_key FROM chat_messages WHERE channel='whisper' AND from_character_id=? AND client_nonce=?`).bind(characterId, nonce).first();
+      if (existing) return json({ ok: true, id: existing.id, createdAt: existing.created_at, conversationKey: existing.conversation_key, replay: true });
+    }
+    throw e;
+  }
 }
 
 async function handleGetDirectConversations(db, id, session, characterId) {
@@ -1126,13 +1161,14 @@ async function handleGetDirectConversations(db, id, session, characterId) {
   const rows = await db.prepare(
     `SELECT conversation_key,
             MAX(id) AS last_id,
+            MAX(CASE WHEN from_character_id != ? THEN id END) AS last_incoming_id,
             (SELECT message FROM chat_messages m2 WHERE m2.conversation_key = m.conversation_key AND m2.channel='whisper' ORDER BY m2.id DESC LIMIT 1) AS last_message,
             (SELECT created_at FROM chat_messages m3 WHERE m3.conversation_key = m.conversation_key AND m3.channel='whisper' ORDER BY m3.id DESC LIMIT 1) AS last_created_at,
             (SELECT from_character_id FROM chat_messages m4 WHERE m4.conversation_key = m.conversation_key AND m4.channel='whisper' ORDER BY m4.id DESC LIMIT 1) AS last_sender
      FROM chat_messages m
      WHERE channel='whisper' AND (from_character_id = ? OR to_character_id = ?)
      GROUP BY conversation_key`
-  ).bind(characterId, characterId).all();
+  ).bind(characterId, characterId, characterId).all();
   const conversations = rows.results || [];
   if (!conversations.length) return json({ ok: true, conversations: [] });
 
@@ -1167,7 +1203,9 @@ async function handleGetDirectConversations(db, id, session, characterId) {
       lastMessage: c.last_message,
       lastMessageAt: c.last_created_at,
       lastSenderIsMe: c.last_sender === characterId,
-      unread: Number(c.last_id) > Number(lastRead),
+      // §1 fix — unread must only count messages FROM the other character, never my own
+      // sent messages (last_incoming_id excludes rows where from_character_id = me).
+      unread: c.last_incoming_id != null && Number(c.last_incoming_id) > Number(lastRead),
     });
   }
   result.sort((a, b) => (a.lastMessageAt < b.lastMessageAt ? 1 : a.lastMessageAt > b.lastMessageAt ? -1 : 0));
@@ -1269,6 +1307,28 @@ async function verifyGuildLeader(db, characterId, guildId) {
 // is a guarded CAS (WHERE leader_character_id = the leader we just read), so if
 // leadership already changed between the read and this write, the role updates below
 // are skipped instead of clobbering a newer transfer.
+// §6 fix — atomic leader+role transfer. All three writes run inside one D1 batch (a
+// single transaction): the guilds.leader_character_id update is the CAS guard, and both
+// guild_members role flips independently re-verify (via EXISTS against
+// guilds.leader_character_id, which the first statement in this same transaction just
+// set) that the leader swap actually took effect before touching any role. This closes
+// the old race where a lost/late guilds update and an unconditional guild_members update
+// could diverge — if the first statement's guard fails, the EXISTS check in the other
+// two correctly evaluates false and they no-op too, atomically, as one unit. Shared by
+// both manual transfer and auto succession so the two paths can't drift.
+async function transferGuildLeadershipAtomic(db, guildId, fromCharacterId, toCharacterId) {
+  const results = await db.batch([
+    db.prepare(`UPDATE guilds SET leader_character_id = ? WHERE guild_id = ? AND leader_character_id = ?`).bind(toCharacterId, guildId, fromCharacterId),
+    db.prepare(
+      `UPDATE guild_members SET role = 'member' WHERE guild_id = ? AND character_id = ? AND EXISTS (SELECT 1 FROM guilds WHERE guild_id = ? AND leader_character_id = ?)`
+    ).bind(guildId, fromCharacterId, guildId, toCharacterId),
+    db.prepare(
+      `UPDATE guild_members SET role = 'leader' WHERE guild_id = ? AND character_id = ? AND EXISTS (SELECT 1 FROM guilds WHERE guild_id = ? AND leader_character_id = ?)`
+    ).bind(guildId, toCharacterId, guildId, toCharacterId),
+  ]);
+  return !!(results && results[0] && results[0].meta && results[0].meta.changes);
+}
+
 async function evaluateGuildSuccession(db, guildId) {
   const guild = await db.prepare(`SELECT guild_id, leader_character_id FROM guilds WHERE guild_id = ?`).bind(guildId).first();
   if (!guild) return;
@@ -1286,14 +1346,7 @@ async function evaluateGuildSuccession(db, guildId) {
   ).bind(guildId, guild.leader_character_id, activeCutoff).all();
   const winner = (candidates.results || [])[0];
   if (!winner) return; // no eligible member — try again next time this is evaluated
-  const guildUpdate = await db.prepare(
-    `UPDATE guilds SET leader_character_id = ? WHERE guild_id = ? AND leader_character_id = ?`
-  ).bind(winner.character_id, guildId, guild.leader_character_id).run();
-  if (!guildUpdate.meta || !guildUpdate.meta.changes) return; // already transferred by something else
-  await db.batch([
-    db.prepare(`UPDATE guild_members SET role = 'member' WHERE guild_id = ? AND character_id = ?`).bind(guildId, guild.leader_character_id),
-    db.prepare(`UPDATE guild_members SET role = 'leader' WHERE guild_id = ? AND character_id = ?`).bind(guildId, winner.character_id),
-  ]);
+  await transferGuildLeadershipAtomic(db, guildId, guild.leader_character_id, winner.character_id);
 }
 
 // Shared shaping for both getMyGuild and getGuildProfile.
@@ -1462,19 +1515,23 @@ async function handleRequestGuildJoin(db, id, session, characterId, guildId) {
     return json({ ok: true, status: "joined", guildId });
   }
 
-  // 'application'
-  const pendingCount = await db.prepare(`SELECT COUNT(*) AS c FROM guild_applications WHERE character_id = ? AND status = 'pending'`).bind(characterId).first();
-  if (Number((pendingCount && pendingCount.c) || 0) >= GUILD_APPLICATION_MAX_PENDING) return json({ error: "application_limit_reached" });
+  // 'application' — §5 fix: the cap check is now inside the INSERT itself (guarded by
+  // the same subquery-in-WHERE pattern as the open-join path above), not a separate
+  // COUNT-then-INSERT — a COUNT read followed by an unguarded INSERT left a real race
+  // window where two concurrent applies to different Guilds could both read count=4 and
+  // both insert, landing at 6. ON CONFLICT still covers the duplicate-pending-pair case
+  // (migration 0017's partial unique index needs its WHERE clause repeated here to
+  // target it, since it's a partial index).
   const applicationId = `gapp-${randomToken(16)}`;
-  try {
-    await db.prepare(
-      `INSERT INTO guild_applications (application_id, guild_id, character_id, status, created_at) VALUES (?, ?, ?, 'pending', ?)`
-    ).bind(applicationId, guildId, characterId, now).run();
-  } catch (e) {
-    // Belt-and-suspenders: migration 0017's partial unique index catches a genuine race
-    // between two near-simultaneous applies that both passed an (absent, here) pre-check.
-    if (String((e && e.message) || e).includes("UNIQUE constraint failed")) return json({ error: "application_already_exists" });
-    throw e;
+  const insert = await db.prepare(
+    `INSERT INTO guild_applications (application_id, guild_id, character_id, status, created_at)
+     SELECT ?, ?, ?, 'pending', ?
+     WHERE (SELECT COUNT(*) FROM guild_applications WHERE character_id = ? AND status = 'pending') < ?
+     ON CONFLICT(guild_id, character_id) WHERE status = 'pending' DO NOTHING`
+  ).bind(applicationId, guildId, characterId, now, characterId, GUILD_APPLICATION_MAX_PENDING).run();
+  if (!insert.meta || !insert.meta.changes) {
+    const dup = await db.prepare(`SELECT 1 FROM guild_applications WHERE guild_id = ? AND character_id = ? AND status = 'pending'`).bind(guildId, characterId).first();
+    return json({ error: dup ? "application_already_exists" : "application_limit_reached" });
   }
   return json({ ok: true, status: "pending", applicationId });
 }
@@ -1576,14 +1633,8 @@ async function handleTransferGuildLeadership(db, id, session, characterId, targe
   if (!membership || membership.role !== "leader") return json({ error: "not_guild_leader" });
   const target = await db.prepare(`SELECT role FROM guild_members WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, targetCharacterId).first();
   if (!target) return json({ error: "target_not_guild_member" });
-  const guildUpdate = await db.prepare(
-    `UPDATE guilds SET leader_character_id = ? WHERE guild_id = ? AND leader_character_id = ?`
-  ).bind(targetCharacterId, membership.guild_id, characterId).run();
-  if (!guildUpdate.meta || !guildUpdate.meta.changes) return json({ error: "not_guild_leader" }); // raced out of leadership since the read above
-  await db.batch([
-    db.prepare(`UPDATE guild_members SET role = 'member' WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, characterId),
-    db.prepare(`UPDATE guild_members SET role = 'leader' WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, targetCharacterId),
-  ]);
+  const ok = await transferGuildLeadershipAtomic(db, membership.guild_id, characterId, targetCharacterId);
+  if (!ok) return json({ error: "not_guild_leader" }); // raced out of leadership since the read above
   return json({ ok: true }); // old Leader remains a Member (§14) — no row removed
 }
 
@@ -1595,6 +1646,24 @@ async function handleDisbandGuild(db, id, session, characterId) {
   if (membership.role !== "leader") return json({ error: "not_guild_leader" });
   await disbandGuildInternal(db, membership.guild_id);
   return json({ ok: true });
+}
+
+const GUILD_JOIN_POLICIES = ["open", "application", "closed"]; // §4 — no rename, description+policy only
+// §4 — Leader-only settings: description and join policy. Server-authoritative; the
+// client cannot set either field on any other action (createGuild fixes join_policy to
+// 'open' and takes description once at creation — this is the only place either can
+// change afterward). This is also what makes the APPLICATION join policy reachable
+// during normal gameplay, since createGuild alone can never produce it.
+async function handleUpdateGuildSettings(db, id, session, characterId, description, joinPolicy) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const membership = await db.prepare(`SELECT guild_id, role FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (!membership) return json({ error: "not_guild_member" });
+  if (membership.role !== "leader") return json({ error: "not_guild_leader" });
+  if (!GUILD_JOIN_POLICIES.includes(joinPolicy)) return json({ error: "invalid_join_policy" });
+  const desc = String(description || "").trim().slice(0, 200);
+  await db.prepare(`UPDATE guilds SET description = ?, join_policy = ? WHERE guild_id = ?`).bind(desc, joinPolicy, membership.guild_id).run();
+  return json({ ok: true, description: desc, joinPolicy });
 }
 
 // ---------- game config ----------
@@ -4803,9 +4872,9 @@ export default {
             return await handleUnblockCharacter(db, id, auth, body.characterId, body.targetCharacterId);
           // Chat System V1 (Phase 3) — write actions
           case "sendGlobalMessage":
-            return await handleSendGlobalMessage(db, id, auth, body.characterId, body.text);
+            return await handleSendGlobalMessage(db, id, auth, body.characterId, body.text, body.nonce);
           case "sendDirectMessage":
-            return await handleSendDirectMessage(db, id, auth, body.characterId, body.toCharacterId, body.text);
+            return await handleSendDirectMessage(db, id, auth, body.characterId, body.toCharacterId, body.text, body.nonce);
           case "markConversationRead":
             return await handleMarkConversationRead(db, id, auth, body.characterId, body.withCharacterId);
           // Guild System V1 Core (Phase 4) — write actions
@@ -4827,6 +4896,8 @@ export default {
             return await handleTransferGuildLeadership(db, id, auth, body.characterId, body.targetCharacterId);
           case "disbandGuild":
             return await handleDisbandGuild(db, id, auth, body.characterId);
+          case "updateGuildSettings":
+            return await handleUpdateGuildSettings(db, id, auth, body.characterId, body.description, body.joinPolicy);
           default:
             return json({ error: "unknown_action" });
         }
