@@ -1,0 +1,464 @@
+name: PixelLab Tool
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Operation"
+        required: true
+        default: "generate"
+        type: choice
+        options:
+          - generate
+          - animate
+      prompt:
+        description: "Image description or animation action"
+        required: true
+        type: string
+      width:
+        description: "Generate width (generate mode only)"
+        required: true
+        default: "512"
+        type: string
+      height:
+        description: "Generate height (generate mode only)"
+        required: true
+        default: "512"
+        type: string
+      frame_count:
+        description: "Generated animation frames (animate mode only)"
+        required: true
+        default: "8"
+        type: string
+      transparent:
+        description: "Request transparent/no background output"
+        required: true
+        default: true
+        type: boolean
+      source_path:
+        description: "Animate mode: repo-relative source PNG/JPG path (preferred when already in repo)"
+        required: false
+        default: ""
+        type: string
+      source_url:
+        description: "Animate mode: public HTTPS source image URL (used when source_path is empty)"
+        required: false
+        default: ""
+        type: string
+      output_name:
+        description: "Artifact/output folder name"
+        required: true
+        default: "pixellab-output"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  pixellab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PIXELLAB_BASE: https://api.pixellab.ai/v2
+      PXL_API_TOKEN: ${{ secrets.PXL_API_TOKEN }}
+      MODE: ${{ inputs.mode }}
+      PROMPT: ${{ inputs.prompt }}
+      WIDTH: ${{ inputs.width }}
+      HEIGHT: ${{ inputs.height }}
+      FRAME_COUNT: ${{ inputs.frame_count }}
+      TRANSPARENT: ${{ inputs.transparent }}
+      SOURCE_PATH: ${{ inputs.source_path }}
+      SOURCE_URL: ${{ inputs.source_url }}
+      OUTPUT_NAME: ${{ inputs.output_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate inputs and PixelLab authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "$PXL_API_TOKEN" || {
+            echo "::error::PXL_API_TOKEN is missing or unavailable."
+            exit 1
+          }
+
+          case "$MODE" in
+            generate|animate) ;;
+            *)
+              echo "::error::Unsupported mode: $MODE"
+              exit 1
+              ;;
+          esac
+
+          if ! [[ "$WIDTH" =~ ^[0-9]+$ && "$HEIGHT" =~ ^[0-9]+$ ]]; then
+            echo "::error::width and height must be positive integers."
+            exit 1
+          fi
+
+          if ! [[ "$FRAME_COUNT" =~ ^[0-9]+$ ]] || [ "$FRAME_COUNT" -lt 1 ]; then
+            echo "::error::frame_count must be a positive integer."
+            exit 1
+          fi
+
+          if [ "$MODE" = "animate" ] && [ -z "$SOURCE_PATH" ] && [ -z "$SOURCE_URL" ]; then
+            echo "::error::animate mode requires source_path or source_url."
+            exit 1
+          fi
+
+          if [ -n "$SOURCE_URL" ] && [[ ! "$SOURCE_URL" =~ ^https:// ]]; then
+            echo "::error::source_url must use HTTPS."
+            exit 1
+          fi
+
+          code=$(curl -sS -o /tmp/pixellab-balance.json -w "%{http_code}" \
+            -H "Authorization: Bearer $PXL_API_TOKEN" \
+            "$PIXELLAB_BASE/balance")
+
+          test "$code" = "200" || {
+            echo "::error::PixelLab authentication failed: HTTP $code"
+            exit 1
+          }
+
+          mkdir -p "$OUTPUT_NAME"
+          echo "PixelLab authentication succeeded."
+
+      - name: Generate image
+        if: ${{ inputs.mode == 'generate' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          export NO_BACKGROUND=false
+          if [ "$TRANSPARENT" = "true" ]; then
+            export NO_BACKGROUND=true
+          fi
+
+          python3 - <<'PY'
+          import json, os
+          payload = {
+              "description": os.environ["PROMPT"],
+              "image_size": {
+                  "width": int(os.environ["WIDTH"]),
+                  "height": int(os.environ["HEIGHT"]),
+              },
+              "no_background": os.environ["NO_BACKGROUND"].lower() == "true",
+          }
+          with open("/tmp/pixellab-generate.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f)
+          PY
+
+          code=$(curl -sS -o /tmp/pixellab-generate-response.json -w "%{http_code}" \
+            -X POST "$PIXELLAB_BASE/create-image-pixen" \
+            -H "Authorization: Bearer $PXL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/pixellab-generate.json)
+
+          if [ "$code" != "200" ] && [ "$code" != "202" ]; then
+            echo "::error::PixelLab create-image-pixen failed: HTTP $code"
+            jq '{detail,error,message}' /tmp/pixellab-generate-response.json || true
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+
+          out = Path(os.environ["OUTPUT_NAME"])
+          d = json.load(open("/tmp/pixellab-generate-response.json", encoding="utf-8"))
+
+          image = d.get("image")
+          if isinstance(image, dict) and image.get("base64"):
+              s = image["base64"]
+              if s.startswith("data:") and "," in s:
+                  s = s.split(",", 1)[1]
+              (out / "generated.png").write_bytes(base64.b64decode(s))
+              (out / "response.json").write_text(json.dumps(d, indent=2), encoding="utf-8")
+              print("PixelLab image saved.")
+          else:
+              job_id = d.get("background_job_id") or d.get("job_id")
+              if not job_id:
+                  raise SystemExit("PixelLab response contained neither image.base64 nor a background job id.")
+              (out / "job_id.txt").write_text(job_id, encoding="utf-8")
+              print(f"PIXELLAB_BACKGROUND_JOB={job_id}")
+          PY
+
+      - name: Poll generated image background job
+        if: ${{ inputs.mode == 'generate' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -f "$OUTPUT_NAME/generated.png" ]; then
+            echo "Generate endpoint returned the image directly; no polling required."
+            exit 0
+          fi
+
+          JOB_ID=$(cat "$OUTPUT_NAME/job_id.txt")
+
+          for i in $(seq 1 120); do
+            code=$(curl -sS -o /tmp/pixellab-job.json -w "%{http_code}" \
+              -H "Authorization: Bearer $PXL_API_TOKEN" \
+              "$PIXELLAB_BASE/background-jobs/$JOB_ID")
+
+            if [ "$code" -ge 500 ]; then
+              echo "PixelLab HTTP $code; retrying same job."
+              sleep 5
+              continue
+            fi
+
+            test "$code" = "200" || {
+              echo "::error::PixelLab background-job poll failed: HTTP $code"
+              exit 1
+            }
+
+            status=$(jq -r '.status // empty' /tmp/pixellab-job.json)
+            inner=$(jq -r '.last_response.status // empty' /tmp/pixellab-job.json)
+            echo "Poll $i: status=$status inner=$inner"
+
+            if [ "$status" = "failed" ] || [ "$inner" = "failed" ]; then
+              echo "::error::PixelLab generation job failed."
+              jq '{status,last_response:{status:.last_response.status,error:.last_response.error,detail:.last_response.detail,message:.last_response.message}}' /tmp/pixellab-job.json || true
+              exit 1
+            fi
+
+            if [ "$status" = "completed" ] || [ "$inner" = "completed" ] || [ "$inner" = "done" ]; then
+              cp /tmp/pixellab-job.json "$OUTPUT_NAME/response.json"
+              python3 - <<'PY'
+              import base64, json, os
+              from pathlib import Path
+
+              out = Path(os.environ["OUTPUT_NAME"])
+              d = json.load(open(out / "response.json", encoding="utf-8"))
+              lr = d.get("last_response") or {}
+              images = lr.get("images") or []
+              image = lr.get("image")
+
+              item = images[0] if images else image
+              if not isinstance(item, dict) or not item.get("base64"):
+                  raise SystemExit("Completed PixelLab job did not contain a base64 image.")
+
+              s = item["base64"]
+              if s.startswith("data:") and "," in s:
+                  s = s.split(",", 1)[1]
+              (out / "generated.png").write_bytes(base64.b64decode(s))
+              PY
+              exit 0
+            fi
+
+            sleep 5
+          done
+
+          echo "::error::Timed out waiting for PixelLab generation job."
+          exit 1
+
+      - name: Prepare animation source
+        if: ${{ inputs.mode == 'animate' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -n "$SOURCE_PATH" ]; then
+            test -f "$SOURCE_PATH" || {
+              echo "::error::source_path not found in repository: $SOURCE_PATH"
+              exit 1
+            }
+            cp "$SOURCE_PATH" /tmp/pixellab-source
+          else
+            curl --fail --silent --show-error --location \
+              "$SOURCE_URL" \
+              --output /tmp/pixellab-source
+          fi
+
+          python3 - <<'PY'
+          import imghdr
+          kind = imghdr.what("/tmp/pixellab-source")
+          if kind not in {"png", "jpeg"}:
+              raise SystemExit(f"Unsupported source image format: {kind!r}. Use PNG or JPEG.")
+          print(f"Animation source format: {kind}")
+          PY
+
+      - name: Submit animation
+        if: ${{ inputs.mode == 'animate' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          export NO_BACKGROUND=false
+          if [ "$TRANSPARENT" = "true" ]; then
+            export NO_BACKGROUND=true
+          fi
+
+          python3 - <<'PY'
+          import base64, imghdr, json, os
+          raw = open("/tmp/pixellab-source", "rb").read()
+          kind = imghdr.what(None, raw)
+          fmt = "jpg" if kind == "jpeg" else "png"
+          payload = {
+              "first_frame": {
+                  "type": "base64",
+                  "base64": base64.b64encode(raw).decode("ascii"),
+                  "format": fmt,
+              },
+              "action": os.environ["PROMPT"],
+              "frame_count": int(os.environ["FRAME_COUNT"]),
+              "no_background": os.environ["NO_BACKGROUND"].lower() == "true",
+          }
+          with open("/tmp/pixellab-animate.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f)
+          PY
+
+          code=$(curl -sS -o /tmp/pixellab-animate-response.json -w "%{http_code}" \
+            -X POST "$PIXELLAB_BASE/animate-with-text-v3" \
+            -H "Authorization: Bearer $PXL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/pixellab-animate.json)
+
+          if [ "$code" != "200" ] && [ "$code" != "202" ]; then
+            echo "::error::PixelLab animate-with-text-v3 failed: HTTP $code"
+            jq '{detail,error,message}' /tmp/pixellab-animate-response.json || true
+            exit 1
+          fi
+
+          JOB_ID=$(jq -r '.background_job_id // .job_id // empty' /tmp/pixellab-animate-response.json)
+          test -n "$JOB_ID" || {
+            echo "::error::PixelLab did not return a background job id."
+            exit 1
+          }
+
+          echo "$JOB_ID" > "$OUTPUT_NAME/job_id.txt"
+          echo "PixelLab animation job submitted: $JOB_ID"
+
+      - name: Poll animation and decode frames
+        if: ${{ inputs.mode == 'animate' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          JOB_ID=$(cat "$OUTPUT_NAME/job_id.txt")
+
+          for i in $(seq 1 120); do
+            code=$(curl -sS -o /tmp/pixellab-animation-job.json -w "%{http_code}" \
+              -H "Authorization: Bearer $PXL_API_TOKEN" \
+              "$PIXELLAB_BASE/background-jobs/$JOB_ID")
+
+            if [ "$code" -ge 500 ]; then
+              echo "PixelLab HTTP $code; retrying same job."
+              sleep 5
+              continue
+            fi
+
+            test "$code" = "200" || {
+              echo "::error::PixelLab animation poll failed: HTTP $code"
+              exit 1
+            }
+
+            status=$(jq -r '.status // empty' /tmp/pixellab-animation-job.json)
+            inner=$(jq -r '.last_response.status // empty' /tmp/pixellab-animation-job.json)
+            echo "Poll $i: status=$status inner=$inner"
+
+            if [ "$status" = "failed" ] || [ "$inner" = "failed" ]; then
+              echo "::error::PixelLab animation job failed."
+              jq '{status,last_response:{status:.last_response.status,error:.last_response.error,detail:.last_response.detail,message:.last_response.message}}' /tmp/pixellab-animation-job.json || true
+              exit 1
+            fi
+
+            if [ "$status" = "completed" ] || [ "$inner" = "completed" ] || [ "$inner" = "done" ]; then
+              cp /tmp/pixellab-animation-job.json "$OUTPUT_NAME/response.json"
+              break
+            fi
+
+            sleep 5
+          done
+
+          test -f "$OUTPUT_NAME/response.json" || {
+            echo "::error::Timed out waiting for PixelLab animation job."
+            exit 1
+          }
+
+          python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+
+          out = Path(os.environ["OUTPUT_NAME"])
+          d = json.load(open(out / "response.json", encoding="utf-8"))
+          images = (d.get("last_response") or {}).get("images") or []
+          if not images:
+              raise SystemExit("Completed PixelLab animation job returned no frames.")
+
+          for i, item in enumerate(images):
+              if not isinstance(item, dict) or not item.get("base64"):
+                  raise SystemExit(f"Frame {i} has no base64 image.")
+              s = item["base64"]
+              if s.startswith("data:") and "," in s:
+                  s = s.split(",", 1)[1]
+              (out / f"frame_{i:02d}.png").write_bytes(base64.b64decode(s))
+
+          print(f"Decoded {len(images)} PixelLab frames.")
+          PY
+
+      - name: Build slow GIF preview
+        if: ${{ inputs.mode == 'animate' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pillow
+
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from PIL import Image
+
+          out = Path(os.environ["OUTPUT_NAME"])
+          paths = sorted(out.glob("frame_*.png"))
+          if not paths:
+              raise SystemExit("No animation frames found.")
+
+          frames = [Image.open(p).convert("RGBA") for p in paths]
+
+          # Slow review preview only. Runtime timing remains a game-side decision.
+          frames[0].save(
+              out / "preview_slow.gif",
+              save_all=True,
+              append_images=frames[1:],
+              duration=300,
+              loop=0,
+              disposal=2,
+          )
+          PY
+
+      - name: Write run manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          out = Path(os.environ["OUTPUT_NAME"])
+          payload = {
+              "provider": "PixelLab",
+              "mode": os.environ["MODE"],
+              "prompt": os.environ["PROMPT"],
+              "transparent": os.environ["TRANSPARENT"].lower() == "true",
+              "generate_size": {
+                  "width": int(os.environ["WIDTH"]),
+                  "height": int(os.environ["HEIGHT"]),
+              },
+              "requested_animation_frames": int(os.environ["FRAME_COUNT"]),
+              "source_path": os.environ["SOURCE_PATH"] or None,
+              "source_url_supplied": bool(os.environ["SOURCE_URL"]),
+              "api_base": os.environ["PIXELLAB_BASE"],
+          }
+          (out / "manifest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+          PY
+
+      - name: Upload PixelLab artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.output_name }}
+          path: ${{ inputs.output_name }}/
+          if-no-files-found: error
+          retention-days: 7
