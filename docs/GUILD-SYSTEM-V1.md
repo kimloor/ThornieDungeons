@@ -132,9 +132,10 @@ Max member capacity is **40** in V1.
 
 V1 Guild EXP comes from **eligible item donation**.
 
-Each donated item grants a configurable fixed Guild EXP amount per item.
+Approved V1 donation value:
+- **1 eligible junk item = 1 Guild EXP**.
 
-The actual numeric EXP-per-item value is **TBD / configurable** and must not be hard-coded into multiple code paths before balance is approved.
+Keep the mapping centralized/configurable even though the initial V1 value is fixed at 1 EXP per item.
 
 Future Guild Quest EXP is planned but not implemented in Guild V1.
 
@@ -182,7 +183,8 @@ A mobile double-tap/network retry must not consume items twice.
 Each Member has cumulative personal contribution.
 
 V1:
-- contribution is earned from donated item quantity/value according to the approved donation mapping;
+- **1 eligible junk item = 1 Personal Contribution**;
+- contribution therefore matches donated eligible-junk quantity 1:1 in V1;
 - contribution is cumulative and does not reset;
 - contribution does not yet purchase rewards in V1.
 
@@ -204,11 +206,25 @@ This prevents donation from becoming unusable after the Guild reaches max level.
 
 ## 12. Guild EXP thresholds
 
-EXP thresholds for Level 1 -> 10 are configurable and **TBD for balance**.
+Approved V1 progression:
 
-Use one central progression table/config.
+| Level | EXP to next level | Cumulative EXP |
+| ---: | ---: | ---: |
+| 1 -> 2 | 200 | 200 |
+| 2 -> 3 | 400 | 600 |
+| 3 -> 4 | 700 | 1,300 |
+| 4 -> 5 | 1,000 | 2,300 |
+| 5 -> 6 | 1,400 | 3,700 |
+| 6 -> 7 | 1,900 | 5,600 |
+| 7 -> 8 | 2,500 | 8,100 |
+| 8 -> 9 | 3,200 | 11,300 |
+| 9 -> 10 | 4,000 | 15,300 |
 
-Do not invent permanent threshold numbers during implementation without approval.
+Total EXP required from Guild Level 1 to Level 10 = **15,300**.
+
+Use one central progression table/config. Do not scatter threshold values across frontend/backend.
+
+At Level 10, Guild EXP is capped at the Level 10 threshold while donation and Personal Contribution continue.
 
 ## 13. Guild application/join concurrency
 
