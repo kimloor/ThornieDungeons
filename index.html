@@ -7808,8 +7808,10 @@ function ThornieDungeons() {
   const petCombatRef = useRef(null);
   const playerRef = useRef(null);
   const turnQueueRef = useRef([]);
+  const activeCharacterIdRef = useRef(null);
   const combatOutcomeRef = useRef(null);
   useEffect(() => { monstersRef.current = monsters; }, [monsters]);
+  useEffect(() => { activeCharacterIdRef.current = save?.characterId || null; }, [save?.characterId]);
   useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
   useEffect(() => { playerRef.current = player; }, [player]);
   useEffect(() => { equippedRef.current = equipped; }, [equipped]);
@@ -8400,6 +8402,17 @@ function ThornieDungeons() {
     persistItems(inventory, equipped);
     if (player && !combatOutcomeRef.current) pushRunState(buildRunStateSnapshot(selectedFloor, player));
     return persistenceRef.current.flush(persistenceContextFor(save.characterId), { retryFailed: true });
+  }
+  async function flushInventoryForDonation(characterId) {
+    if (!characterId || activeCharacterIdRef.current !== characterId || !AUTH_SESSION.getToken()) return false;
+    const context = persistenceContextFor(characterId);
+    if (!context) return false;
+    // Donation mutates items server-side. First enqueue the latest local full snapshot,
+    // then wait until every older items snapshot for this character has drained so none
+    // can arrive after donation and restore consumed junk.
+    persistItems(inventoryRef.current, equippedRef.current, inventoryOverflowRef.current);
+    const ok = await persistenceRef.current.flush(context, { retryFailed: true });
+    return !!ok && activeCharacterIdRef.current === characterId && !!AUTH_SESSION.getToken();
   }
   async function manualSave() {
     const ok = await flushCurrentCharacter();
@@ -9938,9 +9951,11 @@ function ThornieDungeons() {
     characterId: save.characterId,
     characterLevel: save.character.level,
     inventory: inventory,
+    onBeforeDonate: flushInventoryForDonation,
     onRefreshInventory: async () => {
-      const res = await cloudGetInventory(cred.url, save.characterId);
-      if (!res || res.error) return;
+      const characterId = save.characterId;
+      const res = await cloudGetInventory(cred.url, characterId);
+      if (!res || res.error || activeCharacterIdRef.current !== characterId) return false;
       const next = itemsFromServerList(res.items || []);
       equippedRef.current = next.equipped;
       inventoryRef.current = next.inventory;
@@ -9948,6 +9963,7 @@ function ThornieDungeons() {
       setEquipped(next.equipped);
       setInventory(next.inventory);
       setInventoryOverflow(next.overflow);
+      return true;
     },
     ...utilityDockProps("guild"),
     onFriend: () => {
@@ -12036,6 +12052,7 @@ function GuildScreen({
   onChat,
   onBack,
   inventory = [],
+  onBeforeDonate,
   onRefreshInventory
 }) {
   const e = React.createElement;
@@ -12177,18 +12194,28 @@ function GuildScreen({
     if (busyKey || !donateJunkId) return;
     const available = eligibleDonations.find(item => item.junkId === donateJunkId)?.quantity || 0;
     const quantity = Math.max(1, Math.min(999, Number(donateQuantity) || 1, available));
-    const donationId = pendingDonationId || (globalThis.crypto?.randomUUID?.() || `donation-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    setPendingDonationId(donationId);
     setBusyKey("donate");
     setDonationError("");
-    const result = await cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId);
-    setBusyKey("");
-    if (!result || result.error) { setDonationError(guildErrorText(result && result.error)); return; }
-    setPendingDonationId("");
-    setDonationResult(result);
-    setDonateQuantity(1);
-    loadMyGuild();
-    if (onRefreshInventory) await onRefreshInventory();
+    try {
+      const persistenceReady = onBeforeDonate ? await onBeforeDonate(characterId) : true;
+      if (!persistenceReady) {
+        setDonationError("บันทึกกระเป๋าล่าสุดยังไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง");
+        return;
+      }
+      const donationId = pendingDonationId || (globalThis.crypto?.randomUUID?.() || `donation-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      setPendingDonationId(donationId);
+      const result = await cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId);
+      if (!result || result.error) { setDonationError(guildErrorText(result && result.error)); return; }
+      setPendingDonationId("");
+      setDonationResult(result);
+      setDonateQuantity(1);
+      loadMyGuild();
+      if (onRefreshInventory) await onRefreshInventory();
+    } catch (_) {
+      setDonationError("เชื่อมต่อ Server ไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setBusyKey("");
+    }
   };
 
   const actionBtn = (label, onClick, variant, disabled) => e("button", {
