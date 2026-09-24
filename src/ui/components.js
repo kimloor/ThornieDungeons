@@ -2117,6 +2117,18 @@ function GuildScreen({
   React.useEffect(() => { loadMyGuild(); }, [loadMyGuild]);
 
   React.useEffect(() => {
+    if (!myGuild || !onRefreshGuildChatStatus) return;
+    let cancelled = false;
+    let timer = null;
+    const refresh = async () => {
+      await onRefreshGuildChatStatus(characterId);
+      if (!cancelled) timer = setTimeout(refresh, 5000);
+    };
+    timer = setTimeout(refresh, 5000);
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [myGuild?.guildId, characterId, onRefreshGuildChatStatus]);
+
+  React.useEffect(() => {
     if (myGuild) return; // only relevant when browsing without a Guild
     cloudGetMyApplications(url, characterId).then((res) => setMyApplications(res && res.applications ? res.applications : []));
   }, [myGuild, url, characterId]);
