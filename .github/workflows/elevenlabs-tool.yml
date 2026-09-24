@@ -1,0 +1,294 @@
+name: ElevenLabs Tool
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Operation"
+        required: true
+        default: "voices"
+        type: choice
+        options:
+          - voices
+          - tts
+          - sfx
+      text:
+        description: "TTS text or SFX description"
+        required: false
+        default: ""
+        type: string
+      voice_id:
+        description: "TTS voice ID (use voices mode to discover)"
+        required: false
+        default: ""
+        type: string
+      voice_search:
+        description: "Voices mode: optional voice name/search filter"
+        required: false
+        default: ""
+        type: string
+      model_id:
+        description: "TTS model ID"
+        required: true
+        default: "eleven_v3"
+        type: string
+      output_format:
+        description: "Audio output format"
+        required: true
+        default: "mp3_44100_128"
+        type: choice
+        options:
+          - mp3_44100_128
+          - mp3_44100_96
+          - mp3_44100_64
+          - mp3_44100_32
+          - mp3_22050_32
+      duration_seconds:
+        description: "SFX duration in seconds (blank = automatic, allowed range 0.5-30)"
+        required: false
+        default: ""
+        type: string
+      loop:
+        description: "SFX: generate a seamless loop"
+        required: true
+        default: false
+        type: boolean
+      output_name:
+        description: "Artifact/output folder name"
+        required: true
+        default: "elevenlabs-output"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  elevenlabs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      ELEVENLABS_BASE: https://api.elevenlabs.io
+      MODE: ${{ inputs.mode }}
+      TEXT: ${{ inputs.text }}
+      VOICE_ID: ${{ inputs.voice_id }}
+      VOICE_SEARCH: ${{ inputs.voice_search }}
+      MODEL_ID: ${{ inputs.model_id }}
+      OUTPUT_FORMAT: ${{ inputs.output_format }}
+      DURATION_SECONDS: ${{ inputs.duration_seconds }}
+      LOOP: ${{ inputs.loop }}
+      OUTPUT_NAME: ${{ inputs.output_name }}
+
+    steps:
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "$ELEVENLABS_API_KEY" || {
+            echo "::error::ELEVENLABS_API_KEY is missing or unavailable."
+            exit 1
+          }
+
+          case "$MODE" in
+            voices|tts|sfx) ;;
+            *)
+              echo "::error::Unsupported mode: $MODE"
+              exit 1
+              ;;
+          esac
+
+          if ! [[ "$OUTPUT_NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::output_name may only contain letters, numbers, dot, underscore, and hyphen."
+            exit 1
+          fi
+
+          if [ "$MODE" = "tts" ]; then
+            test -n "$TEXT" || {
+              echo "::error::tts mode requires text."
+              exit 1
+            }
+            test -n "$VOICE_ID" || {
+              echo "::error::tts mode requires voice_id. Run voices mode first."
+              exit 1
+            }
+            test -n "$MODEL_ID" || {
+              echo "::error::tts mode requires model_id."
+              exit 1
+            }
+          fi
+
+          if [ "$MODE" = "sfx" ]; then
+            test -n "$TEXT" || {
+              echo "::error::sfx mode requires text."
+              exit 1
+            }
+
+            if [ -n "$DURATION_SECONDS" ]; then
+              python3 - <<'PY'
+          import os
+          value = float(os.environ["DURATION_SECONDS"])
+          if not 0.5 <= value <= 30:
+              raise SystemExit("duration_seconds must be between 0.5 and 30.")
+          PY
+            fi
+          fi
+
+          mkdir -p "$OUTPUT_NAME"
+
+      - name: List voices
+        if: ${{ inputs.mode == 'voices' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          QUERY=$(python3 - <<'PY'
+          import os
+          from urllib.parse import urlencode
+          params = {
+              "page_size": 100,
+              "include_total_count": "true",
+          }
+          search = os.environ.get("VOICE_SEARCH", "").strip()
+          if search:
+              params["search"] = search
+          print(urlencode(params))
+          PY
+          )
+
+          code=$(curl -sS -o "$OUTPUT_NAME/voices.json" -w "%{http_code}" \
+            -H "xi-api-key: $ELEVENLABS_API_KEY" \
+            "$ELEVENLABS_BASE/v2/voices?$QUERY")
+
+          test "$code" = "200" || {
+            echo "::error::ElevenLabs list voices failed: HTTP $code"
+            cat "$OUTPUT_NAME/voices.json" || true
+            exit 1
+          }
+
+          jq -r '.voices[] | [.name, .voice_id, (.category // ""), ((.labels // {}) | to_entries | map(.key + "=" + (.value|tostring)) | join(","))] | @tsv' \
+            "$OUTPUT_NAME/voices.json" | tee "$OUTPUT_NAME/voices.tsv"
+
+          echo "Voice list saved to voices.json and voices.tsv."
+
+      - name: Generate TTS
+        if: ${{ inputs.mode == 'tts' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json, os
+          payload = {
+              "text": os.environ["TEXT"],
+              "model_id": os.environ["MODEL_ID"],
+          }
+          with open("/tmp/elevenlabs-tts.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f, ensure_ascii=False)
+          PY
+
+          code=$(curl -sS -o "$OUTPUT_NAME/audio.mp3" -w "%{http_code}" \
+            -X POST "$ELEVENLABS_BASE/v1/text-to-speech/$VOICE_ID?output_format=$OUTPUT_FORMAT" \
+            -H "xi-api-key: $ELEVENLABS_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/elevenlabs-tts.json)
+
+          test "$code" = "200" || {
+            echo "::error::ElevenLabs TTS failed: HTTP $code"
+            python3 - <<'PY'
+          from pathlib import Path
+          p = Path(__import__("os").environ["OUTPUT_NAME"]) / "audio.mp3"
+          try:
+              print(p.read_text(encoding="utf-8"))
+          except Exception:
+              print("ElevenLabs returned a non-text error body.")
+          PY
+            exit 1
+          }
+
+          test -s "$OUTPUT_NAME/audio.mp3" || {
+            echo "::error::ElevenLabs TTS returned an empty audio file."
+            exit 1
+          }
+
+      - name: Generate sound effect
+        if: ${{ inputs.mode == 'sfx' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json, os
+          payload = {
+              "text": os.environ["TEXT"],
+              "loop": os.environ["LOOP"].lower() == "true",
+              "model_id": "eleven_text_to_sound_v2",
+          }
+          duration = os.environ.get("DURATION_SECONDS", "").strip()
+          if duration:
+              payload["duration_seconds"] = float(duration)
+          with open("/tmp/elevenlabs-sfx.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f, ensure_ascii=False)
+          PY
+
+          code=$(curl -sS -o "$OUTPUT_NAME/audio.mp3" -w "%{http_code}" \
+            -X POST "$ELEVENLABS_BASE/v1/sound-generation?output_format=$OUTPUT_FORMAT" \
+            -H "xi-api-key: $ELEVENLABS_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/elevenlabs-sfx.json)
+
+          test "$code" = "200" || {
+            echo "::error::ElevenLabs sound generation failed: HTTP $code"
+            python3 - <<'PY'
+          from pathlib import Path
+          p = Path(__import__("os").environ["OUTPUT_NAME"]) / "audio.mp3"
+          try:
+              print(p.read_text(encoding="utf-8"))
+          except Exception:
+              print("ElevenLabs returned a non-text error body.")
+          PY
+            exit 1
+          }
+
+          test -s "$OUTPUT_NAME/audio.mp3" || {
+            echo "::error::ElevenLabs sound generation returned an empty audio file."
+            exit 1
+          }
+
+      - name: Write run manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          out = Path(os.environ["OUTPUT_NAME"])
+          payload = {
+              "provider": "ElevenLabs",
+              "mode": os.environ["MODE"],
+              "text": os.environ["TEXT"] or None,
+              "voice_id": os.environ["VOICE_ID"] or None,
+              "voice_search": os.environ["VOICE_SEARCH"] or None,
+              "model_id": os.environ["MODEL_ID"] if os.environ["MODE"] == "tts" else (
+                  "eleven_text_to_sound_v2" if os.environ["MODE"] == "sfx" else None
+              ),
+              "output_format": os.environ["OUTPUT_FORMAT"],
+              "duration_seconds": float(os.environ["DURATION_SECONDS"]) if os.environ["DURATION_SECONDS"] else None,
+              "loop": os.environ["LOOP"].lower() == "true" if os.environ["MODE"] == "sfx" else None,
+              "api_base": os.environ["ELEVENLABS_BASE"],
+          }
+          (out / "manifest.json").write_text(
+              json.dumps(payload, indent=2, ensure_ascii=False),
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload ElevenLabs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.output_name }}
+          path: ${{ inputs.output_name }}/
+          if-no-files-found: error
+          retention-days: 7
