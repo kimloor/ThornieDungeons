@@ -2141,16 +2141,24 @@ async function handleGetJunkInfo(db) {
 
 // ---------- player / auth handlers ----------
 async function handleRegister(db, id, password, confirmPassword, rememberLogin, ip) {
-  const registerKey = rateKey("register", ip);
-  const limited = await checkRateLimit(db, registerKey, 3, 60 * 60 * 1000);
-  if (limited.error) return json(limited, 429);
-  await recordRateAttempt(db, registerKey, 3, 60 * 60 * 1000);
+  const failedKey = rateKey("register_failed", ip);
+  const successKey = rateKey("register_success", ip);
+  const failedLimited = await checkRateLimit(db, failedKey, 3, 60 * 60 * 1000);
+  if (failedLimited.error) return json(failedLimited, 429);
+  const successLimited = await checkRateLimit(db, successKey, 3, 60 * 60 * 1000);
+  if (successLimited.error) return json(successLimited, 429);
+
+  const fail = async (payload, status = 400) => {
+    await recordRateAttempt(db, failedKey, 3, 60 * 60 * 1000);
+    return json(payload, status);
+  };
+
   const cleanId = String(id || "").trim();
-  if (!validPlayerId(cleanId)) return json({ error: "invalid_player_id" }, 400);
-  if (!validPassword(password)) return json({ error: "invalid_password_length" }, 400);
-  if (String(password) !== String(confirmPassword)) return json({ error: "password_mismatch" }, 400);
+  if (!validPlayerId(cleanId)) return await fail({ error: "invalid_player_id" });
+  if (!validPassword(password)) return await fail({ error: "invalid_password_length" });
+  if (String(password) !== String(confirmPassword)) return await fail({ error: "password_mismatch" });
   const existing = await playerByLoginId(db, cleanId);
-  if (existing) return json({ error: "id_unavailable" });
+  if (existing) return await fail({ error: "id_unavailable" });
 
   const now = nowIso();
   const passwordHash = await hashPassword(password);
@@ -2160,6 +2168,12 @@ async function handleRegister(db, id, password, confirmPassword, rememberLogin, 
     `INSERT INTO players (id, password, password_hash, recovery_code_hash, auth_version, diamonds, active_slot, created_at)
      VALUES (?, '', ?, ?, 2, 0, NULL, ?)`
   ).bind(cleanId, passwordHash, recoveryHash, now).run();
+
+  // A valid successful registration clears typo/validation failures, but successful
+  // account creation still has its own per-IP hourly cap to prevent account spam.
+  await recordRateAttempt(db, failedKey, 3, 60 * 60 * 1000, true);
+  await recordRateAttempt(db, successKey, 3, 60 * 60 * 1000);
+
   const session = await issueSession(db, cleanId, !!rememberLogin);
   return json({ ok: true, playerId: cleanId, recoveryCode, recoveryConfigured: true, ...session });
 }
