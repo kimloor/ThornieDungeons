@@ -167,28 +167,42 @@ W3 implementation is on `feat/w3-guild-chat-social-integration` and is ready for
 ---
 
 ## W3 — Guild Chat + Social Integration / UX
+**Status: COMPLETE / RELEASED — 2026-09-24**
 
-Status: **IMPLEMENTED — READY_FOR_QA** on `feat/w3-guild-chat-social-integration`; no migration added.
+Released via PR #13:
+- QA-approved/final PR head `5a89b72d229f042b3df523d72e13fe3d8210ce11`;
+- merge commit `4aeddfbff28c8b271dacd35ddb54dbd86e9345a9`;
+- no migration added; reused existing Chat/Guild schema.
 
-Combine the old Guild Chat phase with the old Social UX-polish phase to avoid touching the same navigation/state twice.
+Completed:
+- Guild channel added to existing Chat engine / ChatScreen;
+- current Guild membership is server-authoritative for read/send access;
+- latest 50 initial Guild messages with 14-day retention;
+- persistent Guild unread via `chat_read_state` key `guild:<guildId>`;
+- own messages and blocked-hidden messages do not create unread;
+- block filtering happens before LIMIT while Guild authority remains unchanged;
+- join/rejoin initializes a fresh read baseline;
+- leave/kick/disband invalidates Guild Chat access/read state;
+- client nonce/idempotent Guild send, 300-char limit, Direct-class rate limiting;
+- Guild Page shortcut and Chat Page Guild tab share the same channel state;
+- character-scoped unread/state isolation;
+- Guild retention cleanup generalized alongside Global 7d / Direct 30d;
+- Friend/Chat/Guild navigation and Guild unread indicators integrated.
 
-Implement:
-- Guild channel using the existing Chat engine;
-- current Guild membership authorization;
-- latest 50 initial messages for new/rejoining members, subject to retention;
-- Guild retention 14 days;
-- persistent Guild unread;
-- leave/disband immediately invalidates old Guild access/unread;
-- rejoin follows new membership rules;
-- Guild Page shortcut and Chat Page Guild tab open the same channel state;
-- block may hide messages for the blocker but must not alter Guild authority;
-- shared loading/error/empty/reconnect behavior;
-- Friend/Chat/Guild navigation consistency;
-- character-switch isolation;
-- unread badge integration where approved;
-- mobile/safe-area polish.
+QA hotfix:
+- initial Guild Chat transient fetch failure now enters reconnect/backoff;
+- retry starts at 5s and successful polling returns to normal 3s cadence;
+- `not_guild_member` / `channel_access_denied` remain terminal and stop retry;
+- focused source test added for initial failure path.
 
-Do not add Sticker backend, Party/Trade/Raid Chat, Guild Quest/Shop/War.
+Gate result:
+- PR clean/mergeable before merge;
+- branch build PASS;
+- generated `index.html` rebuilt from source;
+- known unrelated `tests/battle-persistence.test.js` failure remains outside W3 scope;
+- authenticated production Social E2E remains scheduled under W4.
+
+W4 may now proceed from latest `main`.
 
 ---
 
