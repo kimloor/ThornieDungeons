@@ -524,6 +524,14 @@ function ThornieDungeons() {
       setAuthError("Player ID หรือรหัสผ่านไม่ถูกต้อง");
       return;
     }
+    if (res.error === "rate_limited") {
+      const waitSeconds = Math.max(1, Number(res.retryAfter) || 30);
+      const waitText = waitSeconds >= 60
+        ? `ประมาณ ${Math.ceil(waitSeconds / 60)} นาที`
+        : `ประมาณ ${waitSeconds} วินาที`;
+      setAuthError(`ลองเข้าสู่ระบบผิดหลายครั้ง กรุณารอ ${waitText} แล้วลองใหม่`);
+      return;
+    }
     if (res.error) {
       setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
       return;
