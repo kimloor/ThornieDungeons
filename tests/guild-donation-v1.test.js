@@ -36,9 +36,15 @@ c.executemany("INSERT INTO items VALUES (?,?,?,?,?)", [
  ('b','c1','junk',0,json.dumps({'junkId':'stone','quantity':5,'favorite':False})),
  ('other-character','c2','junk',0,json.dumps({'junkId':'stone','quantity':50,'favorite':False}))])
 c.executescript(pathlib.Path(r'''${path.join(ROOT, "migrations/auto/0019_guild_donation_v1.sql")}''').read_text())
-def donate(did, qty, before_exp, before_level, after_exp, after_level, grant):
+def donate(did, qty, before_exp, before_level, after_exp, after_level, grant, junk='stone', character='c1', guild='g1'):
  c.execute('INSERT INTO guild_donations VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-  (did,'g1','c1','stone',qty,grant,qty,before_level,after_level,before_exp,after_exp,'2026-01-01'))
+  (did,guild,character,junk,qty,grant,qty,before_level,after_level,before_exp,after_exp,'2026-01-01'))
+def must_fail(did, qty, exp, level, after_exp, after_level, grant, error, junk='stone', character='c1', guild='g1'):
+ try:
+  donate(did,qty,exp,level,after_exp,after_level,grant,junk,character,guild)
+  raise AssertionError('expected ' + error)
+ except sqlite3.IntegrityError as exc:
+  assert error in str(exc), str(exc)
 donate('d1',8,0,1,8,1,8)
 remaining = sum(json.loads(row[0])['quantity'] for row in c.execute("SELECT extra_json FROM items WHERE character_id='c1'"))
 assert remaining == 2, remaining
@@ -55,29 +61,33 @@ except sqlite3.IntegrityError:
  pass
 assert c.execute("SELECT COUNT(*) FROM guild_donations").fetchone() == (1,)
 assert sum(json.loads(row[0])['quantity'] for row in c.execute("SELECT extra_json FROM items WHERE character_id='c1'")) == 2
+must_fail('qty-zero',0,8,1,8,1,0,'invalid_quantity')
+must_fail('qty-over',1000,8,1,8,1,0,'invalid_quantity')
+must_fail('not-whitelisted',1,8,1,9,1,1,'donation_item_not_allowed','iron')
+must_fail('not-member',1,0,1,1,1,1,'not_guild_member',character='c3',guild='g1')
 c.execute("INSERT INTO items VALUES ('locked','c1','junk',0,?)", (json.dumps({'junkId':'stone','quantity':20,'favorite':True}),))
 c.execute("INSERT INTO items VALUES ('equipped','c1','junk',1,?)", (json.dumps({'junkId':'stone','quantity':20}),))
-try:
- donate('locked-or-equipped',3,8,1,11,1,3)
- raise AssertionError('locked/equipped inventory must not be consumable')
-except sqlite3.IntegrityError:
- pass
+must_fail('locked-or-equipped',3,8,1,11,1,3,'insufficient_donation_items')
 assert c.execute("SELECT COUNT(*) FROM guild_donations").fetchone() == (1,)
 assert json.loads(c.execute("SELECT extra_json FROM items WHERE item_id='locked'").fetchone()[0])['quantity'] == 20
 assert json.loads(c.execute("SELECT extra_json FROM items WHERE item_id='equipped'").fetchone()[0])['quantity'] == 20
 c.execute("INSERT INTO items VALUES ('c','c1','junk',0,?)", (json.dumps({'junkId':'stone','quantity':1000}),))
 donate('d-level-jump',700,8,1,708,3,700)
 assert c.execute("SELECT exp,level FROM guilds").fetchone() == (708,3)
+donate('d-one',1,708,3,709,3,1)
+assert c.execute("SELECT exp,level FROM guilds").fetchone() == (709,3)
+c.execute("INSERT INTO items VALUES ('max-stack','c1','junk',0,?)", (json.dumps({'junkId':'stone','quantity':999}),))
+donate('d-999',999,709,3,1708,4,999)
+assert c.execute("SELECT exp,level FROM guilds").fetchone() == (1708,4)
 c.execute("UPDATE guilds SET level=10,exp=15300 WHERE guild_id='g1'")
 donate('d2',2,15300,10,15300,10,0)
 assert c.execute("SELECT exp,level FROM guilds").fetchone() == (15300,10)
-assert c.execute("SELECT contribution FROM guild_members").fetchone() == (710,)
+assert c.execute("SELECT contribution FROM guild_members WHERE character_id='c1'").fetchone() == (1710,)
 assert c.execute("SELECT guild_exp_granted,contribution_granted FROM guild_donations WHERE donation_id='d2'").fetchone() == (0,2)
-try:
- c.execute("INSERT INTO guild_donations VALUES ('denied','g1','c1','iron',1,1,1,10,10,15300,15300,'2026')")
- raise AssertionError('expected whitelist constraint')
-except sqlite3.IntegrityError:
- pass
+for junk in ('grass','wood'):
+ c.execute("INSERT INTO items VALUES (?, 'c1','junk',0,?)", (junk,json.dumps({'junkId':junk,'quantity':1})))
+ donate('d-'+junk,1,15300,10,15300,10,0,junk)
+assert c.execute("SELECT contribution FROM guild_members WHERE character_id='c1'").fetchone() == (1712,)
 `;
   const result = spawnSync("python3", ["-c", script], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
