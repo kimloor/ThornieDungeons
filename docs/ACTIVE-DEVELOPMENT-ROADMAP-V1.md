@@ -162,11 +162,13 @@ Gate result:
 - migration transaction behavior independently verified against SQLite;
 - authenticated production Social/Donation E2E remains scheduled under W4.
 
-W3 may now proceed from latest `main`.
+W3 implementation is on `feat/w3-guild-chat-social-integration` and is ready for QA from latest `main`. Do not merge/deploy until QA approval.
 
 ---
 
 ## W3 — Guild Chat + Social Integration / UX
+
+Status: **IMPLEMENTED — READY_FOR_QA** on `feat/w3-guild-chat-social-integration`; no migration added.
 
 Combine the old Guild Chat phase with the old Social UX-polish phase to avoid touching the same navigation/state twice.
 
@@ -476,7 +478,7 @@ W1  Inventory Refactor + Donation-ready Boundary ✅ COMPLETE
  ↓
 W2  Guild Donation ✅ COMPLETE
  ↓
-W3  Guild Chat + Social Integration/UX
+W3  Guild Chat + Social Integration/UX — IMPLEMENTED / READY_FOR_QA
  ↓
 W4  Social Production E2E
  ↓

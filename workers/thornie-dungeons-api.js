@@ -1005,8 +1005,7 @@ async function handleUnblockCharacter(db, id, session, characterId, targetCharac
 }
 
 // ---------- Chat System V1 (docs/CHAT-SYSTEM-V1.md) — Phase 3 ----------
-// Global + Direct only this phase — no Guild Chat, no sticker backend (see the Phase 3
-// dev prompt's explicit scope). Reuses the legacy chat_messages table from
+// Global, Guild and Direct share this engine; stickers remain a placeholder. Reuses the legacy chat_messages table from
 // migration_v3.sql (channel/from_character_id/to_character_id/message/created_at) via
 // migration 0016's additive conversation_key column + chat_read_state table, rather than
 // a separate chat_channels/chat_channel_members architecture — avoids duplicate storage
@@ -1017,6 +1016,9 @@ const CHAT_GLOBAL_RATE_MS = 3000; // §9 "~1 send / 3s"
 const CHAT_DIRECT_RATE_MS = 1500; // §9 "~1 send / 1-2s"
 const CHAT_GLOBAL_RETENTION_DAYS = 7; // §7
 const CHAT_DIRECT_RETENTION_DAYS = 30; // §7
+const CHAT_GUILD_MAX_LEN = 300;
+const CHAT_GUILD_RETENTION_DAYS = 14;
+const CHAT_GUILD_RATE_MS = CHAT_DIRECT_RATE_MS;
 const CHAT_POLL_PAGE_SIZE = 50; // §6 "initial latest ~50 messages"
 
 // Same normalization convention as friendships.character_id_a/b: always the
@@ -1100,6 +1102,109 @@ async function handleSendGlobalMessage(db, id, session, characterId, text, nonce
     }
     throw e;
   }
+}
+
+async function getCurrentGuildMembership(db, characterId) {
+  return db.prepare(
+    `SELECT gm.guild_id, gm.role, g.name FROM guild_members gm JOIN guilds g ON g.guild_id = gm.guild_id WHERE gm.character_id = ?`
+  ).bind(characterId).first();
+}
+
+function guildChatKey(guildId) { return `guild:${guildId}`; }
+
+async function guildChatStatus(db, characterId, membership) {
+  const key = guildChatKey(membership.guild_id);
+  let read = await db.prepare(`SELECT last_read_message_id FROM chat_read_state WHERE character_id = ? AND conversation_key = ?`).bind(characterId, key).first();
+  if (!read) {
+    // Existing members entering W3 for the first time receive a baseline too; retained
+    // pre-launch history must not become surprise unread.
+    await initializeGuildChatBaseline(db, characterId, membership.guild_id);
+    read = await db.prepare(`SELECT last_read_message_id FROM chat_read_state WHERE character_id = ? AND conversation_key = ?`).bind(characterId, key).first();
+  }
+  const blockedIds = await getBlockedCharacterIds(db, characterId);
+  const blockedClause = blockedIds.length ? ` AND from_character_id NOT IN (${blockedIds.map(() => "?").join(",")})` : "";
+  const cutoff = new Date(Date.now() - CHAT_GUILD_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const unread = await db.prepare(
+    `SELECT 1 AS has_unread FROM chat_messages WHERE channel='guild' AND guild_id=? AND created_at>=? AND id>? AND from_character_id!=?${blockedClause} LIMIT 1`
+  ).bind(membership.guild_id, cutoff, Number((read && read.last_read_message_id) || 0), characterId, ...blockedIds).first();
+  return { guildId: membership.guild_id, name: membership.name, unread: !!unread };
+}
+
+async function handleGetGuildChat(db, id, session, characterId, afterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const membership = await getCurrentGuildMembership(db, characterId);
+  if (!membership) return json({ error: "not_guild_member" });
+  const after = Number(afterId) || 0;
+  const blockedIds = await getBlockedCharacterIds(db, characterId);
+  const blockedClause = blockedIds.length ? ` AND from_character_id NOT IN (${blockedIds.map(() => "?").join(",")})` : "";
+  const cutoff = new Date(Date.now() - CHAT_GUILD_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const rows = after > 0
+    ? await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='guild' AND guild_id=? AND created_at>=? AND id>?${blockedClause} ORDER BY id ASC LIMIT 200`).bind(membership.guild_id, cutoff, after, ...blockedIds).all()
+    : await db.prepare(`SELECT id, from_character_id, from_name, message, created_at FROM chat_messages WHERE channel='guild' AND guild_id=? AND created_at>=?${blockedClause} ORDER BY id DESC LIMIT ?`).bind(membership.guild_id, cutoff, ...blockedIds, CHAT_POLL_PAGE_SIZE).all();
+  let results = rows.results || [];
+  if (!after) results = results.reverse();
+  const latest = await db.prepare(`SELECT MAX(id) AS max_id FROM chat_messages WHERE channel='guild' AND guild_id=? AND created_at>=?`).bind(membership.guild_id, cutoff).first();
+  const pageLimit = after > 0 ? 200 : CHAT_POLL_PAGE_SIZE;
+  const cursor = results.length >= pageLimit ? Number(results[results.length - 1].id) : Number((latest && latest.max_id) || (results.length ? results[results.length - 1].id : after));
+  return json({ ok: true, guild: { guildId: membership.guild_id, name: membership.name }, messages: results.map(shapeChatRow), cursor });
+}
+
+async function handleGetGuildChatStatus(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const membership = await getCurrentGuildMembership(db, characterId);
+  if (!membership) return json({ ok: true, guild: null, unread: false });
+  return json({ ok: true, guild: await guildChatStatus(db, characterId, membership) });
+}
+
+async function handleSendGuildMessage(db, id, session, characterId, text, nonce) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (typeof nonce !== "string" || nonce.length < 8 || nonce.length > 128) return json({ error: "missing_fields" });
+  const membership = await getCurrentGuildMembership(db, characterId);
+  if (!membership) return json({ error: "not_guild_member" });
+  // Check current membership before replay lookup so a leave/kick immediately revokes
+  // send access. A nonce only replays within the same current Guild.
+  const existing = await db.prepare(`SELECT id, created_at, channel, guild_id FROM chat_messages WHERE from_character_id=? AND client_nonce=?`).bind(characterId, nonce).first();
+  if (existing) {
+    if (existing.channel !== "guild" || existing.guild_id !== membership.guild_id) return json({ error: "idempotency_conflict" });
+    return json({ ok: true, id: existing.id, createdAt: existing.created_at, replay: true });
+  }
+  const clean = sanitizeChatMessage(text);
+  if (!clean) return json({ error: "message_empty" });
+  if (clean.length > CHAT_GUILD_MAX_LEN) return json({ error: "message_too_long" });
+  const last = await db.prepare(`SELECT created_at FROM chat_messages WHERE channel='guild' AND from_character_id=? ORDER BY id DESC LIMIT 1`).bind(characterId).first();
+  if (last && Date.now() - Date.parse(last.created_at) < CHAT_GUILD_RATE_MS) return json({ error: "rate_limited" });
+  const now = nowIso();
+  try {
+    const result = await db.prepare(
+      `INSERT INTO chat_messages (channel, guild_id, from_character_id, from_name, message, created_at, client_nonce) VALUES ('guild', ?, ?, ?, ?, ?, ?)`
+    ).bind(membership.guild_id, characterId, auth.character.name, clean, now, nonce).run();
+    return json({ ok: true, id: result.meta.last_row_id, createdAt: now, replay: false });
+  } catch (e) {
+    if (String((e && e.message) || e).includes("UNIQUE constraint failed")) {
+      const retry = await db.prepare(`SELECT id, created_at, channel, guild_id FROM chat_messages WHERE from_character_id=? AND client_nonce=?`).bind(characterId, nonce).first();
+      if (retry && retry.channel === "guild" && retry.guild_id === membership.guild_id) return json({ ok: true, id: retry.id, createdAt: retry.created_at, replay: true });
+      if (retry) return json({ error: "idempotency_conflict" });
+    }
+    throw e;
+  }
+}
+
+async function handleMarkGuildChatRead(db, id, session, characterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  const membership = await getCurrentGuildMembership(db, characterId);
+  if (!membership) return json({ error: "not_guild_member" });
+  const key = guildChatKey(membership.guild_id);
+  const latest = await db.prepare(`SELECT MAX(id) AS max_id FROM chat_messages WHERE channel='guild' AND guild_id=?`).bind(membership.guild_id).first();
+  const maxId = Number((latest && latest.max_id) || 0);
+  await db.prepare(
+    `INSERT INTO chat_read_state (character_id, conversation_key, last_read_message_id, updated_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(character_id, conversation_key) DO UPDATE SET last_read_message_id = MAX(last_read_message_id, excluded.last_read_message_id), updated_at = excluded.updated_at`
+  ).bind(characterId, key, maxId, nowIso()).run();
+  return json({ ok: true, lastReadMessageId: maxId, unread: false });
 }
 
 async function handleGetDirectMessages(db, id, session, characterId, withCharacterId, afterId) {
@@ -1233,20 +1338,28 @@ async function handleMarkConversationRead(db, id, session, characterId, withChar
 async function runChatRetentionCleanup(db) {
   const globalCutoff = new Date(Date.now() - CHAT_GLOBAL_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const directCutoff = new Date(Date.now() - CHAT_DIRECT_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const guildCutoff = new Date(Date.now() - CHAT_GUILD_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const globalResult = await db.prepare(`DELETE FROM chat_messages WHERE channel = 'world' AND created_at < ?`).bind(globalCutoff).run();
   const directResult = await db.prepare(`DELETE FROM chat_messages WHERE channel = 'whisper' AND created_at < ?`).bind(directCutoff).run();
-  // Conversations with zero remaining messages leave their read-state row harmless but
-  // unbounded-growing — prune it rather than let it accumulate forever.
+  const guildResult = await db.prepare(`DELETE FROM chat_messages WHERE channel = 'guild' AND created_at < ?`).bind(guildCutoff).run();
+  // Keep active guild cursors, and Direct cursors with retained history. Remove orphan
+  // Guild state after leave/kick/disband and expired Direct cursors without messages.
   await db.prepare(
-    `DELETE FROM chat_read_state WHERE conversation_key NOT IN (SELECT DISTINCT conversation_key FROM chat_messages WHERE channel = 'whisper')`
+    `DELETE FROM chat_read_state AS rs
+     WHERE (rs.conversation_key LIKE 'guild:%' AND NOT EXISTS (
+       SELECT 1 FROM guild_members gm JOIN guilds g ON g.guild_id=gm.guild_id
+       WHERE gm.character_id=rs.character_id AND rs.conversation_key=('guild:' || gm.guild_id)
+     ))
+     OR (rs.conversation_key NOT LIKE 'guild:%' AND NOT EXISTS (
+       SELECT 1 FROM chat_messages m WHERE m.channel='whisper' AND m.conversation_key=rs.conversation_key
+     ))`
   ).run();
-  return { globalDeleted: (globalResult.meta && globalResult.meta.changes) || 0, directDeleted: (directResult.meta && directResult.meta.changes) || 0 };
+  return { globalDeleted: (globalResult.meta && globalResult.meta.changes) || 0, guildDeleted: (guildResult.meta && guildResult.meta.changes) || 0, directDeleted: (directResult.meta && directResult.meta.changes) || 0 };
 }
 
 // ---------- Guild System V1 Core (docs/GUILD-SYSTEM-V1.md) — Phase 4 ----------
-// Core only: create/search/profile, join policy, applications, leave/kick/transfer/
-// disband, auto succession. No donation, no Guild Chat, no rename (all explicitly
-// out of scope for this phase). Extends the legacy guilds/guild_members tables from
+// Core includes create/search/profile, membership lifecycle, donation and Guild Chat;
+// rename remains out of scope. Extends the legacy guilds/guild_members tables from
 // migration_v3.sql via migration 0017 rather than recreating them.
 const GUILD_LEVEL_CAP = 10; // §6
 const GUILD_NAME_MIN_LEN = 3; // §3
@@ -1277,6 +1390,20 @@ function validateGuildName(raw) {
 
 // §5 — called after any successful join (open or application-accept) so no other
 // pending application for that character can be accepted afterward.
+function guildChatBaselineStatement(db, characterId, guildId, now = nowIso()) {
+  const key = guildChatKey(guildId);
+  return db.prepare(
+    `INSERT INTO chat_read_state (character_id, conversation_key, last_read_message_id, updated_at)
+     SELECT ?, ?, COALESCE((SELECT MAX(id) FROM chat_messages WHERE channel='guild' AND guild_id=?), 0), ?
+     WHERE EXISTS (SELECT 1 FROM guild_members WHERE character_id=? AND guild_id=?)
+     ON CONFLICT(character_id, conversation_key) DO UPDATE SET last_read_message_id=excluded.last_read_message_id, updated_at=excluded.updated_at`
+  ).bind(characterId, key, guildId, now, characterId, guildId);
+}
+
+async function initializeGuildChatBaseline(db, characterId, guildId, now = nowIso()) {
+  await guildChatBaselineStatement(db, characterId, guildId, now).run();
+}
+
 async function cancelOtherPendingApplications(db, characterId, now) {
   await db.prepare(
     `UPDATE guild_applications SET status = 'cancelled', resolved_at = ? WHERE character_id = ? AND status = 'pending'`
@@ -1290,6 +1417,7 @@ async function disbandGuildInternal(db, guildId) {
   const now = nowIso();
   await db.batch([
     db.prepare(`DELETE FROM guild_members WHERE guild_id = ?`).bind(guildId),
+    db.prepare(`DELETE FROM chat_read_state WHERE conversation_key = ?`).bind(guildChatKey(guildId)),
     db.prepare(`UPDATE guild_applications SET status = 'cancelled', resolved_at = ? WHERE guild_id = ? AND status = 'pending'`).bind(now, guildId),
     db.prepare(`DELETE FROM guilds WHERE guild_id = ?`).bind(guildId),
   ]);
@@ -1626,17 +1754,20 @@ async function handleRequestGuildJoin(db, id, session, characterId, guildId) {
     // §13 — one atomic INSERT...SELECT enforces capacity AND the one-character-one-guild
     // rule (via ON CONFLICT on guild_members' legacy character_id unique index) together,
     // so a concurrent double-join attempt or a last-slot race can't both succeed.
-    const insert = await db.prepare(
-      `INSERT INTO guild_members (guild_id, character_id, role, joined_at, contribution)
-       SELECT ?, ?, 'member', ?, 0
-       WHERE (SELECT COUNT(*) FROM guild_members WHERE guild_id = ?) < ?
-       ON CONFLICT(character_id) DO NOTHING`
-    ).bind(guildId, characterId, now, guildId, cap).run();
-    if (!insert.meta || !insert.meta.changes) {
+    const joined = await db.batch([
+      db.prepare(
+        `INSERT INTO guild_members (guild_id, character_id, role, joined_at, contribution)
+         SELECT ?, ?, 'member', ?, 0
+         WHERE (SELECT COUNT(*) FROM guild_members WHERE guild_id = ?) < ?
+         ON CONFLICT(character_id) DO NOTHING`
+      ).bind(guildId, characterId, now, guildId, cap),
+      guildChatBaselineStatement(db, characterId, guildId, now),
+      db.prepare(`UPDATE guild_applications SET status='cancelled', resolved_at=? WHERE character_id=? AND status='pending' AND EXISTS (SELECT 1 FROM guild_members WHERE character_id=? AND guild_id=?)`).bind(now, characterId, characterId, guildId),
+    ]);
+    if (!joined[0].meta || !joined[0].meta.changes) {
       const stillFree = await db.prepare(`SELECT 1 FROM guild_members WHERE character_id = ?`).bind(characterId).first();
       return json({ error: stillFree ? "already_in_guild" : "guild_full" });
     }
-    await cancelOtherPendingApplications(db, characterId, now);
     return json({ ok: true, status: "joined", guildId });
   }
 
@@ -1689,23 +1820,26 @@ async function handleAcceptGuildApplication(db, id, session, characterId, applic
   // Same atomic pattern as handleRequestGuildJoin/Friend's Accept: re-verify the
   // application is still pending AND enforce capacity AND the one-guild rule, all inside
   // one statement, so this can't land between a read and a later write.
-  const insert = await db.prepare(
-    `INSERT INTO guild_members (guild_id, character_id, role, joined_at, contribution)
-     SELECT ?, ?, 'member', ?, 0
-     WHERE EXISTS (SELECT 1 FROM guild_applications WHERE application_id = ? AND status = 'pending')
-       AND (SELECT COUNT(*) FROM guild_members WHERE guild_id = ?) < ?
-     ON CONFLICT(character_id) DO NOTHING`
-  ).bind(application.guild_id, application.character_id, now, applicationId, application.guild_id, cap).run();
+  const joined = await db.batch([
+    db.prepare(
+      `INSERT INTO guild_members (guild_id, character_id, role, joined_at, contribution)
+       SELECT ?, ?, 'member', ?, 0
+       WHERE EXISTS (SELECT 1 FROM guild_applications WHERE application_id = ? AND status = 'pending')
+         AND (SELECT COUNT(*) FROM guild_members WHERE guild_id = ?) < ?
+       ON CONFLICT(character_id) DO NOTHING`
+    ).bind(application.guild_id, application.character_id, now, applicationId, application.guild_id, cap),
+    guildChatBaselineStatement(db, application.character_id, application.guild_id, now),
+    db.prepare(`UPDATE guild_applications SET status='accepted', resolved_at=? WHERE application_id=? AND status='pending' AND EXISTS (SELECT 1 FROM guild_members WHERE character_id=? AND guild_id=?)`).bind(now, applicationId, application.character_id, application.guild_id),
+    db.prepare(`UPDATE guild_applications SET status='cancelled', resolved_at=? WHERE character_id=? AND status='pending' AND EXISTS (SELECT 1 FROM guild_members WHERE character_id=? AND guild_id=?)`).bind(now, application.character_id, application.character_id, application.guild_id),
+  ]);
 
-  if (!insert.meta || !insert.meta.changes) {
+  if (!joined[0].meta || !joined[0].meta.changes) {
     // §5 — application remains pending on guild_full; §13 — stale concurrent acceptance
     // (character joined elsewhere first) fails already_in_guild, also leaving it pending.
     const alreadyInGuild = await db.prepare(`SELECT 1 FROM guild_members WHERE character_id = ?`).bind(application.character_id).first();
     return json({ error: alreadyInGuild ? "already_in_guild" : "guild_full" });
   }
 
-  await db.prepare(`UPDATE guild_applications SET status = 'accepted', resolved_at = ? WHERE application_id = ? AND status = 'pending'`).bind(now, applicationId).run();
-  await cancelOtherPendingApplications(db, application.character_id, now);
   return json({ ok: true, characterId: application.character_id });
 }
 
@@ -1735,7 +1869,10 @@ async function handleLeaveGuild(db, id, session, characterId) {
     await disbandGuildInternal(db, membership.guild_id); // sole leader leaving IS disbanding (§14)
     return json({ ok: true, disbanded: true });
   }
-  await db.prepare(`DELETE FROM guild_members WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, characterId).run();
+  await db.batch([
+    db.prepare(`DELETE FROM guild_members WHERE guild_id = ? AND character_id = ?`).bind(membership.guild_id, characterId),
+    db.prepare(`DELETE FROM chat_read_state WHERE character_id = ? AND conversation_key = ?`).bind(characterId, guildChatKey(membership.guild_id)),
+  ]);
   return json({ ok: true });
 }
 
@@ -1745,8 +1882,12 @@ async function handleKickGuildMember(db, id, session, characterId, targetCharact
   if (!targetCharacterId || targetCharacterId === characterId) return json({ error: "invalid_target" });
   const membership = await db.prepare(`SELECT guild_id, role FROM guild_members WHERE character_id = ?`).bind(characterId).first();
   if (!membership || membership.role !== "leader") return json({ error: "not_guild_leader" });
-  const deleted = await db.prepare(`DELETE FROM guild_members WHERE guild_id = ? AND character_id = ? AND role != 'leader'`).bind(membership.guild_id, targetCharacterId).run();
-  if (!deleted.meta || !deleted.meta.changes) return json({ error: "not_guild_member" });
+  const target = await db.prepare(`SELECT 1 FROM guild_members WHERE guild_id = ? AND character_id = ? AND role != 'leader'`).bind(membership.guild_id, targetCharacterId).first();
+  if (!target) return json({ error: "not_guild_member" });
+  await db.batch([
+    db.prepare(`DELETE FROM guild_members WHERE guild_id = ? AND character_id = ? AND role != 'leader'`).bind(membership.guild_id, targetCharacterId),
+    db.prepare(`DELETE FROM chat_read_state WHERE character_id = ? AND conversation_key = ?`).bind(targetCharacterId, guildChatKey(membership.guild_id)),
+  ]);
   return json({ ok: true });
 }
 
@@ -4892,6 +5033,8 @@ export default {
         if (action === "getBlockedList") return await handleGetBlockedList(db, id, auth, p.get("characterId"));
         // Chat System V1 (Phase 3) — read actions
         if (action === "getGlobalChat") return await handleGetGlobalChat(db, id, auth, p.get("characterId"), p.get("afterId"));
+        if (action === "getGuildChat") return await handleGetGuildChat(db, id, auth, p.get("characterId"), p.get("afterId"));
+        if (action === "getGuildChatStatus") return await handleGetGuildChatStatus(db, id, auth, p.get("characterId"));
         if (action === "getDirectMessages") return await handleGetDirectMessages(db, id, auth, p.get("characterId"), p.get("withCharacterId"), p.get("afterId"));
         if (action === "getDirectConversations") return await handleGetDirectConversations(db, id, auth, p.get("characterId"));
         if (action === "runChatRetentionCleanup") {
@@ -4999,6 +5142,10 @@ export default {
           // Chat System V1 (Phase 3) — write actions
           case "sendGlobalMessage":
             return await handleSendGlobalMessage(db, id, auth, body.characterId, body.text, body.nonce);
+          case "sendGuildMessage":
+            return await handleSendGuildMessage(db, id, auth, body.characterId, body.text, body.nonce);
+          case "markGuildChatRead":
+            return await handleMarkGuildChatRead(db, id, auth, body.characterId);
           case "sendDirectMessage":
             return await handleSendDirectMessage(db, id, auth, body.characterId, body.toCharacterId, body.text, body.nonce);
           case "markConversationRead":

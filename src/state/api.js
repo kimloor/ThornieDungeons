@@ -478,6 +478,18 @@ function cloudSendGlobalMessage(url, characterId, text, nonce) {
     nonce
   });
 }
+function cloudGetGuildChat(url, characterId, afterId) {
+  return cloudAuthGet(url, { action: "getGuildChat", characterId, afterId: afterId || 0 });
+}
+function cloudGetGuildChatStatus(url, characterId) {
+  return cloudAuthGet(url, { action: "getGuildChatStatus", characterId });
+}
+function cloudSendGuildMessage(url, characterId, text, nonce) {
+  return cloudAuthPost(url, { action: "sendGuildMessage", characterId, text, nonce });
+}
+function cloudMarkGuildChatRead(url, characterId) {
+  return cloudAuthPost(url, { action: "markGuildChatRead", characterId });
+}
 function cloudGetDirectMessages(url, characterId, withCharacterId, afterId) {
   return cloudAuthGet(url, {
     action: "getDirectMessages",
