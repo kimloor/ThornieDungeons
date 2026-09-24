@@ -1,0 +1,247 @@
+name: W4 Social E2E QA Seed
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/w4-social-e2e-seed.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w4-social-e2e-seed
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: \${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: \${{ secrets.CF_ACCOUNT_ID }}
+      CF_D1_DATABASE_ID: \${{ secrets.CF_D1_DATABASE_ID }}
+      API_URL: https://thornie-dungeons-api.ekqtjl.workers.dev
+
+    steps:
+      - name: Checkout QA branch
+        uses: actions/checkout@v4
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CF_D1_DATABASE_ID"
+          wrangler whoami >/dev/null
+
+      - name: Resolve production D1 without deploying
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          d1_json="$RUNNER_TEMP/d1-list.json"
+          wrangler d1 list --json > "$d1_json"
+          db_name="$(jq -r --arg id "$CF_D1_DATABASE_ID" '.[] | select((.uuid // .id // "") == $id) | .name' "$d1_json" | head -n1)"
+          test -n "$db_name" && test "$db_name" != "null"
+
+          runtime_config="$RUNNER_TEMP/w4-wrangler.jsonc"
+          sed \
+            -e "s/__D1_DATABASE_ID__/$CF_D1_DATABASE_ID/g" \
+            -e "s/__D1_DATABASE_NAME__/$db_name/g" \
+            wrangler.api.template.jsonc > "$runtime_config"
+
+          echo "runtime_config=$runtime_config" >> "$GITHUB_OUTPUT"
+          echo "database_name=$db_name" >> "$GITHUB_OUTPUT"
+
+      - name: Create QA accounts and characters through production Auth V2
+        id: accounts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          suffix="\${GITHUB_RUN_NUMBER}"
+          account_a="E2EW4A\${suffix}"
+          account_b="E2EW4B\${suffix}"
+          char_a1="W4A1\${suffix}"
+          char_a2="W4A2\${suffix}"
+          char_b1="W4B1\${suffix}"
+          password="$(openssl rand -hex 12)"
+
+          echo "::add-mask::$password"
+
+          register() {
+            local id="$1"
+            curl --fail-with-body --silent --show-error \
+              -H 'Content-Type: application/json' \
+              -X POST "$API_URL" \
+              --data "$(jq -nc --arg id "$id" --arg pw "$password" \
+                '{action:"register",id:$id,password:$pw,confirmPassword:$pw,rememberLogin:false}')"
+          }
+
+          create_character() {
+            local token="$1"
+            local slot="$2"
+            local name="$3"
+            curl --fail-with-body --silent --show-error \
+              -H 'Content-Type: application/json' \
+              -H "Authorization: Bearer $token" \
+              -X POST "$API_URL" \
+              --data "$(jq -nc --argjson slot "$slot" --arg name "$name" \
+                '{action:"createCharacter",slotIndex:$slot,name:$name}')"
+          }
+
+          reg_a="$(register "$account_a")"
+          reg_b="$(register "$account_b")"
+          test "$(jq -r '.ok // false' <<<"$reg_a")" = "true"
+          test "$(jq -r '.ok // false' <<<"$reg_b")" = "true"
+
+          token_a="$(jq -r '.sessionToken' <<<"$reg_a")"
+          token_b="$(jq -r '.sessionToken' <<<"$reg_b")"
+          echo "::add-mask::$token_a"
+          echo "::add-mask::$token_b"
+
+          a1="$(create_character "$token_a" 0 "$char_a1")"
+          a2="$(create_character "$token_a" 1 "$char_a2")"
+          b1="$(create_character "$token_b" 0 "$char_b1")"
+          test "$(jq -r '.ok // false' <<<"$a1")" = "true"
+          test "$(jq -r '.ok // false' <<<"$a2")" = "true"
+          test "$(jq -r '.ok // false' <<<"$b1")" = "true"
+
+          char_a1_id="$(jq -r '.character.character_id' <<<"$a1")"
+          char_a2_id="$(jq -r '.character.character_id' <<<"$a2")"
+          char_b1_id="$(jq -r '.character.character_id' <<<"$b1")"
+
+          {
+            echo "account_a=$account_a"
+            echo "account_b=$account_b"
+            echo "char_a1=$char_a1"
+            echo "char_a2=$char_a2"
+            echo "char_b1=$char_b1"
+            echo "char_a1_id=$char_a1_id"
+            echo "char_a2_id=$char_a2_id"
+            echo "char_b1_id=$char_b1_id"
+          } >> "$GITHUB_OUTPUT"
+
+          umask 077
+          cat > "$RUNNER_TEMP/w4-qa-credentials.txt" <<EOF
+          ThornieDungeons W4 temporary QA credentials
+          Account A: $account_a
+          Account B: $account_b
+          Password (both): $password
+          Character A1: $char_a1
+          Character A2: $char_a2
+          Character B1: $char_b1
+          Created by GitHub Actions run: $GITHUB_RUN_ID
+          Purpose: W4 Social E2E only
+          EOF
+
+      - name: Seed only W4 QA characters
+        shell: bash
+        env:
+          A_ID: \${{ steps.accounts.outputs.account_a }}
+          B_ID: \${{ steps.accounts.outputs.account_b }}
+          A1: \${{ steps.accounts.outputs.char_a1_id }}
+          A2: \${{ steps.accounts.outputs.char_a2_id }}
+          B1: \${{ steps.accounts.outputs.char_b1_id }}
+        run: |
+          set -euo pipefail
+
+          [[ "$A_ID" == E2EW4A* ]]
+          [[ "$B_ID" == E2EW4B* ]]
+
+          sql_quote() { printf "%s" "$1" | sed "s/'/''/g"; }
+          qa_a="$(sql_quote "$A_ID")"
+          qa_b="$(sql_quote "$B_ID")"
+          a1="$(sql_quote "$A1")"
+          a2="$(sql_quote "$A2")"
+          b1="$(sql_quote "$B1")"
+          now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          sql="$RUNNER_TEMP/w4-seed.sql"
+          cat > "$sql" <<SQL
+          UPDATE characters
+          SET level=30, stat_points=29, unlocked_floor=20, gold=5000, updated_at='$now', last_active_at='$now'
+          WHERE character_id IN ('$a1','$b1')
+            AND player_id IN ('$qa_a','$qa_b');
+
+          UPDATE characters
+          SET level=5, stat_points=4, unlocked_floor=5, gold=1000, updated_at='$now', last_active_at='$now'
+          WHERE character_id='$a2' AND player_id='$qa_a';
+
+          INSERT INTO items
+            (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name,
+             item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+          VALUES
+            ('qa-$a1-stone','$qa_a','$a1','junk',0,'','','','Stone',0,0,0,500,0,0,0,0,'{"junkId":"stone","quantity":500}','$now','$now'),
+            ('qa-$a1-grass','$qa_a','$a1','junk',0,'','','','Grass',0,0,0,500,0,0,0,0,'{"junkId":"grass","quantity":500}','$now','$now'),
+            ('qa-$a1-wood','$qa_a','$a1','junk',0,'','','','Wood',0,0,0,500,0,0,0,0,'{"junkId":"wood","quantity":500}','$now','$now'),
+            ('qa-$b1-stone','$qa_b','$b1','junk',0,'','','','Stone',0,0,0,500,0,0,0,0,'{"junkId":"stone","quantity":500}','$now','$now'),
+            ('qa-$b1-grass','$qa_b','$b1','junk',0,'','','','Grass',0,0,0,500,0,0,0,0,'{"junkId":"grass","quantity":500}','$now','$now'),
+            ('qa-$b1-wood','$qa_b','$b1','junk',0,'','','','Wood',0,0,0,500,0,0,0,0,'{"junkId":"wood","quantity":500}','$now','$now')
+          ON CONFLICT(item_id) DO UPDATE SET
+            extra_json=excluded.extra_json,
+            quantity=excluded.quantity,
+            updated_at=excluded.updated_at;
+          SQL
+
+          wrangler d1 execute DB \
+            --remote \
+            --config "\${{ steps.config.outputs.runtime_config }}" \
+            --file "$sql"
+
+      - name: Read-back verify QA scope
+        shell: bash
+        env:
+          A_ID: \${{ steps.accounts.outputs.account_a }}
+          B_ID: \${{ steps.accounts.outputs.account_b }}
+        run: |
+          set -euo pipefail
+          query="SELECT p.id AS player_id, c.character_id, c.name, c.level,
+                 COALESCE(SUM(CASE WHEN i.slot_type='junk' THEN CAST(json_extract(i.extra_json,'$.quantity') AS INTEGER) ELSE 0 END),0) AS junk_qty
+                 FROM players p
+                 JOIN characters c ON c.player_id=p.id
+                 LEFT JOIN items i ON i.character_id=c.character_id
+                 WHERE p.id IN ('$A_ID','$B_ID')
+                 GROUP BY p.id,c.character_id,c.name,c.level
+                 ORDER BY p.id,c.slot_index;"
+
+          wrangler d1 execute DB \
+            --remote \
+            --config "\${{ steps.config.outputs.runtime_config }}" \
+            --command "$query" \
+            --json > "$RUNNER_TEMP/verify.json"
+
+          jq -e '.[0].results | length == 3' "$RUNNER_TEMP/verify.json" >/dev/null
+          jq -e '.[0].results | map(select(.level == 30)) | length == 2' "$RUNNER_TEMP/verify.json" >/dev/null
+
+          echo "QA seed verified: 2 accounts / 3 characters; credentials intentionally omitted from logs."
+          jq -r '.[0].results[] | "- \\(.player_id) / \\(.name) / Lv.\\(.level) / junk=\\(.junk_qty)"' "$RUNNER_TEMP/verify.json" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload temporary QA credentials
+        uses: actions/upload-artifact@v4
+        with:
+          name: w4-qa-credentials-\${{ github.run_id }}
+          path: \${{ runner.temp }}/w4-qa-credentials.txt
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: QA seed summary
+        shell: bash
+        run: |
+          {
+            echo ""
+            echo "### W4 QA seed"
+            echo "- Environment: production D1 + production Auth V2 API"
+            echo "- Scope: E2EW4 temporary test accounts only"
+            echo "- Accounts: \${{ steps.accounts.outputs.account_a }}, \${{ steps.accounts.outputs.account_b }}"
+            echo "- Characters: \${{ steps.accounts.outputs.char_a1 }}, \${{ steps.accounts.outputs.char_a2 }}, \${{ steps.accounts.outputs.char_b1 }}"
+            echo "- No Worker deploy"
+            echo "- No migration replay"
+            echo "- Credential artifact retention: 1 day"
+          } >> "$GITHUB_STEP_SUMMARY"
