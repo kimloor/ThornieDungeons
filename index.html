@@ -6791,6 +6791,53 @@ function claimAllOverflowThatFits(inventory, overflow, capacity = INVENTORY_CAPA
   return { inventory: nextInventory, overflow: remaining, claimed };
 }
 
+// Read-only Inventory V2 item accessors.
+// Runtime UI code uses item.quantity. Persisted junk/potion quantity is restored
+// from extra_json.quantity by itemsFromServerList(); DB items.quantity is not authoritative.
+function inventoryItemRuntimeId(item) {
+  return item?.id || "";
+}
+
+function inventoryItemBackendId(item) {
+  return item?.item_id || item?.itemId || inventoryItemRuntimeId(item);
+}
+
+function inventoryItemType(item) {
+  return item?.type || item?.slot_type || "";
+}
+
+function inventoryItemJunkId(item) {
+  return item?.junkId || item?.junk_id || "";
+}
+
+function inventoryItemPotionId(item) {
+  return item?.potionId || item?.potion_id || "";
+}
+
+function inventoryItemQuantity(item) {
+  const quantity = Number(item?.quantity);
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+}
+
+function inventoryItemLocked(item) {
+  return item?.favorite === true;
+}
+
+function inventoryItemEquippedSlot(item, equipped) {
+  const runtimeId = inventoryItemRuntimeId(item);
+  if (!runtimeId || !equipped) return "";
+  return Object.keys(equipped).find(slot => inventoryItemRuntimeId(equipped[slot]) === runtimeId) || "";
+}
+
+function isInventoryItemEquipped(item, equipped) {
+  return Boolean(inventoryItemEquippedSlot(item, equipped));
+}
+
+function inventoryItemLocation(item, equipped) {
+  const slot = inventoryItemEquippedSlot(item, equipped);
+  return slot ? { equipped: true, location: "equipped", slot } : { equipped: false, location: "inventory", slot: "" };
+}
+
 function inventoryRarityKey(item) {
   const rarity = String(item?.rarity || "common").toLowerCase();
   return rarity === "azure" || rarity === "legendary" ? "mythic" : rarity;
@@ -6821,7 +6868,9 @@ function sortInventoryDeterministic(inventory) {
 if (typeof module !== "undefined" && module.exports) module.exports = {
   INVENTORY_CAPACITY, inventoryStackKey, insertInventoryItems, normalizeInventoryCapacity,
   claimOverflowItem, claimAllOverflowThatFits, inventoryRarityKey, inventoryItemCategory,
-  isItemEnchanted, sortInventoryDeterministic
+  inventoryItemRuntimeId, inventoryItemBackendId, inventoryItemType, inventoryItemJunkId,
+  inventoryItemPotionId, inventoryItemQuantity, inventoryItemLocked, inventoryItemEquippedSlot,
+  isInventoryItemEquipped, inventoryItemLocation, isItemEnchanted, sortInventoryDeterministic
 };
 
 // ===== systems/salvage.js =====
