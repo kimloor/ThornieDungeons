@@ -1,0 +1,84 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+
+const ROOT = path.resolve(__dirname, "..");
+
+test("Guild donation endpoint is authenticated, idempotent, and uses shared inventory selectors", () => {
+  const worker = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8");
+  const ui = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  assert.match(worker, /verifySocialActor\(db, id, session, characterId\)/);
+  assert.match(worker, /case "donateGuildItem":\s*return await handleDonateGuildItem/);
+  assert.match(worker, /guild_donation_config WHERE config_id = 1/);
+  assert.match(worker, /JSON\.parse\(config\.whitelist_json/);
+  assert.match(worker, /donation_id TEXT PRIMARY KEY|guild_donations WHERE donation_id/);
+  assert.match(ui, /inventoryItemJunkId\(item\)/);
+  assert.match(ui, /inventoryItemLocked\(item\)/);
+  assert.match(ui, /cloudDonateGuildItem\(url, characterId, donateJunkId, quantity, donationId\)/);
+});
+
+test("Guild donation migration applies stack consumption, level cap, audit, and rollback atomically", () => {
+  const migration = fs.readFileSync(path.join(ROOT, "migrations/auto/0019_guild_donation_v1.sql"), "utf8");
+  const script = String.raw`
+import sqlite3, json, pathlib
+c = sqlite3.connect(':memory:')
+c.executescript('''CREATE TABLE guilds(guild_id TEXT PRIMARY KEY, level INTEGER, exp INTEGER);
+CREATE TABLE guild_members(guild_id TEXT, character_id TEXT, contribution INTEGER);
+CREATE TABLE items(item_id TEXT PRIMARY KEY, character_id TEXT, slot_type TEXT, equipped INTEGER, extra_json TEXT);''')
+c.execute("INSERT INTO guilds VALUES ('g1',1,0)")
+c.execute("INSERT INTO guild_members VALUES ('g1','c1',0)")
+c.execute("INSERT INTO guilds VALUES ('g2',2,200)")
+c.execute("INSERT INTO guild_members VALUES ('g2','c2',11)")
+c.executemany("INSERT INTO items VALUES (?,?,?,?,?)", [
+ ('a','c1','junk',0,json.dumps({'junkId':'stone','quantity':5,'favorite':False})),
+ ('b','c1','junk',0,json.dumps({'junkId':'stone','quantity':5,'favorite':False})),
+ ('other-character','c2','junk',0,json.dumps({'junkId':'stone','quantity':50,'favorite':False}))])
+c.executescript(pathlib.Path(r'''${path.join(ROOT, "migrations/auto/0019_guild_donation_v1.sql")}''').read_text())
+def donate(did, qty, before_exp, before_level, after_exp, after_level, grant):
+ c.execute('INSERT INTO guild_donations VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+  (did,'g1','c1','stone',qty,grant,qty,before_level,after_level,before_exp,after_exp,'2026-01-01'))
+donate('d1',8,0,1,8,1,8)
+remaining = sum(json.loads(row[0])['quantity'] for row in c.execute("SELECT extra_json FROM items WHERE character_id='c1'"))
+assert remaining == 2, remaining
+assert c.execute("SELECT exp,level FROM guilds").fetchone() == (8,1)
+assert c.execute("SELECT contribution FROM guild_members").fetchone() == (8,)
+assert json.loads(c.execute("SELECT extra_json FROM items WHERE item_id='other-character'").fetchone()[0])['quantity'] == 50
+assert c.execute("SELECT exp,level FROM guilds WHERE guild_id='g2'").fetchone() == (200,2)
+assert c.execute("SELECT contribution FROM guild_members WHERE character_id='c2'").fetchone() == (11,)
+assert c.execute("SELECT COUNT(*) FROM guild_donations").fetchone() == (1,)
+try:
+ donate('bad',1,8,1,10,1,2) # wrong grant must abort the receipt and every trigger write
+ raise AssertionError('expected rollback')
+except sqlite3.IntegrityError:
+ pass
+assert c.execute("SELECT COUNT(*) FROM guild_donations").fetchone() == (1,)
+assert sum(json.loads(row[0])['quantity'] for row in c.execute("SELECT extra_json FROM items WHERE character_id='c1'")) == 2
+c.execute("INSERT INTO items VALUES ('locked','c1','junk',0,?)", (json.dumps({'junkId':'stone','quantity':20,'favorite':True}),))
+c.execute("INSERT INTO items VALUES ('equipped','c1','junk',1,?)", (json.dumps({'junkId':'stone','quantity':20}),))
+try:
+ donate('locked-or-equipped',3,8,1,11,1,3)
+ raise AssertionError('locked/equipped inventory must not be consumable')
+except sqlite3.IntegrityError:
+ pass
+assert c.execute("SELECT COUNT(*) FROM guild_donations").fetchone() == (1,)
+assert json.loads(c.execute("SELECT extra_json FROM items WHERE item_id='locked'").fetchone()[0])['quantity'] == 20
+assert json.loads(c.execute("SELECT extra_json FROM items WHERE item_id='equipped'").fetchone()[0])['quantity'] == 20
+c.execute("INSERT INTO items VALUES ('c','c1','junk',0,?)", (json.dumps({'junkId':'stone','quantity':1000}),))
+donate('d-level-jump',700,8,1,708,3,700)
+assert c.execute("SELECT exp,level FROM guilds").fetchone() == (708,3)
+c.execute("UPDATE guilds SET level=10,exp=15300 WHERE guild_id='g1'")
+donate('d2',2,15300,10,15300,10,0)
+assert c.execute("SELECT exp,level FROM guilds").fetchone() == (15300,10)
+assert c.execute("SELECT contribution FROM guild_members").fetchone() == (710,)
+assert c.execute("SELECT guild_exp_granted,contribution_granted FROM guild_donations WHERE donation_id='d2'").fetchone() == (0,2)
+try:
+ c.execute("INSERT INTO guild_donations VALUES ('denied','g1','c1','iron',1,1,1,10,10,15300,15300,'2026')")
+ raise AssertionError('expected whitelist constraint')
+except sqlite3.IntegrityError:
+ pass
+`;
+  const result = spawnSync("python3", ["-c", script], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});

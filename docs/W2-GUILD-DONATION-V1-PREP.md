@@ -1,6 +1,6 @@
 # ThornieDungeons — W2 Guild Donation V1 Preparation
 
-Status: **READY-FOR-WORK PREPARATION — implementation not started**
+Status: **IMPLEMENTATION CANDIDATE — branch `feat/w2-guild-donation-v1`; awaiting QA**
 
 This document freezes the implementation contract for W2 so the high-risk transactional work can start later without re-discovering schema, balance, or API decisions.
 
@@ -72,12 +72,12 @@ Current item truth:
 
 W1 read-only helpers exist for frontend item access. Backend validation must still read authoritative D1 rows directly.
 
-## 4. Proposed migration
+## 4. Migration
 
 Next forward-only migration:
 `migrations/auto/0019_guild_donation_v1.sql`
 
-Add one audit/idempotency table. Do not modify historical migrations.
+Add forward-only migration `0019`. Do not modify historical migrations. The migration adds the immutable donation receipt/idempotency table, one central donation config (explicit whitelist, item rates, quantity bounds, and level cap), the single cumulative progression table, and an internal stack snapshot used by atomic triggers. The receipt insert is the sole mutation entry point; triggers validate current membership, inventory, and Guild progression, then consume stacks and update Guild EXP/contribution in the same SQLite transaction.
 
 Proposed shape:
 
@@ -107,7 +107,7 @@ CREATE INDEX idx_guild_donations_character_created
   ON guild_donations(character_id, created_at DESC);
 ```
 
-`donation_id` is the client-generated idempotency/request ID for one logical donation action.
+`donation_id` is the client-generated idempotency/request ID for one logical donation action. The snapshot table is emptied by the same transaction after stack consumption; it is not historical data.
 
 Historical audit rows should not become the authoritative source for Guild EXP or contribution.
 
@@ -223,7 +223,7 @@ Critical concurrency rule:
 - no Guild EXP/contribution may survive if item consumption fails;
 - retries/double-taps with the same donationId must replay the receipt.
 
-The implementation technique is not pre-selected here. DEV must use a D1-safe transactional/guarded strategy and prove it with focused tests rather than relying on UI locks.
+The implementation uses one receipt insert and SQLite triggers, so inventory, Guild progression, contribution, audit, and idempotency either commit together or roll back together. The Worker repeats user-facing validation and trigger validation checks critical state again inside the write transaction. The UI lock is only presentation behavior.
 
 ## 8. Central config
 
@@ -293,7 +293,15 @@ Regression:
 - Guild join/member/leader behavior unchanged;
 - node build.js + generated JS syntax validation.
 
-## 11. Release gate
+## 11. Implementation candidate notes
+
+- API actions: authenticated `POST action=donateGuildItem`; authenticated `GET action=getGuildDonationHistory` (current member's own rows only).
+- The donation request uses `characterId`, whitelisted `junkId`, integer quantity, and `donationId`.
+- The first committed receipt is returned with `replay:false`; a retry by the same character returns that receipt with `replay:true` and performs no additional mutation.
+- Worker queries the progression table; no frontend or Worker threshold list duplicates progression values.
+- Validation: `node build.js`, generated inline-JS syntax test, Inventory V2/regression tests, and focused SQLite migration tests.
+
+## 12. Release gate
 
 Before merge:
 - dedicated branch;

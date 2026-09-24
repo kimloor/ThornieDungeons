@@ -1,6 +1,6 @@
 # Guild System V1
 
-Status: **ACTIVE-PRODUCTION for Core — current Guild System V1 Core contract and implementation reference. Donation and Guild Chat sections below remain design-only (not implemented).**
+Status: **ACTIVE-PRODUCTION for Core — W2 Guild Donation V1 is implemented on `feat/w2-guild-donation-v1` and awaiting QA; Guild Chat remains design-only.**
 
 Depends on `SOCIAL-SYSTEM-V1.md`. Guild membership is character-scoped.
 
@@ -172,6 +172,8 @@ Explicitly excluded from the initial whitelist:
 Eligibility is server-configured by explicit `junkId`; `slot_type='junk'` alone is never sufficient.
 
 ## 9. Donation transaction
+
+W2 implementation candidate details, API shape, migration, and QA checks are tracked in `W2-GUILD-DONATION-V1-PREP.md`.
 
 Donation is a high-impact inventory transaction and must be atomic/idempotency-safe.
 

@@ -2242,6 +2242,18 @@ function ThornieDungeons() {
     serverUrl: cred.url,
     characterId: save.characterId,
     characterLevel: save.character.level,
+    inventory: inventory,
+    onRefreshInventory: async () => {
+      const res = await cloudGetInventory(cred.url, save.characterId);
+      if (!res || res.error) return;
+      const next = itemsFromServerList(res.items || []);
+      equippedRef.current = next.equipped;
+      inventoryRef.current = next.inventory;
+      inventoryOverflowRef.current = next.overflow;
+      setEquipped(next.equipped);
+      setInventory(next.inventory);
+      setInventoryOverflow(next.overflow);
+    },
     ...utilityDockProps("guild"),
     onFriend: () => {
       setUtilityReturnPhase("guild");
