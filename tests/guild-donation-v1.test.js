@@ -17,6 +17,14 @@ test("Guild donation endpoint is authenticated, idempotent, and uses shared inve
   assert.match(ui, /inventoryItemJunkId\(item\)/);
   assert.match(ui, /inventoryItemLocked\(item\)/);
   assert.match(ui, /cloudDonateGuildItem\(url, characterId, donateJunkId, quantity, donationId\)/);
+  const app = fs.readFileSync(path.join(ROOT, "src/ui/App.js"), "utf8");
+  assert.match(app, /async function flushInventoryForDonation\(characterId\)/);
+  assert.match(app, /persistItems\(inventoryRef\.current, equippedRef\.current, inventoryOverflowRef\.current\);[\s\S]*persistenceRef\.current\.flush\(context/);
+  assert.match(app, /onBeforeDonate: flushInventoryForDonation/);
+  assert.match(app, /activeCharacterIdRef\.current !== characterId/);
+  const barrierIndex = ui.indexOf("await onBeforeDonate(characterId)");
+  const donateIndex = ui.indexOf("cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId)");
+  assert.ok(barrierIndex >= 0 && donateIndex > barrierIndex, "persistence barrier must complete before donation POST");
 });
 
 test("Guild donation migration applies stack consumption, level cap, audit, and rollback atomically", () => {
@@ -98,4 +106,57 @@ assert c.execute("SELECT contribution FROM guild_members WHERE character_id='c1'
 `;
   const result = spawnSync("python3", ["-c", script], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+
+test("Guild donation persistence barrier drains an older inventory snapshot before transaction", async () => {
+  const { makePersistenceContext, createPersistenceManager } = require("../src/state/persistence.js");
+  const context = makePersistenceContext({
+    url: "https://example.test",
+    accountId: "player-1",
+    characterId: "char-1",
+    credential: {},
+    sessionGeneration: 1,
+  });
+  let releaseWrite;
+  const writeGate = new Promise(resolve => { releaseWrite = resolve; });
+  const order = [];
+  const manager = createPersistenceManager({ retries: 0 });
+  manager.setActiveContext(context);
+  manager.enqueue(context, "items", { quantity: 10 }, async snapshot => {
+    order.push(`sync-start:${snapshot.quantity}`);
+    await writeGate;
+    order.push(`sync-done:${snapshot.quantity}`);
+    return { ok: true };
+  });
+
+  let donationStarted = false;
+  const barrier = (async () => {
+    const ok = await manager.flush(context, { retryFailed: true });
+    assert.equal(ok, true);
+    donationStarted = true;
+    order.push("donation");
+  })();
+
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(donationStarted, false, "donation must wait while an older items snapshot is in flight");
+  releaseWrite();
+  await barrier;
+  assert.deepEqual(order, ["sync-start:10", "sync-done:10", "donation"]);
+});
+
+test("Guild donation persistence barrier reports failed flush and must block transaction", async () => {
+  const { makePersistenceContext, createPersistenceManager } = require("../src/state/persistence.js");
+  const context = makePersistenceContext({
+    url: "https://example.test",
+    accountId: "player-1",
+    characterId: "char-1",
+    credential: {},
+    sessionGeneration: 1,
+  });
+  const manager = createPersistenceManager({ retries: 0 });
+  manager.setActiveContext(context);
+  manager.enqueue(context, "items", { quantity: 10 }, async () => ({ error: "server_error" }));
+  const ok = await manager.flush(context, { retryFailed: true });
+  assert.equal(ok, false);
 });

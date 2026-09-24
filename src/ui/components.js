@@ -1940,6 +1940,7 @@ function GuildScreen({
   onChat,
   onBack,
   inventory = [],
+  onBeforeDonate,
   onRefreshInventory
 }) {
   const e = React.createElement;
@@ -2081,18 +2082,28 @@ function GuildScreen({
     if (busyKey || !donateJunkId) return;
     const available = eligibleDonations.find(item => item.junkId === donateJunkId)?.quantity || 0;
     const quantity = Math.max(1, Math.min(999, Number(donateQuantity) || 1, available));
-    const donationId = pendingDonationId || (globalThis.crypto?.randomUUID?.() || `donation-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    setPendingDonationId(donationId);
     setBusyKey("donate");
     setDonationError("");
-    const result = await cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId);
-    setBusyKey("");
-    if (!result || result.error) { setDonationError(guildErrorText(result && result.error)); return; }
-    setPendingDonationId("");
-    setDonationResult(result);
-    setDonateQuantity(1);
-    loadMyGuild();
-    if (onRefreshInventory) await onRefreshInventory();
+    try {
+      const persistenceReady = onBeforeDonate ? await onBeforeDonate(characterId) : true;
+      if (!persistenceReady) {
+        setDonationError("บันทึกกระเป๋าล่าสุดยังไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง");
+        return;
+      }
+      const donationId = pendingDonationId || (globalThis.crypto?.randomUUID?.() || `donation-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      setPendingDonationId(donationId);
+      const result = await cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId);
+      if (!result || result.error) { setDonationError(guildErrorText(result && result.error)); return; }
+      setPendingDonationId("");
+      setDonationResult(result);
+      setDonateQuantity(1);
+      loadMyGuild();
+      if (onRefreshInventory) await onRefreshInventory();
+    } catch (_) {
+      setDonationError("เชื่อมต่อ Server ไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setBusyKey("");
+    }
   };
 
   const actionBtn = (label, onClick, variant, disabled) => e("button", {
