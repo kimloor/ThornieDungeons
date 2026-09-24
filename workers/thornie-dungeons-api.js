@@ -545,7 +545,10 @@ async function checkRateLimit(db, key, limit, windowMs) {
   if (Number.isFinite(blockedUntil) && blockedUntil > now) return { error: "rate_limited", retryAfter: Math.ceil((blockedUntil - now) / 1000) };
   const windowStart = Date.parse(row.window_started_at || "");
   if (!Number.isFinite(windowStart) || now - windowStart >= windowMs) return { ok: true, attempts: 0, reset: true };
-  if (Number(row.attempts) >= limit) return { error: "rate_limited", retryAfter: 30 };
+  if (Number(row.attempts) >= limit) {
+    const retryAfter = Math.max(1, Math.ceil((windowMs - (now - windowStart)) / 1000));
+    return { error: "rate_limited", retryAfter };
+  }
   return { ok: true, attempts: Number(row.attempts) || 0 };
 }
 async function recordRateAttempt(db, key, limit, windowMs, success = false) {
