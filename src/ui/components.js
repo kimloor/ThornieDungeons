@@ -132,7 +132,16 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
     if (registerForm.password.length < 4 || registerForm.password.length > 32) return setModalError("Password ต้องยาว 4–32 ตัว");
     if (registerForm.password !== registerForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
     const result = await onRegister(registerForm);
-    if (!result?.ok) setModalError(result?.error === "id_unavailable" ? "Player ID นี้ไม่สามารถใช้งานได้" : "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่");
+    if (!result?.ok) {
+      const registerErrorText = {
+        invalid_player_id: "Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น",
+        invalid_password_length: "Password ต้องยาว 4–32 ตัว",
+        password_mismatch: "Confirm Password ไม่ตรงกัน",
+        id_unavailable: "Player ID นี้ถูกใช้งานแล้ว",
+        rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
+      };
+      setModalError(registerErrorText[result?.error] || "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่");
+    }
   };
   const submitForgot = async () => {
     setModalError("");
