@@ -129,25 +129,40 @@ W2 may now start from latest `main`.
 ---
 
 ## W2 — Guild Donation V1
+**Status: COMPLETE / RELEASED — 2026-09-24**
 
-Implement after W1 is stable.
+Released via PR #12:
+- tested/final PR head `62c54f6d55de3a65fde82b2aa35e39ae88b73514`;
+- merge commit `fab111cee54299a2c26308394ba682f4846a1e61`;
+- migration `0019_guild_donation_v1.sql`.
 
-Required:
-- inspect real production item IDs/categories; never guess whitelist keys;
-- explicit donation whitelist;
+Completed:
+- explicit whitelist: `stone`, `grass`, `wood`;
 - quantity 1–999;
-- equipped/locked items denied;
+- 1 eligible item = 1 Guild EXP + 1 Personal Contribution;
+- equipped/locked/favorite-protected inventory denied;
 - authenticated current Guild membership required;
-- atomic/idempotent inventory consumption;
-- Guild EXP;
-- configurable EXP/item mapping;
-- configurable level thresholds;
-- Guild level cap 10;
-- cumulative personal contribution;
+- multi-stack authoritative consumption from `extra_json.quantity`;
+- atomic/idempotent receipt-based donation transaction;
+- cumulative Guild EXP thresholds through Level 10 / 15,300 EXP cap;
+- Level 10 donations remain allowed while contribution continues;
 - donation audit/history;
-- Level 10: donation still allowed, contribution increases, Guild EXP cannot progress beyond cap.
+- Guild donation UI with authoritative inventory/Guild refresh.
 
-This is economy-sensitive and must remain separate from the Inventory refactor.
+QA hotfix:
+- added inventory persistence barrier before `donateGuildItem` so pending full-snapshot `syncItems` cannot restore donated items;
+- failed persistence flush blocks the donation;
+- character-switch guard rejects stale refresh context.
+
+Gate result:
+- PR clean/mergeable before merge;
+- branch build PASS;
+- generated `index.html` rebuilt from source;
+- focused source/race tests added;
+- migration transaction behavior independently verified against SQLite;
+- authenticated production Social/Donation E2E remains scheduled under W4.
+
+W3 may now proceed from latest `main`.
 
 ---
 
@@ -459,7 +474,7 @@ W0  Social 3+4 Hotfix ✅ COMPLETE
  ↓
 W1  Inventory Refactor + Donation-ready Boundary ✅ COMPLETE
  ↓
-W2  Guild Donation
+W2  Guild Donation ✅ COMPLETE
  ↓
 W3  Guild Chat + Social Integration/UX
  ↓
