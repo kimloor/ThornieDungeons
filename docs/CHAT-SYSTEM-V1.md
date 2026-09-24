@@ -1,6 +1,6 @@
 # Chat System V1
 
-Status: **ACTIVE-PRODUCTION for Global + Direct — current Chat System V1 contract and implementation reference. Guild Chat sections below remain design-only (not implemented).**
+Status: **ACTIVE-PRODUCTION for Global + Direct; W3 Guild Chat is implemented on `feat/w3-guild-chat-social-integration` and ready for QA.**
 
 Depends on `SOCIAL-SYSTEM-V1.md` and, for Direct Message access, `FRIEND-SYSTEM-V1.md`.
 
@@ -126,7 +126,7 @@ Backend must also protect against bursts/retry abuse.
 
 Exact implementation constants may be tuned without changing gameplay contract as long as they preserve anti-spam intent and user usability.
 
-Rate-limit failure uses `chat_rate_limited`.
+Global and Direct retain their existing `chat_rate_limited` response. Guild uses the Direct rate class (1500 ms) and returns `rate_limited`.
 
 ## 10. Read/unread
 
@@ -137,6 +137,8 @@ Unread is used for:
 Global has no unread count.
 
 Prefer deterministic per-character read cursor such as `last_read_message_id`.
+
+Guild uses `chat_read_state` key `guild:<guildId>` and persistent boolean unread. Own sent and blocked-sender messages do not count. Blocked rows are filtered in SQL before `LIMIT` and unread evaluation; the polling cursor may advance beyond hidden rows. Join/rejoin initializes the cursor to the Guild's current maximum message ID, so retained history does not create old unread. Leaving, kicking, or disbanding clears the matching Guild cursor.
 
 Do not mark read on failed fetch.
 

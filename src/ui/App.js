@@ -25,6 +25,10 @@ function ThornieDungeons() {
   // mount to open straight into that DM thread. Every other way of opening Chat clears
   // this first so a stale target can't resurface later.
   const [chatDirectTarget, setChatDirectTarget] = useState(null);
+  const [chatInitialChannel, setChatInitialChannel] = useState("global");
+  const [guildUnreadState, setGuildUnreadState] = useState({ characterId: null, unread: false });
+  const guildUnread = guildUnreadState.characterId === save?.characterId && guildUnreadState.unread;
+  const updateGuildUnread = (characterId, unread) => setGuildUnreadState({ characterId, unread });
   // True only when character selection follows a successful login/register. It lets the
   // screen bridge from the login artwork without replaying that transition when switching
   // characters from inside the game.
@@ -35,6 +39,9 @@ function ThornieDungeons() {
     id: "",
     password: ""
   });
+  const refreshGuildChatStatus = useCallback((characterId) => cloudGetGuildChatStatus(cred.url, characterId).then((res) => {
+    if (activeCharacterIdRef.current === characterId && res?.ok) setGuildUnreadState({ characterId, unread: !!res.guild?.unread });
+  }).catch(() => {}), [cred.url]);
   const [rememberLogin, setRememberLogin] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
@@ -127,6 +134,15 @@ function ThornieDungeons() {
   const playerRef = useRef(null);
   const turnQueueRef = useRef([]);
   const activeCharacterIdRef = useRef(null);
+  useEffect(() => {
+    if (!save?.characterId || phase !== "chat") return;
+    let cancelled = false;
+    const characterId = save.characterId;
+    cloudGetGuildChatStatus(cred.url, characterId).then((res) => {
+      if (!cancelled && activeCharacterIdRef.current === characterId && res?.ok) updateGuildUnread(characterId, !!res.guild?.unread);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [phase, save?.characterId, cred.url]);
   const combatOutcomeRef = useRef(null);
   useEffect(() => { monstersRef.current = monsters; }, [monsters]);
   useEffect(() => { activeCharacterIdRef.current = save?.characterId || null; }, [save?.characterId]);
@@ -2009,6 +2025,7 @@ function ThornieDungeons() {
     },
     onChat: () => {
       setChatDirectTarget(null);
+      setChatInitialChannel("global");
       setUtilityReturnPhase("menu");
       setPhase("chat");
     },
@@ -2063,6 +2080,7 @@ function ThornieDungeons() {
     },
     onChat: () => {
       setChatDirectTarget(null);
+      setChatInitialChannel("global");
       setUtilityReturnPhase("town");
       setPhase("chat");
     },
@@ -2095,6 +2113,7 @@ function ThornieDungeons() {
     },
     onChat: () => {
       setChatDirectTarget(null);
+      setChatInitialChannel("global");
       setUtilityReturnPhase("character");
       setPhase("chat");
     },
@@ -2121,6 +2140,7 @@ function ThornieDungeons() {
     },
     onChat: () => {
       setChatDirectTarget(null);
+      setChatInitialChannel("global");
       setUtilityReturnPhase("skill");
       setPhase("chat");
     },
@@ -2158,6 +2178,7 @@ function ThornieDungeons() {
     },
     onChat: () => {
       setChatDirectTarget(null);
+      setChatInitialChannel("global");
       setUtilityReturnPhase("map");
       setPhase("chat");
     },
@@ -2188,6 +2209,7 @@ function ThornieDungeons() {
     },
     onChat: () => {
       setChatDirectTarget(null);
+      setChatInitialChannel("global");
       setUtilityReturnPhase("pets");
       setPhase("chat");
     },
@@ -2223,6 +2245,7 @@ function ThornieDungeons() {
     ...utilityDockProps("friend"),
     onChat: () => {
       setChatDirectTarget(null);
+      setChatInitialChannel("global");
       setUtilityReturnPhase("friend");
       setPhase("chat");
     },
@@ -2232,15 +2255,21 @@ function ThornieDungeons() {
     },
     onChatWith: (friend) => {
       setChatDirectTarget({ characterId: friend.characterId, name: friend.name });
+      setChatInitialChannel("direct");
       setUtilityReturnPhase("friend");
       setPhase("chat");
     },
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "chat" && /*#__PURE__*/React.createElement(ChatScreen, {
+    key: save.characterId,
     serverUrl: cred.url,
     characterId: save.characterId,
     characterName: save.characterName,
     initialDirectTarget: chatDirectTarget,
+    initialChannel: chatInitialChannel,
+    guildUnread,
+    onGuildUnread: updateGuildUnread,
+    onChannelChange: setChatInitialChannel,
     ...utilityDockProps("chat"),
     onFriend: () => {
       setUtilityReturnPhase("chat");
@@ -2257,6 +2286,8 @@ function ThornieDungeons() {
     characterLevel: save.character.level,
     inventory: inventory,
     onBeforeDonate: flushInventoryForDonation,
+    guildUnread,
+    onRefreshGuildChatStatus: refreshGuildChatStatus,
     onRefreshInventory: async () => {
       const characterId = save.characterId;
       const res = await cloudGetInventory(cred.url, characterId);
@@ -2277,6 +2308,7 @@ function ThornieDungeons() {
     },
     onChat: () => {
       setChatDirectTarget(null);
+      setChatInitialChannel("guild");
       setUtilityReturnPhase("guild");
       setPhase("chat");
     },
@@ -2372,6 +2404,7 @@ function ThornieDungeons() {
     onChat: () => {
       setInvOpen(false);
       setChatDirectTarget(null);
+      setChatInitialChannel("global");
       setUtilityReturnPhase(phase);
       setPhase("chat");
     },

@@ -1626,6 +1626,10 @@ function chatErrorText(error) {
     not_friends: "ส่งข้อความได้เฉพาะเพื่อนเท่านั้น",
     blocked_relationship: "ไม่สามารถส่งข้อความได้เนื่องจากมีการบล็อกอยู่",
     invalid_recipient: "ผู้รับไม่ถูกต้อง",
+    not_guild_member: "ไม่ได้เป็นสมาชิกกิลด์นี้",
+    channel_access_denied: "ไม่สามารถเข้าถึงช่องแชทนี้ได้",
+    rate_limited: "ส่งข้อความเร็วเกินไป กรุณารอสักครู่",
+    missing_fields: "ข้อมูลไม่ครบ กรุณาลองใหม่",
     character_not_found: "ไม่พบผู้เล่นนี้",
     server_error: "ระบบแชทขัดข้อง กรุณาลองใหม่",
   };
@@ -1633,6 +1637,7 @@ function chatErrorText(error) {
 }
 const CHAT_TABS = [
   { key: "global", label: "โลก" },
+  { key: "guild", label: "กิลด์" },
   { key: "direct", label: "ส่วนตัว" },
   { key: "sticker", label: "สติกเกอร์" },
 ];
@@ -1641,6 +1646,10 @@ function ChatScreen({
   characterId,
   characterName,
   initialDirectTarget,
+  initialChannel,
+  guildUnread = false,
+  onGuildUnread,
+  onChannelChange,
   onCharacter,
   onOpenInv,
   onPets,
@@ -1652,13 +1661,19 @@ function ChatScreen({
 }) {
   const e = React.createElement;
   const url = serverUrl || DEFAULT_SERVER_URL;
-  const [tab, setTab] = useState(initialDirectTarget ? "direct" : "global");
+  const [tab, setTab] = useState(initialDirectTarget ? "direct" : (initialChannel === "guild" ? "guild" : "global"));
   const [activeConversation, setActiveConversation] = useState(initialDirectTarget || null);
   const [globalMessages, setGlobalMessages] = useState([]);
   const [globalLoaded, setGlobalLoaded] = useState(false);
   const [globalInput, setGlobalInput] = useState("");
   const [globalError, setGlobalError] = useState("");
   const [globalSending, setGlobalSending] = useState(false);
+  const [guildMessages, setGuildMessages] = useState([]);
+  const [guildLoaded, setGuildLoaded] = useState(false);
+  const [guildName, setGuildName] = useState("");
+  const [guildInput, setGuildInput] = useState("");
+  const [guildError, setGuildError] = useState("");
+  const [guildSending, setGuildSending] = useState(false);
   const [conversations, setConversations] = useState(null);
   const [threadMessages, setThreadMessages] = useState([]);
   const [threadLoaded, setThreadLoaded] = useState(false);
@@ -1670,7 +1685,26 @@ function ChatScreen({
 
   const lastGlobalIdRef = React.useRef(0);
   const lastThreadIdRef = React.useRef(0);
+  const lastGuildIdRef = React.useRef(0);
+  const guildNonceRef = React.useRef(null);
+  const guildSendLockRef = React.useRef(false);
+  const onGuildUnreadRef = React.useRef(onGuildUnread);
+  onGuildUnreadRef.current = onGuildUnread;
   const pollTimerRef = React.useRef(null);
+
+  const lastCharacterIdRef = React.useRef(characterId);
+  React.useEffect(() => {
+    if (lastCharacterIdRef.current === characterId) return;
+    lastCharacterIdRef.current = characterId;
+    setGlobalMessages([]); setGlobalLoaded(false); setConversations(null);
+    setThreadMessages([]); setThreadLoaded(false); setActiveConversation(null);
+    setGuildMessages([]); setGuildLoaded(false); setGuildName("");
+    setGlobalInput(""); setThreadInput(""); setGuildInput("");
+    setGlobalError(""); setThreadError(""); setGuildError("");
+    lastGlobalIdRef.current = 0; lastThreadIdRef.current = 0; lastGuildIdRef.current = 0;
+    guildNonceRef.current = null;
+    guildSendLockRef.current = false;
+  }, [characterId]);
 
   // Single active poller at a time — Global tab, or an open Direct thread, or (Direct tab
   // with no thread open) the conversation list. Cleared on unmount and whenever tab/
@@ -1681,8 +1715,10 @@ function ChatScreen({
   React.useEffect(() => {
     let cancelled = false;
     let delay = 3000;
+    if (tab === "guild") { setGuildError(""); setGuildLoaded(false); }
     lastGlobalIdRef.current = 0;
     lastThreadIdRef.current = 0;
+    lastGuildIdRef.current = 0;
     setPollError(false);
 
     const loadInitial = async () => {
@@ -1694,6 +1730,20 @@ function ChatScreen({
           if (res.messages.length) lastGlobalIdRef.current = res.messages[res.messages.length - 1].id;
           setGlobalLoaded(true);
         }
+      } else if (tab === "guild") {
+        const res = await cloudGetGuildChat(url, characterId, 0);
+        if (cancelled) return;
+        if (res && res.ok) {
+          setGuildMessages(res.messages || []);
+          setGuildName(res.guild?.name || "");
+          if (res.cursor != null) lastGuildIdRef.current = Number(res.cursor);
+          else if (res.messages?.length) lastGuildIdRef.current = res.messages[res.messages.length - 1].id;
+          setGuildLoaded(true);
+          const read = await cloudMarkGuildChatRead(url, characterId);
+          if (!cancelled && read && read.ok && onGuildUnreadRef.current) onGuildUnreadRef.current(characterId, false);
+        } else if (res?.error === "not_guild_member") {
+          setGuildMessages([]); setGuildLoaded(true); setGuildError(chatErrorText(res.error));
+        } else if (res?.error) throw new Error(res.error);
       } else if (tab === "direct" && activeConversation) {
         const res = await cloudGetDirectMessages(url, characterId, activeConversation.characterId, 0);
         if (cancelled) return;
@@ -1726,6 +1776,25 @@ function ChatScreen({
           }
           setPollError(false);
           delay = 3000;
+        } else if (tab === "guild") {
+          const res = await cloudGetGuildChat(url, characterId, lastGuildIdRef.current);
+          if (cancelled) return;
+          if (res?.error === "not_guild_member") {
+            setGuildMessages([]); setGuildLoaded(true); setGuildName(""); setGuildError(chatErrorText(res.error));
+            if (onGuildUnreadRef.current) onGuildUnreadRef.current(characterId, false);
+            return;
+          }
+          if (!res || res.error) throw new Error(res?.error || "poll_failed");
+          if (res.guild) setGuildName(res.guild.name || "");
+          if (res.messages.length) {
+            setGuildMessages((prev) => [...prev, ...res.messages]);
+            await cloudMarkGuildChatRead(url, characterId);
+          }
+          if (res.cursor != null) lastGuildIdRef.current = Number(res.cursor);
+          else if (res.messages.length) lastGuildIdRef.current = res.messages[res.messages.length - 1].id;
+          if (onGuildUnreadRef.current) onGuildUnreadRef.current(characterId, false);
+          setPollError(false);
+          delay = 3000;
         } else if (tab === "direct" && activeConversation) {
           const res = await cloudGetDirectMessages(url, characterId, activeConversation.characterId, lastThreadIdRef.current);
           if (cancelled) return;
@@ -1746,6 +1815,12 @@ function ChatScreen({
           setPollError(false);
           delay = 3000;
         }
+        if (tab !== "guild") {
+          try {
+            const status = await cloudGetGuildChatStatus(url, characterId);
+            if (!cancelled && status?.ok && onGuildUnreadRef.current) onGuildUnreadRef.current(characterId, !!status.guild?.unread);
+          } catch (_) { /* Keep channel polling health independent from the badge request. */ }
+        }
       } catch (err) {
         if (cancelled) return;
         setPollError(true);
@@ -1761,6 +1836,28 @@ function ChatScreen({
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, [tab, activeConversation, url, characterId]);
+
+  const handleSendGuild = () => {
+    const text = guildInput.trim();
+    if (!text || guildSending || guildSendLockRef.current) return;
+    guildSendLockRef.current = true;
+    setGuildSending(true); setGuildError("");
+    if (!guildNonceRef.current || guildNonceRef.current.text !== text) {
+      const nonce = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `n-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      guildNonceRef.current = { text, nonce };
+    }
+    cloudSendGuildMessage(url, characterId, text, guildNonceRef.current.nonce).then(async (res) => {
+      setGuildSending(false);
+      guildSendLockRef.current = false;
+      if (!res || res.error) { setGuildError(chatErrorText(res && res.error)); return; }
+      guildNonceRef.current = null;
+      setGuildInput("");
+      setGuildMessages((prev) => prev.some(message => Number(message.id) === Number(res.id)) ? prev : [...prev, { id: res.id, characterId, name: characterName, text, createdAt: res.createdAt }]);
+      if (res.id > lastGuildIdRef.current) lastGuildIdRef.current = res.id;
+      await cloudMarkGuildChatRead(url, characterId);
+      if (onGuildUnreadRef.current) onGuildUnreadRef.current(characterId, false);
+    }).catch(() => { setGuildSending(false); guildSendLockRef.current = false; setGuildError(chatErrorText("network_error")); });
+  };
 
   const handleSendGlobal = () => {
     const text = globalInput.trim();
@@ -1833,6 +1930,18 @@ function ChatScreen({
       }),
       e("button", { className: "md-btn small primary", disabled: globalSending || !globalInput.trim(), onClick: handleSendGlobal }, "ส่ง")));
 
+  const guildPane = () => e(React.Fragment, null,
+    guildName && e("p", { className: "md-sub", style: { margin: "0 0 6px" } }, `🏰 ${guildName}`),
+    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+      messageList(guildMessages, guildLoaded, "ยังไม่มีข้อความในกิลด์")),
+    pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
+    guildError && e("p", { className: "md-sub", role: "alert" }, guildError),
+    guildLoaded && guildError === chatErrorText("not_guild_member") ? null : e("div", { className: "md-card", style: { display: "flex", gap: 6 } },
+      e("input", { className: "md-field", style: { flex: 1, minWidth: 0 }, placeholder: "พิมพ์ข้อความ... (สูงสุด 300 ตัวอักษร)", value: guildInput, maxLength: 300,
+        onChange: (ev) => { setGuildInput(ev.target.value); if (guildNonceRef.current?.text !== ev.target.value.trim()) guildNonceRef.current = null; },
+        onKeyDown: (ev) => { if (ev.key === "Enter") handleSendGuild(); } }),
+      e("button", { className: "md-btn small primary", disabled: guildSending || !guildInput.trim(), onClick: handleSendGuild }, "ส่ง")));
+
   const conversationListPane = () => {
     if (conversations === null) return e("p", { className: "md-sub" }, "กำลังโหลด...");
     if (!conversations.length) return e("p", { className: "md-sub" }, "ยังไม่มีการสนทนา — เริ่มแชทได้จากหน้าเพื่อน");
@@ -1879,9 +1988,10 @@ function ChatScreen({
         key: t.key,
         className: "md-btn small" + (tab === t.key ? " primary" : " flee"),
         style: { flex: 1 },
-        onClick: () => { setTab(t.key); if (t.key !== "direct") setActiveConversation(null); },
-      }, t.label))),
+        onClick: () => { setTab(t.key); if (t.key !== "direct") setActiveConversation(null); if (onChannelChange && t.key !== "sticker") onChannelChange(t.key); },
+      }, t.label, t.key === "guild" && guildUnread ? " 🔴" : ""))),
     tab === "global" && globalPane(),
+    tab === "guild" && guildPane(),
     tab === "direct" && (activeConversation ? threadPane() : conversationListPane()),
     tab === "sticker" && stickerPane(),
     e(BackButton, { onClick: () => (tab === "direct" && activeConversation) ? setActiveConversation(null) : onBack() }),
@@ -1938,6 +2048,8 @@ function GuildScreen({
   onSave,
   onFriend,
   onChat,
+  guildUnread = false,
+  onRefreshGuildChatStatus,
   onBack,
   inventory = [],
   onBeforeDonate,
@@ -1993,13 +2105,14 @@ function GuildScreen({
     cloudGetMyGuild(url, characterId).then((res) => {
       if (!res || res.error) { setLoadError(guildErrorText(res && res.error)); setMyGuild(null); return; }
       setMyGuild(res.guild);
+      if (onRefreshGuildChatStatus) onRefreshGuildChatStatus(characterId);
       if (res.guild && res.guild.viewerRole === "leader") {
         cloudGetGuildApplications(url, characterId, res.guild.guildId).then((r) => setApplications(r && r.applications ? r.applications : []));
       } else {
         setApplications(null);
       }
     }).catch(() => { setLoadError(guildErrorText("network_error")); setMyGuild(null); });
-  }, [url, characterId]);
+  }, [url, characterId, onRefreshGuildChatStatus]);
 
   React.useEffect(() => { loadMyGuild(); }, [loadMyGuild]);
 
@@ -2223,7 +2336,7 @@ function GuildScreen({
         e("p", { className: "md-title" }, `🏰 ${g.name}`),
         e("p", { className: "md-sub" }, g.description || "ไม่มีคำอธิบาย"),
         e("p", { className: "md-sub" }, `Lv.${g.level} — ${g.memberCount}/${g.memberCap} สมาชิก — ${joinPolicyLabel(g.joinPolicy)}`),
-        e("button", { className: "md-btn info small", disabled: true }, "💬 แชทกิลด์ (เร็วๆ นี้)")),
+        e("button", { className: "md-btn info small", onClick: onChat }, "💬 แชทกิลด์", guildUnread ? " 🔴" : "")),
       settingsCard,
       donationCard,
       applicationsCard,

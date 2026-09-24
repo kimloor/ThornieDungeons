@@ -1,6 +1,6 @@
 # Guild System V1
 
-Status: **ACTIVE-PRODUCTION for Core — W2 Guild Donation V1 is implemented on `feat/w2-guild-donation-v1` and awaiting QA; Guild Chat remains design-only.**
+Status: **ACTIVE-PRODUCTION for Core and W2 Donation; W3 Guild Chat + Social Integration is implemented on `feat/w3-guild-chat-social-integration` and ready for QA.**
 
 Depends on `SOCIAL-SYSTEM-V1.md`. Guild membership is character-scoped.
 
@@ -22,7 +22,7 @@ Guild V1 includes:
 - Guild Level/EXP;
 - item donation;
 - personal contribution;
-- Guild Chat integration.
+- Guild Chat integration through the shared Global/Direct chat engine.
 
 Roles in V1:
 - `LEADER`
@@ -323,7 +323,10 @@ Historical donation records may be retained/anonymized for audit and must not ex
 Guild Chat behavior is defined in `CHAT-SYSTEM-V1.md`.
 
 Key rules:
-- current membership required;
+- current membership required, derived server-side for `getGuildChat`, `sendGuildMessage`, `markGuildChatRead`, and `getGuildChatStatus`;
+- shares `chat_messages` and `chat_read_state`, without a W3 migration;
+- history is limited to the latest 50 visible messages and 14 days;
+- persistent unread uses `guild:<guildId>`, excludes own and blocked messages, and starts at the current maximum message ID on join/rejoin;
 - leaving Guild removes active access immediately;
 - rejoining later follows new-member history rules;
 - Guild Chat is the same channel whether entered from Chat Page or Guild Page shortcut.
