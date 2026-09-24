@@ -155,7 +155,7 @@ test("password change revokes all sessions and requires the new password", async
   assert.equal((await body(await auth.handleLogin(db, "Change_1", "new1", false, "ip-c3"))).ok, true);
 });
 
-test("login and registration rate limits use generic short-lived failures", async () => {
+test("login and registration rate limits separate failed attempts from successful account creation", async () => {
   const loginDb = createDb();
   await body(await auth.handleRegister(loginDb, "Rate_User", "pass", "pass", false, "register-ip"));
   assert.equal((await body(await auth.handleLogin(loginDb, "missing", "bad1", false, "login-ip"))).error, "invalid_credentials");
@@ -166,10 +166,33 @@ test("login and registration rate limits use generic short-lived failures", asyn
   assert.equal((await body(await auth.handleLogin(loginDb, "Rate_User", "bad1", false, "login-ip"))).error, "rate_limited");
 
   const registerDb = createDb();
-  for (let account = 0; account < 3; account++) {
-    assert.equal((await body(await auth.handleRegister(registerDb, `User_${account}`, "pass", "pass", false, "same-ip"))).ok, true);
-  }
+  assert.equal((await body(await auth.handleRegister(registerDb, "bad id", "pass", "pass", false, "same-ip"))).error, "invalid_player_id");
+  assert.equal((await body(await auth.handleRegister(registerDb, "tiny", "123", "123", false, "same-ip"))).error, "invalid_password_length");
+
+  // A valid signup clears prior typo/validation failures for this IP.
+  assert.equal((await body(await auth.handleRegister(registerDb, "User_0", "pass", "pass", false, "same-ip"))).ok, true);
+  assert.equal((await body(await auth.handleRegister(registerDb, "User_1", "pass", "pass", false, "same-ip"))).ok, true);
+  assert.equal((await body(await auth.handleRegister(registerDb, "User_2", "pass", "pass", false, "same-ip"))).ok, true);
+
+  // Successful account creation still has a separate anti-spam cap.
   assert.equal((await body(await auth.handleRegister(registerDb, "User_3", "pass", "pass", false, "same-ip"))).error, "rate_limited");
+
+  const failedDb = createDb();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    assert.equal((await body(await auth.handleRegister(failedDb, "bad id", "pass", "pass", false, "failed-ip"))).error, "invalid_player_id");
+  }
+  assert.equal((await body(await auth.handleRegister(failedDb, "Valid_1", "pass", "pass", false, "failed-ip"))).error, "rate_limited");
+});
+
+test("registration UI exposes specific server-side failure reasons", () => {
+  const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
+  const componentSource = fs.readFileSync(path.join(__dirname, "../src/ui/components.js"), "utf8");
+  for (const code of ["invalid_player_id", "invalid_password_length", "password_mismatch", "id_unavailable", "rate_limited"]) {
+    assert.match(appSource, new RegExp(code));
+    assert.match(componentSource, new RegExp(code));
+  }
+  assert.match(componentSource, /สมัครบัญชีถี่เกินไปจากเครือข่ายนี้/);
+  assert.match(componentSource, /Player ID นี้ถูกใช้งานแล้ว/);
 });
 
 test("frontend login is POST-only and authenticated gameplay uses bearer auth", async () => {
