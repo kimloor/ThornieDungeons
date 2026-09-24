@@ -1,0 +1,167 @@
+name: W4 Seed Existing QA C5 C8
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/w4-seed-c5-c8.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w4-seed-c5-c8
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Resolve production D1 without deploying
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CF_D1_DATABASE_ID"
+          wrangler whoami >/dev/null
+
+          d1_json="$RUNNER_TEMP/d1-list.json"
+          wrangler d1 list --json > "$d1_json"
+          db_name="$(jq -r --arg id "$CF_D1_DATABASE_ID" '.[] | select((.uuid // .id // "") == $id) | .name' "$d1_json" | head -n1)"
+          test -n "$db_name" && test "$db_name" != "null"
+
+          runtime_config="$RUNNER_TEMP/w4-wrangler.jsonc"
+          sed             -e "s/__D1_DATABASE_ID__/$CF_D1_DATABASE_ID/g"             -e "s/__D1_DATABASE_NAME__/$db_name/g"             wrangler.api.template.jsonc > "$runtime_config"
+
+          echo "runtime_config=$runtime_config" >> "$GITHUB_OUTPUT"
+
+      - name: Preflight exact QA identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          query="SELECT player_id,name,level FROM characters
+                 WHERE (player_id='E2EW4C5' AND name IN ('C5-1','C5-2'))
+                    OR (player_id='E2EW4C8' AND name IN ('C8-1','C8-2'))
+                 ORDER BY player_id,name;"
+
+          wrangler d1 execute DB             --remote             --config "${{ steps.config.outputs.runtime_config }}"             --command "$query"             --json > "$RUNNER_TEMP/preflight.json"
+
+          jq -e '.[0].results | length == 4' "$RUNNER_TEMP/preflight.json" >/dev/null
+          jq -e '
+            .[0].results
+            | map(.player_id + "/" + .name)
+            | sort
+            == ["E2EW4C5/C5-1","E2EW4C5/C5-2","E2EW4C8/C8-1","E2EW4C8/C8-2"]
+          ' "$RUNNER_TEMP/preflight.json" >/dev/null
+
+      - name: Seed exact W4 QA characters
+        shell: bash
+        run: |
+          set -euo pipefail
+          now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          sql="$RUNNER_TEMP/w4-c5-c8.sql"
+
+          cat > "$sql" <<SQL
+          UPDATE characters
+          SET level=30, stat_points=29, unlocked_floor=20, gold=5000, updated_at='$now', last_active_at='$now'
+          WHERE (player_id='E2EW4C5' AND name='C5-1')
+             OR (player_id='E2EW4C8' AND name='C8-1');
+
+          UPDATE characters
+          SET level=5, stat_points=4, unlocked_floor=5, gold=1000, updated_at='$now', last_active_at='$now'
+          WHERE (player_id='E2EW4C5' AND name='C5-2')
+             OR (player_id='E2EW4C8' AND name='C8-2');
+
+          DELETE FROM items
+          WHERE player_id IN ('E2EW4C5','E2EW4C8')
+            AND character_id IN (
+              SELECT character_id FROM characters
+              WHERE (player_id='E2EW4C5' AND name IN ('C5-1','C5-2'))
+                 OR (player_id='E2EW4C8' AND name IN ('C8-1','C8-2'))
+            )
+            AND item_id LIKE 'qa-%'
+            AND slot_type='junk';
+
+          INSERT INTO items
+            (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name,
+             item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+          SELECT
+            'qa-' || character_id || '-' || junk_id,
+            player_id,
+            character_id,
+            'junk',0,'','','',
+            CASE junk_id WHEN 'stone' THEN 'Stone' WHEN 'grass' THEN 'Grass' ELSE 'Wood' END,
+            0,0,0,500,0,0,0,0,
+            json_object('junkId',junk_id,'quantity',500),
+            '$now','$now'
+          FROM (
+            SELECT c.player_id, c.character_id, j.junk_id
+            FROM characters c
+            CROSS JOIN (
+              SELECT 'stone' AS junk_id
+              UNION ALL SELECT 'grass'
+              UNION ALL SELECT 'wood'
+            ) j
+            WHERE (c.player_id='E2EW4C5' AND c.name='C5-1')
+               OR (c.player_id='E2EW4C8' AND c.name='C8-1')
+          );
+          SQL
+
+          wrangler d1 execute DB             --remote             --config "${{ steps.config.outputs.runtime_config }}"             --file "$sql"
+
+      - name: Read-back verify exact scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          query="SELECT c.player_id,c.name,c.level,
+                 COALESCE(SUM(CASE WHEN i.slot_type='junk'
+                   AND json_extract(i.extra_json,'$.junkId') IN ('stone','grass','wood')
+                   THEN CAST(json_extract(i.extra_json,'$.quantity') AS INTEGER)
+                   ELSE 0 END),0) AS junk_qty
+                 FROM characters c
+                 LEFT JOIN items i ON i.character_id=c.character_id
+                 WHERE (c.player_id='E2EW4C5' AND c.name IN ('C5-1','C5-2'))
+                    OR (c.player_id='E2EW4C8' AND c.name IN ('C8-1','C8-2'))
+                 GROUP BY c.player_id,c.character_id,c.name,c.level
+                 ORDER BY c.player_id,c.name;"
+
+          wrangler d1 execute DB             --remote             --config "${{ steps.config.outputs.runtime_config }}"             --command "$query"             --json > "$RUNNER_TEMP/verify.json"
+
+          jq -e '.[0].results | length == 4' "$RUNNER_TEMP/verify.json" >/dev/null
+          jq -e '
+            .[0].results as $r
+            | ($r | map(select(.player_id=="E2EW4C5" and .name=="C5-1" and .level==30 and .junk_qty==1500)) | length)==1
+            and ($r | map(select(.player_id=="E2EW4C5" and .name=="C5-2" and .level==5 and .junk_qty==0)) | length)==1
+            and ($r | map(select(.player_id=="E2EW4C8" and .name=="C8-1" and .level==30 and .junk_qty==1500)) | length)==1
+            and ($r | map(select(.player_id=="E2EW4C8" and .name=="C8-2" and .level==5 and .junk_qty==0)) | length)==1
+          ' "$RUNNER_TEMP/verify.json" >/dev/null
+
+          jq -r '.[0].results[] | "- \(.player_id) / \(.name) / Lv.\(.level) / junk=\(.junk_qty)"' "$RUNNER_TEMP/verify.json" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summary
+        run: |
+          {
+            echo "### W4 existing QA seed"
+            echo "- E2EW4C5/C5-1: Lv30 + junk 1500"
+            echo "- E2EW4C5/C5-2: Lv5 + junk 0"
+            echo "- E2EW4C8/C8-1: Lv30 + junk 1500"
+            echo "- E2EW4C8/C8-2: Lv5 + junk 0"
+            echo "- No Worker deploy"
+            echo "- No migration"
+            echo "- No password stored"
+          } >> "$GITHUB_STEP_SUMMARY"
