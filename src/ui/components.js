@@ -1906,6 +1906,13 @@ function guildErrorText(error) {
     application_not_pending: "คำขอนี้ถูกดำเนินการไปแล้ว",
     application_not_found: "ไม่พบคำขอนี้",
     not_guild_member: "ไม่ได้เป็นสมาชิกกิลด์นี้",
+    invalid_quantity: "จำนวนที่บริจาคต้องอยู่ระหว่าง 1–999",
+    donation_item_not_allowed: "ไอเท็มชนิดนี้ไม่สามารถบริจาคได้",
+    item_not_found: "ไม่พบไอเท็มในกระเป๋า",
+    insufficient_quantity: "จำนวนไอเท็มไม่เพียงพอ",
+    item_equipped: "ไอเท็มที่สวมใส่อยู่บริจาคไม่ได้",
+    item_locked: "ปลดล็อกไอเท็มก่อนบริจาค",
+    donation_conflict: "ข้อมูลเปลี่ยนระหว่างทำรายการ กรุณาลองอีกครั้ง",
     not_guild_leader: "ต้องเป็นหัวหน้ากิลด์เท่านั้น",
     target_not_guild_member: "ผู้เล่นนี้ไม่ได้อยู่ในกิลด์",
     leader_must_transfer_first: "ต้องโอนตำแหน่งหัวหน้าก่อนออกจากกิลด์",
@@ -1931,7 +1938,10 @@ function GuildScreen({
   onSave,
   onFriend,
   onChat,
-  onBack
+  onBack,
+  inventory = [],
+  onBeforeDonate,
+  onRefreshInventory
 }) {
   const e = React.createElement;
   const url = serverUrl || DEFAULT_SERVER_URL;
@@ -1951,6 +1961,30 @@ function GuildScreen({
   const [settingsDesc, setSettingsDesc] = useState("");
   const [settingsPolicy, setSettingsPolicy] = useState("open");
   const [settingsError, setSettingsError] = useState("");
+  const [donateJunkId, setDonateJunkId] = useState("");
+  const [donateQuantity, setDonateQuantity] = useState(1);
+  const [donationError, setDonationError] = useState("");
+  const [donationResult, setDonationResult] = useState(null);
+  const [pendingDonationId, setPendingDonationId] = useState("");
+  const eligibleDonations = React.useMemo(() => {
+    const allowed = new Set(["stone", "grass", "wood"]);
+    const byId = new Map();
+    (inventory || []).forEach(item => {
+      const junkId = inventoryItemJunkId(item);
+      if (inventoryItemType(item) !== "junk" || !allowed.has(junkId) || inventoryItemLocked(item)) return;
+      const current = byId.get(junkId) || { junkId, quantity: 0, name: item.name || junkId, icon: item.icon || "📦" };
+      current.quantity += inventoryItemQuantity(item);
+      byId.set(junkId, current);
+    });
+    return Array.from(byId.values());
+  }, [inventory]);
+  React.useEffect(() => {
+    if (!eligibleDonations.some(item => item.junkId === donateJunkId)) {
+      setDonateJunkId(eligibleDonations[0]?.junkId || "");
+      setDonateQuantity(1);
+      setPendingDonationId("");
+    }
+  }, [eligibleDonations, donateJunkId]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast((t) => (t === msg ? "" : t)), 2200); };
 
@@ -2044,6 +2078,33 @@ function GuildScreen({
       loadMyGuild();
     }).catch(() => { setBusyKey(""); setSettingsError(guildErrorText("network_error")); });
   };
+  const handleDonate = async () => {
+    if (busyKey || !donateJunkId) return;
+    const available = eligibleDonations.find(item => item.junkId === donateJunkId)?.quantity || 0;
+    const quantity = Math.max(1, Math.min(999, Number(donateQuantity) || 1, available));
+    setBusyKey("donate");
+    setDonationError("");
+    try {
+      const persistenceReady = onBeforeDonate ? await onBeforeDonate(characterId) : true;
+      if (!persistenceReady) {
+        setDonationError("บันทึกกระเป๋าล่าสุดยังไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง");
+        return;
+      }
+      const donationId = pendingDonationId || (globalThis.crypto?.randomUUID?.() || `donation-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      setPendingDonationId(donationId);
+      const result = await cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId);
+      if (!result || result.error) { setDonationError(guildErrorText(result && result.error)); return; }
+      setPendingDonationId("");
+      setDonationResult(result);
+      setDonateQuantity(1);
+      loadMyGuild();
+      if (onRefreshInventory) await onRefreshInventory();
+    } catch (_) {
+      setDonationError("เชื่อมต่อ Server ไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setBusyKey("");
+    }
+  };
 
   const actionBtn = (label, onClick, variant, disabled) => e("button", {
     className: `md-btn small ${variant || "info"}`,
@@ -2126,6 +2187,20 @@ function GuildScreen({
       return row(m.characterId, `${m.online ? "🟢" : "⚪"} ${m.role === "leader" ? "👑 " : ""}${m.name} (Lv.${m.level})`, actions);
     });
 
+    const selectedDonation = eligibleDonations.find(item => item.junkId === donateJunkId);
+    const donationCard = e("div", { className: "md-card", style: { marginBottom: 10 } },
+      e("p", { className: "md-title", style: { margin: "0 0 5px" } }, "🎁 บริจาคทรัพยากร"),
+      e("p", { className: "md-sub", style: { margin: "0 0 8px" } }, `กิลด์ Lv.${g.level} · EXP ${Number(g.exp || 0).toLocaleString()}${g.atCap ? " (เต็มแล้ว)" : ` · อีก ${Number(g.expToNext || 0).toLocaleString()} EXP`} · Contribution ${g.members.find(m => m.characterId === characterId)?.contribution || 0}`),
+      !g.atCap && e("div", { style: { height: 7, borderRadius: 8, background: "rgba(255,255,255,.16)", margin: "-2px 0 8px", overflow: "hidden" } },
+        e("div", { style: { height: "100%", width: `${Math.max(0, Math.min(100, 100 * Number(g.expProgress || 0) / Math.max(1, Number(g.expRequired || 1))))}%`, background: "#64d9ff" } })),
+      eligibleDonations.length ? e("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+        e("select", { className: "md-field", value: donateJunkId, disabled: !!pendingDonationId || busyKey === "donate", onChange: ev => { setDonateJunkId(ev.target.value); setDonateQuantity(1); setPendingDonationId(""); }, style: { flex: "1 1 120px", minWidth: 0 } }, eligibleDonations.map(item => e("option", { key: item.junkId, value: item.junkId }, `${item.icon} ${item.name} · ${item.quantity} ชิ้น`))),
+        e("input", { className: "md-field", type: "number", inputMode: "numeric", min: 1, max: Math.min(999, selectedDonation?.quantity || 1), value: donateQuantity, disabled: !!pendingDonationId || busyKey === "donate", onChange: ev => { setDonateQuantity(ev.target.value); setPendingDonationId(""); }, style: { width: 88 } }),
+        actionBtn(busyKey === "donate" ? "กำลังบริจาค…" : "บริจาค", handleDonate, "primary", busyKey === "donate" || !selectedDonation || donateQuantity < 1 || donateQuantity > Math.min(999, selectedDonation?.quantity || 0)))
+        : e("p", { className: "md-sub" }, "ไม่มีหิน หญ้า หรือไม้ที่ปลดล็อกอยู่ในกระเป๋า"),
+      donationError && e("p", { className: "md-sub", role: "alert" }, donationError),
+      donationResult && e("p", { className: "md-sub", role: "status" }, `บริจาค ${donationResult.quantity} ชิ้น · กิลด์ +${donationResult.guildExpGranted} EXP · Contribution ${donationResult.member?.contribution ?? donationResult.contributionGranted}`));
+
     const footerBtn = isLeader
       ? actionBtn("ยุบกิลด์", handleDisband, "flee", busyKey === "disband")
       : actionBtn("ออกจากกิลด์", handleLeave, "flee", busyKey === "leave");
@@ -2150,6 +2225,7 @@ function GuildScreen({
         e("p", { className: "md-sub" }, `Lv.${g.level} — ${g.memberCount}/${g.memberCap} สมาชิก — ${joinPolicyLabel(g.joinPolicy)}`),
         e("button", { className: "md-btn info small", disabled: true }, "💬 แชทกิลด์ (เร็วๆ นี้)")),
       settingsCard,
+      donationCard,
       applicationsCard,
       e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
         e("div", { className: "md-inv-list" }, memberRows)),

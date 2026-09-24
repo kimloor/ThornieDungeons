@@ -126,8 +126,10 @@ function ThornieDungeons() {
   const petCombatRef = useRef(null);
   const playerRef = useRef(null);
   const turnQueueRef = useRef([]);
+  const activeCharacterIdRef = useRef(null);
   const combatOutcomeRef = useRef(null);
   useEffect(() => { monstersRef.current = monsters; }, [monsters]);
+  useEffect(() => { activeCharacterIdRef.current = save?.characterId || null; }, [save?.characterId]);
   useEffect(() => { petCombatRef.current = petCombat; }, [petCombat]);
   useEffect(() => { playerRef.current = player; }, [player]);
   useEffect(() => { equippedRef.current = equipped; }, [equipped]);
@@ -718,6 +720,17 @@ function ThornieDungeons() {
     persistItems(inventory, equipped);
     if (player && !combatOutcomeRef.current) pushRunState(buildRunStateSnapshot(selectedFloor, player));
     return persistenceRef.current.flush(persistenceContextFor(save.characterId), { retryFailed: true });
+  }
+  async function flushInventoryForDonation(characterId) {
+    if (!characterId || activeCharacterIdRef.current !== characterId || !AUTH_SESSION.getToken()) return false;
+    const context = persistenceContextFor(characterId);
+    if (!context) return false;
+    // Donation mutates items server-side. First enqueue the latest local full snapshot,
+    // then wait until every older items snapshot for this character has drained so none
+    // can arrive after donation and restore consumed junk.
+    persistItems(inventoryRef.current, equippedRef.current, inventoryOverflowRef.current);
+    const ok = await persistenceRef.current.flush(context, { retryFailed: true });
+    return !!ok && activeCharacterIdRef.current === characterId && !!AUTH_SESSION.getToken();
   }
   async function manualSave() {
     const ok = await flushCurrentCharacter();
@@ -2242,6 +2255,21 @@ function ThornieDungeons() {
     serverUrl: cred.url,
     characterId: save.characterId,
     characterLevel: save.character.level,
+    inventory: inventory,
+    onBeforeDonate: flushInventoryForDonation,
+    onRefreshInventory: async () => {
+      const characterId = save.characterId;
+      const res = await cloudGetInventory(cred.url, characterId);
+      if (!res || res.error || activeCharacterIdRef.current !== characterId) return false;
+      const next = itemsFromServerList(res.items || []);
+      equippedRef.current = next.equipped;
+      inventoryRef.current = next.inventory;
+      inventoryOverflowRef.current = next.overflow;
+      setEquipped(next.equipped);
+      setInventory(next.inventory);
+      setInventoryOverflow(next.overflow);
+      return true;
+    },
     ...utilityDockProps("guild"),
     onFriend: () => {
       setUtilityReturnPhase("guild");

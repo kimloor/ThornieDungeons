@@ -1353,6 +1353,10 @@ async function evaluateGuildSuccession(db, guildId) {
 async function buildGuildProfileResponse(db, guildId, viewerCharacterId) {
   const guild = await getRow(db, "guilds", "guild_id", guildId);
   if (!guild) return json({ error: "guild_not_found" });
+  const guildProgression = await db.prepare(`SELECT level, cumulative_exp FROM guild_donation_progression ORDER BY level`).all();
+  const progressionRows = guildProgression.results || [];
+  const currentThreshold = progressionRows.find(row => Number(row.level) === Number(guild.level));
+  const nextThreshold = progressionRows.find(row => Number(row.level) === Number(guild.level) + 1);
   const memberRows = await db.prepare(
     `SELECT gm.character_id, gm.role, gm.joined_at, gm.contribution, c.name, c.level, c.last_active_at
      FROM guild_members gm JOIN characters c ON c.character_id = gm.character_id
@@ -1368,12 +1372,133 @@ async function buildGuildProfileResponse(db, guildId, viewerCharacterId) {
     guild: {
       guildId: guild.guild_id, name: guild.name, description: guild.description,
       level: guild.level, exp: guild.exp, joinPolicy: guild.join_policy,
+      expToNext: nextThreshold ? Math.max(0, Number(nextThreshold.cumulative_exp) - Number(guild.exp)) : 0,
+      expProgress: currentThreshold ? Math.max(0, Number(guild.exp) - Number(currentThreshold.cumulative_exp)) : Number(guild.exp),
+      expRequired: nextThreshold && currentThreshold ? Number(nextThreshold.cumulative_exp) - Number(currentThreshold.cumulative_exp) : 0,
+      atCap: !nextThreshold,
       leaderCharacterId: guild.leader_character_id,
       memberCount: members.length, memberCap: guildMemberCap(guild.level),
       members,
       viewerRole: viewerMembership ? viewerMembership.role : null,
     },
   });
+}
+
+function guildDonationErrorFromDb(error) {
+  const message = String((error && error.message) || error || "");
+  for (const code of ["invalid_quantity", "donation_item_not_allowed", "not_guild_member", "insufficient_donation_items", "donation_conflict"]) {
+    if (message.includes(code)) return code;
+  }
+  return "donation_conflict";
+}
+
+async function shapeGuildDonation(db, receipt, replay) {
+  const guild = await db.prepare(`SELECT level, exp FROM guilds WHERE guild_id = ?`).bind(receipt.guild_id).first();
+  const member = await db.prepare(`SELECT contribution FROM guild_members WHERE guild_id = ? AND character_id = ?`)
+    .bind(receipt.guild_id, receipt.character_id).first();
+  const thresholds = await db.prepare(`SELECT level, cumulative_exp FROM guild_donation_progression ORDER BY level`).all();
+  const rows = thresholds.results || [];
+  const capRow = rows[rows.length - 1] || { cumulative_exp: 0 };
+  const exp = guild ? Number(guild.exp) : Number(receipt.guild_exp_after);
+  const level = guild ? Number(guild.level) : Number(receipt.guild_level_after);
+  const currentThreshold = rows.find(r => Number(r.level) === level);
+  const nextThreshold = rows.find(r => Number(r.level) === level + 1);
+  const remaining = await db.prepare(
+    `SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) AS quantity
+     FROM items WHERE character_id = ? AND slot_type = 'junk' AND json_extract(extra_json, '$.junkId') = ?
+       AND equipped = 0 AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1`
+  ).bind(receipt.character_id, receipt.junk_id).first();
+  return {
+    ok: true, replay: !!replay, donationId: receipt.donation_id, junkId: receipt.junk_id,
+    quantity: Number(receipt.quantity), guildExpGranted: Number(receipt.guild_exp_granted),
+    contributionGranted: Number(receipt.contribution_granted),
+    guild: { level, exp, expToNext: nextThreshold ? Math.max(0, Number(nextThreshold.cumulative_exp) - exp) : 0,
+      expProgress: currentThreshold ? Math.max(0, exp - Number(currentThreshold.cumulative_exp)) : exp,
+      expRequired: nextThreshold ? Number(nextThreshold.cumulative_exp) - Number(currentThreshold.cumulative_exp) : 0,
+      atCap: !nextThreshold, memberCap: guildMemberCap(level) },
+    member: { contribution: member ? Number(member.contribution) : Number(receipt.contribution_granted) },
+    remainingQuantity: Number((remaining && remaining.quantity) || 0),
+  };
+}
+
+async function handleDonateGuildItem(db, id, session, characterId, junkId, quantityInput, donationId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json({ error: auth.error });
+  const config = await db.prepare(`SELECT whitelist_json, guild_exp_per_item, contribution_per_item, min_quantity, max_quantity, level_cap FROM guild_donation_config WHERE config_id = 1`).first();
+  if (!config) return json({ error: "donation_conflict" });
+  let whitelist = [];
+  try { whitelist = JSON.parse(config.whitelist_json || "[]"); } catch (_) { whitelist = []; }
+  const quantity = Number(quantityInput);
+  if (!Number.isInteger(quantity) || quantity < Number(config.min_quantity) || quantity > Number(config.max_quantity)) return json({ error: "invalid_quantity" });
+  if (!donationId || String(donationId).length > 128) return json({ error: "missing_fields" });
+
+  const prior = await db.prepare(`SELECT * FROM guild_donations WHERE donation_id = ?`).bind(String(donationId)).first();
+  if (prior) return prior.character_id === characterId
+    ? json(await shapeGuildDonation(db, prior, true)) : json({ error: "donation_conflict" });
+  if (!whitelist.includes(String(junkId || ""))) return json({ error: "donation_item_not_allowed" });
+
+  const membership = await db.prepare(`SELECT guild_id FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (!membership) return json({ error: "not_guild_member" });
+  const stacks = await db.prepare(
+    `SELECT item_id, equipped, COALESCE(json_extract(extra_json, '$.favorite'), 0) AS favorite,
+       CAST(json_extract(extra_json, '$.quantity') AS INTEGER) AS quantity
+     FROM items WHERE character_id = ? AND slot_type = 'junk' AND json_extract(extra_json, '$.junkId') = ?`
+  ).bind(characterId, junkId).all();
+  const stackRows = stacks.results || [];
+  if (!stackRows.length) return json({ error: "item_not_found" });
+  const total = rows => rows.reduce((sum, row) => sum + Math.max(0, Number(row.quantity) || 0), 0);
+  const eligible = stackRows.filter(row => Number(row.equipped) === 0 && Number(row.favorite) !== 1);
+  if (total(eligible) < quantity) {
+    if (total(stackRows.filter(row => Number(row.equipped) === 0)) >= quantity) return json({ error: "item_locked" });
+    if (total(stackRows) >= quantity) return json({ error: "item_equipped" });
+    return json({ error: "insufficient_quantity" });
+  }
+  const guild = await db.prepare(`SELECT level, exp FROM guilds WHERE guild_id = ?`).bind(membership.guild_id).first();
+  if (!guild) return json({ error: "donation_conflict" });
+  const progression = await db.prepare(`SELECT level, cumulative_exp FROM guild_donation_progression ORDER BY level`).all();
+  const levels = progression.results || [];
+  const cap = Number(levels[levels.length - 1]?.cumulative_exp || 0);
+  const expBefore = Number(guild.exp || 0);
+  const expAfter = Math.min(cap, expBefore + quantity * Number(config.guild_exp_per_item));
+  const levelAfter = Math.min(Number(config.level_cap), Math.max(1, ...levels.filter(row => Number(row.cumulative_exp) <= expAfter).map(row => Number(row.level))));
+  const now = nowIso();
+  const receiptValues = {
+    donation_id: String(donationId), guild_id: membership.guild_id, character_id: characterId,
+    junk_id: junkId, quantity, guild_exp_granted: expAfter - expBefore,
+    contribution_granted: quantity * Number(config.contribution_per_item), guild_level_before: Number(guild.level), guild_level_after: levelAfter,
+    guild_exp_before: expBefore, guild_exp_after: expAfter, created_at: now,
+  };
+  try {
+    await db.prepare(
+      `INSERT INTO guild_donations
+       (donation_id, guild_id, character_id, junk_id, quantity, guild_exp_granted, contribution_granted,
+        guild_level_before, guild_level_after, guild_exp_before, guild_exp_after, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(receiptValues.donation_id, receiptValues.guild_id, receiptValues.character_id, receiptValues.junk_id,
+      receiptValues.quantity, receiptValues.guild_exp_granted, receiptValues.contribution_granted,
+      receiptValues.guild_level_before, receiptValues.guild_level_after, receiptValues.guild_exp_before,
+      receiptValues.guild_exp_after, receiptValues.created_at).run();
+  } catch (error) {
+    const committed = await db.prepare(`SELECT * FROM guild_donations WHERE donation_id = ?`).bind(String(donationId)).first();
+    if (committed && committed.character_id === characterId) return json(await shapeGuildDonation(db, committed, true));
+    return json({ error: guildDonationErrorFromDb(error) });
+  }
+  const committed = await db.prepare(`SELECT * FROM guild_donations WHERE donation_id = ?`).bind(String(donationId)).first();
+  return json(await shapeGuildDonation(db, committed || receiptValues, false));
+}
+
+async function handleGetGuildDonationHistory(db, id, session, characterId, limitInput) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json({ error: auth.error });
+  const membership = await db.prepare(`SELECT guild_id FROM guild_members WHERE character_id = ?`).bind(characterId).first();
+  if (!membership) return json({ error: "not_guild_member" });
+  const limit = Math.min(50, Math.max(1, Number(limitInput) || 20));
+  const result = await db.prepare(
+    `SELECT donation_id AS donationId, guild_id AS guildId, character_id AS characterId, junk_id AS junkId,
+       quantity, guild_exp_granted AS guildExpGranted, contribution_granted AS contributionGranted, created_at AS createdAt
+     FROM guild_donations WHERE guild_id = ? AND character_id = ? ORDER BY created_at DESC LIMIT ?`
+  ).bind(membership.guild_id, characterId, limit).all();
+  return json({ ok: true, donations: result.results || [] });
 }
 
 async function handleSearchGuilds(db, id, session, characterId, query) {
@@ -4780,6 +4905,7 @@ export default {
         if (action === "getGuildProfile") return await handleGetGuildProfile(db, id, auth, p.get("characterId"), p.get("guildId"));
         if (action === "getMyApplications") return await handleGetMyApplications(db, id, auth, p.get("characterId"));
         if (action === "getGuildApplications") return await handleGetGuildApplications(db, id, auth, p.get("characterId"), p.get("guildId"));
+        if (action === "getGuildDonationHistory") return await handleGetGuildDonationHistory(db, id, auth, p.get("characterId"), p.get("limit"));
         return json({ error: "unknown_action" });
       }
 
@@ -4898,6 +5024,8 @@ export default {
             return await handleDisbandGuild(db, id, auth, body.characterId);
           case "updateGuildSettings":
             return await handleUpdateGuildSettings(db, id, auth, body.characterId, body.description, body.joinPolicy);
+          case "donateGuildItem":
+            return await handleDonateGuildItem(db, id, auth, body.characterId, body.junkId, body.quantity, body.donationId);
           default:
             return json({ error: "unknown_action" });
         }
