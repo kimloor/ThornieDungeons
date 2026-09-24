@@ -57,7 +57,7 @@ test("Inventory V2 wiring removes duplicate inventory chrome and prewires option
 
 test("Equipment comparison renders GameIcon on current and new sides", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
-  const compare = components.slice(components.indexOf("compareRows.length > 0"), components.indexOf("salvagePreview &&", components.indexOf("compareRows.length > 0")));
+  const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
   assert.match(compare, /item:currentEquipped/);
   assert.match(compare, /item:currentDetail/);
   assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 2);
@@ -66,7 +66,7 @@ test("Equipment comparison renders GameIcon on current and new sides", () => {
 
 test("Inventory V2 uses the standard authenticated shell and icon-only tools", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
-  const inventory = components.slice(components.indexOf("function InventoryOverlayV2"), components.indexOf("function InventoryOverlay({"));
+  const inventory = components.slice(components.indexOf("function InventoryHeader"), components.indexOf("function InventoryOverlay({"));
   assert.match(inventory, /React\.createElement\(StatusBar/);
   assert.match(inventory, /React\.createElement\(GameDock/);
   assert.match(inventory, /activeKey:"inventory"/);
@@ -85,7 +85,7 @@ test("Inventory compare uses enhanced item bonuses rather than total character s
   assert.match(compareFn, /itemBonus\(currentItem\)/);
   assert.match(compareFn, /itemBonus\(nextItem\)/);
   assert.doesNotMatch(compareFn, /getStats|combatPower|freshPlayerFromSave/);
-  const inventory = components.slice(components.indexOf("function InventoryOverlayV2"), components.indexOf("function InventoryOverlay({"));
+  const inventory = components.slice(components.indexOf("function InventoryHeader"), components.indexOf("function InventoryOverlay({"));
   assert.match(inventory, /className:"md-inv2-compare-columns"/);
   assert.match(inventory, /row\.current > row\.next \? "positive"/);
   assert.match(inventory, /row\.next > row\.current \? "positive"/);
@@ -95,7 +95,7 @@ test("Inventory compare uses enhanced item bonuses rather than total character s
 test("Inventory detail keeps corner controls separate and previews salvage yield from the shared table", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
-  const inventory = components.slice(components.indexOf("function InventoryOverlayV2"), components.indexOf("function InventoryOverlay({"));
+  const inventory = components.slice(components.indexOf("function InventoryHeader"), components.indexOf("function InventoryOverlay({"));
   assert.match(styles, /\.md-inv2-popup-close \{ position:absolute !important; right:10px; top:10px/);
   assert.match(styles, /\.md-inv2-favorite-toggle[^}]*top:10px; left:10px/);
   assert.match(inventory, /const salvagePreview = [\s\S]*salvageYield\(currentDetail\.rarity\)/);
@@ -103,4 +103,26 @@ test("Inventory detail keeps corner controls separate and previews salvage yield
   assert.match(inventory, /junkId:"iron"/);
   assert.match(inventory, /junkId:"manaOre"/);
   assert.match(inventory, /ได้รับ \$\{yieldText\}/);
+});
+
+test("Inventory W1 decomposes InventoryOverlayV2 and exposes read-only item helpers", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  [
+    "InventoryHeader", "EquipmentStage", "EquipmentSlot", "InventoryToolbar",
+    "InventoryGrid", "InventoryCell", "InventoryFilterModal", "OverflowModal",
+    "ItemDetailModal", "ItemStats", "ItemComparison", "ItemActions"
+  ].forEach(name => assert.match(components, new RegExp(`function ${name}\\(`)));
+
+  const gearItem = { id:"runtime-1", item_id:"backend-1", type:"weapon", quantity:3, favorite:true };
+  const equipped = { weapon:gearItem };
+  assert.equal(inventorySystem.inventoryItemRuntimeId(gearItem), "runtime-1");
+  assert.equal(inventorySystem.inventoryItemBackendId(gearItem), "backend-1");
+  assert.equal(inventorySystem.inventoryItemType(gearItem), "weapon");
+  assert.equal(inventorySystem.inventoryItemQuantity(gearItem), 3);
+  assert.equal(inventorySystem.inventoryItemLocked(gearItem), true);
+  assert.equal(inventorySystem.inventoryItemEquippedSlot(gearItem, equipped), "weapon");
+  assert.equal(inventorySystem.isInventoryItemEquipped(gearItem, equipped), true);
+  assert.deepEqual(inventorySystem.inventoryItemLocation(gearItem, equipped), { equipped:true, location:"equipped", slot:"weapon" });
+  assert.equal(inventorySystem.inventoryItemJunkId({ type:"junk", junkId:"iron" }), "iron");
+  assert.equal(inventorySystem.inventoryItemPotionId({ type:"potion", potionId:"small_hp" }), "small_hp");
 });
