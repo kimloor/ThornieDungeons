@@ -66,11 +66,11 @@ jobs:
           set -euo pipefail
 
           suffix="${GITHUB_RUN_NUMBER}"
-          account_a="E2EW4A\${suffix}"
-          account_b="E2EW4B\${suffix}"
-          char_a1="W4A1\${suffix}"
-          char_a2="W4A2\${suffix}"
-          char_b1="W4B1\${suffix}"
+          account_a="E2EW4A${suffix}"
+          account_b="E2EW4B${suffix}"
+          char_a1="W4A1${suffix}"
+          char_a2="W4A2${suffix}"
+          char_b1="W4B1${suffix}"
           password="$(openssl rand -hex 12)"
 
           echo "::add-mask::$password"
