@@ -25,7 +25,7 @@ jobs:
       API_URL: https://thornie-dungeons-api.ekqtjl.workers.dev
 
     steps:
-      - name: Checkout QA branch
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Wrangler
@@ -72,6 +72,17 @@ jobs:
           char_a2="W4A2${suffix}"
           char_b1="W4B1${suffix}"
           password="$(openssl rand -hex 12)"
+
+          # Fail before any production request if QA identifiers ever drift outside Auth V2 rules.
+          [[ "$account_a" =~ ^[A-Za-z0-9_]{4,20}$ ]]
+          [[ "$account_b" =~ ^[A-Za-z0-9_]{4,20}$ ]]
+          [[ "$account_a" == E2EW4A* ]]
+          [[ "$account_b" == E2EW4B* ]]
+          [[ ${#char_a1} -le 16 ]]
+          [[ ${#char_a2} -le 16 ]]
+          [[ ${#char_b1} -le 16 ]]
+          [[ "$account_a" != "$account_b" ]]
+          [[ "$char_a1" != "$char_a2" ]]
 
           echo "::add-mask::$password"
 
@@ -219,8 +230,14 @@ jobs:
 
           jq -e '.[0].results | length == 3' "$RUNNER_TEMP/verify.json" >/dev/null
           jq -e '.[0].results | map(select(.level == 30)) | length == 2' "$RUNNER_TEMP/verify.json" >/dev/null
+          jq -e --arg a "$A_ID" --arg b "$B_ID" '
+            .[0].results as $r
+            | ($r | map(select(.player_id == $a and .level == 30 and .junk_qty == 1500)) | length) == 1
+            and ($r | map(select(.player_id == $a and .level == 5 and .junk_qty == 0)) | length) == 1
+            and ($r | map(select(.player_id == $b and .level == 30 and .junk_qty == 1500)) | length) == 1
+          ' "$RUNNER_TEMP/verify.json" >/dev/null
 
-          echo "QA seed verified: 2 accounts / 3 characters; credentials intentionally omitted from logs."
+          echo "QA seed verified: 2 accounts / 3 characters / exact levels and junk quantities; credentials intentionally omitted from logs."
           jq -r '.[0].results[] | "- \\(.player_id) / \\(.name) / Lv.\\(.level) / junk=\\(.junk_qty)"' "$RUNNER_TEMP/verify.json" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload temporary QA credentials
