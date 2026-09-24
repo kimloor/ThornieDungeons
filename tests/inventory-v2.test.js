@@ -74,7 +74,7 @@ test("Inventory V2 uses the standard authenticated shell and icon-only tools", (
   assert.match(inventory, /aria-label":"Sort"/);
   assert.doesNotMatch(inventory, />Filter</);
   assert.doesNotMatch(inventory, />Sort</);
-  assert.equal((inventory.match(/\$\{inventory\.length\}\/\$\{INVENTORY_CAPACITY\}/g) || []).length, 1);
+  assert.equal((inventory.match(/\$\{inventoryCount\}\/\$\{INVENTORY_CAPACITY\}/g) || []).length, 1);
   assert.doesNotMatch(inventory, /md-inv2-lock/);
   assert.match(inventory, /md-inv2-favorite-toggle/);
 });
