@@ -104,39 +104,27 @@ Gate result:
 ---
 
 ## W1 — Inventory V2 Structural Refactor + Donation-ready Boundary
+**Status: COMPLETE / RELEASED — 2026-09-24**
 
-Decompose `InventoryOverlayV2` while preserving behavior.
+Released via PR #11:
+- base `9cf95e22a0d6b39f691778a40545e07d90a455f2`;
+- tested head `d5031bd829aa768ae18a4912c504b5d367a3edcf`;
+- merge commit `19e153b374f3d34fbe312d7113f6a41f1147cb3c`.
 
-Target:
-```text
-InventoryOverlayV2
-├─ InventoryHeader
-├─ EquipmentStage
-│  └─ EquipmentSlot
-├─ InventoryToolbar
-├─ InventoryGrid
-│  └─ InventoryCell
-├─ InventoryFilterModal
-├─ OverflowModal
-├─ ItemDetailModal
-│  ├─ ItemStats
-│  ├─ ItemComparison
-│  └─ ItemActions
-└─ GameDock
-```
+Completed:
+- decomposed `InventoryOverlayV2` into InventoryHeader, EquipmentStage/EquipmentSlot, InventoryToolbar, InventoryGrid/InventoryCell, InventoryFilterModal, OverflowModal, ItemDetailModal, ItemStats, ItemComparison, ItemActions;
+- preserved shared `GameDock`;
+- added read-only item helpers/selectors for runtime/backend identity, type, junk/potion ids, quantity, lock/favorite state, equipped slot/state, and item location;
+- preserved current Inventory behavior, responsive layout, safe-area behavior, App-owned state/mutations, and persistence contract;
+- no Guild Donation, economy, D1, backend transaction, Battle/Raid/Arena/Social behavior added.
 
-Also prepare clean reusable boundaries needed by Guild Donation:
-- authoritative item identity/category access;
-- quantity access;
-- equipped/locked state access;
-- reusable item-selection/list presentation where genuinely shared.
+Gate result:
+- focused tests 18/18 PASS;
+- build and generated JS syntax validation PASS;
+- Cloudflare branch build/check PASS;
+- QA approved before merge.
 
-Do **not** implement donation/economy behavior in this refactor.
-
-Gate:
-- behavior unchanged;
-- mobile/tablet/desktop responsive checks pass;
-- focused Inventory smoke + build/tests pass.
+W2 may now start from latest `main`.
 
 ---
 
@@ -469,7 +457,7 @@ During W5-W9:
 ```text
 W0  Social 3+4 Hotfix ✅ COMPLETE
  ↓
-W1  Inventory Refactor + Donation-ready Boundary
+W1  Inventory Refactor + Donation-ready Boundary ✅ COMPLETE
  ↓
 W2  Guild Donation
  ↓
