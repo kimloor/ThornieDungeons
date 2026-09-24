@@ -47,3 +47,14 @@ test("Guild chat client shares the existing ChatScreen and retains unread state 
   assert.match(app, /setChatInitialChannel\("guild"\)/);
   assert.match(app, /guildUnreadState\.characterId === save\?\.characterId/);
 });
+
+
+test("Guild chat initial transient failure schedules retry while access errors remain terminal", () => {
+  assert.match(ui, /loadInitial\(\)[\s\S]*?\.catch\(\(err\) => \{/);
+  assert.match(ui, /code === "not_guild_member" \|\| code === "channel_access_denied"/);
+  assert.match(ui, /setPollError\(true\);[\s\S]*?delay = 5000;[\s\S]*?setTimeout\(poll, delay\)/);
+  const initialCatch = ui.indexOf(".catch((err) => {", ui.indexOf("loadInitial()"));
+  const terminal = ui.indexOf('code === "not_guild_member" || code === "channel_access_denied"', initialCatch);
+  const retry = ui.indexOf("pollTimerRef.current = setTimeout(poll, delay)", terminal);
+  assert.ok(initialCatch >= 0 && terminal > initialCatch && retry > terminal, "initial failure path must distinguish terminal access errors from retryable failures");
+});

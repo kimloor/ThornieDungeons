@@ -1829,7 +1829,25 @@ function ChatScreen({
       if (!cancelled) pollTimerRef.current = setTimeout(poll, delay);
     };
 
-    loadInitial().then(() => { if (!cancelled) pollTimerRef.current = setTimeout(poll, delay); });
+    loadInitial()
+      .then(() => {
+        if (!cancelled) pollTimerRef.current = setTimeout(poll, delay);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const code = err?.message || "";
+        if (code === "not_guild_member" || code === "channel_access_denied") {
+          setGuildMessages([]);
+          setGuildLoaded(true);
+          setGuildName("");
+          setGuildError(chatErrorText(code));
+          if (onGuildUnreadRef.current) onGuildUnreadRef.current(characterId, false);
+          return;
+        }
+        setPollError(true);
+        delay = 5000;
+        pollTimerRef.current = setTimeout(poll, delay);
+      });
 
     return () => {
       cancelled = true;
