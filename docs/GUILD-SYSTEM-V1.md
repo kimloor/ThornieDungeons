@@ -158,7 +158,18 @@ Rules:
 - no daily donation cap in V1;
 - server validates ownership, quantity, membership, whitelist eligibility, and lock/equip state.
 
-The concrete whitelist must use real production item/category identifiers after inspection; do not guess item keys.
+Approved initial W2 donation whitelist:
+- `stone`
+- `grass`
+- `wood`
+
+Explicitly excluded from the initial whitelist:
+- `iron`
+- `manaOre`
+- boss materials such as `bossHorn` / `bossHide`;
+- recipe-scroll junk IDs such as `recipe_azure_*`.
+
+Eligibility is server-configured by explicit `junkId`; `slot_type='junk'` alone is never sufficient.
 
 ## 9. Donation transaction
 
