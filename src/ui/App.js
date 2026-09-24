@@ -543,13 +543,16 @@ function ThornieDungeons() {
     setAuthBusy(true);
     const res = await cloudRegister(cred.url, form.id, form.password, form.confirmPassword, rememberLogin);
     setAuthBusy(false);
-    if (res.error === "id_unavailable") {
-      setAuthError("Player ID นี้ไม่สามารถใช้งานได้");
-      return { ok: false, error: res.error };
-    }
     if (res.error) {
-      setAuthError("เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
-      return { ok: false, error: res.error };
+      const registerErrors = {
+        invalid_player_id: "Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น",
+        invalid_password_length: "Password ต้องยาว 4–32 ตัว",
+        password_mismatch: "Confirm Password ไม่ตรงกัน",
+        id_unavailable: "Player ID นี้ถูกใช้งานแล้ว",
+        rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
+      };
+      setAuthError(registerErrors[res.error] || "เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
+      return { ok: false, error: res.error, retryAfter: res.retryAfter };
     }
     await AUTH_SESSION.setSession(res, rememberLogin);
     setCred(c => ({ ...c, id: res.playerId, password: "" }));
