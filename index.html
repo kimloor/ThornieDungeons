@@ -6791,6 +6791,53 @@ function claimAllOverflowThatFits(inventory, overflow, capacity = INVENTORY_CAPA
   return { inventory: nextInventory, overflow: remaining, claimed };
 }
 
+// Read-only Inventory V2 item accessors.
+// Runtime UI code uses item.quantity. Persisted junk/potion quantity is restored
+// from extra_json.quantity by itemsFromServerList(); DB items.quantity is not authoritative.
+function inventoryItemRuntimeId(item) {
+  return item?.id || "";
+}
+
+function inventoryItemBackendId(item) {
+  return item?.item_id || item?.itemId || inventoryItemRuntimeId(item);
+}
+
+function inventoryItemType(item) {
+  return item?.type || item?.slot_type || "";
+}
+
+function inventoryItemJunkId(item) {
+  return item?.junkId || item?.junk_id || "";
+}
+
+function inventoryItemPotionId(item) {
+  return item?.potionId || item?.potion_id || "";
+}
+
+function inventoryItemQuantity(item) {
+  const quantity = Number(item?.quantity);
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+}
+
+function inventoryItemLocked(item) {
+  return item?.favorite === true;
+}
+
+function inventoryItemEquippedSlot(item, equipped) {
+  const runtimeId = inventoryItemRuntimeId(item);
+  if (!runtimeId || !equipped) return "";
+  return Object.keys(equipped).find(slot => inventoryItemRuntimeId(equipped[slot]) === runtimeId) || "";
+}
+
+function isInventoryItemEquipped(item, equipped) {
+  return Boolean(inventoryItemEquippedSlot(item, equipped));
+}
+
+function inventoryItemLocation(item, equipped) {
+  const slot = inventoryItemEquippedSlot(item, equipped);
+  return slot ? { equipped: true, location: "equipped", slot } : { equipped: false, location: "inventory", slot: "" };
+}
+
 function inventoryRarityKey(item) {
   const rarity = String(item?.rarity || "common").toLowerCase();
   return rarity === "azure" || rarity === "legendary" ? "mythic" : rarity;
@@ -6821,7 +6868,9 @@ function sortInventoryDeterministic(inventory) {
 if (typeof module !== "undefined" && module.exports) module.exports = {
   INVENTORY_CAPACITY, inventoryStackKey, insertInventoryItems, normalizeInventoryCapacity,
   claimOverflowItem, claimAllOverflowThatFits, inventoryRarityKey, inventoryItemCategory,
-  isItemEnchanted, sortInventoryDeterministic
+  inventoryItemRuntimeId, inventoryItemBackendId, inventoryItemType, inventoryItemJunkId,
+  inventoryItemPotionId, inventoryItemQuantity, inventoryItemLocked, inventoryItemEquippedSlot,
+  isInventoryItemEquipped, inventoryItemLocation, isItemEnchanted, sortInventoryDeterministic
 };
 
 // ===== systems/salvage.js =====
@@ -14749,6 +14798,185 @@ function inventoryComparisonRows(currentItem, nextItem) {
     .filter(row => Math.abs(row.current) > 0.0001 || Math.abs(row.next) > 0.0001);
 }
 
+function InventoryHeader({ characterName, onClose }) {
+  return /*#__PURE__*/React.createElement("header", { className: "md-character-page-title md-inv2-header" },
+    /*#__PURE__*/React.createElement("button", { className: "md-inv2-close", type:"button", onClick: onClose, "aria-label": "ย้อนกลับ" }, "‹"),
+    /*#__PURE__*/React.createElement("div", { className:"md-inv2-title" },
+      /*#__PURE__*/React.createElement("h2", null, "Inventory"),
+      /*#__PURE__*/React.createElement("span", { className:"md-inv2-ornament md-inventory-art", style:inventoryUiStyle("sectionOrnament") }),
+      /*#__PURE__*/React.createElement("p", null, characterName || "Adventurer")));
+}
+
+const INVENTORY_SLOT_POSITIONS = {
+  helmet: "left l1", chest: "left l2", boots: "left l3", wings: "left l4",
+  gloves: "right r1", weapon: "right r2", accessory: "right r3"
+};
+
+function EquipmentSlot({ slot, item, onOpen }) {
+  return /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: `md-inv2-equip-slot md-inventory-art ${INVENTORY_SLOT_POSITIONS[slot]} ${item ? `filled ${inventoryRarityKey(item)}` : "empty"}`,
+    style: inventoryUiStyle("equipmentSlotFrame"),
+    onClick: () => item && onOpen(slot)
+  }, /*#__PURE__*/React.createElement("span", { className: "md-inv2-slot-icon" }, item
+    ? /*#__PURE__*/React.createElement(GameIcon, { item, fallback: item.icon || SLOT_ICON[slot], className: "md-game-icon md-equipped-item-icon", alt: itemDisplayName(item) })
+    : SLOT_ICON[slot]), /*#__PURE__*/React.createElement("span", { className: "md-inv2-slot-label" }, SLOT_LABEL[slot]), item?.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inv2-badge" }, `+${item.enhanceLevel}`));
+}
+
+function EquipmentStage({ equipped, characterName, onOpenDetail }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-equipment" },
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-hero", "aria-hidden": "true" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", equipped, label: characterName || "Adventurer" })),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-slots" }, SLOT_ORDER.map(slot => /*#__PURE__*/React.createElement(EquipmentSlot, {
+      key: slot, slot, item: equipped[slot], onOpen: openSlot => onOpenDetail({ location: "equipped", slot: openSlot })
+    }))));
+}
+
+function InventoryToolbar({ inventoryCount, onFilter, onSort }) {
+  const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
+  const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
+  return /*#__PURE__*/React.createElement("div", { className: "md-inventory-header md-inv2-tools" },
+    /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "Items"),
+      /*#__PURE__*/React.createElement("span", { className: "md-inventory-count" }, ` ${inventoryCount}/${INVENTORY_CAPACITY}`)),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-tool-buttons" },
+      /*#__PURE__*/React.createElement("button", { className: `md-inv2-icon-btn md-inventory-art ${inventoryUiUrl("icons.filter") ? "has-art" : ""}`, style: iconButtonStyle("filter"), onClick: onFilter, "aria-label":"Filter", title:"Filter" }, iconButtonFallback("filter", "⌕")),
+      /*#__PURE__*/React.createElement("button", { className: `md-inv2-icon-btn md-inventory-art ${inventoryUiUrl("icons.sort") ? "has-art" : ""}`, style: iconButtonStyle("sort"), onClick: onSort, "aria-label":"Sort", title:"Sort" }, iconButtonFallback("sort", "⇅"))));
+}
+
+function InventoryCell({ item, onOpenDetail }) {
+  return /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: `md-inventory-cell md-inv2-cell ${item ? inventoryRarityKey(item) : "empty"}`,
+    onClick: () => item && onOpenDetail({ location: "inventory", id: inventoryItemRuntimeId(item) })
+  }, item ? /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, /*#__PURE__*/React.createElement(GameIcon, { item, fallback: item.icon || SLOT_ICON[inventoryItemType(item)] || "📦", className: "md-game-icon md-inventory-item-icon", alt: itemDisplayName(item) })),
+    /*#__PURE__*/React.createElement("span", { className: `md-inv2-rarity-dot ${inventoryRarityKey(item)}` }),
+    item.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty enhance" }, `+${item.enhanceLevel}`),
+    inventoryItemQuantity(item) > 1 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, `x${inventoryItemQuantity(item)}`)
+  ) : null);
+}
+
+function InventoryGrid({ items, expanded, onOpenDetail }) {
+  const visibleCount = expanded ? INVENTORY_CAPACITY : 10;
+  const slotCount = expanded ? INVENTORY_CAPACITY : 10;
+  const visible = items.slice(0, visibleCount);
+  return /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid md-inv2-grid" },
+    Array.from({ length: slotCount }, (_, index) => /*#__PURE__*/React.createElement(InventoryCell, {
+      key: visible[index] ? inventoryItemRuntimeId(visible[index]) : `empty-${index}`,
+      item: visible[index],
+      onOpenDetail
+    })));
+}
+
+function InventoryFilterModal({ filters, onUpdate, onReset, onClose }) {
+  const select = (key, label, values) => /*#__PURE__*/React.createElement("label", { className: "md-inv2-filter-row", key },
+    /*#__PURE__*/React.createElement("span", null, label),
+    /*#__PURE__*/React.createElement("select", { value: filters[key], onChange: event => onUpdate(key, event.target.value) },
+      values.map(([value, text]) => /*#__PURE__*/React.createElement("option", { key: value, value }, text))));
+  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup md-inventory-art", style: inventoryUiStyle("popupFrame") },
+    /*#__PURE__*/React.createElement("h3", null, "Filter"),
+    select("category", "Category", [["all","All"],["equipment","Equipment"],["consumable","Consumable"],["material","Material"]]),
+    select("type", "Equipment Type", [["all","All"], ...SLOT_ORDER.map(slot => [slot, SLOT_LABEL[slot]])]),
+    select("rarity", "Rarity", [["all","All"],["common","Common/Junk"],["rare","Rare"],["unique","Unique"],["elite","Elite"],["mythic","Mythic"]]),
+    select("enhanced", "Enhance", [["all","All"],["yes","Enhanced"],["no","Not Enhanced"]]),
+    select("enchanted", "Enchant", [["all","All"],["yes","Enchanted"],["no","No Enchant"]]),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup-actions" },
+      /*#__PURE__*/React.createElement("button", { onClick: onReset }, "Reset"),
+      /*#__PURE__*/React.createElement("button", { onClick: onClose }, "Apply"))));
+}
+
+function OverflowModal({ overflow, busy, onClaimOverflow, onClaimAllOverflow, onClose }) {
+  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup md-inv2-overflow-popup md-inventory-art", style: inventoryUiStyle("popupFrame") },
+    /*#__PURE__*/React.createElement("h3", null, `Overflow ${overflow.length}`),
+    /*#__PURE__*/React.createElement("p", null, "ไอเท็มเหล่านี้ถูกเก็บไว้อย่างปลอดภัย เคลียร์ช่องในกระเป๋าแล้วจึง Claim"),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-list" }, overflow.map(item => /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-row", key: inventoryItemRuntimeId(item) },
+      /*#__PURE__*/React.createElement(GameIcon, { item, fallback:item.icon || SLOT_ICON[inventoryItemType(item)] || "📦" }),
+      /*#__PURE__*/React.createElement("span", null, itemDisplayName(item), inventoryItemQuantity(item) > 1 ? ` x${inventoryItemQuantity(item)}` : ""),
+      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => onClaimOverflow(inventoryItemRuntimeId(item)) }, "Claim")))),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup-actions" },
+      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:onClaimAllOverflow }, "Claim All That Fits"),
+      /*#__PURE__*/React.createElement("button", { onClick:onClose }, "Close"))));
+}
+
+function ItemStats({ item }) {
+  return /*#__PURE__*/React.createElement("div", { className:"md-inv2-stat-list" }, inventoryStatRows(item).map(row => /*#__PURE__*/React.createElement("div", { key:row.key },
+    /*#__PURE__*/React.createElement("span", null, row.label),
+    /*#__PURE__*/React.createElement("b", { className:row.value >= 0 ? "positive" : "negative" }, `${row.value >= 0 ? "+" : ""}${row.value}`))));
+}
+
+function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
+  if (!compareRows.length) return null;
+  return /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare" },
+    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" },
+      /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" },
+        currentEquipped && /*#__PURE__*/React.createElement(GameIcon, { item:currentEquipped, fallback:currentEquipped.icon || SLOT_ICON[inventoryItemType(currentEquipped)] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentEquipped) }),
+        /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" },
+          /*#__PURE__*/React.createElement("strong", null, currentEquipped ? itemDisplayName(currentEquipped) : "Empty Slot"),
+          /*#__PURE__*/React.createElement("small", null, currentEquipped ? `Lv.${currentEquipped.level || 1} • ${isItemEnchanted(currentEquipped) ? "Enchanted" : "No Enchant"}` : "Current"))),
+      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-arrow" }, ">"),
+      /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" },
+        /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[inventoryItemType(currentDetail)] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentDetail) }),
+        /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" },
+          /*#__PURE__*/React.createElement("strong", null, itemDisplayName(currentDetail)),
+          /*#__PURE__*/React.createElement("small", null, `Lv.${currentDetail.level || 1} • ${isItemEnchanted(currentDetail) ? "Enchanted" : "No Enchant"}`)))),
+    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" },
+      /*#__PURE__*/React.createElement("span", null, "STAT"),
+      /*#__PURE__*/React.createElement("span", null, "CURRENT ITEM"),
+      /*#__PURE__*/React.createElement("span", null, "NEW ITEM")),
+    compareRows.map(row => {
+      const currentClass = row.current > row.next ? "positive" : row.current < row.next ? "negative" : "";
+      const nextClass = row.next > row.current ? "positive" : row.next < row.current ? "negative" : "";
+      return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key },
+        /*#__PURE__*/React.createElement("span", null, row.label),
+        /*#__PURE__*/React.createElement("b", { className:currentClass }, row.current),
+        /*#__PURE__*/React.createElement("b", { className:nextClass }, row.next));
+    }));
+}
+
+function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }) {
+  return /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" },
+    detail.location === "inventory" && SLOT_ORDER.includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); onClose(); } }, "Equip"),
+    detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); onClose(); } }, "Unequip"),
+    detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSell }, "Sell"),
+    detail.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSalvage }, "Salvage"));
+}
+
+function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy, onToggleFavorite, onEquip, onUnequip, onSell, onSalvage, onClose }) {
+  const rarityLabel = item => ({ common: "Common", junk: "Junk", rare: "Rare", unique: "Unique", elite: "Elite", mythic: "Mythic" })[inventoryRarityKey(item)] || "Common";
+  const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
+  const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
+  const itemType = inventoryItemType(currentDetail);
+  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", {
+    className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art`,
+    style: inventoryRarityKey(currentDetail) === "mythic" ? inventoryUiStyle("mythicFrame") || inventoryUiStyle("popupFrame") : inventoryUiStyle("popupFrame")
+  },
+    /*#__PURE__*/React.createElement("button", { className:"md-inv2-popup-close", onClick:onClose }, "✕"),
+    /*#__PURE__*/React.createElement("button", {
+      className:`md-inv2-favorite-toggle md-inventory-art ${inventoryUiUrl("icons.favorite") ? "has-art" : ""} ${inventoryItemLocked(currentDetail) ? "active" : ""}`,
+      style:iconButtonStyle("favorite"),
+      onClick:() => onToggleFavorite(inventoryItemRuntimeId(currentDetail)),
+      "aria-label":inventoryItemLocked(currentDetail) ? "Unlock item" : "Favorite and lock item",
+      "aria-pressed":inventoryItemLocked(currentDetail),
+      title:"Favorite / Lock"
+    }, iconButtonFallback("favorite", inventoryItemLocked(currentDetail) ? "★" : "☆")),
+    /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-head" },
+      /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[itemType] || "📦", className:"md-game-icon md-inv2-detail-icon" }),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("h3", null, itemDisplayName(currentDetail)),
+        /*#__PURE__*/React.createElement("p", null, `${rarityLabel(currentDetail)} • ${SLOT_LABEL[itemType] || itemType} • Lv.${currentDetail.level || 1}`))),
+    /*#__PURE__*/React.createElement(ItemStats, { item:currentDetail }),
+    Array.isArray(currentDetail.empowerSlots) && currentDetail.empowerSlots.some(Boolean) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-enchants" },
+      /*#__PURE__*/React.createElement("h4", null, "ENCHANT OPTIONS"),
+      currentDetail.empowerSlots.filter(Boolean).map((option,index) => /*#__PURE__*/React.createElement("div", { key:index }, `${option.icon || "✦"} ${option.label || option.stat || "Option"} +${option.value || 0}`))),
+    /*#__PURE__*/React.createElement(ItemComparison, { currentEquipped, currentDetail, compareRows }),
+    salvagePreview && /*#__PURE__*/React.createElement("div", { className:"md-inv2-salvage-preview" },
+      /*#__PURE__*/React.createElement("strong", null, "Salvage Yield"),
+      /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"iron" }, fallback:JUNK_INFO.iron.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.iron.name }), "Iron ", salvagePreview.iron),
+      salvagePreview.manaOre > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"manaOre" }, fallback:JUNK_INFO.manaOre.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.manaOre.name }), "Mana Stone ", salvagePreview.manaOre)),
+    message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
+    /*#__PURE__*/React.createElement(ItemActions, { detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose })));
+}
+
 function InventoryOverlayV2({
   equipped,
   inventory,
@@ -14780,10 +15008,11 @@ function InventoryOverlayV2({
   const [message, setMessage] = useState("");
   const [filters, setFilters] = useState({ category: "all", type: "all", rarity: "all", enhanced: "all", enchanted: "all" });
   const updateFilter = (key, value) => setFilters(current => ({ ...current, [key]: value }));
+  const resetFilters = () => setFilters({ category:"all", type:"all", rarity:"all", enhanced:"all", enchanted:"all" });
   const filtered = inventory.filter(item => {
     const category = inventoryItemCategory(item);
     if (filters.category !== "all" && category !== filters.category) return false;
-    if (filters.type !== "all" && item.type !== filters.type) return false;
+    if (filters.type !== "all" && inventoryItemType(item) !== filters.type) return false;
     if (filters.rarity !== "all" && inventoryRarityKey(item) !== filters.rarity) return false;
     if (filters.enhanced === "yes" && !(Number(item.enhanceLevel) > 0)) return false;
     if (filters.enhanced === "no" && Number(item.enhanceLevel) > 0) return false;
@@ -14791,108 +15020,47 @@ function InventoryOverlayV2({
     if (filters.enchanted === "no" && isItemEnchanted(item)) return false;
     return true;
   });
-  const visibleCount = expanded ? INVENTORY_CAPACITY : 10;
-  const slotCount = expanded ? INVENTORY_CAPACITY : 10;
-  const currentDetail = detail?.location === "equipped" ? equipped[detail.slot] : inventory.find(item => item.id === detail?.id);
-  const currentEquipped = currentDetail && SLOT_ORDER.includes(currentDetail.type) ? equipped[currentDetail.type] : null;
+  const currentDetail = detail?.location === "equipped" ? equipped[detail.slot] : inventory.find(item => inventoryItemRuntimeId(item) === detail?.id);
+  const currentEquipped = currentDetail && SLOT_ORDER.includes(inventoryItemType(currentDetail)) ? equipped[inventoryItemType(currentDetail)] : null;
   const compareRows = detail?.location === "inventory" ? inventoryComparisonRows(currentEquipped, currentDetail) : [];
-  const rarityLabel = item => ({ common: "Common", junk: "Junk", rare: "Rare", unique: "Unique", elite: "Elite", mythic: "Mythic" })[inventoryRarityKey(item)] || "Common";
-  const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
-  const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
-  const frameStyle = inventoryUiStyle("equipmentSlotFrame");
-  const salvagePreview = currentDetail && detail?.location === "inventory" && !["junk","potion"].includes(currentDetail.type) ? salvageYield(currentDetail.rarity) : null;
+  const salvagePreview = currentDetail && detail?.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) ? salvageYield(currentDetail.rarity) : null;
   const closeDetail = () => { setDetail(null); setMessage(""); };
   const destructiveConfirm = (item, action) => {
     if (!item) return false;
-    if (["elite", "mythic"].includes(inventoryRarityKey(item)) || Number(item.enhanceLevel) > 0) {
-      return window.confirm(`${action} ${itemDisplayName(item)} หรือไม่?`);
-    }
+    if (["elite", "mythic"].includes(inventoryRarityKey(item)) || Number(item.enhanceLevel) > 0) return window.confirm(`${action} ${itemDisplayName(item)} หรือไม่?`);
     return true;
   };
   const runSell = () => {
-    if (!currentDetail || currentDetail.favorite || !destructiveConfirm(currentDetail, "ขาย")) return;
+    if (!currentDetail || inventoryItemLocked(currentDetail) || !destructiveConfirm(currentDetail, "ขาย")) return;
     const result = onSell(currentDetail);
     if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้"); else closeDetail();
   };
   const runSalvage = () => {
-    if (!currentDetail || currentDetail.favorite || !salvagePreview) return;
+    if (!currentDetail || inventoryItemLocked(currentDetail) || !salvagePreview) return;
     const yieldText = `Iron ${salvagePreview.iron}${salvagePreview.manaOre ? ` + Mana Stone ${salvagePreview.manaOre}` : ""}`;
     if (!window.confirm(`แยกชิ้นส่วน ${itemDisplayName(currentDetail)} หรือไม่?\nได้รับ ${yieldText}`)) return;
-    const result = onSalvage(currentDetail.id);
+    const result = onSalvage(inventoryItemRuntimeId(currentDetail));
     if (result?.ok === false) setMessage(result.message || "ไม่สามารถแยกชิ้นส่วนได้"); else closeDetail();
   };
-  const SLOT_POSITIONS = {
-    helmet: "left l1", chest: "left l2", boots: "left l3", wings: "left l4",
-    gloves: "right r1", weapon: "right r2", accessory: "right r3"
-  };
-  const renderSlot = slot => {
-    const item = equipped[slot];
-    return /*#__PURE__*/React.createElement("button", {
-      key: slot,
-      type: "button",
-      className: `md-inv2-equip-slot md-inventory-art ${SLOT_POSITIONS[slot]} ${item ? `filled ${inventoryRarityKey(item)}` : "empty"}`,
-      style: frameStyle,
-      onClick: () => item && setDetail({ location: "equipped", slot })
-    }, /*#__PURE__*/React.createElement("span", { className: "md-inv2-slot-icon" }, item
-      ? /*#__PURE__*/React.createElement(GameIcon, { item, fallback: item.icon || SLOT_ICON[slot], className: "md-game-icon md-equipped-item-icon", alt: itemDisplayName(item) })
-      : SLOT_ICON[slot]), /*#__PURE__*/React.createElement("span", { className: "md-inv2-slot-label" }, SLOT_LABEL[slot]), item?.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inv2-badge" }, `+${item.enhanceLevel}`));
-  };
-  const renderCell = (item, index) => /*#__PURE__*/React.createElement("button", {
-    key: item ? item.id : `empty-${index}`,
-    type: "button",
-    className: `md-inventory-cell md-inv2-cell ${item ? inventoryRarityKey(item) : "empty"}`,
-    onClick: () => item && setDetail({ location: "inventory", id: item.id })
-  }, item ? /*#__PURE__*/React.createElement(React.Fragment, null,
-    /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-icon" }, /*#__PURE__*/React.createElement(GameIcon, { item, fallback: item.icon || SLOT_ICON[item.type] || "📦", className: "md-game-icon md-inventory-item-icon", alt: itemDisplayName(item) })),
-    /*#__PURE__*/React.createElement("span", { className: `md-inv2-rarity-dot ${inventoryRarityKey(item)}` }),
-    item.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty enhance" }, `+${item.enhanceLevel}`),
-    item.quantity > 1 && /*#__PURE__*/React.createElement("span", { className: "md-inventory-cell-qty" }, `x${item.quantity}`)
-  ) : null);
-  const select = (key, label, values) => /*#__PURE__*/React.createElement("label", { className: "md-inv2-filter-row", key }, /*#__PURE__*/React.createElement("span", null, label), /*#__PURE__*/React.createElement("select", { value: filters[key], onChange: event => updateFilter(key, event.target.value) }, values.map(([value, text]) => /*#__PURE__*/React.createElement("option", { key: value, value }, text))));
+  const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
 
   return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay md-inv2-overlay" },
     /*#__PURE__*/React.createElement(StatusBar, { player:null, save, phase:"inventory", equipped }),
     /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
-    /*#__PURE__*/React.createElement("header", { className: "md-character-page-title md-inv2-header" },
-      /*#__PURE__*/React.createElement("button", { className: "md-inv2-close", type:"button", onClick: onClose, "aria-label": "ย้อนกลับ" }, "‹"),
-      /*#__PURE__*/React.createElement("div", { className:"md-inv2-title" }, /*#__PURE__*/React.createElement("h2", null, "Inventory"), /*#__PURE__*/React.createElement("span", { className:"md-inv2-ornament md-inventory-art", style:inventoryUiStyle("sectionOrnament") }), /*#__PURE__*/React.createElement("p", null, characterName || "Adventurer"))),
-    /*#__PURE__*/React.createElement("div", { className: "md-inv2-equipment" },
-      /*#__PURE__*/React.createElement("div", { className: "md-inv2-hero", "aria-hidden": "true" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", equipped, label: characterName || "Adventurer" })),
-      /*#__PURE__*/React.createElement("div", { className: "md-inv2-slots" }, SLOT_ORDER.map(renderSlot))),
-    overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner md-inventory-art", style: iconButtonStyle("overflow"), onClick: () => setOverflowOpen(true) }, `⚠ Overflow ${overflow.length}`),
-    /*#__PURE__*/React.createElement("div", { className: "md-inventory-header md-inv2-tools" }, /*#__PURE__*/React.createElement("div", null,
-      /*#__PURE__*/React.createElement("span", { className: "md-inventory-title" }, "Items"), /*#__PURE__*/React.createElement("span", { className: "md-inventory-count" }, ` ${inventory.length}/${INVENTORY_CAPACITY}`)),
-      /*#__PURE__*/React.createElement("div", { className: "md-inv2-tool-buttons" },
-        /*#__PURE__*/React.createElement("button", { className: `md-inv2-icon-btn md-inventory-art ${inventoryUiUrl("icons.filter") ? "has-art" : ""}`, style: iconButtonStyle("filter"), onClick: () => setFilterOpen(true), "aria-label":"Filter", title:"Filter" }, iconButtonFallback("filter", "⌕")),
-        /*#__PURE__*/React.createElement("button", { className: `md-inv2-icon-btn md-inventory-art ${inventoryUiUrl("icons.sort") ? "has-art" : ""}`, style: iconButtonStyle("sort"), onClick: onSort, "aria-label":"Sort", title:"Sort" }, iconButtonFallback("sort", "⇅")))),
-    /*#__PURE__*/React.createElement("div", { className: "md-inventory-grid md-inv2-grid" }, Array.from({ length: slotCount }, (_, index) => renderCell(filtered.slice(0, visibleCount)[index], index))),
-    (filtered.length > 10 || expanded) && /*#__PURE__*/React.createElement("button", { className: "md-inventory-toggle md-inventory-art", style: iconButtonStyle("expand"), onClick: () => setExpanded(value => !value) }, expanded ? "▲ Collapse" : `▼ View All (${filtered.length})`),
-
-    filterOpen && /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup md-inventory-art", style: inventoryUiStyle("popupFrame") },
-      /*#__PURE__*/React.createElement("h3", null, "Filter"),
-      select("category", "Category", [["all","All"],["equipment","Equipment"],["consumable","Consumable"],["material","Material"]]),
-      select("type", "Equipment Type", [["all","All"], ...SLOT_ORDER.map(slot => [slot, SLOT_LABEL[slot]])]),
-      select("rarity", "Rarity", [["all","All"],["common","Common/Junk"],["rare","Rare"],["unique","Unique"],["elite","Elite"],["mythic","Mythic"]]),
-      select("enhanced", "Enhance", [["all","All"],["yes","Enhanced"],["no","Not Enhanced"]]),
-      select("enchanted", "Enchant", [["all","All"],["yes","Enchanted"],["no","No Enchant"]]),
-      /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup-actions" }, /*#__PURE__*/React.createElement("button", { onClick: () => setFilters({ category:"all", type:"all", rarity:"all", enhanced:"all", enchanted:"all" }) }, "Reset"), /*#__PURE__*/React.createElement("button", { onClick: () => setFilterOpen(false) }, "Apply")))),
-
-    overflowOpen && /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup md-inv2-overflow-popup md-inventory-art", style: inventoryUiStyle("popupFrame") },
-      /*#__PURE__*/React.createElement("h3", null, `Overflow ${overflow.length}`), /*#__PURE__*/React.createElement("p", null, "ไอเท็มเหล่านี้ถูกเก็บไว้อย่างปลอดภัย เคลียร์ช่องในกระเป๋าแล้วจึง Claim"),
-      /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-list" }, overflow.map(item => /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-row", key: item.id }, /*#__PURE__*/React.createElement(GameIcon, { item, fallback:item.icon || SLOT_ICON[item.type] || "📦" }), /*#__PURE__*/React.createElement("span", null, itemDisplayName(item), item.quantity > 1 ? ` x${item.quantity}` : ""), /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => onClaimOverflow(item.id) }, "Claim")))),
-      /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup-actions" }, /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:onClaimAllOverflow }, "Claim All That Fits"), /*#__PURE__*/React.createElement("button", { onClick:() => setOverflowOpen(false) }, "Close")))),
-
-    currentDetail && /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art`, style: inventoryRarityKey(currentDetail) === "mythic" ? inventoryUiStyle("mythicFrame") || inventoryUiStyle("popupFrame") : inventoryUiStyle("popupFrame") },
-      /*#__PURE__*/React.createElement("button", { className:"md-inv2-popup-close", onClick:closeDetail }, "✕"),
-      /*#__PURE__*/React.createElement("button", { className:`md-inv2-favorite-toggle md-inventory-art ${inventoryUiUrl("icons.favorite") ? "has-art" : ""} ${currentDetail.favorite ? "active" : ""}`, style:iconButtonStyle("favorite"), onClick:() => onToggleFavorite(currentDetail.id), "aria-label":currentDetail.favorite ? "Unlock item" : "Favorite and lock item", "aria-pressed":Boolean(currentDetail.favorite), title:"Favorite / Lock" }, iconButtonFallback("favorite", currentDetail.favorite ? "★" : "☆")),
-      /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-head" }, /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[currentDetail.type] || "📦", className:"md-game-icon md-inv2-detail-icon" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", null, itemDisplayName(currentDetail)), /*#__PURE__*/React.createElement("p", null, `${rarityLabel(currentDetail)} • ${SLOT_LABEL[currentDetail.type] || currentDetail.type} • Lv.${currentDetail.level || 1}`))),
-      /*#__PURE__*/React.createElement("div", { className:"md-inv2-stat-list" }, inventoryStatRows(currentDetail).map(row => /*#__PURE__*/React.createElement("div", { key:row.key }, /*#__PURE__*/React.createElement("span", null, row.label), /*#__PURE__*/React.createElement("b", { className:row.value >= 0 ? "positive" : "negative" }, `${row.value >= 0 ? "+" : ""}${row.value}`)))),
-      Array.isArray(currentDetail.empowerSlots) && currentDetail.empowerSlots.some(Boolean) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-enchants" }, /*#__PURE__*/React.createElement("h4", null, "ENCHANT OPTIONS"), currentDetail.empowerSlots.filter(Boolean).map((option,index) => /*#__PURE__*/React.createElement("div", { key:index }, `${option.icon || "✦"} ${option.label || option.stat || "Option"} +${option.value || 0}`))),
-      compareRows.length > 0 && /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare" }, /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" }, /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" }, currentEquipped && /*#__PURE__*/React.createElement(GameIcon, { item:currentEquipped, fallback:currentEquipped.icon || SLOT_ICON[currentEquipped.type] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentEquipped) }), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" }, /*#__PURE__*/React.createElement("strong", null, currentEquipped ? itemDisplayName(currentEquipped) : "Empty Slot"), /*#__PURE__*/React.createElement("small", null, currentEquipped ? `Lv.${currentEquipped.level || 1} • ${isItemEnchanted(currentEquipped) ? "Enchanted" : "No Enchant"}` : "Current"))), /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-arrow" }, ">"), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" }, /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[currentDetail.type] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentDetail) }), /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" }, /*#__PURE__*/React.createElement("strong", null, itemDisplayName(currentDetail)), /*#__PURE__*/React.createElement("small", null, `Lv.${currentDetail.level || 1} • ${isItemEnchanted(currentDetail) ? "Enchanted" : "No Enchant"}`)))), /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" }, /*#__PURE__*/React.createElement("span", null, "STAT"), /*#__PURE__*/React.createElement("span", null, "CURRENT ITEM"), /*#__PURE__*/React.createElement("span", null, "NEW ITEM")), compareRows.map(row => { const currentClass = row.current > row.next ? "positive" : row.current < row.next ? "negative" : ""; const nextClass = row.next > row.current ? "positive" : row.next < row.current ? "negative" : ""; return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key }, /*#__PURE__*/React.createElement("span", null, row.label), /*#__PURE__*/React.createElement("b", { className:currentClass }, row.current), /*#__PURE__*/React.createElement("b", { className:nextClass }, row.next)); })),
-      salvagePreview && /*#__PURE__*/React.createElement("div", { className:"md-inv2-salvage-preview" }, /*#__PURE__*/React.createElement("strong", null, "Salvage Yield"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"iron" }, fallback:JUNK_INFO.iron.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.iron.name }), "Iron ", salvagePreview.iron), salvagePreview.manaOre > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"manaOre" }, fallback:JUNK_INFO.manaOre.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.manaOre.name }), "Mana Stone ", salvagePreview.manaOre)),
-      message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
-      /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" }, detail.location === "inventory" && SLOT_ORDER.includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); closeDetail(); } }, "Equip"), detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); closeDetail(); } }, "Unequip"), detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSell }, "Sell"), detail.location === "inventory" && !["junk","potion"].includes(currentDetail.type) && /*#__PURE__*/React.createElement("button", { disabled:busy || currentDetail.favorite, onClick:runSalvage }, "Salvage"))))
-    ), /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild }));
+      /*#__PURE__*/React.createElement(InventoryHeader, { characterName, onClose }),
+      /*#__PURE__*/React.createElement(EquipmentStage, { equipped, characterName, onOpenDetail:setDetail }),
+      overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner md-inventory-art", style: iconButtonStyle("overflow"), onClick: () => setOverflowOpen(true) }, `⚠ Overflow ${overflow.length}`),
+      /*#__PURE__*/React.createElement(InventoryToolbar, { inventoryCount:inventory.length, onFilter:() => setFilterOpen(true), onSort }),
+      /*#__PURE__*/React.createElement(InventoryGrid, { items:filtered, expanded, onOpenDetail:setDetail }),
+      (filtered.length > 10 || expanded) && /*#__PURE__*/React.createElement("button", { className: "md-inventory-toggle md-inventory-art", style: iconButtonStyle("expand"), onClick: () => setExpanded(value => !value) }, expanded ? "▲ Collapse" : `▼ View All (${filtered.length})`),
+      filterOpen && /*#__PURE__*/React.createElement(InventoryFilterModal, { filters, onUpdate:updateFilter, onReset:resetFilters, onClose:() => setFilterOpen(false) }),
+      overflowOpen && /*#__PURE__*/React.createElement(OverflowModal, { overflow, busy, onClaimOverflow, onClaimAllOverflow, onClose:() => setOverflowOpen(false) }),
+      currentDetail && /*#__PURE__*/React.createElement(ItemDetailModal, {
+        detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy,
+        onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
+      })
+    ),
+    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild }));
 }
 
 function InventoryOverlay({
