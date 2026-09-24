@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          suffix="\${GITHUB_RUN_NUMBER}"
+          suffix="${GITHUB_RUN_NUMBER}"
           account_a="E2EW4A\${suffix}"
           account_b="E2EW4B\${suffix}"
           char_a1="W4A1\${suffix}"
