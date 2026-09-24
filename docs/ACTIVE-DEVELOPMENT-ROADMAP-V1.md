@@ -78,20 +78,28 @@ Do not use CHAT lane for:
 ## Complex implementation requiring Work/DEV
 
 ## W0 — Social Phase 3+4 Audit Hotfix
-**Priority: first**
+**Status: COMPLETE / RELEASED — 2026-09-24**
 
-Fix the six confirmed issues before Phase 5:
-1. DM unread must ignore the current character's own sent messages.
-2. Global blocked-message filtering must not stall the polling cursor.
-3. Global/Direct send must be retry-safe/idempotent server-side.
-4. Guild Leader must be able to edit description and set OPEN / APPLICATION / CLOSED.
-5. Max 5 pending Guild applications must be enforced race-safely.
-6. Manual + automatic leadership transfer must keep guild leader reference and member roles consistent atomically/race-safely.
+Released implementation:
+- commit `b44adb58142cfc69df07f537266fb434d9af3d6b`;
+- all six confirmed Phase 3+4 audit issues addressed;
+- migration `0018_social_audit_hotfix.sql` applied successfully by GitHub Actions;
+- API Worker deployment for the W0 commit completed successfully;
+- no Phase 5 / Donation / Guild Chat implementation was included.
 
-Gate:
-- relevant tests pass;
-- migration/deploy verified if schema changes;
-- Phase 5 not started inside this hotfix.
+Verified fixes:
+1. DM unread ignores the current character's own sent messages.
+2. Global blocked-message filtering occurs before LIMIT and does not block progress to later visible messages.
+3. Global/Direct sends use a client nonce with server-side replay/idempotency handling.
+4. Guild Leader can edit description and set OPEN / APPLICATION / CLOSED.
+5. Max 5 pending Guild applications is enforced inside the guarded INSERT.
+6. Manual + automatic leadership transfer share the same atomic/race-safe transfer helper.
+
+Gate result:
+- source/build/test evidence reviewed; the only reported full-suite failure is the pre-existing unrelated `tests/battle-persistence.test.js`;
+- migration/deploy verified successful in GitHub Actions run `35933082080`;
+- authenticated production Social E2E remains scheduled under W4 and is not part of the W0 implementation gate;
+- W1 may start from latest `main`.
 
 ---
 
@@ -459,7 +467,7 @@ During W5-W9:
 # 4. Master execution order
 
 ```text
-W0  Social 3+4 Hotfix
+W0  Social 3+4 Hotfix ✅ COMPLETE
  ↓
 W1  Inventory Refactor + Donation-ready Boundary
  ↓
