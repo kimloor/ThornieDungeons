@@ -60,6 +60,7 @@ Repository-wide references:
 | Status | Document | Use |
 | --- | --- | --- |
 | **SUPPORTING** | [`BATTLE-V1-IMPLEMENTATION-NOTES.md`](BATTLE-V1-IMPLEMENTATION-NOTES.md) | Battle V1 implementation and rollout context. It does not override the active Battle contract. |
+| **SUPPORTING / PREPARATION** | [`W2-GUILD-DONATION-V1-PREP.md`](W2-GUILD-DONATION-V1-PREP.md) | Frozen implementation preparation for W2 Guild Donation V1: approved balance/whitelist, migration shape, API/error/transaction contract, and QA gate. |
 | **TEMPORARY / SUPERSEDED** | [`TEMP-REFACTOR-ROADMAP.md`](TEMP-REFACTOR-ROADMAP.md) | Historical refactor plan. Superseded for active execution by `ACTIVE-DEVELOPMENT-ROADMAP-V1.md`; use only for implementation-history context. |
 
 ## 5. Read-by-task map
