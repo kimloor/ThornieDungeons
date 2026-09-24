@@ -1596,16 +1596,164 @@ async function handleDonateGuildItem(db, id, session, characterId, junkId, quant
     contribution_granted: quantity * Number(config.contribution_per_item), guild_level_before: Number(guild.level), guild_level_after: levelAfter,
     guild_exp_before: expBefore, guild_exp_after: expAfter, created_at: now,
   };
+  // D1 remote migrations currently reject CREATE TRIGGER...BEGIN blocks in our migration lane.
+  // Keep the same transaction guarantees inside one D1 batch instead. A per-donation
+  // lock row in guild_donation_stack_snapshot makes only one concurrent request the
+  // mutating owner; every later statement is guarded by that lock + this receipt's
+  // created_at, so a nonce replay can never consume items or add contribution twice.
+  const operationToken = Math.floor(Math.random() * 0x7fffffff) + 1;
   try {
-    await db.prepare(
-      `INSERT INTO guild_donations
-       (donation_id, guild_id, character_id, junk_id, quantity, guild_exp_granted, contribution_granted,
-        guild_level_before, guild_level_after, guild_exp_before, guild_exp_after, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(receiptValues.donation_id, receiptValues.guild_id, receiptValues.character_id, receiptValues.junk_id,
-      receiptValues.quantity, receiptValues.guild_exp_granted, receiptValues.contribution_granted,
-      receiptValues.guild_level_before, receiptValues.guild_level_after, receiptValues.guild_exp_before,
-      receiptValues.guild_exp_after, receiptValues.created_at).run();
+    const batch = await db.batch([
+      db.prepare(
+        `INSERT OR IGNORE INTO guild_donation_stack_snapshot
+         (donation_id, item_id, stack_position, quantity) VALUES (?, '__lock__', -1, ?)`
+      ).bind(receiptValues.donation_id, operationToken),
+      db.prepare(
+        `INSERT INTO guild_donations
+         (donation_id, guild_id, character_id, junk_id, quantity, guild_exp_granted, contribution_granted,
+          guild_level_before, guild_level_after, guild_exp_before, guild_exp_after, created_at)
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+         WHERE EXISTS (
+           SELECT 1 FROM guild_donation_stack_snapshot
+           WHERE donation_id=? AND item_id='__lock__' AND quantity=?
+         )
+         AND EXISTS (
+           SELECT 1 FROM guild_members WHERE guild_id=? AND character_id=?
+         )
+         AND EXISTS (
+           SELECT 1 FROM guilds WHERE guild_id=? AND exp=? AND level=?
+         )
+         AND COALESCE((
+           SELECT SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER))
+           FROM items
+           WHERE character_id=? AND slot_type='junk' AND json_extract(extra_json, '$.junkId')=?
+             AND equipped=0 AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1
+         ), 0) >= ?
+         ON CONFLICT(donation_id) DO NOTHING`
+      ).bind(
+        receiptValues.donation_id, receiptValues.guild_id, receiptValues.character_id, receiptValues.junk_id,
+        receiptValues.quantity, receiptValues.guild_exp_granted, receiptValues.contribution_granted,
+        receiptValues.guild_level_before, receiptValues.guild_level_after, receiptValues.guild_exp_before,
+        receiptValues.guild_exp_after, receiptValues.created_at,
+        receiptValues.donation_id, operationToken,
+        receiptValues.guild_id, receiptValues.character_id,
+        receiptValues.guild_id, receiptValues.guild_exp_before, receiptValues.guild_level_before,
+        receiptValues.character_id, receiptValues.junk_id, receiptValues.quantity
+      ),
+      db.prepare(
+        `INSERT OR IGNORE INTO guild_donation_stack_snapshot(donation_id, item_id, stack_position, quantity)
+         SELECT ?, item_id, ROW_NUMBER() OVER (ORDER BY rowid),
+           CAST(json_extract(extra_json, '$.quantity') AS INTEGER)
+         FROM items
+         WHERE character_id=? AND slot_type='junk' AND json_extract(extra_json, '$.junkId')=?
+           AND equipped=0 AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1
+           AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) > 0
+           AND EXISTS (
+             SELECT 1 FROM guild_donations
+             WHERE donation_id=? AND character_id=? AND created_at=?
+           )
+           AND EXISTS (
+             SELECT 1 FROM guild_donation_stack_snapshot
+             WHERE donation_id=? AND item_id='__lock__' AND quantity=?
+           )`
+      ).bind(
+        receiptValues.donation_id, receiptValues.character_id, receiptValues.junk_id,
+        receiptValues.donation_id, receiptValues.character_id, receiptValues.created_at,
+        receiptValues.donation_id, operationToken
+      ),
+      db.prepare(
+        `UPDATE items SET extra_json = json_set(extra_json, '$.quantity', (
+           SELECT snapshot.quantity - MIN(snapshot.quantity, MAX(0, ? - COALESCE((
+             SELECT SUM(prior.quantity) FROM guild_donation_stack_snapshot prior
+             WHERE prior.donation_id=? AND prior.stack_position < snapshot.stack_position
+           ), 0)))
+           FROM guild_donation_stack_snapshot snapshot
+           WHERE snapshot.donation_id=? AND snapshot.item_id=items.item_id
+         ))
+         WHERE item_id IN (
+           SELECT item_id FROM guild_donation_stack_snapshot
+           WHERE donation_id=? AND stack_position >= 0
+         )
+         AND EXISTS (
+           SELECT 1 FROM guild_donations
+           WHERE donation_id=? AND character_id=? AND created_at=?
+         )
+         AND EXISTS (
+           SELECT 1 FROM guild_donation_stack_snapshot
+           WHERE donation_id=? AND item_id='__lock__' AND quantity=?
+         )`
+      ).bind(
+        receiptValues.quantity, receiptValues.donation_id, receiptValues.donation_id, receiptValues.donation_id,
+        receiptValues.donation_id, receiptValues.character_id, receiptValues.created_at,
+        receiptValues.donation_id, operationToken
+      ),
+      db.prepare(
+        `DELETE FROM items
+         WHERE character_id=? AND slot_type='junk' AND equipped=0
+           AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1
+           AND json_extract(extra_json, '$.junkId')=?
+           AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) <= 0
+           AND EXISTS (
+             SELECT 1 FROM guild_donations
+             WHERE donation_id=? AND character_id=? AND created_at=?
+           )
+           AND EXISTS (
+             SELECT 1 FROM guild_donation_stack_snapshot
+             WHERE donation_id=? AND item_id='__lock__' AND quantity=?
+           )`
+      ).bind(
+        receiptValues.character_id, receiptValues.junk_id,
+        receiptValues.donation_id, receiptValues.character_id, receiptValues.created_at,
+        receiptValues.donation_id, operationToken
+      ),
+      db.prepare(
+        `UPDATE guilds SET exp=?, level=?
+         WHERE guild_id=?
+           AND EXISTS (
+             SELECT 1 FROM guild_donations
+             WHERE donation_id=? AND character_id=? AND created_at=?
+           )
+           AND EXISTS (
+             SELECT 1 FROM guild_donation_stack_snapshot
+             WHERE donation_id=? AND item_id='__lock__' AND quantity=?
+           )`
+      ).bind(
+        receiptValues.guild_exp_after, receiptValues.guild_level_after, receiptValues.guild_id,
+        receiptValues.donation_id, receiptValues.character_id, receiptValues.created_at,
+        receiptValues.donation_id, operationToken
+      ),
+      db.prepare(
+        `UPDATE guild_members SET contribution=contribution+?
+         WHERE guild_id=? AND character_id=?
+           AND EXISTS (
+             SELECT 1 FROM guild_donations
+             WHERE donation_id=? AND character_id=? AND created_at=?
+           )
+           AND EXISTS (
+             SELECT 1 FROM guild_donation_stack_snapshot
+             WHERE donation_id=? AND item_id='__lock__' AND quantity=?
+           )`
+      ).bind(
+        receiptValues.contribution_granted, receiptValues.guild_id, receiptValues.character_id,
+        receiptValues.donation_id, receiptValues.character_id, receiptValues.created_at,
+        receiptValues.donation_id, operationToken
+      ),
+      db.prepare(
+        `DELETE FROM guild_donation_stack_snapshot
+         WHERE donation_id=?
+           AND EXISTS (
+             SELECT 1 FROM guild_donation_stack_snapshot lock_row
+             WHERE lock_row.donation_id=? AND lock_row.item_id='__lock__' AND lock_row.quantity=?
+           )`
+      ).bind(receiptValues.donation_id, receiptValues.donation_id, operationToken),
+    ]);
+
+    const receiptInsert = batch && batch[1];
+    if (!receiptInsert?.meta?.changes) {
+      const committed = await db.prepare(`SELECT * FROM guild_donations WHERE donation_id = ?`).bind(String(donationId)).first();
+      if (committed && committed.character_id === characterId) return json(await shapeGuildDonation(db, committed, true));
+      return json({ error: "donation_conflict" });
+    }
   } catch (error) {
     const committed = await db.prepare(`SELECT * FROM guild_donations WHERE donation_id = ?`).bind(String(donationId)).first();
     if (committed && committed.character_id === characterId) return json(await shapeGuildDonation(db, committed, true));
