@@ -155,6 +155,22 @@ test("password change revokes all sessions and requires the new password", async
   assert.equal((await body(await auth.handleLogin(db, "Change_1", "new1", false, "ip-c3"))).ok, true);
 });
 
+test("rate-limit retryAfter reflects the remaining window and login UI explains throttling", async () => {
+  const db = createDb();
+  await body(await auth.handleRegister(db, "Retry_User", "pass", "pass", false, "retry-register"));
+  for (let attempt = 0; attempt < 5; attempt++) {
+    assert.equal((await body(await auth.handleLogin(db, "Retry_User", "bad1", false, "retry-login"))).error, "invalid_credentials");
+  }
+  const limited = await body(await auth.handleLogin(db, "Retry_User", "bad1", false, "retry-login"));
+  assert.equal(limited.error, "rate_limited");
+  assert.ok(Number(limited.retryAfter) > 30);
+  assert.ok(Number(limited.retryAfter) <= 300);
+
+  const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
+  assert.match(appSource, /ลองเข้าสู่ระบบผิดหลายครั้ง/);
+  assert.match(appSource, /retryAfter/);
+});
+
 test("login and registration rate limits separate failed attempts from successful account creation", async () => {
   const loginDb = createDb();
   await body(await auth.handleRegister(loginDb, "Rate_User", "pass", "pass", false, "register-ip"));
