@@ -55,6 +55,13 @@ assert c.execute("SELECT exp,level FROM guilds WHERE guild_id='g2'").fetchone() 
 assert c.execute("SELECT contribution FROM guild_members WHERE character_id='c2'").fetchone() == (11,)
 assert c.execute("SELECT COUNT(*) FROM guild_donations").fetchone() == (1,)
 try:
+ donate('d1',8,0,1,8,1,8) # the same id cannot apply a second mutation
+ raise AssertionError('expected duplicate-id rejection')
+except sqlite3.IntegrityError:
+ pass
+assert sum(json.loads(row[0])['quantity'] for row in c.execute("SELECT extra_json FROM items WHERE character_id='c1'")) == 2
+assert c.execute("SELECT contribution FROM guild_members WHERE character_id='c1'").fetchone() == (8,)
+try:
  donate('bad',1,8,1,10,1,2) # wrong grant must abort the receipt and every trigger write
  raise AssertionError('expected rollback')
 except sqlite3.IntegrityError:
