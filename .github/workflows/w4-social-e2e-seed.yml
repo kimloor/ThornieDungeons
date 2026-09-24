@@ -3,7 +3,7 @@ name: W4 Social E2E QA Seed
 on:
   push:
     branches:
-      - "qa/w4-social-e2e-seed"
+      - "main"
     paths:
       - ".github/workflows/w4-social-e2e-seed.yml"
   workflow_dispatch:
