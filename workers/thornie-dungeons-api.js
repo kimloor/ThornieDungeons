@@ -1912,6 +1912,63 @@ async function handleGetGuildProfile(db, id, session, characterId, guildId) {
   return await buildGuildProfileResponse(db, guildId, characterId);
 }
 
+// Public Guild Profile boundary. Unlike the management profile above, this response
+// intentionally excludes member rows, contribution, joinedAt, and all identity IDs
+// except the public guild target needed by the existing join/apply mutation.
+async function handleGetPublicGuildProfile(db, id, session, characterId, guildId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!guildId) return json({ error: "missing_fields" });
+  await evaluateGuildSuccession(db, guildId);
+  const guild = await getRow(db, "guilds", "guild_id", guildId);
+  if (!guild) return json({ error: "guild_not_found" });
+
+  const [progression, memberCountRow, leaderRow, membership, pendingApplication, pendingCountRow] = await Promise.all([
+    db.prepare(`SELECT level, cumulative_exp FROM guild_donation_progression ORDER BY level`).all(),
+    db.prepare(`SELECT COUNT(*) AS c FROM guild_members WHERE guild_id = ?`).bind(guildId).first(),
+    db.prepare(`SELECT name FROM characters WHERE character_id = ?`).bind(guild.leader_character_id).first(),
+    db.prepare(`SELECT role FROM guild_members WHERE guild_id = ? AND character_id = ?`).bind(guildId, characterId).first(),
+    db.prepare(`SELECT 1 FROM guild_applications WHERE guild_id = ? AND character_id = ? AND status = 'pending'`).bind(guildId, characterId).first(),
+    db.prepare(`SELECT COUNT(*) AS c FROM guild_applications WHERE character_id = ? AND status = 'pending'`).bind(characterId).first(),
+  ]);
+  const rows = progression.results || [];
+  const currentThreshold = rows.find(row => Number(row.level) === Number(guild.level));
+  const nextThreshold = rows.find(row => Number(row.level) === Number(guild.level) + 1);
+  const memberCount = Number(memberCountRow?.c || 0);
+  const memberCap = guildMemberCap(guild.level);
+  const full = memberCount >= memberCap;
+  const pending = !!pendingApplication;
+  const applicationLimitReached = Number(pendingCountRow?.c || 0) >= GUILD_APPLICATION_MAX_PENDING;
+  let viewerState = "eligible_join";
+  if (membership) viewerState = "member";
+  else if (pending) viewerState = "pending";
+  else if (guild.join_policy === "closed") viewerState = "closed";
+  else if (guild.join_policy === "application" && applicationLimitReached) viewerState = "application_limit_reached";
+  const canJoin = viewerState === "eligible_join" && guild.join_policy === "open" && !full;
+  const canApply = viewerState === "eligible_join" && guild.join_policy === "application";
+  return json({
+    ok: true,
+    profile: {
+      guildId: guild.guild_id,
+      name: guild.name,
+      level: guild.level,
+      exp: guild.exp,
+      expProgress: currentThreshold ? Math.max(0, Number(guild.exp) - Number(currentThreshold.cumulative_exp)) : Number(guild.exp),
+      expRequired: nextThreshold && currentThreshold ? Number(nextThreshold.cumulative_exp) - Number(currentThreshold.cumulative_exp) : 0,
+      atCap: !nextThreshold,
+      memberCount,
+      memberCap,
+      capacityState: full ? "full" : "available",
+      joinPolicy: guild.join_policy,
+      joinPolicyLabel: guild.join_policy === "open" ? "เปิดรับ" : guild.join_policy === "application" ? "ต้องสมัคร" : "ปิดรับ",
+      leaderName: leaderRow?.name || "ไม่ระบุ",
+      viewerState,
+      canJoin,
+      canApply,
+    },
+  });
+}
+
 async function handleGetMyApplications(db, id, session, characterId) {
   const auth = await verifySocialActor(db, id, session, characterId);
   if (auth.error) return json(auth);
@@ -5306,6 +5363,7 @@ export default {
         if (action === "searchGuilds") return await handleSearchGuilds(db, id, auth, p.get("characterId"), p.get("query"));
         if (action === "getMyGuild") return await handleGetMyGuild(db, id, auth, p.get("characterId"));
         if (action === "getGuildProfile") return await handleGetGuildProfile(db, id, auth, p.get("characterId"), p.get("guildId"));
+        if (action === "getPublicGuildProfile") return await handleGetPublicGuildProfile(db, id, auth, p.get("characterId"), p.get("guildId"));
         if (action === "getMyApplications") return await handleGetMyApplications(db, id, auth, p.get("characterId"));
         if (action === "getGuildApplications") return await handleGetGuildApplications(db, id, auth, p.get("characterId"), p.get("guildId"));
         if (action === "getGuildDonationHistory") return await handleGetGuildDonationHistory(db, id, auth, p.get("characterId"), p.get("limit"));
