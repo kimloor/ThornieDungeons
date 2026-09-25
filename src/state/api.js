@@ -393,6 +393,15 @@ function cloudSearchCharacters(url, characterId, query) {
     query
   });
 }
+// Public Player Card boundary. The response is server-shaped and contains only the
+// character-facing profile fields; account/player/session data never crosses this helper.
+function cloudGetPublicProfile(url, characterId, targetCharacterId) {
+  return cloudAuthGet(url, {
+    action: "getPublicProfile",
+    characterId,
+    targetCharacterId
+  });
+}
 function cloudGetFriendList(url, characterId) {
   return cloudAuthGet(url, {
     action: "getFriendList",
