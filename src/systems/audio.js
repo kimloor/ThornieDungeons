@@ -44,10 +44,24 @@ class AudioManager {
     this.bgmMasterGain = null;
     this.sfxMasterGain = null;
     this.mediaNodes = new WeakMap();
+    this.backgroundSuspended = false;
     this.onUserGesture = () => {
       this.enableWebAudio();
       this.resumeRequestedPlayback();
     };
+    this.onVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.hidden) this.suspendForBackground();
+      else this.resumeFromBackground();
+    };
+    this.onPageHide = () => this.suspendForBackground();
+    this.onPageShow = () => this.resumeFromBackground();
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", this.onVisibilityChange);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("pagehide", this.onPageHide);
+      window.addEventListener("pageshow", this.onPageShow);
+    }
   }
 
   loadPreferences() {
@@ -113,8 +127,39 @@ class AudioManager {
     return this.preferences.sfxMuted ? 0 : this.preferences.sfxVolume;
   }
 
+  isDocumentHidden() {
+    return typeof document !== "undefined" && document.hidden === true;
+  }
+
+  suspendForBackground() {
+    if (this.backgroundSuspended) return;
+    this.backgroundSuspended = true;
+    this.unbindGestureRecovery();
+
+    if (this.transition) {
+      clearInterval(this.transition.timer);
+      this.stopTrack(this.transition.from);
+      this.active = this.transition.incoming;
+      this.transition = null;
+      this.pending = null;
+    }
+
+    const tracks = [this.active, this.pending].filter(Boolean);
+    tracks.forEach(track => track.audio?.pause());
+    if (this.audioContext?.state === "running") this.audioContext.suspend().catch(() => {});
+  }
+
+  resumeFromBackground() {
+    if (this.isDocumentHidden()) return;
+    const wasSuspended = this.backgroundSuspended;
+    this.backgroundSuspended = false;
+    if (!wasSuspended) return;
+    if (this.audioContext?.state === "suspended") this.audioContext.resume().catch(() => {});
+    if (this.requestedGroup) this.resumeRequestedPlayback();
+  }
+
   enableWebAudio() {
-    if (typeof window === "undefined") return false;
+    if (typeof window === "undefined" || this.isDocumentHidden()) return false;
     const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextCtor) return false;
     try {
@@ -173,7 +218,7 @@ class AudioManager {
   }
 
   playSfx(assetKey, volumeScale = 1) {
-    if (!assetKey || typeof Audio === "undefined") return Promise.resolve(false);
+    if (!assetKey || typeof Audio === "undefined" || this.isDocumentHidden() || this.backgroundSuspended) return Promise.resolve(false);
     const source = resolveAudioAsset(assetKey);
     if (!source) return Promise.resolve(false);
     const outputVolume = this.getSfxOutputVolume();
@@ -232,6 +277,10 @@ class AudioManager {
 
   playAudio(audio) {
     if (!audio) return Promise.reject(new Error("audio_unavailable"));
+    if (this.isDocumentHidden() || this.backgroundSuspended) {
+      audio.pause();
+      return Promise.resolve(false);
+    }
     let playback;
     try { playback = audio.play(); } catch (error) { playback = Promise.reject(error); }
     return Promise.resolve(playback).then(() => {
