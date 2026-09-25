@@ -760,6 +760,13 @@ function ThornieDungeons() {
     const ok = await persistenceRef.current.flush(context, { retryFailed: true });
     return !!ok && activeCharacterIdRef.current === characterId && !!AUTH_SESSION.getToken();
   }
+  function applyGuildDonationLocally(junkId, quantity) {
+    const nextInventory = removeJunkFromInventory(inventoryRef.current, junkId, quantity);
+    if (!nextInventory) return false;
+    setInventory(nextInventory);
+    persistItems(nextInventory, equippedRef.current, inventoryOverflowRef.current);
+    return true;
+  }
   async function manualSave() {
     const ok = await flushCurrentCharacter();
     if (!ok) setPersistenceMessage("บันทึก Cloud ไม่สำเร็จ — ข้อมูลล่าสุดยังรอส่งและกดบันทึกเพื่อลองใหม่ได้");
@@ -777,6 +784,7 @@ function ThornieDungeons() {
       onPets: () => { setPetReturnPhase(fromPhase); setPhase("pets"); },
       onSettings: () => setAccountSettingsOpen(true),
       onSave: manualSave,
+      onMainHub: () => setPhase("menu"),
     };
   }
   function closeTransientOverlays() {
@@ -2313,6 +2321,7 @@ function ThornieDungeons() {
       setInventoryOverflow(next.overflow);
       return true;
     },
+    onDonationCommitted: applyGuildDonationLocally,
     ...utilityDockProps("guild"),
     onFriend: () => {
       setUtilityReturnPhase("guild");
@@ -2324,7 +2333,9 @@ function ThornieDungeons() {
       setUtilityReturnPhase("guild");
       setPhase("chat");
     },
-    onBack: () => setPhase(utilityReturnPhase)
+    // Guild is a top-level utility destination. Always return to the explicit Main Hub
+    // route so a stale utilityReturnPhase cannot leave the page mounted in place.
+    onBack: () => setPhase("menu")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
     gachaResult: gachaResult,

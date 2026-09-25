@@ -1,5 +1,5 @@
 -- W2 Guild Donation V1 recovery marker.
 -- 0019 schema/config/receipt tables are already applied in production.
 -- Runtime atomicity is implemented in the Worker via one guarded D1 db.batch().
--- Intentionally no SQL statements: CREATE TRIGGER...BEGIN is not accepted by the
+-- Intentionally no SQL statements: trigger BEGIN blocks are not accepted by the
 -- current remote Wrangler migration lane used by this project.

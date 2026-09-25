@@ -21,6 +21,10 @@ test("Guild donation endpoint is authenticated, idempotent, and uses shared inve
   assert.match(app, /async function flushInventoryForDonation\(characterId\)/);
   assert.match(app, /persistItems\(inventoryRef\.current, equippedRef\.current, inventoryOverflowRef\.current\);[\s\S]*persistenceRef\.current\.flush\(context/);
   assert.match(app, /onBeforeDonate: flushInventoryForDonation/);
+  assert.match(app, /function applyGuildDonationLocally\(junkId, quantity\)/);
+  assert.match(app, /removeJunkFromInventory\(inventoryRef\.current, junkId, quantity\)/);
+  assert.match(ui, /if \(!result\.replay\) onDonationCommitted\?\.\(donateJunkId, quantity\)/);
+  assert.match(ui, /onDonationCommitted/);
   assert.match(app, /activeCharacterIdRef\.current !== characterId/);
   const barrierIndex = ui.indexOf("await onBeforeDonate(characterId)");
   const donateIndex = ui.indexOf("cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId)");
@@ -52,6 +56,15 @@ test("Guild donation uses a guarded single D1 batch and trigger migrations are n
   const contributionIndex = worker.indexOf("UPDATE guild_members SET contribution=", guildIndex);
   const cleanupIndex = worker.indexOf("DELETE FROM guild_donation_stack_snapshot", contributionIndex);
   assert.ok(lockIndex >= 0 && receiptIndex > lockIndex && consumeIndex > receiptIndex && guildIndex > consumeIndex && contributionIndex > guildIndex && cleanupIndex > contributionIndex);
+});
+
+test("Guild navigation has deterministic back and Main Hub recovery", () => {
+  const app = fs.readFileSync(path.join(ROOT, "src/ui/App.js"), "utf8");
+  const ui = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  assert.match(ui, /กลับหน้าหลัก/);
+  assert.match(ui, /onMainHub\?\.\(\)/);
+  assert.match(app, /onBack: \(\) => setPhase\("menu"\)/);
+  assert.match(app, /onMainHub: \(\) => setPhase\("menu"\)/);
 });
 
 

@@ -256,7 +256,8 @@ function GameDock({
   onSave,
   onFriend,
   onChat,
-  onGuild
+  onGuild,
+  onMainHub
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [saveFlash, setSaveFlash] = useState("");
@@ -283,6 +284,10 @@ function GameDock({
     setMoreOpen(false);
     onGuild?.();
   };
+  const openMainHub = () => {
+    setMoreOpen(false);
+    onMainHub?.();
+  };
   return /*#__PURE__*/React.createElement(React.Fragment, null, moreOpen && /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-panel"
   }, /*#__PURE__*/React.createElement("div", {
@@ -293,7 +298,7 @@ function GameDock({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openGuild }, "🏰", /*#__PURE__*/React.createElement("span", null, "Guild")))), /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openGuild }, "🏰", /*#__PURE__*/React.createElement("span", null, "Guild")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openMainHub }, "🏠", /*#__PURE__*/React.createElement("span", null, "กลับหน้าหลัก")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
@@ -2113,7 +2118,9 @@ function GuildScreen({
   onBack,
   inventory = [],
   onBeforeDonate,
-  onRefreshInventory
+  onRefreshInventory,
+  onDonationCommitted,
+  onMainHub
 }) {
   const e = React.createElement;
   const url = serverUrl || DEFAULT_SERVER_URL;
@@ -2282,6 +2289,7 @@ function GuildScreen({
       setPendingDonationId("");
       setDonationResult(result);
       setDonateQuantity(1);
+      if (!result.replay) onDonationCommitted?.(donateJunkId, quantity);
       loadMyGuild();
       if (onRefreshInventory) await onRefreshInventory();
     } catch (_) {
@@ -2423,7 +2431,7 @@ function GuildScreen({
       : loadError ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, loadError))
         : myGuild ? memberView() : noGuildView(),
     e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub }));
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
