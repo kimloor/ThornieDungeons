@@ -100,6 +100,23 @@ class AudioManager {
     return this.preferences.sfxMuted ? 0 : this.preferences.sfxVolume;
   }
 
+  playSfx(assetKey, volumeScale = 1) {
+    if (!assetKey || typeof Audio === "undefined") return Promise.resolve(false);
+    const source = typeof optionalAsset === "function" ? optionalAsset(assetKey) : "";
+    if (!source) return Promise.resolve(false);
+    const outputVolume = this.getSfxOutputVolume();
+    if (outputVolume <= 0) return Promise.resolve(false);
+
+    const audio = new Audio(source);
+    audio.preload = "auto";
+    audio.setAttribute("aria-hidden", "true");
+    audio.volume = outputVolume * clampAudioVolume(volumeScale);
+
+    let playback;
+    try { playback = audio.play(); } catch (error) { playback = Promise.reject(error); }
+    return Promise.resolve(playback).then(() => true).catch(() => false);
+  }
+
   bindGestureRecovery() {
     if (this.gestureRecoveryBound || typeof window === "undefined") return;
     this.gestureRecoveryBound = true;
@@ -136,7 +153,10 @@ class AudioManager {
     if (!audio) return Promise.reject(new Error("audio_unavailable"));
     let playback;
     try { playback = audio.play(); } catch (error) { playback = Promise.reject(error); }
-    return Promise.resolve(playback).then(() => true).catch(() => {
+    return Promise.resolve(playback).then(() => {
+      this.unbindGestureRecovery();
+      return true;
+    }).catch(() => {
       // Autoplay rejection is expected on browsers until the next user gesture.
       this.bindGestureRecovery();
       return false;
