@@ -255,7 +255,6 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
     ),
     children
   );
-
   return ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
     e("div", { className: "md-settings-header" },
       e("div", { className: "md-settings-header-copy" },
@@ -1418,6 +1417,7 @@ function FriendScreen({
   onGuild,
   onMainHub,
   onChatWith,
+  onOpenPlayerCard,
   onBack
 }) {
   const e = React.createElement;
@@ -1636,7 +1636,10 @@ function FriendScreen({
         actionBtn("เพิ่มเพื่อน", () => handleSendRequest(r), "primary", busyKey === `send:${r.characterId}`),
         actionBtn("บล็อก", () => handleBlock(r), "flee", busyKey === `block:${r.characterId}`),
       ];
-      return row(r.characterId, `${onlineDot(r.online)} ${r.name} (Lv.${r.level})`, actions);
+      return row(r.characterId, e("div", { className: "md-friend-player-cell" },
+        e("span", { className: "md-friend-online-dot", "aria-hidden": "true" }, onlineDot(r.online)),
+        e(PlayerCardTrigger, { characterId: r.characterId, name: r.name, level: r.level, onOpenPlayerCard })
+      ), actions);
     }));
   };
 
@@ -1756,6 +1759,7 @@ function ChatScreen({
   onFriend,
   onGuild,
   onMainHub,
+  onOpenPlayerCard,
   onBack
 }) {
   const e = React.createElement;
@@ -2021,7 +2025,9 @@ function ChatScreen({
     className: "md-shop-row",
     style: { flexDirection: "column", alignItems: m.characterId === characterId ? "flex-end" : "flex-start" }
   },
-    m.characterId !== characterId && e("div", { className: "md-sub", style: { margin: 0 } }, m.name),
+    m.characterId !== characterId && e("div", { className: "md-sub md-chat-sender" , style: { margin: 0 } },
+      e(PlayerCardTrigger, { characterId: m.characterId, name: m.name, level: m.level, onOpenPlayerCard })
+    ),
     e("div", { className: "md-shop-info", style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }, m.text));
 
   const messageList = (messages, loaded, emptyText) => {
@@ -2069,8 +2075,8 @@ function ChatScreen({
         style: { cursor: "pointer" },
         onClick: () => openConversation(c),
       },
-        e("div", { className: "md-shop-info" },
-          `${c.online ? "🟢" : "⚪"} ${c.name} (Lv.${c.level})`, c.unread && e("span", { style: { marginLeft: 6 } }, "🔴"),
+          e("div", { className: "md-shop-info" },
+          e(PlayerCardTrigger, { characterId: c.characterId, name: `${c.online ? "🟢" : "⚪"} ${c.name}`, level: c.level, onOpenPlayerCard }), c.unread && e("span", { style: { marginLeft: 6 } }, "🔴"),
           e("div", { className: "md-sub", style: { margin: "2px 0 0" } }, `${c.lastSenderIsMe ? "คุณ: " : ""}${c.lastMessage || ""}`)),
       ))));
   };
