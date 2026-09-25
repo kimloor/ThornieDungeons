@@ -2,8 +2,11 @@
 // delegates join/apply mutations to the existing Guild V1 request handler.
 const GUILD_PROFILE_STATE_LABELS = Object.freeze({
   member: "เป็นสมาชิกกิลด์นี้แล้ว",
+  member_elsewhere: "คุณอยู่ในกิลด์อื่นแล้ว",
+  already_in_guild: "คุณอยู่ในกิลด์อื่นแล้ว",
   pending: "ส่งใบสมัครแล้ว — รอการอนุมัติ",
   closed: "กิลด์ปิดรับสมาชิก",
+  full: "กิลด์เต็มแล้ว",
   eligible_join: "พร้อมเข้าร่วมกิลด์",
   eligible_apply: "พร้อมส่งใบสมัคร",
   application_limit_reached: "สมัครกิลด์ครบ 5 แห่งแล้ว",
@@ -42,15 +45,13 @@ function GuildProfileOverlay({ serverUrl, characterId, guildId, onClose }) {
     setBusy(true);
     cloudRequestGuildJoin(url, characterId, guildId).then(res => {
       if (!res || res.error) {
-        setBusy(false);
         loadProfile();
         return;
       }
       loadProfile();
     }).catch(() => {
-      setBusy(false);
       setState(current => ({ ...current, error: "เชื่อมต่อ Server ไม่สำเร็จ" }));
-    });
+    }).finally(() => setBusy(false));
   };
 
   return ReactDOM.createPortal(e("div", {
