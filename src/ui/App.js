@@ -555,6 +555,7 @@ function ThornieDungeons() {
       const registerErrors = {
         invalid_player_id: "Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น",
         invalid_password_length: "Password ต้องยาว 4–32 ตัว",
+        invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน",
         id_unavailable: "Player ID นี้ถูกใช้งานแล้ว",
         rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",

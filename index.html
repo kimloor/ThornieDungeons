@@ -8249,6 +8249,7 @@ function ThornieDungeons() {
       const registerErrors = {
         invalid_player_id: "Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น",
         invalid_password_length: "Password ต้องยาว 4–32 ตัว",
+        invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน",
         id_unavailable: "Player ID นี้ถูกใช้งานแล้ว",
         rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
@@ -10283,9 +10284,16 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
   const [forgotForm, setForgotForm] = useState({ id: cred.id || "", recoveryCode: "", newPassword: "", confirmPassword: "" });
   const [modalError, setModalError] = useState("");
   const copyCode = code => navigator.clipboard?.writeText(code).catch(() => {});
-  const field = (label, type, value, update, autoComplete) => e(React.Fragment, null,
+  const field = (label, type, value, update, autoComplete, selectOnFocus = false) => e(React.Fragment, null,
     e("p", { className: "md-field-label" }, label),
-    e("input", { className: "md-field", type: type || "text", value, autoComplete, onChange: event => update(event.target.value) })
+    e("input", {
+      className: "md-field",
+      type: type || "text",
+      value,
+      autoComplete,
+      onChange: event => update(event.target.value),
+      onFocus: selectOnFocus ? event => event.currentTarget.select() : undefined
+    })
   );
   const recoveryPanel = (code, done) => e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" },
     e("h2", { className: "md-title" }, "บันทึก Recovery Code"),
@@ -10298,12 +10306,14 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
     setModalError("");
     if (!/^[A-Za-z0-9_]{4,20}$/.test(registerForm.id)) return setModalError("Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น");
     if (registerForm.password.length < 4 || registerForm.password.length > 32) return setModalError("Password ต้องยาว 4–32 ตัว");
+    if (!/^[A-Za-z0-9]+$/.test(registerForm.password)) return setModalError("Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ");
     if (registerForm.password !== registerForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
     const result = await onRegister(registerForm);
     if (!result?.ok) {
       const registerErrorText = {
         invalid_player_id: "Player ID ต้องยาว 4–20 ตัว และใช้ A-Z, a-z, 0-9, _ เท่านั้น",
         invalid_password_length: "Password ต้องยาว 4–32 ตัว",
+        invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน",
         id_unavailable: "Player ID นี้ถูกใช้งานแล้ว",
         rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
@@ -10314,24 +10324,39 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
   const submitForgot = async () => {
     setModalError("");
     if (forgotForm.newPassword.length < 4 || forgotForm.newPassword.length > 32) return setModalError("Password ใหม่ต้องยาว 4–32 ตัว");
+    if (!/^[A-Za-z0-9]+$/.test(forgotForm.newPassword)) return setModalError("Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ");
     if (forgotForm.newPassword !== forgotForm.confirmPassword) return setModalError("Confirm Password ไม่ตรงกัน");
     const result = await onForgotPassword(forgotForm);
-    if (!result.ok) setModalError(result.error === "invalid_recovery" ? "Player ID หรือ Recovery Code ไม่ถูกต้อง" : "ดำเนินการไม่สำเร็จ กรุณาลองใหม่");
+    if (!result.ok) {
+      const forgotErrorText = {
+        invalid_recovery: "Player ID หรือ Recovery Code ไม่ถูกต้อง",
+        invalid_password_length: "Password ใหม่ต้องยาว 4–32 ตัว",
+        invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
+        password_mismatch: "Confirm Password ไม่ตรงกัน"
+      };
+      setModalError(forgotErrorText[result.error] || "ดำเนินการไม่สำเร็จ กรุณาลองใหม่");
+    }
   };
   return e("div", { className: `md-login-wrap${departing ? " is-departing" : ""}` },
     e("div", { className: "md-menu-title md-login-brand" }, e("img", { className: "md-login-emblem", src: "icons/icon-512.png", alt: "ThornieDungeons" }), e("h1", null, "ThornieDungeons"), e("p", null, "เข้าสู่ดันเจี้ยนของคุณ")),
-    e("div", { className: "md-card md-login-card" },
+    e("form", {
+      className: "md-card md-login-card",
+      onSubmit: event => {
+        event.preventDefault();
+        if (!busy) onLogin();
+      }
+    },
       field("Player ID", "text", cred.id, id => setCred(current => ({ ...current, id })), "username"),
-      field("Password", "password", cred.password, password => setCred(current => ({ ...current, password })), "current-password"),
+      field("Password", "password", cred.password, password => setCred(current => ({ ...current, password })), "current-password", true),
       e("label", { className: "md-remember-password" }, e("input", { type: "checkbox", checked: rememberLogin, disabled: busy, onChange: event => onRememberLogin(event.target.checked) }), e("span", { className: "md-remember-check", "aria-hidden": "true" }), e("span", null, "จดจำการเข้าสู่ระบบ")),
       error && e("p", { className: "md-auth-error" }, error),
-      e("div", { className: "md-btn-row", style: { marginTop: 12 } }, e("button", { className: "md-btn primary", disabled: busy, onClick: onLogin }, busy ? "..." : "เข้าสู่ระบบ"), e("button", { className: "md-btn info", disabled: busy, onClick: () => { setModalError(""); setRegisterForm({ id: cred.id || "", password: "", confirmPassword: "" }); setRegisterOpen(true); } }, "สร้างบัญชีใหม่")),
+      e("div", { className: "md-btn-row", style: { marginTop: 12 } }, e("button", { type: "submit", className: "md-btn primary", disabled: busy }, busy ? "..." : "เข้าสู่ระบบ"), e("button", { type: "button", className: "md-btn info", disabled: busy, onClick: () => { setModalError(""); setRegisterForm({ id: cred.id || "", password: "", confirmPassword: "" }); setRegisterOpen(true); } }, "สร้างบัญชีใหม่")),
       e("button", { type: "button", className: "md-auth-link", onClick: () => { setModalError(""); setForgotForm(form => ({ ...form, id: cred.id || form.id })); setForgotOpen(true); } }, "ลืมรหัสผ่าน?"),
       e("p", { className: "md-hint" }, "ใช้บัญชีเดิมเพื่อโหลดเซฟจากทุกอุปกรณ์")
     ),
-    registerOpen && !registrationRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "สร้างบัญชีใหม่"), field("Player ID", "text", registerForm.id, id => setRegisterForm(form => ({ ...form, id })), "username"), field("Password", "password", registerForm.password, password => setRegisterForm(form => ({ ...form, password })), "new-password"), field("Confirm Password", "password", registerForm.confirmPassword, confirmPassword => setRegisterForm(form => ({ ...form, confirmPassword })), "new-password"), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setRegisterOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitRegister }, busy ? "..." : "สร้างบัญชี")))),
+    registerOpen && !registrationRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "สร้างบัญชีใหม่"), field("Player ID", "text", registerForm.id, id => setRegisterForm(form => ({ ...form, id })), "username"), field("Password", "password", registerForm.password, password => setRegisterForm(form => ({ ...form, password })), "new-password", true), field("Confirm Password", "password", registerForm.confirmPassword, confirmPassword => setRegisterForm(form => ({ ...form, confirmPassword })), "new-password", true), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setRegisterOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitRegister }, busy ? "..." : "สร้างบัญชี")))),
     registrationRecovery && recoveryPanel(registrationRecovery.code, onFinishRegistration),
-    forgotOpen && !passwordResetRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "ลืมรหัสผ่าน"), field("Player ID", "text", forgotForm.id, id => setForgotForm(form => ({ ...form, id })), "username"), field("Recovery Code", "text", forgotForm.recoveryCode, recoveryCode => setForgotForm(form => ({ ...form, recoveryCode })), "one-time-code"), field("New Password", "password", forgotForm.newPassword, newPassword => setForgotForm(form => ({ ...form, newPassword })), "new-password"), field("Confirm Password", "password", forgotForm.confirmPassword, confirmPassword => setForgotForm(form => ({ ...form, confirmPassword })), "new-password"), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setForgotOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitForgot }, busy ? "..." : "รีเซ็ตรหัสผ่าน")))),
+    forgotOpen && !passwordResetRecovery && e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet", role: "dialog", "aria-modal": "true" }, e("h2", { className: "md-title" }, "ลืมรหัสผ่าน"), field("Player ID", "text", forgotForm.id, id => setForgotForm(form => ({ ...form, id })), "username"), field("Recovery Code", "text", forgotForm.recoveryCode, recoveryCode => setForgotForm(form => ({ ...form, recoveryCode })), "one-time-code"), field("New Password", "password", forgotForm.newPassword, newPassword => setForgotForm(form => ({ ...form, newPassword })), "new-password", true), field("Confirm Password", "password", forgotForm.confirmPassword, confirmPassword => setForgotForm(form => ({ ...form, confirmPassword })), "new-password", true), modalError && e("p", { className: "md-auth-error" }, modalError), e("div", { className: "md-btn-row" }, e("button", { className: "md-btn flee", disabled: busy, onClick: () => setForgotOpen(false) }, "ยกเลิก"), e("button", { className: "md-btn primary", disabled: busy, onClick: submitForgot }, busy ? "..." : "รีเซ็ตรหัสผ่าน")))),
     passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
   );
 }
@@ -10357,11 +10382,20 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
   };
   const changePassword = async () => {
     if (newPassword.length < 4 || newPassword.length > 32) return setMessage("Password ใหม่ต้องยาว 4–32 ตัว");
+    if (!/^[A-Za-z0-9]+$/.test(newPassword)) return setMessage("Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ");
     if (newPassword !== confirmPassword) return setMessage("Confirm Password ไม่ตรงกัน");
     setBusy(true); setMessage("");
     const result = await cloudChangePassword(serverUrl || DEFAULT_SERVER_URL, changeCurrentPassword, newPassword, confirmPassword);
     setBusy(false);
-    if (!result?.ok) return setMessage(result?.error === "invalid_credentials" ? "รหัสผ่านปัจจุบันไม่ถูกต้อง" : "เปลี่ยน Password ไม่สำเร็จ");
+    if (!result?.ok) {
+      const changeErrorText = {
+        invalid_credentials: "รหัสผ่านปัจจุบันไม่ถูกต้อง",
+        invalid_password_length: "Password ใหม่ต้องยาว 4–32 ตัว",
+        invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
+        password_mismatch: "Confirm Password ไม่ตรงกัน"
+      };
+      return setMessage(changeErrorText[result?.error] || "เปลี่ยน Password ไม่สำเร็จ");
+    }
     onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
   };
   return e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
@@ -10374,8 +10408,8 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
     ),
     e("p", { className: "md-title", style: { marginTop: 16 } }, "เปลี่ยน Password"),
     e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: changeCurrentPassword, onChange: event => setChangeCurrentPassword(event.target.value), autoComplete: "current-password" }),
-    e("input", { className: "md-field", type: "password", placeholder: "Password ใหม่", value: newPassword, onChange: event => setNewPassword(event.target.value), autoComplete: "new-password" }),
-    e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), autoComplete: "new-password" }),
+    e("input", { className: "md-field", type: "password", placeholder: "Password ใหม่", value: newPassword, onChange: event => setNewPassword(event.target.value), onFocus: event => event.currentTarget.select(), autoComplete: "new-password" }),
+    e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), onFocus: event => event.currentTarget.select(), autoComplete: "new-password" }),
     e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password"),
     message && e("p", { className: "md-auth-error" }, message),
     e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร"),
