@@ -1,13 +1,46 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-25T01:33:40Z",
-  "count": 308,
+  "generatedAt": "2026-09-25T07:53:22Z",
+  "count": 320,
   "objects": [
     {
+      "key": "audio/bgm/main_theme.mp3",
+      "etag": "8b97a7ec5f2ff037fd1356748c66bb07",
+      "last_modified": "2026-09-25T05:00:57.542Z",
+      "size": 3781694,
+      "http_metadata": {
+        "contentType": "audio/mpeg"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "audio/bgm/town_theme.mp3",
+      "etag": "b974ac88d2ad5141cc84419d2b09fbbe",
+      "last_modified": "2026-09-25T05:01:01.115Z",
+      "size": 4922723,
+      "http_metadata": {
+        "contentType": "audio/mpeg"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "geoffharvey-our-greatest-adventure-427782.mp3",
+      "etag": "b974ac88d2ad5141cc84419d2b09fbbe",
+      "last_modified": "2026-09-25T04:59:29.069Z",
+      "size": 4922723,
+      "http_metadata": {
+        "contentType": "audio/mpeg"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "manifest.json",
-      "etag": "387c7dd77eeb33ecb27d68bc3f237313",
-      "last_modified": "2026-09-16T07:33:13.405Z",
-      "size": 25185,
+      "etag": "65fb32fe12b23434aec43bb9f0c9cef4",
+      "last_modified": "2026-09-25T05:01:04.635Z",
+      "size": 27414,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -2336,6 +2369,17 @@
       "storage_class": "Standard"
     },
     {
+      "key": "turning_pages-castle-chime-dreams-579652.mp3",
+      "etag": "8b97a7ec5f2ff037fd1356748c66bb07",
+      "last_modified": "2026-09-25T04:59:32.794Z",
+      "size": 3781694,
+      "http_metadata": {
+        "contentType": "audio/mpeg"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/battle/battle_background.webp",
       "etag": "d1b1d7de494386f7aad68e0cee95afad",
       "last_modified": "2026-09-13T16:32:00.198Z",
@@ -3066,6 +3110,94 @@
       "etag": "65fe476842cda1721fa39046de35fbdd",
       "last_modified": "2026-09-14T04:35:14.466Z",
       "size": 37465,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/social/player_card/avatar_frame.png",
+      "etag": "46641084d1f329ae4d7cff474f3db2f7",
+      "last_modified": "2026-09-25T02:40:21.296Z",
+      "size": 165168,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/social/player_card/avatar_placeholder_no_pic.png",
+      "etag": "e487fa33c53cc074f6c83f036c58d057",
+      "last_modified": "2026-09-25T02:40:25.003Z",
+      "size": 231503,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/social/player_card/button_close.png",
+      "etag": "d6d3f8ba81e360cf9156c2a198470f43",
+      "last_modified": "2026-09-25T02:40:28.325Z",
+      "size": 40217,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/social/player_card/button_primary.png",
+      "etag": "d208a735cb820dfb42f40e66368ad17c",
+      "last_modified": "2026-09-25T02:40:31.563Z",
+      "size": 103434,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/social/player_card/button_secondary.png",
+      "etag": "7d5afd93f9db5a3c1341479faf48a37a",
+      "last_modified": "2026-09-25T02:40:34.806Z",
+      "size": 108164,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/social/player_card/card_bg.png",
+      "etag": "201c1064e7d42b7482cd06d04fa184b3",
+      "last_modified": "2026-09-25T02:40:38.305Z",
+      "size": 1024340,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/social/player_card/detail_panel.png",
+      "etag": "f333a52b785d3a67a50b70d5ceb724e3",
+      "last_modified": "2026-09-25T02:40:41.664Z",
+      "size": 362424,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/social/player_card/name_plate.png",
+      "etag": "3d13562dc0f8029865506523dcfcfb82",
+      "last_modified": "2026-09-25T02:40:45.172Z",
+      "size": 61021,
       "http_metadata": {
         "contentType": "image/png"
       },
