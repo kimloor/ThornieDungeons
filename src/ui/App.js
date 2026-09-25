@@ -50,6 +50,7 @@ function ThornieDungeons() {
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [audioSettings, setAudioSettings] = useState(() => AUDIO_MANAGER.getState());
   const [playerCardTarget, setPlayerCardTarget] = useState(null);
+  const [guildProfileTarget, setGuildProfileTarget] = useState(null);
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
@@ -2530,6 +2531,15 @@ function ThornieDungeons() {
     serverUrl: cred.url,
     viewerCharacterId: save.characterId,
     targetCharacterId: playerCardTarget.characterId,
-    onClose: () => setPlayerCardTarget(null)
+    onClose: () => setPlayerCardTarget(null),
+    onGuildLink: guild => {
+      setPlayerCardTarget(null);
+      if (guild?.guildId) setGuildProfileTarget({ guildId: guild.guildId });
+    }
+  }), guildProfileTarget && /*#__PURE__*/React.createElement(GuildProfileOverlay, {
+    serverUrl: cred.url,
+    characterId: save.characterId,
+    guildId: guildProfileTarget.guildId,
+    onClose: () => setGuildProfileTarget(null)
   }));
 }
