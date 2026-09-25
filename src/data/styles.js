@@ -2369,4 +2369,20 @@ const STYLE = `
   .md-player-card-nameplate h2 { font-size:13px; }
   .md-player-card-actions { width:80%; }
 }
+.md-guild-profile-overlay { position:fixed; inset:0; z-index:150; display:flex; align-items:center; justify-content:center; padding:max(16px,var(--safe-top)) max(12px,var(--safe-right)) max(16px,var(--safe-bottom)) max(12px,var(--safe-left)); background:rgba(4,8,24,.76); backdrop-filter:blur(4px); }
+.md-guild-profile { position:relative; width:min(92vw,460px); max-height:min(88dvh,620px); overflow:auto; padding:28px 22px 22px; border:1px solid rgba(255,209,102,.45); border-radius:22px; background:linear-gradient(160deg,rgba(35,31,72,.98),rgba(9,24,58,.99)); box-shadow:0 18px 60px rgba(0,0,0,.6); }
+.md-guild-profile-close { position:absolute; top:10px; right:10px; width:44px; height:44px; border:0; border-radius:10px; background:rgba(255,255,255,.08); color:var(--ink); font-size:20px; cursor:pointer; }
+.md-guild-profile .md-title { margin:0 44px 4px 0; color:#fff0a8; overflow-wrap:anywhere; }
+.md-guild-profile-grid { margin-top:16px; padding:12px 14px; border:1px solid rgba(160,197,243,.2); border-radius:14px; background:rgba(5,15,38,.6); }
+.md-guild-profile-grid > div { display:flex; justify-content:space-between; gap:12px; min-height:38px; padding:8px 0; border-bottom:1px solid rgba(160,197,243,.16); }
+.md-guild-profile-grid > div:last-child { border-bottom:0; }
+.md-guild-profile-grid span { color:var(--ink-soft); }
+.md-guild-profile-grid strong { color:#fff0a8; text-align:right; overflow-wrap:anywhere; }
+.md-guild-profile-state, .md-guild-profile-notice { margin:12px 0 0; padding:10px 12px; border-radius:10px; background:rgba(255,209,102,.1); color:#ffe9a3; text-align:center; font-weight:800; }
+.md-guild-profile-notice { color:#ffd0a3; background:rgba(255,139,74,.12); }
+@media (max-width:380px) {
+  .md-guild-profile { width:96vw; padding:24px 14px 16px; }
+  .md-guild-profile-grid { padding:8px 10px; }
+  .md-guild-profile-grid > div { min-height:34px; font-size:12px; }
+}
 `;
