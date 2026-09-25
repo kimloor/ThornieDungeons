@@ -12,8 +12,9 @@ on:
           - voices
           - tts
           - sfx
+          - music
       text:
-        description: "TTS text or SFX description"
+        description: "TTS text, SFX description, or Music prompt"
         required: false
         default: ""
         type: string
@@ -31,6 +32,16 @@ on:
         description: "TTS model ID"
         required: true
         default: "eleven_v3"
+        type: string
+      music_model_id:
+        description: "Music model ID"
+        required: true
+        default: "music_v2_5"
+        type: string
+      music_length_seconds:
+        description: "Music length in seconds (3-600)"
+        required: false
+        default: "75"
         type: string
       output_format:
         description: "Audio output format"
@@ -74,6 +85,8 @@ jobs:
       VOICE_ID: ${{ inputs.voice_id }}
       VOICE_SEARCH: ${{ inputs.voice_search }}
       MODEL_ID: ${{ inputs.model_id }}
+      MUSIC_MODEL_ID: ${{ inputs.music_model_id }}
+      MUSIC_LENGTH_SECONDS: ${{ inputs.music_length_seconds }}
       OUTPUT_FORMAT: ${{ inputs.output_format }}
       DURATION_SECONDS: ${{ inputs.duration_seconds }}
       LOOP: ${{ inputs.loop }}
@@ -91,7 +104,7 @@ jobs:
           }
 
           case "$MODE" in
-            voices|tts|sfx) ;;
+            voices|tts|sfx|music) ;;
             *)
               echo "::error::Unsupported mode: $MODE"
               exit 1
@@ -132,6 +145,23 @@ jobs:
               raise SystemExit("duration_seconds must be between 0.5 and 30.")
           PY
             fi
+          fi
+
+          if [ "$MODE" = "music" ]; then
+            test -n "$TEXT" || {
+              echo "::error::music mode requires a prompt in text."
+              exit 1
+            }
+            test -n "$MUSIC_MODEL_ID" || {
+              echo "::error::music mode requires music_model_id."
+              exit 1
+            }
+            python3 - <<'PY'
+          import os
+          value = float(os.environ.get("MUSIC_LENGTH_SECONDS", "75"))
+          if not 3 <= value <= 600:
+              raise SystemExit("music_length_seconds must be between 3 and 600.")
+          PY
           fi
 
           mkdir -p "$OUTPUT_NAME"
@@ -255,6 +285,48 @@ jobs:
             exit 1
           }
 
+      - name: Generate music
+        if: ${{ inputs.mode == 'music' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json, os
+          length_ms = int(round(float(os.environ.get("MUSIC_LENGTH_SECONDS", "75")) * 1000))
+          payload = {
+              "prompt": os.environ["TEXT"],
+              "music_length_ms": length_ms,
+              "model_id": os.environ["MUSIC_MODEL_ID"],
+          }
+          with open("/tmp/elevenlabs-music.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f, ensure_ascii=False)
+          PY
+
+          code=$(curl -sS -o "$OUTPUT_NAME/audio.mp3" -w "%{http_code}" \
+            -X POST "$ELEVENLABS_BASE/v1/music?output_format=$OUTPUT_FORMAT" \
+            -H "xi-api-key: $ELEVENLABS_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/elevenlabs-music.json)
+
+          test "$code" = "200" || {
+            echo "::error::ElevenLabs music generation failed: HTTP $code"
+            python3 - <<'PY'
+          from pathlib import Path
+          p = Path(__import__("os").environ["OUTPUT_NAME"]) / "audio.mp3"
+          try:
+              print(p.read_text(encoding="utf-8"))
+          except Exception:
+              print("ElevenLabs returned a non-text error body.")
+          PY
+            exit 1
+          }
+
+          test -s "$OUTPUT_NAME/audio.mp3" || {
+            echo "::error::ElevenLabs music generation returned an empty audio file."
+            exit 1
+          }
+
       - name: Write run manifest
         shell: bash
         run: |
@@ -272,10 +344,13 @@ jobs:
               "voice_id": os.environ["VOICE_ID"] or None,
               "voice_search": os.environ["VOICE_SEARCH"] or None,
               "model_id": os.environ["MODEL_ID"] if os.environ["MODE"] == "tts" else (
-                  "eleven_text_to_sound_v2" if os.environ["MODE"] == "sfx" else None
+                  "eleven_text_to_sound_v2" if os.environ["MODE"] == "sfx" else (
+                      os.environ["MUSIC_MODEL_ID"] if os.environ["MODE"] == "music" else None
+                  )
               ),
               "output_format": os.environ["OUTPUT_FORMAT"],
               "duration_seconds": float(os.environ["DURATION_SECONDS"]) if os.environ["DURATION_SECONDS"] else None,
+              "music_length_seconds": float(os.environ["MUSIC_LENGTH_SECONDS"]) if os.environ["MODE"] == "music" else None,
               "loop": os.environ["LOOP"].lower() == "true" if os.environ["MODE"] == "sfx" else None,
               "api_base": os.environ["ELEVENLABS_BASE"],
           }
