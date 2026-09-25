@@ -514,8 +514,16 @@ function validPlayerId(id) {
   return /^[A-Za-z0-9_]{4,20}$/.test(String(id || ""));
 }
 function validPassword(password) {
-  const length = String(password || "").length;
-  return length >= PASSWORD_MIN && length <= PASSWORD_MAX;
+  const value = String(password || "");
+  return value.length >= PASSWORD_MIN
+    && value.length <= PASSWORD_MAX
+    && /^[A-Za-z0-9]+$/.test(value);
+}
+function passwordValidationError(password) {
+  const value = String(password || "");
+  if (value.length < PASSWORD_MIN || value.length > PASSWORD_MAX) return "invalid_password_length";
+  if (!/^[A-Za-z0-9]+$/.test(value)) return "invalid_password_characters";
+  return "";
 }
 function normalizeRecoveryCode(code) {
   return String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -2158,7 +2166,8 @@ async function handleRegister(db, id, password, confirmPassword, rememberLogin, 
 
   const cleanId = String(id || "").trim();
   if (!validPlayerId(cleanId)) return await fail({ error: "invalid_player_id" });
-  if (!validPassword(password)) return await fail({ error: "invalid_password_length" });
+  const passwordError = passwordValidationError(password);
+  if (passwordError) return await fail({ error: passwordError });
   if (String(password) !== String(confirmPassword)) return await fail({ error: "password_mismatch" });
   const existing = await playerByLoginId(db, cleanId);
   if (existing) return await fail({ error: "id_unavailable" });
@@ -2269,7 +2278,8 @@ async function handleCreateRecoveryCode(db, auth, currentPassword) {
 }
 
 async function handleChangePassword(db, auth, currentPassword, newPassword, confirmPassword) {
-  if (!validPassword(newPassword)) return json({ error: "invalid_password_length" }, 400);
+  const passwordError = passwordValidationError(newPassword);
+  if (passwordError) return json({ error: passwordError }, 400);
   if (String(newPassword) !== String(confirmPassword)) return json({ error: "password_mismatch" }, 400);
   const verified = await verifyPasswordCredentials(db, auth.row.id, currentPassword);
   if (verified.error) return json({ error: "invalid_credentials" });
@@ -2285,7 +2295,8 @@ async function handleForgotPassword(db, id, recoveryCode, newPassword, confirmPa
   const recoveryKey = rateKey("recovery", ip, id);
   const limited = await checkRateLimit(db, recoveryKey, 5, 5 * 60 * 1000);
   if (limited.error) return json(limited, 429);
-  if (!validPassword(newPassword)) return json({ error: "invalid_password_length" }, 400);
+  const passwordError = passwordValidationError(newPassword);
+  if (passwordError) return json({ error: passwordError }, 400);
   if (String(newPassword) !== String(confirmPassword)) return json({ error: "password_mismatch" }, 400);
   const player = await playerByLoginId(db, id);
   const suppliedHash = await recoveryCodeHash(recoveryCode);
