@@ -788,6 +788,16 @@ const STYLE = `
 .md-auth-sheet .md-btn.wide { width:100%; margin-top:9px; }
 .md-recovery-code { display:block; margin:14px 0; padding:13px 8px; border:1px solid var(--gold); border-radius:10px; background:rgba(7,10,27,.72); color:#fff0a8; font-size:clamp(15px,5vw,20px); font-weight:900; letter-spacing:.06em; text-align:center; overflow-wrap:anywhere; user-select:all; }
 .md-account-sheet { align-self:center; }
+.md-settings-sound { margin:14px 0 16px; padding:12px; border:1px solid rgba(255,209,102,.36); border-radius:14px; background:rgba(5,15,38,.5); }
+.md-settings-sound > .md-title { margin-bottom:10px; }
+.md-sound-row { padding:9px 0; border-top:1px solid rgba(153,190,237,.16); }
+.md-sound-row:first-of-type { border-top:0; }
+.md-sound-row-head { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#e8f4ff; font-size:13px; }
+.md-sound-row-head span { color:#ffd978; font-variant-numeric:tabular-nums; font-weight:900; }
+.md-sound-row-controls { display:flex; align-items:center; gap:10px; margin-top:6px; }
+.md-sound-slider { flex:1; min-width:0; accent-color:#ffd166; cursor:pointer; }
+.md-sound-mute { display:flex; align-items:center; gap:5px; min-height:36px; color:#c9dbf5; font-size:11px; font-weight:800; white-space:nowrap; cursor:pointer; }
+.md-sound-mute input { width:18px; height:18px; accent-color:#ffd166; }
 .md-hint { font-size: 10.5px; color: #AFC7E8; font-weight: 700; line-height: 1.45; margin: 11px 0 0; text-align: center; }
 .md-remember-password {
   display: flex; align-items: center; gap: 9px; width: fit-content; margin: 11px 0 2px;
@@ -3364,6 +3374,270 @@ function HeroOverlayComposer({
     )
   );
 }
+
+// ===== systems/audio.js =====
+// Centralized BGM/SFX service. Audio preferences are device-local by design; no gameplay or
+// account state is involved. BGM group changes are the only place that creates audio elements.
+const AUDIO_STORAGE_KEY = "thornie-audio-v1";
+const AUDIO_DEFAULTS = Object.freeze({
+  bgmVolume: 0.5,
+  bgmMuted: false,
+  sfxVolume: 0.5,
+  sfxMuted: false
+});
+
+function clampAudioVolume(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return AUDIO_DEFAULTS.bgmVolume;
+  return Math.max(0, Math.min(1, number));
+}
+
+function normalizeAudioPreferences(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    bgmVolume: clampAudioVolume(source.bgmVolume),
+    bgmMuted: source.bgmMuted === true,
+    sfxVolume: clampAudioVolume(source.sfxVolume),
+    sfxMuted: source.sfxMuted === true
+  };
+}
+
+class AudioManager {
+  constructor() {
+    this.preferences = this.loadPreferences();
+    this.listeners = new Set();
+    this.active = null;
+    this.pending = null;
+    this.transition = null;
+    this.transitionToken = 0;
+    this.requestedGroup = null;
+    this.gestureRecoveryBound = false;
+    this.onUserGesture = () => { this.resumeRequestedPlayback(); };
+  }
+
+  loadPreferences() {
+    try {
+      if (typeof window === "undefined") return { ...AUDIO_DEFAULTS };
+      return normalizeAudioPreferences(JSON.parse(window.localStorage?.getItem(AUDIO_STORAGE_KEY) || "{}"));
+    } catch (error) {
+      return { ...AUDIO_DEFAULTS };
+    }
+  }
+
+  persistPreferences() {
+    try {
+      window.localStorage?.setItem(AUDIO_STORAGE_KEY, JSON.stringify(this.preferences));
+    } catch (error) {
+      // Private browsing/storage restrictions must not stop game rendering or playback.
+    }
+  }
+
+  getState() {
+    return { ...this.preferences };
+  }
+
+  subscribe(listener) {
+    if (typeof listener !== "function") return () => {};
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  notify() {
+    const state = this.getState();
+    this.listeners.forEach(listener => listener(state));
+  }
+
+  updatePreferences(patch) {
+    this.preferences = normalizeAudioPreferences({ ...this.preferences, ...patch });
+    this.persistPreferences();
+    this.applyVolumes();
+    this.notify();
+  }
+
+  setBgmVolume(value) {
+    this.updatePreferences({ bgmVolume: clampAudioVolume(value) });
+  }
+
+  setBgmMuted(value) {
+    this.updatePreferences({ bgmMuted: value === true });
+  }
+
+  setSfxVolume(value) {
+    this.updatePreferences({ sfxVolume: clampAudioVolume(value) });
+  }
+
+  setSfxMuted(value) {
+    this.updatePreferences({ sfxMuted: value === true });
+  }
+
+  getBgmOutputVolume() {
+    return this.preferences.bgmMuted ? 0 : this.preferences.bgmVolume;
+  }
+
+  getSfxOutputVolume() {
+    return this.preferences.sfxMuted ? 0 : this.preferences.sfxVolume;
+  }
+
+  bindGestureRecovery() {
+    if (this.gestureRecoveryBound || typeof window === "undefined") return;
+    this.gestureRecoveryBound = true;
+    ["pointerdown", "touchstart", "keydown"].forEach(type => {
+      window.addEventListener(type, this.onUserGesture, { passive: true, capture: true });
+    });
+  }
+
+  unbindGestureRecovery() {
+    if (!this.gestureRecoveryBound || typeof window === "undefined") return;
+    this.gestureRecoveryBound = false;
+    ["pointerdown", "touchstart", "keydown"].forEach(type => {
+      window.removeEventListener(type, this.onUserGesture, { capture: true });
+    });
+  }
+
+  assetPathForGroup(groupKey) {
+    const key = groupKey === "town_theme" ? "audio.bgm.townTheme" : "audio.bgm.mainTheme";
+    return typeof optionalAsset === "function" ? optionalAsset(key) : "";
+  }
+
+  createTrack(groupKey) {
+    const source = this.assetPathForGroup(groupKey);
+    if (!source || typeof Audio === "undefined") return null;
+    const audio = new Audio(source);
+    audio.preload = "auto";
+    audio.loop = true;
+    audio.setAttribute("aria-hidden", "true");
+    audio.volume = 0;
+    return audio;
+  }
+
+  playAudio(audio) {
+    if (!audio) return Promise.reject(new Error("audio_unavailable"));
+    let playback;
+    try { playback = audio.play(); } catch (error) { playback = Promise.reject(error); }
+    return Promise.resolve(playback).then(() => true).catch(() => {
+      // Autoplay rejection is expected on browsers until the next user gesture.
+      this.bindGestureRecovery();
+      return false;
+    });
+  }
+
+  stopTrack(track) {
+    if (!track?.audio) return;
+    track.audio.pause();
+    try { track.audio.currentTime = 0; } catch (error) {}
+  }
+
+  clearTransition() {
+    if (!this.transition) return;
+    clearInterval(this.transition.timer);
+    this.stopTrack(this.transition.incoming);
+    this.transition = null;
+  }
+
+  startCrossfade(from, incoming) {
+    const token = ++this.transitionToken;
+    const duration = 1400;
+    const startedAt = Date.now();
+    if (this.transition) clearInterval(this.transition.timer);
+    const tick = () => {
+      if (!this.transition || this.transition.token !== token) return;
+      const progress = Math.max(0, Math.min(1, (Date.now() - startedAt) / duration));
+      const targetVolume = this.getBgmOutputVolume();
+      from.audio.volume = targetVolume * (1 - progress);
+      incoming.audio.volume = targetVolume * progress;
+      if (progress >= 1) {
+        clearInterval(this.transition.timer);
+        this.stopTrack(from);
+        this.active = incoming;
+        this.transition = null;
+        this.applyVolumes();
+        if (this.requestedGroup !== incoming.groupKey) this.requestGroup(this.requestedGroup);
+      }
+    };
+    this.transition = { from, incoming, token, startedAt, timer: setInterval(tick, 50) };
+    tick();
+  }
+
+  requestGroup(groupKey) {
+    if (!groupKey) return;
+    this.requestedGroup = groupKey;
+    this.bindGestureRecovery();
+
+    if (this.transition?.incoming?.groupKey === groupKey) {
+      this.applyVolumes();
+      this.playAudio(this.transition.incoming.audio);
+      return;
+    }
+    if (this.pending?.groupKey === groupKey) return;
+    if (this.transition?.from?.groupKey === groupKey) {
+      this.clearTransition();
+      this.applyVolumes();
+      this.playAudio(this.active?.audio);
+      return;
+    }
+    if (this.active?.groupKey === groupKey) {
+      this.applyVolumes();
+      this.playAudio(this.active.audio);
+      return;
+    }
+
+    const incoming = this.createTrack(groupKey);
+    if (!incoming) return;
+    if (this.pending) this.stopTrack(this.pending);
+    const previousTransition = this.transition;
+    if (previousTransition) this.clearTransition();
+    const from = this.active;
+    const track = { groupKey, audio: incoming };
+    this.pending = track;
+    const token = ++this.transitionToken;
+    this.playAudio(incoming).then(started => {
+      if (this.pending === track) this.pending = null;
+      if (this.requestedGroup !== groupKey || token !== this.transitionToken) {
+        this.stopTrack(track);
+        return;
+      }
+      if (!started) return;
+      if (!from?.audio) {
+        this.active = track;
+        this.applyVolumes();
+        return;
+      }
+      this.startCrossfade(from, track);
+    });
+  }
+
+  resumeRequestedPlayback() {
+    const target = this.transition?.incoming || this.active;
+    if (!target || target.groupKey !== this.requestedGroup) {
+      if (this.requestedGroup) this.requestGroup(this.requestedGroup);
+      return;
+    }
+    this.playAudio(target.audio).then(started => {
+      if (started && this.transition?.incoming === target) this.startCrossfade(this.transition.from, target);
+    });
+  }
+
+  applyVolumes() {
+    const targetVolume = this.getBgmOutputVolume();
+    if (this.transition) {
+      const elapsed = Date.now() - this.transition.startedAt;
+      const progress = Math.max(0, Math.min(1, elapsed / 1400));
+      this.transition.from.audio.volume = targetVolume * (1 - progress);
+      this.transition.incoming.audio.volume = targetVolume * progress;
+      return;
+    }
+    if (this.active?.audio) this.active.audio.volume = targetVolume;
+  }
+
+  setScreenPhase(phase) {
+    // Pages without an approved group keep the current group. This is intentional for utility
+    // pages opened from either Town or the Dungeon Hub and avoids an unnecessary restart.
+    if (phase === "town") this.requestGroup("town_theme");
+    else if (["login", "characterSelect", "menu", "map"].includes(phase)) this.requestGroup("main_theme");
+  }
+}
+
+const AUDIO_MANAGER = new AudioManager();
 
 // ===== state/localCache.js =====
 // window.storage only exists inside the Claude.ai artifact preview; the real deployed site
@@ -7745,6 +8019,7 @@ function ThornieDungeons() {
   const [registrationRecovery, setRegistrationRecovery] = useState(null);
   const [passwordResetRecovery, setPasswordResetRecovery] = useState(null);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [audioSettings, setAudioSettings] = useState(() => AUDIO_MANAGER.getState());
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
@@ -7882,6 +8157,10 @@ function ThornieDungeons() {
   // (getDailyLogin/claimDailyLogin), fetched fresh each time a character is entered.
   const [dailyLogin, setDailyLogin] = useState({ state: { loginStreak: 0, lastClaimDate: "", totalClaims: 0 }, canClaim: false, preview: { streak: 1, reward: {} } });
   const [dailyLoginClaimResult, setDailyLoginClaimResult] = useState(null);
+  useEffect(() => AUDIO_MANAGER.subscribe(setAudioSettings), []);
+  useEffect(() => {
+    AUDIO_MANAGER.setScreenPhase(phase);
+  }, [phase]);
   useEffect(() => {
     (async () => {
       
@@ -10144,6 +10423,11 @@ function ThornieDungeons() {
   }), accountSettingsOpen && /*#__PURE__*/React.createElement(AccountSettingsOverlay, {
     serverUrl: cred.url,
     playerId: cred.id,
+    audioSettings: audioSettings,
+    onBgmVolumeChange: value => AUDIO_MANAGER.setBgmVolume(value),
+    onBgmMuteChange: value => AUDIO_MANAGER.setBgmMuted(value),
+    onSfxVolumeChange: value => AUDIO_MANAGER.setSfxVolume(value),
+    onSfxMuteChange: value => AUDIO_MANAGER.setSfxMuted(value),
     recoveryConfigured: recoveryConfigured,
     onRecoveryConfigured: setRecoveryConfigured,
     onRequireLogin: requireLoginAfterSecurityChange,
@@ -10423,7 +10707,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
     passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
   );
 }
-function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, onClose }) {
+function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolumeChange, onBgmMuteChange, onSfxVolumeChange, onSfxMuteChange, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, onClose }) {
   const e = React.createElement;
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
@@ -10433,6 +10717,25 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
   const [message, setMessage] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
+  const soundRow = (label, volume, muted, onVolumeChange, onMuteChange) => e("div", { className: "md-sound-row" },
+    e("div", { className: "md-sound-row-head" }, e("strong", null, label), e("span", null, `${Math.round(volume * 100)}%`)),
+    e("div", { className: "md-sound-row-controls" },
+      e("input", {
+        className: "md-sound-slider",
+        type: "range",
+        min: 0,
+        max: 100,
+        step: 1,
+        value: Math.round(volume * 100),
+        onChange: event => onVolumeChange(Number(event.target.value) / 100),
+        "aria-label": `${label} volume`
+      }),
+      e("label", { className: "md-sound-mute" },
+        e("input", { type: "checkbox", checked: muted, onChange: event => onMuteChange(event.target.checked) }),
+        e("span", null, "Mute")
+      )
+    )
+  );
   const generateRecovery = async () => {
     if (!recoveryPassword) return setMessage("กรุณากรอกรหัสผ่านปัจจุบัน");
     setBusy(true); setMessage("");
@@ -10463,6 +10766,11 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
   };
   return ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
     e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings"), e("p", { className: "md-sub" }, "ACCOUNT & SECURITY"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
+    e("section", { className: "md-settings-sound", "aria-labelledby": "md-settings-sound-title" },
+      e("h3", { id: "md-settings-sound-title", className: "md-title" }, "Sound"),
+      soundRow("BGM", audioSettings?.bgmVolume ?? 0.5, audioSettings?.bgmMuted === true, onBgmVolumeChange, onBgmMuteChange),
+      soundRow("SFX", audioSettings?.sfxVolume ?? 0.5, audioSettings?.sfxMuted === true, onSfxVolumeChange, onSfxMuteChange)
+    ),
     recoveryCode ? e(React.Fragment, null, e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"), e("code", { className: "md-recovery-code" }, recoveryCode), e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")) : e(React.Fragment, null,
       e("p", { className: "md-title", style: { marginTop: 12 } }, "Recovery Code"),
       e("p", { className: "md-sub" }, recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code"),
@@ -10841,7 +11149,7 @@ function TownScreen({
           "aria-label": "Leaderboard"
         }, e("img", { src: "/assets/ui/town-icons/leaderboard-bird.svg", alt: "" }),
         e("span", null, "Leaderboard")),
-        hotspot("guild", "กิลด์", "♜", () => showSoon("กิลด์")),
+        hotspot("guild", "กิลด์", "♜", onGuild),
         hotspot("arena", "อารีน่า", "⚔", onArena),
         hotspot("summoning", "Summoning", "✦", onSummoning),
         hotspot("home", "ประดิษฐ์", "⌂", onCraft),
@@ -10855,7 +11163,7 @@ function TownScreen({
         e("button", {
           type: "button",
           className: "md-town-chat",
-          onClick: () => showSoon("แชท"),
+          onClick: onChat,
           "aria-label": "แชท"
         }, e("span", { "aria-hidden": "true" }, "•••"), e("b", null, "แชท")),
         notice && e("div", { className: "md-town-notice", role: "status" }, notice)

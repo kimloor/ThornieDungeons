@@ -118,7 +118,7 @@ The first approved BGM is shared by:
 
 - Login
 - Main Hub
-- Dungeon Lobby
+- Dungeon Lobby / Floor Select
 
 These screens are one music group.
 
@@ -145,21 +145,20 @@ If playback cannot begin before a user gesture:
 - start/resume the requested BGM after the next valid user interaction
 - do not create duplicate playback instances
 
-## Approved Login + Main Hub theme
+## Approved Login + Main Hub + Dungeon Lobby theme
 
-Status: APPROVED / ASSET PENDING R2 UPLOAD
+Status: APPROVED / UPLOADED TO R2
 
 Track:
 - File: `turning_pages-castle-chime-dreams-579652.mp3`
 - Duration: approximately 1:58
-- Usage: Login + Main Hub
+- Usage: Login + Main Hub + Dungeon Lobby
 - Target asset key: `audio/bgm/main_theme.mp3`
 - Target manifest key: `audio.bgm.mainTheme`
 
 Routing:
-- Login and Main Hub share the same music group: `main_theme`.
-- Navigation between Login and Main Hub must not restart or duplicate the track.
-- Dungeon Lobby is no longer implicitly included in `main_theme`; assign its BGM separately when approved.
+- Login, Main Hub, and Dungeon Lobby share the same music group: `main_theme`.
+- Navigation between these screens must not restart or duplicate the track.
 
 Playback:
 - Use centralized AudioManager.
@@ -217,7 +216,7 @@ Audio Settings V1 is ready when all of the following pass:
 
 ## Approved Town Hub theme
 
-Status: APPROVED / ASSET PENDING R2 UPLOAD
+Status: APPROVED / UPLOADED TO R2
 
 Track:
 - Title: `Our Greatest Adventure`

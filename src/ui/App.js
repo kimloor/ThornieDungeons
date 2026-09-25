@@ -48,6 +48,7 @@ function ThornieDungeons() {
   const [registrationRecovery, setRegistrationRecovery] = useState(null);
   const [passwordResetRecovery, setPasswordResetRecovery] = useState(null);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [audioSettings, setAudioSettings] = useState(() => AUDIO_MANAGER.getState());
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
@@ -182,6 +183,10 @@ function ThornieDungeons() {
   // (getDailyLogin/claimDailyLogin), fetched fresh each time a character is entered.
   const [dailyLogin, setDailyLogin] = useState({ state: { loginStreak: 0, lastClaimDate: "", totalClaims: 0 }, canClaim: false, preview: { streak: 1, reward: {} } });
   const [dailyLoginClaimResult, setDailyLoginClaimResult] = useState(null);
+  useEffect(() => AUDIO_MANAGER.subscribe(setAudioSettings), []);
+  useEffect(() => {
+    AUDIO_MANAGER.setScreenPhase(phase);
+  }, [phase]);
   useEffect(() => {
     (async () => {
       
@@ -2431,6 +2436,11 @@ function ThornieDungeons() {
   }), accountSettingsOpen && /*#__PURE__*/React.createElement(AccountSettingsOverlay, {
     serverUrl: cred.url,
     playerId: cred.id,
+    audioSettings: audioSettings,
+    onBgmVolumeChange: value => AUDIO_MANAGER.setBgmVolume(value),
+    onBgmMuteChange: value => AUDIO_MANAGER.setBgmMuted(value),
+    onSfxVolumeChange: value => AUDIO_MANAGER.setSfxVolume(value),
+    onSfxMuteChange: value => AUDIO_MANAGER.setSfxMuted(value),
     recoveryConfigured: recoveryConfigured,
     onRecoveryConfigured: setRecoveryConfigured,
     onRequireLogin: requireLoginAfterSecurityChange,

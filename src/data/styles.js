@@ -711,6 +711,16 @@ const STYLE = `
 .md-auth-sheet .md-btn.wide { width:100%; margin-top:9px; }
 .md-recovery-code { display:block; margin:14px 0; padding:13px 8px; border:1px solid var(--gold); border-radius:10px; background:rgba(7,10,27,.72); color:#fff0a8; font-size:clamp(15px,5vw,20px); font-weight:900; letter-spacing:.06em; text-align:center; overflow-wrap:anywhere; user-select:all; }
 .md-account-sheet { align-self:center; }
+.md-settings-sound { margin:14px 0 16px; padding:12px; border:1px solid rgba(255,209,102,.36); border-radius:14px; background:rgba(5,15,38,.5); }
+.md-settings-sound > .md-title { margin-bottom:10px; }
+.md-sound-row { padding:9px 0; border-top:1px solid rgba(153,190,237,.16); }
+.md-sound-row:first-of-type { border-top:0; }
+.md-sound-row-head { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#e8f4ff; font-size:13px; }
+.md-sound-row-head span { color:#ffd978; font-variant-numeric:tabular-nums; font-weight:900; }
+.md-sound-row-controls { display:flex; align-items:center; gap:10px; margin-top:6px; }
+.md-sound-slider { flex:1; min-width:0; accent-color:#ffd166; cursor:pointer; }
+.md-sound-mute { display:flex; align-items:center; gap:5px; min-height:36px; color:#c9dbf5; font-size:11px; font-weight:800; white-space:nowrap; cursor:pointer; }
+.md-sound-mute input { width:18px; height:18px; accent-color:#ffd166; }
 .md-hint { font-size: 10.5px; color: #AFC7E8; font-weight: 700; line-height: 1.45; margin: 11px 0 0; text-align: center; }
 .md-remember-password {
   display: flex; align-items: center; gap: 9px; width: fit-content; margin: 11px 0 2px;

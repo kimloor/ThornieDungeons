@@ -191,7 +191,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
     passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
   );
 }
-function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, onClose }) {
+function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolumeChange, onBgmMuteChange, onSfxVolumeChange, onSfxMuteChange, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, onClose }) {
   const e = React.createElement;
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
@@ -201,6 +201,25 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
   const [message, setMessage] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
+  const soundRow = (label, volume, muted, onVolumeChange, onMuteChange) => e("div", { className: "md-sound-row" },
+    e("div", { className: "md-sound-row-head" }, e("strong", null, label), e("span", null, `${Math.round(volume * 100)}%`)),
+    e("div", { className: "md-sound-row-controls" },
+      e("input", {
+        className: "md-sound-slider",
+        type: "range",
+        min: 0,
+        max: 100,
+        step: 1,
+        value: Math.round(volume * 100),
+        onChange: event => onVolumeChange(Number(event.target.value) / 100),
+        "aria-label": `${label} volume`
+      }),
+      e("label", { className: "md-sound-mute" },
+        e("input", { type: "checkbox", checked: muted, onChange: event => onMuteChange(event.target.checked) }),
+        e("span", null, "Mute")
+      )
+    )
+  );
   const generateRecovery = async () => {
     if (!recoveryPassword) return setMessage("กรุณากรอกรหัสผ่านปัจจุบัน");
     setBusy(true); setMessage("");
@@ -231,6 +250,11 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
   };
   return ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
     e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings"), e("p", { className: "md-sub" }, "ACCOUNT & SECURITY"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
+    e("section", { className: "md-settings-sound", "aria-labelledby": "md-settings-sound-title" },
+      e("h3", { id: "md-settings-sound-title", className: "md-title" }, "Sound"),
+      soundRow("BGM", audioSettings?.bgmVolume ?? 0.5, audioSettings?.bgmMuted === true, onBgmVolumeChange, onBgmMuteChange),
+      soundRow("SFX", audioSettings?.sfxVolume ?? 0.5, audioSettings?.sfxMuted === true, onSfxVolumeChange, onSfxMuteChange)
+    ),
     recoveryCode ? e(React.Fragment, null, e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"), e("code", { className: "md-recovery-code" }, recoveryCode), e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")) : e(React.Fragment, null,
       e("p", { className: "md-title", style: { marginTop: 12 } }, "Recovery Code"),
       e("p", { className: "md-sub" }, recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code"),
@@ -609,7 +633,7 @@ function TownScreen({
           "aria-label": "Leaderboard"
         }, e("img", { src: "ui/town-icons/leaderboard-bird.svg", alt: "" }),
         e("span", null, "Leaderboard")),
-        hotspot("guild", "กิลด์", "♜", () => showSoon("กิลด์")),
+        hotspot("guild", "กิลด์", "♜", onGuild),
         hotspot("arena", "อารีน่า", "⚔", onArena),
         hotspot("summoning", "Summoning", "✦", onSummoning),
         hotspot("home", "ประดิษฐ์", "⌂", onCraft),
@@ -623,7 +647,7 @@ function TownScreen({
         e("button", {
           type: "button",
           className: "md-town-chat",
-          onClick: () => showSoon("แชท"),
+          onClick: onChat,
           "aria-label": "แชท"
         }, e("span", { "aria-hidden": "true" }, "•••"), e("b", null, "แชท")),
         notice && e("div", { className: "md-town-notice", role: "status" }, notice)
