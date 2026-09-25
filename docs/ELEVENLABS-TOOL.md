@@ -72,6 +72,32 @@ Output:
 - `audio.mp3`
 - `manifest.json`
 
+### 4. `music`
+
+Generate an instrumental or vocal music track from a natural-language prompt.
+
+Required input:
+
+- `text` — music-generation prompt.
+
+Defaults:
+
+- `music_model_id`: `music_v2_5`
+- `music_length_seconds`: `75`
+
+Allowed music length:
+
+- 3 to 600 seconds.
+
+For ThornieDungeons game BGM, explicitly request instrumental music and a loop-friendly ending unless vocals are intentionally required.
+
+Output:
+
+- `audio.mp3`
+- `manifest.json`
+
+The Music API requires an ElevenLabs paid plan.
+
 ## How to run
 
 1. Open GitHub -> Actions.
@@ -102,6 +128,7 @@ After an asset is approved, it can be added to the normal R2 asset workflow sepa
 
 Examples:
 
+- `audio/bgm/main_theme.mp3`
 - `audio/raid/dark_dragonlord_intro.mp3`
 - `audio/raid/azure_angel_intro.mp3`
 - `audio/ui/victory.mp3`
@@ -117,9 +144,12 @@ Examples:
 - Do not overwrite production R2 assets automatically.
 - Use descriptive `output_name` values so workflow artifacts are easy to identify.
 - A fixed SFX duration consumes generation based on the requested duration; use automatic duration unless timing must be exact.
+- Music generation remains review-first; do not automatically upload a generated song to R2.
+- For reusable game BGM, request instrumental output and avoid abrupt endings where possible.
 
 ## API endpoints used
 
 - `GET /v2/voices`
 - `POST /v1/text-to-speech/{voice_id}`
 - `POST /v1/sound-generation`
+- `POST /v1/music`
