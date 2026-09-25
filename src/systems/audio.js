@@ -395,12 +395,18 @@ class AudioManager {
     if (this.audioContext) this.connectMediaTrack(track, "bgm");
     const token = ++this.transitionToken;
     this.playAudio(incoming).then(started => {
-      if (this.pending === track) this.pending = null;
       if (this.requestedGroup !== groupKey || token !== this.transitionToken) {
+        if (this.pending === track) this.pending = null;
         this.stopTrack(track);
         return;
       }
-      if (!started) return;
+      if (!started) {
+        // Keep the blocked track pending so the next valid user gesture can start
+        // the same requested BGM instance instead of waiting for a phase change.
+        this.bindGestureRecovery();
+        return;
+      }
+      if (this.pending === track) this.pending = null;
       if (!from?.audio) {
         this.active = track;
         this.applyVolumes();
@@ -411,13 +417,24 @@ class AudioManager {
   }
 
   resumeRequestedPlayback() {
-    const target = this.transition?.incoming || this.active;
+    const target = this.transition?.incoming || this.active || this.pending;
     if (!target || target.groupKey !== this.requestedGroup) {
       if (this.requestedGroup) this.requestGroup(this.requestedGroup);
       return;
     }
     this.playAudio(target.audio).then(started => {
-      if (started && this.transition?.incoming === target) this.startCrossfade(this.transition.from, target);
+      if (!started) return;
+      if (this.pending === target) {
+        this.pending = null;
+        if (!this.active?.audio) {
+          this.active = target;
+          this.applyVolumes();
+        } else if (this.active !== target) {
+          this.startCrossfade(this.active, target);
+        }
+        return;
+      }
+      if (this.transition?.incoming === target) this.startCrossfade(this.transition.from, target);
     });
   }
 
