@@ -49,6 +49,7 @@ function ThornieDungeons() {
   const [passwordResetRecovery, setPasswordResetRecovery] = useState(null);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [audioSettings, setAudioSettings] = useState(() => AUDIO_MANAGER.getState());
+  const [playerCardTarget, setPlayerCardTarget] = useState(null);
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
@@ -2327,6 +2328,7 @@ function ThornieDungeons() {
       setUtilityReturnPhase("friend");
       setPhase("chat");
     },
+    onOpenPlayerCard: targetCharacterId => setPlayerCardTarget({ characterId: targetCharacterId }),
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "chat" && /*#__PURE__*/React.createElement(ChatScreen, {
     key: save.characterId,
@@ -2338,6 +2340,7 @@ function ThornieDungeons() {
     guildUnread,
     onGuildUnread: updateGuildUnread,
     onChannelChange: setChatInitialChannel,
+    onOpenPlayerCard: targetCharacterId => setPlayerCardTarget({ characterId: targetCharacterId }),
     ...utilityDockProps("chat"),
     onFriend: () => {
       setUtilityReturnPhase("chat");
@@ -2523,5 +2526,10 @@ function ThornieDungeons() {
     onBuyProtectionStone: buyProtectionStone,
     onBuyMaterial: guardItemAction(buyMaterial),
     onClose: () => setShopOpen(false)
+  }), playerCardTarget && /*#__PURE__*/React.createElement(PlayerCardOverlay, {
+    serverUrl: cred.url,
+    viewerCharacterId: save.characterId,
+    targetCharacterId: playerCardTarget.characterId,
+    onClose: () => setPlayerCardTarget(null)
   }));
 }
