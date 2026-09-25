@@ -256,7 +256,8 @@ function GameDock({
   onSave,
   onFriend,
   onChat,
-  onGuild
+  onGuild,
+  onMainHub
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [saveFlash, setSaveFlash] = useState("");
@@ -283,6 +284,10 @@ function GameDock({
     setMoreOpen(false);
     onGuild?.();
   };
+  const openMainHub = () => {
+    setMoreOpen(false);
+    onMainHub?.();
+  };
   return /*#__PURE__*/React.createElement(React.Fragment, null, moreOpen && /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-panel"
   }, /*#__PURE__*/React.createElement("div", {
@@ -293,7 +298,7 @@ function GameDock({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openGuild }, "🏰", /*#__PURE__*/React.createElement("span", null, "Guild")))), /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openGuild }, "🏰", /*#__PURE__*/React.createElement("span", null, "Guild")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openMainHub }, "🏠", /*#__PURE__*/React.createElement("span", null, "กลับหน้าหลัก")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
@@ -555,6 +560,7 @@ function TownScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -630,7 +636,8 @@ function TownScreen({
         onSave,
         onFriend,
         onChat,
-        onGuild
+        onGuild,
+        onMainHub
       })
     ),
     e(DailyLoginToast, {
@@ -865,7 +872,7 @@ function CharacterTabs({ active, onStatus, onSkills }) {
   );
 }
 
-function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }) {
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }) {
   return /*#__PURE__*/React.createElement(GameDock, {
     activeKey: "character",
     onCharacter,
@@ -875,7 +882,8 @@ function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onS
     onSave,
     onFriend,
     onChat,
-    onGuild
+    onGuild,
+    onMainHub
   });
 }
 
@@ -908,6 +916,7 @@ function StatusScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
@@ -1000,7 +1009,7 @@ function StatusScreen({
         )
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
@@ -1085,7 +1094,7 @@ function SkillScreen({
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
-function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onBack }) {
+function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
   const levels = save.character.skillLevels || {};
@@ -1131,7 +1140,7 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
         /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
   );
 }
@@ -1361,6 +1370,7 @@ function FriendScreen({
   onSave,
   onChat,
   onGuild,
+  onMainHub,
   onChatWith,
   onBack
 }) {
@@ -1653,7 +1663,7 @@ function FriendScreen({
     e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0 } },
       query.trim() ? searchBody() : tab === "friends" ? friendsBody() : tab === "requests" ? requestsBody() : blockedBody()),
     e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat, onGuild }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat, onGuild, onMainHub }));
 }
 const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEND_OUTGOING_PENDING_CAP) is authoritative
 // ---------- Phase 6.3: Chat System V1 ----------
@@ -1699,6 +1709,7 @@ function ChatScreen({
   onSave,
   onFriend,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const e = React.createElement;
@@ -2055,7 +2066,7 @@ function ChatScreen({
     tab === "direct" && (activeConversation ? threadPane() : conversationListPane()),
     tab === "sticker" && stickerPane(),
     e(BackButton, { onClick: () => (tab === "direct" && activeConversation) ? setActiveConversation(null) : onBack() }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onGuild }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onGuild, onMainHub }));
 }
 // ---------- Phase 6.4: Guild System V1 Core ----------
 function guildErrorText(error) {
@@ -2113,7 +2124,9 @@ function GuildScreen({
   onBack,
   inventory = [],
   onBeforeDonate,
-  onRefreshInventory
+  onRefreshInventory,
+  onDonationCommitted,
+  onMainHub
 }) {
   const e = React.createElement;
   const url = serverUrl || DEFAULT_SERVER_URL;
@@ -2282,8 +2295,16 @@ function GuildScreen({
       setPendingDonationId("");
       setDonationResult(result);
       setDonateQuantity(1);
+      const remainingQuantity = Number(result.remainingQuantity);
+      if (Number.isFinite(remainingQuantity) && remainingQuantity >= 0) {
+        onDonationCommitted?.(donateJunkId, quantity, remainingQuantity);
+      } else if (onRefreshInventory) {
+        // Mark reads started while the donation POST was in flight as stale before issuing
+        // a uniquely keyed authoritative refresh.
+        onDonationCommitted?.(donateJunkId, quantity, undefined);
+        await onRefreshInventory();
+      }
       loadMyGuild();
-      if (onRefreshInventory) await onRefreshInventory();
     } catch (_) {
       setDonationError("เชื่อมต่อ Server ไม่สำเร็จ กรุณาลองอีกครั้ง");
     } finally {
@@ -2423,7 +2444,7 @@ function GuildScreen({
       : loadError ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, loadError))
         : myGuild ? memberView() : noGuildView(),
     e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub }));
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
@@ -3447,7 +3468,8 @@ function MapScreen({
   onSettings,
   onFriend,
   onChat,
-  onGuild
+  onGuild,
+  onMainHub
 }) {
   const e = React.createElement;
   // Five fixed perspective slots match the stair landings painted into
@@ -3536,7 +3558,8 @@ function MapScreen({
       onSave,
       onFriend,
       onChat,
-      onGuild
+      onGuild,
+      onMainHub
     }),
     detail && e("div", { className: "md-floor-detail-backdrop", onClick: () => setDetail(null) },
       e("section", {
@@ -3784,6 +3807,7 @@ function PetScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
@@ -3974,7 +3998,8 @@ function PetScreen({
     onSave,
     onFriend,
     onChat,
-    onGuild
+    onGuild,
+    onMainHub
   }));
 }
 function GachaScreen({
@@ -5182,6 +5207,7 @@ function InventoryOverlayV2({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onClose
 }) {
   const [detail, setDetail] = useState(null);
@@ -5243,7 +5269,7 @@ function InventoryOverlayV2({
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
       })
     ),
-    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild }));
+    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub }));
 }
 
 function InventoryOverlay({
