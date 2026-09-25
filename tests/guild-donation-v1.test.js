@@ -24,9 +24,17 @@ test("Guild donation endpoint is authenticated, idempotent, and uses shared inve
   assert.match(app, /function applyGuildDonationLocally\(junkId, quantity, remainingQuantity\)/);
   assert.match(app, /hasAuthoritativeQuantity/);
   assert.match(app, /inventoryRef\.current = nextInventory/);
+  assert.match(app, /donationInventoryGenerationRef = useRef\(0\)/);
+  assert.match(app, /donationInventoryGenerationRef\.current \+= 1;[\s\S]*return true;/);
+  assert.match(app, /donationGeneration !== donationInventoryGenerationRef\.current/);
+  assert.match(app, /cloudGetInventory\(cred\.url, characterId, requestNonce\)/);
+  const api = fs.readFileSync(path.join(ROOT, "src/state/api.js"), "utf8");
+  assert.match(api, /function cloudGetInventory\(url, characterId, requestNonce\)/);
+  assert.match(api, /requestNonce \? \{ requestNonce \} : \{\}/);
   assert.match(ui, /const remainingQuantity = Number\(result\.remainingQuantity\)/);
   assert.match(ui, /onDonationCommitted\?\.\(donateJunkId, quantity, remainingQuantity\)/);
   assert.match(ui, /else if \(onRefreshInventory\) \{\s*await onRefreshInventory\(\);\s*\}/);
+  assert.doesNotMatch(ui, /if \(!result\.replay\)[\s\S]{0,120}onDonationCommitted/);
   assert.match(ui, /onDonationCommitted/);
   assert.match(app, /activeCharacterIdRef\.current !== characterId/);
   const barrierIndex = ui.indexOf("await onBeforeDonate(characterId)");
@@ -67,8 +75,18 @@ test("Guild navigation has deterministic back and Main Hub recovery", () => {
   assert.match(ui, /กลับหน้าหลัก/);
   assert.match(ui, /onMainHub\?\.\(\)/);
   assert.match(ui, /function TownScreen\([\s\S]*?onMainHub,[\s\S]*?e\(GameDock, \{[\s\S]*?onMainHub\s*\}\)/);
+  assert.match(ui, /function MapScreen\([\s\S]*?onMainHub[\s\S]*?onGuild,[\s\S]*?onMainHub\s*\}/);
+  assert.match(ui, /function PetScreen\([\s\S]*?onMainHub[\s\S]*?onGuild,[\s\S]*?onMainHub\s*\}/);
+  assert.match(ui, /function InventoryOverlayV2\([\s\S]*?onMainHub[\s\S]*?onGuild, onMainHub/);
+  assert.match(ui, /function CharacterPageDock\([\s\S]*?onMainHub[\s\S]*?onGuild,[\s\S]*?onMainHub/);
+  assert.match(ui, /function FriendScreen\([\s\S]*?onMainHub,[\s\S]*?e\(GameDock,[\s\S]*?onMainHub\s*\}\)/);
+  assert.match(ui, /function ChatScreen\([\s\S]*?onMainHub,[\s\S]*?e\(GameDock,[\s\S]*?onMainHub\s*\}\)/);
   assert.match(app, /onBack: \(\) => setPhase\("menu"\)/);
   assert.match(app, /onMainHub: \(\) => setPhase\("menu"\)/);
+  assert.match(app, /phase === "town"[\s\S]*?onMainHub: \(\) => setPhase\("menu"\)/);
+  assert.match(app, /phase === "map"[\s\S]*?onMainHub: \(\) => setPhase\("menu"\)/);
+  assert.match(app, /phase === "pets"[\s\S]*?onMainHub: \(\) => setPhase\("menu"\)/);
+  assert.match(app, /onMainHub: \(\) => \{ setInvOpen\(false\); setPhase\("menu"\); \}/);
 });
 
 

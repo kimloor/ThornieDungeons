@@ -77,6 +77,7 @@ function ThornieDungeons() {
   const equippedRef = useRef(equipped);
   const inventoryRef = useRef(inventory);
   const inventoryOverflowRef = useRef(inventoryOverflow);
+  const donationInventoryGenerationRef = useRef(0);
   const [selectedFloor, setSelectedFloor] = useState(1);
   // Encounter now supports 1-3 monsters on the field at once.
   const [monsters, setMonsters] = useState([]);
@@ -758,9 +759,13 @@ function ThornieDungeons() {
     // can arrive after donation and restore consumed junk.
     persistItems(inventoryRef.current, equippedRef.current, inventoryOverflowRef.current);
     const ok = await persistenceRef.current.flush(context, { retryFailed: true });
-    return !!ok && activeCharacterIdRef.current === characterId && !!AUTH_SESSION.getToken();
+    if (!ok || activeCharacterIdRef.current !== characterId || !AUTH_SESSION.getToken()) return false;
+    // Invalidate every inventory read already in flight before the donation POST begins.
+    donationInventoryGenerationRef.current += 1;
+    return true;
   }
   function applyGuildDonationLocally(junkId, quantity, remainingQuantity) {
+    donationInventoryGenerationRef.current += 1;
     const currentInventory = inventoryRef.current;
     const hasAuthoritativeQuantity = Number.isFinite(Number(remainingQuantity)) && Number(remainingQuantity) >= 0;
     const targetQuantity = hasAuthoritativeQuantity ? Number(remainingQuantity) : null;
@@ -2161,6 +2166,7 @@ function ThornieDungeons() {
     onOpenSkill: () => setPhase("skill"),
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onMainHub: () => setPhase("menu"),
     onFriend: () => {
       setUtilityReturnPhase("character");
       setPhase("friend");
@@ -2188,6 +2194,7 @@ function ThornieDungeons() {
     },
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onMainHub: () => setPhase("menu"),
     onFriend: () => {
       setUtilityReturnPhase("skill");
       setPhase("friend");
@@ -2225,6 +2232,7 @@ function ThornieDungeons() {
       { encounter }
     ),
     onSave: manualSave,
+    onMainHub: () => setPhase("menu"),
     onSettings: () => setAccountSettingsOpen(true),
     onFriend: () => {
       setUtilityReturnPhase("map");
@@ -2257,6 +2265,7 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true),
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onMainHub: () => setPhase("menu"),
     onFriend: () => {
       setUtilityReturnPhase("pets");
       setPhase("friend");
@@ -2344,8 +2353,10 @@ function ThornieDungeons() {
     onRefreshGuildChatStatus: refreshGuildChatStatus,
     onRefreshInventory: async () => {
       const characterId = save.characterId;
-      const res = await cloudGetInventory(cred.url, characterId);
-      if (!res || res.error || activeCharacterIdRef.current !== characterId) return false;
+      const donationGeneration = donationInventoryGenerationRef.current;
+      const requestNonce = `${donationGeneration}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const res = await cloudGetInventory(cred.url, characterId, requestNonce);
+      if (!res || res.error || activeCharacterIdRef.current !== characterId || donationGeneration !== donationInventoryGenerationRef.current) return false;
       const next = itemsFromServerList(res.items || []);
       equippedRef.current = next.equipped;
       inventoryRef.current = next.inventory;
@@ -2453,6 +2464,7 @@ function ThornieDungeons() {
     },
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onMainHub: () => { setInvOpen(false); setPhase("menu"); },
     onFriend: () => {
       setInvOpen(false);
       setUtilityReturnPhase(phase);

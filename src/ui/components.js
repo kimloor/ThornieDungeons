@@ -872,7 +872,7 @@ function CharacterTabs({ active, onStatus, onSkills }) {
   );
 }
 
-function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }) {
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }) {
   return /*#__PURE__*/React.createElement(GameDock, {
     activeKey: "character",
     onCharacter,
@@ -882,7 +882,8 @@ function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onS
     onSave,
     onFriend,
     onChat,
-    onGuild
+    onGuild,
+    onMainHub
   });
 }
 
@@ -915,6 +916,7 @@ function StatusScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
@@ -1007,7 +1009,7 @@ function StatusScreen({
         )
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
@@ -1092,7 +1094,7 @@ function SkillScreen({
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
-function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onBack }) {
+function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
   const levels = save.character.skillLevels || {};
@@ -1138,7 +1140,7 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
         /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
   );
 }
@@ -1368,6 +1370,7 @@ function FriendScreen({
   onSave,
   onChat,
   onGuild,
+  onMainHub,
   onChatWith,
   onBack
 }) {
@@ -1660,7 +1663,7 @@ function FriendScreen({
     e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0 } },
       query.trim() ? searchBody() : tab === "friends" ? friendsBody() : tab === "requests" ? requestsBody() : blockedBody()),
     e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat, onGuild }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat, onGuild, onMainHub }));
 }
 const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEND_OUTGOING_PENDING_CAP) is authoritative
 // ---------- Phase 6.3: Chat System V1 ----------
@@ -1706,6 +1709,7 @@ function ChatScreen({
   onSave,
   onFriend,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const e = React.createElement;
@@ -2062,7 +2066,7 @@ function ChatScreen({
     tab === "direct" && (activeConversation ? threadPane() : conversationListPane()),
     tab === "sticker" && stickerPane(),
     e(BackButton, { onClick: () => (tab === "direct" && activeConversation) ? setActiveConversation(null) : onBack() }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onGuild }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onGuild, onMainHub }));
 }
 // ---------- Phase 6.4: Guild System V1 Core ----------
 function guildErrorText(error) {
@@ -3461,7 +3465,8 @@ function MapScreen({
   onSettings,
   onFriend,
   onChat,
-  onGuild
+  onGuild,
+  onMainHub
 }) {
   const e = React.createElement;
   // Five fixed perspective slots match the stair landings painted into
@@ -3550,7 +3555,8 @@ function MapScreen({
       onSave,
       onFriend,
       onChat,
-      onGuild
+      onGuild,
+      onMainHub
     }),
     detail && e("div", { className: "md-floor-detail-backdrop", onClick: () => setDetail(null) },
       e("section", {
@@ -3798,6 +3804,7 @@ function PetScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
@@ -3988,7 +3995,8 @@ function PetScreen({
     onSave,
     onFriend,
     onChat,
-    onGuild
+    onGuild,
+    onMainHub
   }));
 }
 function GachaScreen({
@@ -5196,6 +5204,7 @@ function InventoryOverlayV2({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onClose
 }) {
   const [detail, setDetail] = useState(null);
@@ -5257,7 +5266,7 @@ function InventoryOverlayV2({
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
       })
     ),
-    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild }));
+    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub }));
 }
 
 function InventoryOverlay({
