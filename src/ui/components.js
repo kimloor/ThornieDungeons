@@ -229,7 +229,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
     }
     onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
   };
-  return e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
+  return ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
     e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings"), e("p", { className: "md-sub" }, "ACCOUNT & SECURITY"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
     recoveryCode ? e(React.Fragment, null, e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"), e("code", { className: "md-recovery-code" }, recoveryCode), e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")) : e(React.Fragment, null,
       e("p", { className: "md-title", style: { marginTop: 12 } }, "Recovery Code"),
@@ -245,7 +245,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, recoveryConfigured, onRec
     message && e("p", { className: "md-auth-error" }, message),
     e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร"),
     e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
-  ));
+  )), document.body);
 }
 function GameDock({
   onCharacter,
