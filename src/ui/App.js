@@ -2533,7 +2533,6 @@ function ThornieDungeons() {
     targetCharacterId: playerCardTarget.characterId,
     onClose: () => setPlayerCardTarget(null),
     onGuildLink: guild => {
-      setPlayerCardTarget(null);
       if (guild?.guildId) setGuildProfileTarget({ guildId: guild.guildId });
     }
   }), guildProfileTarget && /*#__PURE__*/React.createElement(GuildProfileOverlay, {
