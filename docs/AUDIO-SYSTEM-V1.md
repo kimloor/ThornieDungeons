@@ -145,47 +145,27 @@ If playback cannot begin before a user gesture:
 - start/resume the requested BGM after the next valid user interaction
 - do not create duplicate playback instances
 
-## Initial ThornieDungeons main theme
+## Approved Login + Main Hub theme
 
-Working title:
+Status: APPROVED / ASSET PENDING R2 UPLOAD
 
-`Echoes Beneath Thornie`
+Track:
+- File: `turning_pages-castle-chime-dreams-579652.mp3`
+- Duration: approximately 1:58
+- Usage: Login + Main Hub
+- Target asset key: `audio/bgm/main_theme.mp3`
+- Target manifest key: `audio.bgm.mainTheme`
 
-Usage:
+Routing:
+- Login and Main Hub share the same music group: `main_theme`.
+- Navigation between Login and Main Hub must not restart or duplicate the track.
+- Dungeon Lobby is no longer implicitly included in `main_theme`; assign its BGM separately when approved.
 
-- Login
-- Main Hub
-- Dungeon Lobby
-
-Direction:
-
-- instrumental
-- dark fantasy adventure
-- approximately 70% Mystic Dark Fantasy
-- approximately 30% Heroic Adventure
-- mysterious but not oppressive
-- suitable for repeated listening
-- recognizable short melodic motif
-- soft piano or harp/plucked motif
-- warm strings
-- subtle choir texture without lyrics
-- distant bells/chimes
-- restrained low percussion / light taiko pulse
-- no aggressive combat drums
-- no vocals
-- loop-friendly ending
-
-Suggested tempo:
-
-`72-82 BPM`
-
-Suggested first generation length:
-
-`60-90 seconds`
-
-Current first-test target:
-
-`75 seconds`
+Playback:
+- Use centralized AudioManager.
+- Respect persisted BGM volume/mute state.
+- Handle browser autoplay restrictions without duplicate playback.
+- Use safe track switching/crossfade behavior when moving to a different music group.
 
 ## Asset workflow
 
