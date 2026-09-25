@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           test -s index.html
-          unexpected="$(git status --porcelain | awk '{print $2}' | grep -v '^index.html$' || true)"
+          unexpected="$(git status --porcelain | awk '{print \$2}' | grep -v '^index.html\$' || true)"
           test -z "$unexpected"
 
       - name: Install Wrangler
@@ -52,6 +52,7 @@ jobs:
 
       - name: Deploy isolated preview Worker
         run: |
+          rm -rf .git
           wrangler deploy --config wrangler.jsonc --name "$WORKER_NAME"
           wrangler deployments list --name "$WORKER_NAME" --config wrangler.jsonc | head -n 40
 
