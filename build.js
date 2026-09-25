@@ -21,6 +21,7 @@ const MODULE_ORDER = [
   "state/auth.js",
   "state/api.js",
   "ui/playerCard.js",
+  "ui/guildProfile.js",
   "state/persistence.js",
   "data/gameConfig.js",
   "state/serialize.js",
