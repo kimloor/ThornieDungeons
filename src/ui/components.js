@@ -2299,6 +2299,9 @@ function GuildScreen({
       if (Number.isFinite(remainingQuantity) && remainingQuantity >= 0) {
         onDonationCommitted?.(donateJunkId, quantity, remainingQuantity);
       } else if (onRefreshInventory) {
+        // Mark reads started while the donation POST was in flight as stale before issuing
+        // a uniquely keyed authoritative refresh.
+        onDonationCommitted?.(donateJunkId, quantity, undefined);
         await onRefreshInventory();
       }
       loadMyGuild();

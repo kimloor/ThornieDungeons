@@ -33,7 +33,7 @@ test("Guild donation endpoint is authenticated, idempotent, and uses shared inve
   assert.match(api, /requestNonce \? \{ requestNonce \} : \{\}/);
   assert.match(ui, /const remainingQuantity = Number\(result\.remainingQuantity\)/);
   assert.match(ui, /onDonationCommitted\?\.\(donateJunkId, quantity, remainingQuantity\)/);
-  assert.match(ui, /else if \(onRefreshInventory\) \{\s*await onRefreshInventory\(\);\s*\}/);
+  assert.match(ui, /else if \(onRefreshInventory\) \{[\s\S]*onDonationCommitted\?\.\(donateJunkId, quantity, undefined\);[\s\S]*await onRefreshInventory\(\);\s*\}/);
   assert.doesNotMatch(ui, /if \(!result\.replay\)[\s\S]{0,120}onDonationCommitted/);
   assert.match(ui, /onDonationCommitted/);
   assert.match(app, /activeCharacterIdRef\.current !== characterId/);
