@@ -3566,6 +3566,7 @@ class AudioManager {
     this.sfxMasterGain = null;
     this.mediaNodes = new WeakMap();
     this.backgroundSuspended = false;
+    this.backgroundResume = null;
     this.onUserGesture = () => {
       this.enableWebAudio();
       this.resumeRequestedPlayback();
@@ -3652,21 +3653,42 @@ class AudioManager {
     return typeof document !== "undefined" && document.hidden === true;
   }
 
+  releaseMediaTrack(track) {
+    if (!track?.audio) return;
+    const audio = track.audio;
+    try { audio.pause(); } catch (error) {}
+    try { audio.removeAttribute("src"); audio.load(); } catch (error) {}
+  }
+
+  clearMediaSession() {
+    try {
+      if (typeof navigator !== "undefined" && navigator.mediaSession) {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = "none";
+      }
+    } catch (error) {}
+  }
+
   suspendForBackground() {
     if (this.backgroundSuspended) return;
     this.backgroundSuspended = true;
     this.unbindGestureRecovery();
 
-    if (this.transition) {
-      clearInterval(this.transition.timer);
-      this.stopTrack(this.transition.from);
-      this.active = this.transition.incoming;
-      this.transition = null;
-      this.pending = null;
-    }
+    const resumeTrack = this.transition?.incoming || this.active || this.pending;
+    const resumeTime = Number(resumeTrack?.audio?.currentTime) || 0;
+    this.backgroundResume = this.requestedGroup
+      ? { groupKey: this.requestedGroup, currentTime: resumeTime }
+      : null;
 
-    const tracks = [this.active, this.pending].filter(Boolean);
-    tracks.forEach(track => track.audio?.pause());
+    const tracks = [this.active, this.pending, this.transition?.from, this.transition?.incoming]
+      .filter(Boolean);
+    if (this.transition) clearInterval(this.transition.timer);
+    [...new Set(tracks)].forEach(track => this.releaseMediaTrack(track));
+    this.active = null;
+    this.pending = null;
+    this.transition = null;
+    this.clearMediaSession();
+
     if (this.audioContext?.state === "running") this.audioContext.suspend().catch(() => {});
   }
 
@@ -3676,7 +3698,10 @@ class AudioManager {
     this.backgroundSuspended = false;
     if (!wasSuspended) return;
     if (this.audioContext?.state === "suspended") this.audioContext.resume().catch(() => {});
-    if (this.requestedGroup) this.resumeRequestedPlayback();
+    const resume = this.backgroundResume;
+    this.backgroundResume = null;
+    if (resume?.groupKey) this.requestGroup(resume.groupKey, resume.currentTime);
+    else if (this.requestedGroup) this.requestGroup(this.requestedGroup);
   }
 
   enableWebAudio() {
@@ -3785,7 +3810,7 @@ class AudioManager {
     return resolveAudioAsset(key);
   }
 
-  createTrack(groupKey) {
+  createTrack(groupKey, resumeTime = 0) {
     const source = this.assetPathForGroup(groupKey);
     if (!source || typeof Audio === "undefined") return null;
     const audio = new Audio(source);
@@ -3793,6 +3818,12 @@ class AudioManager {
     audio.loop = true;
     audio.setAttribute("aria-hidden", "true");
     audio.volume = 0;
+    const safeResumeTime = Math.max(0, Number(resumeTime) || 0);
+    if (safeResumeTime > 0) {
+      const seek = () => { try { audio.currentTime = safeResumeTime; } catch (error) {} };
+      if (audio.readyState >= 1) seek();
+      else audio.addEventListener("loadedmetadata", seek, { once: true });
+    }
     return audio;
   }
 
@@ -3851,7 +3882,7 @@ class AudioManager {
     tick();
   }
 
-  requestGroup(groupKey) {
+  requestGroup(groupKey, resumeTime = 0) {
     if (!groupKey) return;
     this.requestedGroup = groupKey;
     this.bindGestureRecovery();
@@ -3874,7 +3905,7 @@ class AudioManager {
       return;
     }
 
-    const incoming = this.createTrack(groupKey);
+    const incoming = this.createTrack(groupKey, resumeTime);
     if (!incoming) return;
     if (this.pending) this.stopTrack(this.pending);
     const previousTransition = this.transition;
