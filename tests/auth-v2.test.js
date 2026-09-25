@@ -66,6 +66,9 @@ test("ID/password policy and secure password hash boundaries", async () => {
   assert.equal(auth.validPassword("x".repeat(32)), true);
   assert.equal(auth.validPassword("123"), false);
   assert.equal(auth.validPassword("x".repeat(33)), false);
+  assert.equal(auth.validPassword("ab cd"), false);
+  assert.equal(auth.validPassword("ab!d"), false);
+  assert.equal(auth.validPassword("ab_cd"), false);
   const encoded = await auth.hashPassword("1234");
   assert.match(encoded, /^pbkdf2_sha256\$100000\$/);
   assert.equal(await auth.verifyPasswordHash("1234", encoded), true);
@@ -203,12 +206,26 @@ test("login and registration rate limits separate failed attempts from successfu
 test("registration UI exposes specific server-side failure reasons", () => {
   const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
   const componentSource = fs.readFileSync(path.join(__dirname, "../src/ui/components.js"), "utf8");
-  for (const code of ["invalid_player_id", "invalid_password_length", "password_mismatch", "id_unavailable", "rate_limited"]) {
+  for (const code of ["invalid_player_id", "invalid_password_length", "invalid_password_characters", "password_mismatch", "id_unavailable", "rate_limited"]) {
     assert.match(appSource, new RegExp(code));
     assert.match(componentSource, new RegExp(code));
   }
   assert.match(componentSource, /สมัครบัญชีถี่เกินไปจากเครือข่ายนี้/);
   assert.match(componentSource, /Player ID นี้ถูกใช้งานแล้ว/);
+  assert.match(componentSource, /ห้ามเว้นวรรคหรือใช้อักขระพิเศษ/);
+  assert.match(componentSource, /onSubmit: event =>/);
+  assert.match(componentSource, /type: "submit"/);
+  assert.match(componentSource, /event\.currentTarget\.select\(\)/);
+});
+
+test("new password policy rejects whitespace and special characters without affecting login compatibility", async () => {
+  const db = createDb();
+  assert.equal((await body(await auth.handleRegister(db, "Chars_1", "ab cd", "ab cd", false, "chars-ip-1"))).error, "invalid_password_characters");
+  assert.equal((await body(await auth.handleRegister(db, "Chars_2", "ab!d", "ab!d", false, "chars-ip-2"))).error, "invalid_password_characters");
+
+  db.raw.prepare(`INSERT INTO players (id,password,created_at,diamonds,active_slot) VALUES ('LegacyChars','old! pass','now',0,NULL)`).run();
+  const legacy = await body(await auth.handleLogin(db, "LegacyChars", "old! pass", false, "chars-login"));
+  assert.equal(legacy.ok, true);
 });
 
 test("frontend login is POST-only and authenticated gameplay uses bearer auth", async () => {
