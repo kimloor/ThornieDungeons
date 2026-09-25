@@ -1,0 +1,73 @@
+name: Deploy ThornieDungeons W4 preview
+
+on:
+  push:
+    branches:
+      - deploy/w4-preview-run
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      WORKER_NAME: thorniedungeons-w4-preview
+      PREVIEW_URL: https://thorniedungeons-w4-preview.ekqtjl.workers.dev
+      SOURCE_HEAD: be2854fed661607d627c78dc60253b5a582e209a
+
+    steps:
+      - name: Checkout exact W4 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_HEAD }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build frontend
+        run: node build.js
+
+      - name: Validate build scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s index.html
+          unexpected="$(git status --porcelain | awk '{print $2}' | grep -v '^index.html$' || true)"
+          test -z "$unexpected"
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          wrangler whoami >/dev/null
+
+      - name: Deploy isolated preview Worker
+        run: |
+          wrangler deploy --config wrangler.jsonc --name "$WORKER_NAME"
+          wrangler deployments list --name "$WORKER_NAME" --config wrangler.jsonc | head -n 40
+
+      - name: Verify preview
+        run: |
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Sec-Fetch-Mode: navigate" \
+            --output /dev/null "$PREVIEW_URL/"
+          echo "Preview ready: $PREVIEW_URL"
+
+      - name: Summary
+        run: |
+          {
+            echo "## ThornieDungeons W4 preview"
+            echo "- Preview: $PREVIEW_URL"
+            echo "- Source HEAD: $SOURCE_HEAD"
+            echo "- Production Worker: untouched"
+            echo "- Production API: unchanged"
+          } >> "$GITHUB_STEP_SUMMARY"
