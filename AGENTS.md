@@ -70,7 +70,15 @@ This file defines the default operating rules for all contributors and AI agents
 - Update docs when an approved rule, architecture, or production contract changes.
 - Task-specific temporary notes should not become permanent source-of-truth files unless they contain reusable contracts.
 
-## 11. Task prompts, handoff, and reporting
+## 11. GitHub push fallback
+- Normal path: commit locally and push with the existing authenticated Git remote.
+- If local `git push` fails because credentials/authentication are unavailable, do not treat the task as complete.
+- If an authorized GitHub connector/tool is available, use it to publish the same intended changes instead of asking for or exposing a PAT/token.
+- Before connector-based writes, re-check latest `main` and preserve newer unrelated work.
+- Never place GitHub tokens, PATs, passwords, or secret values in source files, task prompts, logs, or chat.
+- If no authorized push path is available, return `PUSH_BLOCKED` with local HEAD, changed files, test status, and the exact remaining publish action.
+
+## 12. Task prompts, handoff, and reporting
 - Project Lead task prompts must be short, direct, token-efficient, and still include every required action, constraint, environment, risk, and completion condition needed to execute safely.
 - Remove background/history that the receiving agent does not need. Prefer explicit scope, DO/DO NOT rules, and expected output.
 - Keep handoffs concise and include only what the next contributor needs.
@@ -78,7 +86,7 @@ This file defines the default operating rules for all contributors and AI agents
 - The return handoff should include, when relevant: status marker, result, files/systems changed, tests/verification, branch/commit, blockers or known issues, and the exact next required action.
 - Do not claim a task is complete when a known issue still blocks the requested scope.
 
-## 12. Definition of done
+## 13. Definition of done
 A task is complete when the relevant steps are satisfied:
 1. Latest state checked.
 2. Scope understood.
