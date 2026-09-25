@@ -1,0 +1,88 @@
+name: ElevenLabs Music Request
+
+on:
+  push:
+    branches:
+      - tool/audio-system-v1
+    paths:
+      - audio-requests/elevenlabs-music.json
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      ELEVENLABS_BASE: https://api.elevenlabs.io
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ELEVENLABS_API_KEY" || {
+            echo "::error::ELEVENLABS_API_KEY is missing or unavailable."
+            exit 1
+          }
+
+      - name: Generate music
+        shell: bash
+        run: |
+          set -euo pipefail
+          request="audio-requests/elevenlabs-music.json"
+          test -f "$request"
+
+          output_name=$(jq -r '.output_name' "$request")
+          prompt=$(jq -r '.prompt' "$request")
+          model_id=$(jq -r '.model_id // "music_v2_5"' "$request")
+          length_ms=$(jq -r '.music_length_ms // 75000' "$request")
+
+          test -n "$output_name" && test "$output_name" != "null"
+          test -n "$prompt" && test "$prompt" != "null"
+          [[ "$output_name" =~ ^[A-Za-z0-9._-]+$ ]]
+
+          python3 - "$length_ms" <<'PY'
+          import sys
+          value = int(sys.argv[1])
+          if not 3000 <= value <= 600000:
+              raise SystemExit("music_length_ms must be 3000-600000")
+          PY
+
+          mkdir -p "$output_name"
+          jq -n             --arg prompt "$prompt"             --arg model_id "$model_id"             --argjson music_length_ms "$length_ms"             '{prompt:$prompt, model_id:$model_id, music_length_ms:$music_length_ms}'             > /tmp/music-payload.json
+
+          code=$(curl -sS -o "$output_name/audio.mp3" -w "%{http_code}"             -X POST "$ELEVENLABS_BASE/v1/music?output_format=auto"             -H "xi-api-key: $ELEVENLABS_API_KEY"             -H "Content-Type: application/json"             --data-binary @/tmp/music-payload.json)
+
+          if [ "$code" != "200" ]; then
+            echo "::error::ElevenLabs music generation failed: HTTP $code"
+            python3 - "$output_name/audio.mp3" <<'PY'
+          from pathlib import Path
+          import sys
+          p = Path(sys.argv[1])
+          try:
+              print(p.read_text(encoding="utf-8"))
+          except Exception:
+              print("ElevenLabs returned a non-text error body.")
+          PY
+            exit 1
+          fi
+
+          test -s "$output_name/audio.mp3"
+
+          jq '. + {provider:"ElevenLabs", endpoint:"/v1/music", output_format:"auto"}'             "$request" > "$output_name/manifest.json"
+
+          cp "$request" "$output_name/request.json"
+          echo "OUTPUT_NAME=$output_name" >> "$GITHUB_ENV"
+
+      - name: Upload generated music
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUTPUT_NAME }}
+          path: ${{ env.OUTPUT_NAME }}/
+          if-no-files-found: error
+          retention-days: 7
