@@ -122,7 +122,8 @@ function PlayerCardOverlay({ serverUrl, viewerCharacterId, targetCharacterId, on
         "--player-card-bg": playerCardAsset("cardBg") ? `url("${playerCardAsset("cardBg")}")` : "none",
         "--player-card-detail-panel": playerCardAsset("detailPanel") ? `url("${playerCardAsset("detailPanel")}")` : "none",
         "--player-card-name-plate": playerCardAsset("namePlate") ? `url("${playerCardAsset("namePlate")}")` : "none",
-        "--player-card-button-primary": playerCardAsset("buttonPrimary") ? `url("${playerCardAsset("buttonPrimary")}")` : "none"
+        "--player-card-button-primary": playerCardAsset("buttonPrimary") ? `url("${playerCardAsset("buttonPrimary")}")` : "none",
+        "--player-card-button-secondary": playerCardAsset("buttonSecondary") ? `url("${playerCardAsset("buttonSecondary")}")` : "none"
       }
     },
       close,
