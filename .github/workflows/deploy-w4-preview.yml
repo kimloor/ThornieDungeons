@@ -16,7 +16,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
       WORKER_NAME: thorniedungeons-w4-preview
       PREVIEW_URL: https://thorniedungeons-w4-preview.ekqtjl.workers.dev
-      SOURCE_HEAD: be2854fed661607d627c78dc60253b5a582e209a
+      SOURCE_HEAD: 7028230234a3f7992c3d9276de9d47a55d5dbb05
 
     steps:
       - name: Checkout exact W4 source
