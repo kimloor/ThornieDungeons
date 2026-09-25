@@ -523,6 +523,7 @@ function ThornieDungeons() {
     setLoginTransitioning(false);
   }
   async function handleLogin() {
+    AUDIO_MANAGER.handleUserGesture();
     setAuthError("");
     if (!cred.url || !cred.id || !cred.password) {
       setAuthError("กรอกให้ครบทุกช่องนะคะ");
@@ -554,6 +555,7 @@ function ThornieDungeons() {
     await beginCharacterSelect(accountFromLoginResponse(res));
   }
   async function handleRegister(form) {
+    AUDIO_MANAGER.handleUserGesture();
     setAuthError("");
     if (!cred.url || !form?.id || !form?.password || !form?.confirmPassword) {
       setAuthError("กรอกให้ครบทุกช่องนะคะ");
@@ -657,6 +659,7 @@ function ThornieDungeons() {
     });
   }
   async function enterCharacterSlot(slotIndex) {
+    AUDIO_MANAGER.handleUserGesture();
     if (!account || !account.characters[slotIndex]) return;
     const res = await cloudEnterCharacter(cred.url, slotIndex);
     if (res.error) {
