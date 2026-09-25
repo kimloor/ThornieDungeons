@@ -195,6 +195,9 @@ function ThornieDungeons() {
       // โหลด R2 Asset Manifest ก่อนเริ่มระบบเกม
       try {
         await loadAssetManifest();
+        // The initial phase effect can run before the async R2 manifest exists.
+        // Retry the already-requested BGM group now that manifest-backed audio paths resolve.
+        AUDIO_MANAGER.resumeRequestedPlayback();
       } catch (err) {
         console.warn("R2 Asset Manifest failed to load:", err);
         ASSETS = {};
