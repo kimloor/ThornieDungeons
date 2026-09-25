@@ -402,6 +402,15 @@ function cloudGetPublicProfile(url, characterId, targetCharacterId) {
     targetCharacterId
   });
 }
+// Public Guild Profile boundary. The worker returns only guild-facing fields and
+// viewer-scoped eligibility; existing Guild V1 mutations remain the authority.
+function cloudGetPublicGuildProfile(url, characterId, guildId) {
+  return cloudAuthGet(url, {
+    action: "getPublicGuildProfile",
+    characterId,
+    guildId
+  });
+}
 function cloudGetFriendList(url, characterId) {
   return cloudAuthGet(url, {
     action: "getFriendList",
