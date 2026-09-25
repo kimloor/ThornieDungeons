@@ -1923,11 +1923,12 @@ async function handleGetPublicGuildProfile(db, id, session, characterId, guildId
   const guild = await getRow(db, "guilds", "guild_id", guildId);
   if (!guild) return json({ error: "guild_not_found" });
 
-  const [progression, memberCountRow, leaderRow, membership, pendingApplication, pendingCountRow] = await Promise.all([
+  const [progression, memberCountRow, leaderRow, membership, anyMembership, pendingApplication, pendingCountRow] = await Promise.all([
     db.prepare(`SELECT level, cumulative_exp FROM guild_donation_progression ORDER BY level`).all(),
     db.prepare(`SELECT COUNT(*) AS c FROM guild_members WHERE guild_id = ?`).bind(guildId).first(),
     db.prepare(`SELECT name FROM characters WHERE character_id = ?`).bind(guild.leader_character_id).first(),
     db.prepare(`SELECT role FROM guild_members WHERE guild_id = ? AND character_id = ?`).bind(guildId, characterId).first(),
+    db.prepare(`SELECT guild_id FROM guild_members WHERE character_id = ?`).bind(characterId).first(),
     db.prepare(`SELECT 1 FROM guild_applications WHERE guild_id = ? AND character_id = ? AND status = 'pending'`).bind(guildId, characterId).first(),
     db.prepare(`SELECT COUNT(*) AS c FROM guild_applications WHERE character_id = ? AND status = 'pending'`).bind(characterId).first(),
   ]);
@@ -1941,8 +1942,10 @@ async function handleGetPublicGuildProfile(db, id, session, characterId, guildId
   const applicationLimitReached = Number(pendingCountRow?.c || 0) >= GUILD_APPLICATION_MAX_PENDING;
   let viewerState = "eligible_join";
   if (membership) viewerState = "member";
+  else if (anyMembership) viewerState = "already_in_guild";
   else if (pending) viewerState = "pending";
   else if (guild.join_policy === "closed") viewerState = "closed";
+  else if (guild.join_policy === "open" && full) viewerState = "full";
   else if (guild.join_policy === "application" && applicationLimitReached) viewerState = "application_limit_reached";
   const canJoin = viewerState === "eligible_join" && guild.join_policy === "open" && !full;
   const canApply = viewerState === "eligible_join" && guild.join_policy === "application";
