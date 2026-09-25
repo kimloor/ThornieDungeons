@@ -69,7 +69,13 @@ jobs:
         run: |
           set -euo pipefail
           wrangler deployments list             --name "$WORKER_NAME"             --config wrangler.jsonc | head -n 40
-          curl --fail --silent --show-error --max-time 30             -H "Sec-Fetch-Mode: navigate"             "$PRODUCTION_URL/" |             grep -q "requestNonce"
+          response_file="$RUNNER_TEMP/thorniedungeons-production.html"
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Sec-Fetch-Mode: navigate" \
+            --output "$response_file" \
+            "$PRODUCTION_URL/"
+          grep -q "requestNonce" "$response_file"
+          grep -q "remainingQuantity" "$response_file"
           echo "Production frontend verified: $PRODUCTION_URL"
 
       - name: Deployment summary
