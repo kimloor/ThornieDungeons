@@ -1676,7 +1676,8 @@ async function handleDonateGuildItem(db, id, session, characterId, junkId, quant
         `UPDATE items SET extra_json = json_set(extra_json, '$.quantity', (
            SELECT snapshot.quantity - MIN(snapshot.quantity, MAX(0, ? - COALESCE((
              SELECT SUM(prior.quantity) FROM guild_donation_stack_snapshot prior
-             WHERE prior.donation_id=? AND prior.stack_position < snapshot.stack_position
+             WHERE prior.donation_id=? AND prior.stack_position >= 0
+               AND prior.stack_position < snapshot.stack_position
            ), 0)))
            FROM guild_donation_stack_snapshot snapshot
            WHERE snapshot.donation_id=? AND snapshot.item_id=items.item_id
@@ -1697,6 +1698,27 @@ async function handleDonateGuildItem(db, id, session, characterId, junkId, quant
         receiptValues.quantity, receiptValues.donation_id, receiptValues.donation_id, receiptValues.donation_id,
         receiptValues.donation_id, receiptValues.character_id, receiptValues.created_at,
         receiptValues.donation_id, operationToken
+      ),
+      // The lock row uses operationToken as its quantity and must never be included in
+      // the consumed stack total. If the update did not consume exactly the requested
+      // quantity, deliberately hit the existing lock-row primary key so D1 rolls back
+      // the receipt, inventory, Guild EXP, and Contribution together.
+      db.prepare(
+        `INSERT INTO guild_donation_stack_snapshot(donation_id, item_id, stack_position, quantity)
+         SELECT ?, '__lock__', -1, ?
+         WHERE changes() = 0
+            OR COALESCE((
+              SELECT SUM(CAST(json_extract(i.extra_json, '$.quantity') AS INTEGER))
+              FROM items i
+              JOIN guild_donation_stack_snapshot s
+                ON s.donation_id=? AND s.item_id=i.item_id AND s.stack_position >= 0
+            ), 0) != COALESCE((
+              SELECT SUM(quantity) FROM guild_donation_stack_snapshot
+              WHERE donation_id=? AND stack_position >= 0
+            ), 0) - ?`
+      ).bind(
+        receiptValues.donation_id, operationToken,
+        receiptValues.donation_id, receiptValues.donation_id, receiptValues.quantity
       ),
       db.prepare(
         `DELETE FROM items

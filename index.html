@@ -4092,8 +4092,14 @@ function cloudGetMyGuild(url, characterId) {
     characterId
   });
 }
-function cloudGetInventory(url, characterId) {
-  return cloudAuthGet(url, { action: "getInventory", characterId, page: 1, pageSize: 200 });
+function cloudGetInventory(url, characterId, requestNonce) {
+  return cloudAuthGet(url, {
+    action: "getInventory",
+    characterId,
+    page: 1,
+    pageSize: 200,
+    ...(requestNonce ? { requestNonce } : {})
+  });
 }
 function cloudDonateGuildItem(url, characterId, junkId, quantity, donationId) {
   return cloudAuthPost(url, { action: "donateGuildItem", characterId, junkId, quantity, donationId });
@@ -7768,6 +7774,7 @@ function ThornieDungeons() {
   const equippedRef = useRef(equipped);
   const inventoryRef = useRef(inventory);
   const inventoryOverflowRef = useRef(inventoryOverflow);
+  const donationInventoryGenerationRef = useRef(0);
   const [selectedFloor, setSelectedFloor] = useState(1);
   // Encounter now supports 1-3 monsters on the field at once.
   const [monsters, setMonsters] = useState([]);
@@ -8452,7 +8459,51 @@ function ThornieDungeons() {
     // can arrive after donation and restore consumed junk.
     persistItems(inventoryRef.current, equippedRef.current, inventoryOverflowRef.current);
     const ok = await persistenceRef.current.flush(context, { retryFailed: true });
-    return !!ok && activeCharacterIdRef.current === characterId && !!AUTH_SESSION.getToken();
+    if (!ok || activeCharacterIdRef.current !== characterId || !AUTH_SESSION.getToken()) return false;
+    // Invalidate every inventory read already in flight before the donation POST begins.
+    donationInventoryGenerationRef.current += 1;
+    return true;
+  }
+  function applyGuildDonationLocally(junkId, quantity, remainingQuantity) {
+    donationInventoryGenerationRef.current += 1;
+    const currentInventory = inventoryRef.current;
+    const hasAuthoritativeQuantity = Number.isFinite(Number(remainingQuantity)) && Number(remainingQuantity) >= 0;
+    const targetQuantity = hasAuthoritativeQuantity ? Number(remainingQuantity) : null;
+    const currentQuantity = currentInventory.reduce((sum, item) => (
+      item.type === "junk" && item.junkId === junkId && !inventoryItemLocked(item)
+        ? sum + inventoryItemQuantity(item)
+        : sum
+    ), 0);
+    let nextInventory = currentInventory;
+    if (targetQuantity !== null && currentQuantity > targetQuantity) {
+      let remaining = currentQuantity - targetQuantity;
+      nextInventory = currentInventory.flatMap(item => {
+        if (remaining <= 0 || item.type !== "junk" || item.junkId !== junkId || inventoryItemLocked(item)) return [item];
+        const take = Math.min(inventoryItemQuantity(item), remaining);
+        remaining -= take;
+        const left = inventoryItemQuantity(item) - take;
+        return left > 0 ? [{ ...item, quantity: left }] : [];
+      });
+    } else if (targetQuantity !== null && currentQuantity < targetQuantity) {
+      let remaining = targetQuantity - currentQuantity;
+      nextInventory = currentInventory.map(item => {
+        if (remaining <= 0 || item.type !== "junk" || item.junkId !== junkId || inventoryItemLocked(item) || item.quantity >= JUNK_STACK_MAX) return item;
+        const add = Math.min(JUNK_STACK_MAX - item.quantity, remaining);
+        remaining -= add;
+        return { ...item, quantity: item.quantity + add };
+      });
+      while (remaining > 0) {
+        const chunk = Math.min(JUNK_STACK_MAX, remaining);
+        nextInventory.push(makeJunkItem(junkId, chunk));
+        remaining -= chunk;
+      }
+    } else if (targetQuantity === null) {
+      return false;
+    }
+    inventoryRef.current = nextInventory;
+    setInventory(nextInventory);
+    persistItems(nextInventory, equippedRef.current, inventoryOverflowRef.current);
+    return true;
   }
   async function manualSave() {
     const ok = await flushCurrentCharacter();
@@ -8471,6 +8522,7 @@ function ThornieDungeons() {
       onPets: () => { setPetReturnPhase(fromPhase); setPhase("pets"); },
       onSettings: () => setAccountSettingsOpen(true),
       onSave: manualSave,
+      onMainHub: () => setPhase("menu"),
     };
   }
   function closeTransientOverlays() {
@@ -9758,6 +9810,7 @@ function ThornieDungeons() {
     onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
   }), phase === "town" && /*#__PURE__*/React.createElement(TownScreen, {
     save: save,
+    onMainHub: () => setPhase("menu"),
     onCharacter: () => {
       setCharacterReturnPhase("town");
       setPhase("character");
@@ -9826,6 +9879,7 @@ function ThornieDungeons() {
     onOpenSkill: () => setPhase("skill"),
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onMainHub: () => setPhase("menu"),
     onFriend: () => {
       setUtilityReturnPhase("character");
       setPhase("friend");
@@ -9853,6 +9907,7 @@ function ThornieDungeons() {
     },
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onMainHub: () => setPhase("menu"),
     onFriend: () => {
       setUtilityReturnPhase("skill");
       setPhase("friend");
@@ -9890,6 +9945,7 @@ function ThornieDungeons() {
       { encounter }
     ),
     onSave: manualSave,
+    onMainHub: () => setPhase("menu"),
     onSettings: () => setAccountSettingsOpen(true),
     onFriend: () => {
       setUtilityReturnPhase("map");
@@ -9922,6 +9978,7 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true),
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onMainHub: () => setPhase("menu"),
     onFriend: () => {
       setUtilityReturnPhase("pets");
       setPhase("friend");
@@ -10009,8 +10066,10 @@ function ThornieDungeons() {
     onRefreshGuildChatStatus: refreshGuildChatStatus,
     onRefreshInventory: async () => {
       const characterId = save.characterId;
-      const res = await cloudGetInventory(cred.url, characterId);
-      if (!res || res.error || activeCharacterIdRef.current !== characterId) return false;
+      const donationGeneration = donationInventoryGenerationRef.current;
+      const requestNonce = `${donationGeneration}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const res = await cloudGetInventory(cred.url, characterId, requestNonce);
+      if (!res || res.error || activeCharacterIdRef.current !== characterId || donationGeneration !== donationInventoryGenerationRef.current) return false;
       const next = itemsFromServerList(res.items || []);
       equippedRef.current = next.equipped;
       inventoryRef.current = next.inventory;
@@ -10020,6 +10079,7 @@ function ThornieDungeons() {
       setInventoryOverflow(next.overflow);
       return true;
     },
+    onDonationCommitted: applyGuildDonationLocally,
     ...utilityDockProps("guild"),
     onFriend: () => {
       setUtilityReturnPhase("guild");
@@ -10031,7 +10091,9 @@ function ThornieDungeons() {
       setUtilityReturnPhase("guild");
       setPhase("chat");
     },
-    onBack: () => setPhase(utilityReturnPhase)
+    // Guild is a top-level utility destination. Always return to the explicit Main Hub
+    // route so a stale utilityReturnPhase cannot leave the page mounted in place.
+    onBack: () => setPhase("menu")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
     gachaResult: gachaResult,
@@ -10115,6 +10177,7 @@ function ThornieDungeons() {
     },
     onSettings: () => setAccountSettingsOpen(true),
     onSave: manualSave,
+    onMainHub: () => { setInvOpen(false); setPhase("menu"); },
     onFriend: () => {
       setInvOpen(false);
       setUtilityReturnPhase(phase);
@@ -10425,7 +10488,8 @@ function GameDock({
   onSave,
   onFriend,
   onChat,
-  onGuild
+  onGuild,
+  onMainHub
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [saveFlash, setSaveFlash] = useState("");
@@ -10452,6 +10516,10 @@ function GameDock({
     setMoreOpen(false);
     onGuild?.();
   };
+  const openMainHub = () => {
+    setMoreOpen(false);
+    onMainHub?.();
+  };
   return /*#__PURE__*/React.createElement(React.Fragment, null, moreOpen && /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-panel"
   }, /*#__PURE__*/React.createElement("div", {
@@ -10462,7 +10530,7 @@ function GameDock({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openGuild }, "🏰", /*#__PURE__*/React.createElement("span", null, "Guild")))), /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openGuild }, "🏰", /*#__PURE__*/React.createElement("span", null, "Guild")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openMainHub }, "🏠", /*#__PURE__*/React.createElement("span", null, "กลับหน้าหลัก")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
@@ -10724,6 +10792,7 @@ function TownScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -10799,7 +10868,8 @@ function TownScreen({
         onSave,
         onFriend,
         onChat,
-        onGuild
+        onGuild,
+        onMainHub
       })
     ),
     e(DailyLoginToast, {
@@ -11034,7 +11104,7 @@ function CharacterTabs({ active, onStatus, onSkills }) {
   );
 }
 
-function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }) {
+function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }) {
   return /*#__PURE__*/React.createElement(GameDock, {
     activeKey: "character",
     onCharacter,
@@ -11044,7 +11114,8 @@ function CharacterPageDock({ onCharacter, onOpenInv, onOpenPets, onSettings, onS
     onSave,
     onFriend,
     onChat,
-    onGuild
+    onGuild,
+    onMainHub
   });
 }
 
@@ -11077,6 +11148,7 @@ function StatusScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const emptyDraft = () => Object.fromEntries(STAT_INFO.map(st => [st.key, 0]));
@@ -11169,7 +11241,7 @@ function StatusScreen({
         )
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: () => {}, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "stats", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
@@ -11254,7 +11326,7 @@ function SkillScreen({
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
-function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onBack }) {
+function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
   const levels = save.character.skillLevels || {};
@@ -11300,7 +11372,7 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
         /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
       )
     ),
-    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild }),
+    /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
   );
 }
@@ -11530,6 +11602,7 @@ function FriendScreen({
   onSave,
   onChat,
   onGuild,
+  onMainHub,
   onChatWith,
   onBack
 }) {
@@ -11822,7 +11895,7 @@ function FriendScreen({
     e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0 } },
       query.trim() ? searchBody() : tab === "friends" ? friendsBody() : tab === "requests" ? requestsBody() : blockedBody()),
     e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat, onGuild }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat, onGuild, onMainHub }));
 }
 const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEND_OUTGOING_PENDING_CAP) is authoritative
 // ---------- Phase 6.3: Chat System V1 ----------
@@ -11868,6 +11941,7 @@ function ChatScreen({
   onSave,
   onFriend,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const e = React.createElement;
@@ -12224,7 +12298,7 @@ function ChatScreen({
     tab === "direct" && (activeConversation ? threadPane() : conversationListPane()),
     tab === "sticker" && stickerPane(),
     e(BackButton, { onClick: () => (tab === "direct" && activeConversation) ? setActiveConversation(null) : onBack() }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onGuild }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onGuild, onMainHub }));
 }
 // ---------- Phase 6.4: Guild System V1 Core ----------
 function guildErrorText(error) {
@@ -12282,7 +12356,9 @@ function GuildScreen({
   onBack,
   inventory = [],
   onBeforeDonate,
-  onRefreshInventory
+  onRefreshInventory,
+  onDonationCommitted,
+  onMainHub
 }) {
   const e = React.createElement;
   const url = serverUrl || DEFAULT_SERVER_URL;
@@ -12451,8 +12527,16 @@ function GuildScreen({
       setPendingDonationId("");
       setDonationResult(result);
       setDonateQuantity(1);
+      const remainingQuantity = Number(result.remainingQuantity);
+      if (Number.isFinite(remainingQuantity) && remainingQuantity >= 0) {
+        onDonationCommitted?.(donateJunkId, quantity, remainingQuantity);
+      } else if (onRefreshInventory) {
+        // Mark reads started while the donation POST was in flight as stale before issuing
+        // a uniquely keyed authoritative refresh.
+        onDonationCommitted?.(donateJunkId, quantity, undefined);
+        await onRefreshInventory();
+      }
       loadMyGuild();
-      if (onRefreshInventory) await onRefreshInventory();
     } catch (_) {
       setDonationError("เชื่อมต่อ Server ไม่สำเร็จ กรุณาลองอีกครั้ง");
     } finally {
@@ -12592,7 +12676,7 @@ function GuildScreen({
       : loadError ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, loadError))
         : myGuild ? memberView() : noGuildView(),
     e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat }));
+    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub }));
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
@@ -13616,7 +13700,8 @@ function MapScreen({
   onSettings,
   onFriend,
   onChat,
-  onGuild
+  onGuild,
+  onMainHub
 }) {
   const e = React.createElement;
   // Five fixed perspective slots match the stair landings painted into
@@ -13705,7 +13790,8 @@ function MapScreen({
       onSave,
       onFriend,
       onChat,
-      onGuild
+      onGuild,
+      onMainHub
     }),
     detail && e("div", { className: "md-floor-detail-backdrop", onClick: () => setDetail(null) },
       e("section", {
@@ -13953,6 +14039,7 @@ function PetScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onBack
 }) {
   const [starUpMsg, setStarUpMsg] = React.useState({}); // instId -> {text, short:bool}
@@ -14143,7 +14230,8 @@ function PetScreen({
     onSave,
     onFriend,
     onChat,
-    onGuild
+    onGuild,
+    onMainHub
   }));
 }
 function GachaScreen({
@@ -15351,6 +15439,7 @@ function InventoryOverlayV2({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   onClose
 }) {
   const [detail, setDetail] = useState(null);
@@ -15412,7 +15501,7 @@ function InventoryOverlayV2({
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
       })
     ),
-    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild }));
+    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub }));
 }
 
 function InventoryOverlay({

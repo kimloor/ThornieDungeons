@@ -535,8 +535,14 @@ function cloudGetMyGuild(url, characterId) {
     characterId
   });
 }
-function cloudGetInventory(url, characterId) {
-  return cloudAuthGet(url, { action: "getInventory", characterId, page: 1, pageSize: 200 });
+function cloudGetInventory(url, characterId, requestNonce) {
+  return cloudAuthGet(url, {
+    action: "getInventory",
+    characterId,
+    page: 1,
+    pageSize: 200,
+    ...(requestNonce ? { requestNonce } : {})
+  });
 }
 function cloudDonateGuildItem(url, characterId, junkId, quantity, donationId) {
   return cloudAuthPost(url, { action: "donateGuildItem", characterId, junkId, quantity, donationId });
