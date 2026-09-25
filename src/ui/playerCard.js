@@ -151,12 +151,7 @@ function PlayerCardOverlay({ serverUrl, viewerCharacterId, targetCharacterId, on
           profile && e(React.Fragment, null,
             e("div", null, e("span", null, "Level"), e("strong", null, profile.level ?? "-")),
             e("div", null, e("span", null, "CP"), e("strong", null, Number(profile.cp || 0).toLocaleString("en-US"))),
-            e("div", null, e("span", null, "Guild"), guild?.name ? e("button", {
-              type: "button",
-              className: "md-player-card-guild-link",
-              onClick: () => onGuildLink?.(guild),
-              disabled: typeof onGuildLink !== "function"
-            }, guild.name) : e("strong", null, "ไม่มีสังกัด")),
+            e("div", null, e("span", null, "Guild"), guild?.name ? e("strong", null, guild.name) : e("strong", null, "ไม่มีสังกัด")),
             e("div", null, e("span", null, "Guild Lv"), e("strong", null, guild?.level ?? "-")),
             e("div", null, e("span", null, "สถานะ"), e("strong", null, relationship))
           )
