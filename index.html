@@ -3587,10 +3587,7 @@ class AudioManager {
     this.mediaNodes = new WeakMap();
     this.backgroundSuspended = false;
     this.backgroundResume = null;
-    this.onUserGesture = () => {
-      this.enableWebAudio();
-      this.resumeRequestedPlayback();
-    };
+    this.onUserGesture = () => this.handleUserGesture();
     this.onVisibilityChange = () => {
       if (typeof document !== "undefined" && document.hidden) this.suspendForBackground();
       else this.resumeFromBackground();
@@ -3724,6 +3721,11 @@ class AudioManager {
     else if (this.requestedGroup) this.requestGroup(this.requestedGroup);
   }
 
+  handleUserGesture() {
+    this.enableWebAudio();
+    this.resumeRequestedPlayback();
+  }
+
   enableWebAudio() {
     if (typeof window === "undefined" || this.isDocumentHidden()) return false;
     const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
@@ -3739,7 +3741,7 @@ class AudioManager {
       [this.active, this.pending, this.transition?.from, this.transition?.incoming]
         .filter(Boolean)
         .forEach(track => this.connectMediaTrack(track, "bgm"));
-      if (this.audioContext.state === "suspended") this.audioContext.resume().catch(() => {});
+      if (this.audioContext.state !== "running") this.audioContext.resume().catch(() => {});
       this.applyVolumes();
       return true;
     } catch (error) {
@@ -3812,7 +3814,7 @@ class AudioManager {
   bindGestureRecovery() {
     if (this.gestureRecoveryBound || typeof window === "undefined") return;
     this.gestureRecoveryBound = true;
-    ["pointerdown", "touchstart", "keydown"].forEach(type => {
+    ["touchend", "click", "keydown"].forEach(type => {
       window.addEventListener(type, this.onUserGesture, { passive: true, capture: true });
     });
   }
@@ -3820,7 +3822,7 @@ class AudioManager {
   unbindGestureRecovery() {
     if (!this.gestureRecoveryBound || typeof window === "undefined") return;
     this.gestureRecoveryBound = false;
-    ["pointerdown", "touchstart", "keydown"].forEach(type => {
+    ["touchend", "click", "keydown"].forEach(type => {
       window.removeEventListener(type, this.onUserGesture, { capture: true });
     });
   }
@@ -3888,7 +3890,8 @@ class AudioManager {
     let playback;
     try { playback = audio.play(); } catch (error) { playback = Promise.reject(error); }
     return Promise.resolve(playback).then(() => {
-      this.unbindGestureRecovery();
+      if (!this.audioContext || this.audioContext.state === "running") this.unbindGestureRecovery();
+      else this.bindGestureRecovery();
       return true;
     }).catch(() => {
       // Autoplay rejection is expected on browsers until the next user gesture.
@@ -9197,6 +9200,7 @@ function ThornieDungeons() {
     setLoginTransitioning(false);
   }
   async function handleLogin() {
+    AUDIO_MANAGER.handleUserGesture();
     setAuthError("");
     if (!cred.url || !cred.id || !cred.password) {
       setAuthError("กรอกให้ครบทุกช่องนะคะ");
@@ -9228,6 +9232,7 @@ function ThornieDungeons() {
     await beginCharacterSelect(accountFromLoginResponse(res));
   }
   async function handleRegister(form) {
+    AUDIO_MANAGER.handleUserGesture();
     setAuthError("");
     if (!cred.url || !form?.id || !form?.password || !form?.confirmPassword) {
       setAuthError("กรอกให้ครบทุกช่องนะคะ");
@@ -9331,6 +9336,7 @@ function ThornieDungeons() {
     });
   }
   async function enterCharacterSlot(slotIndex) {
+    AUDIO_MANAGER.handleUserGesture();
     if (!account || !account.characters[slotIndex]) return;
     const res = await cloudEnterCharacter(cred.url, slotIndex);
     if (res.error) {
