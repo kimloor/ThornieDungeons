@@ -44,7 +44,6 @@ function playerCardAvatarLayers(avatar) {
 function PlayerCardTrigger({ characterId, name, level, onOpenPlayerCard }) {
   const e = React.createElement;
   if (!characterId || !onOpenPlayerCard) return e(React.Fragment, null, name, ` (Lv.${level})`);
-  const avatar = playerCardAsset("avatarPlaceholderNoPic");
   return e("button", {
     type: "button",
     className: "md-player-card-trigger",
@@ -54,7 +53,6 @@ function PlayerCardTrigger({ characterId, name, level, onOpenPlayerCard }) {
     },
     "aria-label": `เปิด Player Card ของ ${name}`
   },
-    avatar && e("img", { src: avatar, alt: "", "aria-hidden": "true" }),
     e("span", null, name),
     level != null && e("small", null, `(Lv.${level})`)
   );
@@ -92,7 +90,7 @@ function PlayerCardOverlay({ serverUrl, viewerCharacterId, targetCharacterId, on
     "aria-label": "ปิด Player Card"
   }, playerCardAsset("buttonClose") ? e("img", { src: playerCardAsset("buttonClose"), alt: "ปิด" }) : "✕");
 
-  return e("div", { className: "md-player-card-overlay", role: "presentation", onClick: event => { if (event.target === event.currentTarget) onClose(); } },
+  const overlay = e("div", { className: "md-player-card-overlay", role: "presentation", onClick: event => { if (event.target === event.currentTarget) onClose(); } },
     e("section", {
       className: "md-player-card",
       role: "dialog",
@@ -150,4 +148,5 @@ function PlayerCardOverlay({ serverUrl, viewerCharacterId, targetCharacterId, on
       }, playerCardAsset("buttonSecondary") ? e("img", { src: playerCardAsset("buttonSecondary"), alt: "ปิด" }) : "ปิด")
     )
   );
+  return ReactDOM.createPortal(overlay, document.body);
 }
