@@ -847,7 +847,6 @@ const STYLE = `
   .md-sound-row-controls { gap:6px; }
   .md-sound-mute { font-size:10px; }
 }
-
 .md-hint { font-size: 10.5px; color: #AFC7E8; font-weight: 700; line-height: 1.45; margin: 11px 0 0; text-align: center; }
 .md-remember-password {
   display: flex; align-items: center; gap: 9px; width: fit-content; margin: 11px 0 2px;
@@ -2350,6 +2349,36 @@ const STYLE = `
 .md-anvil-result-success { animation: anvil-success-flash 0.6s ease-out; }
 .md-anvil-result-fail { animation: anvil-fail-shake 0.4s ease-in-out; border-color: #ff5566 !important; }
 .md-blacksmith-icon { font-size: 40px; text-align: center; margin: 6px 0; transition: transform 0.15s ease; }
+.md-friend-player-cell { display:flex; align-items:center; gap:6px; min-width:0; }
+.md-friend-online-dot { flex:0 0 auto; }
+.md-player-card-trigger { display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:3px 6px; border:0; border-radius:10px; background:transparent; color:var(--ink-soft); font:inherit; font-weight:800; text-align:left; cursor:pointer; }
+.md-player-card-trigger:hover, .md-player-card-trigger:focus-visible { background:rgba(255,209,102,.13); outline:2px solid rgba(255,209,102,.55); outline-offset:1px; }
+.md-player-card-trigger img { width:28px; height:28px; object-fit:contain; border-radius:50%; background:#101e38; }
+.md-player-card-trigger small { color:var(--gold); font-size:10px; white-space:nowrap; }
+.md-chat-sender .md-player-card-trigger { min-height:30px; padding:0 4px; color:var(--ink-soft); }
+.md-chat-sender .md-player-card-trigger img { width:22px; height:22px; }
+.md-player-card-overlay { position:fixed; inset:0; z-index:140; display:flex; align-items:center; justify-content:center; padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); background:rgba(4,8,24,.78); backdrop-filter:blur(4px); }
+.md-player-card { position:relative; width:min(92vw,520px); min-height:430px; padding:28px 24px 22px; border:1px solid rgba(255,209,102,.45); border-radius:24px; background:linear-gradient(160deg,rgba(35,31,72,.98),rgba(9,24,58,.99)); box-shadow:0 18px 60px rgba(0,0,0,.6),0 0 0 1px rgba(133,177,255,.12); overflow:hidden; }
+.md-player-card::before { content:""; position:absolute; inset:0; background-image:var(--player-card-bg); background-size:cover; background-position:center; opacity:.38; pointer-events:none; }
+.md-player-card > * { position:relative; z-index:1; }
+.md-player-card-close { position:absolute; z-index:3; top:10px; right:10px; width:44px; height:44px; padding:0; border:0; background:transparent; cursor:pointer; }
+.md-player-card-close img { width:100%; height:100%; object-fit:contain; }
+.md-player-card-avatar { position:relative; width:clamp(132px,34vw,188px); aspect-ratio:1; margin:8px auto 12px; border-radius:50%; background:#101e38; overflow:hidden; isolation:isolate; }
+.md-player-card-avatar-frame { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:20; pointer-events:none; }
+.md-player-card-placeholder, .md-player-card-avatar > img:not(.md-player-card-avatar-frame) { position:absolute; left:50%; top:50%; width:82%; height:82%; object-fit:contain; transform:translate(-50%,-50%); }
+.md-player-card-nameplate { width:min(100%,300px); min-height:52px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; padding:8px 16px; background-image:var(--player-card-name-plate); background-size:100% 100%; background-position:center; text-align:center; }
+.md-player-card-nameplate h2 { margin:0; color:#fff0a8; font-size:clamp(18px,5vw,25px); overflow-wrap:anywhere; }
+.md-player-card-details { width:min(100%,360px); margin:0 auto; padding:14px 16px; border-radius:16px; background-image:var(--player-card-detail-panel); background-size:100% 100%; background-position:center; color:var(--ink-soft); }
+.md-player-card-details > div { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-height:30px; border-bottom:1px solid rgba(160,197,243,.16); }
+.md-player-card-details > div:last-child { border-bottom:0; }
+.md-player-card-details span { color:#b7cbe9; }
+.md-player-card-details strong, .md-player-card-guild-link { color:#fff0a8; font-weight:900; text-align:right; overflow-wrap:anywhere; }
+.md-player-card-guild-link { padding:0; border:0; background:transparent; font:inherit; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.md-player-card-guild-button { display:block; width:min(100%,300px); min-height:46px; margin:14px auto 0; border:0; border-radius:12px; background-image:var(--player-card-button-primary); background-size:100% 100%; background-color:#315e9f; color:#fff0a8; font-weight:900; cursor:pointer; }
+.md-player-card-guild-button:disabled { opacity:.78; cursor:default; }
+.md-player-card-dismiss { display:block; width:min(100%,220px); min-height:42px; margin:10px auto 0; padding:0; border:0; border-radius:12px; background:transparent; cursor:pointer; }
+.md-player-card-dismiss img { width:100%; height:100%; object-fit:fill; }
+@media (max-width:380px) { .md-player-card { padding:24px 14px 16px; } .md-player-card-details { padding:10px 12px; } }
 `;
 
 // ===== state/save.js =====
@@ -4380,6 +4409,15 @@ function cloudSearchCharacters(url, characterId, query) {
     query
   });
 }
+// Public Player Card boundary. The response is server-shaped and contains only the
+// character-facing profile fields; account/player/session data never crosses this helper.
+function cloudGetPublicProfile(url, characterId, targetCharacterId) {
+  return cloudAuthGet(url, {
+    action: "getPublicProfile",
+    characterId,
+    targetCharacterId
+  });
+}
 function cloudGetFriendList(url, characterId) {
   return cloudAuthGet(url, {
     action: "getFriendList",
@@ -4623,6 +4661,161 @@ function cloudUpdateGuildSettings(url, characterId, description, joinPolicy) {
     description,
     joinPolicy
   });
+}
+
+// ===== ui/playerCard.js =====
+// Public Player Card surface. This module owns profile presentation and avatar composition
+// hooks; Friend, Chat, and Guild screens only pass a public-profile target into this interface.
+const PLAYER_CARD_RELATIONSHIP_LABELS = Object.freeze({
+  self: "นี่คือตัวละครของคุณ",
+  friend: "เพื่อน",
+  blocked_by_me: "บล็อกผู้เล่นนี้อยู่",
+  blocking_me: "ผู้เล่นนี้บล็อกคุณ",
+  outgoing_pending: "ส่งคำขอเป็นเพื่อนแล้ว",
+  incoming_pending: "มีคำขอเป็นเพื่อน",
+  none: "ยังไม่ได้เป็นเพื่อน"
+});
+
+function playerCardAsset(key) {
+  return typeof optionalAsset === "function" ? optionalAsset(`playerCardUi.${key}`) : "";
+}
+
+function normalizePlayerCardAvatar(avatar) {
+  const source = avatar && typeof avatar === "object" ? avatar : {};
+  const layers = Array.isArray(source.layers) ? source.layers : [];
+  return {
+    mode: "head",
+    layers: layers
+      .filter(layer => layer && typeof layer === "object" && typeof layer.assetKey === "string")
+      .map(layer => ({
+        assetKey: layer.assetKey,
+        x: Number(layer.x) || 0,
+        y: Number(layer.y) || 0,
+        scale: Number(layer.scale) || 1,
+        zIndex: Number(layer.zIndex) || 0
+      }))
+      .sort((a, b) => a.zIndex - b.zIndex)
+  };
+}
+
+function playerCardAvatarLayers(avatar) {
+  return normalizePlayerCardAvatar(avatar).layers
+    .map(layer => ({
+      ...layer,
+      src: playerCardAsset(layer.assetKey) || (typeof optionalAsset === "function" ? optionalAsset(layer.assetKey) : "")
+    }))
+    .filter(layer => layer.src);
+}
+
+function PlayerCardTrigger({ characterId, name, level, onOpenPlayerCard }) {
+  const e = React.createElement;
+  if (!characterId || !onOpenPlayerCard) return e(React.Fragment, null, name, ` (Lv.${level})`);
+  const avatar = playerCardAsset("avatarPlaceholderNoPic");
+  return e("button", {
+    type: "button",
+    className: "md-player-card-trigger",
+    onClick: event => {
+      event.stopPropagation();
+      onOpenPlayerCard(characterId);
+    },
+    "aria-label": `เปิด Player Card ของ ${name}`
+  },
+    avatar && e("img", { src: avatar, alt: "", "aria-hidden": "true" }),
+    e("span", null, name),
+    level != null && e("small", null, `(Lv.${level})`)
+  );
+}
+
+function PlayerCardOverlay({ serverUrl, viewerCharacterId, targetCharacterId, onClose, onGuildLink }) {
+  const e = React.createElement;
+  const [state, setState] = React.useState({ loading: true, error: "", profile: null });
+  const url = serverUrl || DEFAULT_SERVER_URL;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setState({ loading: true, error: "", profile: null });
+    cloudGetPublicProfile(url, viewerCharacterId, targetCharacterId).then(res => {
+      if (cancelled) return;
+      if (!res || res.error) {
+        setState({ loading: false, error: "ไม่สามารถโหลดข้อมูลผู้เล่นได้", profile: null });
+        return;
+      }
+      setState({ loading: false, error: "", profile: res.profile || null });
+    }).catch(() => {
+      if (!cancelled) setState({ loading: false, error: "เชื่อมต่อ Server ไม่สำเร็จ", profile: null });
+    });
+    return () => { cancelled = true; };
+  }, [url, viewerCharacterId, targetCharacterId]);
+
+  const profile = state.profile;
+  const guild = profile?.guild;
+  const relationship = PLAYER_CARD_RELATIONSHIP_LABELS[profile?.relationship] || PLAYER_CARD_RELATIONSHIP_LABELS.none;
+  const avatarLayers = playerCardAvatarLayers(profile?.avatar);
+  const close = e("button", {
+    type: "button",
+    className: "md-player-card-close",
+    onClick: onClose,
+    "aria-label": "ปิด Player Card"
+  }, playerCardAsset("buttonClose") ? e("img", { src: playerCardAsset("buttonClose"), alt: "ปิด" }) : "✕");
+
+  return e("div", { className: "md-player-card-overlay", role: "presentation", onClick: event => { if (event.target === event.currentTarget) onClose(); } },
+    e("section", {
+      className: "md-player-card",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-labelledby": "md-player-card-name",
+      style: {
+        "--player-card-bg": playerCardAsset("cardBg") ? `url("${playerCardAsset("cardBg")}")` : "none",
+        "--player-card-detail-panel": playerCardAsset("detailPanel") ? `url("${playerCardAsset("detailPanel")}")` : "none",
+        "--player-card-name-plate": playerCardAsset("namePlate") ? `url("${playerCardAsset("namePlate")}")` : "none",
+        "--player-card-button-primary": playerCardAsset("buttonPrimary") ? `url("${playerCardAsset("buttonPrimary")}")` : "none"
+      }
+    },
+      close,
+      e("div", { className: "md-player-card-avatar" },
+        avatarLayers.length
+          ? avatarLayers.map(layer => e("img", {
+            key: `${layer.assetKey}:${layer.zIndex}`,
+            src: layer.src,
+            alt: "",
+            "aria-hidden": "true",
+            style: { left: `${layer.x}%`, top: `${layer.y}%`, transform: `translate(-50%, -50%) scale(${layer.scale})`, zIndex: layer.zIndex }
+          }))
+          : playerCardAsset("avatarPlaceholderNoPic") && e("img", { src: playerCardAsset("avatarPlaceholderNoPic"), alt: "ไม่มีรูปโปรไฟล์", className: "md-player-card-placeholder" }),
+        playerCardAsset("avatarFrame") && e("img", { src: playerCardAsset("avatarFrame"), alt: "", "aria-hidden": "true", className: "md-player-card-avatar-frame" })
+      ),
+      e("div", { className: "md-player-card-nameplate" },
+        e("h2", { id: "md-player-card-name" }, profile?.name || (state.loading ? "กำลังโหลด..." : "Player Card"))
+      ),
+      e("div", { className: "md-player-card-details" },
+        state.loading && e("p", { className: "md-sub" }, "กำลังโหลดข้อมูลสาธารณะ..."),
+        state.error && e("p", { className: "md-auth-error", role: "alert" }, state.error),
+        profile && e(React.Fragment, null,
+          e("div", null, e("span", null, "Level"), e("strong", null, profile.level ?? "-")),
+          e("div", null, e("span", null, "CP"), e("strong", null, Number(profile.cp || 0).toLocaleString("en-US"))),
+          e("div", null, e("span", null, "Guild"), guild?.name ? e("button", {
+            type: "button",
+            className: "md-player-card-guild-link",
+            onClick: () => onGuildLink?.(guild),
+            disabled: typeof onGuildLink !== "function"
+          }, guild.name) : e("strong", null, "ไม่มีสังกัด")),
+          e("div", null, e("span", null, "Guild Lv"), e("strong", null, guild?.level ?? "-")),
+          e("div", null, e("span", null, "สถานะ"), e("strong", null, relationship))
+        )
+      ),
+      guild && e("button", {
+        type: "button",
+        className: "md-player-card-guild-button",
+        onClick: () => onGuildLink?.(guild),
+        disabled: typeof onGuildLink !== "function"
+      }, "Guild Profile (Batch 2)"),
+      e("button", {
+        type: "button",
+        className: "md-player-card-dismiss",
+        onClick: onClose
+      }, playerCardAsset("buttonSecondary") ? e("img", { src: playerCardAsset("buttonSecondary"), alt: "ปิด" }) : "ปิด")
+    )
+  );
 }
 
 // ===== state/persistence.js =====
@@ -8176,6 +8369,7 @@ function ThornieDungeons() {
   const [passwordResetRecovery, setPasswordResetRecovery] = useState(null);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [audioSettings, setAudioSettings] = useState(() => AUDIO_MANAGER.getState());
+  const [playerCardTarget, setPlayerCardTarget] = useState(null);
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
@@ -10470,6 +10664,7 @@ function ThornieDungeons() {
       setUtilityReturnPhase("friend");
       setPhase("chat");
     },
+    onOpenPlayerCard: targetCharacterId => setPlayerCardTarget({ characterId: targetCharacterId }),
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "chat" && /*#__PURE__*/React.createElement(ChatScreen, {
     key: save.characterId,
@@ -10481,6 +10676,7 @@ function ThornieDungeons() {
     guildUnread,
     onGuildUnread: updateGuildUnread,
     onChannelChange: setChatInitialChannel,
+    onOpenPlayerCard: targetCharacterId => setPlayerCardTarget({ characterId: targetCharacterId }),
     ...utilityDockProps("chat"),
     onFriend: () => {
       setUtilityReturnPhase("chat");
@@ -10666,6 +10862,11 @@ function ThornieDungeons() {
     onBuyProtectionStone: buyProtectionStone,
     onBuyMaterial: guardItemAction(buyMaterial),
     onClose: () => setShopOpen(false)
+  }), playerCardTarget && /*#__PURE__*/React.createElement(PlayerCardOverlay, {
+    serverUrl: cred.url,
+    viewerCharacterId: save.characterId,
+    targetCharacterId: playerCardTarget.characterId,
+    onClose: () => setPlayerCardTarget(null)
   }));
 }
 
@@ -10927,7 +11128,6 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
     ),
     children
   );
-
   return ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
     e("div", { className: "md-settings-header" },
       e("div", { className: "md-settings-header-copy" },
@@ -12090,6 +12290,7 @@ function FriendScreen({
   onGuild,
   onMainHub,
   onChatWith,
+  onOpenPlayerCard,
   onBack
 }) {
   const e = React.createElement;
@@ -12308,7 +12509,10 @@ function FriendScreen({
         actionBtn("เพิ่มเพื่อน", () => handleSendRequest(r), "primary", busyKey === `send:${r.characterId}`),
         actionBtn("บล็อก", () => handleBlock(r), "flee", busyKey === `block:${r.characterId}`),
       ];
-      return row(r.characterId, `${onlineDot(r.online)} ${r.name} (Lv.${r.level})`, actions);
+      return row(r.characterId, e("div", { className: "md-friend-player-cell" },
+        e("span", { className: "md-friend-online-dot", "aria-hidden": "true" }, onlineDot(r.online)),
+        e(PlayerCardTrigger, { characterId: r.characterId, name: r.name, level: r.level, onOpenPlayerCard })
+      ), actions);
     }));
   };
 
@@ -12428,6 +12632,7 @@ function ChatScreen({
   onFriend,
   onGuild,
   onMainHub,
+  onOpenPlayerCard,
   onBack
 }) {
   const e = React.createElement;
@@ -12693,7 +12898,9 @@ function ChatScreen({
     className: "md-shop-row",
     style: { flexDirection: "column", alignItems: m.characterId === characterId ? "flex-end" : "flex-start" }
   },
-    m.characterId !== characterId && e("div", { className: "md-sub", style: { margin: 0 } }, m.name),
+    m.characterId !== characterId && e("div", { className: "md-sub md-chat-sender" , style: { margin: 0 } },
+      e(PlayerCardTrigger, { characterId: m.characterId, name: m.name, level: m.level, onOpenPlayerCard })
+    ),
     e("div", { className: "md-shop-info", style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }, m.text));
 
   const messageList = (messages, loaded, emptyText) => {
@@ -12741,8 +12948,8 @@ function ChatScreen({
         style: { cursor: "pointer" },
         onClick: () => openConversation(c),
       },
-        e("div", { className: "md-shop-info" },
-          `${c.online ? "🟢" : "⚪"} ${c.name} (Lv.${c.level})`, c.unread && e("span", { style: { marginLeft: 6 } }, "🔴"),
+          e("div", { className: "md-shop-info" },
+          e(PlayerCardTrigger, { characterId: c.characterId, name: `${c.online ? "🟢" : "⚪"} ${c.name}`, level: c.level, onOpenPlayerCard }), c.unread && e("span", { style: { marginLeft: 6 } }, "🔴"),
           e("div", { className: "md-sub", style: { margin: "2px 0 0" } }, `${c.lastSenderIsMe ? "คุณ: " : ""}${c.lastMessage || ""}`)),
       ))));
   };
