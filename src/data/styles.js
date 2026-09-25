@@ -2280,8 +2280,40 @@ const STYLE = `
 .md-player-card-trigger small { color:var(--gold); font-size:10px; white-space:nowrap; }
 .md-chat-sender .md-player-card-trigger { min-height:30px; padding:0 4px; color:var(--ink-soft); }
 .md-chat-sender .md-player-card-trigger img { width:22px; height:22px; }
-.md-player-card-overlay { position:fixed; inset:0; z-index:140; display:flex; align-items:center; justify-content:center; padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); background:rgba(4,8,24,.78); backdrop-filter:blur(4px); }
-.md-player-card { position:relative; width:min(92vw,520px); min-height:430px; padding:28px 24px 22px; border:1px solid rgba(255,209,102,.45); border-radius:24px; background:linear-gradient(160deg,rgba(35,31,72,.98),rgba(9,24,58,.99)); box-shadow:0 18px 60px rgba(0,0,0,.6),0 0 0 1px rgba(133,177,255,.12); overflow:hidden; }
+.md-player-card-overlay {
+  --ink:#F3EEFF;
+  --ink-soft:#B9AEDD;
+  --gold:#FFD166;
+  position:fixed;
+  inset:0;
+  z-index:140;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+  background:rgba(4,8,24,.82);
+  backdrop-filter:blur(4px);
+  color:var(--ink);
+  font-family:'Nunito',sans-serif;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.md-player-card-overlay,
+.md-player-card-overlay * { box-sizing:border-box; }
+.md-player-card {
+  position:relative;
+  width:min(92vw,520px);
+  max-width:100%;
+  min-height:430px;
+  max-height:calc(100dvh - max(32px,env(safe-area-inset-top)) - max(32px,env(safe-area-inset-bottom)));
+  padding:28px 24px 22px;
+  border:1px solid rgba(255,209,102,.45);
+  border-radius:24px;
+  background:linear-gradient(160deg,rgba(35,31,72,.98),rgba(9,24,58,.99));
+  box-shadow:0 18px 60px rgba(0,0,0,.6),0 0 0 1px rgba(133,177,255,.12);
+  overflow:auto;
+  overscroll-behavior:contain;
+}
 .md-player-card::before { content:""; position:absolute; inset:0; background-image:var(--player-card-bg); background-size:cover; background-position:center; opacity:.38; pointer-events:none; }
 .md-player-card > * { position:relative; z-index:1; }
 .md-player-card-close { position:absolute; z-index:3; top:10px; right:10px; width:44px; height:44px; padding:0; border:0; background:transparent; cursor:pointer; }
