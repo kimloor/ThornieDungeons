@@ -248,27 +248,49 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
     }
     onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
   };
+  const settingsSection = (title, subtitle, children) => e("section", { className: "md-settings-section" },
+    e("div", { className: "md-settings-section-head" },
+      e("h3", { className: "md-title" }, title),
+      subtitle ? e("p", { className: "md-sub" }, subtitle) : null
+    ),
+    children
+  );
+
   return ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
-    e("div", { className: "md-equip-head" }, e("div", null, e("h2", { className: "md-title" }, "Settings"), e("p", { className: "md-sub" }, "ACCOUNT & SECURITY"), e("p", { className: "md-sub" }, `Player ID: ${playerId}`)), e("button", { className: "md-btn flee small", onClick: onClose }, "✕")),
-    e("section", { className: "md-settings-sound", "aria-labelledby": "md-settings-sound-title" },
-      e("h3", { id: "md-settings-sound-title", className: "md-title" }, "Sound"),
+    e("div", { className: "md-settings-header" },
+      e("div", { className: "md-settings-header-copy" },
+        e("h2", { className: "md-title" }, "Settings"),
+        e("p", { className: "md-sub" }, "ACCOUNT & SECURITY"),
+        e("p", { className: "md-sub md-settings-player-id" }, `Player ID: ${playerId}`)
+      ),
+      e("button", { className: "md-btn flee small md-settings-close", onClick: onClose, "aria-label": "Close settings" }, "✕")
+    ),
+    settingsSection("Sound", "ปรับเสียงของอุปกรณ์นี้", e("div", { className: "md-settings-sound" },
       soundRow("BGM", audioSettings?.bgmVolume ?? 0.5, audioSettings?.bgmMuted === true, onBgmVolumeChange, onBgmMuteChange),
       soundRow("SFX", audioSettings?.sfxVolume ?? 0.5, audioSettings?.sfxMuted === true, onSfxVolumeChange, onSfxMuteChange)
+    )),
+    settingsSection("Recovery Code", recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code", recoveryCode
+      ? e("div", { className: "md-settings-stack" },
+          e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"),
+          e("code", { className: "md-recovery-code" }, recoveryCode),
+          e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")
+        )
+      : e("div", { className: "md-settings-stack" },
+          e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: recoveryPassword, onChange: event => setRecoveryPassword(event.target.value), autoComplete: "current-password" }),
+          e("button", { className: "md-btn info wide", disabled: busy, onClick: generateRecovery }, recoveryConfigured ? "สร้าง Recovery Code ใหม่" : "สร้าง Recovery Code")
+        )
     ),
-    recoveryCode ? e(React.Fragment, null, e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"), e("code", { className: "md-recovery-code" }, recoveryCode), e("button", { className: "md-btn info wide", onClick: copyCode }, "คัดลอก")) : e(React.Fragment, null,
-      e("p", { className: "md-title", style: { marginTop: 12 } }, "Recovery Code"),
-      e("p", { className: "md-sub" }, recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code"),
-      e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: recoveryPassword, onChange: event => setRecoveryPassword(event.target.value), autoComplete: "current-password" }),
-      e("button", { className: "md-btn info wide", disabled: busy, onClick: generateRecovery }, recoveryConfigured ? "สร้าง Recovery Code ใหม่" : "สร้าง Recovery Code")
-    ),
-    e("p", { className: "md-title", style: { marginTop: 16 } }, "เปลี่ยน Password"),
-    e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: changeCurrentPassword, onChange: event => setChangeCurrentPassword(event.target.value), autoComplete: "current-password" }),
-    e("input", { className: "md-field", type: "password", placeholder: "Password ใหม่", value: newPassword, onChange: event => setNewPassword(event.target.value), onFocus: event => event.currentTarget.select(), autoComplete: "new-password" }),
-    e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), onFocus: event => event.currentTarget.select(), autoComplete: "new-password" }),
-    e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password"),
-    message && e("p", { className: "md-auth-error" }, message),
-    e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร"),
-    e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
+    settingsSection("Change Password", "เปลี่ยนรหัสผ่านของบัญชีนี้", e("div", { className: "md-settings-stack" },
+      e("input", { className: "md-field", type: "password", placeholder: "รหัสผ่านปัจจุบัน", value: changeCurrentPassword, onChange: event => setChangeCurrentPassword(event.target.value), autoComplete: "current-password" }),
+      e("input", { className: "md-field", type: "password", placeholder: "Password ใหม่", value: newPassword, onChange: event => setNewPassword(event.target.value), onFocus: event => event.currentTarget.select(), autoComplete: "new-password" }),
+      e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), onFocus: event => event.currentTarget.select(), autoComplete: "new-password" }),
+      e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password")
+    )),
+    message && e("p", { className: "md-auth-error md-settings-message" }, message),
+    settingsSection("Account", "จัดการตัวละครและเซสชัน", e("div", { className: "md-settings-actions" },
+      e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร"),
+      e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
+    ))
   )), document.body);
 }
 function GameDock({
