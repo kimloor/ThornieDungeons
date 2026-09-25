@@ -289,7 +289,7 @@ class AudioManager {
     return resolveAudioAsset(key);
   }
 
-  createTrack(groupKey, resumeTime = 0) {
+  createTrack(groupKey) {
     const source = this.assetPathForGroup(groupKey);
     if (!source || typeof Audio === "undefined") return null;
     const audio = new Audio(source);
@@ -297,13 +297,45 @@ class AudioManager {
     audio.loop = true;
     audio.setAttribute("aria-hidden", "true");
     audio.volume = 0;
-    const safeResumeTime = Math.max(0, Number(resumeTime) || 0);
-    if (safeResumeTime > 0) {
-      const seek = () => { try { audio.currentTime = safeResumeTime; } catch (error) {} };
-      if (audio.readyState >= 1) seek();
-      else audio.addEventListener("loadedmetadata", seek, { once: true });
-    }
     return audio;
+  }
+
+  prepareResumePosition(track, resumeTime = 0) {
+    const targetTime = Math.max(0, Number(resumeTime) || 0);
+    if (!track?.audio || targetTime <= 0) return Promise.resolve(true);
+    const audio = track.audio;
+
+    const seek = () => new Promise(resolve => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve(true);
+      };
+      try {
+        audio.addEventListener("seeked", done, { once: true });
+        audio.currentTime = targetTime;
+        // Some iOS versions do not reliably emit seeked for a freshly recreated MP3.
+        setTimeout(done, 350);
+      } catch (error) {
+        done();
+      }
+    });
+
+    if (audio.readyState >= 1) return seek();
+    return new Promise(resolve => {
+      let settled = false;
+      const done = value => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      audio.addEventListener("loadedmetadata", () => {
+        seek().then(done);
+      }, { once: true });
+      try { audio.load(); } catch (error) {}
+      setTimeout(() => done(false), 2000);
+    });
   }
 
   playAudio(audio) {
@@ -384,17 +416,25 @@ class AudioManager {
       return;
     }
 
-    const incoming = this.createTrack(groupKey, resumeTime);
-    if (!incoming) return;
+    const incoming = this.createTrack(groupKey);
+    if (!incoming) {
+      // Assets may not be ready yet during initial app bootstrap.
+      this.bindGestureRecovery();
+      return;
+    }
     if (this.pending) this.stopTrack(this.pending);
     const previousTransition = this.transition;
     if (previousTransition) this.clearTransition();
     const from = this.active;
-    const track = { groupKey, audio: incoming, gainNode: null };
+    const track = { groupKey, audio: incoming, gainNode: null, resumeTime: Math.max(0, Number(resumeTime) || 0), positionReady: false };
     this.pending = track;
     if (this.audioContext) this.connectMediaTrack(track, "bgm");
     const token = ++this.transitionToken;
-    this.playAudio(incoming).then(started => {
+    track.readyPromise = this.prepareResumePosition(track, track.resumeTime).then(() => {
+      track.positionReady = true;
+      return this.playAudio(incoming);
+    });
+    track.readyPromise.then(started => {
       if (this.requestedGroup !== groupKey || token !== this.transitionToken) {
         if (this.pending === track) this.pending = null;
         this.stopTrack(track);
@@ -422,7 +462,8 @@ class AudioManager {
       if (this.requestedGroup) this.requestGroup(this.requestedGroup);
       return;
     }
-    this.playAudio(target.audio).then(started => {
+
+    const startTarget = () => this.playAudio(target.audio).then(started => {
       if (!started) return;
       if (this.pending === target) {
         this.pending = null;
@@ -436,6 +477,16 @@ class AudioManager {
       }
       if (this.transition?.incoming === target) this.startCrossfade(this.transition.from, target);
     });
+
+    // Background-restored tracks must seek before playback. Initial tracks have
+    // resumeTime=0 and can be started immediately by the user gesture.
+    if (this.pending === target && target.resumeTime > 0 && !target.positionReady && target.readyPromise) {
+      target.readyPromise.then(started => {
+        if (!started && this.pending === target) this.bindGestureRecovery();
+      });
+      return;
+    }
+    startTarget();
   }
 
   applyVolumes() {
