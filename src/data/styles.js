@@ -2291,8 +2291,8 @@ const STYLE = `
   align-items:center;
   justify-content:center;
   padding:max(14px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
-  background:rgba(4,8,24,.82);
-  backdrop-filter:blur(4px);
+  background:rgba(4,8,24,.48);
+  backdrop-filter:blur(2px);
   color:var(--ink);
   font-family:'Nunito',sans-serif;
 }
@@ -2330,7 +2330,7 @@ const STYLE = `
 .md-player-card-details span { color:#b7cbe9; }
 .md-player-card-details strong, .md-player-card-guild-link { color:#fff0a8; font-weight:900; text-align:right; overflow-wrap:anywhere; }
 .md-player-card-guild-link { padding:0; border:0; background:transparent; font:inherit; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
-.md-player-card-actions { display:grid; grid-template-columns:1fr 1fr; gap:5%; align-items:center; width:82%; margin:2.5% auto 0; }
+.md-player-card-actions { display:grid; grid-template-columns:1fr 1fr; gap:4%; align-items:center; width:76%; margin:1.2% auto 0; }
 .md-player-card-guild-button,
 .md-player-card-friend-button {
   min-height:0;
@@ -2340,8 +2340,11 @@ const STYLE = `
   background-position:center;
   background-repeat:no-repeat;
   font:inherit;
-  font-size:clamp(11px,2.3vw,17px);
-  font-weight:900;
+  font-size:clamp(12px,2.35vw,17px);
+  font-weight:1000;
+  letter-spacing:.01em;
+  line-height:1.05;
+  -webkit-font-smoothing:antialiased;
   text-align:center;
   cursor:pointer;
   padding:0 8%;
@@ -2349,8 +2352,8 @@ const STYLE = `
   align-items:center;
   justify-content:center;
 }
-.md-player-card-guild-button { background-image:var(--player-card-button-primary); color:#fff2bd; }
-.md-player-card-friend-button { background-image:var(--player-card-button-secondary); color:#eaf6ff; text-shadow:0 1px 2px rgba(0,0,0,.55); }
+.md-player-card-guild-button { background-image:var(--player-card-button-primary); color:#fff7d6; text-shadow:0 1px 2px rgba(63,35,0,.85),0 0 3px rgba(0,0,0,.55); }
+.md-player-card-friend-button { background-image:var(--player-card-button-secondary); color:#ffffff; text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 3px rgba(0,32,80,.8); }
 .md-player-card-guild-button:disabled,
 .md-player-card-friend-button:disabled { opacity:.72; cursor:default; }
 @media (max-width:430px) {
@@ -2358,12 +2361,12 @@ const STYLE = `
   .md-player-card-main { grid-template-columns:35% 1fr; gap:3.5%; }
   .md-player-card-avatar { width:88%; margin-bottom:8%; }
   .md-player-card-details { height:90%; padding:7% 5%; }
-  .md-player-card-actions { width:86%; gap:4%; margin-top:2%; }
+  .md-player-card-actions { width:78%; gap:3.5%; margin-top:1%; }
 }
 @media (max-width:360px), (max-height:620px) {
   .md-player-card { width:96vw; }
   .md-player-card-details > div { font-size:11px; }
   .md-player-card-nameplate h2 { font-size:13px; }
-  .md-player-card-actions { width:88%; }
+  .md-player-card-actions { width:80%; }
 }
 `;
