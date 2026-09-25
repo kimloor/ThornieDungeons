@@ -794,6 +794,67 @@ async function handleSearchCharacters(db, id, session, characterId, query) {
   });
 }
 
+// ---------- Public Player Card / Profile V1 ----------
+// This read-only surface intentionally returns character-facing fields only. It reuses the
+// existing social relationship tables without changing Friend/Chat mutation rules.
+async function handleGetPublicProfile(db, id, session, characterId, targetCharacterId) {
+  const auth = await verifySocialActor(db, id, session, characterId);
+  if (auth.error) return json(auth);
+  if (!targetCharacterId) return json({ error: "missing_fields" });
+
+  const target = await db.prepare(
+    `SELECT character_id, name, level, str, vit, agi, dex, luk
+     FROM characters WHERE character_id = ? LIMIT 1`
+  ).bind(targetCharacterId).first();
+  if (!target) return json({ error: "character_not_found" });
+
+  const [equippedRows, guildRow, friendRow, requestRow, blockRow] = await Promise.all([
+    db.prepare(`SELECT atk, def, hp, mp, enhance_level, extra_json FROM items WHERE character_id = ? AND equipped = 1`)
+      .bind(targetCharacterId).all(),
+    db.prepare(
+      `SELECT g.guild_id, g.name, g.level
+       FROM guild_members gm JOIN guilds g ON g.guild_id = gm.guild_id
+       WHERE gm.character_id = ? LIMIT 1`
+    ).bind(targetCharacterId).first(),
+    db.prepare(
+      `SELECT 1 FROM friendships
+       WHERE (character_id_a = ? AND character_id_b = ?) OR (character_id_a = ? AND character_id_b = ?)
+       LIMIT 1`
+    ).bind(characterId, targetCharacterId, targetCharacterId, characterId).first(),
+    db.prepare(
+      `SELECT sender_character_id, receiver_character_id FROM friend_requests
+       WHERE status = 'pending'
+       AND ((sender_character_id = ? AND receiver_character_id = ?) OR (sender_character_id = ? AND receiver_character_id = ?))
+       LIMIT 1`
+    ).bind(characterId, targetCharacterId, targetCharacterId, characterId).first(),
+    db.prepare(
+      `SELECT blocker_character_id, blocked_character_id FROM character_blocks
+       WHERE (blocker_character_id = ? AND blocked_character_id = ?) OR (blocker_character_id = ? AND blocked_character_id = ?)
+       LIMIT 1`
+    ).bind(characterId, targetCharacterId, targetCharacterId, characterId).first(),
+  ]);
+
+  let relationship = "none";
+  if (String(characterId) === String(targetCharacterId)) relationship = "self";
+  else if (blockRow) relationship = String(blockRow.blocker_character_id) === String(characterId) ? "blocked_by_me" : "blocking_me";
+  else if (friendRow) relationship = "friend";
+  else if (requestRow) relationship = String(requestRow.sender_character_id) === String(characterId) ? "outgoing_pending" : "incoming_pending";
+
+  return json({
+    ok: true,
+    profile: {
+      name: target.name,
+      level: Number(target.level) || 1,
+      cp: combatPowerFromCharacter(target, equippedRows.results || []),
+      guild: guildRow ? { guildId: guildRow.guild_id, name: guildRow.name, level: Number(guildRow.level) || 1 } : null,
+      relationship,
+      // Public default is head-only placeholder. Future public cosmetics can provide ordered
+      // asset keys here without exposing equipment, inventory, or save data.
+      avatar: { mode: "head", layers: [] },
+    },
+  });
+}
+
 async function handleGetFriendList(db, id, session, characterId) {
   const auth = await verifySocialActor(db, id, session, characterId);
   if (auth.error) return json(auth);
@@ -5226,6 +5287,7 @@ export default {
         if (action === "getBattleState") return await handleGetBattleState(db, id, auth, p.get("characterId"));
         // Friend System V1 (Phase 2) — read actions
         if (action === "searchCharacters") return await handleSearchCharacters(db, id, auth, p.get("characterId"), p.get("query"));
+        if (action === "getPublicProfile") return await handleGetPublicProfile(db, id, auth, p.get("characterId"), p.get("targetCharacterId"));
         if (action === "getFriendList") return await handleGetFriendList(db, id, auth, p.get("characterId"));
         if (action === "getFriendRequests") return await handleGetFriendRequests(db, id, auth, p.get("characterId"));
         if (action === "getBlockedList") return await handleGetBlockedList(db, id, auth, p.get("characterId"));
