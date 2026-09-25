@@ -21,9 +21,12 @@ test("Guild donation endpoint is authenticated, idempotent, and uses shared inve
   assert.match(app, /async function flushInventoryForDonation\(characterId\)/);
   assert.match(app, /persistItems\(inventoryRef\.current, equippedRef\.current, inventoryOverflowRef\.current\);[\s\S]*persistenceRef\.current\.flush\(context/);
   assert.match(app, /onBeforeDonate: flushInventoryForDonation/);
-  assert.match(app, /function applyGuildDonationLocally\(junkId, quantity\)/);
-  assert.match(app, /removeJunkFromInventory\(inventoryRef\.current, junkId, quantity\)/);
-  assert.match(ui, /if \(!result\.replay\) onDonationCommitted\?\.\(donateJunkId, quantity\)/);
+  assert.match(app, /function applyGuildDonationLocally\(junkId, quantity, remainingQuantity\)/);
+  assert.match(app, /hasAuthoritativeQuantity/);
+  assert.match(app, /inventoryRef\.current = nextInventory/);
+  assert.match(ui, /const remainingQuantity = Number\(result\.remainingQuantity\)/);
+  assert.match(ui, /onDonationCommitted\?\.\(donateJunkId, quantity, remainingQuantity\)/);
+  assert.match(ui, /else if \(onRefreshInventory\) \{\s*await onRefreshInventory\(\);\s*\}/);
   assert.match(ui, /onDonationCommitted/);
   assert.match(app, /activeCharacterIdRef\.current !== characterId/);
   const barrierIndex = ui.indexOf("await onBeforeDonate(characterId)");
@@ -63,6 +66,7 @@ test("Guild navigation has deterministic back and Main Hub recovery", () => {
   const ui = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   assert.match(ui, /กลับหน้าหลัก/);
   assert.match(ui, /onMainHub\?\.\(\)/);
+  assert.match(ui, /function TownScreen\([\s\S]*?onMainHub,[\s\S]*?e\(GameDock, \{[\s\S]*?onMainHub\s*\}\)/);
   assert.match(app, /onBack: \(\) => setPhase\("menu"\)/);
   assert.match(app, /onMainHub: \(\) => setPhase\("menu"\)/);
 });

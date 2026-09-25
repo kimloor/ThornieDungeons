@@ -560,6 +560,7 @@ function TownScreen({
   onFriend,
   onChat,
   onGuild,
+  onMainHub,
   dailyLogin,
   dailyLoginClaimResult,
   onClaimDailyLogin,
@@ -635,7 +636,8 @@ function TownScreen({
         onSave,
         onFriend,
         onChat,
-        onGuild
+        onGuild,
+        onMainHub
       })
     ),
     e(DailyLoginToast, {
@@ -2289,9 +2291,13 @@ function GuildScreen({
       setPendingDonationId("");
       setDonationResult(result);
       setDonateQuantity(1);
-      if (!result.replay) onDonationCommitted?.(donateJunkId, quantity);
+      const remainingQuantity = Number(result.remainingQuantity);
+      if (Number.isFinite(remainingQuantity) && remainingQuantity >= 0) {
+        onDonationCommitted?.(donateJunkId, quantity, remainingQuantity);
+      } else if (onRefreshInventory) {
+        await onRefreshInventory();
+      }
       loadMyGuild();
-      if (onRefreshInventory) await onRefreshInventory();
     } catch (_) {
       setDonationError("เชื่อมต่อ Server ไม่สำเร็จ กรุณาลองอีกครั้ง");
     } finally {

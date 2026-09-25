@@ -760,9 +760,42 @@ function ThornieDungeons() {
     const ok = await persistenceRef.current.flush(context, { retryFailed: true });
     return !!ok && activeCharacterIdRef.current === characterId && !!AUTH_SESSION.getToken();
   }
-  function applyGuildDonationLocally(junkId, quantity) {
-    const nextInventory = removeJunkFromInventory(inventoryRef.current, junkId, quantity);
-    if (!nextInventory) return false;
+  function applyGuildDonationLocally(junkId, quantity, remainingQuantity) {
+    const currentInventory = inventoryRef.current;
+    const hasAuthoritativeQuantity = Number.isFinite(Number(remainingQuantity)) && Number(remainingQuantity) >= 0;
+    const targetQuantity = hasAuthoritativeQuantity ? Number(remainingQuantity) : null;
+    const currentQuantity = currentInventory.reduce((sum, item) => (
+      item.type === "junk" && item.junkId === junkId && !inventoryItemLocked(item)
+        ? sum + inventoryItemQuantity(item)
+        : sum
+    ), 0);
+    let nextInventory = currentInventory;
+    if (targetQuantity !== null && currentQuantity > targetQuantity) {
+      let remaining = currentQuantity - targetQuantity;
+      nextInventory = currentInventory.flatMap(item => {
+        if (remaining <= 0 || item.type !== "junk" || item.junkId !== junkId || inventoryItemLocked(item)) return [item];
+        const take = Math.min(inventoryItemQuantity(item), remaining);
+        remaining -= take;
+        const left = inventoryItemQuantity(item) - take;
+        return left > 0 ? [{ ...item, quantity: left }] : [];
+      });
+    } else if (targetQuantity !== null && currentQuantity < targetQuantity) {
+      let remaining = targetQuantity - currentQuantity;
+      nextInventory = currentInventory.map(item => {
+        if (remaining <= 0 || item.type !== "junk" || item.junkId !== junkId || inventoryItemLocked(item) || item.quantity >= JUNK_STACK_MAX) return item;
+        const add = Math.min(JUNK_STACK_MAX - item.quantity, remaining);
+        remaining -= add;
+        return { ...item, quantity: item.quantity + add };
+      });
+      while (remaining > 0) {
+        const chunk = Math.min(JUNK_STACK_MAX, remaining);
+        nextInventory.push(makeJunkItem(junkId, chunk));
+        remaining -= chunk;
+      }
+    } else if (targetQuantity === null) {
+      return false;
+    }
+    inventoryRef.current = nextInventory;
     setInventory(nextInventory);
     persistItems(nextInventory, equippedRef.current, inventoryOverflowRef.current);
     return true;
@@ -2059,6 +2092,7 @@ function ThornieDungeons() {
     onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
   }), phase === "town" && /*#__PURE__*/React.createElement(TownScreen, {
     save: save,
+    onMainHub: () => setPhase("menu"),
     onCharacter: () => {
       setCharacterReturnPhase("town");
       setPhase("character");
