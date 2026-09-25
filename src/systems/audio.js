@@ -40,7 +40,14 @@ class AudioManager {
     this.transitionToken = 0;
     this.requestedGroup = null;
     this.gestureRecoveryBound = false;
-    this.onUserGesture = () => { this.resumeRequestedPlayback(); };
+    this.audioContext = null;
+    this.bgmMasterGain = null;
+    this.sfxMasterGain = null;
+    this.mediaNodes = new WeakMap();
+    this.onUserGesture = () => {
+      this.enableWebAudio();
+      this.resumeRequestedPlayback();
+    };
   }
 
   loadPreferences() {
@@ -106,6 +113,65 @@ class AudioManager {
     return this.preferences.sfxMuted ? 0 : this.preferences.sfxVolume;
   }
 
+  enableWebAudio() {
+    if (typeof window === "undefined") return false;
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextCtor) return false;
+    try {
+      if (!this.audioContext) {
+        this.audioContext = new AudioContextCtor();
+        this.bgmMasterGain = this.audioContext.createGain();
+        this.sfxMasterGain = this.audioContext.createGain();
+        this.bgmMasterGain.connect(this.audioContext.destination);
+        this.sfxMasterGain.connect(this.audioContext.destination);
+      }
+      [this.active, this.pending, this.transition?.from, this.transition?.incoming]
+        .filter(Boolean)
+        .forEach(track => this.connectMediaTrack(track, "bgm"));
+      if (this.audioContext.state === "suspended") this.audioContext.resume().catch(() => {});
+      this.applyVolumes();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  connectMediaTrack(track, channel = "bgm") {
+    if (!track?.audio || !this.audioContext) return false;
+    const existing = this.mediaNodes.get(track.audio);
+    if (existing) {
+      track.gainNode = existing.gain;
+      return true;
+    }
+    const master = channel === "sfx" ? this.sfxMasterGain : this.bgmMasterGain;
+    if (!master) return false;
+    try {
+      const source = this.audioContext.createMediaElementSource(track.audio);
+      const gain = this.audioContext.createGain();
+      gain.gain.value = 1;
+      source.connect(gain);
+      gain.connect(master);
+      this.mediaNodes.set(track.audio, { source, gain, channel });
+      track.gainNode = gain;
+      track.audio.volume = 1;
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  setTrackFade(track, fade, targetVolume = this.getBgmOutputVolume()) {
+    if (!track?.audio) return;
+    const safeFade = Math.max(0, Math.min(1, Number(fade) || 0));
+    track.audio.muted = this.preferences.bgmMuted === true;
+    if (track.gainNode && this.bgmMasterGain) {
+      track.gainNode.gain.value = safeFade;
+      track.audio.volume = 1;
+    } else {
+      track.audio.volume = targetVolume * safeFade;
+    }
+  }
+
   playSfx(assetKey, volumeScale = 1) {
     if (!assetKey || typeof Audio === "undefined") return Promise.resolve(false);
     const source = resolveAudioAsset(assetKey);
@@ -116,7 +182,16 @@ class AudioManager {
     const audio = new Audio(source);
     audio.preload = "auto";
     audio.setAttribute("aria-hidden", "true");
-    audio.volume = outputVolume * clampAudioVolume(volumeScale);
+    audio.muted = this.preferences.sfxMuted === true;
+    const scale = clampAudioVolume(volumeScale);
+    const track = { audio, gainNode: null };
+    if (this.audioContext && this.connectMediaTrack(track, "sfx")) {
+      this.sfxMasterGain.gain.value = outputVolume;
+      track.gainNode.gain.value = scale;
+      audio.volume = 1;
+    } else {
+      audio.volume = outputVolume * scale;
+    }
 
     let playback;
     try { playback = audio.play(); } catch (error) { playback = Promise.reject(error); }
@@ -191,8 +266,8 @@ class AudioManager {
       if (!this.transition || this.transition.token !== token) return;
       const progress = Math.max(0, Math.min(1, (Date.now() - startedAt) / duration));
       const targetVolume = this.getBgmOutputVolume();
-      from.audio.volume = targetVolume * (1 - progress);
-      incoming.audio.volume = targetVolume * progress;
+      this.setTrackFade(from, 1 - progress, targetVolume);
+      this.setTrackFade(incoming, progress, targetVolume);
       if (progress >= 1) {
         clearInterval(this.transition.timer);
         this.stopTrack(from);
@@ -235,8 +310,9 @@ class AudioManager {
     const previousTransition = this.transition;
     if (previousTransition) this.clearTransition();
     const from = this.active;
-    const track = { groupKey, audio: incoming };
+    const track = { groupKey, audio: incoming, gainNode: null };
     this.pending = track;
+    if (this.audioContext) this.connectMediaTrack(track, "bgm");
     const token = ++this.transitionToken;
     this.playAudio(incoming).then(started => {
       if (this.pending === track) this.pending = null;
@@ -270,11 +346,15 @@ class AudioManager {
     if (this.transition) {
       const elapsed = Date.now() - this.transition.startedAt;
       const progress = Math.max(0, Math.min(1, elapsed / 1400));
-      this.transition.from.audio.volume = targetVolume * (1 - progress);
-      this.transition.incoming.audio.volume = targetVolume * progress;
+      if (this.bgmMasterGain) this.bgmMasterGain.gain.value = targetVolume;
+      this.setTrackFade(this.transition.from, 1 - progress, targetVolume);
+      this.setTrackFade(this.transition.incoming, progress, targetVolume);
       return;
     }
-    if (this.active?.audio) this.active.audio.volume = targetVolume;
+    if (this.bgmMasterGain) this.bgmMasterGain.gain.value = targetVolume;
+    if (this.sfxMasterGain) this.sfxMasterGain.gain.value = this.getSfxOutputVolume();
+    if (this.active?.audio) this.setTrackFade(this.active, 1, targetVolume);
+    if (this.pending?.audio) this.setTrackFade(this.pending, 0, targetVolume);
   }
 
   setScreenPhase(phase) {
