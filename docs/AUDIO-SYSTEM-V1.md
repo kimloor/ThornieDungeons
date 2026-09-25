@@ -233,3 +233,38 @@ Audio Settings V1 is ready when all of the following pass:
 - per-skill volume categories
 - dynamic combat music layering
 - crossfade system beyond what is necessary for safe track switching
+
+
+## Approved Town Hub theme
+
+Status: APPROVED / ASSET PENDING R2 UPLOAD
+
+Track:
+- Title: `Our Greatest Adventure`
+- Artist: `geoffharvey`
+- Source: Pixabay
+- Source page: `https://pixabay.com/music/main-title-our-greatest-adventure-427782/`
+- License: Pixabay Content License
+- Usage: Town Hub only
+- Target asset key: `audio/bgm/town_theme.mp3`
+- Target manifest key: `audio.bgm.townTheme`
+
+Playback:
+- Use the centralized AudioManager only.
+- Town Hub requests `town_theme`.
+- Switching between BGM groups should use a short crossfade.
+- For this track, target approximately 1-2 seconds of crossfade to hide the audible end cadence.
+- Do not create overlapping duplicate BGM instances.
+- Preserve BGM volume and mute state during the transition.
+
+Asset safety:
+- Do not add the production manifest entry until the approved MP3 exists at the matching R2 path.
+- Keep source/license metadata recorded with the project.
+
+## Town Hub navigation follow-up
+
+When Audio V1 is connected to Town Hub, also verify and fix the existing Town Hub navigation links:
+- Guild button must open the Guild page.
+- Chat button must open the Chat page.
+- Do not change Guild or Chat business logic as part of this navigation fix.
+- Treat this as a focused Town Hub routing regression fix bundled with the Audio V1 Town integration.
