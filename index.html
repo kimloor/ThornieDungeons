@@ -5020,6 +5020,7 @@ function PlayerCardOverlay({ serverUrl, viewerCharacterId, targetCharacterId, on
   return ReactDOM.createPortal(overlay, document.body);
 }
 
+
 // ===== ui/guildProfile.js =====
 // Public Guild Profile surface. This module owns read-only guild presentation and
 // delegates join/apply mutations to the existing Guild V1 request handler.
@@ -11547,7 +11548,6 @@ function GameDock({
     alt: ""
   }), /*#__PURE__*/React.createElement("span", null, "เพิ่มเติม"))));
 }
-
 // Renders the icon+amount chips for a daily-login reward (gold/diamonds/junk stacks/a
 // resolved Azure item, or "สุ่ม 1 ชิ้น" placeholder for the not-yet-claimed day-7 preview).
 // Shared between the preview (before claiming) and the result (after claiming) views.
