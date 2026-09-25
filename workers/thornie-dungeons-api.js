@@ -1949,7 +1949,7 @@ async function handleGetPublicGuildProfile(db, id, session, characterId, guildId
   else if (guild.join_policy === "application" && applicationLimitReached) viewerState = "application_limit_reached";
   else if (guild.join_policy === "application") viewerState = "eligible_apply";
   const canJoin = viewerState === "eligible_join" && guild.join_policy === "open" && !full;
-  const canApply = viewerState === "eligible_join" && guild.join_policy === "application";
+  const canApply = viewerState === "eligible_apply" && guild.join_policy === "application";
   return json({
     ok: true,
     profile: {
