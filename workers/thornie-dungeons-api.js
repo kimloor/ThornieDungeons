@@ -823,10 +823,10 @@ async function handleGetPublicProfile(db, id, session, characterId, targetCharac
     ).bind(characterId, targetCharacterId, targetCharacterId, characterId).first(),
     db.prepare(
       `SELECT sender_character_id, receiver_character_id FROM friend_requests
-       WHERE status = 'pending'
+       WHERE status = 'pending' AND expires_at > ?
        AND ((sender_character_id = ? AND receiver_character_id = ?) OR (sender_character_id = ? AND receiver_character_id = ?))
        LIMIT 1`
-    ).bind(characterId, targetCharacterId, targetCharacterId, characterId).first(),
+    ).bind(nowIso(), characterId, targetCharacterId, targetCharacterId, characterId).first(),
     db.prepare(
       `SELECT blocker_character_id, blocked_character_id FROM character_blocks
        WHERE (blocker_character_id = ? AND blocked_character_id = ?) OR (blocker_character_id = ? AND blocked_character_id = ?)
