@@ -24,6 +24,12 @@ function normalizeAudioPreferences(value) {
   };
 }
 
+function resolveAudioAsset(assetKey) {
+  const entry = String(assetKey || "").split(".").reduce((obj, part) => obj?.[part], ASSETS);
+  const path = typeof entry === "string" ? entry : entry?.path;
+  return typeof path === "string" && path && typeof assetUrl === "function" ? assetUrl(path) : "";
+}
+
 class AudioManager {
   constructor() {
     this.preferences = this.loadPreferences();
@@ -102,7 +108,7 @@ class AudioManager {
 
   playSfx(assetKey, volumeScale = 1) {
     if (!assetKey || typeof Audio === "undefined") return Promise.resolve(false);
-    const source = typeof optionalAsset === "function" ? optionalAsset(assetKey) : "";
+    const source = resolveAudioAsset(assetKey);
     if (!source) return Promise.resolve(false);
     const outputVolume = this.getSfxOutputVolume();
     if (outputVolume <= 0) return Promise.resolve(false);
@@ -135,7 +141,7 @@ class AudioManager {
 
   assetPathForGroup(groupKey) {
     const key = groupKey === "town_theme" ? "audio.bgm.townTheme" : "audio.bgm.mainTheme";
-    return typeof optionalAsset === "function" ? optionalAsset(key) : "";
+    return resolveAudioAsset(key);
   }
 
   createTrack(groupKey) {
