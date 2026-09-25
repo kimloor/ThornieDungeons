@@ -19,6 +19,8 @@ This file defines the default operating rules for all contributors and AI agents
 - Read and change only the files and code paths related to the task.
 - Never revert, overwrite, or clean up unrelated work.
 - Keep token/context usage to what is necessary for the task; avoid rereading unrelated files.
+- Project Lead may inspect code/state, reproduce issues, analyze likely root causes, and perform low-risk preliminary checks before handing work to another agent.
+- Project Lead should avoid duplicating implementation work that belongs to DEV/QA/Graphics unless the task is low-risk or direct inspection is the fastest safe path.
 - ChatGPT and Claude may work on the same project. Leave useful comments or documentation for non-obvious decisions so another contributor can continue safely.
 - Comment only where useful: business/game rules, compatibility reasons, workarounds, non-obvious constraints, TODOs, and known limitations. Do not over-comment ordinary code.
 
@@ -68,9 +70,12 @@ This file defines the default operating rules for all contributors and AI agents
 - Update docs when an approved rule, architecture, or production contract changes.
 - Task-specific temporary notes should not become permanent source-of-truth files unless they contain reusable contracts.
 
-## 11. Handoff and reporting
+## 11. Task prompts, handoff, and reporting
+- Project Lead task prompts must be short, direct, token-efficient, and still include every required action, constraint, environment, risk, and completion condition needed to execute safely.
+- Remove background/history that the receiving agent does not need. Prefer explicit scope, DO/DO NOT rules, and expected output.
 - Keep handoffs concise and include only what the next contributor needs.
-- At minimum report: what changed, files/systems affected, tests performed, known issues, and commit/branch when relevant.
+- After completing work, the receiving agent must return a short copy-ready handoff prompt for Project Lead.
+- The return handoff should include, when relevant: status marker, result, files/systems changed, tests/verification, branch/commit, blockers or known issues, and the exact next required action.
 - Do not claim a task is complete when a known issue still blocks the requested scope.
 
 ## 12. Definition of done
@@ -83,4 +88,4 @@ A task is complete when the relevant steps are satisfied:
 6. Merge/deploy completed when appropriate.
 7. Live result verified when deployment is available.
 8. Relevant docs/comments updated.
-9. Short final summary provided.
+9. Short copy-ready handoff provided.
