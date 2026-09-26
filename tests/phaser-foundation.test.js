@@ -97,7 +97,7 @@ test("HP bars render below actor feet through the shared actor HUD", () => {
   const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
   const hero = fs.readFileSync(path.join(ROOT, "src/phaser/actors/HeroActor.js"), "utf8");
   assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
-  assert.match(actor, /this\.nameText\.setPosition\(nameX, nameY\)/);
+  assert.match(actor, /this\.nameText\.setPosition\(0, nameY\)/);
   assert.match(hero, /class HeroActor extends PhaserBattleActor/);
   assert.doesNotMatch(hero, /const barY = 14/);
 });
@@ -185,7 +185,11 @@ test("Ver 1.0.9 sharpens Phaser HUD stroke and keeps labels inside the battlefie
   const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
   assert.equal((actor.match(/strokeThickness: 2/g) || []).length, 3);
   assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
-  assert.match(actor, /const nameX = this\.data\.kind === "hero" \? -Math\.round\(Math\.min\(30, size \* 0\.18\)\) : 0/);
+  assert.doesNotMatch(actor, /const nameX = this\.data\.kind === "hero"/);
   assert.match(actor, /const nameY = this\.data\.kind === "pet" \? 22 : 34/);
+  assert.match(actor, /this\.nameText\.setPosition\(0, nameY\)/);
+
+  const pet = fs.readFileSync(path.join(ROOT, "src/phaser/actors/PetActor.js"), "utf8");
+  assert.match(pet, /baseSize: 118, depth: 8/);
 });
 
