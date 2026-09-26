@@ -141,7 +141,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.9";
+  content: "Ver 1.0.10";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -8965,6 +8965,90 @@ function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = 
 
 const SHARED_EQUIPMENT_VISUAL_RESOLVER = createEquipmentVisualResolver();
 
+// ===== phaser/presentation/HeroV5RuntimeContract.js =====
+// ---------- W7 Hero V5 G2 Runtime Contract ----------
+const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
+  version: 1,
+  characterId: "hero001",
+  variant: "g2",
+  canvas: Object.freeze({ width: 768, height: 768 }),
+  animationFrames: Object.freeze({
+    idle: Object.freeze(["idle_01", "idle_02", "idle_03"]),
+    attack: Object.freeze(["attack_01", "attack_02", "attack_03"]),
+    death: Object.freeze(["death_01", "death_02"])
+  }),
+  layerOrder: Object.freeze(["wing_far", "base", "wing_near"])
+});
+
+function isHeroV5RuntimeEnabled() {
+  if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
+  if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === false) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search || "").get("heroV5") === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function getHeroV5RuntimeConfig(characterId = HERO_V5_RUNTIME_CONTRACT.characterId) {
+  const config = typeof ASSETS === "object" && ASSETS
+    ? ASSETS?.[characterId]?.v5?.[HERO_V5_RUNTIME_CONTRACT.variant]
+    : null;
+  if (!config || config.approval !== "approved" || config.base?.approval !== "approved") return null;
+  const canvasWidth = Number(config.canvas?.width) || 0;
+  const canvasHeight = Number(config.canvas?.height) || 0;
+  if (canvasWidth !== HERO_V5_RUNTIME_CONTRACT.canvas.width || canvasHeight !== HERO_V5_RUNTIME_CONTRACT.canvas.height) return null;
+  return config;
+}
+
+function heroV5FrameLayers(config, frameId, includeWings) {
+  const basePath = config?.base?.frames?.[frameId];
+  if (!basePath) return null;
+
+  const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
+  if (includeWings && (!wingFrame?.wing_far || !wingFrame?.wing_near)) return null;
+
+  const layers = [];
+  if (includeWings) layers.push({
+    name: "wing_far", path: wingFrame.wing_far, x: 0, y: 0, scale: 1, rotation: 0
+  });
+  layers.push({
+    name: "base", path: basePath, x: 0, y: 0, scale: 1, rotation: 0
+  });
+  if (includeWings) layers.push({
+    name: "wing_near", path: wingFrame.wing_near, x: 0, y: 0, scale: 1, rotation: 0
+  });
+  return layers;
+}
+
+function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings = false } = {}) {
+  const config = getHeroV5RuntimeConfig(characterId);
+  if (!config) return null;
+
+  const resolved = {};
+  for (const [state, frameIds] of Object.entries(HERO_V5_RUNTIME_CONTRACT.animationFrames)) {
+    const frames = frameIds.map(frameId => heroV5FrameLayers(config, frameId, includeWings));
+    if (frames.some(frame => !Array.isArray(frame) || !frame.length)) return null;
+    resolved[state] = frames;
+  }
+
+  return Object.freeze({
+    mode: "v5-g2",
+    canvas: {
+      width: HERO_V5_RUNTIME_CONTRACT.canvas.width,
+      height: HERO_V5_RUNTIME_CONTRACT.canvas.height
+    },
+    idle: resolved.idle,
+    attack: resolved.attack,
+    death: resolved.death,
+    frameMs: {
+      idle: 220,
+      attack: 150,
+      death: 180
+    }
+  });
+}
+
 // ===== phaser/presentation/PresentationEventBridge.js =====
 // ---------- W6 Shared Presentation Event Bridge ----------
 const PRESENTATION_EVENT_BRIDGE_CONTRACT = Object.freeze({
@@ -9051,7 +9135,7 @@ function presentationAnimationConfig(config) {
   };
 }
 
-function heroPresentationLayerFrames(selection = {}) {
+function heroV3PresentationLayerFrames(selection = {}) {
   const config = typeof getHeroV3Config === "function" ? getHeroV3Config("hero001") : null;
   const normalize = layers => (layers || []).map(layer => ({
     name: layer.name,
@@ -9069,6 +9153,7 @@ function heroPresentationLayerFrames(selection = {}) {
     normalize(resolveHeroV3Layers("hero001", selection, "attack", index) || idle)
   );
   return {
+    mode: "v3",
     canvas: {
       width: Math.max(1, Number(config?.canvas?.width) || 1254),
       height: Math.max(1, Number(config?.canvas?.height) || 1254)
@@ -9084,7 +9169,33 @@ function heroPresentationLayerFrames(selection = {}) {
   };
 }
 
-function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1 } = {}) {
+function heroPresentationLayerFrames(selection = {}, { preferV5 = false } = {}) {
+  if (preferV5 && typeof resolveHeroV5BaseWingContract === "function") {
+    const v5 = resolveHeroV5BaseWingContract({
+      characterId: "hero001",
+      includeWings: selection?.wings === "angel"
+    });
+    if (v5) {
+      const normalize = layers => (layers || []).map(layer => ({
+        name: layer.name,
+        url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
+        x: Number(layer.x) || 0,
+        y: Number(layer.y) || 0,
+        scale: Number(layer.scale ?? 1),
+        rotation: Number(layer.rotation) || 0
+      })).filter(layer => layer.url);
+      return {
+        ...v5,
+        idle: v5.idle.map(normalize),
+        attack: v5.attack.map(normalize),
+        death: v5.death.map(normalize)
+      };
+    }
+  }
+  return heroV3PresentationLayerFrames(selection);
+}
+
+function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1, heroV5 = undefined } = {}) {
   const state = battleState || {};
   const units = state.units || {};
   const hero = createActorPresentationModel(units[state.heroId], {
@@ -9101,7 +9212,10 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
   const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
   const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
-  const heroFrames = heroPresentationLayerFrames(heroSelection);
+  const preferHeroV5 = heroV5 === undefined
+    ? (typeof isHeroV5RuntimeEnabled === "function" && isHeroV5RuntimeEnabled())
+    : heroV5 === true;
+  const heroFrames = heroPresentationLayerFrames(heroSelection, { preferV5: preferHeroV5 });
   const heroLayers = heroFrames.idle[0] || [];
   const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
   const monsterConfigs = enemyList.map(enemy => typeof getMonsterSpriteConfig === "function" ? getMonsterSpriteConfig(enemy) : null);
@@ -9114,6 +9228,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
       ...hero,
       anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
+      visualMode: heroFrames.mode || "v3",
       layers: heroLayers,
       layerFrames: heroFrames
     },
@@ -9402,10 +9517,10 @@ class PhaserBattleActor {
 }
 
 // ===== phaser/renderers/HeroRenderer.js =====
-// ---------- W6 Shared Hero Renderer ----------
-// Renders the currently approved Hero V3 layer contract only.
-// Equipment/V5 resolution is intentionally outside this renderer and belongs to
-// the future EquipmentVisualResolver boundary.
+// ---------- W7 Shared Hero Renderer ----------
+// Renders normalized layered Hero presentation models from both the production
+// V3 contract and the opt-in V5 G2 contract. Asset/equipment resolution remains
+// outside this renderer so Combat, Arena and future previews share one renderer.
 class HeroRenderer {
   constructor(scene, {
     root = null,
@@ -9460,7 +9575,7 @@ class HeroRenderer {
         const key = this.textureKey(layer.url);
         if (!key || !this.scene?.textures?.exists(key)) return;
         const image = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
-        // resolveHeroV3Layers already returns the DOM bottom-to-top contract.
+        // Presentation models already arrive in authored bottom-to-top order.
         this.root.addAt(image, Math.min(index, this.root.list?.length || 0));
         entry = { name: layer.name, image };
         this.layerImages.push(entry);
