@@ -7,6 +7,9 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
   let windowResize = null;
   let currentSnapshot = snapshot || null;
   const bridge = createPresentationEventBridge({
+    syncType: "BATTLEFIELD_SYNC",
+    streamKey: "battleId",
+    allowStaleSync: true,
     onEvent: event => scene?.consume(event),
     onStatus: (status, detail) => status === "error" && onError?.(detail)
   });

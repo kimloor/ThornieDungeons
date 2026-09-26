@@ -10,9 +10,18 @@ test("W5 Phaser foundation keeps runtime isolated and resolver-free", () => {
   const files = [
     "src/phaser/runtime/PhaserRuntime.js",
     "src/phaser/runtime/BattlefieldHost.js",
+    "src/phaser/assets/AssetResolver.js",
+    "src/phaser/assets/TextureRegistry.js",
+    "src/phaser/layout/ResponsiveSceneLayout.js",
+    "src/phaser/layout/ResponsiveAnchors.js",
+    "src/phaser/presentation/ActorPresentationModel.js",
+    "src/phaser/presentation/EquipmentVisualResolver.js",
+    "src/phaser/presentation/PresentationEventBridge.js",
     "src/phaser/presentation/EventBridge.js",
     "src/phaser/presentation/PresentationQueue.js",
-    "src/phaser/layout/ResponsiveAnchors.js",
+    "src/phaser/presentation/VfxManager.js",
+    "src/phaser/renderers/HeroRenderer.js",
+    "src/phaser/actors/HeroActor.js",
     "src/phaser/scenes/BattleScene.js",
     "src/phaser/ui/PhaserBattlefield.js"
   ];
@@ -23,7 +32,10 @@ test("W5 Phaser foundation keeps runtime isolated and resolver-free", () => {
 });
 
 test("locked W5 anchors resolve all supported formation sizes", () => {
-  const source = fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveAnchors.js"), "utf8");
+  const source = [
+    fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveSceneLayout.js"), "utf8"),
+    fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveAnchors.js"), "utf8")
+  ].join("\n");
   const context = { console };
   vm.createContext(context);
   vm.runInContext(`${source}; this.result = { one: monsterAnchorsForCount(1), two: monsterAnchorsForCount(2), three: monsterAnchorsForCount(3), hero: RESPONSIVE_ANCHORS.HERO, pet: RESPONSIVE_ANCHORS.PET };`, context);
@@ -60,9 +72,9 @@ test("Phaser surface does not preload battle background and stays transparent", 
 });
 
 
-test("Hero layer order matches DOM composition", () => {
-  const source = fs.readFileSync(path.join(ROOT, "src/phaser/actors/HeroActor.js"), "utf8");
-  assert.match(source, /visualRoot\.addAt\(image, Math\.min\(index/);
+test("Hero layer order matches DOM composition through shared renderer", () => {
+  const source = fs.readFileSync(path.join(ROOT, "src/phaser/renderers/HeroRenderer.js"), "utf8");
+  assert.match(source, /this\.root\.addAt\(image, Math\.min\(index/);
   assert.doesNotMatch(source, /addAt\(image, 0\)/);
 });
 
@@ -115,7 +127,10 @@ test("Ver 1.0.6 mobile battle layout reserves fixed log space", () => {
 
 
 test("responsive actor scale follows actual Phaser battlefield size", () => {
-  const source = fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveAnchors.js"), "utf8");
+  const source = [
+    fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveSceneLayout.js"), "utf8"),
+    fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveAnchors.js"), "utf8")
+  ].join("\n");
   const context = { console };
   vm.createContext(context);
   vm.runInContext(`${source}; this.result = {

@@ -1,32 +1,6 @@
-// ---------- W5 Read-only Presentation Bridge ----------
-function presentationStatusData(unit) {
-  return Object.entries(unit?.statuses || {}).map(([key, value]) => ({
-    key,
-    duration: Math.max(0, Number(value?.duration) || 0)
-  })).filter(status => status.duration > 0);
-}
-
-function presentationUnit(raw, fallback = {}) {
-  const unit = { ...(fallback || {}), ...(raw || {}) };
-  return {
-    id: String(unit.id || fallback.id || "unit"),
-    name: String(unit.name || unit.id || fallback.name || "Unit"),
-    kind: String(unit.kind || fallback.kind || "monster"),
-    hp: Math.max(0, Number(unit.hp) || 0),
-    maxHp: Math.max(1, Number(unit.maxHp) || Number(unit.hp) || 1),
-    alive: Number(unit.hp) > 0 && !unit.dead,
-    statuses: presentationStatusData(unit),
-    defId: unit.defId || fallback.defId || unit.monsterDefId || unit.id,
-    isBoss: !!(unit.isBoss || fallback.isBoss),
-    isEliteBoss: !!(unit.isEliteBoss || fallback.isEliteBoss),
-    sizeClass: unit.sizeClass || fallback.sizeClass || "medium",
-    anchorType: unit.anchorType || fallback.anchorType || "ground",
-    icon: unit.icon || fallback.icon || "◆"
-  };
-}
-
+// ---------- W6 Battle-to-Presentation Snapshot Adapter ----------
 function presentationAnimationConfig(config) {
-  const urls = name => (config?.animations?.[name] || []).map(path => assetUrl(path)).filter(Boolean);
+  const urls = name => SHARED_PHASER_ASSET_RESOLVER.resolveAll(config?.animations?.[name] || []);
   return {
     idle: urls("idle"),
     attack: urls("attack"),
@@ -34,19 +8,11 @@ function presentationAnimationConfig(config) {
   };
 }
 
-function normalizePresentationAnim(value, alive = true) {
-  if (!alive) return "death";
-  if (value === "attack") return "attack";
-  if (value === "hurt") return "hurt";
-  if (value === "death") return "death";
-  return "idle";
-}
-
 function heroPresentationLayerFrames(selection = {}) {
   const config = typeof getHeroV3Config === "function" ? getHeroV3Config("hero001") : null;
   const normalize = layers => (layers || []).map(layer => ({
     name: layer.name,
-    url: layer.url,
+    url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
     x: Number(layer.x) || 0,
     y: Number(layer.y) || 0,
     scale: Number(layer.scale ?? 1),
@@ -78,7 +44,7 @@ function heroPresentationLayerFrames(selection = {}) {
 function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1 } = {}) {
   const state = battleState || {};
   const units = state.units || {};
-  const hero = presentationUnit(units[state.heroId], {
+  const hero = createActorPresentationModel(units[state.heroId], {
     id: state.heroId || "hero",
     kind: "hero",
     name: heroName,
@@ -86,12 +52,12 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     maxHp: 1
   });
   const pet = state.petId && units[state.petId]
-    ? presentationUnit(units[state.petId], petCombat || {})
-    : petCombat ? presentationUnit(petCombat, { id: petCombat.instId || "pet", kind: "pet" }) : null;
+    ? createActorPresentationModel(units[state.petId], petCombat || {})
+    : petCombat ? createActorPresentationModel(petCombat, { id: petCombat.instId || "pet", kind: "pet" }) : null;
   const enemyIds = Array.isArray(state.enemyIds) && state.enemyIds.length ? state.enemyIds : monsters.map(monster => monster.uid || monster.id);
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
-  const enemyList = enemyIds.map(id => presentationUnit(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
-  const heroSelection = typeof heroVisualSelectionFromEquipment === "function" ? heroVisualSelectionFromEquipment(equipped) : {};
+  const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
+  const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
   const heroFrames = heroPresentationLayerFrames(heroSelection);
   const heroLayers = heroFrames.idle[0] || [];
   const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
@@ -103,43 +69,24 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
     hero: {
       ...hero,
-      anim: normalizePresentationAnim(heroAnim, hero.alive),
+      anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       layers: heroLayers,
       layerFrames: heroFrames
     },
     pet: pet ? {
       ...pet,
-      anim: normalizePresentationAnim(petAnim, pet.alive),
+      anim: normalizeActorPresentationAnim(petAnim, pet.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(petConfig)
     } : null,
     monsters: enemyList.map((enemy, index) => ({
       ...enemy,
       slotIndex: index,
-      anim: normalizePresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
+      anim: normalizeActorPresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(monsterConfigs[index])
     })),
-    backgroundUrl: typeof optionalAsset === "function" ? optionalAsset("battleUi.background") : ""
-  });
-}
-
-function createPresentationEventBridge({ onEvent, onStatus } = {}) {
-  let currentBattleId = null;
-  let latestSeq = -1;
-  const emit = (event, allowStale = false) => {
-    if (!event || (!allowStale && currentBattleId && event.battleId && event.battleId !== currentBattleId)) return false;
-    if (!allowStale && Number.isFinite(Number(event.seq)) && Number(event.seq) < latestSeq) return false;
-    if (event.battleId) currentBattleId = String(event.battleId);
-    if (Number.isFinite(Number(event.seq))) latestSeq = Math.max(latestSeq, Number(event.seq));
-    onEvent?.(Object.freeze({ ...event, battleId: currentBattleId, seq: latestSeq }));
-    return true;
-  };
-  return Object.freeze({
-    sync(snapshot) { return emit({ type: "BATTLEFIELD_SYNC", battleId: snapshot?.battleId, seq: snapshot?.seq, snapshot }, true); },
-    targetSelected(targetId) { return onEvent?.({ type: "TARGET_SELECTED", battleId: currentBattleId, targetId }); },
-    status(statusValue, detail) { onStatus?.(statusValue, detail); },
-    reset() { currentBattleId = null; latestSeq = -1; }
+    backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("battleUi.background")
   });
 }

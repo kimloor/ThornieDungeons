@@ -8696,8 +8696,153 @@ const THORNIE_PHASER_RUNTIME = (() => {
   });
 })();
 
+// ===== phaser/assets/AssetResolver.js =====
+// ---------- W6 Shared Phaser Asset Resolver ----------
+// Presentation code resolves manifest-relative paths here so scenes/renderers never
+// construct R2 URLs independently. Existing resolved URLs are preserved verbatim.
+const PHASER_ASSET_ROOT = "/assets/";
+
+function isResolvedPhaserAssetUrl(value) {
+  const source = String(value || "").trim();
+  return /^(?:https?:)?\/\//i.test(source)
+    || /^(?:data:|blob:)/i.test(source)
+    || source.startsWith("/");
+}
+
+function resolvePhaserAsset(reference) {
+  const raw = reference && typeof reference === "object"
+    ? (reference.url || reference.path || "")
+    : reference;
+  const source = String(raw || "").trim();
+  if (!source) return "";
+  if (isResolvedPhaserAssetUrl(source)) return source;
+  if (typeof assetUrl === "function") return assetUrl(source);
+  return PHASER_ASSET_ROOT + source.replace(/^\/+/, "");
+}
+
+function resolvePhaserAssets(references) {
+  return [...new Set((references || []).map(resolvePhaserAsset).filter(Boolean))];
+}
+
+function resolvePhaserManifestAsset(key) {
+  if (!key) return "";
+  if (typeof optionalAsset === "function") return resolvePhaserAsset(optionalAsset(key));
+  const root = typeof ASSETS === "object" && ASSETS ? ASSETS : {};
+  const path = String(key).split(".").reduce((obj, part) => obj?.[part], root);
+  return resolvePhaserAsset(path);
+}
+
+const SHARED_PHASER_ASSET_RESOLVER = Object.freeze({
+  resolve: resolvePhaserAsset,
+  resolveAll: resolvePhaserAssets,
+  manifest: resolvePhaserManifestAsset
+});
+
+// ===== phaser/assets/TextureRegistry.js =====
+// ---------- W6 Shared Phaser Texture Registry ----------
+function phaserTextureKeyForUrl(url) {
+  return `thornie-${String(url || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(-150)}`;
+}
+
+function createPhaserTextureRegistry({ resolver = SHARED_PHASER_ASSET_RESOLVER } = {}) {
+  const keyToUrl = new Map();
+  const urlToKey = new Map();
+
+  function keyFor(reference) {
+    const url = resolver.resolve(reference);
+    if (!url) return "";
+    if (urlToKey.has(url)) return urlToKey.get(url);
+    const key = phaserTextureKeyForUrl(url);
+    urlToKey.set(url, key);
+    keyToUrl.set(key, url);
+    return key;
+  }
+
+  function urlFor(key) {
+    return keyToUrl.get(String(key || "")) || "";
+  }
+
+  function forget(key) {
+    const normalizedKey = String(key || "");
+    const url = keyToUrl.get(normalizedKey);
+    if (url) urlToKey.delete(url);
+    keyToUrl.delete(normalizedKey);
+  }
+
+  function queue(scene, references) {
+    if (!scene?.load || !scene?.textures) return [];
+    return resolver.resolveAll(references).map(url => {
+      const key = keyFor(url);
+      const exists = key && scene.textures.exists(key);
+      if (key && !exists) scene.load.image(key, url);
+      return { key, url, queued: !!(key && !exists) };
+    }).filter(entry => entry.key);
+  }
+
+  return Object.freeze({
+    keyFor,
+    urlFor,
+    forget,
+    queue,
+    entries() { return [...keyToUrl.entries()]; }
+  });
+}
+
+// ===== phaser/layout/ResponsiveSceneLayout.js =====
+// ---------- W6 Shared Responsive Scene Layout ----------
+const RESPONSIVE_SCENE_LAYOUT_DEFAULTS = Object.freeze({
+  referenceWidth: 390,
+  referenceHeight: 520,
+  minScale: 0.82,
+  maxScale: 1.15
+});
+
+function responsiveSceneScale(width, height, options = {}) {
+  const safeWidth = Math.max(1, Number(width) || 1);
+  const safeHeight = Math.max(1, Number(height) || 1);
+  const referenceWidth = Math.max(1, Number(options.referenceWidth) || RESPONSIVE_SCENE_LAYOUT_DEFAULTS.referenceWidth);
+  const referenceHeight = Math.max(1, Number(options.referenceHeight) || RESPONSIVE_SCENE_LAYOUT_DEFAULTS.referenceHeight);
+  const minScale = Number.isFinite(Number(options.minScale)) ? Number(options.minScale) : RESPONSIVE_SCENE_LAYOUT_DEFAULTS.minScale;
+  const maxScale = Number.isFinite(Number(options.maxScale)) ? Number(options.maxScale) : RESPONSIVE_SCENE_LAYOUT_DEFAULTS.maxScale;
+  const widthScale = safeWidth / referenceWidth;
+  const heightScale = safeHeight / referenceHeight;
+  return Math.max(minScale, Math.min(maxScale, Math.min(widthScale, heightScale)));
+}
+
+function responsiveScenePoint(anchor, width, height) {
+  const safeWidth = Math.max(1, Number(width) || 1);
+  const safeHeight = Math.max(1, Number(height) || 1);
+  return {
+    x: Math.round(Number(anchor?.x || 0) * safeWidth),
+    y: Math.round(Number(anchor?.y || 0) * safeHeight)
+  };
+}
+
+function responsiveScenePixels(value, width, height) {
+  if (Array.isArray(value)) return value.map(entry => responsiveScenePixels(entry, width, height));
+  if (!value || typeof value !== "object") return value;
+  if (Object.prototype.hasOwnProperty.call(value, "x") && Object.prototype.hasOwnProperty.call(value, "y")) {
+    return responsiveScenePoint(value, width, height);
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, responsiveScenePixels(entry, width, height)])
+  );
+}
+
+function createResponsiveSceneLayout({ width, height, anchors = {}, scale = {} } = {}) {
+  const safeWidth = Math.max(1, Number(width) || 1);
+  const safeHeight = Math.max(1, Number(height) || 1);
+  return {
+    width: safeWidth,
+    height: safeHeight,
+    scale: responsiveSceneScale(safeWidth, safeHeight, scale),
+    normalized: anchors,
+    pixels: responsiveScenePixels(anchors, safeWidth, safeHeight)
+  };
+}
+
 // ===== phaser/layout/ResponsiveAnchors.js =====
-// ---------- W5 Responsive Battlefield Anchors ----------
+// ---------- W6 Locked Combat Anchors ----------
 const RESPONSIVE_ANCHORS = Object.freeze({
   HERO: Object.freeze({ x: 0.20, y: 0.50 }),
   PET: Object.freeze({ x: 0.22, y: 0.84 }),
@@ -8716,41 +8861,35 @@ function monsterAnchorsForCount(count) {
 }
 
 function responsiveActorScale(width, height) {
-  const safeWidth = Math.max(1, Number(width) || 1);
-  const safeHeight = Math.max(1, Number(height) || 1);
-  // 390x520 is the neutral phone battlefield. Scale from the actual Phaser
-  // surface rather than the device category so split views/rotation also behave.
-  const widthScale = safeWidth / 390;
-  const heightScale = safeHeight / 520;
-  return Math.max(0.82, Math.min(1.15, Math.min(widthScale, heightScale)));
+  return responsiveSceneScale(width, height, {
+    referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15
+  });
 }
 
 function responsiveAnchorPixels(anchor, width, height) {
-  return { x: Math.round(Number(anchor?.x || 0) * width), y: Math.round(Number(anchor?.y || 0) * height) };
+  return responsiveScenePoint(anchor, width, height);
 }
 
 function responsiveBattlefieldLayout(width, height, monsterCount = 1) {
-  const safeWidth = Math.max(1, Number(width) || 1);
-  const safeHeight = Math.max(1, Number(height) || 1);
   const monsterAnchors = monsterAnchorsForCount(monsterCount);
-  return {
-    width: safeWidth,
-    height: safeHeight,
-    actorScale: responsiveActorScale(safeWidth, safeHeight),
-    normalized: {
+  const shared = createResponsiveSceneLayout({
+    width,
+    height,
+    anchors: {
       hero: RESPONSIVE_ANCHORS.HERO,
       pet: RESPONSIVE_ANCHORS.PET,
       monsters: monsterAnchors,
       vfxHero: RESPONSIVE_ANCHORS.VFX_HERO,
       vfxPet: RESPONSIVE_ANCHORS.VFX_PET
     },
-    pixels: {
-      hero: responsiveAnchorPixels(RESPONSIVE_ANCHORS.HERO, safeWidth, safeHeight),
-      pet: responsiveAnchorPixels(RESPONSIVE_ANCHORS.PET, safeWidth, safeHeight),
-      monsters: monsterAnchors.map(anchor => responsiveAnchorPixels(anchor, safeWidth, safeHeight)),
-      vfxHero: responsiveAnchorPixels(RESPONSIVE_ANCHORS.VFX_HERO, safeWidth, safeHeight),
-      vfxPet: responsiveAnchorPixels(RESPONSIVE_ANCHORS.VFX_PET, safeWidth, safeHeight)
-    }
+    scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
+  });
+  return {
+    width: shared.width,
+    height: shared.height,
+    actorScale: shared.scale,
+    normalized: shared.normalized,
+    pixels: shared.pixels
   };
 }
 
@@ -8759,16 +8898,26 @@ function responsiveMonsterVfxAnchor(slot, monsterCount, width, height) {
   return responsiveAnchorPixels({ x: base.x - 0.04, y: base.y - 0.12 }, width, height);
 }
 
-// ===== phaser/presentation/EventBridge.js =====
-// ---------- W5 Read-only Presentation Bridge ----------
-function presentationStatusData(unit) {
+// ===== phaser/presentation/ActorPresentationModel.js =====
+// ---------- W6 Shared Actor Presentation Model ----------
+const ACTOR_PRESENTATION_MODEL_VERSION = 1;
+
+function actorPresentationStatusData(unit) {
   return Object.entries(unit?.statuses || {}).map(([key, value]) => ({
     key,
     duration: Math.max(0, Number(value?.duration) || 0)
   })).filter(status => status.duration > 0);
 }
 
-function presentationUnit(raw, fallback = {}) {
+function normalizeActorPresentationAnim(value, alive = true) {
+  if (!alive) return "death";
+  if (value === "attack") return "attack";
+  if (value === "hurt") return "hurt";
+  if (value === "death") return "death";
+  return "idle";
+}
+
+function createActorPresentationModel(raw, fallback = {}) {
   const unit = { ...(fallback || {}), ...(raw || {}) };
   return {
     id: String(unit.id || fallback.id || "unit"),
@@ -8777,7 +8926,7 @@ function presentationUnit(raw, fallback = {}) {
     hp: Math.max(0, Number(unit.hp) || 0),
     maxHp: Math.max(1, Number(unit.maxHp) || Number(unit.hp) || 1),
     alive: Number(unit.hp) > 0 && !unit.dead,
-    statuses: presentationStatusData(unit),
+    statuses: actorPresentationStatusData(unit),
     defId: unit.defId || fallback.defId || unit.monsterDefId || unit.id,
     isBoss: !!(unit.isBoss || fallback.isBoss),
     isEliteBoss: !!(unit.isEliteBoss || fallback.isEliteBoss),
@@ -8787,8 +8936,114 @@ function presentationUnit(raw, fallback = {}) {
   };
 }
 
+const ACTOR_PRESENTATION_MODEL = Object.freeze({
+  version: ACTOR_PRESENTATION_MODEL_VERSION,
+  create: createActorPresentationModel,
+  statuses: actorPresentationStatusData,
+  normalizeAnim: normalizeActorPresentationAnim
+});
+
+// ===== phaser/presentation/EquipmentVisualResolver.js =====
+// ---------- W6 Equipment Visual Resolver Boundary ----------
+const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
+  version: 1,
+  currentHeroMode: "v3"
+});
+
+function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = {}) {
+  const resolveLegacySelection = legacyHeroSelectionResolver || (
+    typeof heroVisualSelectionFromEquipment === "function" ? heroVisualSelectionFromEquipment : null
+  );
+  return Object.freeze({
+    contract: EQUIPMENT_VISUAL_RESOLVER_CONTRACT,
+    resolveHeroSelection(equipped = {}) {
+      const selection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
+      return { ...(selection || {}) };
+    }
+  });
+}
+
+const SHARED_EQUIPMENT_VISUAL_RESOLVER = createEquipmentVisualResolver();
+
+// ===== phaser/presentation/PresentationEventBridge.js =====
+// ---------- W6 Shared Presentation Event Bridge ----------
+const PRESENTATION_EVENT_BRIDGE_CONTRACT = Object.freeze({
+  version: 1,
+  defaultSyncType: "PRESENTATION_SYNC",
+  defaultStreamKey: "presentationId",
+  targetSelectedType: "TARGET_SELECTED"
+});
+
+function createPresentationEventBridge({
+  onEvent,
+  onStatus,
+  syncType = PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultSyncType,
+  streamKey = PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultStreamKey,
+  allowStaleSync = true
+} = {}) {
+  const resolvedSyncType = String(syncType || PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultSyncType);
+  const resolvedStreamKey = String(streamKey || PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultStreamKey);
+  let currentStreamId = null;
+  let latestSeq = -1;
+
+  const emit = (event, allowStale = false) => {
+    if (!event) return false;
+    const rawStreamId = event?.[resolvedStreamKey];
+    const eventStreamId = rawStreamId == null || rawStreamId === "" ? null : String(rawStreamId);
+    if (!allowStale && currentStreamId && eventStreamId && eventStreamId !== currentStreamId) return false;
+    if (!allowStale && Number.isFinite(Number(event.seq)) && Number(event.seq) < latestSeq) return false;
+    if (eventStreamId) currentStreamId = eventStreamId;
+    if (Number.isFinite(Number(event.seq))) latestSeq = Math.max(latestSeq, Number(event.seq));
+    onEvent?.(Object.freeze({
+      ...event,
+      [resolvedStreamKey]: currentStreamId,
+      seq: latestSeq
+    }));
+    return true;
+  };
+
+  return Object.freeze({
+    contract: PRESENTATION_EVENT_BRIDGE_CONTRACT,
+    emit(event, options = {}) {
+      return emit(event, !!options.allowStale);
+    },
+    sync(snapshot) {
+      const event = {
+        type: resolvedSyncType,
+        [resolvedStreamKey]: snapshot?.[resolvedStreamKey],
+        seq: snapshot?.seq,
+        snapshot
+      };
+      return emit(event, !!allowStaleSync);
+    },
+    targetSelected(targetId) {
+      return onEvent?.({
+        type: PRESENTATION_EVENT_BRIDGE_CONTRACT.targetSelectedType,
+        [resolvedStreamKey]: currentStreamId,
+        targetId
+      });
+    },
+    status(statusValue, detail) {
+      onStatus?.(statusValue, detail);
+    },
+    reset() {
+      currentStreamId = null;
+      latestSeq = -1;
+    },
+    getState() {
+      return Object.freeze({
+        streamKey: resolvedStreamKey,
+        streamId: currentStreamId,
+        latestSeq
+      });
+    }
+  });
+}
+
+// ===== phaser/presentation/EventBridge.js =====
+// ---------- W6 Battle-to-Presentation Snapshot Adapter ----------
 function presentationAnimationConfig(config) {
-  const urls = name => (config?.animations?.[name] || []).map(path => assetUrl(path)).filter(Boolean);
+  const urls = name => SHARED_PHASER_ASSET_RESOLVER.resolveAll(config?.animations?.[name] || []);
   return {
     idle: urls("idle"),
     attack: urls("attack"),
@@ -8796,19 +9051,11 @@ function presentationAnimationConfig(config) {
   };
 }
 
-function normalizePresentationAnim(value, alive = true) {
-  if (!alive) return "death";
-  if (value === "attack") return "attack";
-  if (value === "hurt") return "hurt";
-  if (value === "death") return "death";
-  return "idle";
-}
-
 function heroPresentationLayerFrames(selection = {}) {
   const config = typeof getHeroV3Config === "function" ? getHeroV3Config("hero001") : null;
   const normalize = layers => (layers || []).map(layer => ({
     name: layer.name,
-    url: layer.url,
+    url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
     x: Number(layer.x) || 0,
     y: Number(layer.y) || 0,
     scale: Number(layer.scale ?? 1),
@@ -8840,7 +9087,7 @@ function heroPresentationLayerFrames(selection = {}) {
 function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1 } = {}) {
   const state = battleState || {};
   const units = state.units || {};
-  const hero = presentationUnit(units[state.heroId], {
+  const hero = createActorPresentationModel(units[state.heroId], {
     id: state.heroId || "hero",
     kind: "hero",
     name: heroName,
@@ -8848,12 +9095,12 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     maxHp: 1
   });
   const pet = state.petId && units[state.petId]
-    ? presentationUnit(units[state.petId], petCombat || {})
-    : petCombat ? presentationUnit(petCombat, { id: petCombat.instId || "pet", kind: "pet" }) : null;
+    ? createActorPresentationModel(units[state.petId], petCombat || {})
+    : petCombat ? createActorPresentationModel(petCombat, { id: petCombat.instId || "pet", kind: "pet" }) : null;
   const enemyIds = Array.isArray(state.enemyIds) && state.enemyIds.length ? state.enemyIds : monsters.map(monster => monster.uid || monster.id);
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
-  const enemyList = enemyIds.map(id => presentationUnit(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
-  const heroSelection = typeof heroVisualSelectionFromEquipment === "function" ? heroVisualSelectionFromEquipment(equipped) : {};
+  const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
+  const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
   const heroFrames = heroPresentationLayerFrames(heroSelection);
   const heroLayers = heroFrames.idle[0] || [];
   const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
@@ -8865,44 +9112,25 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
     hero: {
       ...hero,
-      anim: normalizePresentationAnim(heroAnim, hero.alive),
+      anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       layers: heroLayers,
       layerFrames: heroFrames
     },
     pet: pet ? {
       ...pet,
-      anim: normalizePresentationAnim(petAnim, pet.alive),
+      anim: normalizeActorPresentationAnim(petAnim, pet.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(petConfig)
     } : null,
     monsters: enemyList.map((enemy, index) => ({
       ...enemy,
       slotIndex: index,
-      anim: normalizePresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
+      anim: normalizeActorPresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(monsterConfigs[index])
     })),
-    backgroundUrl: typeof optionalAsset === "function" ? optionalAsset("battleUi.background") : ""
-  });
-}
-
-function createPresentationEventBridge({ onEvent, onStatus } = {}) {
-  let currentBattleId = null;
-  let latestSeq = -1;
-  const emit = (event, allowStale = false) => {
-    if (!event || (!allowStale && currentBattleId && event.battleId && event.battleId !== currentBattleId)) return false;
-    if (!allowStale && Number.isFinite(Number(event.seq)) && Number(event.seq) < latestSeq) return false;
-    if (event.battleId) currentBattleId = String(event.battleId);
-    if (Number.isFinite(Number(event.seq))) latestSeq = Math.max(latestSeq, Number(event.seq));
-    onEvent?.(Object.freeze({ ...event, battleId: currentBattleId, seq: latestSeq }));
-    return true;
-  };
-  return Object.freeze({
-    sync(snapshot) { return emit({ type: "BATTLEFIELD_SYNC", battleId: snapshot?.battleId, seq: snapshot?.seq, snapshot }, true); },
-    targetSelected(targetId) { return onEvent?.({ type: "TARGET_SELECTED", battleId: currentBattleId, targetId }); },
-    status(statusValue, detail) { onStatus?.(statusValue, detail); },
-    reset() { currentBattleId = null; latestSeq = -1; }
+    backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("battleUi.background")
   });
 }
 
@@ -9164,12 +9392,44 @@ class PhaserBattleActor {
   }
 }
 
-// ===== phaser/actors/HeroActor.js =====
-// ---------- W5 Hero Actor ----------
-class HeroActor extends PhaserBattleActor {
-  constructor(scene, data) {
-    super(scene, data, { baseSize: 150, depth: 7 });
+// ===== phaser/renderers/HeroRenderer.js =====
+// ---------- W6 Shared Hero Renderer ----------
+// Renders the currently approved Hero V3 layer contract only.
+// Equipment/V5 resolution is intentionally outside this renderer and belongs to
+// the future EquipmentVisualResolver boundary.
+class HeroRenderer {
+  constructor(scene, {
+    root = null,
+    data = {},
+    displaySize = 150,
+    textureKey = null
+  } = {}) {
+    this.scene = scene;
+    this.root = root || scene.add.container(0, 0);
+    this.ownsRoot = !root;
+    this.data = data || {};
+    this.displaySizeSource = displaySize;
+    this.textureKeySource = textureKey;
     this.layerImages = [];
+  }
+
+  setData(data) {
+    this.data = data || {};
+    return this;
+  }
+
+  displaySize() {
+    const value = typeof this.displaySizeSource === "function"
+      ? this.displaySizeSource()
+      : this.displaySizeSource;
+    return Math.max(1, Number(value) || 1);
+  }
+
+  textureKey(reference) {
+    if (typeof this.textureKeySource === "function") return this.textureKeySource(reference);
+    if (typeof this.scene?.assetKey === "function") return this.scene.assetKey(reference);
+    if (typeof this.scene?.textureRegistry?.keyFor === "function") return this.scene.textureRegistry.keyFor(reference);
+    return "";
   }
 
   layerSetForState(state) {
@@ -9188,11 +9448,11 @@ class HeroActor extends PhaserBattleActor {
     (layers || []).forEach((layer, index) => {
       let entry = this.layerImages.find(item => item.name === layer.name);
       if (!entry) {
-        const key = this.scene.assetKey(layer.url);
-        if (!key || !this.scene.textures.exists(key)) return;
+        const key = this.textureKey(layer.url);
+        if (!key || !this.scene?.textures?.exists(key)) return;
         const image = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
         // resolveHeroV3Layers already returns the DOM bottom-to-top contract.
-        this.visualRoot.addAt(image, Math.min(index, this.visualRoot.list?.length || 0));
+        this.root.addAt(image, Math.min(index, this.root.list?.length || 0));
         entry = { name: layer.name, image };
         this.layerImages.push(entry);
       }
@@ -9214,8 +9474,8 @@ class HeroActor extends PhaserBattleActor {
         entry.image.setVisible(false);
         return;
       }
-      const key = this.scene.assetKey(layer.url);
-      if (key && this.scene.textures.exists(key) && entry.image.texture.key !== key) entry.image.setTexture(key);
+      const key = this.textureKey(layer.url);
+      if (key && this.scene?.textures?.exists(key) && entry.image.texture.key !== key) entry.image.setTexture(key);
       const scale = Number(layer.scale ?? 1);
       entry.image
         .setVisible(true)
@@ -9228,16 +9488,42 @@ class HeroActor extends PhaserBattleActor {
     });
   }
 
-  refresh(data, { animate = true } = {}) {
-    this.data = { ...this.data, ...(data || {}) };
-    const state = this.desiredVisualState();
-    const displayedState = animate || !this.visualState ? state : this.visualState;
-    this.applyVisualFrame(displayedState === "hurt" ? "idle" : displayedState, this.frameIndex);
-    this.setVisualAlpha(displayedState === "death" ? 0.72 : 1);
-    this.refreshHud();
-    this.reposition(this.position || { x: 0, y: 0 });
-    if (animate) return this.playVisualState(state, this.data.combatSpeed || 1);
-    return Promise.resolve();
+  destroy() {
+    this.layerImages.forEach(entry => entry.image?.destroy());
+    this.layerImages = [];
+    if (this.ownsRoot) this.root?.destroy(true);
+    this.root = null;
+    this.scene = null;
+  }
+}
+
+// ===== phaser/actors/HeroActor.js =====
+// ---------- W6 Combat Hero Actor Wrapper ----------
+class HeroActor extends PhaserBattleActor {
+  constructor(scene, data) {
+    super(scene, data, { baseSize: 150, depth: 7 });
+    this.heroRenderer = new HeroRenderer(scene, {
+      root: this.visualRoot,
+      data: this.data,
+      displaySize: () => this.displaySize(),
+      textureKey: reference => this.scene.assetKey(reference)
+    });
+  }
+
+  visualFrameCount(state) {
+    return this.heroRenderer
+      ? this.heroRenderer.setData(this.data).visualFrameCount(state)
+      : 1;
+  }
+
+  applyVisualFrame(state, index = 0) {
+    this.heroRenderer?.setData(this.data).applyVisualFrame(state, index);
+  }
+
+  destroy() {
+    this.heroRenderer?.destroy();
+    this.heroRenderer = null;
+    super.destroy();
   }
 }
 
@@ -9276,9 +9562,21 @@ class MonsterActor extends PhaserBattleActor {
 }
 
 // ===== phaser/presentation/PresentationQueue.js =====
-// ---------- W5 Visual Presentation Queue ----------
-// This queue is intentionally renderer-only. It serializes already-resolved
-// presentation callbacks and has no access to Battle Core, rewards or saves.
+// ---------- W6 Shared Presentation Queue ----------
+const PRESENTATION_QUEUE_CONTRACT = Object.freeze({
+  version: 1,
+  minSpeed: 1,
+  maxSpeed: 2
+});
+
+function normalizePresentationTask(entry) {
+  if (typeof entry === "function") return Object.freeze({ run: entry });
+  if (entry && typeof entry.run === "function") return entry;
+  return null;
+}
+
+// This queue is intentionally presentation-only. It serializes already-resolved
+// visual callbacks and has no access to gameplay, rewards, persistence or saves.
 function createPresentationQueue({ onDrained } = {}) {
   const entries = [];
   let running = false;
@@ -9299,17 +9597,17 @@ function createPresentationQueue({ onDrained } = {}) {
     if (running) return;
     running = true;
     while (entries.length) {
-      const entry = entries.shift();
-      if (typeof entry === "function") await entry(speed);
-      else if (entry?.run) await entry.run(speed);
+      const task = entries.shift();
+      await task.run(speed);
     }
     running = false;
     notifyDrained();
   }
 
   function enqueue(entry) {
-    if (entry) entries.push(entry);
-    if (!running) void run();
+    const task = normalizePresentationTask(entry);
+    if (task) entries.push(task);
+    if (!running && entries.length) void run();
     if (running || entries.length) {
       drainPromise = new Promise(resolve => { resolveDrain = resolve; });
     }
@@ -9317,20 +9615,123 @@ function createPresentationQueue({ onDrained } = {}) {
   }
 
   return Object.freeze({
+    contract: PRESENTATION_QUEUE_CONTRACT,
     enqueue,
     clear() { entries.splice(0, entries.length); },
-    setSpeed(value) { speed = Math.max(1, Math.min(2, Number(value) || 1)); },
+    setSpeed(value) {
+      speed = Math.max(
+        PRESENTATION_QUEUE_CONTRACT.minSpeed,
+        Math.min(PRESENTATION_QUEUE_CONTRACT.maxSpeed, Number(value) || 1)
+      );
+    },
+    getSpeed: () => speed,
     isBusy: () => running || entries.length > 0,
     whenDrained: () => drainPromise
   });
 }
 
-// ===== phaser/scenes/BattleScene.js =====
-// ---------- W5 Dungeon Combat Scene Shell ----------
-function phaserAssetKey(url) {
-  return `thornie-${String(url || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(-150)}`;
+// ===== phaser/presentation/VfxManager.js =====
+// ---------- W6 Shared Phaser VFX Manager ----------
+// Consumes already-resolved presentation effects only. It never decides hits,
+// damage, status application, turn order or any other gameplay outcome.
+class VfxManager {
+  constructor(scene, {
+    assetResolver = SHARED_PHASER_ASSET_RESOLVER,
+    textureRegistry = scene?.textureRegistry || null,
+    frameResolver = null,
+    positionResolver = null
+  } = {}) {
+    this.scene = scene;
+    this.assetResolver = assetResolver;
+    this.textureRegistry = textureRegistry;
+    this.frameResolver = frameResolver || (effectKey =>
+      typeof battleVfxFrames === "function" ? battleVfxFrames(effectKey) : []
+    );
+    this.positionResolver = positionResolver;
+    this.active = new Set();
+  }
+
+  framesFor(effectKey) {
+    const rawFrames = this.frameResolver?.(effectKey) || [];
+    return (rawFrames || [])
+      .map(frame => this.assetResolver.resolve(frame))
+      .filter(Boolean);
+  }
+
+  collectFrames(effectKeys) {
+    return [...new Set((effectKeys || []).flatMap(effectKey => this.framesFor(effectKey)))];
+  }
+
+  queueAssets(effectKeys) {
+    if (!this.textureRegistry) return [];
+    return this.textureRegistry.queue(this.scene, this.collectFrames(effectKeys));
+  }
+
+  resolvePosition(effect) {
+    if (typeof this.positionResolver === "function") {
+      const resolved = this.positionResolver(effect);
+      if (resolved) return resolved;
+    }
+    return effect?.position || {
+      x: Number(effect?.x) || 0,
+      y: Number(effect?.y) || 0
+    };
+  }
+
+  wait(ms) {
+    if (!(ms > 0) || !this.scene?.time?.delayedCall) return Promise.resolve();
+    return new Promise(resolve => this.scene.time.delayedCall(ms, resolve));
+  }
+
+  async play(effect, { speed = 1 } = {}) {
+    const effectKey = effect?.effectKey || effect?.key;
+    const frames = this.framesFor(effectKey);
+    if (!frames.length || !this.textureRegistry || !this.scene?.add?.image) return false;
+
+    const position = this.resolvePosition(effect);
+    const firstKey = this.textureRegistry.keyFor(frames[0]);
+    if (!firstKey || !this.scene?.textures?.exists(firstKey)) return false;
+
+    const image = this.scene.add.image(Number(position?.x) || 0, Number(position?.y) || 0, firstKey);
+    image.setOrigin?.(0.5, 0.5);
+    image.setDepth?.(Number(effect?.depth) || 20);
+    if (Number(effect?.displaySize) > 0) image.setDisplaySize?.(Number(effect.displaySize), Number(effect.displaySize));
+    if (Number.isFinite(Number(effect?.alpha))) image.setAlpha?.(Number(effect.alpha));
+    this.active.add(image);
+
+    const frameMs = Math.max(16, Number(effect?.frameMs) || 70);
+    const playbackSpeed = Math.max(1, Number(speed) || 1);
+    try {
+      for (let index = 0; index < frames.length; index += 1) {
+        const key = this.textureRegistry.keyFor(frames[index]);
+        if (key && this.scene?.textures?.exists(key) && image.texture?.key !== key) image.setTexture?.(key);
+        if (index < frames.length - 1) await this.wait(Math.round(frameMs / playbackSpeed));
+      }
+      return true;
+    } finally {
+      this.active.delete(image);
+      image.destroy?.();
+    }
+  }
+
+  clear() {
+    this.active.forEach(image => image?.destroy?.());
+    this.active.clear();
+  }
+
+  destroy() {
+    this.clear();
+    this.scene = null;
+    this.textureRegistry = null;
+  }
 }
 
+function createVfxManager(scene, options = {}) {
+  return new VfxManager(scene, options);
+}
+
+// ===== phaser/scenes/BattleScene.js =====
+// ---------- W6 Shared-asset Dungeon Combat Scene Shell ----------
 function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTargetSelected } = {}) {
   return class BattleScene extends Phaser.Scene {
     constructor() {
@@ -9338,17 +9739,22 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.initialSnapshot = initialSnapshot || null;
       this.snapshot = null;
       this.actors = { hero: null, pet: null, monsters: [] };
-      this.assetUrls = new Map();
+      this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
+      this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
       this.readyNotified = false;
       this.presentationQueue = createPresentationQueue();
+      this.vfxManager = createVfxManager(this, {
+        assetResolver: this.assetResolver,
+        textureRegistry: this.textureRegistry
+      });
       this.presentationScale = 1;
       this.handleResize = this.handleResize.bind(this);
     }
 
-    assetKey(url) {
-      const key = phaserAssetKey(url);
-      if (url) this.assetUrls.set(key, url);
-      return key;
+    assetKey(reference) {
+      // Compatibility surface for W5 actors; key ownership now lives in the
+      // shared registry and can be reused by future scenes/renderers.
+      return this.textureRegistry.keyFor(reference);
     }
 
     collectAssets(snapshot) {
@@ -9367,19 +9773,16 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
           ...(unit.frames?.death || [])
         );
       });
-      return [...new Set(assets.filter(Boolean))];
+      return this.assetResolver.resolveAll(assets);
     }
 
     preload() {
       const assets = this.collectAssets(this.initialSnapshot);
-      assets.forEach(url => {
-        const key = this.assetKey(url);
-        if (!this.textures.exists(key)) this.load.image(key, url);
-      });
+      this.textureRegistry.queue(this, assets);
       this.load.on("loaderror", file => {
         // Optional art failure is presentation-local. Actors retain a readable
         // vector fallback and the DOM renderer remains available above us.
-        if (file?.key) this.assetUrls.delete(file.key);
+        if (file?.key) this.textureRegistry.forget(file.key);
       });
     }
 
@@ -9473,6 +9876,8 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
     shutdown() {
       this.scale.off("resize", this.handleResize, this);
       this.presentationQueue?.clear();
+      this.vfxManager?.destroy();
+      this.vfxManager = null;
       Object.values(this.actors).flatMap(value => Array.isArray(value) ? value : [value]).filter(Boolean).forEach(actor => actor.destroy());
       this.actors = { hero: null, pet: null, monsters: [] };
       if (this.readyNotified) onReady?.({ scene: null, destroyed: true });
@@ -9490,6 +9895,9 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
   let windowResize = null;
   let currentSnapshot = snapshot || null;
   const bridge = createPresentationEventBridge({
+    syncType: "BATTLEFIELD_SYNC",
+    streamKey: "battleId",
+    allowStaleSync: true,
     onEvent: event => scene?.consume(event),
     onStatus: (status, detail) => status === "error" && onError?.(detail)
   });
