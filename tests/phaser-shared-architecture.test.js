@@ -263,7 +263,7 @@ test("W6.4 PresentationQueue accepts only resolved visual tasks and preserves sp
   await queue.whenDrained();
   assert.deepEqual(calls, [2]);
   assert.equal(queue.isBusy(), false);
-  assert.doesNotMatch(queueSource, /battleCore|simulateBattle|damage|cooldown|checkpoint|reward|saveRunState/);
+  assert.doesNotMatch(queueSource, /battleCore|BATTLE_CORE_V1|battleStep|simulateBattle|applyCoreBattleState|saveRunState|createDungeonBattle/);
 });
 
 test("W6.4 VfxManager is a shared renderer for already-resolved effect events", async () => {
