@@ -180,7 +180,7 @@ test("W6.3 HeroActor delegates V3 visual composition to one shared HeroRenderer"
   assert.doesNotMatch(actor, /layerImages/);
   assert.doesNotMatch(actor, /layerSetForState/);
   assert.match(renderer, /class HeroRenderer/);
-  assert.match(renderer, /resolveHeroV3Layers already returns the DOM bottom-to-top contract/);
+  assert.match(renderer, /Presentation models already arrive in authored bottom-to-top order/);
   assert.doesNotMatch(renderer, /heroVisualSelectionFromEquipment/);
   assert.doesNotMatch(renderer, /V5_G2|Hero V5 Runtime|coverage_underlay/);
 });
