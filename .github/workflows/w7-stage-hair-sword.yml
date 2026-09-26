@@ -42,7 +42,7 @@ jobs:
           test -f /tmp/azure-src/HERO_V5_G2_AZURE_TEST/masters/AZURE_SWORD_UPRIGHT.png
 
       - name: Install Pillow
-        run: python -m pip install pillow
+        run: python -m pip install pillow numpy
 
       - name: Stage V5 hair and authored idle sword
         shell: bash
