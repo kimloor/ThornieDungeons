@@ -13,7 +13,7 @@ function source(relPath) {
 test("W6.1 AssetResolver owns Phaser path and manifest resolution", () => {
   const resolver = source("src/phaser/assets/AssetResolver.js");
   const context = {
-    assetUrl: value => `/assets/${String(value).replace(/^\\/+/, "")}`,
+    assetUrl: value => `/assets/${String(value).replace(/^\/+/, "")}`,
     optionalAsset: key => key === "battleUi.background" ? "/assets/ui/battle/background.png" : ""
   };
   vm.createContext(context);
