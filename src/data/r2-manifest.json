@@ -1,7 +1,7 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-26T01:36:56Z",
-  "count": 320,
+  "generatedAt": "2026-09-26T07:46:23Z",
+  "count": 346,
   "objects": [
     {
       "key": "audio/bgm/main_theme.mp3",
@@ -37,10 +37,296 @@
       "storage_class": "Standard"
     },
     {
+      "key": "hero/v5/g2/base/attack_01.png",
+      "etag": "4868373fa7d525dff248af5cd22f1a62",
+      "last_modified": "2026-09-26T04:24:35.538Z",
+      "size": 129185,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/base/attack_02.png",
+      "etag": "c6cfd8a1682a25e3af8376d38a2564a4",
+      "last_modified": "2026-09-26T04:24:39.043Z",
+      "size": 124279,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/base/attack_03.png",
+      "etag": "caebc34ccdffc25778720b7a2b863040",
+      "last_modified": "2026-09-26T04:24:41.850Z",
+      "size": 118628,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/base/death_01.png",
+      "etag": "c01a06b3b02f2537d66ad269ea09cf55",
+      "last_modified": "2026-09-26T04:24:44.591Z",
+      "size": 130575,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/base/death_02.png",
+      "etag": "13b6475b2bcc467fdb34f63fdbc06638",
+      "last_modified": "2026-09-26T04:24:47.250Z",
+      "size": 115349,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/base/idle_01.png",
+      "etag": "9c2346285743432f7926e8003eab2298",
+      "last_modified": "2026-09-26T04:24:49.983Z",
+      "size": 128216,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/base/idle_02.png",
+      "etag": "85143a04d20fef59610e3bab68bd96c9",
+      "last_modified": "2026-09-26T04:24:52.699Z",
+      "size": 128204,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/base/idle_03.png",
+      "etag": "0e04236bfd087a94ad57f30d965b73cb",
+      "last_modified": "2026-09-26T04:24:55.258Z",
+      "size": 128213,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/VALIDATION.json",
+      "etag": "02b1dee5d25aa55ae83939e4fb3be912",
+      "last_modified": "2026-09-26T04:07:40.220Z",
+      "size": 4981,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/WING_FRAME_CONTRACT.json",
+      "etag": "70c7c7333e80d103dc1a440ac5198b72",
+      "last_modified": "2026-09-26T04:07:43.315Z",
+      "size": 13657,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/attack_01/wing_far.png",
+      "etag": "e71652746560dda28df0f77c1ba3e2ea",
+      "last_modified": "2026-09-26T04:07:46.191Z",
+      "size": 75444,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/attack_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-26T04:07:48.928Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/attack_02/wing_far.png",
+      "etag": "b03350c92109ed31fc35924ad5a10fe3",
+      "last_modified": "2026-09-26T04:07:51.263Z",
+      "size": 55526,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/attack_02/wing_near.png",
+      "etag": "3f8439967a89cb70ed444378f55996c6",
+      "last_modified": "2026-09-26T04:07:53.838Z",
+      "size": 56017,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/attack_03/wing_far.png",
+      "etag": "4f1d6ccea0a51969e965f3a0b7a3f77d",
+      "last_modified": "2026-09-26T04:07:56.642Z",
+      "size": 56083,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/attack_03/wing_near.png",
+      "etag": "f8bc339297b5e26aa4432af65215f779",
+      "last_modified": "2026-09-26T04:07:59.171Z",
+      "size": 52423,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/death_01/wing_far.png",
+      "etag": "9e46480f4f73abde7c43fd3bcb28a3ce",
+      "last_modified": "2026-09-26T04:08:01.662Z",
+      "size": 90744,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/death_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-26T04:08:04.170Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/death_02/wing_far.png",
+      "etag": "0bddc4b9e4cadfb66a301c8e54e71cda",
+      "last_modified": "2026-09-26T04:08:06.718Z",
+      "size": 59753,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/death_02/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-26T04:08:09.203Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/idle_01/wing_far.png",
+      "etag": "c7c5b5ee1976489814047cc8089cca56",
+      "last_modified": "2026-09-26T04:08:11.820Z",
+      "size": 107830,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/idle_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-26T04:08:14.376Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/idle_02/wing_far.png",
+      "etag": "c94b67e7eab0f42479573577484a4085",
+      "last_modified": "2026-09-26T04:08:16.730Z",
+      "size": 107823,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/idle_02/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-26T04:08:19.289Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/idle_03/wing_far.png",
+      "etag": "a0d29d7d69d52a267850fdd6d97ff95c",
+      "last_modified": "2026-09-26T04:08:21.790Z",
+      "size": 107824,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/idle_03/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-26T04:08:24.319Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "manifest.json",
-      "etag": "65fb32fe12b23434aec43bb9f0c9cef4",
-      "last_modified": "2026-09-25T05:01:04.635Z",
-      "size": 27414,
+      "etag": "8c0d2c0a3a9e98c1aa1f8dfbed796725",
+      "last_modified": "2026-09-26T04:24:57.888Z",
+      "size": 29614,
       "http_metadata": {
         "contentType": "application/json"
       },
