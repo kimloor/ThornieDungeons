@@ -250,3 +250,88 @@ test("W6.3 shared HeroRenderer loads before HeroActor", () => {
   assert.ok(actorIndex > rendererIndex);
 });
 
+test("W6.4 PresentationQueue accepts only resolved visual tasks and preserves speed boundary", async () => {
+  const queueSource = source("src/phaser/presentation/PresentationQueue.js");
+  const calls = [];
+  const context = { calls };
+  vm.createContext(context);
+  vm.runInContext(`${queueSource}; this.queue = createPresentationQueue();`, context);
+  const queue = context.queue;
+  queue.setSpeed(9);
+  assert.equal(queue.getSpeed(), 2);
+  await queue.enqueue(speed => { calls.push(speed); });
+  await queue.whenDrained();
+  assert.deepEqual(calls, [2]);
+  assert.equal(queue.isBusy(), false);
+  assert.doesNotMatch(queueSource, /battleCore|simulateBattle|damage|cooldown|checkpoint|reward|saveRunState/);
+});
+
+test("W6.4 VfxManager is a shared renderer for already-resolved effect events", async () => {
+  const managerSource = source("src/phaser/presentation/VfxManager.js");
+  const queued = [];
+  const created = [];
+  const textureRegistry = {
+    keyFor: url => `key:${url}`,
+    queue: (_scene, urls) => {
+      queued.push(...urls);
+      return urls;
+    }
+  };
+  const scene = {
+    textureRegistry,
+    textures: { exists: () => true },
+    add: {
+      image: (x, y, key) => {
+        const image = {
+          x, y,
+          texture: { key },
+          setOrigin() { return this; },
+          setDepth() { return this; },
+          setDisplaySize() { return this; },
+          setAlpha() { return this; },
+          setTexture(next) { this.texture.key = next; return this; },
+          destroy() { this.destroyed = true; }
+        };
+        created.push(image);
+        return image;
+      }
+    }
+  };
+  const context = { console };
+  vm.createContext(context);
+  vm.runInContext(`${managerSource}; this.createVfxManager = createVfxManager;`, context);
+  const manager = context.createVfxManager(scene, {
+    assetResolver: { resolve: value => `/assets/${value}` },
+    textureRegistry,
+    frameResolver: key => key === "slash" ? ["vfx/a.png", "vfx/b.png"] : [],
+    positionResolver: () => ({ x: 12, y: 34 })
+  });
+  assert.deepEqual(Array.from(manager.framesFor("slash")), ["/assets/vfx/a.png", "/assets/vfx/b.png"]);
+  manager.queueAssets(["slash"]);
+  assert.deepEqual(queued, ["/assets/vfx/a.png", "/assets/vfx/b.png"]);
+  await manager.play({ effectKey: "slash" }, { speed: 2 });
+  assert.equal(created[0].x, 12);
+  assert.equal(created[0].y, 34);
+  assert.equal(created[0].texture.key, "key:/assets/vfx/b.png");
+  assert.equal(created[0].destroyed, true);
+  assert.doesNotMatch(managerSource, /battleStep|simulateBattle|damage\s*=|cooldown|proc|reward|checkpoint/);
+});
+
+test("W6.4 BattleScene owns one shared VfxManager without resolving gameplay", () => {
+  const scene = source("src/phaser/scenes/BattleScene.js");
+  assert.match(scene, /this\.vfxManager = createVfxManager\(this/);
+  assert.match(scene, /this\.vfxManager\?\.destroy\(\)/);
+  assert.equal((scene.match(/createVfxManager\(/g) || []).length, 1);
+  assert.doesNotMatch(scene, /BATTLE_VFX_PRESENTATION|resolvedEvents\(/);
+});
+
+test("W6.4 shared queue and VFX manager load before BattleScene", () => {
+  const build = source("build.js");
+  const queueIndex = build.indexOf('"phaser/presentation/PresentationQueue.js"');
+  const vfxIndex = build.indexOf('"phaser/presentation/VfxManager.js"');
+  const sceneIndex = build.indexOf('"phaser/scenes/BattleScene.js"');
+  assert.ok(queueIndex > 0);
+  assert.ok(vfxIndex > queueIndex);
+  assert.ok(sceneIndex > vfxIndex);
+});
+

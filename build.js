@@ -52,6 +52,7 @@ const MODULE_ORDER = [
   "phaser/actors/PetActor.js",
   "phaser/actors/MonsterActor.js",
   "phaser/presentation/PresentationQueue.js",
+  "phaser/presentation/VfxManager.js",
   "phaser/scenes/BattleScene.js",
   "phaser/runtime/BattlefieldHost.js",
   "phaser/ui/PhaserBattlefield.js",

@@ -10,6 +10,10 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
       this.readyNotified = false;
       this.presentationQueue = createPresentationQueue();
+      this.vfxManager = createVfxManager(this, {
+        assetResolver: this.assetResolver,
+        textureRegistry: this.textureRegistry
+      });
       this.presentationScale = 1;
       this.handleResize = this.handleResize.bind(this);
     }
@@ -139,6 +143,8 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
     shutdown() {
       this.scale.off("resize", this.handleResize, this);
       this.presentationQueue?.clear();
+      this.vfxManager?.destroy();
+      this.vfxManager = null;
       Object.values(this.actors).flatMap(value => Array.isArray(value) ? value : [value]).filter(Boolean).forEach(actor => actor.destroy());
       this.actors = { hero: null, pet: null, monsters: [] };
       if (this.readyNotified) onReady?.({ scene: null, destroyed: true });
