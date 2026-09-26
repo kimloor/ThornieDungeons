@@ -9365,9 +9365,8 @@ class PhaserBattleActor {
     this.statusText.setPosition(0, -Math.round(size * 0.72) - 4);
     this.hpTextOffsetY = barY + 10;
     this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
-    const nameX = this.data.kind === "hero" ? -Math.round(Math.min(30, size * 0.18)) : 0;
     const nameY = this.data.kind === "pet" ? 22 : 34;
-    this.nameText.setPosition(nameX, nameY);
+    this.nameText.setPosition(0, nameY);
   }
 
   refresh(data, { animate = true } = {}) {
@@ -9540,7 +9539,11 @@ class HeroActor extends PhaserBattleActor {
 // ===== phaser/actors/PetActor.js =====
 // ---------- W5 Pet Actor ----------
 class PetActor extends PhaserBattleActor {
-  constructor(scene, data) { super(scene, data, { baseSize: 118, depth: 6 }); }
+  constructor(scene, data) {
+    // Pet stands in the foreground lane. Keep its sprite above the Hero HUD when
+    // narrow screens make the two lanes overlap visually.
+    super(scene, data, { baseSize: 118, depth: 8 });
+  }
 }
 
 // ===== phaser/actors/MonsterActor.js =====
