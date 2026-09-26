@@ -22,8 +22,8 @@ The lanes may run in parallel where dependencies allow.
 - Do not overwrite unrelated work.
 - Existing Battle Core, Arena resolver/API, save/checkpoint, rewards, skill rules and Pet rules remain authoritative unless separately approved.
 - React/DOM remains application/page UI.
-- Phaser is presentation-only for Dungeon Combat and Arena battlefield rendering.
-- Inventory remains React/DOM.
+- Phaser is presentation-only and may be reused for animation-heavy game surfaces; gameplay/data authority remains outside Phaser.
+- Inventory remains React/DOM; only the live Hero preview may use the shared Phaser renderer.
 - Hero V5 remains modular, layered, synchronized frame-based animation; no skeletal/Spine runtime.
 - High-risk scopes use branch + focused QA + user verification before release.
 - Do not remove fallbacks until replacements are verified.
@@ -224,125 +224,199 @@ Authenticated production E2E may use test credentials only when explicitly autho
 
 ---
 
-## W5 — Phaser Shared Foundation + Production Anchors
+## W5 — Phaser Combat Foundation + Presentation
 
-Turn the prototype into reusable production architecture.
+**Status: ACTIVE — Batch 1 foundation in QA preparation**
 
-Create:
-```text
-src/phaser/
-├─ runtime/
-├─ scenes/
-│  ├─ BattleScene
-│  └─ ArenaScene
-├─ actors/
-│  ├─ HeroActor
-│  ├─ PetActor
-│  └─ MonsterActor
-├─ presentation/
-│  ├─ EventBridge
-│  ├─ PresentationQueue
-│  ├─ DamageFeedback
-│  └─ VfxManager
-└─ layout/
-   └─ ResponsiveAnchors
-```
+Purpose:
+- establish the opt-in Phaser Combat battlefield without changing Battle Core;
+- keep React/DOM authoritative for HUD, controls, logs, modals and Result shell;
+- preserve the DOM battlefield fallback until browser/responsive QA passes.
 
-Lock responsive anchors:
-- HERO_ANCHOR
-- PET_ANCHOR
-- MONSTER_SLOT_1/2/3
-- VFX_HERO_ANCHOR
-- VFX_PET_ANCHOR
-- VFX_MONSTER_ANCHOR
+### W5.1 — Foundation
+- Phaser runtime bootstrap and cached lazy loader;
+- isolated mount/unmount lifecycle;
+- CombatScene shell;
+- Hero / Pet / Monster presentation actors;
+- responsive normalized anchors;
+- read-only battle snapshot bridge;
+- safe DOM fallback on runtime/load/scene failure;
+- default renderer remains DOM during rollout.
 
-PresentationQueue must also expose a clean action-visual-complete/drained boundary. W6 uses it so a terminal attack/VFX/death sequence is not cut off before Result transition.
+### W5.2 — Combat Presentation
+After W5.1 QA:
+- Attack / Hit / Hurt / Death presentation;
+- target feedback;
+- shared VFX playback;
+- damage / heal / miss feedback;
+- x1/x2 presentation timing;
+- Skip presentation drain/cancel boundary;
+- terminal action -> Victory/Defeat transition hook.
 
 No gameplay logic moves into Phaser.
 
 ---
 
-## W6 — Dungeon Combat -> Phaser + Battle Result / Final Commit
+## W6 — Shared Phaser Presentation Architecture
 
-Execute as one Battle-focused WORK package to avoid reopening the same App/Battle/Worker/save context twice. Keep two internal commits/gates.
+**Gate: complete this before expanding Phaser to Arena or additional screens.**
 
-### W6-A — Dungeon presentation + Result
+Create/refine the reusable presentation layer so later scenes do not implement their own Hero/VFX/asset logic.
 
-Move battlefield presentation only:
-- Hero;
-- Pet;
-- 1–3 Monsters;
-- target marker;
-- VFX;
-- floating feedback;
-- hit/death feedback;
-- battlefield positions.
+Required shared modules:
 
-Also implement the approved `BATTLE-RESULT-COMMIT-V1.md` presentation contract:
-- final Basic/skill/Pet action finishes animation/VFX/death before Result;
-- Blade Storm kill-all visibly completes;
-- Victory confirming is animation-only;
-- thorned ancient shield + unfolding wings + VICTORY;
-- no reward/progress/buttons/saving text while commit is pending;
-- after commit reveal Gold/Diamonds/Drops + Hero/Pet progress;
-- Hero/Pet EXP uses numeric count-up in the progress area only;
-- highlight order: Floor Unlock -> New Pet -> Hero Level Up -> Pet Level Up;
-- Defeat uses broken/shattering shield, then Retry / Map after animation.
+### HeroRenderer / HeroActor
+One logical Hero renderer reused by:
+- Combat;
+- Arena;
+- Inventory Hero Preview;
+- Character Status Preview;
+- Player Card/Profile Preview where appropriate;
+- Victory presentation.
 
-Keep React/DOM:
-- top bar / turn queue;
-- quick slots;
-- Attack/Auto/Flee/Settings;
-- x1/x2/Skip;
-- combat log;
-- modal/result UI shell.
+It owns synchronized visual layers and animation state only.
 
-Keep DOM battlefield fallback until QA/user approval.
+### EquipmentVisualResolver
+Input:
+- current/preview equipment identity;
+- animation state/frame index.
 
-### W6-B — Final Battle Commit / Completion Reliability V2
+Output:
+- approved visual layers for helmet/armor/gloves/boots/weapon/accessory visual/wings as available.
 
-After W6-A gate passes on the same branch:
-- remove the crash window between accepted completion and reward persistence;
-- immutable/idempotent completion reward receipt per battle identity;
-- repeated completion returns the same committed result;
-- no reward reroll or duplicate Gold/EXP/items/Pet EXP/floor progression;
-- Result Ready renders committed receipt values;
-- preserve safe Action-boundary checkpoint rules;
-- skip redundant checkpoint round trip when the required safe checkpoint is already confirmed;
-- consolidate post-battle network round trips where safe;
-- additive D1 migration only if required;
-- keep existing reward formulas/balance unless separately approved.
+No Combat/Inventory/Arena component may independently reconstruct Hero equipment asset paths.
 
-No Battle gameplay resolution moves into Phaser or server logic.
+### AssetResolver / TextureRegistry
+- read real manifest entries;
+- resolve canonical R2 asset paths;
+- preload only required assets where practical;
+- cache textures across scene lifecycle where safe;
+- provide explicit fallback behavior;
+- never guess asset keys.
 
-Gate:
-- Battle Core output unchanged;
-- target switching and 1/2/3-monster layout;
-- final Basic Attack / Blade Storm / Pet final-hit presentation;
-- VFX/hit/death;
-- x1/x2/Auto/Skip;
-- checkpoint/resume;
-- Victory Confirming -> Ready;
-- Defeat animation -> Retry/Map;
-- duplicate completion/retry safety;
-- reload/recovery after committed completion;
-- receipt values match Result;
-- no reward reroll/duplication;
-- build/persistence/backend tests;
-- authenticated staging E2E before release.
+### PresentationEventBridge
+Normalize authoritative resolved state into scene-independent presentation events.
+
+Phaser must never resolve:
+- damage;
+- hit/miss;
+- target legality;
+- cooldowns;
+- statuses;
+- rewards;
+- progression;
+- checkpoints.
+
+### PresentationQueue
+Own visual sequencing:
+```text
+ACTOR_ATTACK
+→ motion
+→ VFX
+→ hit feedback
+→ floating feedback
+→ death
+→ ACTION_VISUAL_COMPLETE
+```
+
+Also owns:
+- x1/x2 visual timing;
+- Skip drain/cancel;
+- terminal presentation drain boundary.
+
+### VfxManager
+One shared VFX library for:
+- slash/projectile;
+- heal;
+- buff/debuff;
+- AoE;
+- particles;
+- screen flash;
+- camera shake where approved.
+
+Do not build separate Combat/Arena/Raid VFX systems.
+
+### ResponsiveSceneLayout
+Expand the existing normalized anchor system for reusable scene layouts while keeping scene-specific anchor contracts explicit.
 
 ---
 
-## W7 — Arena Battle Stage -> Phaser
+## W7 — Hero V5 Runtime Integration
 
-Replace only Arena battlefield presentation.
+**Starts only after approved Hero V5 G2 assets + Armor Coverage gate.**
 
-Reuse shared:
-- HeroActor;
+Implement Hero V5 once through the shared HeroRenderer.
+
+Requirements:
+- synchronized frame-based modular composition;
+- Idle / Attack / Death / Victory states as approved;
+- shared 768x768 coordinate space;
+- equipment swapping through EquipmentVisualResolver;
+- weapon swapping;
+- approved wing frame contract;
+- no skeletal/bone-driven replacement of authored frames;
+- V4 fallback retained during rollout.
+
+Primary wing layer contract:
+```text
+wing_far
+→ Hero/body/equipment/weapon composition
+→ wing_near
+```
+
+Frame-specific approved exceptions in the Hero V5 contract remain authoritative.
+
+No page may create a separate Hero V5 renderer.
+
+---
+
+## W8 — Inventory + Character Live Preview
+
+Inventory and Character Status remain React/DOM.
+
+Phaser is used only for the live character preview.
+
+Flow:
+```text
+React equipment state
+→ preview equipment state
+→ EquipmentVisualResolver
+→ HeroRenderer
+→ HeroPreviewScene
+```
+
+Requirements:
+- preview equipment before authoritative Equip save where appropriate;
+- real-time helmet/armor/gloves/boots/weapon/wings visual swap;
+- shared idle animation;
+- preview state separated from authoritative equipped state;
+- optional small equip transition/glow may be presentation-only;
+- same HeroPreview renderer reused by Character Status.
+
+Do not move into Phaser:
+- Inventory grid;
+- item details/comparison;
+- stats;
+- filter/sort;
+- Equip/Unequip mutation authority;
+- save/persistence.
+
+---
+
+## W9 — Arena Phaser
+
+Replace Arena battlefield presentation only after W6 shared architecture is stable.
+
+Reuse:
+- HeroRenderer;
 - PetActor;
-- presentation queue;
-- VFX;
-- responsive anchors.
+- shared ActorPresentationModel;
+- EquipmentVisualResolver;
+- PresentationEventBridge;
+- PresentationQueue;
+- VfxManager;
+- AssetResolver / TextureRegistry;
+- responsive scene layout.
 
 Preserve:
 - lobby/opponent list;
@@ -352,88 +426,72 @@ Preserve:
 - HUD/action panel/log/result;
 - rating/rewards.
 
----
-
-## W8 — Hero V5 Phaser Runtime Integration
-
-Starts only after GRAPHICS G1/G2 approval.
-
-Implement:
-- synchronized Hero V5 layered composition;
-- Idle/Attack/Death frame playback;
-- hair/head/body/arm/weapon/wings ordering;
-- equipment layer swapping from current equipment state;
-- no bone/limb tween animation;
-- V4 fallback retained during rollout.
+Arena gameplay remains authoritative outside Phaser.
 
 ---
 
-## W9 — Phaser Production Cutover
+## W10 — Victory / Boss / Raid Presentation
 
-After Dungeon + Arena + Hero V5 QA:
-- Phaser becomes default battlefield renderer;
-- remove temporary experiment flag/code;
-- remove obsolete DOM battlefield-only renderer only after verification;
-- keep DOM HUD/page UI;
-- preserve rollback path until production check completes.
+### Victory / Defeat
+Use shared presentation infrastructure for:
+- victory pose;
+- approved wing animation;
+- particles/glow;
+- camera fade/flash where appropriate;
+- clean transition into the existing Result commit flow;
+- defeat presentation before Retry/Map controls.
+
+### Boss presentation
+Reusable presentation hooks may support:
+- boss entrance;
+- camera zoom/shake;
+- aura/rage visual state;
+- phase-transition presentation.
+
+### Raid
+Reuse shared Monster/Boss actors, AssetResolver, VfxManager and PresentationQueue.
+Do not create a separate Raid rendering architecture.
+
+Gameplay, rewards and Raid authority remain outside Phaser.
 
 ---
 
-## W10 — Final Architecture Cleanup
+## W11 — Summoning / Enhance / Craft Presentation
 
-Only after Social, Inventory and Phaser boundaries are stable.
+Use Phaser only for animation-heavy presentation.
 
-Controller direction:
-```text
-App
-├─ AuthController
-├─ CharacterController
-├─ NavigationController
-├─ InventoryController
-├─ PetController
-├─ SocialController
-└─ BattleController
-```
+### Summoning
+Possible presentation scope:
+- portal;
+- rarity glow;
+- summon reveal;
+- particles;
+- camera effects.
 
-Feature direction:
-```text
-src/ui/
-  shared/
-  character/
-  inventory/
-  pet/
-  friend/
-  chat/
-  guild/
-  battle/
-  raid/
-  arena/
+### Enhance / Craft
+Possible presentation scope:
+- forge/fire/spark effects;
+- success/fail presentation;
+- result reveal.
 
-src/phaser/
-  runtime/
-  scenes/
-  actors/
-  presentation/
-  layout/
+React/DOM remains responsible for:
+- item/recipe data;
+- costs;
+- buttons/forms;
+- mutation authority;
+- resulting inventory/economy state.
 
-src/styles/
-  base.js
-  layout.js
-  navigation.js
-  character.js
-  inventory.js
-  pet.js
-  social.js
-  battle.js
-  raid.js
-  arena.js
-```
+---
 
-Also:
-- consolidate real shared fetch/cache helpers;
-- remove confirmed dead legacy symbols;
-- avoid speculative abstractions;
-- avoid moving files repeatedly.
+## Phaser rollout rules after W5-W11
+
+- Do not migrate the entire application into Phaser.
+- Do not create per-page Hero renderers.
+- Do not create per-scene VFX systems.
+- Do not construct asset URLs independently in screens/scenes.
+- Keep DOM fallbacks until each migrated surface is QA/user verified.
+- Production cutover/removal of obsolete fallback code happens only after the relevant surface is verified.
+- Dungeon exploration/presentation is intentionally **not** part of the active roadmap.
 
 ---
 
@@ -468,13 +526,13 @@ After G1 direction is approved:
 - define real manifest keys/paths;
 - transparency/alignment checks.
 
-G2 approval is the gate for W8.
+G2 approval is the gate for W7.
 
 ---
 
 ## G3 — Phaser Visual QA / Asset Gaps
 
-During W5-W9:
+During W5-W11:
 - inspect actual presentation for scale/clarity;
 - produce only missing presentation assets explicitly identified by implementation/QA;
 - target marker/VFX/feedback adjustments if existing assets are insufficient;
@@ -492,21 +550,23 @@ W1  Inventory Refactor + Donation-ready Boundary ✅ COMPLETE
  ↓
 W2  Guild Donation ✅ COMPLETE
  ↓
-W3  Guild Chat + Social Integration/UX — IMPLEMENTED / READY_FOR_QA
+W3  Guild Chat + Social Integration/UX ✅ COMPLETE
  ↓
-W4  Social Production E2E
+W4  Social Production E2E / Release QA
  ↓
-W5  Phaser Foundation + Anchors
+W5  Phaser Combat Foundation + Presentation
  ↓
-W6  Dungeon -> Phaser
+W6  Shared Phaser Presentation Architecture
  ↓
-W7  Arena -> Phaser
+W7  Hero V5 Runtime Integration
  ↓
-W8  Hero V5 Runtime Integration
+W8  Inventory + Character Live Preview
  ↓
-W9  Phaser Production Cutover
+W9  Arena Phaser
  ↓
-W10 Final Architecture Cleanup
+W10 Victory / Boss / Raid Presentation
+ ↓
+W11 Summoning / Enhance / Craft Presentation
 ```
 
 Parallel Graphics path:
@@ -514,10 +574,10 @@ Parallel Graphics path:
 ```text
 G1 Hero V5 Base
  ↓
-G2 Layer/Equipment Validation
- └──────────────> required before W8
+G2 Layer / Wing / Equipment Validation
+ └──────────────> required before W7
 
-G3 Visual asset support runs only when W5-W9 identifies a real need.
+G3 Visual asset support runs only when W5-W11 identifies a real need.
 ```
 
 CHAT lane C1-C4 runs continuously between WORK/GRAPHICS milestones for audit, documentation, QA and small low-risk polish.
@@ -531,8 +591,10 @@ The active roadmap is complete when:
 - Guild Donation and Guild Chat V1 are production-verified;
 - Friend/Chat/Guild integration passes E2E;
 - Inventory V2 is structurally clean and behavior-stable;
-- Dungeon Combat battlefield uses Phaser in production;
-- Arena battle stage uses Phaser in production;
-- Hero V5 is approved and integrated in Phaser;
-- temporary DOM battlefield/experiment code is safely removed;
-- App/styles/folder architecture is stabilized and documented.
+- Combat presentation uses the approved shared Phaser architecture;
+- Hero V5 is integrated once through the shared HeroRenderer and equipment resolver;
+- Inventory/Character preview reuses the shared Hero renderer without moving Inventory UI into Phaser;
+- Arena reuses the same presentation infrastructure;
+- Victory/Boss/Raid and Summoning/Enhance/Craft presentation reuse shared modules where implemented;
+- temporary fallbacks are removed only after surface-specific QA/user verification;
+- App/styles/Phaser boundaries remain documented and stable.

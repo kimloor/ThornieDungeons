@@ -380,3 +380,27 @@ optional; CSS remains the runtime fallback until Graphics publishes it.
   }
 }
 ```
+
+## 19. Future shared Phaser Hero preview boundary
+
+The Inventory page remains React/DOM. A future roadmap milestone may replace only the central Hero visual preview with the shared Phaser HeroRenderer.
+
+Approved boundary:
+
+~~~text
+Inventory React state
+→ optional preview equipment state
+→ EquipmentVisualResolver
+→ HeroRenderer
+→ HeroPreviewScene
+~~~
+
+Rules:
+- Inventory grid, item popup/comparison, stats, filter/sort and actions remain DOM;
+- Equip/Unequip/save authority remains in the existing application/data flow;
+- previewing an item must not mutate authoritative equipment state;
+- Hero preview reuses the same HeroRenderer used by Combat/Arena rather than creating an Inventory-specific renderer;
+- approved Hero V5 equipment/wing frame contracts remain authoritative;
+- small equip glow/transition may be presentation-only after the core preview is stable.
+
+This is a future roadmap integration and does not change current Inventory V2 behavior by itself.
