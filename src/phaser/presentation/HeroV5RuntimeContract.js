@@ -74,9 +74,9 @@ function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings =
     attack: resolved.attack,
     death: resolved.death,
     frameMs: {
-      idle: 220,
-      attack: 150,
-      death: 180
+      idle: 440,
+      attack: 300,
+      death: 360
     }
   });
 }
