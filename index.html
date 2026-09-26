@@ -8851,16 +8851,26 @@ function responsiveMonsterVfxAnchor(slot, monsterCount, width, height) {
   return responsiveAnchorPixels({ x: base.x - 0.04, y: base.y - 0.12 }, width, height);
 }
 
-// ===== phaser/presentation/EventBridge.js =====
-// ---------- W5 Read-only Presentation Bridge ----------
-function presentationStatusData(unit) {
+// ===== phaser/presentation/ActorPresentationModel.js =====
+// ---------- W6 Shared Actor Presentation Model ----------
+const ACTOR_PRESENTATION_MODEL_VERSION = 1;
+
+function actorPresentationStatusData(unit) {
   return Object.entries(unit?.statuses || {}).map(([key, value]) => ({
     key,
     duration: Math.max(0, Number(value?.duration) || 0)
   })).filter(status => status.duration > 0);
 }
 
-function presentationUnit(raw, fallback = {}) {
+function normalizeActorPresentationAnim(value, alive = true) {
+  if (!alive) return "death";
+  if (value === "attack") return "attack";
+  if (value === "hurt") return "hurt";
+  if (value === "death") return "death";
+  return "idle";
+}
+
+function createActorPresentationModel(raw, fallback = {}) {
   const unit = { ...(fallback || {}), ...(raw || {}) };
   return {
     id: String(unit.id || fallback.id || "unit"),
@@ -8869,7 +8879,7 @@ function presentationUnit(raw, fallback = {}) {
     hp: Math.max(0, Number(unit.hp) || 0),
     maxHp: Math.max(1, Number(unit.maxHp) || Number(unit.hp) || 1),
     alive: Number(unit.hp) > 0 && !unit.dead,
-    statuses: presentationStatusData(unit),
+    statuses: actorPresentationStatusData(unit),
     defId: unit.defId || fallback.defId || unit.monsterDefId || unit.id,
     isBoss: !!(unit.isBoss || fallback.isBoss),
     isEliteBoss: !!(unit.isEliteBoss || fallback.isEliteBoss),
@@ -8879,6 +8889,90 @@ function presentationUnit(raw, fallback = {}) {
   };
 }
 
+const ACTOR_PRESENTATION_MODEL = Object.freeze({
+  version: ACTOR_PRESENTATION_MODEL_VERSION,
+  create: createActorPresentationModel,
+  statuses: actorPresentationStatusData,
+  normalizeAnim: normalizeActorPresentationAnim
+});
+
+// ===== phaser/presentation/PresentationEventBridge.js =====
+// ---------- W6 Shared Presentation Event Bridge ----------
+const PRESENTATION_EVENT_BRIDGE_CONTRACT = Object.freeze({
+  version: 1,
+  defaultSyncType: "PRESENTATION_SYNC",
+  defaultStreamKey: "presentationId",
+  targetSelectedType: "TARGET_SELECTED"
+});
+
+function createPresentationEventBridge({
+  onEvent,
+  onStatus,
+  syncType = PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultSyncType,
+  streamKey = PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultStreamKey,
+  allowStaleSync = true
+} = {}) {
+  const resolvedSyncType = String(syncType || PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultSyncType);
+  const resolvedStreamKey = String(streamKey || PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultStreamKey);
+  let currentStreamId = null;
+  let latestSeq = -1;
+
+  const emit = (event, allowStale = false) => {
+    if (!event) return false;
+    const rawStreamId = event?.[resolvedStreamKey];
+    const eventStreamId = rawStreamId == null || rawStreamId === "" ? null : String(rawStreamId);
+    if (!allowStale && currentStreamId && eventStreamId && eventStreamId !== currentStreamId) return false;
+    if (!allowStale && Number.isFinite(Number(event.seq)) && Number(event.seq) < latestSeq) return false;
+    if (eventStreamId) currentStreamId = eventStreamId;
+    if (Number.isFinite(Number(event.seq))) latestSeq = Math.max(latestSeq, Number(event.seq));
+    onEvent?.(Object.freeze({
+      ...event,
+      [resolvedStreamKey]: currentStreamId,
+      seq: latestSeq
+    }));
+    return true;
+  };
+
+  return Object.freeze({
+    contract: PRESENTATION_EVENT_BRIDGE_CONTRACT,
+    emit(event, options = {}) {
+      return emit(event, !!options.allowStale);
+    },
+    sync(snapshot) {
+      const event = {
+        type: resolvedSyncType,
+        [resolvedStreamKey]: snapshot?.[resolvedStreamKey],
+        seq: snapshot?.seq,
+        snapshot
+      };
+      return emit(event, !!allowStaleSync);
+    },
+    targetSelected(targetId) {
+      return onEvent?.({
+        type: PRESENTATION_EVENT_BRIDGE_CONTRACT.targetSelectedType,
+        [resolvedStreamKey]: currentStreamId,
+        targetId
+      });
+    },
+    status(statusValue, detail) {
+      onStatus?.(statusValue, detail);
+    },
+    reset() {
+      currentStreamId = null;
+      latestSeq = -1;
+    },
+    getState() {
+      return Object.freeze({
+        streamKey: resolvedStreamKey,
+        streamId: currentStreamId,
+        latestSeq
+      });
+    }
+  });
+}
+
+// ===== phaser/presentation/EventBridge.js =====
+// ---------- W6 Battle-to-Presentation Snapshot Adapter ----------
 function presentationAnimationConfig(config) {
   const urls = name => SHARED_PHASER_ASSET_RESOLVER.resolveAll(config?.animations?.[name] || []);
   return {
@@ -8886,14 +8980,6 @@ function presentationAnimationConfig(config) {
     attack: urls("attack"),
     death: urls("death")
   };
-}
-
-function normalizePresentationAnim(value, alive = true) {
-  if (!alive) return "death";
-  if (value === "attack") return "attack";
-  if (value === "hurt") return "hurt";
-  if (value === "death") return "death";
-  return "idle";
 }
 
 function heroPresentationLayerFrames(selection = {}) {
@@ -8932,7 +9018,7 @@ function heroPresentationLayerFrames(selection = {}) {
 function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1 } = {}) {
   const state = battleState || {};
   const units = state.units || {};
-  const hero = presentationUnit(units[state.heroId], {
+  const hero = createActorPresentationModel(units[state.heroId], {
     id: state.heroId || "hero",
     kind: "hero",
     name: heroName,
@@ -8940,11 +9026,11 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     maxHp: 1
   });
   const pet = state.petId && units[state.petId]
-    ? presentationUnit(units[state.petId], petCombat || {})
-    : petCombat ? presentationUnit(petCombat, { id: petCombat.instId || "pet", kind: "pet" }) : null;
+    ? createActorPresentationModel(units[state.petId], petCombat || {})
+    : petCombat ? createActorPresentationModel(petCombat, { id: petCombat.instId || "pet", kind: "pet" }) : null;
   const enemyIds = Array.isArray(state.enemyIds) && state.enemyIds.length ? state.enemyIds : monsters.map(monster => monster.uid || monster.id);
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
-  const enemyList = enemyIds.map(id => presentationUnit(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
+  const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
   const heroSelection = typeof heroVisualSelectionFromEquipment === "function" ? heroVisualSelectionFromEquipment(equipped) : {};
   const heroFrames = heroPresentationLayerFrames(heroSelection);
   const heroLayers = heroFrames.idle[0] || [];
@@ -8957,44 +9043,25 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
     hero: {
       ...hero,
-      anim: normalizePresentationAnim(heroAnim, hero.alive),
+      anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       layers: heroLayers,
       layerFrames: heroFrames
     },
     pet: pet ? {
       ...pet,
-      anim: normalizePresentationAnim(petAnim, pet.alive),
+      anim: normalizeActorPresentationAnim(petAnim, pet.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(petConfig)
     } : null,
     monsters: enemyList.map((enemy, index) => ({
       ...enemy,
       slotIndex: index,
-      anim: normalizePresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
+      anim: normalizeActorPresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(monsterConfigs[index])
     })),
     backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("battleUi.background")
-  });
-}
-
-function createPresentationEventBridge({ onEvent, onStatus } = {}) {
-  let currentBattleId = null;
-  let latestSeq = -1;
-  const emit = (event, allowStale = false) => {
-    if (!event || (!allowStale && currentBattleId && event.battleId && event.battleId !== currentBattleId)) return false;
-    if (!allowStale && Number.isFinite(Number(event.seq)) && Number(event.seq) < latestSeq) return false;
-    if (event.battleId) currentBattleId = String(event.battleId);
-    if (Number.isFinite(Number(event.seq))) latestSeq = Math.max(latestSeq, Number(event.seq));
-    onEvent?.(Object.freeze({ ...event, battleId: currentBattleId, seq: latestSeq }));
-    return true;
-  };
-  return Object.freeze({
-    sync(snapshot) { return emit({ type: "BATTLEFIELD_SYNC", battleId: snapshot?.battleId, seq: snapshot?.seq, snapshot }, true); },
-    targetSelected(targetId) { return onEvent?.({ type: "TARGET_SELECTED", battleId: currentBattleId, targetId }); },
-    status(statusValue, detail) { onStatus?.(statusValue, detail); },
-    reset() { currentBattleId = null; latestSeq = -1; }
   });
 }
 
@@ -9576,6 +9643,9 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
   let windowResize = null;
   let currentSnapshot = snapshot || null;
   const bridge = createPresentationEventBridge({
+    syncType: "BATTLEFIELD_SYNC",
+    streamKey: "battleId",
+    allowStaleSync: true,
     onEvent: event => scene?.consume(event),
     onStatus: (status, detail) => status === "error" && onError?.(detail)
   });
