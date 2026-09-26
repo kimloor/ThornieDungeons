@@ -530,3 +530,125 @@ test("W7 Hero V5 runtime contract loads before the battle adapter", () => {
   assert.ok(adapterIndex > contractIndex);
 });
 
+test("W7.2 semantic snapshot builds synchronized V5 Base + Wing frames and preserves V3 fallback", () => {
+  const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const adapterSource = source("src/phaser/presentation/EventBridge.js");
+  const frameIds = ["idle_01","idle_02","idle_03","attack_01","attack_02","attack_03","death_01","death_02"];
+  const baseFrames = Object.fromEntries(frameIds.map(id => [id, `hero/v5/g2/base/${id}.png`]));
+  const wingFrames = Object.fromEntries(frameIds.map(id => [id, {
+    wing_far: `hero/v5/g2/wings/${id}/wing_far.png`,
+    wing_near: `hero/v5/g2/wings/${id}/wing_near.png`
+  }]));
+  const context = {
+    ASSETS: {
+      hero001: {
+        v5: {
+          g2: {
+            approval: "approved",
+            canvas: { width: 768, height: 768 },
+            base: { approval: "approved", frames: baseFrames },
+            wingTemplate: { frames: wingFrames }
+          }
+        }
+      }
+    },
+    SHARED_PHASER_ASSET_RESOLVER: {
+      resolve: value => value ? `/assets/${String(value).replace(/^\\/+/, "")}` : "",
+      resolveAll: values => (values || []).filter(Boolean),
+      manifest: () => ""
+    },
+    SHARED_EQUIPMENT_VISUAL_RESOLVER: {
+      resolveHeroSelection: () => ({ wings: "angel" })
+    },
+    createActorPresentationModel: (raw, fallback = {}) => ({ ...fallback, ...(raw || {}), alive: true }),
+    normalizeActorPresentationAnim: value => value || "idle",
+    getPetSpriteConfig: () => null,
+    getMonsterSpriteConfig: () => null,
+    getHeroV3Config: () => ({
+      canvas: { width: 1254, height: 1254 },
+      base: { attack: [{}, {}, {}] },
+      attackFrameMs: 140
+    }),
+    resolveHeroV3Layers: () => [{ name: "base", url: "/assets/v3/base.png", x: 0, y: 0, scale: 1, rotation: 0 }]
+  };
+  vm.createContext(context);
+  vm.runInContext(`${contractSource}\n${adapterSource}; this.v5 = buildBattlefieldSnapshot({
+    battleState: { heroId: "hero", units: { hero: { id: "hero", kind: "hero", hp: 100, maxHp: 100 } } },
+    equipped: { wings: { id: "angel" } },
+    heroV5: true
+  }); this.v3 = buildBattlefieldSnapshot({
+    battleState: { heroId: "hero", units: { hero: { id: "hero", kind: "hero", hp: 100, maxHp: 100 } } },
+    equipped: { wings: { id: "angel" } },
+    heroV5: false
+  });`, context);
+
+  const v5 = JSON.parse(JSON.stringify(context.v5));
+  const v3 = JSON.parse(JSON.stringify(context.v3));
+  assert.equal(v5.hero.visualMode, "v5-g2");
+  assert.deepEqual(v5.hero.layerFrames.canvas, { width: 768, height: 768 });
+  assert.equal(v5.hero.layerFrames.idle.length, 3);
+  assert.equal(v5.hero.layerFrames.attack.length, 3);
+  assert.equal(v5.hero.layerFrames.death.length, 2);
+  assert.deepEqual(v5.hero.layerFrames.attack[1].map(layer => layer.name), ["wing_far", "base", "wing_near"]);
+  assert.equal(v5.hero.layerFrames.attack[1][1].url, "/assets/hero/v5/g2/base/attack_02.png");
+  assert.equal(v5.hero.layerFrames.attack[1][0].url, "/assets/hero/v5/g2/wings/attack_02/wing_far.png");
+  assert.equal(v5.hero.layerFrames.attack[1][2].url, "/assets/hero/v5/g2/wings/attack_02/wing_near.png");
+  assert.equal(v3.hero.visualMode, "v3");
+  assert.deepEqual(v3.hero.layers.map(layer => layer.name), ["base"]);
+});
+
+test("W7.2 HeroRenderer preserves V5 far-base-near draw order on the 768 canvas", () => {
+  const rendererSource = source("src/phaser/renderers/HeroRenderer.js");
+  const root = {
+    list: [],
+    addAt(image, index) { this.list.splice(index, 0, image); }
+  };
+  const created = [];
+  const scene = {
+    textures: { exists: () => true },
+    add: {
+      container: () => root,
+      image: (_x, _y, key) => {
+        const image = {
+          texture: { key },
+          setOrigin() { return this; },
+          setDisplaySize(w, h) { this.w = w; this.h = h; return this; },
+          setVisible() { return this; },
+          setTexture(next) { this.texture.key = next; return this; },
+          setPosition(x, y) { this.x = x; this.y = y; return this; },
+          setAngle() { return this; },
+          destroy() {}
+        };
+        created.push(image);
+        return image;
+      }
+    }
+  };
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${rendererSource}; this.HeroRenderer = HeroRenderer;`, context);
+  const renderer = new context.HeroRenderer(scene, {
+    root,
+    displaySize: 150,
+    textureKey: url => `key:${url}`,
+    data: {
+      visualMode: "v5-g2",
+      layerFrames: {
+        canvas: { width: 768, height: 768 },
+        idle: [[
+          { name: "wing_far", url: "far.png", x: 0, y: 0, scale: 1, rotation: 0 },
+          { name: "base", url: "base.png", x: 0, y: 0, scale: 1, rotation: 0 },
+          { name: "wing_near", url: "near.png", x: 0, y: 0, scale: 1, rotation: 0 }
+        ]]
+      }
+    }
+  });
+  renderer.applyVisualFrame("idle", 0);
+  assert.deepEqual(Array.from(renderer.layerImages, entry => entry.name), ["wing_far", "base", "wing_near"]);
+  assert.equal(root.list[0], created[0]);
+  assert.equal(root.list[1], created[1]);
+  assert.equal(root.list[2], created[2]);
+  assert.equal(created[1].w, 150);
+  assert.equal(created[1].h, 150);
+});
+
