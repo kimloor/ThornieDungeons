@@ -234,7 +234,7 @@ test("W6.3 HeroRenderer preserves W5 layer ordering and placement math", () => {
     }
   });
   instance.applyVisualFrame("idle", 0);
-  assert.deepEqual(instance.layerImages.map(entry => entry.name), ["wings", "base"]);
+  assert.deepEqual(Array.from(instance.layerImages, entry => entry.name), ["wings", "base"]);
   assert.equal(root.list[0], images[0]);
   assert.equal(root.list[1], images[1]);
   assert.equal(images[0].width, 150);
