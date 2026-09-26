@@ -1,0 +1,52 @@
+{
+  "status": "APPROVED_FOR_RUNTIME_PUBLICATION",
+  "projectLeadApproved": true,
+  "runtimeIntegrated": false,
+  "sourcePackage": "HERO_V5_G2_AZURE_TEST.zip",
+  "sourcePackageSha256": "2eff1aa89040058bf3883a49f87230e7eb377bc4df2e147d2bb2e9114859eaf1",
+  "canvas": {
+    "width": 768,
+    "height": 768
+  },
+  "frameCount": 8,
+  "layerCountPerFrame": 7,
+  "totalLayerPngs": 56,
+  "frames": [
+    "idle_01",
+    "idle_02",
+    "idle_03",
+    "attack_01",
+    "attack_02",
+    "attack_03",
+    "death_01",
+    "death_02"
+  ],
+  "layerOrder": [
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front"
+  ],
+  "drawOrder": [
+    "wing_far",
+    "base",
+    "hair_back",
+    "hair_front",
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front",
+    "wing_near"
+  ],
+  "runtimeNotes": [
+    "Attack front arm/glove remains above sword for authored grip occlusion.",
+    "Idle and Death sword layers are intentionally transparent.",
+    "No runtime rotation or interpolation is required."
+  ]
+}

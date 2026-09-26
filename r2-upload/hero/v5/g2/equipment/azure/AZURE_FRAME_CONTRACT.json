@@ -1,0 +1,307 @@
+{
+  "status": "REVIEW_ONLY_NOT_APPROVED",
+  "source_main": "413c549d176f5a30945cd6b1389c8faa30629cfd",
+  "canvas": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    0
+  ],
+  "frame_count": 8,
+  "equipment_layers": [
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front"
+  ],
+  "draw_order": [
+    "wing_far",
+    "base",
+    "hair_back",
+    "hair_front",
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front",
+    "wing_near"
+  ],
+  "authoring": "New generated Azure artwork fitted offline to approved visible body geometry; not runtime rigging. V3 used for design reference only.",
+  "coverage_underlay": "Independent navy undersuit following approved visible body/arm/leg silhouettes; does not overwrite any Hero source. It closes plate seams and replaces visible white shirt/dark pants beneath plates.",
+  "arm_front": "Full equipment sleeve plus glove, drawn after sword. Includes exact approved front-arm silhouette as navy undersuit.",
+  "sword": "One upright 768x768 master; the same master is placed/rotated offline into all 3 Attack exports. Idle/Death files are transparent.",
+  "frames": {
+    "idle_01": {
+      "base": "reference_locked/base/idle_01.png",
+      "wings": {
+        "wing_far": "reference_locked/wings/idle_01/wing_far.png",
+        "wing_near": "reference_locked/wings/idle_01/wing_near.png"
+      },
+      "equipment": {
+        "coverage_underlay": "azure/idle_01/coverage_underlay.png",
+        "torso_armor": "azure/idle_01/torso_armor.png",
+        "legs_boots": "azure/idle_01/legs_boots.png",
+        "arm_rear": "azure/idle_01/arm_rear.png",
+        "helmet": "azure/idle_01/helmet.png",
+        "sword": "azure/idle_01/sword.png",
+        "arm_front": "azure/idle_01/arm_front.png"
+      },
+      "canvas": [
+        768,
+        768
+      ],
+      "placement": [
+        0,
+        0
+      ],
+      "runtime_scale": 1,
+      "runtime_rotation": 0,
+      "weapon_grip": null,
+      "sword_master": null,
+      "sword_empty_reason": "User chose to preserve empty-handed locked pose.",
+      "near_wing_foreground": false,
+      "special_order": "Standard contract.",
+      "review": "review/composites/idle_01.png"
+    },
+    "idle_02": {
+      "base": "reference_locked/base/idle_02.png",
+      "wings": {
+        "wing_far": "reference_locked/wings/idle_02/wing_far.png",
+        "wing_near": "reference_locked/wings/idle_02/wing_near.png"
+      },
+      "equipment": {
+        "coverage_underlay": "azure/idle_02/coverage_underlay.png",
+        "torso_armor": "azure/idle_02/torso_armor.png",
+        "legs_boots": "azure/idle_02/legs_boots.png",
+        "arm_rear": "azure/idle_02/arm_rear.png",
+        "helmet": "azure/idle_02/helmet.png",
+        "sword": "azure/idle_02/sword.png",
+        "arm_front": "azure/idle_02/arm_front.png"
+      },
+      "canvas": [
+        768,
+        768
+      ],
+      "placement": [
+        0,
+        0
+      ],
+      "runtime_scale": 1,
+      "runtime_rotation": 0,
+      "weapon_grip": null,
+      "sword_master": null,
+      "sword_empty_reason": "User chose to preserve empty-handed locked pose.",
+      "near_wing_foreground": false,
+      "special_order": "Standard contract.",
+      "review": "review/composites/idle_02.png"
+    },
+    "idle_03": {
+      "base": "reference_locked/base/idle_03.png",
+      "wings": {
+        "wing_far": "reference_locked/wings/idle_03/wing_far.png",
+        "wing_near": "reference_locked/wings/idle_03/wing_near.png"
+      },
+      "equipment": {
+        "coverage_underlay": "azure/idle_03/coverage_underlay.png",
+        "torso_armor": "azure/idle_03/torso_armor.png",
+        "legs_boots": "azure/idle_03/legs_boots.png",
+        "arm_rear": "azure/idle_03/arm_rear.png",
+        "helmet": "azure/idle_03/helmet.png",
+        "sword": "azure/idle_03/sword.png",
+        "arm_front": "azure/idle_03/arm_front.png"
+      },
+      "canvas": [
+        768,
+        768
+      ],
+      "placement": [
+        0,
+        0
+      ],
+      "runtime_scale": 1,
+      "runtime_rotation": 0,
+      "weapon_grip": null,
+      "sword_master": null,
+      "sword_empty_reason": "User chose to preserve empty-handed locked pose.",
+      "near_wing_foreground": false,
+      "special_order": "Standard contract.",
+      "review": "review/composites/idle_03.png"
+    },
+    "attack_01": {
+      "base": "reference_locked/base/attack_01.png",
+      "wings": {
+        "wing_far": "reference_locked/wings/attack_01/wing_far.png",
+        "wing_near": "reference_locked/wings/attack_01/wing_near.png"
+      },
+      "equipment": {
+        "coverage_underlay": "azure/attack_01/coverage_underlay.png",
+        "torso_armor": "azure/attack_01/torso_armor.png",
+        "legs_boots": "azure/attack_01/legs_boots.png",
+        "arm_rear": "azure/attack_01/arm_rear.png",
+        "helmet": "azure/attack_01/helmet.png",
+        "sword": "azure/attack_01/sword.png",
+        "arm_front": "azure/attack_01/arm_front.png"
+      },
+      "canvas": [
+        768,
+        768
+      ],
+      "placement": [
+        0,
+        0
+      ],
+      "runtime_scale": 1,
+      "runtime_rotation": 0,
+      "weapon_grip": [
+        310,
+        309
+      ],
+      "sword_master": "masters/AZURE_SWORD_UPRIGHT.png",
+      "sword_empty_reason": null,
+      "near_wing_foreground": false,
+      "special_order": "Azure front arm/glove above sword; exact source arm silhouette supplies grip occlusion.",
+      "review": "review/composites/attack_01.png"
+    },
+    "attack_02": {
+      "base": "reference_locked/base/attack_02.png",
+      "wings": {
+        "wing_far": "reference_locked/wings/attack_02/wing_far.png",
+        "wing_near": "reference_locked/wings/attack_02/wing_near.png"
+      },
+      "equipment": {
+        "coverage_underlay": "azure/attack_02/coverage_underlay.png",
+        "torso_armor": "azure/attack_02/torso_armor.png",
+        "legs_boots": "azure/attack_02/legs_boots.png",
+        "arm_rear": "azure/attack_02/arm_rear.png",
+        "helmet": "azure/attack_02/helmet.png",
+        "sword": "azure/attack_02/sword.png",
+        "arm_front": "azure/attack_02/arm_front.png"
+      },
+      "canvas": [
+        768,
+        768
+      ],
+      "placement": [
+        0,
+        0
+      ],
+      "runtime_scale": 1,
+      "runtime_rotation": 0,
+      "weapon_grip": [
+        489,
+        448
+      ],
+      "sword_master": "masters/AZURE_SWORD_UPRIGHT.png",
+      "sword_empty_reason": null,
+      "near_wing_foreground": true,
+      "special_order": "Azure front arm/glove above sword; exact source arm silhouette supplies grip occlusion.",
+      "review": "review/composites/attack_02.png"
+    },
+    "attack_03": {
+      "base": "reference_locked/base/attack_03.png",
+      "wings": {
+        "wing_far": "reference_locked/wings/attack_03/wing_far.png",
+        "wing_near": "reference_locked/wings/attack_03/wing_near.png"
+      },
+      "equipment": {
+        "coverage_underlay": "azure/attack_03/coverage_underlay.png",
+        "torso_armor": "azure/attack_03/torso_armor.png",
+        "legs_boots": "azure/attack_03/legs_boots.png",
+        "arm_rear": "azure/attack_03/arm_rear.png",
+        "helmet": "azure/attack_03/helmet.png",
+        "sword": "azure/attack_03/sword.png",
+        "arm_front": "azure/attack_03/arm_front.png"
+      },
+      "canvas": [
+        768,
+        768
+      ],
+      "placement": [
+        0,
+        0
+      ],
+      "runtime_scale": 1,
+      "runtime_rotation": 0,
+      "weapon_grip": [
+        413,
+        551
+      ],
+      "sword_master": "masters/AZURE_SWORD_UPRIGHT.png",
+      "sword_empty_reason": null,
+      "near_wing_foreground": true,
+      "special_order": "Azure front arm/glove above sword; exact source arm silhouette supplies grip occlusion.",
+      "review": "review/composites/attack_03.png"
+    },
+    "death_01": {
+      "base": "reference_locked/base/death_01.png",
+      "wings": {
+        "wing_far": "reference_locked/wings/death_01/wing_far.png",
+        "wing_near": "reference_locked/wings/death_01/wing_near.png"
+      },
+      "equipment": {
+        "coverage_underlay": "azure/death_01/coverage_underlay.png",
+        "torso_armor": "azure/death_01/torso_armor.png",
+        "legs_boots": "azure/death_01/legs_boots.png",
+        "arm_rear": "azure/death_01/arm_rear.png",
+        "helmet": "azure/death_01/helmet.png",
+        "sword": "azure/death_01/sword.png",
+        "arm_front": "azure/death_01/arm_front.png"
+      },
+      "canvas": [
+        768,
+        768
+      ],
+      "placement": [
+        0,
+        0
+      ],
+      "runtime_scale": 1,
+      "runtime_rotation": 0,
+      "weapon_grip": null,
+      "sword_master": null,
+      "sword_empty_reason": "User chose to preserve empty-handed locked pose.",
+      "near_wing_foreground": false,
+      "special_order": "Standard contract.",
+      "review": "review/composites/death_01.png"
+    },
+    "death_02": {
+      "base": "reference_locked/base/death_02.png",
+      "wings": {
+        "wing_far": "reference_locked/wings/death_02/wing_far.png",
+        "wing_near": "reference_locked/wings/death_02/wing_near.png"
+      },
+      "equipment": {
+        "coverage_underlay": "azure/death_02/coverage_underlay.png",
+        "torso_armor": "azure/death_02/torso_armor.png",
+        "legs_boots": "azure/death_02/legs_boots.png",
+        "arm_rear": "azure/death_02/arm_rear.png",
+        "helmet": "azure/death_02/helmet.png",
+        "sword": "azure/death_02/sword.png",
+        "arm_front": "azure/death_02/arm_front.png"
+      },
+      "canvas": [
+        768,
+        768
+      ],
+      "placement": [
+        0,
+        0
+      ],
+      "runtime_scale": 1,
+      "runtime_rotation": 0,
+      "weapon_grip": null,
+      "sword_master": null,
+      "sword_empty_reason": "User chose to preserve empty-handed locked pose.",
+      "near_wing_foreground": false,
+      "special_order": "Standard contract.",
+      "review": "review/composites/death_02.png"
+    }
+  }
+}
