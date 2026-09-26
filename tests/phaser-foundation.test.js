@@ -119,7 +119,7 @@ test("W5.2 animation bridge stays presentation-only and carries resolved UI anim
 
 test("Ver 1.0.6 mobile battle layout reserves fixed log space", () => {
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
-  assert.match(styles, /content: "Ver 1\.0\.11"/);
+  assert.match(styles, /content: "Ver 1\.0\.12"/);
   assert.match(styles, /W5\.2 mobile combat fit/);
   assert.match(styles, /flex:0 0 42px/);
   assert.match(styles, /height:32px/);
@@ -154,7 +154,7 @@ test("actor display size consumes shared responsive scene scale", () => {
 
 test("Ver 1.0.7 centers the dungeon modifier pill", () => {
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
-  assert.match(styles, /content: "Ver 1\.0\.11"/);
+  assert.match(styles, /content: "Ver 1\.0\.12"/);
   assert.match(styles, /\.md-modifier-chip \{/);
   assert.match(styles, /margin:2px auto 4px/);
   assert.match(styles, /border-radius:999px/);

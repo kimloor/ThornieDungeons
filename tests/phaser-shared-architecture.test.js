@@ -397,6 +397,7 @@ test("W6.6 EquipmentVisualResolver preserves current V3 selection without owning
     wings: "angel"
   });
   assert.match(resolverSource, /currentHeroMode: "v3"/);
+  assert.match(resolverSource, /v5OptIn: true/);
   assert.doesNotMatch(resolverSource, /save\.|battleState|inventoryState|fetch\(|apiRequest/);
 });
 
@@ -659,7 +660,7 @@ test("W7.2 Ver 1.0.11 doubles only V5 Hero frame timing", () => {
   assert.match(contract, /idle: 440/);
   assert.match(contract, /attack: 300/);
   assert.match(contract, /death: 360/);
-  assert.match(hero, /this\.data\?\.visualMode === "v5-g2"/);
+  assert.match(hero, /startsWith\("v5-g2"\)/);
   assert.match(hero, /this\.data\?\.layerFrames\?\.frameMs\?\.\[state\]/);
   assert.match(actor, /if \(state === "idle"\) return 220/);
   assert.match(actor, /if \(state === "attack"\) return 150/);
@@ -670,14 +671,142 @@ test("W7.2 Ver 1.0.11 uses V5 death_01 as hurt pose without playing death", () =
   const actor = source("src/phaser/actors/ActorBase.js");
   const hero = source("src/phaser/actors/HeroActor.js");
   assert.match(actor, /nextState === "hurt" \? this\.hurtVisualState\(\) : nextState/);
-  assert.match(hero, /hurtVisualState\(\) \{[\s\S]*?"v5-g2" \? "death" : super\.hurtVisualState\(\)/);
+  assert.match(hero, /hurtVisualState\(\) \{[\s\S]*?this\.isV5Presentation\(\) \? "death" : super\.hurtVisualState\(\)/);
   assert.match(actor, /if \(nextState === "hurt"\) \{/);
   assert.doesNotMatch(hero, /playVisualState\("death"/);
 });
 
-test("W7.2 Ver 1.0.11 enlarges only V5 Hero by ten percent", () => {
+test("W7.3 Ver 1.0.12 enlarges V5 Hero about eighteen percent from the approved 1.0.11 size", () => {
   const hero = source("src/phaser/actors/HeroActor.js");
-  assert.match(hero, /return this\.data\?\.visualMode === "v5-g2" \? Math\.round\(base \* 1\.10\) : base/);
+  assert.match(hero, /return this\.isV5Presentation\(\) \? Math\.round\(base \* 1\.30\) : base/);
   assert.match(hero, /baseSize: 150/);
+});
+
+test("W7.3 EquipmentVisualResolver maps real Azure equipment slots without owning equipment state", () => {
+  const resolverSource = source("src/phaser/presentation/EquipmentVisualResolver.js");
+  const context = { heroVisualSelectionFromEquipment: () => ({ wings: "angel" }) };
+  vm.createContext(context);
+  vm.runInContext(`${resolverSource}; this.result = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection({
+    helmet: { setId: "azure", type: "helmet" },
+    chest: { name: "เสื้อ Azure [TEST]", type: "chest" },
+    gloves: { setId: "other", type: "gloves" },
+    boots: { setId: "azure", type: "boots" },
+    weapon: { setId: "azure", type: "weapon" },
+    wings: { id: "wing01", type: "wings" }
+  });`, context);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.result)), {
+    wings: "angel",
+    azure: {
+      helmet: true,
+      chest: true,
+      gloves: false,
+      boots: true,
+      weapon: true
+    }
+  });
+  assert.doesNotMatch(resolverSource, /save\.|battleState|inventoryState|fetch\(|apiRequest/);
+});
+
+test("W7.3 Azure layer selection follows slot ownership and authored draw order", () => {
+  const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const context = { ASSETS: {} };
+  vm.createContext(context);
+  vm.runInContext(`${contractSource}; this.layers = heroV5AzureLayersForSelection({
+    azure: { helmet: true, chest: true, gloves: true, boots: true, weapon: true }
+  }); this.partial = heroV5AzureLayersForSelection({
+    azure: { helmet: false, chest: true, gloves: false, boots: true, weapon: false }
+  });`, context);
+  assert.deepEqual(Array.from(context.layers), [
+    "coverage_underlay", "torso_armor", "legs_boots",
+    "arm_rear", "helmet", "sword", "arm_front"
+  ]);
+  assert.deepEqual(Array.from(context.partial), [
+    "coverage_underlay", "torso_armor", "legs_boots"
+  ]);
+});
+
+test("W7.3 full Azure snapshot composes Base plus seven equipment layers inside Wing R5", () => {
+  const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const adapterSource = source("src/phaser/presentation/EventBridge.js");
+  const frameIds = ["idle_01","idle_02","idle_03","attack_01","attack_02","attack_03","death_01","death_02"];
+  const layerNames = ["coverage_underlay","torso_armor","legs_boots","arm_rear","helmet","sword","arm_front"];
+  const baseFrames = Object.fromEntries(frameIds.map(id => [id, `hero/v5/g2/base/${id}.png`]));
+  const wingFrames = Object.fromEntries(frameIds.map(id => [id, {
+    wing_far: `hero/v5/g2/wings/${id}/wing_far.png`,
+    wing_near: `hero/v5/g2/wings/${id}/wing_near.png`
+  }]));
+  const azureFrames = Object.fromEntries(frameIds.map(id => [id,
+    Object.fromEntries(layerNames.map(name => [name, `hero/v5/g2/equipment/azure/${id}/${name}.png`]))
+  ]));
+  const context = {
+    ASSETS: {
+      hero001: {
+        v5: {
+          g2: {
+            approval: "approved",
+            canvas: { width: 768, height: 768 },
+            base: { approval: "approved", frames: baseFrames },
+            wingTemplate: { frames: wingFrames },
+            equipment: { azure: { approval: "approved", frames: azureFrames } }
+          }
+        }
+      }
+    },
+    SHARED_PHASER_ASSET_RESOLVER: {
+      resolve: value => value ? `/assets/${String(value).replace(/^\/+/, "")}` : "",
+      resolveAll: values => (values || []).filter(Boolean),
+      manifest: () => ""
+    },
+    SHARED_EQUIPMENT_VISUAL_RESOLVER: {
+      resolveHeroSelection: () => ({ wings: "angel" }),
+      resolveHeroV5Selection: () => ({
+        wings: "angel",
+        azure: { helmet: true, chest: true, gloves: true, boots: true, weapon: true }
+      })
+    },
+    createActorPresentationModel: (raw, fallback = {}) => ({ ...fallback, ...(raw || {}), alive: true }),
+    normalizeActorPresentationAnim: value => value || "idle",
+    getPetSpriteConfig: () => null,
+    getMonsterSpriteConfig: () => null,
+    getHeroV3Config: () => ({ canvas: { width: 1254, height: 1254 }, base: { attack: [{}, {}, {}] } }),
+    resolveHeroV3Layers: () => [{ name: "base", url: "/assets/v3/base.png", x: 0, y: 0, scale: 1, rotation: 0 }]
+  };
+  vm.createContext(context);
+  vm.runInContext(`${contractSource}\n${adapterSource}; this.snapshot = buildBattlefieldSnapshot({
+    battleState: { heroId: "hero", units: { hero: { id: "hero", kind: "hero", hp: 100, maxHp: 100 } } },
+    heroV5: true
+  });`, context);
+  const snapshot = JSON.parse(JSON.stringify(context.snapshot));
+  assert.equal(snapshot.hero.visualMode, "v5-g2-azure");
+  assert.deepEqual(snapshot.hero.layerFrames.attack[1].map(layer => layer.name), [
+    "wing_far", "base", "coverage_underlay", "torso_armor", "legs_boots",
+    "arm_rear", "helmet", "sword", "arm_front", "wing_near"
+  ]);
+  assert.equal(snapshot.hero.layerFrames.attack[1][7].url, "/assets/hero/v5/g2/equipment/azure/attack_02/sword.png");
+});
+
+test("W7.3 missing requested Azure art fails closed to the existing V3 renderer", () => {
+  const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const context = {
+    ASSETS: {
+      hero001: {
+        v5: {
+          g2: {
+            approval: "approved",
+            canvas: { width: 768, height: 768 },
+            base: { approval: "approved", frames: {
+              idle_01:"a",idle_02:"b",idle_03:"c",attack_01:"d",attack_02:"e",attack_03:"f",death_01:"g",death_02:"h"
+            }},
+            equipment: { azure: { approval: "approved", frames: {} } }
+          }
+        }
+      }
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(`${contractSource}; this.result = resolveHeroV5BaseWingContract({
+    equipmentSelection: { azure: { helmet: true } }
+  });`, context);
+  assert.equal(context.result, null);
 });
 

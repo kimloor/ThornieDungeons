@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.11";
+  content: "Ver 1.0.12";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;

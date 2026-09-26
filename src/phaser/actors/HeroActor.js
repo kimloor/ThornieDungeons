@@ -10,17 +10,21 @@ class HeroActor extends PhaserBattleActor {
     });
   }
 
+  isV5Presentation() {
+    return String(this.data?.visualMode || "").startsWith("v5-g2");
+  }
+
   displaySize() {
     const base = super.displaySize();
-    return this.data?.visualMode === "v5-g2" ? Math.round(base * 1.10) : base;
+    return this.isV5Presentation() ? Math.round(base * 1.30) : base;
   }
 
   hurtVisualState() {
-    return this.data?.visualMode === "v5-g2" ? "death" : super.hurtVisualState();
+    return this.isV5Presentation() ? "death" : super.hurtVisualState();
   }
 
   frameDelayForState(state) {
-    if (this.data?.visualMode === "v5-g2") {
+    if (this.isV5Presentation()) {
       const configured = Number(this.data?.layerFrames?.frameMs?.[state]);
       if (Number.isFinite(configured) && configured > 0) return configured;
     }

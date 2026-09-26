@@ -9,7 +9,16 @@ const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
     attack: Object.freeze(["attack_01", "attack_02", "attack_03"]),
     death: Object.freeze(["death_01", "death_02"])
   }),
-  layerOrder: Object.freeze(["wing_far", "base", "wing_near"])
+  layerOrder: Object.freeze(["wing_far", "base", "wing_near"]),
+  azureLayerOrder: Object.freeze([
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front"
+  ])
 });
 
 function isHeroV5RuntimeEnabled() {
@@ -33,12 +42,30 @@ function getHeroV5RuntimeConfig(characterId = HERO_V5_RUNTIME_CONTRACT.character
   return config;
 }
 
-function heroV5FrameLayers(config, frameId, includeWings) {
+function heroV5AzureLayersForSelection(selection = {}) {
+  const azure = selection?.azure || {};
+  const requested = [];
+  if (azure.chest) requested.push("coverage_underlay", "torso_armor");
+  if (azure.boots) requested.push("legs_boots");
+  if (azure.gloves) requested.push("arm_rear");
+  if (azure.helmet) requested.push("helmet");
+  if (azure.weapon) requested.push("sword");
+  if (azure.gloves) requested.push("arm_front");
+  return HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
+}
+
+function heroV5FrameLayers(config, frameId, { includeWings = false, equipmentSelection = {} } = {}) {
   const basePath = config?.base?.frames?.[frameId];
   if (!basePath) return null;
 
   const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
   if (includeWings && (!wingFrame?.wing_far || !wingFrame?.wing_near)) return null;
+
+  const azureLayerNames = heroV5AzureLayersForSelection(equipmentSelection);
+  const azureConfig = config?.equipment?.azure;
+  if (azureLayerNames.length && azureConfig?.approval !== "approved") return null;
+  const azureFrame = azureLayerNames.length ? azureConfig?.frames?.[frameId] : null;
+  if (azureLayerNames.some(name => !azureFrame?.[name])) return null;
 
   const layers = [];
   if (includeWings) layers.push({
@@ -47,25 +74,34 @@ function heroV5FrameLayers(config, frameId, includeWings) {
   layers.push({
     name: "base", path: basePath, x: 0, y: 0, scale: 1, rotation: 0
   });
+  azureLayerNames.forEach(name => {
+    layers.push({
+      name, path: azureFrame[name], x: 0, y: 0, scale: 1, rotation: 0
+    });
+  });
   if (includeWings) layers.push({
     name: "wing_near", path: wingFrame.wing_near, x: 0, y: 0, scale: 1, rotation: 0
   });
   return layers;
 }
 
-function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings = false } = {}) {
+function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings = false, equipmentSelection = {} } = {}) {
   const config = getHeroV5RuntimeConfig(characterId);
   if (!config) return null;
 
   const resolved = {};
   for (const [state, frameIds] of Object.entries(HERO_V5_RUNTIME_CONTRACT.animationFrames)) {
-    const frames = frameIds.map(frameId => heroV5FrameLayers(config, frameId, includeWings));
+    const frames = frameIds.map(frameId => heroV5FrameLayers(config, frameId, {
+      includeWings,
+      equipmentSelection
+    }));
     if (frames.some(frame => !Array.isArray(frame) || !frame.length)) return null;
     resolved[state] = frames;
   }
 
+  const hasAzureEquipment = heroV5AzureLayersForSelection(equipmentSelection).length > 0;
   return Object.freeze({
-    mode: "v5-g2",
+    mode: hasAzureEquipment ? "v5-g2-azure" : "v5-g2",
     canvas: {
       width: HERO_V5_RUNTIME_CONTRACT.canvas.width,
       height: HERO_V5_RUNTIME_CONTRACT.canvas.height
