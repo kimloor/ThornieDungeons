@@ -2406,6 +2406,7 @@ function ThornieDungeons() {
   }), phase === "combat" && monsters.length > 0 && player && /*#__PURE__*/React.createElement(CombatScreen, {
     player: player,
     heroName: save.characterName || "Hero",
+    battleState: battleState,
     monsters: monsters,
     targetUid: targetUid,
     onSelectTarget: selectTarget,

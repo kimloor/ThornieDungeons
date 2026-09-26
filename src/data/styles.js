@@ -62,6 +62,27 @@ const STYLE = `
   flex-direction: column;
 }
 .md-root * { box-sizing: border-box; }
+/* Preview version badge: bump patch version on every user-visible preview fix. */
+body::after {
+  content: "Ver 1.0.7";
+  position: fixed;
+  top: calc(4px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(5,8,18,.72);
+  border: 1px solid rgba(255,209,102,.42);
+  color: #FFE49A;
+  font-family: 'Nunito', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .35px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .md-display { font-family: 'Baloo 2', sans-serif; }
 
 /* Shared authenticated-game backdrop. Login keeps its original entrance scene and character
@@ -516,7 +537,21 @@ const STYLE = `
    inline colors), so it was a full-width block with no width cap: long modifier names would
    wrap awkwardly instead of sitting as a compact centered pill. width:fit-content lets the
    inline margin:"0 auto" actually center it, max-width+ellipsis keeps it on one line. */
-.md-modifier-chip { display: block; width: fit-content; max-width: 92%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-modifier-chip {
+  display:block;
+  width:fit-content;
+  max-width:82%;
+  margin:2px auto 4px;
+  padding:3px 10px;
+  border-radius:999px;
+  position:relative;
+  z-index:7;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  text-align:center;
+  font:800 10.5px/1.25 'Baloo 2', sans-serif;
+}
 
 /* stars for equipment rarity */
 .md-stars-row { display: flex; gap: 1px; }
@@ -1270,6 +1305,10 @@ const STYLE = `
   opacity: 1;
 }
 .md-scene.battle-bg .md-arena { padding: 6px 6px 12px; min-height: clamp(300px, 52dvh, 430px); overflow: hidden; }
+.md-phaser-layer { position:absolute; inset:0; z-index:3; pointer-events:none; }
+.md-phaser-battlefield { position:absolute; inset:0; width:100%; height:100%; pointer-events:auto; overflow:hidden; background:transparent !important; }
+.md-phaser-battlefield canvas { display:block; width:100%; height:100%; pointer-events:auto; background:transparent !important; }
+.md-phaser-battlefield.status-loading { opacity:.98; }
 .md-current-turn {
   min-height: 18px; margin: 0 0 2px; text-align: center;
   color: var(--ink-soft); font: 800 10.5px/18px 'Baloo 2';
@@ -1677,6 +1716,56 @@ const STYLE = `
 
 @media (max-width: 480px) {
   .md-root-combat { height:100svh; min-height:100svh; max-height:100svh; overflow:hidden; }
+}
+
+/* W5.2 mobile combat fit: let the battlefield absorb viewport pressure instead
+   of allowing the fixed control dock/log to overlap each other. */
+@media (max-width: 480px) {
+  .md-scene.battle-bg {
+    height:100svh;
+    max-height:100svh;
+    min-height:0;
+    overflow:hidden;
+  }
+  .md-scene.battle-bg .md-arena {
+    flex:1 1 0;
+    min-height:0;
+    overflow:hidden;
+  }
+  .md-battle-dock {
+    flex:0 0 auto;
+    padding-top:2px;
+  }
+  .md-scene.battle-bg > .md-panel {
+    flex:0 0 42px;
+    min-height:42px;
+    max-height:42px;
+    padding:3px 8px max(4px,env(safe-area-inset-bottom,0px));
+    overflow:hidden;
+  }
+  .md-scene.battle-bg .md-log {
+    height:32px;
+    min-height:32px;
+    max-height:32px;
+    padding:3px 6px;
+    gap:0;
+    overflow:hidden;
+  }
+  .md-scene.battle-bg .md-log-line {
+    font-size:8.5px;
+    line-height:1.15;
+  }
+  .md-scene.battle-bg .md-log-line.latest {
+    font-size:9.5px;
+  }
+}
+
+@media (max-width: 380px), (max-height: 740px) {
+  .md-battle-dock { grid-template-columns:minmax(0,1fr) 78px 86px; }
+  .md-battle-dock .md-dock-attack { width:86px; height:86px; }
+  .md-dock-side-controls { grid-template-rows:36px 36px; }
+  .md-dock-side-controls .md-dock-auto { min-height:36px; }
+  .md-dock-mini { height:36px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2385,5 +2474,15 @@ const STYLE = `
   .md-guild-profile { width:96vw; padding:24px 14px 16px; }
   .md-guild-profile-grid { padding:8px 10px; }
   .md-guild-profile-grid > div { min-height:34px; font-size:12px; }
+}
+
+/* W5.2 modifier pill mobile centering */
+@media (max-width: 480px) {
+  .md-modifier-chip {
+    max-width:84%;
+    margin:0 auto 3px;
+    padding:2px 8px;
+    font-size:10px;
+  }
 }
 `;
