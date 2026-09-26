@@ -10,9 +10,18 @@ test("W5 Phaser foundation keeps runtime isolated and resolver-free", () => {
   const files = [
     "src/phaser/runtime/PhaserRuntime.js",
     "src/phaser/runtime/BattlefieldHost.js",
+    "src/phaser/assets/AssetResolver.js",
+    "src/phaser/assets/TextureRegistry.js",
+    "src/phaser/layout/ResponsiveSceneLayout.js",
+    "src/phaser/layout/ResponsiveAnchors.js",
+    "src/phaser/presentation/ActorPresentationModel.js",
+    "src/phaser/presentation/EquipmentVisualResolver.js",
+    "src/phaser/presentation/PresentationEventBridge.js",
     "src/phaser/presentation/EventBridge.js",
     "src/phaser/presentation/PresentationQueue.js",
-    "src/phaser/layout/ResponsiveAnchors.js",
+    "src/phaser/presentation/VfxManager.js",
+    "src/phaser/renderers/HeroRenderer.js",
+    "src/phaser/actors/HeroActor.js",
     "src/phaser/scenes/BattleScene.js",
     "src/phaser/ui/PhaserBattlefield.js"
   ];
@@ -63,9 +72,9 @@ test("Phaser surface does not preload battle background and stays transparent", 
 });
 
 
-test("Hero layer order matches DOM composition", () => {
-  const source = fs.readFileSync(path.join(ROOT, "src/phaser/actors/HeroActor.js"), "utf8");
-  assert.match(source, /visualRoot\.addAt\(image, Math\.min\(index/);
+test("Hero layer order matches DOM composition through shared renderer", () => {
+  const source = fs.readFileSync(path.join(ROOT, "src/phaser/renderers/HeroRenderer.js"), "utf8");
+  assert.match(source, /this\.root\.addAt\(image, Math\.min\(index/);
   assert.doesNotMatch(source, /addAt\(image, 0\)/);
 });
 

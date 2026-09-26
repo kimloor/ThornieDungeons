@@ -379,3 +379,57 @@ test("W6.5 shared layout utility loads before locked Combat anchors", () => {
   assert.ok(sharedIndex > 0);
   assert.ok(anchorsIndex > sharedIndex);
 });
+test("W6.6 EquipmentVisualResolver preserves current V3 selection without owning equipment state", () => {
+  const resolverSource = source("src/phaser/presentation/EquipmentVisualResolver.js");
+  const context = {
+    heroVisualSelectionFromEquipment: equipped => ({
+      weapon: equipped.weapon?.visual || null,
+      wings: equipped.wings ? "angel" : null
+    })
+  };
+  vm.createContext(context);
+  vm.runInContext(`${resolverSource}; this.result = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection({
+    weapon: { visual: "azureSword" },
+    wings: { id: "wing01" }
+  });`, context);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.result)), {
+    weapon: "azureSword",
+    wings: "angel"
+  });
+  assert.match(resolverSource, /currentHeroMode: "v3"/);
+  assert.doesNotMatch(resolverSource, /save\.|battleState|inventoryState|fetch\(|apiRequest/);
+});
+
+test("W6.6 battle snapshot consumes equipment visuals only through shared resolver boundary", () => {
+  const adapter = source("src/phaser/presentation/EventBridge.js");
+  assert.match(adapter, /SHARED_EQUIPMENT_VISUAL_RESOLVER\.resolveHeroSelection\(equipped\)/);
+  assert.doesNotMatch(adapter, /heroVisualSelectionFromEquipment\(equipped\)/);
+});
+
+test("W6.6 DOM default and Phaser opt-in query contract remain unchanged", () => {
+  const ui = source("src/phaser/ui/PhaserBattlefield.js");
+  assert.match(ui, /get\("phaserBattle"\) === "1"/);
+  assert.match(ui, /catch \(_\) \{ return false; \}/);
+  assert.match(ui, /if \(!enabled\) return null/);
+});
+
+test("W6.6 architecture contains no Hero V5 runtime asset contract", () => {
+  const files = [
+    "src/phaser/presentation/EquipmentVisualResolver.js",
+    "src/phaser/presentation/EventBridge.js",
+    "src/phaser/renderers/HeroRenderer.js",
+    "src/phaser/scenes/BattleScene.js"
+  ];
+  files.forEach(file => {
+    const text = source(file);
+    assert.doesNotMatch(text, /coverage_underlay|torso_armor|legs_boots|arm_rear|arm_front|AZURE_SWORD_UPRIGHT|getHeroV5Config|resolveHeroV5Layers/);
+  });
+});
+
+test("W6.6 EquipmentVisualResolver loads before battle snapshot adapter", () => {
+  const build = source("build.js");
+  const resolverIndex = build.indexOf('"phaser/presentation/EquipmentVisualResolver.js"');
+  const adapterIndex = build.indexOf('"phaser/presentation/EventBridge.js"');
+  assert.ok(resolverIndex > 0);
+  assert.ok(adapterIndex > resolverIndex);
+});

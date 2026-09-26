@@ -57,7 +57,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
   const enemyIds = Array.isArray(state.enemyIds) && state.enemyIds.length ? state.enemyIds : monsters.map(monster => monster.uid || monster.id);
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
   const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
-  const heroSelection = typeof heroVisualSelectionFromEquipment === "function" ? heroVisualSelectionFromEquipment(equipped) : {};
+  const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
   const heroFrames = heroPresentationLayerFrames(heroSelection);
   const heroLayers = heroFrames.idle[0] || [];
   const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
