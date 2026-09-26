@@ -23,7 +23,10 @@ test("W5 Phaser foundation keeps runtime isolated and resolver-free", () => {
 });
 
 test("locked W5 anchors resolve all supported formation sizes", () => {
-  const source = fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveAnchors.js"), "utf8");
+  const source = [
+    fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveSceneLayout.js"), "utf8"),
+    fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveAnchors.js"), "utf8")
+  ].join("\n");
   const context = { console };
   vm.createContext(context);
   vm.runInContext(`${source}; this.result = { one: monsterAnchorsForCount(1), two: monsterAnchorsForCount(2), three: monsterAnchorsForCount(3), hero: RESPONSIVE_ANCHORS.HERO, pet: RESPONSIVE_ANCHORS.PET };`, context);
@@ -115,7 +118,10 @@ test("Ver 1.0.6 mobile battle layout reserves fixed log space", () => {
 
 
 test("responsive actor scale follows actual Phaser battlefield size", () => {
-  const source = fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveAnchors.js"), "utf8");
+  const source = [
+    fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveSceneLayout.js"), "utf8"),
+    fs.readFileSync(path.join(ROOT, "src/phaser/layout/ResponsiveAnchors.js"), "utf8")
+  ].join("\n");
   const context = { console };
   vm.createContext(context);
   vm.runInContext(`${source}; this.result = {

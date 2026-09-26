@@ -334,4 +334,48 @@ test("W6.4 shared queue and VFX manager load before BattleScene", () => {
   assert.ok(vfxIndex > queueIndex);
   assert.ok(sceneIndex > vfxIndex);
 });
+test("W6.5 ResponsiveSceneLayout converts normalized anchors without owning combat positions", () => {
+  const shared = source("src/phaser/layout/ResponsiveSceneLayout.js");
+  const context = { console };
+  vm.createContext(context);
+  vm.runInContext(`${shared}; this.result = createResponsiveSceneLayout({
+    width: 390,
+    height: 520,
+    anchors: {
+      lead: { x: 0.20, y: 0.50 },
+      row: [{ x: 0.25, y: 0.25 }, { x: 0.75, y: 0.75 }]
+    }
+  });`, context);
+  const result = JSON.parse(JSON.stringify(context.result));
+  assert.equal(result.scale, 1);
+  assert.deepEqual(result.pixels.lead, { x: 78, y: 260 });
+  assert.deepEqual(result.pixels.row, [{ x: 98, y: 130 }, { x: 293, y: 390 }]);
+  assert.doesNotMatch(shared, /MONSTER_SINGLE|MONSTER_TWO|MONSTER_THREE|VFX_HERO/);
+});
 
+test("W6.5 locked Combat anchors remain byte-for-value equivalent to W5", () => {
+  const shared = source("src/phaser/layout/ResponsiveSceneLayout.js");
+  const anchors = source("src/phaser/layout/ResponsiveAnchors.js");
+  const context = { console };
+  vm.createContext(context);
+  vm.runInContext(`${shared}\n${anchors}; this.result = responsiveBattlefieldLayout(390, 520, 3);`, context);
+  const result = JSON.parse(JSON.stringify(context.result));
+  assert.equal(result.actorScale, 1);
+  assert.deepEqual(result.normalized.hero, { x: 0.20, y: 0.50 });
+  assert.deepEqual(result.normalized.pet, { x: 0.22, y: 0.84 });
+  assert.deepEqual(result.normalized.monsters, [
+    { x: 0.71, y: 0.29 },
+    { x: 0.80, y: 0.58 },
+    { x: 0.87, y: 0.87 }
+  ]);
+  assert.deepEqual(result.pixels.hero, { x: 78, y: 260 });
+  assert.deepEqual(result.pixels.pet, { x: 86, y: 437 });
+});
+
+test("W6.5 shared layout utility loads before locked Combat anchors", () => {
+  const build = source("build.js");
+  const sharedIndex = build.indexOf('"phaser/layout/ResponsiveSceneLayout.js"');
+  const anchorsIndex = build.indexOf('"phaser/layout/ResponsiveAnchors.js"');
+  assert.ok(sharedIndex > 0);
+  assert.ok(anchorsIndex > sharedIndex);
+});
