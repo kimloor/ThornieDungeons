@@ -1,4 +1,5 @@
 name: W7.3 visual fixes validation
+# rerun after locked-anchor test alignment
 
 on:
   push:
