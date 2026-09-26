@@ -1,7 +1,7 @@
-// ---------- W6 Shared Hero Renderer ----------
-// Renders the currently approved Hero V3 layer contract only.
-// Equipment/V5 resolution is intentionally outside this renderer and belongs to
-// the future EquipmentVisualResolver boundary.
+// ---------- W7 Shared Hero Renderer ----------
+// Renders normalized layered Hero presentation models from both the production
+// V3 contract and the opt-in V5 G2 contract. Asset/equipment resolution remains
+// outside this renderer so Combat, Arena and future previews share one renderer.
 class HeroRenderer {
   constructor(scene, {
     root = null,
@@ -56,7 +56,7 @@ class HeroRenderer {
         const key = this.textureKey(layer.url);
         if (!key || !this.scene?.textures?.exists(key)) return;
         const image = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
-        // resolveHeroV3Layers already returns the DOM bottom-to-top contract.
+        // Presentation models already arrive in authored bottom-to-top order.
         this.root.addAt(image, Math.min(index, this.root.list?.length || 0));
         entry = { name: layer.name, image };
         this.layerImages.push(entry);

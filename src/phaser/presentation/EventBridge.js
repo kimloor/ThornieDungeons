@@ -8,7 +8,7 @@ function presentationAnimationConfig(config) {
   };
 }
 
-function heroPresentationLayerFrames(selection = {}) {
+function heroV3PresentationLayerFrames(selection = {}) {
   const config = typeof getHeroV3Config === "function" ? getHeroV3Config("hero001") : null;
   const normalize = layers => (layers || []).map(layer => ({
     name: layer.name,
@@ -26,6 +26,7 @@ function heroPresentationLayerFrames(selection = {}) {
     normalize(resolveHeroV3Layers("hero001", selection, "attack", index) || idle)
   );
   return {
+    mode: "v3",
     canvas: {
       width: Math.max(1, Number(config?.canvas?.width) || 1254),
       height: Math.max(1, Number(config?.canvas?.height) || 1254)
@@ -41,7 +42,33 @@ function heroPresentationLayerFrames(selection = {}) {
   };
 }
 
-function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1 } = {}) {
+function heroPresentationLayerFrames(selection = {}, { preferV5 = false } = {}) {
+  if (preferV5 && typeof resolveHeroV5BaseWingContract === "function") {
+    const v5 = resolveHeroV5BaseWingContract({
+      characterId: "hero001",
+      includeWings: selection?.wings === "angel"
+    });
+    if (v5) {
+      const normalize = layers => (layers || []).map(layer => ({
+        name: layer.name,
+        url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
+        x: Number(layer.x) || 0,
+        y: Number(layer.y) || 0,
+        scale: Number(layer.scale ?? 1),
+        rotation: Number(layer.rotation) || 0
+      })).filter(layer => layer.url);
+      return {
+        ...v5,
+        idle: v5.idle.map(normalize),
+        attack: v5.attack.map(normalize),
+        death: v5.death.map(normalize)
+      };
+    }
+  }
+  return heroV3PresentationLayerFrames(selection);
+}
+
+function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1, heroV5 = undefined } = {}) {
   const state = battleState || {};
   const units = state.units || {};
   const hero = createActorPresentationModel(units[state.heroId], {
@@ -58,7 +85,10 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
   const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
   const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
-  const heroFrames = heroPresentationLayerFrames(heroSelection);
+  const preferHeroV5 = heroV5 === undefined
+    ? (typeof isHeroV5RuntimeEnabled === "function" && isHeroV5RuntimeEnabled())
+    : heroV5 === true;
+  const heroFrames = heroPresentationLayerFrames(heroSelection, { preferV5: preferHeroV5 });
   const heroLayers = heroFrames.idle[0] || [];
   const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
   const monsterConfigs = enemyList.map(enemy => typeof getMonsterSpriteConfig === "function" ? getMonsterSpriteConfig(enemy) : null);
@@ -71,6 +101,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
       ...hero,
       anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
+      visualMode: heroFrames.mode || "v3",
       layers: heroLayers,
       layerFrames: heroFrames
     },

@@ -413,19 +413,6 @@ test("W6.6 DOM default and Phaser opt-in query contract remain unchanged", () =>
   assert.match(ui, /if \(!enabled\) return null/);
 });
 
-test("W6.6 architecture contains no Hero V5 runtime asset contract", () => {
-  const files = [
-    "src/phaser/presentation/EquipmentVisualResolver.js",
-    "src/phaser/presentation/EventBridge.js",
-    "src/phaser/renderers/HeroRenderer.js",
-    "src/phaser/scenes/BattleScene.js"
-  ];
-  files.forEach(file => {
-    const text = source(file);
-    assert.doesNotMatch(text, /coverage_underlay|torso_armor|legs_boots|arm_rear|arm_front|AZURE_SWORD_UPRIGHT|getHeroV5Config|resolveHeroV5Layers/);
-  });
-});
-
 test("W6.6 EquipmentVisualResolver loads before battle snapshot adapter", () => {
   const build = source("build.js");
   const resolverIndex = build.indexOf('"phaser/presentation/EquipmentVisualResolver.js"');
@@ -433,3 +420,113 @@ test("W6.6 EquipmentVisualResolver loads before battle snapshot adapter", () => 
   assert.ok(resolverIndex > 0);
   assert.ok(adapterIndex > resolverIndex);
 });
+
+test("W7.1 Hero V5 runtime is opt-in and keeps V3 as the default", () => {
+  const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const disabled = {
+    ASSETS: {},
+    location: { search: "?phaserBattle=1" }
+  };
+  vm.createContext(disabled);
+  vm.runInContext(`${contractSource}; this.enabled = isHeroV5RuntimeEnabled();`, disabled);
+  assert.equal(disabled.enabled, false);
+
+  const enabled = {
+    ASSETS: {},
+    location: { search: "?phaserBattle=1&heroV5=1" },
+    URLSearchParams
+  };
+  vm.createContext(enabled);
+  vm.runInContext(`${contractSource}; this.enabled = isHeroV5RuntimeEnabled();`, enabled);
+  assert.equal(enabled.enabled, true);
+});
+
+test("W7.1 Hero V5 G2 contract requires synchronized approved 768px frames", () => {
+  const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const frameIds = {
+    idle: ["idle_01", "idle_02", "idle_03"],
+    attack: ["attack_01", "attack_02", "attack_03"],
+    death: ["death_01", "death_02"]
+  };
+  const baseFrames = Object.fromEntries(Object.values(frameIds).flat().map(id => [id, `base/${id}.png`]));
+  const wingFrames = Object.fromEntries(Object.values(frameIds).flat().map(id => [id, {
+    wing_far: `wings/${id}/far.png`,
+    wing_near: `wings/${id}/near.png`
+  }]));
+  const context = {
+    ASSETS: {
+      hero001: {
+        v5: {
+          g2: {
+            approval: "approved",
+            canvas: { width: 768, height: 768 },
+            base: { approval: "approved", frames: baseFrames },
+            wingTemplate: { frames: wingFrames }
+          }
+        }
+      }
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(`${contractSource}; this.result = resolveHeroV5BaseWingContract({ includeWings: true });`, context);
+  const result = JSON.parse(JSON.stringify(context.result));
+  assert.equal(result.mode, "v5-g2");
+  assert.deepEqual(result.canvas, { width: 768, height: 768 });
+  assert.equal(result.idle.length, 3);
+  assert.equal(result.attack.length, 3);
+  assert.equal(result.death.length, 2);
+  assert.deepEqual(result.attack[1].map(layer => layer.name), ["wing_far", "base", "wing_near"]);
+  assert.equal(result.attack[1][0].path, "wings/attack_02/far.png");
+  assert.equal(result.attack[1][1].path, "base/attack_02.png");
+  assert.equal(result.attack[1][2].path, "wings/attack_02/near.png");
+});
+
+test("W7.1 incomplete V5 contracts fall back instead of mixing V3 and V5", () => {
+  const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const context = {
+    ASSETS: {
+      hero001: {
+        v5: {
+          g2: {
+            approval: "approved",
+            canvas: { width: 768, height: 768 },
+            base: { approval: "approved", frames: { idle_01: "base.png" } },
+            wingTemplate: { frames: {} }
+          }
+        }
+      }
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(`${contractSource}; this.result = resolveHeroV5BaseWingContract({ includeWings: true });`, context);
+  assert.equal(context.result, null);
+});
+
+test("W7.2 battle snapshot selects V5 Base + Wing only when explicitly enabled", () => {
+  const adapter = source("src/phaser/presentation/EventBridge.js");
+  assert.match(adapter, /heroV5 === undefined/);
+  assert.match(adapter, /isHeroV5RuntimeEnabled\(\)/);
+  assert.match(adapter, /includeWings: selection\?\.wings === "angel"/);
+  assert.match(adapter, /visualMode: heroFrames\.mode \|\| "v3"/);
+  assert.match(adapter, /return heroV3PresentationLayerFrames\(selection\)/);
+  assert.doesNotMatch(adapter, /coverage_underlay|torso_armor|legs_boots|arm_rear|arm_front/);
+});
+
+test("W7.2 shared HeroRenderer accepts authored V5 layer order without a second renderer", () => {
+  const renderer = source("src/phaser/renderers/HeroRenderer.js");
+  const actor = source("src/phaser/actors/HeroActor.js");
+  assert.match(renderer, /V3 contract and the opt-in V5 G2 contract/);
+  assert.match(renderer, /Presentation models already arrive in authored bottom-to-top order/);
+  assert.equal((actor.match(/new HeroRenderer\(/g) || []).length, 1);
+  assert.doesNotMatch(actor, /HeroV5Renderer|V5HeroRenderer/);
+  assert.doesNotMatch(renderer, /coverage_underlay|torso_armor|legs_boots|arm_rear|arm_front/);
+});
+
+test("W7 Hero V5 runtime contract loads before the battle adapter", () => {
+  const build = source("build.js");
+  const contractIndex = build.indexOf('"phaser/presentation/HeroV5RuntimeContract.js"');
+  const adapterIndex = build.indexOf('"phaser/presentation/EventBridge.js"');
+  assert.ok(contractIndex > 0);
+  assert.ok(adapterIndex > contractIndex);
+});
+

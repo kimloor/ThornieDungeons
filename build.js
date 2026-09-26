@@ -46,6 +46,7 @@ const MODULE_ORDER = [
   "phaser/layout/ResponsiveAnchors.js",
   "phaser/presentation/ActorPresentationModel.js",
   "phaser/presentation/EquipmentVisualResolver.js",
+  "phaser/presentation/HeroV5RuntimeContract.js",
   "phaser/presentation/PresentationEventBridge.js",
   "phaser/presentation/EventBridge.js",
   "phaser/actors/ActorBase.js",
