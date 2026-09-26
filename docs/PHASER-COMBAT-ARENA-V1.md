@@ -240,12 +240,12 @@ Combat, Arena and Raid must not build separate VFX engines for equivalent effect
 
 Use normalized coordinates and explicit scene contracts.
 
-Current Combat anchors:
-- Hero: 0.24, 0.74
-- Pet: 0.36, 0.79
-- one Monster: 0.78, 0.68
-- two Monsters: 0.74,0.73 / 0.84,0.61
-- three Monsters: 0.72,0.76 / 0.80,0.66 / 0.88,0.56
+Current locked Combat anchors:
+- Hero: 0.20, 0.50
+- Pet: 0.22, 0.84
+- one Monster: 0.80, 0.61
+- two Monsters: 0.74,0.38 / 0.85,0.80
+- three Monsters: 0.71,0.29 / 0.80,0.58 / 0.87,0.87
 - Hero VFX: 0.32,0.60
 - Pet VFX: 0.42,0.66
 - Monster VFX: target anchor x-0.04, y-0.12
@@ -521,6 +521,19 @@ This architecture does not authorize:
 - skeletal/Spine migration
 - duplicating Hero/VFX/asset systems per scene
 - Dungeon exploration/presentation
+
+---
+
+## 15.1 Post-W6 text clarity follow-up
+
+W6 user browser QA passed on iPhone, with one non-blocking presentation note: Phaser-rendered text appears blurrier/softer than equivalent DOM text.
+
+Next presentation-polish task:
+- inspect Phaser Text resolution and device pixel ratio handling on iOS Safari;
+- improve name / HP / status text crispness without changing actor anchors, layout, gameplay timing or authority;
+- use DOM text clarity at the same viewport as the visual comparison target.
+
+This is a presentation-only follow-up and does not reopen W6 architecture acceptance.
 
 ---
 
