@@ -141,7 +141,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.11";
+  content: "Ver 1.0.12";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -8944,11 +8944,32 @@ const ACTOR_PRESENTATION_MODEL = Object.freeze({
 });
 
 // ===== phaser/presentation/EquipmentVisualResolver.js =====
-// ---------- W6 Equipment Visual Resolver Boundary ----------
+// ---------- W7 Equipment Visual Resolver Boundary ----------
 const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
-  version: 1,
-  currentHeroMode: "v3"
+  version: 2,
+  currentHeroMode: "v3",
+  v5OptIn: true
 });
+
+function isAzureVisualItem(item) {
+  return !!item && (
+    item.setId === "azure"
+    || String(item.name || "").toLowerCase().includes("azure")
+  );
+}
+
+function resolveHeroV5EquipmentSelection(equipped = {}) {
+  return {
+    wings: equipped?.wings ? "angel" : null,
+    azure: {
+      helmet: isAzureVisualItem(equipped?.helmet),
+      chest: isAzureVisualItem(equipped?.chest),
+      gloves: isAzureVisualItem(equipped?.gloves),
+      boots: isAzureVisualItem(equipped?.boots),
+      weapon: isAzureVisualItem(equipped?.weapon)
+    }
+  };
+}
 
 function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = {}) {
   const resolveLegacySelection = legacyHeroSelectionResolver || (
@@ -8959,6 +8980,13 @@ function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = 
     resolveHeroSelection(equipped = {}) {
       const selection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
       return { ...(selection || {}) };
+    },
+    resolveHeroV5Selection(equipped = {}) {
+      const selection = resolveHeroV5EquipmentSelection(equipped || {});
+      return {
+        wings: selection.wings,
+        azure: { ...selection.azure }
+      };
     }
   });
 }
@@ -8977,7 +9005,16 @@ const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
     attack: Object.freeze(["attack_01", "attack_02", "attack_03"]),
     death: Object.freeze(["death_01", "death_02"])
   }),
-  layerOrder: Object.freeze(["wing_far", "base", "wing_near"])
+  layerOrder: Object.freeze(["wing_far", "base", "wing_near"]),
+  azureLayerOrder: Object.freeze([
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front"
+  ])
 });
 
 function isHeroV5RuntimeEnabled() {
@@ -9001,12 +9038,30 @@ function getHeroV5RuntimeConfig(characterId = HERO_V5_RUNTIME_CONTRACT.character
   return config;
 }
 
-function heroV5FrameLayers(config, frameId, includeWings) {
+function heroV5AzureLayersForSelection(selection = {}) {
+  const azure = selection?.azure || {};
+  const requested = [];
+  if (azure.chest) requested.push("coverage_underlay", "torso_armor");
+  if (azure.boots) requested.push("legs_boots");
+  if (azure.gloves) requested.push("arm_rear");
+  if (azure.helmet) requested.push("helmet");
+  if (azure.weapon) requested.push("sword");
+  if (azure.gloves) requested.push("arm_front");
+  return HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
+}
+
+function heroV5FrameLayers(config, frameId, { includeWings = false, equipmentSelection = {} } = {}) {
   const basePath = config?.base?.frames?.[frameId];
   if (!basePath) return null;
 
   const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
   if (includeWings && (!wingFrame?.wing_far || !wingFrame?.wing_near)) return null;
+
+  const azureLayerNames = heroV5AzureLayersForSelection(equipmentSelection);
+  const azureConfig = config?.equipment?.azure;
+  if (azureLayerNames.length && azureConfig?.approval !== "approved") return null;
+  const azureFrame = azureLayerNames.length ? azureConfig?.frames?.[frameId] : null;
+  if (azureLayerNames.some(name => !azureFrame?.[name])) return null;
 
   const layers = [];
   if (includeWings) layers.push({
@@ -9015,25 +9070,34 @@ function heroV5FrameLayers(config, frameId, includeWings) {
   layers.push({
     name: "base", path: basePath, x: 0, y: 0, scale: 1, rotation: 0
   });
+  azureLayerNames.forEach(name => {
+    layers.push({
+      name, path: azureFrame[name], x: 0, y: 0, scale: 1, rotation: 0
+    });
+  });
   if (includeWings) layers.push({
     name: "wing_near", path: wingFrame.wing_near, x: 0, y: 0, scale: 1, rotation: 0
   });
   return layers;
 }
 
-function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings = false } = {}) {
+function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings = false, equipmentSelection = {} } = {}) {
   const config = getHeroV5RuntimeConfig(characterId);
   if (!config) return null;
 
   const resolved = {};
   for (const [state, frameIds] of Object.entries(HERO_V5_RUNTIME_CONTRACT.animationFrames)) {
-    const frames = frameIds.map(frameId => heroV5FrameLayers(config, frameId, includeWings));
+    const frames = frameIds.map(frameId => heroV5FrameLayers(config, frameId, {
+      includeWings,
+      equipmentSelection
+    }));
     if (frames.some(frame => !Array.isArray(frame) || !frame.length)) return null;
     resolved[state] = frames;
   }
 
+  const hasAzureEquipment = heroV5AzureLayersForSelection(equipmentSelection).length > 0;
   return Object.freeze({
-    mode: "v5-g2",
+    mode: hasAzureEquipment ? "v5-g2-azure" : "v5-g2",
     canvas: {
       width: HERO_V5_RUNTIME_CONTRACT.canvas.width,
       height: HERO_V5_RUNTIME_CONTRACT.canvas.height
@@ -9169,11 +9233,12 @@ function heroV3PresentationLayerFrames(selection = {}) {
   };
 }
 
-function heroPresentationLayerFrames(selection = {}, { preferV5 = false } = {}) {
+function heroPresentationLayerFrames(selection = {}, { preferV5 = false, v5Selection = {} } = {}) {
   if (preferV5 && typeof resolveHeroV5BaseWingContract === "function") {
     const v5 = resolveHeroV5BaseWingContract({
       characterId: "hero001",
-      includeWings: selection?.wings === "angel"
+      includeWings: v5Selection?.wings === "angel" || selection?.wings === "angel",
+      equipmentSelection: v5Selection
     });
     if (v5) {
       const normalize = layers => (layers || []).map(layer => ({
@@ -9212,10 +9277,14 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
   const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
   const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
+  const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
   const preferHeroV5 = heroV5 === undefined
     ? (typeof isHeroV5RuntimeEnabled === "function" && isHeroV5RuntimeEnabled())
     : heroV5 === true;
-  const heroFrames = heroPresentationLayerFrames(heroSelection, { preferV5: preferHeroV5 });
+  const heroFrames = heroPresentationLayerFrames(heroSelection, {
+    preferV5: preferHeroV5,
+    v5Selection: heroV5Selection
+  });
   const heroLayers = heroFrames.idle[0] || [];
   const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
   const monsterConfigs = enemyList.map(enemy => typeof getMonsterSpriteConfig === "function" ? getMonsterSpriteConfig(enemy) : null);
@@ -9644,17 +9713,21 @@ class HeroActor extends PhaserBattleActor {
     });
   }
 
+  isV5Presentation() {
+    return String(this.data?.visualMode || "").startsWith("v5-g2");
+  }
+
   displaySize() {
     const base = super.displaySize();
-    return this.data?.visualMode === "v5-g2" ? Math.round(base * 1.10) : base;
+    return this.isV5Presentation() ? Math.round(base * 1.30) : base;
   }
 
   hurtVisualState() {
-    return this.data?.visualMode === "v5-g2" ? "death" : super.hurtVisualState();
+    return this.isV5Presentation() ? "death" : super.hurtVisualState();
   }
 
   frameDelayForState(state) {
-    if (this.data?.visualMode === "v5-g2") {
+    if (this.isV5Presentation()) {
       const configured = Number(this.data?.layerFrames?.frameMs?.[state]);
       if (Number.isFinite(configured) && configured > 0) return configured;
     }
