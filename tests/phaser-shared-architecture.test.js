@@ -171,3 +171,82 @@ test("W6.2 shared presentation modules load before battle snapshot adapter and h
   assert.ok(hostIndex > adapterIndex);
 });
 
+test("W6.3 HeroActor delegates V3 visual composition to one shared HeroRenderer", () => {
+  const actor = source("src/phaser/actors/HeroActor.js");
+  const renderer = source("src/phaser/renderers/HeroRenderer.js");
+  assert.match(actor, /new HeroRenderer\(scene/);
+  assert.match(actor, /this\.heroRenderer\.setData\(this\.data\)\.visualFrameCount/);
+  assert.match(actor, /this\.heroRenderer\?\.setData\(this\.data\)\.applyVisualFrame/);
+  assert.doesNotMatch(actor, /layerImages/);
+  assert.doesNotMatch(actor, /layerSetForState/);
+  assert.match(renderer, /class HeroRenderer/);
+  assert.match(renderer, /resolveHeroV3Layers already returns the DOM bottom-to-top contract/);
+  assert.doesNotMatch(renderer, /heroVisualSelectionFromEquipment/);
+  assert.doesNotMatch(renderer, /V5_G2|Hero V5 Runtime|coverage_underlay/);
+});
+
+test("W6.3 HeroRenderer preserves W5 layer ordering and placement math", () => {
+  const renderer = source("src/phaser/renderers/HeroRenderer.js");
+  const images = [];
+  const root = {
+    list: [],
+    addAt(image, index) {
+      this.list.splice(index, 0, image);
+    }
+  };
+  const makeImage = key => ({
+    texture: { key },
+    visible: true,
+    setOrigin() { return this; },
+    setDisplaySize(width, height) { this.width = width; this.height = height; return this; },
+    setVisible(value) { this.visible = value; return this; },
+    setTexture(next) { this.texture.key = next; return this; },
+    setPosition(x, y) { this.x = x; this.y = y; return this; },
+    setAngle(angle) { this.angle = angle; return this; },
+    destroy() { this.destroyed = true; }
+  });
+  const scene = {
+    textures: { exists: () => true },
+    add: {
+      container: () => root,
+      image: (_x, _y, key) => {
+        const image = makeImage(key);
+        images.push(image);
+        return image;
+      }
+    }
+  };
+  const context = { console };
+  vm.createContext(context);
+  vm.runInContext(`${renderer}; this.HeroRenderer = HeroRenderer;`, context);
+  const instance = new context.HeroRenderer(scene, {
+    root,
+    displaySize: 150,
+    textureKey: url => `key:${url}`,
+    data: {
+      layerFrames: {
+        canvas: { width: 300, height: 300 },
+        idle: [[
+          { name: "wings", url: "wings.png", x: 30, y: 60, scale: 1, rotation: 0 },
+          { name: "base", url: "base.png", x: 0, y: 0, scale: 1, rotation: 0 }
+        ]]
+      }
+    }
+  });
+  instance.applyVisualFrame("idle", 0);
+  assert.deepEqual(instance.layerImages.map(entry => entry.name), ["wings", "base"]);
+  assert.equal(root.list[0], images[0]);
+  assert.equal(root.list[1], images[1]);
+  assert.equal(images[0].width, 150);
+  assert.equal(images[0].x, 15);
+  assert.equal(images[0].y, 30);
+});
+
+test("W6.3 shared HeroRenderer loads before HeroActor", () => {
+  const build = source("build.js");
+  const rendererIndex = build.indexOf('"phaser/renderers/HeroRenderer.js"');
+  const actorIndex = build.indexOf('"phaser/actors/HeroActor.js"');
+  assert.ok(rendererIndex > 0);
+  assert.ok(actorIndex > rendererIndex);
+});
+
