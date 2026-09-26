@@ -141,7 +141,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.10";
+  content: "Ver 1.0.11";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -9042,9 +9042,9 @@ function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings =
     attack: resolved.attack,
     death: resolved.death,
     frameMs: {
-      idle: 220,
-      attack: 150,
-      death: 180
+      idle: 440,
+      attack: 300,
+      death: 360
     }
   });
 }
@@ -9314,6 +9314,16 @@ class PhaserBattleActor {
     return "idle";
   }
 
+  hurtVisualState() {
+    return "idle";
+  }
+
+  frameDelayForState(state) {
+    if (state === "idle") return 220;
+    if (state === "attack") return 150;
+    return 180;
+  }
+
   frameUrlsForState(state) {
     if (state === "death" && this.data.frames?.death?.length) return this.data.frames.death;
     if (state === "attack" && this.data.frames?.attack?.length) return this.data.frames.attack;
@@ -9381,7 +9391,7 @@ class PhaserBattleActor {
     this.stopAnimationPlayback();
     this.visualState = nextState;
     this.frameIndex = 0;
-    const effectiveFrameState = nextState === "hurt" ? "idle" : nextState;
+    const effectiveFrameState = nextState === "hurt" ? this.hurtVisualState() : nextState;
     const frameCount = this.visualFrameCount(effectiveFrameState);
     this.applyVisualFrame(effectiveFrameState, 0);
 
@@ -9407,7 +9417,7 @@ class PhaserBattleActor {
 
     if (nextState === "idle") {
       if (frameCount > 1) {
-        const delay = Math.max(80, Math.round(220 / Math.max(1, speed)));
+        const delay = Math.max(80, Math.round(this.frameDelayForState("idle") / Math.max(1, speed)));
         this.frameTimer = this.scene.time.addEvent({
           delay,
           loop: true,
@@ -9424,7 +9434,7 @@ class PhaserBattleActor {
 
     const frameDelay = Math.max(
       70,
-      Math.round((nextState === "attack" ? 150 : 180) / Math.max(1, speed))
+      Math.round(this.frameDelayForState(nextState) / Math.max(1, speed))
     );
 
     if (nextState === "attack") {
@@ -9632,6 +9642,23 @@ class HeroActor extends PhaserBattleActor {
       displaySize: () => this.displaySize(),
       textureKey: reference => this.scene.assetKey(reference)
     });
+  }
+
+  displaySize() {
+    const base = super.displaySize();
+    return this.data?.visualMode === "v5-g2" ? Math.round(base * 1.10) : base;
+  }
+
+  hurtVisualState() {
+    return this.data?.visualMode === "v5-g2" ? "death" : super.hurtVisualState();
+  }
+
+  frameDelayForState(state) {
+    if (this.data?.visualMode === "v5-g2") {
+      const configured = Number(this.data?.layerFrames?.frameMs?.[state]);
+      if (Number.isFinite(configured) && configured > 0) return configured;
+    }
+    return super.frameDelayForState(state);
   }
 
   visualFrameCount(state) {
