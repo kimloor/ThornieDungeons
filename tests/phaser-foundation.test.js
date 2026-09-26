@@ -119,7 +119,7 @@ test("W5.2 animation bridge stays presentation-only and carries resolved UI anim
 
 test("Ver 1.0.6 mobile battle layout reserves fixed log space", () => {
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
-  assert.match(styles, /content: "Ver 1\.0\.8"/);
+  assert.match(styles, /content: "Ver 1\.0\.9"/);
   assert.match(styles, /W5\.2 mobile combat fit/);
   assert.match(styles, /flex:0 0 42px/);
   assert.match(styles, /height:32px/);
@@ -154,7 +154,7 @@ test("actor display size consumes shared responsive scene scale", () => {
 
 test("Ver 1.0.7 centers the dungeon modifier pill", () => {
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
-  assert.match(styles, /content: "Ver 1\.0\.8"/);
+  assert.match(styles, /content: "Ver 1\.0\.9"/);
   assert.match(styles, /\.md-modifier-chip \{/);
   assert.match(styles, /margin:2px auto 4px/);
   assert.match(styles, /border-radius:999px/);
@@ -179,5 +179,13 @@ test("Ver 1.0.8 Phaser HUD text uses capped device-pixel resolution", () => {
   vm.createContext(standard);
   vm.runInContext(`${actor}; this.result = phaserTextResolution();`, standard);
   assert.equal(standard.result, 1);
+});
+
+test("Ver 1.0.9 sharpens Phaser HUD stroke and keeps labels inside the battlefield", () => {
+  const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
+  assert.equal((actor.match(/strokeThickness: 2/g) || []).length, 3);
+  assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
+  assert.match(actor, /const nameX = this\.data\.kind === "hero" \? -Math\.round\(Math\.min\(30, size \* 0\.18\)\) : 0/);
+  assert.match(actor, /const nameY = this\.data\.kind === "pet" \? 22 : 34/);
 });
 
