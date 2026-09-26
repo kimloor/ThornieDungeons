@@ -83,3 +83,91 @@ test("W6.1 shared asset modules load before Phaser presentation consumers", () =
   assert.ok(bridgeIndex > registryIndex);
   assert.ok(sceneIndex > registryIndex);
 });
+
+test("W6.2 ActorPresentationModel preserves W5 actor normalization contract", () => {
+  const model = source("src/phaser/presentation/ActorPresentationModel.js");
+  const context = { console };
+  vm.createContext(context);
+  vm.runInContext(`${model}; this.result = {
+    actor: createActorPresentationModel({
+      id: "m1",
+      name: "Slime",
+      kind: "monster",
+      hp: 25,
+      maxHp: 40,
+      statuses: { poison: { duration: 2 }, expired: { duration: 0 } },
+      monsterDefId: "slime_01"
+    }),
+    attack: normalizeActorPresentationAnim("attack", true),
+    dead: normalizeActorPresentationAnim("idle", false)
+  };`, context);
+  const result = JSON.parse(JSON.stringify(context.result));
+  assert.deepEqual(result.actor, {
+    id: "m1",
+    name: "Slime",
+    kind: "monster",
+    hp: 25,
+    maxHp: 40,
+    alive: true,
+    statuses: [{ key: "poison", duration: 2 }],
+    defId: "slime_01",
+    isBoss: false,
+    isEliteBoss: false,
+    sizeClass: "medium",
+    anchorType: "ground",
+    icon: "◆"
+  });
+  assert.equal(result.attack, "attack");
+  assert.equal(result.dead, "death");
+});
+
+test("W6.2 PresentationEventBridge is stream-generic while preserving battlefield events", () => {
+  const bridgeSource = source("src/phaser/presentation/PresentationEventBridge.js");
+  const events = [];
+  const context = { console, events };
+  vm.createContext(context);
+  vm.runInContext(`${bridgeSource}; this.bridge = createPresentationEventBridge({
+    syncType: "BATTLEFIELD_SYNC",
+    streamKey: "battleId",
+    onEvent: event => events.push(event)
+  });`, context);
+  const bridge = context.bridge;
+  assert.equal(bridge.sync({ battleId: "b1", seq: 3, hero: {} }), true);
+  bridge.targetSelected("m1");
+  const normalized = JSON.parse(JSON.stringify(events));
+  assert.equal(normalized[0].type, "BATTLEFIELD_SYNC");
+  assert.equal(normalized[0].battleId, "b1");
+  assert.equal(normalized[0].seq, 3);
+  assert.equal(normalized[1].type, "TARGET_SELECTED");
+  assert.equal(normalized[1].battleId, "b1");
+  assert.equal(normalized[1].targetId, "m1");
+  assert.deepEqual(JSON.parse(JSON.stringify(bridge.getState())), {
+    streamKey: "battleId",
+    streamId: "b1",
+    latestSeq: 3
+  });
+});
+
+test("W6.2 Battle snapshot adapter consumes shared actor model and no longer owns bridge state", () => {
+  const adapter = source("src/phaser/presentation/EventBridge.js");
+  const host = source("src/phaser/runtime/BattlefieldHost.js");
+  assert.match(adapter, /createActorPresentationModel\(/);
+  assert.match(adapter, /normalizeActorPresentationAnim\(/);
+  assert.doesNotMatch(adapter, /function presentationUnit/);
+  assert.doesNotMatch(adapter, /function createPresentationEventBridge/);
+  assert.match(host, /syncType: "BATTLEFIELD_SYNC"/);
+  assert.match(host, /streamKey: "battleId"/);
+});
+
+test("W6.2 shared presentation modules load before battle snapshot adapter and host", () => {
+  const build = source("build.js");
+  const modelIndex = build.indexOf('"phaser/presentation/ActorPresentationModel.js"');
+  const bridgeIndex = build.indexOf('"phaser/presentation/PresentationEventBridge.js"');
+  const adapterIndex = build.indexOf('"phaser/presentation/EventBridge.js"');
+  const hostIndex = build.indexOf('"phaser/runtime/BattlefieldHost.js"');
+  assert.ok(modelIndex > 0);
+  assert.ok(bridgeIndex > modelIndex);
+  assert.ok(adapterIndex > bridgeIndex);
+  assert.ok(hostIndex > adapterIndex);
+});
+
