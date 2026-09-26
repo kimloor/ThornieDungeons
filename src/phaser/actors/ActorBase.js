@@ -228,9 +228,8 @@ class PhaserBattleActor {
     this.statusText.setPosition(0, -Math.round(size * 0.72) - 4);
     this.hpTextOffsetY = barY + 10;
     this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
-    const nameX = this.data.kind === "hero" ? -Math.round(Math.min(30, size * 0.18)) : 0;
     const nameY = this.data.kind === "pet" ? 22 : 34;
-    this.nameText.setPosition(nameX, nameY);
+    this.nameText.setPosition(0, nameY);
   }
 
   refresh(data, { animate = true } = {}) {
