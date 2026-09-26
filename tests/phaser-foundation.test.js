@@ -80,7 +80,7 @@ test("Hero layer order matches DOM composition through shared renderer", () => {
 
 test("Phaser HP HUD stays below feet and behind actor sprites", () => {
   const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
-  assert.match(actor, /const barY = 14/);
+  assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
   assert.match(actor, /scene\.add\.graphics\(\)\.setDepth\(2\)/);
   assert.match(actor, /setOrigin\(0\.5, 0\)\.setDepth\(3\)/);
 });
@@ -96,8 +96,8 @@ test("static actor sizing keeps Hero and Monsters inside mobile battlefield", ()
 test("HP bars render below actor feet through the shared actor HUD", () => {
   const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
   const hero = fs.readFileSync(path.join(ROOT, "src/phaser/actors/HeroActor.js"), "utf8");
-  assert.match(actor, /const barY = 14/);
-  assert.match(actor, /nameText\.setPosition\(0, 34\)/);
+  assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
+  assert.match(actor, /this\.nameText\.setPosition\(0, nameY\)/);
   assert.match(hero, /class HeroActor extends PhaserBattleActor/);
   assert.doesNotMatch(hero, /const barY = 14/);
 });
@@ -119,7 +119,7 @@ test("W5.2 animation bridge stays presentation-only and carries resolved UI anim
 
 test("Ver 1.0.6 mobile battle layout reserves fixed log space", () => {
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
-  assert.match(styles, /content: "Ver 1\.0\.7"/);
+  assert.match(styles, /content: "Ver 1\.0\.9"/);
   assert.match(styles, /W5\.2 mobile combat fit/);
   assert.match(styles, /flex:0 0 42px/);
   assert.match(styles, /height:32px/);
@@ -154,8 +154,42 @@ test("actor display size consumes shared responsive scene scale", () => {
 
 test("Ver 1.0.7 centers the dungeon modifier pill", () => {
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
-  assert.match(styles, /content: "Ver 1\.0\.7"/);
+  assert.match(styles, /content: "Ver 1\.0\.9"/);
   assert.match(styles, /\.md-modifier-chip \{/);
   assert.match(styles, /margin:2px auto 4px/);
   assert.match(styles, /border-radius:999px/);
 });
+
+test("Ver 1.0.8 Phaser HUD text uses capped device-pixel resolution", () => {
+  const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
+  assert.match(actor, /function phaserTextResolution\(\)/);
+  assert.equal((actor.match(/\.setResolution\(textResolution\)/g) || []).length, 3);
+
+  const context = { devicePixelRatio: 3 };
+  vm.createContext(context);
+  vm.runInContext(`${actor}; this.result = phaserTextResolution();`, context);
+  assert.equal(context.result, 3);
+
+  const capped = { devicePixelRatio: 4 };
+  vm.createContext(capped);
+  vm.runInContext(`${actor}; this.result = phaserTextResolution();`, capped);
+  assert.equal(capped.result, 3);
+
+  const standard = { devicePixelRatio: 1 };
+  vm.createContext(standard);
+  vm.runInContext(`${actor}; this.result = phaserTextResolution();`, standard);
+  assert.equal(standard.result, 1);
+});
+
+test("Ver 1.0.9 sharpens Phaser HUD stroke and keeps labels inside the battlefield", () => {
+  const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
+  assert.equal((actor.match(/strokeThickness: 2/g) || []).length, 3);
+  assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
+  assert.doesNotMatch(actor, /const nameX = this\.data\.kind === "hero"/);
+  assert.match(actor, /const nameY = this\.data\.kind === "pet" \? 22 : 34/);
+  assert.match(actor, /this\.nameText\.setPosition\(0, nameY\)/);
+
+  const pet = fs.readFileSync(path.join(ROOT, "src/phaser/actors/PetActor.js"), "utf8");
+  assert.match(pet, /baseSize: 118, depth: 8/);
+});
+

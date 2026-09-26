@@ -3,6 +3,13 @@ function phaserActorSizeClass(sizeClass) {
   return { small: 0.82, medium: 1, large: 1.18, elite: 1.38 }[sizeClass] || 1;
 }
 
+function phaserTextResolution() {
+  const ratio = typeof globalThis !== "undefined"
+    ? Number(globalThis.devicePixelRatio) || 1
+    : 1;
+  return Math.max(1, Math.min(3, ratio));
+}
+
 class PhaserBattleActor {
   constructor(scene, data, options = {}) {
     this.scene = scene;
@@ -14,20 +21,21 @@ class PhaserBattleActor {
     this.container.add(this.visualRoot);
     this.sprite = null;
     this.hpBar = scene.add.graphics().setDepth(2);
+    const textResolution = phaserTextResolution();
     this.statusText = scene.add.text(0, 0, "", {
       color: "#ffffff", fontFamily: "Arial", fontSize: "10px", fontStyle: "bold",
-      stroke: "#071126", strokeThickness: 3, align: "center"
-    }).setOrigin(0.5, 1).setDepth((options.depth || 5) + 3);
+      stroke: "#071126", strokeThickness: 2, align: "center"
+    }).setOrigin(0.5, 1).setDepth((options.depth || 5) + 3).setResolution(textResolution);
     // HP is intentionally behind every actor sprite. The label stays readable when
     // no sprite occupies the same ground lane but never paints over a character.
     this.hpText = scene.add.text(0, 0, "", {
       color: "#ffffff", fontFamily: "Arial", fontSize: "9px", fontStyle: "bold",
-      stroke: "#071126", strokeThickness: 3, align: "center"
-    }).setOrigin(0.5, 0).setDepth(3);
+      stroke: "#071126", strokeThickness: 2, align: "center"
+    }).setOrigin(0.5, 0).setDepth(3).setResolution(textResolution);
     this.nameText = scene.add.text(0, 0, String(this.data.name || "Unit"), {
       color: "#fff1ad", fontFamily: "Arial", fontSize: "10px", fontStyle: "bold",
-      stroke: "#071126", strokeThickness: 3, align: "center"
-    }).setOrigin(0.5, 0).setDepth((options.depth || 5) + 3);
+      stroke: "#071126", strokeThickness: 2, align: "center"
+    }).setOrigin(0.5, 0).setDepth((options.depth || 5) + 3).setResolution(textResolution);
     this.container.add(this.statusText);
     this.container.add(this.nameText);
     this.selected = false;
@@ -211,7 +219,7 @@ class PhaserBattleActor {
     const hp = Math.max(0, Math.min(maxHp, Number(this.data.hp) || 0));
     const hpPct = hp / maxHp;
     const barWidth = Math.max(54, Math.min(112, size * 0.78));
-    const barY = 14;
+    const barY = this.data.kind === "pet" ? 2 : 14;
     this.hpBar.fillStyle(0x071126, 0.82).fillRoundedRect(-barWidth / 2, barY, barWidth, 8, 4);
     this.hpBar.fillStyle(alive ? 0x55d68b : 0x8c93a3, 1)
       .fillRoundedRect(-barWidth / 2 + 1, barY + 1, Math.max(0, (barWidth - 2) * hpPct), 6, 3);
@@ -220,7 +228,8 @@ class PhaserBattleActor {
     this.statusText.setPosition(0, -Math.round(size * 0.72) - 4);
     this.hpTextOffsetY = barY + 10;
     this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
-    this.nameText.setPosition(0, 34);
+    const nameY = this.data.kind === "pet" ? 22 : 34;
+    this.nameText.setPosition(0, nameY);
   }
 
   refresh(data, { animate = true } = {}) {
