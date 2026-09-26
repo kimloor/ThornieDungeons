@@ -80,7 +80,7 @@ test("Hero layer order matches DOM composition through shared renderer", () => {
 
 test("Phaser HP HUD stays below feet and behind actor sprites", () => {
   const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
-  assert.match(actor, /const barY = 14/);
+  assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
   assert.match(actor, /scene\.add\.graphics\(\)\.setDepth\(2\)/);
   assert.match(actor, /setOrigin\(0\.5, 0\)\.setDepth\(3\)/);
 });
@@ -96,8 +96,8 @@ test("static actor sizing keeps Hero and Monsters inside mobile battlefield", ()
 test("HP bars render below actor feet through the shared actor HUD", () => {
   const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
   const hero = fs.readFileSync(path.join(ROOT, "src/phaser/actors/HeroActor.js"), "utf8");
-  assert.match(actor, /const barY = 14/);
-  assert.match(actor, /nameText\.setPosition\(0, 34\)/);
+  assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
+  assert.match(actor, /this\.nameText\.setPosition\(nameX, nameY\)/);
   assert.match(hero, /class HeroActor extends PhaserBattleActor/);
   assert.doesNotMatch(hero, /const barY = 14/);
 });
