@@ -553,7 +553,7 @@ test("W7.2 semantic snapshot builds synchronized V5 Base + Wing frames and prese
       }
     },
     SHARED_PHASER_ASSET_RESOLVER: {
-      resolve: value => value ? `/assets/${String(value).replace(/^\\/+/, "")}` : "",
+      resolve: value => value ? `/assets/${String(value).replace(/^\/+/, "")}` : "",
       resolveAll: values => (values || []).filter(Boolean),
       manifest: () => ""
     },
