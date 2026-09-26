@@ -8696,6 +8696,98 @@ const THORNIE_PHASER_RUNTIME = (() => {
   });
 })();
 
+// ===== phaser/assets/AssetResolver.js =====
+// ---------- W6 Shared Phaser Asset Resolver ----------
+// Presentation code resolves manifest-relative paths here so scenes/renderers never
+// construct R2 URLs independently. Existing resolved URLs are preserved verbatim.
+const PHASER_ASSET_ROOT = "/assets/";
+
+function isResolvedPhaserAssetUrl(value) {
+  const source = String(value || "").trim();
+  return /^(?:https?:)?\/\//i.test(source)
+    || /^(?:data:|blob:)/i.test(source)
+    || source.startsWith("/");
+}
+
+function resolvePhaserAsset(reference) {
+  const raw = reference && typeof reference === "object"
+    ? (reference.url || reference.path || "")
+    : reference;
+  const source = String(raw || "").trim();
+  if (!source) return "";
+  if (isResolvedPhaserAssetUrl(source)) return source;
+  if (typeof assetUrl === "function") return assetUrl(source);
+  return PHASER_ASSET_ROOT + source.replace(/^\/+/, "");
+}
+
+function resolvePhaserAssets(references) {
+  return [...new Set((references || []).map(resolvePhaserAsset).filter(Boolean))];
+}
+
+function resolvePhaserManifestAsset(key) {
+  if (!key) return "";
+  if (typeof optionalAsset === "function") return resolvePhaserAsset(optionalAsset(key));
+  const root = typeof ASSETS === "object" && ASSETS ? ASSETS : {};
+  const path = String(key).split(".").reduce((obj, part) => obj?.[part], root);
+  return resolvePhaserAsset(path);
+}
+
+const SHARED_PHASER_ASSET_RESOLVER = Object.freeze({
+  resolve: resolvePhaserAsset,
+  resolveAll: resolvePhaserAssets,
+  manifest: resolvePhaserManifestAsset
+});
+
+// ===== phaser/assets/TextureRegistry.js =====
+// ---------- W6 Shared Phaser Texture Registry ----------
+function phaserTextureKeyForUrl(url) {
+  return `thornie-${String(url || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(-150)}`;
+}
+
+function createPhaserTextureRegistry({ resolver = SHARED_PHASER_ASSET_RESOLVER } = {}) {
+  const keyToUrl = new Map();
+  const urlToKey = new Map();
+
+  function keyFor(reference) {
+    const url = resolver.resolve(reference);
+    if (!url) return "";
+    if (urlToKey.has(url)) return urlToKey.get(url);
+    const key = phaserTextureKeyForUrl(url);
+    urlToKey.set(url, key);
+    keyToUrl.set(key, url);
+    return key;
+  }
+
+  function urlFor(key) {
+    return keyToUrl.get(String(key || "")) || "";
+  }
+
+  function forget(key) {
+    const normalizedKey = String(key || "");
+    const url = keyToUrl.get(normalizedKey);
+    if (url) urlToKey.delete(url);
+    keyToUrl.delete(normalizedKey);
+  }
+
+  function queue(scene, references) {
+    if (!scene?.load || !scene?.textures) return [];
+    return resolver.resolveAll(references).map(url => {
+      const key = keyFor(url);
+      const exists = key && scene.textures.exists(key);
+      if (key && !exists) scene.load.image(key, url);
+      return { key, url, queued: !!(key && !exists) };
+    }).filter(entry => entry.key);
+  }
+
+  return Object.freeze({
+    keyFor,
+    urlFor,
+    forget,
+    queue,
+    entries() { return [...keyToUrl.entries()]; }
+  });
+}
+
 // ===== phaser/layout/ResponsiveAnchors.js =====
 // ---------- W5 Responsive Battlefield Anchors ----------
 const RESPONSIVE_ANCHORS = Object.freeze({
@@ -8788,7 +8880,7 @@ function presentationUnit(raw, fallback = {}) {
 }
 
 function presentationAnimationConfig(config) {
-  const urls = name => (config?.animations?.[name] || []).map(path => assetUrl(path)).filter(Boolean);
+  const urls = name => SHARED_PHASER_ASSET_RESOLVER.resolveAll(config?.animations?.[name] || []);
   return {
     idle: urls("idle"),
     attack: urls("attack"),
@@ -8808,7 +8900,7 @@ function heroPresentationLayerFrames(selection = {}) {
   const config = typeof getHeroV3Config === "function" ? getHeroV3Config("hero001") : null;
   const normalize = layers => (layers || []).map(layer => ({
     name: layer.name,
-    url: layer.url,
+    url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
     x: Number(layer.x) || 0,
     y: Number(layer.y) || 0,
     scale: Number(layer.scale ?? 1),
@@ -8883,7 +8975,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(monsterConfigs[index])
     })),
-    backgroundUrl: typeof optionalAsset === "function" ? optionalAsset("battleUi.background") : ""
+    backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("battleUi.background")
   });
 }
 
@@ -9326,11 +9418,7 @@ function createPresentationQueue({ onDrained } = {}) {
 }
 
 // ===== phaser/scenes/BattleScene.js =====
-// ---------- W5 Dungeon Combat Scene Shell ----------
-function phaserAssetKey(url) {
-  return `thornie-${String(url || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(-150)}`;
-}
-
+// ---------- W6 Shared-asset Dungeon Combat Scene Shell ----------
 function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTargetSelected } = {}) {
   return class BattleScene extends Phaser.Scene {
     constructor() {
@@ -9338,17 +9426,18 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.initialSnapshot = initialSnapshot || null;
       this.snapshot = null;
       this.actors = { hero: null, pet: null, monsters: [] };
-      this.assetUrls = new Map();
+      this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
+      this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
       this.readyNotified = false;
       this.presentationQueue = createPresentationQueue();
       this.presentationScale = 1;
       this.handleResize = this.handleResize.bind(this);
     }
 
-    assetKey(url) {
-      const key = phaserAssetKey(url);
-      if (url) this.assetUrls.set(key, url);
-      return key;
+    assetKey(reference) {
+      // Compatibility surface for W5 actors; key ownership now lives in the
+      // shared registry and can be reused by future scenes/renderers.
+      return this.textureRegistry.keyFor(reference);
     }
 
     collectAssets(snapshot) {
@@ -9367,19 +9456,16 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
           ...(unit.frames?.death || [])
         );
       });
-      return [...new Set(assets.filter(Boolean))];
+      return this.assetResolver.resolveAll(assets);
     }
 
     preload() {
       const assets = this.collectAssets(this.initialSnapshot);
-      assets.forEach(url => {
-        const key = this.assetKey(url);
-        if (!this.textures.exists(key)) this.load.image(key, url);
-      });
+      this.textureRegistry.queue(this, assets);
       this.load.on("loaderror", file => {
         // Optional art failure is presentation-local. Actors retain a readable
         // vector fallback and the DOM renderer remains available above us.
-        if (file?.key) this.assetUrls.delete(file.key);
+        if (file?.key) this.textureRegistry.forget(file.key);
       });
     }
 
