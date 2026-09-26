@@ -1,4 +1,5 @@
 name: W7.3 Azure validation preview
+# rerun after W7.2 mock alignment
 
 on:
   push:
