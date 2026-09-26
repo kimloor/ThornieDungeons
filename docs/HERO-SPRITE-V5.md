@@ -493,3 +493,19 @@ It does not authorize:
 - responsive breakpoint implementation.
 
 The next production milestone is **Base Hero concept + approved frame-based Idle/Attack/Death references**, not runtime integration.
+
+## 26. Shared HeroRenderer runtime rule
+
+When Hero V5 enters runtime integration, it must be implemented once through the shared Phaser HeroRenderer / HeroActor architecture defined in PHASER-COMBAT-ARENA-V1.md.
+
+The same renderer is intended to serve Combat, Arena, Inventory preview, Character Status preview, Player Card/Profile preview where appropriate, and Victory presentation.
+
+Rules:
+- do not create separate per-page Hero V5 renderers;
+- EquipmentVisualResolver owns approved equipment-layer resolution;
+- AssetResolver / TextureRegistry owns manifest-path lookup and texture reuse;
+- preview state must remain separate from authoritative equipped/save state;
+- the authored frame/layer contract in this document remains the visual source of truth;
+- Phaser may place/scale/sequence the whole actor but must not replace authored V5 frames with skeletal or bone-driven motion.
+
+Dungeon exploration is not part of the active Hero V5/Phaser roadmap.
