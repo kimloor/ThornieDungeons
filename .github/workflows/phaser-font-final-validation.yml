@@ -1,0 +1,24 @@
+name: Phaser font final validation
+
+on:
+  push:
+    branches:
+      - "fix/phaser-font-sharpness"
+    paths:
+      - ".github/workflows/phaser-font-final-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build
+        run: node build.js
+      - name: Focused Phaser tests
+        run: node --test tests/phaser-foundation.test.js tests/phaser-shared-architecture.test.js
