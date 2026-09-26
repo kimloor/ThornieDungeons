@@ -26,7 +26,7 @@ function presentationUnit(raw, fallback = {}) {
 }
 
 function presentationAnimationConfig(config) {
-  const urls = name => (config?.animations?.[name] || []).map(path => assetUrl(path)).filter(Boolean);
+  const urls = name => SHARED_PHASER_ASSET_RESOLVER.resolveAll(config?.animations?.[name] || []);
   return {
     idle: urls("idle"),
     attack: urls("attack"),
@@ -46,7 +46,7 @@ function heroPresentationLayerFrames(selection = {}) {
   const config = typeof getHeroV3Config === "function" ? getHeroV3Config("hero001") : null;
   const normalize = layers => (layers || []).map(layer => ({
     name: layer.name,
-    url: layer.url,
+    url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
     x: Number(layer.x) || 0,
     y: Number(layer.y) || 0,
     scale: Number(layer.scale ?? 1),
@@ -121,7 +121,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(monsterConfigs[index])
     })),
-    backgroundUrl: typeof optionalAsset === "function" ? optionalAsset("battleUi.background") : ""
+    backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("battleUi.background")
   });
 }
 

@@ -1,8 +1,4 @@
-// ---------- W5 Dungeon Combat Scene Shell ----------
-function phaserAssetKey(url) {
-  return `thornie-${String(url || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(-150)}`;
-}
-
+// ---------- W6 Shared-asset Dungeon Combat Scene Shell ----------
 function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTargetSelected } = {}) {
   return class BattleScene extends Phaser.Scene {
     constructor() {
@@ -10,17 +6,18 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.initialSnapshot = initialSnapshot || null;
       this.snapshot = null;
       this.actors = { hero: null, pet: null, monsters: [] };
-      this.assetUrls = new Map();
+      this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
+      this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
       this.readyNotified = false;
       this.presentationQueue = createPresentationQueue();
       this.presentationScale = 1;
       this.handleResize = this.handleResize.bind(this);
     }
 
-    assetKey(url) {
-      const key = phaserAssetKey(url);
-      if (url) this.assetUrls.set(key, url);
-      return key;
+    assetKey(reference) {
+      // Compatibility surface for W5 actors; key ownership now lives in the
+      // shared registry and can be reused by future scenes/renderers.
+      return this.textureRegistry.keyFor(reference);
     }
 
     collectAssets(snapshot) {
@@ -39,19 +36,16 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
           ...(unit.frames?.death || [])
         );
       });
-      return [...new Set(assets.filter(Boolean))];
+      return this.assetResolver.resolveAll(assets);
     }
 
     preload() {
       const assets = this.collectAssets(this.initialSnapshot);
-      assets.forEach(url => {
-        const key = this.assetKey(url);
-        if (!this.textures.exists(key)) this.load.image(key, url);
-      });
+      this.textureRegistry.queue(this, assets);
       this.load.on("loaderror", file => {
         // Optional art failure is presentation-local. Actors retain a readable
         // vector fallback and the DOM renderer remains available above us.
-        if (file?.key) this.assetUrls.delete(file.key);
+        if (file?.key) this.textureRegistry.forget(file.key);
       });
     }
 
