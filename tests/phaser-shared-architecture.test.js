@@ -507,7 +507,7 @@ test("W7.2 battle snapshot selects V5 Base + Wing only when explicitly enabled",
   const adapter = source("src/phaser/presentation/EventBridge.js");
   assert.match(adapter, /heroV5 === undefined/);
   assert.match(adapter, /isHeroV5RuntimeEnabled\(\)/);
-  assert.match(adapter, /includeWings: selection\?\.wings === "angel"/);
+  assert.match(adapter, /includeWings: v5Selection\?\.wings === "angel" \|\| selection\?\.wings === "angel"/);
   assert.match(adapter, /visualMode: heroFrames\.mode \|\| "v3"/);
   assert.match(adapter, /return heroV3PresentationLayerFrames\(selection\)/);
   assert.doesNotMatch(adapter, /coverage_underlay|torso_armor|legs_boots|arm_rear|arm_front/);
@@ -559,7 +559,11 @@ test("W7.2 semantic snapshot builds synchronized V5 Base + Wing frames and prese
       manifest: () => ""
     },
     SHARED_EQUIPMENT_VISUAL_RESOLVER: {
-      resolveHeroSelection: () => ({ wings: "angel" })
+      resolveHeroSelection: () => ({ wings: "angel" }),
+      resolveHeroV5Selection: () => ({
+        wings: "angel",
+        azure: { helmet: false, chest: false, gloves: false, boots: false, weapon: false }
+      })
     },
     createActorPresentationModel: (raw, fallback = {}) => ({ ...fallback, ...(raw || {}), alive: true }),
     normalizeActorPresentationAnim: value => value || "idle",
