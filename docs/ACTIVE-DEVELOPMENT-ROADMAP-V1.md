@@ -226,7 +226,12 @@ Authenticated production E2E may use test credentials only when explicitly autho
 
 ## W5 — Phaser Combat Foundation + Presentation
 
-**Status: ACTIVE — Batch 1 foundation in QA preparation**
+**Status: COMPLETE / RELEASED — 2026-09-26**
+
+Released/verified baseline:
+- merged main: `12dd534819ee75f6fa7966d14fbfe3a308fcfd77`;
+- user browser QA PASS through Ver 1.0.7;
+- DOM remains default renderer and Phaser remains opt-in via `?phaserBattle=1`.
 
 Purpose:
 - establish the opt-in Phaser Combat battlefield without changing Battle Core;
@@ -258,6 +263,10 @@ No gameplay logic moves into Phaser.
 ---
 
 ## W6 — Shared Phaser Presentation Architecture
+
+**Status: COMPLETE / USER QA PASS — 2026-09-26**
+
+Verified W6 branch introduced the shared AssetResolver, TextureRegistry, ActorPresentationModel, PresentationEventBridge, HeroRenderer, PresentationQueue boundary, VfxManager, ResponsiveSceneLayout and EquipmentVisualResolver boundary without moving gameplay authority into Phaser.
 
 **Gate: complete this before expanding Phaser to Arena or additional screens.**
 
@@ -338,6 +347,18 @@ Do not build separate Combat/Arena/Raid VFX systems.
 
 ### ResponsiveSceneLayout
 Expand the existing normalized anchor system for reusable scene layouts while keeping scene-specific anchor contracts explicit.
+
+### Post-W6 presentation polish — Phaser font sharpness
+**NEXT before/alongside W7 visual rollout**
+
+User browser QA on iPhone confirmed the W6 architecture/Combat presentation works, but Phaser-rendered text is visibly softer/blurrier than equivalent DOM text.
+
+Follow-up scope:
+- investigate Phaser text resolution / devicePixelRatio / render scale behavior on iOS Safari;
+- improve Hero/Pet/Monster name, HP and status text sharpness;
+- preserve current layout/anchors and gameplay;
+- compare directly against DOM text at the same device size;
+- presentation-only change; no Battle Core or gameplay changes.
 
 ---
 
