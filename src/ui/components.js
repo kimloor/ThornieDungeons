@@ -4530,6 +4530,7 @@ function BattleLogPanel({ entries, result = false }) {
 function CombatScreen({
   player,
   heroName = "Hero",
+  battleState,
   monsters,
   targetUid,
   onSelectTarget,
@@ -4559,6 +4560,7 @@ function CombatScreen({
   const [assignSlotIndex, setAssignSlotIndex] = useState(null);
   const [autoRun, setAutoRun] = useState(false);
   const [showBattleIntro, setShowBattleIntro] = useState(true);
+  const [phaserStatus, setPhaserStatus] = useState("disabled");
   const skills = heroActiveSkillList(player.skillLevels || {});
   const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
@@ -4581,6 +4583,13 @@ function CombatScreen({
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
   const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
+  const modifierBanner = bossOrModifier?.modifier && String(bossOrModifier.modifier.name || "").trim()
+    ? {
+        icon: String(bossOrModifier.modifier.icon || "✨"),
+        name: String(bossOrModifier.modifier.name).trim(),
+        color: String(bossOrModifier.modifier.color || "#8ee0a8")
+      }
+    : null;
   const skipUnlocked = (combatTurnCount || 0) >= 5;
   const speedAssetKey = combatSpeed === 2 ? "buttons.speedX2" : "buttons.speedX1";
   const speedAssetSrc = optionalAsset(`battleUi.${speedAssetKey}`);
@@ -4594,6 +4603,7 @@ function CombatScreen({
     ? activeTurn.kind === "player" ? heroName : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
     : "—";
   const formationMonsters = buildMonsterFormation(monsters);
+  const phaserActive = phaserStatus === "ready";
   const qs = quickSlots || [null, null, null, null];
   const vfxFor = targetKey => battleVfx.filter(event => event.targetKey === targetKey);
   const skillEfficiency = heroSkillRankData(player.skillLevels || {}, "skill_efficiency");
@@ -4688,21 +4698,14 @@ function CombatScreen({
     "aria-label": "Skip battle",
     title: "จำลองการต่อสู้ที่เหลือด้วยระบบเดียวกัน",
     onClick: () => onAction("skip")
-  }, showSkipArt ? /*#__PURE__*/React.createElement("img", { className:"md-combat-skip-art", src:skipAssetSrc, alt:"", "aria-hidden":"true", draggable:false, onError:() => setFailedSkipAsset(skipAssetSrc) }) : /*#__PURE__*/React.createElement("span", { className:"md-combat-skip-fallback" }, "SKIP")))), bossOrModifier && !bossOrModifier.isEliteBoss && /*#__PURE__*/React.createElement("div", {
+  }, showSkipArt ? /*#__PURE__*/React.createElement("img", { className:"md-combat-skip-art", src:skipAssetSrc, alt:"", "aria-hidden":"true", draggable:false, onError:() => setFailedSkipAsset(skipAssetSrc) }) : /*#__PURE__*/React.createElement("span", { className:"md-combat-skip-fallback" }, "SKIP")))), modifierBanner && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
-      background: bossOrModifier.isEliteBoss ? "rgba(255,209,102,0.25)" : `${bossOrModifier.modifier.color}22`,
-      border: `1px solid ${bossOrModifier.isEliteBoss ? "#ffd166" : bossOrModifier.modifier.color}`,
-      color: bossOrModifier.isEliteBoss ? "#caa143" : bossOrModifier.modifier.color,
-      borderRadius: 8,
-      padding: "3px 8px",
-      fontSize: 11,
-      fontWeight: 700,
-      textAlign: "center",
-      margin: "0 auto 4px"
-    },
-    title: bossOrModifier.isEliteBoss ? "Elite Boss: หีบการันตี Elite/Mythic" : bossOrModifier.modifier.desc
-  }, bossOrModifier.isEliteBoss ? "🔥👑 Elite Boss" : `${bossOrModifier.modifier.icon} ${bossOrModifier.modifier.name}`), /*#__PURE__*/React.createElement("div", {
+      background: `${modifierBanner.color}22`,
+      border: `1px solid ${modifierBanner.color}`,
+      color: modifierBanner.color
+    }
+  }, modifierBanner.icon, " ", modifierBanner.name), /*#__PURE__*/React.createElement("div", {
     className: "md-current-turn",
     "aria-live": "polite"
   }, "Round ", Math.max(1, Number(battleRound) || 1), " · Turn: ", activeTurnName), /*#__PURE__*/React.createElement("div", {
@@ -4722,7 +4725,23 @@ function CombatScreen({
     role: "status",
     "aria-live": "polite"
   }, "Confirming result…"), /*#__PURE__*/React.createElement("div", {
-    className: "md-party-board"
+    className: "md-phaser-layer"
+  }, /*#__PURE__*/React.createElement(PhaserBattlefield, {
+    battleState: battleState,
+    heroName: heroName,
+    equipped: equipped,
+    petCombat: petCombat,
+    monsters: monsters,
+    targetUid: targetUid,
+    heroAnim: heroAnim,
+    petAnim: petAnim,
+    enemyAnims: enemyAnims,
+    combatSpeed: combatSpeed,
+    onStatus: status => setPhaserStatus(status),
+    onTargetSelected: onSelectTarget
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md-party-board",
+    style: phaserActive ? { display: "none" } : undefined
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hero-slot"
   }, /*#__PURE__*/React.createElement("div", {
@@ -4770,7 +4789,8 @@ function CombatScreen({
     className: "md-dmg-float",
     style: { color: f.color }
   }, f.text)))), /*#__PURE__*/React.createElement("div", {
-    className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`
+    className: `md-monster-board md-monster-count-${Math.min(3, Math.max(1, monsters.length))}`,
+    style: phaserActive ? { display: "none" } : undefined
   }, formationMonsters.map(({ monster: m, slotIndex }) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
     className: `md-monster-slot md-monster-slot-${slotIndex} ${m.isEliteBoss ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
