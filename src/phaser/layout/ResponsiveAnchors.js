@@ -1,4 +1,4 @@
-// ---------- W5 Responsive Battlefield Anchors ----------
+// ---------- W6 Locked Combat Anchors ----------
 const RESPONSIVE_ANCHORS = Object.freeze({
   HERO: Object.freeze({ x: 0.20, y: 0.50 }),
   PET: Object.freeze({ x: 0.22, y: 0.84 }),
@@ -17,41 +17,35 @@ function monsterAnchorsForCount(count) {
 }
 
 function responsiveActorScale(width, height) {
-  const safeWidth = Math.max(1, Number(width) || 1);
-  const safeHeight = Math.max(1, Number(height) || 1);
-  // 390x520 is the neutral phone battlefield. Scale from the actual Phaser
-  // surface rather than the device category so split views/rotation also behave.
-  const widthScale = safeWidth / 390;
-  const heightScale = safeHeight / 520;
-  return Math.max(0.82, Math.min(1.15, Math.min(widthScale, heightScale)));
+  return responsiveSceneScale(width, height, {
+    referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15
+  });
 }
 
 function responsiveAnchorPixels(anchor, width, height) {
-  return { x: Math.round(Number(anchor?.x || 0) * width), y: Math.round(Number(anchor?.y || 0) * height) };
+  return responsiveScenePoint(anchor, width, height);
 }
 
 function responsiveBattlefieldLayout(width, height, monsterCount = 1) {
-  const safeWidth = Math.max(1, Number(width) || 1);
-  const safeHeight = Math.max(1, Number(height) || 1);
   const monsterAnchors = monsterAnchorsForCount(monsterCount);
-  return {
-    width: safeWidth,
-    height: safeHeight,
-    actorScale: responsiveActorScale(safeWidth, safeHeight),
-    normalized: {
+  const shared = createResponsiveSceneLayout({
+    width,
+    height,
+    anchors: {
       hero: RESPONSIVE_ANCHORS.HERO,
       pet: RESPONSIVE_ANCHORS.PET,
       monsters: monsterAnchors,
       vfxHero: RESPONSIVE_ANCHORS.VFX_HERO,
       vfxPet: RESPONSIVE_ANCHORS.VFX_PET
     },
-    pixels: {
-      hero: responsiveAnchorPixels(RESPONSIVE_ANCHORS.HERO, safeWidth, safeHeight),
-      pet: responsiveAnchorPixels(RESPONSIVE_ANCHORS.PET, safeWidth, safeHeight),
-      monsters: monsterAnchors.map(anchor => responsiveAnchorPixels(anchor, safeWidth, safeHeight)),
-      vfxHero: responsiveAnchorPixels(RESPONSIVE_ANCHORS.VFX_HERO, safeWidth, safeHeight),
-      vfxPet: responsiveAnchorPixels(RESPONSIVE_ANCHORS.VFX_PET, safeWidth, safeHeight)
-    }
+    scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
+  });
+  return {
+    width: shared.width,
+    height: shared.height,
+    actorScale: shared.scale,
+    normalized: shared.normalized,
+    pixels: shared.pixels
   };
 }
 
