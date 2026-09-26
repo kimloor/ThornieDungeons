@@ -1,0 +1,210 @@
+name: Stage W7 hair and idle sword assets
+
+on:
+  push:
+    branches:
+      - "feat/w7-hero-v5-runtime"
+    paths:
+      - ".github/workflows/w7-stage-hair-sword.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: thornie-w7-stage-hair-sword
+  cancel-in-progress: false
+
+jobs:
+  stage-publish:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      R2_BUCKET: assets
+      SOURCE_URL: "https://sdmntpraustraliaeast.oaiusercontent.com/files/00000000-c790-81fa-aa8f-96405aef7f1c/raw?se=2026-09-26T15%3A59%3A29Z&sp=r&sv=2026-02-06&sr=b&scid=fdaeb4ee-16f5-50c6-a06a-361781b63172&skoid=8cb40e9f-389f-4cf6-afaa-e5bd4c7fd98c&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-26T06%3A14%3A00Z&ske=2026-09-27T06%3A14%3A00Z&sks=b&skv=2026-02-06&sig=tvraM6NSlLrfqdKeiIL%2BKVQ6tv0HD9F0pXTb6O8OfOs%3D"
+      SOURCE_SHA256: "2eff1aa89040058bf3883a49f87230e7eb377bc4df2e147d2bb2e9114859eaf1"
+    steps:
+      - name: Checkout W7 branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download approved source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 "$SOURCE_URL" -o /tmp/azure.zip
+          echo "$SOURCE_SHA256  /tmp/azure.zip" | sha256sum -c -
+          rm -rf /tmp/azure-src
+          mkdir -p /tmp/azure-src
+          unzip -q /tmp/azure.zip -d /tmp/azure-src
+          test -d /tmp/azure-src/HERO_V5_G2_AZURE_TEST/reference_locked/hair
+          test -f /tmp/azure-src/HERO_V5_G2_AZURE_TEST/masters/AZURE_SWORD_UPRIGHT.png
+
+      - name: Install Pillow
+        run: python -m pip install pillow
+
+      - name: Stage V5 hair and authored idle sword
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, math, pathlib
+          import numpy as np
+          from PIL import Image
+
+          root=pathlib.Path("/tmp/azure-src/HERO_V5_G2_AZURE_TEST")
+          upload=pathlib.Path("r2-upload")
+          frames=["idle_01","idle_02","idle_03","attack_01","attack_02","attack_03","death_01","death_02"]
+
+          hair_dest=upload/"hero/v5/g2/hair/topknot"
+          for frame in frames:
+              dest=hair_dest/frame
+              dest.mkdir(parents=True, exist_ok=True)
+              for layer in ("hair_back","hair_front"):
+                  src=root/"reference_locked/hair"/layer/f"{frame}.png"
+                  if not src.exists():
+                      raise SystemExit(f"missing hair source {src}")
+                  (dest/f"{layer}.png").write_bytes(src.read_bytes())
+
+          master_src=root/"masters/AZURE_SWORD_UPRIGHT.png"
+          master_dest=upload/"hero/v5/g2/equipment/azure/masters/AZURE_SWORD_UPRIGHT.png"
+          master_dest.parent.mkdir(parents=True, exist_ok=True)
+          master_dest.write_bytes(master_src.read_bytes())
+
+          master=Image.open(master_src).convert("RGBA")
+          source_grip=np.array([384.0,594.0])
+          scale=0.55
+          angle_deg=-135.0
+          theta=math.radians(angle_deg)
+          A=np.array([
+              [scale*math.cos(theta), -scale*math.sin(theta)],
+              [scale*math.sin(theta),  scale*math.cos(theta)]
+          ], dtype=float)
+          Ainv=np.linalg.inv(A)
+
+          targets={
+              "idle_01":(270.0,505.0),
+              "idle_02":(270.0,493.0),
+              "idle_03":(270.0,501.0),
+          }
+          for frame,target in targets.items():
+              t=np.array(target)-A@source_grip
+              b=-Ainv@t
+              coeff=(Ainv[0,0],Ainv[0,1],b[0],Ainv[1,0],Ainv[1,1],b[1])
+              out=master.transform((768,768),Image.Transform.AFFINE,coeff,resample=Image.Resampling.BICUBIC)
+              if out.getbbox() is None:
+                  raise SystemExit(f"generated idle sword is empty: {frame}")
+              out.save(upload/f"hero/v5/g2/equipment/azure/{frame}/sword.png")
+
+          patch={
+              "status":"APPROVED_BY_PROJECT_LEAD_FOR_W7_RUNTIME",
+              "sourcePackage":"HERO_V5_G2_AZURE_TEST.zip",
+              "sourcePackageSha256":"2eff1aa89040058bf3883a49f87230e7eb377bc4df2e147d2bb2e9114859eaf1",
+              "sourceMaster":"hero/v5/g2/equipment/azure/masters/AZURE_SWORD_UPRIGHT.png",
+              "canvas":{"width":768,"height":768},
+              "sourceGrip":[384,594],
+              "scale":scale,
+              "rotationDegrees":angle_deg,
+              "targetGrip":{k:[int(v[0]),int(v[1])] for k,v in targets.items()},
+              "drawOrder":"sword before arm_front so authored glove occludes the grip",
+              "runtimeRotation":False,
+              "note":"Affine is baked offline into the three idle PNGs; runtime uses frame PNGs directly."
+          }
+          patch_path=upload/"hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json"
+          patch_path.write_text(json.dumps(patch,ensure_ascii=False,indent=2)+"\n")
+
+          manifest_path=upload/"manifest.json"
+          manifest=json.loads(manifest_path.read_text())
+          g2=manifest["assets"]["hero001"]["v5"]["g2"]
+          g2["defaultHair"]="topknot"
+          g2["hair"]={
+              "topknot":{
+                  "approval":"approved",
+                  "sourcePackage":"HERO_V5_G2_AZURE_TEST.zip",
+                  "sourcePackageSha256":"2eff1aa89040058bf3883a49f87230e7eb377bc4df2e147d2bb2e9114859eaf1",
+                  "canvas":{"width":768,"height":768},
+                  "origin":{"x":0,"y":0},
+                  "frames":{
+                      frame:{
+                          "hair_back":f"hero/v5/g2/hair/topknot/{frame}/hair_back.png",
+                          "hair_front":f"hero/v5/g2/hair/topknot/{frame}/hair_front.png"
+                      } for frame in frames
+                  }
+              }
+          }
+          azure=g2["equipment"]["azure"]
+          azure["idleSwordRuntimePatch"]="hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json"
+          azure["swordMaster"]="hero/v5/g2/equipment/azure/masters/AZURE_SWORD_UPRIGHT.png"
+          manifest_path.write_text(json.dumps(manifest,separators=(",",":"))+"\n")
+
+          publication_path=upload/"hero/v5/g2/equipment/azure/PUBLICATION.json"
+          publication=json.loads(publication_path.read_text())
+          notes=publication.setdefault("runtimeNotes",[])
+          for note in [
+              "W7 runtime patch adds the approved Azure sword to all three Idle frames using a baked offline transform from AZURE_SWORD_UPRIGHT.png.",
+              "W7 runtime publishes the locked topknot hair_back/hair_front frames from the approved source package."
+          ]:
+              if note not in notes: notes.append(note)
+          publication["runtimeIntegrated"]=False
+          publication_path.write_text(json.dumps(publication,ensure_ascii=False,indent=2)+"\n")
+          PY
+
+          test "$(find r2-upload/hero/v5/g2/hair/topknot -type f -name '*.png' | wc -l | tr -d ' ')" = "16"
+          python - <<'PY'
+          from PIL import Image
+          import pathlib
+          for frame in ("idle_01","idle_02","idle_03"):
+              p=pathlib.Path(f"r2-upload/hero/v5/g2/equipment/azure/{frame}/sword.png")
+              im=Image.open(p).convert("RGBA")
+              assert im.size==(768,768)
+              assert im.getbbox() is not None
+          PY
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Upload changed W7 assets to R2 and verify SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          files=()
+          while IFS= read -r file; do files+=("$file"); done < <(
+            {
+              find r2-upload/hero/v5/g2/hair/topknot -type f -name '*.png'
+              printf '%s\n'                 r2-upload/hero/v5/g2/equipment/azure/idle_01/sword.png                 r2-upload/hero/v5/g2/equipment/azure/idle_02/sword.png                 r2-upload/hero/v5/g2/equipment/azure/idle_03/sword.png                 r2-upload/hero/v5/g2/equipment/azure/masters/AZURE_SWORD_UPRIGHT.png                 r2-upload/hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json                 r2-upload/hero/v5/g2/equipment/azure/PUBLICATION.json                 r2-upload/manifest.json
+            } | sort -u
+          )
+          test "${#files[@]}" = "23"
+
+          content_type_for() {
+            case "${1,,}" in
+              *.png) echo "image/png" ;;
+              *.json) echo "application/json" ;;
+              *) return 1 ;;
+            esac
+          }
+
+          for file in "${files[@]}"; do
+            key="${file#r2-upload/}"
+            type="$(content_type_for "$file")"
+            wrangler r2 object put "$R2_BUCKET/$key" --file "$file" --content-type "$type" --remote
+            verify="$(mktemp)"
+            wrangler r2 object get "$R2_BUCKET/$key" --file "$verify" --remote
+            test "$(sha256sum "$file" | awk '{print $1}')" = "$(sha256sum "$verify" | awk '{print $1}')"
+            rm -f "$verify"
+          done
+          echo "Uploaded and SHA-verified ${#files[@]} W7 hair/sword object(s)."
+
+      - name: Commit staged assets to W7 branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/w7-stage-hair-sword.yml
+          git add             r2-upload/hero/v5/g2/hair/topknot             r2-upload/hero/v5/g2/equipment/azure             r2-upload/manifest.json
+          git commit -m "assets: publish W7 V5 hair and idle Azure sword"
+          git push origin HEAD:feat/w7-hero-v5-runtime
