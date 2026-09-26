@@ -833,7 +833,7 @@ test("W7.3 Ver 1.0.13 lowers only V5 artwork inside the locked actor anchor", ()
   const anchors = source("src/phaser/layout/ResponsiveAnchors.js");
   assert.match(contract, /runtimeOffsetY: 84/);
   assert.match(contract, /y: HERO_V5_RUNTIME_CONTRACT\.runtimeOffsetY/);
-  assert.match(anchors, /hero: \{ x: 0\.20, y: 0\.50 \}/);
+  assert.match(anchors, /HERO: Object\.freeze\(\{ x: 0\.20, y: 0\.50 \}\)/);
 });
 
 test("W7.3 Ver 1.0.13 restores Base legs when Azure boots are unequipped", () => {
