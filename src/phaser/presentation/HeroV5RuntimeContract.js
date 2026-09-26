@@ -4,6 +4,7 @@ const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
   characterId: "hero001",
   variant: "g2",
   canvas: Object.freeze({ width: 768, height: 768 }),
+  runtimeOffsetY: 84,
   animationFrames: Object.freeze({
     idle: Object.freeze(["idle_01", "idle_02", "idle_03"]),
     attack: Object.freeze(["attack_01", "attack_02", "attack_03"]),
@@ -45,13 +46,40 @@ function getHeroV5RuntimeConfig(characterId = HERO_V5_RUNTIME_CONTRACT.character
 function heroV5AzureLayersForSelection(selection = {}) {
   const azure = selection?.azure || {};
   const requested = [];
-  if (azure.chest) requested.push("coverage_underlay", "torso_armor");
+  // The underlay is a whole-body seam closer. Only use it when the three
+  // body-coverage slots are present; otherwise the neutral Base must remain
+  // visible in unequipped areas (for example bare Base legs without Azure boots).
+  if (azure.chest && azure.gloves && azure.boots) requested.push("coverage_underlay");
+  if (azure.chest) requested.push("torso_armor");
   if (azure.boots) requested.push("legs_boots");
   if (azure.gloves) requested.push("arm_rear");
   if (azure.helmet) requested.push("helmet");
   if (azure.weapon) requested.push("sword");
   if (azure.gloves) requested.push("arm_front");
   return HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
+}
+
+function heroV5FrameLayer(name, path) {
+  return {
+    name,
+    path,
+    x: 0,
+    y: HERO_V5_RUNTIME_CONTRACT.runtimeOffsetY,
+    scale: 1,
+    rotation: 0
+  };
+}
+
+function heroV5HairLayers(config, frameId) {
+  const hairId = config?.defaultHair || "topknot";
+  const hairConfig = config?.hair?.[hairId];
+  if (!hairConfig || hairConfig.approval !== "approved") return [];
+  const frame = hairConfig.frames?.[frameId];
+  if (!frame?.hair_back || !frame?.hair_front) return [];
+  return [
+    heroV5FrameLayer("hair_back", frame.hair_back),
+    heroV5FrameLayer("hair_front", frame.hair_front)
+  ];
 }
 
 function heroV5FrameLayers(config, frameId, { includeWings = false, equipmentSelection = {} } = {}) {
@@ -68,20 +96,13 @@ function heroV5FrameLayers(config, frameId, { includeWings = false, equipmentSel
   if (azureLayerNames.some(name => !azureFrame?.[name])) return null;
 
   const layers = [];
-  if (includeWings) layers.push({
-    name: "wing_far", path: wingFrame.wing_far, x: 0, y: 0, scale: 1, rotation: 0
-  });
-  layers.push({
-    name: "base", path: basePath, x: 0, y: 0, scale: 1, rotation: 0
-  });
+  if (includeWings) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
+  layers.push(heroV5FrameLayer("base", basePath));
+  layers.push(...heroV5HairLayers(config, frameId));
   azureLayerNames.forEach(name => {
-    layers.push({
-      name, path: azureFrame[name], x: 0, y: 0, scale: 1, rotation: 0
-    });
+    layers.push(heroV5FrameLayer(name, azureFrame[name]));
   });
-  if (includeWings) layers.push({
-    name: "wing_near", path: wingFrame.wing_near, x: 0, y: 0, scale: 1, rotation: 0
-  });
+  if (includeWings) layers.push(heroV5FrameLayer("wing_near", wingFrame.wing_near));
   return layers;
 }
 

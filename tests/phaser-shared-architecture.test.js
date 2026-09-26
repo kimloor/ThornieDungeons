@@ -725,7 +725,7 @@ test("W7.3 Azure layer selection follows slot ownership and authored draw order"
     "arm_rear", "helmet", "sword", "arm_front"
   ]);
   assert.deepEqual(Array.from(context.partial), [
-    "coverage_underlay", "torso_armor", "legs_boots"
+    "torso_armor", "legs_boots"
   ]);
 });
 
@@ -751,6 +751,16 @@ test("W7.3 full Azure snapshot composes Base plus seven equipment layers inside 
             canvas: { width: 768, height: 768 },
             base: { approval: "approved", frames: baseFrames },
             wingTemplate: { frames: wingFrames },
+            defaultHair: "topknot",
+            hair: {
+              topknot: {
+                approval: "approved",
+                frames: Object.fromEntries(frameIds.map(id => [id, {
+                  hair_back: `hero/v5/g2/hair/topknot/${id}/hair_back.png`,
+                  hair_front: `hero/v5/g2/hair/topknot/${id}/hair_front.png`
+                }]))
+              }
+            },
             equipment: { azure: { approval: "approved", frames: azureFrames } }
           }
         }
@@ -783,10 +793,14 @@ test("W7.3 full Azure snapshot composes Base plus seven equipment layers inside 
   const snapshot = JSON.parse(JSON.stringify(context.snapshot));
   assert.equal(snapshot.hero.visualMode, "v5-g2-azure");
   assert.deepEqual(snapshot.hero.layerFrames.attack[1].map(layer => layer.name), [
-    "wing_far", "base", "coverage_underlay", "torso_armor", "legs_boots",
+    "wing_far", "base", "hair_back", "hair_front",
+    "coverage_underlay", "torso_armor", "legs_boots",
     "arm_rear", "helmet", "sword", "arm_front", "wing_near"
   ]);
-  assert.equal(snapshot.hero.layerFrames.attack[1][7].url, "/assets/hero/v5/g2/equipment/azure/attack_02/sword.png");
+  assert.equal(snapshot.hero.layerFrames.attack[1][9].url, "/assets/hero/v5/g2/equipment/azure/attack_02/sword.png");
+  assert.equal(snapshot.hero.layerFrames.attack[1][2].url, "/assets/hero/v5/g2/hair/topknot/attack_02/hair_back.png");
+  assert.equal(snapshot.hero.layerFrames.attack[1][3].url, "/assets/hero/v5/g2/hair/topknot/attack_02/hair_front.png");
+  assert.ok(snapshot.hero.layerFrames.attack[1].every(layer => layer.y === 84));
 });
 
 test("W7.3 missing requested Azure art fails closed to the existing V3 renderer", () => {
@@ -812,5 +826,64 @@ test("W7.3 missing requested Azure art fails closed to the existing V3 renderer"
     equipmentSelection: { azure: { helmet: true } }
   });`, context);
   assert.equal(context.result, null);
+});
+
+test("W7.3 Ver 1.0.13 lowers only V5 artwork inside the locked actor anchor", () => {
+  const contract = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const anchors = source("src/phaser/layout/ResponsiveAnchors.js");
+  assert.match(contract, /runtimeOffsetY: 84/);
+  assert.match(contract, /y: HERO_V5_RUNTIME_CONTRACT\.runtimeOffsetY/);
+  assert.match(anchors, /hero: \{ x: 0\.20, y: 0\.50 \}/);
+});
+
+test("W7.3 Ver 1.0.13 restores Base legs when Azure boots are unequipped", () => {
+  const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const context = { ASSETS: {} };
+  vm.createContext(context);
+  vm.runInContext(`${contractSource};
+    this.withoutBoots = heroV5AzureLayersForSelection({
+      azure: { helmet: false, chest: true, gloves: true, boots: false, weapon: false }
+    });
+    this.fullBody = heroV5AzureLayersForSelection({
+      azure: { helmet: false, chest: true, gloves: true, boots: true, weapon: false }
+    });`, context);
+  assert.deepEqual(Array.from(context.withoutBoots), [
+    "torso_armor", "arm_rear", "arm_front"
+  ]);
+  assert.ok(!Array.from(context.withoutBoots).includes("coverage_underlay"));
+  assert.ok(!Array.from(context.withoutBoots).includes("legs_boots"));
+  assert.ok(Array.from(context.fullBody).includes("coverage_underlay"));
+  assert.ok(Array.from(context.fullBody).includes("legs_boots"));
+});
+
+test("W7.3 Ver 1.0.13 publishes and resolves the locked topknot hair for all V5 frames", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "r2-upload/manifest.json"), "utf8"));
+  const g2 = manifest.assets.hero001.v5.g2;
+  assert.equal(g2.defaultHair, "topknot");
+  assert.equal(g2.hair.topknot.approval, "approved");
+  const frames = ["idle_01","idle_02","idle_03","attack_01","attack_02","attack_03","death_01","death_02"];
+  for (const frame of frames) {
+    const entry = g2.hair.topknot.frames[frame];
+    assert.match(entry.hair_back, new RegExp(`hero/v5/g2/hair/topknot/${frame}/hair_back\\.png$`));
+    assert.match(entry.hair_front, new RegExp(`hero/v5/g2/hair/topknot/${frame}/hair_front\\.png$`));
+    assert.ok(fs.existsSync(path.join(ROOT, "r2-upload", entry.hair_back)));
+    assert.ok(fs.existsSync(path.join(ROOT, "r2-upload", entry.hair_front)));
+  }
+});
+
+test("W7.3 Ver 1.0.13 authored Azure sword is visible in all three Idle frame assets", () => {
+  const frames = ["idle_01","idle_02","idle_03"];
+  for (const frame of frames) {
+    const file = path.join(ROOT, "r2-upload/hero/v5/g2/equipment/azure", frame, "sword.png");
+    assert.ok(fs.existsSync(file));
+    assert.ok(fs.statSync(file).size > 10000, `${frame} sword should not be the old transparent placeholder`);
+  }
+  const patch = JSON.parse(fs.readFileSync(
+    path.join(ROOT, "r2-upload/hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json"),
+    "utf8"
+  ));
+  assert.equal(patch.runtimeRotation, false);
+  assert.equal(patch.rotationDegrees, -135);
+  assert.equal(patch.scale, 0.55);
 });
 
