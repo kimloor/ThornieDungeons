@@ -62,6 +62,16 @@ class PhaserBattleActor {
     return "idle";
   }
 
+  hurtVisualState() {
+    return "idle";
+  }
+
+  frameDelayForState(state) {
+    if (state === "idle") return 220;
+    if (state === "attack") return 150;
+    return 180;
+  }
+
   frameUrlsForState(state) {
     if (state === "death" && this.data.frames?.death?.length) return this.data.frames.death;
     if (state === "attack" && this.data.frames?.attack?.length) return this.data.frames.attack;
@@ -129,7 +139,7 @@ class PhaserBattleActor {
     this.stopAnimationPlayback();
     this.visualState = nextState;
     this.frameIndex = 0;
-    const effectiveFrameState = nextState === "hurt" ? "idle" : nextState;
+    const effectiveFrameState = nextState === "hurt" ? this.hurtVisualState() : nextState;
     const frameCount = this.visualFrameCount(effectiveFrameState);
     this.applyVisualFrame(effectiveFrameState, 0);
 
@@ -155,7 +165,7 @@ class PhaserBattleActor {
 
     if (nextState === "idle") {
       if (frameCount > 1) {
-        const delay = Math.max(80, Math.round(220 / Math.max(1, speed)));
+        const delay = Math.max(80, Math.round(this.frameDelayForState("idle") / Math.max(1, speed)));
         this.frameTimer = this.scene.time.addEvent({
           delay,
           loop: true,
@@ -172,7 +182,7 @@ class PhaserBattleActor {
 
     const frameDelay = Math.max(
       70,
-      Math.round((nextState === "attack" ? 150 : 180) / Math.max(1, speed))
+      Math.round(this.frameDelayForState(nextState) / Math.max(1, speed))
     );
 
     if (nextState === "attack") {
