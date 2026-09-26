@@ -1,4 +1,5 @@
 name: Phaser font sharpness preview
+# rerun after 1.0.9 test alignment
 
 on:
   push:
