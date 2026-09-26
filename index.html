@@ -8943,6 +8943,28 @@ const ACTOR_PRESENTATION_MODEL = Object.freeze({
   normalizeAnim: normalizeActorPresentationAnim
 });
 
+// ===== phaser/presentation/EquipmentVisualResolver.js =====
+// ---------- W6 Equipment Visual Resolver Boundary ----------
+const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
+  version: 1,
+  currentHeroMode: "v3"
+});
+
+function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = {}) {
+  const resolveLegacySelection = legacyHeroSelectionResolver || (
+    typeof heroVisualSelectionFromEquipment === "function" ? heroVisualSelectionFromEquipment : null
+  );
+  return Object.freeze({
+    contract: EQUIPMENT_VISUAL_RESOLVER_CONTRACT,
+    resolveHeroSelection(equipped = {}) {
+      const selection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
+      return { ...(selection || {}) };
+    }
+  });
+}
+
+const SHARED_EQUIPMENT_VISUAL_RESOLVER = createEquipmentVisualResolver();
+
 // ===== phaser/presentation/PresentationEventBridge.js =====
 // ---------- W6 Shared Presentation Event Bridge ----------
 const PRESENTATION_EVENT_BRIDGE_CONTRACT = Object.freeze({
@@ -9078,7 +9100,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
   const enemyIds = Array.isArray(state.enemyIds) && state.enemyIds.length ? state.enemyIds : monsters.map(monster => monster.uid || monster.id);
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
   const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
-  const heroSelection = typeof heroVisualSelectionFromEquipment === "function" ? heroVisualSelectionFromEquipment(equipped) : {};
+  const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
   const heroFrames = heroPresentationLayerFrames(heroSelection);
   const heroLayers = heroFrames.idle[0] || [];
   const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
