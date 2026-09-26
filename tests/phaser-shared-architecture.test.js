@@ -652,3 +652,32 @@ test("W7.2 HeroRenderer preserves V5 far-base-near draw order on the 768 canvas"
   assert.equal(created[1].h, 150);
 });
 
+test("W7.2 Ver 1.0.11 doubles only V5 Hero frame timing", () => {
+  const contract = source("src/phaser/presentation/HeroV5RuntimeContract.js");
+  const hero = source("src/phaser/actors/HeroActor.js");
+  const actor = source("src/phaser/actors/ActorBase.js");
+  assert.match(contract, /idle: 440/);
+  assert.match(contract, /attack: 300/);
+  assert.match(contract, /death: 360/);
+  assert.match(hero, /this\.data\?\.visualMode === "v5-g2"/);
+  assert.match(hero, /this\.data\?\.layerFrames\?\.frameMs\?\.\[state\]/);
+  assert.match(actor, /if \(state === "idle"\) return 220/);
+  assert.match(actor, /if \(state === "attack"\) return 150/);
+  assert.match(actor, /return 180/);
+});
+
+test("W7.2 Ver 1.0.11 uses V5 death_01 as hurt pose without playing death", () => {
+  const actor = source("src/phaser/actors/ActorBase.js");
+  const hero = source("src/phaser/actors/HeroActor.js");
+  assert.match(actor, /nextState === "hurt" \? this\.hurtVisualState\(\) : nextState/);
+  assert.match(hero, /hurtVisualState\(\) \{[\s\S]*?"v5-g2" \? "death" : super\.hurtVisualState\(\)/);
+  assert.match(actor, /if \(nextState === "hurt"\) \{/);
+  assert.doesNotMatch(hero, /playVisualState\("death"/);
+});
+
+test("W7.2 Ver 1.0.11 enlarges only V5 Hero by ten percent", () => {
+  const hero = source("src/phaser/actors/HeroActor.js");
+  assert.match(hero, /return this\.data\?\.visualMode === "v5-g2" \? Math\.round\(base \* 1\.10\) : base/);
+  assert.match(hero, /baseSize: 150/);
+});
+
