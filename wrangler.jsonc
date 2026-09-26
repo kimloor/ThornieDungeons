@@ -7,6 +7,7 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
     // Required by the versioned root-entrypoint workaround in worker.js.
     // Without this, a matching Static Asset may be served before Worker code
     // runs, which can expose the stale index.html instead of app-v2.html.
