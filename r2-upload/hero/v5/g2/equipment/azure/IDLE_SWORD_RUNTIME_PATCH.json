@@ -1,0 +1,33 @@
+{
+  "status": "APPROVED_BY_PROJECT_LEAD_FOR_W7_RUNTIME",
+  "sourcePackage": "HERO_V5_G2_AZURE_TEST.zip",
+  "sourcePackageSha256": "2eff1aa89040058bf3883a49f87230e7eb377bc4df2e147d2bb2e9114859eaf1",
+  "sourceMaster": "hero/v5/g2/equipment/azure/masters/AZURE_SWORD_UPRIGHT.png",
+  "canvas": {
+    "width": 768,
+    "height": 768
+  },
+  "sourceGrip": [
+    384,
+    594
+  ],
+  "scale": 0.55,
+  "rotationDegrees": -135.0,
+  "targetGrip": {
+    "idle_01": [
+      270,
+      505
+    ],
+    "idle_02": [
+      270,
+      493
+    ],
+    "idle_03": [
+      270,
+      501
+    ]
+  },
+  "drawOrder": "sword before arm_front so authored glove occludes the grip",
+  "runtimeRotation": false,
+  "note": "Affine is baked offline into the three idle PNGs; runtime uses frame PNGs directly."
+}
