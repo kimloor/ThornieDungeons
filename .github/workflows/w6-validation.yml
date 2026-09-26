@@ -1,0 +1,64 @@
+name: W6 branch validation
+
+on:
+  push:
+    branches:
+      - "feat/w6-shared-phaser-architecture"
+    paths:
+      - "src/phaser/**"
+      - "tests/**"
+      - "build.js"
+      - ".github/workflows/w6-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout W6 branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build
+        run: node build.js
+
+      - name: Focused Phaser tests
+        run: node --test tests/phaser-foundation.test.js tests/phaser-shared-architecture.test.js
+
+      - name: Full suite regression gate
+        shell: bash
+        run: |
+          set -uo pipefail
+          failures=()
+          for file in tests/*.test.js; do
+            echo "::group::$file"
+            if node --test "$file"; then
+              :
+            else
+              failures+=("$file")
+            fi
+            echo "::endgroup::"
+          done
+
+          expected=(
+            "tests/auth-v2.test.js"
+            "tests/battle-persistence.test.js"
+            "tests/guild-donation-v1.test.js"
+          )
+
+          printf 'Observed failures: %s\n' "${failures[*]:-none}"
+          printf 'Expected failures: %s\n' "${expected[*]}"
+
+          if [ "${failures[*]}" != "${expected[*]}" ]; then
+            echo "Unexpected full-suite regression set."
+            exit 1
+          fi
+
+          echo "Full-suite failures match the known pre-existing baseline exactly."
