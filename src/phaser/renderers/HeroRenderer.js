@@ -16,6 +16,7 @@ class HeroRenderer {
     this.displaySizeSource = displaySize;
     this.textureKeySource = textureKey;
     this.layerImages = [];
+    this.destroyed = false;
   }
 
   setData(data) {
@@ -94,6 +95,8 @@ class HeroRenderer {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.layerImages.forEach(entry => entry.image?.destroy());
     this.layerImages = [];
     if (this.ownsRoot) this.root?.destroy(true);

@@ -887,3 +887,46 @@ test("W7.3 Ver 1.0.13 authored Azure sword is visible in all three Idle frame as
   assert.equal(patch.scale, 0.55);
 });
 
+test("W7.3 Ver 1.0.14 Phaser actor teardown is idempotent and does not double-destroy container children", () => {
+  const actor = source("src/phaser/actors/ActorBase.js");
+  assert.match(actor, /this\.destroyed = false/);
+  assert.match(actor, /if \(this\.destroyed\) return/);
+  assert.match(actor, /this\.scene\?\.events\?\.off\("shutdown", this\.handleSceneShutdown\)/);
+  assert.match(actor, /container\?\.destroy\(true\)/);
+  assert.doesNotMatch(actor, /this\.statusText\?\.destroy\(\)/);
+  assert.doesNotMatch(actor, /this\.nameText\?\.destroy\(\)/);
+
+  const renderer = source("src/phaser/renderers/HeroRenderer.js");
+  assert.match(renderer, /this\.destroyed = false/);
+  assert.match(renderer, /if \(this\.destroyed\) return/);
+});
+
+test("W7.3 Ver 1.0.14 Phaser CDN enables CORS so runtime stacks are observable", () => {
+  const runtime = source("src/phaser/runtime/PhaserRuntime.js");
+  assert.match(runtime, /script\.crossOrigin = "anonymous"/);
+  assert.ok(runtime.indexOf('script.crossOrigin = "anonymous"') < runtime.indexOf("script.src = THORNIE_PHASER_URL"));
+});
+
+test("W7.3 Ver 1.0.14 runtime errors use a centered scrollable popup with stack details", () => {
+  const head = source("head.html");
+  assert.match(head, /#boot-error \{ position:fixed; inset:0; z-index:10000/);
+  assert.match(head, /#boot-error-text \{[^}]*overflow:auto/);
+  assert.match(head, /function runtimeErrorDetail/);
+  assert.match(head, /error && error\.stack/);
+  assert.match(head, /detail\.length > 6000/);
+  assert.match(head, /onclick="hideBootError\(\)"/);
+});
+
+test("W7.3 Ver 1.0.14 Idle Azure sword uses versioned non-placeholder asset paths", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "r2-upload/manifest.json"), "utf8"));
+  const azure = manifest.assets.hero001.v5.g2.equipment.azure;
+  assert.equal(azure.idleSwordAssetRevision, "w7_idle_v2");
+  for (const frame of ["idle_01","idle_02","idle_03"]) {
+    const sword = azure.frames[frame].sword;
+    assert.match(sword, /sword_w7_idle_v2\.png$/);
+    const file = path.join(ROOT, "r2-upload", sword);
+    assert.ok(fs.existsSync(file));
+    assert.ok(fs.statSync(file).size > 10000);
+  }
+});
+
