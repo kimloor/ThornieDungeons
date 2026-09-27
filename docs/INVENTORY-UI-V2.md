@@ -381,26 +381,78 @@ optional; CSS remains the runtime fallback until Graphics publishes it.
 }
 ```
 
-## 19. Future shared Phaser Hero preview boundary
+## 19. Shared Phaser Hero preview boundary (W8)
 
-The Inventory page remains React/DOM. A future roadmap milestone may replace only the central Hero visual preview with the shared Phaser HeroRenderer.
+Inventory remains React/DOM. W8 may replace only the central Hero visual preview with the shared Phaser `HeroRenderer`.
 
-Approved boundary:
+Approved flow:
 
 ~~~text
-Inventory React state
-→ optional preview equipment state
-→ EquipmentVisualResolver
-→ HeroRenderer
-→ HeroPreviewScene
+authoritativeEquipped
+        ↓
+optional previewLoadout
+        ↓
+EquipmentVisualResolver
+        ↓
+HeroRenderer
+        ↓
+HeroPreviewScene
 ~~~
 
-Rules:
-- Inventory grid, item popup/comparison, stats, filter/sort and actions remain DOM;
-- Equip/Unequip/save authority remains in the existing application/data flow;
-- previewing an item must not mutate authoritative equipment state;
-- Hero preview reuses the same HeroRenderer used by Combat/Arena rather than creating an Inventory-specific renderer;
-- approved Hero V5 equipment/wing frame contracts remain authoritative;
-- small equip glow/transition may be presentation-only after the core preview is stable.
+### DOM / Phaser boundary
 
-This is a future roadmap integration and does not change current Inventory V2 behavior by itself.
+DOM retains:
+- Equipment slots and Inventory grid;
+- Item Detail and Item Comparison;
+- calculated stat comparison / CP delta;
+- filter / sort / favorite / lock;
+- Equip / Unequip mutation authority;
+- save/persistence/error handling.
+
+Phaser owns only the Hero visual preview:
+- Hero V5 layered composition;
+- Idle animation;
+- approved equipment/wings visual layers;
+- candidate visual swap;
+- optional presentation-only equip glow/transition.
+
+Equipment slots remain DOM foreground controls even when placed around the Phaser preview.
+
+### Compare-driven preview
+
+When the player inspects compatible unequipped Equipment:
+1. open the existing DOM comparison;
+2. derive `previewLoadout` from authoritative equipment plus the candidate slot;
+3. send preview state through `EquipmentVisualResolver`;
+4. update the Hero preview without saving/equipping;
+5. cancel/close -> restore authoritative visuals;
+6. Equip success -> refresh from confirmed authoritative equipment;
+7. Equip failure -> restore authoritative visuals.
+
+Selecting another candidate must rebuild from authoritative state rather than chaining from the previous preview.
+
+The existing calculated-stat pipeline remains authoritative for all comparison numbers. Phaser never calculates comparison stats.
+
+### Visual fallback contract
+
+Missing item artwork must fall back per slot while keeping Hero V5 active:
+- helmet -> base head/hair;
+- armor -> base body/clothing;
+- gloves -> base arms/hands;
+- boots -> base legs/feet;
+- weapon -> no weapon;
+- wings -> no wings;
+- accessory -> no accessory overlay.
+
+Use the whole-actor legacy fallback only when the required Hero V5 core itself cannot render safely.
+
+Additional rules:
+- do not mix V3/V4 equipment art onto a V5 Hero;
+- do not guess visual asset paths;
+- use only approved manifest/config mappings;
+- incomplete declared equipment bundles count as unsupported and use slot-level fallback;
+- do not allow an item to appear for only some synchronized frames;
+- a visual/load failure never changes item ownership, stats or persistence.
+
+The Hero preview must reuse the same shared `HeroRenderer`, `EquipmentVisualResolver`, `AssetResolver` and `TextureRegistry` used by the Phaser presentation architecture rather than creating Inventory-specific equivalents.
+

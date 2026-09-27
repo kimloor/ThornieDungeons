@@ -402,36 +402,142 @@ No page may create a separate Hero V5 renderer.
 
 ## W8 — Inventory + Character Live Preview
 
-Inventory and Character Status remain React/DOM.
+**Status: DESIGN LOCK — ready for implementation planning**
 
-Phaser is used only for the live character preview.
+Inventory and Character Status remain React/DOM. Phaser is used only for the live Hero presentation surface.
 
-Flow:
+### W8.1 — Runtime ownership
+
 ```text
-React equipment state
-→ preview equipment state
-→ EquipmentVisualResolver
-→ HeroRenderer
-→ HeroPreviewScene
+Inventory / Character React state
+        ↓
+authoritative equipment state
+        ↓
+optional previewLoadout
+        ↓
+EquipmentVisualResolver
+        ↓
+HeroRenderer
+        ↓
+HeroPreviewScene
 ```
 
-Requirements:
-- preview equipment before authoritative Equip save where appropriate;
-- real-time helmet/armor/gloves/boots/weapon/wings visual swap;
-- shared idle animation;
-- preview state separated from authoritative equipped state;
-- optional small equip transition/glow may be presentation-only;
-- same HeroPreview renderer reused by Character Status.
+DOM remains responsible for:
+- Equipment slots and Inventory grid;
+- item detail / comparison popup;
+- stats and stat deltas;
+- filter / sort / favorite / lock;
+- Equip / Unequip buttons and mutation authority;
+- save/persistence/error handling.
 
-Do not move into Phaser:
-- Inventory grid;
-- item details/comparison;
-- stats;
-- filter/sort;
-- Equip/Unequip mutation authority;
-- save/persistence.
+Phaser is responsible only for:
+- Hero V5 layered rendering;
+- shared Idle animation;
+- approved helmet/armor/gloves/boots/weapon/wings/accessory visuals;
+- real-time preview swaps;
+- optional small presentation-only equip glow/transition.
 
----
+Equipment slots remain DOM even when they visually surround the Phaser canvas. Phaser must not own equipment state or input authority.
+
+### W8.2 — Preview state contract
+
+The authoritative equipped state and the temporary visual preview state must be separate.
+
+```text
+authoritativeEquipped
+        ↓ clone
+previewLoadout + candidate item
+        ↓
+HeroPreviewScene
+```
+
+Rules:
+- opening a compatible unequipped Equipment item may build `previewLoadout` by replacing only that candidate slot;
+- previewing never writes save state and never calls Equip by itself;
+- closing/cancelling the popup restores the authoritative visual state;
+- selecting another candidate rebuilds preview from authoritative state, not from the previous preview;
+- Equip success promotes the server/app-confirmed equipment state to authoritative state and refreshes the preview from it;
+- Equip failure restores authoritative state and must not leave a stale preview equipped;
+- Character Status uses the same HeroPreview renderer but normally reads authoritative equipment only.
+
+### W8.3 — Item comparison boundary
+
+Item comparison remains DOM.
+
+The comparison popup may drive the Phaser preview, but Phaser must not render or calculate:
+- CURRENT / NEW item data;
+- stat rows or deltas;
+- CP;
+- rarity text;
+- Enhance / Enchant text;
+- Equip / Unequip actions.
+
+Expected interaction:
+
+```text
+tap compatible inventory equipment
+→ DOM opens ItemComparison
+→ DOM derives previewLoadout
+→ Phaser previews candidate equipment
+→ cancel/close = revert visual preview
+→ Equip success = authoritative refresh
+→ Equip failure = authoritative revert
+```
+
+The existing calculated-stat pipeline remains the source of truth for comparison values.
+
+### W8.4 — Hero / equipment visual fallback contract
+
+Fallback must be layered. One missing equipment visual must not force the whole Hero back to the legacy renderer.
+
+**Slot-level fallback — keep Hero V5 active**
+- missing helmet visual -> render normal/base head/hair for that slot;
+- missing armor visual -> render approved base Hero clothing/body for uncovered layers;
+- missing gloves visual -> render base arms/hands for that slot;
+- missing boots visual -> render base legs/feet for that slot;
+- missing weapon visual -> render no weapon;
+- missing wings visual -> render no wings;
+- missing accessory visual -> render no accessory overlay.
+
+Slot-level fallback applies when:
+- no approved visual mapping exists;
+- the declared visual bundle is incomplete;
+- a mapped optional equipment texture fails to load.
+
+Gameplay/equipment ownership remains unchanged; only the unavailable visual layer is omitted/fallen back.
+
+**Whole-actor fallback — legacy renderer**
+Use the existing whole-actor V3 fallback only when the Hero V5 core cannot render safely, for example:
+- required V5 base frame(s) are missing/corrupt;
+- required core Hero layer contract cannot be satisfied;
+- V5 actor/scene initialization fails at a core level.
+
+Do not use whole-actor fallback merely because one equipped item has no V5 sprite.
+
+### W8.5 — Asset completeness / resolver rules
+
+- `EquipmentVisualResolver` and `AssetResolver` must use real manifest/config mappings only; never construct or guess asset paths from item IDs.
+- Do not mix legacy V3/V4 equipment artwork onto a V5 Hero as a per-slot fallback.
+- An item may be treated as V5-supported only when its declared synchronized visual contract is complete for the required Hero animation/frame set.
+- An incomplete item bundle is unsupported and uses slot-level fallback; do not show the item for some frames and let it disappear for others.
+- Texture/load failure must not mutate equipment state, restart the page, or convert a valid Equip result into a gameplay failure.
+- Repeated preview changes/open-close cycles must not leak Phaser canvases, scenes or textures.
+
+### W8.6 — W8 QA gate
+
+Verify at minimum:
+- current equipment renders identically when entering Inventory;
+- candidate helmet/armor/gloves/boots/weapon/wings preview swaps in real time;
+- Compare remains DOM and its stat values are unchanged;
+- cancel/close restores authoritative equipment visuals;
+- successful Equip persists and becomes the new authoritative preview;
+- failed Equip reverts cleanly;
+- unsupported/missing equipment visual falls back only for that slot;
+- Hero V5 core failure uses whole-actor legacy fallback;
+- no guessed asset paths / no legacy layer mixing;
+- mobile/tablet/desktop layout remains safe;
+- Character Status reuses the same HeroRenderer rather than creating another renderer.
+
 
 ## W9 — Arena Phaser
 

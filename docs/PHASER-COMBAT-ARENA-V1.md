@@ -317,16 +317,14 @@ The same HeroRenderer must be reused by all approved screens.
 
 ## 7. Inventory + Character live preview
 
-Inventory and Character Status remain React/DOM.
-
-Only the Hero preview is rendered with Phaser.
+Inventory and Character Status remain React/DOM. Only the Hero presentation surface is rendered with Phaser.
 
 Flow:
 
 ~~~text
 React authoritative equipment state
         ↓
-optional preview equipment state
+optional previewLoadout
         ↓
 EquipmentVisualResolver
         ↓
@@ -335,14 +333,51 @@ HeroRenderer
 HeroPreviewScene
 ~~~
 
-Requirements:
-- preview state must be separate from authoritative equipped state
-- visual preview must not save/equip items
-- Equip/Unequip actions remain existing app mutations
-- item comparison/stats/filter/sort/grid remain DOM
-- Hero preview may use Idle animation and small presentation-only equip effects
+### Ownership and preview state
+- authoritative equipped state remains in the application/data layer;
+- `previewLoadout` is temporary presentation input only;
+- selecting a compatible candidate item rebuilds preview from authoritative state plus that one slot replacement;
+- closing/cancelling restores authoritative visuals;
+- Equip success refreshes from confirmed authoritative equipment;
+- Equip failure restores authoritative visuals;
+- Character Status reuses the same HeroPreview renderer and normally displays authoritative equipment only.
 
----
+### Compare boundary
+Item detail/comparison remains DOM. Phaser does not calculate or render CURRENT/NEW stats, CP, deltas, rarity/Enhance/Enchant text, or Equip/Unequip controls.
+
+The DOM comparison may drive the live visual preview:
+
+~~~text
+ItemComparison (DOM)
+→ previewLoadout
+→ EquipmentVisualResolver
+→ HeroPreviewScene
+~~~
+
+### Equipment visual fallback
+A missing equipment visual is a slot-level presentation failure, not a Hero-level failure.
+
+Keep Hero V5 active and fall back per slot:
+- helmet -> base head/hair;
+- armor -> base body/clothing;
+- gloves -> base arms/hands;
+- boots -> base legs/feet;
+- weapon -> no weapon;
+- wings -> no wings;
+- accessory -> no accessory overlay.
+
+Use whole-actor legacy fallback only if required Hero V5 core assets/layers or core renderer initialization cannot render safely.
+
+Rules:
+- never mix legacy V3/V4 equipment layers onto Hero V5;
+- never guess an asset key/path from an item ID;
+- only manifest/config-defined visual mappings are valid;
+- an incomplete declared equipment frame bundle is unsupported and must use slot-level fallback;
+- do not render an equipment item on some synchronized frames and silently drop it on others;
+- optional equipment texture failure must not change gameplay/equipment state.
+
+Hero preview may use the shared Idle animation and a small presentation-only equip glow/transition after the core preview is stable.
+
 
 ## 8. Arena scope
 
