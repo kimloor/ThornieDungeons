@@ -12,7 +12,7 @@
     594
   ],
   "scale": 0.55,
-  "rotationDegrees": -135.0,
+  "rotationDegrees": 135.0,
   "targetGrip": {
     "idle_01": [
       270,
@@ -29,5 +29,8 @@
   },
   "drawOrder": "sword before arm_front so authored glove occludes the grip",
   "runtimeRotation": false,
-  "note": "Affine is baked offline into the three idle PNGs; runtime uses frame PNGs directly."
+  "note": "Transform is baked offline into versioned Idle PNGs; runtime only displays authored frame assets.",
+  "assetRevision": "w7_idle_v3_grip_aligned",
+  "visualReference": "HERO V5 — WEAPON_GRIP ANCHOR ALIGNMENT",
+  "visualIntent": "Blade descends down-right from the hand; hand grip and sword grip anchor coincide."
 }

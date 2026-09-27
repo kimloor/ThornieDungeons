@@ -50,7 +50,8 @@
     "No runtime rotation or interpolation is required.",
     "W7 runtime patch adds the approved Azure sword to all three Idle frames using a baked offline transform from AZURE_SWORD_UPRIGHT.png.",
     "W7 runtime publishes the locked topknot hair_back/hair_front frames from the approved source package.",
-    "Idle sword runtime paths use versioned w7_idle_v2 filenames to avoid stale transparent-placeholder caches."
+    "Idle sword runtime paths use versioned w7_idle_v2 filenames to avoid stale transparent-placeholder caches.",
+    "Idle Azure sword W7 v3 uses the approved WEAPON_GRIP anchor alignment: grip at the left hand with blade descending down-right."
   ],
-  "idleSwordAssetRevision": "w7_idle_v2"
+  "idleSwordAssetRevision": "w7_idle_v3_grip_aligned"
 }
