@@ -883,7 +883,7 @@ test("W7.3 Ver 1.0.13 authored Azure sword is visible in all three Idle frame as
     "utf8"
   ));
   assert.equal(patch.runtimeRotation, false);
-  assert.equal(patch.rotationDegrees, -135);
+  assert.equal(patch.rotationDegrees, 135);
   assert.equal(patch.scale, 0.55);
 });
 
