@@ -592,6 +592,29 @@ Runtime guardrails remain:
 
 ---
 
+## 15.3 W8 Inventory Hero preview close — 2026-09-27
+
+W8 completed user browser QA and production release at Ver 1.0.17.
+
+Verified presentation scope:
+- Inventory center Hero uses the shared Phaser HeroRenderer;
+- Inventory grid, slots, Compare, stats and mutations remain DOM/application-owned;
+- Compare drives temporary candidate visuals without mutating authoritative equipment state;
+- closing Compare restores the authoritative Hero visual;
+- equipped Wings render through the canonical production Angel visual selection;
+- weapon/wings may overlap into equipment lanes while DOM equipment slots remain foreground;
+- narrow iPhone layout keeps the full-stage Phaser host;
+- final Inventory Hero horizontal anchor is 55.8%;
+- Character Status preview was explicitly removed from W8 scope;
+- repeated Inventory open/close does not duplicate Phaser canvases.
+
+Release:
+- PR #31 merged to main;
+- production frontend deployment and verification passed.
+
+---
+
+
 ## 16. Release rule
 
 Phaser work touching active game surfaces is HIGH risk.
