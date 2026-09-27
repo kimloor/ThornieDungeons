@@ -30,7 +30,11 @@ Run `node build.js` after source changes. index.html is the single generated app
   #root { width: 100%; display: flex; justify-content: center; }
   * { -webkit-tap-highlight-color: transparent; }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
-  #boot-error { color: #FF8B8B; font-family: monospace; font-size: 12px; text-align: left; white-space: pre-wrap; word-break: break-word; padding: 16px; margin: 12px; background: rgba(255,139,139,0.08); border: 1px solid #FF8B8B; border-radius: 10px; display: none; }
+  #boot-error { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:max(18px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); background:rgba(5,7,18,.58); backdrop-filter:blur(2px); box-sizing:border-box; }
+  #boot-error-card { width:min(92vw,430px); max-height:min(72dvh,560px); display:flex; flex-direction:column; overflow:hidden; border:1px solid #FF8B8B; border-radius:16px; background:rgba(24,14,35,.98); box-shadow:0 18px 55px rgba(0,0,0,.68); color:#FFD6D6; font-family:monospace; }
+  #boot-error-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border-bottom:1px solid rgba(255,139,139,.35); color:#FF9E9E; }
+  #boot-error-close { width:36px; height:36px; flex:0 0 36px; border:0; border-radius:10px; background:rgba(255,255,255,.08); color:#fff; font-size:23px; line-height:1; cursor:pointer; }
+  #boot-error-text { margin:0; padding:13px 14px 16px; max-height:52dvh; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; color:#FFD6D6; font:12px/1.45 monospace; text-align:left; white-space:pre-wrap; word-break:break-word; }
 
   .md-enemy-img { object-fit: contain; max-width: none; }
   .md-enemy-img.md-pet-img { width: 64px !important; height: 64px !important; }
@@ -39,20 +43,47 @@ Run `node build.js` after source changes. index.html is the single generated app
 </head>
 <body>
 <div id="root"><div id="boot-status">Loading ThornieDungeons&hellip;</div></div>
-<div id="boot-error"></div>
+<div id="boot-error" role="dialog" aria-modal="true" aria-labelledby="boot-error-title">
+  <div id="boot-error-card">
+    <div id="boot-error-head">
+      <strong id="boot-error-title">⚠ Runtime Error</strong>
+      <button id="boot-error-close" type="button" aria-label="Close error" onclick="hideBootError()">×</button>
+    </div>
+    <pre id="boot-error-text"></pre>
+  </div>
+</div>
 
 <script>
-  function showBootError(msg) {
+  function hideBootError() {
     var el = document.getElementById('boot-error');
-    if (el) { el.style.display = 'block'; el.textContent += (el.textContent ? '\n\n' : '') + msg; }
+    if (el) el.style.display = 'none';
+  }
+  function runtimeErrorDetail(kind, message, error, source, line, column) {
+    var primary = error && error.message ? error.message : (message || 'Unknown error');
+    var detail = kind + ': ' + primary;
+    if (source || line || column) detail += '\nSource: ' + (source || 'unknown') + ':' + (line || '?') + ':' + (column || '?');
+    if (error && error.stack) detail += '\n\n' + error.stack;
+    return detail;
+  }
+  function showBootError(msg) {
+    var overlay = document.getElementById('boot-error');
+    var text = document.getElementById('boot-error-text');
+    var detail = String(msg || 'Unknown error');
+    if (detail.length > 6000) detail = detail.slice(0, 6000) + '\n… (truncated)';
+    if (overlay) overlay.style.display = 'flex';
+    if (text) {
+      text.textContent += (text.textContent ? '\n\n──────────\n\n' : '') + detail;
+      text.scrollTop = text.scrollHeight;
+    }
     var status = document.getElementById('boot-status');
-    if (status) status.textContent = 'Something went wrong loading the game \u2014 see error below.';
+    if (status) status.textContent = 'Something went wrong loading the game \u2014 see error popup.';
   }
   window.addEventListener('error', function (e) {
-    showBootError('JS Error: ' + e.message + '\n  at ' + (e.filename || 'unknown') + ':' + (e.lineno || '?') + ':' + (e.colno || '?'));
+    showBootError(runtimeErrorDetail('JS Error', e.message, e.error, e.filename, e.lineno, e.colno));
   });
   window.addEventListener('unhandledrejection', function (e) {
-    showBootError('Unhandled Promise Rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+    var reason = e.reason;
+    showBootError(runtimeErrorDetail('Unhandled Promise Rejection', reason && reason.message ? reason.message : String(reason), reason instanceof Error ? reason : null));
   });
   window.__thornieBootTimer = setTimeout(function () {
     if (typeof React === 'undefined') showBootError('React failed to load from CDN (unpkg.com). Network may be blocking it.');
@@ -141,7 +172,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.13";
+  content: "Ver 1.0.14";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -8672,6 +8703,7 @@ const THORNIE_PHASER_RUNTIME = (() => {
       };
       if (!script) {
         script = document.createElement("script");
+        script.crossOrigin = "anonymous";
         script.src = THORNIE_PHASER_URL;
         script.async = true;
         script.dataset.thorniePhaserRuntime = THORNIE_PHASER_VERSION;
@@ -9386,7 +9418,9 @@ class PhaserBattleActor {
     this.frameTimer = null;
     this.motionTween = null;
     this.idleTween = null;
-    scene.events.once("shutdown", () => this.destroy());
+    this.destroyed = false;
+    this.handleSceneShutdown = () => this.destroy();
+    scene.events.once("shutdown", this.handleSceneShutdown);
   }
 
   displaySize() {
@@ -9604,15 +9638,31 @@ class PhaserBattleActor {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.stopAnimationPlayback();
-    this.container?.destroy(true);
-    this.hpBar?.destroy();
-    this.statusText?.destroy();
-    this.nameText?.destroy();
-    this.hpText?.destroy();
+    this.scene?.events?.off("shutdown", this.handleSceneShutdown);
+
+    // statusText/nameText/visualRoot/sprite are children of container and are
+    // destroyed by container.destroy(true). Destroying them again can throw
+    // inside Phaser during scene teardown.
+    const container = this.container;
+    const hpBar = this.hpBar;
+    const hpText = this.hpText;
+
     this.container = null;
     this.visualRoot = null;
     this.sprite = null;
+    this.hpBar = null;
+    this.statusText = null;
+    this.nameText = null;
+    this.hpText = null;
+    this.handleSceneShutdown = null;
+
+    container?.destroy(true);
+    hpBar?.destroy();
+    hpText?.destroy();
+    this.scene = null;
   }
 }
 
@@ -9635,6 +9685,7 @@ class HeroRenderer {
     this.displaySizeSource = displaySize;
     this.textureKeySource = textureKey;
     this.layerImages = [];
+    this.destroyed = false;
   }
 
   setData(data) {
@@ -9713,6 +9764,8 @@ class HeroRenderer {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.layerImages.forEach(entry => entry.image?.destroy());
     this.layerImages = [];
     if (this.ownsRoot) this.root?.destroy(true);
