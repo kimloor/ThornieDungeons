@@ -4598,39 +4598,44 @@ function CombatScreen({
   const skipAssetSrc = optionalAsset("battleUi.buttons.skip");
   const [failedSkipAsset, setFailedSkipAsset] = useState("");
   const showSkipArt = Boolean(skipAssetSrc && failedSkipAsset !== skipAssetSrc);
-  const headerBattleAction = skipUnlocked
-    ? /*#__PURE__*/React.createElement("button", {
-        className: `md-combat-header-action skip ${showSkipArt ? "has-art" : ""}`,
-        disabled: busy,
-        "aria-label": "Skip battle",
-        title: "จำลองการต่อสู้ที่เหลือด้วยระบบเดียวกัน",
-        onClick: () => onAction("skip")
-      }, showSkipArt
-        ? /*#__PURE__*/React.createElement("img", {
-            className: "md-combat-skip-art",
-            src: skipAssetSrc,
-            alt: "",
-            "aria-hidden": "true",
-            draggable: false,
-            onError: () => setFailedSkipAsset(skipAssetSrc)
-          })
-        : /*#__PURE__*/React.createElement("span", { className: "md-combat-skip-fallback" }, "SKIP"))
-    : /*#__PURE__*/React.createElement("button", {
-        className: `md-combat-header-action speed ${showSpeedArt ? "has-art" : ""}`,
-        disabled: busy,
-        title: "เปลี่ยนความเร็วการต่อสู้",
-        onClick: onCycleCombatSpeed,
-        "aria-label": `Battle speed x${combatSpeed || 1}`
-      }, showSpeedArt
-        ? /*#__PURE__*/React.createElement("img", {
-            className: "md-combat-speed-art",
-            src: speedAssetSrc,
-            alt: "",
-            "aria-hidden": "true",
-            draggable: false,
-            onError: () => setFailedSpeedAsset(speedAssetSrc)
-          })
-        : /*#__PURE__*/React.createElement("span", { className: "md-combat-speed-fallback" }, `×${combatSpeed || 1}`));
+
+  let headerBattleAction;
+  if (skipUnlocked) {
+    headerBattleAction = /*#__PURE__*/React.createElement("button", {
+      className: `md-combat-header-action skip ${showSkipArt ? "has-art" : ""}`,
+      disabled: busy,
+      "aria-label": "Skip battle",
+      title: "จำลองการต่อสู้ที่เหลือด้วยระบบเดียวกัน",
+      onClick: () => onAction("skip")
+    }, showSkipArt ? /*#__PURE__*/React.createElement("img", {
+      className: "md-combat-skip-art",
+      src: skipAssetSrc,
+      alt: "",
+      "aria-hidden": "true",
+      draggable: false,
+      onError: () => setFailedSkipAsset(skipAssetSrc)
+    }) : /*#__PURE__*/React.createElement("span", {
+      className: "md-combat-skip-fallback"
+    }, "SKIP"));
+  } else {
+    headerBattleAction = /*#__PURE__*/React.createElement("button", {
+      className: `md-combat-header-action speed ${showSpeedArt ? "has-art" : ""}`,
+      disabled: busy,
+      title: "เปลี่ยนความเร็วการต่อสู้",
+      onClick: onCycleCombatSpeed,
+      "aria-label": `Battle speed x${combatSpeed || 1}`
+    }, showSpeedArt ? /*#__PURE__*/React.createElement("img", {
+      className: "md-combat-speed-art",
+      src: speedAssetSrc,
+      alt: "",
+      "aria-hidden": "true",
+      draggable: false,
+      onError: () => setFailedSpeedAsset(speedAssetSrc)
+    }) : /*#__PURE__*/React.createElement("span", {
+      className: "md-combat-speed-fallback"
+    }, `×${combatSpeed || 1}`));
+  }
+
   const activeTurn = (turnQueue || []).find(item => item.key === activeTurnKey);
   const activeTurnName = activeTurn
     ? activeTurn.kind === "player" ? heroName : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
