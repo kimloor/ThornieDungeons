@@ -1,4 +1,5 @@
 name: W7 Idle grip preview
+# rerun after legacy rotation assertion alignment
 
 on:
   push:
