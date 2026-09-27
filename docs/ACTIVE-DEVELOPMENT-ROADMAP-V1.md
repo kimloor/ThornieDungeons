@@ -349,43 +349,52 @@ Do not build separate Combat/Arena/Raid VFX systems.
 Expand the existing normalized anchor system for reusable scene layouts while keeping scene-specific anchor contracts explicit.
 
 ### Post-W6 presentation polish — Phaser font sharpness
-**NEXT before/alongside W7 visual rollout**
+**COMPLETE / USER QA PASS — 2026-09-26**
 
-User browser QA on iPhone confirmed the W6 architecture/Combat presentation works, but Phaser-rendered text is visibly softer/blurrier than equivalent DOM text.
+The Phaser text-clarity follow-up was completed and user-verified on iPhone before the W7 rollout.
 
-Follow-up scope:
-- investigate Phaser text resolution / devicePixelRatio / render scale behavior on iOS Safari;
-- improve Hero/Pet/Monster name, HP and status text sharpness;
-- preserve current layout/anchors and gameplay;
-- compare directly against DOM text at the same device size;
-- presentation-only change; no Battle Core or gameplay changes.
+Guardrails preserved:
+- actor anchors/layout unchanged;
+- Battle Core/gameplay timing unchanged;
+- presentation-only rendering adjustments.
 
 ---
 
 ## W7 — Hero V5 Runtime Integration
 
-**Starts only after approved Hero V5 G2 assets + Armor Coverage gate.**
+**COMPLETE / USER BROWSER QA PASS — 2026-09-27**
 
-Implement Hero V5 once through the shared HeroRenderer.
-
-Requirements:
-- synchronized frame-based modular composition;
-- Idle / Attack / Death / Victory states as approved;
-- shared 768x768 coordinate space;
-- equipment swapping through EquipmentVisualResolver;
-- weapon swapping;
-- approved wing frame contract;
-- no skeletal/bone-driven replacement of authored frames;
-- V4 fallback retained during rollout.
+Released scope:
+- one shared HeroRenderer for V3 fallback + opt-in Hero V5 G2;
+- shared 768x768 synchronized frame composition;
+- Idle 3 / Attack 3 / Death 2;
+- Hurt presentation uses approved `death_01` pose without advancing the Death sequence;
+- Wing R5 synchronized to the Hero frame index;
+- locked topknot hair `hair_back + hair_front` across all eight runtime frames;
+- Azure equipment runtime mapping for helmet/chest/gloves/boots/weapon with partial/full equip coverage;
+- Azure Idle weapon grip alignment baked from the approved WEAPON_GRIP reference;
+- equipment/weapon equip and unequip browser-verified, including Attack with weapon removed;
+- V5 visual grounding/scale tuned without moving the locked Hero actor anchor;
+- incomplete requested V5/Azure contracts fail closed to the existing V3 renderer;
+- battle-end Phaser teardown made idempotent; user verified no end-of-battle runtime error;
+- runtime error diagnostics moved to a centered, scrollable popup with message/source/stack where available;
+- after five completed player turns, the existing x1/x2 header slot becomes Skip instead of adding a second control, preventing battlefield layout compression.
 
 Primary wing layer contract:
 ```text
 wing_far
-→ Hero/body/equipment/weapon composition
+→ Hero/body/hair/equipment/weapon composition
 → wing_near
 ```
 
-Frame-specific approved exceptions in the Hero V5 contract remain authoritative.
+Rollout state:
+- DOM remains the application/page UI authority;
+- Phaser Combat remains opt-in;
+- Hero V5 remains opt-in through `?phaserBattle=1&heroV5=1` at W7 close;
+- existing V3 fallback is retained;
+- Battle Core / resolver / rewards / persistence / API authority unchanged.
+
+Victory presentation is **not** part of the W7 runtime close. It remains in W10 with the approved Victory/wing presentation work.
 
 No page may create a separate Hero V5 renderer.
 

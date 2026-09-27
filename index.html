@@ -30,7 +30,11 @@ Run `node build.js` after source changes. index.html is the single generated app
   #root { width: 100%; display: flex; justify-content: center; }
   * { -webkit-tap-highlight-color: transparent; }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
-  #boot-error { color: #FF8B8B; font-family: monospace; font-size: 12px; text-align: left; white-space: pre-wrap; word-break: break-word; padding: 16px; margin: 12px; background: rgba(255,139,139,0.08); border: 1px solid #FF8B8B; border-radius: 10px; display: none; }
+  #boot-error { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:max(18px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); background:rgba(5,7,18,.58); backdrop-filter:blur(2px); box-sizing:border-box; }
+  #boot-error-card { width:min(92vw,430px); max-height:min(72dvh,560px); display:flex; flex-direction:column; overflow:hidden; border:1px solid #FF8B8B; border-radius:16px; background:rgba(24,14,35,.98); box-shadow:0 18px 55px rgba(0,0,0,.68); color:#FFD6D6; font-family:monospace; }
+  #boot-error-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border-bottom:1px solid rgba(255,139,139,.35); color:#FF9E9E; }
+  #boot-error-close { width:36px; height:36px; flex:0 0 36px; border:0; border-radius:10px; background:rgba(255,255,255,.08); color:#fff; font-size:23px; line-height:1; cursor:pointer; }
+  #boot-error-text { margin:0; padding:13px 14px 16px; max-height:52dvh; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; color:#FFD6D6; font:12px/1.45 monospace; text-align:left; white-space:pre-wrap; word-break:break-word; }
 
   .md-enemy-img { object-fit: contain; max-width: none; }
   .md-enemy-img.md-pet-img { width: 64px !important; height: 64px !important; }
@@ -39,20 +43,47 @@ Run `node build.js` after source changes. index.html is the single generated app
 </head>
 <body>
 <div id="root"><div id="boot-status">Loading ThornieDungeons&hellip;</div></div>
-<div id="boot-error"></div>
+<div id="boot-error" role="dialog" aria-modal="true" aria-labelledby="boot-error-title">
+  <div id="boot-error-card">
+    <div id="boot-error-head">
+      <strong id="boot-error-title">⚠ Runtime Error</strong>
+      <button id="boot-error-close" type="button" aria-label="Close error" onclick="hideBootError()">×</button>
+    </div>
+    <pre id="boot-error-text"></pre>
+  </div>
+</div>
 
 <script>
-  function showBootError(msg) {
+  function hideBootError() {
     var el = document.getElementById('boot-error');
-    if (el) { el.style.display = 'block'; el.textContent += (el.textContent ? '\n\n' : '') + msg; }
+    if (el) el.style.display = 'none';
+  }
+  function runtimeErrorDetail(kind, message, error, source, line, column) {
+    var primary = error && error.message ? error.message : (message || 'Unknown error');
+    var detail = kind + ': ' + primary;
+    if (source || line || column) detail += '\nSource: ' + (source || 'unknown') + ':' + (line || '?') + ':' + (column || '?');
+    if (error && error.stack) detail += '\n\n' + error.stack;
+    return detail;
+  }
+  function showBootError(msg) {
+    var overlay = document.getElementById('boot-error');
+    var text = document.getElementById('boot-error-text');
+    var detail = String(msg || 'Unknown error');
+    if (detail.length > 6000) detail = detail.slice(0, 6000) + '\n… (truncated)';
+    if (overlay) overlay.style.display = 'flex';
+    if (text) {
+      text.textContent += (text.textContent ? '\n\n──────────\n\n' : '') + detail;
+      text.scrollTop = text.scrollHeight;
+    }
     var status = document.getElementById('boot-status');
-    if (status) status.textContent = 'Something went wrong loading the game \u2014 see error below.';
+    if (status) status.textContent = 'Something went wrong loading the game \u2014 see error popup.';
   }
   window.addEventListener('error', function (e) {
-    showBootError('JS Error: ' + e.message + '\n  at ' + (e.filename || 'unknown') + ':' + (e.lineno || '?') + ':' + (e.colno || '?'));
+    showBootError(runtimeErrorDetail('JS Error', e.message, e.error, e.filename, e.lineno, e.colno));
   });
   window.addEventListener('unhandledrejection', function (e) {
-    showBootError('Unhandled Promise Rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+    var reason = e.reason;
+    showBootError(runtimeErrorDetail('Unhandled Promise Rejection', reason && reason.message ? reason.message : String(reason), reason instanceof Error ? reason : null));
   });
   window.__thornieBootTimer = setTimeout(function () {
     if (typeof React === 'undefined') showBootError('React failed to load from CDN (unpkg.com). Network may be blocking it.');
@@ -141,7 +172,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.9";
+  content: "Ver 1.0.16";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1638,7 +1669,6 @@ body::after {
   color: var(--gold); font: 800 15px/1 'Baloo 2'; cursor: pointer;
 }
 .md-combat-header-action.skip { color: #fff; font-size: 11px; letter-spacing: .45px; }
-.md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 0; font-size: 9px; }
 .md-combat-header-action.skip.has-art { font-size:0; }
 .md-combat-header-action.speed {
   color:var(--gold); font-size:13px;
@@ -8672,6 +8702,7 @@ const THORNIE_PHASER_RUNTIME = (() => {
       };
       if (!script) {
         script = document.createElement("script");
+        script.crossOrigin = "anonymous";
         script.src = THORNIE_PHASER_URL;
         script.async = true;
         script.dataset.thorniePhaserRuntime = THORNIE_PHASER_VERSION;
@@ -8944,11 +8975,32 @@ const ACTOR_PRESENTATION_MODEL = Object.freeze({
 });
 
 // ===== phaser/presentation/EquipmentVisualResolver.js =====
-// ---------- W6 Equipment Visual Resolver Boundary ----------
+// ---------- W7 Equipment Visual Resolver Boundary ----------
 const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
-  version: 1,
-  currentHeroMode: "v3"
+  version: 2,
+  currentHeroMode: "v3",
+  v5OptIn: true
 });
+
+function isAzureVisualItem(item) {
+  return !!item && (
+    item.setId === "azure"
+    || String(item.name || "").toLowerCase().includes("azure")
+  );
+}
+
+function resolveHeroV5EquipmentSelection(equipped = {}) {
+  return {
+    wings: equipped?.wings ? "angel" : null,
+    azure: {
+      helmet: isAzureVisualItem(equipped?.helmet),
+      chest: isAzureVisualItem(equipped?.chest),
+      gloves: isAzureVisualItem(equipped?.gloves),
+      boots: isAzureVisualItem(equipped?.boots),
+      weapon: isAzureVisualItem(equipped?.weapon)
+    }
+  };
+}
 
 function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = {}) {
   const resolveLegacySelection = legacyHeroSelectionResolver || (
@@ -8959,11 +9011,159 @@ function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = 
     resolveHeroSelection(equipped = {}) {
       const selection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
       return { ...(selection || {}) };
+    },
+    resolveHeroV5Selection(equipped = {}) {
+      const selection = resolveHeroV5EquipmentSelection(equipped || {});
+      return {
+        wings: selection.wings,
+        azure: { ...selection.azure }
+      };
     }
   });
 }
 
 const SHARED_EQUIPMENT_VISUAL_RESOLVER = createEquipmentVisualResolver();
+
+// ===== phaser/presentation/HeroV5RuntimeContract.js =====
+// ---------- W7 Hero V5 G2 Runtime Contract ----------
+const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
+  version: 1,
+  characterId: "hero001",
+  variant: "g2",
+  canvas: Object.freeze({ width: 768, height: 768 }),
+  runtimeOffsetY: 84,
+  animationFrames: Object.freeze({
+    idle: Object.freeze(["idle_01", "idle_02", "idle_03"]),
+    attack: Object.freeze(["attack_01", "attack_02", "attack_03"]),
+    death: Object.freeze(["death_01", "death_02"])
+  }),
+  layerOrder: Object.freeze(["wing_far", "base", "wing_near"]),
+  azureLayerOrder: Object.freeze([
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front"
+  ])
+});
+
+function isHeroV5RuntimeEnabled() {
+  if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
+  if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === false) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search || "").get("heroV5") === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function getHeroV5RuntimeConfig(characterId = HERO_V5_RUNTIME_CONTRACT.characterId) {
+  const config = typeof ASSETS === "object" && ASSETS
+    ? ASSETS?.[characterId]?.v5?.[HERO_V5_RUNTIME_CONTRACT.variant]
+    : null;
+  if (!config || config.approval !== "approved" || config.base?.approval !== "approved") return null;
+  const canvasWidth = Number(config.canvas?.width) || 0;
+  const canvasHeight = Number(config.canvas?.height) || 0;
+  if (canvasWidth !== HERO_V5_RUNTIME_CONTRACT.canvas.width || canvasHeight !== HERO_V5_RUNTIME_CONTRACT.canvas.height) return null;
+  return config;
+}
+
+function heroV5AzureLayersForSelection(selection = {}) {
+  const azure = selection?.azure || {};
+  const requested = [];
+  // The underlay is a whole-body seam closer. Only use it when the three
+  // body-coverage slots are present; otherwise the neutral Base must remain
+  // visible in unequipped areas (for example bare Base legs without Azure boots).
+  if (azure.chest && azure.gloves && azure.boots) requested.push("coverage_underlay");
+  if (azure.chest) requested.push("torso_armor");
+  if (azure.boots) requested.push("legs_boots");
+  if (azure.gloves) requested.push("arm_rear");
+  if (azure.helmet) requested.push("helmet");
+  if (azure.weapon) requested.push("sword");
+  if (azure.gloves) requested.push("arm_front");
+  return HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
+}
+
+function heroV5FrameLayer(name, path) {
+  return {
+    name,
+    path,
+    x: 0,
+    y: HERO_V5_RUNTIME_CONTRACT.runtimeOffsetY,
+    scale: 1,
+    rotation: 0
+  };
+}
+
+function heroV5HairLayers(config, frameId) {
+  const hairId = config?.defaultHair || "topknot";
+  const hairConfig = config?.hair?.[hairId];
+  if (!hairConfig || hairConfig.approval !== "approved") return [];
+  const frame = hairConfig.frames?.[frameId];
+  if (!frame?.hair_back || !frame?.hair_front) return [];
+  return [
+    heroV5FrameLayer("hair_back", frame.hair_back),
+    heroV5FrameLayer("hair_front", frame.hair_front)
+  ];
+}
+
+function heroV5FrameLayers(config, frameId, { includeWings = false, equipmentSelection = {} } = {}) {
+  const basePath = config?.base?.frames?.[frameId];
+  if (!basePath) return null;
+
+  const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
+  if (includeWings && (!wingFrame?.wing_far || !wingFrame?.wing_near)) return null;
+
+  const azureLayerNames = heroV5AzureLayersForSelection(equipmentSelection);
+  const azureConfig = config?.equipment?.azure;
+  if (azureLayerNames.length && azureConfig?.approval !== "approved") return null;
+  const azureFrame = azureLayerNames.length ? azureConfig?.frames?.[frameId] : null;
+  if (azureLayerNames.some(name => !azureFrame?.[name])) return null;
+
+  const layers = [];
+  if (includeWings) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
+  layers.push(heroV5FrameLayer("base", basePath));
+  layers.push(...heroV5HairLayers(config, frameId));
+  azureLayerNames.forEach(name => {
+    layers.push(heroV5FrameLayer(name, azureFrame[name]));
+  });
+  if (includeWings) layers.push(heroV5FrameLayer("wing_near", wingFrame.wing_near));
+  return layers;
+}
+
+function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings = false, equipmentSelection = {} } = {}) {
+  const config = getHeroV5RuntimeConfig(characterId);
+  if (!config) return null;
+
+  const resolved = {};
+  for (const [state, frameIds] of Object.entries(HERO_V5_RUNTIME_CONTRACT.animationFrames)) {
+    const frames = frameIds.map(frameId => heroV5FrameLayers(config, frameId, {
+      includeWings,
+      equipmentSelection
+    }));
+    if (frames.some(frame => !Array.isArray(frame) || !frame.length)) return null;
+    resolved[state] = frames;
+  }
+
+  const hasAzureEquipment = heroV5AzureLayersForSelection(equipmentSelection).length > 0;
+  return Object.freeze({
+    mode: hasAzureEquipment ? "v5-g2-azure" : "v5-g2",
+    canvas: {
+      width: HERO_V5_RUNTIME_CONTRACT.canvas.width,
+      height: HERO_V5_RUNTIME_CONTRACT.canvas.height
+    },
+    idle: resolved.idle,
+    attack: resolved.attack,
+    death: resolved.death,
+    frameMs: {
+      idle: 440,
+      attack: 300,
+      death: 360
+    }
+  });
+}
 
 // ===== phaser/presentation/PresentationEventBridge.js =====
 // ---------- W6 Shared Presentation Event Bridge ----------
@@ -9051,7 +9251,7 @@ function presentationAnimationConfig(config) {
   };
 }
 
-function heroPresentationLayerFrames(selection = {}) {
+function heroV3PresentationLayerFrames(selection = {}) {
   const config = typeof getHeroV3Config === "function" ? getHeroV3Config("hero001") : null;
   const normalize = layers => (layers || []).map(layer => ({
     name: layer.name,
@@ -9069,6 +9269,7 @@ function heroPresentationLayerFrames(selection = {}) {
     normalize(resolveHeroV3Layers("hero001", selection, "attack", index) || idle)
   );
   return {
+    mode: "v3",
     canvas: {
       width: Math.max(1, Number(config?.canvas?.width) || 1254),
       height: Math.max(1, Number(config?.canvas?.height) || 1254)
@@ -9084,7 +9285,34 @@ function heroPresentationLayerFrames(selection = {}) {
   };
 }
 
-function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1 } = {}) {
+function heroPresentationLayerFrames(selection = {}, { preferV5 = false, v5Selection = {} } = {}) {
+  if (preferV5 && typeof resolveHeroV5BaseWingContract === "function") {
+    const v5 = resolveHeroV5BaseWingContract({
+      characterId: "hero001",
+      includeWings: v5Selection?.wings === "angel" || selection?.wings === "angel",
+      equipmentSelection: v5Selection
+    });
+    if (v5) {
+      const normalize = layers => (layers || []).map(layer => ({
+        name: layer.name,
+        url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
+        x: Number(layer.x) || 0,
+        y: Number(layer.y) || 0,
+        scale: Number(layer.scale ?? 1),
+        rotation: Number(layer.rotation) || 0
+      })).filter(layer => layer.url);
+      return {
+        ...v5,
+        idle: v5.idle.map(normalize),
+        attack: v5.attack.map(normalize),
+        death: v5.death.map(normalize)
+      };
+    }
+  }
+  return heroV3PresentationLayerFrames(selection);
+}
+
+function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1, heroV5 = undefined } = {}) {
   const state = battleState || {};
   const units = state.units || {};
   const hero = createActorPresentationModel(units[state.heroId], {
@@ -9101,7 +9329,14 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
   const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
   const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
-  const heroFrames = heroPresentationLayerFrames(heroSelection);
+  const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
+  const preferHeroV5 = heroV5 === undefined
+    ? (typeof isHeroV5RuntimeEnabled === "function" && isHeroV5RuntimeEnabled())
+    : heroV5 === true;
+  const heroFrames = heroPresentationLayerFrames(heroSelection, {
+    preferV5: preferHeroV5,
+    v5Selection: heroV5Selection
+  });
   const heroLayers = heroFrames.idle[0] || [];
   const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
   const monsterConfigs = enemyList.map(enemy => typeof getMonsterSpriteConfig === "function" ? getMonsterSpriteConfig(enemy) : null);
@@ -9114,6 +9349,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
       ...hero,
       anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
+      visualMode: heroFrames.mode || "v3",
       layers: heroLayers,
       layerFrames: heroFrames
     },
@@ -9181,7 +9417,9 @@ class PhaserBattleActor {
     this.frameTimer = null;
     this.motionTween = null;
     this.idleTween = null;
-    scene.events.once("shutdown", () => this.destroy());
+    this.destroyed = false;
+    this.handleSceneShutdown = () => this.destroy();
+    scene.events.once("shutdown", this.handleSceneShutdown);
   }
 
   displaySize() {
@@ -9197,6 +9435,16 @@ class PhaserBattleActor {
     if (data?.anim === "attack") return "attack";
     if (data?.anim === "hurt") return "hurt";
     return "idle";
+  }
+
+  hurtVisualState() {
+    return "idle";
+  }
+
+  frameDelayForState(state) {
+    if (state === "idle") return 220;
+    if (state === "attack") return 150;
+    return 180;
   }
 
   frameUrlsForState(state) {
@@ -9266,7 +9514,7 @@ class PhaserBattleActor {
     this.stopAnimationPlayback();
     this.visualState = nextState;
     this.frameIndex = 0;
-    const effectiveFrameState = nextState === "hurt" ? "idle" : nextState;
+    const effectiveFrameState = nextState === "hurt" ? this.hurtVisualState() : nextState;
     const frameCount = this.visualFrameCount(effectiveFrameState);
     this.applyVisualFrame(effectiveFrameState, 0);
 
@@ -9292,7 +9540,7 @@ class PhaserBattleActor {
 
     if (nextState === "idle") {
       if (frameCount > 1) {
-        const delay = Math.max(80, Math.round(220 / Math.max(1, speed)));
+        const delay = Math.max(80, Math.round(this.frameDelayForState("idle") / Math.max(1, speed)));
         this.frameTimer = this.scene.time.addEvent({
           delay,
           loop: true,
@@ -9309,7 +9557,7 @@ class PhaserBattleActor {
 
     const frameDelay = Math.max(
       70,
-      Math.round((nextState === "attack" ? 150 : 180) / Math.max(1, speed))
+      Math.round(this.frameDelayForState(nextState) / Math.max(1, speed))
     );
 
     if (nextState === "attack") {
@@ -9389,23 +9637,39 @@ class PhaserBattleActor {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.stopAnimationPlayback();
-    this.container?.destroy(true);
-    this.hpBar?.destroy();
-    this.statusText?.destroy();
-    this.nameText?.destroy();
-    this.hpText?.destroy();
+    this.scene?.events?.off("shutdown", this.handleSceneShutdown);
+
+    // statusText/nameText/visualRoot/sprite are children of container and are
+    // destroyed by container.destroy(true). Destroying them again can throw
+    // inside Phaser during scene teardown.
+    const container = this.container;
+    const hpBar = this.hpBar;
+    const hpText = this.hpText;
+
     this.container = null;
     this.visualRoot = null;
     this.sprite = null;
+    this.hpBar = null;
+    this.statusText = null;
+    this.nameText = null;
+    this.hpText = null;
+    this.handleSceneShutdown = null;
+
+    container?.destroy(true);
+    hpBar?.destroy();
+    hpText?.destroy();
+    this.scene = null;
   }
 }
 
 // ===== phaser/renderers/HeroRenderer.js =====
-// ---------- W6 Shared Hero Renderer ----------
-// Renders the currently approved Hero V3 layer contract only.
-// Equipment/V5 resolution is intentionally outside this renderer and belongs to
-// the future EquipmentVisualResolver boundary.
+// ---------- W7 Shared Hero Renderer ----------
+// Renders normalized layered Hero presentation models from both the production
+// V3 contract and the opt-in V5 G2 contract. Asset/equipment resolution remains
+// outside this renderer so Combat, Arena and future previews share one renderer.
 class HeroRenderer {
   constructor(scene, {
     root = null,
@@ -9420,6 +9684,7 @@ class HeroRenderer {
     this.displaySizeSource = displaySize;
     this.textureKeySource = textureKey;
     this.layerImages = [];
+    this.destroyed = false;
   }
 
   setData(data) {
@@ -9460,7 +9725,7 @@ class HeroRenderer {
         const key = this.textureKey(layer.url);
         if (!key || !this.scene?.textures?.exists(key)) return;
         const image = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
-        // resolveHeroV3Layers already returns the DOM bottom-to-top contract.
+        // Presentation models already arrive in authored bottom-to-top order.
         this.root.addAt(image, Math.min(index, this.root.list?.length || 0));
         entry = { name: layer.name, image };
         this.layerImages.push(entry);
@@ -9498,6 +9763,8 @@ class HeroRenderer {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.layerImages.forEach(entry => entry.image?.destroy());
     this.layerImages = [];
     if (this.ownsRoot) this.root?.destroy(true);
@@ -9517,6 +9784,27 @@ class HeroActor extends PhaserBattleActor {
       displaySize: () => this.displaySize(),
       textureKey: reference => this.scene.assetKey(reference)
     });
+  }
+
+  isV5Presentation() {
+    return String(this.data?.visualMode || "").startsWith("v5-g2");
+  }
+
+  displaySize() {
+    const base = super.displaySize();
+    return this.isV5Presentation() ? Math.round(base * 1.30) : base;
+  }
+
+  hurtVisualState() {
+    return this.isV5Presentation() ? "death" : super.hurtVisualState();
+  }
+
+  frameDelayForState(state) {
+    if (this.isV5Presentation()) {
+      const configured = Number(this.data?.layerFrames?.frameMs?.[state]);
+      if (Number.isFinite(configured) && configured > 0) return configured;
+    }
+    return super.frameDelayForState(state);
   }
 
   visualFrameCount(state) {
@@ -17362,6 +17650,44 @@ function CombatScreen({
   const skipAssetSrc = optionalAsset("battleUi.buttons.skip");
   const [failedSkipAsset, setFailedSkipAsset] = useState("");
   const showSkipArt = Boolean(skipAssetSrc && failedSkipAsset !== skipAssetSrc);
+
+  let headerBattleAction;
+  if (skipUnlocked) {
+    headerBattleAction = /*#__PURE__*/React.createElement("button", {
+      className: `md-combat-header-action skip ${showSkipArt ? "has-art" : ""}`,
+      disabled: busy,
+      "aria-label": "Skip battle",
+      title: "จำลองการต่อสู้ที่เหลือด้วยระบบเดียวกัน",
+      onClick: () => onAction("skip")
+    }, showSkipArt ? /*#__PURE__*/React.createElement("img", {
+      className: "md-combat-skip-art",
+      src: skipAssetSrc,
+      alt: "",
+      "aria-hidden": "true",
+      draggable: false,
+      onError: () => setFailedSkipAsset(skipAssetSrc)
+    }) : /*#__PURE__*/React.createElement("span", {
+      className: "md-combat-skip-fallback"
+    }, "SKIP"));
+  } else {
+    headerBattleAction = /*#__PURE__*/React.createElement("button", {
+      className: `md-combat-header-action speed ${showSpeedArt ? "has-art" : ""}`,
+      disabled: busy,
+      title: "เปลี่ยนความเร็วการต่อสู้",
+      onClick: onCycleCombatSpeed,
+      "aria-label": `Battle speed x${combatSpeed || 1}`
+    }, showSpeedArt ? /*#__PURE__*/React.createElement("img", {
+      className: "md-combat-speed-art",
+      src: speedAssetSrc,
+      alt: "",
+      "aria-hidden": "true",
+      draggable: false,
+      onError: () => setFailedSpeedAsset(speedAssetSrc)
+    }) : /*#__PURE__*/React.createElement("span", {
+      className: "md-combat-speed-fallback"
+    }, `×${combatSpeed || 1}`));
+  }
+
   const activeTurn = (turnQueue || []).find(item => item.key === activeTurnKey);
   const activeTurnName = activeTurn
     ? activeTurn.kind === "player" ? heroName : activeTurn.name || (activeTurn.kind === "pet" ? "Pet" : "Monster")
@@ -17450,19 +17776,7 @@ function CombatScreen({
     heroName: heroName
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: `md-combat-header-action speed ${showSpeedArt ? "has-art" : ""}`,
-    disabled: busy,
-    title: "เปลี่ยนความเร็วการต่อสู้",
-    onClick: onCycleCombatSpeed,
-    "aria-label": `Battle speed x${combatSpeed || 1}`
-  }, showSpeedArt ? /*#__PURE__*/React.createElement("img", { className:"md-combat-speed-art", src:speedAssetSrc, alt:"", "aria-hidden":"true", draggable:false, onError:() => setFailedSpeedAsset(speedAssetSrc) }) : /*#__PURE__*/React.createElement("span", { className:"md-combat-speed-fallback" }, `×${combatSpeed || 1}`)), skipUnlocked && /*#__PURE__*/React.createElement("button", {
-    className: `md-combat-header-action skip ${showSkipArt ? "has-art" : ""}`,
-    disabled: busy,
-    "aria-label": "Skip battle",
-    title: "จำลองการต่อสู้ที่เหลือด้วยระบบเดียวกัน",
-    onClick: () => onAction("skip")
-  }, showSkipArt ? /*#__PURE__*/React.createElement("img", { className:"md-combat-skip-art", src:skipAssetSrc, alt:"", "aria-hidden":"true", draggable:false, onError:() => setFailedSkipAsset(skipAssetSrc) }) : /*#__PURE__*/React.createElement("span", { className:"md-combat-skip-fallback" }, "SKIP")))), modifierBanner && /*#__PURE__*/React.createElement("div", {
+  }, headerBattleAction)), modifierBanner && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: `${modifierBanner.color}22`,

@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.9";
+  content: "Ver 1.0.16";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1561,7 +1561,6 @@ body::after {
   color: var(--gold); font: 800 15px/1 'Baloo 2'; cursor: pointer;
 }
 .md-combat-header-action.skip { color: #fff; font-size: 11px; letter-spacing: .45px; }
-.md-combat-header-action.speed + .md-combat-header-action.skip { border-top: 0; font-size: 9px; }
 .md-combat-header-action.skip.has-art { font-size:0; }
 .md-combat-header-action.speed {
   color:var(--gold); font-size:13px;

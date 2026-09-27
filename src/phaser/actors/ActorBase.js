@@ -44,7 +44,9 @@ class PhaserBattleActor {
     this.frameTimer = null;
     this.motionTween = null;
     this.idleTween = null;
-    scene.events.once("shutdown", () => this.destroy());
+    this.destroyed = false;
+    this.handleSceneShutdown = () => this.destroy();
+    scene.events.once("shutdown", this.handleSceneShutdown);
   }
 
   displaySize() {
@@ -60,6 +62,16 @@ class PhaserBattleActor {
     if (data?.anim === "attack") return "attack";
     if (data?.anim === "hurt") return "hurt";
     return "idle";
+  }
+
+  hurtVisualState() {
+    return "idle";
+  }
+
+  frameDelayForState(state) {
+    if (state === "idle") return 220;
+    if (state === "attack") return 150;
+    return 180;
   }
 
   frameUrlsForState(state) {
@@ -129,7 +141,7 @@ class PhaserBattleActor {
     this.stopAnimationPlayback();
     this.visualState = nextState;
     this.frameIndex = 0;
-    const effectiveFrameState = nextState === "hurt" ? "idle" : nextState;
+    const effectiveFrameState = nextState === "hurt" ? this.hurtVisualState() : nextState;
     const frameCount = this.visualFrameCount(effectiveFrameState);
     this.applyVisualFrame(effectiveFrameState, 0);
 
@@ -155,7 +167,7 @@ class PhaserBattleActor {
 
     if (nextState === "idle") {
       if (frameCount > 1) {
-        const delay = Math.max(80, Math.round(220 / Math.max(1, speed)));
+        const delay = Math.max(80, Math.round(this.frameDelayForState("idle") / Math.max(1, speed)));
         this.frameTimer = this.scene.time.addEvent({
           delay,
           loop: true,
@@ -172,7 +184,7 @@ class PhaserBattleActor {
 
     const frameDelay = Math.max(
       70,
-      Math.round((nextState === "attack" ? 150 : 180) / Math.max(1, speed))
+      Math.round(this.frameDelayForState(nextState) / Math.max(1, speed))
     );
 
     if (nextState === "attack") {
@@ -252,14 +264,30 @@ class PhaserBattleActor {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.stopAnimationPlayback();
-    this.container?.destroy(true);
-    this.hpBar?.destroy();
-    this.statusText?.destroy();
-    this.nameText?.destroy();
-    this.hpText?.destroy();
+    this.scene?.events?.off("shutdown", this.handleSceneShutdown);
+
+    // statusText/nameText/visualRoot/sprite are children of container and are
+    // destroyed by container.destroy(true). Destroying them again can throw
+    // inside Phaser during scene teardown.
+    const container = this.container;
+    const hpBar = this.hpBar;
+    const hpText = this.hpText;
+
     this.container = null;
     this.visualRoot = null;
     this.sprite = null;
+    this.hpBar = null;
+    this.statusText = null;
+    this.nameText = null;
+    this.hpText = null;
+    this.handleSceneShutdown = null;
+
+    container?.destroy(true);
+    hpBar?.destroy();
+    hpText?.destroy();
+    this.scene = null;
   }
 }

@@ -122,11 +122,11 @@ test("manifest assets, speed artwork and safe presentation layer are wired", () 
   const app = read("src/ui/App.js");
   assert.match(components, /const speedAssetKey = combatSpeed === 2 \? "buttons\.speedX2" : "buttons\.speedX1"/);
   assert.match(components, /optionalAsset\(`battleUi\.\$\{speedAssetKey\}`\)/);
-  assert.match(components, /className:"md-combat-speed-art"[\s\S]*onError:\(\) => setFailedSpeedAsset\(speedAssetSrc\)/);
-  assert.match(components, /className:"md-combat-speed-fallback"/);
+  assert.match(components, /className:\s*"md-combat-speed-art"[\s\S]*onError:\s*\(\) => setFailedSpeedAsset\(speedAssetSrc\)/);
+  assert.match(components, /className:\s*"md-combat-speed-fallback"/);
   assert.match(components, /optionalAsset\("battleUi\.buttons\.skip"\)/);
-  assert.match(components, /className:"md-combat-skip-art"[\s\S]*onError:\(\) => setFailedSkipAsset\(skipAssetSrc\)/);
-  assert.match(components, /className:"md-combat-skip-fallback"/);
+  assert.match(components, /className:\s*"md-combat-skip-art"[\s\S]*onError:\s*\(\) => setFailedSkipAsset\(skipAssetSrc\)/);
+  assert.match(components, /className:\s*"md-combat-skip-fallback"/);
   assert.match(components, /onError: \(\) => setFailedSources/);
   assert.match(styles, /\.md-battle-vfx[\s\S]*z-index: 4[\s\S]*pointer-events: none/);
   assert.match(styles, /\.md-arena > \.md-battle-vfx\.placement-anchor\.anchor-hero \{ left: 41%; top: 54%; \}/);

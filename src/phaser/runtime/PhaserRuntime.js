@@ -48,6 +48,7 @@ const THORNIE_PHASER_RUNTIME = (() => {
       };
       if (!script) {
         script = document.createElement("script");
+        script.crossOrigin = "anonymous";
         script.src = THORNIE_PHASER_URL;
         script.async = true;
         script.dataset.thorniePhaserRuntime = THORNIE_PHASER_VERSION;

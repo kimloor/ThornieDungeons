@@ -537,6 +537,28 @@ This is a presentation-only follow-up and does not reopen W6 architecture accept
 
 ---
 
+## 15.2 W7 Hero V5 runtime close — 2026-09-27
+
+W7 completed browser QA through Ver 1.0.16 on iPhone.
+
+Verified presentation scope:
+- Hero V5 G2 Base / Wing R5 / topknot hair;
+- Azure full and partial equipment composition;
+- Idle / Attack / Hurt / Death playback;
+- Azure Idle weapon grip alignment;
+- equip/unequip behavior including weapon removal during Attack;
+- unchanged locked Hero anchor with presentation-only artwork offset/scale;
+- no end-of-battle Phaser teardown error;
+- x1/x2 control replaced in-place by Skip after five completed player turns, avoiding header/layout expansion.
+
+Runtime guardrails remain:
+- Hero V5 is opt-in via `?phaserBattle=1&heroV5=1`;
+- V3 remains the fallback;
+- gameplay/resolver/persistence/reward authority remains outside Phaser;
+- Victory animation/presentation remains W10 scope.
+
+---
+
 ## 16. Release rule
 
 Phaser work touching active game surfaces is HIGH risk.

@@ -10,12 +10,17 @@ const styles = read("src/data/styles.js");
 const manifest = read("src/assets/manifest.js");
 const build = read("build.js");
 
-test("Battle UI keeps four quick slots, independent speed/Skip controls and Silence rules", () => {
+test("Battle UI keeps four quick slots and replaces speed with Skip after five turns", () => {
   assert.match(components, /\[0, 1, 2, 3\]\.map/);
-  assert.match(components, /className: `md-combat-header-action speed \$\{showSpeedArt \? "has-art" : ""\}`/);
-  assert.match(components, /className:"md-combat-speed-art"/);
+  assert.match(components, /const skipUnlocked = \(combatTurnCount \|\| 0\) >= 5/);
+  assert.match(components, /let headerBattleAction/);
+  assert.match(components, /if \(skipUnlocked\) \{/);
   assert.match(components, /className: `md-combat-header-action skip \$\{showSkipArt \? "has-art" : ""\}`/);
-  assert.match(components, /className:"md-combat-skip-art"/);
+  assert.match(components, /className: "md-combat-skip-art"/);
+  assert.match(components, /onClick: \(\) => onAction\("skip"\)/);
+  assert.match(components, /\} else \{[\s\S]{0,500}className: `md-combat-header-action speed/);
+  assert.match(components, /className: "md-combat-speed-art"/);
+  assert.match(components, /className: "md-combat-top-actions"[\s\S]{0,100}headerBattleAction/);
   assert.match(components, /player\.battleStatuses\?\.silence/);
   assert.match(components, /onAction\("flee"\)/);
   assert.match(components, /setAutoRun\(a => !a\)/);
@@ -85,11 +90,12 @@ test("Pet combat sprites use a larger manifest-size presentation envelope", () =
   assert.match(components, /return \{ sizeClass, anchorType, \.\.\.PET_COMBAT_VISUAL_SIZES\[sizeClass\] \}/);
 });
 
-test("Skip artwork matches the speed artwork envelope without changing behavior wiring", () => {
+test("Skip artwork replaces the speed control in the same envelope without changing resolver wiring", () => {
   assert.match(styles, /\.md-combat-speed-art \{[^}]*max-height:56px/);
   assert.match(styles, /\.md-combat-skip-art \{[^}]*max-height:56px/);
   assert.match(components, /onClick: \(\) => onAction\("skip"\)/);
-  assert.match(components, /skipUnlocked &&/);
+  assert.match(components, /if \(skipUnlocked\) \{/);
+  assert.doesNotMatch(styles, /\.md-combat-header-action\.speed \+ \.md-combat-header-action\.skip/);
 });
 
 test("Turn Order remains a clipped single-row four-slot window", () => {
