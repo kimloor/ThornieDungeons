@@ -402,7 +402,7 @@ No page may create a separate Hero V5 renderer.
 
 ## W8 — Inventory Hero Live Preview
 
-**Status: IMPLEMENTED — USER QA IN PROGRESS**
+**Status: COMPLETE — MERGED / PRODUCTION VERIFIED (Ver 1.0.17)**
 
 Inventory remains React/DOM. Phaser is used only for the central live Hero presentation surface.
 
@@ -536,6 +536,29 @@ Verify at minimum:
 - no guessed asset paths / no legacy layer mixing;
 - Item Detail/Compare must leave the Hero preview visible so candidate swaps can be visually verified;
 - mobile/tablet/desktop layout remains safe;
+
+
+### W8.7 — Closeout
+
+W8 closed on 2026-09-27 after user browser QA and production deployment.
+
+Final verified behavior:
+- Inventory-only Phaser Hero live preview;
+- Hero V5 equipment/wings render behind DOM equipment slots;
+- candidate Compare preview swaps without mutating authoritative equipment state;
+- closing Compare restores authoritative equipment visuals;
+- Equip/Unequip refreshes the authoritative preview;
+- repeated open/close does not duplicate Phaser canvases;
+- mobile Compare remains a Hero-visible DOM bottom sheet;
+- equipped Wings reuse the canonical production Angel visual family;
+- narrow iPhone layouts keep the full Hero stage;
+- final Inventory Hero horizontal anchor is 55.8%;
+- Character Status Phaser preview remains out of scope by user direction;
+- visible preview/release badge at close: Ver 1.0.17.
+
+Release:
+- PR #31 merged to main;
+- production frontend deployment and production verification passed.
 
 
 ## W9 — Arena Phaser
