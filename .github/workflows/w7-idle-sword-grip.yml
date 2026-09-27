@@ -1,0 +1,178 @@
+name: W7 idle sword grip alignment
+
+on:
+  push:
+    branches:
+      - "feat/w7-hero-v5-runtime"
+    paths:
+      - ".github/workflows/w7-idle-sword-grip.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: thornie-w7-idle-sword-grip
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      R2_BUCKET: assets
+    steps:
+      - name: Checkout W7 branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Pillow + NumPy
+        run: python -m pip install pillow numpy
+
+      - name: Bake approved grip-aligned Idle swords
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, math, pathlib
+          import numpy as np
+          from PIL import Image
+
+          root=pathlib.Path("r2-upload")
+          master_path=root/"hero/v5/g2/equipment/azure/masters/AZURE_SWORD_UPRIGHT.png"
+          master=Image.open(master_path).convert("RGBA")
+
+          source_grip=np.array([384.0,594.0])
+          scale=0.55
+
+          # The approved WEAPON_GRIP reference shows blade-down-right from the hand.
+          # Our upright Azure master points blade-up from the grip, so +135 degrees
+          # in image coordinates reproduces that approved visual orientation.
+          rotation_degrees=135.0
+          theta=math.radians(rotation_degrees)
+          A=np.array([
+              [scale*math.cos(theta), -scale*math.sin(theta)],
+              [scale*math.sin(theta),  scale*math.cos(theta)]
+          ], dtype=float)
+          Ainv=np.linalg.inv(A)
+
+          targets={
+              "idle_01":(270.0,505.0),
+              "idle_02":(270.0,493.0),
+              "idle_03":(270.0,501.0),
+          }
+
+          for frame,target_xy in targets.items():
+              target=np.array(target_xy)
+              t=target-A@source_grip
+              b=-Ainv@t
+              coeff=(Ainv[0,0],Ainv[0,1],b[0],Ainv[1,0],Ainv[1,1],b[1])
+              out=master.transform(
+                  (768,768),
+                  Image.Transform.AFFINE,
+                  coeff,
+                  resample=Image.Resampling.BICUBIC
+              )
+              bbox=out.getbbox()
+              if bbox is None:
+                  raise SystemExit(f"empty sword output for {frame}")
+              # Visual sanity: grip-aligned sword should occupy the lower-right
+              # area from the left hand, not extend predominantly down-left.
+              if bbox[2] <= target_xy[0] or bbox[3] <= target_xy[1]:
+                  raise SystemExit(f"unexpected sword bbox for {frame}: {bbox}")
+              dest=root/f"hero/v5/g2/equipment/azure/{frame}/sword_w7_idle_v3.png"
+              out.save(dest)
+
+          manifest_path=root/"manifest.json"
+          manifest=json.loads(manifest_path.read_text())
+          azure=manifest["assets"]["hero001"]["v5"]["g2"]["equipment"]["azure"]
+          for frame in targets:
+              azure["frames"][frame]["sword"]=f"hero/v5/g2/equipment/azure/{frame}/sword_w7_idle_v3.png"
+          azure["idleSwordAssetRevision"]="w7_idle_v3_grip_aligned"
+          manifest_path.write_text(json.dumps(manifest,separators=(",",":"))+"\n")
+
+          patch_path=root/"hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json"
+          patch=json.loads(patch_path.read_text())
+          patch.update({
+              "status":"APPROVED_BY_PROJECT_LEAD_FOR_W7_RUNTIME",
+              "assetRevision":"w7_idle_v3_grip_aligned",
+              "sourceGrip":[384,594],
+              "scale":scale,
+              "rotationDegrees":rotation_degrees,
+              "targetGrip":{k:[int(v[0]),int(v[1])] for k,v in targets.items()},
+              "visualReference":"HERO V5 — WEAPON_GRIP ANCHOR ALIGNMENT",
+              "visualIntent":"Blade descends down-right from the hand; hand grip and sword grip anchor coincide.",
+              "runtimeRotation":False,
+              "note":"Transform is baked offline into versioned Idle PNGs; runtime only displays authored frame assets."
+          })
+          patch_path.write_text(json.dumps(patch,ensure_ascii=False,indent=2)+"\n")
+
+          pub_path=root/"hero/v5/g2/equipment/azure/PUBLICATION.json"
+          pub=json.loads(pub_path.read_text())
+          pub["idleSwordAssetRevision"]="w7_idle_v3_grip_aligned"
+          note="Idle Azure sword W7 v3 uses the approved WEAPON_GRIP anchor alignment: grip at the left hand with blade descending down-right."
+          notes=pub.setdefault("runtimeNotes",[])
+          if note not in notes: notes.append(note)
+          pub_path.write_text(json.dumps(pub,ensure_ascii=False,indent=2)+"\n")
+          PY
+
+      - name: Validate generated sword assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from PIL import Image
+          import json, pathlib
+          root=pathlib.Path("r2-upload")
+          m=json.loads((root/"manifest.json").read_text())
+          a=m["assets"]["hero001"]["v5"]["g2"]["equipment"]["azure"]
+          assert a["idleSwordAssetRevision"]=="w7_idle_v3_grip_aligned"
+          for frame in ("idle_01","idle_02","idle_03"):
+              path=root/a["frames"][frame]["sword"]
+              im=Image.open(path).convert("RGBA")
+              assert im.size==(768,768)
+              assert im.getbbox() is not None
+              assert path.stat().st_size>10000
+          PY
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Upload grip-aligned assets to R2 and verify SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            r2-upload/hero/v5/g2/equipment/azure/idle_01/sword_w7_idle_v3.png
+            r2-upload/hero/v5/g2/equipment/azure/idle_02/sword_w7_idle_v3.png
+            r2-upload/hero/v5/g2/equipment/azure/idle_03/sword_w7_idle_v3.png
+            r2-upload/hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json
+            r2-upload/hero/v5/g2/equipment/azure/PUBLICATION.json
+            r2-upload/manifest.json
+          )
+          for file in "${files[@]}"; do
+            key="${file#r2-upload/}"
+            case "${file,,}" in
+              *.png) type="image/png" ;;
+              *.json) type="application/json" ;;
+              *) exit 1 ;;
+            esac
+            wrangler r2 object put "$R2_BUCKET/$key" --file "$file" --content-type "$type" --remote
+            tmp="$(mktemp)"
+            wrangler r2 object get "$R2_BUCKET/$key" --file "$tmp" --remote
+            test "$(sha256sum "$file" | awk '{print $1}')" = "$(sha256sum "$tmp" | awk '{print $1}')"
+            rm -f "$tmp"
+          done
+          echo "Uploaded and SHA-verified 6 grip-aligned Idle sword object(s)."
+
+      - name: Commit asset revision to W7 branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/w7-idle-sword-grip.yml
+          git add r2-upload/hero/v5/g2/equipment/azure r2-upload/manifest.json
+          git commit -m "assets: align W7 Idle Azure sword grip"
+          git push origin HEAD:feat/w7-hero-v5-runtime
