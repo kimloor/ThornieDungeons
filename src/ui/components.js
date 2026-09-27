@@ -4724,7 +4724,7 @@ function CombatScreen({
     heroName: heroName
   }), /*#__PURE__*/React.createElement("div", {
     className: "md-combat-top-actions"
-  }, headerBattleAction), modifierBanner && /*#__PURE__*/React.createElement("div", {
+  }, headerBattleAction)), modifierBanner && /*#__PURE__*/React.createElement("div", {
     className: "md-modifier-chip",
     style: {
       background: `${modifierBanner.color}22`,
