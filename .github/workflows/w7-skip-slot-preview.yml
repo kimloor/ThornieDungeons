@@ -1,0 +1,54 @@
+name: W7 Skip slot preview
+
+on:
+  push:
+    branches:
+      - "feat/w7-hero-v5-runtime"
+    paths:
+      - ".github/workflows/w7-skip-slot-preview.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thornie-w7-skip-slot-preview
+  cancel-in-progress: true
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      WORKER_NAME: thorniedungeons-phaser-preview
+      PREVIEW_URL: https://thorniedungeons-phaser-preview.ekqtjl.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build
+        run: node build.js
+
+      - name: Battle UI contract
+        run: node --test tests/battle-ui-contract.test.js
+
+      - name: Focused Phaser regression
+        run: node --test tests/phaser-foundation.test.js tests/phaser-shared-architecture.test.js
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Deploy isolated preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .git
+          wrangler deploy --config wrangler.jsonc --name "$WORKER_NAME"
+
+      - name: Verify W7 route
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 30 --output /dev/null "$PREVIEW_URL/?phaserBattle=1&heroV5=1"
