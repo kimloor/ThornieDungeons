@@ -5129,9 +5129,20 @@ function EquipmentSlot({ slot, item, onOpen }) {
     : SLOT_ICON[slot]), /*#__PURE__*/React.createElement("span", { className: "md-inv2-slot-label" }, SLOT_LABEL[slot]), item?.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inv2-badge" }, `+${item.enhanceLevel}`));
 }
 
-function EquipmentStage({ equipped, characterName, onOpenDetail }) {
+function EquipmentStage({ equipped, previewEquipped = equipped, characterName, onOpenDetail }) {
+  const fallbackHero = /*#__PURE__*/React.createElement(HeroSprite, {
+    anim:"",
+    equipped:previewEquipped,
+    label:characterName || "Adventurer"
+  });
   return /*#__PURE__*/React.createElement("div", { className: "md-inv2-equipment" },
-    /*#__PURE__*/React.createElement("div", { className: "md-inv2-hero", "aria-hidden": "true" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", equipped, label: characterName || "Adventurer" })),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-hero", "aria-hidden": "true" },
+      /*#__PURE__*/React.createElement(PhaserHeroPreview, {
+        equipped:previewEquipped,
+        heroName:characterName || "Adventurer",
+        anchorX:0.558,
+        fallback:fallbackHero
+      })),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-slots" }, SLOT_ORDER.map(slot => /*#__PURE__*/React.createElement(EquipmentSlot, {
       key: slot, slot, item: equipped[slot], onOpen: openSlot => onOpenDetail({ location: "equipped", slot: openSlot })
     }))));
@@ -5252,7 +5263,7 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
   const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
   const itemType = inventoryItemType(currentDetail);
-  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer md-inv2-detail-layer" }, /*#__PURE__*/React.createElement("div", {
     className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art`,
     style: inventoryRarityKey(currentDetail) === "mythic" ? inventoryUiStyle("mythicFrame") || inventoryUiStyle("popupFrame") : inventoryUiStyle("popupFrame")
   },
@@ -5328,6 +5339,10 @@ function InventoryOverlayV2({
     return true;
   });
   const currentDetail = detail?.location === "equipped" ? equipped[detail.slot] : inventory.find(item => inventoryItemRuntimeId(item) === detail?.id);
+  const previewSlot = detail?.location === "inventory" && currentDetail && SLOT_ORDER.includes(inventoryItemType(currentDetail))
+    ? inventoryItemType(currentDetail)
+    : null;
+  const previewEquipped = previewSlot ? { ...equipped, [previewSlot]: currentDetail } : equipped;
   const currentEquipped = currentDetail && SLOT_ORDER.includes(inventoryItemType(currentDetail)) ? equipped[inventoryItemType(currentDetail)] : null;
   const compareRows = detail?.location === "inventory" ? inventoryComparisonRows(currentEquipped, currentDetail) : [];
   const salvagePreview = currentDetail && detail?.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) ? salvageYield(currentDetail.rarity) : null;
@@ -5355,7 +5370,7 @@ function InventoryOverlayV2({
     /*#__PURE__*/React.createElement(StatusBar, { player:null, save, phase:"inventory", equipped }),
     /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
       /*#__PURE__*/React.createElement(InventoryHeader, { characterName, onClose }),
-      /*#__PURE__*/React.createElement(EquipmentStage, { equipped, characterName, onOpenDetail:setDetail }),
+      /*#__PURE__*/React.createElement(EquipmentStage, { equipped, previewEquipped, characterName, onOpenDetail:setDetail }),
       overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner md-inventory-art", style: iconButtonStyle("overflow"), onClick: () => setOverflowOpen(true) }, `⚠ Overflow ${overflow.length}`),
       /*#__PURE__*/React.createElement(InventoryToolbar, { inventoryCount:inventory.length, onFilter:() => setFilterOpen(true), onSort }),
       /*#__PURE__*/React.createElement(InventoryGrid, { items:filtered, expanded, onOpenDetail:setDetail }),

@@ -1,6 +1,6 @@
 // ---------- W7 Equipment Visual Resolver Boundary ----------
 const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
-  version: 2,
+  version: 4,
   currentHeroMode: "v3",
   v5OptIn: true
 });
@@ -12,9 +12,27 @@ function isAzureVisualItem(item) {
   );
 }
 
-function resolveHeroV5EquipmentSelection(equipped = {}) {
+function heroV5WingVisualId(item) {
+  if (!item) return null;
+  const identities = [
+    item.id,
+    item.itemId,
+    item.wingId,
+    item.wingsId,
+    item.visualId,
+    item.setId
+  ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean);
+  if (identities.some(value => ["angel", "wing01", "angel_wings", "angel-wings"].includes(value))) return "angel";
+  if (String(item.name || "").toLowerCase().includes("angel")) return "angel";
+  return null;
+}
+
+function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
   return {
-    wings: equipped?.wings ? "angel" : null,
+    // Current production equipment contract resolves any equipped Wings item
+    // to the shared Angel visual family. Reuse that canonical selection instead
+    // of independently guessing item ids in the Phaser renderer.
+    wings: legacySelection?.wings === "angel" ? "angel" : heroV5WingVisualId(equipped?.wings),
     azure: {
       helmet: isAzureVisualItem(equipped?.helmet),
       chest: isAzureVisualItem(equipped?.chest),
@@ -36,7 +54,8 @@ function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = 
       return { ...(selection || {}) };
     },
     resolveHeroV5Selection(equipped = {}) {
-      const selection = resolveHeroV5EquipmentSelection(equipped || {});
+      const legacySelection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
+      const selection = resolveHeroV5EquipmentSelection(equipped || {}, legacySelection);
       return {
         wings: selection.wings,
         azure: { ...selection.azure }

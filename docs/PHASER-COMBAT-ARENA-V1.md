@@ -11,7 +11,7 @@ Phaser is for animation-heavy visual surfaces. It is **not** the application fra
 Active roadmap usage:
 - Dungeon Combat battlefield
 - shared Hero V5 renderer
-- Inventory/Character live Hero preview
+- Inventory live Hero preview
 - Arena battle stage
 - Victory / Boss / Raid presentation
 - Summoning / Enhance / Craft presentation
@@ -111,7 +111,6 @@ One logical Hero renderer must be reused across:
 - Combat
 - Arena
 - Inventory preview
-- Character Status preview
 - Player Card/Profile preview where appropriate
 - Victory presentation
 
@@ -315,9 +314,9 @@ The same HeroRenderer must be reused by all approved screens.
 
 ---
 
-## 7. Inventory + Character live preview
+## 7. Inventory live preview
 
-Inventory and Character Status remain React/DOM. Only the Hero presentation surface is rendered with Phaser.
+Inventory remains React/DOM. Only the central Hero presentation surface is rendered with Phaser.
 
 Flow:
 
@@ -340,7 +339,6 @@ HeroPreviewScene
 - closing/cancelling restores authoritative visuals;
 - Equip success refreshes from confirmed authoritative equipment;
 - Equip failure restores authoritative visuals;
-- Character Status reuses the same HeroPreview renderer and normally displays authoritative equipment only.
 
 ### Compare boundary
 Item detail/comparison remains DOM. Phaser does not calculate or render CURRENT/NEW stats, CP, deltas, rarity/Enhance/Enchant text, or Equip/Unequip controls.
@@ -496,7 +494,7 @@ W6  Shared Phaser Presentation Architecture
  ↓
 W7  Hero V5 Runtime Integration
  ↓
-W8  Inventory + Character Live Preview
+W8  Inventory Hero Live Preview
  ↓
 W9  Arena Phaser
  ↓

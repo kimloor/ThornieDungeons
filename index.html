@@ -172,7 +172,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.16";
+  content: "Ver 1.0.17";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1970,7 +1970,11 @@ body::after {
 .md-inv2-close { justify-self:start; }
 .md-inv2-popup-close { width:34px; height:34px; border:1px solid rgba(221,176,65,.64); border-radius:10px; background:rgba(3,12,31,.92); color:#ffe098; font-size:18px; font-weight:900; cursor:pointer; }
 .md-inv2-equipment { position:relative; height:var(--md-inv-stage-height); margin:0 auto 10px; overflow:hidden; border:1px solid rgba(255,209,102,.28); border-radius:20px; background:radial-gradient(circle at 50% 40%,rgba(68,188,199,.15),transparent 28%),rgba(4,3,14,.42); }
-.md-inv2-hero { position:absolute; z-index:1; left:50%; top:50%; width:var(--md-inv-hero-width); height:var(--md-inv-hero-height); transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.md-inv2-hero { position:absolute; z-index:1; inset:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.md-phaser-hero-preview { position:relative; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.md-phaser-hero-preview-canvas,.md-phaser-hero-preview-fallback { position:absolute; inset:0; width:100%; height:100%; }
+.md-phaser-hero-preview-canvas canvas { display:block; width:100% !important; height:100% !important; }
+.md-phaser-hero-preview-fallback { display:flex; align-items:center; justify-content:center; }
 .md-inv2-hero .md-sprite-wrap { transform:scale(var(--md-inv-hero-scale)); transform-origin:center; }
 .md-inv2-hero .md-sprite-name { display:none; }
 .md-inv2-slots { position:absolute; inset:10px; z-index:2; }
@@ -2000,6 +2004,8 @@ body::after {
 .md-inv2-favorite { position:absolute; top:1px; right:4px; color:var(--gold); font-size:11px; }
 .md-inventory-cell-qty.enhance { right:auto; left:4px; color:#68dfe8; }
 .md-inv2-modal-layer { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left)); background:rgba(2,1,9,.76); }
+.md-inv2-detail-layer { align-items:flex-end; padding-top:max(42dvh,calc(14px + var(--safe-top))); background:linear-gradient(180deg,rgba(2,1,9,.05) 0 36%,rgba(2,1,9,.34) 54%,rgba(2,1,9,.78) 100%); }
+.md-inv2-detail-layer .md-inv2-detail { max-height:min(54dvh,540px); border-radius:20px 20px 12px 12px; box-shadow:0 -12px 38px rgba(0,0,0,.48); }
 .md-inv2-popup { position:relative; width:min(100%,420px); max-height:calc(100dvh - 28px - var(--safe-top) - var(--safe-bottom)); overflow-y:auto; overscroll-behavior:contain; padding:18px; border:1.5px solid var(--gold-deep); border-radius:20px; background-color:#18102d; color:var(--ink); box-shadow:0 16px 45px rgba(0,0,0,.55); }
 .md-inv2-popup h3 { margin:0 0 10px; color:var(--gold); font:800 19px 'Baloo 2'; }
 .md-inv2-popup-close { position:absolute !important; right:10px; top:10px; width:32px; height:32px; z-index:4 !important; }
@@ -2369,7 +2375,7 @@ body::after {
   .md-inv2-equip-slot.l2,.md-inv2-equip-slot.r2 { top:71px; }
   .md-inv2-equip-slot.l3,.md-inv2-equip-slot.r3 { top:142px; }
   .md-inv2-equip-slot.l4 { top:213px; }
-  .md-inv2-hero { width:140px; height:225px; top:51%; bottom:auto; transform:translate(-50%,-50%); }
+  .md-inv2-hero { inset:0; width:100%; height:100%; top:0; bottom:0; transform:none; }
   .md-inv2-hero .md-sprite-wrap { transform:scale(1.56); }
   .md-inv2-grid { gap:5px; }
   .md-inv2-detail { padding:22px 20px 18px; }
@@ -8977,7 +8983,7 @@ const ACTOR_PRESENTATION_MODEL = Object.freeze({
 // ===== phaser/presentation/EquipmentVisualResolver.js =====
 // ---------- W7 Equipment Visual Resolver Boundary ----------
 const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
-  version: 2,
+  version: 4,
   currentHeroMode: "v3",
   v5OptIn: true
 });
@@ -8989,9 +8995,27 @@ function isAzureVisualItem(item) {
   );
 }
 
-function resolveHeroV5EquipmentSelection(equipped = {}) {
+function heroV5WingVisualId(item) {
+  if (!item) return null;
+  const identities = [
+    item.id,
+    item.itemId,
+    item.wingId,
+    item.wingsId,
+    item.visualId,
+    item.setId
+  ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean);
+  if (identities.some(value => ["angel", "wing01", "angel_wings", "angel-wings"].includes(value))) return "angel";
+  if (String(item.name || "").toLowerCase().includes("angel")) return "angel";
+  return null;
+}
+
+function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
   return {
-    wings: equipped?.wings ? "angel" : null,
+    // Current production equipment contract resolves any equipped Wings item
+    // to the shared Angel visual family. Reuse that canonical selection instead
+    // of independently guessing item ids in the Phaser renderer.
+    wings: legacySelection?.wings === "angel" ? "angel" : heroV5WingVisualId(equipped?.wings),
     azure: {
       helmet: isAzureVisualItem(equipped?.helmet),
       chest: isAzureVisualItem(equipped?.chest),
@@ -9013,7 +9037,8 @@ function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = 
       return { ...(selection || {}) };
     },
     resolveHeroV5Selection(equipped = {}) {
-      const selection = resolveHeroV5EquipmentSelection(equipped || {});
+      const legacySelection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
+      const selection = resolveHeroV5EquipmentSelection(equipped || {}, legacySelection);
       return {
         wings: selection.wings,
         azure: { ...selection.azure }
@@ -9025,9 +9050,9 @@ function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = 
 const SHARED_EQUIPMENT_VISUAL_RESOLVER = createEquipmentVisualResolver();
 
 // ===== phaser/presentation/HeroV5RuntimeContract.js =====
-// ---------- W7 Hero V5 G2 Runtime Contract ----------
+// ---------- W8 Hero V5 G2 Runtime Contract ----------
 const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
-  version: 1,
+  version: 2,
   characterId: "hero001",
   variant: "g2",
   canvas: Object.freeze({ width: 768, height: 768 }),
@@ -9047,6 +9072,14 @@ const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
     "sword",
     "arm_front"
   ])
+});
+
+const HERO_V5_AZURE_SLOT_LAYERS = Object.freeze({
+  helmet: Object.freeze(["helmet"]),
+  chest: Object.freeze(["torso_armor"]),
+  gloves: Object.freeze(["arm_rear", "arm_front"]),
+  boots: Object.freeze(["legs_boots"]),
+  weapon: Object.freeze(["sword"])
 });
 
 function isHeroV5RuntimeEnabled() {
@@ -9070,12 +9103,67 @@ function getHeroV5RuntimeConfig(characterId = HERO_V5_RUNTIME_CONTRACT.character
   return config;
 }
 
+function heroV5AllFrameIds() {
+  return Object.values(HERO_V5_RUNTIME_CONTRACT.animationFrames).flat();
+}
+
+function heroV5BaseBundleComplete(config) {
+  return heroV5AllFrameIds().every(frameId => !!config?.base?.frames?.[frameId]);
+}
+
+function heroV5HairBundleComplete(config) {
+  const hairId = config?.defaultHair || "topknot";
+  const hairConfig = config?.hair?.[hairId];
+  if (!hairConfig || hairConfig.approval !== "approved") return false;
+  return heroV5AllFrameIds().every(frameId => {
+    const frame = hairConfig.frames?.[frameId];
+    return !!(frame?.hair_back && frame?.hair_front);
+  });
+}
+
+function heroV5WingBundleComplete(config) {
+  return heroV5AllFrameIds().every(frameId => {
+    const frame = config?.wingTemplate?.frames?.[frameId];
+    return !!(frame?.wing_far && frame?.wing_near);
+  });
+}
+
+function heroV5AzureSlotBundleComplete(config, slot) {
+  const azureConfig = config?.equipment?.azure;
+  const layers = HERO_V5_AZURE_SLOT_LAYERS[slot] || [];
+  if (!layers.length || azureConfig?.approval !== "approved") return false;
+  return heroV5AllFrameIds().every(frameId => {
+    const frame = azureConfig.frames?.[frameId];
+    return layers.every(layer => !!frame?.[layer]);
+  });
+}
+
+function heroV5SanitizeEquipmentSelection(config, selection = {}) {
+  const requestedAzure = selection?.azure || {};
+  const azure = {};
+  const fallbackSlots = [];
+  Object.keys(HERO_V5_AZURE_SLOT_LAYERS).forEach(slot => {
+    const requested = !!requestedAzure[slot];
+    const supported = requested && heroV5AzureSlotBundleComplete(config, slot);
+    azure[slot] = supported;
+    if (requested && !supported) fallbackSlots.push(slot);
+  });
+  const requestedWings = selection?.wings === "angel";
+  const wings = requestedWings && heroV5WingBundleComplete(config) ? "angel" : null;
+  if (requestedWings && !wings) fallbackSlots.push("wings");
+  return {
+    wings,
+    azure,
+    fallbackSlots
+  };
+}
+
 function heroV5AzureLayersForSelection(selection = {}) {
   const azure = selection?.azure || {};
   const requested = [];
   // The underlay is a whole-body seam closer. Only use it when the three
   // body-coverage slots are present; otherwise the neutral Base must remain
-  // visible in unequipped areas (for example bare Base legs without Azure boots).
+  // visible in unequipped areas.
   if (azure.chest && azure.gloves && azure.boots) requested.push("coverage_underlay");
   if (azure.chest) requested.push("torso_armor");
   if (azure.boots) requested.push("legs_boots");
@@ -9097,11 +9185,11 @@ function heroV5FrameLayer(name, path) {
   };
 }
 
-function heroV5HairLayers(config, frameId) {
+function heroV5HairLayers(config, frameId, includeHair = true) {
+  if (!includeHair) return [];
   const hairId = config?.defaultHair || "topknot";
   const hairConfig = config?.hair?.[hairId];
-  if (!hairConfig || hairConfig.approval !== "approved") return [];
-  const frame = hairConfig.frames?.[frameId];
+  const frame = hairConfig?.frames?.[frameId];
   if (!frame?.hair_back || !frame?.hair_front) return [];
   return [
     heroV5FrameLayer("hair_back", frame.hair_back),
@@ -9109,45 +9197,57 @@ function heroV5HairLayers(config, frameId) {
   ];
 }
 
-function heroV5FrameLayers(config, frameId, { includeWings = false, equipmentSelection = {} } = {}) {
+function heroV5FrameLayers(config, frameId, {
+  includeWings = false,
+  includeHair = true,
+  equipmentSelection = {}
+} = {}) {
   const basePath = config?.base?.frames?.[frameId];
   if (!basePath) return null;
 
   const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
-  if (includeWings && (!wingFrame?.wing_far || !wingFrame?.wing_near)) return null;
-
   const azureLayerNames = heroV5AzureLayersForSelection(equipmentSelection);
-  const azureConfig = config?.equipment?.azure;
-  if (azureLayerNames.length && azureConfig?.approval !== "approved") return null;
-  const azureFrame = azureLayerNames.length ? azureConfig?.frames?.[frameId] : null;
-  if (azureLayerNames.some(name => !azureFrame?.[name])) return null;
+  const azureFrame = azureLayerNames.length ? config?.equipment?.azure?.frames?.[frameId] : null;
 
   const layers = [];
-  if (includeWings) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
+  if (includeWings && wingFrame?.wing_far) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
   layers.push(heroV5FrameLayer("base", basePath));
-  layers.push(...heroV5HairLayers(config, frameId));
+  layers.push(...heroV5HairLayers(config, frameId, includeHair));
   azureLayerNames.forEach(name => {
-    layers.push(heroV5FrameLayer(name, azureFrame[name]));
+    const path = azureFrame?.[name];
+    if (path) layers.push(heroV5FrameLayer(name, path));
   });
-  if (includeWings) layers.push(heroV5FrameLayer("wing_near", wingFrame.wing_near));
+  if (includeWings && wingFrame?.wing_near) layers.push(heroV5FrameLayer("wing_near", wingFrame.wing_near));
   return layers;
 }
 
 function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings = false, equipmentSelection = {} } = {}) {
   const config = getHeroV5RuntimeConfig(characterId);
-  if (!config) return null;
+  if (!config || !heroV5BaseBundleComplete(config)) return null;
+
+  const requestedSelection = {
+    ...(equipmentSelection || {}),
+    wings: equipmentSelection?.wings === "angel" || includeWings ? "angel" : null
+  };
+  const sanitizedSelection = heroV5SanitizeEquipmentSelection(config, requestedSelection);
+  const requestedWings = requestedSelection.wings === "angel";
+  const renderWings = requestedWings && sanitizedSelection.wings === "angel";
+  const includeHair = heroV5HairBundleComplete(config);
+  const fallbackSlots = [...sanitizedSelection.fallbackSlots];
+  if (requestedWings && !renderWings && !fallbackSlots.includes("wings")) fallbackSlots.push("wings");
 
   const resolved = {};
   for (const [state, frameIds] of Object.entries(HERO_V5_RUNTIME_CONTRACT.animationFrames)) {
     const frames = frameIds.map(frameId => heroV5FrameLayers(config, frameId, {
-      includeWings,
-      equipmentSelection
+      includeWings: renderWings,
+      includeHair,
+      equipmentSelection: sanitizedSelection
     }));
     if (frames.some(frame => !Array.isArray(frame) || !frame.length)) return null;
     resolved[state] = frames;
   }
 
-  const hasAzureEquipment = heroV5AzureLayersForSelection(equipmentSelection).length > 0;
+  const hasAzureEquipment = heroV5AzureLayersForSelection(sanitizedSelection).length > 0;
   return Object.freeze({
     mode: hasAzureEquipment ? "v5-g2-azure" : "v5-g2",
     canvas: {
@@ -9157,6 +9257,7 @@ function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings =
     idle: resolved.idle,
     attack: resolved.attack,
     death: resolved.death,
+    visualFallbacks: Object.freeze(fallbackSlots),
     frameMs: {
       idle: 440,
       attack: 300,
@@ -9289,7 +9390,7 @@ function heroPresentationLayerFrames(selection = {}, { preferV5 = false, v5Selec
   if (preferV5 && typeof resolveHeroV5BaseWingContract === "function") {
     const v5 = resolveHeroV5BaseWingContract({
       characterId: "hero001",
-      includeWings: v5Selection?.wings === "angel" || selection?.wings === "angel",
+      includeWings: v5Selection?.wings === "angel",
       equipmentSelection: v5Selection
     });
     if (v5) {
@@ -9310,6 +9411,31 @@ function heroPresentationLayerFrames(selection = {}, { preferV5 = false, v5Selec
     }
   }
   return heroV3PresentationLayerFrames(selection);
+}
+
+function buildHeroPreviewSnapshot({ heroName = "Hero", equipped = {}, heroV5 = true } = {}) {
+  const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
+  const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
+  const heroFrames = heroPresentationLayerFrames(heroSelection, {
+    preferV5: heroV5 === true,
+    v5Selection: heroV5Selection
+  });
+  return Object.freeze({
+    previewId: "hero-preview",
+    hero: {
+      id: "hero-preview",
+      kind: "hero",
+      name: String(heroName || "Hero"),
+      hp: 1,
+      maxHp: 1,
+      alive: true,
+      statuses: [],
+      anim: "idle",
+      visualMode: heroFrames.mode || "v3",
+      layers: heroFrames.idle?.[0] || [],
+      layerFrames: heroFrames
+    }
+  });
 }
 
 function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1, heroV5 = undefined } = {}) {
@@ -10186,6 +10312,229 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
   };
 }
 
+// ===== phaser/scenes/HeroPreviewScene.js =====
+// ---------- W8 Shared Hero Preview Scene ----------
+function heroPreviewFallbackLayerNames(name) {
+  if (name === "wing_far" || name === "wing_near") return ["wing_far", "wing_near"];
+  if (name === "arm_rear" || name === "arm_front") return ["arm_rear", "arm_front", "coverage_underlay"];
+  if (name === "torso_armor") return ["torso_armor", "coverage_underlay"];
+  if (name === "legs_boots") return ["legs_boots", "coverage_underlay"];
+  return name ? [name] : [];
+}
+
+function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onReady, onError } = {}) {
+  return class HeroPreviewScene extends Phaser.Scene {
+    constructor() {
+      super({ key: "HeroPreviewScene" });
+      this.initialSnapshot = initialSnapshot || null;
+      this.snapshot = null;
+      this.pendingSnapshot = null;
+      this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
+      this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
+      this.heroRoot = null;
+      this.heroRenderer = null;
+      this.frameTimer = null;
+      this.frameIndex = 0;
+      this.failedUrls = new Set();
+      this.dynamicLoading = false;
+      this.coreLoadFailed = false;
+      this.readyNotified = false;
+      this.anchorX = Math.max(0, Math.min(1, Number(anchorX) || 0.5));
+      this.handleResize = this.handleResize.bind(this);
+      this.handleLoadError = this.handleLoadError.bind(this);
+    }
+
+    assetKey(reference) {
+      return this.textureRegistry.keyFor(reference);
+    }
+
+    collectAssets(snapshot) {
+      const frames = snapshot?.hero?.layerFrames?.idle || [];
+      return this.assetResolver.resolveAll(
+        frames.flatMap(frame => (frame || []).map(layer => layer?.url).filter(Boolean))
+      );
+    }
+
+    coreUrls(snapshot) {
+      const frames = snapshot?.hero?.layerFrames?.idle || [];
+      return new Set(frames.flatMap(frame => (frame || [])
+        .filter(layer => layer?.name === "base")
+        .map(layer => this.assetResolver.resolve(layer?.url))
+        .filter(Boolean)));
+    }
+
+    preload() {
+      this.load.on("loaderror", this.handleLoadError);
+      this.textureRegistry.queue(this, this.collectAssets(this.initialSnapshot));
+    }
+
+    handleLoadError(file) {
+      const resolved = this.textureRegistry.urlFor(file?.key) || this.assetResolver.resolve(file?.url || "");
+      if (resolved) {
+        this.failedUrls.add(resolved);
+        if (this.coreUrls(this.pendingSnapshot || this.snapshot || this.initialSnapshot).has(resolved)) {
+          this.coreLoadFailed = true;
+        }
+      }
+      if (file?.key) this.textureRegistry.forget(file.key);
+    }
+
+    sanitizeSnapshot(snapshot) {
+      if (!snapshot?.hero) return snapshot;
+      const layerFrames = snapshot.hero.layerFrames || {};
+      const failedLayerNames = new Set();
+      Object.values(layerFrames).forEach(value => {
+        if (!Array.isArray(value)) return;
+        value.forEach(frame => (frame || []).forEach(layer => {
+          const url = this.assetResolver.resolve(layer?.url);
+          if (url && this.failedUrls.has(url)) {
+            heroPreviewFallbackLayerNames(layer?.name).forEach(name => failedLayerNames.add(name));
+          }
+        }));
+      });
+      if (failedLayerNames.has("base")) return null;
+      if (!failedLayerNames.size) return snapshot;
+
+      const nextFrames = { ...layerFrames };
+      ["idle", "attack", "death"].forEach(state => {
+        if (!Array.isArray(layerFrames[state])) return;
+        nextFrames[state] = layerFrames[state].map(frame =>
+          (frame || []).filter(layer => !failedLayerNames.has(layer?.name))
+        );
+      });
+      return {
+        ...snapshot,
+        hero: {
+          ...snapshot.hero,
+          layers: (snapshot.hero.layers || []).filter(layer => !failedLayerNames.has(layer?.name)),
+          layerFrames: nextFrames
+        }
+      };
+    }
+
+    create() {
+      this.scale.on("resize", this.handleResize, this);
+      if (this.coreLoadFailed) {
+        onError?.(new Error("Hero V5 core preview asset failed to load"));
+        return;
+      }
+      this.heroRoot = this.add.container(0, 0);
+      this.heroRenderer = new HeroRenderer(this, {
+        root: this.heroRoot,
+        data: this.initialSnapshot?.hero || {},
+        displaySize: () => this.displaySize(),
+        textureKey: reference => this.assetKey(reference)
+      });
+      this.applySnapshot(this.initialSnapshot);
+      this.readyNotified = true;
+      onReady?.({ scene: this });
+    }
+
+    displaySize() {
+      const width = Math.max(1, Number(this.scale.width) || 1);
+      const height = Math.max(1, Number(this.scale.height) || 1);
+      return Math.max(96, Math.round(Math.min(width * 0.92, height * 1.06)));
+    }
+
+    layoutHero() {
+      if (!this.heroRoot) return;
+      const width = Math.max(1, Number(this.scale.width) || 1);
+      const height = Math.max(1, Number(this.scale.height) || 1);
+      this.heroRoot.setPosition(Math.round(width * this.anchorX), Math.round(height * 0.86));
+    }
+
+    stopIdle() {
+      this.frameTimer?.remove(false);
+      this.frameTimer = null;
+    }
+
+    startIdle() {
+      this.stopIdle();
+      if (!this.heroRenderer || !this.snapshot?.hero) return;
+      this.frameIndex = 0;
+      this.heroRenderer.setData(this.snapshot.hero).applyVisualFrame("idle", 0);
+      const frameCount = this.heroRenderer.visualFrameCount("idle");
+      if (frameCount <= 1) return;
+      const delay = Math.max(80, Number(this.snapshot.hero.layerFrames?.frameMs?.idle) || 220);
+      this.frameTimer = this.time.addEvent({
+        delay,
+        loop: true,
+        callback: () => {
+          this.frameIndex = (this.frameIndex + 1) % frameCount;
+          this.heroRenderer?.setData(this.snapshot.hero).applyVisualFrame("idle", this.frameIndex);
+        }
+      });
+    }
+
+    applySnapshot(snapshot) {
+      if (!snapshot?.hero || !this.heroRenderer) return;
+      const sanitized = this.sanitizeSnapshot(snapshot);
+      if (!sanitized?.hero) {
+        this.coreLoadFailed = true;
+        this.stopIdle();
+        onError?.(new Error("Hero V5 core preview contract is unavailable"));
+        return;
+      }
+      this.snapshot = sanitized;
+      this.heroRenderer.setData(this.snapshot.hero);
+      this.layoutHero();
+      this.startIdle();
+    }
+
+    queueDynamicAssets(snapshot) {
+      let queued = 0;
+      this.collectAssets(snapshot).forEach(url => {
+        if (!url || this.failedUrls.has(url)) return;
+        const key = this.textureRegistry.keyFor(url);
+        if (!key || this.textures.exists(key)) return;
+        this.load.image(key, url);
+        queued += 1;
+      });
+      return queued;
+    }
+
+    sync(snapshot) {
+      if (!snapshot?.hero || this.coreLoadFailed) return;
+      this.pendingSnapshot = snapshot;
+      if (this.dynamicLoading) return;
+      const queued = this.queueDynamicAssets(snapshot);
+      if (!queued) {
+        this.pendingSnapshot = null;
+        this.applySnapshot(snapshot);
+        return;
+      }
+      this.dynamicLoading = true;
+      this.load.once("complete", () => {
+        this.dynamicLoading = false;
+        const latest = this.pendingSnapshot;
+        this.pendingSnapshot = null;
+        if (latest) this.sync(latest);
+      });
+      this.load.start();
+    }
+
+    handleResize() {
+      this.layoutHero();
+      if (this.snapshot?.hero) {
+        this.heroRenderer?.setData(this.snapshot.hero).applyVisualFrame("idle", this.frameIndex);
+      }
+    }
+
+    shutdown() {
+      this.scale.off("resize", this.handleResize, this);
+      this.load.off("loaderror", this.handleLoadError);
+      this.stopIdle();
+      this.heroRenderer?.destroy();
+      this.heroRenderer = null;
+      this.heroRoot?.destroy(true);
+      this.heroRoot = null;
+      this.snapshot = null;
+      this.pendingSnapshot = null;
+      if (this.readyNotified) onReady?.({ scene: null, destroyed: true });
+    }
+  };
+}
+
 // ===== phaser/runtime/BattlefieldHost.js =====
 // ---------- W5 Phaser Battlefield Host ----------
 function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestroyed, onTargetSelected } = {}) {
@@ -10284,6 +10633,129 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
   return Object.freeze({ mount, sync, destroy, getGame: () => game, getScene: () => scene });
 }
 
+// ===== phaser/runtime/HeroPreviewHost.js =====
+// ---------- W8 Shared Hero Preview Host ----------
+function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, onError, onDestroyed } = {}) {
+  let game = null;
+  let scene = null;
+  let destroyed = false;
+  let resizeObserver = null;
+  let windowResize = null;
+  let currentSnapshot = snapshot || null;
+
+  function measuredHostSize() {
+    return {
+      width: Math.max(0, Math.round(mountNode?.clientWidth || 0)),
+      height: Math.max(0, Math.round(mountNode?.clientHeight || 0))
+    };
+  }
+
+  function hostSize() {
+    const measured = measuredHostSize();
+    return {
+      width: Math.max(1, measured.width),
+      height: Math.max(1, measured.height)
+    };
+  }
+
+  function nextLayoutFrame() {
+    return new Promise(resolve => {
+      if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
+      else setTimeout(resolve, 16);
+    });
+  }
+
+  async function waitForHostSize() {
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+      const measured = measuredHostSize();
+      if (measured.width >= 32 && measured.height >= 32) return measured;
+      await nextLayoutFrame();
+      if (destroyed) break;
+    }
+    return hostSize();
+  }
+
+  function resize() {
+    if (destroyed || !game || !mountNode) return;
+    const { width, height } = hostSize();
+    game.scale.resize(width, height);
+    scene?.handleResize?.({ width, height });
+  }
+
+  async function mount() {
+    if (destroyed || !mountNode) return;
+    try {
+      const Phaser = await THORNIE_PHASER_RUNTIME.load();
+      if (destroyed) return;
+      const { width, height } = await waitForHostSize();
+      if (destroyed) return;
+      const SceneClass = createHeroPreviewScene(Phaser, {
+        initialSnapshot: currentSnapshot,
+        anchorX,
+        onReady: payload => {
+          scene = payload?.scene || null;
+          if (scene) scene.sync(currentSnapshot);
+          if (payload?.destroyed) { scene = null; return; }
+          onReady?.({ game, scene, version: THORNIE_PHASER_RUNTIME.version });
+        },
+        onError
+      });
+      game = new Phaser.Game({
+        type: Phaser.AUTO,
+        parent: mountNode,
+        width,
+        height,
+        transparent: true,
+        backgroundColor: "rgba(0,0,0,0)",
+        banner: false,
+        audio: { noAudio: true },
+        scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+        render: { antialias: true, pixelArt: false, roundPixels: false },
+        scene: SceneClass
+      });
+      if (game?.canvas?.style) {
+        game.canvas.style.background = "transparent";
+        game.canvas.style.backgroundColor = "transparent";
+      }
+      if (typeof ResizeObserver === "function") {
+        resizeObserver = new ResizeObserver(resize);
+        resizeObserver.observe(mountNode);
+      } else {
+        windowResize = resize;
+        window.addEventListener("resize", windowResize, { passive: true });
+      }
+      // iOS can report a zero-sized absolutely positioned host during the first
+      // React effect. Re-read layout after Phaser mounts so the actor anchor is
+      // never left at the temporary 1x1 origin.
+      void nextLayoutFrame().then(() => {
+        if (!destroyed) resize();
+      });
+    } catch (error) {
+      if (!destroyed) onError?.(error);
+    }
+  }
+
+  function sync(nextSnapshot) {
+    currentSnapshot = nextSnapshot || currentSnapshot;
+    scene?.sync(currentSnapshot);
+  }
+
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    if (windowResize) window.removeEventListener("resize", windowResize);
+    windowResize = null;
+    if (game) game.destroy(true);
+    game = null;
+    scene = null;
+    onDestroyed?.();
+  }
+
+  return Object.freeze({ mount, sync, destroy, getGame: () => game, getScene: () => scene });
+}
+
 // ===== phaser/ui/PhaserBattlefield.js =====
 // ---------- W5 React Battlefield Integration ----------
 function isPhaserBattleRendererEnabled() {
@@ -10329,6 +10801,65 @@ function PhaserBattlefield(props) {
     "data-phaser-status": status,
     "aria-hidden": "true"
   });
+}
+
+// ===== phaser/ui/PhaserHeroPreview.js =====
+// ---------- W8 React Hero Preview Integration ----------
+function isPhaserHeroPreviewEnabled() {
+  if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_HERO_PREVIEW__ === true) return true;
+  if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_HERO_PREVIEW__ === false) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search || "").get("phaserPreview") === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, className = "", anchorX = 0.5 }) {
+  const hostRef = React.useRef(null);
+  const handleRef = React.useRef(null);
+  const [status, setStatus] = React.useState("loading");
+  const enabled = isPhaserHeroPreviewEnabled();
+  const snapshot = React.useMemo(
+    () => buildHeroPreviewSnapshot({ heroName, equipped, heroV5: true }),
+    [heroName, equipped]
+  );
+
+  React.useEffect(() => {
+    if (!enabled || !hostRef.current) return undefined;
+    let disposed = false;
+    const handle = createHeroPreviewHost({
+      mountNode: hostRef.current,
+      snapshot,
+      anchorX,
+      onReady: () => { if (!disposed) setStatus("ready"); },
+      onError: () => { if (!disposed) setStatus("error"); },
+      onDestroyed: () => {}
+    });
+    handleRef.current = handle;
+    setStatus("loading");
+    void handle.mount();
+    return () => {
+      disposed = true;
+      handle.destroy();
+      handleRef.current = null;
+    };
+  }, [enabled, anchorX]);
+
+  React.useEffect(() => {
+    if (enabled) handleRef.current?.sync(snapshot);
+  }, [enabled, snapshot]);
+
+  if (!enabled) return fallback;
+
+  return React.createElement("div", {
+    className: `md-phaser-hero-preview status-${status} ${className}`.trim(),
+    "data-phaser-preview-status": status,
+    "aria-hidden": "true"
+  },
+    React.createElement("div", { ref: hostRef, className: "md-phaser-hero-preview-canvas" }),
+    status !== "ready" && React.createElement("div", { className: "md-phaser-hero-preview-fallback" }, fallback)
+  );
 }
 
 // ===== ui/battleVfx.js =====
@@ -18181,9 +18712,20 @@ function EquipmentSlot({ slot, item, onOpen }) {
     : SLOT_ICON[slot]), /*#__PURE__*/React.createElement("span", { className: "md-inv2-slot-label" }, SLOT_LABEL[slot]), item?.enhanceLevel > 0 && /*#__PURE__*/React.createElement("span", { className: "md-inv2-badge" }, `+${item.enhanceLevel}`));
 }
 
-function EquipmentStage({ equipped, characterName, onOpenDetail }) {
+function EquipmentStage({ equipped, previewEquipped = equipped, characterName, onOpenDetail }) {
+  const fallbackHero = /*#__PURE__*/React.createElement(HeroSprite, {
+    anim:"",
+    equipped:previewEquipped,
+    label:characterName || "Adventurer"
+  });
   return /*#__PURE__*/React.createElement("div", { className: "md-inv2-equipment" },
-    /*#__PURE__*/React.createElement("div", { className: "md-inv2-hero", "aria-hidden": "true" }, /*#__PURE__*/React.createElement(HeroSprite, { anim: "", equipped, label: characterName || "Adventurer" })),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv2-hero", "aria-hidden": "true" },
+      /*#__PURE__*/React.createElement(PhaserHeroPreview, {
+        equipped:previewEquipped,
+        heroName:characterName || "Adventurer",
+        anchorX:0.558,
+        fallback:fallbackHero
+      })),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-slots" }, SLOT_ORDER.map(slot => /*#__PURE__*/React.createElement(EquipmentSlot, {
       key: slot, slot, item: equipped[slot], onOpen: openSlot => onOpenDetail({ location: "equipped", slot: openSlot })
     }))));
@@ -18304,7 +18846,7 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
   const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
   const itemType = inventoryItemType(currentDetail);
-  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer md-inv2-detail-layer" }, /*#__PURE__*/React.createElement("div", {
     className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art`,
     style: inventoryRarityKey(currentDetail) === "mythic" ? inventoryUiStyle("mythicFrame") || inventoryUiStyle("popupFrame") : inventoryUiStyle("popupFrame")
   },
@@ -18380,6 +18922,10 @@ function InventoryOverlayV2({
     return true;
   });
   const currentDetail = detail?.location === "equipped" ? equipped[detail.slot] : inventory.find(item => inventoryItemRuntimeId(item) === detail?.id);
+  const previewSlot = detail?.location === "inventory" && currentDetail && SLOT_ORDER.includes(inventoryItemType(currentDetail))
+    ? inventoryItemType(currentDetail)
+    : null;
+  const previewEquipped = previewSlot ? { ...equipped, [previewSlot]: currentDetail } : equipped;
   const currentEquipped = currentDetail && SLOT_ORDER.includes(inventoryItemType(currentDetail)) ? equipped[inventoryItemType(currentDetail)] : null;
   const compareRows = detail?.location === "inventory" ? inventoryComparisonRows(currentEquipped, currentDetail) : [];
   const salvagePreview = currentDetail && detail?.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) ? salvageYield(currentDetail.rarity) : null;
@@ -18407,7 +18953,7 @@ function InventoryOverlayV2({
     /*#__PURE__*/React.createElement(StatusBar, { player:null, save, phase:"inventory", equipped }),
     /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
       /*#__PURE__*/React.createElement(InventoryHeader, { characterName, onClose }),
-      /*#__PURE__*/React.createElement(EquipmentStage, { equipped, characterName, onOpenDetail:setDetail }),
+      /*#__PURE__*/React.createElement(EquipmentStage, { equipped, previewEquipped, characterName, onOpenDetail:setDetail }),
       overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner md-inventory-art", style: iconButtonStyle("overflow"), onClick: () => setOverflowOpen(true) }, `⚠ Overflow ${overflow.length}`),
       /*#__PURE__*/React.createElement(InventoryToolbar, { inventoryCount:inventory.length, onFilter:() => setFilterOpen(true), onSort }),
       /*#__PURE__*/React.createElement(InventoryGrid, { items:filtered, expanded, onOpenDetail:setDetail }),
