@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.16";
+  content: "Ver 1.0.17";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1862,7 +1862,11 @@ body::after {
 .md-inv2-close { justify-self:start; }
 .md-inv2-popup-close { width:34px; height:34px; border:1px solid rgba(221,176,65,.64); border-radius:10px; background:rgba(3,12,31,.92); color:#ffe098; font-size:18px; font-weight:900; cursor:pointer; }
 .md-inv2-equipment { position:relative; height:var(--md-inv-stage-height); margin:0 auto 10px; overflow:hidden; border:1px solid rgba(255,209,102,.28); border-radius:20px; background:radial-gradient(circle at 50% 40%,rgba(68,188,199,.15),transparent 28%),rgba(4,3,14,.42); }
-.md-inv2-hero { position:absolute; z-index:1; left:50%; top:50%; width:var(--md-inv-hero-width); height:var(--md-inv-hero-height); transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.md-inv2-hero { position:absolute; z-index:1; inset:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.md-phaser-hero-preview { position:relative; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.md-phaser-hero-preview-canvas,.md-phaser-hero-preview-fallback { position:absolute; inset:0; width:100%; height:100%; }
+.md-phaser-hero-preview-canvas canvas { display:block; width:100% !important; height:100% !important; }
+.md-phaser-hero-preview-fallback { display:flex; align-items:center; justify-content:center; }
 .md-inv2-hero .md-sprite-wrap { transform:scale(var(--md-inv-hero-scale)); transform-origin:center; }
 .md-inv2-hero .md-sprite-name { display:none; }
 .md-inv2-slots { position:absolute; inset:10px; z-index:2; }
@@ -1892,6 +1896,8 @@ body::after {
 .md-inv2-favorite { position:absolute; top:1px; right:4px; color:var(--gold); font-size:11px; }
 .md-inventory-cell-qty.enhance { right:auto; left:4px; color:#68dfe8; }
 .md-inv2-modal-layer { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left)); background:rgba(2,1,9,.76); }
+.md-inv2-detail-layer { align-items:flex-end; padding-top:max(42dvh,calc(14px + var(--safe-top))); background:linear-gradient(180deg,rgba(2,1,9,.05) 0 36%,rgba(2,1,9,.34) 54%,rgba(2,1,9,.78) 100%); }
+.md-inv2-detail-layer .md-inv2-detail { max-height:min(54dvh,540px); border-radius:20px 20px 12px 12px; box-shadow:0 -12px 38px rgba(0,0,0,.48); }
 .md-inv2-popup { position:relative; width:min(100%,420px); max-height:calc(100dvh - 28px - var(--safe-top) - var(--safe-bottom)); overflow-y:auto; overscroll-behavior:contain; padding:18px; border:1.5px solid var(--gold-deep); border-radius:20px; background-color:#18102d; color:var(--ink); box-shadow:0 16px 45px rgba(0,0,0,.55); }
 .md-inv2-popup h3 { margin:0 0 10px; color:var(--gold); font:800 19px 'Baloo 2'; }
 .md-inv2-popup-close { position:absolute !important; right:10px; top:10px; width:32px; height:32px; z-index:4 !important; }
@@ -2261,7 +2267,7 @@ body::after {
   .md-inv2-equip-slot.l2,.md-inv2-equip-slot.r2 { top:71px; }
   .md-inv2-equip-slot.l3,.md-inv2-equip-slot.r3 { top:142px; }
   .md-inv2-equip-slot.l4 { top:213px; }
-  .md-inv2-hero { width:140px; height:225px; top:51%; bottom:auto; transform:translate(-50%,-50%); }
+  .md-inv2-hero { inset:0; width:100%; height:100%; top:0; bottom:0; transform:none; }
   .md-inv2-hero .md-sprite-wrap { transform:scale(1.56); }
   .md-inv2-grid { gap:5px; }
   .md-inv2-detail { padding:22px 20px 18px; }

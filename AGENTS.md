@@ -63,6 +63,7 @@ This file defines the default operating rules for all contributors and AI agents
 - Combat changes should verify turn flow, damage, status effects, cooldowns, animation triggers, and save/reload where relevant.
 - UI changes should verify mobile layout, safe area, overflow, interaction, and asset loading.
 - Backend/save changes should verify existing-player compatibility and transaction/data integrity.
+- For any user-visible staging/preview fix that the user must reopen in a browser, bump the visible preview patch version before deployment so stale-cache reports can be distinguished from the new build.
 - After merge/deploy, verify the live result when the deployment path is available: page/endpoint loads, changed feature works, obvious errors are absent, and critical asset paths are not 404.
 
 ## 10. Documentation

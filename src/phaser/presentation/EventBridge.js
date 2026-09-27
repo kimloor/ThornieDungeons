@@ -46,7 +46,7 @@ function heroPresentationLayerFrames(selection = {}, { preferV5 = false, v5Selec
   if (preferV5 && typeof resolveHeroV5BaseWingContract === "function") {
     const v5 = resolveHeroV5BaseWingContract({
       characterId: "hero001",
-      includeWings: v5Selection?.wings === "angel" || selection?.wings === "angel",
+      includeWings: v5Selection?.wings === "angel",
       equipmentSelection: v5Selection
     });
     if (v5) {
@@ -67,6 +67,31 @@ function heroPresentationLayerFrames(selection = {}, { preferV5 = false, v5Selec
     }
   }
   return heroV3PresentationLayerFrames(selection);
+}
+
+function buildHeroPreviewSnapshot({ heroName = "Hero", equipped = {}, heroV5 = true } = {}) {
+  const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
+  const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
+  const heroFrames = heroPresentationLayerFrames(heroSelection, {
+    preferV5: heroV5 === true,
+    v5Selection: heroV5Selection
+  });
+  return Object.freeze({
+    previewId: "hero-preview",
+    hero: {
+      id: "hero-preview",
+      kind: "hero",
+      name: String(heroName || "Hero"),
+      hp: 1,
+      maxHp: 1,
+      alive: true,
+      statuses: [],
+      anim: "idle",
+      visualMode: heroFrames.mode || "v3",
+      layers: heroFrames.idle?.[0] || [],
+      layerFrames: heroFrames
+    }
+  });
 }
 
 function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1, heroV5 = undefined } = {}) {

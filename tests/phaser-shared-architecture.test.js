@@ -507,7 +507,7 @@ test("W7.2 battle snapshot selects V5 Base + Wing only when explicitly enabled",
   const adapter = source("src/phaser/presentation/EventBridge.js");
   assert.match(adapter, /heroV5 === undefined/);
   assert.match(adapter, /isHeroV5RuntimeEnabled\(\)/);
-  assert.match(adapter, /includeWings: v5Selection\?\.wings === "angel" \|\| selection\?\.wings === "angel"/);
+  assert.match(adapter, /includeWings: v5Selection\?\.wings === "angel"/);
   assert.match(adapter, /visualMode: heroFrames\.mode \|\| "v3"/);
   assert.match(adapter, /return heroV3PresentationLayerFrames\(selection\)/);
   assert.doesNotMatch(adapter, /coverage_underlay|torso_armor|legs_boots|arm_rear|arm_front/);
@@ -803,7 +803,7 @@ test("W7.3 full Azure snapshot composes Base plus seven equipment layers inside 
   assert.ok(snapshot.hero.layerFrames.attack[1].every(layer => layer.y === 84));
 });
 
-test("W7.3 missing requested Azure art fails closed to the existing V3 renderer", () => {
+test("W8 missing requested Azure art falls back only the unsupported slot", () => {
   const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
   const context = {
     ASSETS: {
@@ -825,7 +825,12 @@ test("W7.3 missing requested Azure art fails closed to the existing V3 renderer"
   vm.runInContext(`${contractSource}; this.result = resolveHeroV5BaseWingContract({
     equipmentSelection: { azure: { helmet: true } }
   });`, context);
-  assert.equal(context.result, null);
+  const result = JSON.parse(JSON.stringify(context.result));
+  assert.ok(result);
+  assert.equal(result.mode, "v5-g2");
+  assert.ok(result.visualFallbacks.includes("helmet"));
+  assert.ok(result.idle.every(frame => frame.some(layer => layer.name === "base")));
+  assert.ok(result.idle.every(frame => frame.every(layer => layer.name !== "helmet")));
 });
 
 test("W7.3 Ver 1.0.13 lowers only V5 artwork inside the locked actor anchor", () => {
@@ -875,7 +880,8 @@ test("W7.3 Idle Azure sword runtime uses authored versioned assets while canonic
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "r2-upload/manifest.json"), "utf8"));
   const azure = manifest.assets.hero001.v5.g2.equipment.azure;
   for (const frame of ["idle_01","idle_02","idle_03"]) {
-    const runtimeFile = path.join(ROOT, "r2-upload", azure.frames[frame].sword);
+    const runtimePath = String(azure.frames[frame].sword).split(/[?#]/, 1)[0];
+    const runtimeFile = path.join(ROOT, "r2-upload", runtimePath);
     const canonicalFile = path.join(ROOT, "r2-upload/hero/v5/g2/equipment/azure", frame, "sword.png");
     assert.ok(fs.existsSync(runtimeFile));
     assert.ok(fs.statSync(runtimeFile).size > 10000, `${frame} runtime sword should contain authored artwork`);
@@ -927,8 +933,8 @@ test("W7.3 Ver 1.0.15 Idle Azure sword follows the approved grip-alignment refer
   assert.equal(azure.idleSwordAssetRevision, "w7_idle_v3_grip_aligned");
   for (const frame of ["idle_01","idle_02","idle_03"]) {
     const sword = azure.frames[frame].sword;
-    assert.match(sword, /sword_w7_idle_v3\.png$/);
-    const file = path.join(ROOT, "r2-upload", sword);
+    assert.match(sword, /sword_w7_idle_v3\.png(?:[?#].*)?$/);
+    const file = path.join(ROOT, "r2-upload", String(sword).split(/[?#]/, 1)[0]);
     assert.ok(fs.existsSync(file));
     assert.ok(fs.statSync(file).size > 10000);
   }

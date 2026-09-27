@@ -416,6 +416,12 @@ Phaser owns only the Hero visual preview:
 - candidate visual swap;
 - optional presentation-only equip glow/transition.
 
+Inventory presentation rules:
+- the Phaser Hero host may fill the complete equipment stage so the Hero can render substantially larger than the old DOM preview;
+- weapon and wings may visually extend into the equipment-slot lanes;
+- equipment slots remain DOM foreground controls above the Hero;
+- the current production Wings visual selection is reused as the canonical resolver input, so an equipped Wings item renders the approved Angel wing family until a future multi-wing visual contract is explicitly introduced.
+
 Equipment slots remain DOM foreground controls even when placed around the Phaser preview.
 
 ### Compare-driven preview
@@ -432,6 +438,8 @@ When the player inspects compatible unequipped Equipment:
 Selecting another candidate must rebuild from authoritative state rather than chaining from the previous preview.
 
 The existing calculated-stat pipeline remains authoritative for all comparison numbers. Phaser never calculates comparison stats.
+
+The Item Detail/Compare surface must not fully cover the Hero stage. On mobile it should behave as a scrollable bottom sheet with enough upper-stage visibility to observe candidate equipment swaps; closing it restores the authoritative Hero visual.
 
 ### Visual fallback contract
 

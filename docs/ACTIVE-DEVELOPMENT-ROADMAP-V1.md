@@ -400,16 +400,16 @@ No page may create a separate Hero V5 renderer.
 
 ---
 
-## W8 — Inventory + Character Live Preview
+## W8 — Inventory Hero Live Preview
 
-**Status: DESIGN LOCK — ready for implementation planning**
+**Status: IMPLEMENTED — USER QA IN PROGRESS**
 
-Inventory and Character Status remain React/DOM. Phaser is used only for the live Hero presentation surface.
+Inventory remains React/DOM. Phaser is used only for the central live Hero presentation surface.
 
 ### W8.1 — Runtime ownership
 
 ```text
-Inventory / Character React state
+Inventory React state
         ↓
 authoritative equipment state
         ↓
@@ -458,7 +458,6 @@ Rules:
 - selecting another candidate rebuilds preview from authoritative state, not from the previous preview;
 - Equip success promotes the server/app-confirmed equipment state to authoritative state and refreshes the preview from it;
 - Equip failure restores authoritative state and must not leave a stale preview equipped;
-- Character Status uses the same HeroPreview renderer but normally reads authoritative equipment only.
 
 ### W8.3 — Item comparison boundary
 
@@ -535,8 +534,8 @@ Verify at minimum:
 - unsupported/missing equipment visual falls back only for that slot;
 - Hero V5 core failure uses whole-actor legacy fallback;
 - no guessed asset paths / no legacy layer mixing;
+- Item Detail/Compare must leave the Hero preview visible so candidate swaps can be visually verified;
 - mobile/tablet/desktop layout remains safe;
-- Character Status reuses the same HeroRenderer rather than creating another renderer.
 
 
 ## W9 — Arena Phaser
