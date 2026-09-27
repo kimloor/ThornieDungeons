@@ -871,12 +871,16 @@ test("W7.3 Ver 1.0.13 publishes and resolves the locked topknot hair for all V5 
   }
 });
 
-test("W7.3 Ver 1.0.13 authored Azure sword is visible in all three Idle frame assets", () => {
-  const frames = ["idle_01","idle_02","idle_03"];
-  for (const frame of frames) {
-    const file = path.join(ROOT, "r2-upload/hero/v5/g2/equipment/azure", frame, "sword.png");
-    assert.ok(fs.existsSync(file));
-    assert.ok(fs.statSync(file).size > 10000, `${frame} sword should not be the old transparent placeholder`);
+test("W7.3 Idle Azure sword runtime uses authored versioned assets while canonical placeholders stay untouched", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "r2-upload/manifest.json"), "utf8"));
+  const azure = manifest.assets.hero001.v5.g2.equipment.azure;
+  for (const frame of ["idle_01","idle_02","idle_03"]) {
+    const runtimeFile = path.join(ROOT, "r2-upload", azure.frames[frame].sword);
+    const canonicalFile = path.join(ROOT, "r2-upload/hero/v5/g2/equipment/azure", frame, "sword.png");
+    assert.ok(fs.existsSync(runtimeFile));
+    assert.ok(fs.statSync(runtimeFile).size > 10000, `${frame} runtime sword should contain authored artwork`);
+    assert.ok(fs.existsSync(canonicalFile));
+    assert.ok(fs.statSync(canonicalFile).size < 10000, `${frame} canonical placeholder should remain the original transparent contract asset`);
   }
   const patch = JSON.parse(fs.readFileSync(
     path.join(ROOT, "r2-upload/hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json"),
