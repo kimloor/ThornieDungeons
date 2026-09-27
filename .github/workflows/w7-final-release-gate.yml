@@ -1,4 +1,5 @@
 name: W7 final release gate
+# rerun after final Idle placeholder assertion alignment
 
 on:
   push:
