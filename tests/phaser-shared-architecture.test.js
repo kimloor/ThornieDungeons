@@ -917,16 +917,29 @@ test("W7.3 Ver 1.0.14 runtime errors use a centered scrollable popup with stack 
   assert.match(head, /onclick="hideBootError\(\)"/);
 });
 
-test("W7.3 Ver 1.0.14 Idle Azure sword uses versioned non-placeholder asset paths", () => {
+test("W7.3 Ver 1.0.15 Idle Azure sword follows the approved grip-alignment reference", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "r2-upload/manifest.json"), "utf8"));
   const azure = manifest.assets.hero001.v5.g2.equipment.azure;
-  assert.equal(azure.idleSwordAssetRevision, "w7_idle_v2");
+  assert.equal(azure.idleSwordAssetRevision, "w7_idle_v3_grip_aligned");
   for (const frame of ["idle_01","idle_02","idle_03"]) {
     const sword = azure.frames[frame].sword;
-    assert.match(sword, /sword_w7_idle_v2\.png$/);
+    assert.match(sword, /sword_w7_idle_v3\.png$/);
     const file = path.join(ROOT, "r2-upload", sword);
     assert.ok(fs.existsSync(file));
     assert.ok(fs.statSync(file).size > 10000);
   }
+
+  const patch = JSON.parse(fs.readFileSync(
+    path.join(ROOT, "r2-upload/hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json"),
+    "utf8"
+  ));
+  assert.equal(patch.assetRevision, "w7_idle_v3_grip_aligned");
+  assert.equal(patch.rotationDegrees, 135);
+  assert.deepEqual(patch.sourceGrip, [384, 594]);
+  assert.deepEqual(patch.targetGrip.idle_01, [270, 505]);
+  assert.deepEqual(patch.targetGrip.idle_02, [270, 493]);
+  assert.deepEqual(patch.targetGrip.idle_03, [270, 501]);
+  assert.equal(patch.runtimeRotation, false);
+  assert.match(patch.visualIntent, /Blade descends down-right from the hand/);
 });
 
