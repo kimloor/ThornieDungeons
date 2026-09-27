@@ -1,7 +1,7 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-26T22:54:42Z",
-  "count": 423,
+  "generatedAt": "2026-09-27T01:30:37Z",
+  "count": 424,
   "objects": [
     {
       "key": "audio/bgm/main_theme.mp3",
@@ -612,6 +612,17 @@
       "key": "hero/v5/g2/equipment/azure/idle_01/sword.png",
       "etag": "ddda2d73ef7326b9fdc152c246794f46",
       "last_modified": "2026-09-26T15:56:53.162Z",
+      "size": 48274,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/azure/idle_01/sword_w7_idle_v2.png",
+      "etag": "ddda2d73ef7326b9fdc152c246794f46",
+      "last_modified": "2026-09-27T01:30:34.261Z",
       "size": 48274,
       "http_metadata": {
         "contentType": "image/png"
