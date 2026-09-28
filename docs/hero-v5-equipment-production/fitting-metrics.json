@@ -1,0 +1,150 @@
+{
+  "robot": {
+    "idle_01": {
+      "base_pixels_covered_by_underlay_only": 2250,
+      "armor_bbox": [
+        142,
+        124,
+        473,
+        660
+      ]
+    },
+    "idle_02": {
+      "base_pixels_covered_by_underlay_only": 2250,
+      "armor_bbox": [
+        142,
+        112,
+        473,
+        648
+      ]
+    },
+    "idle_03": {
+      "base_pixels_covered_by_underlay_only": 2250,
+      "armor_bbox": [
+        142,
+        120,
+        473,
+        656
+      ]
+    },
+    "attack_01": {
+      "base_pixels_covered_by_underlay_only": 3966,
+      "armor_bbox": [
+        187,
+        181,
+        524,
+        691
+      ]
+    },
+    "attack_02": {
+      "base_pixels_covered_by_underlay_only": 5273,
+      "armor_bbox": [
+        130,
+        181,
+        515,
+        693
+      ]
+    },
+    "attack_03": {
+      "base_pixels_covered_by_underlay_only": 5810,
+      "armor_bbox": [
+        129,
+        176,
+        442,
+        700
+      ]
+    },
+    "death_01": {
+      "base_pixels_covered_by_underlay_only": 2982,
+      "armor_bbox": [
+        65,
+        183,
+        554,
+        704
+      ]
+    },
+    "death_02": {
+      "base_pixels_covered_by_underlay_only": 2361,
+      "armor_bbox": [
+        179,
+        207,
+        692,
+        705
+      ]
+    }
+  },
+  "skeleton": {
+    "idle_01": {
+      "base_pixels_covered_by_underlay_only": 2810,
+      "armor_bbox": [
+        158,
+        92,
+        467,
+        659
+      ]
+    },
+    "idle_02": {
+      "base_pixels_covered_by_underlay_only": 2810,
+      "armor_bbox": [
+        158,
+        80,
+        467,
+        647
+      ]
+    },
+    "idle_03": {
+      "base_pixels_covered_by_underlay_only": 2810,
+      "armor_bbox": [
+        158,
+        88,
+        467,
+        655
+      ]
+    },
+    "attack_01": {
+      "base_pixels_covered_by_underlay_only": 4564,
+      "armor_bbox": [
+        200,
+        152,
+        528,
+        680
+      ]
+    },
+    "attack_02": {
+      "base_pixels_covered_by_underlay_only": 4506,
+      "armor_bbox": [
+        145,
+        152,
+        518,
+        688
+      ]
+    },
+    "attack_03": {
+      "base_pixels_covered_by_underlay_only": 5603,
+      "armor_bbox": [
+        144,
+        148,
+        442,
+        703
+      ]
+    },
+    "death_01": {
+      "base_pixels_covered_by_underlay_only": 2500,
+      "armor_bbox": [
+        97,
+        154,
+        559,
+        704
+      ]
+    },
+    "death_02": {
+      "base_pixels_covered_by_underlay_only": 1055,
+      "armor_bbox": [
+        176,
+        212,
+        692,
+        705
+      ]
+    }
+  }
+}
