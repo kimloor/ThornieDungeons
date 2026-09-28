@@ -1,3 +1,17 @@
+# Approved export — 2026-09-28
+
+User selected **background B** and approved all three frames, both icons and R2 publication.
+
+Final assets are staged under the proposed paths below; all six mappings are now in `r2-upload/manifest.json`. Exact dimensions, anchors, alpha checks and SHA-256 hashes are in `r2-upload/ui/arena/GRAPHICS_CONTRACT.json`. Export QA on light/dark backgrounds and 24px/64px icon samples: `export-qa.png`.
+
+All frame canvases are 512×512, centered at (256,256), with visible art within radius 247 (current circular clip is radius 256). A conservative common face-safe transparent disc is radius 113; ornament intrusion differs by rank. Preserve the approved art and use this bound when fitting future avatar faces. This is distinct from the old decorative frame; no current Player Card code was changed. Background is 1080×1920 RGB WebP quality 88; icons are 256×256 RGBA with transparent padding.
+
+Validation: exact dimensions/modes, transparent corners, frame circular bounds, manifest/file paths, preservation of every existing manifest value, and visual inspection of actual exported assets passed. No source/build/runtime files changed; no frontend/API deployment. Asset upload is performed by the existing main-branch R2 workflow and must pass its download/SHA verification. The generated R2 object inventory remains owned by the scheduled/manual sync workflow.
+
+The following section is the historical concept review, retained with its masters for traceability; its pending-approval statements are superseded by this approval record.
+
+---
+
 # W9 Graphics — visual approval batch
 
 THORNIE_GRAPHICS_HANDOFF
