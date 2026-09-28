@@ -1,0 +1,152 @@
+{
+  "status": "USER_APPROVED",
+  "sourceMain": "c101ead2e4a36ed7bed9c895fe9aadbb16400ebf",
+  "approval": "Background B, all frames and icons approved; R2 publication authorized 2026-09-28",
+  "background": {
+    "canvas": [
+      1080,
+      1920
+    ],
+    "format": "WebP",
+    "quality": 88,
+    "opaque": true,
+    "crop": "center cover; mobile staging verifies actual scene crop"
+  },
+  "frames": [
+    {
+      "rank": 1,
+      "canvas": [
+        512,
+        512
+      ],
+      "anchor": [
+        256,
+        256
+      ],
+      "transparentCenterRadius": 113,
+      "outerInkRadius": 246.13004692641653,
+      "sourceCrop": [
+        0,
+        0,
+        724,
+        724
+      ]
+    },
+    {
+      "rank": 2,
+      "canvas": [
+        512,
+        512
+      ],
+      "anchor": [
+        256,
+        256
+      ],
+      "transparentCenterRadius": 129,
+      "outerInkRadius": 246.0081299469593,
+      "sourceCrop": [
+        724,
+        0,
+        1448,
+        724
+      ]
+    },
+    {
+      "rank": 3,
+      "canvas": [
+        512,
+        512
+      ],
+      "anchor": [
+        256,
+        256
+      ],
+      "transparentCenterRadius": 132,
+      "outerInkRadius": 246.00203251192866,
+      "sourceCrop": [
+        1448,
+        0,
+        2172,
+        724
+      ]
+    }
+  ],
+  "commonFaceSafeRadius": 113,
+  "notes": [
+    "Uniformly fitted inside existing circular avatar clip; no runtime change.",
+    "Keep avatar face inside commonFaceSafeRadius; this is smaller than the old decorative-frame opening.",
+    "New global frame mapping is independent of playerCardUi.avatarFrame.",
+    "Only technical crop, uniform scaling, near-transparent noise cleanup, padding and compression; approved designs preserved.",
+    "No gameplay, entitlement, expiry or Phaser integration."
+  ],
+  "assets": [
+    {
+      "path": "ui/arena/arena_background.webp",
+      "width": 1080,
+      "height": 1920,
+      "mode": "RGB",
+      "bytes": 279934,
+      "sha256": "1edefb75884c77b8710aababb66d4680389f8cf1d2ae5376611f8c6ca38000a9"
+    },
+    {
+      "path": "ui/profile-frames/arena_rank_1.png",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA",
+      "bytes": 278770,
+      "sha256": "18faecc7af9e87ac34398bba7354fcf8662ad1e372874bb0cd818760e98a2506",
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "ui/profile-frames/arena_rank_2.png",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA",
+      "bytes": 271796,
+      "sha256": "ff722734f179cb51ccb27cea84d8aba62e6a842ee7fc8ffa3a572bb804a84a8e",
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "ui/profile-frames/arena_rank_3.png",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA",
+      "bytes": 252645,
+      "sha256": "93db7fdbc1648c3be14b63166dc359fb6149ab277e028a28e554b7dc71cacbbc",
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "ui/item-icons/currency/arena_coin.png",
+      "width": 256,
+      "height": 256,
+      "mode": "RGBA",
+      "bytes": 110155,
+      "sha256": "15e79faaf572fd3294c7684e883dc6ceb6f489eb6378bee2135dd3ea01944320",
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "ui/item-icons/currency/arena_ticket.png",
+      "width": 256,
+      "height": 256,
+      "mode": "RGBA",
+      "bytes": 64065,
+      "sha256": "3c661118b9a95767deaf37ad6a908b1acc730941a035addbf9dcc8cb1fa6f72f",
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    }
+  ]
+}
