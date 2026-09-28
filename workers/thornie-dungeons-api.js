@@ -647,9 +647,9 @@ function verifyAdminKey(env, adminKey) {
 const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
 const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000;
 
-async function writeAdminAudit(db, playerId, eventType, metadata = {}, targetType = null, targetId = null) {
+function adminAuditStatement(db, playerId, eventType, metadata = {}, targetType = null, targetId = null) {
   const auditId = `admin-audit-${randomToken(18)}`;
-  await db.prepare(`
+  return db.prepare(`
     INSERT INTO admin_audit_log
       (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -661,7 +661,11 @@ async function writeAdminAudit(db, playerId, eventType, metadata = {}, targetTyp
     targetId || null,
     JSON.stringify(metadata && typeof metadata === "object" ? metadata : {}),
     nowIso()
-  ).run();
+  );
+}
+
+async function writeAdminAudit(db, playerId, eventType, metadata = {}, targetType = null, targetId = null) {
+  await adminAuditStatement(db, playerId, eventType, metadata, targetType, targetId).run();
 }
 
 async function issueAdminSession(db, playerId) {
@@ -670,7 +674,14 @@ async function issueAdminSession(db, playerId) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ADMIN_SESSION_MS);
   const sessionId = `admin-sess-${randomToken(18)}`;
-  await db.batch([
+  const previous = await db.prepare(`
+    SELECT session_id
+    FROM admin_sessions
+    WHERE player_id = ? AND revoked_at IS NULL
+    LIMIT 1
+  `).bind(playerId).first();
+
+  const statements = [
     db.prepare(`
       UPDATE admin_sessions
       SET revoked_at = ?, revoke_reason = 'replaced'
@@ -681,7 +692,16 @@ async function issueAdminSession(db, playerId) {
         (session_id, player_id, token_hash, created_at, expires_at, revoked_at, revoke_reason)
       VALUES (?, ?, ?, ?, ?, NULL, NULL)
     `).bind(sessionId, playerId, tokenHash, now.toISOString(), expiresAt.toISOString())
-  ]);
+  ];
+  if (previous?.session_id) {
+    statements.push(adminAuditStatement(
+      db,
+      playerId,
+      "ADMIN_SESSION_REVOKED",
+      { reason: "replaced", sessionId: previous.session_id }
+    ));
+  }
+  await db.batch(statements);
   return { adminSessionToken: rawToken, expiresAt: expiresAt.toISOString() };
 }
 
@@ -762,19 +782,42 @@ async function handleAdminLogout(db, auth) {
   return json({ ok: true });
 }
 
-async function revokeAdminSessionsForCredentialChange(db, playerId, reason) {
+async function commitCredentialChange(db, baseStatements, playerId, reason) {
+  let previous = null;
   try {
-    await db.prepare(`
+    previous = await db.prepare(`
+      SELECT session_id
+      FROM admin_sessions
+      WHERE player_id = ? AND revoked_at IS NULL
+      LIMIT 1
+    `).bind(playerId).first();
+  } catch (error) {
+    // Compatibility only for test/rollback environments that predate Admin V2.
+    // Production deploy applies the Admin migration before this Worker.
+    if (/no such table:\s*admin_sessions/i.test(String(error?.message || error))) {
+      await db.batch(baseStatements);
+      return;
+    }
+    throw error;
+  }
+
+  const statements = [
+    ...baseStatements,
+    db.prepare(`
       UPDATE admin_sessions
       SET revoked_at = ?, revoke_reason = ?
       WHERE player_id = ? AND revoked_at IS NULL
-    `).bind(nowIso(), reason, playerId).run();
-  } catch (error) {
-    // Auth V2 tests/rollback environments may predate the Admin V2 migration.
-    // Production release order applies the Admin migration before this Worker.
-    if (/no such table:\s*admin_sessions/i.test(String(error?.message || error))) return;
-    throw error;
+    `).bind(nowIso(), reason, playerId)
+  ];
+  if (previous?.session_id) {
+    statements.push(adminAuditStatement(
+      db,
+      playerId,
+      "ADMIN_SESSION_REVOKED",
+      { reason, sessionId: previous.session_id }
+    ));
   }
+  await db.batch(statements);
 }
 
 async function verifyAdminAccess(db, env, request, legacyAdminKey) {
@@ -2569,11 +2612,10 @@ async function handleChangePassword(db, auth, currentPassword, newPassword, conf
   const verified = await verifyPasswordCredentials(db, auth.row.id, currentPassword);
   if (verified.error) return json({ error: "invalid_credentials" });
   const now = nowIso();
-  await db.batch([
+  await commitCredentialChange(db, [
     db.prepare(`UPDATE players SET password_hash = ?, auth_version = 2 WHERE id = ?`).bind(await hashPassword(newPassword), auth.row.id),
     db.prepare(`UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'password_changed' WHERE player_id = ? AND revoked_at IS NULL`).bind(now, auth.row.id)
-  ]);
-  await revokeAdminSessionsForCredentialChange(db, auth.row.id, "password_changed");
+  ], auth.row.id, "password_changed");
   return json({ ok: true, requireLogin: true });
 }
 
@@ -2592,12 +2634,11 @@ async function handleForgotPassword(db, id, recoveryCode, newPassword, confirmPa
   }
   const nextRecoveryCode = createRecoveryCode();
   const now = nowIso();
-  await db.batch([
+  await commitCredentialChange(db, [
     db.prepare(`UPDATE players SET password_hash = ?, recovery_code_hash = ?, auth_version = 2 WHERE id = ?`)
       .bind(await hashPassword(newPassword), await recoveryCodeHash(nextRecoveryCode), player.id),
     db.prepare(`UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'password_reset' WHERE player_id = ? AND revoked_at IS NULL`).bind(now, player.id)
-  ]);
-  await revokeAdminSessionsForCredentialChange(db, player.id, "password_reset");
+  ], player.id, "password_reset");
   await recordRateAttempt(db, recoveryKey, 5, 5 * 60 * 1000, true);
   return json({ ok: true, recoveryCode: nextRecoveryCode, requireLogin: true });
 }
@@ -5344,10 +5385,10 @@ async function handleAdminSetGameConfigItem(db, adminAuth, key, value) {
 }
 
 // ---------- admin: recipes + monster loot (admin.html) ----------
-// Reuses the existing ADMIN_API_KEY / verifyAdminKey infra above — no new secret needed.
-// Reading recipes/monster_loot as an admin already works via the existing generic
-// `getSheet` action (now that both tables are registered in TABLES); only writes need
-// dedicated handlers since getSheet is read-only by design.
+// Admin V2 uses the dedicated Admin session verifier. The legacy ADMIN_API_KEY path is
+// retained only as a temporary rollback path during Phase 0 production verification.
+// Reading recipes/monster_loot uses the generic authenticated getSheet action; writes
+// use dedicated handlers because getSheet is read-only by design.
 async function handleAdminUpsertRecipe(db, adminAuth, recipeId, type, name, setId, empowerSlotCount, materials) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!recipeId || !type || !name || !materials || typeof materials !== "object") return json({ error: "missing_fields" });
