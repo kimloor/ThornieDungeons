@@ -561,14 +561,30 @@ Release:
 - production frontend deployment and production verification passed.
 
 
-## W9 — Arena Phaser
+## W9 — Arena V2 + Phaser
+**Status: ACTIVE-DESIGN — gameplay/UX contract locked 2026-09-28**
 
-Replace Arena battlefield presentation only after W6 shared architecture is stable.
+W9 is no longer presentation-only. The user approved a full Arena V2 redesign covering:
+- asynchronous tactical Arena;
+- Arena Setup Pet + 4-skill priority;
+- current-equipment match snapshots;
+- attacker manual/Auto targeting and defender AI;
+- 3-band opponent matching + bot fallback;
+- weekly seasons, tiers, pair diminishing, milestones and rank rewards;
+- Arena Coin + Ticket V2;
+- history/revenge;
+- global Top-3 Profile Frames;
+- Arena Hub mobile UX;
+- dedicated Phaser 2v2 battlefield;
+- additive V2 deploy followed by verified legacy V1 cleanup.
 
-Reuse:
-- HeroRenderer;
+Dedicated source of truth:
+- ARENA-V2-W9.md
+
+Shared Phaser architecture remains mandatory:
+- HeroRenderer / HeroActor;
 - PetActor;
-- shared ActorPresentationModel;
+- ActorPresentationModel;
 - EquipmentVisualResolver;
 - PresentationEventBridge;
 - PresentationQueue;
@@ -576,15 +592,7 @@ Reuse:
 - AssetResolver / TextureRegistry;
 - responsive scene layout.
 
-Preserve:
-- lobby/opponent list;
-- tickets;
-- Arena APIs;
-- server-resolved actions;
-- HUD/action panel/log/result;
-- rating/rewards.
-
-Arena gameplay remains authoritative outside Phaser.
+Battle Core and server authority remain outside Phaser. Do not infer that older preserve-current-Arena API/rating/reward language still governs W9 where ARENA-V2-W9.md explicitly changes those systems.
 
 ---
 
@@ -720,7 +728,7 @@ W7  Hero V5 Runtime Integration
  ↓
 W8  Inventory + Character Live Preview
  ↓
-W9  Arena Phaser
+W9  Arena V2 + Phaser
  ↓
 W10 Victory / Boss / Raid Presentation
  ↓

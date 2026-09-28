@@ -44,7 +44,8 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) | Login/Auth V2 account, session, password, recovery, migration, frontend, and backend security contract. |
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
 | [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |
-| [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) | **ACTIVE-DESIGN** migration contract for moving Dungeon Combat battlefield and Arena battle-stage presentation to Phaser while preserving gameplay, API, save, and resolver behavior. |
+| [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) | **ACTIVE-DESIGN** shared Phaser presentation architecture for Combat/Arena/preview surfaces; W9 Arena gameplay changes are governed by `ARENA-V2-W9.md`. |
+| [`ARENA-V2-W9.md`](ARENA-V2-W9.md) | **ACTIVE-DESIGN / USER-APPROVED** W9 Arena V2 gameplay, season, rating, Ticket/Coin, rewards, setup, matchmaking, history, Profile Frame, mobile UX, Phaser battlefield, rollout and cleanup contract. |
 | [`PIXELLAB-WORKFLOW.md`](PIXELLAB-WORKFLOW.md) | **ACTIVE-TOOLING** reusable PixelLab GitHub Actions workflow, inputs, image/animation generation flow, GIF preview, review rules, and R2 handoff guardrails. |
 | [`RAID-SYSTEM-V1.md`](RAID-SYSTEM-V1.md) | Raid boss roster/rotation, HP scaling, Raid asset contract, persistence boundaries, auth/backend safety, and Raid verification. |
 | [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) | Ordered persistence, retries, save state, session ownership, battle checkpoints, and transaction safety. |
@@ -83,9 +84,11 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 ### Arena
 
 - [`AGENTS.md`](../AGENTS.md)
-- [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) for Arena battle-stage presentation migration
-- [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) only for shared combat rules already reused by Arena
-- Latest Arena code/API behavior remains authoritative until a dedicated Arena gameplay contract is approved
+- [`ARENA-V2-W9.md`](ARENA-V2-W9.md) — dedicated W9 Arena V2 source of truth
+- [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) — shared Phaser presentation architecture
+- [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) only for shared Battle Core rules reused by Arena
+- [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) when match/reward/idempotency persistence is affected
+- [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) when Arena APIs/session ownership are affected
 
 ### Raid
 
@@ -175,7 +178,7 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 
 The following important areas do not currently have a dedicated **ACTIVE** system document in `docs/`:
 
-- **Arena gameplay contract** (presentation migration is covered by `PHASER-COMBAT-ARENA-V1.md`)
+- **Arena gameplay contract:** `ARENA-V2-W9.md` is now the active W9 contract.
 - **Shop / Crafting / Summoning**
 
 Until a dedicated contract exists, inspect latest `main`, the latest approved task/decision, and directly related code/configuration before changing behavior. Do not invent missing game rules or infer them from unrelated systems.
@@ -220,7 +223,7 @@ No current document is marked **RETIRED** by this index.
 
 **Known documentation conflicts:** None currently verified.
 
-**Documentation gaps:** Arena gameplay contract; Shop / Crafting / Summoning. Arena presentation migration is now mapped by `PHASER-COMBAT-ARENA-V1.md`.
+**Documentation gaps:** Shop / Crafting / Summoning. Arena V2 is mapped by `ARENA-V2-W9.md`; shared presentation remains mapped by `PHASER-COMBAT-ARENA-V1.md`.
 
 When a conflict is resolved, remove it from unresolved conflicts rather than leaving stale warnings in this index.
 

@@ -12,7 +12,7 @@ Active roadmap usage:
 - Dungeon Combat battlefield
 - shared Hero V5 renderer
 - Inventory live Hero preview
-- Arena battle stage
+- Arena V2 battle presentation
 - Victory / Boss / Raid presentation
 - Summoning / Enhance / Craft presentation
 
@@ -496,7 +496,7 @@ W7  Hero V5 Runtime Integration
  ↓
 W8  Inventory Hero Live Preview
  ↓
-W9  Arena Phaser
+W9  Arena V2 + Phaser
  ↓
 W10 Victory / Boss / Raid Presentation
  ↓
@@ -549,7 +549,7 @@ This architecture does not authorize:
 - rewriting Battle Core in Phaser
 - moving application/page UI into Phaser
 - moving Inventory grid/details/stats into Phaser
-- changing Arena/Raid gameplay
+- changing Arena outside the approved ARENA-V2-W9.md contract, or changing Raid gameplay
 - changing skill/Pet/economy balance
 - skeletal/Spine migration
 - duplicating Hero/VFX/asset systems per scene
@@ -614,6 +614,19 @@ Release:
 
 ---
 
+
+## 15.4 W9 Arena V2 contract — 2026-09-28
+
+W9 Arena direction has been explicitly expanded beyond presentation-only migration.
+
+For W9:
+- ARENA-V2-W9.md is the gameplay/economy/UX source of truth;
+- this document remains authoritative for the shared Phaser presentation boundary and reusable renderer/asset/VFX architecture;
+- older wording that says current Arena lobby/tickets/API/rating/rewards must remain unchanged is superseded where ARENA-V2-W9.md explicitly redesigns those systems;
+- Phaser still must not become the combat/rating/economy authority;
+- Battle Core and server-side settlement remain authoritative.
+
+---
 
 ## 16. Release rule
 
