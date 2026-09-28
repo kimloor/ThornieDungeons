@@ -140,7 +140,7 @@ function createDb() {
     );
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
-  db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0023_admin_v2_auth.sql"), "utf8"));
+  db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0022_admin_v2_auth.sql"), "utf8"));
   return db;
 }
 async function body(response) { return response.json(); }
@@ -171,7 +171,7 @@ test("Admin V2 migration is additive and provisions the approved admin owner whe
     INSERT INTO players (id, password, created_at) VALUES ('admin', '', 'now');
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
-  db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0023_admin_v2_auth.sql"), "utf8"));
+  db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0022_admin_v2_auth.sql"), "utf8"));
 
   const tables = db.raw.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'admin_%' ORDER BY name`).all().map(row => row.name);
   assert.deepEqual(tables, ["admin_audit_log", "admin_sessions", "admin_users"]);
