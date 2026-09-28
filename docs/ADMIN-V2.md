@@ -168,7 +168,11 @@ Password must never be stored.
 
 Because Admin authentication reuses an existing player account, Phase 0 does not need an Admin bootstrap secret.
 
-The first Admin is provisioned by inserting that existing `player_id` into `admin_users` through the forward migration/release process.
+The first approved Admin owner Player ID is:
+
+`admin`
+
+The `admin` player account must already exist through the normal Auth V2 registration flow before the Admin V2 migration is released. The forward migration provisions that existing account into `admin_users` with role `owner`.
 
 The migration contains only the approved account identifier and role/enable state.
 
@@ -180,9 +184,7 @@ It must never contain:
 - session token;
 - `ADMIN_API_KEY`.
 
-If the exact production Player ID should not be committed to repository history, use a safe post-migration provisioning step or environment-driven allowlist seed approved before release.
-
-The implementation/release plan must explicitly choose one provisioning method before production merge.
+Provisioning method is locked for the initial owner: migration-time allowlist seed for existing Player ID `admin`. No credential is committed.
 
 ---
 
