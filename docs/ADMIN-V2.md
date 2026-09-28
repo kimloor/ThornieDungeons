@@ -4,7 +4,7 @@ Status: **ACTIVE-DESIGN — Phase 0 approved direction**
 
 This document defines the security and authentication foundation for the ThornieDungeons Admin V2 console.
 
-It does not authorize direct database editing, destructive maintenance, or production deployment by itself.
+It does not authorize generic database editing, destructive maintenance, or production deployment by itself.
 
 ---
 
@@ -17,9 +17,13 @@ Current `/admin` access depends on one static `ADMIN_API_KEY`:
 - several admin GET calls send it as an `adminKey` query parameter;
 - forgetting the key means the operator cannot recover it from Cloudflare because Worker secrets are write-only.
 
-This is acceptable only as a temporary bootstrap mechanism, not as the long-term day-to-day Admin V2 login model.
+Admin V2 replaces this as the daily login model.
 
-Admin V2 must remove the raw secret from ordinary use.
+The approved direction is:
+
+`Player ID + Password (existing Auth V2 verifier) -> Admin allowlist check -> dedicated Admin Session -> Admin Console`
+
+The normal game login/session remains separate.
 
 ---
 
@@ -27,401 +31,384 @@ Admin V2 must remove the raw secret from ordinary use.
 
 Phase 0 establishes:
 
-1. dedicated Admin identity separate from player accounts;
-2. Username + Password login;
-3. opaque Admin session token;
-4. raw session token never stored in D1;
-5. normal admin APIs use `Authorization: Bearer <admin-session-token>`;
-6. browser must not persist the Cloudflare recovery secret;
-7. `ADMIN_API_KEY` becomes bootstrap / emergency recovery only;
-8. forgotten Admin password can be recovered by rotating `ADMIN_API_KEY` and resetting Admin credentials;
-9. all Admin sessions are revoked on credential reset;
-10. authentication events are auditable without logging secrets.
+1. Admin login UI on `/admin`;
+2. reuse of the existing Login/Auth V2 Player ID + Password verifier;
+3. explicit `admin_users` allowlist;
+4. a dedicated Admin session token separate from the player gameplay session;
+5. raw Admin session token never stored in D1;
+6. normal Admin APIs use `Authorization: Bearer <admin-session-token>`;
+7. browser stops storing/sending `ADMIN_API_KEY`;
+8. existing player password-recovery flow remains the way to recover forgotten Admin login credentials;
+9. Admin authentication/audit is separate from gameplay authorization;
+10. all future Admin mutations have a stable audit foundation.
 
 Out of scope for Phase 0:
 
-- multi-role RBAC;
-- multiple administrator accounts;
+- multi-role RBAC beyond a simple initial role field;
+- multiple simultaneous Admin sessions;
 - MFA;
-- email recovery;
+- email recovery beyond normal player Auth V2;
 - player/economy mutation tools;
 - generic SQL console;
 - destructive database maintenance.
-
-Those may be designed later.
 
 ---
 
 ## 3. Identity model
 
-Admin V2 uses a dedicated Admin account model.
+Admin V2 does **not** create a second password database.
 
-Do not reuse normal `players` accounts or player sessions as proof of Admin authority.
+Admin identity is an allowlisted production player account.
 
-Initial Phase 0 supports exactly one active Admin identity.
+Table direction:
+
+### `admin_users`
 
 Suggested fields:
 
-- `admin_id`
-- `username_normalized`
-- `password_hash`
-- `created_at`
-- `updated_at`
-- optional `last_login_at`
+- `player_id` — FK/reference to `players.id`;
+- `role` — initial value `owner` or `admin`;
+- `enabled` — 0/1;
+- `created_at`;
+- `updated_at`.
 
-Username:
+Phase 0 authorization rule:
 
-- 3–32 characters;
-- case-insensitive;
-- recommended allowed characters: `A-Z a-z 0-9 _ -`.
+- credentials are validated using the existing Auth V2 password verifier;
+- after credential validation, the account must exist in `admin_users`;
+- `enabled` must be true;
+- only then may an Admin session be issued.
 
-Password:
+A normal player who knows the `/admin` URL but is not allowlisted must not receive an Admin session.
 
-- minimum 12 characters;
-- maximum 128 characters;
-- no forced symbol/uppercase composition rule;
-- password-manager/passphrase use is recommended;
-- never log or return the password.
-
-Use the project’s established secure password-hashing primitive where practical. Do not introduce a home-grown reversible encryption scheme.
+Do not infer Admin privilege from player level, character data, guild role, account creation order, or Player ID naming.
 
 ---
 
-## 4. Admin session model
+## 4. Password and recovery contract
 
-Successful Admin login returns a random opaque session token.
+Admin V2 deliberately reuses the existing player-account password.
 
-Server storage:
+Therefore:
 
-- D1 stores only `token_hash`;
-- raw token exists only on the client;
-- session includes created/expiry/revocation timestamps.
+- Admin V2 stores no second Admin password hash;
+- Admin V2 does not create a second password-reset system;
+- `verifyPasswordCredentials()` or its refactored equivalent remains the authoritative credential verifier;
+- forgotten Admin password is recovered through the existing Auth V2 Recovery Code flow;
+- password changes/resets in Auth V2 automatically affect future Admin logins because the credential source is shared.
 
-Initial Phase 0 policy:
+Admin login must **not** issue or reuse the normal gameplay session.
 
-- absolute lifetime: **8 hours**;
-- no Remember Admin option;
-- one active Admin session at a time;
-- successful new login revokes the prior active Admin session;
-- password reset/recovery revokes every active Admin session.
+Credential reuse is only for verification.
 
-Suggested session fields:
+---
+
+## 5. Dedicated Admin session model
+
+After successful credential + allowlist validation, backend issues a dedicated Admin session.
+
+Suggested table:
+
+### `admin_sessions`
+
+Fields:
 
 - `session_id`
-- `admin_id`
+- `player_id`
 - `token_hash`
 - `created_at`
 - `expires_at`
 - `revoked_at`
 - `revoke_reason`
 
+Rules:
+
+- token is random opaque data;
+- D1 stores only `token_hash`;
+- raw token exists only on the client;
+- Admin token is not accepted by normal gameplay session verification;
+- normal gameplay token is not accepted by Admin verification;
+- absolute lifetime: **8 hours**;
+- no Remember Admin option in Phase 0;
+- one active Admin session per Admin account;
+- successful new Admin login revokes the previous active Admin session for that account;
+- Logout revokes the current Admin session.
+
 Normal Admin API authentication:
 
 `Authorization: Bearer <admin-session-token>`
 
-Do not send raw Admin session tokens in URLs.
+Do not place raw Admin session tokens in URLs.
 
 ---
 
-## 5. Browser storage contract
+## 6. Browser storage contract
 
-The existing `thornie-admin-key` localStorage behavior must be retired.
+The existing `thornie-admin-key` localStorage behavior must be retired from Admin V2 UI.
 
 Admin V2 must:
 
-- never persist `ADMIN_API_KEY` in browser storage;
+- never request `ADMIN_API_KEY` in the normal UI;
+- never persist `ADMIN_API_KEY`;
 - never place `ADMIN_API_KEY` in a query string;
-- store the Admin session token in `sessionStorage` for Phase 0;
+- store the Admin session token in `sessionStorage`;
 - clear the token on Logout;
-- clear invalid/expired/revoked tokens after confirmed auth failure;
 - preserve a valid token across ordinary page reload within the same browser session;
-- require login again after the browser session is closed.
+- require Admin login again after the browser session is closed;
+- clear an invalid/expired/revoked Admin token after confirmed auth failure;
+- not clear a valid session because of a network timeout.
 
-The login form may remember the Admin username only if desired; it must not remember the password.
+Username/Player ID may be remembered for convenience if desired.
 
----
-
-## 6. Bootstrap and forgotten-password recovery
-
-`ADMIN_API_KEY` remains configured only as a Cloudflare Worker Secret.
-
-Its purpose changes to:
-
-- initial Admin account bootstrap;
-- emergency Admin credential reset.
-
-It is no longer the normal Admin credential.
-
-### Initial bootstrap
-
-When no Admin account exists:
-
-1. operator rotates/sets `ADMIN_API_KEY` in Cloudflare if needed;
-2. open Admin recovery/setup UI;
-3. submit:
-   - recovery/bootstrap key;
-   - new Admin username;
-   - new Admin password;
-4. request uses POST body only;
-5. backend verifies `ADMIN_API_KEY`;
-6. backend creates the Admin account;
-7. raw bootstrap key is discarded by the page immediately;
-8. operator logs in normally using username/password.
-
-Bootstrap must fail once an Admin identity already exists unless the request explicitly uses the recovery/reset path.
-
-### Forgotten Admin password
-
-Recovery flow:
-
-1. rotate `ADMIN_API_KEY` in Cloudflare to a newly generated secret;
-2. open `/admin` -> Recover Admin Access;
-3. enter:
-   - recovery key;
-   - Admin username;
-   - new password;
-   - confirm password;
-4. backend verifies recovery key;
-5. replace Admin password hash;
-6. revoke all Admin sessions;
-7. write audit event;
-8. do not return the recovery key;
-9. operator logs in with the new password.
-
-Therefore losing the daily Admin password does not require recovering the old secret value.
-
-Cloudflare secret rotation is the recovery authority.
+Password must never be stored.
 
 ---
 
-## 7. Required API surface
+## 7. Initial Admin provisioning
+
+Because Admin authentication reuses an existing player account, Phase 0 does not need an Admin bootstrap secret.
+
+The first Admin is provisioned by inserting that existing `player_id` into `admin_users` through the forward migration/release process.
+
+The migration contains only the approved account identifier and role/enable state.
+
+It must never contain:
+
+- password;
+- password hash;
+- recovery code;
+- session token;
+- `ADMIN_API_KEY`.
+
+If the exact production Player ID should not be committed to repository history, use a safe post-migration provisioning step or environment-driven allowlist seed approved before release.
+
+The implementation/release plan must explicitly choose one provisioning method before production merge.
+
+---
+
+## 8. Existing `ADMIN_API_KEY`
+
+Admin V2 does not depend on `ADMIN_API_KEY`.
+
+Phase 0 rules:
+
+- do not rotate it;
+- do not read it from the Admin V2 UI;
+- do not add new code that depends on it;
+- keep the existing secret/path temporarily only for rollback compatibility while Admin V2 is being verified;
+- remove or disable the legacy path only in a later cleanup after production verification.
+
+The forgotten legacy key therefore does not block Admin V2 implementation.
+
+---
+
+## 9. Required API surface
 
 Names may be adjusted during implementation, but behavior is locked.
-
-### POST `adminBootstrap`
-
-Allowed only when no Admin identity exists.
-
-Input:
-
-- `bootstrapKey`
-- `username`
-- `password`
-- `confirmPassword`
-
-Must not return secrets.
 
 ### POST `adminLogin`
 
 Input:
 
-- `username`
+- `id`
 - `password`
 
-Success:
+Flow:
+
+1. rate-limit;
+2. verify credentials using Auth V2 verifier;
+3. verify `admin_users` membership and enabled state;
+4. issue dedicated Admin session;
+5. write audit event.
+
+Success returns:
 
 - raw Admin session token;
 - expiry time;
-- safe Admin identity fields.
+- safe Admin identity fields/role.
 
-Failure should use a generic error such as:
+Failure returns generic:
 
 `admin_auth_failed`
 
-Do not reveal whether the username exists.
+Do not reveal whether:
+
+- Player ID does not exist;
+- password is wrong;
+- account exists but is not allowlisted.
 
 ### GET `adminValidateSession`
 
-Uses Bearer token.
+Uses Admin Bearer token.
 
-Returns safe identity + expiry/status only.
+Returns:
+
+- safe Admin identity;
+- role;
+- expiry.
 
 ### POST `adminLogout`
 
-Uses Bearer token.
+Uses Admin Bearer token.
 
-Revokes current session.
-
-### POST `adminRecoverAccess`
-
-Input:
-
-- `recoveryKey`
-- `username`
-- `newPassword`
-- `confirmPassword`
-
-On success:
-
-- password replaced;
-- all Admin sessions revoked;
-- response contains no recovery secret.
+Revokes current Admin session.
 
 ---
 
-## 8. Existing Admin API transition
+## 10. Existing Admin API transition
 
-Current Admin APIs must migrate from:
+Current Admin endpoints use `verifyAdminKey(env, adminKey)`.
 
-`adminKey`
+Admin V2 moves the UI to a shared session verifier:
 
-to the shared Admin session verifier.
+`verifyAdminSession(db, bearerToken(request))`
 
-Preferred implementation:
+or an equivalent request-aware helper.
 
-1. shared `verifyAdminSession(request, db)`;
-2. all Admin V2 UI calls send Bearer token;
-3. existing dedicated Admin handlers continue to enforce server-side authorization.
+All Admin V2 UI requests must use the dedicated Admin Bearer token.
 
-During initial rollout, legacy `adminKey` verification may remain temporarily as a rollback path, but:
+Existing dedicated handlers remain authoritative for their own operation; authentication changes must not accidentally make them public.
 
-- the Admin V2 UI must stop using it;
-- no new UI feature may depend on query-string `adminKey`;
-- it must be removed in a later cleanup after Admin V2 production verification.
+During initial rollout the legacy `adminKey` route may remain for rollback, but:
 
-Do not remove the legacy path in the same first release if doing so would make rollback unsafe.
-
----
-
-## 9. Admin origin / CORS boundary
-
-Admin calls come from the production frontend Admin page to the API Worker.
-
-Admin-authenticated endpoints should explicitly accept the approved frontend origin(s).
-
-Do not weaken public API behavior just to implement Admin CORS.
-
-Because Admin V2 uses a Bearer token rather than cookies:
-
-- do not build cookie/CSRF assumptions into Phase 0;
-- custom Authorization requests should pass the required CORS preflight;
-- localhost/dev origins may be allowed only through an explicit development rule.
+- the Admin V2 page must stop using it;
+- no new Admin feature may use it;
+- it is not considered the new security contract;
+- cleanup is a later controlled change.
 
 ---
 
-## 10. Rate limiting
+## 11. Separation from gameplay sessions
 
-Admin login/recovery requires brute-force protection.
+This boundary is locked.
+
+A Player Auth V2 session token:
+
+- proves account ownership for gameplay;
+- does not grant Admin access even if its account is in `admin_users`.
+
+An Admin session token:
+
+- authorizes Admin APIs only;
+- does not act as a gameplay session;
+- must not be accepted by normal player-authenticated endpoints.
+
+This prevents accidental privilege reuse between game UI and Admin UI.
+
+---
+
+## 12. Rate limiting
+
+Admin login requires brute-force protection.
 
 Baseline:
 
-- approximately 5 failed Admin login attempts per 10 minutes per IP + username;
-- escalating short cooldown is acceptable;
-- successful login clears the applicable failure state;
-- recovery/bootstrap attempts must also be rate-limited;
-- do not permanently lock Admin access because of remote failed guesses.
+- approximately 5 failed Admin login attempts per 10 minutes per IP + Player ID;
+- successful Admin login clears the applicable failure state;
+- use existing Auth V2 rate-limit primitives where practical;
+- do not create a permanent account lockout.
 
-Reuse existing Auth V2 rate-limit patterns where practical instead of inventing an unrelated mechanism.
+Failure response should remain generic.
 
 ---
 
-## 11. Audit log foundation
+## 13. Audit log foundation
 
 Admin V2 requires an audit model before player/economy mutation tools are added.
 
-Phase 0 audit events include at least:
+Suggested table:
 
-- `ADMIN_BOOTSTRAP`
+### `admin_audit_log`
+
+Phase 0 events include at least:
+
 - `ADMIN_LOGIN_SUCCESS`
 - `ADMIN_LOGIN_FAILURE`
 - `ADMIN_LOGOUT`
-- `ADMIN_RECOVER_ACCESS`
 - `ADMIN_SESSION_REVOKED`
 
 Suggested fields:
 
 - `audit_id`
-- `admin_id` nullable where no identity has been resolved
+- `player_id` nullable when identity could not be safely resolved
 - `event_type`
 - `target_type` nullable
 - `target_id` nullable
 - `metadata_json` containing only non-secret metadata
-- `ip_hash` or other privacy-safe request metadata if useful
 - `created_at`
 
 Never log:
 
 - password;
 - raw Admin session token;
-- recovery/bootstrap key;
-- password hash;
-- token hash.
+- player password hash;
+- recovery code/hash;
+- Admin token hash.
 
 Later Admin mutations must reuse this audit system.
 
 ---
 
-## 12. D1 schema direction
+## 14. D1 schema direction
 
-Phase 0 implementation will require forward-only Admin tables equivalent to:
+Phase 0 implementation requires forward-only tables equivalent to:
 
 - `admin_users`
 - `admin_sessions`
 - `admin_audit_log`
 
-Rate-limit storage may reuse existing infrastructure or add a dedicated table only if necessary.
+Use foreign keys/indexes consistent with existing D1 conventions.
 
 Important migration rule:
 
-- do not assign a migration filename/number from stale branch state;
-- implementation must first sync with latest `main`;
-- W9 currently owns migration `0022` on its feature branch, so Admin V2 must choose its actual migration number only after branch synchronization;
-- never replay historical migrations.
+- latest production `main` currently ends at automated migration `0021`;
+- W9 already owns `0022_arena_v2_foundation.sql` on its active feature branch;
+- Admin V2 must not create another `0022`;
+- reserve/choose the Admin migration number only with integration order accounted for;
+- do not replay historical migrations.
+
+Until W9 migration ordering is finalized, Admin code/tests may be prepared on the feature branch but production merge must not create a migration-number collision.
 
 ---
 
-## 13. Admin page Phase 0 UX
+## 15. Admin page Phase 0 UX
 
-Before authenticated session:
-
-### Login state
+Before authenticated Admin session:
 
 Show:
 
 - ThornieDungeons Admin
-- Username
+- Player ID
 - Password
 - LOGIN
-- Recover Admin Access
 
-Do not show the current raw Admin Key field in the normal login form.
+Do not show the old Admin Key field.
 
-### Recovery state
+Login error text should be generic.
 
-Hidden behind explicit `Recover Admin Access`.
-
-Show:
-
-- Recovery Key
-- Admin Username
-- New Password
-- Confirm Password
-- RESET ADMIN ACCESS
-- Cancel
-
-The Recovery Key input:
-
-- password-masked;
-- never prefilled;
-- never written to storage;
-- cleared immediately after the request completes.
-
-### Authenticated state
+On authenticated state:
 
 Show at minimum:
 
-- Admin identity;
+- Admin Player ID;
+- role;
 - session expiry/status;
-- PRODUCTION environment badge;
+- PRODUCTION badge;
 - Logout.
 
-Existing Recipes / Monster Drops / Junk Info tools remain functionally unchanged during Phase 0 except for how they authenticate.
+Existing:
 
-Full Admin V2 dashboard/navigation redesign belongs to the next UI phase.
+- Recipes
+- Monster Drops / Stats
+- Junk Info
+
+remain functionally unchanged in Phase 0 except authentication transport.
+
+Full Admin V2 dashboard/navigation redesign belongs to the next phase.
 
 ---
 
-## 14. Error contract
+## 16. Error contract
 
 Recommended Admin auth errors:
 
@@ -429,70 +416,68 @@ Recommended Admin auth errors:
 - `admin_session_invalid`
 - `admin_session_expired`
 - `admin_session_revoked`
-- `admin_bootstrap_unavailable`
-- `admin_recovery_failed`
 - `admin_rate_limited`
-- `invalid_admin_credentials_format`
 
-Client must distinguish network failure from confirmed auth failure.
+Client must distinguish network failure from confirmed authentication failure.
 
-A network timeout must not clear an otherwise valid Admin session.
+Do not return `not_admin` or similar during Login because it reveals allowlist membership.
 
 ---
 
-## 15. Implementation safety
+## 17. Implementation safety
 
 Admin authentication is **HIGH RISK**.
 
 Implementation must:
 
-- use a dedicated feature branch;
-- use an additive migration;
-- preserve current Admin content tools;
-- preserve existing production player authentication;
-- not mix Admin identity with player identity;
-- not expose secrets in URL, logs, HTML source or committed files;
+- remain on a feature branch;
+- use additive schema only;
+- preserve existing player Auth V2;
+- preserve existing Admin content tools;
+- not change player-session semantics;
+- never expose secrets in URLs/logs/source;
 - add targeted automated tests;
 - require QA before merge;
 - not deploy from the feature branch.
 
-No destructive data operations are part of Phase 0.
+No destructive data operation is part of Phase 0.
 
 ---
 
-## 16. Required QA matrix
+## 18. Required QA matrix
 
 At minimum verify:
 
-- first bootstrap succeeds only when no Admin account exists;
-- second bootstrap is rejected;
-- recovery key is sent only through POST body;
-- recovery key never reaches localStorage/sessionStorage;
-- normal login succeeds with correct password;
-- wrong username/password returns generic failure;
-- login rate limit works;
-- raw session token is not stored in D1;
+- valid allowlisted Player ID/password issues Admin session;
+- correct player credentials for non-Admin account return generic Admin auth failure;
+- wrong ID/password return the same generic failure;
+- player gameplay login behavior remains unchanged;
+- Admin login does not create/replace normal gameplay `auth_sessions`;
+- normal gameplay session cannot access Admin V2 APIs;
+- Admin session cannot access gameplay APIs;
+- Admin login rate limit works;
+- raw Admin session token is not stored in D1;
 - Admin session validation works;
-- expired session is rejected;
-- new login revokes previous active Admin session;
-- Logout revokes current session;
-- recovery changes password and revokes all sessions;
-- old password fails after recovery;
-- recovery with wrong key fails;
-- existing Recipes / Monster Drops / Junk Info reads/writes work using Bearer Admin session;
-- Admin page no longer sends `adminKey` in query string;
-- legacy Admin key path remains available only if explicitly retained for rollback;
-- normal player Auth V2 regression passes;
-- no production player/account data changes;
+- expired Admin session is rejected;
+- second Admin login revokes prior Admin session;
+- Logout revokes current Admin session;
+- disabled `admin_users` account cannot log in;
+- password reset/change through Auth V2 affects later Admin login correctly;
+- existing Recipes / Monster Drops / Junk Info reads/writes work with Admin Bearer session;
+- Admin page does not read/write `thornie-admin-key`;
+- Admin page sends no `adminKey` query/body field;
+- legacy Admin key path remains unchanged if retained for rollback;
+- normal Auth V2 regression passes;
+- no production player/account data is mutated by Admin authentication;
 - build passes;
 - no secret values appear in repository diff/test logs.
 
 ---
 
-## 17. Phase sequencing
+## 19. Phase sequencing
 
-Recommended Admin V2 sequence:
+Recommended sequence:
 
-`A0 Security/Auth Contract -> A0.1 Auth Schema/API -> A0.2 Admin Login/Recovery UI -> A0.3 Auth Migration of Existing Admin Tools -> QA -> A1 Dashboard/Player Viewer -> later Admin modules`
+`A0 Contract -> A0.1 admin_users/admin_sessions/audit schema + Admin auth API -> A0.2 /admin Login/Logout UI -> A0.3 migrate existing Admin tools to Admin Session -> QA -> A1 Dashboard/Player Viewer`
 
 Do not start player/economy mutation tooling before Phase 0 authentication and audit foundations pass QA.
