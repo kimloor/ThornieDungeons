@@ -364,12 +364,10 @@ Use foreign keys/indexes consistent with existing D1 conventions.
 Important migration rule:
 
 - latest production `main` currently ends at automated migration `0021`;
-- W9 already owns `0022_arena_v2_foundation.sql` on its active feature branch;
-- Admin V2 must not create another `0022`;
-- reserve/choose the Admin migration number only with integration order accounted for;
+- Admin V2 is the next production schema release and therefore claims `0022_admin_v2_auth.sql`;
+- the paused W9 Arena branch still contains its older `0022_arena_v2_foundation.sql` filename and must be rebased onto the Admin V2 release, then renumbered to the next available migration before W9 continues to release QA;
+- changing the W9 migration filename does not authorize changing its already-approved schema contents;
 - do not replay historical migrations.
-
-Until W9 migration ordering is finalized, Admin code/tests may be prepared on the feature branch but production merge must not create a migration-number collision.
 
 ---
 
