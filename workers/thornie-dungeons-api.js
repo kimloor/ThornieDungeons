@@ -644,6 +644,132 @@ function verifyAdminKey(env, adminKey) {
   return { ok: true };
 }
 
+const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
+const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000;
+
+async function writeAdminAudit(db, playerId, eventType, metadata = {}, targetType = null, targetId = null) {
+  const auditId = `admin-audit-${randomToken(18)}`;
+  await db.prepare(`
+    INSERT INTO admin_audit_log
+      (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    auditId,
+    playerId || null,
+    eventType,
+    targetType || null,
+    targetId || null,
+    JSON.stringify(metadata && typeof metadata === "object" ? metadata : {}),
+    nowIso()
+  ).run();
+}
+
+async function issueAdminSession(db, playerId) {
+  const rawToken = randomToken(32);
+  const tokenHash = await sha256(rawToken);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ADMIN_SESSION_MS);
+  const sessionId = `admin-sess-${randomToken(18)}`;
+  await db.batch([
+    db.prepare(`
+      UPDATE admin_sessions
+      SET revoked_at = ?, revoke_reason = 'replaced'
+      WHERE player_id = ? AND revoked_at IS NULL
+    `).bind(now.toISOString(), playerId),
+    db.prepare(`
+      INSERT INTO admin_sessions
+        (session_id, player_id, token_hash, created_at, expires_at, revoked_at, revoke_reason)
+      VALUES (?, ?, ?, ?, ?, NULL, NULL)
+    `).bind(sessionId, playerId, tokenHash, now.toISOString(), expiresAt.toISOString())
+  ]);
+  return { adminSessionToken: rawToken, expiresAt: expiresAt.toISOString() };
+}
+
+async function verifyAdminSession(db, token) {
+  if (!token) return { error: "admin_session_invalid" };
+  const tokenHash = await sha256(token);
+  const session = await db.prepare(`
+    SELECT s.*, u.role, u.enabled
+    FROM admin_sessions s
+    JOIN admin_users u ON u.player_id = s.player_id
+    WHERE s.token_hash = ?
+    LIMIT 1
+  `).bind(tokenHash).first();
+  if (!session) return { error: "admin_session_invalid" };
+  if (session.revoked_at || Number(session.enabled) !== 1) return { error: "admin_session_revoked" };
+  if (Date.parse(session.expires_at) <= Date.now()) return { error: "admin_session_expired" };
+  return {
+    ok: true,
+    playerId: session.player_id,
+    role: session.role || "admin",
+    session
+  };
+}
+
+async function handleAdminLogin(db, id, password, ip) {
+  const loginKey = rateKey("admin_login", ip, id);
+  const limited = await checkRateLimit(db, loginKey, 5, ADMIN_LOGIN_WINDOW_MS);
+  if (limited.error) {
+    return json({ error: "admin_rate_limited", retryAfter: limited.retryAfter }, 429);
+  }
+
+  const allowlisted = await db.prepare(`
+    SELECT u.player_id, u.role, u.enabled
+    FROM admin_users u
+    JOIN players p ON p.id = u.player_id
+    WHERE LOWER(p.id) = LOWER(?)
+    LIMIT 1
+  `).bind(String(id || "").trim()).first();
+
+  if (!allowlisted || Number(allowlisted.enabled) !== 1) {
+    await recordRateAttempt(db, loginKey, 5, ADMIN_LOGIN_WINDOW_MS);
+    await writeAdminAudit(db, null, "ADMIN_LOGIN_FAILURE", { reason: "auth_failed" });
+    return json({ error: "admin_auth_failed" }, 401);
+  }
+
+  const verified = await verifyPasswordCredentials(db, allowlisted.player_id, password);
+  if (verified.error) {
+    await recordRateAttempt(db, loginKey, 5, ADMIN_LOGIN_WINDOW_MS);
+    await writeAdminAudit(db, allowlisted.player_id, "ADMIN_LOGIN_FAILURE", { reason: "auth_failed" });
+    return json({ error: "admin_auth_failed" }, 401);
+  }
+
+  await recordRateAttempt(db, loginKey, 5, ADMIN_LOGIN_WINDOW_MS, true);
+  const session = await issueAdminSession(db, allowlisted.player_id);
+  await writeAdminAudit(db, allowlisted.player_id, "ADMIN_LOGIN_SUCCESS", { role: allowlisted.role || "admin" });
+  return json({
+    ok: true,
+    admin: { playerId: allowlisted.player_id, role: allowlisted.role || "admin" },
+    ...session
+  });
+}
+
+async function handleAdminValidateSession(db, auth) {
+  return json({
+    ok: true,
+    admin: { playerId: auth.playerId, role: auth.role || "admin" },
+    expiresAt: auth.session.expires_at
+  });
+}
+
+async function handleAdminLogout(db, auth) {
+  await db.prepare(`
+    UPDATE admin_sessions
+    SET revoked_at = ?, revoke_reason = 'logout'
+    WHERE session_id = ? AND revoked_at IS NULL
+  `).bind(nowIso(), auth.session.session_id).run();
+  await writeAdminAudit(db, auth.playerId, "ADMIN_LOGOUT");
+  return json({ ok: true });
+}
+
+async function verifyAdminAccess(db, env, request, legacyAdminKey) {
+  const token = bearerToken(request);
+  if (token) return await verifyAdminSession(db, token);
+  const legacy = verifyAdminKey(env, legacyAdminKey);
+  if (legacy.error) return legacy;
+  return { ok: true, legacy: true, playerId: null, role: "legacy" };
+}
+
 // ---------- Social Foundation V1 (docs/SOCIAL-SYSTEM-V1.md) ----------
 // Phase 1 shared foundation only — no Friend/Chat/Guild feature endpoints yet.
 // See docs/PROJECT-INDEX.md "Documentation gaps" note: Arena and Shop/Crafting/
@@ -5104,9 +5230,8 @@ function publicPlayerFields(player) {
   const { password, password_hash, recovery_code_hash, ...safe } = player;
   return safe;
 }
-async function handleAdminGetPlayer(db, env, adminKey, id) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminGetPlayer(db, adminAuth, id) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!id) return json({ error: "missing_fields" });
 
   const player = await getRow(db, "players", "id", id);
@@ -5117,27 +5242,24 @@ async function handleAdminGetPlayer(db, env, adminKey, id) {
   return json({ ok: true, player: publicPlayerFields(player), characters, items });
 }
 
-async function handleAdminGetAllPlayers(db, env, adminKey) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminGetAllPlayers(db, adminAuth) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
 
   const players = await db.prepare(`SELECT * FROM players`).all();
   const characters = await db.prepare(`SELECT * FROM characters`).all();
   return json({ ok: true, players: (players.results || []).map(publicPlayerFields), characters: characters.results || [] });
 }
 
-async function handleAdminGetPlayerItems(db, env, adminKey, id) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminGetPlayerItems(db, adminAuth, id) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!id) return json({ error: "missing_fields" });
 
   const items = await getRows(db, "items", "player_id", id);
   return json({ ok: true, items });
 }
 
-async function handleAdminGetGameStats(db, env, adminKey) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminGetGameStats(db, adminAuth) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
 
   const playerCount = await db.prepare(`SELECT COUNT(*) as c FROM players`).first();
   const characterCount = await db.prepare(`SELECT COUNT(*) as c FROM characters`).first();
@@ -5160,9 +5282,8 @@ async function handleAdminGetGameStats(db, env, adminKey) {
   });
 }
 
-async function handleAdminGetSheet(db, env, adminKey, tableName) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminGetSheet(db, adminAuth, tableName) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   const allowed = Object.keys(TABLES);
   if (!tableName || allowed.indexOf(tableName) === -1) return json({ error: "invalid_sheet", allowed });
 
@@ -5172,9 +5293,8 @@ async function handleAdminGetSheet(db, env, adminKey, tableName) {
   return json({ ok: true, sheet: tableName, rows });
 }
 
-async function handleAdminSaveGameConfig(db, env, adminKey, config) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminSaveGameConfig(db, adminAuth, config) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!config || typeof config !== "object") return json({ error: "invalid_config" });
 
   const now = nowIso();
@@ -5191,9 +5311,8 @@ async function handleAdminSaveGameConfig(db, env, adminKey, config) {
   return json({ ok: true });
 }
 
-async function handleAdminSetGameConfigItem(db, env, adminKey, key, value) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminSetGameConfigItem(db, adminAuth, key, value) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!key) return json({ error: "missing_fields" });
 
   await db
@@ -5212,9 +5331,8 @@ async function handleAdminSetGameConfigItem(db, env, adminKey, key, value) {
 // Reading recipes/monster_loot as an admin already works via the existing generic
 // `getSheet` action (now that both tables are registered in TABLES); only writes need
 // dedicated handlers since getSheet is read-only by design.
-async function handleAdminUpsertRecipe(db, env, adminKey, recipeId, type, name, setId, empowerSlotCount, materials) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminUpsertRecipe(db, adminAuth, recipeId, type, name, setId, empowerSlotCount, materials) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!recipeId || !type || !name || !materials || typeof materials !== "object") return json({ error: "missing_fields" });
   // rarity is ALWAYS "azure" regardless of set — see the design notes in handleCraftItem:
   // this is a fixed "crafted tier" tag (== mythic), not literally the Azure set's name, so
@@ -5238,17 +5356,15 @@ async function handleAdminUpsertRecipe(db, env, adminKey, recipeId, type, name, 
   return json({ ok: true });
 }
 
-async function handleAdminDeleteRecipe(db, env, adminKey, recipeId) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminDeleteRecipe(db, adminAuth, recipeId) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!recipeId) return json({ error: "missing_fields" });
   await db.prepare(`DELETE FROM recipes WHERE recipe_id = ?`).bind(recipeId).run();
   return json({ ok: true });
 }
 
-async function handleAdminUpsertMonsterLootEntry(db, env, adminKey, entry) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminUpsertMonsterLootEntry(db, adminAuth, entry) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   const { entryId, monsterId, kind, itemType, rarity, junkId, qtyMin, qtyMax, weight, dropChance } = entry || {};
   if (!monsterId || (kind !== "gear" && kind !== "junk")) return json({ error: "missing_fields" });
   if (kind === "gear" && !itemType) return json({ error: "missing_fields" });
@@ -5272,17 +5388,15 @@ async function handleAdminUpsertMonsterLootEntry(db, env, adminKey, entry) {
   return json({ ok: true, entryId: id });
 }
 
-async function handleAdminDeleteMonsterLootEntry(db, env, adminKey, entryId) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminDeleteMonsterLootEntry(db, adminAuth, entryId) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!entryId) return json({ error: "missing_fields" });
   await db.prepare(`DELETE FROM monster_loot WHERE entry_id = ?`).bind(entryId).run();
   return json({ ok: true });
 }
 
-async function handleAdminUpsertJunkInfo(db, env, adminKey, junkId, name, icon) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminUpsertJunkInfo(db, adminAuth, junkId, name, icon) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!junkId || !name) return json({ error: "missing_fields" });
   const now = nowIso();
   await db
@@ -5296,9 +5410,8 @@ async function handleAdminUpsertJunkInfo(db, env, adminKey, junkId, name, icon) 
   return json({ ok: true });
 }
 
-async function handleAdminDeleteJunkInfo(db, env, adminKey, junkId) {
-  const auth = verifyAdminKey(env, adminKey);
-  if (auth.error) return json(auth);
+async function handleAdminDeleteJunkInfo(db, adminAuth, junkId) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!junkId) return json({ error: "missing_fields" });
   await db.prepare(`DELETE FROM junk_info WHERE junk_id = ?`).bind(junkId).run();
   return json({ ok: true });
@@ -5324,16 +5437,21 @@ export default {
         if (action === "getJunkInfo") return await handleGetJunkInfo(db);
         if (action === "getLeaderboard") return await handleGetLeaderboard(db, p.get("board"));
         if (action === "getLeaderboardHistory") return await handleGetLeaderboardHistory(db, p.get("board"), p.get("date"));
-        if (action === "runLeaderboardSnapshot") {
-          const auth = verifyAdminKey(env, p.get("adminKey"));
-          if (auth.error) return json(auth);
-          return json({ ok: true, ...(await runLeaderboardSnapshot(db)) });
+        if (action === "adminValidateSession") {
+          const adminAuth = await verifyAdminSession(db, bearerToken(request));
+          if (adminAuth.error) return json({ error: adminAuth.error }, 401);
+          return await handleAdminValidateSession(db, adminAuth);
         }
-        if (action === "getPlayer") return await handleAdminGetPlayer(db, env, p.get("adminKey"), p.get("id"));
-        if (action === "getAllPlayers") return await handleAdminGetAllPlayers(db, env, p.get("adminKey"));
-        if (action === "getPlayerItems") return await handleAdminGetPlayerItems(db, env, p.get("adminKey"), p.get("id"));
-        if (action === "getGameStats") return await handleAdminGetGameStats(db, env, p.get("adminKey"));
-        if (action === "getSheet") return await handleAdminGetSheet(db, env, p.get("adminKey"), p.get("sheet"));
+        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet"].includes(action)) {
+          const adminAuth = await verifyAdminAccess(db, env, request, p.get("adminKey"));
+          if (adminAuth.error) return json({ error: adminAuth.error }, 401);
+          if (action === "runLeaderboardSnapshot") return json({ ok: true, ...(await runLeaderboardSnapshot(db)) });
+          if (action === "getPlayer") return await handleAdminGetPlayer(db, adminAuth, p.get("id"));
+          if (action === "getAllPlayers") return await handleAdminGetAllPlayers(db, adminAuth);
+          if (action === "getPlayerItems") return await handleAdminGetPlayerItems(db, adminAuth, p.get("id"));
+          if (action === "getGameStats") return await handleAdminGetGameStats(db, adminAuth);
+          if (action === "getSheet") return await handleAdminGetSheet(db, adminAuth, p.get("sheet"));
+        }
         const auth = await verifySession(db, bearerToken(request));
         if (auth.error) return json({ error: auth.error }, 401);
         const id = auth.row.id;
@@ -5359,8 +5477,8 @@ export default {
         if (action === "getDirectMessages") return await handleGetDirectMessages(db, id, auth, p.get("characterId"), p.get("withCharacterId"), p.get("afterId"));
         if (action === "getDirectConversations") return await handleGetDirectConversations(db, id, auth, p.get("characterId"));
         if (action === "runChatRetentionCleanup") {
-          const adminAuth = verifyAdminKey(env, p.get("adminKey"));
-          if (adminAuth.error) return json(adminAuth);
+          const adminAuth = await verifyAdminAccess(db, env, request, p.get("adminKey"));
+          if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           return json({ ok: true, ...(await runChatRetentionCleanup(db)) });
         }
         // Guild System V1 Core (Phase 4) — read actions
@@ -5380,16 +5498,24 @@ export default {
         if (body.action === "login") return await handleLogin(db, body.id, body.password, !!body.rememberLogin, ip);
         if (body.action === "register") return await handleRegister(db, body.id, body.password, body.confirmPassword, !!body.rememberLogin, ip);
         if (body.action === "forgotPassword") return await handleForgotPassword(db, body.id, body.recoveryCode, body.newPassword, body.confirmPassword, ip);
+        if (body.action === "adminLogin") return await handleAdminLogin(db, body.id, body.password, ip);
+        if (body.action === "adminLogout") {
+          const adminAuth = await verifyAdminSession(db, bearerToken(request));
+          if (adminAuth.error) return json({ error: adminAuth.error }, 401);
+          return await handleAdminLogout(db, adminAuth);
+        }
         if (["saveGameConfig", "setGameConfigItem", "adminUpsertRecipe", "adminDeleteRecipe", "adminUpsertMonsterLootEntry", "adminDeleteMonsterLootEntry", "adminUpsertJunkInfo", "adminDeleteJunkInfo"].includes(body.action)) {
+          const adminAuth = await verifyAdminAccess(db, env, request, body.adminKey);
+          if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           switch (body.action) {
-            case "saveGameConfig": return await handleAdminSaveGameConfig(db, env, body.adminKey, body.config);
-            case "setGameConfigItem": return await handleAdminSetGameConfigItem(db, env, body.adminKey, body.key, body.value);
-            case "adminUpsertRecipe": return await handleAdminUpsertRecipe(db, env, body.adminKey, body.recipeId, body.type, body.name, body.setId, body.empowerSlotCount, body.materials);
-            case "adminDeleteRecipe": return await handleAdminDeleteRecipe(db, env, body.adminKey, body.recipeId);
-            case "adminUpsertMonsterLootEntry": return await handleAdminUpsertMonsterLootEntry(db, env, body.adminKey, body.entry);
-            case "adminDeleteMonsterLootEntry": return await handleAdminDeleteMonsterLootEntry(db, env, body.adminKey, body.entryId);
-            case "adminUpsertJunkInfo": return await handleAdminUpsertJunkInfo(db, env, body.adminKey, body.junkId, body.name, body.icon);
-            case "adminDeleteJunkInfo": return await handleAdminDeleteJunkInfo(db, env, body.adminKey, body.junkId);
+            case "saveGameConfig": return await handleAdminSaveGameConfig(db, adminAuth, body.config);
+            case "setGameConfigItem": return await handleAdminSetGameConfigItem(db, adminAuth, body.key, body.value);
+            case "adminUpsertRecipe": return await handleAdminUpsertRecipe(db, adminAuth, body.recipeId, body.type, body.name, body.setId, body.empowerSlotCount, body.materials);
+            case "adminDeleteRecipe": return await handleAdminDeleteRecipe(db, adminAuth, body.recipeId);
+            case "adminUpsertMonsterLootEntry": return await handleAdminUpsertMonsterLootEntry(db, adminAuth, body.entry);
+            case "adminDeleteMonsterLootEntry": return await handleAdminDeleteMonsterLootEntry(db, adminAuth, body.entryId);
+            case "adminUpsertJunkInfo": return await handleAdminUpsertJunkInfo(db, adminAuth, body.junkId, body.name, body.icon);
+            case "adminDeleteJunkInfo": return await handleAdminDeleteJunkInfo(db, adminAuth, body.junkId);
           }
         }
         const auth = await verifySession(db, bearerToken(request));
