@@ -43,15 +43,46 @@
   .msg.err { color: #f08a8a; }
   .pill { display: inline-block; background: #2c2f3a; border-radius: 999px; padding: 2px 8px; font-size: 11px; margin-left: 6px; }
   select option { background: #14161d; }
+
+  .authGate { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .authCard { width:min(420px,100%); background:#181b23; border:1px solid #303541; border-radius:12px; padding:22px; box-shadow:0 16px 50px rgba(0,0,0,.35); }
+  .authCard h1 { margin:0 0 4px; font-size:22px; }
+  .authCard .field { margin-top:14px; }
+  .authCard input { width:100%; box-sizing:border-box; }
+  .envBadge { display:inline-block; margin-top:6px; padding:3px 8px; border-radius:999px; background:#6b2424; color:#ffdada; font-size:11px; font-weight:700; letter-spacing:.5px; }
+  .adminSessionInfo { margin-left:auto; display:flex; align-items:center; gap:10px; font-size:12px; color:#bbb; }
+  #adminLogoutBtn { padding:6px 10px; border-radius:6px; }
 </style>
 </head>
 <body>
 
+<div id="adminLoginGate" class="authGate">
+  <div class="authCard">
+    <h1>🛠️ ThornieDungeons Admin</h1>
+    <div class="envBadge">PRODUCTION</div>
+    <form id="adminLoginForm">
+      <div class="field">
+        <label>Player ID</label>
+        <input id="adminLoginId" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input id="adminLoginPassword" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn-primary" type="submit" style="width:100%;margin-top:16px;">เข้าสู่ระบบ Admin</button>
+      <div class="msg" id="adminLoginMsg"></div>
+    </form>
+    <div class="muted" style="margin-top:10px;">ใช้ Player ID / Password ของบัญชีเกมที่ได้รับสิทธิ์ Admin</div>
+  </div>
+</div>
+
+<div id="adminApp" style="display:none;">
 <header>
-  <h1>🛠️ ThornieDungeons Admin</h1>
-  <input id="adminKeyInput" type="password" placeholder="Admin key">
-  <button id="saveKeyBtn">บันทึกคีย์</button>
-  <button class="ghost" id="clearKeyBtn">ล้าง</button>
+  <h1>🛠️ ThornieDungeons Admin <span class="envBadge">PRODUCTION</span></h1>
+  <div class="adminSessionInfo">
+    <span id="adminIdentity"></span>
+    <button class="ghost" id="adminLogoutBtn">ออกจากระบบ</button>
+  </div>
 </header>
 
 <div class="tabs">
@@ -202,10 +233,11 @@
     </div>
   </section>
 </main>
+</div>
 
 <script>
 const SERVER_URL = "https://thornie-dungeons-api.ekqtjl.workers.dev";
-const KEY_STORAGE = "thornie-admin-key";
+const ADMIN_SESSION_STORAGE = "thornie-admin-session";
 
 // Static fallback monster list — kept in sync manually with ENEMY_POOL/BOSS_POOL in
 // src/systems/pets.js. Only used to populate the dropdown; actual stat values always come
@@ -223,28 +255,108 @@ const STATIC_MONSTERS = [
   { id: "frost_warden", name: "Frost Warden", isBoss: true }
 ];
 
-function adminKey() { return localStorage.getItem(KEY_STORAGE) || ""; }
+function adminToken() { return sessionStorage.getItem(ADMIN_SESSION_STORAGE) || ""; }
+
+function setAdminUi(auth) {
+  const loggedIn = !!auth?.admin;
+  document.getElementById("adminLoginGate").style.display = loggedIn ? "none" : "flex";
+  document.getElementById("adminApp").style.display = loggedIn ? "block" : "none";
+  if (loggedIn) {
+    const expiry = auth.expiresAt ? new Date(auth.expiresAt).toLocaleString() : "";
+    document.getElementById("adminIdentity").textContent =
+      `${auth.admin.playerId} · ${auth.admin.role}${expiry ? ` · หมดอายุ ${expiry}` : ""}`;
+  } else {
+    document.getElementById("adminIdentity").textContent = "";
+  }
+}
+
+function clearAdminSession(message = "") {
+  sessionStorage.removeItem(ADMIN_SESSION_STORAGE);
+  setAdminUi(null);
+  if (message) {
+    const msg = document.getElementById("adminLoginMsg");
+    msg.textContent = message;
+    msg.className = "msg err";
+  }
+}
+
+function authHeaders() {
+  const token = adminToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 async function apiGet(params) {
   const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${SERVER_URL}?${qs}`);
-  return res.json();
+  const res = await fetch(`${SERVER_URL}?${qs}`, { headers: authHeaders() });
+  const data = await res.json();
+  if (["admin_session_invalid", "admin_session_expired", "admin_session_revoked"].includes(data.error)) {
+    clearAdminSession("เซสชัน Admin หมดอายุหรือไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่");
+  }
+  return data;
 }
 async function apiPost(body) {
-  const res = await fetch(SERVER_URL, { method: "POST", body: JSON.stringify(body) });
-  return res.json();
+  const res = await fetch(SERVER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (["admin_session_invalid", "admin_session_expired", "admin_session_revoked"].includes(data.error)) {
+    clearAdminSession("เซสชัน Admin หมดอายุหรือไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่");
+  }
+  return data;
 }
 
-// ---------- key handling ----------
-document.getElementById("adminKeyInput").value = adminKey();
-document.getElementById("saveKeyBtn").onclick = () => {
-  localStorage.setItem(KEY_STORAGE, document.getElementById("adminKeyInput").value.trim());
-  alert("บันทึกคีย์แล้ว");
+document.getElementById("adminLoginForm").onsubmit = async (event) => {
+  event.preventDefault();
+  const id = document.getElementById("adminLoginId").value.trim();
+  const passwordInput = document.getElementById("adminLoginPassword");
+  const password = passwordInput.value;
+  const msg = document.getElementById("adminLoginMsg");
+  msg.textContent = "กำลังเข้าสู่ระบบ...";
+  msg.className = "msg";
+  try {
+    const res = await apiPost({ action: "adminLogin", id, password });
+    passwordInput.value = "";
+    if (res.error) {
+      msg.textContent = res.error === "admin_rate_limited"
+        ? `ลองเข้าสู่ระบบถี่เกินไป กรุณารอ ${Number(res.retryAfter) || 1} วินาที`
+        : "Player ID หรือ Password ไม่ถูกต้อง หรือบัญชีนี้ไม่มีสิทธิ์ Admin";
+      msg.className = "msg err";
+      return;
+    }
+    sessionStorage.setItem(ADMIN_SESSION_STORAGE, res.adminSessionToken);
+    msg.textContent = "";
+    setAdminUi(res);
+    await loadRecipes();
+  } catch (error) {
+    passwordInput.value = "";
+    msg.textContent = "เชื่อมต่อ Admin API ไม่สำเร็จ";
+    msg.className = "msg err";
+  }
 };
-document.getElementById("clearKeyBtn").onclick = () => {
-  localStorage.removeItem(KEY_STORAGE);
-  document.getElementById("adminKeyInput").value = "";
+
+document.getElementById("adminLogoutBtn").onclick = async () => {
+  try { await apiPost({ action: "adminLogout" }); } catch (error) {}
+  clearAdminSession();
 };
+
+async function restoreAdminSession() {
+  if (!adminToken()) {
+    setAdminUi(null);
+    return;
+  }
+  try {
+    const res = await apiGet({ action: "adminValidateSession" });
+    if (res.error) {
+      clearAdminSession();
+      return;
+    }
+    setAdminUi(res);
+  } catch (error) {
+    clearAdminSession("ตรวจสอบเซสชัน Admin ไม่สำเร็จ");
+  }
+}
 
 // ---------- tabs ----------
 document.querySelectorAll(".tab").forEach(t => {
@@ -263,8 +375,7 @@ let editingRecipeId = null;
 let junkInfoCache = []; // shared with Junk Info tab — [{junk_id, name, icon}]
 
 async function loadJunkInfoList() {
-  if (!adminKey()) return junkInfoCache;
-  const res = await apiGet({ action: "getSheet", adminKey: adminKey(), sheet: "junk_info" });
+    const res = await apiGet({ action: "getSheet", sheet: "junk_info" });
   if (!res.error) junkInfoCache = res.rows || [];
   return junkInfoCache;
 }
@@ -322,9 +433,8 @@ document.getElementById("cancelRecipeEditBtn").onclick = resetRecipeForm;
 let recipesCache = [];
 async function loadRecipes() {
   const msg = document.getElementById("recipeMsg");
-  if (!adminKey()) { msg.textContent = "กรุณาใส่ admin key ก่อน"; msg.className = "msg err"; return; }
-  await loadJunkInfoList(); // needed to populate the materials dropdown options
-  const res = await apiGet({ action: "getSheet", adminKey: adminKey(), sheet: "recipes" });
+    await loadJunkInfoList(); // needed to populate the materials dropdown options
+  const res = await apiGet({ action: "getSheet", sheet: "recipes" });
   if (res.error) { msg.textContent = "โหลดไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
   recipesCache = (res.rows || []).map(r => {
     let def = {}, materials = {};
@@ -382,7 +492,7 @@ document.getElementById("saveRecipeBtn").onclick = async () => {
     msg.className = "msg err";
     return;
   }
-  const res = await apiPost({ action: "adminUpsertRecipe", adminKey: adminKey(), recipeId, type, name, setId, empowerSlotCount, materials });
+  const res = await apiPost({ action: "adminUpsertRecipe", recipeId, type, name, setId, empowerSlotCount, materials });
   if (res.error) { msg.textContent = "บันทึกไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
   msg.textContent = "บันทึกแล้ว ✓"; msg.className = "msg ok";
   resetRecipeForm();
@@ -391,7 +501,7 @@ document.getElementById("saveRecipeBtn").onclick = async () => {
 
 async function deleteRecipe(recipeId) {
   if (!confirm(`ลบ recipe "${recipeId}" ?`)) return;
-  const res = await apiPost({ action: "adminDeleteRecipe", adminKey: adminKey(), recipeId });
+  const res = await apiPost({ action: "adminDeleteRecipe", recipeId });
   if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
   loadRecipes();
 }
@@ -417,10 +527,9 @@ populateMonsterSelect();
 
 document.getElementById("monsterSelect").onchange = renderMonsterSection;
 document.getElementById("reloadMonsterDataBtn").onclick = async () => {
-  if (!adminKey()) { alert("กรุณาใส่ admin key ก่อน"); return; }
-  const [cfgRes, lootRes] = await Promise.all([
+    const [cfgRes, lootRes] = await Promise.all([
     apiGet({ action: "getGameConfig" }),
-    apiGet({ action: "getSheet", adminKey: adminKey(), sheet: "monster_loot" })
+    apiGet({ action: "getSheet", sheet: "monster_loot" })
   ]);
   if (lootRes.error) { alert("โหลด monster_loot ไม่สำเร็จ: " + lootRes.error); return; }
   gameConfigCache = cfgRes || {};
@@ -464,7 +573,7 @@ document.getElementById("saveStatsBtn").onclick = async () => {
     xpMult: Number(document.getElementById("s_xpMult").value) || 1
   };
   if (idx >= 0) list[idx] = updated; else list.push(updated);
-  const res = await apiPost({ action: "setGameConfigItem", adminKey: adminKey(), key: "monsters", value: list });
+  const res = await apiPost({ action: "setGameConfigItem", key: "monsters", value: list });
   if (res.error) { msg.textContent = "บันทึกไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
   gameConfigCache.monsters = list;
   msg.textContent = "บันทึกแล้ว ✓ (มีผลตอน client โหลด config รอบถัดไป)"; msg.className = "msg ok";
@@ -507,7 +616,7 @@ document.getElementById("addGearBtn").onclick = async () => {
     rarity: document.getElementById("g_rarity").value || null,
     weight: Number(document.getElementById("g_weight").value) || 1
   };
-  const res = await apiPost({ action: "adminUpsertMonsterLootEntry", adminKey: adminKey(), entry });
+  const res = await apiPost({ action: "adminUpsertMonsterLootEntry", entry });
   if (res.error) { msg.textContent = "เพิ่มไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
   msg.textContent = "เพิ่มแล้ว ✓"; msg.className = "msg ok";
   monsterLootCache.push({ entry_id: res.entryId, monster_id: currentMonsterId, kind: "gear", item_type: entry.itemType, rarity: entry.rarity, weight: entry.weight });
@@ -528,7 +637,7 @@ document.getElementById("addJunkBtn").onclick = async () => {
     dropChance: Number(document.getElementById("j_dropChance").value)
   };
   entry.dropChance = isNaN(entry.dropChance) ? 1 : entry.dropChance;
-  const res = await apiPost({ action: "adminUpsertMonsterLootEntry", adminKey: adminKey(), entry });
+  const res = await apiPost({ action: "adminUpsertMonsterLootEntry", entry });
   if (res.error) { msg.textContent = "เพิ่มไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
   msg.textContent = "เพิ่มแล้ว ✓"; msg.className = "msg ok";
   monsterLootCache.push({ entry_id: res.entryId, monster_id: currentMonsterId, kind: "junk", junk_id: junkId, qty_min: entry.qtyMin, qty_max: entry.qtyMax, drop_chance: entry.dropChance });
@@ -537,7 +646,7 @@ document.getElementById("addJunkBtn").onclick = async () => {
 
 async function deleteLootEntry(entryId, kind) {
   if (!confirm("ลบแถวนี้?")) return;
-  const res = await apiPost({ action: "adminDeleteMonsterLootEntry", adminKey: adminKey(), entryId });
+  const res = await apiPost({ action: "adminDeleteMonsterLootEntry", entryId });
   if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
   monsterLootCache = monsterLootCache.filter(r => r.entry_id !== entryId);
   if (kind === "gear") renderGearTable(); else renderJunkTable();
@@ -586,8 +695,7 @@ function editJunkInfo(j) {
 
 document.getElementById("reloadJunkInfoBtn").onclick = async () => {
   const msg = document.getElementById("junkInfoMsg");
-  if (!adminKey()) { msg.textContent = "กรุณาใส่ admin key ก่อน"; msg.className = "msg err"; return; }
-  await loadJunkInfoList();
+    await loadJunkInfoList();
   renderJunkInfoTable();
 };
 
@@ -597,7 +705,7 @@ document.getElementById("saveJunkInfoBtn").onclick = async () => {
   const name = document.getElementById("ji_name").value.trim();
   const icon = document.getElementById("ji_icon").value.trim() || "📦";
   if (!junkId || !name) { msg.textContent = "กรอก junkId และชื่อก่อน"; msg.className = "msg err"; return; }
-  const res = await apiPost({ action: "adminUpsertJunkInfo", adminKey: adminKey(), junkId, name, icon });
+  const res = await apiPost({ action: "adminUpsertJunkInfo", junkId, name, icon });
   if (res.error) { msg.textContent = "บันทึกไม่สำเร็จ: " + res.error; msg.className = "msg err"; return; }
   msg.textContent = "บันทึกแล้ว ✓"; msg.className = "msg ok";
   resetJunkInfoForm();
@@ -607,7 +715,7 @@ document.getElementById("saveJunkInfoBtn").onclick = async () => {
 
 async function deleteJunkInfo(junkId) {
   if (!confirm(`ลบวัตถุดิบ "${junkId}" ? (recipe ที่ใช้วัตถุดิบนี้อยู่จะยังอ้างอิง junkId เดิม แค่ไม่มีชื่อ/icon ให้แสดงในเกม)`)) return;
-  const res = await apiPost({ action: "adminDeleteJunkInfo", adminKey: adminKey(), junkId });
+  const res = await apiPost({ action: "adminDeleteJunkInfo", junkId });
   if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
   await loadJunkInfoList();
   renderJunkInfoTable();
