@@ -157,11 +157,29 @@ function allowAdmin(db, id, role = "owner") {
   `).run(id, role);
 }
 
-test("Admin V2 migration is additive and has no implicit owner seed", () => {
-  const db = createDb();
+test("Admin V2 migration is additive and provisions the approved admin owner when the account exists", () => {
+  const db = new D1Database();
+  db.raw.exec(`
+    PRAGMA foreign_keys=ON;
+    CREATE TABLE players (
+      id TEXT PRIMARY KEY,
+      password TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      diamonds INTEGER DEFAULT 0,
+      active_slot INTEGER
+    );
+    INSERT INTO players (id, password, created_at) VALUES ('admin', '', 'now');
+  `);
+  db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
+  db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0023_admin_v2_auth.sql"), "utf8"));
+
   const tables = db.raw.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'admin_%' ORDER BY name`).all().map(row => row.name);
   assert.deepEqual(tables, ["admin_audit_log", "admin_sessions", "admin_users"]);
-  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM admin_users").get().c, 0);
+
+  const owner = db.raw.prepare("SELECT player_id, role, enabled FROM admin_users WHERE player_id='admin'").get();
+  assert.equal(owner.player_id, "admin");
+  assert.equal(owner.role, "owner");
+  assert.equal(owner.enabled, 1);
 });
 
 test("allowlisted Auth V2 credentials issue a dedicated 8-hour Admin session only", async () => {
