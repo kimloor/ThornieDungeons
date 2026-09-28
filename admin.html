@@ -354,7 +354,12 @@ async function restoreAdminSession() {
     }
     setAdminUi(res);
   } catch (error) {
-    clearAdminSession("ตรวจสอบเซสชัน Admin ไม่สำเร็จ");
+    // Network failure is not proof that the Admin session is invalid.
+    // Keep the session token so a transient outage does not force re-login.
+    setAdminUi(null);
+    const msg = document.getElementById("adminLoginMsg");
+    msg.textContent = "ตรวจสอบเซสชัน Admin ไม่สำเร็จ — session เดิมยังถูกเก็บไว้ ลองรีเฟรชอีกครั้ง";
+    msg.className = "msg err";
   }
 }
 
