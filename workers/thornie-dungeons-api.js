@@ -762,6 +762,21 @@ async function handleAdminLogout(db, auth) {
   return json({ ok: true });
 }
 
+async function revokeAdminSessionsForCredentialChange(db, playerId, reason) {
+  try {
+    await db.prepare(`
+      UPDATE admin_sessions
+      SET revoked_at = ?, revoke_reason = ?
+      WHERE player_id = ? AND revoked_at IS NULL
+    `).bind(nowIso(), reason, playerId).run();
+  } catch (error) {
+    // Auth V2 tests/rollback environments may predate the Admin V2 migration.
+    // Production release order applies the Admin migration before this Worker.
+    if (/no such table:\s*admin_sessions/i.test(String(error?.message || error))) return;
+    throw error;
+  }
+}
+
 async function verifyAdminAccess(db, env, request, legacyAdminKey) {
   const token = bearerToken(request);
   if (token) return await verifyAdminSession(db, token);
@@ -2558,6 +2573,7 @@ async function handleChangePassword(db, auth, currentPassword, newPassword, conf
     db.prepare(`UPDATE players SET password_hash = ?, auth_version = 2 WHERE id = ?`).bind(await hashPassword(newPassword), auth.row.id),
     db.prepare(`UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'password_changed' WHERE player_id = ? AND revoked_at IS NULL`).bind(now, auth.row.id)
   ]);
+  await revokeAdminSessionsForCredentialChange(db, auth.row.id, "password_changed");
   return json({ ok: true, requireLogin: true });
 }
 
@@ -2581,6 +2597,7 @@ async function handleForgotPassword(db, id, recoveryCode, newPassword, confirmPa
       .bind(await hashPassword(newPassword), await recoveryCodeHash(nextRecoveryCode), player.id),
     db.prepare(`UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'password_reset' WHERE player_id = ? AND revoked_at IS NULL`).bind(now, player.id)
   ]);
+  await revokeAdminSessionsForCredentialChange(db, player.id, "password_reset");
   await recordRateAttempt(db, recoveryKey, 5, 5 * 60 * 1000, true);
   return json({ ok: true, recoveryCode: nextRecoveryCode, requireLogin: true });
 }
