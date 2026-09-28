@@ -228,7 +228,7 @@ test("gameplay and Admin session tokens are not interchangeable", async () => {
   assert.equal((await auth.verifySession(db, adminLogin.adminSessionToken)).error, "invalid_session");
 });
 
-test("second Admin login revokes the previous Admin session and logout revokes current", async () => {
+test("second Admin login revokes the previous Admin session and audits the replacement", async () => {
   const db = createDb();
   await createAccount(db);
   allowAdmin(db, "Admin_1");
@@ -239,6 +239,12 @@ test("second Admin login revokes the previous Admin session and logout revokes c
   assert.equal((await admin.verifyAdminSession(db, first.adminSessionToken)).error, "admin_session_revoked");
   const active = await admin.verifyAdminSession(db, second.adminSessionToken);
   assert.equal(active.ok, true);
+
+  const replacementAudit = db.raw.prepare(
+    "SELECT metadata_json FROM admin_audit_log WHERE player_id='Admin_1' AND event_type='ADMIN_SESSION_REVOKED' ORDER BY rowid DESC LIMIT 1"
+  ).get();
+  assert.ok(replacementAudit);
+  assert.equal(JSON.parse(replacementAudit.metadata_json).reason, "replaced");
 
   assert.equal((await body(await admin.handleAdminLogout(db, active))).ok, true);
   assert.equal((await admin.verifyAdminSession(db, second.adminSessionToken)).error, "admin_session_revoked");
@@ -328,6 +334,12 @@ test("player password change and recovery reset revoke active Admin sessions", a
   const reset = await body(await auth.handleForgotPassword(db, "Admin_1", recovery.recoveryCode, "next1", "next1", "recovery-ip"));
   assert.equal(reset.ok, true);
   assert.equal((await admin.verifyAdminSession(db, secondAdmin.adminSessionToken)).error, "admin_session_revoked");
+
+  const revokeAudits = db.raw.prepare(
+    "SELECT metadata_json FROM admin_audit_log WHERE player_id='Admin_1' AND event_type='ADMIN_SESSION_REVOKED' ORDER BY rowid"
+  ).all().map(row => JSON.parse(row.metadata_json).reason);
+  assert.ok(revokeAudits.includes("password_changed"));
+  assert.ok(revokeAudits.includes("password_reset"));
 });
 
 test("Admin audit records auth events without raw password/session token fields", async () => {
