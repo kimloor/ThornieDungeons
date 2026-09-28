@@ -257,12 +257,13 @@ test("Admin Bearer session authorizes existing Admin reads without adminKey", as
   const login = await body(await admin.handleAdminLogin(db, "Admin_1", "pass", "ip-admin"));
 
   const env = { DB: db, ADMIN_API_KEY: "legacy-only" };
-  const req = new Request("https://api.example.test/?action=getGameStats", {
+  const req = new Request("https://api.example.test/?action=getSheet&sheet=players", {
     headers: { Authorization: `Bearer ${login.adminSessionToken}` }
   });
   const result = await body(await worker.fetch(req, env));
   assert.equal(result.ok, true);
-  assert.equal(result.stats.players, 1);
+  assert.equal(result.sheet, "players");
+  assert.equal(result.rows.length, 1);
 });
 
 test("legacy ADMIN_API_KEY rollback path remains available but Admin V2 UI no longer uses it", async () => {
@@ -271,10 +272,11 @@ test("legacy ADMIN_API_KEY rollback path remains available but Admin V2 UI no lo
   const env = { DB: db, ADMIN_API_KEY: "legacy-key" };
 
   const legacy = await body(await worker.fetch(
-    new Request("https://api.example.test/?action=getGameStats&adminKey=legacy-key"),
+    new Request("https://api.example.test/?action=getSheet&sheet=players&adminKey=legacy-key"),
     env
   ));
   assert.equal(legacy.ok, true);
+  assert.equal(legacy.sheet, "players");
 
   const html = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
   assert.doesNotMatch(html, /thornie-admin-key/);
