@@ -1,0 +1,28 @@
+name: Admin V2 branch QA
+
+on:
+  push:
+    branches:
+      - "feat/admin-v2-auth"
+
+permissions:
+  contents: read
+
+jobs:
+  admin-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Worker syntax
+        run: node --check workers/thornie-dungeons-api.js
+      - name: Admin V2 auth tests
+        run: node --test tests/admin-v2-auth.test.js
+      - name: Auth V2 regression
+        run: node --test tests/auth-v2.test.js tests/auth-client.test.js tests/auth-gameplay-callers.test.js
+      - name: Build
+        run: |
+          node build.js
+          git diff --exit-code -- index.html
