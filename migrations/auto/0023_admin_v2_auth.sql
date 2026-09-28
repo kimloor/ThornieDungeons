@@ -55,5 +55,14 @@ CREATE INDEX idx_admin_audit_created
 CREATE INDEX idx_admin_audit_player
   ON admin_audit_log(player_id, created_at DESC);
 
--- Deliberately no production Admin seed row here.
--- The approved owner Player ID must be provisioned explicitly before release.
+-- Approved initial Admin owner.
+-- The player account must already exist before this migration is released.
+-- No password/recovery credential is stored here.
+INSERT INTO admin_users (player_id, role, enabled, created_at, updated_at)
+SELECT id, 'owner', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM players
+WHERE LOWER(id) = LOWER('admin')
+ON CONFLICT(player_id) DO UPDATE SET
+  role = 'owner',
+  enabled = 1,
+  updated_at = excluded.updated_at;
