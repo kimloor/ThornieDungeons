@@ -15,3 +15,5 @@ Checks: all 112 canvas/mode checks pass; required layers nonempty; four death sw
 Scope: graphics review package only. No main/R2 manifest, W9, Base Hero, Azure, Wing R5, runtime, frontend/API or schema changes. No R2 URLs or live upload claimed.
 
 Next: QA both sets at actual game scale, weapon-grip and hair/wing overlap in all frames. Resolve visual issues before promoting ZIP families to r2-upload and integrating MANIFEST_PROPOSAL.json through the normal Azure/R2 pipeline. Verify upload hashes after merge. After armor fitting review closes, continue wing design with the user.
+
+FOLLOW-UP FULL COMPOSITE REVIEW: see full-composite-review/README.md. Two full contact sheets and six slower GIFs use current Wing R5 and the exact requested draw order, with both hair layers suppressed for full-face Robot/Skeleton helmets per user approval. FC-01 is resolved in offline review. DEV must apply conditional hair suppression only while a full-face helmet is equipped and restore selected hair otherwise. No source art edits, R2 publication, new wings or in-game QA claim.

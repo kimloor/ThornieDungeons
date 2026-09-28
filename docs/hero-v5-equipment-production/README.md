@@ -44,3 +44,7 @@ The expanded package and individual preview PNGs are generated locally and exclu
 ## Next action
 
 Project Lead / DEV / QA: inspect the candidate at actual in-game size, check hair + wing overlap, weapon grip occlusion, and all attack/death transitions. If visual QA passes, unpack the two families to `r2-upload/hero/v5/g2/equipment/{robot,skeleton}/`, integrate the proposed manifest entries according to current runtime contracts, then publish through the standard R2 workflow and verify hashes. Do not overwrite Azure or Wing R5. Wing design follows closure of the armor fitting review.
+
+## Additional full composite review
+
+See `full-composite-review/README.md` for full hair + Wing R5 contact sheets and slow GIFs. FC-01 (Topknot protruding beyond both closed helmets) is resolved in offline review using the user-approved rule: full-face helmets hide both hair layers. Source artwork remains unchanged; DEV must implement and test the conditional visibility rule in runtime.
