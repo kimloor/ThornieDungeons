@@ -41,7 +41,7 @@ globalThis.__admin = {
   verifyAdminSession,
   verifyAdminAccess
 };
-globalThis.__auth = { handleRegister, handleLogin, verifySession };
+globalThis.__auth = { handleRegister, handleLogin, verifySession, handleChangePassword, handleCreateRecoveryCode, handleForgotPassword };
 `;
   const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(sandbox);
@@ -286,6 +286,30 @@ test("legacy ADMIN_API_KEY rollback path remains available but Admin V2 UI no lo
   assert.match(html, /action:\s*"adminLogin"/);
   assert.match(html, /action:\s*"adminLogout"/);
   assert.match(html, /adminValidateSession/);
+});
+
+test("player password change and recovery reset revoke active Admin sessions", async () => {
+  const db = createDb();
+  const registered = await createAccount(db);
+  allowAdmin(db, "Admin_1");
+
+  const firstAdmin = await body(await admin.handleAdminLogin(db, "Admin_1", "pass", "ip-admin-1"));
+  const playerAuth = await auth.verifySession(db, registered.sessionToken);
+  assert.equal(playerAuth.ok, true);
+
+  const changed = await body(await auth.handleChangePassword(db, playerAuth, "pass", "new1", "new1"));
+  assert.equal(changed.ok, true);
+  assert.equal((await admin.verifyAdminSession(db, firstAdmin.adminSessionToken)).error, "admin_session_revoked");
+
+  const relogin = await body(await auth.handleLogin(db, "Admin_1", "new1", false, "player-relogin"));
+  const reloginAuth = await auth.verifySession(db, relogin.sessionToken);
+  const recovery = await body(await auth.handleCreateRecoveryCode(db, reloginAuth, "new1"));
+  assert.equal(recovery.ok, true);
+
+  const secondAdmin = await body(await admin.handleAdminLogin(db, "Admin_1", "new1", "ip-admin-2"));
+  const reset = await body(await auth.handleForgotPassword(db, "Admin_1", recovery.recoveryCode, "next1", "next1", "recovery-ip"));
+  assert.equal(reset.ok, true);
+  assert.equal((await admin.verifyAdminSession(db, secondAdmin.adminSessionToken)).error, "admin_session_revoked");
 });
 
 test("Admin audit records auth events without raw password/session token fields", async () => {
