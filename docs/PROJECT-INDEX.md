@@ -42,6 +42,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked Hero V5 **modular layered, frame-based sprite** architecture; no skeletal/bone/Spine runtime is required, and the document does not itself authorize replacing the current production Hero. |
 | [`INVENTORY-UI-V2.md`](INVENTORY-UI-V2.md) | Inventory/equipment layout, item popup, compare rules, rarity presentation, capacity, overflow, and responsive behavior. |
 | [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) | Login/Auth V2 account, session, password, recovery, migration, frontend, and backend security contract. |
+| [`ADMIN-V2.md`](ADMIN-V2.md) | **ACTIVE-DESIGN** Admin V2 security/auth foundation: dedicated Admin identity/session, bootstrap/recovery key role, audit baseline, migration and QA contract. |
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
 | [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |
 | [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) | **ACTIVE-DESIGN** shared Phaser presentation architecture for Combat/Arena/preview surfaces; W9 Arena gameplay changes are governed by `ARENA-V2-W9.md`. |
@@ -144,6 +145,13 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 - [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) when persistence/transaction safety is affected
 - [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) when adding/changing Friend/Chat/Guild routes or badges
 - [`DEPLOYMENT.md`](DEPLOYMENT.md) for backend/D1 migration or release work
+
+### Admin
+
+- [`AGENTS.md`](../AGENTS.md)
+- [`ADMIN-V2.md`](ADMIN-V2.md)
+- [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) only when shared auth primitives/patterns are reused
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) for D1 migration or Worker release work
 
 ### Login / Auth
 
