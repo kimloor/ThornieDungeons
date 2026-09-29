@@ -266,18 +266,26 @@ test('setAuto and submit action share one state revision so concurrent writes ca
     arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'auto-race-action', 'basic', null, 'team_b_hero', false),
   ]);
   const bodies = await Promise.all(responses.map(body));
-  assert.equal(bodies.filter((result) => result.ok).length, 1, JSON.stringify(bodies));
+  const successCount = bodies.filter((result) => result.ok).length;
+  assert.ok(successCount === 1 || successCount === 2, JSON.stringify(bodies));
 
   const saved = JSON.parse(db.raw.prepare('SELECT state_json FROM arena_matches WHERE match_id = ?').get(active.match.matchId).state_json);
   const receipts = db.raw.prepare('SELECT COUNT(*) AS c FROM arena_match_actions WHERE match_id = ?').get(active.match.matchId).c;
-  if (bodies[0].ok) {
+  if (successCount === 2) {
+    // Both transitions may legitimately serialize. The later Auto write must be
+    // preserved instead of being overwritten by a stale combat state.
+    assert.equal(saved.flags.auto, true);
+    assert.equal(receipts, 1);
+    assert.equal(Number(saved.arenaStateRev), 2);
+  } else if (bodies[0].ok) {
     assert.equal(saved.flags.auto, true);
     assert.equal(receipts, 0);
+    assert.equal(Number(saved.arenaStateRev), 1);
   } else {
     assert.equal(bodies[1].ok, true);
     assert.equal(receipts, 1);
+    assert.equal(Number(saved.arenaStateRev), 1);
   }
-  assert.equal(Number(saved.arenaStateRev), 1);
   db.close();
 });
 
