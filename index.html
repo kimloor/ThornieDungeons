@@ -4790,6 +4790,9 @@ function cloudSaveArenaV2Setup(url, characterId, petInstId, skillSlots) {
 function cloudRefreshArenaV2Opponents(url, characterId) {
   return cloudAuthPost(url, { action: "refreshArenaV2Opponents", characterId });
 }
+function cloudAcknowledgeArenaV2Unlock(url, characterId) {
+  return cloudAuthPost(url, { action: "acknowledgeArenaV2Unlock", characterId });
+}
 function cloudPrepareArenaV2Match(url, characterId, opponentKey, source) {
   return cloudAuthPost(url, { action: "prepareArenaV2Match", characterId, opponentKey, source });
 }
