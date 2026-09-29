@@ -328,6 +328,10 @@ test('Player Card resolves only from persisted opponent list, uses live equipmen
   const bot = opponents.opponents.find((row) => row.name.startsWith('BOT'));
   const botCard = await jsonBody(await arena.handleGetArenaV2PlayerCard(db, 'p1', session('p1'), 'char-10', bot.opponentKey));
   assert.equal(botCard.playerCard.isBot, true);
+  assert.ok(botCard.playerCard.cp > 0);
+  assert.ok(botCard.playerCard.archetype);
+  assert.deepEqual(botCard.playerCard.equipment, []);
+  assert.equal(botCard.playerCard.pet, null);
   assert.equal(botCard.playerCard.profileFrameKey, null);
   db.close();
 });
