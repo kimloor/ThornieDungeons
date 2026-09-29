@@ -1,3 +1,5 @@
+> Publication update: see [PUBLICATION.md](PUBLICATION.md). Historical review status below predates the approved revision-r2 release.
+
 PROJECT LEAD HANDOFF — REVIEW_CANDIDATE / R2_NOT_PUBLISHED
 
 Branch: graphics/hero-v5-robot-skeleton-production

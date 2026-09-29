@@ -1,3 +1,5 @@
+> Publication update: see [PUBLICATION.md](PUBLICATION.md). Historical review status below predates the approved revision-r2 release.
+
 # Hero V5 Robot / Skeleton equipment production candidate
 
 Status: **REVIEW_CANDIDATE — technical checks pass; engine visual QA pending.**
