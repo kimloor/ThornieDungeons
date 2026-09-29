@@ -320,6 +320,10 @@ test('Player Card resolves only from persisted opponent list, uses live equipmen
   const real = opponents.opponents.find((row) => row.name === 'Eleven');
   const card = await jsonBody(await arena.handleGetArenaV2PlayerCard(db, 'p1', session('p1'), 'char-10', real.opponentKey));
   assert.equal(card.playerCard.equipment[0].itemTemplateId, 'azure_sword');
+  assert.equal(card.playerCard.equipment[0].itemId, 'eq-1');
+  assert.equal(card.playerCard.equipment[0].type, 'weapon');
+  assert.equal(card.playerCard.equipment[0].slotType, 'weapon');
+  assert.equal(card.playerCard.equipment[0].setId, 'azure');
   assert.equal(card.playerCard.pet, null);
   assert.equal('skillSlots' in card.playerCard, false);
   assert.equal('playerId' in card.playerCard, false);
