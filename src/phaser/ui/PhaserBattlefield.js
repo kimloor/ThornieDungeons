@@ -9,7 +9,9 @@ function PhaserBattlefield(props) {
   const hostRef = React.useRef(null);
   const handleRef = React.useRef(null);
   const [status, setStatus] = React.useState("loading");
-  const enabled = isPhaserBattleRendererEnabled();
+  // Arena V2 is authoritative and always uses the shared battlefield. Dungeon
+  // keeps its existing opt-in flag so this change cannot alter Dungeon UX.
+  const enabled = props.mode === "arena" ? true : isPhaserBattleRendererEnabled();
   const snapshot = React.useMemo(() => props.mode === "arena"
     ? buildArenaBattlefieldSnapshot(props)
     : buildBattlefieldSnapshot(props), [props.mode, props.battleState, props.teams, props.heroName, props.equipped, props.petCombat, props.monsters, props.targetUid, props.heroAnim, props.petAnim, props.enemyAnims, props.combatSpeed]);

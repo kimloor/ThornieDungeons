@@ -8,6 +8,9 @@ const vm = require('node:vm');
 const ROOT = path.join(__dirname, '..');
 const worker = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8');
 const playerCard = fs.readFileSync(path.join(ROOT, 'src/ui/playerCard.js'), 'utf8');
+const arenaUi = fs.readFileSync(path.join(ROOT, 'src/ui/components.js'), 'utf8');
+const arenaApi = fs.readFileSync(path.join(ROOT, 'src/state/api.js'), 'utf8');
+const phaserUi = fs.readFileSync(path.join(ROOT, 'src/phaser/ui/PhaserBattlefield.js'), 'utf8');
 const migration = fs.readFileSync(path.join(ROOT, 'migrations/auto/0024_arena_w98_rewards.sql'), 'utf8');
 
 class D1Statement {
@@ -77,4 +80,35 @@ test('W9.8/W9.9 uses deterministic frame assets, rank history and V2 routes', ()
   assert.match(worker, /handleGetArenaV2Ranking/);
   assert.match(worker, /claim-all:\$\{characterId\}/);
   assert.match(worker, /character_id = \? AND claimed = 0/);
+});
+
+function loadPreloadGate() {
+  const start = arenaUi.indexOf('function createArenaV2PreloadGate');
+  const end = arenaUi.indexOf('\n\n// W9.8/W9.9 authoritative Arena V2 surface', start);
+  const sandbox = { Promise, setTimeout, clearTimeout };
+  vm.createContext(sandbox);
+  vm.runInContext(`${arenaUi.slice(start, end)}\nglobalThis.createArenaV2PreloadGate = createArenaV2PreloadGate;`, sandbox);
+  return sandbox.createArenaV2PreloadGate;
+}
+
+test('Arena Phaser preload gate activates only after READY and rejects error/timeout', async () => {
+  const createGate = loadPreloadGate();
+  const readyGate = createGate(100);
+  readyGate.ready();
+  assert.equal(await readyGate.promise, undefined);
+
+  const failedGate = createGate(100);
+  failedGate.fail('preload_error');
+  await assert.rejects(failedGate.promise, /preload_error/);
+
+  const timeoutGate = createGate(5);
+  await assert.rejects(timeoutGate.promise, /arena_preload_timeout/);
+});
+
+test('Arena V2 frontend contract uses default Phaser, Player Card and no animation-frame activation shortcut', () => {
+  assert.match(phaserUi, /props\.mode === "arena" \? true : isPhaserBattleRendererEnabled\(\)/);
+  assert.match(arenaApi, /function cloudGetArenaV2PlayerCard/);
+  assert.match(arenaUi, /cloudGetArenaV2PlayerCard\(url, characterId, opponentKey\)/);
+  assert.match(arenaUi, /preloadGateRef\.current\?\.ready\(\)/);
+  assert.doesNotMatch(arenaUi.slice(arenaUi.indexOf('function ArenaV2Screen'), arenaUi.indexOf('\n}\n\n// Turns a mail')), /requestAnimationFrame/);
 });

@@ -389,6 +389,9 @@ function cloudGetArenaV2Status(url, characterId) {
 function cloudGetArenaV2Opponents(url, characterId) {
   return cloudAuthGet(url, { action: "getArenaV2Opponents", characterId });
 }
+function cloudGetArenaV2PlayerCard(url, characterId, opponentKey) {
+  return cloudAuthGet(url, { action: "getArenaV2PlayerCard", characterId, opponentKey });
+}
 function cloudGetArenaV2History(url, characterId) {
   return cloudAuthGet(url, { action: "getArenaV2History", characterId });
 }
