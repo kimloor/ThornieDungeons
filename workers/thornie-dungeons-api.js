@@ -5416,6 +5416,7 @@ const ARENA_SEASON_LENGTH_MS = 7 * 24 * 60 * 60 * 1000;
 const ARENA_REFRESH_COOLDOWN_MS = 10 * 1000;
 const ARENA_PREPARED_TTL_MS = 2 * 60 * 1000;
 const ARENA_ACTIVE_DURATION_MS = 10 * 60 * 1000;
+const ARENA_SURRENDER_COOLDOWN_MS = 10 * 1000;
 const ARENA_MATCH_BANDS = Object.freeze({
   lower: { min: -225, max: -75, rewardSlot: "lower" },
   equal: { min: -74, max: 74, rewardSlot: "equal" },
@@ -6145,6 +6146,9 @@ async function handleActivateArenaV2Match(db, id, session, characterId, matchId)
     // always returns at the attacker's Hero decision boundary.
     combatState = arenaCombatAdvance(combatState, false);
   } catch (error) { return json({ error: "arena_match_state_invalid" }, 409); }
+  const activationStatus = combatState.result ? "done" : "active";
+  const activationResult = arenaCombatResult(combatState);
+  const activationCompletedAt = activationStatus === "done" ? activatedAt : "";
   const state = JSON.stringify(combatState);
   const receiptKey = `arena:match-activate:${key}`;
   const activationToken = randomToken(12);
@@ -6158,15 +6162,15 @@ async function handleActivateArenaV2Match(db, id, session, characterId, matchId)
         AND EXISTS (SELECT 1 FROM arena_character_state WHERE character_id = ? AND tickets >= 1)
     `).bind(receiptKey, match.season_id, characterId, key, receiptPayload, activatedAt, receiptKey, key, characterId, activatedAt, characterId),
     db.prepare(`
-      UPDATE arena_matches SET status = 'active', state_json = ?, activated_at = ?, ticket_consumed_at = ?, deadline_at = ?, updated_at = ?
+      UPDATE arena_matches SET status = ?, state_json = ?, result_json = ?, activated_at = ?, ticket_consumed_at = ?, deadline_at = ?, completed_at = ?, updated_at = ?
       WHERE match_id = ? AND attacker_character_id = ? AND status = 'prepared' AND prepared_expires_at > ?
         AND EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ? AND json_extract(payload_json, '$.activationToken') = ?)
-    `).bind(state, activatedAt, activatedAt, deadlineAt, activatedAt, key, characterId, activatedAt, receiptKey, activationToken),
+    `).bind(activationStatus, state, activationResult ? JSON.stringify(activationResult) : "", activatedAt, activatedAt, deadlineAt, activationCompletedAt, activatedAt, key, characterId, activatedAt, receiptKey, activationToken),
     db.prepare(`
       UPDATE arena_character_state SET tickets = tickets - 1, ticket_updated_at = ?, updated_at = ?
       WHERE character_id = ? AND tickets >= 1
         AND EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ? AND json_extract(payload_json, '$.activationToken') = ?)
-        AND EXISTS (SELECT 1 FROM arena_matches WHERE match_id = ? AND status = 'active' AND ticket_consumed_at = ?)
+        AND EXISTS (SELECT 1 FROM arena_matches WHERE match_id = ? AND status IN ('active', 'done') AND ticket_consumed_at = ?)
     `).bind(activatedAt, activatedAt, characterId, receiptKey, activationToken, key, activatedAt),
   ]);
   const receiptInserted = Number(batch?.[0]?.meta?.changes) || 0;
@@ -6241,6 +6245,7 @@ function arenaCombatState(snapshot, matchId) {
   };
   const state = BATTLE_CORE_V1.createArenaBattle({ battleId: matchId, seed: Number(snapshot.seed) >>> 0, teamA, teamB });
   state.arenaActionSeq = 0;
+  state.arenaStateRev = 0;
   return state;
 }
 function arenaCombatLivingTargets(state, actor) {
