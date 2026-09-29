@@ -417,6 +417,15 @@ Production Browser QA follow-up — Ver 1.0.20:
 - shared Dungeon Combat Phaser and Inventory Hero Preview are production-default with explicit `=0` opt-out fallbacks;
 - no Battle Core, rating, ticket, reward, schema or settlement behavior changed.
 
+
+Production Browser QA follow-up — Ver 1.0.22:
+- Dungeon Hero V5 G2 is production-default with explicit `heroV5=0` emergency fallback;
+- Arena Coin/Ticket are surfaced through the same authenticated resource UI outside Arena for eligible characters;
+- Arena lobby reuses the established Character header Back style and a fixed shared `GameDock`;
+- Arena Player Card equipment is read-only and icon-first; no unequip/salvage/sell actions are exposed;
+- Arena Phaser has an explicit sized stage and presentation-local error containment across scene sync and animation queue failures;
+- Battle Core, ticket consumption, settlement, rating, reward, schema and economy authority are unchanged.
+
 Staging:
 - every user-visible staging fix increments preview patch version;
 - test small-screen safe area/overflow/touch targets;
