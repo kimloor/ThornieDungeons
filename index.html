@@ -14270,22 +14270,17 @@ function StatusBar({
   player,
   save,
   phase,
-  equipped
+  equipped,
+  arena = null
 }) {
   return /*#__PURE__*/React.createElement("div", {
-    className: "md-status"
+    className: `md-status${arena ? " md-status-arena" : ""}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-status-chip"
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-chip-icon"
   }, "🏅"), "Lv", player?.level ?? save.character.level), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 6,
-      flex: 1,
-      justifyContent: "center",
-      flexWrap: "wrap"
-    }
+    className: "md-status-resources"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-status-chip"
   }, /*#__PURE__*/React.createElement(GameIcon, {
@@ -14306,7 +14301,13 @@ function StatusBar({
     className: "md-status-chip"
   }, /*#__PURE__*/React.createElement("span", {
     className: "md-chip-icon"
-  }, "🛡️"), formatNumber(save.protectionStones || 0))));
+  }, "🛡️"), formatNumber(save.protectionStones || 0)), arena && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("div", { className: "md-status-chip md-arena-global-chip" },
+      /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "Arena Coin" }),
+      formatNumber(arena.arenaCoin || 0)),
+    /*#__PURE__*/React.createElement("div", { className: "md-status-chip md-arena-global-chip" },
+      /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-resource-icon", alt: "Arena Ticket" }),
+      `${Number(arena.tickets) || 0}/${Number(arena.ticketsMax) || 10}`))));
 }
 // Shared "← Back" action used by sub-screens (Raid, Arena, error states, etc). Pass `label`
 // to override the text (e.g. a warning that in-progress state will be left as-is).
@@ -17489,7 +17490,20 @@ function arenaPlayerCardEquipmentLabels(equipment) {
 
 function arenaPlayerCardPetLabel(card) {
   const pet = card?.pet;
-  return String(pet?.name || pet?.defId || card?.petName || "—");
+  if (!pet) return "None";
+  const name = String(pet.name || pet.defId || card?.petName || "Pet");
+  const level = Number(pet.level) || 0;
+  return level > 0 ? `${name} · Lv${level}` : name;
+}
+
+function formatArenaSeasonCountdown(ms) {
+  const total = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const pad = value => String(value).padStart(2, "0");
+  return `${days}d ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
 function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
@@ -17497,6 +17511,9 @@ function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
   if (!card) return null;
   const frameSrc = typeof arenaProfileFrameAsset === "function" ? arenaProfileFrameAsset(card.profileFrameKey) : "";
   const equipment = arenaPlayerCardEquipmentLabels(card.equipment);
+  const equipmentLabel = equipment.length
+    ? equipment.join(" · ")
+    : card.isBot ? "Standard BOT Loadout" : "None";
   const pet = arenaPlayerCardPetLabel(card);
   const avatarLayers = typeof playerCardAvatarLayers === "function" ? playerCardAvatarLayers(card.avatar) : [];
   const overlay = e("div", {
@@ -17546,7 +17563,7 @@ function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
           e("div", null, e("span", null, "Rating"), e("strong", null, card.rating ?? "—")),
           e("div", null, e("span", null, "Tier"), e("strong", null, card.tier || "—")),
           e("div", null, e("span", null, "Pet"), e("strong", null, pet)),
-          e("div", null, e("span", null, "Equipment"), e("strong", { className: "md-arena-card-equipment", title: equipment.join(" · ") }, equipment.length ? equipment.join(" · ") : "—"))
+          e("div", null, e("span", null, "Equipment"), e("strong", { className: "md-arena-card-equipment", title: equipmentLabel }, equipmentLabel))
         )
       ),
       e("div", { className: "md-player-card-actions" },
@@ -17575,7 +17592,21 @@ function ArenaUnlockNotice({ busy, onConfirm }) {
 
 // W9.8/W9.9 authoritative Arena V2 surface. The server owns match state; this
 // component only renders snapshots and sends idempotent action keys.
-function ArenaV2Screen({ serverUrl, characterId, onBack }) {
+function ArenaV2Screen({
+  serverUrl,
+  characterId,
+  onHudChange,
+  onCharacter,
+  onOpenInv,
+  onPets,
+  onSettings,
+  onSave,
+  onFriend,
+  onChat,
+  onGuild,
+  onMainHub,
+  onBack
+}) {
   const url = serverUrl || DEFAULT_SERVER_URL;
   const [tab, setTab] = React.useState("battle");
   const [status, setStatus] = React.useState(null);
@@ -17602,8 +17633,13 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
     const [s, o, resumed] = await Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]);
     if (s?.error) { setError(s.error); return; }
     setStatus(s); setSetup(s.setup || setup); setOpponents(o?.opponents || []); setRefreshAvailableAt(o?.refreshAvailableAt || "");
+    onHudChange?.(s?.unlocked === false ? null : {
+      arenaCoin: Number(s?.player?.arenaCoin) || 0,
+      tickets: Number(s?.tickets?.tickets) || 0,
+      ticketsMax: Number(s?.tickets?.ticketsMax) || 10,
+    });
     if (resumed?.match) { setMatch(resumed.match); setAuto(!!resumed.match.state?.auto || !!resumed.match.state?.flags?.auto); setTab("battle"); }
-  }, [url, characterId]);
+  }, [url, characterId, onHudChange]);
   React.useEffect(() => { refresh().catch(() => setError("โหลด Arena ไม่สำเร็จ")); }, [refresh]);
   React.useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   React.useEffect(() => {
@@ -17615,6 +17651,7 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
     } else if (now < end) rolloverRefreshRef.current = false;
   }, [now, status, refresh]);
   React.useEffect(() => () => preloadGateRef.current?.cancel(), []);
+  React.useEffect(() => () => onHudChange?.(null), [onHudChange]);
   const loadTab = async next => {
     setTab(next); setError("");
     if (next === "history") setHistory(await cloudGetArenaV2History(url, characterId));
@@ -17674,7 +17711,7 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
   if (!status) return /*#__PURE__*/React.createElement("div", { className: "md-panel" }, error || "กำลังโหลด Arena...");
   const end = Date.parse(status.season?.seasonEndsAt || status.seasonEndsAt || "");
   const countdown = Number.isFinite(end) ? Math.max(0, end - now) : 0;
-  const mins = Math.floor(countdown / 60000); const secs = String(Math.floor(countdown / 1000) % 60).padStart(2, "0");
+  const seasonCountdownText = formatArenaSeasonCountdown(countdown);
   const arenaBackgroundSrc = typeof optionalAsset === "function" ? optionalAsset("arenaUi.background") : "";
   const refreshAtMs = Date.parse(refreshAvailableAt || "");
   const refreshSeconds = Number.isFinite(refreshAtMs) ? Math.max(0, Math.ceil((refreshAtMs - now) / 1000)) : 0;
@@ -17691,17 +17728,13 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
     }
   },
     status.showUnlockNotice && /*#__PURE__*/React.createElement(ArenaUnlockNotice, { busy: unlockBusy, onConfirm: acknowledgeUnlock }),
+    !match && /*#__PURE__*/React.createElement("div", { className: "md-arena-page-actions" },
+      /*#__PURE__*/React.createElement(BackButton, { onClick: onBack, label: "← BACK" })),
     /*#__PURE__*/React.createElement("div", { className: "md-card" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 Arena V2"),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-summary" },
-        /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "ซีซันเหลือ ", mins, ":", secs),
-        /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "Rating ", status.player.rating, " · ", status.player.tier),
-        /*#__PURE__*/React.createElement("span", { className: "md-arena-currency-chip" },
-          /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-arena-currency-icon", alt: "Arena Coin" }),
-          /*#__PURE__*/React.createElement("strong", null, status.player.arenaCoin)),
-        /*#__PURE__*/React.createElement("span", { className: "md-arena-currency-chip" },
-          /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-arena-currency-icon", alt: "Arena Ticket" }),
-          /*#__PURE__*/React.createElement("strong", null, status.tickets.tickets, "/", status.tickets.ticketsMax))),
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "ซีซันเหลือ ", seasonCountdownText),
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "Rating ", status.player.rating, " · ", status.player.tier)),
       /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setCurrencyInfo(!currencyInfo) }, "CURRENCY INFO"),
       currencyInfo && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Arena Coin ใช้ตามผลและ opponent slot ที่ server ล็อกไว้ · Ticket ใช้เมื่อเตรียมและ preload สำเร็จเท่านั้น.")),
     !match && /*#__PURE__*/React.createElement("div", { className: "md-tab-row" }, ["battle", "setup", "ranking", "history"].map(key => /*#__PURE__*/React.createElement("button", { key, className: `md-btn small ${tab === key ? "primary" : ""}`, onClick: () => loadTab(key) }, key.toUpperCase()))),
@@ -17742,7 +17775,17 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · Round ", match.state?.round || 0, " / 20"), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || "—"), /*#__PURE__*/React.createElement(PhaserBattlefield, { mode: "arena", battleState, preparedSnapshot: match.snapshot, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: s => { if (s === "ready") preloadGateRef.current?.ready(); else if (s === "error" || s === "destroyed") preloadGateRef.current?.fail("arena_preload_failed"); } }), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "loading" ? "Loading Battle…" : preloadState === "failed" ? "Battle preload failed" : "", " · ", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · ")), /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "Targets: ", enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line), " ")), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setShowFullLog(!showFullLog) }, showFullLog ? "HIDE LOG" : "FULL LOG")), showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-card" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line))))),
       match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "RESULT · ", match.result.result || match.result.combatResult), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating change: ", match.result.ratingChange ?? "—", " · Arena Coin: ", match.result.arenaCoinEarned ?? match.result.arenaCoin ?? "—"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map(skill => /*#__PURE__*/React.createElement("button", { key: skill || "empty", className: "md-btn small", disabled: busy || !skill, onClick: () => action("skill", skill, selected) }, skill || "—"))),
-    !match && /*#__PURE__*/React.createElement(BackButton, { onClick: onBack })));
+    !match && /*#__PURE__*/React.createElement(GameDock, {
+      onCharacter,
+      onOpenInv,
+      onPets,
+      onSettings,
+      onSave,
+      onFriend,
+      onChat,
+      onGuild,
+      onMainHub
+    })));
 }
 
 // Turns a mail's item descriptor (worker-side plain data: type/rarity/name/stats/setId/star)
