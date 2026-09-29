@@ -1,0 +1,452 @@
+{
+  "drawOrder": [
+    "wing_far",
+    "base",
+    "hair_back",
+    "hair_front",
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front",
+    "wing_near"
+  ],
+  "placement": "All native 768x768 layers at (0,0), no per-frame fitting/recentering. Whole review image uniformly downscaled.",
+  "hair": "current default Topknot source audited, BOTH hair layers suppressed for full-face helmets per user approval",
+  "wings": "current approved Wing R5",
+  "archiveSha256": "e0809a9a80ab6b10f7a35a480048f9b79e02035253d53e6fc81a4ac3b5fda997",
+  "sequences": {
+    "idle": [
+      [
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "idle_02"
+      ],
+      [
+        350,
+        350,
+        350,
+        350
+      ]
+    ],
+    "attack": [
+      [
+        "idle_01",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "idle_01"
+      ],
+      [
+        650,
+        650,
+        650,
+        650,
+        650
+      ]
+    ],
+    "death": [
+      [
+        "idle_01",
+        "death_01",
+        "death_02"
+      ],
+      [
+        650,
+        600,
+        1200
+      ]
+    ]
+  },
+  "sourceHashes": {
+    "r2-upload/hero/v5/g2/base/idle_01.png": "1c4e9d24d7d560b96e85dbdbccc47d17739c156a1377d4afb7f53fd90983e5e5",
+    "r2-upload/hero/v5/g2/wings/idle_01/wing_far.png": "4440416a8540183dfc291a566e9deeb3617cb1c1a47c484f76bef7398060a99a",
+    "r2-upload/hero/v5/g2/wings/idle_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/idle_01/hair_back.png": "4c48b8f7fd5d1777724df15051aeb8b162176ee9fa3dbe4e673950201009280f",
+    "r2-upload/hero/v5/g2/hair/topknot/idle_01/hair_front.png": "8b32daaa280a84c6b726c66b308d2976cfb7079da56b90cae771c6f2213d291c",
+    "ZIP:robot/idle_01/coverage_underlay.png": "8343f6f013fb6187145f999d87408187d6a083887f686ed3f6a7940f8c643af6",
+    "ZIP:robot/idle_01/torso_armor.png": "d64fb6e8ed820d11496f42ec0b51f7b5385892b375dcf21d1845483b74c80408",
+    "ZIP:robot/idle_01/legs_boots.png": "c60f8a8a94dcadb99a9fa7cf15fd8bd66060a6bb2de041735a6056c38030dc1f",
+    "ZIP:robot/idle_01/arm_rear.png": "14d38347a94d0126ffcd53529b26d3cdb060c72a2a838062f1e90dd140915db9",
+    "ZIP:robot/idle_01/helmet.png": "6ee2ed8bf12143deaa754ab726a2f5e49e40f967e4e555117e1d0c8379dbdb60",
+    "ZIP:robot/idle_01/sword.png": "827e6892f9af02f91c949b3c4966d2132982c49b2cc584ce63b780812f028f91",
+    "ZIP:robot/idle_01/arm_front.png": "ef7a373b64d05e177ce11c93a469280623da07800466a680bfeeb2da06c1c782",
+    "r2-upload/hero/v5/g2/base/idle_02.png": "18c5935634ffbf3758eadb505864cf44a1143a349e742591e0bf7db5fc5773f9",
+    "r2-upload/hero/v5/g2/wings/idle_02/wing_far.png": "88e7f1037c4a3f08cbbbe8474abd7928f04edda2a3d6dc562d63b2659d28c5ab",
+    "r2-upload/hero/v5/g2/wings/idle_02/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/idle_02/hair_back.png": "010b2e87b46f6e218faa4d1fbdcd1cb83d516d58b55a038de57fe73dffcfa02e",
+    "r2-upload/hero/v5/g2/hair/topknot/idle_02/hair_front.png": "1b8dc0d991e515a5a6ef33b8c4bfcb451db3c62c349df868de5462f70b800680",
+    "ZIP:robot/idle_02/coverage_underlay.png": "209e2721d70e356097f65d82dd5e0f45a83fef05feb830331b222526939aa41e",
+    "ZIP:robot/idle_02/torso_armor.png": "d9e93e45e6616f18a267584d2bc097cb61e962cbedd3f1a4ed0be0581d873311",
+    "ZIP:robot/idle_02/legs_boots.png": "18abcd1ab0074e86e4e89d34c7e362d93c87b42ddf2688880e2f5b64e92d05f3",
+    "ZIP:robot/idle_02/arm_rear.png": "5e8d918b14a3a8ab19adf9a8e503756f2180f282955e2e13f7aa0677a72bee86",
+    "ZIP:robot/idle_02/helmet.png": "3bbc7bf7c97a76d542a4c38f9bd09dee2ab5a8f70e6af753ca2ed245247766ed",
+    "ZIP:robot/idle_02/sword.png": "0994fd5438ddef7944146b888a57ee6d75967f82e8f29d4699ecd2325f4be56b",
+    "ZIP:robot/idle_02/arm_front.png": "86e20bb424d5b6d53ffb0af0c682be5d230b9978d104ac5c95724d5806603e82",
+    "r2-upload/hero/v5/g2/base/idle_03.png": "bd15c3f045e362030d885fe65b5a3725ccbd6c4ed30d8da3868af66730ccc981",
+    "r2-upload/hero/v5/g2/wings/idle_03/wing_far.png": "f80741dc32b0d732af3c392b4d318fe65abd6eec8000ae2d29b26207401e90f0",
+    "r2-upload/hero/v5/g2/wings/idle_03/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/idle_03/hair_back.png": "8291e9dca456e1e34ba36489976edb870769ffcc229e55e5fe12de68ae0059ac",
+    "r2-upload/hero/v5/g2/hair/topknot/idle_03/hair_front.png": "2e05a01722b62fa27404e6b5e7677329e33eb01af9b258c88bbe960342f4ccf3",
+    "ZIP:robot/idle_03/coverage_underlay.png": "b768da562dc73c6e7923bb94b135a296266227b597dc6e839d8d3344b526c290",
+    "ZIP:robot/idle_03/torso_armor.png": "55681654ce369798bb3541f26389d42c74c48d3379412b304272fd7c760923a8",
+    "ZIP:robot/idle_03/legs_boots.png": "88245017647e1342135c962b556af88d78c9de46c9b8231336fd88a84069e25b",
+    "ZIP:robot/idle_03/arm_rear.png": "b5ee5b81837f188da457f24366a42517b8d97a2209a39dfdbe4ad3139e06d14a",
+    "ZIP:robot/idle_03/helmet.png": "988d8413b0551724be4eba8a50faac8509f515ed44d1690d3dc627a948528184",
+    "ZIP:robot/idle_03/sword.png": "defb545fda23c5408bd836328a75fb8866eb13b7d73e6e968a4120b9d1e719e5",
+    "ZIP:robot/idle_03/arm_front.png": "7736682dc623d7a1626bbf142a5e4f0b58c3a529007d8f548578f67749034dd9",
+    "r2-upload/hero/v5/g2/base/attack_01.png": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+    "r2-upload/hero/v5/g2/wings/attack_01/wing_far.png": "14e034292108ece2e656f32f306fa3e93d41241ee8852e572baf0801014bedd7",
+    "r2-upload/hero/v5/g2/wings/attack_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/attack_01/hair_back.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/attack_01/hair_front.png": "b424c907f482e37b30ac56a0b76bfe21a7079c99931e28d4b5e411cc44f00d96",
+    "ZIP:robot/attack_01/coverage_underlay.png": "1353fd9d5eb6ba2fb4939b682562a1582a7c1a0096178690ff4df15234004e74",
+    "ZIP:robot/attack_01/torso_armor.png": "c00c5787d91b15aae3bed2b96062aff15ad9b43c956254ad783f23dc1da40534",
+    "ZIP:robot/attack_01/legs_boots.png": "d9718366f937b41b49c50211a98a33614a2078f74387f95a860fc8fb846caf1e",
+    "ZIP:robot/attack_01/arm_rear.png": "3571d4816d90f4513fcc5530e4a1cd68dce0027a22a5820ee0c79f2fcf7655e3",
+    "ZIP:robot/attack_01/helmet.png": "55ffc7cac8a19769dd82010ae04169676494167d367591ad365654a339b5b8aa",
+    "ZIP:robot/attack_01/sword.png": "84a12802c43e80a93dba9931b04c72bf58c0a8e53924f7f1a2563935c4f24b4d",
+    "ZIP:robot/attack_01/arm_front.png": "495b1c2851bfcf56a87eeda95587f8d68d289b3e9e26ce651b58a214f6abadac",
+    "r2-upload/hero/v5/g2/base/attack_02.png": "d6b5c542822e5d88702e882721eeabb74c07703b72ec88414410c6f0bac6db9a",
+    "r2-upload/hero/v5/g2/wings/attack_02/wing_far.png": "73e1298e90c0bda62a337abf03342db18f57b3f633b2e92d1d7b2fff1a1a533e",
+    "r2-upload/hero/v5/g2/wings/attack_02/wing_near.png": "fb0e8d2bd90a491e9a05f33e6f6d264570c5de761be7ca2e8f0637a82f1c0904",
+    "r2-upload/hero/v5/g2/hair/topknot/attack_02/hair_back.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/attack_02/hair_front.png": "8f14a91f75404b945fdd0ae707a053d53878eafd89e8caa9ce6fe5b152a9a992",
+    "ZIP:robot/attack_02/coverage_underlay.png": "2de4559b1713dcf49eafb6ede4899cd76d777d273c1448773e0ba5455524d0dd",
+    "ZIP:robot/attack_02/torso_armor.png": "0626172537a4238fc351fb3dca2718f05869ae99feb7155fbf52870e8ad34b3b",
+    "ZIP:robot/attack_02/legs_boots.png": "777900790f000b1817e87a184e326f839d6408c2132fd27b850bea40cbbadf15",
+    "ZIP:robot/attack_02/arm_rear.png": "f6b4a2f7feb3c70df9d43d7009cb853526723e91617c64974aebf37c4b59dd61",
+    "ZIP:robot/attack_02/helmet.png": "268c2fca020b8ab56738fcb90fff60649573026b54b446d83198cbfa5469ea1b",
+    "ZIP:robot/attack_02/sword.png": "f494c4b8c2e89401a10aae73836961a24e815cfc0755b9a187fb82de2184d32f",
+    "ZIP:robot/attack_02/arm_front.png": "ba341763637d9a4febd7bc50e1b6c1368e2fd7395ef0aff18e8e87a6e127a779",
+    "r2-upload/hero/v5/g2/base/attack_03.png": "9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667",
+    "r2-upload/hero/v5/g2/wings/attack_03/wing_far.png": "3910296579bcf4cd8840c44908fd81fa6ad64d8dda6189312d9d6a75d0c73836",
+    "r2-upload/hero/v5/g2/wings/attack_03/wing_near.png": "f79b83204234f6627b6ebfd987170c9dc6e7d5b6beadffbe1e19a045286b3aac",
+    "r2-upload/hero/v5/g2/hair/topknot/attack_03/hair_back.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/attack_03/hair_front.png": "f9567867a4f583ad8cbf774e1d16264760ccd6190c4c7e2d2c20e93d201d0713",
+    "ZIP:robot/attack_03/coverage_underlay.png": "aa8f1aeea4c2692ebf970ab084791ac0a1fbce6363a03892957c6e08d1d312b3",
+    "ZIP:robot/attack_03/torso_armor.png": "803cb8e114c54d8ec2808f51c02100dac04ac31b2377327b66644251db9ecad4",
+    "ZIP:robot/attack_03/legs_boots.png": "9b0c6ba76bd24c9278179788b91029101b937da1774d6a04fd70979fdf363e21",
+    "ZIP:robot/attack_03/arm_rear.png": "b49629a0266f3daab285bf6a759a2802771b94f2219b155e3ed1ac65eea51ea4",
+    "ZIP:robot/attack_03/helmet.png": "014ca0a790ab71fc6b20b0fe4c1a1c4337f02c8469be1cb1082bf20866434819",
+    "ZIP:robot/attack_03/sword.png": "a4cdff0d68e91e6beeef3a66b4e5fe65016d611216cbfd7409888a1b1ab44d9d",
+    "ZIP:robot/attack_03/arm_front.png": "27a51074e82d94f6900bcb598865e58a478c945e2b17cc089b6794393beb25d8",
+    "r2-upload/hero/v5/g2/base/death_01.png": "8fe820026682becdc889f4adce522722720c78d242d7007ed994cd113fad292b",
+    "r2-upload/hero/v5/g2/wings/death_01/wing_far.png": "52359b415695a58f356008a5c1211890ae97a00df3d7d7c35deba97624ce368f",
+    "r2-upload/hero/v5/g2/wings/death_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/death_01/hair_back.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/death_01/hair_front.png": "47f5bc727fc77d8716523c5f2635632ca2623d49135bd929f3f1f3b4c4227b3a",
+    "ZIP:robot/death_01/coverage_underlay.png": "778c8b317ab278c23c78399a18eac8316a1227f5265c13a29c89d059b3f6d402",
+    "ZIP:robot/death_01/torso_armor.png": "7bf9c2fdd21005160a842524d4ca7a62ff8783bdcf30eba8d9ac581af4dd4100",
+    "ZIP:robot/death_01/legs_boots.png": "78b83a1cd270378fc440be5f9f31e5b349da45d0ca10e3ec25fd6d18bcf3b8e6",
+    "ZIP:robot/death_01/arm_rear.png": "c8d50114528026212ef018ba20d769d271f5ce3e76f03bb5a92324a5cd5119dd",
+    "ZIP:robot/death_01/helmet.png": "f2bb0bb2f8da3760eb3b3bd8886adb1c8b00d05b168b9e6d2605b291f8ac0a8c",
+    "ZIP:robot/death_01/sword.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "ZIP:robot/death_01/arm_front.png": "6aafc00b42d6570aecb10aa5f58a810ef28e87cad2b06f84dfce48918f7ca53a",
+    "r2-upload/hero/v5/g2/base/death_02.png": "b9c5f58a1a03a921c21ab45e3ac60fe070347988755ed639e365a9c13e0e0ae3",
+    "r2-upload/hero/v5/g2/wings/death_02/wing_far.png": "c1d2420fd568d1ba0daafd0d626609fda4cf5d11f7a5ad508ffd145721f73967",
+    "r2-upload/hero/v5/g2/wings/death_02/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/death_02/hair_back.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "r2-upload/hero/v5/g2/hair/topknot/death_02/hair_front.png": "47a7accbf40b809948765d72b23c722e9fe14d904fdb2bcdb18c39624c796398",
+    "ZIP:robot/death_02/coverage_underlay.png": "6e8df86c62c967c7a5676b4c929ae1e1e405c04af1f61599904e965c5b1133ae",
+    "ZIP:robot/death_02/torso_armor.png": "059805c87503346c2e86141dc40d1a4a46a54d582a630fa3518aa9642944fd74",
+    "ZIP:robot/death_02/legs_boots.png": "c6819cda81c4fc09d1c82fe3dd20d93637d549da832faaddd11a0074739b2e45",
+    "ZIP:robot/death_02/arm_rear.png": "2696f36a90ec66b6cf21729dac4772e1ed4ad24d51523a13d3efd83595e7f813",
+    "ZIP:robot/death_02/helmet.png": "df2713208e3cd4580848e2f5c70cb5afc7c7752b0320e661a9d625e4dd1704fd",
+    "ZIP:robot/death_02/sword.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "ZIP:robot/death_02/arm_front.png": "3219d6a3949e8b692dfcd6d5c63bee58994380687d8b23401b858d7c89c44b01",
+    "ZIP:skeleton/idle_01/coverage_underlay.png": "c5423aab6059adea6b24cd2988d417e228997dd32df898eb3d8cf44611311c82",
+    "ZIP:skeleton/idle_01/torso_armor.png": "c952b7311d9fd1a8431199842b154fd8cdfbcc81c8f5198c562ef10400b397fa",
+    "ZIP:skeleton/idle_01/legs_boots.png": "7c8023af70dfb6881ccace4a13729c2d26bd5f33cef90fa330574dfb0a611966",
+    "ZIP:skeleton/idle_01/arm_rear.png": "400f97cb11d490eb92d3096c53ce012f90c7cc540ec2facf7efa2a1f8bc9992f",
+    "ZIP:skeleton/idle_01/helmet.png": "0003c180dc1950c0540beeff825ceb4dfabcf79caa2077f5cb45872299c8fd7e",
+    "ZIP:skeleton/idle_01/sword.png": "29058320bfc41f4bfe166d073eba59bac482ddc0b43032a5b6f3f3b5c782a3d9",
+    "ZIP:skeleton/idle_01/arm_front.png": "622997feb85a3bdc635b56c5c0a22d85c197efbce92492d13158c4b4ae45581c",
+    "ZIP:skeleton/idle_02/coverage_underlay.png": "9d53a2b4fbc76e33267e142bebdaa47b4fa05e7b1c113de7ff073311e98ceeb5",
+    "ZIP:skeleton/idle_02/torso_armor.png": "a803273964cb5f60b9d9d437fb39ccf50a8562f39f01878e7e0911c8e1b34a8a",
+    "ZIP:skeleton/idle_02/legs_boots.png": "565a0d7193fa3e7f8cb2b1f965892b5d9979aa26c3c462949bc297736c01223c",
+    "ZIP:skeleton/idle_02/arm_rear.png": "2ea69bec9ffab63e7640657b3978f9ed7a143795996962c1a6eed19c81ffbab5",
+    "ZIP:skeleton/idle_02/helmet.png": "1fc4fd887fab4b5d3cbdad1dfa4d8f964172b6387bf2569d3c967a743e08de96",
+    "ZIP:skeleton/idle_02/sword.png": "58e9cb15e3238de4d8170038b3b984ce93a4b8ced0a9f5c09bbbf7dbdcb28dad",
+    "ZIP:skeleton/idle_02/arm_front.png": "9e5a859e921b2a5eaa94b4226fab5497672f8a749d39e1c5b16de0e1b1370377",
+    "ZIP:skeleton/idle_03/coverage_underlay.png": "abc6cd854798d862c99f5563799e8db6db36b420b228aeee1905c25b307a5bf6",
+    "ZIP:skeleton/idle_03/torso_armor.png": "b4a7d3ae04977b03255980c0956d585d6655609bd62b6647d3f0486aa415a80d",
+    "ZIP:skeleton/idle_03/legs_boots.png": "11a5e188170e3b19f8dc65fe95b40170f3ceed895a8a1945a101e8b7099f4b85",
+    "ZIP:skeleton/idle_03/arm_rear.png": "893dba82d91a03005e322eb4c854e666c6883cf26d8a11db906bbcf9a1abb35a",
+    "ZIP:skeleton/idle_03/helmet.png": "3e8dc0776f2c041ac13e19f61db5e018b4ef18a7e984bc932d26b844d2bdf91d",
+    "ZIP:skeleton/idle_03/sword.png": "616f951df0fd12b5cb69fdcf8393385445b9a180c240a6fc536c34cc6f2d7fc4",
+    "ZIP:skeleton/idle_03/arm_front.png": "fa482efd93f83efca27bd569ee90755aefcc5f56d7da534cab87a64936885165",
+    "ZIP:skeleton/attack_01/coverage_underlay.png": "bd82515e24a03740eacc2d8fcf847aef0db2add1f9d5fbfd3aa9a1f0c604754b",
+    "ZIP:skeleton/attack_01/torso_armor.png": "0c387fd6bd3d3f151a5924080a02fd044b1e23ce5c961c72140671d76fec5d63",
+    "ZIP:skeleton/attack_01/legs_boots.png": "c53f7059108cf30121754a96e1a4349b7901a94422fb2b5612b4afd3f1f77253",
+    "ZIP:skeleton/attack_01/arm_rear.png": "f62bf60c013180da4ec17058c88b35aacf8d8dcbb532f6139c50b0de47ea3e90",
+    "ZIP:skeleton/attack_01/helmet.png": "72edf549050e9473d6debc50b3dbfd6ddda17aed219519df5671209b5a069690",
+    "ZIP:skeleton/attack_01/sword.png": "02803097f3e8626dbfe3b98364b8518353bc91a1bfaba3650a034260b22c0443",
+    "ZIP:skeleton/attack_01/arm_front.png": "c82e94a32cb6678978c76aed1b4f72e8d6df1e361fb9d01333c9f2c44434830c",
+    "ZIP:skeleton/attack_02/coverage_underlay.png": "3d2eafabc921c9b65d4c14e912ee80ae544d5fc41755d61518dcccdb4e66cd6c",
+    "ZIP:skeleton/attack_02/torso_armor.png": "7137f5d9ee8d73274ab4c79b61b35dc058839de23b2747e893d6f35536d4f9f2",
+    "ZIP:skeleton/attack_02/legs_boots.png": "b2d5306787469dbef4628a69ba72598a4cd056a0cba92bacf74992d001ba06a0",
+    "ZIP:skeleton/attack_02/arm_rear.png": "373f3401db12d565201bbefa3a7698ee55e1fb8bbb3afec07be77e508ceaff96",
+    "ZIP:skeleton/attack_02/helmet.png": "53d59f661d3245db502a654fb42b5f23e24a133bd3ffea34325234cc69cacb83",
+    "ZIP:skeleton/attack_02/sword.png": "b011f4600f44ad7c7876ef97391f5371fe89736de141939c66c880ffc57d6fb9",
+    "ZIP:skeleton/attack_02/arm_front.png": "ad1034417c4779ce1ea4f0319fa19593d81b806292c729a74de49a5494dedc20",
+    "ZIP:skeleton/attack_03/coverage_underlay.png": "053d8195ba26aa80ceb488d9e12f4b59fde921ea30cc569ce5f34828287eed9a",
+    "ZIP:skeleton/attack_03/torso_armor.png": "9e3a56112594e614c569986616fa6fa89c438536515cc022fe1565d63e24bdc2",
+    "ZIP:skeleton/attack_03/legs_boots.png": "eaf8ef973d1eb079537c20ff3be67d30960aae2885a4a235e6d83b6a0f31cee4",
+    "ZIP:skeleton/attack_03/arm_rear.png": "4376a78b378311d3e652647476e1b8d202550d515f589057b22a5f1afb308061",
+    "ZIP:skeleton/attack_03/helmet.png": "f2eafa06ed3eb46e9b3cb1e3f28a6291063e0a81c02444b9144b55d5ec2ba806",
+    "ZIP:skeleton/attack_03/sword.png": "33de028c402e1e886b373e6f071f7c2de1b40446c23262e39781b825b1259984",
+    "ZIP:skeleton/attack_03/arm_front.png": "955769e774801e2472e5b687f46e0b6854788814ce96624774d6ad5bbbe3001b",
+    "ZIP:skeleton/death_01/coverage_underlay.png": "f39361bbd0d826a2c61becee1a4a19d559d4530df31dbae3f6f2ddf1bcde18fc",
+    "ZIP:skeleton/death_01/torso_armor.png": "8d2acc1cb81de4e85d19123cec0e7fac51db2eff2bb5583301d9d974327f3b38",
+    "ZIP:skeleton/death_01/legs_boots.png": "06a39481dd3b8b1f2e3a9295986bdbcca3bdeeea4cb8bb64fc8b0808486a8e59",
+    "ZIP:skeleton/death_01/arm_rear.png": "d547ffec04c3d70fc2a61e6f864ecdc9045e7e472de56eaa2507af28186b7c4b",
+    "ZIP:skeleton/death_01/helmet.png": "48c07cf082eccf2209b5c42065a99e13e1ed6dac2e58b3644320846136288dbc",
+    "ZIP:skeleton/death_01/sword.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "ZIP:skeleton/death_01/arm_front.png": "a6fabd0ec0833679406bfc394978aaae0f0dee15b8a68373cc09ed1ceca01e39",
+    "ZIP:skeleton/death_02/coverage_underlay.png": "80cc777e814c79f28b7679a562690ad7c14fc3ab5a17d7c4c5e37deb64e96396",
+    "ZIP:skeleton/death_02/torso_armor.png": "06026830efa2a9b69d47f472ca889ba43b6e4499c7e7f2680fd1dffaa35b0bc1",
+    "ZIP:skeleton/death_02/legs_boots.png": "4272bc18fdab8d72edd6a8b2369f0800f2fbb69273b72d30266414a6e1503c78",
+    "ZIP:skeleton/death_02/arm_rear.png": "0b70bd87f4c883b96303ff686c838825cd84f1d73cc6b55d18553d02ecd13694",
+    "ZIP:skeleton/death_02/helmet.png": "2c04c34468093e0da4ea44ea07b018e2c302346fa94214d64f01683fbc83cfea",
+    "ZIP:skeleton/death_02/sword.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "ZIP:skeleton/death_02/arm_front.png": "53b22381e9ee7eeab402fd28799999a5178872c6edbaaefb5a8d71a92249fea9"
+  },
+  "frames": {
+    "robot": {
+      "idle_01": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          80,
+          124,
+          508,
+          745
+        ]
+      },
+      "idle_02": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          80,
+          112,
+          508,
+          733
+        ]
+      },
+      "idle_03": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          80,
+          120,
+          508,
+          741
+        ]
+      },
+      "attack_01": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          34,
+          114,
+          524,
+          691
+        ]
+      },
+      "attack_02": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          50,
+          162,
+          672,
+          693
+        ]
+      },
+      "attack_03": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          52,
+          176,
+          730,
+          700
+        ]
+      },
+      "death_01": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          65,
+          183,
+          554,
+          704
+        ]
+      },
+      "death_02": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          32,
+          207,
+          692,
+          705
+        ]
+      }
+    },
+    "skeleton": {
+      "idle_01": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          80,
+          92,
+          512,
+          747
+        ]
+      },
+      "idle_02": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          80,
+          80,
+          512,
+          735
+        ]
+      },
+      "idle_03": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          80,
+          88,
+          512,
+          743
+        ]
+      },
+      "attack_01": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          30,
+          112,
+          528,
+          680
+        ]
+      },
+      "attack_02": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          50,
+          152,
+          672,
+          688
+        ]
+      },
+      "attack_03": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          52,
+          148,
+          734,
+          703
+        ]
+      },
+      "death_01": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          97,
+          154,
+          559,
+          704
+        ]
+      },
+      "death_02": {
+        "visibleHairPixelsAboveAlpha10": 0,
+        "foregroundWingPixelsOverSword": 0,
+        "compositeBBox": [
+          32,
+          212,
+          692,
+          705
+        ]
+      }
+    }
+  },
+  "outputs": {
+    "robot-full-idle-slow.gif": {
+      "frameCount": 4,
+      "durationsMs": [
+        350,
+        350,
+        350,
+        350
+      ],
+      "sha256": "a9e5ae6d6b2c1300c3ec55586ccce0712abc8355e0893d99df4e7938f1cd629f"
+    },
+    "robot-full-attack-slow.gif": {
+      "frameCount": 5,
+      "durationsMs": [
+        650,
+        650,
+        650,
+        650,
+        650
+      ],
+      "sha256": "fd8f62fc9a1850a01d9e820d642c02ad15e108c1c70664bb0b7058f1bd57241c"
+    },
+    "robot-full-death-slow.gif": {
+      "frameCount": 3,
+      "durationsMs": [
+        650,
+        600,
+        1200
+      ],
+      "sha256": "0c9b89cc38a5301d1e4730ebb009ad1939d0041c06bccb2ad66f6f125f9b9bdf"
+    },
+    "skeleton-full-idle-slow.gif": {
+      "frameCount": 4,
+      "durationsMs": [
+        350,
+        350,
+        350,
+        350
+      ],
+      "sha256": "f152105ece48b47e51e6a14e65d9b5c1d379699577698c9ed9162863d720ca7d"
+    },
+    "skeleton-full-attack-slow.gif": {
+      "frameCount": 5,
+      "durationsMs": [
+        650,
+        650,
+        650,
+        650,
+        650
+      ],
+      "sha256": "26aa96a76f6d12efc9740d3ee39b25ffbe2124eede42632d78ae12ec026c8ca9"
+    },
+    "skeleton-full-death-slow.gif": {
+      "frameCount": 3,
+      "durationsMs": [
+        650,
+        600,
+        1200
+      ],
+      "sha256": "464c39bcf6eeb113488811a1d67ea42d5625591007a7916f952421725cc8f51e"
+    },
+    "skeleton-full-composite-contact-sheet.jpg": {
+      "sha256": "e4f8006ccab7d3eca4759f21a9cab295b9378c2932cfc7e6fcc92b3bc92fc044"
+    },
+    "robot-full-composite-contact-sheet.jpg": {
+      "sha256": "0d835044bdc62adaefbf608801463dfc49a5b7ae61a44900bac1cee4a30d637a"
+    }
+  }
+}

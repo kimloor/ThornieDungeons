@@ -1,0 +1,1126 @@
+{
+  "status": "TECHNICAL_CHECKS_PASS_VISUAL_REVIEW_REQUIRED",
+  "canvas": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    7
+  ],
+  "runtimeTransforms": false,
+  "sets": {
+    "robot": {
+      "frameCount": 8,
+      "layerCount": 56,
+      "sourceGrip": [
+        383.48870636550305,
+        595.2936344969199
+      ],
+      "targetGrips": {
+        "idle_01": [
+          270,
+          505
+        ],
+        "idle_02": [
+          270,
+          493
+        ],
+        "idle_03": [
+          270,
+          501
+        ],
+        "attack_01": [
+          310,
+          309
+        ],
+        "attack_02": [
+          489,
+          448
+        ],
+        "attack_03": [
+          413,
+          551
+        ]
+      },
+      "swordScale": 0.6,
+      "swordRotations": {
+        "idle_01": 135,
+        "idle_02": 135,
+        "idle_03": 135,
+        "attack_01": -55,
+        "attack_02": 32,
+        "attack_03": 110
+      },
+      "baseCoverageCheck": "PASS: all opaque base pixels covered",
+      "frames": {
+        "idle_01": {
+          "coverage_underlay": {
+            "sha256": "8343f6f013fb6187145f999d87408187d6a083887f686ed3f6a7940f8c643af6",
+            "bbox": [
+              244,
+              206,
+              464,
+              646
+            ]
+          },
+          "torso_armor": {
+            "sha256": "d64fb6e8ed820d11496f42ec0b51f7b5385892b375dcf21d1845483b74c80408",
+            "bbox": [
+              286,
+              372,
+              398,
+              495
+            ]
+          },
+          "legs_boots": {
+            "sha256": "c60f8a8a94dcadb99a9fa7cf15fd8bd66060a6bb2de041735a6056c38030dc1f",
+            "bbox": [
+              260,
+              472,
+              423,
+              660
+            ]
+          },
+          "arm_rear": {
+            "sha256": "14d38347a94d0126ffcd53529b26d3cdb060c72a2a838062f1e90dd140915db9",
+            "bbox": [
+              369,
+              397,
+              473,
+              560
+            ]
+          },
+          "helmet": {
+            "sha256": "6ee2ed8bf12143deaa754ab726a2f5e49e40f967e4e555117e1d0c8379dbdb60",
+            "bbox": [
+              142,
+              124,
+              463,
+              417
+            ]
+          },
+          "sword": {
+            "sha256": "827e6892f9af02f91c949b3c4966d2132982c49b2cc584ce63b780812f028f91",
+            "bbox": [
+              210,
+              445,
+              508,
+              745
+            ]
+          },
+          "arm_front": {
+            "sha256": "ef7a373b64d05e177ce11c93a469280623da07800466a680bfeeb2da06c1c782",
+            "bbox": [
+              246,
+              372,
+              347,
+              539
+            ]
+          }
+        },
+        "idle_02": {
+          "coverage_underlay": {
+            "sha256": "209e2721d70e356097f65d82dd5e0f45a83fef05feb830331b222526939aa41e",
+            "bbox": [
+              244,
+              194,
+              464,
+              634
+            ]
+          },
+          "torso_armor": {
+            "sha256": "d9e93e45e6616f18a267584d2bc097cb61e962cbedd3f1a4ed0be0581d873311",
+            "bbox": [
+              286,
+              360,
+              398,
+              483
+            ]
+          },
+          "legs_boots": {
+            "sha256": "18abcd1ab0074e86e4e89d34c7e362d93c87b42ddf2688880e2f5b64e92d05f3",
+            "bbox": [
+              260,
+              460,
+              423,
+              648
+            ]
+          },
+          "arm_rear": {
+            "sha256": "5e8d918b14a3a8ab19adf9a8e503756f2180f282955e2e13f7aa0677a72bee86",
+            "bbox": [
+              369,
+              385,
+              473,
+              548
+            ]
+          },
+          "helmet": {
+            "sha256": "3bbc7bf7c97a76d542a4c38f9bd09dee2ab5a8f70e6af753ca2ed245247766ed",
+            "bbox": [
+              142,
+              112,
+              463,
+              405
+            ]
+          },
+          "sword": {
+            "sha256": "0994fd5438ddef7944146b888a57ee6d75967f82e8f29d4699ecd2325f4be56b",
+            "bbox": [
+              210,
+              433,
+              508,
+              733
+            ]
+          },
+          "arm_front": {
+            "sha256": "86e20bb424d5b6d53ffb0af0c682be5d230b9978d104ac5c95724d5806603e82",
+            "bbox": [
+              246,
+              360,
+              347,
+              527
+            ]
+          }
+        },
+        "idle_03": {
+          "coverage_underlay": {
+            "sha256": "b768da562dc73c6e7923bb94b135a296266227b597dc6e839d8d3344b526c290",
+            "bbox": [
+              244,
+              202,
+              464,
+              642
+            ]
+          },
+          "torso_armor": {
+            "sha256": "55681654ce369798bb3541f26389d42c74c48d3379412b304272fd7c760923a8",
+            "bbox": [
+              286,
+              368,
+              398,
+              491
+            ]
+          },
+          "legs_boots": {
+            "sha256": "88245017647e1342135c962b556af88d78c9de46c9b8231336fd88a84069e25b",
+            "bbox": [
+              260,
+              468,
+              423,
+              656
+            ]
+          },
+          "arm_rear": {
+            "sha256": "b5ee5b81837f188da457f24366a42517b8d97a2209a39dfdbe4ad3139e06d14a",
+            "bbox": [
+              369,
+              393,
+              473,
+              556
+            ]
+          },
+          "helmet": {
+            "sha256": "988d8413b0551724be4eba8a50faac8509f515ed44d1690d3dc627a948528184",
+            "bbox": [
+              142,
+              120,
+              463,
+              413
+            ]
+          },
+          "sword": {
+            "sha256": "defb545fda23c5408bd836328a75fb8866eb13b7d73e6e968a4120b9d1e719e5",
+            "bbox": [
+              210,
+              441,
+              508,
+              741
+            ]
+          },
+          "arm_front": {
+            "sha256": "7736682dc623d7a1626bbf142a5e4f0b58c3a529007d8f548578f67749034dd9",
+            "bbox": [
+              246,
+              368,
+              347,
+              535
+            ]
+          }
+        },
+        "attack_01": {
+          "coverage_underlay": {
+            "sha256": "1353fd9d5eb6ba2fb4939b682562a1582a7c1a0096178690ff4df15234004e74",
+            "bbox": [
+              224,
+              256,
+              512,
+              670
+            ]
+          },
+          "torso_armor": {
+            "sha256": "c00c5787d91b15aae3bed2b96062aff15ad9b43c956254ad783f23dc1da40534",
+            "bbox": [
+              264,
+              363,
+              414,
+              512
+            ]
+          },
+          "legs_boots": {
+            "sha256": "d9718366f937b41b49c50211a98a33614a2078f74387f95a860fc8fb846caf1e",
+            "bbox": [
+              223,
+              496,
+              430,
+              691
+            ]
+          },
+          "arm_rear": {
+            "sha256": "3571d4816d90f4513fcc5530e4a1cd68dce0027a22a5820ee0c79f2fcf7655e3",
+            "bbox": [
+              373,
+              415,
+              524,
+              531
+            ]
+          },
+          "helmet": {
+            "sha256": "55ffc7cac8a19769dd82010ae04169676494167d367591ad365654a339b5b8aa",
+            "bbox": [
+              187,
+              181,
+              475,
+              446
+            ]
+          },
+          "sword": {
+            "sha256": "84a12802c43e80a93dba9931b04c72bf58c0a8e53924f7f1a2563935c4f24b4d",
+            "bbox": [
+              34,
+              114,
+              379,
+              358
+            ]
+          },
+          "arm_front": {
+            "sha256": "495b1c2851bfcf56a87eeda95587f8d68d289b3e9e26ce651b58a214f6abadac",
+            "bbox": [
+              204,
+              254,
+              367,
+              449
+            ]
+          }
+        },
+        "attack_02": {
+          "coverage_underlay": {
+            "sha256": "2de4559b1713dcf49eafb6ede4899cd76d777d273c1448773e0ba5455524d0dd",
+            "bbox": [
+              188,
+              257,
+              512,
+              672
+            ]
+          },
+          "torso_armor": {
+            "sha256": "0626172537a4238fc351fb3dca2718f05869ae99feb7155fbf52870e8ad34b3b",
+            "bbox": [
+              204,
+              369,
+              401,
+              513
+            ]
+          },
+          "legs_boots": {
+            "sha256": "777900790f000b1817e87a184e326f839d6408c2132fd27b850bea40cbbadf15",
+            "bbox": [
+              182,
+              470,
+              430,
+              693
+            ]
+          },
+          "arm_rear": {
+            "sha256": "f6b4a2f7feb3c70df9d43d7009cb853526723e91617c64974aebf37c4b59dd61",
+            "bbox": [
+              168,
+              381,
+              302,
+              476
+            ]
+          },
+          "helmet": {
+            "sha256": "268c2fca020b8ab56738fcb90fff60649573026b54b446d83198cbfa5469ea1b",
+            "bbox": [
+              130,
+              181,
+              439,
+              446
+            ]
+          },
+          "sword": {
+            "sha256": "f494c4b8c2e89401a10aae73836961a24e815cfc0755b9a187fb82de2184d32f",
+            "bbox": [
+              442,
+              162,
+              672,
+              520
+            ]
+          },
+          "arm_front": {
+            "sha256": "ba341763637d9a4febd7bc50e1b6c1368e2fd7395ef0aff18e8e87a6e127a779",
+            "bbox": [
+              338,
+              408,
+              515,
+              479
+            ]
+          }
+        },
+        "attack_03": {
+          "coverage_underlay": {
+            "sha256": "aa8f1aeea4c2692ebf970ab084791ac0a1fbce6363a03892957c6e08d1d312b3",
+            "bbox": [
+              204,
+              256,
+              436,
+              669
+            ]
+          },
+          "torso_armor": {
+            "sha256": "803cb8e114c54d8ec2808f51c02100dac04ac31b2377327b66644251db9ecad4",
+            "bbox": [
+              244,
+              364,
+              371,
+              523
+            ]
+          },
+          "legs_boots": {
+            "sha256": "9b0c6ba76bd24c9278179788b91029101b937da1774d6a04fd70979fdf363e21",
+            "bbox": [
+              196,
+              485,
+              412,
+              700
+            ]
+          },
+          "arm_rear": {
+            "sha256": "b49629a0266f3daab285bf6a759a2802771b94f2219b155e3ed1ac65eea51ea4",
+            "bbox": [
+              191,
+              357,
+              339,
+              522
+            ]
+          },
+          "helmet": {
+            "sha256": "014ca0a790ab71fc6b20b0fe4c1a1c4337f02c8469be1cb1082bf20866434819",
+            "bbox": [
+              129,
+              176,
+              441,
+              446
+            ]
+          },
+          "sword": {
+            "sha256": "a4cdff0d68e91e6beeef3a66b4e5fe65016d611216cbfd7409888a1b1ab44d9d",
+            "bbox": [
+              334,
+              507,
+              730,
+              682
+            ]
+          },
+          "arm_front": {
+            "sha256": "27a51074e82d94f6900bcb598865e58a478c945e2b17cc089b6794393beb25d8",
+            "bbox": [
+              313,
+              407,
+              442,
+              580
+            ]
+          }
+        },
+        "death_01": {
+          "coverage_underlay": {
+            "sha256": "778c8b317ab278c23c78399a18eac8316a1227f5265c13a29c89d059b3f6d402",
+            "bbox": [
+              132,
+              212,
+              554,
+              704
+            ]
+          },
+          "torso_armor": {
+            "sha256": "7bf9c2fdd21005160a842524d4ca7a62ff8783bdcf30eba8d9ac581af4dd4100",
+            "bbox": [
+              159,
+              358,
+              522,
+              462
+            ]
+          },
+          "legs_boots": {
+            "sha256": "78b83a1cd270378fc440be5f9f31e5b349da45d0ca10e3ec25fd6d18bcf3b8e6",
+            "bbox": [
+              360,
+              444,
+              524,
+              631
+            ]
+          },
+          "arm_rear": {
+            "sha256": "c8d50114528026212ef018ba20d769d271f5ce3e76f03bb5a92324a5cd5119dd",
+            "bbox": [
+              452,
+              393,
+              546,
+              468
+            ]
+          },
+          "helmet": {
+            "sha256": "f2bb0bb2f8da3760eb3b3bd8886adb1c8b00d05b168b9e6d2605b291f8ac0a8c",
+            "bbox": [
+              65,
+              183,
+              481,
+              400
+            ]
+          },
+          "sword": {
+            "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+            "bbox": null
+          },
+          "arm_front": {
+            "sha256": "6aafc00b42d6570aecb10aa5f58a810ef28e87cad2b06f84dfce48918f7ca53a",
+            "bbox": [
+              266,
+              381,
+              383,
+              515
+            ]
+          }
+        },
+        "death_02": {
+          "coverage_underlay": {
+            "sha256": "6e8df86c62c967c7a5676b4c929ae1e1e405c04af1f61599904e965c5b1133ae",
+            "bbox": [
+              183,
+              355,
+              692,
+              705
+            ]
+          },
+          "torso_armor": {
+            "sha256": "059805c87503346c2e86141dc40d1a4a46a54d582a630fa3518aa9642944fd74",
+            "bbox": [
+              227,
+              490,
+              293,
+              599
+            ]
+          },
+          "legs_boots": {
+            "sha256": "c6819cda81c4fc09d1c82fe3dd20d93637d549da832faaddd11a0074739b2e45",
+            "bbox": [
+              179,
+              584,
+              355,
+              680
+            ]
+          },
+          "arm_rear": {
+            "sha256": "2696f36a90ec66b6cf21729dac4772e1ed4ad24d51523a13d3efd83595e7f813",
+            "bbox": [
+              313,
+              551,
+              428,
+              686
+            ]
+          },
+          "helmet": {
+            "sha256": "df2713208e3cd4580848e2f5c70cb5afc7c7752b0320e661a9d625e4dd1704fd",
+            "bbox": [
+              232,
+              207,
+              486,
+              561
+            ]
+          },
+          "sword": {
+            "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+            "bbox": null
+          },
+          "arm_front": {
+            "sha256": "3219d6a3949e8b692dfcd6d5c63bee58994380687d8b23401b858d7c89c44b01",
+            "bbox": [
+              232,
+              496,
+              370,
+              679
+            ]
+          }
+        }
+      }
+    },
+    "skeleton": {
+      "frameCount": 8,
+      "layerCount": 56,
+      "sourceGrip": [
+        384.92607802874744,
+        602.4804928131417
+      ],
+      "targetGrips": {
+        "idle_01": [
+          270,
+          505
+        ],
+        "idle_02": [
+          270,
+          493
+        ],
+        "idle_03": [
+          270,
+          501
+        ],
+        "attack_01": [
+          310,
+          309
+        ],
+        "attack_02": [
+          489,
+          448
+        ],
+        "attack_03": [
+          413,
+          551
+        ]
+      },
+      "swordScale": 0.6,
+      "swordRotations": {
+        "idle_01": 135,
+        "idle_02": 135,
+        "idle_03": 135,
+        "attack_01": -55,
+        "attack_02": 32,
+        "attack_03": 110
+      },
+      "baseCoverageCheck": "PASS: all opaque base pixels covered",
+      "frames": {
+        "idle_01": {
+          "coverage_underlay": {
+            "sha256": "c5423aab6059adea6b24cd2988d417e228997dd32df898eb3d8cf44611311c82",
+            "bbox": [
+              244,
+              206,
+              464,
+              646
+            ]
+          },
+          "torso_armor": {
+            "sha256": "c952b7311d9fd1a8431199842b154fd8cdfbcc81c8f5198c562ef10400b397fa",
+            "bbox": [
+              296,
+              347,
+              399,
+              489
+            ]
+          },
+          "legs_boots": {
+            "sha256": "7c8023af70dfb6881ccace4a13729c2d26bd5f33cef90fa330574dfb0a611966",
+            "bbox": [
+              260,
+              480,
+              432,
+              659
+            ]
+          },
+          "arm_rear": {
+            "sha256": "400f97cb11d490eb92d3096c53ce012f90c7cc540ec2facf7efa2a1f8bc9992f",
+            "bbox": [
+              380,
+              391,
+              467,
+              554
+            ]
+          },
+          "helmet": {
+            "sha256": "0003c180dc1950c0540beeff825ceb4dfabcf79caa2077f5cb45872299c8fd7e",
+            "bbox": [
+              158,
+              92,
+              463,
+              419
+            ]
+          },
+          "sword": {
+            "sha256": "29058320bfc41f4bfe166d073eba59bac482ddc0b43032a5b6f3f3b5c782a3d9",
+            "bbox": [
+              214,
+              448,
+              512,
+              747
+            ]
+          },
+          "arm_front": {
+            "sha256": "622997feb85a3bdc635b56c5c0a22d85c197efbce92492d13158c4b4ae45581c",
+            "bbox": [
+              238,
+              357,
+              352,
+              526
+            ]
+          }
+        },
+        "idle_02": {
+          "coverage_underlay": {
+            "sha256": "9d53a2b4fbc76e33267e142bebdaa47b4fa05e7b1c113de7ff073311e98ceeb5",
+            "bbox": [
+              244,
+              194,
+              464,
+              634
+            ]
+          },
+          "torso_armor": {
+            "sha256": "a803273964cb5f60b9d9d437fb39ccf50a8562f39f01878e7e0911c8e1b34a8a",
+            "bbox": [
+              296,
+              335,
+              399,
+              477
+            ]
+          },
+          "legs_boots": {
+            "sha256": "565a0d7193fa3e7f8cb2b1f965892b5d9979aa26c3c462949bc297736c01223c",
+            "bbox": [
+              260,
+              468,
+              432,
+              647
+            ]
+          },
+          "arm_rear": {
+            "sha256": "2ea69bec9ffab63e7640657b3978f9ed7a143795996962c1a6eed19c81ffbab5",
+            "bbox": [
+              380,
+              379,
+              467,
+              542
+            ]
+          },
+          "helmet": {
+            "sha256": "1fc4fd887fab4b5d3cbdad1dfa4d8f964172b6387bf2569d3c967a743e08de96",
+            "bbox": [
+              158,
+              80,
+              463,
+              407
+            ]
+          },
+          "sword": {
+            "sha256": "58e9cb15e3238de4d8170038b3b984ce93a4b8ced0a9f5c09bbbf7dbdcb28dad",
+            "bbox": [
+              214,
+              436,
+              512,
+              735
+            ]
+          },
+          "arm_front": {
+            "sha256": "9e5a859e921b2a5eaa94b4226fab5497672f8a749d39e1c5b16de0e1b1370377",
+            "bbox": [
+              238,
+              345,
+              352,
+              514
+            ]
+          }
+        },
+        "idle_03": {
+          "coverage_underlay": {
+            "sha256": "abc6cd854798d862c99f5563799e8db6db36b420b228aeee1905c25b307a5bf6",
+            "bbox": [
+              244,
+              202,
+              464,
+              642
+            ]
+          },
+          "torso_armor": {
+            "sha256": "b4a7d3ae04977b03255980c0956d585d6655609bd62b6647d3f0486aa415a80d",
+            "bbox": [
+              296,
+              343,
+              399,
+              485
+            ]
+          },
+          "legs_boots": {
+            "sha256": "11a5e188170e3b19f8dc65fe95b40170f3ceed895a8a1945a101e8b7099f4b85",
+            "bbox": [
+              260,
+              476,
+              432,
+              655
+            ]
+          },
+          "arm_rear": {
+            "sha256": "893dba82d91a03005e322eb4c854e666c6883cf26d8a11db906bbcf9a1abb35a",
+            "bbox": [
+              380,
+              387,
+              467,
+              550
+            ]
+          },
+          "helmet": {
+            "sha256": "3e8dc0776f2c041ac13e19f61db5e018b4ef18a7e984bc932d26b844d2bdf91d",
+            "bbox": [
+              158,
+              88,
+              463,
+              415
+            ]
+          },
+          "sword": {
+            "sha256": "616f951df0fd12b5cb69fdcf8393385445b9a180c240a6fc536c34cc6f2d7fc4",
+            "bbox": [
+              214,
+              444,
+              512,
+              743
+            ]
+          },
+          "arm_front": {
+            "sha256": "fa482efd93f83efca27bd569ee90755aefcc5f56d7da534cab87a64936885165",
+            "bbox": [
+              238,
+              353,
+              352,
+              522
+            ]
+          }
+        },
+        "attack_01": {
+          "coverage_underlay": {
+            "sha256": "bd82515e24a03740eacc2d8fcf847aef0db2add1f9d5fbfd3aa9a1f0c604754b",
+            "bbox": [
+              224,
+              256,
+              512,
+              670
+            ]
+          },
+          "torso_armor": {
+            "sha256": "0c387fd6bd3d3f151a5924080a02fd044b1e23ce5c961c72140671d76fec5d63",
+            "bbox": [
+              276,
+              390,
+              395,
+              531
+            ]
+          },
+          "legs_boots": {
+            "sha256": "c53f7059108cf30121754a96e1a4349b7901a94422fb2b5612b4afd3f1f77253",
+            "bbox": [
+              224,
+              500,
+              427,
+              680
+            ]
+          },
+          "arm_rear": {
+            "sha256": "f62bf60c013180da4ec17058c88b35aacf8d8dcbb532f6139c50b0de47ea3e90",
+            "bbox": [
+              382,
+              413,
+              528,
+              532
+            ]
+          },
+          "helmet": {
+            "sha256": "72edf549050e9473d6debc50b3dbfd6ddda17aed219519df5671209b5a069690",
+            "bbox": [
+              200,
+              152,
+              475,
+              448
+            ]
+          },
+          "sword": {
+            "sha256": "02803097f3e8626dbfe3b98364b8518353bc91a1bfaba3650a034260b22c0443",
+            "bbox": [
+              30,
+              112,
+              375,
+              356
+            ]
+          },
+          "arm_front": {
+            "sha256": "c82e94a32cb6678978c76aed1b4f72e8d6df1e361fb9d01333c9f2c44434830c",
+            "bbox": [
+              235,
+              270,
+              348,
+              446
+            ]
+          }
+        },
+        "attack_02": {
+          "coverage_underlay": {
+            "sha256": "3d2eafabc921c9b65d4c14e912ee80ae544d5fc41755d61518dcccdb4e66cd6c",
+            "bbox": [
+              188,
+              257,
+              512,
+              672
+            ]
+          },
+          "torso_armor": {
+            "sha256": "7137f5d9ee8d73274ab4c79b61b35dc058839de23b2747e893d6f35536d4f9f2",
+            "bbox": [
+              217,
+              361,
+              421,
+              526
+            ]
+          },
+          "legs_boots": {
+            "sha256": "b2d5306787469dbef4628a69ba72598a4cd056a0cba92bacf74992d001ba06a0",
+            "bbox": [
+              187,
+              481,
+              443,
+              688
+            ]
+          },
+          "arm_rear": {
+            "sha256": "373f3401db12d565201bbefa3a7698ee55e1fb8bbb3afec07be77e508ceaff96",
+            "bbox": [
+              163,
+              381,
+              311,
+              475
+            ]
+          },
+          "helmet": {
+            "sha256": "53d59f661d3245db502a654fb42b5f23e24a133bd3ffea34325234cc69cacb83",
+            "bbox": [
+              145,
+              152,
+              439,
+              448
+            ]
+          },
+          "sword": {
+            "sha256": "b011f4600f44ad7c7876ef97391f5371fe89736de141939c66c880ffc57d6fb9",
+            "bbox": [
+              445,
+              158,
+              672,
+              515
+            ]
+          },
+          "arm_front": {
+            "sha256": "ad1034417c4779ce1ea4f0319fa19593d81b806292c729a74de49a5494dedc20",
+            "bbox": [
+              346,
+              418,
+              518,
+              477
+            ]
+          }
+        },
+        "attack_03": {
+          "coverage_underlay": {
+            "sha256": "053d8195ba26aa80ceb488d9e12f4b59fde921ea30cc569ce5f34828287eed9a",
+            "bbox": [
+              204,
+              256,
+              436,
+              669
+            ]
+          },
+          "torso_armor": {
+            "sha256": "9e3a56112594e614c569986616fa6fa89c438536515cc022fe1565d63e24bdc2",
+            "bbox": [
+              273,
+              403,
+              355,
+              523
+            ]
+          },
+          "legs_boots": {
+            "sha256": "eaf8ef973d1eb079537c20ff3be67d30960aae2885a4a235e6d83b6a0f31cee4",
+            "bbox": [
+              201,
+              486,
+              412,
+              703
+            ]
+          },
+          "arm_rear": {
+            "sha256": "4376a78b378311d3e652647476e1b8d202550d515f589057b22a5f1afb308061",
+            "bbox": [
+              197,
+              388,
+              332,
+              514
+            ]
+          },
+          "helmet": {
+            "sha256": "f2eafa06ed3eb46e9b3cb1e3f28a6291063e0a81c02444b9144b55d5ec2ba806",
+            "bbox": [
+              144,
+              148,
+              440,
+              448
+            ]
+          },
+          "sword": {
+            "sha256": "33de028c402e1e886b373e6f071f7c2de1b40446c23262e39781b825b1259984",
+            "bbox": [
+              339,
+              503,
+              734,
+              684
+            ]
+          },
+          "arm_front": {
+            "sha256": "955769e774801e2472e5b687f46e0b6854788814ce96624774d6ad5bbbe3001b",
+            "bbox": [
+              294,
+              408,
+              442,
+              576
+            ]
+          }
+        },
+        "death_01": {
+          "coverage_underlay": {
+            "sha256": "f39361bbd0d826a2c61becee1a4a19d559d4530df31dbae3f6f2ddf1bcde18fc",
+            "bbox": [
+              132,
+              212,
+              554,
+              704
+            ]
+          },
+          "torso_armor": {
+            "sha256": "8d2acc1cb81de4e85d19123cec0e7fac51db2eff2bb5583301d9d974327f3b38",
+            "bbox": [
+              348,
+              390,
+              505,
+              458
+            ]
+          },
+          "legs_boots": {
+            "sha256": "06a39481dd3b8b1f2e3a9295986bdbcca3bdeeea4cb8bb64fc8b0808486a8e59",
+            "bbox": [
+              359,
+              448,
+              526,
+              629
+            ]
+          },
+          "arm_rear": {
+            "sha256": "d547ffec04c3d70fc2a61e6f864ecdc9045e7e472de56eaa2507af28186b7c4b",
+            "bbox": [
+              453,
+              392,
+              559,
+              463
+            ]
+          },
+          "helmet": {
+            "sha256": "48c07cf082eccf2209b5c42065a99e13e1ed6dac2e58b3644320846136288dbc",
+            "bbox": [
+              97,
+              154,
+              496,
+              402
+            ]
+          },
+          "sword": {
+            "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+            "bbox": null
+          },
+          "arm_front": {
+            "sha256": "a6fabd0ec0833679406bfc394978aaae0f0dee15b8a68373cc09ed1ceca01e39",
+            "bbox": [
+              266,
+              389,
+              381,
+              509
+            ]
+          }
+        },
+        "death_02": {
+          "coverage_underlay": {
+            "sha256": "80cc777e814c79f28b7679a562690ad7c14fc3ab5a17d7c4c5e37deb64e96396",
+            "bbox": [
+              183,
+              355,
+              692,
+              705
+            ]
+          },
+          "torso_armor": {
+            "sha256": "06026830efa2a9b69d47f472ca889ba43b6e4499c7e7f2680fd1dffaa35b0bc1",
+            "bbox": [
+              226,
+              485,
+              291,
+              605
+            ]
+          },
+          "legs_boots": {
+            "sha256": "4272bc18fdab8d72edd6a8b2369f0800f2fbb69273b72d30266414a6e1503c78",
+            "bbox": [
+              176,
+              580,
+              338,
+              680
+            ]
+          },
+          "arm_rear": {
+            "sha256": "0b70bd87f4c883b96303ff686c838825cd84f1d73cc6b55d18553d02ecd13694",
+            "bbox": [
+              308,
+              533,
+              444,
+              686
+            ]
+          },
+          "helmet": {
+            "sha256": "2c04c34468093e0da4ea44ea07b018e2c302346fa94214d64f01683fbc83cfea",
+            "bbox": [
+              246,
+              212,
+              495,
+              571
+            ]
+          },
+          "sword": {
+            "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+            "bbox": null
+          },
+          "arm_front": {
+            "sha256": "53b22381e9ee7eeab402fd28799999a5178872c6edbaaefb5a8d71a92249fea9",
+            "bbox": [
+              232,
+              472,
+              366,
+              680
+            ]
+          }
+        }
+      }
+    }
+  }
+}

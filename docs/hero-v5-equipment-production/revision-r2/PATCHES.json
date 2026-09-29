@@ -1,0 +1,38 @@
+{
+  "robot/attack_01/arm_front.png": {
+    "previousSha256": "495b1c2851bfcf56a87eeda95587f8d68d289b3e9e26ce651b58a214f6abadac",
+    "sha256": "38e4c8afe51bda60bb6267409835592238ad2928d1425ad6802c8cd9bfdb0a71"
+  },
+  "robot/death_01/helmet.png": {
+    "previousSha256": "f2bb0bb2f8da3760eb3b3bd8886adb1c8b00d05b168b9e6d2605b291f8ac0a8c",
+    "sha256": "4a607388422dae8a8bf9bc59aefd9ba3d08710ae0ea4926e53c27027d3b7b7f2"
+  },
+  "robot/death_01/torso_armor.png": {
+    "previousSha256": "7bf9c2fdd21005160a842524d4ca7a62ff8783bdcf30eba8d9ac581af4dd4100",
+    "sha256": "4805c99ed89236b7ae9e0f49fe0321b3addd42fcdf0db91897dc3e4bf679fbb0"
+  },
+  "robot/death_01/arm_front.png": {
+    "previousSha256": "6aafc00b42d6570aecb10aa5f58a810ef28e87cad2b06f84dfce48918f7ca53a",
+    "sha256": "6aafc00b42d6570aecb10aa5f58a810ef28e87cad2b06f84dfce48918f7ca53a"
+  },
+  "robot/death_01/arm_rear.png": {
+    "previousSha256": "c8d50114528026212ef018ba20d769d271f5ce3e76f03bb5a92324a5cd5119dd",
+    "sha256": "c8d50114528026212ef018ba20d769d271f5ce3e76f03bb5a92324a5cd5119dd"
+  },
+  "skeleton/death_01/helmet.png": {
+    "previousSha256": "48c07cf082eccf2209b5c42065a99e13e1ed6dac2e58b3644320846136288dbc",
+    "sha256": "86621bdc9b6e9ea4a09d610dc6d0499e8f579f79fb7e9b42a4a1cc61eed998bf"
+  },
+  "skeleton/death_01/torso_armor.png": {
+    "previousSha256": "8d2acc1cb81de4e85d19123cec0e7fac51db2eff2bb5583301d9d974327f3b38",
+    "sha256": "4c6680767cf59241f08cb8da67a6e5055ab76217f814065e307aee71df6786a7"
+  },
+  "skeleton/death_01/arm_front.png": {
+    "previousSha256": "a6fabd0ec0833679406bfc394978aaae0f0dee15b8a68373cc09ed1ceca01e39",
+    "sha256": "164bc4361a4e3aca4af2d47c7cb70b433928de19aa83e626d93807240c90bd44"
+  },
+  "skeleton/death_01/arm_rear.png": {
+    "previousSha256": "d547ffec04c3d70fc2a61e6f864ecdc9045e7e472de56eaa2507af28186b7c4b",
+    "sha256": "811babdb373a3b8cf03e4b9683fa21cd9c03e161915922e0ebeaed761e26ff5e"
+  }
+}

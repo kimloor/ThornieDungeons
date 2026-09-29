@@ -1,0 +1,4 @@
+package/
+previews/*.png
+tools/__pycache__/
+fitting-check.jpg
