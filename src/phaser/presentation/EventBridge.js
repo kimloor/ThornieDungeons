@@ -244,12 +244,14 @@ function arenaPreparedPresentationContext(preparedSnapshot) {
 }
 
 function arenaPresentationUnit(state, side, kind) {
-  const units = state?.units || {};
+  const rawUnits = state?.units || {};
+  const unitList = Array.isArray(rawUnits) ? rawUnits : Object.values(rawUnits);
+  const unitsById = new Map(unitList.filter(Boolean).map(unit => [String(unit.id), unit]));
   const declared = state?.teams?.[side]?.unitIds;
   const ids = Array.isArray(declared)
     ? declared
-    : Object.values(units).filter(unit => unit?.side === side).map(unit => unit.id);
-  return ids.map(id => units[id]).find(unit => unit?.kind === kind) || null;
+    : unitList.filter(unit => unit?.side === side).map(unit => unit.id);
+  return ids.map(id => unitsById.get(String(id))).find(unit => unit?.kind === kind) || null;
 }
 
 function buildArenaBattlefieldSnapshot({
@@ -340,7 +342,7 @@ function buildArenaBattlefieldSnapshot({
   return Object.freeze({
     mode: "arena",
     battleId: String(state.battleId || "arena-preview"),
-    seq: Number(state.safeActionSeq || state.logSeq || 0),
+    seq: Number(state.safeActionSeq ?? state.actionSeq ?? state.logSeq ?? 0),
     selectedTargetId,
     combatSpeed: speed,
     teams: [attacker, defender],
