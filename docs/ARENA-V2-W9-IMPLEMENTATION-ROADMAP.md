@@ -346,6 +346,7 @@ Implementation boundary:
 - Real-player pair encounters are canonicalized by unordered character ID; bot wins are capped at 1449 and cannot promote into Diamond.
 - A season-cutoff settlement is Coin-only: it persists the authoritative result/history and base slot Coin, but does not move rating, pair counts, W/D/L stats, milestones, promotion rewards or season eligibility.
 - Terminal combat commits are recoverable: action replay and season finalization sweep done-but-unsettled matches and return the stored authoritative settlement result.
+- Recovery respects the authoritative terminal timestamp: a result completed before season cutoff keeps its normal/surrender settlement even if recovery runs after cutoff; only unresolved active matches (or terminal rows completed at/after cutoff) use cutoff Coin-only settlement.
 - Live and final rank ordering is identical: rating DESC, Attack Wins DESC, rating_reached_at ASC, character_id ASC. Result/history rating deltas are computed after floor and bot-cap clamping.
 - Season rollover finalizes expired active and terminal-but-unsettled matches, ranks by rating → Attack Wins → rating reached time → character ID, and initializes the next season with the locked one-tier-drop base.
 - Arena Coin and Diamonds settle immediately where approved. Progression-material reward is explicitly disabled pending an approved item ID/quantity. Mailbox and Profile Frame delivery remain W9.8 scope.

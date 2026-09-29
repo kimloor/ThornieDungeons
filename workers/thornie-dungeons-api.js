@@ -6326,8 +6326,8 @@ async function handleGetArenaV2Match(db, id, session, characterId, matchId) {
   if (match.status === "done" && !parseJsonColumn(match.result_json, null)?.settlementVersion) {
     const terminalState = parseJsonColumn(match.state_json, null);
     if (terminalState?.result) {
-      const settled = await arenaSettleV2Match(db, match, terminalState, arenaResolutionForState(terminalState));
-      match = settled.match;
+      const settled = await arenaSettleStoredTerminalMatch(db, match, terminalState);
+      if (settled) match = settled.match;
     }
   }
   return json({ ok: true, match: arenaMatchPayload(match) });
@@ -6501,8 +6501,20 @@ async function arenaBuildSettlementPlan(db, match, state, requestedResolution = 
   const season = await db.prepare(`SELECT * FROM arena_seasons WHERE season_id = ?`).bind(match.season_id).first();
   if (!season) throw new Error("arena_season_not_found");
   const seasonEndMs = Date.parse(season.ends_at || "");
+  const completedMs = Date.parse(match.completed_at || "");
+  const terminalCompletedBeforeCutoff =
+    match.status === "done"
+    && !!state?.result
+    && Number.isFinite(completedMs)
+    && Number.isFinite(seasonEndMs)
+    && completedMs < seasonEndMs;
   let resolution = arenaResolutionForState(state, requestedResolution);
-  if (resolution === "normal" && Number.isFinite(seasonEndMs) && nowMs >= seasonEndMs) resolution = "cutoff";
+  if (
+    resolution === "normal"
+    && Number.isFinite(seasonEndMs)
+    && nowMs >= seasonEndMs
+    && !terminalCompletedBeforeCutoff
+  ) resolution = "cutoff";
 
   const attacker = await db.prepare(`SELECT p.*, c.player_id FROM arena_season_players p JOIN characters c ON c.character_id = p.character_id WHERE p.season_id = ? AND p.character_id = ?`)
     .bind(match.season_id, match.attacker_character_id).first();
@@ -6786,9 +6798,16 @@ async function arenaSettleStoredTerminalMatch(db, match, state = null, nowMs = D
   if (storedResult?.settlementVersion === 1) return { match, result: storedResult, replayed: true };
   const terminalState = state || parseJsonColumn(match.state_json, {}) || {};
   const season = await db.prepare(`SELECT ends_at FROM arena_seasons WHERE season_id = ?`).bind(match.season_id).first();
-  const seasonEnded = Date.parse(season?.ends_at || "") <= nowMs;
+  const seasonEndMs = Date.parse(season?.ends_at || "");
+  const seasonEnded = Number.isFinite(seasonEndMs) && seasonEndMs <= nowMs;
+  const completedMs = Date.parse(match.completed_at || "");
   if (!terminalState.result && !seasonEnded) return null;
-  const resolution = seasonEnded ? "cutoff" : arenaResolutionForState(terminalState);
+  let resolution;
+  if (terminalState.result && Number.isFinite(completedMs) && Number.isFinite(seasonEndMs)) {
+    resolution = completedMs < seasonEndMs ? arenaResolutionForState(terminalState) : "cutoff";
+  } else {
+    resolution = seasonEnded ? "cutoff" : arenaResolutionForState(terminalState);
+  }
   return arenaSettleV2Match(db, match, terminalState, resolution);
 }
 
@@ -6798,7 +6817,13 @@ async function arenaSettleExpiredActiveMatches(db, seasonId, nowMs = Date.now())
   for (const row of rows.results || []) {
     if (row.status === "done" && parseJsonColumn(row.result_json, null)?.settlementVersion === 1) continue;
     const state = parseJsonColumn(row.state_json, {}) || {};
-    const result = await arenaSettleV2Match(db, row, state, "cutoff");
+    let result;
+    if (row.status === "done") {
+      result = await arenaSettleStoredTerminalMatch(db, row, state, nowMs);
+      if (!result) continue;
+    } else {
+      result = await arenaSettleV2Match(db, row, state, "cutoff");
+    }
     if (!result.replayed) settled++;
   }
   return settled;

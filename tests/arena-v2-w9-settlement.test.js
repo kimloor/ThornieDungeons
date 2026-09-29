@@ -215,6 +215,28 @@ test('terminal combat commit is recovered into settlement on replay', async () =
   db.close();
 });
 
+test('terminal result completed before cutoff keeps normal settlement when recovered after cutoff', async () => {
+  const db = createDb();
+  insertMatch(db, 'm-precutoff-recovery', { status: 'done', rewardSlot: 'equal' });
+  const terminalState = state('victory', 'team_a');
+  db.raw.prepare("UPDATE arena_seasons SET ends_at = '2026-09-28T12:00:00.000Z' WHERE season_id = 'season-1'").run();
+  db.raw.prepare("UPDATE arena_matches SET state_json = ?, result_json = ?, completed_at = '2026-09-28T11:59:59.000Z' WHERE match_id = 'm-precutoff-recovery'")
+    .run(JSON.stringify(terminalState), JSON.stringify({ result: 'victory', winnerSide: 'team_a' }));
+
+  const match = db.raw.prepare("SELECT * FROM arena_matches WHERE match_id = 'm-precutoff-recovery'").get();
+  const recovered = await arena.arenaSettleStoredTerminalMatch(db, match, terminalState, Date.parse('2026-09-28T12:00:01.000Z'));
+  assert.equal(recovered.result.resolution, 'normal');
+  assert.equal(recovered.result.result, 'win');
+  assert.equal(recovered.result.statsApplied, true);
+  assert.equal(recovered.result.attacker.ratingChange > 0, true);
+  assert.equal(db.raw.prepare("SELECT attack_wins FROM arena_season_players WHERE character_id = 'char-10'").get().attack_wins, 1);
+  assert.equal(db.raw.prepare("SELECT arena_coin FROM arena_character_state WHERE character_id = 'char-10'").get().arena_coin, 15);
+  const history = db.raw.prepare("SELECT resolution, arena_coin_earned FROM arena_match_history WHERE match_id = 'm-precutoff-recovery'").get();
+  assert.equal(history.resolution, 'normal');
+  assert.equal(history.arena_coin_earned, 15);
+  db.close();
+});
+
 test('milestones and promotion rewards are exact-once and tier re-promotion does not duplicate', async () => {
   const db = createDb();
   db.raw.prepare("UPDATE arena_season_players SET rating = 1095, attack_wins = 4, attack_losses = 5 WHERE character_id = 'char-10'").run();
@@ -278,18 +300,22 @@ test('season finalization ranks deterministically, pays currency once, disables 
   db.close();
 });
 
-test('season finalization sweeps terminal done matches that committed before settlement', async () => {
+test('season finalization preserves terminal results completed before cutoff', async () => {
   const db = createDb();
-  const match = insertMatch(db, 'm-finalize-recovery', { status: 'done', rewardSlot: 'equal' });
-  db.raw.prepare("UPDATE arena_seasons SET status = 'finalizing' WHERE season_id = 'season-1'").run();
-  db.raw.prepare("UPDATE arena_matches SET state_json = ?, result_json = ?, completed_at = '' WHERE match_id = 'm-finalize-recovery'")
+  insertMatch(db, 'm-finalize-recovery', { status: 'done', rewardSlot: 'equal' });
+  db.raw.prepare("UPDATE arena_seasons SET status = 'finalizing', ends_at = '2026-09-28T12:00:00.000Z' WHERE season_id = 'season-1'").run();
+  db.raw.prepare("UPDATE arena_matches SET state_json = ?, result_json = ?, completed_at = '2026-09-28T11:59:59.000Z' WHERE match_id = 'm-finalize-recovery'")
     .run(JSON.stringify(state('victory', 'team_a')), JSON.stringify({ result: 'victory', winnerSide: 'team_a' }));
 
-  await arena.arenaFinalizeSeason(db, { season_id: 'season-1', status: 'finalizing' }, Date.parse('2026-09-28T12:00:00.000Z'));
-  assert.equal(JSON.parse(db.raw.prepare("SELECT result_json FROM arena_matches WHERE match_id = 'm-finalize-recovery'").get().result_json).settlementVersion, 1);
-  assert.equal(db.raw.prepare("SELECT attack_wins FROM arena_season_players WHERE character_id = 'char-10'").get().attack_wins, 0);
-  assert.equal(db.raw.prepare("SELECT arena_coin FROM arena_character_state WHERE character_id = 'char-10'").get().arena_coin, 5);
-  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_match_history WHERE match_id = 'm-finalize-recovery'").get().c, 1);
+  await arena.arenaFinalizeSeason(db, { season_id: 'season-1', status: 'finalizing' }, Date.parse('2026-09-28T12:00:01.000Z'));
+  const stored = JSON.parse(db.raw.prepare("SELECT result_json FROM arena_matches WHERE match_id = 'm-finalize-recovery'").get().result_json);
+  assert.equal(stored.settlementVersion, 1);
+  assert.equal(stored.resolution, 'normal');
+  assert.equal(stored.result, 'win');
+  assert.equal(db.raw.prepare("SELECT attack_wins FROM arena_season_players WHERE character_id = 'char-10'").get().attack_wins, 1);
+  const history = db.raw.prepare("SELECT resolution, arena_coin_earned FROM arena_match_history WHERE match_id = 'm-finalize-recovery'").get();
+  assert.equal(history.resolution, 'normal');
+  assert.equal(history.arena_coin_earned, 15);
   db.close();
 });
 
