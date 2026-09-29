@@ -183,3 +183,5 @@ test('Arena Phaser receives prepared match snapshot so READY waits on actor asse
   assert.match(eventSource, /equipped: arenaPreparedEquipmentMap\(member\?\.equipment\)/);
   assert.match(eventSource, /petCombat: petSource/);
 });
+
+// Final parity retrigger after generated frontend sync.
