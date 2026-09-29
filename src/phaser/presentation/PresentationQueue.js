@@ -13,7 +13,7 @@ function normalizePresentationTask(entry) {
 
 // This queue is intentionally presentation-only. It serializes already-resolved
 // visual callbacks and has no access to gameplay, rewards, persistence or saves.
-function createPresentationQueue({ onDrained } = {}) {
+function createPresentationQueue({ onDrained, onError } = {}) {
   const entries = [];
   let running = false;
   let speed = 1;
@@ -34,7 +34,11 @@ function createPresentationQueue({ onDrained } = {}) {
     running = true;
     while (entries.length) {
       const task = entries.shift();
-      await task.run(speed);
+      try {
+        await task.run(speed);
+      } catch (error) {
+        onError?.(error);
+      }
     }
     running = false;
     notifyDrained();
