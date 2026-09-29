@@ -15,7 +15,7 @@ test("Mailbox and Crafting UI callers use Auth V2 session signatures", () => {
   assert.doesNotMatch(crafting, /\bcred\b|password/);
   assert.match(mailbox, /cloudGetMailbox\(serverUrl \|\| DEFAULT_SERVER_URL, characterId\)/);
   assert.match(mailbox, /cloudClaimMail\(serverUrl \|\| DEFAULT_SERVER_URL, characterId, mailId\)/);
-  assert.match(mailbox, /cloudClaimAllMail\(serverUrl \|\| DEFAULT_SERVER_URL, characterId\)/);
+  assert.match(mailbox, /cloudClaimAllMail\(serverUrl \|\| DEFAULT_SERVER_URL, characterId, requestId\)/);
   assert.match(mailbox, /cloudDeleteMail\(serverUrl \|\| DEFAULT_SERVER_URL, characterId, mailId\)/);
   assert.match(mailbox, /cloudDeleteMails\(serverUrl \|\| DEFAULT_SERVER_URL, characterId, ids\)/);
   assert.match(mailbox, /cloudDeleteAllClaimedMail\(serverUrl \|\| DEFAULT_SERVER_URL, characterId\)/);

@@ -478,6 +478,6 @@ At minimum verify:
 
 Recommended sequence:
 
-`A0 Contract -> A0.1 admin_users/admin_sessions/audit schema + Admin auth API -> A0.2 /admin Login/Logout UI -> A0.3 migrate existing Admin tools to Admin Session -> QA -> A1 Dashboard/Player Viewer`
+`A0 Contract -> A0.1 admin_users/admin_sessions/audit schema + Admin auth API -> A0.2 /admin Login/Logout UI -> A0.3 migrate existing Admin tools to Admin Session -> QA -> W9 complete -> W9R Worker Modularization -> A1 Dashboard/Player Viewer`
 
-Do not start player/economy mutation tooling before Phase 0 authentication and audit foundations pass QA.
+Do not start Admin Phase 1 Dashboard/Player Viewer until W9 is complete and W9R Worker Modularization has passed QA on latest main. Do not start player/economy mutation tooling before Phase 0 authentication and audit foundations pass QA.

@@ -3125,14 +3125,18 @@ function newMailId() {
 }
 async function sendMail(db, characterId, title, body, reward, sourceKey = "") {
   const r = reward || {};
-  await db
-    .prepare(
-      `INSERT INTO mailbox (mail_id, character_id, title, body, gold, diamonds, junk_json, items_json, claimed, created_at, claimed_at, source_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, '', ?)
-       ON CONFLICT(source_key) DO NOTHING`
-    )
-    .bind(newMailId(), characterId, title || "", body || "", Number(r.gold) || 0, Number(r.diamonds) || 0, r.junk && r.junk.length ? JSON.stringify(r.junk) : "", r.items && r.items.length ? JSON.stringify(r.items) : "", nowIso(), sourceKey || "")
-    .run();
+  const key = String(sourceKey || "");
+  // SQLite/D1 cannot target a partial unique index with ON CONFLICT(source_key).
+  // Guard only non-empty source keys; legacy mail intentionally permits repeated
+  // empty keys.  The INSERT remains one statement and is safe under the unique
+  // index when two reward finalizers race.
+  await db.prepare(
+    `INSERT INTO mailbox (mail_id, character_id, title, body, gold, diamonds, junk_json, items_json, claimed, created_at, claimed_at, source_key)
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, '', ?
+     WHERE ? = '' OR NOT EXISTS (SELECT 1 FROM mailbox WHERE source_key = ? AND source_key <> '')`
+  ).bind(newMailId(), characterId, title || "", body || "", Number(r.gold) || 0, Number(r.diamonds) || 0,
+    r.junk && r.junk.length ? JSON.stringify(r.junk) : "", r.items && r.items.length ? JSON.stringify(r.items) : "",
+    nowIso(), key, key, key).run();
 }
 async function handleGetMailbox(db, id, session, characterId) {
   const auth = await verifyPlayer(db, id, session);
@@ -3178,13 +3182,17 @@ async function handleClaimAllMail(db, id, session, characterId, requestId = "") 
   const receiptKey = requestId ? `mailbox:claim-all:${characterId}:${String(requestId).slice(0, 128)}` : "";
   if (receiptKey) {
     const prior = await db.prepare(`SELECT mail_ids_json, reward_json FROM mailbox_claim_receipts WHERE receipt_key = ? AND character_id = ?`).bind(receiptKey, characterId).first();
-    if (prior) return { ...json({ ok: true, replayed: true, mailIds: parseJsonColumn(prior.mail_ids_json, []), ...parseJsonColumn(prior.reward_json, {}) }) };
+    if (prior) return json({ ok: true, replayed: true, mailIds: parseJsonColumn(prior.mail_ids_json, []), ...parseJsonColumn(prior.reward_json, {}) });
   }
   const unclaimed = await db.prepare(`SELECT * FROM mailbox WHERE character_id = ? AND claimed = 0 ORDER BY created_at ASC, mail_id ASC`).bind(characterId).all();
   const rows = unclaimed.results || [];
   if (!rows.length) {
     const empty = { ok: true, mailIds: [], gold: 0, diamonds: 0, junk: [], items: [] };
-    if (receiptKey) await db.prepare(`INSERT INTO mailbox_claim_receipts (receipt_key, character_id, mail_ids_json, reward_json, created_at) VALUES (?, ?, '[]', ?, ?) ON CONFLICT(receipt_key) DO NOTHING`).bind(receiptKey, characterId, JSON.stringify(empty), nowIso()).run();
+    if (receiptKey) {
+      await db.prepare(`INSERT INTO mailbox_claim_receipts (receipt_key, character_id, mail_ids_json, reward_json, created_at) VALUES (?, ?, '[]', ?, ?) ON CONFLICT(receipt_key) DO NOTHING`).bind(receiptKey, characterId, JSON.stringify(empty), nowIso()).run();
+      const canonical = await db.prepare(`SELECT mail_ids_json, reward_json FROM mailbox_claim_receipts WHERE receipt_key = ? AND character_id = ?`).bind(receiptKey, characterId).first();
+      return json({ ok: true, replayed: true, mailIds: parseJsonColumn(canonical?.mail_ids_json, []), ...parseJsonColumn(canonical?.reward_json, empty) });
+    }
     return json(empty);
   }
 
@@ -3206,6 +3214,11 @@ async function handleClaimAllMail(db, id, session, characterId, requestId = "") 
   if (receiptKey) {
     await db.prepare(`INSERT INTO mailbox_claim_receipts (receipt_key, character_id, mail_ids_json, reward_json, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(receipt_key) DO NOTHING`)
       .bind(receiptKey, characterId, JSON.stringify(claimedRows.map((m) => m.mail_id)), JSON.stringify(reward), now).run();
+    // A concurrent request with the same receipt key may have won the insert.
+    // Always return the stored canonical payload so retries and concurrent calls
+    // are byte-for-byte reward-equivalent and cannot lose the winner's reward.
+    const canonical = await db.prepare(`SELECT mail_ids_json, reward_json FROM mailbox_claim_receipts WHERE receipt_key = ? AND character_id = ?`).bind(receiptKey, characterId).first();
+    return json({ ok: true, replayed: true, mailIds: parseJsonColumn(canonical?.mail_ids_json, []), ...parseJsonColumn(canonical?.reward_json, reward) });
   }
   return json({ ok: true, replayed: false, mailIds: claimedRows.map((m) => m.mail_id), ...reward });
 }
@@ -5904,6 +5917,12 @@ async function handleGetArenaV2Status(db, id, session, characterId) {
   const tickets = await reconcileArenaV2Tickets(db, characterId, now);
   const setup = await ensureArenaSetup(db, context.character, now);
   const items = await arenaCurrentEquipment(db, characterId);
+  const parsed = parsePetsJson(context.character);
+  const availablePets = (Array.isArray(JSON.parse(context.character.pets_json || '{}')?.list) ? JSON.parse(context.character.pets_json || '{}').list : []).map(p => ({
+    instId: p.instId, defId: p.defId, level: Number(p.level) || 1, star: Number(p.star) || 1,
+    name: PET_DISPLAY_NAMES[p.defId] || p.defId || "Pet"
+  }));
+  const availableSkills = heroActiveSkillList(parsed.skillLevels || {}).map(skill => ({ key: skill.key, name: skill.name || skill.key, icon: skill.icon || "✦" }));
   const rankAhead = arenaRankAheadSql();
   const rankRow = await db.prepare(`
     SELECT COUNT(*) AS c
@@ -5934,6 +5953,8 @@ async function handleGetArenaV2Status(db, id, session, characterId) {
     },
     tickets: { tickets: tickets.tickets, ticketsMax: ARENA_TICKET_MAX, dailyGrant: ARENA_TICKET_DAILY_GRANT, purchaseCost: ARENA_TICKET_PURCHASE_COST, nextPassiveTicketAt: tickets.nextPassiveTicketAt, passiveSeconds: tickets.passiveSeconds },
     setup,
+    availablePets,
+    availableSkills,
     equipment: arenaEquipmentPublic(items),
   });
 }
@@ -6223,12 +6244,28 @@ async function arenaExpirePreparedMatch(db, row, nowMs, force = false) {
     .bind(arenaNowIso(nowMs), row.match_id).run();
   return await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ?`).bind(row.match_id).first();
 }
+async function arenaRevengeOpponent(db, seasonId, characterId, opponentKey) {
+  const key = String(opponentKey || "");
+  if (!key.startsWith("history:")) return null;
+  const matchId = key.slice("history:".length);
+  const historyTable = "arena_" + "match_history";
+  const row = await db.prepare(`SELECT * FROM ${historyTable} WHERE season_id = ? AND match_id = ? AND (attacker_character_id = ? OR defender_character_id = ?)`).bind(seasonId, matchId, characterId, characterId).first();
+  if (!row) return null;
+  const targetCharacterId = row.attacker_character_id === characterId ? row.defender_character_id : row.attacker_character_id;
+  if (!targetCharacterId || row.defender_type === "bot" && row.attacker_character_id === characterId) return null;
+  const target = await db.prepare(`SELECT character_id, name, level FROM characters WHERE character_id = ?`).bind(targetCharacterId).first();
+  if (!target) return null;
+  const rating = await db.prepare(`SELECT rating FROM arena_season_players WHERE season_id = ? AND character_id = ?`).bind(seasonId, targetCharacterId).first();
+  return { opponentKey: key, type: "player", characterId: targetCharacterId, slot: "equal", rewardSlot: "equal", name: target.name || "", level: Number(target.level) || 1, rating: Number(rating?.rating) || ARENA_RATING_FLOOR };
+}
 async function handlePrepareArenaV2Match(db, id, session, characterId, opponentKey, source = "matchmaking") {
   const context = await arenaV2Context(db, id, session, characterId);
   if (context.error) return json({ error: context.error });
   const nowMs = Date.now();
   const { opponents } = await getArenaV2OpponentRows(db, context, nowMs);
-  const opponent = opponents.find((row) => row.opponentKey === String(opponentKey || ""));
+  const opponent = source === "revenge"
+    ? await arenaRevengeOpponent(db, context.season.season_id, characterId, opponentKey)
+    : opponents.find((row) => row.opponentKey === String(opponentKey || ""));
   if (!opponent) return json({ error: "arena_opponent_not_found" }, 404);
   let existing = await arenaOpenMatchForAttacker(db, characterId);
   existing = await arenaExpirePreparedMatch(db, existing, nowMs);
@@ -6354,8 +6391,10 @@ async function handleGetArenaV2Match(db, id, session, characterId, matchId) {
   const context = await arenaV2Context(db, id, session, characterId);
   if (context.error) return json({ error: context.error });
   const key = String(matchId || "").trim();
-  if (!key) return json({ error: "missing_match_id" }, 400);
-  let match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first();
+  let match = key
+    ? await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first()
+    : await arenaOpenMatchForAttacker(db, characterId);
+  if (!key && !match) return json({ ok: true, match: null });
   if (!match) return json({ error: "arena_match_not_found" }, 404);
   if (match.status === "prepared") match = await arenaExpirePreparedMatch(db, match, Date.now());
   if (match.status === "active" && Date.parse(match.deadline_at || "") <= Date.now()) {
@@ -7072,7 +7111,9 @@ async function handleGetArenaV2PlayerCard(db, id, session, characterId, opponent
   const context = await arenaV2Context(db, id, session, characterId);
   if (context.error) return json({ error: context.error });
   const { opponents } = await getArenaV2OpponentRows(db, context);
-  const target = opponents.find((row) => arenaOpponentKey(row) === String(opponentKey || ""));
+  const target = String(opponentKey || "").startsWith("history:")
+    ? await arenaRevengeOpponent(db, context.season.season_id, characterId, opponentKey)
+    : opponents.find((row) => arenaOpponentKey(row) === String(opponentKey || ""));
   if (!target) return json({ error: "arena_opponent_not_found" }, 404);
   if (target.type === "bot") {
     return json({ ok: true, playerCard: { opponentKey: target.opponentKey, name: target.name, level: target.level, rating: target.rating, tier: arenaTierForRating(target.rating), cp: null, equipment: [], pet: null, profileFrameKey: null, avatar: { mode: "head", layers: [] }, isBot: true } });

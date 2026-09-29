@@ -407,6 +407,9 @@ function cloudPrepareArenaV2Match(url, characterId, opponentKey, source) {
 function cloudActivateArenaV2Match(url, characterId, matchId) {
   return cloudAuthPost(url, { action: "activateArenaV2Match", characterId, matchId });
 }
+function cloudGetArenaV2Match(url, characterId, matchId) {
+  return cloudAuthGet(url, { action: "getArenaV2Match", characterId, ...(matchId ? { matchId } : {}) });
+}
 function cloudSetArenaV2Auto(url, characterId, matchId, enabled) {
   return cloudAuthPost(url, { action: "setArenaV2Auto", characterId, matchId, enabled: !!enabled });
 }

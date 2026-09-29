@@ -600,6 +600,93 @@ Battle Core and server authority remain outside Phaser. Do not infer that older 
 
 ---
 
+## W9R — API Worker Modularization Refactor
+**Status: PLANNED — mandatory post-W9 gate before Admin Phase 1**
+**Risk: HIGH**
+**Execution: SINGLE REFACTOR BATCH**
+
+Purpose:
+- reduce the size and change-collision surface of `workers/thornie-dungeons-api.js`;
+- separate domain ownership without changing gameplay, API contracts, persistence semantics, auth boundaries, economy, or deployed Worker identity;
+- make future Arena/Admin/Social work safer for DEV/QA and easier to review.
+
+Current trigger:
+- the W9 branch Worker has grown beyond 7,000 lines;
+- Arena, Admin, Auth, Mailbox, Guild, Social, Crafting and shared helpers currently coexist in one large file;
+- Admin Phase 1 would otherwise continue adding code to the same monolith.
+
+Target direction:
+
+```text
+workers/
+  thornie-dungeons-api-entry.js
+  thornie-dungeons-api.js        # thin compatibility/router boundary
+  modules/
+    shared/
+      db.js
+      response.js
+      time.js
+      security.js
+    auth/
+    admin/
+    arena/
+      status.js
+      matchmaking.js
+      lifecycle.js
+      combat.js
+      settlement.js
+      rewards.js
+    mailbox/
+    social/
+    guild/
+    crafting/
+```
+
+The exact filenames may change during implementation. Domain boundaries and behavior-preservation rules are the contract.
+
+### Single-batch execution
+W9R is implemented and reviewed as one HIGH-risk refactor batch, not as separate W9R.0–W9R.5 releases.
+
+Within that one batch DEV should still use internal checkpoints:
+1. characterize current behavior and map dependencies;
+2. extract shared infrastructure;
+3. extract Auth/Admin foundation;
+4. extract Arena V2;
+5. extract Mailbox/Social/Guild/Crafting;
+6. reduce the legacy Worker file to thin routing/composition;
+7. run the complete regression/build gate before publication.
+
+These checkpoints are implementation discipline only. They do not require separate Project Lead approvals, separate feature branches, separate releases, or separate QA handoffs unless a blocker forces the work to be split.
+
+### W9R hard rules
+- behavior-preserving refactor only;
+- no feature work mixed into the refactor;
+- no migration/schema changes unless a separate approved task requires them;
+- no economy/balance changes;
+- no endpoint/action renames;
+- no Battle Core redesign;
+- no destructive cleanup;
+- preserve gameplay/Admin session separation;
+- preserve Mailbox/Arena exact-once behavior;
+- preserve all W9.1-W9.9 contracts;
+- if extraction reveals a real bug, record it separately rather than hiding a behavior change inside the refactor.
+
+### Required validation inside the single batch
+Before publish/QA handoff, verify:
+- current public/admin/gameplay API behavior is preserved;
+- Worker entry/deploy contract is unchanged;
+- Auth/Admin session separation passes;
+- W9 Arena full regression passes;
+- Mailbox exact-once tests pass;
+- Social/Guild/Crafting regression passes;
+- generated frontend/build checks pass where relevant;
+- module ownership/import boundaries are documented;
+- `workers/thornie-dungeons-api.js` is materially reduced and no longer the primary home for every domain.
+
+Admin Phase 1 (Dashboard + read-only Player Viewer) starts from the post-W9R `main`, not from the old `feat/admin-v2-auth` branch.
+
+---
+
 ## W10 — Victory / Boss / Raid Presentation
 
 ### Victory / Defeat
@@ -734,6 +821,8 @@ W8  Inventory + Character Live Preview
  ↓
 W9  Arena V2 + Phaser
  ↓
+W9R API Worker Modularization Refactor
+ ↓
 W10 Victory / Boss / Raid Presentation
  ↓
 W11 Summoning / Enhance / Craft Presentation
@@ -765,6 +854,7 @@ The active roadmap is complete when:
 - Hero V5 is integrated once through the shared HeroRenderer and equipment resolver;
 - Inventory/Character preview reuses the shared Hero renderer without moving Inventory UI into Phaser;
 - Arena reuses the same presentation infrastructure;
+- the API Worker is modularized after W9 without changing API/gameplay behavior, and Admin Phase 1 starts from that stabilized structure;
 - Victory/Boss/Raid and Summoning/Enhance/Craft presentation reuse shared modules where implemented;
 - temporary fallbacks are removed only after surface-specific QA/user verification;
 - App/styles/Phaser boundaries remain documented and stable.

@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "files": 16,
+  "canvas": [
+    768,
+    768
+  ],
+  "rgba": true,
+  "transparentRgbClean": true,
+  "noBorderClipping": true,
+  "approvedRevision": "skeleton-r2",
+  "sha256": {
+    "hero/v5/g2/wings/skeleton/idle_01/wing_far.png": "03355e8ca8be9363012df7db8dc5347c082074139b9f665c76a9c7eeda4f27f8",
+    "hero/v5/g2/wings/skeleton/idle_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/skeleton/idle_02/wing_far.png": "d285e827fbe070f99ce1d1b38471c641c449209f856d5ce1996819b3f10be8d9",
+    "hero/v5/g2/wings/skeleton/idle_02/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/skeleton/idle_03/wing_far.png": "1b1aaae4c9bac5e4c4c7ae2c069ee06cc86369060c39dd5d1ef3ee58c84f3a9c",
+    "hero/v5/g2/wings/skeleton/idle_03/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/skeleton/attack_01/wing_far.png": "fb805e8ec7ea93a0d88a5ef5263db0fc214b1345ae1446ed1ebff9e6161e25ad",
+    "hero/v5/g2/wings/skeleton/attack_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/skeleton/attack_02/wing_far.png": "f5e9c7a4715f1f0509d16fc8871757c00ae3f34fa458bb19da911794cb5abdf3",
+    "hero/v5/g2/wings/skeleton/attack_02/wing_near.png": "5348ef2009dd78e4db09b8a27856914cf99f7f29c479e793ea64263fb4a6a79d",
+    "hero/v5/g2/wings/skeleton/attack_03/wing_far.png": "b9083b5915f35b7075afea3575fddbbb93c140f0a051b98fb88f54c84c2534aa",
+    "hero/v5/g2/wings/skeleton/attack_03/wing_near.png": "e23c46b8c284682928e651826a10f9c88d4ef7d9b9859237978b06c9b4daaaf3",
+    "hero/v5/g2/wings/skeleton/death_01/wing_far.png": "914a617ff7195acbc11073caa1fafd00839e6f3810835acce12c36803884d992",
+    "hero/v5/g2/wings/skeleton/death_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/skeleton/death_02/wing_far.png": "86f5c3c269375544494c019f58d2f918217a67798c2a8792e17f5734617da3ca",
+    "hero/v5/g2/wings/skeleton/death_02/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b"
+  },
+  "inGameQA": false
+}
