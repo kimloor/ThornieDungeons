@@ -222,12 +222,82 @@ test('Surrender is an idempotent orchestration result and stores no economy sett
   const db = createDb();
   const opponents = await ready(db);
   const { active } = await activate(db, opponents[0].opponentKey);
+  db.raw.prepare('UPDATE arena_matches SET activated_at = ? WHERE match_id = ?').run(new Date(Date.now() - 11000).toISOString(), active.match.matchId);
   const result = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-1', 'surrender', null, null, false));
   assert.equal(result.result.result, 'surrender');
   assert.equal(db.raw.prepare('SELECT status FROM arena_matches WHERE match_id = ?').get(active.match.matchId).status, 'done');
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_match_history WHERE match_id = ?").get(active.match.matchId).c, 0);
   const retry = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-1', 'surrender', null, null, false));
   assert.equal(retry.replayed, true);
+  db.close();
+});
+
+test('activation stores immediate opening defeat as done while consuming exactly one ticket', async () => {
+  const db = createDb();
+  const opponents = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const row = db.raw.prepare('SELECT snapshot_json FROM arena_matches WHERE match_id = ?').get(prepared.match.matchId);
+  const snapshot = JSON.parse(row.snapshot_json);
+  snapshot.attacker.stats.maxHp = 1;
+  snapshot.attacker.stats.def = 0;
+  snapshot.attacker.stats.agi = 0;
+  snapshot.defender.stats = { maxHp: 1000, maxMp: 100, atk: 99999, def: 0, accuracy: 100, dodgeChance: 0, critChance: 0, critDamage: 50, agi: 999 };
+  db.raw.prepare('UPDATE arena_matches SET snapshot_json = ? WHERE match_id = ?').run(JSON.stringify(snapshot), prepared.match.matchId);
+  const beforeTickets = db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets;
+
+  const activated = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  assert.equal(activated.ok, true);
+  assert.equal(activated.match.status, 'done');
+  assert.equal(activated.match.result.result, 'defeat');
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, beforeTickets - 1);
+
+  const resumed = await body(await arena.handleGetArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  assert.equal(resumed.match.status, 'done');
+  assert.equal(resumed.match.result.result, 'defeat');
+  db.close();
+});
+
+test('setAuto and submit action share one state revision so concurrent writes cannot clobber each other', async () => {
+  const db = createDb();
+  const opponents = await ready(db);
+  const { active } = await activate(db, opponents[0].opponentKey);
+  const responses = await Promise.all([
+    arena.handleSetArenaV2Auto(db, 'p1', session('p1'), 'char-10', active.match.matchId, true),
+    arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'auto-race-action', 'basic', null, 'team_b_hero', false),
+  ]);
+  const bodies = await Promise.all(responses.map(body));
+  assert.equal(bodies.filter((result) => result.ok).length, 1, JSON.stringify(bodies));
+
+  const saved = JSON.parse(db.raw.prepare('SELECT state_json FROM arena_matches WHERE match_id = ?').get(active.match.matchId).state_json);
+  const receipts = db.raw.prepare('SELECT COUNT(*) AS c FROM arena_match_actions WHERE match_id = ?').get(active.match.matchId).c;
+  if (bodies[0].ok) {
+    assert.equal(saved.flags.auto, true);
+    assert.equal(receipts, 0);
+  } else {
+    assert.equal(bodies[1].ok, true);
+    assert.equal(receipts, 1);
+  }
+  assert.equal(Number(saved.arenaStateRev), 1);
+  db.close();
+});
+
+test('Surrender is rejected for 10 seconds without receipt or state advance, then remains exact-once', async () => {
+  const db = createDb();
+  const opponents = await ready(db);
+  const { active } = await activate(db, opponents[0].opponentKey);
+  const before = db.raw.prepare('SELECT state_json FROM arena_matches WHERE match_id = ?').get(active.match.matchId).state_json;
+
+  const early = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-cooldown', 'surrender', null, null, false));
+  assert.equal(early.error, 'arena_surrender_cooldown');
+  assert.equal(db.raw.prepare('SELECT state_json FROM arena_matches WHERE match_id = ?').get(active.match.matchId).state_json, before);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS c FROM arena_match_actions WHERE match_id = ?').get(active.match.matchId).c, 0);
+
+  db.raw.prepare('UPDATE arena_matches SET activated_at = ? WHERE match_id = ?').run(new Date(Date.now() - 11000).toISOString(), active.match.matchId);
+  const result = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-cooldown', 'surrender', null, null, false));
+  assert.equal(result.result.result, 'surrender');
+  const retry = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-cooldown', 'surrender', null, null, false));
+  assert.equal(retry.replayed, true);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS c FROM arena_match_actions WHERE match_id = ?').get(active.match.matchId).c, 1);
   db.close();
 });
 
