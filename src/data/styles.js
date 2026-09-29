@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.20";
+  content: "Ver 1.0.21";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -163,6 +163,12 @@ body::after {
   color: var(--gold);
   white-space: nowrap;
 }
+.md-status-resources { display:flex; gap:6px; flex:1; justify-content:center; flex-wrap:wrap; min-width:0; }
+.md-status-arena { align-items:flex-start; gap:5px; padding-left:max(7px,var(--safe-left)); padding-right:max(7px,var(--safe-right)); }
+.md-status-arena .md-status-resources { gap:4px; }
+.md-status-arena .md-status-chip { padding:3px 7px 3px 5px; font-size:11.5px; }
+.md-status-arena .md-resource-icon { width:18px; height:18px; }
+.md-arena-global-chip { border-color:rgba(91,178,255,.72); background:rgba(7,21,52,.9); }
 .md-chip-icon { font-size: 14px; }
 .md-bars { flex: 1; margin: 0 8px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .md-bar-track { height: 8px; border-radius: 6px; background: rgba(0,0,0,0.4); overflow: hidden; border: 1px solid rgba(255,209,102,0.25); }
@@ -2455,6 +2461,9 @@ body::after {
 .md-arena-player-card-details strong { max-width:66%; min-width:0; }
 .md-arena-card-equipment { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .md-arena-refresh-cooldown { margin:8px 0 0; text-align:center; color:#FFE49A; font-weight:800; }
+.md-arena-page-actions { display:flex; justify-content:flex-start; margin:0 0 2px; }
+.md-arena-page-actions .md-btn { width:auto; min-width:92px; flex:none; }
+.md-arena-v2 > .md-hub-dock { position:sticky; bottom:max(6px,var(--safe-bottom)); z-index:20; margin-top:auto; flex:0 0 auto; }
 .md-arena-v2-art {
   min-height:calc(100dvh - 62px);
   background-color:#071126;
