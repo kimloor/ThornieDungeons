@@ -4817,9 +4817,14 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     if (state.result) return { state, waiting: false, completedAction: false };
     const actor = currentUnit(state);
     if (!actor) { checkBattleEnd(state); return { state, waiting: false, completedAction: false }; }
-    const manualActor = actor.kind === "hero" && actor.side === state.controlledSide;
+    // A mode orchestrator may authorize a non-controlled Hero command (for
+    // example Arena defender AI) without changing controlledSide. This keeps
+    // Arena result semantics anchored to team_a while still routing the command
+    // through the shared resolver.
+    const commandActor = state.commandActorId && actor.id === state.commandActorId;
+    const manualActor = actor.kind === "hero" && (actor.side === state.controlledSide || commandActor);
     if (manualActor && !command && !state.flags.auto && !state.flags.skipResolving) return { state, waiting: true, completedAction: false };
-    const strictArenaTarget = state.mode === "arena" && manualActor && !state.flags.auto && !state.flags.skipResolving;
+    const strictArenaTarget = state.mode === "arena" && manualActor && !commandActor && !state.flags.auto && !state.flags.skipResolving;
     if (manualActor && command) {
       const invalid = validateHeroCommand(state, actor, command, { strictTarget: strictArenaTarget });
       if (invalid) {
@@ -4856,6 +4861,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     checkBattleEnd(state);
     state.queueIndex += 1; state.safeActionSeq += 1;
     completeArenaRound(state);
+    delete state.commandActorId;
     return { state, waiting: false, completedAction: true, consumePotion: !!context.consumePotion };
   }
 
@@ -5964,6 +5970,7 @@ function arenaEquipmentSnapshot(items) {
 }
 async function arenaRealSnapshot(db, character, setup, items, rating) {
   const pet = setup.petInstId ? arenaPetFromCharacter(character, setup.petInstId) : null;
+  const { skillLevels } = parsePetsJson(character);
   return {
     type: "player",
     characterId: character.character_id,
@@ -5975,6 +5982,7 @@ async function arenaRealSnapshot(db, character, setup, items, rating) {
     stats: arenaSnapshotStats(character, items),
     equipment: arenaEquipmentSnapshot(items),
     pet: pet ? arenaClone(pet) : null,
+    skillLevels: arenaClone(skillLevels || {}),
     skillSlots: Array.isArray(setup.skillSlots) ? [...setup.skillSlots] : [null, null, null, null],
     profileFrameKey: await arenaValidProfileFrame(db, character.character_id),
   };
@@ -6023,6 +6031,7 @@ async function arenaBuildMatchSnapshot(db, context, opponent, source, preparedAt
   };
 }
 function arenaMatchPayload(row) {
+  const rawState = parseJsonColumn(row.state_json, null);
   return {
     matchId: row.match_id,
     seasonId: row.season_id,
@@ -6033,7 +6042,7 @@ function arenaMatchPayload(row) {
     rewardSlot: row.reward_slot,
     seed: Number(row.seed),
     snapshot: parseJsonColumn(row.snapshot_json, null),
-    state: parseJsonColumn(row.state_json, null),
+    state: rawState && rawState.mode === "arena" ? arenaCombatPublicState(rawState) : rawState,
     result: parseJsonColumn(row.result_json, null),
     preparedAt: row.prepared_at,
     preparedExpiresAt: row.prepared_expires_at,
@@ -6128,7 +6137,15 @@ async function handleActivateArenaV2Match(db, id, session, characterId, matchId)
   const activatedAt = arenaNowIso(nowMs);
   const seasonEndMs = Date.parse(context.season.ends_at);
   const deadlineAt = arenaNowIso(Math.min(nowMs + ARENA_ACTIVE_DURATION_MS, seasonEndMs));
-  const state = JSON.stringify({ version: 1, matchId: key, seed: Number(match.seed), phase: "active", round: 0 });
+  const snapshot = parseJsonColumn(match.snapshot_json, null);
+  let combatState;
+  try {
+    combatState = arenaCombatState(snapshot, key);
+    // Resolve any opening defender/Pet turns through Battle Core so activation
+    // always returns at the attacker's Hero decision boundary.
+    combatState = arenaCombatAdvance(combatState, false);
+  } catch (error) { return json({ error: "arena_match_state_invalid" }, 409); }
+  const state = JSON.stringify(combatState);
   const receiptKey = `arena:match-activate:${key}`;
   const activationToken = randomToken(12);
   const receiptPayload = JSON.stringify({ matchId: key, characterId, activatedAt, activationToken });
@@ -6173,6 +6190,215 @@ async function handleGetArenaV2Match(db, id, session, characterId, matchId) {
   if (!match) return json({ error: "arena_match_not_found" }, 404);
   if (match.status === "prepared") match = await arenaExpirePreparedMatch(db, match, Date.now());
   return json({ ok: true, match: arenaMatchPayload(match) });
+}
+
+// ---------- W9.6 Arena combat orchestration ----------
+// This layer selects commands and owns persistence only. Damage, status effects,
+// cooldowns, pet behavior, queue order and round completion remain in the shared
+// Battle Core above.
+function arenaCombatHeroUnit(snapshot, id, side) {
+  const stats = snapshot?.stats || {};
+  const slots = Array.isArray(snapshot?.skillSlots) ? snapshot.skillSlots.filter((key) => typeof key === "string") : [];
+  const skillLevels = arenaClone(snapshot?.skillLevels || {});
+  for (const key of slots) if (!skillLevels[key]) skillLevels[key] = 1;
+  const agi = Number(stats.agi) || 0;
+  return {
+    id, side, kind: "hero", name: snapshot?.name || id, level: Number(snapshot?.level) || 1,
+    maxHp: Number(stats.maxHp) || 1, hp: Number(stats.maxHp) || 1,
+    maxSp: Number(stats.maxMp) || 0, sp: Number(stats.maxMp) || 0,
+    atk: Number(stats.atk) || 1, def: Number(stats.def) || 0,
+    speed: Math.round(PVP_BASE_SPEED + agi * 2), accuracy: Number(stats.accuracy) || 95,
+    dodge: Number(stats.dodgeChance) || 0, crit: Number(stats.critChance) || 0,
+    critDamage: 1 + (Number(stats.critDamage) || 0) / 100,
+    skills: skillLevels, activeSkills: slots.slice(0, 4),
+  };
+}
+function arenaCombatBotUnit(snapshot, id, side) {
+  const level = Number(snapshot?.level) || 10;
+  const rating = Number(snapshot?.rating) || 1000;
+  const stats = snapshot?.stats || {
+    maxHp: 80 + level * 5 + Math.max(0, rating - 1000) * 0.04,
+    maxMp: 100, atk: 10 + level * 2 + Math.max(0, rating - 1000) * 0.02,
+    def: 4 + level * 0.6, accuracy: 95, dodgeChance: 2, critChance: 3, critDamage: 50, agi: level,
+  };
+  return arenaCombatHeroUnit({ ...snapshot, stats, skillLevels: { power_strike: 1 }, skillSlots: ["power_strike"] }, id, side);
+}
+function arenaCombatPetUnit(snapshot, id, side, ownerName) {
+  if (!snapshot?.pet) return null;
+  const unit = pvpPetUnit(snapshot.pet, id, ownerName || "");
+  return unit ? { ...unit, side } : null;
+}
+function arenaCombatState(snapshot, matchId) {
+  const teamA = {
+    hero: arenaCombatHeroUnit(snapshot.attacker, "team_a_hero", "team_a"),
+    pet: arenaCombatPetUnit(snapshot.attacker, "team_a_pet", "team_a", snapshot.attacker?.name),
+  };
+  const teamB = {
+    hero: snapshot.defender?.type === "bot"
+      ? arenaCombatBotUnit(snapshot.defender, "team_b_hero", "team_b")
+      : arenaCombatHeroUnit(snapshot.defender, "team_b_hero", "team_b"),
+    pet: arenaCombatPetUnit(snapshot.defender, "team_b_pet", "team_b", snapshot.defender?.name),
+  };
+  const state = BATTLE_CORE_V1.createArenaBattle({ battleId: matchId, seed: Number(snapshot.seed) >>> 0, teamA, teamB });
+  state.arenaActionSeq = 0;
+  return state;
+}
+function arenaCombatLivingTargets(state, actor) {
+  return Object.values(state.units || {}).filter((unit) => unit && unit.side !== actor.side && !unit.dead && unit.hp > 0);
+}
+function arenaCombatLowestHpPercentTarget(state, actor) {
+  return arenaCombatLivingTargets(state, actor).sort((a, b) => {
+    const pctA = a.maxHp ? a.hp / a.maxHp : 1;
+    const pctB = b.maxHp ? b.hp / b.maxHp : 1;
+    return pctA - pctB || (a.kind === "hero" ? -1 : 1) - (b.kind === "hero" ? -1 : 1) || (a.tieOrder || 0) - (b.tieOrder || 0) || a.id.localeCompare(b.id);
+  })[0] || null;
+}
+function arenaCombatHeroCommand(state, actor) {
+  const target = arenaCombatLowestHpPercentTarget(state, actor);
+  for (const skillId of Array.isArray(actor.activeSkills) ? actor.activeSkills.slice(0, 4) : []) {
+    const metadata = BATTLE_CORE_V1.getActionMetadata(state, actor, { type: "active", skillId, targetId: target?.id || null });
+    if (!metadata.usable) continue;
+    if (metadata.requiresEnemyTarget && !metadata.legalTargetIds.includes(target?.id)) continue;
+    return { type: "active", skillId, ...(metadata.requiresEnemyTarget ? { targetId: target.id } : {}) };
+  }
+  return { type: "basic", targetId: target?.id || null };
+}
+function arenaCombatStep(state, command, actor = null) {
+  if (actor && actor.side !== state.controlledSide && actor.kind === "hero") state.commandActorId = actor.id;
+  const result = BATTLE_CORE_V1.battleStep(state, command);
+  delete result.state.commandActorId;
+  return result;
+}
+function arenaCombatAdvance(state, auto = false) {
+  let steps = 0;
+  while (!state.result && steps++ < 128) {
+    const actor = BATTLE_CORE_V1.currentUnit(state);
+    if (!actor) break;
+    if (actor.kind === "hero" && actor.side === "team_a" && !auto) break;
+    if (actor.kind === "hero") {
+      const command = arenaCombatHeroCommand(state, actor);
+      const result = arenaCombatStep(state, command, actor);
+      state = result.state;
+      if (result.error) break;
+    } else {
+      if (actor.side === "team_b") {
+        const target = arenaCombatLowestHpPercentTarget(state, actor);
+        state.selectedTargetIds[actor.side] = target?.id || null;
+        if (actor.side === state.controlledSide) state.selectedTargetId = target?.id || null;
+      }
+      state = arenaCombatStep(state, undefined).state;
+    }
+  }
+  return state;
+}
+function arenaCombatPublicState(state) {
+  const current = state.result ? null : BATTLE_CORE_V1.currentUnit(state);
+  const actionMetadata = current && current.kind === "hero" && current.side === "team_a" && !state.flags?.auto
+    ? BATTLE_CORE_V1.getActionMetadata(state, current, { type: "basic" }) : null;
+  const skills = current && current.kind === "hero" && current.side === "team_a"
+    ? pvpHeroSkillsPublic(current).filter((skill) => (current.activeSkills || []).includes(skill.key))
+    : [];
+  return {
+    version: state.version, battleId: state.battleId, mode: "arena", phase: state.result ? "done" : "active",
+    round: Number(state.round) || 0, roundMax: 20, actionSeq: Number(state.arenaActionSeq) || 0,
+    currentActorId: current?.id || null, auto: !!state.flags?.auto,
+    queue: BATTLE_CORE_V1.upcomingActions(state, 4).map((id) => ({ id, name: state.units[id]?.name || id, kind: state.units[id]?.kind || null })),
+    units: Object.values(state.units || {}).map((unit) => ({
+      id: unit.id, side: unit.side, kind: unit.kind, name: unit.name || unit.id,
+      hp: unit.hp, maxHp: unit.maxHp, sp: unit.sp, maxSp: unit.maxSp,
+      statuses: Object.keys(unit.statuses || {}), dead: !!unit.dead,
+    })),
+    skills,
+    action: actionMetadata ? { basic: actionMetadata, activeSkills: skills.map((skill) => ({ skillId: skill.key, ...BATTLE_CORE_V1.getActionMetadata(state, current, { type: "active", skillId: skill.key }) })) } : null,
+    log: (state.log || []).slice(-40).map(pvpPublicLogEntry),
+    result: state.result ? { result: state.result, winnerSide: state.winnerSide || null } : null,
+  };
+}
+function arenaCombatResult(state) {
+  return state.result ? { result: state.result, winnerSide: state.winnerSide || null } : null;
+}
+async function arenaStoreCombatState(db, match, state, now, response, actionKey, actionSeq, previousActionSeq) {
+  const responseJson = JSON.stringify(response);
+  const stateJson = JSON.stringify(state);
+  const resultJson = arenaCombatResult(state);
+  const status = state.result ? "done" : "active";
+  const batch = await db.batch([
+    db.prepare(`
+      INSERT INTO arena_match_actions (match_id, action_key, action_seq, response_json, created_at)
+      SELECT ?, ?, ?, ?, ?
+      WHERE NOT EXISTS (SELECT 1 FROM arena_match_actions WHERE match_id = ? AND action_key = ?)
+        AND NOT EXISTS (SELECT 1 FROM arena_match_actions WHERE match_id = ? AND action_seq = ?)
+        AND EXISTS (SELECT 1 FROM arena_matches WHERE match_id = ? AND status = 'active' AND json_extract(state_json, '$.arenaActionSeq') = ?)
+    `).bind(match.match_id, actionKey, actionSeq, responseJson, now, match.match_id, actionKey, match.match_id, actionSeq, match.match_id, previousActionSeq),
+    db.prepare(`
+      UPDATE arena_matches SET status = ?, state_json = ?, result_json = ?, completed_at = CASE WHEN ? = 'done' THEN ? ELSE completed_at END, updated_at = ?
+      WHERE match_id = ? AND status = 'active' AND json_extract(state_json, '$.arenaActionSeq') = ?
+        AND EXISTS (SELECT 1 FROM arena_match_actions WHERE match_id = ? AND action_key = ? AND action_seq = ?)
+    `).bind(status, stateJson, resultJson ? JSON.stringify(resultJson) : "", status, now, now, match.match_id, previousActionSeq, match.match_id, actionKey, actionSeq),
+  ]);
+  return Number(batch?.[1]?.meta?.changes) === 1;
+}
+async function handleSetArenaV2Auto(db, id, session, characterId, matchId, enabled) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(String(matchId || ""), characterId).first();
+  if (!match || match.status !== "active") return json({ error: "arena_match_not_active" }, 409);
+  const state = parseJsonColumn(match.state_json, null);
+  if (!state || state.result) return json({ error: "arena_match_already_done" }, 409);
+  state.flags = { ...(state.flags || {}), auto: !!enabled };
+  const saved = await db.prepare(`UPDATE arena_matches SET state_json = ?, updated_at = ? WHERE match_id = ? AND status = 'active' AND json_extract(state_json, '$.safeActionSeq') = ?`)
+    .bind(JSON.stringify(state), nowIso(), match.match_id, Number(state.safeActionSeq) || 0).run();
+  if (Number(saved?.meta?.changes) !== 1) return json({ error: "arena_combat_conflict", retry: true }, 409);
+  return json({ ok: true, match: arenaMatchPayload({ ...match, state_json: JSON.stringify(state) }) });
+}
+async function handleSubmitArenaV2Action(db, id, session, characterId, matchId, actionKey, actionType = "basic", skillId, targetId, auto = false) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const key = String(matchId || "").trim();
+  const requestKey = String(actionKey || "").trim();
+  if (!key || !requestKey || requestKey.length > 128) return json({ error: "missing_action_key" }, 400);
+  const prior = await db.prepare(`SELECT response_json FROM arena_match_actions WHERE match_id = ? AND action_key = ?`).bind(key, requestKey).first();
+  if (prior) return json({ ...parseJsonColumn(prior.response_json, { error: "arena_action_replay_corrupt" }), replayed: true });
+  const match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first();
+  if (!match) return json({ error: "arena_match_not_found" }, 404);
+  if (match.status !== "active") return json({ error: "arena_match_not_active" }, 409);
+  if (Date.parse(match.deadline_at || "") <= Date.now()) return json({ error: "arena_match_deadline" }, 409);
+  let state = parseJsonColumn(match.state_json, null);
+  if (!state || state.mode !== "arena") return json({ error: "arena_match_state_invalid" }, 409);
+  state.flags = { ...(state.flags || {}), auto: !!auto || !!state.flags.auto };
+  const actor = BATTLE_CORE_V1.currentUnit(state);
+  if (!actor || actor.kind !== "hero" || actor.side !== "team_a") return json({ error: "arena_not_attacker_turn" }, 409);
+  const previousActionSeq = Number(state.arenaActionSeq) || 0;
+  const actionSeq = previousActionSeq + 1;
+  state.arenaActionSeq = actionSeq;
+  let command;
+  if (actionType === "surrender") {
+    state.result = "surrender"; state.winnerSide = "team_b"; state.flags.auto = false;
+    state.log.push({ seq: ++state.logSeq, round: state.round, type: "battle_end", text: "Surrender" });
+  } else {
+    if (actionType !== "basic" && actionType !== "active") return json({ error: "arena_action_invalid" }, 400);
+    const autoMode = !!state.flags.auto;
+    command = autoMode
+      ? arenaCombatHeroCommand(state, actor)
+      : actionType === "active"
+        ? { type: "active", skillId: String(skillId || ""), targetId: targetId == null ? undefined : String(targetId) }
+        : { type: "basic", targetId: targetId == null ? undefined : String(targetId) };
+    const invalid = BATTLE_CORE_V1.validateHeroCommand(state, actor, command, { strictTarget: !autoMode });
+    if (invalid) return json({ error: "arena_action_illegal", reason: invalid }, 409);
+    const playerStep = arenaCombatStep(state, command, actor);
+    if (playerStep.error) return json({ error: "arena_action_illegal", reason: playerStep.error }, 409);
+    state = playerStep.state;
+    state = arenaCombatAdvance(state, !!state.flags.auto);
+  }
+  const publicState = arenaCombatPublicState(state);
+  const response = { ok: true, replayed: false, matchId: key, actionKey: requestKey, actionSeq, state: publicState, result: arenaCombatResult(state) };
+  const stored = await arenaStoreCombatState(db, match, state, nowIso(), response, requestKey, actionSeq, previousActionSeq);
+  if (!stored) {
+    const replay = await db.prepare(`SELECT response_json FROM arena_match_actions WHERE match_id = ? AND action_key = ?`).bind(key, requestKey).first();
+    if (replay) return json({ ...parseJsonColumn(replay.response_json, { error: "arena_action_replay_corrupt" }), replayed: true });
+    return json({ error: "arena_action_conflict", retry: true }, 409);
+  }
+  return json(response);
 }
 async function handleGetArenaV2PlayerCard(db, id, session, characterId, opponentKey) {
   const context = await arenaV2Context(db, id, session, characterId);
@@ -6549,6 +6775,10 @@ export default {
             return await handlePrepareArenaV2Match(db, id, auth, body.characterId, body.opponentKey, body.source);
           case "activateArenaV2Match":
             return await handleActivateArenaV2Match(db, id, auth, body.characterId, body.matchId);
+          case "setArenaV2Auto":
+            return await handleSetArenaV2Auto(db, id, auth, body.characterId, body.matchId, body.enabled);
+          case "submitArenaV2Action":
+            return await handleSubmitArenaV2Action(db, id, auth, body.characterId, body.matchId, body.actionKey || body.requestId, body.actionType, body.skillId || body.skillKey, body.targetId, body.auto);
           case "claimMail":
             return await handleClaimMail(db, id, auth, body.characterId, body.mailId);
           case "claimAllMail":

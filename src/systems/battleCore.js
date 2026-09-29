@@ -826,9 +826,14 @@
     if (state.result) return { state, waiting: false, completedAction: false };
     const actor = currentUnit(state);
     if (!actor) { checkBattleEnd(state); return { state, waiting: false, completedAction: false }; }
-    const manualActor = actor.kind === "hero" && actor.side === state.controlledSide;
+    // A mode orchestrator may authorize a non-controlled Hero command (for
+    // example Arena defender AI) without changing controlledSide. This keeps
+    // Arena result semantics anchored to team_a while still routing the command
+    // through the shared resolver.
+    const commandActor = state.commandActorId && actor.id === state.commandActorId;
+    const manualActor = actor.kind === "hero" && (actor.side === state.controlledSide || commandActor);
     if (manualActor && !command && !state.flags.auto && !state.flags.skipResolving) return { state, waiting: true, completedAction: false };
-    const strictArenaTarget = state.mode === "arena" && manualActor && !state.flags.auto && !state.flags.skipResolving;
+    const strictArenaTarget = state.mode === "arena" && manualActor && !commandActor && !state.flags.auto && !state.flags.skipResolving;
     if (manualActor && command) {
       const invalid = validateHeroCommand(state, actor, command, { strictTarget: strictArenaTarget });
       if (invalid) {
@@ -865,6 +870,7 @@
     checkBattleEnd(state);
     state.queueIndex += 1; state.safeActionSeq += 1;
     completeArenaRound(state);
+    delete state.commandActorId;
     return { state, waiting: false, completedAction: true, consumePotion: !!context.consumePotion };
   }
 

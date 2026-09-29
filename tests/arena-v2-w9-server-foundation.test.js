@@ -332,9 +332,10 @@ test('Player Card resolves only from persisted opponent list, uses live equipmen
   db.close();
 });
 
-test('Worker has no W9.4 combat lifecycle and generated frontend is not touched by the server batch', () => {
+test('Worker keeps W9.6 combat orchestration separate from W9.7 settlement and generated frontend remains untouched', () => {
   const section = workerSource.slice(workerSource.indexOf('Phase 5: PvP Arena V2 server foundation'), workerSource.indexOf('// ---------- admin / QA ----------'));
-  assert.doesNotMatch(section, /submitArenaV2|settleArena|defense AI|lowest HP/i);
+  assert.match(section, /submitArenaV2Action|handleSubmitArenaV2Action|lowestHpPercentTarget/);
+  assert.doesNotMatch(section, /settleArenaMatch|arena_match_history|milestone|promotion/);
   assert.match(section, /PrepareArenaV2Match|ActivateArenaV2Match|GetArenaV2Match/);
   assert.equal(fs.existsSync(path.join(ROOT, 'index.html')), true);
 });

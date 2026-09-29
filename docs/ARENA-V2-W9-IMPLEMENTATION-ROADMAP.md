@@ -266,7 +266,7 @@ Out of scope and reserved for later W9 batches:
 - Battle Core action/target/AI orchestration;
 - settlement, surrender, timeout/cutoff results, rating, rewards and history.
 
-## W9.6 — Arena combat orchestration and AI
+## W9.6 — Arena combat orchestration and AI — COMPLETE / READY_FOR_QA
 
 Purpose: connect Arena V2 lifecycle to shared Battle Core.
 
@@ -286,12 +286,21 @@ Work:
 - no Skip;
 - four-slot authoritative Speed Queue display;
 - Round X / 20.
+- `submitArenaV2Action` with `arena_match_actions` exact-once persistence;
+- `setArenaV2Auto` for attacker Auto state;
+- shared Battle Core command-actor seam for defender Hero AI without changing
+  Arena result perspective or Dungeon/Raid behavior;
+- public combat state excludes defender skill priorities and internal unit data.
 
 Gate:
 - Hero-only / Hero+Pet combinations pass;
 - SP/cooldown/status/passives remain shared-core behavior;
 - target behavior matches W9;
-- Auto does not change rating/reward rules.
+- Auto does not change rating/reward rules;
+- duplicate/retried action keys return the stored response without a second
+  Battle Core advance;
+- surrender and normal combat completion store combat result only; W9.7 owns
+  settlement/economy/rewards.
 
 ## W9.7 — Settlement, economy and rewards
 
