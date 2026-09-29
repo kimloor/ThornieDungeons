@@ -1,5 +1,5 @@
 {
-  "status": "REVIEW_ONLY_NOT_APPROVED",
+  "status": "APPROVED_FOR_RUNTIME_PUBLICATION",
   "source_main": "413c549d176f5a30945cd6b1389c8faa30629cfd",
   "canvas": [
     768,
@@ -303,5 +303,12 @@
       "special_order": "Standard contract.",
       "review": "review/composites/death_02.png"
     }
-  }
+  },
+  "fullFaceHelmet": true,
+  "hideHairLayers": [
+    "hair_back",
+    "hair_front"
+  ],
+  "helmetAssetRevision": "azure_angel_fullface_v1",
+  "helmetNotes": "User-approved Azure Angel full-face helmet replaces all eight original helmet.png files; native RGBA768 origin0,0. Hide both hair layers only while this helmet is equipped."
 }

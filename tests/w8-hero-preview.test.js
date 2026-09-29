@@ -52,6 +52,30 @@ function runContract(config, expression) {
   return vm.runInContext(expression, context);
 }
 
+test("Azure full-face helmet hides hair in all frames and restores it on removal or bundle fallback", () => {
+  const config = v5Config();
+  config.equipment.azure.fullFaceHelmet = true;
+  const resolve = equipped => runContract(config, `resolveHeroV5BaseWingContract({equipmentSelection:{azure:{helmet:${equipped}}}})`);
+  const assertHair = (result, visible) => {
+    for (const state of ["idle", "attack", "death"]) {
+      for (const frame of result[state]) {
+        const names = Array.from(frame, layer => layer.name);
+        assert.equal(names.includes("hair_back"), visible);
+        assert.equal(names.includes("hair_front"), visible);
+      }
+    }
+  };
+  assertHair(resolve(true), false);
+  assertHair(resolve(false), true);
+  config.equipment.azure.fullFaceHelmet = false;
+  assertHair(resolve(true), true);
+  config.equipment.azure.fullFaceHelmet = true;
+  delete config.equipment.azure.frames.death_01.helmet;
+  const fallback = resolve(true);
+  assert.ok(Array.from(fallback.visualFallbacks).includes("helmet"));
+  assertHair(fallback, true);
+});
+
 test("W8 incomplete equipment bundle falls back only that slot while Hero V5 stays active", () => {
   const config = v5Config();
   delete config.equipment.azure.frames.attack_02.sword;
@@ -176,7 +200,7 @@ test("W8 Inventory uses the final 55.8% horizontal Hero anchor without changing 
 
 test("W8 user-visible staging fixes bump the preview version badge", () => {
   const styles = source("src/data/styles.js");
-  assert.match(styles, /content: "Ver 1\.0\.17"/);
+  assert.match(styles, /content: "Ver 1\.0\.18"/);
 });
 
 test("W8 shared preview runtime is opt-in and build ordered before application UI", () => {

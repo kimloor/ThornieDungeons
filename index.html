@@ -172,7 +172,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.17";
+  content: "Ver 1.0.18";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -9212,7 +9212,10 @@ function heroV5FrameLayers(config, frameId, {
   const layers = [];
   if (includeWings && wingFrame?.wing_far) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
   layers.push(heroV5FrameLayer("base", basePath));
-  layers.push(...heroV5HairLayers(config, frameId, includeHair));
+  // Suppress hair only when a complete full-face helmet is actually selected.
+  const fullFaceHelmet = azureLayerNames.includes("helmet") && !!azureFrame?.helmet
+    && config?.equipment?.azure?.fullFaceHelmet === true;
+  layers.push(...heroV5HairLayers(config, frameId, includeHair && !fullFaceHelmet));
   azureLayerNames.forEach(name => {
     const path = azureFrame?.[name];
     if (path) layers.push(heroV5FrameLayer(name, path));

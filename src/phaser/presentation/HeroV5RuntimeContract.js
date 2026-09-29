@@ -160,7 +160,10 @@ function heroV5FrameLayers(config, frameId, {
   const layers = [];
   if (includeWings && wingFrame?.wing_far) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
   layers.push(heroV5FrameLayer("base", basePath));
-  layers.push(...heroV5HairLayers(config, frameId, includeHair));
+  // Suppress hair only when a complete full-face helmet is actually selected.
+  const fullFaceHelmet = azureLayerNames.includes("helmet") && !!azureFrame?.helmet
+    && config?.equipment?.azure?.fullFaceHelmet === true;
+  layers.push(...heroV5HairLayers(config, frameId, includeHair && !fullFaceHelmet));
   azureLayerNames.forEach(name => {
     const path = azureFrame?.[name];
     if (path) layers.push(heroV5FrameLayer(name, path));
