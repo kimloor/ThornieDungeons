@@ -9333,9 +9333,10 @@ function isHeroV5RuntimeEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === false) return false;
   try {
-    return new URLSearchParams(globalThis.location?.search || "").get("heroV5") === "1";
+    const value = new URLSearchParams(globalThis.location?.search || "").get("heroV5");
+    return value !== "0";
   } catch (_) {
-    return false;
+    return true;
   }
 }
 
@@ -10749,10 +10750,14 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
       this.scale.on("resize", this.handleResize, this);
       this.snapshot = this.initialSnapshot;
-      this.createActors();
-      this.sync(this.snapshot);
-      this.readyNotified = true;
-      onReady?.({ scene: this });
+      try {
+        this.createActors();
+        this.sync(this.snapshot);
+        this.readyNotified = true;
+        onReady?.({ scene: this });
+      } catch (error) {
+        onError?.(error);
+      }
     }
 
     createActors() {
@@ -10791,7 +10796,11 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
 
     consume(event) {
       if (!event || event.type !== "BATTLEFIELD_SYNC") return;
-      this.sync(event.snapshot);
+      try {
+        this.sync(event.snapshot);
+      } catch (error) {
+        onError?.(error);
+      }
     }
 
     queueActorAnimation(actor, data, animationJobs) {
@@ -11168,7 +11177,13 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     syncType: "BATTLEFIELD_SYNC",
     streamKey: "battleId",
     allowStaleSync: true,
-    onEvent: event => scene?.consume(event),
+    onEvent: event => {
+      try {
+        scene?.consume(event);
+      } catch (error) {
+        onError?.(error);
+      }
+    },
     onStatus: (status, detail) => status === "error" && onError?.(detail)
   });
 
