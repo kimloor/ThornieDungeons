@@ -424,24 +424,27 @@ test("W6.6 EquipmentVisualResolver loads before battle snapshot adapter", () => 
   assert.ok(adapterIndex > resolverIndex);
 });
 
-test("W7.1 Hero V5 runtime is opt-in and keeps V3 as the default", () => {
+test("Hero V5 runtime is production-default with an explicit opt-out", () => {
   const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
-  const disabled = {
-    ASSETS: {},
-    location: { search: "?phaserBattle=1" }
-  };
-  vm.createContext(disabled);
-  vm.runInContext(`${contractSource}; this.enabled = isHeroV5RuntimeEnabled();`, disabled);
-  assert.equal(disabled.enabled, false);
-
   const enabled = {
     ASSETS: {},
-    location: { search: "?phaserBattle=1&heroV5=1" },
+    location: { search: "" },
     URLSearchParams
   };
   vm.createContext(enabled);
   vm.runInContext(`${contractSource}; this.enabled = isHeroV5RuntimeEnabled();`, enabled);
   assert.equal(enabled.enabled, true);
+
+  const disabled = {
+    ASSETS: {},
+    location: { search: "?heroV5=0" },
+    URLSearchParams
+  };
+  vm.createContext(disabled);
+  vm.runInContext(`${contractSource}; this.enabled = isHeroV5RuntimeEnabled();`, disabled);
+  assert.equal(disabled.enabled, false);
+  assert.match(contractSource, /return value !== "0"/);
+  assert.match(contractSource, /return true;/);
 });
 
 test("W7.1 Hero V5 G2 contract requires synchronized approved 768px frames", () => {
@@ -505,7 +508,7 @@ test("W7.1 incomplete V5 contracts fall back instead of mixing V3 and V5", () =>
   assert.equal(context.result, null);
 });
 
-test("W7.2 battle snapshot selects V5 Base + Wing only when explicitly enabled", () => {
+test("W7.2 battle snapshot selects production V5 Base + Wing while preserving explicit fallback", () => {
   const adapter = source("src/phaser/presentation/EventBridge.js");
   assert.match(adapter, /heroV5 === undefined/);
   assert.match(adapter, /isHeroV5RuntimeEnabled\(\)/);
