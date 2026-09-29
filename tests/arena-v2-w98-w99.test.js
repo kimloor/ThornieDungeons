@@ -199,6 +199,30 @@ test('Arena Player Card normalizes equipment objects and Pet defId into render-s
   assert.doesNotMatch(arenaUi, /playerCard\.equipmentSummary \|\| playerCard\.equipment \|\|/);
 });
 
+test('Arena Player Card renders equipped items as a read-only horizontal icon strip', () => {
+  assert.match(arenaUi, /className: "md-arena-equipment-icons"/);
+  assert.match(arenaUi, /className: "md-arena-equipment-icon"/);
+  assert.match(arenaUi, /React\.createElement\(GameIcon|e\(GameIcon/);
+  assert.match(arenaUi, /fallback: SLOT_ICON\[slot\]/);
+  const cardSection = arenaUi.slice(arenaUi.indexOf('function ArenaPlayerCardOverlay'), arenaUi.indexOf('function ArenaUnlockNotice'));
+  assert.doesNotMatch(cardSection, /onUnequip|onSalvage|onSell|SALVAGE|SELL/);
+});
+
+test('Arena browser shell uses global resources, standard header back, fixed dock and a sized Phaser stage', () => {
+  const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
+  assert.match(arenaUi, /function GlobalCurrencyBar/);
+  assert.match(arenaUi, /md-character-page-title md-arena-page-header/);
+  assert.match(arenaUi, /md-arena-phaser-stage/);
+  assert.match(arenaUi, /React\.createElement\(GameDock/);
+  assert.match(styles, /\.md-hub-resources\.with-arena \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:fixed/);
+  assert.match(styles, /\.md-arena-phaser-stage \{ position:relative;[^}]*min-height:clamp\(300px,48dvh,430px\)/);
+  assert.match(appUi, /arena: arenaHud/);
+  assert.match(appUi, /arenaHud: arenaHud/);
+  assert.match(appUi, /cloudGetArenaV2Status\(cred\.url, characterId\)/);
+});
+
+
 test('Arena Phaser receives prepared match snapshot so READY waits on actor assets before activate', () => {
   assert.match(arenaUi, /preparedSnapshot: match\.snapshot/);
   assert.match(phaserUi, /props\.preparedSnapshot/);
