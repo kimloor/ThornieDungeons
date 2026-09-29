@@ -3114,6 +3114,7 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
 }
 
 // ---------- Mailbox: generic reward delivery queue ----------
+// W9.8 QA boundary: reward delivery remains mailbox-backed and replay-safe.
 // Server-side reward mutations (UPDATE characters/items directly) get silently
 // clobbered by this project's client-authoritative full-sync save model — the next
 // saveCharacterProgress/syncItems push from the client overwrites them with its own
