@@ -6322,7 +6322,7 @@ function arenaCombatPublicState(state) {
 function arenaCombatResult(state) {
   return state.result ? { result: state.result, winnerSide: state.winnerSide || null } : null;
 }
-async function arenaStoreCombatState(db, match, state, now, response, actionKey, actionSeq, previousActionSeq) {
+async function arenaStoreCombatState(db, match, state, now, response, actionKey, actionSeq, previousActionSeq, previousStateRev) {
   const responseJson = JSON.stringify(response);
   const stateJson = JSON.stringify(state);
   const resultJson = arenaCombatResult(state);
@@ -6333,15 +6333,22 @@ async function arenaStoreCombatState(db, match, state, now, response, actionKey,
       SELECT ?, ?, ?, ?, ?
       WHERE NOT EXISTS (SELECT 1 FROM arena_match_actions WHERE match_id = ? AND action_key = ?)
         AND NOT EXISTS (SELECT 1 FROM arena_match_actions WHERE match_id = ? AND action_seq = ?)
-        AND EXISTS (SELECT 1 FROM arena_matches WHERE match_id = ? AND status = 'active' AND json_extract(state_json, '$.arenaActionSeq') = ?)
-    `).bind(match.match_id, actionKey, actionSeq, responseJson, now, match.match_id, actionKey, match.match_id, actionSeq, match.match_id, previousActionSeq),
+        AND EXISTS (SELECT 1 FROM arena_matches WHERE match_id = ? AND status = 'active' AND json_extract(state_json, '$.arenaActionSeq') = ? AND COALESCE(json_extract(state_json, '$.arenaStateRev'), 0) = ?)
+    `).bind(match.match_id, actionKey, actionSeq, responseJson, now, match.match_id, actionKey, match.match_id, actionSeq, match.match_id, previousActionSeq, previousStateRev),
     db.prepare(`
       UPDATE arena_matches SET status = ?, state_json = ?, result_json = ?, completed_at = CASE WHEN ? = 'done' THEN ? ELSE completed_at END, updated_at = ?
-      WHERE match_id = ? AND status = 'active' AND json_extract(state_json, '$.arenaActionSeq') = ?
+      WHERE match_id = ? AND status = 'active' AND json_extract(state_json, '$.arenaActionSeq') = ? AND COALESCE(json_extract(state_json, '$.arenaStateRev'), 0) = ?
         AND EXISTS (SELECT 1 FROM arena_match_actions WHERE match_id = ? AND action_key = ? AND action_seq = ?)
-    `).bind(status, stateJson, resultJson ? JSON.stringify(resultJson) : "", status, now, now, match.match_id, previousActionSeq, match.match_id, actionKey, actionSeq),
+    `).bind(status, stateJson, resultJson ? JSON.stringify(resultJson) : "", status, now, now, match.match_id, previousActionSeq, previousStateRev, match.match_id, actionKey, actionSeq),
   ]);
-  return Number(batch?.[1]?.meta?.changes) === 1;
+  const inserted = Number(batch?.[0]?.meta?.changes) || 0;
+  const updated = Number(batch?.[1]?.meta?.changes) || 0;
+  if (updated === 1) return true;
+  if (inserted === 1) {
+    await db.prepare(`DELETE FROM arena_match_actions WHERE match_id = ? AND action_key = ? AND action_seq = ?`)
+      .bind(match.match_id, actionKey, actionSeq).run();
+  }
+  return false;
 }
 async function handleSetArenaV2Auto(db, id, session, characterId, matchId, enabled) {
   const context = await arenaV2Context(db, id, session, characterId);
@@ -6350,9 +6357,11 @@ async function handleSetArenaV2Auto(db, id, session, characterId, matchId, enabl
   if (!match || match.status !== "active") return json({ error: "arena_match_not_active" }, 409);
   const state = parseJsonColumn(match.state_json, null);
   if (!state || state.result) return json({ error: "arena_match_already_done" }, 409);
+  const previousStateRev = Number(state.arenaStateRev) || 0;
   state.flags = { ...(state.flags || {}), auto: !!enabled };
-  const saved = await db.prepare(`UPDATE arena_matches SET state_json = ?, updated_at = ? WHERE match_id = ? AND status = 'active' AND json_extract(state_json, '$.safeActionSeq') = ?`)
-    .bind(JSON.stringify(state), nowIso(), match.match_id, Number(state.safeActionSeq) || 0).run();
+  state.arenaStateRev = previousStateRev + 1;
+  const saved = await db.prepare(`UPDATE arena_matches SET state_json = ?, updated_at = ? WHERE match_id = ? AND status = 'active' AND COALESCE(json_extract(state_json, '$.arenaStateRev'), 0) = ?`)
+    .bind(JSON.stringify(state), nowIso(), match.match_id, previousStateRev).run();
   if (Number(saved?.meta?.changes) !== 1) return json({ error: "arena_combat_conflict", retry: true }, 409);
   return json({ ok: true, match: arenaMatchPayload({ ...match, state_json: JSON.stringify(state) }) });
 }
@@ -6367,10 +6376,20 @@ async function handleSubmitArenaV2Action(db, id, session, characterId, matchId, 
   const match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first();
   if (!match) return json({ error: "arena_match_not_found" }, 404);
   if (match.status !== "active") return json({ error: "arena_match_not_active" }, 409);
-  if (Date.parse(match.deadline_at || "") <= Date.now()) return json({ error: "arena_match_deadline" }, 409);
+  const nowMs = Date.now();
+  if (Date.parse(match.deadline_at || "") <= nowMs) return json({ error: "arena_match_deadline" }, 409);
+  if (actionType === "surrender") {
+    const activatedMs = Date.parse(match.activated_at || "");
+    if (!Number.isFinite(activatedMs)) return json({ error: "arena_match_state_invalid" }, 409);
+    const availableAt = activatedMs + ARENA_SURRENDER_COOLDOWN_MS;
+    if (nowMs < availableAt) {
+      return json({ error: "arena_surrender_cooldown", retryAfter: Math.max(1, Math.ceil((availableAt - nowMs) / 1000)), surrenderAvailableAt: arenaNowIso(availableAt) }, 409);
+    }
+  }
   let state = parseJsonColumn(match.state_json, null);
   if (!state || state.mode !== "arena") return json({ error: "arena_match_state_invalid" }, 409);
-  state.flags = { ...(state.flags || {}), auto: !!auto || !!state.flags.auto };
+  state.flags = { ...(state.flags || {}) };
+  const previousStateRev = Number(state.arenaStateRev) || 0;
   const actor = BATTLE_CORE_V1.currentUnit(state);
   if (!actor || actor.kind !== "hero" || actor.side !== "team_a") return json({ error: "arena_not_attacker_turn" }, 409);
   const previousActionSeq = Number(state.arenaActionSeq) || 0;
@@ -6395,9 +6414,10 @@ async function handleSubmitArenaV2Action(db, id, session, characterId, matchId, 
     state = playerStep.state;
     state = arenaCombatAdvance(state, !!state.flags.auto);
   }
+  state.arenaStateRev = previousStateRev + 1;
   const publicState = arenaCombatPublicState(state);
   const response = { ok: true, replayed: false, matchId: key, actionKey: requestKey, actionSeq, state: publicState, result: arenaCombatResult(state) };
-  const stored = await arenaStoreCombatState(db, match, state, nowIso(), response, requestKey, actionSeq, previousActionSeq);
+  const stored = await arenaStoreCombatState(db, match, state, nowIso(), response, requestKey, actionSeq, previousActionSeq, previousStateRev);
   if (!stored) {
     const replay = await db.prepare(`SELECT response_json FROM arena_match_actions WHERE match_id = ? AND action_key = ?`).bind(key, requestKey).first();
     if (replay) return json({ ...parseJsonColumn(replay.response_json, { error: "arena_action_replay_corrupt" }), replayed: true });
