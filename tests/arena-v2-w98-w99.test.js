@@ -126,13 +126,13 @@ test('Arena V2 frontend contract uses default Phaser, Player Card and no animati
   assert.match(arenaUi, /function formatArenaSeasonCountdown/);
   assert.match(arenaUi, /seasonCountdownText = formatArenaSeasonCountdown\(countdown\)/);
   assert.doesNotMatch(arenaUi, /const mins = Math\.floor\(countdown \/ 60000\)/);
-  assert.match(arenaUi, /md-arena-page-actions/);
+  assert.match(arenaUi, /md-character-page-title md-arena-page-header/);
   assert.match(arenaUi, /React\.createElement\(GameDock/);
   assert.match(arenaUi, /onHudChange\?\.\(/);
   assert.match(arenaUi, /Standard BOT Loadout/);
   assert.match(arenaUi, /return "None"/);
   assert.match(appUi, /const \[arenaHud, setArenaHud\] = useState\(null\)/);
-  assert.match(appUi, /arena: phase === "arena" \? arenaHud : null/);
+  assert.match(appUi, /arena: arenaHud/);
   assert.match(appUi, /\.\.\.utilityDockProps\("arena"\)/);
   assert.doesNotMatch(arenaUi.slice(arenaUi.indexOf('function ArenaV2Screen'), arenaUi.indexOf('\n}\n\n// Turns a mail')), /requestAnimationFrame/);
 });
