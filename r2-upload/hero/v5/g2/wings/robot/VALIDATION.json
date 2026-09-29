@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "files": 16,
+  "canvas": [
+    768,
+    768
+  ],
+  "rgba": true,
+  "transparentRgbClean": true,
+  "approvedRevision": "R3",
+  "sha256": {
+    "hero/v5/g2/wings/robot/idle_01/wing_far.png": "403297219f69f7123565151ace62f7da52f3bae5085c13e2b5f1a94a6191b64c",
+    "hero/v5/g2/wings/robot/idle_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/robot/idle_02/wing_far.png": "60f236c899d5d9687b4e510bc755774d493784167ab0a64396b399b9f69dadd7",
+    "hero/v5/g2/wings/robot/idle_02/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/robot/idle_03/wing_far.png": "60ef080aa4a8e1009cccb5290c226cbe7db98acae0b646abd1f6b42cf3235be8",
+    "hero/v5/g2/wings/robot/idle_03/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/robot/attack_01/wing_far.png": "f6c61d3fafa40beb1c852714ffffd15070f3e72c7550bbef6db06776c07d8373",
+    "hero/v5/g2/wings/robot/attack_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/robot/attack_02/wing_far.png": "3f6944124f18be547cb8d9e649acde786ac2abd0a45317c3cff4dc3ab49f235b",
+    "hero/v5/g2/wings/robot/attack_02/wing_near.png": "687e48fc1c4ea4ba6d3ec4632d4d7231d4dd3d39b16ba17053d0647a8ac6d1dc",
+    "hero/v5/g2/wings/robot/attack_03/wing_far.png": "c271e99a174f9406f602fc531f27526e4530592ac194883e875430a293869508",
+    "hero/v5/g2/wings/robot/attack_03/wing_near.png": "69dbe07d12a98acc10ef15317f92cb46626454146e8f24ddb7fe5bb785f9bf4c",
+    "hero/v5/g2/wings/robot/death_01/wing_far.png": "2c98cf1861100c7a85cd754d2db123c1cb224257600c2c2046375c5fbc7adf74",
+    "hero/v5/g2/wings/robot/death_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/wings/robot/death_02/wing_far.png": "a2e84c9939fddc629eee76601ffa7e2cf0355d1c837c50a4617449cab31d65ee",
+    "hero/v5/g2/wings/robot/death_02/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b"
+  },
+  "inGameQA": false
+}

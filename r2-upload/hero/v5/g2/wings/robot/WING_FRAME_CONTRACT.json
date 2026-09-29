@@ -1,0 +1,203 @@
+{
+  "approval": "user-approved Robot R3",
+  "canvas": [
+    768,
+    768
+  ],
+  "placement": [
+    0,
+    0
+  ],
+  "layerOrder": [
+    "wing_far",
+    "hero",
+    "wing_near"
+  ],
+  "frames": {
+    "idle_01": {
+      "nearRoot": [
+        312,
+        410
+      ],
+      "farRoot": [
+        337,
+        405
+      ],
+      "farBBox": [
+        51,
+        221,
+        357,
+        467
+      ],
+      "nearBBox": null,
+      "nearBodyOverlapPixels": 0,
+      "rootHasNearWing": null
+    },
+    "idle_02": {
+      "nearRoot": [
+        312,
+        398
+      ],
+      "farRoot": [
+        337,
+        393
+      ],
+      "farBBox": [
+        51,
+        209,
+        357,
+        463
+      ],
+      "nearBBox": null,
+      "nearBodyOverlapPixels": 0,
+      "rootHasNearWing": null
+    },
+    "idle_03": {
+      "nearRoot": [
+        312,
+        406
+      ],
+      "farRoot": [
+        337,
+        401
+      ],
+      "farBBox": [
+        51,
+        217,
+        357,
+        463
+      ],
+      "nearBBox": null,
+      "nearBodyOverlapPixels": 0,
+      "rootHasNearWing": null
+    },
+    "attack_01": {
+      "nearRoot": [
+        333,
+        449
+      ],
+      "farRoot": [
+        357,
+        439
+      ],
+      "farBBox": [
+        72,
+        301,
+        370,
+        521
+      ],
+      "nearBBox": null,
+      "nearBodyOverlapPixels": 0,
+      "rootHasNearWing": null
+    },
+    "attack_02": {
+      "nearRoot": [
+        306,
+        448
+      ],
+      "farRoot": [
+        328,
+        419
+      ],
+      "farBBox": [
+        101,
+        276,
+        354,
+        462
+      ],
+      "nearBBox": [
+        18,
+        301,
+        318,
+        560
+      ],
+      "nearBodyOverlapPixels": 9404,
+      "rootHasNearWing": 253
+    },
+    "attack_03": {
+      "nearRoot": [
+        308,
+        464
+      ],
+      "farRoot": [
+        337,
+        414
+      ],
+      "farBBox": [
+        127,
+        271,
+        362,
+        458
+      ],
+      "nearBBox": [
+        28,
+        378,
+        318,
+        595
+      ],
+      "nearBodyOverlapPixels": 9832,
+      "rootHasNearWing": 253
+    },
+    "death_01": {
+      "nearRoot": [
+        376,
+        414
+      ],
+      "farRoot": [
+        402,
+        409
+      ],
+      "farBBox": [
+        244,
+        396,
+        534,
+        586
+      ],
+      "nearBBox": null,
+      "nearBodyOverlapPixels": 0,
+      "rootHasNearWing": null
+    },
+    "death_02": {
+      "nearRoot": [
+        293,
+        522
+      ],
+      "farRoot": [
+        310,
+        519
+      ],
+      "farBBox": [
+        33,
+        492,
+        323,
+        572
+      ],
+      "nearBBox": null,
+      "nearBodyOverlapPixels": 0,
+      "rootHasNearWing": null
+    }
+  },
+  "idleEmission": [
+    [
+      0.56,
+      1.02,
+      0.76
+    ],
+    [
+      0.91,
+      0.61,
+      1.08
+    ],
+    [
+      0.77,
+      1.1,
+      0.55
+    ]
+  ],
+  "attackEmission": "increased length and bright core; approved R3",
+  "death": "R2 geometry unchanged; engines off",
+  "runtimeTransforms": false,
+  "runtimeIntegrated": false,
+  "itemBinding": "pending",
+  "reference": "Azure Wing R5 roots; full foreground near wing at attack_02 and attack_03"
+}
