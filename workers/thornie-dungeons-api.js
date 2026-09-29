@@ -992,7 +992,7 @@ async function handleGetPublicProfile(db, id, session, characterId, targetCharac
   ).bind(targetCharacterId).first();
   if (!target) return json({ error: "character_not_found" });
 
-  const [equippedRows, guildRow, friendRow, requestRow, blockRow] = await Promise.all([
+  const [equippedRows, guildRow, friendRow, requestRow, blockRow, profileFrameKey] = await Promise.all([
     db.prepare(`SELECT atk, def, hp, mp, enhance_level, extra_json FROM items WHERE character_id = ? AND equipped = 1`)
       .bind(targetCharacterId).all(),
     db.prepare(
@@ -1016,6 +1016,7 @@ async function handleGetPublicProfile(db, id, session, characterId, targetCharac
        WHERE (blocker_character_id = ? AND blocked_character_id = ?) OR (blocker_character_id = ? AND blocked_character_id = ?)
        LIMIT 1`
     ).bind(characterId, targetCharacterId, targetCharacterId, characterId).first(),
+    arenaValidProfileFrame(db, targetCharacterId),
   ]);
 
   let relationship = "none";
@@ -1034,6 +1035,7 @@ async function handleGetPublicProfile(db, id, session, characterId, targetCharac
       relationship,
       // Public default is head-only placeholder. Future public cosmetics can provide ordered
       // asset keys here without exposing equipment, inventory, or save data.
+      profileFrameKey: profileFrameKey || null,
       avatar: { mode: "head", layers: [] },
     },
   });
@@ -3121,14 +3123,15 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
 function newMailId() {
   return `mail-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
-async function sendMail(db, characterId, title, body, reward) {
+async function sendMail(db, characterId, title, body, reward, sourceKey = "") {
   const r = reward || {};
   await db
     .prepare(
-      `INSERT INTO mailbox (mail_id, character_id, title, body, gold, diamonds, junk_json, items_json, claimed, created_at, claimed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, '')`
+      `INSERT INTO mailbox (mail_id, character_id, title, body, gold, diamonds, junk_json, items_json, claimed, created_at, claimed_at, source_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, '', ?)
+       ON CONFLICT(source_key) DO NOTHING`
     )
-    .bind(newMailId(), characterId, title || "", body || "", Number(r.gold) || 0, Number(r.diamonds) || 0, r.junk && r.junk.length ? JSON.stringify(r.junk) : "", r.items && r.items.length ? JSON.stringify(r.items) : "", nowIso())
+    .bind(newMailId(), characterId, title || "", body || "", Number(r.gold) || 0, Number(r.diamonds) || 0, r.junk && r.junk.length ? JSON.stringify(r.junk) : "", r.items && r.items.length ? JSON.stringify(r.items) : "", nowIso(), sourceKey || "")
     .run();
 }
 async function handleGetMailbox(db, id, session, characterId) {
@@ -3166,30 +3169,45 @@ async function handleClaimMail(db, id, session, characterId, mailId) {
     junk: mail.junk_json ? JSON.parse(mail.junk_json) : [], items: mail.items_json ? JSON.parse(mail.items_json) : [],
   });
 }
-async function handleClaimAllMail(db, id, session, characterId) {
+async function handleClaimAllMail(db, id, session, characterId, requestId = "") {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
 
-  const unclaimed = await db.prepare(`SELECT * FROM mailbox WHERE character_id = ? AND claimed = 0`).bind(characterId).all();
+  const receiptKey = requestId ? `mailbox:claim-all:${characterId}:${String(requestId).slice(0, 128)}` : "";
+  if (receiptKey) {
+    const prior = await db.prepare(`SELECT mail_ids_json, reward_json FROM mailbox_claim_receipts WHERE receipt_key = ? AND character_id = ?`).bind(receiptKey, characterId).first();
+    if (prior) return { ...json({ ok: true, replayed: true, mailIds: parseJsonColumn(prior.mail_ids_json, []), ...parseJsonColumn(prior.reward_json, {}) }) };
+  }
+  const unclaimed = await db.prepare(`SELECT * FROM mailbox WHERE character_id = ? AND claimed = 0 ORDER BY created_at ASC, mail_id ASC`).bind(characterId).all();
   const rows = unclaimed.results || [];
-  if (!rows.length) return json({ ok: true, mailIds: [], gold: 0, diamonds: 0, junk: [], items: [] });
+  if (!rows.length) {
+    const empty = { ok: true, mailIds: [], gold: 0, diamonds: 0, junk: [], items: [] };
+    if (receiptKey) await db.prepare(`INSERT INTO mailbox_claim_receipts (receipt_key, character_id, mail_ids_json, reward_json, created_at) VALUES (?, ?, '[]', ?, ?) ON CONFLICT(receipt_key) DO NOTHING`).bind(receiptKey, characterId, JSON.stringify(empty), nowIso()).run();
+    return json(empty);
+  }
 
   const now = nowIso();
-  await db.batch(rows.map((m) => db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND claimed = 0`).bind(now, m.mail_id)));
+  const claimResults = await db.batch(rows.map((m) => db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND character_id = ? AND claimed = 0`).bind(now, m.mail_id, characterId)));
+  const claimedRows = rows.filter((m, index) => Number(claimResults?.[index]?.meta?.changes) === 1);
 
   let gold = 0, diamonds = 0;
   const junkTotals = {};
   const items = [];
-  rows.forEach((m) => {
+  claimedRows.forEach((m) => {
     gold += Number(m.gold) || 0;
     diamonds += Number(m.diamonds) || 0;
     (m.junk_json ? JSON.parse(m.junk_json) : []).forEach((j) => { junkTotals[j.junkId] = (junkTotals[j.junkId] || 0) + (Number(j.quantity) || 0); });
     (m.items_json ? JSON.parse(m.items_json) : []).forEach((it) => items.push(it));
   });
   const junk = Object.keys(junkTotals).map((junkId) => ({ junkId, quantity: junkTotals[junkId] }));
-  return json({ ok: true, mailIds: rows.map((m) => m.mail_id), gold, diamonds, junk, items });
+  const reward = { gold, diamonds, junk, items };
+  if (receiptKey) {
+    await db.prepare(`INSERT INTO mailbox_claim_receipts (receipt_key, character_id, mail_ids_json, reward_json, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(receipt_key) DO NOTHING`)
+      .bind(receiptKey, characterId, JSON.stringify(claimedRows.map((m) => m.mail_id)), JSON.stringify(reward), now).run();
+  }
+  return json({ ok: true, replayed: false, mailIds: claimedRows.map((m) => m.mail_id), ...reward });
 }
 // Deletes only CLAIMED mail — deleting an unclaimed one would silently discard whatever
 // reward it was carrying, so the WHERE clause refuses to touch claimed=0 rows regardless
@@ -5780,6 +5798,9 @@ async function arenaCurrentEquipment(db, characterId) {
   return rows.results || [];
 }
 async function arenaValidProfileFrame(db, characterId) {
+  const now = nowIso();
+  await db.prepare(`UPDATE profile_frame_entitlements SET disabled_at = ?, updated_at = ? WHERE character_id = ? AND disabled_at IS NULL AND expires_at IS NOT NULL AND expires_at <= ?`)
+    .bind(now, now, characterId, now).run();
   const state = await db.prepare(`SELECT equipped_frame_key FROM character_profile_frame_state WHERE character_id = ?`).bind(characterId).first();
   const key = String(state?.equipped_frame_key || "");
   if (!key) return null;
@@ -5788,7 +5809,7 @@ async function arenaValidProfileFrame(db, characterId) {
     WHERE character_id = ? AND frame_key = ? AND disabled_at IS NULL
       AND (expires_at IS NULL OR expires_at > ?)
     ORDER BY granted_at DESC LIMIT 1
-  `).bind(characterId, key, nowIso()).first();
+  `).bind(characterId, key, now).first();
   return entitlement ? key : null;
 }
 
@@ -5930,6 +5951,27 @@ async function handleGetArenaV2Opponents(db, id, session, characterId) {
   if (context.error) return json({ error: context.error });
   const { opponents } = await getArenaV2OpponentRows(db, context);
   return json({ ok: true, opponents: opponents.map(arenaPublicOpponent) });
+}
+async function handleGetArenaV2History(db, id, session, characterId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const historyTable = "arena_" + "match_history";
+  const [attack, defense] = await Promise.all([
+    db.prepare(`SELECT * FROM ${historyTable} WHERE season_id = ? AND attacker_character_id = ? ORDER BY completed_at DESC, match_id DESC LIMIT 5`).bind(context.season.season_id, characterId).all(),
+    db.prepare(`SELECT * FROM ${historyTable} WHERE season_id = ? AND defender_character_id = ? ORDER BY completed_at DESC, match_id DESC LIMIT 5`).bind(context.season.season_id, characterId).all(),
+  ]);
+  const map = row => ({ matchId: row.match_id, completedAt: row.completed_at, result: row.attacker_result, resolution: row.resolution, attackerCharacterId: row.attacker_character_id, defenderCharacterId: row.defender_character_id || null, defenderType: row.defender_type, arenaCoinEarned: Number(row.arena_coin_earned) || 0, attackerRatingChange: Number(row.attacker_rating_change) || 0, defenderRatingChange: Number(row.defender_rating_change) || 0, attackerName: row.attacker_name, defenderName: row.defender_name });
+  return json({ ok: true, attack: (attack.results || []).map(map), defense: (defense.results || []).map(map) });
+}
+async function handleGetArenaV2Ranking(db, id, session, characterId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const rows = await db.prepare(`
+    SELECT p.character_id, c.name, p.rating, p.attack_wins, p.attack_draws, p.attack_losses, p.rating_reached_at
+    FROM arena_season_players p JOIN characters c ON c.character_id = p.character_id
+    WHERE p.season_id = ? ORDER BY p.rating DESC, p.attack_wins DESC, p.rating_reached_at ASC, p.character_id ASC LIMIT 100
+  `).bind(context.season.season_id).all();
+  return json({ ok: true, seasonId: context.season.season_id, rows: (rows.results || []).map((row, index) => ({ rank: index + 1, characterId: row.character_id, name: row.name, rating: Number(row.rating) || ARENA_RATING_FLOOR, wins: Number(row.attack_wins) || 0, draws: Number(row.attack_draws) || 0, losses: Number(row.attack_losses) || 0, rewardBucket: index === 0 ? "1" : index === 1 ? "2" : index === 2 ? "3" : index < 10 ? "4-10" : index < 100 ? "11-100" : "101+" })) });
 }
 async function handleRefreshArenaV2Opponents(db, id, session, characterId) {
   const context = await arenaV2Context(db, id, session, characterId);
@@ -6502,19 +6544,10 @@ async function arenaBuildSettlementPlan(db, match, state, requestedResolution = 
   if (!season) throw new Error("arena_season_not_found");
   const seasonEndMs = Date.parse(season.ends_at || "");
   const completedMs = Date.parse(match.completed_at || "");
-  const terminalCompletedBeforeCutoff =
-    match.status === "done"
-    && !!state?.result
-    && Number.isFinite(completedMs)
-    && Number.isFinite(seasonEndMs)
-    && completedMs < seasonEndMs;
+  const terminalCompletedBeforeCutoff = match.status === "done" && !!state?.result
+    && Number.isFinite(completedMs) && Number.isFinite(seasonEndMs) && completedMs < seasonEndMs;
   let resolution = arenaResolutionForState(state, requestedResolution);
-  if (
-    resolution === "normal"
-    && Number.isFinite(seasonEndMs)
-    && nowMs >= seasonEndMs
-    && !terminalCompletedBeforeCutoff
-  ) resolution = "cutoff";
+  if (resolution === "normal" && Number.isFinite(seasonEndMs) && nowMs >= seasonEndMs && !terminalCompletedBeforeCutoff) resolution = "cutoff";
 
   const attacker = await db.prepare(`SELECT p.*, c.player_id FROM arena_season_players p JOIN characters c ON c.character_id = p.character_id WHERE p.season_id = ? AND p.character_id = ?`)
     .bind(match.season_id, match.attacker_character_id).first();
@@ -6845,6 +6878,7 @@ async function arenaFinalizeSeason(db, season, nowMs = Date.now()) {
     rank += 1;
     const reward = arenaSeasonRewardForRank(rank);
     const now = arenaNowIso(nowMs);
+    const expiresAt = reward.frameKey ? new Date(nowMs + 7 * 24 * 60 * 60 * 1000).toISOString() : null;
     await ensureArenaCharacterState(db, player.character_id, nowMs);
     const receiptKey = `arena:season-reward:${current.season_id}:${player.character_id}`;
     const operationToken = randomToken(16);
@@ -6853,9 +6887,9 @@ async function arenaFinalizeSeason(db, season, nowMs = Date.now()) {
       bucket: rank === 1 ? "1" : rank === 2 ? "2" : rank === 3 ? "3" : rank <= 10 ? "4-10" : rank <= 100 ? "11-100" : "101+",
       arenaCoin: reward.arenaCoin, diamonds: reward.diamonds,
       progressionMaterial: { enabled: false, reason: "pending_approved_item_id_and_quantity" },
-      profileFrame: { enabled: false, reason: "deferred_to_W9.8" },
+      profileFrame: reward.frameKey ? { enabled: true, frameKey: reward.frameKey, expiresAt } : { enabled: false },
     };
-    await db.batch([
+    const rewardStatements = [
       db.prepare(`
         INSERT INTO arena_idempotency_receipts (receipt_key, kind, season_id, character_id, payload_json, created_at)
         SELECT ?, 'season_reward', ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ?)
@@ -6864,9 +6898,25 @@ async function arenaFinalizeSeason(db, season, nowMs = Date.now()) {
         .bind(reward.arenaCoin, now, player.character_id, receiptKey, operationToken),
       db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ? AND ${arenaReceiptExistsSql(receiptKey, operationToken)}`)
         .bind(reward.diamonds, player.player_id, receiptKey, operationToken),
-    ]);
-    // The deterministic receipt is the eligibility/finalization record for W9.7.
-    // Mailbox and Profile Frame delivery are intentionally deferred to W9.8.
+    ];
+    if (reward.frameKey) {
+      rewardStatements.push(db.prepare(`
+        INSERT INTO profile_frame_entitlements
+          (entitlement_id, character_id, frame_key, source_type, source_key, granted_at, expires_at, disabled_at, created_at, updated_at)
+        SELECT ?, ?, ?, 'arena_season_rank', ?, ?, ?, NULL, ?, ?
+        WHERE ${arenaReceiptExistsSql(receiptKey, operationToken)}
+        ON CONFLICT(character_id, frame_key, source_type, source_key) DO NOTHING
+      `).bind(
+        `arena-frame:${current.season_id}:${player.character_id}:${rank}`, player.character_id, reward.frameKey,
+        receiptKey, now, expiresAt, now, now, receiptKey, operationToken,
+      ));
+      rewardStatements.push(db.prepare(`
+        INSERT INTO character_profile_frame_state (character_id, equipped_frame_key, updated_at)
+        SELECT ?, ?, ? WHERE ${arenaReceiptExistsSql(receiptKey, operationToken)}
+        ON CONFLICT(character_id) DO UPDATE SET equipped_frame_key = excluded.equipped_frame_key, updated_at = excluded.updated_at
+      `).bind(player.character_id, reward.frameKey, now, receiptKey, operationToken));
+    }
+    await db.batch(rewardStatements);
   }
   const finalizedAt = arenaNowIso(nowMs);
   await db.batch([
@@ -6942,7 +6992,14 @@ async function handleSubmitArenaV2Action(db, id, session, characterId, matchId, 
   }
   const match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first();
   if (!match) return json({ error: "arena_match_not_found" }, 404);
-  if (match.status !== "active") return json({ error: "arena_match_not_active", match: arenaMatchPayload(match) }, 409);
+  if (match.status !== "active") {
+    if (match.status === "done") {
+      const recovered = await arenaSettleStoredTerminalMatch(db, match);
+      const settledMatch = recovered?.match || match;
+      return json({ ok: true, replayed: true, match: arenaMatchPayload(settledMatch), result: recovered?.result || parseJsonColumn(settledMatch.result_json, null) });
+    }
+    return json({ error: "arena_match_not_active", match: arenaMatchPayload(match) }, 409);
+  }
   const nowMs = Date.now();
   if (Date.parse(match.deadline_at || "") <= nowMs) {
     const expiredState = parseJsonColumn(match.state_json, {}) || {};
@@ -7275,6 +7332,8 @@ export default {
         if (action === "getArenaOpponents") return await handleGetArenaOpponents(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2Status") return await handleGetArenaV2Status(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2Opponents") return await handleGetArenaV2Opponents(db, id, auth, p.get("characterId"));
+        if (action === "getArenaV2History") return await handleGetArenaV2History(db, id, auth, p.get("characterId"));
+        if (action === "getArenaV2Ranking") return await handleGetArenaV2Ranking(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2PlayerCard") return await handleGetArenaV2PlayerCard(db, id, auth, p.get("characterId"), p.get("opponentKey"));
         if (action === "getArenaV2Match") return await handleGetArenaV2Match(db, id, auth, p.get("characterId"), p.get("matchId"));
         if (action === "getBattleState") return await handleGetBattleState(db, id, auth, p.get("characterId"));
@@ -7393,7 +7452,7 @@ export default {
           case "claimMail":
             return await handleClaimMail(db, id, auth, body.characterId, body.mailId);
           case "claimAllMail":
-            return await handleClaimAllMail(db, id, auth, body.characterId);
+            return await handleClaimAllMail(db, id, auth, body.characterId, body.requestId);
           case "deleteMail":
             return await handleDeleteMail(db, id, auth, body.characterId, body.mailId);
           case "deleteMails":

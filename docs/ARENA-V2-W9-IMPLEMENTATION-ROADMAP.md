@@ -302,7 +302,7 @@ Gate:
 - surrender and normal combat completion store combat result only; W9.7 owns
   settlement/economy/rewards.
 
-## W9.7 — Settlement, economy and rewards — COMPLETE / QA APPROVED
+## W9.7 — Settlement, economy and rewards — IMPLEMENTED / READY_FOR_QA
 
 Purpose: one idempotent authoritative settlement path for every Arena result.
 
@@ -349,8 +349,8 @@ Implementation boundary:
 - Recovery respects the authoritative terminal timestamp: a result completed before season cutoff keeps its normal/surrender settlement even if recovery runs after cutoff; only unresolved active matches (or terminal rows completed at/after cutoff) use cutoff Coin-only settlement.
 - Live and final rank ordering is identical: rating DESC, Attack Wins DESC, rating_reached_at ASC, character_id ASC. Result/history rating deltas are computed after floor and bot-cap clamping.
 - Season rollover finalizes expired active and terminal-but-unsettled matches, ranks by rating → Attack Wins → rating reached time → character ID, and initializes the next season with the locked one-tier-drop base.
-- Arena Coin and Diamonds settle immediately where approved. Progression-material reward is explicitly disabled pending an approved item ID/quantity. Mailbox and Profile Frame delivery remain W9.8 scope.
-- No migration changes were required; W9.5/W9.6 combat action receipts and Ticket activation semantics remain unchanged.
+- Arena Coin and Diamonds settle immediately where approved. Progression-material reward is explicitly disabled pending an approved item ID/quantity. W9.8 now owns delayed mailbox identity/claim receipts and global frame delivery.
+- W9.5/W9.6 combat action receipts and Ticket activation semantics remain unchanged; W9.8 adds only additive migration 0024 for mailbox source/claim identities.
 
 ## W9.8 — Mailbox + global Profile Frames
 
@@ -380,6 +380,11 @@ Gate:
 - expiry fallback works even with stale client cache;
 - Player Card uses shared frame state.
 
+Implementation status:
+- migration `0024_arena_w98_rewards.sql` adds deterministic mailbox `source_key` and Claim All receipts;
+- season finalization grants Rank 1/2/3 entitlements with deterministic identity and auto-equips the new 7-day frame;
+- expired equipped frames are disabled and omitted from Arena/Player Card responses.
+
 ## W9.9 — Arena V2 frontend + staging QA
 
 Frontend:
@@ -401,6 +406,10 @@ Frontend:
 - Ranking summary/reward bands;
 - force-fetch season state at countdown zero;
 - return to BATTLE and changed-list refresh after Result confirmation.
+
+Implementation status:
+- `ArenaV2Screen` is the active Arena route and uses the authoritative V2 status/opponent/match/history/ranking APIs;
+- generated `index.html` is refreshed only by `node build.js`.
 
 Staging:
 - every user-visible staging fix increments preview patch version;

@@ -2304,7 +2304,7 @@ function ThornieDungeons() {
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
-  }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaScreen, {
+  }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaV2Screen, {
     serverUrl: cred.url,
     characterId: save.characterId,
     diamonds: save.diamonds,

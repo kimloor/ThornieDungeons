@@ -313,10 +313,11 @@ function cloudClaimMail(url, characterId, mailId) {
     mailId
   });
 }
-function cloudClaimAllMail(url, characterId) {
+function cloudClaimAllMail(url, characterId, requestId) {
   return cloudAuthPost(url, {
     action: "claimAllMail",
-    characterId
+    characterId,
+    requestId
   });
 }
 function cloudDeleteMail(url, characterId, mailId) {
@@ -381,6 +382,36 @@ function cloudSubmitArenaTurn(url, characterId, matchId, actionType, skillKey) {
     actionType,
     skillKey
   });
+}
+function cloudGetArenaV2Status(url, characterId) {
+  return cloudAuthGet(url, { action: "getArenaV2Status", characterId });
+}
+function cloudGetArenaV2Opponents(url, characterId) {
+  return cloudAuthGet(url, { action: "getArenaV2Opponents", characterId });
+}
+function cloudGetArenaV2History(url, characterId) {
+  return cloudAuthGet(url, { action: "getArenaV2History", characterId });
+}
+function cloudGetArenaV2Ranking(url, characterId) {
+  return cloudAuthGet(url, { action: "getArenaV2Ranking", characterId });
+}
+function cloudSaveArenaV2Setup(url, characterId, petInstId, skillSlots) {
+  return cloudAuthPost(url, { action: "saveArenaV2Setup", characterId, petInstId, skillSlots });
+}
+function cloudRefreshArenaV2Opponents(url, characterId) {
+  return cloudAuthPost(url, { action: "refreshArenaV2Opponents", characterId });
+}
+function cloudPrepareArenaV2Match(url, characterId, opponentKey, source) {
+  return cloudAuthPost(url, { action: "prepareArenaV2Match", characterId, opponentKey, source });
+}
+function cloudActivateArenaV2Match(url, characterId, matchId) {
+  return cloudAuthPost(url, { action: "activateArenaV2Match", characterId, matchId });
+}
+function cloudSetArenaV2Auto(url, characterId, matchId, enabled) {
+  return cloudAuthPost(url, { action: "setArenaV2Auto", characterId, matchId, enabled: !!enabled });
+}
+function cloudSubmitArenaV2Action(url, characterId, matchId, actionKey, actionType, skillId, targetId, auto) {
+  return cloudAuthPost(url, { action: "submitArenaV2Action", characterId, matchId, actionKey, actionType, skillId, targetId, auto: !!auto });
 }
 // Phase 6.2 — Friend System V1. characterId is always the acting character; the target
 // of an action (search result, request, existing friend/block) is identified by its own

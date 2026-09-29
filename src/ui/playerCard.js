@@ -13,6 +13,10 @@ const PLAYER_CARD_RELATIONSHIP_LABELS = Object.freeze({
 function playerCardAsset(key) {
   return typeof optionalAsset === "function" ? optionalAsset(`playerCardUi.${key}`) : "";
 }
+function arenaProfileFrameAsset(frameKey) {
+  const map = { arena_rank_1: "profileFrames.arenaRank1", arena_rank_2: "profileFrames.arenaRank2", arena_rank_3: "profileFrames.arenaRank3" };
+  return map[frameKey] && typeof optionalAsset === "function" ? optionalAsset(map[frameKey]) : "";
+}
 
 function normalizePlayerCardAvatar(avatar) {
   const source = avatar && typeof avatar === "object" ? avatar : {};
@@ -139,7 +143,7 @@ function PlayerCardOverlay({ serverUrl, viewerCharacterId, targetCharacterId, on
                 style: { left: `${layer.x}%`, top: `${layer.y}%`, transform: `translate(-50%, -50%) scale(${layer.scale})`, zIndex: layer.zIndex }
               }))
               : playerCardAsset("avatarPlaceholderNoPic") && e("img", { src: playerCardAsset("avatarPlaceholderNoPic"), alt: "ไม่มีรูปโปรไฟล์", className: "md-player-card-placeholder" }),
-            playerCardAsset("avatarFrame") && e("img", { src: playerCardAsset("avatarFrame"), alt: "", "aria-hidden": "true", className: "md-player-card-avatar-frame" })
+            (arenaProfileFrameAsset(profile?.profileFrameKey) || playerCardAsset("avatarFrame")) && e("img", { src: arenaProfileFrameAsset(profile?.profileFrameKey) || playerCardAsset("avatarFrame"), alt: "", "aria-hidden": "true", className: "md-player-card-avatar-frame" })
           ),
           e("div", { className: "md-player-card-nameplate" },
             e("h2", { id: "md-player-card-name" }, profile?.name || (state.loading ? "กำลังโหลด..." : "Player Card"))
