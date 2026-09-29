@@ -78,6 +78,7 @@ test('W9.8/W9.9 uses deterministic frame assets, rank history and V2 routes', ()
   assert.match(playerCard, /profileFrames\.arenaRank1/);
   assert.match(worker, /handleGetArenaV2History/);
   assert.match(worker, /handleGetArenaV2Ranking/);
+  assert.match(worker, /refreshAvailableAt: state\?\.refresh_available_at \|\| null/);
   assert.match(worker, /claim-all:\$\{characterId\}/);
   assert.match(worker, /character_id = \? AND claimed = 0/);
 });
@@ -108,7 +109,14 @@ test('Arena Phaser preload gate activates only after READY and rejects error/tim
 test('Arena V2 frontend contract uses default Phaser, Player Card and no animation-frame activation shortcut', () => {
   assert.match(phaserUi, /props\.mode === "arena" \? true : isPhaserBattleRendererEnabled\(\)/);
   assert.match(arenaApi, /function cloudGetArenaV2PlayerCard/);
+  assert.match(arenaApi, /function cloudAcknowledgeArenaV2Unlock/);
   assert.match(arenaUi, /cloudGetArenaV2PlayerCard\(url, characterId, opponentKey\)/);
+  assert.match(arenaUi, /function ArenaPlayerCardOverlay/);
+  assert.match(arenaUi, /md-player-card-overlay md-arena-player-card-overlay/);
+  assert.match(arenaUi, /ReactDOM\.createPortal/);
+  assert.match(arenaUi, /cloudAcknowledgeArenaV2Unlock\(url, characterId\)/);
+  assert.match(arenaUi, /refreshSeconds > 0/);
+  assert.match(arenaUi, /REFRESH · \$\{refreshSeconds\}s/);
   assert.match(arenaUi, /preloadGateRef\.current\?\.ready\(\)/);
   assert.doesNotMatch(arenaUi.slice(arenaUi.indexOf('function ArenaV2Screen'), arenaUi.indexOf('\n}\n\n// Turns a mail')), /requestAnimationFrame/);
 });
@@ -171,7 +179,7 @@ test('Arena Player Card normalizes equipment objects and Pet defId into render-s
   );
   assert.equal(arenaPlayerCardPetLabel({ pet: { defId: 'sprout' } }), 'sprout');
   assert.equal(arenaPlayerCardPetLabel({}), '—');
-  assert.match(arenaUi, /arenaProfileFrameAsset\(playerCard\.profileFrameKey\)/);
+  assert.match(arenaUi, /arenaProfileFrameAsset\(card\.profileFrameKey\)/);
   assert.doesNotMatch(arenaUi, /playerCard\.equipmentSummary \|\| playerCard\.equipment \|\|/);
 });
 
