@@ -3463,7 +3463,6 @@ function ArenaV2Screen({
     } else if (now < end) rolloverRefreshRef.current = false;
   }, [now, status, refresh]);
   React.useEffect(() => () => preloadGateRef.current?.cancel(), []);
-  React.useEffect(() => () => onHudChange?.(null), [onHudChange]);
   const loadTab = async next => {
     setTab(next); setError("");
     if (next === "history") setHistory(await cloudGetArenaV2History(url, characterId));
