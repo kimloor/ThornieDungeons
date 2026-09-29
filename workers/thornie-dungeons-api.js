@@ -5800,10 +5800,14 @@ async function sanitizeArenaSetup(db, character, now = Date.now()) {
 
 function arenaEquipmentPublic(items) {
   return (items || []).map((item) => ({
+    itemId: item.item_id || "",
     slotType: item.slot_type || "",
+    type: item.slot_type || "",
     itemTemplateId: item.item_template_id || "",
     name: item.name || "",
     rarity: item.rarity || "",
+    setId: item.set_id || (String(item.item_template_id || "").startsWith("azure_") ? "azure" : ""),
+    star: item.star || "",
     enhanceLevel: Number(item.enhance_level) || 0,
   }));
 }
