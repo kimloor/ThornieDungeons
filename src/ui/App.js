@@ -47,6 +47,7 @@ function ThornieDungeons() {
       setArenaHud(null);
       return undefined;
     }
+    setArenaHud(null);
     let cancelled = false;
     const loadArenaHud = () => cloudGetArenaV2Status(cred.url, characterId).then(res => {
       if (cancelled || !res?.ok || res.unlocked === false) return;
