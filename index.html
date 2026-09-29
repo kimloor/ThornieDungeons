@@ -11661,6 +11661,7 @@ function ThornieDungeons() {
   const [petReturnPhase, setPetReturnPhase] = useState("menu");
   const [gachaReturnPhase, setGachaReturnPhase] = useState("pets");
   const [utilityReturnPhase, setUtilityReturnPhase] = useState("menu");
+  const [arenaHud, setArenaHud] = useState(null);
   // One-shot deep link set only by Friend's "Chat" action, consumed once by ChatScreen on
   // mount to open straight into that DM thread. Every other way of opening Chat clears
   // this first so a stale target can't resurface later.
@@ -13710,7 +13711,8 @@ function ThornieDungeons() {
     player: player,
     save: save,
     phase: phase,
-    equipped: equipped
+    equipped: equipped,
+    arena: phase === "arena" ? arenaHud : null
   }), phase === "menu" && /*#__PURE__*/React.createElement(HubScreen, {
     save: save,
     cp: cp,
@@ -13963,8 +13965,22 @@ function ThornieDungeons() {
   }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaV2Screen, {
     serverUrl: cred.url,
     characterId: save.characterId,
-    diamonds: save.diamonds,
-    onSpendDiamonds: spendRaidDiamonds,
+    onHudChange: setArenaHud,
+    ...utilityDockProps("arena"),
+    onFriend: () => {
+      setUtilityReturnPhase("arena");
+      setPhase("friend");
+    },
+    onChat: () => {
+      setChatDirectTarget(null);
+      setChatInitialChannel("global");
+      setUtilityReturnPhase("arena");
+      setPhase("chat");
+    },
+    onGuild: () => {
+      setUtilityReturnPhase("arena");
+      setPhase("guild");
+    },
     onBack: () => setPhase(utilityReturnPhase)
   }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,
