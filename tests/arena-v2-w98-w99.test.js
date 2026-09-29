@@ -128,6 +128,9 @@ test('Arena V2 frontend contract uses default Phaser, Player Card and no animati
   assert.doesNotMatch(arenaUi, /const mins = Math\.floor\(countdown \/ 60000\)/);
   assert.match(arenaUi, /md-character-page-title md-arena-page-header/);
   assert.match(arenaUi, /React\.createElement\(GameDock/);
+  assert.match(arenaUi, /className: "md-arena-scroll"/);
+  assert.match(arenaUi, /onClick: \(\) => action\("active", skill, selected\)/);
+  assert.doesNotMatch(arenaUi, /action\("skill", skill, selected\)/);
   assert.match(arenaUi, /onHudChange\?\.\(/);
   assert.match(arenaUi, /Standard BOT Loadout/);
   assert.match(arenaUi, /return "None"/);
@@ -199,23 +202,30 @@ test('Arena Player Card normalizes equipment objects and Pet defId into render-s
   assert.doesNotMatch(arenaUi, /playerCard\.equipmentSummary \|\| playerCard\.equipment \|\|/);
 });
 
-test('Arena Player Card renders equipped items as a read-only horizontal icon strip', () => {
+test('Arena Player Card renders equipped items as a fixed read-only horizontal icon strip', () => {
+  const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
   assert.match(arenaUi, /className: "md-arena-equipment-icons"/);
   assert.match(arenaUi, /className: "md-arena-equipment-icon"/);
   assert.match(arenaUi, /React\.createElement\(GameIcon|e\(GameIcon/);
   assert.match(arenaUi, /fallback: SLOT_ICON\[slot\]/);
   const cardSection = arenaUi.slice(arenaUi.indexOf('function ArenaPlayerCardOverlay'), arenaUi.indexOf('function ArenaUnlockNotice'));
+  const equipmentRule = styles.match(/\.md-arena-equipment-icons \{[^}]*\}/)?.[0] || '';
+  assert.match(equipmentRule, /overflow:hidden/);
+  assert.doesNotMatch(equipmentRule, /overflow-x:auto/);
   assert.doesNotMatch(cardSection, /onUnequip|onSalvage|onSell|SALVAGE|SELL/);
 });
 
-test('Arena browser shell uses global resources, standard header back, fixed dock and a sized Phaser stage', () => {
+test('Arena browser shell uses global resources, standard header back, persistent dock and a sized Phaser stage', () => {
   const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
   assert.match(arenaUi, /function GlobalCurrencyBar/);
   assert.match(arenaUi, /md-character-page-title md-arena-page-header/);
   assert.match(arenaUi, /md-arena-phaser-stage/);
+  assert.match(arenaUi, /className: "md-arena-scroll"/);
   assert.match(arenaUi, /React\.createElement\(GameDock/);
   assert.match(styles, /\.md-hub-resources\.with-arena \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
-  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:fixed/);
+  assert.match(styles, /\.md-arena-v2 \{ flex:1; min-height:0; overflow:hidden/);
+  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ flex:0 0 auto; position:relative/);
+  assert.match(styles, /\.md-arena-scroll \{ flex:1; min-height:0; overflow-y:auto/);
   assert.match(styles, /\.md-arena-phaser-stage \{ position:relative;[^}]*min-height:clamp\(300px,48dvh,430px\)/);
   assert.match(appUi, /arena: arenaHud/);
   assert.match(appUi, /arenaHud: arenaHud/);
@@ -231,6 +241,34 @@ test('Arena Phaser receives prepared match snapshot so READY waits on actor asse
   assert.match(eventSource, /arenaPreparedPresentationContext\(preparedSnapshot\)/);
   assert.match(eventSource, /equipped: arenaPreparedEquipmentMap\(member\?\.equipment\)/);
   assert.match(eventSource, /petCombat: petSource/);
+  assert.match(eventSource, /state\.safeActionSeq \?\? state\.actionSeq \?\? state\.logSeq/);
 });
 
-// Final parity retrigger after generated frontend sync.
+function loadArenaPresentationUnit() {
+  const sourceFile = fs.readFileSync(path.join(ROOT, 'src/phaser/presentation/EventBridge.js'), 'utf8');
+  const start = sourceFile.indexOf('function arenaPresentationUnit');
+  const end = sourceFile.indexOf('\nfunction buildArenaBattlefieldSnapshot', start);
+  const sandbox = { Map };
+  vm.createContext(sandbox);
+  vm.runInContext(`${sourceFile.slice(start, end)}
+globalThis.__arenaPresentationUnit = arenaPresentationUnit;`, sandbox);
+  return sandbox.__arenaPresentationUnit;
+}
+
+test('Arena active public-state unit arrays keep all 2v2 presentation actors addressable', () => {
+  const resolveUnit = loadArenaPresentationUnit();
+  const state = {
+    units: [
+      { id: 'team_a_hero', side: 'team_a', kind: 'hero', hp: 100, maxHp: 100 },
+      { id: 'team_a_pet', side: 'team_a', kind: 'pet', hp: 80, maxHp: 80 },
+      { id: 'team_b_hero', side: 'team_b', kind: 'hero', hp: 100, maxHp: 100 },
+      { id: 'team_b_pet', side: 'team_b', kind: 'pet', hp: 70, maxHp: 70 }
+    ]
+  };
+  assert.equal(resolveUnit(state, 'team_a', 'hero').id, 'team_a_hero');
+  assert.equal(resolveUnit(state, 'team_a', 'pet').id, 'team_a_pet');
+  assert.equal(resolveUnit(state, 'team_b', 'hero').id, 'team_b_hero');
+  assert.equal(resolveUnit(state, 'team_b', 'pet').id, 'team_b_pet');
+});
+
+// Final parity retrigger after generated frontend sync (W9 browser QA Batch 4).
