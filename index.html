@@ -6765,6 +6765,7 @@ if (typeof module !== "undefined") module.exports = {
     };
     rebuildQueue(state);
     log(state, "battle_start", "Battle started");
+    checkBattleEnd(state);
     return state;
   }
   function createTeamBattle(options = {}) {
@@ -6818,7 +6819,9 @@ if (typeof module !== "undefined") module.exports = {
 
   function currentUnit(state) {
     while (state.queueIndex < state.queue.length && !living(state.units[state.queue[state.queueIndex]])) state.queueIndex += 1;
-    if (state.queueIndex >= state.queue.length && !state.result) rebuildQueue(state);
+    if (state.queueIndex >= state.queue.length && !state.result) {
+      if (!completeArenaRound(state)) rebuildQueue(state);
+    }
     return state.units[state.queue[state.queueIndex]] || null;
   }
 
@@ -7039,10 +7042,11 @@ if (typeof module !== "undefined") module.exports = {
     return { hit: true, crit, damage: dealt };
   }
 
-  function basicTarget(state, actor, requestedId) {
+  function basicTarget(state, actor, requestedId, options = {}) {
     const targets = opposingUnits(state, actor);
     const requested = requestedId && state.units[requestedId];
     if (living(requested) && requested.side !== actor.side) return requested;
+    if (options.strict && requestedId) return null;
     return targets.sort((a, b) => a.hp - b.hp || a.tieOrder - b.tieOrder)[0] || null;
   }
   function tickCooldowns(unit, justUsedId) {
@@ -7098,6 +7102,85 @@ if (typeof module !== "undefined") module.exports = {
     return base;
   }
 
+  function resolveActor(state, actorOrId) {
+    return typeof actorOrId === "string" ? state.units && state.units[actorOrId] : actorOrId;
+  }
+
+  function actionTargeting(state, actor, command = {}) {
+    const type = command && command.type || "basic";
+    if (type === "basic") return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (type === "potion") return { mode: "self", requiresEnemyTarget: false, isSelfTarget: true, isSupport: true, isAoE: false };
+    if (type === "flee") return { mode: "none", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (type !== "active" || !actor || actor.kind !== "hero") return { mode: "unknown", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    const spec = heroActiveSpec(state, actor, command.skillId);
+    if (!spec) return { mode: "unknown", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (spec.distribution === "living") return { mode: "enemy_aoe", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: true };
+    if (spec.debuffOnly) return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (Number(spec.mult) > 0) return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    return { mode: "self", requiresEnemyTarget: false, isSelfTarget: true, isSupport: true, isAoE: false };
+  }
+
+  function getActionMetadata(state, actorOrId, command = {}) {
+    const actor = resolveActor(state, actorOrId);
+    const type = command && command.type || "basic";
+    const targeting = actionTargeting(state, actor, command);
+    const legalTargetIds = actor && targeting.requiresEnemyTarget
+      ? opposingUnits(state, actor).map(unit => unit.id)
+      : [];
+    const suppliedTargetId = command && command.targetId != null ? String(command.targetId) : null;
+    let reason = null;
+    let spCost = 0;
+    let cooldown = 0;
+    if (!actor) reason = "Unknown actor";
+    else if (actor.kind !== "hero") reason = "Only Hero actions expose command metadata";
+    else if (type === "potion") reason = (Number(command.count) || 0) > 0 ? null : "No potion available";
+    else if (type === "flee") reason = state.rules.allowFlee ? null : "Flee is not allowed";
+    else if (type === "active") {
+      const spec = heroActiveSpec(state, actor, command.skillId);
+      if (!spec || !actor.activeSkills.includes(command.skillId) || (actor.cooldowns[command.skillId] || 0) > 0 || status(actor, "silence")) reason = "Active skill unavailable";
+      else {
+        const efficiency = skillData(actor, "skill_efficiency");
+        spCost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+        cooldown = Number(spec.cooldown) || 0;
+        if (actor.sp < spCost) reason = "Not enough SP";
+      }
+    } else if (type !== "basic") reason = "Unknown Hero action";
+    const targetLegal = !targeting.requiresEnemyTarget
+      ? true
+      : suppliedTargetId == null ? null : legalTargetIds.includes(suppliedTargetId);
+    return {
+      actorId: actor && actor.id || null,
+      actionType: type,
+      skillId: command && command.skillId || null,
+      usable: !reason,
+      reason,
+      targetMode: targeting.mode,
+      requiresEnemyTarget: targeting.requiresEnemyTarget,
+      isSelfTarget: targeting.isSelfTarget,
+      isSupport: targeting.isSupport,
+      isAoE: targeting.isAoE,
+      legalTargetIds,
+      targetId: suppliedTargetId,
+      targetLegal,
+      spCost,
+      cooldown
+    };
+  }
+
+  function getLegalTargetIds(state, actorOrId, command = { type: "basic" }) {
+    return getActionMetadata(state, actorOrId, command).legalTargetIds;
+  }
+
+  function isLegalTarget(state, actorOrId, targetId, command = { type: "basic" }) {
+    const metadata = getActionMetadata(state, actorOrId, { ...command, targetId });
+    return !metadata.requiresEnemyTarget || metadata.legalTargetIds.includes(String(targetId));
+  }
+
+  function isActionUsable(state, actorOrId, command = { type: "basic" }) {
+    const metadata = getActionMetadata(state, actorOrId, command);
+    return metadata.usable && (!metadata.requiresEnemyTarget || metadata.targetLegal === true);
+  }
+
   function consumeScheme(state, actor, target, context) {
     const resources = resourcesFor(state, actor);
     if (rank(actor, "usurper") < 3 || resources.scheme < 3) return false;
@@ -7137,9 +7220,12 @@ if (typeof module !== "undefined") module.exports = {
       if (command.restoreSp) restoreSp(state, actor, Number(command.restoreSp), actor, "Potion SP");
       context.consumePotion = true; return;
     }
-    const target = basicTarget(state, actor, command.targetId || state.selectedTargetIds?.[actor.side] || state.selectedTargetId);
-    if (!target) return;
-    context.targetHadDebuff = hasDebuff(target);
+    const metadata = getActionMetadata(state, actor, command);
+    const requiresTarget = metadata.requiresEnemyTarget;
+    const requestedTargetId = command.targetId || state.selectedTargetIds?.[actor.side] || state.selectedTargetId;
+    const target = basicTarget(state, actor, requestedTargetId, { strict: requiresTarget && context.strictTarget });
+    if (requiresTarget && !target) return;
+    if (target) context.targetHadDebuff = hasDebuff(target);
     if (type === "active") {
       const id = command.skillId;
       const spec = heroActiveSpec(state, actor, id);
@@ -7274,31 +7360,60 @@ if (typeof module !== "undefined") module.exports = {
     }
   }
 
-  function checkBattleEnd(state) {
-    const aliveSides = state.teamIds.filter(side => livingTeamUnits(state, side).length);
-    if (aliveSides.length > 1) return;
-    state.winnerSide = aliveSides[0] || null;
-    state.result = state.winnerSide === state.controlledSide ? "victory" : "defeat";
+  function finishBattle(state, result, winnerSide = null, text = null) {
+    if (state.result) return;
+    state.winnerSide = winnerSide;
+    state.result = result;
     state.flags.auto = false;
-    const hero = heroForSide(state, state.controlledSide);
-    const pet = petForSide(state, state.controlledSide);
-    if (state.mode === "dungeon" && !living(hero) && living(pet) && state.result === "victory") state.flags.heroReviveNextFloor = true;
     resetBattleResources(state);
-    log(state, "battle_end", state.result === "victory" ? "Victory" : "Defeat");
+    log(state, "battle_end", text || (result === "victory" ? "Victory" : result === "defeat" ? "Defeat" : "Draw"));
   }
 
-  function validateHeroCommand(state, actor, command) {
-    const type = command && command.type || "basic";
-    if (type === "basic") return null;
-    if (type === "potion") return (Number(command.count) || 0) > 0 ? null : "No potion available";
-    if (type === "flee") return state.rules.allowFlee ? null : "Flee is not allowed";
-    if (type !== "active") return "Unknown Hero action";
-    const id = command.skillId;
-    const spec = heroActiveSpec(state, actor, id);
-    if (!spec || !actor.activeSkills.includes(id) || (actor.cooldowns[id] || 0) > 0 || status(actor, "silence")) return "Active skill unavailable";
-    const efficiency = skillData(actor, "skill_efficiency");
-    const cost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
-    return actor.sp >= cost ? null : "Not enough SP";
+  function checkBattleEnd(state) {
+    if (state.result) return true;
+    if (state.mode === "arena") {
+      const attackerSide = state.controlledSide;
+      const defenderSide = state.teamIds.find(side => side !== attackerSide) || null;
+      const attackerHero = heroForSide(state, attackerSide);
+      const defenderHero = heroForSide(state, defenderSide);
+      if (!living(attackerHero)) {
+        finishBattle(state, "defeat", defenderSide);
+        return true;
+      }
+      if (!living(defenderHero)) {
+        finishBattle(state, "victory", attackerSide);
+        return true;
+      }
+      return false;
+    }
+    const aliveSides = state.teamIds.filter(side => livingTeamUnits(state, side).length);
+    if (aliveSides.length > 1) return false;
+    const winnerSide = aliveSides[0] || null;
+    const result = winnerSide === state.controlledSide ? "victory" : "defeat";
+    const hero = heroForSide(state, state.controlledSide);
+    const pet = petForSide(state, state.controlledSide);
+    if (state.mode === "dungeon" && !living(hero) && living(pet) && result === "victory") state.flags.heroReviveNextFloor = true;
+    finishBattle(state, result, winnerSide);
+    return true;
+  }
+
+  function completeArenaRound(state) {
+    if (state.result || state.mode !== "arena" || state.round < 20) return false;
+    const pending = state.queue.slice(state.queueIndex).some(id => living(state.units[id]));
+    if (pending) return false;
+    if (checkBattleEnd(state)) return true;
+    finishBattle(state, "draw", null);
+    return true;
+  }
+
+  function validateHeroCommand(state, actor, command, options = {}) {
+    const metadata = getActionMetadata(state, actor, command);
+    if (metadata.reason) return metadata.reason;
+    if (metadata.requiresEnemyTarget && options.strictTarget) {
+      if (!metadata.targetId) return "Target required";
+      if (!metadata.targetLegal) return "Invalid target";
+    }
+    return null;
   }
 
   function battleStep(inputState, command) {
@@ -7310,14 +7425,15 @@ if (typeof module !== "undefined") module.exports = {
     if (!actor) { checkBattleEnd(state); return { state, waiting: false, completedAction: false }; }
     const manualActor = actor.kind === "hero" && actor.side === state.controlledSide;
     if (manualActor && !command && !state.flags.auto && !state.flags.skipResolving) return { state, waiting: true, completedAction: false };
+    const strictArenaTarget = state.mode === "arena" && manualActor && !state.flags.auto && !state.flags.skipResolving;
     if (manualActor && command) {
-      const invalid = validateHeroCommand(state, actor, command);
+      const invalid = validateHeroCommand(state, actor, command, { strictTarget: strictArenaTarget });
       if (invalid) {
         log(state, "invalid", invalid);
         return { state, waiting: true, completedAction: false, error: invalid };
       }
     }
-    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false };
+    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
     startEffects(state, actor, context);
     if (living(actor)) {
       if (status(actor, "stun")) { delete actor.statuses.stun; log(state, "stun", `${actor.name || actor.id} lost the Action`); }
@@ -7345,6 +7461,7 @@ if (typeof module !== "undefined") module.exports = {
     }
     checkBattleEnd(state);
     state.queueIndex += 1; state.safeActionSeq += 1;
+    completeArenaRound(state);
     return { state, waiting: false, completedAction: true, consumePotion: !!context.consumePotion };
   }
 
@@ -7358,7 +7475,7 @@ if (typeof module !== "undefined") module.exports = {
   }
 
   function serializeCheckpoint(state) {
-    if (!state || state.version !== 1 || !state.battleId || state.result) throw new Error("invalid_checkpoint_state");
+    if (!state || state.version !== 1 || !state.battleId || (state.result && state.result !== "draw")) throw new Error("invalid_checkpoint_state");
     const checkpoint = ensureTeamModel(copy(state));
     return JSON.stringify({ ...checkpoint, flags: { ...checkpoint.flags, auto: false, skipResolving: false } });
   }
@@ -7375,6 +7492,7 @@ if (typeof module !== "undefined") module.exports = {
     buildHeroUnit, buildPetUnit, buildMonsterUnit,
     createBattle, createTeamBattle, createDungeonBattle, createArenaBattle, createRaidBattle,
     rebuildQueue, currentUnit, upcomingActions, applyStatus, battleStep, simulateBattle,
+    basicTarget, getActionMetadata, getLegalTargetIds, isLegalTarget, isActionUsable, validateHeroCommand,
     serializeCheckpoint, restoreCheckpoint
   };
   Object.assign(root, { BATTLE_CORE_V1: api });
@@ -8887,7 +9005,11 @@ const RESPONSIVE_ANCHORS = Object.freeze({
   MONSTER_TWO: Object.freeze([{ x: 0.74, y: 0.38 }, { x: 0.85, y: 0.80 }]),
   MONSTER_THREE: Object.freeze([{ x: 0.71, y: 0.29 }, { x: 0.80, y: 0.58 }, { x: 0.87, y: 0.87 }]),
   VFX_HERO: Object.freeze({ x: 0.32, y: 0.60 }),
-  VFX_PET: Object.freeze({ x: 0.42, y: 0.66 })
+  VFX_PET: Object.freeze({ x: 0.42, y: 0.66 }),
+  ARENA_ATTACKER_HERO: Object.freeze({ x: 0.20, y: 0.50 }),
+  ARENA_ATTACKER_PET: Object.freeze({ x: 0.22, y: 0.84 }),
+  ARENA_DEFENDER_HERO: Object.freeze({ x: 0.80, y: 0.50 }),
+  ARENA_DEFENDER_PET: Object.freeze({ x: 0.78, y: 0.84 })
 });
 
 function monsterAnchorsForCount(count) {
@@ -8930,6 +9052,27 @@ function responsiveBattlefieldLayout(width, height, monsterCount = 1) {
   };
 }
 
+function responsiveArenaBattlefieldLayout(width, height) {
+  const shared = createResponsiveSceneLayout({
+    width,
+    height,
+    anchors: {
+      attackerHero: RESPONSIVE_ANCHORS.ARENA_ATTACKER_HERO,
+      attackerPet: RESPONSIVE_ANCHORS.ARENA_ATTACKER_PET,
+      defenderHero: RESPONSIVE_ANCHORS.ARENA_DEFENDER_HERO,
+      defenderPet: RESPONSIVE_ANCHORS.ARENA_DEFENDER_PET
+    },
+    scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
+  });
+  return {
+    width: shared.width,
+    height: shared.height,
+    actorScale: shared.scale,
+    normalized: shared.normalized,
+    pixels: shared.pixels
+  };
+}
+
 function responsiveMonsterVfxAnchor(slot, monsterCount, width, height) {
   const base = monsterAnchorsForCount(monsterCount)[Math.max(0, Math.min(2, Number(slot) || 0))] || RESPONSIVE_ANCHORS.MONSTER_SINGLE;
   return responsiveAnchorPixels({ x: base.x - 0.04, y: base.y - 0.12 }, width, height);
@@ -8937,7 +9080,7 @@ function responsiveMonsterVfxAnchor(slot, monsterCount, width, height) {
 
 // ===== phaser/presentation/ActorPresentationModel.js =====
 // ---------- W6 Shared Actor Presentation Model ----------
-const ACTOR_PRESENTATION_MODEL_VERSION = 1;
+const ACTOR_PRESENTATION_MODEL_VERSION = 2;
 
 function actorPresentationStatusData(unit) {
   return Object.entries(unit?.statuses || {}).map(([key, value]) => ({
@@ -8954,12 +9097,18 @@ function normalizeActorPresentationAnim(value, alive = true) {
   return "idle";
 }
 
+function normalizeActorPresentationFacing(value, kind = "monster") {
+  if (value === "left" || value === "right") return value;
+  return ["monster", "boss", "raid_boss"].includes(String(kind || "")) ? "left" : "right";
+}
+
 function createActorPresentationModel(raw, fallback = {}) {
   const unit = { ...(fallback || {}), ...(raw || {}) };
+  const kind = String(unit.kind || fallback.kind || "monster");
   return {
     id: String(unit.id || fallback.id || "unit"),
     name: String(unit.name || unit.id || fallback.name || "Unit"),
-    kind: String(unit.kind || fallback.kind || "monster"),
+    kind,
     hp: Math.max(0, Number(unit.hp) || 0),
     maxHp: Math.max(1, Number(unit.maxHp) || Number(unit.hp) || 1),
     alive: Number(unit.hp) > 0 && !unit.dead,
@@ -8969,6 +9118,7 @@ function createActorPresentationModel(raw, fallback = {}) {
     isEliteBoss: !!(unit.isEliteBoss || fallback.isEliteBoss),
     sizeClass: unit.sizeClass || fallback.sizeClass || "medium",
     anchorType: unit.anchorType || fallback.anchorType || "ground",
+    facing: normalizeActorPresentationFacing(unit.facing || fallback.facing, kind),
     icon: unit.icon || fallback.icon || "◆"
   };
 }
@@ -8977,7 +9127,8 @@ const ACTOR_PRESENTATION_MODEL = Object.freeze({
   version: ACTOR_PRESENTATION_MODEL_VERSION,
   create: createActorPresentationModel,
   statuses: actorPresentationStatusData,
-  normalizeAnim: normalizeActorPresentationAnim
+  normalizeAnim: normalizeActorPresentationAnim,
+  normalizeFacing: normalizeActorPresentationFacing
 });
 
 // ===== phaser/presentation/EquipmentVisualResolver.js =====
@@ -9431,6 +9582,7 @@ function buildHeroPreviewSnapshot({ heroName = "Hero", equipped = {}, heroV5 = t
       alive: true,
       statuses: [],
       anim: "idle",
+      facing: "right",
       visualMode: heroFrames.mode || "v3",
       layers: heroFrames.idle?.[0] || [],
       layerFrames: heroFrames
@@ -9446,14 +9598,15 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     kind: "hero",
     name: heroName,
     hp: 0,
-    maxHp: 1
+    maxHp: 1,
+    facing: "right"
   });
   const pet = state.petId && units[state.petId]
-    ? createActorPresentationModel(units[state.petId], petCombat || {})
-    : petCombat ? createActorPresentationModel(petCombat, { id: petCombat.instId || "pet", kind: "pet" }) : null;
+    ? createActorPresentationModel(units[state.petId], { ...(petCombat || {}), facing: "right" })
+    : petCombat ? createActorPresentationModel(petCombat, { id: petCombat.instId || "pet", kind: "pet", facing: "right" }) : null;
   const enemyIds = Array.isArray(state.enemyIds) && state.enemyIds.length ? state.enemyIds : monsters.map(monster => monster.uid || monster.id);
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
-  const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
+  const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], { ...(enemyById.get(String(id)) || { id, kind: "monster" }), facing: "left" }));
   const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
   const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
   const preferHeroV5 = heroV5 === undefined
@@ -9473,6 +9626,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
     hero: {
       ...hero,
+      facing: "right",
       anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       visualMode: heroFrames.mode || "v3",
@@ -9481,18 +9635,125 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     },
     pet: pet ? {
       ...pet,
+      facing: "right",
       anim: normalizeActorPresentationAnim(petAnim, pet.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(petConfig)
     } : null,
     monsters: enemyList.map((enemy, index) => ({
       ...enemy,
+      facing: "left",
       slotIndex: index,
       anim: normalizeActorPresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(monsterConfigs[index])
     })),
     backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("battleUi.background")
+  });
+}
+
+function arenaPresentationTeamConfig(configBySide, side, role) {
+  return configBySide?.[side] || configBySide?.[role] || {};
+}
+
+function arenaPresentationUnit(state, side, kind) {
+  const units = state?.units || {};
+  const declared = state?.teams?.[side]?.unitIds;
+  const ids = Array.isArray(declared)
+    ? declared
+    : Object.values(units).filter(unit => unit?.side === side).map(unit => unit.id);
+  return ids.map(id => units[id]).find(unit => unit?.kind === kind) || null;
+}
+
+function buildArenaBattlefieldSnapshot({
+  battleState,
+  teams = {},
+  targetUid = null,
+  combatSpeed = 1,
+  heroV5 = undefined
+} = {}) {
+  const state = battleState || {};
+  const units = state.units || {};
+  const stateSides = Array.isArray(state.teamIds) && state.teamIds.length
+    ? state.teamIds.map(String)
+    : Array.from(new Set(Object.values(units).map(unit => String(unit?.side || "")).filter(Boolean)));
+  const attackerSide = String(state.controlledSide || stateSides[0] || "team_a");
+  const defenderSide = String(stateSides.find(side => side !== attackerSide) || "team_b");
+  const speed = Math.max(1, Math.min(2, Number(combatSpeed) || 1));
+
+  const buildTeam = (side, role, facing) => {
+    const config = arenaPresentationTeamConfig(teams, side, role);
+    const rawHero = arenaPresentationUnit(state, side, "hero");
+    const rawPet = arenaPresentationUnit(state, side, "pet");
+    const hero = rawHero ? createActorPresentationModel(rawHero, {
+      id: rawHero.id,
+      kind: "hero",
+      name: config.heroName || rawHero.name || "Hero",
+      facing
+    }) : null;
+    const pet = rawPet ? createActorPresentationModel(rawPet, {
+      ...(config.petCombat || {}),
+      id: rawPet.id,
+      kind: "pet",
+      facing
+    }) : null;
+
+    const equipped = config.equipped || {};
+    const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
+    const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
+    const preferHeroV5 = config.heroV5 === undefined
+      ? (heroV5 === undefined
+          ? (typeof isHeroV5RuntimeEnabled === "function" && isHeroV5RuntimeEnabled())
+          : heroV5 === true)
+      : config.heroV5 === true;
+    const heroFrames = heroPresentationLayerFrames(heroSelection, {
+      preferV5: preferHeroV5,
+      v5Selection: heroV5Selection
+    });
+    const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
+
+    return {
+      side,
+      role,
+      facing,
+      hero: hero ? {
+        ...hero,
+        facing,
+        anim: normalizeActorPresentationAnim(config.heroAnim, hero.alive),
+        combatSpeed: speed,
+        visualMode: heroFrames.mode || "v3",
+        layers: heroFrames.idle?.[0] || [],
+        layerFrames: heroFrames
+      } : null,
+      pet: pet ? {
+        ...pet,
+        facing,
+        anim: normalizeActorPresentationAnim(config.petAnim, pet.alive),
+        combatSpeed: speed,
+        frames: presentationAnimationConfig(petConfig)
+      } : null
+    };
+  };
+
+  const attacker = buildTeam(attackerSide, "attacker", "right");
+  const defender = buildTeam(defenderSide, "defender", "left");
+  const selectedTargetId = String(
+    targetUid
+    || state.selectedTargetIds?.[attackerSide]
+    || state.selectedTargetId
+    || (defender.hero?.alive ? defender.hero.id : "")
+    || (defender.pet?.alive ? defender.pet.id : "")
+    || ""
+  );
+
+  return Object.freeze({
+    mode: "arena",
+    battleId: String(state.battleId || "arena-preview"),
+    seq: Number(state.safeActionSeq || state.logSeq || 0),
+    selectedTargetId,
+    combatSpeed: speed,
+    teams: [attacker, defender],
+    backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("arenaUi.background")
   });
 }
 
@@ -9507,6 +9768,11 @@ function phaserTextResolution() {
     ? Number(globalThis.devicePixelRatio) || 1
     : 1;
   return Math.max(1, Math.min(3, ratio));
+}
+
+function phaserActorFacing(data = {}) {
+  if (data.facing === "left" || data.facing === "right") return data.facing;
+  return ["monster", "boss", "raid_boss"].includes(String(data.kind || "")) ? "left" : "right";
 }
 
 class PhaserBattleActor {
@@ -9537,6 +9803,8 @@ class PhaserBattleActor {
     }).setOrigin(0.5, 0).setDepth((options.depth || 5) + 3).setResolution(textResolution);
     this.container.add(this.statusText);
     this.container.add(this.nameText);
+    this.targetRing = null;
+    this.hitArea = null;
     this.selected = false;
     this.visualState = "";
     this.frameIndex = 0;
@@ -9544,6 +9812,8 @@ class PhaserBattleActor {
     this.motionTween = null;
     this.idleTween = null;
     this.destroyed = false;
+    this.createTargetingPresentation();
+    this.applyFacing();
     this.handleSceneShutdown = () => this.destroy();
     scene.events.once("shutdown", this.handleSceneShutdown);
   }
@@ -9553,6 +9823,59 @@ class PhaserBattleActor {
     const responsiveScale = Math.max(0.82, Math.min(1.15, Number(this.scene?.presentationScale) || 1));
     const base = this.options.baseSize || 128;
     return Math.round(base * sizeClassScale * responsiveScale);
+  }
+
+  facing() {
+    return phaserActorFacing(this.data);
+  }
+
+  facingSign() {
+    return this.facing() === "left" ? -1 : 1;
+  }
+
+  applyFacing() {
+    if (!this.visualRoot) return;
+    this.visualRoot.setScale(this.facingSign(), 1);
+  }
+
+  createTargetingPresentation() {
+    if (typeof this.options.onSelect !== "function") return;
+    const depth = Number(this.options.depth) || 5;
+    this.targetRing = this.scene.add.ellipse(0, 0, 84, 28, 0x8ee0ff, 0.08)
+      .setStrokeStyle(2, 0xffd166, 0.95)
+      .setDepth(Math.max(0, depth - 1))
+      .setVisible(false);
+    this.hitArea = this.scene.add.zone(0, 0, 1, 1)
+      .setOrigin(0.5, 1)
+      .setDepth(depth + 4)
+      .setInteractive({ useHandCursor: true });
+    this.hitArea.on("pointerup", () => {
+      if (this.data?.alive !== false && Number(this.data?.hp) > 0) this.options.onSelect(this.data.id);
+    });
+  }
+
+  refreshTargetingPresentation() {
+    if (!this.targetRing && !this.hitArea) return;
+    const size = this.displaySize();
+    const alive = this.data.alive !== false && Number(this.data.hp) > 0;
+    const responsiveScale = Math.max(0.82, Math.min(1.15, Number(this.scene?.presentationScale) || 1));
+    const ringWidth = (Number(this.options.targetRingWidth) || Math.max(72, Math.min(112, size * 0.64))) * responsiveScale;
+    const ringHeight = (Number(this.options.targetRingHeight) || 28) * responsiveScale;
+    const x = this.position?.x || 0;
+    const y = this.position?.y || 0;
+    this.targetRing
+      ?.setDisplaySize(ringWidth, ringHeight)
+      .setPosition(x, y + 4)
+      .setVisible(Boolean(this.selected && alive));
+    this.hitArea
+      ?.setPosition(x, y)
+      .setSize(Math.max(54, size * 0.78), Math.max(64, size * 0.96))
+      .setVisible(alive);
+  }
+
+  setSelected(selected) {
+    this.selected = !!selected;
+    this.refreshTargetingPresentation();
   }
 
   desiredVisualState(data = this.data) {
@@ -9591,8 +9914,6 @@ class PhaserBattleActor {
     const size = this.displaySize();
     if (!this.sprite) {
       this.sprite = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
-      this.sprite.setInteractive({ useHandCursor: !!this.options.onSelect });
-      if (this.options.onSelect) this.sprite.on("pointerup", () => this.options.onSelect(this.data.id));
       this.visualRoot.add(this.sprite);
     } else if (this.sprite.texture.key !== key) {
       this.sprite.setTexture(key);
@@ -9615,6 +9936,7 @@ class PhaserBattleActor {
       this.visualRoot.x = 0;
       this.visualRoot.y = 0;
       this.visualRoot.setAlpha(1);
+      this.applyFacing();
     }
   }
 
@@ -9650,7 +9972,7 @@ class PhaserBattleActor {
         this.setVisualAlpha(0.62);
         this.motionTween = this.scene.tweens.add({
           targets: this.visualRoot,
-          x: this.data.kind === "hero" || this.data.kind === "pet" ? -6 : 6,
+          x: -this.facingSign() * 6,
           duration,
           yoyo: true,
           repeat: 1,
@@ -9687,10 +10009,9 @@ class PhaserBattleActor {
     );
 
     if (nextState === "attack") {
-      const direction = this.data.kind === "monster" || this.data.kind === "boss" ? -10 : 10;
       this.motionTween = this.scene.tweens.add({
         targets: this.visualRoot,
-        x: direction,
+        x: this.facingSign() * 10,
         duration: Math.max(55, Math.round(95 / Math.max(1, speed))),
         yoyo: true,
         ease: "Quad.easeOut"
@@ -9741,10 +10062,12 @@ class PhaserBattleActor {
     this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
     const nameY = this.data.kind === "pet" ? 22 : 34;
     this.nameText.setPosition(0, nameY);
+    this.refreshTargetingPresentation();
   }
 
   refresh(data, { animate = true } = {}) {
     this.data = { ...this.data, ...(data || {}) };
+    this.applyFacing();
     const state = this.desiredVisualState();
     const displayedState = animate || !this.visualState ? state : this.visualState;
     this.applyVisualFrame(displayedState === "hurt" ? "idle" : displayedState, this.frameIndex);
@@ -9760,6 +10083,7 @@ class PhaserBattleActor {
     this.container.setPosition(this.position.x, this.position.y);
     this.hpBar.setPosition(this.position.x, this.position.y);
     this.hpText?.setPosition(this.position.x, this.position.y + (this.hpTextOffsetY || 0));
+    this.refreshTargetingPresentation();
   }
 
   destroy() {
@@ -9774,6 +10098,8 @@ class PhaserBattleActor {
     const container = this.container;
     const hpBar = this.hpBar;
     const hpText = this.hpText;
+    const targetRing = this.targetRing;
+    const hitArea = this.hitArea;
 
     this.container = null;
     this.visualRoot = null;
@@ -9782,11 +10108,15 @@ class PhaserBattleActor {
     this.statusText = null;
     this.nameText = null;
     this.hpText = null;
+    this.targetRing = null;
+    this.hitArea = null;
     this.handleSceneShutdown = null;
 
     container?.destroy(true);
     hpBar?.destroy();
     hpText?.destroy();
+    targetRing?.destroy();
+    hitArea?.destroy();
     this.scene = null;
   }
 }
@@ -9902,8 +10232,8 @@ class HeroRenderer {
 // ===== phaser/actors/HeroActor.js =====
 // ---------- W6 Combat Hero Actor Wrapper ----------
 class HeroActor extends PhaserBattleActor {
-  constructor(scene, data) {
-    super(scene, data, { baseSize: 150, depth: 7 });
+  constructor(scene, data, options = {}) {
+    super(scene, data, { baseSize: 150, depth: 7, ...options });
     this.heroRenderer = new HeroRenderer(scene, {
       root: this.visualRoot,
       data: this.data,
@@ -9953,10 +10283,10 @@ class HeroActor extends PhaserBattleActor {
 // ===== phaser/actors/PetActor.js =====
 // ---------- W5 Pet Actor ----------
 class PetActor extends PhaserBattleActor {
-  constructor(scene, data) {
+  constructor(scene, data, options = {}) {
     // Pet stands in the foreground lane. Keep its sprite above the Hero HUD when
     // narrow screens make the two lanes overlap visually.
-    super(scene, data, { baseSize: 118, depth: 8 });
+    super(scene, data, { baseSize: 118, depth: 8, ...options });
   }
 }
 
@@ -9964,27 +10294,13 @@ class PetActor extends PhaserBattleActor {
 // ---------- W5 Monster Actor ----------
 class MonsterActor extends PhaserBattleActor {
   constructor(scene, data, onSelect) {
-    super(scene, data, { baseSize: 106, depth: 5, onSelect });
-    this.targetRing = scene.add.ellipse(0, 0, 84, 28, 0x8ee0ff, 0.08).setStrokeStyle(2, 0xffd166, 0.95).setDepth(4);
-    scene.events.once("shutdown", () => this.targetRing?.destroy());
-  }
-
-  refresh(data, options = {}) {
-    super.refresh(data, options);
-    this.targetRing.setVisible(Boolean(this.selected && this.data.alive));
-    const responsiveScale = Math.max(0.82, Math.min(1.15, Number(this.scene?.presentationScale) || 1));
-    this.targetRing.setDisplaySize(84 * responsiveScale, 28 * responsiveScale);
-    this.targetRing.setPosition(this.position?.x || 0, (this.position?.y || 0) + 4);
-  }
-
-  setSelected(selected) {
-    this.selected = !!selected;
-    this.targetRing?.setVisible(this.selected && this.data.alive);
-  }
-
-  destroy() {
-    this.targetRing?.destroy();
-    super.destroy();
+    super(scene, data, {
+      baseSize: 106,
+      depth: 5,
+      onSelect,
+      targetRingWidth: 84,
+      targetRingHeight: 28
+    });
   }
 }
 
@@ -10158,7 +10474,11 @@ function createVfxManager(scene, options = {}) {
 }
 
 // ===== phaser/scenes/BattleScene.js =====
-// ---------- W6 Shared-asset Dungeon Combat Scene Shell ----------
+// ---------- W6 Shared-asset Dungeon/Arena Combat Scene Shell ----------
+function isArenaPresentationSnapshot(snapshot) {
+  return snapshot?.mode === "arena" && Array.isArray(snapshot?.teams);
+}
+
 function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTargetSelected } = {}) {
   return class BattleScene extends Phaser.Scene {
     constructor() {
@@ -10166,6 +10486,10 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.initialSnapshot = initialSnapshot || null;
       this.snapshot = null;
       this.actors = { hero: null, pet: null, monsters: [] };
+      this.arenaActors = {
+        attacker: { hero: null, pet: null },
+        defender: { hero: null, pet: null }
+      };
       this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
       this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
       this.readyNotified = false;
@@ -10184,22 +10508,38 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       return this.textureRegistry.keyFor(reference);
     }
 
-    collectAssets(snapshot) {
-      const assets = [];
-      (snapshot?.hero?.layers || []).forEach(layer => assets.push(layer.url));
-      const heroSets = snapshot?.hero?.layerFrames || {};
+    collectHeroAssets(hero, assets) {
+      (hero?.layers || []).forEach(layer => assets.push(layer.url));
+      const heroSets = hero?.layerFrames || {};
       ["idle", "attack", "death"].forEach(anim => {
         (heroSets?.[anim] || []).forEach(frameLayers => {
           (frameLayers || []).forEach(layer => assets.push(layer.url));
         });
       });
-      [snapshot?.pet, ...(snapshot?.monsters || [])].filter(Boolean).forEach(unit => {
-        assets.push(
-          ...(unit.frames?.idle || []),
-          ...(unit.frames?.attack || []),
-          ...(unit.frames?.death || [])
-        );
-      });
+    }
+
+    collectUnitAssets(unit, assets) {
+      if (!unit) return;
+      assets.push(
+        ...(unit.frames?.idle || []),
+        ...(unit.frames?.attack || []),
+        ...(unit.frames?.death || [])
+      );
+    }
+
+    collectAssets(snapshot) {
+      const assets = [];
+      if (isArenaPresentationSnapshot(snapshot)) {
+        (snapshot.teams || []).forEach(team => {
+          this.collectHeroAssets(team?.hero, assets);
+          this.collectUnitAssets(team?.pet, assets);
+        });
+      } else {
+        this.collectHeroAssets(snapshot?.hero, assets);
+        [snapshot?.pet, ...(snapshot?.monsters || [])].filter(Boolean).forEach(unit => {
+          this.collectUnitAssets(unit, assets);
+        });
+      }
       return this.assetResolver.resolveAll(assets);
     }
 
@@ -10224,9 +10564,36 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
 
     createActors() {
       if (!this.snapshot) return;
+      if (isArenaPresentationSnapshot(this.snapshot)) {
+        this.createArenaActors();
+        return;
+      }
       this.actors.hero = new HeroActor(this, this.snapshot.hero || {});
       if (this.snapshot.pet) this.actors.pet = new PetActor(this, this.snapshot.pet);
       this.actors.monsters = (this.snapshot.monsters || []).map(monster => new MonsterActor(this, monster, id => onTargetSelected?.(id)));
+    }
+
+    arenaTeam(role) {
+      return (this.snapshot?.teams || []).find(team => team?.role === role)
+        || (role === "attacker" ? this.snapshot?.teams?.[0] : this.snapshot?.teams?.[1])
+        || null;
+    }
+
+    createArenaActor(data, selectable = false) {
+      if (!data) return null;
+      const options = selectable ? { onSelect: id => onTargetSelected?.(id) } : {};
+      return data.kind === "pet"
+        ? new PetActor(this, data, options)
+        : new HeroActor(this, data, options);
+    }
+
+    createArenaActors() {
+      const attacker = this.arenaTeam("attacker");
+      const defender = this.arenaTeam("defender");
+      this.arenaActors.attacker.hero = this.createArenaActor(attacker?.hero, false);
+      this.arenaActors.attacker.pet = this.createArenaActor(attacker?.pet, false);
+      this.arenaActors.defender.hero = this.createArenaActor(defender?.hero, true);
+      this.arenaActors.defender.pet = this.createArenaActor(defender?.pet, true);
     }
 
     consume(event) {
@@ -10234,28 +10601,61 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.sync(event.snapshot);
     }
 
+    queueActorAnimation(actor, data, animationJobs) {
+      if (!actor || !data) return;
+      actor.refresh(data, { animate: false });
+      const state = actor.desiredVisualState();
+      if (state !== actor.visualState) animationJobs.push([actor, state]);
+    }
+
+    syncArenaActor(role, kind, data, animationJobs) {
+      let actor = this.arenaActors[role][kind];
+      if (data && !actor) {
+        actor = this.createArenaActor(data, role === "defender");
+        this.arenaActors[role][kind] = actor;
+      }
+      if (!data && actor) {
+        actor.destroy();
+        this.arenaActors[role][kind] = null;
+        return;
+      }
+      if (!actor || !data) return;
+      this.queueActorAnimation(actor, data, animationJobs);
+      actor.setSelected(role === "defender" && data.id === this.snapshot.selectedTargetId);
+    }
+
+    syncArena(snapshot) {
+      this.presentationQueue.setSpeed(snapshot.combatSpeed || 1);
+      const animationJobs = [];
+      const attacker = this.arenaTeam("attacker");
+      const defender = this.arenaTeam("defender");
+      this.syncArenaActor("attacker", "hero", attacker?.hero, animationJobs);
+      this.syncArenaActor("attacker", "pet", attacker?.pet, animationJobs);
+      this.syncArenaActor("defender", "hero", defender?.hero, animationJobs);
+      this.syncArenaActor("defender", "pet", defender?.pet, animationJobs);
+      this.layoutArenaActors();
+      this.enqueueAnimations(animationJobs);
+    }
+
     sync(snapshot) {
       if (!snapshot) return;
       this.snapshot = snapshot;
+      if (isArenaPresentationSnapshot(snapshot)) {
+        this.syncArena(snapshot);
+        return;
+      }
+
       const monsterCount = Math.max(1, Math.min(3, snapshot.monsters?.length || 1));
       this.presentationQueue.setSpeed(snapshot.combatSpeed || 1);
       if (!this.actors.hero) this.createActors();
 
       const animationJobs = [];
       const heroData = snapshot.hero || {};
-      this.actors.hero?.refresh(heroData, { animate: false });
-      if (this.actors.hero) {
-        const state = this.actors.hero.desiredVisualState();
-        if (state !== this.actors.hero.visualState) animationJobs.push([this.actors.hero, state]);
-      }
+      this.queueActorAnimation(this.actors.hero, heroData, animationJobs);
 
       if (snapshot.pet && !this.actors.pet) this.actors.pet = new PetActor(this, snapshot.pet);
       if (!snapshot.pet && this.actors.pet) { this.actors.pet.destroy(); this.actors.pet = null; }
-      this.actors.pet?.refresh(snapshot.pet || {}, { animate: false });
-      if (this.actors.pet) {
-        const state = this.actors.pet.desiredVisualState();
-        if (state !== this.actors.pet.visualState) animationJobs.push([this.actors.pet, state]);
-      }
+      this.queueActorAnimation(this.actors.pet, snapshot.pet || null, animationJobs);
 
       (snapshot.monsters || []).forEach((monster, index) => {
         let actor = this.actors.monsters[index];
@@ -10263,23 +10663,23 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
           actor = new MonsterActor(this, monster, id => onTargetSelected?.(id));
           this.actors.monsters[index] = actor;
         }
-        actor.refresh(monster, { animate: false });
+        this.queueActorAnimation(actor, monster, animationJobs);
         actor.setSelected(monster.id === snapshot.selectedTargetId);
-        const state = actor.desiredVisualState();
-        if (state !== actor.visualState) animationJobs.push([actor, state]);
       });
 
       this.actors.monsters.slice(snapshot.monsters?.length || 0).forEach(actor => actor.destroy());
       this.actors.monsters.length = snapshot.monsters?.length || 0;
       this.layoutActors(monsterCount);
+      this.enqueueAnimations(animationJobs);
+    }
 
-      if (animationJobs.length) {
-        void this.presentationQueue.enqueue({
-          run: speed => Promise.all(animationJobs.map(([actor, state]) =>
-            actor.playVisualState(state, speed)
-          ))
-        });
-      }
+    enqueueAnimations(animationJobs) {
+      if (!animationJobs.length) return;
+      void this.presentationQueue.enqueue({
+        run: speed => Promise.all(animationJobs.map(([actor, state]) =>
+          actor.playVisualState(state, speed)
+        ))
+      });
     }
 
     layoutActors(monsterCount) {
@@ -10294,9 +10694,31 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.actors.monsters.forEach((actor, index) => actor.reposition(layout.pixels.monsters[index] || layout.pixels.monsters[0]));
     }
 
+    layoutArenaActors() {
+      const width = Math.max(1, this.scale.width || this.game.config.width || 1);
+      const height = Math.max(1, this.scale.height || this.game.config.height || 1);
+      const layout = responsiveArenaBattlefieldLayout(width, height);
+      this.presentationScale = layout.actorScale;
+      const actors = [
+        this.arenaActors.attacker.hero,
+        this.arenaActors.attacker.pet,
+        this.arenaActors.defender.hero,
+        this.arenaActors.defender.pet
+      ].filter(Boolean);
+      actors.forEach(actor => actor.refresh(actor.data, { animate: false }));
+      this.arenaActors.attacker.hero?.reposition(layout.pixels.attackerHero);
+      this.arenaActors.attacker.pet?.reposition(layout.pixels.attackerPet);
+      this.arenaActors.defender.hero?.reposition(layout.pixels.defenderHero);
+      this.arenaActors.defender.pet?.reposition(layout.pixels.defenderPet);
+    }
+
     handleResize(gameSize) {
       const width = Math.max(1, gameSize?.width || this.scale.width || 1);
       const height = Math.max(1, gameSize?.height || this.scale.height || 1);
+      if (isArenaPresentationSnapshot(this.snapshot)) {
+        this.layoutArenaActors(width, height);
+        return;
+      }
       this.layoutActors(this.snapshot?.monsters?.length || 1);
     }
 
@@ -10306,7 +10728,12 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.vfxManager?.destroy();
       this.vfxManager = null;
       Object.values(this.actors).flatMap(value => Array.isArray(value) ? value : [value]).filter(Boolean).forEach(actor => actor.destroy());
+      Object.values(this.arenaActors).flatMap(team => Object.values(team)).filter(Boolean).forEach(actor => actor.destroy());
       this.actors = { hero: null, pet: null, monsters: [] };
+      this.arenaActors = {
+        attacker: { hero: null, pet: null },
+        defender: { hero: null, pet: null }
+      };
       if (this.readyNotified) onReady?.({ scene: null, destroyed: true });
     }
   };

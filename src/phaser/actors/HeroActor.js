@@ -1,7 +1,7 @@
 // ---------- W6 Combat Hero Actor Wrapper ----------
 class HeroActor extends PhaserBattleActor {
-  constructor(scene, data) {
-    super(scene, data, { baseSize: 150, depth: 7 });
+  constructor(scene, data, options = {}) {
+    super(scene, data, { baseSize: 150, depth: 7, ...options });
     this.heroRenderer = new HeroRenderer(scene, {
       root: this.visualRoot,
       data: this.data,

@@ -1,0 +1,85 @@
+name: Battle Core parity
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/**"
+      - "fix/**"
+      - "refactor/**"
+    paths:
+      - "src/systems/battleCore.js"
+      - "workers/thornie-dungeons-api.js"
+      - "scripts/battle-core-port.js"
+      - "tests/battle-core-parity.test.js"
+      - "tests/arena-v2-w9-foundation.test.js"
+      - "tests/fixtures/arena-v2-w9.js"
+      - "tests/battle-core.test.js"
+      - "tests/combat-core-teams.test.js"
+      - "docs/ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md"
+      - ".github/workflows/battle-core-parity.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/systems/battleCore.js"
+      - "workers/thornie-dungeons-api.js"
+      - "scripts/battle-core-port.js"
+      - "tests/battle-core-parity.test.js"
+      - "tests/arena-v2-w9-foundation.test.js"
+      - "tests/fixtures/arena-v2-w9.js"
+      - "tests/battle-core.test.js"
+      - "tests/combat-core-teams.test.js"
+      - "docs/ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md"
+      - ".github/workflows/battle-core-parity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: battle-core-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify source/Worker parity
+        run: node scripts/battle-core-port.js --check
+
+      - name: Run W9.4 focused server foundation suite
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-server-foundation.test.js
+
+      - name: Run W9 schema + Admin V2 integration suite
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-schema.test.js tests/admin-v2-auth.test.js
+
+      - name: Run W9 safety regression suite
+        run: >-
+          node --test --test-concurrency=1
+          tests/battle-core-parity.test.js
+          tests/arena-v2-w9-foundation.test.js
+          tests/battle-core.test.js
+          tests/combat-core-teams.test.js
+          tests/raid-arena-auth-contract.test.js
+          tests/auth-gameplay-callers.test.js
+          tests/save-reliability.test.js
+          tests/phaser-foundation.test.js
+          tests/phaser-shared-architecture.test.js
+          tests/run-state-schema.test.js
+
+      - name: Verify generated frontend is current
+        shell: bash
+        run: |
+          set -euo pipefail
+          node build.js
+          git diff --exit-code -- index.html

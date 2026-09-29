@@ -168,6 +168,7 @@
     };
     rebuildQueue(state);
     log(state, "battle_start", "Battle started");
+    checkBattleEnd(state);
     return state;
   }
   function createTeamBattle(options = {}) {
@@ -221,7 +222,9 @@
 
   function currentUnit(state) {
     while (state.queueIndex < state.queue.length && !living(state.units[state.queue[state.queueIndex]])) state.queueIndex += 1;
-    if (state.queueIndex >= state.queue.length && !state.result) rebuildQueue(state);
+    if (state.queueIndex >= state.queue.length && !state.result) {
+      if (!completeArenaRound(state)) rebuildQueue(state);
+    }
     return state.units[state.queue[state.queueIndex]] || null;
   }
 
@@ -442,10 +445,11 @@
     return { hit: true, crit, damage: dealt };
   }
 
-  function basicTarget(state, actor, requestedId) {
+  function basicTarget(state, actor, requestedId, options = {}) {
     const targets = opposingUnits(state, actor);
     const requested = requestedId && state.units[requestedId];
     if (living(requested) && requested.side !== actor.side) return requested;
+    if (options.strict && requestedId) return null;
     return targets.sort((a, b) => a.hp - b.hp || a.tieOrder - b.tieOrder)[0] || null;
   }
   function tickCooldowns(unit, justUsedId) {
@@ -501,6 +505,85 @@
     return base;
   }
 
+  function resolveActor(state, actorOrId) {
+    return typeof actorOrId === "string" ? state.units && state.units[actorOrId] : actorOrId;
+  }
+
+  function actionTargeting(state, actor, command = {}) {
+    const type = command && command.type || "basic";
+    if (type === "basic") return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (type === "potion") return { mode: "self", requiresEnemyTarget: false, isSelfTarget: true, isSupport: true, isAoE: false };
+    if (type === "flee") return { mode: "none", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (type !== "active" || !actor || actor.kind !== "hero") return { mode: "unknown", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    const spec = heroActiveSpec(state, actor, command.skillId);
+    if (!spec) return { mode: "unknown", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (spec.distribution === "living") return { mode: "enemy_aoe", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: true };
+    if (spec.debuffOnly) return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (Number(spec.mult) > 0) return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    return { mode: "self", requiresEnemyTarget: false, isSelfTarget: true, isSupport: true, isAoE: false };
+  }
+
+  function getActionMetadata(state, actorOrId, command = {}) {
+    const actor = resolveActor(state, actorOrId);
+    const type = command && command.type || "basic";
+    const targeting = actionTargeting(state, actor, command);
+    const legalTargetIds = actor && targeting.requiresEnemyTarget
+      ? opposingUnits(state, actor).map(unit => unit.id)
+      : [];
+    const suppliedTargetId = command && command.targetId != null ? String(command.targetId) : null;
+    let reason = null;
+    let spCost = 0;
+    let cooldown = 0;
+    if (!actor) reason = "Unknown actor";
+    else if (actor.kind !== "hero") reason = "Only Hero actions expose command metadata";
+    else if (type === "potion") reason = (Number(command.count) || 0) > 0 ? null : "No potion available";
+    else if (type === "flee") reason = state.rules.allowFlee ? null : "Flee is not allowed";
+    else if (type === "active") {
+      const spec = heroActiveSpec(state, actor, command.skillId);
+      if (!spec || !actor.activeSkills.includes(command.skillId) || (actor.cooldowns[command.skillId] || 0) > 0 || status(actor, "silence")) reason = "Active skill unavailable";
+      else {
+        const efficiency = skillData(actor, "skill_efficiency");
+        spCost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+        cooldown = Number(spec.cooldown) || 0;
+        if (actor.sp < spCost) reason = "Not enough SP";
+      }
+    } else if (type !== "basic") reason = "Unknown Hero action";
+    const targetLegal = !targeting.requiresEnemyTarget
+      ? true
+      : suppliedTargetId == null ? null : legalTargetIds.includes(suppliedTargetId);
+    return {
+      actorId: actor && actor.id || null,
+      actionType: type,
+      skillId: command && command.skillId || null,
+      usable: !reason,
+      reason,
+      targetMode: targeting.mode,
+      requiresEnemyTarget: targeting.requiresEnemyTarget,
+      isSelfTarget: targeting.isSelfTarget,
+      isSupport: targeting.isSupport,
+      isAoE: targeting.isAoE,
+      legalTargetIds,
+      targetId: suppliedTargetId,
+      targetLegal,
+      spCost,
+      cooldown
+    };
+  }
+
+  function getLegalTargetIds(state, actorOrId, command = { type: "basic" }) {
+    return getActionMetadata(state, actorOrId, command).legalTargetIds;
+  }
+
+  function isLegalTarget(state, actorOrId, targetId, command = { type: "basic" }) {
+    const metadata = getActionMetadata(state, actorOrId, { ...command, targetId });
+    return !metadata.requiresEnemyTarget || metadata.legalTargetIds.includes(String(targetId));
+  }
+
+  function isActionUsable(state, actorOrId, command = { type: "basic" }) {
+    const metadata = getActionMetadata(state, actorOrId, command);
+    return metadata.usable && (!metadata.requiresEnemyTarget || metadata.targetLegal === true);
+  }
+
   function consumeScheme(state, actor, target, context) {
     const resources = resourcesFor(state, actor);
     if (rank(actor, "usurper") < 3 || resources.scheme < 3) return false;
@@ -540,9 +623,12 @@
       if (command.restoreSp) restoreSp(state, actor, Number(command.restoreSp), actor, "Potion SP");
       context.consumePotion = true; return;
     }
-    const target = basicTarget(state, actor, command.targetId || state.selectedTargetIds?.[actor.side] || state.selectedTargetId);
-    if (!target) return;
-    context.targetHadDebuff = hasDebuff(target);
+    const metadata = getActionMetadata(state, actor, command);
+    const requiresTarget = metadata.requiresEnemyTarget;
+    const requestedTargetId = command.targetId || state.selectedTargetIds?.[actor.side] || state.selectedTargetId;
+    const target = basicTarget(state, actor, requestedTargetId, { strict: requiresTarget && context.strictTarget });
+    if (requiresTarget && !target) return;
+    if (target) context.targetHadDebuff = hasDebuff(target);
     if (type === "active") {
       const id = command.skillId;
       const spec = heroActiveSpec(state, actor, id);
@@ -677,31 +763,60 @@
     }
   }
 
-  function checkBattleEnd(state) {
-    const aliveSides = state.teamIds.filter(side => livingTeamUnits(state, side).length);
-    if (aliveSides.length > 1) return;
-    state.winnerSide = aliveSides[0] || null;
-    state.result = state.winnerSide === state.controlledSide ? "victory" : "defeat";
+  function finishBattle(state, result, winnerSide = null, text = null) {
+    if (state.result) return;
+    state.winnerSide = winnerSide;
+    state.result = result;
     state.flags.auto = false;
-    const hero = heroForSide(state, state.controlledSide);
-    const pet = petForSide(state, state.controlledSide);
-    if (state.mode === "dungeon" && !living(hero) && living(pet) && state.result === "victory") state.flags.heroReviveNextFloor = true;
     resetBattleResources(state);
-    log(state, "battle_end", state.result === "victory" ? "Victory" : "Defeat");
+    log(state, "battle_end", text || (result === "victory" ? "Victory" : result === "defeat" ? "Defeat" : "Draw"));
   }
 
-  function validateHeroCommand(state, actor, command) {
-    const type = command && command.type || "basic";
-    if (type === "basic") return null;
-    if (type === "potion") return (Number(command.count) || 0) > 0 ? null : "No potion available";
-    if (type === "flee") return state.rules.allowFlee ? null : "Flee is not allowed";
-    if (type !== "active") return "Unknown Hero action";
-    const id = command.skillId;
-    const spec = heroActiveSpec(state, actor, id);
-    if (!spec || !actor.activeSkills.includes(id) || (actor.cooldowns[id] || 0) > 0 || status(actor, "silence")) return "Active skill unavailable";
-    const efficiency = skillData(actor, "skill_efficiency");
-    const cost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
-    return actor.sp >= cost ? null : "Not enough SP";
+  function checkBattleEnd(state) {
+    if (state.result) return true;
+    if (state.mode === "arena") {
+      const attackerSide = state.controlledSide;
+      const defenderSide = state.teamIds.find(side => side !== attackerSide) || null;
+      const attackerHero = heroForSide(state, attackerSide);
+      const defenderHero = heroForSide(state, defenderSide);
+      if (!living(attackerHero)) {
+        finishBattle(state, "defeat", defenderSide);
+        return true;
+      }
+      if (!living(defenderHero)) {
+        finishBattle(state, "victory", attackerSide);
+        return true;
+      }
+      return false;
+    }
+    const aliveSides = state.teamIds.filter(side => livingTeamUnits(state, side).length);
+    if (aliveSides.length > 1) return false;
+    const winnerSide = aliveSides[0] || null;
+    const result = winnerSide === state.controlledSide ? "victory" : "defeat";
+    const hero = heroForSide(state, state.controlledSide);
+    const pet = petForSide(state, state.controlledSide);
+    if (state.mode === "dungeon" && !living(hero) && living(pet) && result === "victory") state.flags.heroReviveNextFloor = true;
+    finishBattle(state, result, winnerSide);
+    return true;
+  }
+
+  function completeArenaRound(state) {
+    if (state.result || state.mode !== "arena" || state.round < 20) return false;
+    const pending = state.queue.slice(state.queueIndex).some(id => living(state.units[id]));
+    if (pending) return false;
+    if (checkBattleEnd(state)) return true;
+    finishBattle(state, "draw", null);
+    return true;
+  }
+
+  function validateHeroCommand(state, actor, command, options = {}) {
+    const metadata = getActionMetadata(state, actor, command);
+    if (metadata.reason) return metadata.reason;
+    if (metadata.requiresEnemyTarget && options.strictTarget) {
+      if (!metadata.targetId) return "Target required";
+      if (!metadata.targetLegal) return "Invalid target";
+    }
+    return null;
   }
 
   function battleStep(inputState, command) {
@@ -713,14 +828,15 @@
     if (!actor) { checkBattleEnd(state); return { state, waiting: false, completedAction: false }; }
     const manualActor = actor.kind === "hero" && actor.side === state.controlledSide;
     if (manualActor && !command && !state.flags.auto && !state.flags.skipResolving) return { state, waiting: true, completedAction: false };
+    const strictArenaTarget = state.mode === "arena" && manualActor && !state.flags.auto && !state.flags.skipResolving;
     if (manualActor && command) {
-      const invalid = validateHeroCommand(state, actor, command);
+      const invalid = validateHeroCommand(state, actor, command, { strictTarget: strictArenaTarget });
       if (invalid) {
         log(state, "invalid", invalid);
         return { state, waiting: true, completedAction: false, error: invalid };
       }
     }
-    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false };
+    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
     startEffects(state, actor, context);
     if (living(actor)) {
       if (status(actor, "stun")) { delete actor.statuses.stun; log(state, "stun", `${actor.name || actor.id} lost the Action`); }
@@ -748,6 +864,7 @@
     }
     checkBattleEnd(state);
     state.queueIndex += 1; state.safeActionSeq += 1;
+    completeArenaRound(state);
     return { state, waiting: false, completedAction: true, consumePotion: !!context.consumePotion };
   }
 
@@ -761,7 +878,7 @@
   }
 
   function serializeCheckpoint(state) {
-    if (!state || state.version !== 1 || !state.battleId || state.result) throw new Error("invalid_checkpoint_state");
+    if (!state || state.version !== 1 || !state.battleId || (state.result && state.result !== "draw")) throw new Error("invalid_checkpoint_state");
     const checkpoint = ensureTeamModel(copy(state));
     return JSON.stringify({ ...checkpoint, flags: { ...checkpoint.flags, auto: false, skipResolving: false } });
   }
@@ -778,6 +895,7 @@
     buildHeroUnit, buildPetUnit, buildMonsterUnit,
     createBattle, createTeamBattle, createDungeonBattle, createArenaBattle, createRaidBattle,
     rebuildQueue, currentUnit, upcomingActions, applyStatus, battleStep, simulateBattle,
+    basicTarget, getActionMetadata, getLegalTargetIds, isLegalTarget, isActionUsable, validateHeroCommand,
     serializeCheckpoint, restoreCheckpoint
   };
   Object.assign(root, { BATTLE_CORE_V1: api });

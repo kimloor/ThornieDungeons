@@ -4159,6 +4159,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     };
     rebuildQueue(state);
     log(state, "battle_start", "Battle started");
+    checkBattleEnd(state);
     return state;
   }
   function createTeamBattle(options = {}) {
@@ -4212,7 +4213,9 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
 
   function currentUnit(state) {
     while (state.queueIndex < state.queue.length && !living(state.units[state.queue[state.queueIndex]])) state.queueIndex += 1;
-    if (state.queueIndex >= state.queue.length && !state.result) rebuildQueue(state);
+    if (state.queueIndex >= state.queue.length && !state.result) {
+      if (!completeArenaRound(state)) rebuildQueue(state);
+    }
     return state.units[state.queue[state.queueIndex]] || null;
   }
 
@@ -4433,10 +4436,11 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     return { hit: true, crit, damage: dealt };
   }
 
-  function basicTarget(state, actor, requestedId) {
+  function basicTarget(state, actor, requestedId, options = {}) {
     const targets = opposingUnits(state, actor);
     const requested = requestedId && state.units[requestedId];
     if (living(requested) && requested.side !== actor.side) return requested;
+    if (options.strict && requestedId) return null;
     return targets.sort((a, b) => a.hp - b.hp || a.tieOrder - b.tieOrder)[0] || null;
   }
   function tickCooldowns(unit, justUsedId) {
@@ -4492,6 +4496,85 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     return base;
   }
 
+  function resolveActor(state, actorOrId) {
+    return typeof actorOrId === "string" ? state.units && state.units[actorOrId] : actorOrId;
+  }
+
+  function actionTargeting(state, actor, command = {}) {
+    const type = command && command.type || "basic";
+    if (type === "basic") return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (type === "potion") return { mode: "self", requiresEnemyTarget: false, isSelfTarget: true, isSupport: true, isAoE: false };
+    if (type === "flee") return { mode: "none", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (type !== "active" || !actor || actor.kind !== "hero") return { mode: "unknown", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    const spec = heroActiveSpec(state, actor, command.skillId);
+    if (!spec) return { mode: "unknown", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (spec.distribution === "living") return { mode: "enemy_aoe", requiresEnemyTarget: false, isSelfTarget: false, isSupport: false, isAoE: true };
+    if (spec.debuffOnly) return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    if (Number(spec.mult) > 0) return { mode: "enemy_single", requiresEnemyTarget: true, isSelfTarget: false, isSupport: false, isAoE: false };
+    return { mode: "self", requiresEnemyTarget: false, isSelfTarget: true, isSupport: true, isAoE: false };
+  }
+
+  function getActionMetadata(state, actorOrId, command = {}) {
+    const actor = resolveActor(state, actorOrId);
+    const type = command && command.type || "basic";
+    const targeting = actionTargeting(state, actor, command);
+    const legalTargetIds = actor && targeting.requiresEnemyTarget
+      ? opposingUnits(state, actor).map(unit => unit.id)
+      : [];
+    const suppliedTargetId = command && command.targetId != null ? String(command.targetId) : null;
+    let reason = null;
+    let spCost = 0;
+    let cooldown = 0;
+    if (!actor) reason = "Unknown actor";
+    else if (actor.kind !== "hero") reason = "Only Hero actions expose command metadata";
+    else if (type === "potion") reason = (Number(command.count) || 0) > 0 ? null : "No potion available";
+    else if (type === "flee") reason = state.rules.allowFlee ? null : "Flee is not allowed";
+    else if (type === "active") {
+      const spec = heroActiveSpec(state, actor, command.skillId);
+      if (!spec || !actor.activeSkills.includes(command.skillId) || (actor.cooldowns[command.skillId] || 0) > 0 || status(actor, "silence")) reason = "Active skill unavailable";
+      else {
+        const efficiency = skillData(actor, "skill_efficiency");
+        spCost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+        cooldown = Number(spec.cooldown) || 0;
+        if (actor.sp < spCost) reason = "Not enough SP";
+      }
+    } else if (type !== "basic") reason = "Unknown Hero action";
+    const targetLegal = !targeting.requiresEnemyTarget
+      ? true
+      : suppliedTargetId == null ? null : legalTargetIds.includes(suppliedTargetId);
+    return {
+      actorId: actor && actor.id || null,
+      actionType: type,
+      skillId: command && command.skillId || null,
+      usable: !reason,
+      reason,
+      targetMode: targeting.mode,
+      requiresEnemyTarget: targeting.requiresEnemyTarget,
+      isSelfTarget: targeting.isSelfTarget,
+      isSupport: targeting.isSupport,
+      isAoE: targeting.isAoE,
+      legalTargetIds,
+      targetId: suppliedTargetId,
+      targetLegal,
+      spCost,
+      cooldown
+    };
+  }
+
+  function getLegalTargetIds(state, actorOrId, command = { type: "basic" }) {
+    return getActionMetadata(state, actorOrId, command).legalTargetIds;
+  }
+
+  function isLegalTarget(state, actorOrId, targetId, command = { type: "basic" }) {
+    const metadata = getActionMetadata(state, actorOrId, { ...command, targetId });
+    return !metadata.requiresEnemyTarget || metadata.legalTargetIds.includes(String(targetId));
+  }
+
+  function isActionUsable(state, actorOrId, command = { type: "basic" }) {
+    const metadata = getActionMetadata(state, actorOrId, command);
+    return metadata.usable && (!metadata.requiresEnemyTarget || metadata.targetLegal === true);
+  }
+
   function consumeScheme(state, actor, target, context) {
     const resources = resourcesFor(state, actor);
     if (rank(actor, "usurper") < 3 || resources.scheme < 3) return false;
@@ -4531,9 +4614,12 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
       if (command.restoreSp) restoreSp(state, actor, Number(command.restoreSp), actor, "Potion SP");
       context.consumePotion = true; return;
     }
-    const target = basicTarget(state, actor, command.targetId || state.selectedTargetIds?.[actor.side] || state.selectedTargetId);
-    if (!target) return;
-    context.targetHadDebuff = hasDebuff(target);
+    const metadata = getActionMetadata(state, actor, command);
+    const requiresTarget = metadata.requiresEnemyTarget;
+    const requestedTargetId = command.targetId || state.selectedTargetIds?.[actor.side] || state.selectedTargetId;
+    const target = basicTarget(state, actor, requestedTargetId, { strict: requiresTarget && context.strictTarget });
+    if (requiresTarget && !target) return;
+    if (target) context.targetHadDebuff = hasDebuff(target);
     if (type === "active") {
       const id = command.skillId;
       const spec = heroActiveSpec(state, actor, id);
@@ -4668,31 +4754,60 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     }
   }
 
-  function checkBattleEnd(state) {
-    const aliveSides = state.teamIds.filter(side => livingTeamUnits(state, side).length);
-    if (aliveSides.length > 1) return;
-    state.winnerSide = aliveSides[0] || null;
-    state.result = state.winnerSide === state.controlledSide ? "victory" : "defeat";
+  function finishBattle(state, result, winnerSide = null, text = null) {
+    if (state.result) return;
+    state.winnerSide = winnerSide;
+    state.result = result;
     state.flags.auto = false;
-    const hero = heroForSide(state, state.controlledSide);
-    const pet = petForSide(state, state.controlledSide);
-    if (state.mode === "dungeon" && !living(hero) && living(pet) && state.result === "victory") state.flags.heroReviveNextFloor = true;
     resetBattleResources(state);
-    log(state, "battle_end", state.result === "victory" ? "Victory" : "Defeat");
+    log(state, "battle_end", text || (result === "victory" ? "Victory" : result === "defeat" ? "Defeat" : "Draw"));
   }
 
-  function validateHeroCommand(state, actor, command) {
-    const type = command && command.type || "basic";
-    if (type === "basic") return null;
-    if (type === "potion") return (Number(command.count) || 0) > 0 ? null : "No potion available";
-    if (type === "flee") return state.rules.allowFlee ? null : "Flee is not allowed";
-    if (type !== "active") return "Unknown Hero action";
-    const id = command.skillId;
-    const spec = heroActiveSpec(state, actor, id);
-    if (!spec || !actor.activeSkills.includes(id) || (actor.cooldowns[id] || 0) > 0 || status(actor, "silence")) return "Active skill unavailable";
-    const efficiency = skillData(actor, "skill_efficiency");
-    const cost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
-    return actor.sp >= cost ? null : "Not enough SP";
+  function checkBattleEnd(state) {
+    if (state.result) return true;
+    if (state.mode === "arena") {
+      const attackerSide = state.controlledSide;
+      const defenderSide = state.teamIds.find(side => side !== attackerSide) || null;
+      const attackerHero = heroForSide(state, attackerSide);
+      const defenderHero = heroForSide(state, defenderSide);
+      if (!living(attackerHero)) {
+        finishBattle(state, "defeat", defenderSide);
+        return true;
+      }
+      if (!living(defenderHero)) {
+        finishBattle(state, "victory", attackerSide);
+        return true;
+      }
+      return false;
+    }
+    const aliveSides = state.teamIds.filter(side => livingTeamUnits(state, side).length);
+    if (aliveSides.length > 1) return false;
+    const winnerSide = aliveSides[0] || null;
+    const result = winnerSide === state.controlledSide ? "victory" : "defeat";
+    const hero = heroForSide(state, state.controlledSide);
+    const pet = petForSide(state, state.controlledSide);
+    if (state.mode === "dungeon" && !living(hero) && living(pet) && result === "victory") state.flags.heroReviveNextFloor = true;
+    finishBattle(state, result, winnerSide);
+    return true;
+  }
+
+  function completeArenaRound(state) {
+    if (state.result || state.mode !== "arena" || state.round < 20) return false;
+    const pending = state.queue.slice(state.queueIndex).some(id => living(state.units[id]));
+    if (pending) return false;
+    if (checkBattleEnd(state)) return true;
+    finishBattle(state, "draw", null);
+    return true;
+  }
+
+  function validateHeroCommand(state, actor, command, options = {}) {
+    const metadata = getActionMetadata(state, actor, command);
+    if (metadata.reason) return metadata.reason;
+    if (metadata.requiresEnemyTarget && options.strictTarget) {
+      if (!metadata.targetId) return "Target required";
+      if (!metadata.targetLegal) return "Invalid target";
+    }
+    return null;
   }
 
   function battleStep(inputState, command) {
@@ -4704,14 +4819,15 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     if (!actor) { checkBattleEnd(state); return { state, waiting: false, completedAction: false }; }
     const manualActor = actor.kind === "hero" && actor.side === state.controlledSide;
     if (manualActor && !command && !state.flags.auto && !state.flags.skipResolving) return { state, waiting: true, completedAction: false };
+    const strictArenaTarget = state.mode === "arena" && manualActor && !state.flags.auto && !state.flags.skipResolving;
     if (manualActor && command) {
-      const invalid = validateHeroCommand(state, actor, command);
+      const invalid = validateHeroCommand(state, actor, command, { strictTarget: strictArenaTarget });
       if (invalid) {
         log(state, "invalid", invalid);
         return { state, waiting: true, completedAction: false, error: invalid };
       }
     }
-    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false };
+    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
     startEffects(state, actor, context);
     if (living(actor)) {
       if (status(actor, "stun")) { delete actor.statuses.stun; log(state, "stun", `${actor.name || actor.id} lost the Action`); }
@@ -4739,6 +4855,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     }
     checkBattleEnd(state);
     state.queueIndex += 1; state.safeActionSeq += 1;
+    completeArenaRound(state);
     return { state, waiting: false, completedAction: true, consumePotion: !!context.consumePotion };
   }
 
@@ -4752,7 +4869,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
   }
 
   function serializeCheckpoint(state) {
-    if (!state || state.version !== 1 || !state.battleId || state.result) throw new Error("invalid_checkpoint_state");
+    if (!state || state.version !== 1 || !state.battleId || (state.result && state.result !== "draw")) throw new Error("invalid_checkpoint_state");
     const checkpoint = ensureTeamModel(copy(state));
     return JSON.stringify({ ...checkpoint, flags: { ...checkpoint.flags, auto: false, skipResolving: false } });
   }
@@ -4769,6 +4886,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     buildHeroUnit, buildPetUnit, buildMonsterUnit,
     createBattle, createTeamBattle, createDungeonBattle, createArenaBattle, createRaidBattle,
     rebuildQueue, currentUnit, upcomingActions, applyStatus, battleStep, simulateBattle,
+    basicTarget, getActionMetadata, getLegalTargetIds, isLegalTarget, isActionUsable, validateHeroCommand,
     serializeCheckpoint, restoreCheckpoint
   };
   Object.assign(root, { BATTLE_CORE_V1: api });
@@ -5280,6 +5398,798 @@ async function handleSubmitArenaTurn(db, id, session, characterId, matchId, acti
   });
 }
 
+// ---------- Phase 5: PvP Arena V2 server foundation + W9.5 lifecycle ----------
+// W9.4/W9.5 deliberately live beside Arena V1 until the W9.9 cutover. These helpers never
+// read/write pvp_* state. W9.5 owns only prepare/activate/resume; settlement remains later.
+const ARENA_V2_UNLOCK_LEVEL = 10;
+const ARENA_TICKET_MAX = 10;
+const ARENA_TICKET_PASSIVE_MS = 2 * 60 * 60 * 1000;
+const ARENA_TICKET_DAILY_GRANT = 5;
+const ARENA_TICKET_PURCHASE_COST = 10;
+const ARENA_SEASON_LENGTH_MS = 7 * 24 * 60 * 60 * 1000;
+const ARENA_REFRESH_COOLDOWN_MS = 10 * 1000;
+const ARENA_PREPARED_TTL_MS = 2 * 60 * 1000;
+const ARENA_ACTIVE_DURATION_MS = 10 * 60 * 1000;
+const ARENA_MATCH_BANDS = Object.freeze({
+  lower: { min: -225, max: -75, rewardSlot: "lower" },
+  equal: { min: -74, max: 74, rewardSlot: "equal" },
+  higher: { min: 75, max: 225, rewardSlot: "higher" },
+});
+const ARENA_BOT_DEFS = Object.freeze([
+  { id: "warrior", name: "BOT Warrior", level: 10, rating: 1000, archetype: "warrior", pet: null },
+  { id: "guardian", name: "BOT Guardian", level: 15, rating: 1125, archetype: "guardian", pet: null },
+  { id: "assassin", name: "BOT Assassin", level: 25, rating: 1275, archetype: "assassin", pet: null },
+  { id: "poison", name: "BOT Poison", level: 35, rating: 1375, archetype: "poison", pet: null },
+  { id: "balanced", name: "BOT Balanced", level: 45, rating: 1425, archetype: "balanced", pet: null },
+  { id: "pet_master", name: "BOT Pet Master", level: 50, rating: 1500, archetype: "pet_master", pet: null },
+]);
+
+function arenaNowMs(now = Date.now()) {
+  const value = now instanceof Date ? now.getTime() : (typeof now === "number" ? now : Date.parse(String(now)));
+  return Number.isFinite(value) ? value : Date.now();
+}
+function arenaNowIso(now = Date.now()) { return new Date(arenaNowMs(now)).toISOString(); }
+function arenaUtcDateKey(now = Date.now()) { return arenaNowIso(now).slice(0, 10); }
+function arenaUtcDayDiff(fromKey, toKey) {
+  const from = Date.parse(`${fromKey}T00:00:00.000Z`);
+  const to = Date.parse(`${toKey}T00:00:00.000Z`);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return 0;
+  return Math.floor((to - from) / 86400000);
+}
+function arenaTicketSecondsToNext(anchor, now = Date.now()) {
+  if (!anchor) return 0;
+  const at = Date.parse(anchor);
+  if (!Number.isFinite(at)) return 0;
+  const elapsed = Math.max(0, arenaNowMs(now) - at);
+  return Math.max(0, Math.ceil((ARENA_TICKET_PASSIVE_MS - (elapsed % ARENA_TICKET_PASSIVE_MS)) / 1000));
+}
+function arenaTicketStateAt(row, now = Date.now()) {
+  const nowMs = arenaNowMs(now);
+  const today = arenaUtcDateKey(nowMs);
+  let tickets = Number.isFinite(Number(row?.tickets)) ? Math.max(0, Math.min(ARENA_TICKET_MAX, Math.floor(Number(row.tickets)))) : 0;
+  let anchor = row?.ticket_updated_at || "";
+  let dailyKey = /^\d{4}-\d{2}-\d{2}$/.test(String(row?.last_daily_ticket_date || "")) ? row.last_daily_ticket_date : "";
+  let dailyGrant = 0;
+
+  const missedDays = dailyKey ? arenaUtcDayDiff(dailyKey, today) : 1;
+  if (missedDays > 0) {
+    dailyGrant = Math.min(ARENA_TICKET_MAX - tickets, missedDays * ARENA_TICKET_DAILY_GRANT);
+    tickets += dailyGrant;
+    dailyKey = today;
+  } else if (!dailyKey) {
+    dailyKey = today;
+  }
+
+  if (tickets >= ARENA_TICKET_MAX) {
+    tickets = ARENA_TICKET_MAX;
+    anchor = "";
+  } else {
+    const anchorMs = Date.parse(anchor);
+    if (!Number.isFinite(anchorMs)) {
+      anchor = new Date(nowMs).toISOString();
+    } else {
+      const ticks = Math.floor(Math.max(0, nowMs - anchorMs) / ARENA_TICKET_PASSIVE_MS);
+      if (ticks > 0) {
+        tickets = Math.min(ARENA_TICKET_MAX, tickets + ticks);
+        anchor = tickets >= ARENA_TICKET_MAX ? "" : new Date(anchorMs + ticks * ARENA_TICKET_PASSIVE_MS).toISOString();
+      }
+    }
+    if (tickets >= ARENA_TICKET_MAX) anchor = "";
+  }
+  return {
+    tickets,
+    ticketUpdatedAt: anchor,
+    lastDailyTicketDate: dailyKey,
+    dailyGrant,
+    nextPassiveTicketAt: anchor ? new Date(Date.parse(anchor) + ARENA_TICKET_PASSIVE_MS).toISOString() : null,
+    passiveSeconds: arenaTicketSecondsToNext(anchor, nowMs),
+  };
+}
+
+async function ensureArenaCharacterState(db, characterId, now = Date.now()) {
+  const at = arenaNowIso(now);
+  await db.prepare(`
+    INSERT INTO arena_character_state
+      (character_id, arena_coin, tickets, ticket_updated_at, last_daily_ticket_date, unlock_notice_seen, created_at, updated_at)
+    VALUES (?, 0, 0, '', '', 0, ?, ?)
+    ON CONFLICT(character_id) DO NOTHING
+  `).bind(characterId, at, at).run();
+  return await db.prepare(`SELECT * FROM arena_character_state WHERE character_id = ?`).bind(characterId).first();
+}
+
+async function reconcileArenaV2Tickets(db, characterId, now = Date.now()) {
+  const nowMs = arenaNowMs(now);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const current = await ensureArenaCharacterState(db, characterId, nowMs);
+    const next = arenaTicketStateAt(current, nowMs);
+    const changed = Number(current.tickets) !== next.tickets
+      || String(current.ticket_updated_at || "") !== next.ticketUpdatedAt
+      || String(current.last_daily_ticket_date || "") !== next.lastDailyTicketDate;
+    if (!changed) return { ...next, changed: false };
+    const result = await db.prepare(`
+      UPDATE arena_character_state
+      SET tickets = ?, ticket_updated_at = ?, last_daily_ticket_date = ?, updated_at = ?
+      WHERE character_id = ? AND tickets = ? AND ticket_updated_at = ? AND last_daily_ticket_date = ?
+    `).bind(
+      next.tickets, next.ticketUpdatedAt, next.lastDailyTicketDate, arenaNowIso(nowMs), characterId,
+      current.tickets, current.ticket_updated_at || "", current.last_daily_ticket_date || ""
+    ).run();
+    if (result.meta && result.meta.changes) return { ...next, changed: true };
+  }
+  return { ...(arenaTicketStateAt(await ensureArenaCharacterState(db, characterId, nowMs), nowMs)), changed: false };
+}
+
+function arenaTierForRating(rating) {
+  const value = Number(rating) || 1000;
+  return value >= 1450 ? "Diamond" : value >= 1250 ? "Gold" : value >= 1100 ? "Silver" : "Bronze";
+}
+function arenaPreviousTierBase(rating) {
+  const value = Number(rating) || 1000;
+  return value >= 1450 ? 1250 : value >= 1250 ? 1100 : 1000;
+}
+function arenaNextSundayCutoff(now = Date.now()) {
+  const nowMs = arenaNowMs(now);
+  const candidate = new Date(nowMs);
+  const daysUntilSunday = (7 - candidate.getUTCDay()) % 7;
+  candidate.setUTCDate(candidate.getUTCDate() + daysUntilSunday);
+  candidate.setUTCHours(16, 0, 0, 0);
+  if (candidate.getTime() <= nowMs) candidate.setUTCDate(candidate.getUTCDate() + 7);
+  return candidate.toISOString();
+}
+
+async function ensureArenaV2Season(db, now = Date.now()) {
+  const nowMs = arenaNowMs(now);
+  let active = await db.prepare(`SELECT * FROM arena_seasons WHERE status = 'active' ORDER BY season_number DESC LIMIT 1`).first();
+  if (!active) {
+    const seasonNumber = Number((await db.prepare(`SELECT COALESCE(MAX(season_number), 0) AS n FROM arena_seasons`).first())?.n || 0) + 1;
+    const seasonId = `arena-season-${seasonNumber}`;
+    const startsAt = arenaNowIso(nowMs);
+    const endsAt = arenaNextSundayCutoff(nowMs);
+    await db.prepare(`
+      INSERT INTO arena_seasons (season_id, season_number, starts_at, ends_at, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'active', ?, ?)
+      ON CONFLICT(season_id) DO NOTHING
+    `).bind(seasonId, seasonNumber, startsAt, endsAt, startsAt, startsAt).run();
+    active = await db.prepare(`SELECT * FROM arena_seasons WHERE status = 'active' ORDER BY season_number DESC LIMIT 1`).first();
+  }
+  // Catch up every elapsed weekly boundary in one request. Skipped seasons are
+  // retained as finalizing rows so later settlement/finalization can account for
+  // every season identity. There is intentionally no arbitrary week ceiling:
+  // correctness requires the returned active season to contain `now`.
+  while (active) {
+    const activeEndMs = Date.parse(active.ends_at);
+    if (!Number.isFinite(activeEndMs)) throw new Error("arena_invalid_season_end");
+    if (activeEndMs > nowMs) break;
+
+    const at = arenaNowIso(nowMs);
+    await db.prepare(`UPDATE arena_seasons SET status = 'finalizing', updated_at = ? WHERE season_id = ? AND status = 'active'`).bind(at, active.season_id).run();
+
+    const nextNumber = Number(active.season_number) + 1;
+    const nextId = `arena-season-${nextNumber}`;
+    const startsAt = active.ends_at;
+    const nextEndMs = activeEndMs + ARENA_SEASON_LENGTH_MS;
+    if (!Number.isFinite(nextEndMs) || nextEndMs <= activeEndMs) throw new Error("arena_season_catchup_no_progress");
+    const endsAt = new Date(nextEndMs).toISOString();
+
+    await db.prepare(`
+      INSERT INTO arena_seasons (season_id, season_number, starts_at, ends_at, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'active', ?, ?)
+      ON CONFLICT(season_id) DO NOTHING
+    `).bind(nextId, nextNumber, startsAt, endsAt, at, at).run();
+
+    const nextActive = await db.prepare(`SELECT * FROM arena_seasons WHERE status = 'active' ORDER BY season_number DESC LIMIT 1`).first();
+    const nextActiveEndMs = Date.parse(nextActive?.ends_at || "");
+    if (!nextActive || !Number.isFinite(nextActiveEndMs) || nextActiveEndMs <= activeEndMs) {
+      throw new Error("arena_season_catchup_no_progress");
+    }
+    active = nextActive;
+  }
+
+  const finalEndMs = Date.parse(active?.ends_at || "");
+  if (!active || !Number.isFinite(finalEndMs) || finalEndMs <= nowMs) {
+    throw new Error("arena_season_catchup_incomplete");
+  }
+  return active;
+}
+
+async function ensureArenaSeasonPlayer(db, season, character, now = Date.now()) {
+  const at = arenaNowIso(now);
+  await db.prepare(`
+    INSERT INTO arena_season_players
+      (season_id, character_id, rating, rating_reached_at, created_at, updated_at)
+    VALUES (?, ?, 1000, ?, ?, ?)
+    ON CONFLICT(season_id, character_id) DO NOTHING
+  `).bind(season.season_id, character.character_id, at, at, at).run();
+  return await db.prepare(`SELECT * FROM arena_season_players WHERE season_id = ? AND character_id = ?`).bind(season.season_id, character.character_id).first();
+}
+
+function arenaSkillKeysFromQuickSlots(quickSlots, skillLevels, max = 4) {
+  const learned = new Set(heroActiveSkillList(skillLevels || {}).map((skill) => skill.key));
+  const result = [];
+  for (const slot of Array.isArray(quickSlots) ? quickSlots : []) {
+    const key = slot && slot.kind === "skill" ? String(slot.key || "") : "";
+    result.push(key && learned.has(key) ? key : null);
+    if (result.length >= max) break;
+  }
+  while (result.length < max) result.push(null);
+  return result;
+}
+function arenaPetFromCharacter(character, petInstId = character.active_pet_id) {
+  let parsed = {};
+  try { parsed = character?.pets_json ? JSON.parse(character.pets_json) : {}; } catch (e) { parsed = {}; }
+  const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.list) ? parsed.list : []);
+  const active = list.find((pet) => pet && pet.instId === petInstId) || null;
+  return active && active.instId && active.defId && petBattleStats(active) ? active : null;
+}
+async function readCharacterQuickSlots(db, characterId) {
+  const settings = await db.prepare(`SELECT quick_slots_json FROM character_settings WHERE character_id = ?`).bind(characterId).first();
+  return parseJsonColumn(settings?.quick_slots_json, [null, null, null, null]);
+}
+async function ensureArenaSetup(db, character, now = Date.now()) {
+  const existing = await db.prepare(`SELECT * FROM arena_setup WHERE character_id = ?`).bind(character.character_id).first();
+  if (!existing) {
+    const { skillLevels } = parsePetsJson(character);
+    const slots = arenaSkillKeysFromQuickSlots(await readCharacterQuickSlots(db, character.character_id), skillLevels);
+    const pet = arenaPetFromCharacter(character);
+    const at = arenaNowIso(now);
+    await db.prepare(`
+      INSERT INTO arena_setup (character_id, pet_inst_id, skill_slots_json, initialized_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(character_id) DO NOTHING
+    `).bind(character.character_id, pet ? pet.instId : "", JSON.stringify(slots), at, at).run();
+  }
+  return await sanitizeArenaSetup(db, character, now);
+}
+async function sanitizeArenaSetup(db, character, now = Date.now()) {
+  const row = await db.prepare(`SELECT * FROM arena_setup WHERE character_id = ?`).bind(character.character_id).first();
+  if (!row) return { petInstId: "", skillSlots: [null, null, null, null], initialized: false };
+  const { skillLevels } = parsePetsJson(character);
+  const learned = new Set(heroActiveSkillList(skillLevels || {}).map((skill) => skill.key));
+  const stored = parseJsonColumn(row.skill_slots_json, [null, null, null, null]);
+  const skillSlots = Array.from({ length: 4 }, (_, index) => {
+    const key = stored[index];
+    return typeof key === "string" && learned.has(key) ? key : null;
+  });
+  const pet = arenaPetFromCharacter(character, row.pet_inst_id);
+  const petInstId = pet ? pet.instId : "";
+  if (petInstId !== String(row.pet_inst_id || "") || JSON.stringify(skillSlots) !== JSON.stringify(stored)) {
+    await db.prepare(`UPDATE arena_setup SET pet_inst_id = ?, skill_slots_json = ?, updated_at = ? WHERE character_id = ?`)
+      .bind(petInstId, JSON.stringify(skillSlots), arenaNowIso(now), character.character_id).run();
+  }
+  return { petInstId, skillSlots, initialized: true };
+}
+
+function arenaEquipmentPublic(items) {
+  return (items || []).map((item) => ({
+    slotType: item.slot_type || "",
+    itemTemplateId: item.item_template_id || "",
+    name: item.name || "",
+    rarity: item.rarity || "",
+    enhanceLevel: Number(item.enhance_level) || 0,
+  }));
+}
+async function arenaCurrentEquipment(db, characterId) {
+  const rows = await db.prepare(`SELECT * FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all();
+  return rows.results || [];
+}
+async function arenaValidProfileFrame(db, characterId) {
+  const state = await db.prepare(`SELECT equipped_frame_key FROM character_profile_frame_state WHERE character_id = ?`).bind(characterId).first();
+  const key = String(state?.equipped_frame_key || "");
+  if (!key) return null;
+  const entitlement = await db.prepare(`
+    SELECT entitlement_id FROM profile_frame_entitlements
+    WHERE character_id = ? AND frame_key = ? AND disabled_at IS NULL
+      AND (expires_at IS NULL OR expires_at > ?)
+    ORDER BY granted_at DESC LIMIT 1
+  `).bind(characterId, key, nowIso()).first();
+  return entitlement ? key : null;
+}
+
+function arenaOpponentKey(entry) {
+  return String(entry?.opponentKey || "");
+}
+function arenaStoredOpponents(value) {
+  const rows = parseJsonColumn(value, []);
+  return Array.isArray(rows) && rows.length === 3 && rows.every((row) => row && row.opponentKey && row.type && row.slot) ? rows : null;
+}
+function arenaBotVirtualRating(selfRating, slot) {
+  const band = ARENA_MATCH_BANDS[slot];
+  const rating = Number(selfRating) || 1000;
+  const minimum = Math.max(1000, rating + band.min);
+  const maximum = Math.max(1000, rating + band.max);
+  const target = rating + (slot === "lower" ? -150 : slot === "higher" ? 150 : 0);
+  return Math.max(minimum, Math.min(maximum, target));
+}
+function arenaBotForSlot(slot, selfRating, previous, used) {
+  const prior = new Set((previous || []).map((row) => row.botId));
+  const start = typeof slot === "number" ? Math.max(0, Math.floor(slot)) : ["lower", "equal", "higher"].indexOf(slot);
+  const index = start >= 0 ? start : 0;
+  for (let i = 0; i < ARENA_BOT_DEFS.length; i++) {
+    const def = ARENA_BOT_DEFS[(index + i) % ARENA_BOT_DEFS.length];
+    const botId = `arena-${def.id}`;
+    if (!used.has(`bot:${botId}`) && (!previous || !prior.has(botId))) return { def, botId, rating: arenaBotVirtualRating(selfRating, typeof slot === "string" ? slot : ["lower", "equal", "higher"][index]) };
+  }
+  const def = ARENA_BOT_DEFS[index % ARENA_BOT_DEFS.length];
+  return { def, botId: `arena-${def.id}-${index}`, rating: arenaBotVirtualRating(selfRating, typeof slot === "string" ? slot : ["lower", "equal", "higher"][index]) };
+}
+async function generateArenaV2Opponents(db, season, character, previous = null) {
+  const player = await db.prepare(`SELECT rating FROM arena_season_players WHERE season_id = ? AND character_id = ?`).bind(season.season_id, character.character_id).first();
+  const rating = Number(player?.rating) || 1000;
+  const used = new Set();
+  const result = [];
+  for (const slot of ["lower", "equal", "higher"]) {
+    const band = ARENA_MATCH_BANDS[slot];
+    const rows = await db.prepare(`
+      SELECT p.character_id, p.rating, c.name, c.level
+      FROM arena_season_players p JOIN characters c ON c.character_id = p.character_id
+      WHERE p.season_id = ? AND p.character_id != ?
+        AND (p.attack_wins + p.attack_draws + p.attack_losses) > 0
+        AND p.rating BETWEEN ? AND ?
+      ORDER BY ABS(p.rating - ?) ASC, p.rating DESC, p.rating_reached_at ASC
+    `).bind(season.season_id, character.character_id, Math.max(1000, rating + band.min), Math.max(1000, rating + band.max), rating).all();
+    const candidate = (rows.results || []).find((row) => {
+      const key = `real:${row.character_id}`;
+      return !used.has(key) && !(previous || []).some((old) => old.opponentKey === key);
+    }) || (rows.results || []).find((row) => !used.has(`real:${row.character_id}`));
+    if (candidate) {
+      const key = `real:${candidate.character_id}`;
+      used.add(key);
+      result.push({ opponentKey: key, type: "player", slot, rewardSlot: band.rewardSlot, characterId: candidate.character_id, name: candidate.name || "", level: Number(candidate.level) || 1, rating: Number(candidate.rating) || 1000 });
+      continue;
+    }
+    const bot = arenaBotForSlot(slot, rating, previous, used);
+    const key = `bot:${bot.botId}`;
+    used.add(key);
+    result.push({ opponentKey: key, type: "bot", slot, rewardSlot: band.rewardSlot, botId: bot.botId, name: bot.def.name, level: bot.def.level, rating: bot.rating, archetype: bot.def.archetype, profileFrameKey: null });
+  }
+  return result;
+}
+async function arenaUpsertOpponentState(db, seasonId, characterId, opponents, refreshAvailableAt, now) {
+  await db.prepare(`
+    INSERT INTO arena_opponent_state (season_id, character_id, opponents_json, refresh_available_at, updated_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(season_id, character_id) DO UPDATE SET
+      opponents_json = excluded.opponents_json, refresh_available_at = excluded.refresh_available_at, updated_at = excluded.updated_at
+  `).bind(seasonId, characterId, JSON.stringify(opponents), refreshAvailableAt, now).run();
+}
+
+async function arenaV2Context(db, id, session, characterId, now = Date.now()) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return { error: auth.error };
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return { error: owned.error };
+  const character = owned.row;
+  if (Number(character.level) < ARENA_V2_UNLOCK_LEVEL) return { error: "arena_locked", character, requiredLevel: ARENA_V2_UNLOCK_LEVEL };
+  const state = await ensureArenaCharacterState(db, characterId, now);
+  const season = await ensureArenaV2Season(db, now);
+  const seasonPlayer = await ensureArenaSeasonPlayer(db, season, character, now);
+  return { ok: true, player: auth.row, character, state, season, seasonPlayer };
+}
+function arenaPublicOpponent(row) {
+  return { opponentKey: row.opponentKey, name: row.name || "", level: Number(row.level) || 1, rating: Number(row.rating) || 1000 };
+}
+async function handleGetArenaV2Status(db, id, session, characterId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error === "arena_locked") return json({ ok: true, unlocked: false, requiredLevel: ARENA_V2_UNLOCK_LEVEL });
+  if (context.error) return json({ error: context.error });
+  const now = nowIso();
+  const tickets = await reconcileArenaV2Tickets(db, characterId, now);
+  const setup = await ensureArenaSetup(db, context.character, now);
+  const items = await arenaCurrentEquipment(db, characterId);
+  const rankRow = await db.prepare(`SELECT COUNT(*) AS c FROM arena_season_players WHERE season_id = ? AND rating > ?`).bind(context.season.season_id, context.seasonPlayer.rating).first();
+  return json({
+    ok: true, unlocked: true, requiredLevel: ARENA_V2_UNLOCK_LEVEL,
+    showUnlockNotice: Number(context.state.unlock_notice_seen) !== 1,
+    seasonEndsAt: context.season.ends_at,
+    serverNow: now,
+    season: { seasonId: context.season.season_id, seasonNumber: Number(context.season.season_number), seasonEndsAt: context.season.ends_at, serverNow: now },
+    player: {
+      rating: Number(context.seasonPlayer.rating), tier: arenaTierForRating(context.seasonPlayer.rating), rank: Number(rankRow?.c || 0) + 1,
+      attack: { wins: Number(context.seasonPlayer.attack_wins), draws: Number(context.seasonPlayer.attack_draws), losses: Number(context.seasonPlayer.attack_losses) },
+      defense: { wins: Number(context.seasonPlayer.defense_wins), draws: Number(context.seasonPlayer.defense_draws), losses: Number(context.seasonPlayer.defense_losses) },
+      arenaCoin: Number(context.state.arena_coin) || 0,
+    },
+    tickets: { tickets: tickets.tickets, ticketsMax: ARENA_TICKET_MAX, dailyGrant: ARENA_TICKET_DAILY_GRANT, purchaseCost: ARENA_TICKET_PURCHASE_COST, nextPassiveTicketAt: tickets.nextPassiveTicketAt, passiveSeconds: tickets.passiveSeconds },
+    setup,
+    equipment: arenaEquipmentPublic(items),
+  });
+}
+async function getArenaV2OpponentRows(db, context, now = Date.now()) {
+  const current = await db.prepare(`SELECT * FROM arena_opponent_state WHERE season_id = ? AND character_id = ?`).bind(context.season.season_id, context.character.character_id).first();
+  let opponents = arenaStoredOpponents(current?.opponents_json);
+  if (!opponents) {
+    opponents = await generateArenaV2Opponents(db, context.season, context.character);
+    await arenaUpsertOpponentState(db, context.season.season_id, context.character.character_id, opponents, current?.refresh_available_at || "", arenaNowIso(now));
+  }
+  return { opponents, state: current };
+}
+async function handleGetArenaV2Opponents(db, id, session, characterId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const { opponents } = await getArenaV2OpponentRows(db, context);
+  return json({ ok: true, opponents: opponents.map(arenaPublicOpponent) });
+}
+async function handleRefreshArenaV2Opponents(db, id, session, characterId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const nowMs = Date.now();
+  const current = await getArenaV2OpponentRows(db, context, nowMs);
+  const availableAt = Date.parse(current.state?.refresh_available_at || "");
+  if (Number.isFinite(availableAt) && availableAt > nowMs) {
+    return json({ error: "arena_refresh_cooldown", retryAfter: Math.ceil((availableAt - nowMs) / 1000), refreshAvailableAt: new Date(availableAt).toISOString() }, 429);
+  }
+  // Acquire the cooldown with a single conditional UPDATE.  The read above is
+  // advisory only; this CAS is the authoritative gate for concurrent refreshes.
+  const refreshAvailableAt = new Date(nowMs + ARENA_REFRESH_COOLDOWN_MS).toISOString();
+  const claimed = await db.prepare(`
+    UPDATE arena_opponent_state
+    SET refresh_available_at = ?, updated_at = ?
+    WHERE season_id = ? AND character_id = ?
+      AND (refresh_available_at = '' OR refresh_available_at IS NULL OR refresh_available_at <= ?)
+  `).bind(refreshAvailableAt, arenaNowIso(nowMs), context.season.season_id, characterId, arenaNowIso(nowMs)).run();
+  if (Number(claimed?.meta?.changes) !== 1) {
+    const latest = await db.prepare(`SELECT refresh_available_at FROM arena_opponent_state WHERE season_id = ? AND character_id = ?`).bind(context.season.season_id, characterId).first();
+    const latestAt = Date.parse(latest?.refresh_available_at || "");
+    return json({ error: "arena_refresh_cooldown", retryAfter: Number.isFinite(latestAt) ? Math.max(1, Math.ceil((latestAt - nowMs) / 1000)) : 1, refreshAvailableAt: Number.isFinite(latestAt) ? new Date(latestAt).toISOString() : refreshAvailableAt }, 429);
+  }
+  const next = await generateArenaV2Opponents(db, context.season, context.character, current.opponents);
+  if (!next.some((row) => !current.opponents.some((old) => old.opponentKey === row.opponentKey))) {
+    const fallback = arenaBotForSlot("higher", context.seasonPlayer.rating, current.opponents, new Set(next.map((row) => row.opponentKey)));
+    next[2] = { opponentKey: `bot:${fallback.botId}`, type: "bot", slot: "higher", rewardSlot: "higher", botId: fallback.botId, name: fallback.def.name, level: fallback.def.level, rating: fallback.rating, archetype: fallback.def.archetype, profileFrameKey: null };
+  }
+  const saved = await db.prepare(`
+    UPDATE arena_opponent_state SET opponents_json = ?, updated_at = ?
+    WHERE season_id = ? AND character_id = ? AND refresh_available_at = ?
+  `).bind(JSON.stringify(next), arenaNowIso(nowMs), context.season.season_id, characterId, refreshAvailableAt).run();
+  if (Number(saved?.meta?.changes) !== 1) return json({ error: "arena_refresh_conflict", retry: true }, 409);
+  return json({ ok: true, opponents: next.map(arenaPublicOpponent), refreshAvailableAt });
+}
+async function handleAcknowledgeArenaV2Unlock(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  if (Number(owned.row.level) < ARENA_V2_UNLOCK_LEVEL) return json({ error: "arena_locked", requiredLevel: ARENA_V2_UNLOCK_LEVEL });
+  await ensureArenaCharacterState(db, characterId);
+  await db.prepare(`UPDATE arena_character_state SET unlock_notice_seen = 1, updated_at = ? WHERE character_id = ?`).bind(nowIso(), characterId).run();
+  return json({ ok: true, showUnlockNotice: false });
+}
+async function handleSaveArenaV2Setup(db, id, session, characterId, petInstId, skillSlots) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  if (!Array.isArray(skillSlots) || skillSlots.length !== 4) return json({ error: "invalid_arena_setup" }, 400);
+  const { skillLevels } = parsePetsJson(context.character);
+  const learned = new Set(heroActiveSkillList(skillLevels || {}).map((skill) => skill.key));
+  const normalizedSkills = skillSlots.map((key) => typeof key === "string" && learned.has(key) ? key : null);
+  const pet = arenaPetFromCharacter(context.character, petInstId || "");
+  const at = nowIso();
+  await db.prepare(`
+    INSERT INTO arena_setup (character_id, pet_inst_id, skill_slots_json, initialized_at, updated_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(character_id) DO UPDATE SET pet_inst_id = excluded.pet_inst_id, skill_slots_json = excluded.skill_slots_json, updated_at = excluded.updated_at
+  `).bind(characterId, pet ? pet.instId : "", JSON.stringify(normalizedSkills), at, at).run();
+  return json({ ok: true, setup: await sanitizeArenaSetup(db, context.character, at) });
+}
+async function handlePurchaseArenaV2Ticket(db, id, session, characterId, requestId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const key = String(requestId || "").trim();
+  if (!key || key.length > 128) return json({ error: "missing_request_id" }, 400);
+  const receiptKey = `arena:ticket-purchase:${characterId}:${key}`;
+  const prior = await db.prepare(`SELECT payload_json FROM arena_idempotency_receipts WHERE receipt_key = ?`).bind(receiptKey).first();
+  const now = nowIso();
+  const tickets = await reconcileArenaV2Tickets(db, characterId, now);
+  const player = await db.prepare(`SELECT diamonds FROM players WHERE id = ?`).bind(id).first();
+  if (prior) {
+    const current = await db.prepare(`SELECT tickets, ticket_updated_at FROM arena_character_state WHERE character_id = ?`).bind(characterId).first();
+    return json({ ok: true, replayed: true, tickets: Number(current?.tickets) || 0, ticketsMax: ARENA_TICKET_MAX, diamonds: Number((await db.prepare(`SELECT diamonds FROM players WHERE id = ?`).bind(id).first())?.diamonds) || 0, passiveSeconds: arenaTicketSecondsToNext(current?.ticket_updated_at || "") });
+  }
+  if (tickets.tickets >= ARENA_TICKET_MAX) return json({ error: "arena_tickets_full", tickets: tickets.tickets, ticketsMax: ARENA_TICKET_MAX });
+  if (Number(player?.diamonds) < ARENA_TICKET_PURCHASE_COST) return json({ error: "insufficient_diamonds", purchaseCost: ARENA_TICKET_PURCHASE_COST, diamonds: Number(player?.diamonds) || 0 });
+  const operationToken = randomToken(12);
+  const oldTicket = await db.prepare(`SELECT tickets, ticket_updated_at, last_daily_ticket_date FROM arena_character_state WHERE character_id = ?`).bind(characterId).first();
+  const oldDiamonds = Number(player.diamonds) || 0;
+  const receiptPayload = JSON.stringify({ operationToken, kind: "ticket_purchase", requestId: key });
+  // D1 batches are atomic. The receipt INSERT is a conditional gate; the two following
+  // updates are additionally scoped to its operation token, so a replay/different
+  // requestId cannot spend or grant independently of the same receipt gate.
+  const batch = await db.batch([
+    db.prepare(`
+      INSERT INTO arena_idempotency_receipts (receipt_key, kind, character_id, payload_json, created_at)
+      SELECT ?, 'ticket_purchase', ?, ?, ?
+      WHERE NOT EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ?)
+        AND EXISTS (SELECT 1 FROM arena_character_state WHERE character_id = ? AND tickets = ? AND ticket_updated_at = ? AND last_daily_ticket_date = ? AND tickets < ?)
+        AND EXISTS (SELECT 1 FROM players WHERE id = ? AND diamonds = ? AND diamonds >= ?)
+    `).bind(receiptKey, characterId, receiptPayload, now, receiptKey, characterId, oldTicket.tickets, oldTicket.ticket_updated_at || "", oldTicket.last_daily_ticket_date || "", ARENA_TICKET_MAX, id, oldDiamonds, ARENA_TICKET_PURCHASE_COST),
+    db.prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds = ? AND EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ? AND json_extract(payload_json, '$.operationToken') = ?)`)
+      .bind(ARENA_TICKET_PURCHASE_COST, id, oldDiamonds, receiptKey, operationToken),
+    db.prepare(`UPDATE arena_character_state SET tickets = tickets + 1, updated_at = ? WHERE character_id = ? AND tickets = ? AND EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ? AND json_extract(payload_json, '$.operationToken') = ?)`)
+      .bind(now, characterId, oldTicket.tickets, receiptKey, operationToken),
+  ]);
+  const receiptInserted = Number(batch?.[0]?.meta?.changes) || 0;
+  const charged = Number(batch?.[1]?.meta?.changes) || 0;
+  const granted = Number(batch?.[2]?.meta?.changes) || 0;
+  if (!receiptInserted) {
+    const existingReceipt = await db.prepare(`SELECT payload_json FROM arena_idempotency_receipts WHERE receipt_key = ?`).bind(receiptKey).first();
+    if (!existingReceipt) return json({ error: "arena_ticket_purchase_conflict", retry: true }, 409);
+    const existing = await db.prepare(`SELECT tickets FROM arena_character_state WHERE character_id = ?`).bind(characterId).first();
+    return json({ ok: true, replayed: true, tickets: Number(existing?.tickets) || 0, ticketsMax: ARENA_TICKET_MAX, diamonds: Number((await db.prepare(`SELECT diamonds FROM players WHERE id = ?`).bind(id).first())?.diamonds) || 0 });
+  }
+  if (charged !== 1 || granted !== 1) return json({ error: "arena_ticket_purchase_conflict", retry: true }, 409);
+  const resultState = await db.prepare(`SELECT tickets, ticket_updated_at FROM arena_character_state WHERE character_id = ?`).bind(characterId).first();
+  const resultPlayer = await db.prepare(`SELECT diamonds FROM players WHERE id = ?`).bind(id).first();
+  return json({ ok: true, replayed: false, tickets: Number(resultState.tickets), ticketsMax: ARENA_TICKET_MAX, diamonds: Number(resultPlayer.diamonds) || 0, passiveSeconds: arenaTicketSecondsToNext(resultState.ticket_updated_at || "") });
+}
+
+function arenaClone(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+function arenaSnapshotStats(character, items) {
+  const stats = {
+    str: Number(character.str) || 0,
+    vit: Number(character.vit) || 0,
+    agi: Number(character.agi) || 0,
+    dex: Number(character.dex) || 0,
+    luk: Number(character.luk) || 0,
+  };
+  const base = characterBaseStats(Number(character.level) || 1, stats);
+  const bonus = { atk: 0, def: 0, hp: 0, mp: 0, accuracy: 0, critChance: 0, critDamage: 0, dodgeChance: 0 };
+  for (const item of items || []) {
+    const current = itemBonus(item);
+    for (const key of Object.keys(current)) bonus[key] = (bonus[key] || 0) + (Number(current[key]) || 0);
+  }
+  return {
+    ...stats,
+    level: Number(character.level) || 1,
+    maxHp: Math.round(base.maxHp + bonus.hp),
+    maxMp: Math.round(base.maxMp + bonus.mp),
+    atk: Math.round(base.atk + bonus.atk),
+    def: Math.round(base.def + bonus.def),
+    accuracy: Math.min(99, Math.round((base.accuracy + bonus.accuracy) * 10) / 10),
+    critChance: Math.round((base.critChance + bonus.critChance) * 10) / 10,
+    critDamage: Math.round((base.critDamage + bonus.critDamage) * 10) / 10,
+    dodgeChance: Math.round((base.dodgeChance + bonus.dodgeChance) * 10) / 10,
+  };
+}
+function arenaEquipmentSnapshot(items) {
+  return (items || []).map((item) => ({
+    itemId: item.item_id || "",
+    itemTemplateId: item.item_template_id || "",
+    slotType: item.slot_type || "",
+    name: item.name || "",
+    rarity: item.rarity || "",
+    enhanceLevel: Number(item.enhance_level) || 0,
+    stats: itemBonus(item),
+  }));
+}
+async function arenaRealSnapshot(db, character, setup, items, rating) {
+  const pet = setup.petInstId ? arenaPetFromCharacter(character, setup.petInstId) : null;
+  return {
+    type: "player",
+    characterId: character.character_id,
+    name: character.name || "",
+    level: Number(character.level) || 1,
+    rating: Number(rating) || 1000,
+    tier: arenaTierForRating(rating),
+    cp: combatPowerFromCharacter(character, items),
+    stats: arenaSnapshotStats(character, items),
+    equipment: arenaEquipmentSnapshot(items),
+    pet: pet ? arenaClone(pet) : null,
+    skillSlots: Array.isArray(setup.skillSlots) ? [...setup.skillSlots] : [null, null, null, null],
+    profileFrameKey: await arenaValidProfileFrame(db, character.character_id),
+  };
+}
+function arenaBotSnapshot(opponent) {
+  return {
+    type: "bot",
+    botId: opponent.botId,
+    name: opponent.name || "",
+    level: Number(opponent.level) || 1,
+    rating: Number(opponent.rating) || 1000,
+    tier: arenaTierForRating(opponent.rating),
+    cp: null,
+    stats: null,
+    equipment: [],
+    pet: null,
+    skillSlots: [null, null, null, null],
+    profileFrameKey: null,
+    archetype: opponent.archetype || "",
+  };
+}
+async function arenaBuildMatchSnapshot(db, context, opponent, source, preparedAt, seed) {
+  const attackerSetup = await ensureArenaSetup(db, context.character, preparedAt);
+  const attackerItems = await arenaCurrentEquipment(db, context.character.character_id);
+  const attacker = await arenaRealSnapshot(db, context.character, attackerSetup, attackerItems, context.seasonPlayer.rating);
+  let defender;
+  if (opponent.type === "bot") {
+    defender = arenaBotSnapshot(opponent);
+  } else {
+    const defenderCharacter = await db.prepare(`SELECT * FROM characters WHERE character_id = ?`).bind(opponent.characterId).first();
+    if (!defenderCharacter) return { error: "arena_opponent_not_found" };
+    const defenderSetup = await sanitizeArenaSetup(db, defenderCharacter, preparedAt);
+    const defenderItems = await arenaCurrentEquipment(db, defenderCharacter.character_id);
+    const defenderPlayer = await db.prepare(`SELECT rating FROM arena_season_players WHERE season_id = ? AND character_id = ?`).bind(context.season.season_id, defenderCharacter.character_id).first();
+    defender = await arenaRealSnapshot(db, defenderCharacter, defenderSetup, defenderItems, defenderPlayer?.rating ?? opponent.rating);
+  }
+  return {
+    version: 1,
+    preparedAt,
+    seed,
+    source,
+    rewardSlot: opponent.rewardSlot,
+    opponentKey: opponent.opponentKey,
+    attacker,
+    defender,
+  };
+}
+function arenaMatchPayload(row) {
+  return {
+    matchId: row.match_id,
+    seasonId: row.season_id,
+    status: row.status,
+    defenderType: row.defender_type,
+    defenderCharacterId: row.defender_character_id || null,
+    defenderBotId: row.defender_bot_id || "",
+    rewardSlot: row.reward_slot,
+    seed: Number(row.seed),
+    snapshot: parseJsonColumn(row.snapshot_json, null),
+    state: parseJsonColumn(row.state_json, null),
+    result: parseJsonColumn(row.result_json, null),
+    preparedAt: row.prepared_at,
+    preparedExpiresAt: row.prepared_expires_at,
+    activatedAt: row.activated_at,
+    ticketConsumedAt: row.ticket_consumed_at,
+    deadlineAt: row.deadline_at,
+    completedAt: row.completed_at,
+  };
+}
+async function arenaOpenMatchForAttacker(db, characterId) {
+  return await db.prepare(`
+    SELECT * FROM arena_matches
+    WHERE attacker_character_id = ? AND status IN ('prepared', 'active')
+    ORDER BY created_at DESC LIMIT 1
+  `).bind(characterId).first();
+}
+async function arenaExpirePreparedMatch(db, row, nowMs, force = false) {
+  if (!row || row.status !== "prepared" || (!force && Date.parse(row.prepared_expires_at) > nowMs)) return row;
+  await db.prepare(`UPDATE arena_matches SET status = 'expired', updated_at = ? WHERE match_id = ? AND status = 'prepared'`)
+    .bind(arenaNowIso(nowMs), row.match_id).run();
+  return await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ?`).bind(row.match_id).first();
+}
+async function handlePrepareArenaV2Match(db, id, session, characterId, opponentKey, source = "matchmaking") {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const nowMs = Date.now();
+  const { opponents } = await getArenaV2OpponentRows(db, context, nowMs);
+  const opponent = opponents.find((row) => row.opponentKey === String(opponentKey || ""));
+  if (!opponent) return json({ error: "arena_opponent_not_found" }, 404);
+  let existing = await arenaOpenMatchForAttacker(db, characterId);
+  existing = await arenaExpirePreparedMatch(db, existing, nowMs);
+  if (existing && ["prepared", "active"].includes(existing.status)) {
+    const existingSnapshot = parseJsonColumn(existing.snapshot_json, {});
+    if (existingSnapshot.opponentKey !== opponent.opponentKey) return json({ error: "arena_match_in_progress" }, 409);
+    return json({ ok: true, replayed: true, match: arenaMatchPayload(existing) });
+  }
+  const normalizedSource = source === "revenge" ? "revenge" : "matchmaking";
+  const preparedAt = arenaNowIso(nowMs);
+  const preparedExpiresAt = arenaNowIso(nowMs + ARENA_PREPARED_TTL_MS);
+  const seed = (parseInt(randomToken(4), 16) >>> 0);
+  const snapshot = await arenaBuildMatchSnapshot(db, context, opponent, normalizedSource, preparedAt, seed);
+  if (snapshot.error) return json({ error: snapshot.error }, 404);
+  const matchId = `arena-match-${randomToken(12)}`;
+  try {
+    await db.prepare(`
+      INSERT INTO arena_matches (
+        match_id, season_id, attacker_character_id, defender_type, defender_character_id,
+        defender_bot_id, source, reward_slot, status, seed, snapshot_json, state_json,
+        result_json, prepared_at, prepared_expires_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'prepared', ?, ?, '', '', ?, ?, ?, ?)
+    `).bind(
+      matchId, context.season.season_id, characterId, opponent.type,
+      opponent.type === "player" ? opponent.characterId : null,
+      opponent.type === "bot" ? opponent.botId : "", normalizedSource, opponent.rewardSlot,
+      seed, JSON.stringify(snapshot), preparedAt, preparedExpiresAt, preparedAt, preparedAt
+    ).run();
+  } catch (error) {
+    const raced = await arenaOpenMatchForAttacker(db, characterId);
+    if (raced && ["prepared", "active"].includes(raced.status)) return json({ ok: true, replayed: true, match: arenaMatchPayload(raced) });
+    throw error;
+  }
+  const created = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ?`).bind(matchId).first();
+  return json({ ok: true, replayed: false, match: arenaMatchPayload(created) });
+}
+async function handleActivateArenaV2Match(db, id, session, characterId, matchId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const key = String(matchId || "").trim();
+  if (!key) return json({ error: "missing_match_id" }, 400);
+  let match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first();
+  if (!match) return json({ error: "arena_match_not_found" }, 404);
+  if (match.status === "active" || match.status === "done") return json({ ok: true, replayed: true, match: arenaMatchPayload(match) });
+  if (match.status !== "prepared") return json({ error: "arena_match_expired", match: arenaMatchPayload(match) }, 409);
+  const nowMs = Date.now();
+  if (match.season_id !== context.season.season_id || Date.parse(context.season.ends_at) <= nowMs) {
+    // Season cutoff/mismatch is an immediate terminal condition. Do not leave the
+    // prepared row occupying the one-open-match slot until its normal TTL elapses.
+    match = await arenaExpirePreparedMatch(db, match, nowMs, true);
+    return json({ error: "arena_match_expired", match: arenaMatchPayload(match) }, 409);
+  }
+  if (Date.parse(match.prepared_expires_at) <= nowMs) {
+    match = await arenaExpirePreparedMatch(db, match, nowMs);
+    return json({ error: "arena_match_expired", match: arenaMatchPayload(match) }, 409);
+  }
+  const tickets = await reconcileArenaV2Tickets(db, characterId, nowMs);
+  if (tickets.tickets < 1) return json({ error: "arena_no_ticket", tickets: tickets.tickets, ticketsMax: ARENA_TICKET_MAX }, 409);
+  const activatedAt = arenaNowIso(nowMs);
+  const seasonEndMs = Date.parse(context.season.ends_at);
+  const deadlineAt = arenaNowIso(Math.min(nowMs + ARENA_ACTIVE_DURATION_MS, seasonEndMs));
+  const state = JSON.stringify({ version: 1, matchId: key, seed: Number(match.seed), phase: "active", round: 0 });
+  const receiptKey = `arena:match-activate:${key}`;
+  const activationToken = randomToken(12);
+  const receiptPayload = JSON.stringify({ matchId: key, characterId, activatedAt, activationToken });
+  const batch = await db.batch([
+    db.prepare(`
+      INSERT INTO arena_idempotency_receipts (receipt_key, kind, season_id, character_id, match_id, payload_json, created_at)
+      SELECT ?, 'match_activate', ?, ?, ?, ?, ?
+      WHERE NOT EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ?)
+        AND EXISTS (SELECT 1 FROM arena_matches WHERE match_id = ? AND attacker_character_id = ? AND status = 'prepared' AND prepared_expires_at > ?)
+        AND EXISTS (SELECT 1 FROM arena_character_state WHERE character_id = ? AND tickets >= 1)
+    `).bind(receiptKey, match.season_id, characterId, key, receiptPayload, activatedAt, receiptKey, key, characterId, activatedAt, characterId),
+    db.prepare(`
+      UPDATE arena_matches SET status = 'active', state_json = ?, activated_at = ?, ticket_consumed_at = ?, deadline_at = ?, updated_at = ?
+      WHERE match_id = ? AND attacker_character_id = ? AND status = 'prepared' AND prepared_expires_at > ?
+        AND EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ? AND json_extract(payload_json, '$.activationToken') = ?)
+    `).bind(state, activatedAt, activatedAt, deadlineAt, activatedAt, key, characterId, activatedAt, receiptKey, activationToken),
+    db.prepare(`
+      UPDATE arena_character_state SET tickets = tickets - 1, ticket_updated_at = ?, updated_at = ?
+      WHERE character_id = ? AND tickets >= 1
+        AND EXISTS (SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ? AND json_extract(payload_json, '$.activationToken') = ?)
+        AND EXISTS (SELECT 1 FROM arena_matches WHERE match_id = ? AND status = 'active' AND ticket_consumed_at = ?)
+    `).bind(activatedAt, activatedAt, characterId, receiptKey, activationToken, key, activatedAt),
+  ]);
+  const receiptInserted = Number(batch?.[0]?.meta?.changes) || 0;
+  match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ?`).bind(key).first();
+  if (match.status === "active" || match.status === "done") return json({ ok: true, replayed: receiptInserted !== 1, match: arenaMatchPayload(match) });
+  if (!receiptInserted) {
+    if (await db.prepare(`SELECT 1 FROM arena_idempotency_receipts WHERE receipt_key = ?`).bind(receiptKey).first()) {
+      const current = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ?`).bind(key).first();
+      if (current?.status === "active" || current?.status === "done") return json({ ok: true, replayed: true, match: arenaMatchPayload(current) });
+    }
+    return json({ error: "arena_activation_conflict", retry: true }, 409);
+  }
+  return json({ error: "arena_activation_conflict", retry: true }, 409);
+}
+async function handleGetArenaV2Match(db, id, session, characterId, matchId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const key = String(matchId || "").trim();
+  if (!key) return json({ error: "missing_match_id" }, 400);
+  let match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first();
+  if (!match) return json({ error: "arena_match_not_found" }, 404);
+  if (match.status === "prepared") match = await arenaExpirePreparedMatch(db, match, Date.now());
+  return json({ ok: true, match: arenaMatchPayload(match) });
+}
+async function handleGetArenaV2PlayerCard(db, id, session, characterId, opponentKey) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const { opponents } = await getArenaV2OpponentRows(db, context);
+  const target = opponents.find((row) => arenaOpponentKey(row) === String(opponentKey || ""));
+  if (!target) return json({ error: "arena_opponent_not_found" }, 404);
+  if (target.type === "bot") {
+    return json({ ok: true, playerCard: { opponentKey: target.opponentKey, name: target.name, level: target.level, rating: target.rating, tier: arenaTierForRating(target.rating), cp: null, equipment: [], pet: null, profileFrameKey: null, avatar: { mode: "head", layers: [] }, isBot: true } });
+  }
+  const targetCharacter = await db.prepare(`SELECT character_id, name, level, str, vit, agi, dex, luk, pets_json, active_pet_id FROM characters WHERE character_id = ?`).bind(target.characterId).first();
+  if (!targetCharacter) return json({ error: "arena_opponent_not_found" }, 404);
+  const items = await arenaCurrentEquipment(db, target.characterId);
+  const setup = await sanitizeArenaSetup(db, targetCharacter);
+  return json({ ok: true, playerCard: {
+    opponentKey: target.opponentKey, name: targetCharacter.name || target.name || "", level: Number(targetCharacter.level) || 1,
+    rating: Number(target.rating) || 1000, tier: arenaTierForRating(target.rating), cp: combatPowerFromCharacter(targetCharacter, items),
+    equipment: arenaEquipmentPublic(items), pet: setup.petInstId ? { instId: setup.petInstId, defId: arenaPetFromCharacter(targetCharacter, setup.petInstId)?.defId || null } : null,
+    profileFrameKey: await arenaValidProfileFrame(db, target.characterId), avatar: { mode: "head", layers: [] }, isBot: false,
+  } });
+}
+
 
 
 // ---------- admin / QA ----------
@@ -5521,6 +6431,10 @@ export default {
         if (action === "getMailbox") return await handleGetMailbox(db, id, auth, p.get("characterId"));
         if (action === "getArenaStatus") return await handleGetArenaStatus(db, id, auth, p.get("characterId"));
         if (action === "getArenaOpponents") return await handleGetArenaOpponents(db, id, auth, p.get("characterId"));
+        if (action === "getArenaV2Status") return await handleGetArenaV2Status(db, id, auth, p.get("characterId"));
+        if (action === "getArenaV2Opponents") return await handleGetArenaV2Opponents(db, id, auth, p.get("characterId"));
+        if (action === "getArenaV2PlayerCard") return await handleGetArenaV2PlayerCard(db, id, auth, p.get("characterId"), p.get("opponentKey"));
+        if (action === "getArenaV2Match") return await handleGetArenaV2Match(db, id, auth, p.get("characterId"), p.get("matchId"));
         if (action === "getBattleState") return await handleGetBattleState(db, id, auth, p.get("characterId"));
         // Friend System V1 (Phase 2) — read actions
         if (action === "searchCharacters") return await handleSearchCharacters(db, id, auth, p.get("characterId"), p.get("query"));
@@ -5618,6 +6532,18 @@ export default {
             return await handleStartArenaMatch(db, id, auth, body.characterId, body.opponentCharacterId, !!body.paidDiamonds);
           case "submitArenaTurn":
             return await handleSubmitArenaTurn(db, id, auth, body.characterId, body.matchId, body.actionType, body.skillKey);
+          case "saveArenaV2Setup":
+            return await handleSaveArenaV2Setup(db, id, auth, body.characterId, body.petInstId, body.skillSlots);
+          case "purchaseArenaV2Ticket":
+            return await handlePurchaseArenaV2Ticket(db, id, auth, body.characterId, body.requestId);
+          case "refreshArenaV2Opponents":
+            return await handleRefreshArenaV2Opponents(db, id, auth, body.characterId);
+          case "acknowledgeArenaV2Unlock":
+            return await handleAcknowledgeArenaV2Unlock(db, id, auth, body.characterId);
+          case "prepareArenaV2Match":
+            return await handlePrepareArenaV2Match(db, id, auth, body.characterId, body.opponentKey, body.source);
+          case "activateArenaV2Match":
+            return await handleActivateArenaV2Match(db, id, auth, body.characterId, body.matchId);
           case "claimMail":
             return await handleClaimMail(db, id, auth, body.characterId, body.mailId);
           case "claimAllMail":

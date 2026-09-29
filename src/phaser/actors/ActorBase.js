@@ -10,6 +10,11 @@ function phaserTextResolution() {
   return Math.max(1, Math.min(3, ratio));
 }
 
+function phaserActorFacing(data = {}) {
+  if (data.facing === "left" || data.facing === "right") return data.facing;
+  return ["monster", "boss", "raid_boss"].includes(String(data.kind || "")) ? "left" : "right";
+}
+
 class PhaserBattleActor {
   constructor(scene, data, options = {}) {
     this.scene = scene;
@@ -38,6 +43,8 @@ class PhaserBattleActor {
     }).setOrigin(0.5, 0).setDepth((options.depth || 5) + 3).setResolution(textResolution);
     this.container.add(this.statusText);
     this.container.add(this.nameText);
+    this.targetRing = null;
+    this.hitArea = null;
     this.selected = false;
     this.visualState = "";
     this.frameIndex = 0;
@@ -45,6 +52,8 @@ class PhaserBattleActor {
     this.motionTween = null;
     this.idleTween = null;
     this.destroyed = false;
+    this.createTargetingPresentation();
+    this.applyFacing();
     this.handleSceneShutdown = () => this.destroy();
     scene.events.once("shutdown", this.handleSceneShutdown);
   }
@@ -54,6 +63,59 @@ class PhaserBattleActor {
     const responsiveScale = Math.max(0.82, Math.min(1.15, Number(this.scene?.presentationScale) || 1));
     const base = this.options.baseSize || 128;
     return Math.round(base * sizeClassScale * responsiveScale);
+  }
+
+  facing() {
+    return phaserActorFacing(this.data);
+  }
+
+  facingSign() {
+    return this.facing() === "left" ? -1 : 1;
+  }
+
+  applyFacing() {
+    if (!this.visualRoot) return;
+    this.visualRoot.setScale(this.facingSign(), 1);
+  }
+
+  createTargetingPresentation() {
+    if (typeof this.options.onSelect !== "function") return;
+    const depth = Number(this.options.depth) || 5;
+    this.targetRing = this.scene.add.ellipse(0, 0, 84, 28, 0x8ee0ff, 0.08)
+      .setStrokeStyle(2, 0xffd166, 0.95)
+      .setDepth(Math.max(0, depth - 1))
+      .setVisible(false);
+    this.hitArea = this.scene.add.zone(0, 0, 1, 1)
+      .setOrigin(0.5, 1)
+      .setDepth(depth + 4)
+      .setInteractive({ useHandCursor: true });
+    this.hitArea.on("pointerup", () => {
+      if (this.data?.alive !== false && Number(this.data?.hp) > 0) this.options.onSelect(this.data.id);
+    });
+  }
+
+  refreshTargetingPresentation() {
+    if (!this.targetRing && !this.hitArea) return;
+    const size = this.displaySize();
+    const alive = this.data.alive !== false && Number(this.data.hp) > 0;
+    const responsiveScale = Math.max(0.82, Math.min(1.15, Number(this.scene?.presentationScale) || 1));
+    const ringWidth = (Number(this.options.targetRingWidth) || Math.max(72, Math.min(112, size * 0.64))) * responsiveScale;
+    const ringHeight = (Number(this.options.targetRingHeight) || 28) * responsiveScale;
+    const x = this.position?.x || 0;
+    const y = this.position?.y || 0;
+    this.targetRing
+      ?.setDisplaySize(ringWidth, ringHeight)
+      .setPosition(x, y + 4)
+      .setVisible(Boolean(this.selected && alive));
+    this.hitArea
+      ?.setPosition(x, y)
+      .setSize(Math.max(54, size * 0.78), Math.max(64, size * 0.96))
+      .setVisible(alive);
+  }
+
+  setSelected(selected) {
+    this.selected = !!selected;
+    this.refreshTargetingPresentation();
   }
 
   desiredVisualState(data = this.data) {
@@ -92,8 +154,6 @@ class PhaserBattleActor {
     const size = this.displaySize();
     if (!this.sprite) {
       this.sprite = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
-      this.sprite.setInteractive({ useHandCursor: !!this.options.onSelect });
-      if (this.options.onSelect) this.sprite.on("pointerup", () => this.options.onSelect(this.data.id));
       this.visualRoot.add(this.sprite);
     } else if (this.sprite.texture.key !== key) {
       this.sprite.setTexture(key);
@@ -116,6 +176,7 @@ class PhaserBattleActor {
       this.visualRoot.x = 0;
       this.visualRoot.y = 0;
       this.visualRoot.setAlpha(1);
+      this.applyFacing();
     }
   }
 
@@ -151,7 +212,7 @@ class PhaserBattleActor {
         this.setVisualAlpha(0.62);
         this.motionTween = this.scene.tweens.add({
           targets: this.visualRoot,
-          x: this.data.kind === "hero" || this.data.kind === "pet" ? -6 : 6,
+          x: -this.facingSign() * 6,
           duration,
           yoyo: true,
           repeat: 1,
@@ -188,10 +249,9 @@ class PhaserBattleActor {
     );
 
     if (nextState === "attack") {
-      const direction = this.data.kind === "monster" || this.data.kind === "boss" ? -10 : 10;
       this.motionTween = this.scene.tweens.add({
         targets: this.visualRoot,
-        x: direction,
+        x: this.facingSign() * 10,
         duration: Math.max(55, Math.round(95 / Math.max(1, speed))),
         yoyo: true,
         ease: "Quad.easeOut"
@@ -242,10 +302,12 @@ class PhaserBattleActor {
     this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
     const nameY = this.data.kind === "pet" ? 22 : 34;
     this.nameText.setPosition(0, nameY);
+    this.refreshTargetingPresentation();
   }
 
   refresh(data, { animate = true } = {}) {
     this.data = { ...this.data, ...(data || {}) };
+    this.applyFacing();
     const state = this.desiredVisualState();
     const displayedState = animate || !this.visualState ? state : this.visualState;
     this.applyVisualFrame(displayedState === "hurt" ? "idle" : displayedState, this.frameIndex);
@@ -261,6 +323,7 @@ class PhaserBattleActor {
     this.container.setPosition(this.position.x, this.position.y);
     this.hpBar.setPosition(this.position.x, this.position.y);
     this.hpText?.setPosition(this.position.x, this.position.y + (this.hpTextOffsetY || 0));
+    this.refreshTargetingPresentation();
   }
 
   destroy() {
@@ -275,6 +338,8 @@ class PhaserBattleActor {
     const container = this.container;
     const hpBar = this.hpBar;
     const hpText = this.hpText;
+    const targetRing = this.targetRing;
+    const hitArea = this.hitArea;
 
     this.container = null;
     this.visualRoot = null;
@@ -283,11 +348,15 @@ class PhaserBattleActor {
     this.statusText = null;
     this.nameText = null;
     this.hpText = null;
+    this.targetRing = null;
+    this.hitArea = null;
     this.handleSceneShutdown = null;
 
     container?.destroy(true);
     hpBar?.destroy();
     hpText?.destroy();
+    targetRing?.destroy();
+    hitArea?.destroy();
     this.scene = null;
   }
 }

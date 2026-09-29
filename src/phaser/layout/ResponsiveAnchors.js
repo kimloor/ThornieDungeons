@@ -6,7 +6,11 @@ const RESPONSIVE_ANCHORS = Object.freeze({
   MONSTER_TWO: Object.freeze([{ x: 0.74, y: 0.38 }, { x: 0.85, y: 0.80 }]),
   MONSTER_THREE: Object.freeze([{ x: 0.71, y: 0.29 }, { x: 0.80, y: 0.58 }, { x: 0.87, y: 0.87 }]),
   VFX_HERO: Object.freeze({ x: 0.32, y: 0.60 }),
-  VFX_PET: Object.freeze({ x: 0.42, y: 0.66 })
+  VFX_PET: Object.freeze({ x: 0.42, y: 0.66 }),
+  ARENA_ATTACKER_HERO: Object.freeze({ x: 0.20, y: 0.50 }),
+  ARENA_ATTACKER_PET: Object.freeze({ x: 0.22, y: 0.84 }),
+  ARENA_DEFENDER_HERO: Object.freeze({ x: 0.80, y: 0.50 }),
+  ARENA_DEFENDER_PET: Object.freeze({ x: 0.78, y: 0.84 })
 });
 
 function monsterAnchorsForCount(count) {
@@ -37,6 +41,27 @@ function responsiveBattlefieldLayout(width, height, monsterCount = 1) {
       monsters: monsterAnchors,
       vfxHero: RESPONSIVE_ANCHORS.VFX_HERO,
       vfxPet: RESPONSIVE_ANCHORS.VFX_PET
+    },
+    scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
+  });
+  return {
+    width: shared.width,
+    height: shared.height,
+    actorScale: shared.scale,
+    normalized: shared.normalized,
+    pixels: shared.pixels
+  };
+}
+
+function responsiveArenaBattlefieldLayout(width, height) {
+  const shared = createResponsiveSceneLayout({
+    width,
+    height,
+    anchors: {
+      attackerHero: RESPONSIVE_ANCHORS.ARENA_ATTACKER_HERO,
+      attackerPet: RESPONSIVE_ANCHORS.ARENA_ATTACKER_PET,
+      defenderHero: RESPONSIVE_ANCHORS.ARENA_DEFENDER_HERO,
+      defenderPet: RESPONSIVE_ANCHORS.ARENA_DEFENDER_PET
     },
     scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
   });

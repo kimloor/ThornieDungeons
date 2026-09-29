@@ -562,7 +562,11 @@ Release:
 
 
 ## W9 — Arena V2 + Phaser
-**Status: ACTIVE-DESIGN — gameplay/UX contract locked 2026-09-28**
+**Status: READY_FOR_IMPLEMENTATION — gameplay/UX contract locked 2026-09-28**
+
+Implementation roadmap:
+- `ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md`
+- implementation branch: `feat/w9-arena-v2`
 
 W9 is no longer presentation-only. The user approved a full Arena V2 redesign covering:
 - asynchronous tactical Arena;

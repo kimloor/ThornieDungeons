@@ -1,0 +1,249 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const { DatabaseSync } = require('node:sqlite');
+
+const ROOT = path.join(__dirname, '..');
+const migration = fs.readFileSync(path.join(ROOT, 'migrations/auto/0023_arena_v2_foundation.sql'), 'utf8');
+const workerSource = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8');
+
+class Statement {
+  constructor(raw, sql, values = []) { this.raw = raw; this.sql = sql; this.values = values; }
+  bind(...values) { return new Statement(this.raw, this.sql, values); }
+  async first() { return this.raw.prepare(this.sql).get(...this.values) || null; }
+  async all() { return { results: this.raw.prepare(this.sql).all(...this.values) }; }
+  async run() { const result = this.raw.prepare(this.sql).run(...this.values); return { meta: { changes: Number(result.changes) } }; }
+}
+class D1 {
+  constructor() { this.raw = new DatabaseSync(':memory:'); }
+  prepare(sql) { return new Statement(this.raw, sql); }
+  async batch(statements) { const results = []; for (const statement of statements) results.push(await statement.run()); return results; }
+  close() { this.raw.close(); }
+}
+
+function loadInternals() {
+  const source = workerSource.replace('export default {', 'const workerDefault = {') + `
+globalThis.__arena = {
+  workerDefault, handleGetArenaV2Status, handleGetArenaV2Opponents,
+  handlePrepareArenaV2Match, handleActivateArenaV2Match, handleGetArenaV2Match,
+  ensureArenaSetup, ARENA_PREPARED_TTL_MS, ARENA_ACTIVE_DURATION_MS
+};`;
+  const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox);
+  return sandbox.__arena;
+}
+const arena = loadInternals();
+const session = (id) => ({ ok: true, row: { id } });
+async function body(response) { return await response.json(); }
+
+function createDb() {
+  const db = new D1();
+  db.raw.exec(`
+    PRAGMA foreign_keys = ON;
+    CREATE TABLE players (id TEXT PRIMARY KEY, password TEXT NOT NULL DEFAULT '', diamonds INTEGER NOT NULL DEFAULT 0, active_slot INTEGER, created_at TEXT NOT NULL DEFAULT 'now');
+    CREATE TABLE characters (
+      character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      slot_index INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', level INTEGER NOT NULL DEFAULT 1,
+      xp INTEGER NOT NULL DEFAULT 0, stat_points INTEGER NOT NULL DEFAULT 0,
+      str INTEGER NOT NULL DEFAULT 0, vit INTEGER NOT NULL DEFAULT 0, agi INTEGER NOT NULL DEFAULT 0,
+      dex INTEGER NOT NULL DEFAULT 0, luk INTEGER NOT NULL DEFAULT 0, gold INTEGER NOT NULL DEFAULT 0,
+      unlocked_floor INTEGER NOT NULL DEFAULT 1, potions INTEGER NOT NULL DEFAULT 2,
+      protection_stones INTEGER NOT NULL DEFAULT 0, chest_pity INTEGER NOT NULL DEFAULT 0,
+      pets_json TEXT NOT NULL DEFAULT '[]', active_pet_id TEXT NOT NULL DEFAULT '', created_at TEXT, updated_at TEXT,
+      pvp_tickets INTEGER NOT NULL DEFAULT 5, pvp_tickets_updated_at TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE character_settings (character_id TEXT PRIMARY KEY REFERENCES characters(character_id) ON DELETE CASCADE, quick_slots_json TEXT NOT NULL DEFAULT '[null,null,null,null]', updated_at TEXT NOT NULL DEFAULT 'now');
+    CREATE TABLE items (
+      item_id TEXT PRIMARY KEY, player_id TEXT, character_id TEXT REFERENCES characters(character_id) ON DELETE CASCADE,
+      slot_type TEXT, equipped INTEGER DEFAULT 0, inventory_slot TEXT, item_template_id TEXT, rarity TEXT,
+      name TEXT, item_level INTEGER DEFAULT 0, enhance_level INTEGER DEFAULT 0, bound INTEGER DEFAULT 0,
+      quantity INTEGER DEFAULT 1, atk INTEGER DEFAULT 0, def INTEGER DEFAULT 0, hp INTEGER DEFAULT 0,
+      mp INTEGER DEFAULT 0, extra_json TEXT, created_at TEXT, updated_at TEXT
+    );
+    CREATE TABLE pvp_snapshots (character_id TEXT PRIMARY KEY, player_id TEXT, name TEXT, stats_json TEXT, updated_at TEXT);
+    CREATE TABLE pvp_ranking (character_id TEXT PRIMARY KEY, player_id TEXT, name TEXT, rating INTEGER DEFAULT 1000, wins INTEGER DEFAULT 0, losses INTEGER DEFAULT 0, updated_at TEXT);
+    CREATE TABLE pvp_match_log (id INTEGER PRIMARY KEY AUTOINCREMENT, attacker_character_id TEXT, defender_character_id TEXT, result TEXT, rating_change INTEGER, created_at TEXT);
+    CREATE TABLE pvp_matches (match_id TEXT PRIMARY KEY, attacker_character_id TEXT, defender_character_id TEXT, status TEXT, state_json TEXT, result_json TEXT, created_at TEXT, updated_at TEXT);
+  `);
+  db.raw.prepare("INSERT INTO players (id, password, diamonds) VALUES ('p1', 'x', 0), ('p2', 'x', 0)").run();
+  const pets = JSON.stringify({ list: [{ instId: 'pet-1', defId: 'sprout', level: 1, star: 1 }], skills: { power_strike: 1, weapon_mastery: 1, toxic_strike: 1 } });
+  const character = db.raw.prepare(`INSERT INTO characters (character_id, player_id, slot_index, name, level, str, vit, agi, dex, luk, pets_json, active_pet_id) VALUES (?, ?, ?, ?, 10, 3, 2, 2, 2, 1, ?, 'pet-1')`);
+  character.run('char-10', 'p1', 0, 'Attacker', pets);
+  character.run('char-11', 'p2', 0, 'Defender', pets);
+  db.raw.prepare("INSERT INTO character_settings (character_id, quick_slots_json) VALUES ('char-10', ?), ('char-11', ?)").run(
+    JSON.stringify([{ kind: 'skill', key: 'power_strike' }, null, { kind: 'skill', key: 'weapon_mastery' }, null]),
+    JSON.stringify([{ kind: 'skill', key: 'toxic_strike' }, null, null, null])
+  );
+  db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, equipped, slot_type, item_template_id, name, atk, def, hp, mp) VALUES ('eq-1','p1','char-10',1,'weapon','azure_sword','Azure Sword',20,2,0,0), ('eq-2','p2','char-11',1,'weapon','iron_sword','Iron Sword',8,1,0,0)").run();
+  db.raw.exec(migration);
+  return db;
+}
+
+async function ready(db, tickets = 3) {
+  const status = await body(await arena.handleGetArenaV2Status(db, 'p1', session('p1'), 'char-10'));
+  const today = new Date().toISOString().slice(0, 10);
+  db.raw.prepare('UPDATE arena_character_state SET tickets = ?, ticket_updated_at = \'\', last_daily_ticket_date = ? WHERE character_id = \'char-10\'').run(tickets, today);
+  const opponents = await body(await arena.handleGetArenaV2Opponents(db, 'p1', session('p1'), 'char-10'));
+  const stored = JSON.parse(db.raw.prepare("SELECT opponents_json FROM arena_opponent_state WHERE character_id = 'char-10'").get().opponents_json);
+  return { seasonId: status.season.seasonId, opponents: opponents.opponents, stored };
+}
+
+test('prepare is ticket-free, snapshots current state, and retries reuse one open match', async () => {
+  const db = createDb();
+  const { opponents } = await ready(db);
+  const target = opponents[0].opponentKey;
+  const first = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', target));
+  assert.equal(first.ok, true);
+  assert.equal(first.replayed, false);
+  assert.equal(first.match.status, 'prepared');
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, 3);
+  const frozen = JSON.stringify(first.match.snapshot);
+  db.raw.prepare("UPDATE characters SET active_pet_id = '' WHERE character_id = 'char-10'").run();
+  db.raw.prepare("UPDATE arena_setup SET skill_slots_json = '[null,null,null,null]' WHERE character_id = 'char-10'").run();
+  db.raw.prepare("UPDATE items SET atk = 999 WHERE item_id = 'eq-1'").run();
+  const retry = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', target));
+  assert.equal(retry.replayed, true);
+  assert.equal(retry.match.matchId, first.match.matchId);
+  assert.equal(JSON.stringify(retry.match.snapshot), frozen);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_matches WHERE attacker_character_id = 'char-10' AND status = 'prepared'").get().c, 1);
+  db.close();
+});
+
+test('prepared expiry costs zero tickets and permits a fresh prepare', async () => {
+  const db = createDb();
+  const { opponents } = await ready(db);
+  const first = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  db.raw.prepare("UPDATE arena_matches SET prepared_expires_at = '2000-01-01T00:00:00.000Z' WHERE match_id = ?").run(first.match.matchId);
+  const expired = await body(await arena.handleGetArenaV2Match(db, 'p1', session('p1'), 'char-10', first.match.matchId));
+  assert.equal(expired.match.status, 'expired');
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, 3);
+  const second = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  assert.equal(second.ok, true);
+  assert.notEqual(second.match.matchId, first.match.matchId);
+  db.close();
+});
+
+test('season cutoff immediately expires prepared match and releases the open slot', async () => {
+  const db = createDb();
+  const { seasonId, opponents } = await ready(db, 3);
+  const first = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+
+  db.raw.prepare("UPDATE arena_seasons SET starts_at = '1999-01-01T00:00:00.000Z', ends_at = '2000-01-01T00:00:00.000Z' WHERE season_id = ?").run(seasonId);
+  const rejected = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', first.match.matchId));
+  assert.equal(rejected.error, 'arena_match_expired');
+  assert.equal(db.raw.prepare('SELECT status FROM arena_matches WHERE match_id = ?').get(first.match.matchId).status, 'expired');
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, 3);
+
+  const nextOpponents = await body(await arena.handleGetArenaV2Opponents(db, 'p1', session('p1'), 'char-10'));
+  const fresh = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', nextOpponents.opponents[0].opponentKey));
+  assert.equal(fresh.ok, true);
+  assert.equal(fresh.match.status, 'prepared');
+  assert.notEqual(fresh.match.seasonId, seasonId);
+  db.close();
+});
+
+test('activation consumes exactly one ticket and duplicate activation resumes the same active match', async () => {
+  const db = createDb();
+  const { opponents } = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const activated = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  assert.equal(activated.ok, true);
+  assert.equal(activated.match.status, 'active');
+  assert.equal(activated.match.state.phase, 'active');
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, 2);
+  const retry = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  assert.equal(retry.replayed, true);
+  assert.equal(retry.match.matchId, prepared.match.matchId);
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, 2);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_idempotency_receipts WHERE kind = 'match_activate'").get().c, 1);
+  db.close();
+});
+
+test('concurrent activation has one ticket boundary and no second active match', async () => {
+  const db = createDb();
+  const { opponents } = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const results = await Promise.all([
+    arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId),
+    arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId),
+  ]);
+  const bodies = await Promise.all(results.map(body));
+  assert.equal(bodies.filter((result) => result.ok).length, 2, JSON.stringify(bodies));
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, 2);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_matches WHERE attacker_character_id = 'char-10' AND status IN ('prepared','active')").get().c, 1);
+  db.close();
+});
+
+test('activation with zero tickets fails safely and leaves prepared match unchanged', async () => {
+  const db = createDb();
+  const { opponents } = await ready(db, 0);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const result = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  assert.equal(result.error, 'arena_no_ticket');
+  assert.equal(db.raw.prepare('SELECT status FROM arena_matches WHERE match_id = ?').get(prepared.match.matchId).status, 'prepared');
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_idempotency_receipts WHERE kind = 'match_activate'").get().c, 0);
+  db.close();
+});
+
+test('resume returns exact prepared, active and done payloads without consuming tickets', async () => {
+  const db = createDb();
+  const { opponents } = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const preparedResume = await body(await arena.handleGetArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  assert.equal(preparedResume.match.status, 'prepared');
+  const active = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  const activeResume = await body(await arena.handleGetArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  assert.deepEqual(activeResume.match.snapshot, active.match.snapshot);
+  assert.deepEqual(activeResume.match.state, active.match.state);
+  db.raw.prepare("UPDATE arena_matches SET status = 'done', result_json = '{\"result\":\"draw\"}', completed_at = 'now' WHERE match_id = ?").run(prepared.match.matchId);
+  const done = await body(await arena.handleGetArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  assert.deepEqual(done.match.result, { result: 'draw' });
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, 2);
+  db.close();
+});
+
+test('real and bot defenders freeze their own safe snapshot, and forged targets are rejected', async () => {
+  const db = createDb();
+  const { seasonId, opponents } = await ready(db);
+  db.raw.prepare("INSERT INTO arena_season_players (season_id, character_id, rating, attack_wins, rating_reached_at, created_at, updated_at) VALUES (?, 'char-11', 1000, 1, 'now', 'now', 'now')").run(seasonId);
+  db.raw.prepare("INSERT INTO arena_setup (character_id, pet_inst_id, skill_slots_json, initialized_at, updated_at) VALUES ('char-11', 'pet-1', '[\"toxic_strike\",null,null,null]', 'now', 'now')").run();
+  db.raw.prepare("UPDATE arena_opponent_state SET opponents_json = ? WHERE character_id = 'char-10'").run(JSON.stringify([
+    { opponentKey: 'real:char-11', type: 'player', slot: 'equal', rewardSlot: 'equal', characterId: 'char-11', name: 'Defender', level: 10, rating: 1000 },
+    ...opponents.slice(1),
+  ]));
+  const real = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', 'real:char-11'));
+  assert.equal(real.match.snapshot.defender.type, 'player');
+  assert.equal(real.match.snapshot.defender.equipment[0].itemTemplateId, 'iron_sword');
+  assert.deepEqual(real.match.snapshot.defender.skillSlots, ['toxic_strike', null, null, null]);
+  assert.equal((await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', 'forged:bot'))).error, 'arena_opponent_not_found');
+  assert.equal((await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', 'forged-match'))).error, 'arena_match_not_found');
+  db.close();
+});
+
+test('activation deadline is ten minutes or the season cutoff, whichever comes first', async () => {
+  const db = createDb();
+  const { seasonId, opponents } = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const normal = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  const normalStart = Date.parse(normal.match.activatedAt);
+  assert.ok(Date.parse(normal.match.deadlineAt) - normalStart <= 10 * 60 * 1000);
+  db.raw.prepare("UPDATE arena_matches SET status = 'done', completed_at = 'now' WHERE match_id = ?").run(prepared.match.matchId);
+  db.raw.prepare("UPDATE arena_character_state SET tickets = 3 WHERE character_id = 'char-10'").run();
+  const second = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const cutoff = new Date(Date.now() + 20 * 1000).toISOString();
+  db.raw.prepare('UPDATE arena_seasons SET ends_at = ? WHERE season_id = ?').run(cutoff, seasonId);
+  const nearCutoff = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', second.match.matchId));
+  assert.ok(Date.parse(nearCutoff.match.deadlineAt) <= Date.parse(cutoff));
+  db.close();
+});
+
+test('W9.5 adds no combat resolver, settlement, AI or W9.6/W9.7 scope', () => {
+  const start = workerSource.indexOf('Phase 5: PvP Arena V2 server foundation');
+  const end = workerSource.indexOf('// ---------- admin / QA ----------');
+  const section = workerSource.slice(start, end);
+  assert.match(section, /prepareArenaV2Match|handlePrepareArenaV2Match/);
+  assert.doesNotMatch(section, /settleArena|defense AI|lowest HP|arena_match_history/);
+});

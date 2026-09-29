@@ -87,6 +87,7 @@ function buildHeroPreviewSnapshot({ heroName = "Hero", equipped = {}, heroV5 = t
       alive: true,
       statuses: [],
       anim: "idle",
+      facing: "right",
       visualMode: heroFrames.mode || "v3",
       layers: heroFrames.idle?.[0] || [],
       layerFrames: heroFrames
@@ -102,14 +103,15 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     kind: "hero",
     name: heroName,
     hp: 0,
-    maxHp: 1
+    maxHp: 1,
+    facing: "right"
   });
   const pet = state.petId && units[state.petId]
-    ? createActorPresentationModel(units[state.petId], petCombat || {})
-    : petCombat ? createActorPresentationModel(petCombat, { id: petCombat.instId || "pet", kind: "pet" }) : null;
+    ? createActorPresentationModel(units[state.petId], { ...(petCombat || {}), facing: "right" })
+    : petCombat ? createActorPresentationModel(petCombat, { id: petCombat.instId || "pet", kind: "pet", facing: "right" }) : null;
   const enemyIds = Array.isArray(state.enemyIds) && state.enemyIds.length ? state.enemyIds : monsters.map(monster => monster.uid || monster.id);
   const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
-  const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], enemyById.get(String(id)) || { id, kind: "monster" }));
+  const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], { ...(enemyById.get(String(id)) || { id, kind: "monster" }), facing: "left" }));
   const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
   const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
   const preferHeroV5 = heroV5 === undefined
@@ -129,6 +131,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
     hero: {
       ...hero,
+      facing: "right",
       anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       visualMode: heroFrames.mode || "v3",
@@ -137,17 +140,124 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     },
     pet: pet ? {
       ...pet,
+      facing: "right",
       anim: normalizeActorPresentationAnim(petAnim, pet.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(petConfig)
     } : null,
     monsters: enemyList.map((enemy, index) => ({
       ...enemy,
+      facing: "left",
       slotIndex: index,
       anim: normalizeActorPresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       frames: presentationAnimationConfig(monsterConfigs[index])
     })),
     backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("battleUi.background")
+  });
+}
+
+function arenaPresentationTeamConfig(configBySide, side, role) {
+  return configBySide?.[side] || configBySide?.[role] || {};
+}
+
+function arenaPresentationUnit(state, side, kind) {
+  const units = state?.units || {};
+  const declared = state?.teams?.[side]?.unitIds;
+  const ids = Array.isArray(declared)
+    ? declared
+    : Object.values(units).filter(unit => unit?.side === side).map(unit => unit.id);
+  return ids.map(id => units[id]).find(unit => unit?.kind === kind) || null;
+}
+
+function buildArenaBattlefieldSnapshot({
+  battleState,
+  teams = {},
+  targetUid = null,
+  combatSpeed = 1,
+  heroV5 = undefined
+} = {}) {
+  const state = battleState || {};
+  const units = state.units || {};
+  const stateSides = Array.isArray(state.teamIds) && state.teamIds.length
+    ? state.teamIds.map(String)
+    : Array.from(new Set(Object.values(units).map(unit => String(unit?.side || "")).filter(Boolean)));
+  const attackerSide = String(state.controlledSide || stateSides[0] || "team_a");
+  const defenderSide = String(stateSides.find(side => side !== attackerSide) || "team_b");
+  const speed = Math.max(1, Math.min(2, Number(combatSpeed) || 1));
+
+  const buildTeam = (side, role, facing) => {
+    const config = arenaPresentationTeamConfig(teams, side, role);
+    const rawHero = arenaPresentationUnit(state, side, "hero");
+    const rawPet = arenaPresentationUnit(state, side, "pet");
+    const hero = rawHero ? createActorPresentationModel(rawHero, {
+      id: rawHero.id,
+      kind: "hero",
+      name: config.heroName || rawHero.name || "Hero",
+      facing
+    }) : null;
+    const pet = rawPet ? createActorPresentationModel(rawPet, {
+      ...(config.petCombat || {}),
+      id: rawPet.id,
+      kind: "pet",
+      facing
+    }) : null;
+
+    const equipped = config.equipped || {};
+    const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
+    const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
+    const preferHeroV5 = config.heroV5 === undefined
+      ? (heroV5 === undefined
+          ? (typeof isHeroV5RuntimeEnabled === "function" && isHeroV5RuntimeEnabled())
+          : heroV5 === true)
+      : config.heroV5 === true;
+    const heroFrames = heroPresentationLayerFrames(heroSelection, {
+      preferV5: preferHeroV5,
+      v5Selection: heroV5Selection
+    });
+    const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
+
+    return {
+      side,
+      role,
+      facing,
+      hero: hero ? {
+        ...hero,
+        facing,
+        anim: normalizeActorPresentationAnim(config.heroAnim, hero.alive),
+        combatSpeed: speed,
+        visualMode: heroFrames.mode || "v3",
+        layers: heroFrames.idle?.[0] || [],
+        layerFrames: heroFrames
+      } : null,
+      pet: pet ? {
+        ...pet,
+        facing,
+        anim: normalizeActorPresentationAnim(config.petAnim, pet.alive),
+        combatSpeed: speed,
+        frames: presentationAnimationConfig(petConfig)
+      } : null
+    };
+  };
+
+  const attacker = buildTeam(attackerSide, "attacker", "right");
+  const defender = buildTeam(defenderSide, "defender", "left");
+  const selectedTargetId = String(
+    targetUid
+    || state.selectedTargetIds?.[attackerSide]
+    || state.selectedTargetId
+    || (defender.hero?.alive ? defender.hero.id : "")
+    || (defender.pet?.alive ? defender.pet.id : "")
+    || ""
+  );
+
+  return Object.freeze({
+    mode: "arena",
+    battleId: String(state.battleId || "arena-preview"),
+    seq: Number(state.safeActionSeq || state.logSeq || 0),
+    selectedTargetId,
+    combatSpeed: speed,
+    teams: [attacker, defender],
+    backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("arenaUi.background")
   });
 }

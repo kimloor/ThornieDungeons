@@ -115,6 +115,7 @@ test("W6.2 ActorPresentationModel preserves W5 actor normalization contract", ()
     isEliteBoss: false,
     sizeClass: "medium",
     anchorType: "ground",
+    facing: "left",
     icon: "◆"
   });
   assert.equal(result.attack, "attack");
