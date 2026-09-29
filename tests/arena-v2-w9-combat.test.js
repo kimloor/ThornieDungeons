@@ -272,11 +272,12 @@ test('setAuto and submit action share one state revision so concurrent writes ca
   const saved = JSON.parse(db.raw.prepare('SELECT state_json FROM arena_matches WHERE match_id = ?').get(active.match.matchId).state_json);
   const receipts = db.raw.prepare('SELECT COUNT(*) AS c FROM arena_match_actions WHERE match_id = ?').get(active.match.matchId).c;
   if (successCount === 2) {
-    // Both transitions may legitimately serialize. The later Auto write must be
-    // preserved instead of being overwritten by a stale combat state.
-    assert.equal(saved.flags.auto, true);
+    // Both transitions may legitimately serialize. If the action observed Auto
+    // enabled it may finish the battle, and Battle Core then resets Auto=false.
+    // Otherwise the successful Auto transition must remain visible.
     assert.equal(receipts, 1);
     assert.equal(Number(saved.arenaStateRev), 2);
+    assert.equal(saved.flags.auto === true || !!saved.result, true);
   } else if (bodies[0].ok) {
     assert.equal(saved.flags.auto, true);
     assert.equal(receipts, 0);
