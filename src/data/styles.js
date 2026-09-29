@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.18";
+  content: "Ver 1.0.19";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2450,6 +2450,30 @@ body::after {
 .md-player-card-friend-button { background-image:var(--player-card-button-secondary); color:#ffffff; text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 3px rgba(0,32,80,.8); }
 .md-player-card-guild-button:disabled,
 .md-player-card-friend-button:disabled { opacity:.72; cursor:default; }
+
+.md-arena-player-card-details > div { min-height:16.666%; font-size:clamp(11px,2.25vw,16px); }
+.md-arena-player-card-details strong { max-width:66%; min-width:0; }
+.md-arena-card-equipment { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.md-arena-refresh-cooldown { margin:8px 0 0; text-align:center; color:#FFE49A; font-weight:800; }
+.md-arena-unlock-overlay {
+  --ink:#F3EEFF;
+  --ink-soft:#B9AEDD;
+  --gold:#FFD166;
+  position:fixed;
+  inset:0;
+  z-index:145;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));
+  background:rgba(4,8,24,.72);
+  backdrop-filter:blur(3px);
+}
+.md-arena-unlock-overlay, .md-arena-unlock-overlay * { box-sizing:border-box; }
+.md-arena-unlock-card { width:min(90vw,360px); padding:24px 20px; text-align:center; border:1px solid rgba(255,209,102,.5); box-shadow:0 18px 60px rgba(0,0,0,.62); }
+.md-arena-unlock-card .md-title { margin:4px 0 8px; color:#fff0a8; }
+.md-arena-unlock-card .md-sub { margin:0 0 16px; line-height:1.45; }
+.md-arena-unlock-icon { font-size:44px; line-height:1; margin-bottom:8px; }
 @media (max-width:430px) {
   .md-player-card { width:min(96vw,720px); padding:8% 4.5% 4%; }
   .md-player-card-main { grid-template-columns:35% 1fr; gap:3.5%; }
