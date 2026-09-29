@@ -302,7 +302,7 @@ Gate:
 - surrender and normal combat completion store combat result only; W9.7 owns
   settlement/economy/rewards.
 
-## W9.7 — Settlement, economy and rewards — IMPLEMENTED / READY_FOR_QA
+## W9.7 — Settlement, economy and rewards — COMPLETE / QA APPROVED
 
 Purpose: one idempotent authoritative settlement path for every Arena result.
 
