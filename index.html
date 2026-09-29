@@ -10478,6 +10478,13 @@ class MonsterActor extends PhaserBattleActor {
       targetRingHeight: 28
     });
   }
+
+  // Production monster artwork is authored facing left. Keep logical facing
+  // for attack/recoil motion, but invert only the visual mirror baseline.
+  applyFacing() {
+    if (!this.visualRoot) return;
+    this.visualRoot.setScale(this.facing() === "left" ? 1 : -1, 1);
+  }
 }
 
 // ===== phaser/presentation/PresentationQueue.js =====
@@ -10730,6 +10737,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
     }
 
     create() {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
       this.scale.on("resize", this.handleResize, this);
       this.snapshot = this.initialSnapshot;
       this.createActors();
@@ -11227,9 +11235,16 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     if (windowResize) window.removeEventListener("resize", windowResize);
     windowResize = null;
     bridge.reset();
-    if (game) game.destroy(true);
+    const gameToDestroy = game;
     game = null;
     scene = null;
+    try {
+      gameToDestroy?.destroy(true);
+    } catch (error) {
+      // Phaser is presentation-only. A teardown failure must never bubble into
+      // the app/result flow after authoritative combat has already completed.
+      console.warn("Phaser battlefield teardown failed", error);
+    }
     onDestroyed?.();
   }
 
