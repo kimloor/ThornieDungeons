@@ -11732,6 +11732,7 @@ function ThornieDungeons() {
       setArenaHud(null);
       return undefined;
     }
+    setArenaHud(null);
     let cancelled = false;
     const loadArenaHud = () => cloudGetArenaV2Status(cred.url, characterId).then(res => {
       if (cancelled || !res?.ok || res.unlocked === false) return;
@@ -17759,7 +17760,6 @@ function ArenaV2Screen({
     } else if (now < end) rolloverRefreshRef.current = false;
   }, [now, status, refresh]);
   React.useEffect(() => () => preloadGateRef.current?.cancel(), []);
-  React.useEffect(() => () => onHudChange?.(null), [onHudChange]);
   const loadTab = async next => {
     setTab(next); setError("");
     if (next === "history") setHistory(await cloudGetArenaV2History(url, characterId));
