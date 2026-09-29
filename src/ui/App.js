@@ -40,6 +40,29 @@ function ThornieDungeons() {
     id: "",
     password: ""
   });
+  useEffect(() => {
+    const characterId = save?.characterId;
+    const level = Number(save?.character?.level) || 0;
+    if (!cred.url || !characterId || level < 10) {
+      setArenaHud(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const loadArenaHud = () => cloudGetArenaV2Status(cred.url, characterId).then(res => {
+      if (cancelled || !res?.ok || res.unlocked === false) return;
+      setArenaHud({
+        arenaCoin: Number(res.player?.arenaCoin) || 0,
+        tickets: Number(res.tickets?.tickets) || 0,
+        ticketsMax: Number(res.tickets?.ticketsMax) || 10,
+      });
+    }).catch(() => {});
+    loadArenaHud();
+    const timer = setInterval(loadArenaHud, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [cred.url, save?.characterId, save?.character?.level]);
   const refreshGuildChatStatus = useCallback((characterId) => cloudGetGuildChatStatus(cred.url, characterId).then((res) => {
     if (activeCharacterIdRef.current === characterId && res?.ok) setGuildUnreadState({ characterId, unread: !!res.guild?.unread });
   }).catch(() => {}), [cred.url]);
@@ -2056,10 +2079,11 @@ function ThornieDungeons() {
     save: save,
     phase: phase,
     equipped: equipped,
-    arena: phase === "arena" ? arenaHud : null
+    arena: arenaHud
   }), phase === "menu" && /*#__PURE__*/React.createElement(HubScreen, {
     save: save,
     cp: cp,
+    arenaHud: arenaHud,
     onTown: () => setPhase("town"),
     onCharacter: () => {
       setCharacterReturnPhase("menu");
@@ -2112,6 +2136,7 @@ function ThornieDungeons() {
     onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
   }), phase === "town" && /*#__PURE__*/React.createElement(TownScreen, {
     save: save,
+    arenaHud: arenaHud,
     onMainHub: () => setPhase("menu"),
     onCharacter: () => {
       setCharacterReturnPhase("town");
@@ -2227,6 +2252,7 @@ function ThornieDungeons() {
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     save: save,
+    arenaHud: arenaHud,
     unlockedFloor: save.unlockedFloor,
     onCharacter: () => {
       setCharacterReturnPhase("map");
