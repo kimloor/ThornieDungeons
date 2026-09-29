@@ -81,10 +81,14 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
       this.scale.on("resize", this.handleResize, this);
       this.snapshot = this.initialSnapshot;
-      this.createActors();
-      this.sync(this.snapshot);
-      this.readyNotified = true;
-      onReady?.({ scene: this });
+      try {
+        this.createActors();
+        this.sync(this.snapshot);
+        this.readyNotified = true;
+        onReady?.({ scene: this });
+      } catch (error) {
+        onError?.(error);
+      }
     }
 
     createActors() {
@@ -123,7 +127,11 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
 
     consume(event) {
       if (!event || event.type !== "BATTLEFIELD_SYNC") return;
-      this.sync(event.snapshot);
+      try {
+        this.sync(event.snapshot);
+      } catch (error) {
+        onError?.(error);
+      }
     }
 
     queueActorAnimation(actor, data, animationJobs) {
