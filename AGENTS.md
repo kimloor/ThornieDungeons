@@ -25,7 +25,10 @@ This file defines the default operating rules for all contributors and AI agents
 - Comment only where useful: business/game rules, compatibility reasons, workarounds, non-obvious constraints, TODOs, and known limitations. Do not over-comment ordinary code.
 
 ## 4. Risk, release, merge, and deploy
-- Assess the risk of each change and choose the appropriate implementation/testing path.
+- Assess every task as LOW, MEDIUM, HIGH, or VERY HIGH before implementation.
+- LOW and MEDIUM risk changes may be committed/published directly to `main` after the required checks pass, unless the task explicitly requires another branch.
+- HIGH and VERY HIGH risk changes require explicit user/Project Lead approval of the publish destination before any remote write. Ask whether the completed change should go to `main` or a feature branch; do not choose the destination autonomously.
+- Destination approval does not waive testing, QA, migration, or deploy gates that apply to the task.
 - If the requirement is unclear or confirmation is needed, stop and ask before making the uncertain change.
 - After assessing and fixing the task, merge/deploy when appropriate and verify the result; then report a short, clear summary.
 - Always ask before changes that can permanently delete player data, perform irreversible migrations, or make major economy-wide changes.
@@ -71,13 +74,23 @@ This file defines the default operating rules for all contributors and AI agents
 - Update docs when an approved rule, architecture, or production contract changes.
 - Task-specific temporary notes should not become permanent source-of-truth files unless they contain reusable contracts.
 
-## 11. GitHub push fallback
-- Normal path: commit locally and push with the existing authenticated Git remote.
-- If local `git push` fails because credentials/authentication are unavailable, do not treat the task as complete.
-- If an authorized GitHub connector/tool is available, use it to publish the same intended changes instead of asking for or exposing a PAT/token.
-- Before connector-based writes, re-check latest `main` and preserve newer unrelated work.
-- Never place GitHub tokens, PATs, passwords, or secret values in source files, task prompts, logs, or chat.
-- If no authorized push path is available, return `PUSH_BLOCKED` with local HEAD, changed files, test status, and the exact remaining publish action.
+## 11. GitHub commit and publish protocol
+- Treat the authenticated GitHub connector/tool as a first-class publish path, not merely an emergency fallback. Local shell `git push` is optional and should be used only when the environment already has working GitHub network access and authentication.
+- Never spend task time repairing sandbox GitHub credentials, injecting PATs, creating ad-hoc SSH keys, or retrying a known-unavailable network path. Never expose GitHub tokens, PATs, passwords, or secret values in source files, prompts, logs, or chat.
+- Before every remote write, read the latest target branch HEAD and confirm the task's risk routing under section 4.
+- For a small single-file text/document change, an authorized connector may update the file directly using its current blob SHA on the approved target branch.
+- For normal multi-file publication through the connector:
+  1. Read the latest approved target branch HEAD and its tree.
+  2. Create blobs for the intended changed file contents.
+  3. Create a new tree using the current target tree as the base so unrelated files are preserved.
+  4. Create one commit whose parent is the target branch HEAD read in step 1.
+  5. Re-check that the target branch has not moved. If it moved, rebuild on the new HEAD instead of overwriting newer work.
+  6. Update the branch ref with a normal fast-forward only; `force=false`.
+  7. Verify the remote HEAD, parent, changed files, and resulting contents/tree after publication.
+- Never force-push unless the user explicitly authorizes that exact operation.
+- Connector-created commit SHAs may differ from a local sandbox commit SHA. When the intended contents are identical, verify file contents/tree state instead of requiring identical commit object SHAs.
+- If shell `git push` fails but an authorized connector exists, switch to the connector immediately; do not repeatedly retry HTTPS/SSH.
+- If no authorized publish path is available, return `PUSH_BLOCKED` with local HEAD, changed files, test status, and the exact remaining publish action. A patch/file handoff is a fallback only when no direct authorized GitHub write path is available.
 
 ## 12. Task prompts, handoff, and reporting
 - Project Lead task prompts must be short, direct, token-efficient, and still include every required action, constraint, environment, risk, and completion condition needed to execute safely.
