@@ -194,7 +194,7 @@ test('Arena Player Card normalizes equipment objects and Pet defId into render-s
     ['Azure Sword +3', 'helm-01']
   );
   assert.equal(arenaPlayerCardPetLabel({ pet: { defId: 'sprout' } }), 'sprout');
-  assert.equal(arenaPlayerCardPetLabel({}), '—');
+  assert.equal(arenaPlayerCardPetLabel({}), 'None');
   assert.match(arenaUi, /arenaProfileFrameAsset\(card\.profileFrameKey\)/);
   assert.doesNotMatch(arenaUi, /playerCard\.equipmentSummary \|\| playerCard\.equipment \|\|/);
 });
