@@ -599,6 +599,7 @@ Battle Core and server authority remain outside Phaser. Do not infer that older 
 ## W9R — API Worker Modularization Refactor
 **Status: PLANNED — mandatory post-W9 gate before Admin Phase 1**
 **Risk: HIGH**
+**Execution: SINGLE REFACTOR BATCH**
 
 Purpose:
 - reduce the size and change-collision surface of `workers/thornie-dungeons-api.js`;
@@ -639,88 +640,35 @@ workers/
 
 The exact filenames may change during implementation. Domain boundaries and behavior-preservation rules are the contract.
 
-### W9R.0 — Characterization + dependency map
-Before moving production logic:
-- inventory exported/internal helpers and cross-domain dependencies;
-- identify request router/action ownership;
-- add or strengthen characterization tests around current API responses and side effects;
-- record current Worker build/deploy entrypoint;
-- establish a baseline test matrix for Auth/Admin/Arena/Mailbox/Social/Guild/Crafting.
+### Single-batch execution
+W9R is implemented and reviewed as one HIGH-risk refactor batch, not as separate W9R.0–W9R.5 releases.
 
-No production behavior change in this step.
+Within that one batch DEV should still use internal checkpoints:
+1. characterize current behavior and map dependencies;
+2. extract shared infrastructure;
+3. extract Auth/Admin foundation;
+4. extract Arena V2;
+5. extract Mailbox/Social/Guild/Crafting;
+6. reduce the legacy Worker file to thin routing/composition;
+7. run the complete regression/build gate before publication.
 
-### W9R.1 — Extract shared infrastructure
-Move only stable cross-domain helpers such as:
-- DB/query helpers;
-- JSON/response helpers;
-- time/date utilities;
-- request/session/security helpers where ownership is unambiguous.
-
-Rules:
-- no API response shape changes;
-- no SQL/schema changes;
-- no auth-policy changes;
-- old imports/callers must remain behavior-equivalent.
-
-### W9R.2 — Extract Auth + Admin foundation
-Move existing Auth V2 and Admin V2 Phase 0 code into explicit modules.
-
-Must preserve:
-- gameplay/Admin session separation;
-- password/recovery behavior;
-- Admin Bearer contract;
-- audit/rate-limit behavior;
-- existing Admin content tools.
-
-This refactor must finish before Admin Phase 1 begins.
-
-### W9R.3 — Extract Arena V2
-Move W9 Arena code by responsibility:
-- status/setup/tickets;
-- matchmaking/opponents;
-- match lifecycle;
-- combat orchestration adapter;
-- settlement/economy/rewards;
-- mailbox/profile-frame integration hooks.
-
-Hard rule:
-- do not rewrite Battle Core or Arena rules during extraction.
-
-All W9.1-W9.9 regression gates must remain green.
-
-### W9R.4 — Extract Mailbox / Social / Guild / Crafting
-Move remaining large domains in small reviewable batches.
-
-Priority:
-1. Mailbox/reward delivery;
-2. Social/Friend/Player Card;
-3. Guild/Chat/Donation;
-4. Crafting/content mutation helpers.
-
-Each batch must preserve existing endpoint/action names and response contracts.
-
-### W9R.5 — Thin router + cleanup
-After all extracted modules are verified:
-- reduce `thornie-dungeons-api.js` to composition/routing/compatibility responsibilities;
-- remove only proven-dead duplicate helpers;
-- document module ownership and import boundaries;
-- keep Cloudflare deployment as the same Worker/service;
-- run final full regression/build/deploy-dry-run checks.
+These checkpoints are implementation discipline only. They do not require separate Project Lead approvals, separate feature branches, separate releases, or separate QA handoffs unless a blocker forces the work to be split.
 
 ### W9R hard rules
 - behavior-preserving refactor only;
-- no feature work mixed into extraction commits;
+- no feature work mixed into the refactor;
 - no migration/schema changes unless a separate approved task requires them;
 - no economy/balance changes;
 - no endpoint/action renames;
 - no Battle Core redesign;
 - no destructive cleanup;
-- one domain/boundary per reviewable batch;
-- every batch requires targeted tests plus relevant full regression;
-- if extraction reveals a real bug, record it separately and fix it in an explicit follow-up change rather than hiding behavior changes inside the move.
+- preserve gameplay/Admin session separation;
+- preserve Mailbox/Arena exact-once behavior;
+- preserve all W9.1-W9.9 contracts;
+- if extraction reveals a real bug, record it separately rather than hiding a behavior change inside the refactor.
 
-### W9R completion gate
-W9R is complete only when:
+### Required validation inside the single batch
+Before publish/QA handoff, verify:
 - current public/admin/gameplay API behavior is preserved;
 - Worker entry/deploy contract is unchanged;
 - Auth/Admin session separation passes;
@@ -728,7 +676,7 @@ W9R is complete only when:
 - Mailbox exact-once tests pass;
 - Social/Guild/Crafting regression passes;
 - generated frontend/build checks pass where relevant;
-- module ownership is documented;
+- module ownership/import boundaries are documented;
 - `workers/thornie-dungeons-api.js` is materially reduced and no longer the primary home for every domain.
 
 Admin Phase 1 (Dashboard + read-only Player Viewer) starts from the post-W9R `main`, not from the old `feat/admin-v2-auth` branch.
