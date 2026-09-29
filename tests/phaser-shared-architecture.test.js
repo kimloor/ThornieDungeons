@@ -408,10 +408,11 @@ test("W6.6 battle snapshot consumes equipment visuals only through shared resolv
   assert.doesNotMatch(adapter, /heroVisualSelectionFromEquipment\(equipped\)/);
 });
 
-test("W6.6 DOM default and Phaser opt-in query contract remain unchanged", () => {
+test("Dungeon Phaser is production-default with an explicit opt-out", () => {
   const ui = source("src/phaser/ui/PhaserBattlefield.js");
-  assert.match(ui, /get\("phaserBattle"\) === "1"/);
-  assert.match(ui, /catch \(_\) \{ return false; \}/);
+  assert.match(ui, /get\("phaserBattle"\)/);
+  assert.match(ui, /return value !== "0"/);
+  assert.match(ui, /catch \(_\) \{ return true; \}/);
   assert.match(ui, /if \(!enabled\) return null/);
 });
 

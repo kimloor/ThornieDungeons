@@ -3,9 +3,10 @@ function isPhaserHeroPreviewEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_HERO_PREVIEW__ === true) return true;
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_HERO_PREVIEW__ === false) return false;
   try {
-    return new URLSearchParams(globalThis.location?.search || "").get("phaserPreview") === "1";
+    const value = new URLSearchParams(globalThis.location?.search || "").get("phaserPreview");
+    return value !== "0";
   } catch (_) {
-    return false;
+    return true;
   }
 }
 

@@ -411,6 +411,12 @@ Implementation status:
 - `ArenaV2Screen` is the active Arena route and uses the authoritative V2 status/opponent/match/history/ranking APIs;
 - generated `index.html` is refreshed only by `node build.js`.
 
+Production Browser QA follow-up — Ver 1.0.20:
+- Arena Hub now renders the approved `arenaUi.background` asset instead of the generic dungeon backdrop alone;
+- Arena Coin and Arena Ticket render from `itemIcons.currency.arenaCoin` / `itemIcons.currency.arenaTicket`;
+- shared Dungeon Combat Phaser and Inventory Hero Preview are production-default with explicit `=0` opt-out fallbacks;
+- no Battle Core, rating, ticket, reward, schema or settlement behavior changed.
+
 Staging:
 - every user-visible staging fix increments preview patch version;
 - test small-screen safe area/overflow/touch targets;

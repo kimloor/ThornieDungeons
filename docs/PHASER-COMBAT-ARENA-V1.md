@@ -585,7 +585,7 @@ Verified presentation scope:
 - x1/x2 control replaced in-place by Skip after five completed player turns, avoiding header/layout expansion.
 
 Runtime guardrails remain:
-- Hero V5 is opt-in via `?phaserBattle=1&heroV5=1`;
+- Hero V5 remains separately opt-in via `?heroV5=1`; Dungeon Phaser itself is production-default from Ver 1.0.20 onward;
 - V3 remains the fallback;
 - gameplay/resolver/persistence/reward authority remains outside Phaser;
 - Victory animation/presentation remains W10 scope.
@@ -625,6 +625,16 @@ For W9:
 - older wording that says current Arena lobby/tickets/API/rating/rewards must remain unchanged is superseded where ARENA-V2-W9.md explicitly redesigns those systems;
 - Phaser still must not become the combat/rating/economy authority;
 - Battle Core and server-side settlement remain authoritative.
+
+---
+
+## 15.5 Production presentation cutover — 2026-09-29
+
+Browser QA after the W9 production cutover made the shared Phaser surfaces production-default:
+- Dungeon Combat uses Phaser by default; `?phaserBattle=0` or `globalThis.__THORNIE_PHASER_BATTLE__ = false` is the emergency presentation fallback.
+- Inventory Hero Preview uses Phaser by default; `?phaserPreview=0` or `globalThis.__THORNIE_PHASER_HERO_PREVIEW__ = false` is the emergency fallback.
+- Arena V2 remains Phaser-by-default and uses the approved `arenaUi.background` manifest asset.
+- This changes presentation selection only; Battle Core, save, reward and API authority remain unchanged.
 
 ---
 

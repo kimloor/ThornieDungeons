@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.19";
+  content: "Ver 1.0.20";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2455,6 +2455,19 @@ body::after {
 .md-arena-player-card-details strong { max-width:66%; min-width:0; }
 .md-arena-card-equipment { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .md-arena-refresh-cooldown { margin:8px 0 0; text-align:center; color:#FFE49A; font-weight:800; }
+.md-arena-v2-art {
+  min-height:calc(100dvh - 62px);
+  background-color:#071126;
+  background-image:linear-gradient(180deg,rgba(3,7,20,.18),rgba(3,7,20,.48) 46%,rgba(3,7,20,.72)),var(--arena-ui-background);
+  background-position:center;
+  background-size:cover;
+  background-repeat:no-repeat;
+}
+.md-arena-v2-art > * { position:relative; z-index:1; }
+.md-arena-summary { display:flex; flex-wrap:wrap; align-items:center; gap:7px 10px; margin:2px 0 10px; color:var(--ink-soft); font-size:12px; font-weight:800; }
+.md-arena-summary-text { white-space:nowrap; }
+.md-arena-currency-chip { display:inline-flex; align-items:center; gap:5px; min-height:28px; padding:3px 8px 3px 5px; border:1px solid rgba(255,209,102,.32); border-radius:999px; background:rgba(5,12,31,.68); color:#ffe59a; }
+.md-arena-currency-icon { width:22px; height:22px; object-fit:contain; flex:0 0 22px; }
 .md-arena-unlock-overlay {
   --ink:#F3EEFF;
   --ink-soft:#B9AEDD;

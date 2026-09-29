@@ -3466,6 +3466,7 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
   const end = Date.parse(status.season?.seasonEndsAt || status.seasonEndsAt || "");
   const countdown = Number.isFinite(end) ? Math.max(0, end - now) : 0;
   const mins = Math.floor(countdown / 60000); const secs = String(Math.floor(countdown / 1000) % 60).padStart(2, "0");
+  const arenaBackgroundSrc = typeof optionalAsset === "function" ? optionalAsset("arenaUi.background") : "";
   const refreshAtMs = Date.parse(refreshAvailableAt || "");
   const refreshSeconds = Number.isFinite(refreshAtMs) ? Math.max(0, Math.ceil((refreshAtMs - now) / 1000)) : 0;
   const units = match?.state?.units || {};
@@ -3473,11 +3474,25 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
   const enemyUnits = Object.values(units).filter(u => u.side === "team_b");
   const selected = selectedTarget || enemyUnits.find(u => u.alive)?.id || enemyUnits[0]?.id || null;
   const battleState = match?.state ? { ...match.state, selectedTargetId: selected } : null;
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel md-arena-v2", style: { flex: 1 } },
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-panel md-arena-v2 md-arena-v2-art",
+    style: {
+      flex: 1,
+      ...(arenaBackgroundSrc ? { "--arena-ui-background": `url("${arenaBackgroundSrc}")` } : {})
+    }
+  },
     status.showUnlockNotice && /*#__PURE__*/React.createElement(ArenaUnlockNotice, { busy: unlockBusy, onConfirm: acknowledgeUnlock }),
     /*#__PURE__*/React.createElement("div", { className: "md-card" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 Arena V2"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ซีซันเหลือ ", mins, ":", secs, " · Rating ", status.player.rating, " · ", status.player.tier, " · 🪙 ", status.player.arenaCoin, " · 🎟️ ", status.tickets.tickets, "/", status.tickets.ticketsMax),
+      /*#__PURE__*/React.createElement("div", { className: "md-arena-summary" },
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "ซีซันเหลือ ", mins, ":", secs),
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "Rating ", status.player.rating, " · ", status.player.tier),
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-currency-chip" },
+          /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-arena-currency-icon", alt: "Arena Coin" }),
+          /*#__PURE__*/React.createElement("strong", null, status.player.arenaCoin)),
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-currency-chip" },
+          /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-arena-currency-icon", alt: "Arena Ticket" }),
+          /*#__PURE__*/React.createElement("strong", null, status.tickets.tickets, "/", status.tickets.ticketsMax))),
       /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setCurrencyInfo(!currencyInfo) }, "CURRENCY INFO"),
       currencyInfo && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Arena Coin ใช้ตามผลและ opponent slot ที่ server ล็อกไว้ · Ticket ใช้เมื่อเตรียมและ preload สำเร็จเท่านั้น.")),
     !match && /*#__PURE__*/React.createElement("div", { className: "md-tab-row" }, ["battle", "setup", "ranking", "history"].map(key => /*#__PURE__*/React.createElement("button", { key, className: `md-btn small ${tab === key ? "primary" : ""}`, onClick: () => loadTab(key) }, key.toUpperCase()))),

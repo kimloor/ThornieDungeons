@@ -117,6 +117,9 @@ test('Arena V2 frontend contract uses default Phaser, Player Card and no animati
   assert.match(arenaUi, /cloudAcknowledgeArenaV2Unlock\(url, characterId\)/);
   assert.match(arenaUi, /refreshSeconds > 0/);
   assert.match(arenaUi, /REFRESH · \$\{refreshSeconds\}s/);
+  assert.match(arenaUi, /optionalAsset\("arenaUi\.background"\)/);
+  assert.match(arenaUi, /iconKey: "arenaCoin"/);
+  assert.match(arenaUi, /iconKey: "arenaTicket"/);
   assert.match(arenaUi, /preloadGateRef\.current\?\.ready\(\)/);
   assert.doesNotMatch(arenaUi.slice(arenaUi.indexOf('function ArenaV2Screen'), arenaUi.indexOf('\n}\n\n// Turns a mail')), /requestAnimationFrame/);
 });

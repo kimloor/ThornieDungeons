@@ -2,7 +2,10 @@
 function isPhaserBattleRendererEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_BATTLE__ === true) return true;
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_BATTLE__ === false) return false;
-  try { return new URLSearchParams(globalThis.location?.search || "").get("phaserBattle") === "1"; } catch (_) { return false; }
+  try {
+    const value = new URLSearchParams(globalThis.location?.search || "").get("phaserBattle");
+    return value !== "0";
+  } catch (_) { return true; }
 }
 
 function PhaserBattlefield(props) {
