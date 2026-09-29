@@ -17,7 +17,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
       this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
       this.readyNotified = false;
-      this.presentationQueue = createPresentationQueue();
+      this.presentationQueue = createPresentationQueue({ onError });
       this.vfxManager = createVfxManager(this, {
         assetResolver: this.assetResolver,
         textureRegistry: this.textureRegistry
