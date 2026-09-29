@@ -10,7 +10,13 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     syncType: "BATTLEFIELD_SYNC",
     streamKey: "battleId",
     allowStaleSync: true,
-    onEvent: event => scene?.consume(event),
+    onEvent: event => {
+      try {
+        scene?.consume(event);
+      } catch (error) {
+        onError?.(error);
+      }
+    },
     onStatus: (status, detail) => status === "error" && onError?.(detail)
   });
 
