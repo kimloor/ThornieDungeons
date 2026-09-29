@@ -5971,8 +5971,12 @@ async function getArenaV2OpponentRows(db, context, now = Date.now()) {
 async function handleGetArenaV2Opponents(db, id, session, characterId) {
   const context = await arenaV2Context(db, id, session, characterId);
   if (context.error) return json({ error: context.error });
-  const { opponents } = await getArenaV2OpponentRows(db, context);
-  return json({ ok: true, opponents: opponents.map(arenaPublicOpponent) });
+  const { opponents, state } = await getArenaV2OpponentRows(db, context);
+  return json({
+    ok: true,
+    opponents: opponents.map(arenaPublicOpponent),
+    refreshAvailableAt: state?.refresh_available_at || null,
+  });
 }
 async function handleGetArenaV2History(db, id, session, characterId) {
   const context = await arenaV2Context(db, id, session, characterId);
