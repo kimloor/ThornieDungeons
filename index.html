@@ -172,7 +172,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.19";
+  content: "Ver 1.0.20";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2563,6 +2563,19 @@ body::after {
 .md-arena-player-card-details strong { max-width:66%; min-width:0; }
 .md-arena-card-equipment { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .md-arena-refresh-cooldown { margin:8px 0 0; text-align:center; color:#FFE49A; font-weight:800; }
+.md-arena-v2-art {
+  min-height:calc(100dvh - 62px);
+  background-color:#071126;
+  background-image:linear-gradient(180deg,rgba(3,7,20,.18),rgba(3,7,20,.48) 46%,rgba(3,7,20,.72)),var(--arena-ui-background);
+  background-position:center;
+  background-size:cover;
+  background-repeat:no-repeat;
+}
+.md-arena-v2-art > * { position:relative; z-index:1; }
+.md-arena-summary { display:flex; flex-wrap:wrap; align-items:center; gap:7px 10px; margin:2px 0 10px; color:var(--ink-soft); font-size:12px; font-weight:800; }
+.md-arena-summary-text { white-space:nowrap; }
+.md-arena-currency-chip { display:inline-flex; align-items:center; gap:5px; min-height:28px; padding:3px 8px 3px 5px; border:1px solid rgba(255,209,102,.32); border-radius:999px; background:rgba(5,12,31,.68); color:#ffe59a; }
+.md-arena-currency-icon { width:22px; height:22px; object-fit:contain; flex:0 0 22px; }
 .md-arena-unlock-overlay {
   --ink:#F3EEFF;
   --ink-soft:#B9AEDD;
@@ -11351,7 +11364,10 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
 function isPhaserBattleRendererEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_BATTLE__ === true) return true;
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_BATTLE__ === false) return false;
-  try { return new URLSearchParams(globalThis.location?.search || "").get("phaserBattle") === "1"; } catch (_) { return false; }
+  try {
+    const value = new URLSearchParams(globalThis.location?.search || "").get("phaserBattle");
+    return value !== "0";
+  } catch (_) { return true; }
 }
 
 function PhaserBattlefield(props) {
@@ -11403,9 +11419,10 @@ function isPhaserHeroPreviewEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_HERO_PREVIEW__ === true) return true;
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_PHASER_HERO_PREVIEW__ === false) return false;
   try {
-    return new URLSearchParams(globalThis.location?.search || "").get("phaserPreview") === "1";
+    const value = new URLSearchParams(globalThis.location?.search || "").get("phaserPreview");
+    return value !== "0";
   } catch (_) {
-    return false;
+    return true;
   }
 }
 
@@ -17643,6 +17660,7 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
   const end = Date.parse(status.season?.seasonEndsAt || status.seasonEndsAt || "");
   const countdown = Number.isFinite(end) ? Math.max(0, end - now) : 0;
   const mins = Math.floor(countdown / 60000); const secs = String(Math.floor(countdown / 1000) % 60).padStart(2, "0");
+  const arenaBackgroundSrc = typeof optionalAsset === "function" ? optionalAsset("arenaUi.background") : "";
   const refreshAtMs = Date.parse(refreshAvailableAt || "");
   const refreshSeconds = Number.isFinite(refreshAtMs) ? Math.max(0, Math.ceil((refreshAtMs - now) / 1000)) : 0;
   const units = match?.state?.units || {};
@@ -17650,11 +17668,25 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
   const enemyUnits = Object.values(units).filter(u => u.side === "team_b");
   const selected = selectedTarget || enemyUnits.find(u => u.alive)?.id || enemyUnits[0]?.id || null;
   const battleState = match?.state ? { ...match.state, selectedTargetId: selected } : null;
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel md-arena-v2", style: { flex: 1 } },
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-panel md-arena-v2 md-arena-v2-art",
+    style: {
+      flex: 1,
+      ...(arenaBackgroundSrc ? { "--arena-ui-background": `url("${arenaBackgroundSrc}")` } : {})
+    }
+  },
     status.showUnlockNotice && /*#__PURE__*/React.createElement(ArenaUnlockNotice, { busy: unlockBusy, onConfirm: acknowledgeUnlock }),
     /*#__PURE__*/React.createElement("div", { className: "md-card" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 Arena V2"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ซีซันเหลือ ", mins, ":", secs, " · Rating ", status.player.rating, " · ", status.player.tier, " · 🪙 ", status.player.arenaCoin, " · 🎟️ ", status.tickets.tickets, "/", status.tickets.ticketsMax),
+      /*#__PURE__*/React.createElement("div", { className: "md-arena-summary" },
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "ซีซันเหลือ ", mins, ":", secs),
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "Rating ", status.player.rating, " · ", status.player.tier),
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-currency-chip" },
+          /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-arena-currency-icon", alt: "Arena Coin" }),
+          /*#__PURE__*/React.createElement("strong", null, status.player.arenaCoin)),
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-currency-chip" },
+          /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-arena-currency-icon", alt: "Arena Ticket" }),
+          /*#__PURE__*/React.createElement("strong", null, status.tickets.tickets, "/", status.tickets.ticketsMax))),
       /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setCurrencyInfo(!currencyInfo) }, "CURRENCY INFO"),
       currencyInfo && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Arena Coin ใช้ตามผลและ opponent slot ที่ server ล็อกไว้ · Ticket ใช้เมื่อเตรียมและ preload สำเร็จเท่านั้น.")),
     !match && /*#__PURE__*/React.createElement("div", { className: "md-tab-row" }, ["battle", "setup", "ranking", "history"].map(key => /*#__PURE__*/React.createElement("button", { key, className: `md-btn small ${tab === key ? "primary" : ""}`, onClick: () => loadTab(key) }, key.toUpperCase()))),
