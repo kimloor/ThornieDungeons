@@ -78,6 +78,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
     }
 
     create() {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
       this.scale.on("resize", this.handleResize, this);
       this.snapshot = this.initialSnapshot;
       this.createActors();
