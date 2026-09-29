@@ -17436,6 +17436,87 @@ function arenaPlayerCardPetLabel(card) {
   return String(pet?.name || pet?.defId || card?.petName || "—");
 }
 
+function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
+  const e = React.createElement;
+  if (!card) return null;
+  const frameSrc = typeof arenaProfileFrameAsset === "function" ? arenaProfileFrameAsset(card.profileFrameKey) : "";
+  const equipment = arenaPlayerCardEquipmentLabels(card.equipment);
+  const pet = arenaPlayerCardPetLabel(card);
+  const avatarLayers = typeof playerCardAvatarLayers === "function" ? playerCardAvatarLayers(card.avatar) : [];
+  const overlay = e("div", {
+    className: "md-player-card-overlay md-arena-player-card-overlay",
+    role: "presentation",
+    onClick: event => { if (event.target === event.currentTarget) onClose(); }
+  },
+    e("section", {
+      className: "md-player-card",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-labelledby": "md-arena-player-card-name",
+      style: {
+        "--player-card-bg": playerCardAsset("cardBg") ? `url("${playerCardAsset("cardBg")}")` : "none",
+        "--player-card-detail-panel": playerCardAsset("detailPanel") ? `url("${playerCardAsset("detailPanel")}")` : "none",
+        "--player-card-name-plate": playerCardAsset("namePlate") ? `url("${playerCardAsset("namePlate")}")` : "none",
+        "--player-card-button-primary": playerCardAsset("buttonPrimary") ? `url("${playerCardAsset("buttonPrimary")}")` : "none",
+        "--player-card-button-secondary": playerCardAsset("buttonSecondary") ? `url("${playerCardAsset("buttonSecondary")}")` : "none"
+      }
+    },
+      e("button", {
+        type: "button",
+        className: "md-player-card-close",
+        onClick: onClose,
+        "aria-label": "ปิด Arena Player Card"
+      }, playerCardAsset("buttonClose") ? e("img", { src: playerCardAsset("buttonClose"), alt: "ปิด" }) : "✕"),
+      e("div", { className: "md-player-card-main" },
+        e("div", { className: "md-player-card-identity" },
+          e("div", { className: "md-player-card-avatar" },
+            avatarLayers.length
+              ? avatarLayers.map(layer => e("img", {
+                key: `${layer.assetKey}:${layer.zIndex}`,
+                src: layer.src,
+                alt: "",
+                "aria-hidden": "true",
+                style: { left: `${layer.x}%`, top: `${layer.y}%`, transform: `translate(-50%, -50%) scale(${layer.scale})`, zIndex: layer.zIndex }
+              }))
+              : playerCardAsset("avatarPlaceholderNoPic") && e("img", { src: playerCardAsset("avatarPlaceholderNoPic"), alt: "ไม่มีรูปโปรไฟล์", className: "md-player-card-placeholder" }),
+            (frameSrc || playerCardAsset("avatarFrame")) && e("img", { src: frameSrc || playerCardAsset("avatarFrame"), alt: "", "aria-hidden": "true", className: "md-player-card-avatar-frame" })
+          ),
+          e("div", { className: "md-player-card-nameplate" },
+            e("h2", { id: "md-arena-player-card-name" }, card.name || "Arena Player Card"))
+        ),
+        e("div", { className: "md-player-card-details md-arena-player-card-details" },
+          e("div", null, e("span", null, "Level"), e("strong", null, card.level ?? "—")),
+          e("div", null, e("span", null, "CP"), e("strong", null, card.cp == null ? "—" : Number(card.cp || 0).toLocaleString("en-US"))),
+          e("div", null, e("span", null, "Rating"), e("strong", null, card.rating ?? "—")),
+          e("div", null, e("span", null, "Tier"), e("strong", null, card.tier || "—")),
+          e("div", null, e("span", null, "Pet"), e("strong", null, pet)),
+          e("div", null, e("span", null, "Equipment"), e("strong", { className: "md-arena-card-equipment", title: equipment.join(" · ") }, equipment.length ? equipment.join(" · ") : "—"))
+        )
+      ),
+      e("div", { className: "md-player-card-actions" },
+        e("button", { type: "button", className: "md-player-card-guild-button", disabled: busy, onClick: onBattle }, busy ? "กำลังเตรียม..." : "BATTLE ⚔️"),
+        e("button", { type: "button", className: "md-player-card-friend-button", disabled: busy, onClick: onClose }, "CLOSE")
+      )
+    )
+  );
+  return ReactDOM.createPortal(overlay, document.body);
+}
+
+function ArenaUnlockNotice({ busy, onConfirm }) {
+  const e = React.createElement;
+  return ReactDOM.createPortal(
+    e("div", { className: "md-arena-unlock-overlay", role: "presentation" },
+      e("section", { className: "md-card md-arena-unlock-card", role: "dialog", "aria-modal": "true", "aria-labelledby": "md-arena-unlock-title" },
+        e("div", { className: "md-arena-unlock-icon", "aria-hidden": "true" }, "🏟️"),
+        e("p", { id: "md-arena-unlock-title", className: "md-title" }, "Arena ปลดล็อกแล้ว!"),
+        e("p", { className: "md-sub" }, "ตัวละคร Lv10 ขึ้นไปสามารถเข้าสู่ Arena V2 เพื่อจัดทีมและต่อสู้กับผู้เล่นอื่นได้แล้ว"),
+        e("button", { type: "button", className: "md-btn primary wide", disabled: busy, onClick: onConfirm }, busy ? "กำลังบันทึก..." : "OK")
+      )
+    ),
+    document.body
+  );
+}
+
 // W9.8/W9.9 authoritative Arena V2 surface. The server owns match state; this
 // component only renders snapshots and sends idempotent action keys.
 function ArenaV2Screen({ serverUrl, characterId, onBack }) {
@@ -17455,6 +17536,8 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
   const [playerCard, setPlayerCard] = React.useState(null);
   const [showFullLog, setShowFullLog] = React.useState(false);
   const [currencyInfo, setCurrencyInfo] = React.useState(false);
+  const [refreshAvailableAt, setRefreshAvailableAt] = React.useState("");
+  const [unlockBusy, setUnlockBusy] = React.useState(false);
   const [preloadState, setPreloadState] = React.useState("idle");
   const preloadGateRef = React.useRef(null);
   const rolloverRefreshRef = React.useRef(false);
@@ -17462,7 +17545,7 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
     setError("");
     const [s, o, resumed] = await Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]);
     if (s?.error) { setError(s.error); return; }
-    setStatus(s); setSetup(s.setup || setup); setOpponents(o?.opponents || []);
+    setStatus(s); setSetup(s.setup || setup); setOpponents(o?.opponents || []); setRefreshAvailableAt(o?.refreshAvailableAt || "");
     if (resumed?.match) { setMatch(resumed.match); setAuto(!!resumed.match.state?.auto || !!resumed.match.state?.flags?.auto); setTab("battle"); }
   }, [url, characterId]);
   React.useEffect(() => { refresh().catch(() => setError("โหลด Arena ไม่สำเร็จ")); }, [refresh]);
@@ -17480,6 +17563,16 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
     setTab(next); setError("");
     if (next === "history") setHistory(await cloudGetArenaV2History(url, characterId));
     if (next === "ranking") setRanking((await cloudGetArenaV2Ranking(url, characterId))?.rows || []);
+  };
+  const acknowledgeUnlock = async () => {
+    if (unlockBusy) return;
+    setUnlockBusy(true); setError("");
+    try {
+      const res = await cloudAcknowledgeArenaV2Unlock(url, characterId);
+      if (res?.error) throw new Error(res.error);
+      setStatus(current => current ? { ...current, showUnlockNotice: false } : current);
+    } catch (e) { setError(e.message || "บันทึกสถานะปลดล็อก Arena ไม่สำเร็จ"); }
+    finally { setUnlockBusy(false); }
   };
   const openPlayerCard = async opponentKey => {
     setBusy(true); setError("");
@@ -17526,15 +17619,15 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
   const end = Date.parse(status.season?.seasonEndsAt || status.seasonEndsAt || "");
   const countdown = Number.isFinite(end) ? Math.max(0, end - now) : 0;
   const mins = Math.floor(countdown / 60000); const secs = String(Math.floor(countdown / 1000) % 60).padStart(2, "0");
+  const refreshAtMs = Date.parse(refreshAvailableAt || "");
+  const refreshSeconds = Number.isFinite(refreshAtMs) ? Math.max(0, Math.ceil((refreshAtMs - now) / 1000)) : 0;
   const units = match?.state?.units || {};
   const playerUnits = Object.values(units).filter(u => u.side === "team_a");
   const enemyUnits = Object.values(units).filter(u => u.side === "team_b");
   const selected = selectedTarget || enemyUnits.find(u => u.alive)?.id || enemyUnits[0]?.id || null;
   const battleState = match?.state ? { ...match.state, selectedTargetId: selected } : null;
-  const arenaCardFrameSrc = playerCard && typeof arenaProfileFrameAsset === "function" ? arenaProfileFrameAsset(playerCard.profileFrameKey) : "";
-  const arenaCardEquipment = arenaPlayerCardEquipmentLabels(playerCard?.equipment);
-  const arenaCardPet = arenaPlayerCardPetLabel(playerCard);
   return /*#__PURE__*/React.createElement("div", { className: "md-panel md-arena-v2", style: { flex: 1 } },
+    status.showUnlockNotice && /*#__PURE__*/React.createElement(ArenaUnlockNotice, { busy: unlockBusy, onConfirm: acknowledgeUnlock }),
     /*#__PURE__*/React.createElement("div", { className: "md-card" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 Arena V2"),
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ซีซันเหลือ ", mins, ":", secs, " · Rating ", status.player.rating, " · ", status.player.tier, " · 🪙 ", status.player.arenaCoin, " · 🎟️ ", status.tickets.tickets, "/", status.tickets.ticketsMax),
@@ -17542,17 +17635,36 @@ function ArenaV2Screen({ serverUrl, characterId, onBack }) {
       currencyInfo && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Arena Coin ใช้ตามผลและ opponent slot ที่ server ล็อกไว้ · Ticket ใช้เมื่อเตรียมและ preload สำเร็จเท่านั้น.")),
     !match && /*#__PURE__*/React.createElement("div", { className: "md-tab-row" }, ["battle", "setup", "ranking", "history"].map(key => /*#__PURE__*/React.createElement("button", { key, className: `md-btn small ${tab === key ? "primary" : ""}`, onClick: () => loadTab(key) }, key.toUpperCase()))),
     error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "#FF6B6B" } }, error),
-    !match && tab === "battle" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, opponents.map(opp => /*#__PURE__*/React.createElement("div", { className: "md-shop-row", key: opp.opponentKey }, /*#__PURE__*/React.createElement("span", null, opp.name, " · Lv", opp.level, " · ", opp.rating), /*#__PURE__*/React.createElement("button", { className: "md-btn attack small", disabled: busy, onClick: () => openPlayerCard(opp.opponentKey) }, "PLAYER CARD"))), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: async () => { const r = await cloudRefreshArenaV2Opponents(url, characterId); if (r?.error) setError(r.error); else setOpponents(r.opponents || []); } }, "REFRESH")),
-    !match && playerCard && /*#__PURE__*/React.createElement("div", { className: "md-card" },
-      /*#__PURE__*/React.createElement("div", { className: "md-player-card-avatar", "aria-label": "Arena Player Card avatar" },
-        playerCardAsset("avatarPlaceholderNoPic") && /*#__PURE__*/React.createElement("img", { src: playerCardAsset("avatarPlaceholderNoPic"), alt: "", "aria-hidden": "true", className: "md-player-card-placeholder" }),
-        arenaCardFrameSrc && /*#__PURE__*/React.createElement("img", { src: arenaCardFrameSrc, alt: "", "aria-hidden": "true", className: "md-player-card-avatar-frame" })),
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, playerCard.name || "Arena Player Card"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Lv", playerCard.level || "—", " · Rating ", playerCard.rating || "—", " · ", playerCard.tier || "—"),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Pet: ", arenaCardPet),
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Equipment: ", arenaCardEquipment.length ? arenaCardEquipment.join(" · ") : "—"),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => start(playerCard.opponentKey || playerCard.characterId) }, "BATTLE ⚔️"),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => setPlayerCard(null) }, "CLOSE")),
+    !match && tab === "battle" && /*#__PURE__*/React.createElement("div", { className: "md-card" },
+      opponents.map(opp => /*#__PURE__*/React.createElement("div", { className: "md-shop-row", key: opp.opponentKey },
+        /*#__PURE__*/React.createElement("span", null, opp.name, " · Lv", opp.level, " · ", opp.rating),
+        /*#__PURE__*/React.createElement("button", { className: "md-btn attack small", disabled: busy, onClick: () => openPlayerCard(opp.opponentKey) }, "PLAYER CARD"))),
+      /*#__PURE__*/React.createElement("button", {
+        className: "md-btn small",
+        disabled: busy || refreshSeconds > 0,
+        onClick: async () => {
+          if (busy || refreshSeconds > 0) return;
+          setBusy(true); setError("");
+          try {
+            const r = await cloudRefreshArenaV2Opponents(url, characterId);
+            if (r?.error === "arena_refresh_cooldown") {
+              setRefreshAvailableAt(r.refreshAvailableAt || new Date(Date.now() + Math.max(1, Number(r.retryAfter) || 1) * 1000).toISOString());
+              return;
+            }
+            if (r?.error) throw new Error(r.error);
+            setOpponents(r.opponents || []);
+            setRefreshAvailableAt(r.refreshAvailableAt || "");
+          } catch (e) { setError(e.message || "รีเฟรชคู่ต่อสู้ไม่สำเร็จ"); }
+          finally { setBusy(false); }
+        }
+      }, refreshSeconds > 0 ? `REFRESH · ${refreshSeconds}s` : "REFRESH"),
+      refreshSeconds > 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub md-arena-refresh-cooldown" }, "รีเฟรชได้อีกครั้งใน ", refreshSeconds, " วินาที")),
+    !match && playerCard && /*#__PURE__*/React.createElement(ArenaPlayerCardOverlay, {
+      card: playerCard,
+      busy,
+      onBattle: () => start(playerCard.opponentKey || playerCard.characterId),
+      onClose: () => setPlayerCard(null)
+    }),
     !match && tab === "setup" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "SETUP · Pet + 4 Skills"), /*#__PURE__*/React.createElement("select", { value: setup.petInstId || "", onChange: e => setSetup({ ...setup, petInstId: e.target.value }) }, /*#__PURE__*/React.createElement("option", { value: "" }, "No Pet"), (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("option", { key: p.instId, value: p.instId }, p.name, " Lv", p.level))), [0, 1, 2, 3].map(i => /*#__PURE__*/React.createElement("select", { key: i, value: setup.skillSlots?.[i] || "", onChange: e => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = e.target.value || null; setSetup({ ...setup, skillSlots: slots }); } }, /*#__PURE__*/React.createElement("option", { value: "" }, `Skill ${i + 1}`), (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("option", { key: s.key, value: s.key }, s.icon, " ", s.name)))), /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: async () => { setBusy(true); try { const r = await cloudSaveArenaV2Setup(url, characterId, setup.petInstId, setup.skillSlots); if (r?.error) throw new Error(r.error); setSetup(r.setup); } catch (e) { setError(e.message); } finally { setBusy(false); } } }, "SAVE SETUP")),
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ranking.map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: row.characterId }, "#", row.rank, " ", row.name, " · ", row.rating, " · ", row.rewardBucket))),
     !match && tab === "history" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ["attack", "defense"].map(kind => /*#__PURE__*/React.createElement("div", { key: kind }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, kind.toUpperCase()), (history[kind] || []).map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: `${kind}-${row.matchId}` }, row.result, " · ", row.resolution, " · ", row.arenaCoinEarned, " Coin", kind === "attack" && row.defenderCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => start(`history:${row.matchId}`, "revenge") }, "REVENGE")))))),
