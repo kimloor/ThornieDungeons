@@ -13,6 +13,8 @@ on:
       - "scripts/battle-core-port.js"
       - "tests/battle-core-parity.test.js"
       - "tests/arena-v2-w9-foundation.test.js"
+      - "tests/arena-v2-w9-match-lifecycle.test.js"
+      - "tests/arena-v2-w9-combat.test.js"
       - "tests/fixtures/arena-v2-w9.js"
       - "tests/battle-core.test.js"
       - "tests/combat-core-teams.test.js"
@@ -27,6 +29,8 @@ on:
       - "scripts/battle-core-port.js"
       - "tests/battle-core-parity.test.js"
       - "tests/arena-v2-w9-foundation.test.js"
+      - "tests/arena-v2-w9-match-lifecycle.test.js"
+      - "tests/arena-v2-w9-combat.test.js"
       - "tests/fixtures/arena-v2-w9.js"
       - "tests/battle-core.test.js"
       - "tests/combat-core-teams.test.js"
@@ -59,6 +63,9 @@ jobs:
 
       - name: Run W9.4 focused server foundation suite
         run: node --test --test-concurrency=1 tests/arena-v2-w9-server-foundation.test.js
+
+      - name: Run W9.5/W9.6 lifecycle and combat suites
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-match-lifecycle.test.js tests/arena-v2-w9-combat.test.js
 
       - name: Run W9 schema + Admin V2 integration suite
         run: node --test --test-concurrency=1 tests/arena-v2-w9-schema.test.js tests/admin-v2-auth.test.js
