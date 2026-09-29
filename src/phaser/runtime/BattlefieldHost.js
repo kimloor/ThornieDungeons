@@ -86,9 +86,16 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     if (windowResize) window.removeEventListener("resize", windowResize);
     windowResize = null;
     bridge.reset();
-    if (game) game.destroy(true);
+    const gameToDestroy = game;
     game = null;
     scene = null;
+    try {
+      gameToDestroy?.destroy(true);
+    } catch (error) {
+      // Phaser is presentation-only. A teardown failure must never bubble into
+      // the app/result flow after authoritative combat has already completed.
+      console.warn("Phaser battlefield teardown failed", error);
+    }
     onDestroyed?.();
   }
 
