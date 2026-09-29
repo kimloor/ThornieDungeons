@@ -60,5 +60,7 @@
     "hair_front"
   ],
   "helmetAssetRevision": "azure_angel_fullface_v1",
-  "helmetNotes": "User-approved Azure Angel full-face helmet replaces all eight original helmet.png files; native RGBA768 origin0,0. Hide both hair layers only while this helmet is equipped."
+  "helmetNotes": "User-approved Azure Angel full-face helmet replaces all eight original helmet.png files; native RGBA768 origin0,0. Hide both hair layers only while this helmet is equipped.",
+  "helmetIdleAssetRevision": "azure_angel_fullface_idle_r2",
+  "helmetIdleNotes": "Approved idle01-03 shift down20px; attack and both death files unchanged."
 }

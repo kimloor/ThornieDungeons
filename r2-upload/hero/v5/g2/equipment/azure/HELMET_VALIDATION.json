@@ -14,43 +14,43 @@
     "idle_01": {
       "bbox": [
         192,
-        106,
+        126,
         477,
-        417
+        437
       ],
       "path": "hero/v5/g2/equipment/azure/idle_01/helmet.png",
-      "sha256": "cb8598c9b16190561e2dbb7cac2f68a865f585624daeb4da35c845ab29e5b7fc",
+      "sha256": "4152e57a5471f0c57afc8894c8a1e77b321d626e967cfb175f763d565f955069",
       "chinAnchor": [
         400,
-        411
+        431
       ]
     },
     "idle_02": {
       "bbox": [
         192,
-        94,
+        114,
         477,
-        405
+        425
       ],
       "path": "hero/v5/g2/equipment/azure/idle_02/helmet.png",
-      "sha256": "fdadd1f152020f8b2f3526482c3f2673857c55950fc4fb560cf17555125c9388",
+      "sha256": "35a2e184460e7c6e1e55ce6f32706d585a79d1d34414daef70dac6ba6ecb94b2",
       "chinAnchor": [
         400,
-        399
+        419
       ]
     },
     "idle_03": {
       "bbox": [
         192,
-        102,
+        122,
         477,
-        413
+        433
       ],
       "path": "hero/v5/g2/equipment/azure/idle_03/helmet.png",
-      "sha256": "a416a5900192d67d106104f7288cc380a8ab1622455b4022cc9605bff40a247f",
+      "sha256": "8226591d962a524ed4d28e7044be84f4f06e0c9e18c38e6ee800423cf01b1ace",
       "chinAnchor": [
         400,
-        407
+        427
       ]
     },
     "attack_01": {
@@ -173,5 +173,10 @@
     "hero/v5/g2/equipment/azure/death_02/arm_rear.png": "e83662471b5130915fde898166330ad084215d73b718651cb3df20a70eb34637",
     "hero/v5/g2/equipment/azure/death_02/sword.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
     "hero/v5/g2/equipment/azure/death_02/arm_front.png": "cdd39360bacd0b02201a25e502734b1765b92d8dd9ece938c1704cee42755448"
+  },
+  "idleRevision": {
+    "approval": "user-approved",
+    "shiftY": 20,
+    "revision": "idle_r2"
   }
 }
