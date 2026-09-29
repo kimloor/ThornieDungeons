@@ -521,7 +521,7 @@ test("W7.2 battle snapshot selects production V5 Base + Wing while preserving ex
 test("W7.2 shared HeroRenderer accepts authored V5 layer order without a second renderer", () => {
   const renderer = source("src/phaser/renderers/HeroRenderer.js");
   const actor = source("src/phaser/actors/HeroActor.js");
-  assert.match(renderer, /V3 contract and the opt-in V5 G2 contract/);
+  assert.match(renderer, /V3 fallback contract and the production-default V5 G2 contract/);
   assert.match(renderer, /Presentation models already arrive in authored bottom-to-top order/);
   assert.equal((actor.match(/new HeroRenderer\(/g) || []).length, 1);
   assert.doesNotMatch(actor, /HeroV5Renderer|V5HeroRenderer/);
