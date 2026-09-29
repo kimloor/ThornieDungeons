@@ -10,6 +10,7 @@ const worker = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'
 const playerCard = fs.readFileSync(path.join(ROOT, 'src/ui/playerCard.js'), 'utf8');
 const arenaUi = fs.readFileSync(path.join(ROOT, 'src/ui/components.js'), 'utf8');
 const arenaApi = fs.readFileSync(path.join(ROOT, 'src/state/api.js'), 'utf8');
+const appUi = fs.readFileSync(path.join(ROOT, 'src/ui/App.js'), 'utf8');
 const phaserUi = fs.readFileSync(path.join(ROOT, 'src/phaser/ui/PhaserBattlefield.js'), 'utf8');
 const migration = fs.readFileSync(path.join(ROOT, 'migrations/auto/0024_arena_w98_rewards.sql'), 'utf8');
 
@@ -122,6 +123,17 @@ test('Arena V2 frontend contract uses default Phaser, Player Card and no animati
   assert.match(arenaUi, /iconKey: "arenaCoin"/);
   assert.match(arenaUi, /iconKey: "arenaTicket"/);
   assert.match(arenaUi, /preloadGateRef\.current\?\.ready\(\)/);
+  assert.match(arenaUi, /function formatArenaSeasonCountdown/);
+  assert.match(arenaUi, /seasonCountdownText = formatArenaSeasonCountdown\(countdown\)/);
+  assert.doesNotMatch(arenaUi, /const mins = Math\.floor\(countdown \/ 60000\)/);
+  assert.match(arenaUi, /md-arena-page-actions/);
+  assert.match(arenaUi, /React\.createElement\(GameDock/);
+  assert.match(arenaUi, /onHudChange\?\.\(/);
+  assert.match(arenaUi, /Standard BOT Loadout/);
+  assert.match(arenaUi, /return "None"/);
+  assert.match(appUi, /const \[arenaHud, setArenaHud\] = useState\(null\)/);
+  assert.match(appUi, /arena: phase === "arena" \? arenaHud : null/);
+  assert.match(appUi, /\.\.\.utilityDockProps\("arena"\)/);
   assert.doesNotMatch(arenaUi.slice(arenaUi.indexOf('function ArenaV2Screen'), arenaUi.indexOf('\n}\n\n// Turns a mail')), /requestAnimationFrame/);
 });
 
