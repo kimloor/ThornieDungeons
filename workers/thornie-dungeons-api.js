@@ -6065,6 +6065,11 @@ async function handlePrepareArenaV2Match(db, id, session, characterId, opponentK
   if (!opponent) return json({ error: "arena_opponent_not_found" }, 404);
   let existing = await arenaOpenMatchForAttacker(db, characterId);
   existing = await arenaExpirePreparedMatch(db, existing, nowMs);
+  if (existing?.status === "prepared" && existing.season_id !== context.season.season_id) {
+    // Prepared matches are season-bound. A rollover before activation must not
+    // occupy the one-open-match slot for the new season.
+    existing = await arenaExpirePreparedMatch(db, existing, nowMs, true);
+  }
   if (existing && ["prepared", "active"].includes(existing.status)) {
     const existingSnapshot = parseJsonColumn(existing.snapshot_json, {});
     if (existingSnapshot.opponentKey !== opponent.opponentKey) return json({ error: "arena_match_in_progress" }, 409);

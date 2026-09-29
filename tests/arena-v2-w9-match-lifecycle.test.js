@@ -145,6 +145,24 @@ test('season cutoff immediately expires prepared match and releases the open slo
   db.close();
 });
 
+test('prepare after rollover expires stale prepared match without requiring activation', async () => {
+  const db = createDb();
+  const { seasonId, opponents } = await ready(db, 3);
+  const first = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+
+  db.raw.prepare("UPDATE arena_seasons SET starts_at = '1999-01-01T00:00:00.000Z', ends_at = '2000-01-01T00:00:00.000Z' WHERE season_id = ?").run(seasonId);
+  const nextOpponents = await body(await arena.handleGetArenaV2Opponents(db, 'p1', session('p1'), 'char-10'));
+  const fresh = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', nextOpponents.opponents[0].opponentKey));
+
+  assert.equal(fresh.ok, true);
+  assert.equal(fresh.match.status, 'prepared');
+  assert.notEqual(fresh.match.matchId, first.match.matchId);
+  assert.notEqual(fresh.match.seasonId, seasonId);
+  assert.equal(db.raw.prepare('SELECT status FROM arena_matches WHERE match_id = ?').get(first.match.matchId).status, 'expired');
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, 3);
+  db.close();
+});
+
 test('activation consumes exactly one ticket and duplicate activation resumes the same active match', async () => {
   const db = createDb();
   const { opponents } = await ready(db);
