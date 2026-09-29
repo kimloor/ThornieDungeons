@@ -112,3 +112,74 @@ test('Arena V2 frontend contract uses default Phaser, Player Card and no animati
   assert.match(arenaUi, /preloadGateRef\.current\?\.ready\(\)/);
   assert.doesNotMatch(arenaUi.slice(arenaUi.indexOf('function ArenaV2Screen'), arenaUi.indexOf('\n}\n\n// Turns a mail')), /requestAnimationFrame/);
 });
+
+
+function loadPreparedPresentationHelpers() {
+  const start = fs.readFileSync(path.join(ROOT, 'src/phaser/presentation/EventBridge.js'), 'utf8').indexOf('function arenaPreparedEquipmentMap');
+  const sourceFile = fs.readFileSync(path.join(ROOT, 'src/phaser/presentation/EventBridge.js'), 'utf8');
+  const end = sourceFile.indexOf('\nfunction arenaPresentationUnit', start);
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext(`${sourceFile.slice(start, end)}
+globalThis.__prepared = { arenaPreparedEquipmentMap, arenaPreparedPresentationContext };`, sandbox);
+  return sandbox.__prepared;
+}
+
+test('prepared Arena snapshot produces real Hero equipment and Pet presentation data before activation', () => {
+  const { arenaPreparedPresentationContext } = loadPreparedPresentationHelpers();
+  const prepared = arenaPreparedPresentationContext({
+    seed: 42,
+    attacker: {
+      name: 'Hero A',
+      stats: { maxHp: 500 },
+      equipment: [{ slotType: 'helmet', name: 'Azure Helmet' }, { slotType: 'wings', name: 'Angel Wings' }],
+      pet: { defId: 'sprout', level: 5 }
+    },
+    defender: {
+      name: 'Hero B',
+      stats: { maxHp: 450 },
+      equipment: [{ slotType: 'weapon', name: 'Azure Sword' }],
+      pet: { defId: 'flamekit', level: 4 }
+    }
+  });
+  assert.equal(prepared.state.units.team_a_hero.maxHp, 500);
+  assert.equal(prepared.state.units.team_a_pet.defId, 'sprout');
+  assert.equal(prepared.state.units.team_b_pet.defId, 'flamekit');
+  assert.equal(prepared.teams.team_a.equipped.helmet.name, 'Azure Helmet');
+  assert.equal(prepared.teams.team_a.equipped.wings.name, 'Angel Wings');
+  assert.equal(prepared.teams.team_b.equipped.weapon.name, 'Azure Sword');
+});
+
+function loadArenaCardHelpers() {
+  const start = arenaUi.indexOf('function arenaPlayerCardEquipmentLabels');
+  const end = arenaUi.indexOf('\n// W9.8/W9.9 authoritative Arena V2 surface', start);
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext(`${arenaUi.slice(start, end)}
+globalThis.__card = { arenaPlayerCardEquipmentLabels, arenaPlayerCardPetLabel };`, sandbox);
+  return sandbox.__card;
+}
+
+test('Arena Player Card normalizes equipment objects and Pet defId into render-safe strings', () => {
+  const { arenaPlayerCardEquipmentLabels, arenaPlayerCardPetLabel } = loadArenaCardHelpers();
+  assert.deepEqual(
+    Array.from(arenaPlayerCardEquipmentLabels([
+      { name: 'Azure Sword', enhanceLevel: 3 },
+      { itemTemplateId: 'helm-01', slotType: 'helmet' }
+    ])),
+    ['Azure Sword +3', 'helm-01']
+  );
+  assert.equal(arenaPlayerCardPetLabel({ pet: { defId: 'sprout' } }), 'sprout');
+  assert.equal(arenaPlayerCardPetLabel({}), '—');
+  assert.match(arenaUi, /arenaProfileFrameAsset\(playerCard\.profileFrameKey\)/);
+  assert.doesNotMatch(arenaUi, /playerCard\.equipmentSummary \|\| playerCard\.equipment \|\|/);
+});
+
+test('Arena Phaser receives prepared match snapshot so READY waits on actor assets before activate', () => {
+  assert.match(arenaUi, /preparedSnapshot: match\.snapshot/);
+  assert.match(phaserUi, /props\.preparedSnapshot/);
+  const eventSource = fs.readFileSync(path.join(ROOT, 'src/phaser/presentation/EventBridge.js'), 'utf8');
+  assert.match(eventSource, /arenaPreparedPresentationContext\(preparedSnapshot\)/);
+  assert.match(eventSource, /equipped: arenaPreparedEquipmentMap\(member\?\.equipment\)/);
+  assert.match(eventSource, /petCombat: petSource/);
+});

@@ -161,6 +161,88 @@ function arenaPresentationTeamConfig(configBySide, side, role) {
   return configBySide?.[side] || configBySide?.[role] || {};
 }
 
+function arenaPreparedEquipmentMap(equipment) {
+  const mapped = {};
+  (Array.isArray(equipment) ? equipment : []).forEach(item => {
+    if (!item || typeof item !== "object") return;
+    const slot = String(item.slotType || item.type || "").trim().toLowerCase();
+    if (!slot) return;
+    mapped[slot] = {
+      ...item,
+      id: item.itemId || item.id || item.itemTemplateId || "",
+      type: slot
+    };
+  });
+  return mapped;
+}
+
+function arenaPreparedPresentationContext(preparedSnapshot) {
+  const attacker = preparedSnapshot?.attacker;
+  const defender = preparedSnapshot?.defender;
+  if (!attacker || !defender) return null;
+
+  const makeTeam = (member, side, role) => {
+    const heroMaxHp = Math.max(1, Number(member?.stats?.maxHp) || 1);
+    const hero = {
+      id: `${side}_hero`,
+      side,
+      kind: "hero",
+      name: String(member?.name || (role === "attacker" ? "Hero" : "Opponent")),
+      hp: heroMaxHp,
+      maxHp: heroMaxHp,
+      dead: false,
+      statuses: {}
+    };
+    const petSource = member?.pet && typeof member.pet === "object" ? member.pet : null;
+    const petMaxHp = Math.max(1, Number(petSource?.maxHp || petSource?.hp) || 1);
+    const pet = petSource ? {
+      ...petSource,
+      id: `${side}_pet`,
+      side,
+      kind: "pet",
+      name: String(petSource.name || petSource.defId || "Pet"),
+      defId: petSource.defId || petSource.id || "",
+      hp: petMaxHp,
+      maxHp: petMaxHp,
+      dead: false,
+      statuses: {}
+    } : null;
+    return {
+      unitIds: [hero.id, pet?.id].filter(Boolean),
+      units: [hero, pet].filter(Boolean),
+      config: {
+        heroName: hero.name,
+        equipped: arenaPreparedEquipmentMap(member?.equipment),
+        petCombat: petSource
+      }
+    };
+  };
+
+  const teamA = makeTeam(attacker, "team_a", "attacker");
+  const teamB = makeTeam(defender, "team_b", "defender");
+  const units = {};
+  [...teamA.units, ...teamB.units].forEach(unit => { units[unit.id] = unit; });
+  return {
+    state: {
+      mode: "arena",
+      battleId: `arena-preload-${preparedSnapshot.seed || preparedSnapshot.preparedAt || "prepared"}`,
+      controlledSide: "team_a",
+      teamIds: ["team_a", "team_b"],
+      teams: {
+        team_a: { unitIds: teamA.unitIds },
+        team_b: { unitIds: teamB.unitIds }
+      },
+      units
+    },
+    teams: {
+      team_a: teamA.config,
+      attacker: teamA.config,
+      team_b: teamB.config,
+      defender: teamB.config
+    }
+  };
+}
+
 function arenaPresentationUnit(state, side, kind) {
   const units = state?.units || {};
   const declared = state?.teams?.[side]?.unitIds;
@@ -172,12 +254,16 @@ function arenaPresentationUnit(state, side, kind) {
 
 function buildArenaBattlefieldSnapshot({
   battleState,
+  preparedSnapshot = null,
   teams = {},
   targetUid = null,
   combatSpeed = 1,
   heroV5 = undefined
 } = {}) {
-  const state = battleState || {};
+  const prepared = arenaPreparedPresentationContext(preparedSnapshot);
+  const hasBattleUnits = Object.values(battleState?.units || {}).length > 0;
+  const state = hasBattleUnits ? battleState : (prepared?.state || battleState || {});
+  const presentationTeams = { ...(prepared?.teams || {}), ...(teams || {}) };
   const units = state.units || {};
   const stateSides = Array.isArray(state.teamIds) && state.teamIds.length
     ? state.teamIds.map(String)
@@ -187,7 +273,7 @@ function buildArenaBattlefieldSnapshot({
   const speed = Math.max(1, Math.min(2, Number(combatSpeed) || 1));
 
   const buildTeam = (side, role, facing) => {
-    const config = arenaPresentationTeamConfig(teams, side, role);
+    const config = arenaPresentationTeamConfig(presentationTeams, side, role);
     const rawHero = arenaPresentationUnit(state, side, "hero");
     const rawPet = arenaPresentationUnit(state, side, "pet");
     const hero = rawHero ? createActorPresentationModel(rawHero, {

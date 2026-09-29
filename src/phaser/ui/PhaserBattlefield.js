@@ -14,7 +14,7 @@ function PhaserBattlefield(props) {
   const enabled = props.mode === "arena" ? true : isPhaserBattleRendererEnabled();
   const snapshot = React.useMemo(() => props.mode === "arena"
     ? buildArenaBattlefieldSnapshot(props)
-    : buildBattlefieldSnapshot(props), [props.mode, props.battleState, props.teams, props.heroName, props.equipped, props.petCombat, props.monsters, props.targetUid, props.heroAnim, props.petAnim, props.enemyAnims, props.combatSpeed]);
+    : buildBattlefieldSnapshot(props), [props.mode, props.battleState, props.preparedSnapshot, props.teams, props.heroName, props.equipped, props.petCombat, props.monsters, props.targetUid, props.heroAnim, props.petAnim, props.enemyAnims, props.combatSpeed]);
 
   React.useEffect(() => {
     if (!enabled || !hostRef.current) return undefined;
