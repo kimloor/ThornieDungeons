@@ -271,4 +271,4 @@ test('Arena active public-state unit arrays keep all 2v2 presentation actors add
   assert.equal(resolveUnit(state, 'team_b', 'pet').id, 'team_b_pet');
 });
 
-// Final parity retrigger after generated frontend sync.
+// Final parity retrigger after generated frontend sync (W9 browser QA Batch 4).
