@@ -220,6 +220,7 @@ test('Arena browser shell uses global resources, standard header back, fixed doc
   assert.match(appUi, /arena: arenaHud/);
   assert.match(appUi, /arenaHud: arenaHud/);
   assert.match(appUi, /cloudGetArenaV2Status\(cred\.url, characterId\)/);
+  assert.doesNotMatch(arenaUi, /onHudChange\?\.\(null\)/);
 });
 
 
