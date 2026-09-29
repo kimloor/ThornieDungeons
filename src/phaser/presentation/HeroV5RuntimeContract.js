@@ -34,9 +34,10 @@ function isHeroV5RuntimeEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === false) return false;
   try {
-    return new URLSearchParams(globalThis.location?.search || "").get("heroV5") === "1";
+    const value = new URLSearchParams(globalThis.location?.search || "").get("heroV5");
+    return value !== "0";
   } catch (_) {
-    return false;
+    return true;
   }
 }
 
