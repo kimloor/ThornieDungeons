@@ -98,16 +98,19 @@
     "death_01": {
       "bbox": [
         200,
-        122,
+        173,
         485,
-        414
+        424
       ],
       "path": "hero/v5/g2/equipment/azure/death_01/helmet.png",
-      "sha256": "57404a99d01e0bfe54682d93bb57df14d66028f44e70567865e8fbae9334bc12",
-      "chinAnchor": [
-        391,
-        408
-      ]
+      "sha256": "da735aa91ab050654d6ca15609b919a85872d40c0a506ea5b8e8012efc67b258",
+      "nativeArtTopLeft": [
+        200,
+        173
+      ],
+      "artWidth": 285,
+      "revision": "death_r3",
+      "approval": "user-approved; chin extension removed; helmet lowered"
     },
     "death_02": {
       "bbox": [
