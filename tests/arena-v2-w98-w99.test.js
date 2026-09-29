@@ -108,6 +108,7 @@ test('Arena Phaser preload gate activates only after READY and rejects error/tim
 
 test('Arena V2 frontend contract uses default Phaser, Player Card and no animation-frame activation shortcut', () => {
   assert.match(phaserUi, /props\.mode === "arena" \? true : isPhaserBattleRendererEnabled\(\)/);
+  assert.match(phaserUi, /return value !== "0"/);
   assert.match(arenaApi, /function cloudGetArenaV2PlayerCard/);
   assert.match(arenaApi, /function cloudAcknowledgeArenaV2Unlock/);
   assert.match(arenaUi, /cloudGetArenaV2PlayerCard\(url, characterId, opponentKey\)/);
