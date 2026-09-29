@@ -260,7 +260,7 @@ test('activation deadline is ten minutes or the season cutoff, whichever comes f
 
 test('W9.5 adds no combat resolver, settlement, AI or W9.6/W9.7 scope', () => {
   const start = workerSource.indexOf('Phase 5: PvP Arena V2 server foundation');
-  const end = workerSource.indexOf('// ---------- admin / QA ----------');
+  const end = workerSource.indexOf('// ---------- W9.6 Arena combat orchestration ----------');
   const section = workerSource.slice(start, end);
   assert.match(section, /prepareArenaV2Match|handlePrepareArenaV2Match/);
   assert.doesNotMatch(section, /settleArena|defense AI|lowest HP|arena_match_history/);

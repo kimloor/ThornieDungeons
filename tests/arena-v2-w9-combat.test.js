@@ -218,15 +218,16 @@ test('defender AI uses configured priority and targets the lowest HP percentage 
   db.close();
 });
 
-test('Surrender is an idempotent orchestration result and stores no economy settlement', async () => {
+test('Surrender is an idempotent authoritative settlement result', async () => {
   const db = createDb();
   const opponents = await ready(db);
   const { active } = await activate(db, opponents[0].opponentKey);
   db.raw.prepare('UPDATE arena_matches SET activated_at = ? WHERE match_id = ?').run(new Date(Date.now() - 11000).toISOString(), active.match.matchId);
   const result = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-1', 'surrender', null, null, false));
-  assert.equal(result.result.result, 'surrender');
+  assert.equal(result.result.result, 'loss');
+  assert.equal(result.result.combatResult, 'surrender');
   assert.equal(db.raw.prepare('SELECT status FROM arena_matches WHERE match_id = ?').get(active.match.matchId).status, 'done');
-  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_match_history WHERE match_id = ?").get(active.match.matchId).c, 0);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_match_history WHERE match_id = ?").get(active.match.matchId).c, 1);
   const retry = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-1', 'surrender', null, null, false));
   assert.equal(retry.replayed, true);
   db.close();
@@ -248,12 +249,14 @@ test('activation stores immediate opening defeat as done while consuming exactly
   const activated = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
   assert.equal(activated.ok, true);
   assert.equal(activated.match.status, 'done');
-  assert.equal(activated.match.result.result, 'defeat');
+  assert.equal(activated.match.result.result, 'loss');
+  assert.equal(activated.match.result.combatResult, 'defeat');
   assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, beforeTickets - 1);
 
   const resumed = await body(await arena.handleGetArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
   assert.equal(resumed.match.status, 'done');
-  assert.equal(resumed.match.result.result, 'defeat');
+  assert.equal(resumed.match.result.result, 'loss');
+  assert.equal(resumed.match.result.combatResult, 'defeat');
   db.close();
 });
 
@@ -303,7 +306,8 @@ test('Surrender is rejected for 10 seconds without receipt or state advance, the
 
   db.raw.prepare('UPDATE arena_matches SET activated_at = ? WHERE match_id = ?').run(new Date(Date.now() - 11000).toISOString(), active.match.matchId);
   const result = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-cooldown', 'surrender', null, null, false));
-  assert.equal(result.result.result, 'surrender');
+  assert.equal(result.result.result, 'loss');
+  assert.equal(result.result.combatResult, 'surrender');
   const retry = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'surrender-cooldown', 'surrender', null, null, false));
   assert.equal(retry.replayed, true);
   assert.equal(db.raw.prepare('SELECT COUNT(*) AS c FROM arena_match_actions WHERE match_id = ?').get(active.match.matchId).c, 1);

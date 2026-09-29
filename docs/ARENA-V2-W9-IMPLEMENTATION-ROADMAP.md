@@ -302,7 +302,7 @@ Gate:
 - surrender and normal combat completion store combat result only; W9.7 owns
   settlement/economy/rewards.
 
-## W9.7 — Settlement, economy and rewards
+## W9.7 — Settlement, economy and rewards — IMPLEMENTED / READY_FOR_QA
 
 Purpose: one idempotent authoritative settlement path for every Arena result.
 
@@ -338,6 +338,18 @@ Exact-once requirement:
 
 Content dependency:
 - final progression-material item ID/quantity for season rank rewards must be approved before enabling that reward component; do not guess.
+
+Implementation boundary:
+- `workers/thornie-dungeons-api.js` now owns one authoritative settlement path for normal terminal results, surrender, timeout and season cutoff.
+- Settlement identity is `arena:settlement:{matchId}`; milestone, promotion, season-eligibility and season-finalization receipts use deterministic identities under the same `arena_idempotency_receipts` table.
+- Rating/stat/pair/Coin/history/result writes are guarded by season-player state CAS and committed through one D1 batch; replay reads the stored `result_json` and never recalculates.
+- Real-player pair encounters are canonicalized by unordered character ID; bot wins are capped at 1449 and cannot promote into Diamond.
+- A season-cutoff settlement is Coin-only: it persists the authoritative result/history and base slot Coin, but does not move rating, pair counts, W/D/L stats, milestones, promotion rewards or season eligibility.
+- Terminal combat commits are recoverable: action replay and season finalization sweep done-but-unsettled matches and return the stored authoritative settlement result.
+- Live and final rank ordering is identical: rating DESC, Attack Wins DESC, rating_reached_at ASC, character_id ASC. Result/history rating deltas are computed after floor and bot-cap clamping.
+- Season rollover finalizes expired active and terminal-but-unsettled matches, ranks by rating → Attack Wins → rating reached time → character ID, and initializes the next season with the locked one-tier-drop base.
+- Arena Coin and Diamonds settle immediately where approved. Progression-material reward is explicitly disabled pending an approved item ID/quantity. Mailbox and Profile Frame delivery remain W9.8 scope.
+- No migration changes were required; W9.5/W9.6 combat action receipts and Ticket activation semantics remain unchanged.
 
 ## W9.8 — Mailbox + global Profile Frames
 

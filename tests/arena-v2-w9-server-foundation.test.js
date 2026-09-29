@@ -235,7 +235,7 @@ test('season creation/cutoff and player initialization are authoritative and do 
   assert.ok(Date.parse(caughtUp.ends_at) > Date.parse('2026-10-20T12:00:00Z'));
   assert.equal(caughtUp.ends_at, '2026-10-25T16:00:00.000Z');
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_seasons WHERE status = 'active'").get().c, 1);
-  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_seasons WHERE status = 'finalizing'").get().c, 3);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_seasons WHERE status = 'finalized'").get().c, 3);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM pvp_ranking").get().c, 0);
   db.close();
 
@@ -249,7 +249,7 @@ test('season creation/cutoff and player initialization are authoritative and do 
   assert.equal(longCaughtUp.ends_at, '2029-04-01T16:00:00.000Z');
   assert.ok(Date.parse(longCaughtUp.ends_at) > longNow);
   assert.equal(longGapDb.raw.prepare("SELECT COUNT(*) AS c FROM arena_seasons WHERE status = 'active'").get().c, 1);
-  assert.equal(longGapDb.raw.prepare("SELECT COUNT(*) AS c FROM arena_seasons WHERE status = 'finalizing'").get().c, 130);
+  assert.equal(longGapDb.raw.prepare("SELECT COUNT(*) AS c FROM arena_seasons WHERE status = 'finalized'").get().c, 130);
 
   const longSeasons = longGapDb.raw.prepare("SELECT season_number, starts_at, ends_at FROM arena_seasons ORDER BY season_number").all();
   assert.equal(longSeasons.length, 131);
@@ -333,9 +333,9 @@ test('Player Card resolves only from persisted opponent list, uses live equipmen
 });
 
 test('Worker keeps W9.6 combat orchestration separate from W9.7 settlement and generated frontend remains untouched', () => {
-  const section = workerSource.slice(workerSource.indexOf('Phase 5: PvP Arena V2 server foundation'), workerSource.indexOf('// ---------- admin / QA ----------'));
+  const section = workerSource.slice(workerSource.indexOf('// ---------- W9.6 Arena combat orchestration ----------'), workerSource.indexOf('// ---------- admin / QA ----------'));
   assert.match(section, /submitArenaV2Action|handleSubmitArenaV2Action|lowestHpPercentTarget/);
-  assert.doesNotMatch(section, /settleArenaMatch|arena_match_history|milestone|promotion/);
-  assert.match(section, /PrepareArenaV2Match|ActivateArenaV2Match|GetArenaV2Match/);
+  assert.match(section, /arenaSettleV2Match|arena_match_history|milestone|promotion/);
+  assert.match(section, /arenaCombatState|handleSubmitArenaV2Action/);
   assert.equal(fs.existsSync(path.join(ROOT, 'index.html')), true);
 });
