@@ -6171,7 +6171,37 @@ async function arenaRealSnapshot(db, character, setup, items, rating) {
     profileFrameKey: await arenaValidProfileFrame(db, character.character_id),
   };
 }
+function arenaBotCombatStats(snapshot) {
+  const level = Number(snapshot?.level) || 10;
+  const rating = Number(snapshot?.rating) || 1000;
+  return snapshot?.stats || {
+    maxHp: 80 + level * 5 + Math.max(0, rating - 1000) * 0.04,
+    maxMp: 100,
+    atk: 10 + level * 2 + Math.max(0, rating - 1000) * 0.02,
+    def: 4 + level * 0.6,
+    accuracy: 95,
+    dodgeChance: 2,
+    critChance: 3,
+    critDamage: 50,
+    agi: level,
+  };
+}
+function arenaBotCombatPower(snapshot, stats = arenaBotCombatStats(snapshot)) {
+  const level = Number(snapshot?.level) || 10;
+  return Math.round(
+    (Number(stats.atk) || 0) * 12
+    + (Number(stats.def) || 0) * 15
+    + (Number(stats.maxHp) || 0) * 2
+    + (Number(stats.maxMp) || 0) * 1.5
+    + (Number(stats.accuracy) || 0) * 4
+    + (Number(stats.critChance) || 0) * 8
+    + (Number(stats.critDamage) || 0) * 3
+    + (Number(stats.dodgeChance) || 0) * 6
+    + level * 50
+  );
+}
 function arenaBotSnapshot(opponent) {
+  const stats = arenaBotCombatStats(opponent);
   return {
     type: "bot",
     botId: opponent.botId,
@@ -6179,8 +6209,8 @@ function arenaBotSnapshot(opponent) {
     level: Number(opponent.level) || 1,
     rating: Number(opponent.rating) || 1000,
     tier: arenaTierForRating(opponent.rating),
-    cp: null,
-    stats: null,
+    cp: arenaBotCombatPower(opponent, stats),
+    stats,
     equipment: [],
     pet: null,
     skillSlots: [null, null, null, null],
@@ -6441,13 +6471,7 @@ function arenaCombatHeroUnit(snapshot, id, side) {
   };
 }
 function arenaCombatBotUnit(snapshot, id, side) {
-  const level = Number(snapshot?.level) || 10;
-  const rating = Number(snapshot?.rating) || 1000;
-  const stats = snapshot?.stats || {
-    maxHp: 80 + level * 5 + Math.max(0, rating - 1000) * 0.04,
-    maxMp: 100, atk: 10 + level * 2 + Math.max(0, rating - 1000) * 0.02,
-    def: 4 + level * 0.6, accuracy: 95, dodgeChance: 2, critChance: 3, critDamage: 50, agi: level,
-  };
+  const stats = arenaBotCombatStats(snapshot);
   return arenaCombatHeroUnit({ ...snapshot, stats, skillLevels: { power_strike: 1 }, skillSlots: ["power_strike"] }, id, side);
 }
 function arenaCombatPetUnit(snapshot, id, side, ownerName) {
@@ -7121,16 +7145,37 @@ async function handleGetArenaV2PlayerCard(db, id, session, characterId, opponent
     : opponents.find((row) => arenaOpponentKey(row) === String(opponentKey || ""));
   if (!target) return json({ error: "arena_opponent_not_found" }, 404);
   if (target.type === "bot") {
-    return json({ ok: true, playerCard: { opponentKey: target.opponentKey, name: target.name, level: target.level, rating: target.rating, tier: arenaTierForRating(target.rating), cp: null, equipment: [], pet: null, profileFrameKey: null, avatar: { mode: "head", layers: [] }, isBot: true } });
+    const bot = arenaBotSnapshot(target);
+    return json({ ok: true, playerCard: {
+      opponentKey: target.opponentKey,
+      name: bot.name,
+      level: bot.level,
+      rating: bot.rating,
+      tier: bot.tier,
+      cp: bot.cp,
+      equipment: bot.equipment,
+      pet: bot.pet,
+      profileFrameKey: null,
+      avatar: { mode: "head", layers: [] },
+      archetype: bot.archetype,
+      isBot: true,
+    } });
   }
   const targetCharacter = await db.prepare(`SELECT character_id, name, level, str, vit, agi, dex, luk, pets_json, active_pet_id FROM characters WHERE character_id = ?`).bind(target.characterId).first();
   if (!targetCharacter) return json({ error: "arena_opponent_not_found" }, 404);
   const items = await arenaCurrentEquipment(db, target.characterId);
   const setup = await sanitizeArenaSetup(db, targetCharacter);
+  const pet = setup.petInstId ? arenaPetFromCharacter(targetCharacter, setup.petInstId) : null;
   return json({ ok: true, playerCard: {
     opponentKey: target.opponentKey, name: targetCharacter.name || target.name || "", level: Number(targetCharacter.level) || 1,
     rating: Number(target.rating) || 1000, tier: arenaTierForRating(target.rating), cp: combatPowerFromCharacter(targetCharacter, items),
-    equipment: arenaEquipmentPublic(items), pet: setup.petInstId ? { instId: setup.petInstId, defId: arenaPetFromCharacter(targetCharacter, setup.petInstId)?.defId || null } : null,
+    equipment: arenaEquipmentPublic(items), pet: pet ? {
+      instId: pet.instId,
+      defId: pet.defId,
+      name: PET_DISPLAY_NAMES[pet.defId] || pet.name || pet.defId || "Pet",
+      level: Number(pet.level) || 1,
+      star: Number(pet.star) || 1,
+    } : null,
     profileFrameKey: await arenaValidProfileFrame(db, target.characterId), avatar: { mode: "head", layers: [] }, isBot: false,
   } });
 }
