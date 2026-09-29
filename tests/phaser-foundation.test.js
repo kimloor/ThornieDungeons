@@ -191,3 +191,15 @@ test("Ver 1.0.9 sharpens Phaser HUD stroke and keeps labels inside the battlefie
   assert.match(pet, /baseSize: 118, depth: 8/);
 });
 
+
+
+test("Ver 1.0.21 keeps authored monster facing and hardens Phaser result teardown", () => {
+  const monster = fs.readFileSync(path.join(ROOT, "src/phaser/actors/MonsterActor.js"), "utf8");
+  const scene = fs.readFileSync(path.join(ROOT, "src/phaser/scenes/BattleScene.js"), "utf8");
+  const host = fs.readFileSync(path.join(ROOT, "src/phaser/runtime/BattlefieldHost.js"), "utf8");
+  assert.match(monster, /this\.visualRoot\.setScale\(this\.facing\(\) === "left" \? 1 : -1, 1\)/);
+  assert.match(scene, /this\.events\.once\(Phaser\.Scenes\.Events\.SHUTDOWN, this\.shutdown, this\)/);
+  assert.match(host, /const gameToDestroy = game/);
+  assert.match(host, /try \{\s*gameToDestroy\?\.destroy\(true\)/);
+  assert.match(host, /Phaser battlefield teardown failed/);
+});
