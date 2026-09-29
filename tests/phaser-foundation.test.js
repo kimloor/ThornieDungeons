@@ -111,7 +111,7 @@ test("W5.2 animation bridge stays presentation-only and carries resolved UI anim
   assert.match(bridge, /petAnim = ""/);
   assert.match(bridge, /enemyAnims = \{\}/);
   assert.match(bridge, /attack: urls\("attack"\)/);
-  assert.match(scene, /createPresentationQueue\(\)/);
+  assert.match(scene, /createPresentationQueue\(\{ onError \}\)/);
   assert.match(scene, /presentationQueue\.enqueue/);
   assert.match(actor, /playVisualState\(state, speed = 1\)/);
   assert.doesNotMatch(scene, /battleStep|simulateBattle|BATTLE_CORE_V1/);
