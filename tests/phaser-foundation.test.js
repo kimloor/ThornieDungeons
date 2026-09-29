@@ -203,3 +203,16 @@ test("Ver 1.0.21 keeps authored monster facing and hardens Phaser result teardow
   assert.match(host, /try \{\s*gameToDestroy\?\.destroy\(true\)/);
   assert.match(host, /Phaser battlefield teardown failed/);
 });
+
+
+test("Ver 1.0.22 contains Arena Phaser scene, sync and animation failures inside presentation", () => {
+  const host = fs.readFileSync(path.join(ROOT, "src/phaser/runtime/BattlefieldHost.js"), "utf8");
+  const scene = fs.readFileSync(path.join(ROOT, "src/phaser/scenes/BattleScene.js"), "utf8");
+  const queue = fs.readFileSync(path.join(ROOT, "src/phaser/presentation/PresentationQueue.js"), "utf8");
+  assert.match(host, /try \{\s*scene\?\.consume\(event\)/);
+  assert.match(host, /onError\?\.\(error\)/);
+  assert.match(scene, /try \{\s*this\.createActors\(\);\s*this\.sync\(this\.snapshot\)/);
+  assert.match(scene, /createPresentationQueue\(\{ onError \}\)/);
+  assert.match(queue, /function createPresentationQueue\(\{ onDrained, onError \} = \{\}\)/);
+  assert.match(queue, /try \{\s*await task\.run\(speed\);\s*\} catch \(error\) \{\s*onError\?\.\(error\)/);
+});
