@@ -108,6 +108,54 @@ This is an intentional change from the current continuous floor-stat formulas.
 
 ---
 
+
+### 4.2 Approved base equipment stat budget
+
+The approved normal-equipment base budget uses fixed stats by Tier rather than continuous per-Floor stat growth.
+
+Rare base values:
+
+| Slot | T1 | T2 | T3 | T4 | T5 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Weapon ATK | 14 | 18 | 24 | 31 | 40 |
+| Gloves ATK | 6 | 8 | 10 | 13 | 17 |
+| Chest DEF | 9 | 12 | 15 | 20 | 26 |
+| Helmet DEF | 6 | 8 | 10 | 13 | 17 |
+| Boots DEF | 5 | 6 | 9 | 11 | 14 |
+| Full offensive budget | 20 | 26 | 34 | 44 | 57 |
+| Full defensive budget | 20 | 26 | 34 | 44 | 57 |
+
+Slot-role target:
+
+- Weapon ≈ 70% of normal offensive budget.
+- Gloves ≈ 30% of normal offensive budget.
+- Chest ≈ 45% of normal defensive budget.
+- Helmet ≈ 30% of normal defensive budget.
+- Boots ≈ 25% of normal defensive budget.
+
+Apply the approved Rarity multiplier after the Tier/base-slot value.
+
+### 4.3 Accessory utility budget
+
+Accessory is a utility slot rather than part of the normal ATK/DEF full-set budget.
+
+T1 Rare utility baselines:
+
+| Utility stat | T1 Rare baseline |
+| --- | ---: |
+| Crit Chance | +2.5% |
+| Dodge | +2.0% |
+| Crit Damage | +8% |
+
+Apply the approved Tier multiplier and Rarity multiplier to the appropriate utility baseline.
+
+Boss First-Clear Accessory rewards should eventually have intentional Boss/source identity rather than forcing the one-time reward through uncontrolled random utility selection.
+
+Wings remain outside the normal ATK/DEF equipment budget and should be balanced with their own special-source contract.
+
+
+---
+
 ## 5. Normal monster equipment drop
 
 Normal monsters have:
@@ -441,60 +489,46 @@ Reason:
 
 ## 15. Enhance
 
-Keep the current Enhance identity:
+Status: **DEFERRED FOR V2 RE-DESIGN / NOT FULLY LOCKED**
 
-- maximum +10;
-- each successful +1 adds **6% of the item's base stat**;
-- keep the current success-rate table unless separately redesigned;
-- failure consumes the attempt cost but does not destroy the item.
+Enhance remains an intended equipment-progression layer, but the exact V2 balance must be reviewed separately before implementation.
 
-Current success-rate baseline:
+Do not treat the earlier legacy/current-production values for the following as final V2 requirements:
 
-95 / 90 / 82 / 72 / 60 / 48 / 36 / 25 / 16 / 10%
+- exact stat gain per Enhance level;
+- exact success-rate curve;
+- exact Gold/Iron attempt costs;
+- expected total +10 cost;
+- final high-end power ceiling.
 
-Expected +10 cost from the current rates is approximately:
-
-- 31.5 attempts;
-- 31.5 Iron;
-- ~8,120 Gold at T1.
-
-Apply Tier economy scaling to Gold only:
-
-| Tier | Expected Gold to +10 |
-| --- | ---: |
-| T1 | ~8,120 |
-| T2 | ~18,270 |
-| T3 | ~30,450 |
-| T4 | ~46,690 |
-| T5 | ~69,020 |
-
-Iron should remain approximately **1 per Enhance attempt** and should not multiply by Tier.
+Current production behavior may be used as comparison/reference during the later design pass, not as automatic V2 approval.
 
 ---
 
 ## 16. Empower
 
-Approved Empower slot counts:
+Status: **DEFERRED FOR V2 RE-DESIGN / NOT FULLY LOCKED**
+
+The Rarity architecture currently reserves the following maximum slot counts:
 
 - Rare = 1
 - Unique = 2
 - Elite = 3
 - Mythic = 4
 
-Keep the existing base Gold progression per slot as the T1 baseline:
+However, exact Empower V2 balance is intentionally postponed.
 
-| Slot | Base Gold | Mana Ore |
-| --- | ---: | ---: |
-| 1 | 30 | 1 |
-| 2 | 75 | 1 |
-| 3 | 120 | 1 |
-| 4 | 165 | 1 |
+The later design pass must explicitly review:
 
-Gold scales by the item's Tier economy multiplier.
+- exact stat pool;
+- stat magnitude per slot;
+- whether duplicate/same-stat rolls are allowed;
+- Gold and Mana Ore costs;
+- reroll/rework behavior;
+- interaction with Tier/Rarity;
+- total high-end power ceiling.
 
-Mana Ore remains 1 per newly opened Empower slot and does not multiply by Tier.
-
-Mythic total T1 Empower opening cost = 390 Gold + 4 Mana Ore before any future reroll/rework system.
+Do not implement the previous cost/magnitude assumptions as locked V2 balance without a new approval.
 
 ---
 
@@ -699,7 +733,8 @@ The following remain open for later design:
 - Daily Login streak Accessory details;
 - T6 and post-T5 progression;
 - monster-specific equipment pools beyond the generic fallback;
-- any future Empower reroll/rework system.
+- exact Enhance V2 rates, stat gain, costs, and final power ceiling;
+- exact Empower V2 stat pool, magnitudes, costs, reroll/rework rules, and final power ceiling.
 
 These must not be invented during implementation without a new user-approved design decision.
 
