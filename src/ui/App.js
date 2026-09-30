@@ -2075,7 +2075,7 @@ function ThornieDungeons() {
   }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), persistenceStatus === "failed" && /*#__PURE__*/React.createElement("div", {
     className: `md-save-state md-save-state-${persistenceStatus}`,
     role: persistenceStatus === "failed" ? "alert" : "status"
-  }, persistenceStatus === "saving" ? "กำลังบันทึก…" : persistenceMessage || "บันทึก Cloud ไม่สำเร็จ — กดบันทึกเพื่อลองใหม่"), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && /*#__PURE__*/React.createElement(StatusBar, {
+  }, persistenceStatus === "saving" ? "กำลังบันทึก…" : persistenceMessage || "บันทึก Cloud ไม่สำเร็จ — กดบันทึกเพื่อลองใหม่"), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && phase !== "arena" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -2336,6 +2336,8 @@ function ThornieDungeons() {
   }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaV2Screen, {
     serverUrl: cred.url,
     characterId: save.characterId,
+    save: save,
+    arenaHud: arenaHud,
     onHudChange: setArenaHud,
     ...utilityDockProps("arena"),
     onFriend: () => {

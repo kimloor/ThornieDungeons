@@ -3406,6 +3406,8 @@ function ArenaUnlockNotice({ busy, onConfirm }) {
 function ArenaV2Screen({
   serverUrl,
   characterId,
+  save,
+  arenaHud,
   onHudChange,
   onCharacter,
   onOpenInv,
@@ -3531,6 +3533,11 @@ function ArenaV2Screen({
   const enemyUnits = Object.values(units).filter(u => u.side === "team_b");
   const selected = selectedTarget || enemyUnits.find(u => u.alive)?.id || enemyUnits[0]?.id || null;
   const battleState = match?.state ? { ...match.state, selectedTargetId: selected } : null;
+  const arenaCurrency = arenaHud || {
+    arenaCoin: Number(status?.player?.arenaCoin) || 0,
+    tickets: Number(status?.tickets?.tickets) || 0,
+    ticketsMax: Number(status?.tickets?.ticketsMax) || 10
+  };
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel md-arena-v2 md-arena-v2-art",
     style: {
@@ -3542,6 +3549,7 @@ function ArenaV2Screen({
     !match && /*#__PURE__*/React.createElement("header", { className: "md-character-page-title md-arena-page-header" },
       /*#__PURE__*/React.createElement("button", { type: "button", onClick: onBack, "aria-label": "ย้อนกลับ" }, "‹"),
       /*#__PURE__*/React.createElement("h1", null, "Arena")),
+    /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save, arena: arenaCurrency, className: "md-arena-global-currency" }),
     /*#__PURE__*/React.createElement("div", { className: "md-arena-scroll" },
       /*#__PURE__*/React.createElement("div", { className: "md-card" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 Arena V2"),
@@ -3550,7 +3558,7 @@ function ArenaV2Screen({
         /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "Rating ", status.player.rating, " · ", status.player.tier)),
       /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setCurrencyInfo(!currencyInfo) }, "CURRENCY INFO"),
       currencyInfo && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Arena Coin ใช้ตามผลและ opponent slot ที่ server ล็อกไว้ · Ticket ใช้เมื่อเตรียมและ preload สำเร็จเท่านั้น.")),
-    !match && /*#__PURE__*/React.createElement("div", { className: "md-tab-row" }, ["battle", "setup", "ranking", "history"].map(key => /*#__PURE__*/React.createElement("button", { key, className: `md-btn small ${tab === key ? "primary" : ""}`, onClick: () => loadTab(key) }, key.toUpperCase()))),
+    !match && /*#__PURE__*/React.createElement("div", { className: "md-tab-row md-arena-tab-row" }, ["battle", "setup", "ranking", "history"].map(key => /*#__PURE__*/React.createElement("button", { key, className: `md-btn small ${tab === key ? "primary" : ""}`, onClick: () => loadTab(key) }, key.toUpperCase()))),
     error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "#FF6B6B" } }, error),
     !match && tab === "battle" && /*#__PURE__*/React.createElement("div", { className: "md-card" },
       opponents.map(opp => /*#__PURE__*/React.createElement("div", { className: "md-shop-row", key: opp.opponentKey },
