@@ -630,16 +630,67 @@ Final item-side ATK contribution = 192% of base
 NOT 160% × 132% = 211.2%
 ~~~
 
-### 16.6 Existing Empower behavior retained for evaluation
+### 16.6 Roll probability and display quality
 
-The current game already supports duplicate options, option Lock, and Reroll. These mechanics are useful for endgame build chasing and remain the current V2 direction unless changed during the remaining Empower economy pass.
+Within each slot's valid option pool, option types use equal weight.
+
+For options with a value range, the approved working probability distribution is:
+
+| Empower option | Roll values / probability |
+| --- | --- |
+| ATK % | 4 / 5 / 6 / 7 / 8% = 25 / 25 / 25 / 15 / 10% |
+| DEF % | 3 / 4 / 5 / 6% = 35 / 35 / 20 / 10% |
+| HP % | 1 / 2 / 3% = 50 / 35 / 15% |
+| MP % | 2 / 3 / 4% = 50 / 35 / 15% |
+| Crit Chance | 1 / 2% = 75 / 25% |
+| Crit Damage | 2 / 3 / 4% = 50 / 35 / 15% |
+| STR / VIT / AGI / DEX / LUK | +1 = 100% |
+
+Display-quality rule:
+
+- **Maximum roll** uses **blue** value text.
+- **Minimum / low roll** uses **gray** value text.
+- Intermediate rolls use the normal/default value color.
+- Fixed-value Primary Stat rolls (+1 only) use the normal/default value color because they have no low/max range.
+
+### 16.7 Duplicate / Lock / Reroll
+
+Duplicate Empower options are allowed.
+
+The current Lock + Reroll behavior is retained as the V2 direction:
+
+- the player may Lock an already-filled option;
+- Reroll changes only unlocked filled options;
+- locked options remain unchanged;
+- duplicates remain possible after reroll;
+- this is intended to provide a long-term endgame optimization chase.
+
+Exact Reroll economy is finalized separately below.
+
+### 16.8 HP / MP percentage boundary
+
+HP% and MP% apply to the character-side maximum resource after normal character growth and Primary Stat contribution, then all Empower percentages of that resource type are summed and applied once.
+
+Conceptually:
+
+~~~text
+Max HP before HP% Empower
+= Level/base HP + VIT-derived HP + other approved flat/base contributions
+
+Final Max HP
+= Max HP before HP% Empower × (1 + total HP% Empower)
+~~~
+
+MP% follows the same additive-percentage rule.
+
+Multiple HP% or MP% Empower rolls add together before multiplication. They do not compound roll-by-roll.
+
+### 16.9 Remaining validation
 
 Still to finalize before implementation:
 
-- probability distribution inside each approved integer roll range;
 - exact opening Gold/Mana Ore cost;
 - exact Reroll Gold/Mana Ore cost and Lock surcharge;
-- final HP% / MP% calculation boundary;
 - final endgame power stress test against Dungeon Monster Scaling V2.
 
 ---
