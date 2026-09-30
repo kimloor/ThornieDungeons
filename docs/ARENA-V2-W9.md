@@ -654,9 +654,10 @@ Counting:
 Delivery:
 - no Claim button;
 - server records one-time milestone delivery;
-- reward is automatically sent to Mailbox;
-- show a popup/notification when reached if player is present;
-- if popup is missed, mail remains authoritative.
+- Arena Coin is credited immediately by authoritative settlement;
+- non-currency delayed rewards, if introduced, use Mailbox;
+- show a visible Result/notification when reached if player is present;
+- exact-once receipt remains authoritative.
 
 BATTLE tab summary:
 - only show current Play progress and next reward;

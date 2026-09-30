@@ -3316,15 +3316,35 @@ function arenaResultViewModel(result = {}) {
   const combatResult = raw.combatResult ?? raw.terminalReason ?? raw.reason ?? outcome;
   const resolution = raw.resolution ?? arenaCoin?.result ?? combatResult;
   const rewardSlot = raw.rewardSlot ?? arenaCoin?.rewardSlot ?? "—";
+  const milestones = Array.isArray(raw.milestones)
+    ? raw.milestones.map(milestone => ({
+      kind: String(milestone?.kind || "milestone"),
+      threshold: Number.isFinite(Number(milestone?.threshold)) ? Number(milestone.threshold) : null,
+      arenaCoin: Number.isFinite(Number(milestone?.arenaCoin)) ? Number(milestone.arenaCoin) : 0
+    })).filter(milestone => milestone.threshold !== null && milestone.arenaCoin > 0)
+    : [];
+  const milestoneNotice = milestones.map(milestone =>
+    `MILESTONE! ${milestone.kind.toUpperCase()} ${milestone.threshold} +${milestone.arenaCoin} Arena Coin`
+  ).join(" · ");
   return Object.freeze({
     outcome: String(outcome || "unknown"),
     combatResult: String(combatResult || "unknown"),
     ratingChange: Number.isFinite(Number(ratingChange)) ? Number(ratingChange) : null,
     arenaCoinEarned: Number.isFinite(Number(coinEarned)) ? Number(coinEarned) : null,
-    rewardSlot: String(rewardSlot ?? "—"),
+    rewardSlot: [String(rewardSlot ?? "—"), milestoneNotice].filter(Boolean).join(" · "),
     resolution: String(resolution || "unknown"),
-    terminalReason: String(raw.terminalReason ?? raw.reason ?? combatResult ?? "unknown")
+    terminalReason: String(raw.terminalReason ?? raw.reason ?? combatResult ?? "unknown"),
+    milestones: Object.freeze(milestones)
   });
+}
+
+// Public Arena state serializes units as an array. Keep this compatibility boundary
+// in one place so Auto never depends on the worker's private unit-map representation.
+function arenaPublicUnitById(state, unitId) {
+  const units = state?.units;
+  if (Array.isArray(units)) return units.find(unit => String(unit?.id || "") === String(unitId || "")) || null;
+  if (units && typeof units === "object") return units[unitId] || null;
+  return null;
 }
 
 function arenaMatchWithResultViewModel(match, resultOverride = undefined) {
@@ -3894,7 +3914,7 @@ function ArenaV2Screen({
 
   React.useEffect(() => {
     const currentMatch = matchRef.current;
-    const actor = currentMatch?.state?.units?.[currentMatch.state?.currentActorId];
+    const actor = arenaPublicUnitById(currentMatch?.state, currentMatch?.state?.currentActorId);
     if (
       !auto ||
       busy ||

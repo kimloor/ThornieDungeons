@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const ROOT = path.resolve(__dirname, "..");
 const arenaUi = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
@@ -18,11 +19,26 @@ test("W9 6A.2 Auto submits one deterministic Hero decision and continues safely"
   assert.match(section, /const submitArenaAction = React\.useCallback/);
   assert.match(section, /arena-auto-\$\{currentMatch\.matchId\}-\$\{currentSeq \+ 1\}/);
   assert.match(section, /autoActionInFlightRef\.current/);
-  assert.match(section, /actor\?\.id !== "team_a_hero"/);
+  assert.match(arenaUi, /arenaPublicUnitById\(currentMatch\?\.state, currentMatch\?\.state\?\.currentActorId\)/);
   assert.match(section, /setAuto\(next\.result \? false/);
   assert.match(worker, /function arenaCombatAdvance\(state\)/);
   assert.doesNotMatch(worker, /arenaCombatAdvance\(state, !!state\.flags\.auto\)/);
   assert.doesNotMatch(worker, /arenaCombatAdvance\(combatState, false\)/);
+});
+
+test("W9 6A.3 public Arena units Array resolves the current attacker Hero", () => {
+  const start = arenaUi.indexOf("function arenaPublicUnitById");
+  const end = arenaUi.indexOf("\n\nfunction arenaPlayerCardEquipmentLabels", start);
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext(`${arenaUi.slice(start, end)}\nglobalThis.lookup = arenaPublicUnitById;`, sandbox);
+  const actor = sandbox.lookup({ currentActorId: "team_a_hero", units: [
+    { id: "team_a_pet", side: "team_a", kind: "pet" },
+    { id: "team_a_hero", side: "team_a", kind: "hero" }
+  ] }, "team_a_hero");
+  assert.equal(actor.id, "team_a_hero");
+  assert.equal(actor.kind, "hero");
+  assert.match(arenaSection(arenaUi), /submitArenaAction\(\{ autoMode: true \}\)/);
 });
 
 test("W9 6A.2 Auto OFF and reload retain authoritative boundary semantics", () => {
