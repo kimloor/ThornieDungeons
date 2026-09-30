@@ -5762,6 +5762,52 @@ function characterProgressToServer(flatSave) {
 }
 
 // ---------- items <-> server ----------
+// Standard equipment names changed after launch. Legacy items have no gearTier in extra_json,
+// so exact old-name matches can be upgraded once on load. New drops always carry gearTier,
+// which disambiguates names intentionally reused across generations (Leather Vest/Boots).
+const LEGACY_EQUIPMENT_NAME_MIGRATIONS = Object.freeze({
+  weapon: Object.freeze({
+    "Wooden Sword": { name: "Beginner Sword", gearTier: 1 },
+    "Iron Blade": { name: "Copper Blade", gearTier: 2 },
+    "Steel Rapier": { name: "Steel Greatsword", gearTier: 3 },
+    "Flame Saber": { name: "Platinum Greatsword", gearTier: 4 },
+    "Dragon Fang": { name: "Dragon Slayer Sword", gearTier: 5 }
+  }),
+  helmet: Object.freeze({
+    "Cloth Cap": { name: "Leather Cap", gearTier: 1 },
+    "Leather Hood": { name: "Bronze Guard Helm", gearTier: 2 },
+    "Iron Helm": { name: "Steel Helm", gearTier: 3 },
+    "Horned Helm": { name: "Platinum Helm", gearTier: 4 },
+    "Dragonbone Crown": { name: "Dragon Scale Helm", gearTier: 5 }
+  }),
+  chest: Object.freeze({
+    "Cloth Robe": { name: "Leather Vest", gearTier: 1 },
+    "Leather Vest": { name: "Bronze Armor", gearTier: 2 },
+    "Iron Plate": { name: "Chain Armor", gearTier: 3 },
+    "Mystic Cloak": { name: "Platinum Plate Armor", gearTier: 4 },
+    "Dragon Scale Mail": { name: "Dragon Scale Armor", gearTier: 5 }
+  }),
+  gloves: Object.freeze({
+    "Cloth Gloves": { name: "Leather Gloves", gearTier: 1 },
+    "Leather Gauntlets": { name: "Bronze Gauntlets", gearTier: 2 },
+    "Iron Gauntlets": { name: "Chain Gloves", gearTier: 3 },
+    "Runed Gloves": { name: "Platinum Gauntlets", gearTier: 4 },
+    "Dragonclaw Gauntlets": { name: "Dragonhide Gloves", gearTier: 5 }
+  }),
+  boots: Object.freeze({
+    "Worn Sandals": { name: "Leather Boots", gearTier: 1 },
+    "Leather Boots": { name: "Bronze Greaves", gearTier: 2 },
+    "Iron Greaves": { name: "Chain Boots", gearTier: 3 },
+    "Swift Boots": { name: "Platinum Sabatons", gearTier: 4 },
+    "Dragonhide Boots": { name: "Dragonhide Boots", gearTier: 5 }
+  })
+});
+function normalizeEquipmentNameForLoad(type, name, gearTier) {
+  const storedTier = Math.max(0, Number(gearTier) || 0);
+  if (storedTier) return { name, gearTier: storedTier, migrated: false };
+  const legacy = LEGACY_EQUIPMENT_NAME_MIGRATIONS[type]?.[name];
+  return legacy ? { ...legacy, migrated: true } : { name, gearTier: 0, migrated: false };
+}
 // No characterId tagging needed here anymore — syncItems takes characterId as its own
 // authenticated top-level parameter (see App.js's pushItems), and the server stamps every row
 // with THAT value server-side rather than trusting anything the client puts in extra_json. This
@@ -5798,7 +5844,8 @@ function itemsToServerList(inventory, equipped, overflow = []) {
       star: it.star || undefined,
       craftRecipeId: it.craftRecipeId || undefined,
       favorite: it.favorite === true || undefined,
-      overflow: it.overflow === true || undefined
+      overflow: it.overflow === true || undefined,
+      gearTier: it.gearTier || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -5812,10 +5859,12 @@ function itemsFromServerList(rows) {
   const equipped = emptyEquipped();
   const inventory = [];
   const overflow = [];
+  let legacyEquipmentMigrated = false;
   if (!Array.isArray(rows)) return {
     equipped,
     inventory,
-    overflow
+    overflow,
+    legacyEquipmentMigrated
   };
   rows.forEach(r => {
     // A single malformed row (bad JSON, unexpected type, etc) should never take down the whole
@@ -5849,11 +5898,13 @@ function itemsFromServerList(rows) {
         });
         return;
       }
+      const normalizedEquipment = normalizeEquipmentNameForLoad(r.slot_type, r.name, extra.gearTier);
+      if (normalizedEquipment.migrated) legacyEquipmentMigrated = true;
       const it = {
         id: r.item_id,
         type: r.slot_type,
         rarity: r.rarity,
-        name: r.name,
+        name: normalizedEquipment.name,
         atk: numOr(r.atk, 0),
         def: numOr(r.def, 0),
         hp: numOr(r.hp, 0),
@@ -5866,6 +5917,7 @@ function itemsFromServerList(rows) {
         favorite: extra.favorite === true,
         empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : Array(RARITY_STARS[r.rarity] || 1).fill(null)
       };
+      if (normalizedEquipment.gearTier) it.gearTier = normalizedEquipment.gearTier;
       if (extra.setId) it.setId = extra.setId;
       if (extra.star) it.star = numOr(extra.star, 0);
       if (extra.craftRecipeId) it.craftRecipeId = extra.craftRecipeId;
@@ -5882,7 +5934,8 @@ function itemsFromServerList(rows) {
   return {
     equipped,
     inventory,
-    overflow
+    overflow,
+    legacyEquipmentMigrated
   };
 }
 
@@ -6653,11 +6706,11 @@ function rollMonsterBonusJunk(monsterId) {
   });
   return drops;
 }
-let WEAPON_NAMES = ["Wooden Sword", "Iron Blade", "Steel Rapier", "Flame Saber", "Dragon Fang"];
-let HELMET_NAMES = ["Cloth Cap", "Leather Hood", "Iron Helm", "Horned Helm", "Dragonbone Crown"];
-let CHEST_NAMES = ["Cloth Robe", "Leather Vest", "Iron Plate", "Mystic Cloak", "Dragon Scale Mail"];
-let GLOVES_NAMES = ["Cloth Gloves", "Leather Gauntlets", "Iron Gauntlets", "Runed Gloves", "Dragonclaw Gauntlets"];
-let BOOTS_NAMES = ["Worn Sandals", "Leather Boots", "Iron Greaves", "Swift Boots", "Dragonhide Boots"];
+let WEAPON_NAMES = ["Beginner Sword", "Copper Blade", "Steel Greatsword", "Platinum Greatsword", "Dragon Slayer Sword"];
+let HELMET_NAMES = ["Leather Cap", "Bronze Guard Helm", "Steel Helm", "Platinum Helm", "Dragon Scale Helm"];
+let CHEST_NAMES = ["Leather Vest", "Bronze Armor", "Chain Armor", "Platinum Plate Armor", "Dragon Scale Armor"];
+let GLOVES_NAMES = ["Leather Gloves", "Bronze Gauntlets", "Chain Gloves", "Platinum Gauntlets", "Dragonhide Gloves"];
+let BOOTS_NAMES = ["Leather Boots", "Bronze Greaves", "Chain Boots", "Platinum Sabatons", "Dragonhide Boots"];
 let ACCESSORY_NAMES = ["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"];
 let WINGS_NAMES = ["Tattered Wings", "Feathered Cloak", "Gale Wings", "Spectral Wings", "Dragonwing Mantle"];
 let RARITY_MULT = {
@@ -8634,6 +8687,9 @@ function rollRarity(boosted = false) {
   }
   return r < 0.28 ? "unique" : "rare";
 }
+function gearTierForFloor(floor) {
+  return Math.min(5, Math.max(1, Math.floor((Number(floor) || 0) / 4) + 1));
+}
 function pickName(pool, floor) {
   return pool[Math.min(pool.length - 1, Math.floor(floor / 4))];
 }
@@ -8677,6 +8733,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(WEAPON_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       atk
     };
   }
@@ -8687,6 +8744,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(HELMET_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       def
     };
   }
@@ -8697,6 +8755,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(CHEST_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       def
     };
   }
@@ -8707,6 +8766,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(GLOVES_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       atk
     };
   }
@@ -8717,6 +8777,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(BOOTS_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       def
     };
   }
@@ -12495,7 +12556,8 @@ function ThornieDungeons() {
     const {
       equipped: eq,
       inventory: inv,
-      overflow: savedOverflow
+      overflow: savedOverflow,
+      legacyEquipmentMigrated
     } = itemsFromServerList(res.items || []);
     let normalized = normalizeInventoryCapacity(inv, savedOverflow, INVENTORY_CAPACITY);
     // One-time migration: the old flat `potions` counter becomes real Small HP Potion stacks
@@ -12506,7 +12568,7 @@ function ThornieDungeons() {
       normalized = insertInventoryItems(normalized.inventory, normalized.overflow, [{ ...makePotionItem("hp_small", 1), quantity: characterSlot.potions }], INVENTORY_CAPACITY);
       characterSlot.potions = 0;
     }
-    if (normalized.inventory.length !== inv.length || normalized.overflow.length !== savedOverflow.length || migratedPotionCounter) {
+    if (normalized.inventory.length !== inv.length || normalized.overflow.length !== savedOverflow.length || migratedPotionCounter || legacyEquipmentMigrated) {
       pushItems(normalized.inventory, eq, normalized.overflow, characterSlot.id);
     }
     equippedRef.current = eq;
