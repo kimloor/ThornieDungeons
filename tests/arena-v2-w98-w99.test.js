@@ -275,4 +275,4 @@ test('Arena active public-state unit arrays keep all 2v2 presentation actors add
   assert.equal(resolveUnit(state, 'team_b', 'pet').id, 'team_b_pet');
 });
 
-// W9 browser QA Batch 5 low/medium UI shell fixes only; combat/runtime blocker remains DEV-owned.
+// W9 browser QA Batch 5 low/medium UI shell fixes only; final parity retrigger after generated frontend sync.
