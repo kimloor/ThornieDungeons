@@ -90,9 +90,7 @@ function StatusBar({
     alt: "Diamond"
   }), formatNumber(save.diamonds || 0)), /*#__PURE__*/React.createElement("div", {
     className: "md-status-chip"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-chip-icon"
-  }, "🛡️"), formatNumber(save.protectionStones || 0)), arena && /*#__PURE__*/React.createElement(React.Fragment, null,
+  }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-resource-icon", alt: "Protection Stone" }), formatNumber(save.protectionStones || 0)), arena && /*#__PURE__*/React.createElement(React.Fragment, null,
     /*#__PURE__*/React.createElement("div", { className: "md-status-chip md-arena-global-chip" },
       /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "Arena Coin" }),
       formatNumber(arena.arenaCoin || 0)),
@@ -493,7 +491,7 @@ function GlobalCurrencyBar({ save, arena = null, className = "" }) {
   },
     e("span", null, e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "Gold" }), " ", e("b", null, formatNumber(save.gold))),
     e("span", null, e(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-resource-icon", alt: "Diamond" }), " ", e("b", null, formatNumber(save.diamonds || 0))),
-    e("span", null, "🛡️ ", e("b", null, formatNumber(save.protectionStones || 0))),
+    e("span", null, e(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-resource-icon", alt: "Protection Stone" }), " ", e("b", null, formatNumber(save.protectionStones || 0))),
     arena && e("span", { className: "md-arena-global-resource" }, e(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "Arena Coin" }), " ", e("b", null, formatNumber(arena.arenaCoin || 0))),
     arena && e("span", { className: "md-arena-global-resource" }, e(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-resource-icon", alt: "Arena Ticket" }), " ", e("b", null, `${Number(arena.tickets) || 0}/${Number(arena.ticketsMax) || 10}`))
   );
@@ -3687,6 +3685,7 @@ function ArenaV2Screen({
   }));
   const arenaPet = playerUnits.find(unit => unit.kind === "pet") || null;
   const arenaEnemyUnits = enemyUnits.map(unit => ({ ...unit, uid: unit.id }));
+  const arenaUnitsById = Object.fromEntries(Object.values(units).map(unit => [unit.id, unit]));
   const arenaCurrency = arenaHud || {
     arenaCoin: Number(status?.player?.arenaCoin) || 0,
     tickets: Number(status?.tickets?.tickets) || 0,
@@ -3748,7 +3747,7 @@ function ArenaV2Screen({
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ranking.map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: row.characterId }, "#", row.rank, " ", row.name, " · ", row.rating, " · ", row.rewardBucket))),
     !match && tab === "history" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ["attack", "defense"].map(kind => /*#__PURE__*/React.createElement("div", { key: kind }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, kind.toUpperCase()), (history[kind] || []).map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: `${kind}-${row.matchId}` }, row.result, " · ", row.resolution, " · ", row.arenaCoinEarned, " Coin", kind === "attack" && row.defenderCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => start(`history:${row.matchId}`, "revenge") }, "REVENGE")))))),
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · Round ", match.state?.round || 0, " / 20"), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || "—"), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
+      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · Round ", match.state?.round || 0, " / 20"), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || "—"), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
         /*#__PURE__*/React.createElement(PhaserBattlefield, { mode: "arena", battleState, preparedSnapshot: match.snapshot, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: (s, detail) => {
           setPhaserStatus(s);
           if (s === "ready") preloadGateRef.current?.ready();
@@ -4316,7 +4315,7 @@ function ShopOverlay({
     className: "md-inv-item"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "md-inv-name"
-  }, "🛡️ หินป้องกัน (มีอยู่ ", protectionStones || 0, ")"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-shop-item-icon", alt: "Protection Stone" }), " หินป้องกัน (มีอยู่ ", protectionStones || 0, ")"), /*#__PURE__*/React.createElement("div", {
     className: "md-inv-stat"
   }, "ป้องกันไม่ให้เลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")), /*#__PURE__*/React.createElement("button", {
     className: "md-buy-btn",
@@ -4953,16 +4952,21 @@ function BattleVfx({ event, combatSpeed = 1 }) {
 // Four fixed ATB cells occupy the middle four sixths of the combat header. When
 // an action is resolving, the window follows the active unit so upcoming turns
 // remain readable even in a five-unit battle (hero + pet + three monsters).
-function TurnOrderBar({ queue, activeKey, round, monsters, petCombat, heroName }) {
+function turnOrderUnitAlive(item, unitsById, monsters, petCombat) {
+  const authoritativeUnit = unitsById?.[item?.uid];
+  if (authoritativeUnit) return !authoritativeUnit.dead && Number(authoritativeUnit.hp) > 0;
+  if (item?.kind === "monster") {
+    const monster = (monsters || []).find(mm => mm.uid === item.uid);
+    return !!monster && Number(monster.hp) > 0 && !monster.dead;
+  }
+  if (item?.kind === "pet") return !!petCombat && Number(petCombat.hp) > 0 && !petCombat.dead;
+  return true;
+}
+
+function TurnOrderBar({ queue, activeKey, round, monsters = [], petCombat, heroName, unitsById = null }) {
   const seenKeys = new Set();
   const visible = (Array.isArray(queue) ? queue : []).filter(item => {
-    if (item.kind === "monster") {
-      const m = monsters.find(mm => mm.uid === item.uid);
-      if (!m || m.hp <= 0) return false;
-    }
-    if (item.kind === "pet") {
-      if (!petCombat || petCombat.hp <= 0) return false;
-    }
+    if (!turnOrderUnitAlive(item, unitsById, monsters, petCombat)) return false;
     if (!item.key || seenKeys.has(item.key)) return false;
     seenKeys.add(item.key);
     return true;
@@ -6102,7 +6106,7 @@ function InventoryOverlay({
     ),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary" },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", /*#__PURE__*/React.createElement("b", null, formatNumber(gold || 0))),
-      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, "🛡️ ", /*#__PURE__*/React.createElement("b", null, protectionStones || 0)),
+      /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-inline-item-icon", alt: "Protection Stone" }), " ", /*#__PURE__*/React.createElement("b", null, protectionStones || 0)),
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }), " ", /*#__PURE__*/React.createElement("b", null, junkTotal(inventory, "manaOre"))),
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " ", /*#__PURE__*/React.createElement("b", null, diamonds || 0))
     ),

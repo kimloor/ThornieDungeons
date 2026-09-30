@@ -162,12 +162,19 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
     syncArena(snapshot) {
       this.presentationQueue.setSpeed(snapshot.combatSpeed || 1);
       const animationJobs = [];
-      if (this.lastArenaBattleId !== snapshot.battleId) {
+      const isFirstSnapshot = this.lastArenaBattleId !== snapshot.battleId;
+      if (isFirstSnapshot) {
         this.lastArenaBattleId = snapshot.battleId;
-        this.lastArenaCueSeq = -1;
       }
-      const cues = (Array.isArray(snapshot.animationCues) ? snapshot.animationCues : [])
+      const allCues = (Array.isArray(snapshot.animationCues) ? snapshot.animationCues : [])
+        .filter(cue => Number.isFinite(Number(cue?.seq)));
+      const cues = (isFirstSnapshot ? [] : allCues)
         .filter(cue => Number(cue?.seq) > this.lastArenaCueSeq);
+      if (isFirstSnapshot) {
+        // A first snapshot may include the authoritative historical log on
+        // resume. Establish a baseline without replaying old presentation.
+        this.lastArenaCueSeq = allCues.reduce((max, cue) => Math.max(max, Number(cue.seq)), -1);
+      }
       if (cues.length) this.lastArenaCueSeq = Math.max(...cues.map(cue => Number(cue.seq) || 0));
       const attacker = this.arenaTeam("attacker");
       const defender = this.arenaTeam("defender");
