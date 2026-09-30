@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.29";
+  content: "Ver 1.0.30";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2474,14 +2474,31 @@ body::after {
 .md-arena-equipment-item-icon { width:82%; height:82%; max-width:25px; max-height:25px; object-fit:contain; }
 .md-arena-equipment-icon i { position:absolute; right:-2px; bottom:-3px; min-width:15px; padding:0 2px; border-radius:6px; background:#071126; color:#ffe49a; font-size:8px; font-style:normal; font-weight:900; line-height:13px; }
 .md-arena-refresh-cooldown { margin:8px 0 0; text-align:center; color:#FFE49A; font-weight:800; }
-.md-arena-page-header { flex:0 0 auto; }
+.md-arena-page-header { flex:0 0 auto; gap:8px; min-height:54px; }
+.md-arena-page-header h1 { margin-right:auto; }
+.md-arena-brand-emblem { width:42px; height:42px; flex:0 0 42px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.42)); }
 .md-arena-v2 { flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; padding-bottom:max(8px,var(--safe-bottom)); position:relative; }
 .md-arena-global-currency { flex:0 0 auto; }
 .md-arena-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px; padding-bottom:calc(var(--md-dock-height) + var(--safe-bottom) + 18px); }
 .md-arena-v2 > .md-hub-dock { position:absolute; left:14px; right:14px; bottom:max(8px,var(--safe-bottom)); width:auto; transform:none; z-index:90; margin:0; }
-.md-arena-v2 > .md-hub-more-panel { position:absolute; left:14px; right:14px; bottom:calc(var(--md-dock-height) + max(8px,var(--safe-bottom)) + 14px); width:auto; transform:none; z-index:91; }
+.md-arena-v2 > .md-hub-more-panel { position:absolute; left:14px; right:14px; bottom:calc(var(--md-dock-height) + max(8px,var(--safe-bottom)) + 14px); width:auto; transform:none; z-index:91; margin:0; }
+.md-arena-hub-panel,.md-arena-hub-row { position:relative; isolation:isolate; border:0 !important; background:transparent !important; box-shadow:none !important; }
+.md-arena-hub-panel::before,.md-arena-hub-row::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:rgba(5,15,36,.9); }
+.md-arena-hub-panel::before { border:20px solid transparent; border-image-source:var(--arena-panel-frame); border-image-slice:64 fill; border-image-width:20px; border-image-repeat:stretch; }
+.md-arena-hub-row::before { border:12px solid transparent; border-image-source:var(--arena-row-frame); border-image-slice:48 fill; border-image-width:12px; border-image-repeat:stretch; background:rgba(5,15,36,.72); }
+.md-arena-hub-panel.md-card { padding:14px 16px; }
+.md-arena-summary-panel { padding-top:12px !important; padding-bottom:12px !important; }
+.md-arena-battle-panel { display:flex; flex-direction:column; gap:7px; }
+.md-arena-battle-panel > .md-btn { align-self:center; }
+.md-arena-hub-row { min-height:54px; margin:0; padding:10px 12px; border-radius:0; }
+.md-arena-ranking-row,.md-arena-history-row { display:flex; align-items:center; min-height:48px; }
 .md-arena-tab-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; }
-.md-arena-tab-row .md-btn { min-width:0; padding:8px 3px; font-size:10px; white-space:nowrap; }
+.md-arena-tab-row .md-arena-tab { min-width:0; min-height:68px; padding:5px 2px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:9px solid transparent; border-image-slice:22 fill; border-image-width:9px; border-image-repeat:stretch; border-radius:0; background:rgba(5,15,36,.78) !important; box-shadow:none !important; color:#e8edf7; white-space:nowrap; }
+.md-arena-tab-row .md-arena-tab.active { border-image-source:var(--arena-tab-active); color:#fff4c0; }
+.md-arena-tab-row .md-arena-tab.inactive { border-image-source:var(--arena-tab-inactive); color:#c2c9d6; }
+.md-arena-tab-icon { width:28px; height:28px; object-fit:contain; flex:0 0 28px; pointer-events:none; }
+.md-arena-tab-label { font-size:9px; line-height:1; font-weight:900; letter-spacing:.25px; pointer-events:none; }
+.md-arena-tab:active:not(:disabled) { transform:translateY(1px); }
 .md-arena-phaser-stage { position:relative; width:100%; min-height:clamp(300px,48dvh,430px); overflow:hidden; border:1px solid rgba(255,209,102,.2); border-radius:14px; background:rgba(3,9,24,.24); }
 .md-arena-phaser-stage .md-phaser-battlefield { position:absolute; inset:0; width:100%; height:100%; }
 .md-arena-phaser-error { position:absolute; inset:auto 10px 10px; z-index:5; padding:7px 9px; border:1px solid rgba(255,107,123,.55); border-radius:9px; background:rgba(45,10,24,.88); color:#ffc2c9; font-size:10px; font-weight:800; text-align:center; }
@@ -2527,6 +2544,11 @@ body::after {
 .md-arena-unlock-card .md-sub { margin:0 0 16px; line-height:1.45; }
 .md-arena-unlock-icon { font-size:44px; line-height:1; margin-bottom:8px; }
 @media (max-width:430px) {
+  .md-arena-page-header { min-height:50px; gap:6px; }
+  .md-arena-brand-emblem { width:38px; height:38px; flex-basis:38px; }
+  .md-arena-tab-row .md-arena-tab { min-height:66px; }
+  .md-arena-tab-icon { width:26px; height:26px; flex-basis:26px; }
+  .md-arena-hub-panel.md-card { padding-left:14px; padding-right:14px; }
   .md-arena-player-card-overlay .md-player-card { width:98vw; aspect-ratio:8/5.7; padding:7.5% 4% 3.5%; }
   .md-arena-player-card-overlay .md-player-card-main { grid-template-columns:31% minmax(0,1fr); gap:2.5%; height:73%; }
   .md-arena-player-card-overlay .md-player-card-details { padding:5% 3.5%; }
@@ -2540,6 +2562,10 @@ body::after {
   .md-player-card-actions { width:78%; gap:3.5%; margin-top:1%; }
 }
 @media (max-width:360px), (max-height:620px) {
+  .md-arena-tab-row { gap:2px; }
+  .md-arena-tab-row .md-arena-tab { min-height:62px; border-width:8px; border-image-width:8px; }
+  .md-arena-tab-icon { width:24px; height:24px; flex-basis:24px; }
+  .md-arena-tab-label { font-size:8px; }
   .md-player-card { width:96vw; }
   .md-player-card-details > div { font-size:11px; }
   .md-player-card-nameplate h2 { font-size:13px; }
