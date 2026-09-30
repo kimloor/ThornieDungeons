@@ -1,0 +1,164 @@
+[
+  {
+    "name": "bossHorn",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      80,
+      51,
+      1210,
+      1213
+    ],
+    "sha256": "1a6317aab7ab7cffb9c6fccb813071b4960ae06ba3d417a372c0cec289dfd028"
+  },
+  {
+    "name": "bossHide",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      32,
+      92,
+      1227,
+      1230
+    ],
+    "sha256": "30a858ba6dc1823877aeb4a781672605cfd763deec3ad76972528df14f921398"
+  },
+  {
+    "name": "recipeAzure",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      0,
+      49,
+      1193,
+      1254
+    ],
+    "sha256": "7e4ffce5189fdcd15c4b0344bc496f3629bd7fa5adcf3a42db61ce3e0cbccb67"
+  },
+  {
+    "name": "recipeRobot",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      49,
+      83,
+      1208,
+      1188
+    ],
+    "sha256": "e2028c182449b67540644d1042abcd10a940f74cfdd5f4e25f689485b8581c97"
+  },
+  {
+    "name": "recipeSkeleton",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      0,
+      6,
+      1176,
+      1254
+    ],
+    "sha256": "8a2e336ad3cc9e90be335806dfec1857fd3a10846823322655c3506ee3f37f70"
+  },
+  {
+    "name": "protectionStone",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      89,
+      51,
+      1182,
+      1254
+    ],
+    "sha256": "6cf06e60ecf42cead9e741fbd04419316aae33573221d2113a8895ef3f971bc5"
+  },
+  {
+    "name": "azureWing",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      29,
+      27,
+      1224,
+      1212
+    ],
+    "sha256": "57319a8e642555251585ea0f06cb73386941bbb8afc14f85f55cd9b1015aa62f"
+  },
+  {
+    "name": "robotWing",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      0,
+      21,
+      1247,
+      1254
+    ],
+    "sha256": "37581e987b91ef21032045adec84ca89c6417dccedda3730dfefcc3619d45700"
+  },
+  {
+    "name": "skeletonWing",
+    "size": [
+      1254,
+      1254
+    ],
+    "alphaExtrema": [
+      0,
+      255
+    ],
+    "bbox": [
+      11,
+      0,
+      1240,
+      1254
+    ],
+    "sha256": "6d92db7b8f1dd479438d91d99c75f133fea943720a5ac4f6225b515a7d4b733b"
+  }
+]
