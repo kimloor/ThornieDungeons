@@ -707,7 +707,8 @@ function ThornieDungeons() {
     const {
       equipped: eq,
       inventory: inv,
-      overflow: savedOverflow
+      overflow: savedOverflow,
+      legacyEquipmentMigrated
     } = itemsFromServerList(res.items || []);
     let normalized = normalizeInventoryCapacity(inv, savedOverflow, INVENTORY_CAPACITY);
     // One-time migration: the old flat `potions` counter becomes real Small HP Potion stacks
@@ -718,7 +719,7 @@ function ThornieDungeons() {
       normalized = insertInventoryItems(normalized.inventory, normalized.overflow, [{ ...makePotionItem("hp_small", 1), quantity: characterSlot.potions }], INVENTORY_CAPACITY);
       characterSlot.potions = 0;
     }
-    if (normalized.inventory.length !== inv.length || normalized.overflow.length !== savedOverflow.length || migratedPotionCounter) {
+    if (normalized.inventory.length !== inv.length || normalized.overflow.length !== savedOverflow.length || migratedPotionCounter || legacyEquipmentMigrated) {
       pushItems(normalized.inventory, eq, normalized.overflow, characterSlot.id);
     }
     equippedRef.current = eq;
