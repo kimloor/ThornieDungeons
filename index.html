@@ -79,9 +79,19 @@ Run `node build.js` after source changes. index.html is the single generated app
     if (status) status.textContent = 'Something went wrong loading the game \u2014 see error popup.';
   }
   window.addEventListener('error', function (e) {
+    if (typeof window.__thornieArenaRuntimeError === 'function') {
+      window.__thornieArenaRuntimeError(e);
+      e.preventDefault();
+      return;
+    }
     showBootError(runtimeErrorDetail('JS Error', e.message, e.error, e.filename, e.lineno, e.colno));
   });
   window.addEventListener('unhandledrejection', function (e) {
+    if (typeof window.__thornieArenaUnhandledRejection === 'function') {
+      window.__thornieArenaUnhandledRejection(e);
+      e.preventDefault();
+      return;
+    }
     var reason = e.reason;
     showBootError(runtimeErrorDetail('Unhandled Promise Rejection', reason && reason.message ? reason.message : String(reason), reason instanceof Error ? reason : null));
   });
@@ -2593,6 +2603,14 @@ body::after {
 .md-arena-phaser-stage { position:relative; width:100%; min-height:clamp(300px,48dvh,430px); overflow:hidden; border:1px solid rgba(255,209,102,.2); border-radius:14px; background:rgba(3,9,24,.24); }
 .md-arena-phaser-stage .md-phaser-battlefield { position:absolute; inset:0; width:100%; height:100%; }
 .md-arena-phaser-error { position:absolute; inset:auto 10px 10px; z-index:5; padding:7px 9px; border:1px solid rgba(255,107,123,.55); border-radius:9px; background:rgba(45,10,24,.88); color:#ffc2c9; font-size:10px; font-weight:800; text-align:center; }
+.md-arena-turn-order { margin:4px 0 7px; min-height:38px; border:1px solid rgba(255,209,102,.18); border-radius:10px; background:rgba(3,9,24,.32); overflow:hidden; }
+.md-arena-fatal-overlay { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:max(18px,var(--safe-top)) max(14px,var(--safe-right)) max(18px,var(--safe-bottom)) max(14px); background:rgba(2,5,16,.76); backdrop-filter:blur(4px); }
+.md-arena-fatal-card { width:min(92vw,520px); max-height:min(82dvh,680px); display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,139,139,.72); border-radius:16px; background:rgba(24,14,35,.98); box-shadow:0 18px 55px rgba(0,0,0,.68); color:#FFD6D6; }
+.md-arena-fatal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border-bottom:1px solid rgba(255,139,139,.35); color:#FF9E9E; }
+.md-arena-fatal-close { width:36px; height:36px; flex:0 0 36px; border:0; border-radius:10px; background:rgba(255,255,255,.08); color:#fff; font-size:23px; line-height:1; cursor:pointer; }
+.md-arena-fatal-copy { margin:0; padding:12px 14px 0; color:#FFE8E8; font-size:12px; line-height:1.45; }
+.md-arena-fatal-detail { margin:12px 14px; padding:10px; max-height:42dvh; overflow:auto; border:1px solid rgba(255,139,139,.25); border-radius:10px; background:rgba(4,8,20,.72); color:#FFD6D6; font:11px/1.45 monospace; white-space:pre-wrap; word-break:break-word; }
+.md-arena-fatal-actions { display:flex; justify-content:flex-end; gap:8px; padding:0 14px 14px; }
 .md-arena-v2-art {
   min-height:0;
   background-color:#071126;
@@ -9810,6 +9828,7 @@ function arenaPreparedPresentationContext(preparedSnapshot) {
       side,
       kind: "hero",
       name: String(member?.name || (role === "attacker" ? "Hero" : "Opponent")),
+      icon: role === "attacker" ? "⚔️" : "🛡️",
       hp: heroMaxHp,
       maxHp: heroMaxHp,
       dead: false,
@@ -9824,6 +9843,7 @@ function arenaPreparedPresentationContext(preparedSnapshot) {
       kind: "pet",
       name: String(petSource.name || petSource.defId || "Pet"),
       defId: petSource.defId || petSource.id || "",
+      icon: String(petSource.icon || "🐾"),
       hp: petMaxHp,
       maxHp: petMaxHp,
       dead: false,
@@ -9865,6 +9885,18 @@ function arenaPreparedPresentationContext(preparedSnapshot) {
   };
 }
 
+function arenaPresentationAnimationCues(state) {
+  const attackTypes = new Set(["damage", "miss", "pet_active", "counter"]);
+  return (Array.isArray(state?.log) ? state.log : [])
+    .filter(entry => entry && entry.actorId && attackTypes.has(String(entry.type || "")))
+    .map(entry => ({
+      key: `arena-cue-${Number(entry.seq) || 0}-${String(entry.actorId)}`,
+      seq: Number(entry.seq) || 0,
+      actorId: String(entry.actorId),
+      animation: "attack"
+    }));
+}
+
 function arenaPresentationUnit(state, side, kind) {
   const rawUnits = state?.units || {};
   const unitList = Array.isArray(rawUnits) ? rawUnits : Object.values(rawUnits);
@@ -9904,12 +9936,14 @@ function buildArenaBattlefieldSnapshot({
       id: rawHero.id,
       kind: "hero",
       name: config.heroName || rawHero.name || "Hero",
+      icon: config.heroIcon || (side === "team_b" ? "🛡️" : "⚔️"),
       facing
     }) : null;
     const pet = rawPet ? createActorPresentationModel(rawPet, {
       ...(config.petCombat || {}),
       id: rawPet.id,
       kind: "pet",
+      icon: config.petCombat?.icon || "🐾",
       facing
     }) : null;
 
@@ -9968,6 +10002,7 @@ function buildArenaBattlefieldSnapshot({
     selectedTargetId,
     combatSpeed: speed,
     teams: [attacker, defender],
+    animationCues: arenaPresentationAnimationCues(state),
     backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("arenaUi.background")
   });
 }
@@ -10168,8 +10203,9 @@ class PhaserBattleActor {
   }
 
   playVisualState(state, speed = 1) {
+    const force = arguments[2]?.force === true;
     const nextState = state || "idle";
-    if (nextState === this.visualState) {
+    if (!force && nextState === this.visualState) {
       if (nextState === "idle" && !this.frameTimer && !this.idleTween) this.startIdleFallback(speed);
       return Promise.resolve();
     }
@@ -10725,6 +10761,8 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         textureRegistry: this.textureRegistry
       });
       this.presentationScale = 1;
+      this.lastArenaCueSeq = -1;
+      this.lastArenaBattleId = null;
       this.handleResize = this.handleResize.bind(this);
     }
 
@@ -10862,6 +10900,13 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
     syncArena(snapshot) {
       this.presentationQueue.setSpeed(snapshot.combatSpeed || 1);
       const animationJobs = [];
+      if (this.lastArenaBattleId !== snapshot.battleId) {
+        this.lastArenaBattleId = snapshot.battleId;
+        this.lastArenaCueSeq = -1;
+      }
+      const cues = (Array.isArray(snapshot.animationCues) ? snapshot.animationCues : [])
+        .filter(cue => Number(cue?.seq) > this.lastArenaCueSeq);
+      if (cues.length) this.lastArenaCueSeq = Math.max(...cues.map(cue => Number(cue.seq) || 0));
       const attacker = this.arenaTeam("attacker");
       const defender = this.arenaTeam("defender");
       this.syncArenaActor("attacker", "hero", attacker?.hero, animationJobs);
@@ -10869,7 +10914,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.syncArenaActor("defender", "hero", defender?.hero, animationJobs);
       this.syncArenaActor("defender", "pet", defender?.pet, animationJobs);
       this.layoutArenaActors();
-      this.enqueueAnimations(animationJobs);
+      this.enqueueArenaAnimations(animationJobs, cues);
     }
 
     sync(snapshot) {
@@ -10914,6 +10959,30 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         run: speed => Promise.all(animationJobs.map(([actor, state]) =>
           actor.playVisualState(state, speed)
         ))
+      });
+    }
+
+    arenaActorById(actorId) {
+      const key = String(actorId || "");
+      return Object.values(this.arenaActors)
+        .flatMap(team => Object.values(team))
+        .find(actor => String(actor?.data?.id || "") === key) || null;
+    }
+
+    enqueueArenaAnimations(animationJobs, cues) {
+      if (!animationJobs.length && !cues.length) return;
+      void this.presentationQueue.enqueue({
+        run: async speed => {
+          // The authoritative log is already in speed-queue order. Keep that order
+          // for presentation without allowing Phaser to resolve or reorder combat.
+          for (const cue of cues) {
+            const actor = this.arenaActorById(cue.actorId);
+            if (actor) await actor.playVisualState(cue.animation || "attack", speed, { force: true });
+          }
+          for (const [actor, state] of animationJobs) {
+            if (actor) await actor.playVisualState(state, speed);
+          }
+        }
       });
     }
 
@@ -11719,6 +11788,7 @@ function ThornieDungeons() {
   const [gachaReturnPhase, setGachaReturnPhase] = useState("pets");
   const [utilityReturnPhase, setUtilityReturnPhase] = useState("menu");
   const [arenaHud, setArenaHud] = useState(null);
+  const [arenaFatal, setArenaFatal] = useState(null);
   // One-shot deep link set only by Friend's "Chat" action, consumed once by ChatScreen on
   // mount to open straight into that DM thread. Every other way of opening Chat clears
   // this first so a stale target can't resurface later.
@@ -12562,6 +12632,12 @@ function ThornieDungeons() {
       onSave: manualSave,
       onMainHub: () => setPhase("menu"),
     };
+  }
+  function handleArenaFatal(diagnostic) {
+    setArenaFatal(diagnostic);
+    // Leave the Arena route immediately. The server-side active match is not
+    // touched, so reopening Arena performs the normal authoritative resume GET.
+    setPhase(utilityReturnPhase || "menu");
   }
   function closeTransientOverlays() {
     setAccountSettingsOpen(false);
@@ -14046,13 +14122,17 @@ function ThornieDungeons() {
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
-  }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaV2Screen, {
+  }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaV2ErrorBoundary, {
+    onFatal: handleArenaFatal,
+    getContext: () => globalThis.__THORNIE_ARENA_CONTEXT__ || {}
+  }, /*#__PURE__*/React.createElement(ArenaV2Screen, {
     serverUrl: cred.url,
     characterId: save.characterId,
     save: save,
     arenaHud: arenaHud,
     onHudChange: setArenaHud,
     ...utilityDockProps("arena"),
+    onFatal: handleArenaFatal,
     onFriend: () => {
       setUtilityReturnPhase("arena");
       setPhase("friend");
@@ -14068,7 +14148,7 @@ function ThornieDungeons() {
       setPhase("guild");
     },
     onBack: () => setPhase(utilityReturnPhase)
-  }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
+  })), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,
     characterId: save.characterId,
     onApplyReward: applyMailReward,
@@ -14305,6 +14385,13 @@ function ThornieDungeons() {
     characterId: save.characterId,
     guildId: guildProfileTarget.guildId,
     onClose: () => setGuildProfileTarget(null)
+  }), arenaFatal && /*#__PURE__*/React.createElement(ArenaFatalDiagnosticOverlay, {
+    diagnostic: arenaFatal,
+    onResume: () => {
+      setArenaFatal(null);
+      setPhase("arena");
+    },
+    onClose: () => setArenaFatal(null)
   }));
 }
 
@@ -17712,6 +17799,100 @@ function ArenaUnlockNotice({ busy, onConfirm }) {
   );
 }
 
+function arenaFatalDiagnostic(error, context = {}, event = {}) {
+  const sourceError = error instanceof Error ? error : event?.error instanceof Error ? event.error : null;
+  const reason = error && typeof error === "object" && !(error instanceof Error)
+    ? (error.reason || error.error || error)
+    : error;
+  const message = String(sourceError?.message || reason?.message || event?.message || error || "Unknown Arena runtime error");
+  const source = String(event?.filename || event?.sourceURL || event?.url || context.source || "");
+  const line = Number(event?.lineno ?? event?.lineNumber ?? context.line) || null;
+  const column = Number(event?.colno ?? event?.columnNumber ?? context.column) || null;
+  const stack = String(sourceError?.stack || reason?.stack || context.stack || "");
+  return Object.freeze({
+    kind: String(context.kind || event?.type || "arena_runtime"),
+    message,
+    source,
+    line,
+    column,
+    stack,
+    matchId: String(context.matchId || "—"),
+    actionSeq: Number.isFinite(Number(context.actionSeq)) ? Number(context.actionSeq) : 0,
+    phaserStatus: String(context.phaserStatus || "unknown"),
+    arenaPhase: String(context.arenaPhase || "unknown"),
+    currentAction: String(context.currentAction || "unknown")
+  });
+}
+
+function arenaFatalDiagnosticText(diagnostic = {}) {
+  const location = diagnostic.source
+    ? `${diagnostic.source}:${diagnostic.line || "?"}:${diagnostic.column || "?"}`
+    : "unknown source";
+  return [
+    `Arena ${diagnostic.kind || "runtime"}`,
+    `Message: ${diagnostic.message || "Unknown Arena runtime error"}`,
+    `Source: ${location}`,
+    `Match: ${diagnostic.matchId || "—"}`,
+    `Action Seq: ${Number(diagnostic.actionSeq) || 0}`,
+    `Phaser: ${diagnostic.phaserStatus || "unknown"}`,
+    `Phase: ${diagnostic.arenaPhase || "unknown"}`,
+    `Action: ${diagnostic.currentAction || "unknown"}`,
+    diagnostic.stack ? `\n${diagnostic.stack}` : ""
+  ].filter(Boolean).join("\n");
+}
+
+const ArenaV2ErrorBoundary = typeof React === "undefined" ? class {
+  constructor(props) { this.props = props; this.state = { failed: false }; }
+} : class extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+    this.reported = false;
+  }
+
+  componentDidCatch(error, info) {
+    if (this.reported) return;
+    this.reported = true;
+    const context = { ...(this.props.getContext?.() || {}), kind: "react_render", stack: info?.componentStack || "" };
+    this.props.onFatal?.(arenaFatalDiagnostic(error, context));
+    this.setState({ failed: true });
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+};
+
+function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
+  if (!diagnostic) return null;
+  const e = React.createElement;
+  return ReactDOM.createPortal(
+    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-arena-fatal-title" },
+      e("section", { className: "md-arena-fatal-card" },
+        e("div", { className: "md-arena-fatal-head" },
+          e("strong", { id: "md-arena-fatal-title" }, "⚠ Arena presentation error"),
+          e("button", { type: "button", className: "md-arena-fatal-close", onClick: onClose, "aria-label": "ปิดรายละเอียด" }, "×")
+        ),
+        e("p", { className: "md-arena-fatal-copy" }, "Battle ถูกปิดอย่างปลอดภัยแล้ว ข้อมูล match หลักยังอยู่บนเซิร์ฟเวอร์และสามารถ Resume ได้ โดยไม่ใช้ Ticket เพิ่ม"),
+        e("pre", { className: "md-arena-fatal-detail" }, arenaFatalDiagnosticText(diagnostic)),
+        e("div", { className: "md-arena-fatal-actions" },
+          e("button", { type: "button", className: "md-btn primary small", onClick: onResume }, "RESUME ARENA"),
+          e("button", { type: "button", className: "md-btn small", onClick: onClose }, "CLOSE")
+        )
+      )
+    ),
+    document.body
+  );
+}
+
+function arenaTurnOrderIcon(unit, preparedSnapshot) {
+  if (unit?.kind === "pet") {
+    const side = String(unit.id || "").startsWith("team_b") ? preparedSnapshot?.defender : preparedSnapshot?.attacker;
+    return String(side?.pet?.icon || "🐾");
+  }
+  return String(unit?.side === "team_b" ? "🛡️" : "⚔️");
+}
+
 // W9.8/W9.9 authoritative Arena V2 surface. The server owns match state; this
 // component only renders snapshots and sends idempotent action keys.
 function ArenaV2Screen({
@@ -17729,7 +17910,8 @@ function ArenaV2Screen({
   onChat,
   onGuild,
   onMainHub,
-  onBack
+  onBack,
+  onFatal
 }) {
   const url = serverUrl || DEFAULT_SERVER_URL;
   const [tab, setTab] = React.useState("battle");
@@ -17753,6 +17935,52 @@ function ArenaV2Screen({
   const [phaserStatus, setPhaserStatus] = React.useState("idle");
   const preloadGateRef = React.useRef(null);
   const rolloverRefreshRef = React.useRef(false);
+  const matchRef = React.useRef(match);
+  const phaserStatusRef = React.useRef(phaserStatus);
+  const currentActionRef = React.useRef("idle");
+  const fatalReportedRef = React.useRef(false);
+  matchRef.current = match;
+  phaserStatusRef.current = phaserStatus;
+  const reportArenaFatal = React.useCallback((error, event = {}, kind = "arena_runtime") => {
+    if (fatalReportedRef.current) return;
+    fatalReportedRef.current = true;
+    const currentMatch = matchRef.current;
+    const diagnostic = arenaFatalDiagnostic(error, {
+      kind,
+      matchId: currentMatch?.matchId,
+      actionSeq: currentMatch?.state?.actionSeq,
+      phaserStatus: phaserStatusRef.current,
+      arenaPhase: currentMatch?.result ? "result" : currentMatch ? "battle" : tab,
+      currentAction: currentActionRef.current
+    }, event);
+    preloadGateRef.current?.cancel?.();
+    preloadGateRef.current = null;
+    // Do not call an Arena API here and do not clear the server match. Removing the
+    // local match unmounts Phaser immediately; the next Arena mount will GET and resume
+    // the authoritative active match without consuming another ticket.
+    setMatch(null);
+    setBusy(false);
+    onFatal?.(diagnostic);
+  }, [onFatal, tab]);
+  React.useEffect(() => {
+    const context = {
+      matchId: match?.matchId || "—",
+      actionSeq: match?.state?.actionSeq || 0,
+      phaserStatus,
+      arenaPhase: match?.result ? "result" : match ? "battle" : tab,
+      currentAction: currentActionRef.current
+    };
+    const previousErrorHandler = globalThis.__thornieArenaRuntimeError;
+    const previousRejectionHandler = globalThis.__thornieArenaUnhandledRejection;
+    globalThis.__THORNIE_ARENA_CONTEXT__ = context;
+    globalThis.__thornieArenaRuntimeError = event => reportArenaFatal(event?.error || event?.message, event, "window_error");
+    globalThis.__thornieArenaUnhandledRejection = event => reportArenaFatal(event?.reason, event, "unhandled_rejection");
+    return () => {
+      if (globalThis.__thornieArenaRuntimeError) globalThis.__thornieArenaRuntimeError = previousErrorHandler;
+      if (globalThis.__thornieArenaUnhandledRejection) globalThis.__thornieArenaUnhandledRejection = previousRejectionHandler;
+      if (globalThis.__THORNIE_ARENA_CONTEXT__ === context) delete globalThis.__THORNIE_ARENA_CONTEXT__;
+    };
+  }, [match?.matchId, match?.state?.actionSeq, phaserStatus, reportArenaFatal, tab]);
   const refresh = React.useCallback(async () => {
     setError("");
     const [s, o, resumed] = await Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]);
@@ -17801,6 +18029,7 @@ function ArenaV2Screen({
   };
   const start = async (opponentKey, source = "matchmaking") => {
     if (busy) return; setBusy(true); setError("");
+    currentActionRef.current = "prepare_match";
     try {
       const prepared = await cloudPrepareArenaV2Match(url, characterId, opponentKey, source);
       if (prepared?.error) throw new Error(prepared.error);
@@ -17819,17 +18048,19 @@ function ArenaV2Screen({
   const toggleAuto = async () => {
     if (!match || busy || match.result) return;
     setBusy(true);
+    currentActionRef.current = "toggle_auto";
     try { const res = await cloudSetArenaV2Auto(url, characterId, match.matchId, !auto); if (res?.error) throw new Error(res.error); setAuto(!auto); setMatch(res.match || match); }
     catch (e) { setError(e.message || "เปลี่ยน Auto ไม่สำเร็จ"); } finally { setBusy(false); }
   };
   const action = async (actionType, skillId, targetId) => {
     if (!match || busy || match.result) return; setBusy(true);
+    currentActionRef.current = actionType === "surrender" ? "surrender" : "submit_action";
     try {
       const res = await cloudSubmitArenaV2Action(url, characterId, match.matchId, `arena-action-${match.matchId}-${(match.state?.actionSeq || 0) + 1}`, actionType, skillId, targetId, false);
       if (res?.error) throw new Error(res.error);
       const next = res.match || { ...match, state: res.state, result: res.result };
       setMatch(next); setAuto(!!next.state?.auto || !!next.state?.flags?.auto);
-    } catch (e) { setError(e.message || "ทำ action ไม่สำเร็จ"); } finally { setBusy(false); }
+    } catch (e) { setError(e.message || "ทำ action ไม่สำเร็จ"); } finally { currentActionRef.current = "idle"; setBusy(false); }
   };
   if (status && status.unlocked === false) return /*#__PURE__*/React.createElement("div", { className: "md-panel" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Arena ปลดล็อกที่ Lv10"), /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
   if (!status) return /*#__PURE__*/React.createElement("div", { className: "md-panel" }, error || "กำลังโหลด Arena...");
@@ -17840,10 +18071,20 @@ function ArenaV2Screen({
   const refreshAtMs = Date.parse(refreshAvailableAt || "");
   const refreshSeconds = Number.isFinite(refreshAtMs) ? Math.max(0, Math.ceil((refreshAtMs - now) / 1000)) : 0;
   const units = match?.state?.units || {};
-  const playerUnits = Object.values(units).filter(u => u.side === "team_a");
-  const enemyUnits = Object.values(units).filter(u => u.side === "team_b");
+  const playerUnits = Object.values(units).filter(u => u.side === "team_a").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
+  const enemyUnits = Object.values(units).filter(u => u.side === "team_b").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
   const selected = selectedTarget || enemyUnits.find(u => u.alive)?.id || enemyUnits[0]?.id || null;
   const battleState = match?.state ? { ...match.state, selectedTargetId: selected } : null;
+  const arenaTurnQueue = (match?.state?.queue || []).map(item => ({
+    key: item.id,
+    uid: item.id,
+    kind: item.kind === "pet" ? "pet" : item.kind === "hero" ? "player" : "monster",
+    name: item.name || item.id,
+    icon: arenaTurnOrderIcon(item, match?.snapshot),
+    speed: item.speed || "—"
+  }));
+  const arenaPet = playerUnits.find(unit => unit.kind === "pet") || null;
+  const arenaEnemyUnits = enemyUnits.map(unit => ({ ...unit, uid: unit.id }));
   const arenaCurrency = arenaHud || {
     arenaCoin: Number(status?.player?.arenaCoin) || 0,
     tickets: Number(status?.tickets?.tickets) || 0,
@@ -17905,11 +18146,14 @@ function ArenaV2Screen({
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ranking.map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: row.characterId }, "#", row.rank, " ", row.name, " · ", row.rating, " · ", row.rewardBucket))),
     !match && tab === "history" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ["attack", "defense"].map(kind => /*#__PURE__*/React.createElement("div", { key: kind }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, kind.toUpperCase()), (history[kind] || []).map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: `${kind}-${row.matchId}` }, row.result, " · ", row.resolution, " · ", row.arenaCoinEarned, " Coin", kind === "attack" && row.defenderCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => start(`history:${row.matchId}`, "revenge") }, "REVENGE")))))),
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · Round ", match.state?.round || 0, " / 20"), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || "—"), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
-        /*#__PURE__*/React.createElement(PhaserBattlefield, { mode: "arena", battleState, preparedSnapshot: match.snapshot, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: s => {
+      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · Round ", match.state?.round || 0, " / 20"), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || "—"), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
+        /*#__PURE__*/React.createElement(PhaserBattlefield, { mode: "arena", battleState, preparedSnapshot: match.snapshot, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: (s, detail) => {
           setPhaserStatus(s);
           if (s === "ready") preloadGateRef.current?.ready();
-          else if (s === "error" || s === "destroyed") preloadGateRef.current?.fail("arena_preload_failed");
+          else if (s === "error") {
+            preloadGateRef.current?.fail("arena_preload_failed");
+            reportArenaFatal(detail || new Error("Arena Phaser presentation failed"), {}, "phaser_error");
+          } else if (s === "destroyed") preloadGateRef.current?.fail("arena_preload_failed");
         } }),
         phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, "Battle presentation unavailable · controls remain active")), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "loading" ? "Loading Battle…" : preloadState === "failed" ? "Battle preload failed" : "", " · ", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · ")), /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "Targets: ", enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line), " ")), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setShowFullLog(!showFullLog) }, showFullLog ? "HIDE LOG" : "FULL LOG")), showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-card" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line))))),
       match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "RESULT · ", match.result.result || match.result.combatResult), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating change: ", match.result.ratingChange ?? "—", " · Arena Coin: ", match.result.arenaCoinEarned ?? match.result.arenaCoin ?? "—"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map(skill => /*#__PURE__*/React.createElement("button", { key: skill || "empty", className: "md-btn small", disabled: busy || !skill, onClick: () => action("active", skill, selected) }, skill || "—"))),

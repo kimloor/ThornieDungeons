@@ -237,6 +237,30 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
   assert.doesNotMatch(arenaUi, /onHudChange\?\.\(null\)/);
 });
 
+test('Arena HIGH blocker recovery is scoped, diagnostic-rich and preserves resume', () => {
+  const head = fs.readFileSync(path.join(ROOT, 'head.html'), 'utf8');
+  assert.match(head, /window\.__thornieArenaRuntimeError/);
+  assert.match(head, /window\.__thornieArenaUnhandledRejection/);
+  assert.match(arenaUi, /ArenaV2ErrorBoundary[\s\S]*React\.Component/);
+  assert.match(arenaUi, /function arenaFatalDiagnostic\(/);
+  assert.match(arenaUi, /matchId: String\(context\.matchId/);
+  assert.match(arenaUi, /phaserStatus: String\(context\.phaserStatus/);
+  assert.match(arenaUi, /setMatch\(null\)/);
+  assert.match(arenaUi, /Do not call an Arena API here/);
+  assert.match(arenaUi, /authoritative active match/);
+  assert.match(appUi, /ArenaFatalDiagnosticOverlay/);
+  assert.match(appUi, /setPhase\(utilityReturnPhase \|\| "menu"\)/);
+});
+
+test('Arena ATB reuses the shared four-slot TurnOrderBar with authoritative queue metadata', () => {
+  assert.match(arenaUi, /md-arena-turn-order/);
+  assert.match(arenaUi, /React\.createElement\(TurnOrderBar/);
+  assert.match(arenaUi, /queue: arenaTurnQueue/);
+  assert.match(arenaUi, /activeKey: match\.state\?\.currentActorId/);
+  assert.match(arenaUi, /arenaTurnOrderIcon/);
+  assert.match(phaserUi, /buildArenaBattlefieldSnapshot\(props\)/);
+});
+
 
 test('Arena Phaser receives prepared match snapshot so READY waits on actor assets before activate', () => {
   assert.match(arenaUi, /preparedSnapshot: match\.snapshot/);

@@ -167,6 +167,47 @@ test("W9.2 Arena snapshot supports Hero-only teams", () => {
   assert.equal(snapshot.selectedTargetId, "hb");
 });
 
+test("W9.10 Arena snapshot carries authoritative action cues in log order", () => {
+  const model = source("src/phaser/presentation/ActorPresentationModel.js");
+  const adapter = source("src/phaser/presentation/EventBridge.js");
+  const context = {
+    SHARED_PHASER_ASSET_RESOLVER: {
+      resolve: value => value || "",
+      resolveAll: values => values || [],
+      manifest: () => ""
+    },
+    SHARED_EQUIPMENT_VISUAL_RESOLVER: {
+      resolveHeroSelection: () => ({}),
+      resolveHeroV5Selection: () => ({})
+    },
+    getHeroV3Config: () => ({ canvas: { width: 1, height: 1 }, base: { attack: [] } }),
+    resolveHeroV3Layers: () => [],
+    getPetSpriteConfig: () => ({ animations: { idle: [], attack: [], death: [] } }),
+    isHeroV5RuntimeEnabled: () => false
+  };
+  vm.createContext(context);
+  vm.runInContext(`${model}\n${adapter}; this.snapshot = buildArenaBattlefieldSnapshot({ battleState: {
+    battleId: "arena-cues", actionSeq: 4, controlledSide: "team_a", teamIds: ["team_a", "team_b"],
+    teams: { team_a: { unitIds: ["team_a_hero", "team_a_pet"] }, team_b: { unitIds: ["team_b_hero", "team_b_pet"] } },
+    units: {
+      team_a_hero: { id: "team_a_hero", side: "team_a", kind: "hero", hp: 100, maxHp: 100 },
+      team_a_pet: { id: "team_a_pet", side: "team_a", kind: "pet", hp: 50, maxHp: 50 },
+      team_b_hero: { id: "team_b_hero", side: "team_b", kind: "hero", hp: 100, maxHp: 100 },
+      team_b_pet: { id: "team_b_pet", side: "team_b", kind: "pet", hp: 50, maxHp: 50 }
+    },
+    log: [
+      { seq: 8, type: "damage", actorId: "team_a_hero", targetId: "team_b_hero" },
+      { seq: 9, type: "damage", actorId: "team_b_pet", targetId: "team_a_hero" },
+      { seq: 10, type: "round", actorId: null }
+    ]
+  }, heroV5: false });`, context);
+  const cues = JSON.parse(JSON.stringify(context.snapshot.animationCues));
+  assert.deepEqual(cues.map(cue => [cue.seq, cue.actorId, cue.animation]), [
+    [8, "team_a_hero", "attack"],
+    [9, "team_b_pet", "attack"]
+  ]);
+});
+
 test("W9.2 BattleScene uses shared Hero/Pet actors for defender targeting without resolver authority", () => {
   const scene = source("src/phaser/scenes/BattleScene.js");
   assert.match(scene, /responsiveArenaBattlefieldLayout\(width, height\)/);
@@ -176,6 +217,9 @@ test("W9.2 BattleScene uses shared Hero/Pet actors for defender targeting withou
   assert.match(scene, /new HeroActor\(this, data, options\)/);
   assert.match(scene, /new PetActor\(this, data, options\)/);
   assert.doesNotMatch(scene, /battleStep|simulateBattle|BATTLE_CORE_V1|rating|reward/i);
+  assert.match(scene, /lastArenaCueSeq/);
+  assert.match(scene, /arenaActorById/);
+  assert.match(scene, /playVisualState\(cue\.animation.*force: true/);
 });
 
 test("W9.2 existing Dungeon anchors and presentation contract remain unchanged", () => {
