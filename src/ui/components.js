@@ -3997,7 +3997,7 @@ function ArenaV2Screen({
       /*#__PURE__*/React.createElement("h1", null, "Arena")),
     /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save, arena: arenaCurrency, className: "md-arena-global-currency" }),
     /*#__PURE__*/React.createElement("div", { className: "md-arena-scroll" },
-      /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel md-arena-summary-panel" },
+      /*#__PURE__*/React.createElement("div", { className: !match ? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "🥊 Arena V2"),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-summary" },
         /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "ซีซันเหลือ ", seasonCountdownText),
