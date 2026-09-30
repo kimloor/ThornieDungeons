@@ -3593,8 +3593,10 @@ function ArenaV2Screen({
   const [error, setError] = React.useState("");
   const [now, setNow] = React.useState(Date.now());
   const [playerCard, setPlayerCard] = React.useState(null);
+  const [playerCardSource, setPlayerCardSource] = React.useState("matchmaking");
   const [showFullLog, setShowFullLog] = React.useState(false);
   const [currencyInfo, setCurrencyInfo] = React.useState(false);
+  const [combatSpeed, setCombatSpeed] = React.useState(1);
   const [refreshAvailableAt, setRefreshAvailableAt] = React.useState("");
   const [unlockBusy, setUnlockBusy] = React.useState(false);
   const [preloadState, setPreloadState] = React.useState("idle");
@@ -3606,6 +3608,8 @@ function ArenaV2Screen({
   const matchRef = React.useRef(match);
   const phaserStatusRef = React.useRef(phaserStatus);
   const currentActionRef = React.useRef("idle");
+  const requestInFlightRef = React.useRef(false);
+  const autoActionInFlightRef = React.useRef(false);
   const fatalReportedRef = React.useRef(false);
   matchRef.current = match;
   phaserStatusRef.current = phaserStatus;
@@ -3630,6 +3634,7 @@ function ArenaV2Screen({
     // local match unmounts Phaser immediately; the next Arena mount will GET and resume
     // the authoritative active match without consuming another ticket.
     setMatch(null);
+    setPlayerCardSource("matchmaking");
     setBusy(false);
     onFatal?.(diagnostic);
   }, [onFatal, tab]);
@@ -3791,12 +3796,13 @@ function ArenaV2Screen({
     } catch (e) { setError(e.message || "บันทึกสถานะปลดล็อก Arena ไม่สำเร็จ"); }
     finally { setUnlockBusy(false); }
   };
-  const openPlayerCard = async opponentKey => {
+  const openPlayerCard = async (opponentKey, source = "matchmaking") => {
     setBusy(true); setError("");
     try {
       const res = await cloudGetArenaV2PlayerCard(url, characterId, opponentKey);
       if (res?.error) throw new Error(res.error);
       setPlayerCard(res.playerCard || res.card || res);
+      setPlayerCardSource(source === "revenge" ? "revenge" : "matchmaking");
     } catch (e) { setError(e.message || "โหลด Player Card ไม่สำเร็จ"); } finally { setBusy(false); }
   };
   const start = async (opponentKey, source = "matchmaking") => {
@@ -3820,33 +3826,92 @@ function ArenaV2Screen({
       currentActionRef.current = "idle";
     }
   };
+  const submitArenaAction = React.useCallback(async ({ actionType = "basic", skillId = null, targetId = null, autoMode = false } = {}) => {
+    const currentMatch = matchRef.current;
+    if (!arenaMatchIsActive(currentMatch) || requestInFlightRef.current) return false;
+    requestInFlightRef.current = true;
+    setBusy(true);
+    currentActionRef.current = actionType === "surrender" ? "surrender" : autoMode ? "auto_action" : "submit_action";
+    try {
+      const currentSeq = Number(currentMatch.state?.actionSeq) || 0;
+      const actionKey = autoMode
+        ? `arena-auto-${currentMatch.matchId}-${currentSeq + 1}`
+        : `arena-action-${currentMatch.matchId}-${currentSeq + 1}`;
+      const res = await cloudSubmitArenaV2Action(
+        url,
+        characterId,
+        currentMatch.matchId,
+        actionKey,
+        actionType,
+        skillId,
+        targetId,
+        autoMode
+      );
+      if (res?.error) {
+        setError(arenaHumanError(res.error, res.reason, "ทำ action ไม่สำเร็จ"));
+        if (["arena_match_not_active", "arena_action_illegal", "arena_combat_conflict"].includes(res.error)) await syncArenaMatch();
+        return false;
+      }
+      const next = arenaTerminalMatchFromResponse(currentMatch, res);
+      setMatch(next);
+      setAuto(next.result ? false : !!next.state?.auto || !!next.state?.flags?.auto);
+      return true;
+    } catch (e) {
+      setError(e.message || "ทำ action ไม่สำเร็จ");
+      return false;
+    } finally {
+      requestInFlightRef.current = false;
+      currentActionRef.current = "idle";
+      setBusy(false);
+    }
+  }, [characterId, syncArenaMatch, url]);
+
   const toggleAuto = async () => {
-    if (!arenaMatchIsActive(match) || busy) return;
+    const currentMatch = matchRef.current;
+    if (!arenaMatchIsActive(currentMatch) || requestInFlightRef.current) return;
+    requestInFlightRef.current = true;
     setBusy(true);
     currentActionRef.current = "toggle_auto";
     try {
-      const res = await cloudSetArenaV2Auto(url, characterId, match.matchId, !auto);
+      const enabled = !auto;
+      const res = await cloudSetArenaV2Auto(url, characterId, currentMatch.matchId, enabled);
       if (res?.error) {
         setError(arenaHumanError(res.error, res.reason, "เปลี่ยน Auto ไม่สำเร็จ"));
         if (res.error === "arena_match_not_active") await syncArenaMatch();
         return;
       }
-      setAuto(!auto); setMatch(res.match || match);
-    } catch (e) { setError(e.message || "เปลี่ยน Auto ไม่สำเร็จ"); } finally { setBusy(false); currentActionRef.current = "idle"; }
+      const next = arenaMatchWithResultViewModel(res.match || currentMatch);
+      setMatch(next);
+      setAuto(!!next.state?.auto || !!next.state?.flags?.auto);
+    } catch (e) {
+      setError(e.message || "เปลี่ยน Auto ไม่สำเร็จ");
+    } finally {
+      requestInFlightRef.current = false;
+      setBusy(false);
+      currentActionRef.current = "idle";
+    }
   };
-  const action = async (actionType, skillId, targetId) => {
-    if (!arenaMatchIsActive(match) || busy) return; setBusy(true);
-    currentActionRef.current = actionType === "surrender" ? "surrender" : "submit_action";
-    try {
-      const res = await cloudSubmitArenaV2Action(url, characterId, match.matchId, `arena-action-${match.matchId}-${(match.state?.actionSeq || 0) + 1}`, actionType, skillId, targetId, false);
-      if (res?.error) {
-        setError(arenaHumanError(res.error, res.reason, "ทำ action ไม่สำเร็จ"));
-        if (["arena_match_not_active", "arena_action_illegal"].includes(res.error)) await syncArenaMatch();
-        return;
-      }
-      const next = arenaTerminalMatchFromResponse(match, res);
-      setMatch(next); setAuto(!!next.state?.auto || !!next.state?.flags?.auto);
-    } catch (e) { setError(e.message || "ทำ action ไม่สำเร็จ"); } finally { currentActionRef.current = "idle"; setBusy(false); }
+
+  React.useEffect(() => {
+    const currentMatch = matchRef.current;
+    const actor = currentMatch?.state?.units?.[currentMatch.state?.currentActorId];
+    if (
+      !auto ||
+      busy ||
+      requestInFlightRef.current ||
+      autoActionInFlightRef.current ||
+      !arenaMatchIsActive(currentMatch) ||
+      actor?.id !== "team_a_hero"
+    ) return;
+    autoActionInFlightRef.current = true;
+    void submitArenaAction({ autoMode: true }).finally(() => {
+      autoActionInFlightRef.current = false;
+    });
+  }, [auto, busy, match?.matchId, match?.state?.actionSeq, match?.state?.currentActorId, submitArenaAction]);
+
+  const action = (actionType, skillId, targetId) => {
+    if (busy || requestInFlightRef.current) return;
+    void submitArenaAction({ actionType, skillId, targetId });
   };
   if (status && status.unlocked === false) return /*#__PURE__*/React.createElement("div", { className: "md-panel" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Arena ปลดล็อกที่ Lv10"), /*#__PURE__*/React.createElement(BackButton, { onClick: onBack }));
   if (!status) return /*#__PURE__*/React.createElement("div", { className: "md-panel" }, error || "กำลังโหลด Arena...");
@@ -3930,15 +3995,15 @@ function ArenaV2Screen({
     !match && playerCard && /*#__PURE__*/React.createElement(ArenaPlayerCardOverlay, {
       card: playerCard,
       busy,
-      onBattle: () => start(playerCard.opponentKey || playerCard.characterId),
-      onClose: () => setPlayerCard(null)
+      onBattle: () => start(playerCard.opponentKey || playerCard.characterId, playerCardSource),
+      onClose: () => { setPlayerCard(null); setPlayerCardSource("matchmaking"); }
     }),
     !match && tab === "setup" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "SETUP · Pet + 4 Skills"), /*#__PURE__*/React.createElement("select", { value: setup.petInstId || "", onChange: e => setSetup({ ...setup, petInstId: e.target.value }) }, /*#__PURE__*/React.createElement("option", { value: "" }, "No Pet"), (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("option", { key: p.instId, value: p.instId }, p.name, " Lv", p.level))), [0, 1, 2, 3].map(i => /*#__PURE__*/React.createElement("select", { key: i, value: setup.skillSlots?.[i] || "", onChange: e => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = e.target.value || null; setSetup({ ...setup, skillSlots: slots }); } }, /*#__PURE__*/React.createElement("option", { value: "" }, `Skill ${i + 1}`), (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("option", { key: s.key, value: s.key }, s.icon, " ", s.name)))), /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: async () => { setBusy(true); try { const r = await cloudSaveArenaV2Setup(url, characterId, setup.petInstId, setup.skillSlots); if (r?.error) throw new Error(r.error); setSetup(r.setup); } catch (e) { setError(e.message); } finally { setBusy(false); } } }, "SAVE SETUP")),
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ranking.map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: row.characterId }, "#", row.rank, " ", row.name, " · ", row.rating, " · ", row.rewardBucket))),
-    !match && tab === "history" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ["attack", "defense"].map(kind => /*#__PURE__*/React.createElement("div", { key: kind }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, kind.toUpperCase()), (history[kind] || []).map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: `${kind}-${row.matchId}` }, row.result, " · ", row.resolution, " · ", row.arenaCoinEarned, " Coin", kind === "attack" && row.defenderCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => start(`history:${row.matchId}`, "revenge") }, "REVENGE")))))),
+    !match && tab === "history" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ["attack", "defense"].map(kind => /*#__PURE__*/React.createElement("div", { key: kind }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, kind.toUpperCase()), (history[kind] || []).map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: `${kind}-${row.matchId}` }, row.result, " · ", row.resolution, " · ", row.arenaCoinEarned, " Coin", kind === "attack" && row.defenderCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => openPlayerCard(`history:${row.matchId}`, "revenge") }, "REVENGE")))))),
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · ", matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`), matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Presentation พร้อมก่อนใช้ Ticket; controls จะเปิดหลัง activation สำเร็จ"), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || (matchIsPrepared ? "waiting for activation" : "—")), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
-        /*#__PURE__*/React.createElement(PhaserBattlefield, { key: `arena-phaser-${match.matchId}-${presentationAttempt}`, mode: "arena", battleState, preparedSnapshot: match.snapshot, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: (s, detail) => {
+      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · ", matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`), matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Presentation พร้อมก่อนใช้ Ticket; controls จะเปิดหลัง activation สำเร็จ"), !matchIsPrepared && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-speed-toggle", type: "button", onClick: () => setCombatSpeed(value => value === 1 ? 2 : 1), "aria-label": `Arena presentation speed x${combatSpeed}` }, `×${combatSpeed}`), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || (matchIsPrepared ? "waiting for activation" : "—")), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
+        /*#__PURE__*/React.createElement(PhaserBattlefield, { key: `arena-phaser-${match.matchId}-${presentationAttempt}`, mode: "arena", battleState, preparedSnapshot: match.snapshot, combatSpeed, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: (s, detail) => {
           setPhaserStatus(s);
           if (s === "ready") preloadGateRef.current?.ready();
           else if (s === "error") {

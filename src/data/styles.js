@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.27";
+  content: "Ver 1.0.28";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2486,6 +2486,7 @@ body::after {
 .md-arena-phaser-stage .md-phaser-battlefield { position:absolute; inset:0; width:100%; height:100%; }
 .md-arena-phaser-error { position:absolute; inset:auto 10px 10px; z-index:5; padding:7px 9px; border:1px solid rgba(255,107,123,.55); border-radius:9px; background:rgba(45,10,24,.88); color:#ffc2c9; font-size:10px; font-weight:800; text-align:center; }
 .md-arena-turn-order { margin:4px 0 7px; min-height:38px; border:1px solid rgba(255,209,102,.18); border-radius:10px; background:rgba(3,9,24,.32); overflow:hidden; }
+.md-arena-speed-toggle { margin:0 0 6px; min-width:58px; color:var(--gold); border-color:rgba(255,209,102,.45); }
 .md-arena-fatal-overlay { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:max(18px,var(--safe-top)) max(14px,var(--safe-right)) max(18px,var(--safe-bottom)) max(14px); background:rgba(2,5,16,.76); backdrop-filter:blur(4px); }
 .md-arena-fatal-card { width:min(92vw,520px); max-height:min(82dvh,680px); display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,139,139,.72); border-radius:16px; background:rgba(24,14,35,.98); box-shadow:0 18px 55px rgba(0,0,0,.68); color:#FFD6D6; }
 .md-arena-fatal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border-bottom:1px solid rgba(255,139,139,.35); color:#FF9E9E; }

@@ -66,10 +66,9 @@ test("W9 6A.1 keeps legacy scalar results and terminal meanings", () => {
 test("W9 6A.1 terminal response and Ticket HUD paths stay client-only and exact-once", () => {
   const resultSection = arenaUi.slice(arenaUi.indexOf("match.result ?"), arenaUi.indexOf("!match && /*#__PURE__*/React.createElement(GameDock", arenaUi.indexOf("match.result ?")));
   assert.match(arenaUi, /function arenaTerminalMatchFromResponse\(/);
-  assert.match(arenaUi, /const next = arenaTerminalMatchFromResponse\(match, res\)/);
+  assert.match(arenaUi, /const next = arenaTerminalMatchFromResponse\(currentMatch, res\)/);
   assert.doesNotMatch(resultSection, /match\.result\.arenaCoin(?!Earned)/);
   assert.match(arenaUi, /await syncArenaStatus\(\);/);
   assert.match(arenaUi, /refresh\(\)\.catch\(\(\) => setError\("โหลด Arena status ไม่สำเร็จ"\)\)/);
   assert.equal((arenaUi.match(/cloudSubmitArenaV2Action\(/g) || []).length, 1);
 });
-

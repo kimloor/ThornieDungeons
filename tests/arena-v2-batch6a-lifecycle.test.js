@@ -35,7 +35,7 @@ test("Batch 6A preserves API error code/reason without entering fatal recovery",
   assert.match(message, /คำสั่ง Arena นี้ใช้ไม่ได้/);
   assert.match(message, /not your turn/);
   assert.match(message, /arena_action_illegal/);
-  assert.match(arenaUi, /if \(\["arena_match_not_active", "arena_action_illegal"\]\.includes\(res\.error\)\) await syncArenaMatch\(\)/);
+  assert.match(arenaUi, /if \(\["arena_match_not_active", "arena_action_illegal", "arena_combat_conflict"\]\.includes\(res\.error\)\) await syncArenaMatch\(\)/);
   assert.doesNotMatch(arenaUi, /reportArenaFatal\(detail \|\| new Error\("Arena Phaser presentation failed"\), \{\}, "phaser_error"\);\s*\}\s*else setError/);
 });
 
@@ -47,4 +47,3 @@ test("Batch 6A retries the same prepared match and captures window diagnostics",
   assert.match(arenaUi, /globalThis\.hideBootError\?\.\(\)/);
   assert.match(arenaUi, /matchIsPrepared \? .*RETRY PRESENTATION/s);
 });
-

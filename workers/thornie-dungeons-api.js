@@ -6379,7 +6379,7 @@ async function handleActivateArenaV2Match(db, id, session, characterId, matchId)
     combatState = arenaCombatState(snapshot, key);
     // Resolve any opening defender/Pet turns through Battle Core so activation
     // always returns at the attacker's Hero decision boundary.
-    combatState = arenaCombatAdvance(combatState, false);
+    combatState = arenaCombatAdvance(combatState);
   } catch (error) { return json({ error: "arena_match_state_invalid" }, 409); }
   const activationStatus = combatState.result ? "done" : "active";
   const activationResult = arenaCombatResult(combatState);
@@ -6527,12 +6527,16 @@ function arenaCombatStep(state, command, actor = null) {
   delete result.state.commandActorId;
   return result;
 }
-function arenaCombatAdvance(state, auto = false) {
+// Advance only automatic non-player turns until the next attacker-Hero
+// decision boundary. Auto orchestration submits each Hero decision through the
+// same authoritative action endpoint; it must never resolve multiple Hero
+// decisions in one opaque request.
+function arenaCombatAdvance(state) {
   let steps = 0;
   while (!state.result && steps++ < 128) {
     const actor = BATTLE_CORE_V1.currentUnit(state);
     if (!actor) break;
-    if (actor.kind === "hero" && actor.side === "team_a" && !auto) break;
+    if (actor.kind === "hero" && actor.side === "team_a") break;
     if (actor.kind === "hero") {
       const command = arenaCombatHeroCommand(state, actor);
       const result = arenaCombatStep(state, command, actor);
@@ -7116,7 +7120,7 @@ async function handleSubmitArenaV2Action(db, id, session, characterId, matchId, 
     const playerStep = arenaCombatStep(state, command, actor);
     if (playerStep.error) return json({ error: "arena_action_illegal", reason: playerStep.error }, 409);
     state = playerStep.state;
-    state = arenaCombatAdvance(state, !!state.flags.auto);
+    state = arenaCombatAdvance(state);
   }
   state.arenaStateRev = previousStateRev + 1;
   const publicState = arenaCombatPublicState(state);
