@@ -1,0 +1,160 @@
+{
+  "status": "approved",
+  "azureRevision": "r2 plain ivory production wings",
+  "normalization": "RGBA256; alpha<=8 removed; visible bounds fit224; centered; original eight approved masters unchanged",
+  "assets": [
+    {
+      "id": "bossHorn",
+      "manifestKey": "assets.itemIcons.materials.bossHorn",
+      "path": "ui/item-icons/materials/boss_horn.png",
+      "sha256": "959c19968b21c174ee4fb1bb0f57edfb45ebb75e4e2c56b654dd2b030ec5f9bc",
+      "sourceSha256": "1a6317aab7ab7cffb9c6fccb813071b4960ae06ba3d417a372c0cec289dfd028",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        19,
+        16,
+        236,
+        240
+      ]
+    },
+    {
+      "id": "bossHide",
+      "manifestKey": "assets.itemIcons.materials.bossHide",
+      "path": "ui/item-icons/materials/boss_hide.png",
+      "sha256": "90e71e4d64fcb59d2499bc66ea96e39fa3a3a892a3b8838da7f209b04df0a50d",
+      "sourceSha256": "30a858ba6dc1823877aeb4a781672605cfd763deec3ad76972528df14f921398",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        16,
+        27,
+        240,
+        229
+      ]
+    },
+    {
+      "id": "recipeAzure",
+      "manifestKey": "assets.itemIcons.recipes.azure",
+      "path": "ui/item-icons/recipes/recipe_azure.png",
+      "sha256": "5cdcd2cd5b85a47f204baf4c3a6b06f59174b75c4ceca1b803c936cd9e1c0c98",
+      "sourceSha256": "7e4ffce5189fdcd15c4b0344bc496f3629bd7fa5adcf3a42db61ce3e0cbccb67",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        16,
+        16,
+        239,
+        240
+      ]
+    },
+    {
+      "id": "recipeRobot",
+      "manifestKey": "assets.itemIcons.recipes.robot",
+      "path": "ui/item-icons/recipes/recipe_robot.png",
+      "sha256": "c96971b56e6be1840cf9ff541a328697ee2364960d933de15584d156877b4354",
+      "sourceSha256": "e2028c182449b67540644d1042abcd10a940f74cfdd5f4e25f689485b8581c97",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        16,
+        21,
+        240,
+        235
+      ]
+    },
+    {
+      "id": "recipeSkeleton",
+      "manifestKey": "assets.itemIcons.recipes.skeleton",
+      "path": "ui/item-icons/recipes/recipe_skeleton.png",
+      "sha256": "0723f517e7debf731e5df2c1212f99322dd8f0109e15114bf66cf71a278b61c8",
+      "sourceSha256": "8a2e336ad3cc9e90be335806dfec1857fd3a10846823322655c3506ee3f37f70",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        29,
+        16,
+        227,
+        240
+      ]
+    },
+    {
+      "id": "protectionStone",
+      "manifestKey": "assets.itemIcons.materials.protectionStone",
+      "path": "ui/item-icons/materials/protection_stone.png",
+      "sha256": "1ad780340608238c1f0b500ab759b62d2c74ea54e0c6978925c09302a5213ffc",
+      "sourceSha256": "6cf06e60ecf42cead9e741fbd04419316aae33573221d2113a8895ef3f971bc5",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        17,
+        16,
+        238,
+        240
+      ]
+    },
+    {
+      "id": "azureWing",
+      "manifestKey": "assets.itemIcons.wings.azure",
+      "path": "ui/equipment-icons/wings/azure_wings.png",
+      "sha256": "0680bee115aeae680cd3f74414e4d66891d34a2cbdbe102f896dbcd78c26a357",
+      "sourceSha256": "4fb64d078d7b407c21eab04f3ca431f0431cd8d2e978f3cc282db620a073f411",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        16,
+        57,
+        240,
+        199
+      ]
+    },
+    {
+      "id": "robotWing",
+      "manifestKey": "assets.itemIcons.wings.robot",
+      "path": "ui/equipment-icons/wings/robot_wings.png",
+      "sha256": "15cdc39a834bfe2f669073718ed4c0215c2493e010ca6e90c38f311692a58639",
+      "sourceSha256": "37581e987b91ef21032045adec84ca89c6417dccedda3730dfefcc3619d45700",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        16,
+        44,
+        240,
+        212
+      ]
+    },
+    {
+      "id": "skeletonWing",
+      "manifestKey": "assets.itemIcons.wings.skeleton",
+      "path": "ui/equipment-icons/wings/skeleton_wings.png",
+      "sha256": "3ddc2aa851325e13fc140bf9223481887d1bd1a5e979c32100f974492da4301f",
+      "sourceSha256": "6d92db7b8f1dd479438d91d99c75f133fea943720a5ac4f6225b515a7d4b733b",
+      "size": [
+        256,
+        256
+      ],
+      "alphaBBox": [
+        16,
+        58,
+        240,
+        197
+      ]
+    }
+  ]
+}

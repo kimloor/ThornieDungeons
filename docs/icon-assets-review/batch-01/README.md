@@ -1,16 +1,5 @@
-# Icon assets batch 01 — review candidates
+# Icon batch 01 — approved
 
-Status: READY_FOR_USER_REVIEW. All nine designs await approval. No R2 upload, manifest change, runtime integration, or gameplay changes.
+All nine icons approved by user 2026-09-30. Azure uses icons/azureWing-r2.png, matching plain ivory production wings. Original azureWing.png and asset-sheet.jpg are superseded references; use approved-production-sheet.jpg. Other eight masters are unchanged.
 
-- `asset-sheet.jpg`: labeled 3x3 review sheet, with 48px samples.
-- `icons/*.png`: nine original 1254x1254 RGBA generated masters.
-- `PROMPTS.json`: exact built-in image_gen prompt set.
-- `VALIDATION.json`: dimensions, alpha bounds and SHA256 of each master.
-
-Inventory: bossHorn, bossHide, recipeAzure, recipeRobot, recipeSkeleton, protectionStone, azureWing, robotWing, skeletonWing.
-
-Recipes are shared per set. Wings are three base icons only; rarity effects will be supplied by existing runtime presentation later.
-
-References: existing mana_ore inventory icon; approved Robot R3 and Skeleton R2 wing review sheets. Artwork and 48px samples visually inspected. Alpha present on every master. Some very faint peripheral alpha touches the canvas boundary: production normalization/edge cleanup remains a post-approval step; these are review candidates, not production-ready exports. No in-game QA claimed.
-
-Next: obtain user approval by icon, revise rejected designs only, then prepare production-size transparent exports and publish only when authorized. Keep approved source masters and their hashes.
+Production: RGBA256, visible artwork fit within224px, centered; near-transparent peripheral noise cleaned. PUBLICATION.json records paths, manifest keys and hashes. Recipes shared per set; three base wing icons only. Existing angel alias and unrelated assets retained. No runtime/gameplay changes or in-game QA claimed. DEV must bind new manifest entries where needed. R2 normal main-push workflow verifies downloads by SHA256.
