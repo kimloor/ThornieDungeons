@@ -534,28 +534,113 @@ Current production Gold/Iron attempt-cost formulas are **not yet automatically l
 
 ## 16. Empower
 
-Status: **DEFERRED FOR V2 RE-DESIGN / NOT FULLY LOCKED**
+Status: **CURRENT V2 APPROVED DIRECTION — FINAL COMBAT REVALIDATION REQUIRED**
 
-The Rarity architecture currently reserves the following maximum slot counts:
+Empower V2 is a build-customization layer. The values below are approved as the current working design and must be revalidated against final player power and Dungeon Monster Scaling V2 after the remaining progression systems are settled.
 
-- Rare = 1
-- Unique = 2
-- Elite = 3
-- Mythic = 4
+### 16.1 Empower slots by Rarity
 
-However, exact Empower V2 balance is intentionally postponed.
+| Rarity | Empower slots |
+| --- | ---: |
+| Rare | 1 |
+| Unique | 2 |
+| Elite | 3 |
+| Mythic | 4 |
 
-The later design pass must explicitly review:
+Rarity increases the number of available Empower slots. It does **not** multiply the strength of each Empower roll.
 
-- exact stat pool;
-- stat magnitude per slot;
-- whether duplicate/same-stat rolls are allowed;
-- Gold and Mana Ore costs;
-- reroll/rework behavior;
-- interaction with Tier/Rarity;
-- total high-end power ceiling.
+Empower roll ranges are the same for T1 through T5. Tier already increases the item's base power, so Empower does not receive an additional Tier-based strength multiplier.
 
-Do not implement the previous cost/magnitude assumptions as locked V2 balance without a new approval.
+### 16.2 Empower option pool
+
+Direct Empower rolls:
+
+- ATK %
+- DEF %
+- HP %
+- MP %
+- Crit Chance
+- Crit Damage
+- STR
+- VIT
+- AGI
+- DEX
+- LUK
+
+Removed as direct Empower rolls:
+
+- Accuracy
+- Dodge
+- Drop Bonus
+
+AGI / DEX / LUK may still influence Dodge / Accuracy / Drop Bonus indirectly through the character's normal derived-stat formulas.
+
+### 16.3 Slot filtering
+
+Empower must be item-aware. Invalid/dead rolls are not allowed.
+
+| Empower option | Weapon | Gloves | Helmet | Chest | Boots | Accessory | Wings |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| ATK % | ✓ | ✓ | — | — | — | — | — |
+| DEF % | — | — | ✓ | ✓ | ✓ | — | — |
+| HP % | — | — | ✓ | ✓ | ✓ | ✓ | ✓ |
+| MP % | — | — | ✓ | — | — | ✓ | ✓ |
+| Crit Chance | ✓ | ✓ | — | — | — | ✓ | ✓ |
+| Crit Damage | ✓ | ✓ | — | — | — | ✓ | ✓ |
+| STR | ✓ | ✓ | — | — | — | ✓ | — |
+| VIT | — | — | ✓ | ✓ | ✓ | ✓ | — |
+| AGI | — | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| DEX | ✓ | ✓ | ✓ | — | — | ✓ | — |
+| LUK | — | — | ✓ | ✓ | ✓ | ✓ | — |
+
+Wings therefore use only HP %, MP %, Crit Chance, and Crit Damage from the current pool.
+
+### 16.4 Current working roll ranges
+
+All displayed Empower values are whole numbers. Do not show decimal Empower rolls.
+
+| Empower option | Current V2 roll range |
+| --- | ---: |
+| ATK % | 4–8% |
+| DEF % | 3–6% |
+| HP % | 1–3% |
+| MP % | 2–4% |
+| Crit Chance | 1–2% |
+| Crit Damage | 2–4% |
+| STR | +1 |
+| VIT | +1 |
+| AGI | +1 |
+| DEX | +1 |
+| LUK | +1 |
+
+These ranges are identical across all equipment Tiers and are not multiplied by Rarity.
+
+### 16.5 Power-stacking rule
+
+Enhance and Empower percentage bonuses must stack additively from the approved base rather than compounding each other.
+
+Example:
+
+~~~text
+Base item stat = 100%
+Enhance +10 = +60%
+Empower ATK total = +32%
+
+Final item-side ATK contribution = 192% of base
+NOT 160% × 132% = 211.2%
+~~~
+
+### 16.6 Existing Empower behavior retained for evaluation
+
+The current game already supports duplicate options, option Lock, and Reroll. These mechanics are useful for endgame build chasing and remain the current V2 direction unless changed during the remaining Empower economy pass.
+
+Still to finalize before implementation:
+
+- probability distribution inside each approved integer roll range;
+- exact opening Gold/Mana Ore cost;
+- exact Reroll Gold/Mana Ore cost and Lock surcharge;
+- final HP% / MP% calculation boundary;
+- final endgame power stress test against Dungeon Monster Scaling V2.
 
 ---
 
@@ -761,7 +846,7 @@ The following remain open for later design:
 - T6 and post-T5 progression;
 - monster-specific equipment pools beyond the generic fallback;
 - exact Enhance V2 Gold/Iron cost pacing and Protection Stone economy;
-- exact Empower V2 stat pool, magnitudes, costs, reroll/rework rules, and final power ceiling.
+- Empower V2 roll-value probability weights, opening/Reroll costs, HP/MP percentage calculation boundary, and final combat revalidation.
 
 These must not be invented during implementation without a new user-approved design decision.
 
