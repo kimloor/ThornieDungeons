@@ -187,7 +187,7 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 The following important areas do not currently have a dedicated **ACTIVE** system document in `docs/`:
 
 - **Arena gameplay contract:** `ARENA-V2-W9.md` is now the active W9 contract.
-- **Shop / Crafting / Summoning**
+- **Full Shop / Crafting feature contracts and Summoning** — Reward-facing Shop/Crafting economy rules are covered by DUNGEON-REWARD-PROGRESSION-V2.md, but full feature contracts are still unmapped.
 
 Until a dedicated contract exists, inspect latest `main`, the latest approved task/decision, and directly related code/configuration before changing behavior. Do not invent missing game rules or infer them from unrelated systems.
 
@@ -231,7 +231,7 @@ No current document is marked **RETIRED** by this index.
 
 **Known documentation conflicts:** None currently verified.
 
-**Documentation gaps:** Shop / Crafting / Summoning. Arena V2 is mapped by `ARENA-V2-W9.md`; shared presentation remains mapped by `PHASER-COMBAT-ARENA-V1.md`.
+**Documentation gaps:** Full Shop / Crafting feature contracts and Summoning. Reward-facing Shop/Crafting economy rules are mapped by `DUNGEON-REWARD-PROGRESSION-V2.md`. Arena V2 is mapped by `ARENA-V2-W9.md`; shared presentation remains mapped by `PHASER-COMBAT-ARENA-V1.md`.
 
 When a conflict is resolved, remove it from unresolved conflicts rather than leaving stale warnings in this index.
 
