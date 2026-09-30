@@ -1,7 +1,9 @@
 # Arena V2 Hub Core R1 publication
 
 Base main: `60007fa53be56cd9da5d5c2ef4d36efbf26b99f6`
-Publication commit: recorded after the normal main-push R2 workflow completes.
+Publication commit: `3496d9035a1feb759fd239374ed457eac198f7a7`
+
+Status: R1_PUBLISHED / READY_FOR_NEXT_BATCH
 
 Exact approved R1 exports; no regeneration or pixel modification.
 
@@ -22,3 +24,15 @@ Use nine-slice for panels/rows/tabs; never distort the entire bitmap. Active/ina
 Validation: 9/9 source SHA-256 matches; approved dimensions and RGBA alpha bounds match; transparent corners; tab alpha equality; all existing manifest values preserved. Approved review shows clean edges without matte/checkerboard. Resolver and R2 verification recorded below after publication.
 
 Previous background, currencies, rank frames, Social Player Card and shared Battle assets preserved. No UI/gameplay/source changes, no frontend build or Production deploy.
+
+## Publication verification
+
+- Normal main-push R2 run: [36734738831](https://github.com/kimloor/ThornieDungeons/actions/runs/36734738831), SUCCESS.
+- Workflow uploaded and downloaded all 11 objects (9 PNGs, manifest, graphics contract); SHA-256 matched for each.
+- Current `asset()` + `assetUrl()` resolver executed against all 9 new keys: PASS, mapping to `/assets/ui/arena/...`.
+- GitHub publication parent matches base main; all 13 changed files match local Git blob hashes.
+- Existing asset images and prior manifest mappings preserved. Only the nine Hub Core checklist items (including Batch A duplicates) marked complete.
+- No Production frontend/API deploy triggered. No gameplay/UI integration or in-game QA claimed.
+- Direct public Worker asset request from this execution environment returned HTTP 403; public browser delivery is not claimed tested. Authenticated R2 download/hash verification passed.
+
+Next: [Arena V2 Tier Badges brief](ARENA-V2-TIER-BADGES-BRIEF.md); preparation only, no generation/publication.

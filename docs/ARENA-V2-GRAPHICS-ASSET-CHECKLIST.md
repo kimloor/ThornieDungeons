@@ -887,3 +887,5 @@ Use this after each graphics batch:
 ## Approved Hub Core R1 publication — 2026-09-30
 
 Exact approved artwork. Final paths, dimensions, manifest keys and publication commit are recorded in [R1 publication](ARENA-V2-HUB-CORE-R1-PUBLICATION.md). Nine-slice metadata: `r2-upload/ui/arena/GRAPHICS_CONTRACT.json` → `hubCoreR1`. Only the nine Hub Core assets are complete; later batches remain unfinished.
+
+Publication commit: `3496d9035a1feb759fd239374ed457eac198f7a7`; R2 run `36734738831` SUCCESS, 11 objects uploaded/downloaded with matching SHA-256.
