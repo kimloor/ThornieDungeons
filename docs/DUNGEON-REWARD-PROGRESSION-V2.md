@@ -489,19 +489,46 @@ Reason:
 
 ## 15. Enhance
 
-Status: **DEFERRED FOR V2 RE-DESIGN / NOT FULLY LOCKED**
+Status: **LOCKED / USER-APPROVED**
 
-Enhance remains an intended equipment-progression layer, but the exact V2 balance must be reviewed separately before implementation.
+Enhance V2 keeps the current core identity but slightly improves the late-stage success curve.
 
-Do not treat the earlier legacy/current-production values for the following as final V2 requirements:
+Rules:
 
-- exact stat gain per Enhance level;
-- exact success-rate curve;
-- exact Gold/Iron attempt costs;
-- expected total +10 cost;
-- final high-end power ceiling.
+- Maximum Enhance level: **+10**
+- Each successful +1 adds **+6% of the item's base stat**
+- The bonus is linear from the item's base stat, not compounded from the previous Enhance level
+- +6 therefore adds **+36%**
+- +10 adds **+60%**
+- Failure consumes the attempt cost
+- Failure while attempting +7 and above may downgrade the item by 1 level
+- **Protection Stone prevents that downgrade**
+- Item never breaks
 
-Current production behavior may be used as comparison/reference during the later design pass, not as automatic V2 approval.
+Approved success rates:
+
+| Attempt | Success rate |
+| --- | ---: |
+| +0 → +1 | 95% |
+| +1 → +2 | 90% |
+| +2 → +3 | 82% |
+| +3 → +4 | 72% |
+| +4 → +5 | 60% |
+| +5 → +6 | 50% |
+| +6 → +7 | 40% |
+| +7 → +8 | 30% |
+| +8 → +9 | 20% |
+| +9 → +10 | 15% |
+
+Design intent:
+
+- +0 to +6 is the normal progression-investment range.
+- Early/midgame equipment changes quickly, so players are not expected to push every temporary item to +10.
+- +7 to +10 is primarily a late/endgame optimization layer.
+- Protection Stones remain part of the intended endgame loop rather than being removed.
+- +10 should feel expensive and deliberate, but less punitive than the legacy 10% final-step rate.
+
+Current production Gold/Iron attempt-cost formulas are **not yet automatically locked as V2 economy values**. Final cost pacing should be checked against the approved Dungeon Gold/material economy before implementation.
 
 ---
 
@@ -733,7 +760,7 @@ The following remain open for later design:
 - Daily Login streak Accessory details;
 - T6 and post-T5 progression;
 - monster-specific equipment pools beyond the generic fallback;
-- exact Enhance V2 rates, stat gain, costs, and final power ceiling;
+- exact Enhance V2 Gold/Iron cost pacing and Protection Stone economy;
 - exact Empower V2 stat pool, magnitudes, costs, reroll/rework rules, and final power ceiling.
 
 These must not be invented during implementation without a new user-approved design decision.
