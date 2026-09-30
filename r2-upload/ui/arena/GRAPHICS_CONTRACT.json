@@ -148,5 +148,201 @@
         255
       ]
     }
-  ]
+  ],
+  "hubCoreR1": {
+    "status": "APPROVED_FOR_PUBLICATION",
+    "baseMain": "60007fa53be56cd9da5d5c2ef4d36efbf26b99f6",
+    "approvalDate": "2026-09-30",
+    "artwork": "Exact approved R1 exports; byte-for-byte copy, no regeneration",
+    "assets": [
+      {
+        "path": "ui/arena/hub/arena_emblem.png",
+        "manifestKey": "assets.arenaUi.hub.emblem",
+        "dimensions": [
+          512,
+          512
+        ],
+        "sha256": "cfdfe9ad3f40f6ac5a517bc5d592141bdf8fd002e6740f34d6065ead9ea54a6e",
+        "alphaBBox": [
+          32,
+          53,
+          480,
+          459
+        ],
+        "mode": "RGBA"
+      },
+      {
+        "path": "ui/arena/hub/panel_frame.png",
+        "manifestKey": "assets.arenaUi.hub.panelFrame",
+        "dimensions": [
+          768,
+          512
+        ],
+        "sha256": "b9d4e1e64393f5f38f06a00d800d41a0a07a981cf9a8a9eb81140d9f2422dd38",
+        "alphaBBox": [
+          0,
+          0,
+          768,
+          512
+        ],
+        "mode": "RGBA",
+        "nineSliceSourceInsets": {
+          "top": 64,
+          "right": 64,
+          "bottom": 64,
+          "left": 64
+        }
+      },
+      {
+        "path": "ui/arena/hub/row_frame.png",
+        "manifestKey": "assets.arenaUi.hub.rowFrame",
+        "dimensions": [
+          768,
+          160
+        ],
+        "sha256": "cee7f7e584868749bbb611fbb07abc4ca14ae2511eb5f4d575dc7382a3798986",
+        "alphaBBox": [
+          0,
+          0,
+          768,
+          160
+        ],
+        "mode": "RGBA",
+        "nineSliceSourceInsets": {
+          "top": 48,
+          "right": 48,
+          "bottom": 48,
+          "left": 48
+        }
+      },
+      {
+        "path": "ui/arena/tabs/tab_active.png",
+        "manifestKey": "assets.arenaUi.tabs.active",
+        "dimensions": [
+          256,
+          128
+        ],
+        "sha256": "be82cfb14258bf34399d22480b49265e44cfee6177a31500f3cf6a246821f829",
+        "alphaBBox": [
+          0,
+          0,
+          256,
+          128
+        ],
+        "mode": "RGBA",
+        "nineSliceSourceInsets": {
+          "top": 22,
+          "right": 22,
+          "bottom": 22,
+          "left": 22
+        }
+      },
+      {
+        "path": "ui/arena/icons/icon_battle.png",
+        "manifestKey": "assets.arenaUi.icons.battle",
+        "dimensions": [
+          256,
+          256
+        ],
+        "sha256": "66bb2666ac52cf894aa7a12ad2c7c500292d07b3cedc514b16a59af89c68ec6b",
+        "alphaBBox": [
+          16,
+          25,
+          240,
+          231
+        ],
+        "mode": "RGBA"
+      },
+      {
+        "path": "ui/arena/icons/icon_setup.png",
+        "manifestKey": "assets.arenaUi.icons.setup",
+        "dimensions": [
+          256,
+          256
+        ],
+        "sha256": "01da57fbde2ab76987da25c95f97c41f14bb0a301eec5a1c1be6b07be060027f",
+        "alphaBBox": [
+          16,
+          17,
+          240,
+          238
+        ],
+        "mode": "RGBA"
+      },
+      {
+        "path": "ui/arena/icons/icon_ranking.png",
+        "manifestKey": "assets.arenaUi.icons.ranking",
+        "dimensions": [
+          256,
+          256
+        ],
+        "sha256": "ec942eb59a35eb6fa80ce897c02a9473da3958837e9d8e98e4aeb62122e03cc8",
+        "alphaBBox": [
+          16,
+          34,
+          240,
+          221
+        ],
+        "mode": "RGBA"
+      },
+      {
+        "path": "ui/arena/icons/icon_history.png",
+        "manifestKey": "assets.arenaUi.icons.history",
+        "dimensions": [
+          256,
+          256
+        ],
+        "sha256": "06eff52af6560dac131a606b41c3aea25d2dbbab3234ca66ebe103eaec56ca65",
+        "alphaBBox": [
+          16,
+          16,
+          240,
+          240
+        ],
+        "mode": "RGBA"
+      },
+      {
+        "path": "ui/arena/tabs/tab_inactive.png",
+        "manifestKey": "assets.arenaUi.tabs.inactive",
+        "dimensions": [
+          256,
+          128
+        ],
+        "sha256": "7d40c5f5428797846b2d019023835fed98bdbf825acfc2cc6e5aae1e434b9971",
+        "alphaBBox": [
+          0,
+          0,
+          256,
+          128
+        ],
+        "mode": "RGBA",
+        "nineSliceSourceInsets": {
+          "top": 22,
+          "right": 22,
+          "bottom": 22,
+          "left": 22
+        }
+      }
+    ],
+    "tabAlphaIdentical": true,
+    "iconDisplayCssPx": {
+      "preferred": [
+        24,
+        32
+      ],
+      "minimumDetailedIcons": 24
+    },
+    "nineSliceRules": [
+      "Insets are source pixels on all four sides.",
+      "Use nine-slice rendering: preserve corners, stretch edges on one axis and center on both axes; never stretch the entire bitmap to arbitrary aspect ratios.",
+      "Active and inactive tab geometry and alpha masks are identical."
+    ],
+    "suggestedMobileDestinationInsetsCssPx": {
+      "panel": 20,
+      "row": 12,
+      "tabs": 9
+    },
+    "publicationRecord": "docs/ARENA-V2-HUB-CORE-R1-PUBLICATION.md",
+    "runtimeIntegrated": false
+  }
 }

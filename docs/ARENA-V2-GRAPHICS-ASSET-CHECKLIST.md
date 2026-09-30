@@ -248,7 +248,7 @@ After enough of this section is approved, DEV can progressively replace the curr
 
 ## 8. Arena identity
 
-- [ ] **Arena emblem**
+- [x] **Arena emblem**
   - Proposed canonical path: `r2-upload/ui/arena/hub/arena_emblem.png`
   - Purpose:
     - main Arena identity above/inside Hub header
@@ -264,12 +264,12 @@ After enough of this section is approved, DEV can progressively replace the curr
     - no player-specific data
     - **do not bake the word “ARENA” into the image**
   - Text remains DOM so localization/layout stay flexible.
-  - Final dimensions: record after first approved export.
-  - Manifest key: define only when integrated.
+  - Final dimensions: 512×512 (approved R1).
+  - Manifest key: `assets.arenaUi.hub.emblem` (published independently of UI integration).
 
 ## 9. Reusable Arena panels
 
-- [ ] **Arena main panel frame**
+- [x] **Arena main panel frame**
   - Proposed path: `r2-upload/ui/arena/hub/panel_frame.png`
   - Purpose:
     - Season summary
@@ -286,7 +286,7 @@ After enough of this section is approved, DEV can progressively replace the curr
     - no fixed height assumptions
     - must support narrow iPhone width
 
-- [ ] **Arena list-row frame**
+- [x] **Arena list-row frame**
   - Proposed path: `r2-upload/ui/arena/hub/row_frame.png`
   - Purpose:
     - opponent rows
@@ -312,7 +312,7 @@ No Shop tab in current W9.
 
 ### Tab backgrounds
 
-- [ ] **Tab active**
+- [x] **Tab active**
   - Proposed path: `r2-upload/ui/arena/tabs/tab_active.png`
   - Requirements:
     - selected state clearly visible without relying on text color only
@@ -321,7 +321,7 @@ No Shop tab in current W9.
     - no baked icon
     - no baked text
 
-- [ ] **Tab inactive**
+- [x] **Tab inactive**
   - Proposed path: `r2-upload/ui/arena/tabs/tab_inactive.png`
   - Requirements:
     - same geometry as active
@@ -336,26 +336,26 @@ All icons must be:
 - transparent PNG;
 - same canvas family;
 - same optical weight;
-- recognizable around 20–32 px;
+- production display 24–32 px; 24 px minimum for detailed Setup/History icons;
 - readable in active and inactive states;
 - no baked text.
 
-- [ ] **Battle tab icon**
+- [x] **Battle tab icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_battle.png`
   - Direction: crossed swords / crossed weapons
   - Avoid looking identical to the generic Attack button.
 
-- [ ] **Setup tab icon**
+- [x] **Setup tab icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_setup.png`
   - Direction: warrior helmet, shield+gear, or loadout motif
   - Must communicate team/loadout configuration.
 
-- [ ] **Ranking tab icon**
+- [x] **Ranking tab icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_ranking.png`
   - Direction: trophy / podium / laurel
   - Must read clearly at small scale.
 
-- [ ] **History tab icon**
+- [x] **History tab icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_history.png`
   - Direction: scroll/log + clock
   - Must communicate battle record/history, not mailbox.
@@ -705,11 +705,11 @@ Graphics may use a larger working master for quality, but **final production dim
 
 Once the first approved icon family establishes final canvas dimensions, record that dimension here and reuse it for the whole family:
 
-- Arena icon final canvas: **TBD — record after first approved icon batch**
+- Arena icon final canvas: **256×256; display 24–32 px**
 - Tier badge final canvas: **TBD**
-- Tab background final size/9-slice contract: **TBD**
+- Tab background final size/9-slice contract: **256×128; 22 px source insets on all sides**
 - Button final size/9-slice contract: **TBD**
-- Panel frame 9-slice contract: **TBD**
+- Panel frame 9-slice contract: **768×512, 64 px source insets; row 768×160, 48 px source insets**
 
 Do not allow later batches to silently switch canvas geometry.
 
@@ -725,15 +725,15 @@ Recommended order:
 
 ### Graphics Batch A — Hub foundation
 
-- [ ] Arena emblem
-- [ ] Panel frame
-- [ ] Row frame
-- [ ] Tab active
-- [ ] Tab inactive
-- [ ] Battle tab icon
-- [ ] Setup tab icon
-- [ ] Ranking tab icon
-- [ ] History tab icon
+- [x] Arena emblem
+- [x] Panel frame
+- [x] Row frame
+- [x] Tab active
+- [x] Tab inactive
+- [x] Battle tab icon
+- [x] Setup tab icon
+- [x] Ranking tab icon
+- [x] History tab icon
 
 **Review sheet:** show all 9 together in one Arena Hub mockup plus small-size icon row.
 
@@ -883,3 +883,7 @@ Use this after each graphics batch:
 
 **DEPLOY**
 - NONE unless separately authorized.
+
+## Approved Hub Core R1 publication — 2026-09-30
+
+Exact approved artwork. Final paths, dimensions, manifest keys and publication commit are recorded in [R1 publication](ARENA-V2-HUB-CORE-R1-PUBLICATION.md). Nine-slice metadata: `r2-upload/ui/arena/GRAPHICS_CONTRACT.json` → `hubCoreR1`. Only the nine Hub Core assets are complete; later batches remain unfinished.
