@@ -534,9 +534,9 @@ Current production Gold/Iron attempt-cost formulas are **not yet automatically l
 
 ## 16. Empower
 
-Status: **CURRENT V2 APPROVED DIRECTION — FINAL COMBAT REVALIDATION REQUIRED**
+Status: **LOCKED / USER-APPROVED — FINAL GLOBAL COMBAT REVALIDATION REQUIRED**
 
-Empower V2 is a build-customization layer. The values below are approved as the current working design and must be revalidated against final player power and Dungeon Monster Scaling V2 after the remaining progression systems are settled.
+Empower V2 is a build-customization layer. The rules below are locked for V2. After the remaining progression systems are settled, the complete player-power package must still be stress-tested against Dungeon Monster Scaling V2; that later global validation does not make the Empower rules below provisional.
 
 ### 16.1 Empower slots by Rarity
 
@@ -685,13 +685,87 @@ MP% follows the same additive-percentage rule.
 
 Multiple HP% or MP% Empower rolls add together before multiplication. They do not compound roll-by-roll.
 
-### 16.9 Remaining validation
+### 16.9 Empower economy
 
-Still to finalize before implementation:
+Opening a new Empower slot costs **Mana Ore ×1** plus Gold.
 
-- exact opening Gold/Mana Ore cost;
-- exact Reroll Gold/Mana Ore cost and Lock surcharge;
-- final endgame power stress test against Dungeon Monster Scaling V2.
+Base Gold cost by slot:
+
+| Slot | Base Gold |
+| --- | ---: |
+| 1 | 30 |
+| 2 | 75 |
+| 3 | 120 |
+| 4 | 165 |
+
+Gold cost is multiplied by the item's approved Tier economy multiplier:
+
+| Tier | Economy multiplier |
+| --- | ---: |
+| T1 | ×1.00 |
+| T2 | ×2.25 |
+| T3 | ×3.75 |
+| T4 | ×5.75 |
+| T5 | ×8.50 |
+
+Round final Gold cost to a whole number.
+
+Reference opening costs:
+
+| Tier | Slot 1 | Slot 2 | Slot 3 | Slot 4 | Mythic total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| T1 | 30 | 75 | 120 | 165 | 390 |
+| T2 | 68 | 169 | 270 | 371 | 878 |
+| T3 | 113 | 281 | 450 | 619 | 1,463 |
+| T4 | 173 | 431 | 690 | 949 | 2,243 |
+| T5 | 255 | 638 | 1,020 | 1,403 | 3,316 |
+
+Opening all four Mythic slots therefore costs Mana Ore ×4 plus the Tier-scaled Gold total.
+
+### 16.10 Reroll and Lock economy
+
+Lock / Unlock itself is free.
+
+Reroll costs:
+
+~~~text
+Base Reroll Gold
+= 25 + (Filled Slot Count × 15)
+
+Lock multiplier
+= 1 + (Locked Slot Count × 0.60)
+
+Final Reroll Gold
+= Base Reroll Gold
+× Lock multiplier
+× Item Tier economy multiplier
+~~~
+
+Round final Gold to a whole number.
+
+Each Reroll costs **Mana Ore ×1**, regardless of Tier or number of locked slots.
+
+For a fully opened 4-slot Mythic item, reference costs are:
+
+| Locked slots | T1 | T2 | T3 | T4 | T5 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0 | 85 | 191 | 319 | 489 | 723 |
+| 1 | 136 | 306 | 510 | 782 | 1,156 |
+| 2 | 187 | 421 | 701 | 1,075 | 1,590 |
+| 3 | 238 | 536 | 893 | 1,369 | 2,023 |
+
+Rules:
+
+- Reroll changes only filled, unlocked Empower slots.
+- Locked slots remain unchanged.
+- All filled slots cannot be locked if that would leave nothing eligible to reroll.
+- Duplicate options remain allowed.
+- Gold surcharge, not extra Mana Ore, is the primary cost of progressively narrowing RNG through Lock.
+- This intentionally creates a long-term endgame chase without making basic Empower access expensive.
+
+### 16.11 Final global validation
+
+Empower itself is locked. After Character Stats, equipment, Enhance, Empower, skills, pets, and other relevant combat-power systems are fully settled, run a final endgame power stress test against Dungeon Monster Scaling V2 and adjust only through a new explicit balance decision if required.
 
 ---
 
@@ -897,7 +971,7 @@ The following remain open for later design:
 - T6 and post-T5 progression;
 - monster-specific equipment pools beyond the generic fallback;
 - exact Enhance V2 Gold/Iron cost pacing and Protection Stone economy;
-- Empower V2 roll-value probability weights, opening/Reroll costs, HP/MP percentage calculation boundary, and final combat revalidation.
+- final global player-power stress test against Dungeon Monster Scaling V2 after all relevant progression systems are settled.
 
 These must not be invented during implementation without a new user-approved design decision.
 
