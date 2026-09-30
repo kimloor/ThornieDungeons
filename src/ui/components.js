@@ -3276,6 +3276,72 @@ function createArenaV2PreloadGate(timeoutMs = 10000) {
   return { promise, ready: value => finish(true, value), fail: reason => finish(false, reason), cancel: reason => finish(false, reason || "arena_preload_unmounted") };
 }
 
+function arenaMatchLifecycleStatus(match) {
+  return String(match?.status || "").trim().toLowerCase();
+}
+
+function arenaMatchIsActive(match) {
+  return arenaMatchLifecycleStatus(match) === "active" && !!match?.state && match.state.phase !== "done";
+}
+
+function arenaMatchIsPrepared(match) {
+  return arenaMatchLifecycleStatus(match) === "prepared";
+}
+
+function arenaHumanError(code, reason, fallback = "Arena request failed") {
+  const token = String(code || "").trim();
+  const detail = String(reason || "").trim().replace(/_/g, " ");
+  const labels = {
+    arena_match_not_active: "Arena match ยังไม่อยู่ในสถานะต่อสู้",
+    arena_action_illegal: "คำสั่ง Arena นี้ใช้ไม่ได้",
+    arena_match_expired: "Arena match หมดอายุแล้ว",
+    arena_match_not_found: "ไม่พบ Arena match เดิมแล้ว"
+  };
+  const label = labels[token] || String(fallback || token || "Arena request failed");
+  const reasonText = detail ? ` — ${detail}` : "";
+  const tokenText = token ? ` [${token}]` : "";
+  return `${label}${reasonText}${tokenText}`;
+}
+
+// Settlement is authoritative server data. This boundary converts both the W9 V2
+// nested payload and the older scalar payload into render-safe display fields without
+// changing the stored result or recalculating any economy/rating value.
+function arenaResultViewModel(result = {}) {
+  const raw = result && typeof result === "object" ? result : {};
+  const arenaCoin = raw.arenaCoin;
+  const ratingChange = raw.ratingChange ?? raw.attacker?.ratingChange;
+  const coinEarned = raw.arenaCoinEarned
+    ?? (typeof arenaCoin === "number" ? arenaCoin : arenaCoin?.earned);
+  const outcome = raw.result ?? raw.attacker?.result ?? raw.combatResult ?? "unknown";
+  const combatResult = raw.combatResult ?? raw.terminalReason ?? raw.reason ?? outcome;
+  const resolution = raw.resolution ?? arenaCoin?.result ?? combatResult;
+  const rewardSlot = raw.rewardSlot ?? arenaCoin?.rewardSlot ?? "—";
+  return Object.freeze({
+    outcome: String(outcome || "unknown"),
+    combatResult: String(combatResult || "unknown"),
+    ratingChange: Number.isFinite(Number(ratingChange)) ? Number(ratingChange) : null,
+    arenaCoinEarned: Number.isFinite(Number(coinEarned)) ? Number(coinEarned) : null,
+    rewardSlot: String(rewardSlot ?? "—"),
+    resolution: String(resolution || "unknown"),
+    terminalReason: String(raw.terminalReason ?? raw.reason ?? combatResult ?? "unknown")
+  });
+}
+
+function arenaMatchWithResultViewModel(match, resultOverride = undefined) {
+  if (!match) return match;
+  const result = resultOverride === undefined ? match.result : resultOverride;
+  return result ? { ...match, result, resultViewModel: arenaResultViewModel(result) } : match;
+}
+
+function arenaTerminalMatchFromResponse(previousMatch, response = {}) {
+  const responseMatch = response.match && typeof response.match === "object" ? response.match : null;
+  const result = responseMatch?.result ?? response.result ?? previousMatch?.result;
+  const next = responseMatch
+    ? { ...previousMatch, ...responseMatch, ...(result ? { result } : {}) }
+    : { ...previousMatch, state: response.state, ...(result ? { result } : {}) };
+  return arenaMatchWithResultViewModel(next, result);
+}
+
 function arenaPlayerCardEquipmentLabels(equipment) {
   return (Array.isArray(equipment) ? equipment : [])
     .filter(item => item && typeof item === "object")
@@ -3533,7 +3599,9 @@ function ArenaV2Screen({
   const [unlockBusy, setUnlockBusy] = React.useState(false);
   const [preloadState, setPreloadState] = React.useState("idle");
   const [phaserStatus, setPhaserStatus] = React.useState("idle");
+  const [presentationAttempt, setPresentationAttempt] = React.useState(0);
   const preloadGateRef = React.useRef(null);
+  const preparedFlowRef = React.useRef("");
   const rolloverRefreshRef = React.useRef(false);
   const matchRef = React.useRef(match);
   const phaserStatusRef = React.useRef(phaserStatus);
@@ -3550,11 +3618,14 @@ function ArenaV2Screen({
       matchId: currentMatch?.matchId,
       actionSeq: currentMatch?.state?.actionSeq,
       phaserStatus: phaserStatusRef.current,
-      arenaPhase: currentMatch?.result ? "result" : currentMatch ? "battle" : tab,
+      arenaPhase: currentMatch?.result ? "result" : currentMatch ? arenaMatchLifecycleStatus(currentMatch) : tab,
       currentAction: currentActionRef.current
     }, event);
     preloadGateRef.current?.cancel?.();
     preloadGateRef.current = null;
+    // The boot shell owns the global error surface. Close it before leaving the
+    // Arena route so a late Phaser/window error cannot cover Main Hub forever.
+    globalThis.hideBootError?.();
     // Do not call an Arena API here and do not clear the server match. Removing the
     // local match unmounts Phaser immediately; the next Arena mount will GET and resume
     // the authoritative active match without consuming another ticket.
@@ -3567,7 +3638,7 @@ function ArenaV2Screen({
       matchId: match?.matchId || "—",
       actionSeq: match?.state?.actionSeq || 0,
       phaserStatus,
-      arenaPhase: match?.result ? "result" : match ? "battle" : tab,
+      arenaPhase: match?.result ? "result" : match ? arenaMatchLifecycleStatus(match) : tab,
       currentAction: currentActionRef.current
     };
     const previousErrorHandler = globalThis.__thornieArenaRuntimeError;
@@ -3575,24 +3646,125 @@ function ArenaV2Screen({
     globalThis.__THORNIE_ARENA_CONTEXT__ = context;
     globalThis.__thornieArenaRuntimeError = event => reportArenaFatal(event?.error || event?.message, event, "window_error");
     globalThis.__thornieArenaUnhandledRejection = event => reportArenaFatal(event?.reason, event, "unhandled_rejection");
+    const windowError = event => globalThis.__thornieArenaRuntimeError?.(event);
+    const windowRejection = event => globalThis.__thornieArenaUnhandledRejection?.(event);
+    window.addEventListener("error", windowError);
+    window.addEventListener("unhandledrejection", windowRejection);
     return () => {
+      window.removeEventListener("error", windowError);
+      window.removeEventListener("unhandledrejection", windowRejection);
       if (globalThis.__thornieArenaRuntimeError) globalThis.__thornieArenaRuntimeError = previousErrorHandler;
       if (globalThis.__thornieArenaUnhandledRejection) globalThis.__thornieArenaUnhandledRejection = previousRejectionHandler;
       if (globalThis.__THORNIE_ARENA_CONTEXT__ === context) delete globalThis.__THORNIE_ARENA_CONTEXT__;
     };
   }, [match?.matchId, match?.state?.actionSeq, phaserStatus, reportArenaFatal, tab]);
+  const syncArenaStatus = React.useCallback(async () => {
+    const nextStatus = await cloudGetArenaV2Status(url, characterId);
+    if (nextStatus?.error) {
+      setError(arenaHumanError(nextStatus.error, nextStatus.reason, "ซิงก์สถานะ Arena ไม่สำเร็จ"));
+      return null;
+    }
+    setStatus(nextStatus);
+    setSetup(current => nextStatus.setup || current);
+    onHudChange?.(nextStatus?.unlocked === false ? null : {
+      arenaCoin: Number(nextStatus?.player?.arenaCoin) || 0,
+      tickets: Number(nextStatus?.tickets?.tickets) || 0,
+      ticketsMax: Number(nextStatus?.tickets?.ticketsMax) || 10,
+    });
+    return nextStatus;
+  }, [characterId, onHudChange, url]);
+  const adoptArenaMatch = React.useCallback(nextMatch => {
+    if (!nextMatch) return false;
+    const lifecycle = arenaMatchLifecycleStatus(nextMatch);
+    if (lifecycle === "active" || lifecycle === "done") {
+      setMatch(arenaMatchWithResultViewModel(nextMatch));
+      setAuto(!!nextMatch.state?.auto || !!nextMatch.state?.flags?.auto);
+      setTab("battle");
+      setPreloadState("ready");
+      return true;
+    }
+    if (["expired", "invalid", "cancelled"].includes(lifecycle)) {
+      setMatch(null);
+      setPlayerCard(null);
+      setPreloadState("idle");
+      setError(arenaHumanError(`arena_match_${lifecycle}`, "", "Arena match ใช้งานไม่ได้"));
+    }
+    return false;
+  }, []);
+  const beginPreparedArenaMatch = React.useCallback(async preparedMatch => {
+    if (!arenaMatchIsPrepared(preparedMatch) || !preparedMatch.matchId) return false;
+    const matchId = String(preparedMatch.matchId);
+    if (preparedFlowRef.current === matchId) return false;
+    preparedFlowRef.current = matchId;
+    fatalReportedRef.current = false;
+    setMatch(preparedMatch);
+    setPlayerCard(null);
+    setTab("battle");
+    setBusy(true);
+    setError("");
+    setPreloadState("loading");
+    setPhaserStatus("idle");
+    setPresentationAttempt(value => value + 1);
+    const gate = createArenaV2PreloadGate(10000);
+    preloadGateRef.current = gate;
+    try {
+      await gate.promise;
+      setPreloadState("ready");
+      const activated = await cloudActivateArenaV2Match(url, characterId, matchId);
+      if (activated?.error) {
+        const latest = await cloudGetArenaV2Match(url, characterId);
+        if (latest?.match && adoptArenaMatch(latest.match)) {
+          await syncArenaStatus();
+          return true;
+        }
+        throw new Error(arenaHumanError(activated.error, activated.reason, "เปิด Arena match ไม่สำเร็จ"));
+      }
+      if (!activated?.match || !adoptArenaMatch(activated.match)) {
+        throw new Error(arenaHumanError("arena_match_not_active", "activation did not return active match", "เปิด Arena match ไม่สำเร็จ"));
+      }
+      // Activation is the authoritative ticket boundary. Refresh resources after
+      // confirmation so the global HUD reflects the server's post-ticket state.
+      await syncArenaStatus();
+      return true;
+    } catch (error) {
+      // Keep a valid prepared match on screen. The ticket boundary is activate,
+      // so retrying presentation with this same ID cannot consume a second ticket.
+      setPreloadState("failed");
+      setError(error?.message || arenaHumanError("arena_preload_failed", "", "โหลด Arena presentation ไม่สำเร็จ"));
+      return false;
+    } finally {
+      if (preloadGateRef.current === gate) preloadGateRef.current = null;
+      if (preparedFlowRef.current === matchId) preparedFlowRef.current = "";
+      setBusy(false);
+    }
+  }, [adoptArenaMatch, characterId, syncArenaStatus, url]);
+  const syncArenaMatch = React.useCallback(async () => {
+    const latest = await cloudGetArenaV2Match(url, characterId);
+    if (latest?.match) {
+      if (arenaMatchIsPrepared(latest.match)) return beginPreparedArenaMatch(latest.match);
+      adoptArenaMatch(latest.match);
+      return latest.match;
+    }
+    if (latest?.error) setError(arenaHumanError(latest.error, latest.reason, "ซิงก์ Arena match ไม่สำเร็จ"));
+    return null;
+  }, [adoptArenaMatch, beginPreparedArenaMatch, characterId, url]);
   const refresh = React.useCallback(async () => {
     setError("");
     const [s, o, resumed] = await Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]);
     if (s?.error) { setError(s.error); return; }
-    setStatus(s); setSetup(s.setup || setup); setOpponents(o?.opponents || []); setRefreshAvailableAt(o?.refreshAvailableAt || "");
+    setStatus(s); setSetup(current => s.setup || current); setOpponents(o?.opponents || []); setRefreshAvailableAt(o?.refreshAvailableAt || "");
     onHudChange?.(s?.unlocked === false ? null : {
       arenaCoin: Number(s?.player?.arenaCoin) || 0,
       tickets: Number(s?.tickets?.tickets) || 0,
       ticketsMax: Number(s?.tickets?.ticketsMax) || 10,
     });
-    if (resumed?.match) { setMatch(resumed.match); setAuto(!!resumed.match.state?.auto || !!resumed.match.state?.flags?.auto); setTab("battle"); }
-  }, [url, characterId, onHudChange]);
+    if (resumed?.match) {
+      if (arenaMatchIsPrepared(resumed.match)) void beginPreparedArenaMatch(resumed.match);
+      else adoptArenaMatch(resumed.match);
+    } else if (resumed?.error && resumed.error !== "arena_match_not_found") {
+      setError(arenaHumanError(resumed.error, resumed.reason, "โหลด Arena match ไม่สำเร็จ"));
+    }
+  }, [adoptArenaMatch, beginPreparedArenaMatch, characterId, onHudChange, url]);
   React.useEffect(() => { refresh().catch(() => setError("โหลด Arena ไม่สำเร็จ")); }, [refresh]);
   React.useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   React.useEffect(() => {
@@ -3632,33 +3804,47 @@ function ArenaV2Screen({
     currentActionRef.current = "prepare_match";
     try {
       const prepared = await cloudPrepareArenaV2Match(url, characterId, opponentKey, source);
-      if (prepared?.error) throw new Error(prepared.error);
-      setMatch(prepared.match);
-      setPlayerCard(null);
-      setPreloadState("loading");
-      const gate = createArenaV2PreloadGate(10000);
-      preloadGateRef.current = gate;
-      await gate.promise;
-      setPreloadState("ready");
-      const activated = await cloudActivateArenaV2Match(url, characterId, prepared.match.matchId);
-      if (activated?.error) throw new Error(activated.error);
-      setMatch(activated.match); setAuto(!!activated.match?.state?.auto || !!activated.match?.state?.flags?.auto); setTab("battle");
-    } catch (e) { setPreloadState("failed"); setMatch(null); setError(e.message || "เริ่มการต่อสู้ไม่สำเร็จ"); } finally { preloadGateRef.current = null; setBusy(false); }
+      if (prepared?.error) throw new Error(arenaHumanError(prepared.error, prepared.reason, "เตรียม Arena match ไม่สำเร็จ"));
+      if (arenaMatchIsPrepared(prepared?.match)) {
+        await beginPreparedArenaMatch(prepared.match);
+      } else if (!adoptArenaMatch(prepared?.match)) {
+        throw new Error(arenaHumanError("arena_match_not_active", "prepare did not return prepared match", "เตรียม Arena match ไม่สำเร็จ"));
+      }
+    } catch (e) {
+      setPreloadState("failed");
+      setMatch(null);
+      setError(e.message || "เริ่มการต่อสู้ไม่สำเร็จ");
+    } finally {
+      preloadGateRef.current = null;
+      setBusy(false);
+      currentActionRef.current = "idle";
+    }
   };
   const toggleAuto = async () => {
-    if (!match || busy || match.result) return;
+    if (!arenaMatchIsActive(match) || busy) return;
     setBusy(true);
     currentActionRef.current = "toggle_auto";
-    try { const res = await cloudSetArenaV2Auto(url, characterId, match.matchId, !auto); if (res?.error) throw new Error(res.error); setAuto(!auto); setMatch(res.match || match); }
-    catch (e) { setError(e.message || "เปลี่ยน Auto ไม่สำเร็จ"); } finally { setBusy(false); }
+    try {
+      const res = await cloudSetArenaV2Auto(url, characterId, match.matchId, !auto);
+      if (res?.error) {
+        setError(arenaHumanError(res.error, res.reason, "เปลี่ยน Auto ไม่สำเร็จ"));
+        if (res.error === "arena_match_not_active") await syncArenaMatch();
+        return;
+      }
+      setAuto(!auto); setMatch(res.match || match);
+    } catch (e) { setError(e.message || "เปลี่ยน Auto ไม่สำเร็จ"); } finally { setBusy(false); currentActionRef.current = "idle"; }
   };
   const action = async (actionType, skillId, targetId) => {
-    if (!match || busy || match.result) return; setBusy(true);
+    if (!arenaMatchIsActive(match) || busy) return; setBusy(true);
     currentActionRef.current = actionType === "surrender" ? "surrender" : "submit_action";
     try {
       const res = await cloudSubmitArenaV2Action(url, characterId, match.matchId, `arena-action-${match.matchId}-${(match.state?.actionSeq || 0) + 1}`, actionType, skillId, targetId, false);
-      if (res?.error) throw new Error(res.error);
-      const next = res.match || { ...match, state: res.state, result: res.result };
+      if (res?.error) {
+        setError(arenaHumanError(res.error, res.reason, "ทำ action ไม่สำเร็จ"));
+        if (["arena_match_not_active", "arena_action_illegal"].includes(res.error)) await syncArenaMatch();
+        return;
+      }
+      const next = arenaTerminalMatchFromResponse(match, res);
       setMatch(next); setAuto(!!next.state?.auto || !!next.state?.flags?.auto);
     } catch (e) { setError(e.message || "ทำ action ไม่สำเร็จ"); } finally { currentActionRef.current = "idle"; setBusy(false); }
   };
@@ -3670,6 +3856,10 @@ function ArenaV2Screen({
   const arenaBackgroundSrc = typeof optionalAsset === "function" ? optionalAsset("arenaUi.background") : "";
   const refreshAtMs = Date.parse(refreshAvailableAt || "");
   const refreshSeconds = Number.isFinite(refreshAtMs) ? Math.max(0, Math.ceil((refreshAtMs - now) / 1000)) : 0;
+  const matchStatus = arenaMatchLifecycleStatus(match);
+  const matchIsActive = arenaMatchIsActive(match) && !match.result;
+  const matchIsPrepared = arenaMatchIsPrepared(match);
+  const resultView = match?.resultViewModel || arenaResultViewModel(match?.result);
   const units = match?.state?.units || {};
   const playerUnits = Object.values(units).filter(u => u.side === "team_a").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
   const enemyUnits = Object.values(units).filter(u => u.side === "team_b").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
@@ -3747,17 +3937,18 @@ function ArenaV2Screen({
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ranking.map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: row.characterId }, "#", row.rank, " ", row.name, " · ", row.rating, " · ", row.rewardBucket))),
     !match && tab === "history" && /*#__PURE__*/React.createElement("div", { className: "md-card" }, ["attack", "defense"].map(kind => /*#__PURE__*/React.createElement("div", { key: kind }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, kind.toUpperCase()), (history[kind] || []).map(row => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: `${kind}-${row.matchId}` }, row.result, " · ", row.resolution, " · ", row.arenaCoinEarned, " Coin", kind === "attack" && row.defenderCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => start(`history:${row.matchId}`, "revenge") }, "REVENGE")))))),
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · Round ", match.state?.round || 0, " / 20"), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || "—"), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
-        /*#__PURE__*/React.createElement(PhaserBattlefield, { mode: "arena", battleState, preparedSnapshot: match.snapshot, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: (s, detail) => {
+      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · ", matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`), matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Presentation พร้อมก่อนใช้ Ticket; controls จะเปิดหลัง activation สำเร็จ"), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || (matchIsPrepared ? "waiting for activation" : "—")), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
+        /*#__PURE__*/React.createElement(PhaserBattlefield, { key: `arena-phaser-${match.matchId}-${presentationAttempt}`, mode: "arena", battleState, preparedSnapshot: match.snapshot, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: (s, detail) => {
           setPhaserStatus(s);
           if (s === "ready") preloadGateRef.current?.ready();
           else if (s === "error") {
             preloadGateRef.current?.fail("arena_preload_failed");
-            reportArenaFatal(detail || new Error("Arena Phaser presentation failed"), {}, "phaser_error");
-          } else if (s === "destroyed") preloadGateRef.current?.fail("arena_preload_failed");
+            if (arenaMatchIsActive(matchRef.current)) reportArenaFatal(detail || new Error("Arena Phaser presentation failed"), {}, "phaser_error");
+            else setError(detail?.message || "Arena presentation โหลดไม่สำเร็จ — กด RETRY ได้");
+          }
         } }),
-        phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, "Battle presentation unavailable · controls remain active")), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "loading" ? "Loading Battle…" : preloadState === "failed" ? "Battle preload failed" : "", " · ", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · ")), /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "Targets: ", enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line), " ")), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setShowFullLog(!showFullLog) }, showFullLog ? "HIDE LOG" : "FULL LOG")), showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-card" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line))))),
-      match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "RESULT · ", match.result.result || match.result.combatResult), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Rating change: ", match.result.ratingChange ?? "—", " · Arena Coin: ", match.result.arenaCoinEarned ?? match.result.arenaCoin ?? "—"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map(skill => /*#__PURE__*/React.createElement("button", { key: skill || "empty", className: "md-btn small", disabled: busy || !skill, onClick: () => action("active", skill, selected) }, skill || "—"))),
+        phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, matchIsPrepared ? "Battle presentation unavailable" : "Battle presentation unavailable · controls remain active")), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "loading" ? "Loading Battle…" : preloadState === "failed" ? "Battle preload failed" : "", " · ", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · ")), /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "Targets: ", enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive || !matchIsActive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line), " ")), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setShowFullLog(!showFullLog) }, showFullLog ? "HIDE LOG" : "FULL LOG")), showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-card" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line))))),
+      match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "RESULT · ", resultView.outcome), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Combat: ", resultView.combatResult, " · Rating change: ", resultView.ratingChange ?? "—", " · Arena Coin: ", resultView.arenaCoinEarned ?? "—"), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Reward: ", resultView.rewardSlot, " · Resolution: ", resultView.resolution), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map(skill => /*#__PURE__*/React.createElement("button", { key: skill || "empty", className: "md-btn small", disabled: busy || !skill, onClick: () => action("active", skill, selected) }, skill || "—"))) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
     ),
     !match && /*#__PURE__*/React.createElement(GameDock, {
       onCharacter,
