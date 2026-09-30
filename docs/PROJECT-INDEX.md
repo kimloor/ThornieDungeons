@@ -33,6 +33,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. |
 | [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md) | Dungeon Floor Select, Floor Detail, floor event/modifier presentation, monster preview, door states, and responsive entry flow. |
+| [`DUNGEON-REWARD-PROGRESSION-V2.md`](DUNGEON-REWARD-PROGRESSION-V2.md) | **ACTIVE-DESIGN / USER-APPROVED** Dungeon Reward V2: Tier/Rarity, Normal/Elite/Boss rewards, First-Clear Accessory, Boss materials/Mythic crafting, EXP/Gold/material economy, salvage, and Shop/Crafting reward roles. |
 | [`SOCIAL-SYSTEM-V1.md`](SOCIAL-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** shared character-scoped Social foundation: identity, presence, block, unread, lifecycle, security, and shared errors. Live; consumed by Friend V1. |
 | [`FRIEND-SYSTEM-V1.md`](FRIEND-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** Friend search/requests, 50-friend cap, remove/block, presence, profile, and DM eligibility. |
 | [`CHAT-SYSTEM-V1.md`](CHAT-SYSTEM-V1.md) | **ACTIVE-PRODUCTION for Global + Direct** — polling, retention, unread, rate limits, Sticker placeholder. Guild Chat not implemented. |
@@ -104,6 +105,7 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 
 - [`AGENTS.md`](../AGENTS.md)
 - [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md)
+- [`DUNGEON-REWARD-PROGRESSION-V2.md`](DUNGEON-REWARD-PROGRESSION-V2.md) when Dungeon rewards, equipment Tier/Rarity, drops, Boss chest/materials, Gold/EXP/material economy, Shop reward role, or Crafting reward role is affected
 - [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) when entry/battle behavior is affected
 - [`r2-upload/README.md`](../r2-upload/README.md) when Dungeon assets are affected
 
