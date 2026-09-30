@@ -232,6 +232,9 @@ function rollRarity(boosted = false) {
   }
   return r < 0.28 ? "unique" : "rare";
 }
+function gearTierForFloor(floor) {
+  return Math.min(5, Math.max(1, Math.floor((Number(floor) || 0) / 4) + 1));
+}
 function pickName(pool, floor) {
   return pool[Math.min(pool.length - 1, Math.floor(floor / 4))];
 }
@@ -275,6 +278,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(WEAPON_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       atk
     };
   }
@@ -285,6 +289,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(HELMET_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       def
     };
   }
@@ -295,6 +300,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(CHEST_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       def
     };
   }
@@ -305,6 +311,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(GLOVES_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       atk
     };
   }
@@ -315,6 +322,7 @@ function buildDropItem(floor, options = {}) {
       type,
       rarity,
       name: pickName(BOOTS_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
       def
     };
   }

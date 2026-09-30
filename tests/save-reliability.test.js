@@ -206,4 +206,39 @@ test("existing character, skill, inventory and equipment shapes remain compatibl
   assert.equal(restored.inventory[0].quantity, 4);
   assert.equal(restored.overflow[0].id, "o1");
   assert.equal(restored.overflow[0].favorite, true);
+
+  const legacyRows = [
+    { item_id: "old-w1", slot_type: "weapon", equipped: 0, rarity: "common", name: "Wooden Sword", atk: 3, def: 0, hp: 0, mp: 0, item_level: 0, enhance_level: 0, extra_json: "{}" },
+    { item_id: "old-c2", slot_type: "chest", equipped: 0, rarity: "common", name: "Leather Vest", atk: 0, def: 4, hp: 0, mp: 0, item_level: 0, enhance_level: 0, extra_json: "{}" },
+    { item_id: "old-b2", slot_type: "boots", equipped: 0, rarity: "common", name: "Leather Boots", atk: 0, def: 2, hp: 0, mp: 0, item_level: 0, enhance_level: 0, extra_json: "{}" }
+  ];
+  const migrated = sandbox.itemsFromServerList(legacyRows);
+  assert.equal(migrated.legacyEquipmentMigrated, true);
+  assert.deepEqual(Array.from(migrated.inventory, item => [item.name, item.gearTier]), [
+    ["Beginner Sword", 1],
+    ["Bronze Armor", 2],
+    ["Bronze Greaves", 2]
+  ]);
+  const migratedPersisted = sandbox.itemsToServerList(migrated.inventory, migrated.equipped, migrated.overflow);
+  assert.deepEqual(Array.from(migratedPersisted, item => item.extra.gearTier), [1, 2, 2]);
+
+  const newLeatherVest = sandbox.itemsFromServerList([{
+    item_id: "new-c1", slot_type: "chest", equipped: 0, rarity: "common", name: "Leather Vest",
+    atk: 0, def: 1, hp: 0, mp: 0, item_level: 0, enhance_level: 0,
+    extra_json: JSON.stringify({ gearTier: 1 })
+  }]);
+  assert.equal(newLeatherVest.legacyEquipmentMigrated, false);
+  assert.equal(newLeatherVest.inventory[0].name, "Leather Vest");
+  assert.equal(newLeatherVest.inventory[0].gearTier, 1);
+});
+
+test("standard equipment name pools match the locked T1-T5 progression", () => {
+  const pets = fs.readFileSync(path.join(__dirname, "../src/systems/pets.js"), "utf8");
+  const stats = fs.readFileSync(path.join(__dirname, "../src/systems/stats.js"), "utf8");
+  assert.match(pets, /WEAPON_NAMES = \["Beginner Sword", "Copper Blade", "Steel Greatsword", "Platinum Greatsword", "Dragon Slayer Sword"\]/);
+  assert.match(pets, /HELMET_NAMES = \["Leather Cap", "Bronze Guard Helm", "Steel Helm", "Platinum Helm", "Dragon Scale Helm"\]/);
+  assert.match(pets, /CHEST_NAMES = \["Leather Vest", "Bronze Armor", "Chain Armor", "Platinum Plate Armor", "Dragon Scale Armor"\]/);
+  assert.match(pets, /GLOVES_NAMES = \["Leather Gloves", "Bronze Gauntlets", "Chain Gloves", "Platinum Gauntlets", "Dragonhide Gloves"\]/);
+  assert.match(pets, /BOOTS_NAMES = \["Leather Boots", "Bronze Greaves", "Chain Boots", "Platinum Sabatons", "Dragonhide Boots"\]/);
+  assert.match(stats, /gearTier: gearTierForFloor\(floor\)/);
 });
