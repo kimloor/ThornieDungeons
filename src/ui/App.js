@@ -22,6 +22,7 @@ function ThornieDungeons() {
   const [gachaReturnPhase, setGachaReturnPhase] = useState("pets");
   const [utilityReturnPhase, setUtilityReturnPhase] = useState("menu");
   const [arenaHud, setArenaHud] = useState(null);
+  const [arenaFatal, setArenaFatal] = useState(null);
   // One-shot deep link set only by Friend's "Chat" action, consumed once by ChatScreen on
   // mount to open straight into that DM thread. Every other way of opening Chat clears
   // this first so a stale target can't resurface later.
@@ -863,6 +864,12 @@ function ThornieDungeons() {
       onSave: manualSave,
       onMainHub: () => setPhase("menu"),
     };
+  }
+  function handleArenaFatal(diagnostic) {
+    setArenaFatal(diagnostic);
+    // Leave the Arena route immediately. The server-side active match is not
+    // touched, so reopening Arena performs the normal authoritative resume GET.
+    setPhase(utilityReturnPhase || "menu");
   }
   function closeTransientOverlays() {
     setAccountSettingsOpen(false);
@@ -2076,7 +2083,7 @@ function ThornieDungeons() {
   }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), persistenceStatus === "failed" && /*#__PURE__*/React.createElement("div", {
     className: `md-save-state md-save-state-${persistenceStatus}`,
     role: persistenceStatus === "failed" ? "alert" : "status"
-  }, persistenceStatus === "saving" ? "กำลังบันทึก…" : persistenceMessage || "บันทึก Cloud ไม่สำเร็จ — กดบันทึกเพื่อลองใหม่"), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && /*#__PURE__*/React.createElement(StatusBar, {
+  }, persistenceStatus === "saving" ? "กำลังบันทึก…" : persistenceMessage || "บันทึก Cloud ไม่สำเร็จ — กดบันทึกเพื่อลองใหม่"), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && phase !== "arena" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -2334,11 +2341,17 @@ function ThornieDungeons() {
     diamonds: save.diamonds,
     onSpendDiamonds: spendRaidDiamonds,
     onBack: () => setPhase(utilityReturnPhase)
-  }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaV2Screen, {
+  }), phase === "arena" && /*#__PURE__*/React.createElement(ArenaV2ErrorBoundary, {
+    onFatal: handleArenaFatal,
+    getContext: () => globalThis.__THORNIE_ARENA_CONTEXT__ || {}
+  }, /*#__PURE__*/React.createElement(ArenaV2Screen, {
     serverUrl: cred.url,
     characterId: save.characterId,
+    save: save,
+    arenaHud: arenaHud,
     onHudChange: setArenaHud,
     ...utilityDockProps("arena"),
+    onFatal: handleArenaFatal,
     onFriend: () => {
       setUtilityReturnPhase("arena");
       setPhase("friend");
@@ -2354,7 +2367,7 @@ function ThornieDungeons() {
       setPhase("guild");
     },
     onBack: () => setPhase(utilityReturnPhase)
-  }), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
+  })), phase === "mailbox" && /*#__PURE__*/React.createElement(MailboxScreen, {
     serverUrl: cred.url,
     characterId: save.characterId,
     onApplyReward: applyMailReward,
@@ -2591,5 +2604,12 @@ function ThornieDungeons() {
     characterId: save.characterId,
     guildId: guildProfileTarget.guildId,
     onClose: () => setGuildProfileTarget(null)
+  }), arenaFatal && /*#__PURE__*/React.createElement(ArenaFatalDiagnosticOverlay, {
+    diagnostic: arenaFatal,
+    onResume: () => {
+      setArenaFatal(null);
+      setPhase("arena");
+    },
+    onClose: () => setArenaFatal(null)
   }));
 }

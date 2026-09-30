@@ -79,9 +79,19 @@ Run `node build.js` after source changes. index.html is the single generated app
     if (status) status.textContent = 'Something went wrong loading the game \u2014 see error popup.';
   }
   window.addEventListener('error', function (e) {
+    if (typeof window.__thornieArenaRuntimeError === 'function') {
+      window.__thornieArenaRuntimeError(e);
+      e.preventDefault();
+      return;
+    }
     showBootError(runtimeErrorDetail('JS Error', e.message, e.error, e.filename, e.lineno, e.colno));
   });
   window.addEventListener('unhandledrejection', function (e) {
+    if (typeof window.__thornieArenaUnhandledRejection === 'function') {
+      window.__thornieArenaUnhandledRejection(e);
+      e.preventDefault();
+      return;
+    }
     var reason = e.reason;
     showBootError(runtimeErrorDetail('Unhandled Promise Rejection', reason && reason.message ? reason.message : String(reason), reason instanceof Error ? reason : null));
   });

@@ -107,6 +107,8 @@ test('activation initializes shared Arena Battle Core state and exposes safe que
   assert.equal(active.match.state.queue.length, 4);
   assert.equal(active.match.state.currentActorId, 'team_a_hero');
   assert.equal(active.match.state.action.activeSkills.length, 1);
+  assert.ok(active.match.state.log.length > 0);
+  assert.ok(active.match.state.log.every((entry) => Number.isInteger(entry.seq)), JSON.stringify(active.match.state.log));
   assert.equal(Object.hasOwn(active.match.state.units.find((unit) => unit.side === 'team_b'), 'skills'), false);
   db.close();
 });
@@ -142,6 +144,7 @@ test('manual legal action is exact-once and retry returns the stored response', 
   const first = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'action-1', 'basic', null, 'team_b_hero', false));
   assert.equal(first.ok, true);
   assert.equal(first.replayed, false);
+  assert.ok(first.state.log.some((entry) => Number.isInteger(entry.seq)), JSON.stringify(first.state.log));
   const retry = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'action-1', 'basic', null, 'team_b_hero', false));
   assert.equal(retry.ok, true);
   assert.equal(retry.replayed, true);
@@ -321,6 +324,7 @@ test('resume returns deterministic stored public combat state without consuming 
   const tickets = db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets;
   const resumed = await body(await arena.handleGetArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
   assert.deepEqual(resumed.match.state, active.match.state);
+  assert.deepEqual(resumed.match.state.log.map((entry) => entry.seq), active.match.state.log.map((entry) => entry.seq));
   assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, tickets);
   db.close();
 });

@@ -188,6 +188,7 @@ function arenaPreparedPresentationContext(preparedSnapshot) {
       side,
       kind: "hero",
       name: String(member?.name || (role === "attacker" ? "Hero" : "Opponent")),
+      icon: role === "attacker" ? "⚔️" : "🛡️",
       hp: heroMaxHp,
       maxHp: heroMaxHp,
       dead: false,
@@ -202,6 +203,7 @@ function arenaPreparedPresentationContext(preparedSnapshot) {
       kind: "pet",
       name: String(petSource.name || petSource.defId || "Pet"),
       defId: petSource.defId || petSource.id || "",
+      icon: String(petSource.icon || "🐾"),
       hp: petMaxHp,
       maxHp: petMaxHp,
       dead: false,
@@ -243,6 +245,18 @@ function arenaPreparedPresentationContext(preparedSnapshot) {
   };
 }
 
+function arenaPresentationAnimationCues(state) {
+  const attackTypes = new Set(["damage", "miss", "pet_active", "counter"]);
+  return (Array.isArray(state?.log) ? state.log : [])
+    .filter(entry => entry && entry.actorId && attackTypes.has(String(entry.type || "")))
+    .map(entry => ({
+      key: `arena-cue-${Number(entry.seq) || 0}-${String(entry.actorId)}`,
+      seq: Number(entry.seq) || 0,
+      actorId: String(entry.actorId),
+      animation: "attack"
+    }));
+}
+
 function arenaPresentationUnit(state, side, kind) {
   const rawUnits = state?.units || {};
   const unitList = Array.isArray(rawUnits) ? rawUnits : Object.values(rawUnits);
@@ -282,12 +296,14 @@ function buildArenaBattlefieldSnapshot({
       id: rawHero.id,
       kind: "hero",
       name: config.heroName || rawHero.name || "Hero",
+      icon: config.heroIcon || (side === "team_b" ? "🛡️" : "⚔️"),
       facing
     }) : null;
     const pet = rawPet ? createActorPresentationModel(rawPet, {
       ...(config.petCombat || {}),
       id: rawPet.id,
       kind: "pet",
+      icon: config.petCombat?.icon || "🐾",
       facing
     }) : null;
 
@@ -346,6 +362,7 @@ function buildArenaBattlefieldSnapshot({
     selectedTargetId,
     combatSpeed: speed,
     teams: [attacker, defender],
+    animationCues: arenaPresentationAnimationCues(state),
     backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("arenaUi.background")
   });
 }

@@ -215,22 +215,50 @@ test('Arena Player Card renders equipped items as a fixed read-only horizontal i
   assert.doesNotMatch(cardSection, /onUnequip|onSalvage|onSell|SALVAGE|SELL/);
 });
 
-test('Arena browser shell uses global resources, standard header back, persistent dock and a sized Phaser stage', () => {
+test('Arena browser shell reuses the shared global currency row, horizontal tabs and locked dock', () => {
   const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
   assert.match(arenaUi, /function GlobalCurrencyBar/);
   assert.match(arenaUi, /md-character-page-title md-arena-page-header/);
   assert.match(arenaUi, /md-arena-phaser-stage/);
   assert.match(arenaUi, /className: "md-arena-scroll"/);
+  assert.match(arenaUi, /React\.createElement\(GlobalCurrencyBar/);
+  assert.match(arenaUi, /md-tab-row md-arena-tab-row/);
   assert.match(arenaUi, /React\.createElement\(GameDock/);
   assert.match(styles, /\.md-hub-resources\.with-arena \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
-  assert.match(styles, /\.md-arena-v2 \{ flex:1; min-height:0; overflow:hidden/);
-  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ flex:0 0 auto; position:relative/);
+  assert.match(styles, /\.md-arena-v2 \{ flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden/);
+  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:absolute/);
   assert.match(styles, /\.md-arena-scroll \{ flex:1; min-height:0; overflow-y:auto/);
+  assert.match(styles, /\.md-arena-tab-row \{ display:grid; grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(styles, /\.md-arena-phaser-stage \{ position:relative;[^}]*min-height:clamp\(300px,48dvh,430px\)/);
   assert.match(appUi, /arena: arenaHud/);
   assert.match(appUi, /arenaHud: arenaHud/);
+  assert.match(appUi, /phase !== "arena" && .*StatusBar/);
   assert.match(appUi, /cloudGetArenaV2Status\(cred\.url, characterId\)/);
   assert.doesNotMatch(arenaUi, /onHudChange\?\.\(null\)/);
+});
+
+test('Arena HIGH blocker recovery is scoped, diagnostic-rich and preserves resume', () => {
+  const head = fs.readFileSync(path.join(ROOT, 'head.html'), 'utf8');
+  assert.match(head, /window\.__thornieArenaRuntimeError/);
+  assert.match(head, /window\.__thornieArenaUnhandledRejection/);
+  assert.match(arenaUi, /ArenaV2ErrorBoundary[\s\S]*React\.Component/);
+  assert.match(arenaUi, /function arenaFatalDiagnostic\(/);
+  assert.match(arenaUi, /matchId: String\(context\.matchId/);
+  assert.match(arenaUi, /phaserStatus: String\(context\.phaserStatus/);
+  assert.match(arenaUi, /setMatch\(null\)/);
+  assert.match(arenaUi, /Do not call an Arena API here/);
+  assert.match(arenaUi, /authoritative active match/);
+  assert.match(appUi, /ArenaFatalDiagnosticOverlay/);
+  assert.match(appUi, /setPhase\(utilityReturnPhase \|\| "menu"\)/);
+});
+
+test('Arena ATB reuses the shared four-slot TurnOrderBar with authoritative queue metadata', () => {
+  assert.match(arenaUi, /md-arena-turn-order/);
+  assert.match(arenaUi, /React\.createElement\(TurnOrderBar/);
+  assert.match(arenaUi, /queue: arenaTurnQueue/);
+  assert.match(arenaUi, /activeKey: match\.state\?\.currentActorId/);
+  assert.match(arenaUi, /arenaTurnOrderIcon/);
+  assert.match(phaserUi, /buildArenaBattlefieldSnapshot\(props\)/);
 });
 
 
@@ -271,4 +299,4 @@ test('Arena active public-state unit arrays keep all 2v2 presentation actors add
   assert.equal(resolveUnit(state, 'team_b', 'pet').id, 'team_b_pet');
 });
 
-// Final parity retrigger after generated frontend sync (W9 browser QA Batch 4).
+// W9 browser QA Batch 5 low/medium UI shell fixes only; final parity retrigger after generated frontend sync.

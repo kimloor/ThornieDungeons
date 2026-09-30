@@ -140,15 +140,26 @@ function resolveItemIconPath(item) {
     return icons.potions?.[item.potionId] || "";
   }
   if (item.type === "junk" && item.junkId) {
+    const recipeFamily = String(item.junkId).match(/^recipe_(azure|robot|skeleton)(?:_|$)/)?.[1];
+    if (recipeFamily) return icons.recipes?.[recipeFamily] || "";
     return icons.materials?.[item.junkId] || "";
+  }
+
+  const explicitWingFamily = [item.wingId, item.wingsId, item.setId, item.family, item.wingFamily]
+    .map(value => String(value || "").trim().toLowerCase())
+    .find(value => ["angel", "azure", "robot", "skeleton"].includes(value));
+  if (item.type === "wings" || item.type === "wing") {
+    if (explicitWingFamily) return icons.wings?.[explicitWingFamily] || "";
+    // Legacy records may carry only a non-family wing id/star. Keep their
+    // existing resolver behavior without guessing a production family.
+    const legacyWingKey = item.wingId || item.wingsId || item.star;
+    return legacyWingKey ? icons.wings?.[legacyWingKey] || "" : "";
+  }
+  if (explicitWingFamily === "angel") {
+    return icons.wings?.angel || "";
   }
   if (item.setId === "azure" && item.type) {
     return icons.azure?.[item.type] || "";
-  }
-
-  const wingKey = item.wingId || item.wingsId || item.star;
-  if (item.type === "wings" || item.type === "wing" || wingKey === "angel") {
-    return wingKey ? icons.wings?.[wingKey] || "" : "";
   }
 
   return "";

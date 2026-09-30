@@ -193,8 +193,9 @@ class PhaserBattleActor {
   }
 
   playVisualState(state, speed = 1) {
+    const force = arguments[2]?.force === true;
     const nextState = state || "idle";
-    if (nextState === this.visualState) {
+    if (!force && nextState === this.visualState) {
       if (nextState === "idle" && !this.frameTimer && !this.idleTween) this.startIdleFallback(speed);
       return Promise.resolve();
     }

@@ -198,9 +198,9 @@ test("W8 Inventory uses the final 55.8% horizontal Hero anchor without changing 
   assert.match(stage, /anchorX:0\.558/);
 });
 
-test("W8 user-visible staging fixes bump the preview version badge", () => {
+test("W9 Batch 5 user-visible staging fixes bump the preview version badge", () => {
   const styles = source("src/data/styles.js");
-  assert.match(styles, /content: "Ver 1\.0\.24"/);
+  assert.match(styles, /content: "Ver 1\.0\.25"/);
 });
 
 test("W8 Inventory Hero preview is production-default with an explicit opt-out", () => {

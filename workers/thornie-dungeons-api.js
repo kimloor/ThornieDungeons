@@ -5266,12 +5266,14 @@ function pvpHeroSkillsPublic(actor) {
 // "damage" text already uses ("{actor} use {action} to {target} ..."), rather than this
 // worker inventing a second copy of battleCore's phrasing. Everything below is just
 // trimming battleCore's own log entry down to what the client needs — no resolver logic.
-function pvpPublicLogEntry(e) {
-  return {
+function pvpPublicLogEntry(e, { includeSeq = false } = {}) {
+  const entry = {
     type: e.type, text: e.text, actorId: e.actorId || null, targetId: e.targetId || null,
     crit: !!e.crit, amount: e.amount != null ? e.amount : null, actionName: e.actionName || null,
     status: e.status || null, skillName: e.skillName || null,
   };
+  if (includeSeq && Number.isFinite(Number(e.seq))) entry.seq = Number(e.seq);
+  return entry;
 }
 
 async function settleArenaMatch(db, characterId, opponentCharacterId, state) {
@@ -6566,7 +6568,7 @@ function arenaCombatPublicState(state) {
     })),
     skills,
     action: actionMetadata ? { basic: actionMetadata, activeSkills: skills.map((skill) => ({ skillId: skill.key, ...BATTLE_CORE_V1.getActionMetadata(state, current, { type: "active", skillId: skill.key }) })) } : null,
-    log: (state.log || []).slice(-40).map(pvpPublicLogEntry),
+    log: (state.log || []).slice(-40).map((entry) => pvpPublicLogEntry(entry, { includeSeq: true })),
     result: state.result ? { result: state.result, winnerSide: state.winnerSide || null } : null,
   };
 }

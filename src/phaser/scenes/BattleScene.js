@@ -23,6 +23,8 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         textureRegistry: this.textureRegistry
       });
       this.presentationScale = 1;
+      this.lastArenaCueSeq = -1;
+      this.lastArenaBattleId = null;
       this.handleResize = this.handleResize.bind(this);
     }
 
@@ -160,6 +162,20 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
     syncArena(snapshot) {
       this.presentationQueue.setSpeed(snapshot.combatSpeed || 1);
       const animationJobs = [];
+      const isFirstSnapshot = this.lastArenaBattleId !== snapshot.battleId;
+      if (isFirstSnapshot) {
+        this.lastArenaBattleId = snapshot.battleId;
+      }
+      const allCues = (Array.isArray(snapshot.animationCues) ? snapshot.animationCues : [])
+        .filter(cue => Number.isFinite(Number(cue?.seq)));
+      const cues = (isFirstSnapshot ? [] : allCues)
+        .filter(cue => Number(cue?.seq) > this.lastArenaCueSeq);
+      if (isFirstSnapshot) {
+        // A first snapshot may include the authoritative historical log on
+        // resume. Establish a baseline without replaying old presentation.
+        this.lastArenaCueSeq = allCues.reduce((max, cue) => Math.max(max, Number(cue.seq)), -1);
+      }
+      if (cues.length) this.lastArenaCueSeq = Math.max(...cues.map(cue => Number(cue.seq) || 0));
       const attacker = this.arenaTeam("attacker");
       const defender = this.arenaTeam("defender");
       this.syncArenaActor("attacker", "hero", attacker?.hero, animationJobs);
@@ -167,7 +183,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.syncArenaActor("defender", "hero", defender?.hero, animationJobs);
       this.syncArenaActor("defender", "pet", defender?.pet, animationJobs);
       this.layoutArenaActors();
-      this.enqueueAnimations(animationJobs);
+      this.enqueueArenaAnimations(animationJobs, cues);
     }
 
     sync(snapshot) {
@@ -212,6 +228,30 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         run: speed => Promise.all(animationJobs.map(([actor, state]) =>
           actor.playVisualState(state, speed)
         ))
+      });
+    }
+
+    arenaActorById(actorId) {
+      const key = String(actorId || "");
+      return Object.values(this.arenaActors)
+        .flatMap(team => Object.values(team))
+        .find(actor => String(actor?.data?.id || "") === key) || null;
+    }
+
+    enqueueArenaAnimations(animationJobs, cues) {
+      if (!animationJobs.length && !cues.length) return;
+      void this.presentationQueue.enqueue({
+        run: async speed => {
+          // The authoritative log is already in speed-queue order. Keep that order
+          // for presentation without allowing Phaser to resolve or reorder combat.
+          for (const cue of cues) {
+            const actor = this.arenaActorById(cue.actorId);
+            if (actor) await actor.playVisualState(cue.animation || "attack", speed, { force: true });
+          }
+          for (const [actor, state] of animationJobs) {
+            if (actor) await actor.playVisualState(state, speed);
+          }
+        }
       });
     }
 
