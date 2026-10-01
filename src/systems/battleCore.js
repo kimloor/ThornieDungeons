@@ -433,7 +433,13 @@
     const pierce = Math.max(Number(spec.defPierce) || 0, conversions.includes("armor_pierce") ? 0.3 : 0);
     const attackPower = actor.atk * (Number(spec.mult) || 1) * activeBuffDamageMultiplier(actor) * heroPassiveDamageMultiplier(state, actor, target);
     const critMult = crit ? actor.critDamage + pct(Number(spec.critDamageBonus) || 0) + pct((skillData(actor, "critical_mastery") || {}).critDamagePct || 0) : 1;
-    const damage = Math.max(1, Math.round((attackPower - targetDefAtHitStart * (1 - pierce)) * critMult));
+    const baseDamage = Math.max(1, Math.round((attackPower - targetDefAtHitStart * (1 - pierce)) * critMult));
+    // Optional generic actor modifier. Omitted/invalid values remain neutral;
+    // Dungeon V2 sets it only after its Boss Enrage threshold is crossed.
+    const damageMultiplier = Number.isFinite(Number(actor.damageMultiplier))
+      ? Math.max(0, Number(actor.damageMultiplier))
+      : 1;
+    const damage = Math.max(1, Math.round(baseDamage * damageMultiplier));
     const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
     actionContext.totalDamage += dealt;
     actionContext.hitAny = true;

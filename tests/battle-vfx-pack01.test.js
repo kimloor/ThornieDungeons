@@ -138,7 +138,7 @@ test("manifest assets, speed artwork and safe presentation layer are wired", () 
   assert.match(components, /cropPadding: \{ top: 0\.04, right: 0\.08, bottom: 0\.07, left: 0\.04 \}/);
   assert.match(app, /battleVfxFrames\(optionalBasicKey\)\.length \? optionalBasicKey : ""/);
   assert.match(app, /event\.anchor === "hero" \? "vfx-hero"[\s\S]*event\.anchor === "monster" \? "vfx-monster"/);
-  assert.match(app, /if \(heroCommand\?\.type === "skip_battle"\) \{\s*setBattleVfx\(\[\]\);\s*const resolved = BATTLE_CORE_V1\.simulateBattle/);
+  assert.match(app, /if \(heroCommand\?\.type === "skip_battle"\) \{\s*setBattleVfx\(\[\]\);\s*const resolved = DUNGEON_V2\.simulateDungeonV2Battle\(state, BATTLE_CORE_V1\)/);
   assert.doesNotMatch(read("src/systems/battleCore.js"), /battleVfx|slash_basic|buff_aura/);
 });
 

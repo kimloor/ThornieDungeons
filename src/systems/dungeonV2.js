@@ -35,7 +35,7 @@
   const PACK_MODIFIERS = Object.freeze({ 1: Object.freeze({ hp: 1, atk: 1 }), 2: Object.freeze({ hp: 0.72, atk: 0.72 }), 3: Object.freeze({ hp: 0.605, atk: 0.605 }) });
   const ELITE_MODIFIERS = Object.freeze({ hp: 1.3, atk: 1.1, def: 1.05 });
   const BOSS_ENRAGE_THRESHOLD = 0.5;
-  const BOSS_ENRAGE_ATK_MULTIPLIER = 1.2;
+  const BOSS_ENRAGE_DAMAGE_MULTIPLIER = 1.2;
 
   function numberOr(value, fallback) {
     return Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -154,17 +154,41 @@
     return !!(unit && unit.flags && unit.flags.dungeonV2Enraged);
   }
 
-  // This is intentionally an adapter around Battle Core state. It changes only
-  // the V2 boss's prepared ATK once; Battle Core still owns every hit/action.
+  function toDungeonV2BattleEnemy(monster, index = 0) {
+    return {
+      ...monster,
+      monsterDefId: monster.id,
+      id: monster.uid,
+      kind: monster.isBoss ? "boss" : "monster",
+      side: "enemy",
+      maxHp: monster.maxHp,
+      accuracy: 92,
+      // Dodge is resolved by Dungeon V2 and passed through unchanged. This
+      // adapter must not calculate a second profile or AGI-based value.
+      dodge: numberOr(monster.dodge, 0),
+      crit: 5,
+      tieOrder: index + 2
+    };
+  }
+
+  function isDungeonV2StarterPetEligible({ floor, monsters, unlockedNext, alreadyHasStarter }) {
+    return Number(floor) === 5
+      && unlockedNext === true
+      && alreadyHasStarter !== true
+      && Array.isArray(monsters)
+      && monsters.some(monster => monster && monster.encounterType === ENCOUNTER_TYPES.ELITE);
+  }
+
+  // Dungeon V2 owns the threshold and one-time state. Battle Core owns the
+  // damage calculation and applies this generic outgoing multiplier per hit.
   function applyDungeonV2BossEnrage(state) {
     if (!state || !state.units) return state;
     Object.values(state.units).forEach(unit => {
       if (!unit || unit.kind !== "boss" || unit.hp <= 0 || unit.dead || unit.hp >= unit.maxHp * BOSS_ENRAGE_THRESHOLD || isDungeonV2BossEnraged(unit)) return;
       unit.flags = unit.flags || {};
-      const baseAtk = numberOr(unit.flags.dungeonV2BaseAtk, unit.atk);
-      unit.flags.dungeonV2BaseAtk = baseAtk;
       unit.flags.dungeonV2Enraged = true;
-      unit.atk = dungeonV2Round(baseAtk * BOSS_ENRAGE_ATK_MULTIPLIER);
+      unit.flags.dungeonV2EnrageDamageMultiplier = BOSS_ENRAGE_DAMAGE_MULTIPLIER;
+      unit.damageMultiplier = BOSS_ENRAGE_DAMAGE_MULTIPLIER;
     });
     return state;
   }
@@ -194,7 +218,7 @@
     PACK_MODIFIERS,
     ELITE_MODIFIERS,
     BOSS_ENRAGE_THRESHOLD,
-    BOSS_ENRAGE_ATK_MULTIPLIER,
+    BOSS_ENRAGE_DAMAGE_MULTIPLIER,
     classifyDungeonEncounter,
     dungeonChapterForFloor,
     dungeonChapterFloor,
@@ -205,6 +229,8 @@
     resolveDungeonV2NormalStats,
     resolveDungeonV2BossStats,
     isDungeonV2BossEnraged,
+    toDungeonV2BattleEnemy,
+    isDungeonV2StarterPetEligible,
     applyDungeonV2BossEnrage,
     simulateDungeonV2Battle
   };

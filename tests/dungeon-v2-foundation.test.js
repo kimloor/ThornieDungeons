@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const dungeon = require("../src/systems/dungeonV2.js");
+const battle = require("../src/systems/battleCore.js");
 
 test("Dungeon V2 encounter classification uses midpoint Elite and chapter Boss boundaries", () => {
   assert.equal(dungeon.classifyDungeonEncounter(1), "normal");
@@ -53,6 +54,23 @@ test("normal identity profiles remain distinct and pack modifiers affect only HP
   assert.equal(dungeon.resolveDungeonV2NormalStats(30, "jelly_slime", { elite: true }).def, Math.round(28 * 0.9 * 1.05));
 });
 
+test("Dungeon V2 enemy integration preserves authoritative Dodge at the Battle Core boundary", () => {
+  assert.equal(dungeon.toDungeonV2BattleEnemy({ id: "spore_cap", uid: "spore", dodge: 2, maxHp: 10 }).dodge, 2);
+  assert.equal(dungeon.toDungeonV2BattleEnemy({ id: "bramble_bat", uid: "bat", dodge: 12, maxHp: 10 }).dodge, 12);
+  assert.equal(dungeon.toDungeonV2BattleEnemy({ id: "jelly_slime", uid: "slime", dodge: 0, maxHp: 10 }).dodge, 0);
+});
+
+test("F5 starter Pet entitlement follows the V2 Elite encounter exactly once", () => {
+  const elite = [{ floor: 5, encounterType: dungeon.ENCOUNTER_TYPES.ELITE }];
+  assert.equal(dungeon.isDungeonV2StarterPetEligible({ floor: 5, monsters: elite, unlockedNext: true, alreadyHasStarter: false }), true);
+  assert.equal(dungeon.classifyDungeonEncounter(5), dungeon.ENCOUNTER_TYPES.ELITE);
+  assert.equal(dungeon.isDungeonV2StarterPetEligible({ floor: 5, monsters: elite, unlockedNext: true, alreadyHasStarter: true }), false);
+  assert.equal(dungeon.isDungeonV2StarterPetEligible({ floor: 5, monsters: elite, unlockedNext: false, alreadyHasStarter: false }), false);
+  assert.equal(dungeon.isDungeonV2StarterPetEligible({ floor: 5, monsters: elite, unlockedNext: true, alreadyHasStarter: false }), true);
+  assert.equal(dungeon.isDungeonV2StarterPetEligible({ floor: 10, monsters: [{ floor: 10, encounterType: dungeon.ENCOUNTER_TYPES.CHAPTER_BOSS }], unlockedNext: true, alreadyHasStarter: false }), false);
+  assert.equal(dungeon.isDungeonV2StarterPetEligible({ floor: 4, monsters: [{ floor: 4, encounterType: dungeon.ENCOUNTER_TYPES.NORMAL }], unlockedNext: true, alreadyHasStarter: false }), false);
+});
+
 test("approved Chapter Boss profiles resolve without a generic extra Boss multiplier", () => {
   assert.deepEqual(dungeon.resolveDungeonV2BossStats(30, "moss_king"), {
     hp: Math.round(328 * 3), atk: Math.round(64 * 1.15), def: Math.round(28 * 1.35),
@@ -72,21 +90,67 @@ test("Boss Enrage triggers strictly below 50 percent and only once", () => {
   assert.equal(state.units.boss.atk, 100, "exactly 50% does not enrage");
   state.units.boss.hp = 499;
   dungeon.applyDungeonV2BossEnrage(state);
-  assert.equal(state.units.boss.atk, 120);
+  assert.equal(state.units.boss.atk, 100, "Enrage does not reinterpret damage as ATK");
+  assert.equal(state.units.boss.damageMultiplier, 1.2);
   assert.equal(state.units.boss.flags.dungeonV2Enraged, true);
   state.units.boss.hp = 100;
   dungeon.applyDungeonV2BossEnrage(state);
-  assert.equal(state.units.boss.atk, 120, "threshold crossing cannot stack the multiplier");
+  assert.equal(state.units.boss.damageMultiplier, 1.2, "threshold crossing cannot stack the multiplier");
 });
 
-test("Boss Enrage flag and adjusted ATK survive checkpoint serialization/reload", () => {
+test("Boss Enrage flag and damage multiplier survive checkpoint serialization/reload", () => {
   const state = { version: 1, battleId: "dungeon-test", units: {
-    boss: { id: "boss", kind: "boss", hp: 400, maxHp: 1000, atk: 120, flags: { dungeonV2BaseAtk: 100, dungeonV2Enraged: true } }
+    boss: { id: "boss", kind: "boss", hp: 400, maxHp: 1000, atk: 100, damageMultiplier: 1.2, flags: { dungeonV2Enraged: true, dungeonV2EnrageDamageMultiplier: 1.2 } }
   } };
   const restored = JSON.parse(JSON.stringify(state));
   dungeon.applyDungeonV2BossEnrage(restored);
-  assert.equal(restored.units.boss.atk, 120);
+  assert.equal(restored.units.boss.atk, 100);
+  assert.equal(restored.units.boss.damageMultiplier, 1.2);
   assert.equal(restored.units.boss.flags.dungeonV2Enraged, true);
+});
+
+function makeEnrageBattle(extraBoss = {}) {
+  return battle.createDungeonBattle({
+    seed: 22,
+    hero: { id: "hero", kind: "hero", hp: 1000, maxHp: 1000, atk: 1, def: 20, speed: 1, accuracy: 99, dodge: 0, crit: 0, activeSkills: [], skills: {} },
+    enemies: [{ id: "boss", kind: "boss", hp: 1000, maxHp: 1000, atk: 100, def: 0, speed: 100, accuracy: 99, dodge: 0, crit: 0, ...extraBoss }]
+  });
+}
+
+test("Boss Enrage applies exact +20% resolved damage in normal play and multi-hit actions", () => {
+  const normal = makeEnrageBattle();
+  normal.units.boss.hp = 499;
+  dungeon.applyDungeonV2BossEnrage(normal);
+  const next = battle.battleStep(normal).state;
+  assert.equal(next.units.hero.hp, 904, "80 base damage becomes 96 after Enrage");
+
+  const multi = makeEnrageBattle({ ai: { hits: 3 } });
+  multi.units.boss.hp = 499;
+  dungeon.applyDungeonV2BossEnrage(multi);
+  const multiNext = battle.battleStep(multi).state;
+  assert.equal(multiNext.units.hero.hp, 712, "each multi-hit resolves at +20%; the modifier does not stack per hit");
+});
+
+test("Dungeon V2 Skip uses the same Enrage damage modifier and preserves it through resume", () => {
+  const initial = makeEnrageBattle();
+  initial.units.boss.hp = 499;
+  dungeon.applyDungeonV2BossEnrage(initial);
+  const resumed = battle.restoreCheckpoint(battle.serializeCheckpoint(initial));
+  dungeon.applyDungeonV2BossEnrage(resumed);
+  assert.equal(resumed.units.boss.damageMultiplier, 1.2);
+  const skipped = dungeon.simulateDungeonV2Battle(resumed, battle, 1);
+  assert.equal(skipped.units.hero.hp, 904);
+  assert.equal(skipped.units.boss.damageMultiplier, 1.2);
+  assert.equal(skipped.units.boss.flags.dungeonV2Enraged, true);
+});
+
+test("Battle Core remains default-neutral for actors without a Dungeon V2 modifier", () => {
+  const plain = makeEnrageBattle();
+  const explicitNeutral = makeEnrageBattle({ damageMultiplier: 1 });
+  const plainNext = battle.battleStep(plain).state;
+  const neutralNext = battle.battleStep(explicitNeutral).state;
+  assert.equal(plainNext.units.hero.hp, neutralNext.units.hero.hp);
+  assert.equal(plainNext.units.boss.hp, neutralNext.units.boss.hp);
 });
 
 test("legacy remote monster role/stat fields cannot override canonical V2 profiles", () => {
