@@ -344,6 +344,8 @@ Boss Weapons are:
 - Empower slots: **4**
 - Source: targeted crafting
 - Generic random drop: **never**
+- Each Boss Weapon has exactly **one fixed Signature Effect**
+- Signature Effect does not randomly roll and does not scale by equipment Tier
 
 Base recipe target:
 
@@ -366,35 +368,160 @@ Example:
 - F30 Boss Weapon = T1 Mythic
 - F40 Boss Weapon = T2 Mythic
 
-F10/F20/F30 should not automatically power-creep each other through raw stat.
+Boss Weapons inside the same Tier do not power-creep each other through raw ATK. Their identity comes from the fixed Signature Effect.
 
-Their future differentiation should come from Boss-specific options/passives/build identity, for example Crit-oriented, DoT-oriented, sustain-oriented, etc.
+### 10.2 Moss King Weapon — sustain signature
 
-Exact Boss Weapon special options are **NOT YET LOCKED**.
+When the Hero completes a successful Basic Attack or damaging Skill action:
+
+- roll **30% once per action**;
+- on success, restore **10% of Max HP**;
+- multi-hit skills still roll only once for this Signature;
+- this heal is based on Max HP, not damage dealt.
+
+Short item description:
+
+~~~text
+โจมตีโดน: 30% ฟื้น HP 10%
+~~~
+
+### 10.3 Ember Drake Weapon — follow-up signature
+
+For every successful hit caused by a Skill:
+
+- each successful Skill hit independently has **10% chance** to trigger one immediate extra Basic Attack;
+- the roll is intentionally **per hit**;
+- maximum **3 extra Basic Attacks per Skill action**;
+- an extra Basic Attack created by this Signature cannot trigger Ember's Signature again;
+- the extra attack is a normal Basic Attack: it can hit/miss and Crit, consumes no extra resource, and does not consume another turn.
+
+Short item description:
+
+~~~text
+สกิลโดน: 10%/Hit โจมตีปกติเพิ่ม 1 ครั้ง
+~~~
+
+### 10.4 Frost Warden Weapon — counter signature
+
+After the Hero receives a successful **direct damaging action**:
+
+- roll **20% once per enemy action**;
+- on success, immediately Counter Attack the attacker once;
+- multi-hit enemy skills do not create multiple Frost rolls;
+- Poison, DoT, Reflect, and other indirect damage do not trigger this Signature;
+- a counter created by this Signature cannot trigger another Frost counter chain.
+
+Short item description:
+
+~~~text
+ถูกโจมตี: 20% สวนกลับ 1 ครั้ง
+~~~
+
+### 10.5 Signature presentation
+
+Boss Weapon Signature text must be visually separated from normal item stats and Empower options.
+
+- Use a dedicated **Mythic Signature gold accent** for the Signature line.
+- Do not reuse Empower roll-quality colors such as Max-Roll blue or Low-Roll gray.
+- Keep the visible description short and player-readable; detailed internal trigger rules belong to system logic/documentation rather than the normal item card.
 
 ---
 
 ## 11. Mythic equipment sets
 
-Azure, Robot, and future sets belong to the Mythic equipment layer.
+Azure, Robot, Skeleton, and future sets belong to the Mythic equipment layer.
 
 Target representation:
 
 ~~~text
 rarity = mythic
-setId = azure
+setId = azure | robot | skeleton
 ~~~
 
-or:
+Set identity and Rarity are separate concepts.
 
-~~~text
-rarity = mythic
-setId = robot
-~~~
+Current full sets use six equipment pieces and activate cumulative bonuses at **2 / 4 / 6 equipped pieces**.
 
-Set identity and Rarity must be separate concepts.
+A Mythic Set Item does **not** receive an additional standalone Boss-Weapon-style Signature Effect per piece. Its special power budget comes from its Set Bonus.
 
-Set bonuses, set acquisition, recipe materials, and exact set power are outside the locked scope of this document unless explicitly listed later.
+### 11.1 Azure Set — CC / tempo
+
+**2 pieces**
+
+- **AGI +5**
+
+**4 pieces**
+
+- restore MP equal to **5% of total actual damage dealt by the damaging action**;
+- calculate once from total action damage, **not separately per hit**;
+- restoration is capped at **10% of Max MP per action**;
+- if another passive provides the same damage-to-MP-drain behavior, they do not stack; use the stronger applicable effect rather than adding the percentages.
+
+**6 pieces**
+
+- after a successful damaging action, roll **30% once per action**;
+- on success, randomly apply:
+  - **Stun 1 turn**, or
+  - **Silence 2 turns**;
+- Stun / Silence selection is **50 / 50**;
+- multi-hit actions do not roll separately per hit;
+- normal status resistance and the shared Battle Core Boss control-status conversion rules remain applicable.
+
+### 11.2 Skeleton Set — ATK / Crit / Armor Break
+
+**2 pieces**
+
+- **STR +5**
+
+**4 pieces**
+
+- **Crit Damage +30 percentage points**
+
+**6 pieces**
+
+- every Critical Hit **guarantees Armor Break** on that target;
+- Armor Break lasts **2 turns**;
+- this guaranteed application is not reduced by Status Resist;
+- Armor Break does **not stack** into a stronger reduction;
+- applying it again refreshes the duration to 2 turns;
+- the hit that creates Armor Break uses the target DEF snapshot from before the new debuff; Armor Break affects subsequent hits/actions.
+
+The shared Battle Core Armor Break value remains **15% effective DEF reduction** unless the global status system is separately redesigned.
+
+### 11.3 Robot Set — DEF / CC resistance / emergency defense
+
+**2 pieces**
+
+- **VIT +5**
+
+**4 pieces**
+
+- **CC Resist +10%**
+- applies to hard-control effects such as Stun and Silence, and equivalent future control effects;
+- does not reduce Poison or Armor Break.
+
+**6 pieces**
+
+- when the Hero's HP crosses from **50% or higher to below 50%**, immediately gain **DEF Up for 2 turns**;
+- guaranteed trigger on the threshold crossing;
+- DEF Up does not stack with itself or other DEF Up instances;
+- this is a temporary trigger, not a permanent buff while below 50% HP;
+- after recovering to 50% or higher, a later new drop below 50% may trigger the effect again.
+
+The shared Battle Core DEF Up effect remains **30% damage reduction** while active unless the global status system is separately redesigned.
+
+### 11.4 Set mixing intent
+
+The 2 / 4 / 6 structure intentionally supports both full-set and mixed-set builds.
+
+Examples:
+
+- 6 Azure = full CC / tempo identity;
+- 6 Skeleton = full Crit / Armor Break identity;
+- 6 Robot = full defensive identity;
+- 4 + 2 or 2 + 2 + 2 combinations may trade the 6-piece Signature for flexible stat/effect combinations.
+
+Set bonuses do not add Empower slots and do not raise the Enhance ceiling.
 
 ---
 
@@ -962,9 +1089,8 @@ The following remain open for later design:
 
 - exact names and identities of Boss-specific materials;
 - exact Boss Weapon names;
-- Boss Weapon special options/passives;
-- Set effects for Azure / Robot / future sets;
 - detailed set recipe costs and acquisition;
+- acquisition/content details for Robot and Skeleton where not yet implemented;
 - future Mythic Accessory sources;
 - Raid milestone Accessory details;
 - Daily Login streak Accessory details;
