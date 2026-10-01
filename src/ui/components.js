@@ -3732,7 +3732,8 @@ function materializeMailItem(desc) {
     critChance: desc.critChance || 0,
     critDamage: desc.critDamage || 0,
     enhanceLevel: 0,
-    empowerSlots: Array(Math.max(1, desc.empowerSlotCount || 1)).fill(null),
+    empowerSlots: Array(Math.max(1, desc.empowerSlotCount || desc.empowerSlotCapacity || 1)).fill(null),
+    ...(desc.empowerSlotCapacity ? { empowerSlotCapacity: Number(desc.empowerSlotCapacity) || 0 } : {}),
     ...(desc.gearTier ? { gearTier: Number(desc.gearTier) || 0 } : {}),
     ...(desc.rewardVersion ? { rewardVersion: Number(desc.rewardVersion) || 0 } : {}),
     ...(desc.itemModelVersion ? { itemModelVersion: Number(desc.itemModelVersion) || 0 } : {}),
@@ -3740,6 +3741,7 @@ function materializeMailItem(desc) {
     ...(desc.sourceFloor ? { sourceFloor: Number(desc.sourceFloor) || 0 } : {}),
     ...(desc.specialSource ? { specialSource: desc.specialSource } : {}),
     ...(desc.sourceIdentity ? { sourceIdentity: desc.sourceIdentity } : {}),
+    ...(desc.utilityStat ? { utilityStat: desc.utilityStat } : {}),
     ...(desc.setId ? { setId: desc.setId } : {}),
     ...(desc.star ? { star: desc.star } : {}),
     ...(desc.craftRecipeId ? { craftRecipeId: desc.craftRecipeId } : {})

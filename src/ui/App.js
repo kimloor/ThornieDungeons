@@ -1458,7 +1458,10 @@ function ThornieDungeons() {
       packCount,
       gold: gained,
       xp: xpGained,
-      diamonds: bossMonster && bossMonster.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0,
+      // Dungeon Reward V2 has no approved Diamond source. The Worker is authoritative
+      // and normalizes this field to zero; keep the client descriptor aligned for
+      // offline/retry parity instead of advertising a legacy boss Diamond grant.
+      diamonds: 0,
       unlockedNext,
       firstClear,
       starterPetGrant: starterPetEligible ? { instance: newPetInstance(starter.id), defId: starter.id } : null,
@@ -1706,7 +1709,7 @@ function ThornieDungeons() {
     }
     if (incomingItems.length) insertCarriedItems(incomingItems);
     setDropItem(drop);
-    const diamondsGained = bossMonster && bossMonster.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0;
+    const diamondsGained = 0;
     let xp = save.character.xp + xpGained;
     let level = save.character.level;
     let statPoints = save.character.statPoints;
