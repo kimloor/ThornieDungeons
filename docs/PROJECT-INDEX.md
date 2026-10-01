@@ -248,3 +248,8 @@ When an approved production contract changes:
 - Update `PROJECT-INDEX.md` if document status or task mapping changes.
 - Avoid creating duplicate, competing specifications.
 - Retire or remove obsolete documents when safe.
+
+### Current post-W9R execution update
+- WAVE 1 Dungeon V2 Encounter + Stat Foundation: QA APPROVED, held for combined release.
+- WAVE 1.5 Dungeon Monster Skills + Boss Mechanics: CURRENT DEV GATE, HIGH risk, same PR #40, combined release with WAVE 1.
+- WAVE 2 Reward V2 starts only after combined WAVE 1 + 1.5 QA/release.

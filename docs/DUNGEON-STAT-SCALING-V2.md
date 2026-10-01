@@ -89,7 +89,7 @@ Apply the monster identity profile after the V2 Normal Monster base stat has bee
 | Bone Rattler | ×1.10 | ×0.95 | ×1.35 | -1 | 0% | Defensive |
 | Sandy Crab | ×1.20 | ×0.75 | ×1.55 | -2 | 0% | Tank |
 
-Existing approved monster-skill identities remain attached to these monsters, including the previously designed families such as Toxic Spores, Heavy Cleave, Wing Flurry, Bone Bash, Shell Guard, and related Elite variants.
+Monster-skill identities and exact mechanics are authoritative in `DUNGEON-MONSTER-SKILLS-V2.md`, including Normal skills, Elite variants, deterministic cycles and Boss skill/phase mechanics.
 
 Do not flatten all monsters back to identical stats merely because they share the same Floor base.
 
@@ -152,7 +152,7 @@ Do **not** apply a separate generic Boss ×2 HP layer on top of these Boss profi
 | Ember Drake | ×3.20 | ×1.35 | ×1.10 | 15% | Aggressive |
 | Frost Warden | ×3.60 | ×1.15 | ×1.50 | 20% | Defensive |
 
-Previously approved Boss skills/mechanics remain part of each Boss identity and are not redefined by this document.
+Boss skills/mechanics are authoritative in `DUNGEON-MONSTER-SKILLS-V2.md`; this document owns only Boss stat profiles and the shared Enrage stat/damage threshold contract.
 
 ---
 
@@ -227,6 +227,7 @@ This document owns:
 
 It does not own:
 
+- Dungeon monster/Elite/Boss skills and action cycles → `DUNGEON-MONSTER-SKILLS-V2.md`
 - Dungeon rewards/economy → `DUNGEON-REWARD-PROGRESSION-V2.md`
 - shared damage/status/turn rules → `BATTLE-SYSTEM-V1.md` / Battle Core
 - Floor Select UI and pre-battle presentation → `DUNGEON-FLOOR-V1.md`
