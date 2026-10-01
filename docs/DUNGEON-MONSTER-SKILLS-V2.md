@@ -1,10 +1,10 @@
 # ThornieDungeons — Dungeon Monster Skills V2
 
-Status: **LOCKED / USER-APPROVED — READY FOR WAVE 1.5 IMPLEMENTATION**
+Status: **ACTIVE-PRODUCTION — WAVE 1.5 RELEASED 2026-10-01**
 
 Scope: Dungeon Normal Monster skills, Elite variants, Chapter Boss skills/phase mechanics, deterministic enemy action cycles, targeting, status interaction, Enrage interaction, Skip/checkpoint determinism.
 
-This document is the authoritative Dungeon Monster Skill V2 contract. It supersedes earlier partial or unnamed monster/Boss skill notes while preserving the approved monster identities from `DUNGEON-STAT-SCALING-V2.md`.
+This document is the authoritative Dungeon Monster Skill V2 production contract. It was implemented in the combined WAVE 1 + WAVE 1.5 release via PR #40 while preserving the approved monster identities from `DUNGEON-STAT-SCALING-V2.md`.
 
 ---
 

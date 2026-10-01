@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — W9R complete in Production; WAVE 1 QA-approved and held; WAVE 1.5 is the current DEV gate; Graphics G4 may proceed in parallel**
+Status: **ACTIVE-EXECUTION — WAVE 1 + WAVE 1.5 complete in Production; WAVE 2 is the current DEV gate; Graphics G4/G5 may proceed in parallel**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -674,7 +674,7 @@ Rules for all waves:
 ---
 
 ## WAVE 1 — Dungeon V2 Encounter + Stat Foundation
-**Status: QA APPROVED — HELD FOR COMBINED RELEASE WITH WAVE 1.5**
+**Status: COMPLETE — PRODUCTION VERIFIED — 2026-10-01**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA; Graphics only for identified presentation gaps**
@@ -710,7 +710,7 @@ Exit condition:
 ---
 
 ## WAVE 1.5 — Dungeon Monster Skills + Boss Mechanics
-**Status: READY AFTER WAVE 1 QA — RELEASE TOGETHER WITH WAVE 1**
+**Status: COMPLETE — PRODUCTION VERIFIED — 2026-10-01**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory**
@@ -763,7 +763,7 @@ Exit condition:
 ---
 
 ## WAVE 2 — Reward V2 Item / Drop / Economy Foundation
-**Status: READY AFTER WAVE 1.5**
+**Status: READY_FOR_DEV — CURRENT EXECUTION GATE**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA + Graphics for missing icons**
@@ -1074,8 +1074,8 @@ Graphics must not redesign mechanics or publish guessed asset paths.
 **Risk follows the wave under test**
 
 - **Q1 — W9R regression — HIGH**
-- **Q2 — Dungeon encounter/stat verification — HIGH — WAVE 1 QA APPROVED; final combined retest after WAVE 1.5**
-- **Q2.5 — Dungeon Monster Skills/Boss Mechanics verification — HIGH**
+- **Q2 — Dungeon encounter/stat verification — HIGH — COMPLETE / PRODUCTION VERIFIED**
+- **Q2.5 — Dungeon Monster Skills/Boss Mechanics verification — HIGH — COMPLETE / PRODUCTION VERIFIED**
 - **Q3 — Reward/item/drop/economy verification — HIGH**
 - **Q4 — Enhance/Empower verification — HIGH**
 - **Q5 — Boss Weapon/Set cross-mode verification — HIGH**
@@ -1096,11 +1096,11 @@ W9 Arena V2                   ✅ COMPLETE / PRODUCTION VERIFIED
  ↓
 W9R API Worker Refactor       ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 1 Dungeon V2 Foundation  ✅ QA APPROVED — HELD FOR COMBINED RELEASE
+WAVE 1 Dungeon V2 Foundation  ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 1.5 Monster Skills/Boss   🔴 HIGH — CURRENT DEV GATE
+WAVE 1.5 Monster Skills/Boss   ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 2 Reward V2 Foundation   🔴 HIGH
+WAVE 2 Reward V2 Foundation   🔴 HIGH — CURRENT DEV GATE
  ↓
 WAVE 3 Enhance + Empower      🔴 HIGH
  ↓
@@ -1153,3 +1153,17 @@ The active roadmap is complete when:
 - Graphics assets use canonical R2/manifest paths and approved shared visual contracts;
 - every HIGH/VERY HIGH wave passes its focused QA, build/regression gate and live verification where deployed;
 - Battle Core, save reliability, exact-once rewards and unrelated production systems remain intact.
+
+
+### WAVE 1 + 1.5 production closeout — 2026-10-01
+
+- PR #40 merged to `main` as `e2e0a45ae828f57118d9c7fc1e5e9809439b5d42`.
+- Frontend production workflow run `36870595048`: SUCCESS.
+- Frontend Worker version: `7c2a3ce2-ddf7-4166-89bd-4e58ccb9324f`.
+- API production workflow run `36870595178`: SUCCESS.
+- API Worker version: `96e4a5b3-9ef6-477c-9fe6-f1e0ab8ea60c`.
+- Post-merge Battle Core parity run `36870595034`: SUCCESS.
+- D1 migrations: none pending / none applied for this wave.
+- Combined focused QA: PASS.
+- Full suite reported before merge: 404/404 PASS.
+- Supported deploy pipelines verified; the separate Cloudflare GitHub App failure remains a known unrelated infrastructure signal.

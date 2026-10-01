@@ -1,10 +1,10 @@
 # ThornieDungeons — Dungeon Stat Scaling V2
 
-Status: **LOCKED / USER-APPROVED — READY FOR V2 IMPLEMENTATION**
+Status: **ACTIVE-PRODUCTION — WAVE 1 RELEASED 2026-10-01**
 
 Scope: Dungeon Normal Monster, Elite, pack, and Chapter Boss combat-stat scaling.
 
-Implementation status: **DESIGN CONTRACT ONLY — not yet production behavior.**
+Implementation status: **PRODUCTION — implemented via PR #40 / merge e2e0a45ae828f57118d9c7fc1e5e9809439b5d42.**
 
 This document defines the approved Dungeon V2 stat-scaling direction. Current production formulas in `src/systems/stats.js` remain the live implementation until a separate implementation task replaces them.
 
@@ -200,7 +200,7 @@ Implementation still requires ordinary correctness/regression QA for the formula
 
 ## 12. Migration / implementation boundary
 
-Current production does not yet implement this document.
+Production implements this document as of the combined WAVE 1 + WAVE 1.5 release on 2026-10-01.
 
 Implementation must intentionally replace or adapt legacy behavior including:
 

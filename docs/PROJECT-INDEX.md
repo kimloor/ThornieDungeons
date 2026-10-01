@@ -33,8 +33,8 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. |
 | [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md) | Dungeon Floor Select, Floor Detail, floor event/modifier presentation, monster preview, door states, and responsive entry flow. |
-| [`DUNGEON-STAT-SCALING-V2.md`](DUNGEON-STAT-SCALING-V2.md) | **ACTIVE-DESIGN / USER-APPROVED** Dungeon V2 Normal/Elite/Boss combat-stat scaling, monster identity profiles, pack scaling, Boss profiles, and Enrage. |
-| [`DUNGEON-MONSTER-SKILLS-V2.md`](DUNGEON-MONSTER-SKILLS-V2.md) | **LOCKED / USER-APPROVED** WAVE 1.5 Normal/Elite Monster skill cycles, Boss skills/phases, targeting and checkpoint/Skip determinism. |
+| [`DUNGEON-STAT-SCALING-V2.md`](DUNGEON-STAT-SCALING-V2.md) | **ACTIVE-PRODUCTION** Dungeon V2 Normal/Elite/Boss combat-stat scaling, monster identity profiles, pack scaling, Boss profiles, and Enrage. |
+| [`DUNGEON-MONSTER-SKILLS-V2.md`](DUNGEON-MONSTER-SKILLS-V2.md) | **ACTIVE-PRODUCTION** WAVE 1.5 Normal/Elite Monster skill cycles, Boss skills/phases, targeting and checkpoint/Skip determinism. |
 | [`DUNGEON-REWARD-PROGRESSION-V2.md`](DUNGEON-REWARD-PROGRESSION-V2.md) | **ACTIVE-DESIGN / USER-APPROVED** Dungeon Reward V2: Tier/Rarity, Normal/Elite/Boss rewards, First-Clear Accessory, Boss materials/Mythic crafting, EXP/Gold/material economy, salvage, and Shop/Crafting reward roles. |
 | [`SOCIAL-SYSTEM-V1.md`](SOCIAL-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** shared character-scoped Social foundation: identity, presence, block, unread, lifecycle, security, and shared errors. Live; consumed by Friend V1. |
 | [`FRIEND-SYSTEM-V1.md`](FRIEND-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** Friend search/requests, 50-friend cap, remove/block, presence, profile, and DM eligibility. |
@@ -252,6 +252,6 @@ When an approved production contract changes:
 - Retire or remove obsolete documents when safe.
 
 ### Current post-W9R execution update
-- WAVE 1 Dungeon V2 Encounter + Stat Foundation: QA APPROVED, held for combined release.
-- WAVE 1.5 Dungeon Monster Skills + Boss Mechanics: CURRENT DEV GATE, HIGH risk, same PR #40, combined release with WAVE 1.
-- WAVE 2 Reward V2 starts only after combined WAVE 1 + 1.5 QA/release.
+- WAVE 1 Dungeon V2 Encounter + Stat Foundation: COMPLETE / PRODUCTION.
+- WAVE 1.5 Dungeon Monster Skills + Boss Mechanics: COMPLETE / PRODUCTION.
+- WAVE 2 Reward V2: CURRENT DEV GATE.
