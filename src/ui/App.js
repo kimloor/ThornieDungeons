@@ -1171,7 +1171,23 @@ function ThornieDungeons() {
     driveCoreBattle(state, command);
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
+    void (async () => {
     const allowResume = options.allowResume !== false;
+    const resumableCheckpoint = allowResume && resumeBattle?.serverContext && Number(resumeBattle.floor) === Number(floorNum)
+      ? resumeBattle
+      : null;
+    let battleAuthorization = null;
+    setBusy(true);
+    if (!resumableCheckpoint) {
+      if (resumeBattle?.battleId) {
+        const cleared = await cloudClearBattleCheckpoint(cred.url, save.characterId, resumeBattle.battleId);
+        if (!cleared?.ok) throw new Error("checkpoint_reset_failed");
+        setResumeBattle(null);
+      }
+      const started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum);
+      if (!started?.ok || !started?.battleId || !started?.context) throw new Error(started?.error || "dungeon_start_failed");
+      battleAuthorization = started;
+    }
     combatOutcomeRef.current = null;
     finishingBattleIdRef.current = null;
     setHeroAnim("");
@@ -1193,12 +1209,10 @@ function ThornieDungeons() {
     // later in the session (e.g. on Retry Stage for a floor number that
     // happens to coincide with it).
     if (resumeRun) setResumeRun(null);
-    // Dungeon Select pre-rolls a real encounter so its modifier, monster sprites and
-    // reward preview are the same ones the player actually fights. All other entry
-    // paths (retry/next/resume) keep generating encounters exactly as before.
-    const spawned = Array.isArray(options.encounter) && options.encounter.length
-      ? options.encounter
-      : makeEncounter(floorNum);
+    // The map may preview a local encounter, but combat identity is established by
+    // the Worker before Battle Core starts. Resume uses the same persisted context.
+    const serverContext = resumableCheckpoint?.serverContext || battleAuthorization?.context;
+    const spawned = makeEncounter(floorNum, { serverContext });
     setMonsters(spawned);
     monstersRef.current = spawned;
     setTargetUid(spawned[0] ? spawned[0].uid : null);
@@ -1231,23 +1245,22 @@ function ThornieDungeons() {
     const learnedActives = heroActiveSkillList(save.character.skillLevels).map(skill => skill.key);
     const equippedActives = quickSlots.filter(slot => slot && slot.kind === "skill" && learnedActives.includes(slot.key)).map(slot => slot.key);
     let initialBattle;
-    let resetOldCheckpoint = null;
-    if (resumeBattle && Number(resumeBattle.floor) === Number(floorNum)) {
-      try { initialBattle = BATTLE_CORE_V1.restoreCheckpoint(resumeBattle); }
+    if (resumableCheckpoint) {
+      try { initialBattle = BATTLE_CORE_V1.restoreCheckpoint(resumableCheckpoint); }
       catch (e) {
-        initialBattle = null;
-        if (resumeBattle.battleId) resetOldCheckpoint = cloudClearBattleCheckpoint(cred.url, save.characterId, resumeBattle.battleId);
+        await cloudClearBattleCheckpoint(cred.url, save.characterId, resumableCheckpoint.battleId);
+        setResumeBattle(null);
+        setBusy(false);
+        enterStage(floorNum, carryPlayer, { ...options, allowResume: false });
+        return;
       }
-      setResumeBattle(null);
-    } else if (resumeBattle?.battleId) {
-      resetOldCheckpoint = cloudClearBattleCheckpoint(cred.url, save.characterId, resumeBattle.battleId);
       setResumeBattle(null);
     }
     if (!initialBattle) initialBattle = BATTLE_CORE_V1.createDungeonBattle({
-      battleId: `dungeon-${save.characterId}-${floorNum}-${Date.now()}`,
+      battleId: battleAuthorization.battleId,
       floor: floorNum,
       mode: "dungeon",
-      seed: (Date.now() ^ Number(floorNum)) >>> 0,
+      seed: battleAuthorization.context.encounterSeed,
       hero: {
         id: "hero", kind: "hero", side: "ally", name: save.characterName || "Hero", hp: heroStartHp, maxHp: stats.maxHp,
         sp: nextPlayer.mp, maxSp: stats.maxMp, atk: stats.atk, def: stats.def, speed: stats.speed,
@@ -1265,15 +1278,12 @@ function ThornieDungeons() {
       },
       enemies: spawned.map((monster, index) => DUNGEON_V2.toDungeonV2BattleEnemy(monster, index))
     });
+    if (battleAuthorization) initialBattle.serverContext = battleAuthorization.context;
     // Apply the Dungeon V2 enrage boundary before the first resumed checkpoint;
     // the serialized unit flag makes this exact-once across save/reload/resume.
     DUNGEON_V2.applyDungeonV2BossEnrage(initialBattle);
     applyCoreBattleState(initialBattle, false);
-    if (resetOldCheckpoint) resetOldCheckpoint.then(result => {
-      if (result?.ok) pushBattleCheckpoint(initialBattle);
-      else setLog("Checkpoint reset failed — battle progress will retry after reconnect.");
-    });
-    else pushBattleCheckpoint(initialBattle);
+    pushBattleCheckpoint(initialBattle);
     setActiveTurnKey(null);
     setCombatTurnCount(0);
     setBattleFinishing(false);
@@ -1288,7 +1298,16 @@ function ThornieDungeons() {
     criticalAssets.ready.finally(() => {
       setPhase("combat");
       setTimeout(() => driveCoreBattle(initialBattle), 0);
+      setBusy(false);
       criticalAssets.settled.finally(() => warmBattleDeferredAssets(battleAssets));
+    });
+    })().catch(error => {
+      setBusy(false);
+      setBattleFinishing(false);
+      setLog(error?.message === "dungeon_floor_locked"
+        ? "This Dungeon Floor is not unlocked."
+        : "Dungeon battle start failed — please try again.");
+      setPhase("map");
     });
   }
   // Builds the Active Pet as a real combat unit (own HP/ATK/DEF/Speed) for this fight.

@@ -287,7 +287,7 @@
   function toDungeonV2BattleEnemy(monster, index = 0) {
     return {
       ...monster,
-      monsterDefId: monster.id,
+      monsterDefId: monster.dungeonV2ProfileId || monster.id,
       id: monster.uid,
       kind: monster.isBoss ? "boss" : "monster",
       side: "enemy",

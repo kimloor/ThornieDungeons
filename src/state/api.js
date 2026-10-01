@@ -166,6 +166,9 @@ function cloudSaveRunState(url, characterId, runState) {
 function cloudGetBattleState(url, characterId) {
   return cloudAuthGet(url, { action: "getBattleState", characterId });
 }
+function cloudStartDungeonBattle(url, characterId, floor) {
+  return cloudAuthPost(url, { action: "startDungeonBattle", characterId, floor });
+}
 function cloudSaveBattleCheckpoint(url, characterId, battleId, checkpointSeq, payload) {
   return cloudAuthPost(url, { action: "saveBattleCheckpoint", characterId, battleId, checkpointSeq, payload });
 }

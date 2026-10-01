@@ -158,9 +158,24 @@ function makeEnemy(floor, options = {}) {
   const encounterType = options.encounterType || DUNGEON_V2.classifyDungeonEncounter(floor);
   const isBoss = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS;
   const isElite = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.ELITE;
-  const modifier = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL ? (options.modifier === undefined ? rollFloorModifier() : options.modifier) : null;
+  const modifier = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL
+    ? (options.modifierId !== undefined
+      ? FLOOR_MODIFIERS.find(entry => entry.id === options.modifierId) || null
+      : (options.modifier === undefined ? rollFloorModifier() : options.modifier))
+    : null;
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
-  const t = pool[Math.floor(Math.random() * pool.length)] || pool[0];
+  const canonicalProfile = isBoss
+    ? DUNGEON_V2.getDungeonV2BossProfile(options.profileId)
+    : DUNGEON_V2.getDungeonV2MonsterProfile(options.profileId);
+  const t = options.profileId
+    ? pool.find(entry => String(entry.dungeonV2Id || entry.id) === String(options.profileId)) || {
+      id: canonicalProfile?.id || String(options.profileId),
+      name: canonicalProfile?.name || String(options.profileId),
+      color: "#7ED9A8",
+      sizeClass: isBoss ? "large" : "medium",
+      anchorType: options.profileId === "bramble_bat" ? "flying" : "ground"
+    }
+    : pool[Math.floor(Math.random() * pool.length)] || pool[0];
   const packCount = Math.max(1, Math.min(3, Math.floor(Number(options.packCount) || 1)));
   const v2ProfileId = t.dungeonV2Id || t.id;
   const v2Stats = isBoss
@@ -175,7 +190,7 @@ function makeEnemy(floor, options = {}) {
   const skillConfig = DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
   return {
     id: t.id,
-    uid: `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    uid: options.instanceId || `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name,
     color: t.color,
     isBoss,
@@ -221,8 +236,18 @@ function makeEnemy(floor, options = {}) {
 // normal encounters for the onboarding flow; later normal floors use the
 // existing 1-3 pack distribution. Midpoint Elite and Chapter Boss floors are
 // always single-monster encounters.
-function makeEncounter(floor) {
+function makeEncounter(floor, options = {}) {
   const encounterType = DUNGEON_V2.classifyDungeonEncounter(floor);
+  const serverContext = options.serverContext;
+  if (serverContext && Number(serverContext.floor) === Number(floor) && Array.isArray(serverContext.enemies)) {
+    return serverContext.enemies.map(enemy => makeEnemy(floor, {
+      encounterType,
+      packCount: serverContext.packCount,
+      profileId: enemy.id,
+      instanceId: enemy.instanceId,
+      modifierId: enemy.modifierId
+    }));
+  }
   if (encounterType !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL || Number(floor) < 5) {
     return [makeEnemy(floor, { encounterType, packCount: 1 })];
   }
