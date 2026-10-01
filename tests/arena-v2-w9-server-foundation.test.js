@@ -31,8 +31,7 @@ globalThis.__arena = {
   handleGetArenaV2Status, handleGetArenaV2Opponents, handleRefreshArenaV2Opponents,
   handleGetArenaV2PlayerCard, handleSaveArenaV2Setup, handlePurchaseArenaV2Ticket,
   handleAcknowledgeArenaV2Unlock, arenaTierForRating, ARENA_TICKET_MAX,
-  generateArenaV2Opponents, ARENA_MATCH_BANDS, PVP_TICKET_MAX,
-  PVP_TICKET_REGEN_MS, PVP_DIAMOND_REFILL_COST
+  generateArenaV2Opponents, ARENA_MATCH_BANDS
 };`;
   const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(sandbox);
@@ -91,14 +90,15 @@ function createDb() {
 const session = (id) => ({ ok: true, row: { id } });
 async function jsonBody(response) { return await response.json(); }
 
-test('W9.4 is isolated from V1 Arena constants and routes', () => {
-  assert.equal(arena.PVP_TICKET_MAX, 5);
-  assert.equal(arena.PVP_TICKET_REGEN_MS, 20 * 60 * 1000);
-  assert.equal(arena.PVP_DIAMOND_REFILL_COST, 30);
+test('W9 closeout keeps Arena V2 routes and retires Arena V1 runtime routes', () => {
   assert.match(workerSource, /getArenaV2Status/);
   assert.match(workerSource, /saveArenaV2Setup/);
-  assert.match(workerSource, /startArenaMatch/);
-  assert.match(workerSource, /submitArenaTurn/);
+  assert.match(workerSource, /prepareArenaV2Match/);
+  assert.match(workerSource, /submitArenaV2Action/);
+  assert.doesNotMatch(workerSource, /action === "getArenaStatus"/);
+  assert.doesNotMatch(workerSource, /action === "getArenaOpponents"/);
+  assert.doesNotMatch(workerSource, /case "startArenaMatch"/);
+  assert.doesNotMatch(workerSource, /case "submitArenaTurn"/);
 });
 
 test('Lv9 is locked, Lv10 unlocks, migrated Lv10 is silent, crossing Lv10 shows once, acknowledgement is idempotent', async () => {

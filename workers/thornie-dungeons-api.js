@@ -330,14 +330,24 @@ async function handleGetLeaderboard(db, board) {
       .all();
     return json({ ok: true, board, raidId: raid.raid_id, bossName: def.name, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current), rows: res.results || [], availableDates: recentDateKeys() });
   }
-  // NEW — public, read-only ranking view. pvp_ranking is already the live, persistent
-  // record (updated by settleArenaMatch on every match), so this is a straight top-50
-  // read with no snapshot step needed, unlike floor/cp/pet_cp which are derived values.
+  // Compatibility board key "pvp" now reads the authoritative Arena V2 season.
+  // Global Leaderboard keeps its existing public shape while V1 pvp_ranking is retired.
   if (board === "pvp") {
-    const res = await db
-      .prepare(`SELECT character_id, player_id, name, rating, wins, losses FROM pvp_ranking ORDER BY rating DESC LIMIT 50`)
-      .all();
-    return json({ ok: true, board, rows: res.results || [] }); // no availableDates — history isn't tracked for pvp
+    const season = await db.prepare(
+      `SELECT season_id, season_number, ends_at FROM arena_seasons WHERE status = 'active' ORDER BY season_number DESC LIMIT 1`
+    ).first();
+    if (!season) return json({ ok: true, board, rows: [] });
+    const res = await db.prepare(`
+      SELECT p.character_id, c.player_id, c.name, p.rating,
+             p.attack_wins AS wins, p.attack_losses AS losses, p.attack_draws AS draws
+      FROM arena_season_players p
+      JOIN characters c ON c.character_id = p.character_id
+      WHERE p.season_id = ?
+        AND (p.attack_wins + p.attack_draws + p.attack_losses) > 0
+      ORDER BY p.rating DESC, p.attack_wins DESC, p.rating_reached_at ASC, p.character_id ASC
+      LIMIT 50
+    `).bind(season.season_id).all();
+    return json({ ok: true, board, seasonId: season.season_id, seasonNumber: Number(season.season_number) || 0, seasonEndsAt: season.ends_at, rows: res.results || [] });
   }
   const col = LEADERBOARD_BOARD_COLS[board];
   if (!col) return json({ error: "invalid_board", allowed: Object.keys(LEADERBOARD_BOARD_COLS).concat(["raid", "pvp"]) });
@@ -4931,50 +4941,10 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
   if (typeof module !== "undefined") module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
 
-// ---------- Phase 5: PvP Arena orchestration ----------
-// Everything below calls ONLY the public BATTLE_CORE_V1 API (createArenaBattle,
-// currentUnit, battleStep) — it does not reimplement damage/status/skill resolution.
-const PVP_TICKET_MAX = 5;
-const PVP_TICKET_REGEN_MS = 20 * 60 * 1000; // +1 every 20 minutes
-const PVP_DIAMOND_REFILL_COST = 30; // per extra attack once tickets hit 0
-const PVP_RATING_K = 24;
-const PVP_RATING_FLOOR = 100; // rating never drops below this
-const PVP_RATING_MIN_DELTA = 5; // guaranteed minimum rating swing on any decisive match
-const PVP_WIN_DIAMONDS = 15;
-const PVP_LOSS_DIAMONDS = 3; // small consolation so losing still feels worth attempting
-const PVP_BASE_SPEED = 10; // matches src/systems/stats.js's speedFromAgi() base (worker's
-// own BASE_SPEED=100 above is an unrelated legacy constant — don't reuse it here)
+// ---------- Arena shared Worker helpers ----------
+// Retained by Arena V2 after the legacy V1 routes/tables were retired.
+const PVP_BASE_SPEED = 10; // shared Arena speed baseline retained for V2 combat snapshots
 
-function resolvePvpTickets(stored, updatedAtIso) {
-  const rawTickets = Number(stored);
-  const storedTickets = Number.isFinite(rawTickets) ? Math.max(0, Math.min(PVP_TICKET_MAX, Math.floor(rawTickets))) : PVP_TICKET_MAX;
-  if (storedTickets >= PVP_TICKET_MAX) {
-    return { tickets: PVP_TICKET_MAX, updatedAt: "" };
-  }
-  const updatedAtMs = Date.parse(updatedAtIso || "");
-  if (!Number.isFinite(updatedAtMs)) {
-    return { tickets: storedTickets, updatedAt: new Date(Date.now()).toISOString() };
-  }
-  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
-  const ticks = Math.floor(elapsedMs / PVP_TICKET_REGEN_MS);
-  if (ticks <= 0) return { tickets: storedTickets, updatedAt: updatedAtIso };
-  const tickets = Math.min(PVP_TICKET_MAX, storedTickets + ticks);
-  const updatedAt = tickets >= PVP_TICKET_MAX ? "" : new Date(updatedAtMs + ticks * PVP_TICKET_REGEN_MS).toISOString();
-  return { tickets, updatedAt };
-}
-function pvpTicketsSecondsToNext(updatedAtIso) {
-  if (!updatedAtIso) return 0;
-  const updatedAtMs = Date.parse(updatedAtIso);
-  if (!Number.isFinite(updatedAtMs)) return Math.round(PVP_TICKET_REGEN_MS / 1000);
-  const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
-  const remaining = PVP_TICKET_REGEN_MS - (elapsedMs % PVP_TICKET_REGEN_MS);
-  return Math.max(0, Math.round(remaining / 1000));
-}
-
-// Mirrors petCombatPower()'s own internal stat derivation (defId alias, v1-growth-curve
-// vs v2-rolled-stats, 3-tier star mult) exactly, returning the raw stat block a
-// BATTLE_CORE_V1 pet unit needs (including agi/vit, since Pet Actives like Sprout's heal
-// or the speed formula both read those directly) instead of collapsing to a single CP.
 function petBattleStats(instance) {
   if (!instance) return null;
   const defId = instance.defId === "thunder_cub" ? "hell_wolf" : instance.defId;
@@ -4996,9 +4966,7 @@ function petBattleStats(instance) {
     agi: s.agi, vit: s.vit,
   };
 }
-// Parses a character row's pets_json (see serialize.js's characterProgressToServer) for
-// its active pet instance + committed Hero Skill V1 ranks — the same envelope the client
-// already writes on every save, so no new column was needed for either.
+
 function parsePetsJson(character) {
   let parsed = {};
   try { parsed = character.pets_json ? JSON.parse(character.pets_json) : {}; } catch (e) { parsed = {}; }
@@ -5008,53 +4976,12 @@ function parsePetsJson(character) {
   const active = list.find((p) => p && p.instId === character.active_pet_id) || null;
   return { active, skillLevels };
 }
-// Small display-name lookup (src/systems/pets.js's PET_POOL lives client-side only) —
-// just enough to build a readable pvpPetUnit name like "kim01's Sprout" for battle log
-// text. Keep in sync if a new pet species is added to PET_POOL.
+
 const PET_DISPLAY_NAMES = {
   sprout: "Sprout", flamekit: "Flamekit", sparkpup: "Sparkpup", ember_fox: "Ember Fox",
   moon_hare: "Moon Hare", hell_wolf: "Hell Wolf", inferno_drake: "Inferno Drake", storm_phoenix: "Storm Phoenix",
 };
 
-// Builds a raw hero unit for BATTLE_CORE_V1.buildHeroUnit()/createArenaBattle() from a
-// live character row. toughness/iron_body/battle_hardened are applied the same way
-// src/ui/App.js's own stat calc applies them (multiplicative on top of base+equipment),
-// so a snapshot taken here matches what the character would show on their own status
-// screen. `level` is carried along for opponent-list display only — battleCore ignores
-// unknown fields on a unit.
-function pvpHeroUnit(character, equippedItems, id, name, skillLevels) {
-  const s = {
-    str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
-    dex: Number(character.dex) || 0, luk: Number(character.luk) || 0,
-  };
-  const level = Number(character.level) || 1;
-  const base = characterBaseStats(level, s);
-  const eb = { atk: 0, def: 0, hp: 0, mp: 0, critChance: 0, critDamage: 0, dodgeChance: 0 };
-  (equippedItems || []).forEach((it) => {
-    const ib = itemBonus(it);
-    eb.atk += ib.atk; eb.def += ib.def; eb.hp += ib.hp; eb.mp += ib.mp;
-    eb.critChance += ib.critChance || 0; eb.critDamage += ib.critDamage || 0; eb.dodgeChance += ib.dodgeChance || 0;
-  });
-  const toughness = heroSkillRankData(skillLevels, "toughness");
-  const ironBody = heroSkillRankData(skillLevels, "iron_body");
-  const battleHardened = heroSkillRankData(skillLevels, "battle_hardened");
-  const maxHp = Math.round((base.maxHp + eb.hp) * (1 + (toughness ? toughness.maxHpPct : 0) / 100));
-  const def = Math.round((base.def + eb.def) * (1 + (ironBody ? ironBody.defPct : 0) / 100));
-  return {
-    id, name, kind: "hero", level,
-    maxHp, hp: maxHp,
-    maxSp: Math.round(base.maxMp + eb.mp), sp: Math.round(base.maxMp + eb.mp),
-    atk: Math.round(base.atk + eb.atk), def,
-    speed: Math.round(PVP_BASE_SPEED + s.agi * 2),
-    accuracy: base.accuracy,
-    dodge: Math.round((base.dodgeChance + eb.dodgeChance) * 10) / 10,
-    crit: Math.round((base.critChance + eb.critChance) * 10) / 10,
-    critDamage: 1 + (base.critDamage + eb.critDamage) / 100,
-    statusResist: battleHardened ? battleHardened.statusResist : 0,
-    skills: skillLevels,
-    activeSkills: heroActiveSkillList(skillLevels).map((sk) => sk.key),
-  };
-}
 function pvpPetUnit(instance, id, ownerName) {
   const bs = petBattleStats(instance);
   if (!bs) return null;
@@ -5068,204 +4995,11 @@ function pvpPetUnit(instance, id, ownerName) {
   };
 }
 
-async function ensureArenaRanking(db, characterId, playerId, name) {
-  await db
-    .prepare(
-      `INSERT INTO pvp_ranking (character_id, player_id, name, rating, wins, losses, updated_at)
-       VALUES (?, ?, ?, 1000, 0, 0, ?)
-       ON CONFLICT(character_id) DO UPDATE SET name = excluded.name`
-    )
-    .bind(characterId, playerId, name || "", nowIso())
-    .run();
-}
-async function upsertArenaSnapshot(db, characterId, playerId, name, loadout) {
-  await db
-    .prepare(
-      `INSERT INTO pvp_snapshots (character_id, player_id, name, stats_json, updated_at)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(character_id) DO UPDATE SET
-         player_id = excluded.player_id, name = excluded.name, stats_json = excluded.stats_json, updated_at = excluded.updated_at`
-    )
-    .bind(characterId, playerId, name || "", JSON.stringify(loadout), nowIso())
-    .run();
-}
-
-// Refreshes the caller's own ranking row + combat snapshot (so the opponent pool always
-// reflects roughly-current gear/level/skills/pet), then returns rating/rank/tickets/top-10
-// plus an activeMatchId if a match is already in progress so the client can resume it.
-async function handleGetArenaStatus(db, id, session, characterId) {
-  const [auth, owned, itemsRes] = await Promise.all([
-    verifyPlayer(db, id, session),
-    verifyOwnedCharacter(db, id, characterId),
-    db.prepare(`SELECT atk, def, hp, mp, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
-  ]);
-  if (auth.error) return json({ error: auth.error });
-  if (owned.error) return json({ error: owned.error });
-  const character = owned.row;
-  const { active, skillLevels } = parsePetsJson(character);
-  const heroUnit = pvpHeroUnit(character, itemsRes.results || [], "snap_hero", character.name || "", skillLevels);
-  const petUnit = active ? pvpPetUnit(active, "snap_pet", character.name || "") : null;
-
-  const [, , activeMatch] = await Promise.all([
-    ensureArenaRanking(db, characterId, id, character.name || ""),
-    upsertArenaSnapshot(db, characterId, id, character.name || "", { hero: heroUnit, pet: petUnit }),
-    db.prepare(`SELECT match_id FROM pvp_matches WHERE attacker_character_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`).bind(characterId).first(),
-  ]);
-
-  const [rankRow, top10] = await Promise.all([
-    db.prepare(`SELECT rating, wins, losses FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first(),
-    db.prepare(`SELECT character_id, name, rating, wins, losses FROM pvp_ranking ORDER BY rating DESC LIMIT 10`).all(),
-  ]);
-  const myRating = rankRow ? Number(rankRow.rating) : 1000;
-  const rankPosRow = await db.prepare(`SELECT COUNT(*) as c FROM pvp_ranking WHERE rating > ?`).bind(myRating).first();
-  const rankPos = (rankPosRow ? Number(rankPosRow.c) : 0) + 1;
-  const ticketState = resolvePvpTickets(character.pvp_tickets, character.pvp_tickets_updated_at);
-
-  return json({
-    ok: true,
-    rating: myRating,
-    wins: rankRow ? Number(rankRow.wins) : 0,
-    losses: rankRow ? Number(rankRow.losses) : 0,
-    rank: rankPos,
-    tickets: ticketState.tickets,
-    ticketsMax: PVP_TICKET_MAX,
-    ticketsRegenSeconds: pvpTicketsSecondsToNext(ticketState.updatedAt),
-    diamondRefillCost: PVP_DIAMOND_REFILL_COST,
-    activeMatchId: activeMatch ? activeMatch.match_id : null,
-    top: (top10.results || []).map((r) => ({ characterId: r.character_id, name: r.name, rating: Number(r.rating), wins: Number(r.wins), losses: Number(r.losses) })),
-  });
-}
-
-// Returns 3 opponents (never self), preferring characters within +-300 rating of the
-// caller and falling back to any ranked character if that band is too sparse.
-async function handleGetArenaOpponents(db, id, session, characterId) {
-  const auth = await verifyPlayer(db, id, session);
-  if (auth.error) return json({ error: auth.error });
-  const owned = await verifyOwnedCharacter(db, id, characterId);
-  if (owned.error) return json({ error: owned.error });
-
-  const myRank = await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first();
-  const myRating = myRank ? Number(myRank.rating) : 1000;
-
-  // json_extract(...) IS NOT NULL filters out snapshots still in an older stats_json
-  // shape (e.g. written before a combat-engine migration, before that character's own
-  // owner has reopened Arena to refresh it) — without this, a listed opponent could
-  // 404 with "opponent_not_found" the moment you actually tried to fight them.
-  const nearby = await db
-    .prepare(
-      `SELECT s.character_id, s.name, s.stats_json, r.rating, r.wins, r.losses
-       FROM pvp_snapshots s JOIN pvp_ranking r ON r.character_id = s.character_id
-       WHERE s.character_id != ? AND r.rating BETWEEN ? AND ? AND json_extract(s.stats_json, '$.hero') IS NOT NULL
-       ORDER BY RANDOM() LIMIT 3`
-    )
-    .bind(characterId, myRating - 300, myRating + 300)
-    .all();
-  let rows = nearby.results || [];
-  if (rows.length < 3) {
-    const any = await db
-      .prepare(
-        `SELECT s.character_id, s.name, s.stats_json, r.rating, r.wins, r.losses
-         FROM pvp_snapshots s JOIN pvp_ranking r ON r.character_id = s.character_id
-         WHERE s.character_id != ? AND json_extract(s.stats_json, '$.hero') IS NOT NULL ORDER BY RANDOM() LIMIT 3`
-      )
-      .bind(characterId)
-      .all();
-    rows = any.results || [];
-  }
-  const opponents = rows.map((r) => {
-    let loadout = {};
-    try { loadout = r.stats_json ? JSON.parse(r.stats_json) : {}; } catch (e) { loadout = {}; }
-    return {
-      characterId: r.character_id, name: r.name, level: (loadout.hero && loadout.hero.level) || 1,
-      hasPet: !!loadout.pet, rating: Number(r.rating), wins: Number(r.wins), losses: Number(r.losses),
-    };
-  });
-  return json({ ok: true, opponents });
-}
-
-// ---- session driver: wraps BATTLE_CORE_V1, adds zero resolver logic of its own ----
-function pvpIsPlayerHeroTurn(actor) { return !!actor && actor.kind === "hero" && actor.side === "team_a"; }
-// battleStep() only accepts a real command from state.controlledSide's hero — anyone
-// else defaults to a basic attack (see src/systems/battleCore.js's battleStep). Flipping
-// controlledSide immediately before every step, and re-aliasing state.resources to match
-// (the exact invariant ensureTeamModel itself maintains), is how BOTH PvP fighters get to
-// use real active skills through that same, unmodified resolver — no forked logic here.
-function pvpSetControlledSide(state, side) {
-  if (state.controlledSide !== side) {
-    state.controlledSide = side;
-    state.teamResources = state.teamResources || {};
-    state.teamResources[side] = state.teamResources[side] || { fury: 0, aegis: 0, scheme: 0, schemeConsumed: 0, nextActiveDebuffBonus: 0 };
-    state.resources = state.teamResources[side];
-  }
-  return state;
-}
-// Ordinary "which button would this side press" decision-making — the same category of
-// logic a client UI already does to decide which skill buttons are enabled. Not a
-// duplicate of any battleCore damage/status resolution.
-function pvpPickBotCommand(actor) {
-  if (actor.statuses && actor.statuses.silence) return { type: "basic" };
-  const candidates = (actor.activeSkills || []).filter((skillId) => {
-    const data = heroSkillRankData(actor.skills, skillId);
-    if (!data) return false;
-    if ((actor.cooldowns[skillId] || 0) > 0) return false;
-    if (actor.sp < (Number(data.sp) || 0)) return false;
-    return true;
-  });
-  if (candidates.length && Math.random() < 0.5) {
-    return { type: "active", skillId: candidates[Math.floor(Math.random() * candidates.length)] };
-  }
-  return { type: "basic" };
-}
-function pvpAutoAdvance(state, maxSteps = 30) {
-  let steps = 0;
-  while (steps++ < maxSteps && !state.result) {
-    const actor = BATTLE_CORE_V1.currentUnit(state);
-    if (!actor) break;
-    if (pvpIsPlayerHeroTurn(actor)) break;
-    pvpSetControlledSide(state, actor.side);
-    const command = actor.kind === "hero" ? pvpPickBotCommand(actor) : undefined;
-    state = BATTLE_CORE_V1.battleStep(state, command).state;
-  }
-  return state;
-}
-function pvpSubmitPlayerTurn(state, command) {
-  const actor = BATTLE_CORE_V1.currentUnit(state);
-  if (!pvpIsPlayerHeroTurn(actor)) return { state, error: "not_your_turn" };
-  pvpSetControlledSide(state, actor.side);
-  const result = BATTLE_CORE_V1.battleStep(state, command);
-  if (result.error) return { state: result.state, error: result.error };
-  return { state: pvpAutoAdvance(result.state) };
-}
-function pvpUnitPublic(state, id) {
-  const u = state.units[id];
-  if (!u) return null;
-  return { name: u.name || null, hp: u.hp, maxHp: u.maxHp, mp: u.sp, maxMp: u.maxSp, statuses: Object.keys(u.statuses || {}) };
-}
 function pvpHeroSkillsPublic(actor) {
   if (!actor) return [];
   return heroActiveSkillList(actor.skills).map((s) => ({ ...s, cooldownRemaining: actor.cooldowns[s.key] || 0 }));
 }
-// Trims a battleCore log entry (which also carries internal bookkeeping fields) down to
-// what the client needs: the human-readable text plus enough structure (actorId/targetId/
-// crit) to drive the placeholder battle-stage animation.
-// ---- Arena battle log pipeline (worker -> client) ----
-// battleCore.js's log(state, type, text, data) already writes a decent human-readable
-// `.text` for most entry types — e.g. "damage": "{actor} use {actionName} to {target}
-// damage {N}." — built from unitName(unit) (unit.name, which is why pvpHeroUnit/
-// pvpPetUnit above are given real, distinguishable names: "kim01", "kim01's Sprout").
-// We pass that `.text` straight through for entry types where it's already complete
-// (damage/heal/death/pet_active/counter/reflect/round/battle_end/...).
-// Two entry types come out of battleCore too terse to stand alone even with good unit
-// names, because the text template just doesn't include everything the `data` already
-// carries:
-//   - "miss": text is only "{actor} missed." — no target, no which skill. `actionName`
-//     and `targetId` ARE in the data, just not folded into the text.
-//   - "status": text is only "{target} gained {status}." — no actor/skill that caused it.
-// For those two, the CLIENT (src/ui/components.js's pvpFormatLogEntry) rebuilds a fuller
-// sentence itself from the structured fields below, in the same style battleCore's own
-// "damage" text already uses ("{actor} use {action} to {target} ..."), rather than this
-// worker inventing a second copy of battleCore's phrasing. Everything below is just
-// trimming battleCore's own log entry down to what the client needs — no resolver logic.
+
 function pvpPublicLogEntry(e, { includeSeq = false } = {}) {
   const entry = {
     type: e.type, text: e.text, actorId: e.actorId || null, targetId: e.targetId || null,
@@ -5276,171 +5010,10 @@ function pvpPublicLogEntry(e, { includeSeq = false } = {}) {
   return entry;
 }
 
-async function settleArenaMatch(db, characterId, opponentCharacterId, state) {
-  const attackerWon = state.winnerSide === "team_a";
-  const myRating = Number((await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(characterId).first())?.rating) || 1000;
-  const oppRating = Number((await db.prepare(`SELECT rating FROM pvp_ranking WHERE character_id = ?`).bind(opponentCharacterId).first())?.rating) || 1000;
-  const expected = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400));
-  const actual = attackerWon ? 1 : 0;
-  let delta = Math.round(PVP_RATING_K * (actual - expected));
-  delta = attackerWon ? Math.max(PVP_RATING_MIN_DELTA, delta) : Math.min(-PVP_RATING_MIN_DELTA, delta);
-  const myNewRating = Math.max(PVP_RATING_FLOOR, myRating + delta);
-  const oppNewRating = Math.max(PVP_RATING_FLOOR, oppRating - delta);
-  const now = nowIso();
-
-  await db.batch([
-    db.prepare(`UPDATE pvp_ranking SET rating = ?, wins = wins + ?, losses = losses + ?, updated_at = ? WHERE character_id = ?`)
-      .bind(myNewRating, attackerWon ? 1 : 0, attackerWon ? 0 : 1, now, characterId),
-    db.prepare(`UPDATE pvp_ranking SET rating = ?, wins = wins + ?, losses = losses + ?, updated_at = ? WHERE character_id = ?`)
-      .bind(oppNewRating, attackerWon ? 0 : 1, attackerWon ? 1 : 0, now, opponentCharacterId),
-  ]);
-
-  const oppName = (state.units.team_b_hero && state.units.team_b_hero.name) || "คู่ต่อสู้";
-  const diamonds = attackerWon ? PVP_WIN_DIAMONDS : PVP_LOSS_DIAMONDS;
-  if (attackerWon) await sendMail(db, characterId, `🏆 ชนะศึกอารีน่า!`, `คุณเอาชนะ ${oppName} ได้สำเร็จ (Rating ${myRating} → ${myNewRating})`, { diamonds });
-  else await sendMail(db, characterId, `💢 แพ้ศึกอารีน่า`, `คุณแพ้ให้กับ ${oppName} (Rating ${myRating} → ${myNewRating})`, { diamonds });
-
-  return { win: attackerWon, ratingBefore: myRating, ratingAfter: myNewRating, ratingChange: delta, opponentName: oppName, diamondsEarned: diamonds };
-}
-
-// Starts (or resumes, if one is already active) a match against opponentCharacterId. A
-// ticket (or diamonds) is only spent when a brand-new match is created — resuming an
-// existing one is always free, so a dropped connection can't cost the player a second
-// ticket. pvpAutoAdvance() runs once up front too, in case the opponent's side happens to
-// act (or their Pet auto-acts) before the player's very first move.
-async function handleStartArenaMatch(db, id, session, characterId, opponentCharacterId, paidDiamonds) {
-  const auth = await verifyPlayer(db, id, session);
-  if (auth.error) return json({ error: auth.error });
-  const owned = await verifyOwnedCharacter(db, id, characterId);
-  if (owned.error) return json({ error: owned.error });
-  const character = owned.row;
-
-  const existing = await db.prepare(`SELECT * FROM pvp_matches WHERE attacker_character_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`).bind(characterId).first();
-  if (existing) {
-    const state = JSON.parse(existing.state_json);
-    return json({
-      ok: true, matchId: existing.match_id, resumed: true, turn: state.round, done: false,
-      you: pvpUnitPublic(state, "team_a_hero"), yourPet: pvpUnitPublic(state, "team_a_pet"),
-      opponent: pvpUnitPublic(state, "team_b_hero"), opponentPet: pvpUnitPublic(state, "team_b_pet"),
-      opponentName: (state.units.team_b_hero && state.units.team_b_hero.name) || "คู่ต่อสู้",
-      skills: pvpHeroSkillsPublic(state.units.team_a_hero),
-      log: [],
-    });
-  }
-
-  if (!opponentCharacterId) return json({ error: "missing_fields" });
-  if (opponentCharacterId === characterId) return json({ error: "cannot_attack_self" });
-  const [itemsRes, oppSnap] = await Promise.all([
-    db.prepare(`SELECT atk, def, hp, mp, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
-    db.prepare(`SELECT * FROM pvp_snapshots WHERE character_id = ?`).bind(opponentCharacterId).first(),
-  ]);
-  if (!oppSnap) return json({ error: "opponent_not_found" });
-  let oppLoadout = {};
-  try { oppLoadout = oppSnap.stats_json ? JSON.parse(oppSnap.stats_json) : {}; } catch (e) { oppLoadout = {}; }
-  if (!oppLoadout.hero) return json({ error: "opponent_not_found" });
-
-  // Ticket CAS — identical shape to the raid_stamina reservation in handleAttackRaidBoss.
-  const ticketState = resolvePvpTickets(character.pvp_tickets, character.pvp_tickets_updated_at);
-  let newTickets = ticketState.tickets;
-  let newTicketsUpdatedAt = ticketState.updatedAt;
-  let diamondsSpent = 0;
-  if (ticketState.tickets >= 1) {
-    newTickets = ticketState.tickets - 1;
-    newTicketsUpdatedAt = ticketState.updatedAt || nowIso();
-    const storedTickets = Number.isFinite(Number(character.pvp_tickets)) ? Number(character.pvp_tickets) : PVP_TICKET_MAX;
-    const storedUpdatedAt = character.pvp_tickets_updated_at || "";
-    const reserved = await db
-      .prepare(`UPDATE characters SET pvp_tickets = ?, pvp_tickets_updated_at = ? WHERE character_id = ? AND pvp_tickets = ? AND pvp_tickets_updated_at = ?`)
-      .bind(newTickets, newTicketsUpdatedAt, characterId, storedTickets, storedUpdatedAt)
-      .run();
-    if (!reserved.meta || !reserved.meta.changes) return json({ error: "ticket_conflict", retry: true });
-  } else if (!paidDiamonds) {
-    return json({ error: "no_tickets", diamondRefillCost: PVP_DIAMOND_REFILL_COST, ticketsRegenSeconds: pvpTicketsSecondsToNext(ticketState.updatedAt) });
-  } else {
-    const charged = await db.prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ?`).bind(PVP_DIAMOND_REFILL_COST, id, PVP_DIAMOND_REFILL_COST).run();
-    if (!charged.meta || !charged.meta.changes) return json({ error: "insufficient_diamonds", diamondRefillCost: PVP_DIAMOND_REFILL_COST });
-    diamondsSpent = PVP_DIAMOND_REFILL_COST;
-  }
-
-  const { active, skillLevels } = parsePetsJson(character);
-  const myHero = pvpHeroUnit(character, itemsRes.results || [], "team_a_hero", character.name || "You", skillLevels);
-  const myPet = active ? pvpPetUnit(active, "team_a_pet", character.name || "You") : null;
-  const oppHero = { ...oppLoadout.hero, id: "team_b_hero" };
-  const oppPet = oppLoadout.pet ? { ...oppLoadout.pet, id: "team_b_pet" } : null;
-
-  let state = BATTLE_CORE_V1.createArenaBattle({
-    seed: Math.floor(Math.random() * 0xffffffff),
-    teamA: { hero: myHero, pet: myPet },
-    teamB: { hero: oppHero, pet: oppPet },
-  });
-  state = pvpAutoAdvance(state);
-
-  const matchId = crypto.randomUUID();
-  const now = nowIso();
-  let result = null;
-  if (state.result) result = await settleArenaMatch(db, characterId, opponentCharacterId, state);
-  await db
-    .prepare(`INSERT INTO pvp_matches (match_id, attacker_character_id, attacker_player_id, defender_character_id, status, turn, state_json, result_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(matchId, characterId, id, opponentCharacterId, result ? "done" : "active", state.round, JSON.stringify(state), result ? JSON.stringify(result) : "", now, now)
-    .run();
-
-  return json({
-    ok: true, matchId, resumed: false, turn: state.round, done: !!result,
-    you: pvpUnitPublic(state, "team_a_hero"), yourPet: pvpUnitPublic(state, "team_a_pet"),
-    opponent: pvpUnitPublic(state, "team_b_hero"), opponentPet: pvpUnitPublic(state, "team_b_pet"),
-    opponentName: oppHero.name || "คู่ต่อสู้",
-    skills: pvpHeroSkillsPublic(state.units.team_a_hero),
-    log: state.log.map(pvpPublicLogEntry),
-    result,
-    tickets: newTickets, ticketsMax: PVP_TICKET_MAX, ticketsRegenSeconds: pvpTicketsSecondsToNext(newTicketsUpdatedAt),
-    diamondsSpent,
-  });
-}
-
-// Resolves exactly the player's next hero action, then auto-advances (both Pets, the
-// bot's own real active-skill usage) until it's the player's turn again or the match
-// ends — settling rating/mailbox here if it does.
-async function handleSubmitArenaTurn(db, id, session, characterId, matchId, actionType, skillId) {
-  const auth = await verifyPlayer(db, id, session);
-  if (auth.error) return json({ error: auth.error });
-  const owned = await verifyOwnedCharacter(db, id, characterId);
-  if (owned.error) return json({ error: owned.error });
-  if (!matchId) return json({ error: "missing_fields" });
-
-  const match = await db.prepare(`SELECT * FROM pvp_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(matchId, characterId).first();
-  if (!match) return json({ error: "match_not_found" });
-  if (match.status !== "active") return json({ error: "match_already_done" });
-
-  let state = JSON.parse(match.state_json);
-  const beforeSeq = state.logSeq;
-  const command = actionType === "active" ? { type: "active", skillId } : { type: "basic" };
-  const advance = pvpSubmitPlayerTurn(state, command);
-  if (advance.error) return json({ error: advance.error });
-  state = advance.state;
-  const newLog = state.log.filter((e) => e.seq > beforeSeq).map(pvpPublicLogEntry);
-
-  let result = null;
-  if (state.result) {
-    result = await settleArenaMatch(db, characterId, match.defender_character_id, state);
-    await db.prepare(`UPDATE pvp_matches SET status = 'done', turn = ?, state_json = ?, result_json = ?, updated_at = ? WHERE match_id = ?`)
-      .bind(state.round, JSON.stringify(state), JSON.stringify(result), nowIso(), matchId).run();
-  } else {
-    await db.prepare(`UPDATE pvp_matches SET turn = ?, state_json = ?, updated_at = ? WHERE match_id = ?`)
-      .bind(state.round, JSON.stringify(state), nowIso(), matchId).run();
-  }
-
-  return json({
-    ok: true, log: newLog, turn: state.round, done: !!result,
-    you: pvpUnitPublic(state, "team_a_hero"), yourPet: pvpUnitPublic(state, "team_a_pet"),
-    opponent: pvpUnitPublic(state, "team_b_hero"), opponentPet: pvpUnitPublic(state, "team_b_pet"),
-    skills: pvpHeroSkillsPublic(state.units.team_a_hero),
-    result,
-  });
-}
-
 // ---------- Phase 5: PvP Arena V2 server foundation + W9.5 lifecycle ----------
-// W9.4/W9.5 deliberately live beside Arena V1 until the W9.9 cutover. These helpers never
-// read/write pvp_* state. W9.5 owns only prepare/activate/resume; settlement remains later.
+// Arena V2 is the only production Arena runtime after W9 closeout. Legacy V1 routes
+// and pvp_* runtime reads/writes are retired; historical V1 tables are dropped only
+// after this V2-only Worker cutover is deployed and verified.
 const ARENA_V2_UNLOCK_LEVEL = 10;
 const ARENA_TICKET_MAX = 10;
 const ARENA_TICKET_PASSIVE_MS = 2 * 60 * 60 * 1000;
@@ -7441,8 +7014,6 @@ export default {
         if (action === "getDailyLogin") return await handleGetDailyLogin(db, id, auth, p.get("characterId"));
         if (action === "getRaidStatus") return await handleGetRaidStatus(db, id, auth, p.get("characterId"));
         if (action === "getMailbox") return await handleGetMailbox(db, id, auth, p.get("characterId"));
-        if (action === "getArenaStatus") return await handleGetArenaStatus(db, id, auth, p.get("characterId"));
-        if (action === "getArenaOpponents") return await handleGetArenaOpponents(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2Status") return await handleGetArenaV2Status(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2Opponents") return await handleGetArenaV2Opponents(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2History") return await handleGetArenaV2History(db, id, auth, p.get("characterId"));
@@ -7542,10 +7113,6 @@ export default {
             return await handleAttackRaidBoss(db, id, auth, body.characterId, !!body.paidDiamonds);
           case "claimRaidMilestones":
             return await handleClaimRaidMilestones(db, id, auth, body.characterId);
-          case "startArenaMatch":
-            return await handleStartArenaMatch(db, id, auth, body.characterId, body.opponentCharacterId, !!body.paidDiamonds);
-          case "submitArenaTurn":
-            return await handleSubmitArenaTurn(db, id, auth, body.characterId, body.matchId, body.actionType, body.skillKey);
           case "saveArenaV2Setup":
             return await handleSaveArenaV2Setup(db, id, auth, body.characterId, body.petInstId, body.skillSlots);
           case "purchaseArenaV2Ticket":

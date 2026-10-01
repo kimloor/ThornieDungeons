@@ -351,38 +351,7 @@ function cloudCraftItem(url, characterId, recipeId) {
     recipeId
   });
 }
-// Phase 5 — PvP Arena. Turn-based: startArenaMatch() opens a session, then
-// submitArenaTurn() is called once per player action (attack or skill) — the worker
-// resolves that whole round (both pets + the bot) and returns the updated state.
-function cloudGetArenaStatus(url, characterId) {
-  return cloudAuthGet(url, {
-    action: "getArenaStatus",
-    characterId
-  });
-}
-function cloudGetArenaOpponents(url, characterId) {
-  return cloudAuthGet(url, {
-    action: "getArenaOpponents",
-    characterId
-  });
-}
-function cloudStartArenaMatch(url, characterId, opponentCharacterId, paidDiamonds) {
-  return cloudAuthPost(url, {
-    action: "startArenaMatch",
-    characterId,
-    opponentCharacterId,
-    paidDiamonds: !!paidDiamonds
-  });
-}
-function cloudSubmitArenaTurn(url, characterId, matchId, actionType, skillKey) {
-  return cloudAuthPost(url, {
-    action: "submitArenaTurn",
-    characterId,
-    matchId,
-    actionType,
-    skillKey
-  });
-}
+// W9 Arena V2 API helpers.
 function cloudGetArenaV2Status(url, characterId) {
   return cloudAuthGet(url, { action: "getArenaV2Status", characterId });
 }
