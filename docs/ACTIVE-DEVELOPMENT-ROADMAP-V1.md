@@ -968,6 +968,36 @@ QA gate:
 Exit condition:
 - V2 is authoritative in Production and legacy special gear can no longer re-enter through old generation paths.
 
+### Post-WAVE 6 — Full Project Gap Audit (mandatory gate before final WAVE 7 closeout)
+
+After WAVE 6 is production-verified, Project Lead performs a full-system audit before WAVE 7 is treated as the final presentation/polish closeout.
+
+Audit coverage:
+- Login / Character / Main Hub / Town;
+- Dungeon / Battle / Result;
+- Inventory / Equipment / Pets / Skills;
+- Shop / Craft / Enhance / Empower;
+- Raid / Arena;
+- Social / Friends / Chat / Guild;
+- Admin V2;
+- Audio;
+- Hero/Equipment/Item graphics and runtime bindings;
+- mobile UX, save/persistence, economy integrity, cross-mode regressions;
+- legacy/fallback/dead paths that remain after V2 cutover.
+
+Audit outputs:
+- classify findings as COMPLETE / GAP / DEFERRED / INTENTIONAL OUT-OF-SCOPE;
+- fix release-blocking gaps before final closeout;
+- record non-blocking gaps in the active backlog/scope instead of silently expanding a completed wave;
+- use the audited post-V2 production state as the baseline for the canonical project scope.
+
+Scope-control rule during WAVE 2-6:
+- findings outside the active wave are recorded as **Deferred Gaps** rather than inserted into the current implementation;
+- exception: blockers, player-data-loss/integrity risks, security/auth issues, or defects that make the active wave unsafe or unverifiable must be handled immediately through the appropriate risk/QA path.
+
+Exit condition:
+- Full Project Gap Audit is complete and release-blocking findings are resolved or explicitly routed before final WAVE 7 closeout.
+
 ---
 
 ## WAVE 7 — Presentation Expansion
