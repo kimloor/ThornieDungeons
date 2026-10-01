@@ -7,7 +7,8 @@ const { spawnSync } = require("node:child_process");
 const ROOT = path.resolve(__dirname, "..");
 
 test("Guild donation endpoint is authenticated, idempotent, and uses shared inventory selectors", () => {
-  const worker = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8");
+  const worker = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8")
+    + fs.readFileSync(path.join(ROOT, "workers/modules/social.js"), "utf8");
   const ui = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   assert.match(worker, /verifySocialActor\(db, id, session, characterId\)/);
   assert.match(worker, /case "donateGuildItem":\s*return await handleDonateGuildItem/);
@@ -43,7 +44,8 @@ test("Guild donation endpoint is authenticated, idempotent, and uses shared inve
 });
 
 test("Guild donation uses a guarded single D1 batch and trigger migrations are no-op recovery markers", () => {
-  const worker = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8");
+  const worker = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8")
+    + fs.readFileSync(path.join(ROOT, "workers/modules/social.js"), "utf8");
   const m20 = fs.readFileSync(path.join(ROOT, "migrations/auto/0020_guild_donation_validate_trigger.sql"), "utf8");
   const m21 = fs.readFileSync(path.join(ROOT, "migrations/auto/0021_guild_donation_apply_trigger.sql"), "utf8");
 
@@ -70,7 +72,8 @@ test("Guild donation uses a guarded single D1 batch and trigger migrations are n
 });
 
 test("Guild donation consume guard models 500 to 499 and rejects a failed consume", () => {
-  const worker = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8");
+  const worker = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8")
+    + fs.readFileSync(path.join(ROOT, "workers/modules/social.js"), "utf8");
   const priorSum = worker.slice(worker.indexOf("SELECT SUM(prior.quantity)"), worker.indexOf("SELECT SUM(prior.quantity)") + 260);
   assert.match(priorSum, /prior\.stack_position >= 0/);
   const guard = worker.slice(worker.indexOf("INSERT INTO guild_donation_stack_snapshot(donation_id, item_id"));

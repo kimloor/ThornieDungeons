@@ -4,7 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const worker = fs.readFileSync(path.join(root, "workers/thornie-dungeons-api.js"), "utf8");
+const worker = fs.readFileSync(path.join(root, "workers/thornie-dungeons-api.js"), "utf8")
+  + fs.readFileSync(path.join(root, "workers/modules/social.js"), "utf8");
 const api = fs.readFileSync(path.join(root, "src/state/api.js"), "utf8");
 const ui = fs.readFileSync(path.join(root, "src/ui/components.js"), "utf8");
 const app = fs.readFileSync(path.join(root, "src/ui/App.js"), "utf8");

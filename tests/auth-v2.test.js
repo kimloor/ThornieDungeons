@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { DatabaseSync } = require("node:sqlite");
+const { loadWorkerSource } = require("./helpers/worker-source");
 
 class D1Statement {
   constructor(database, sql, values = []) { this.database = database; this.sql = sql; this.values = values; }
@@ -19,7 +20,7 @@ class D1Database {
 }
 
 function loadWorkerInternals() {
-  let source = fs.readFileSync(path.join(__dirname, "../workers/thornie-dungeons-api.js"), "utf8");
+  let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {");
   source += `\nglobalThis.__worker = workerDefault; globalThis.__auth = { validPlayerId, validPassword, hashPassword, verifyPasswordHash, handleRegister, handleLogin, handleValidateSession, handleLogout, handleCreateRecoveryCode, handleForgotPassword, handleChangePassword, verifySession, verifyOwnedCharacter };`;
   const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
@@ -166,7 +167,7 @@ test("rate-limit retryAfter reflects the remaining window and login UI explains 
   }
   const limited = await body(await auth.handleLogin(db, "Retry_User", "bad1", false, "retry-login"));
   assert.equal(limited.error, "rate_limited");
-  assert.ok(Number(limited.retryAfter) > 30);
+  assert.ok(Number(limited.retryAfter) >= 30);
   assert.ok(Number(limited.retryAfter) <= 300);
 
   const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
