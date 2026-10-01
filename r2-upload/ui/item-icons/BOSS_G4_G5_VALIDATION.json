@@ -1,0 +1,67 @@
+{
+  "status": "APPROVED_R1_ITEM_ICONS_ONLY",
+  "sourceMain": "d4a2cf8a45157d024d0cfea36c1b1878da633372",
+  "files": [
+    {
+      "key": "itemIcons.materials.earthStone",
+      "r2Path": "ui/item-icons/materials/earth_stone.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "format": "PNG RGBA",
+      "sha256": "6dad792fc5eb1630f1c11b2685deaadca49b93e07d9a8a8527bb7b591da64309"
+    },
+    {
+      "key": "itemIcons.materials.fireStone",
+      "r2Path": "ui/item-icons/materials/fire_stone.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "format": "PNG RGBA",
+      "sha256": "900e5d0e7a12636eb16999b4425da49802be2f81af40bd0d9ca4666397f41e5b"
+    },
+    {
+      "key": "itemIcons.materials.waterStone",
+      "r2Path": "ui/item-icons/materials/water_stone.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "format": "PNG RGBA",
+      "sha256": "85306fad018e998ac89c578f43a59ab3bcd39d9f261d39b75bc284c6499d4fab"
+    },
+    {
+      "key": "itemIcons.bossWeapons.spiritGreatsword",
+      "r2Path": "ui/equipment-icons/boss/spirit_greatsword.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "format": "PNG RGBA",
+      "sha256": "60a4c7fe732556ec6f6717e0b52e5196afd9de1d30155d0a903d9f5cdeb161fc"
+    },
+    {
+      "key": "itemIcons.bossWeapons.lavalonSword",
+      "r2Path": "ui/equipment-icons/boss/lavalon_sword.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "format": "PNG RGBA",
+      "sha256": "0808b8814b0ab5836a40eea14e3cebf4af102c96babadf020e9795cec6992008"
+    },
+    {
+      "key": "itemIcons.bossWeapons.icicleLongsword",
+      "r2Path": "ui/equipment-icons/boss/icicle_longsword.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "format": "PNG RGBA",
+      "sha256": "465ad7a65b8d244eb364e0363301120e2e17d6151e1c4be3a6714cc9058a788a"
+    }
+  ],
+  "heroWeaponRuntimePublished": false
+}
