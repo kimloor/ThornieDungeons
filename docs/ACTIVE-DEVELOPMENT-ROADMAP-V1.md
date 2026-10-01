@@ -1,8 +1,8 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-DESIGN — current master execution roadmap**
+Status: **ACTIVE-EXECUTION — W9 complete; W9R is the current gate; post-W9R execution waves are locked**
 
-This roadmap merges the remaining Social/Guild/Chat work with the active Hero V5, Inventory V2 and Phaser migration tracks.
+This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
 Work is split into three execution lanes:
 
@@ -562,7 +562,7 @@ Release:
 
 
 ## W9 — Arena V2 + Phaser
-**Status: READY_FOR_IMPLEMENTATION — gameplay/UX contract locked 2026-09-28**
+**Status: COMPLETE — PRODUCTION VERIFIED / W9 CLOSED — 2026-10-01**
 
 Implementation roadmap:
 - `ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md`
@@ -601,7 +601,7 @@ Battle Core and server authority remain outside Phaser. Do not infer that older 
 ---
 
 ## W9R — API Worker Modularization Refactor
-**Status: PLANNED — mandatory post-W9 gate before Admin Phase 1**
+**Status: READY_FOR_DEV — CURRENT EXECUTION GATE after W9**
 **Risk: HIGH**
 **Execution: SINGLE REFACTOR BATCH**
 
@@ -687,174 +687,443 @@ Admin Phase 1 (Dashboard + read-only Player Viewer) starts from the post-W9R `ma
 
 ---
 
-## W10 — Victory / Boss / Raid Presentation
+# PART 3 — POST-W9R EXECUTION WAVES
+## Active roadmap from the current post-W9R baseline
 
-### Victory / Defeat
-Use shared presentation infrastructure for:
-- victory pose;
-- approved wing animation;
-- particles/glow;
-- camera fade/flash where appropriate;
-- clean transition into the existing Result commit flow;
-- defeat presentation before Retry/Map controls.
+The old linear `W10 -> W11` order is replaced by dependency-driven waves.
 
-### Boss presentation
-Reusable presentation hooks may support:
-- boss entrance;
-- camera zoom/shake;
-- aura/rage visual state;
-- phase-transition presentation.
-
-### Raid
-Reuse shared Monster/Boss actors, AssetResolver, VfxManager and PresentationQueue.
-Do not create a separate Raid rendering architecture.
-
-Gameplay, rewards and Raid authority remain outside Phaser.
+Rules for all waves:
+- every wave starts from latest `main`;
+- HIGH/VERY HIGH work uses an approved feature branch and focused QA before release;
+- DEV owns gameplay/data/runtime authority;
+- Graphics owns approved visual assets only;
+- QA independently verifies the locked contract and regressions;
+- Battle Core must not be changed to compensate for progression or presentation balance;
+- do not mix unrelated cleanup into a wave;
+- presentation may begin only when its authoritative mechanic contract is stable enough to consume.
 
 ---
 
-## W11 — Summoning / Enhance / Craft Presentation
+## WAVE 1 — Dungeon V2 Encounter + Stat Foundation
+**Status: READY AFTER W9R**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: QA; Graphics only for identified presentation gaps**
 
-Use Phaser only for animation-heavy presentation.
+Scope:
+- replace legacy encounter classification with the approved Dungeon V2 structure;
+- Elite midpoint pattern such as F5/F15/F25;
+- Chapter Boss pattern F10/F20/F30;
+- implement approved Normal Monster stat curve;
+- preserve monster identity profiles;
+- implement 1/2/3-monster pack scaling;
+- implement Elite multipliers;
+- implement Moss King / Ember Drake / Frost Warden Boss profiles;
+- implement one-time Boss Enrage below 50% HP.
 
-### Summoning
-Possible presentation scope:
+Hard boundaries:
+- do not change shared damage/status/turn resolution;
+- do not silently rebalance the locked V2 reference values;
+- remote-config rows must not override the intended V2 profile accidentally.
+
+QA gate:
+- reference-floor outputs including F1/F30/F71/F105;
+- encounter classification;
+- pack scaling;
+- Elite identity retention;
+- Boss profiles + one-time Enrage;
+- Dungeon save/checkpoint/result regression;
+- Battle Core parity.
+
+Exit condition:
+- Dungeon V2 combat/encounter generation is stable before Reward V2 begins relying on source type and Floor/Tier identity.
+
+---
+
+## WAVE 2 — Reward V2 Item / Drop / Economy Foundation
+**Status: READY AFTER WAVE 1**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: QA + Graphics for missing icons**
+
+Scope:
+- T1-T5 Floor mapping;
+- Rare / Unique / Elite / Mythic item model;
+- fixed base-stat budget by slot/Tier;
+- rarity multipliers;
+- Accessory utility budget;
+- generic equipment roll and rarity weights;
+- max one generic equipment item per encounter;
+- Normal / Elite / Chapter Boss reward roles;
+- First-Clear Accessory;
+- source-aware item metadata;
+- extend existing `monster_loot` architecture with safe generic fallback;
+- Gold/EXP/material economy required by Reward V2;
+- Shop V2 normal stock rules;
+- salvage foundation.
+
+Graphics collaboration:
+- audit latest manifest first;
+- create only missing Reward V2 material/item icons;
+- do not replace approved Azure/Robot/Skeleton art without explicit revision approval.
+
+QA gate:
+- Tier boundaries F1-30 / F31-50 / F51-70 / F71-90 / F91+;
+- rarity/stat generation;
+- 4% Normal gear roll and 8% Elite encounter roll;
+- First Clear vs rerun behavior;
+- no generic Mythic drop;
+- loot-pool fallback;
+- inventory overflow/persistence;
+- Shop and salvage economy regression.
+
+Exit condition:
+- one authoritative V2 item model is used before Enhance, Empower or Mythic content is layered on top.
+
+---
+
+## WAVE 3 — Enhance + Empower V2
+**Status: READY AFTER WAVE 2**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: QA; Graphics may prepare W11 presentation assets in parallel**
+
+### Enhance V2
+- +0 to +10;
+- approved success rates;
+- +6% base-stat gain per successful level for normal equipment;
+- +6 -> +7 and later downgrade rules;
+- Protection Stone behavior;
+- Gold + Iron costs;
+- Raid Wing special Enhance rule.
+
+### Empower V2
+- rarity-based 1/2/3/4 slots;
+- slot-aware option filtering;
+- approved whole-number roll ranges/probabilities;
+- duplicate rolls allowed;
+- Lock / Unlock / Reroll;
+- Mana Ore + Gold economy;
+- additive Enhance/Empower stacking;
+- HP/MP percentage boundary.
+
+Hard boundaries:
+- RNG resolution and resource consumption are authoritative mechanics, not presentation;
+- W11 must never decide success/failure, rolls or costs.
+
+QA gate:
+- cost/consumption exactness;
+- success/failure/downgrade/protection paths;
+- reroll/lock edge cases;
+- duplicate rolls;
+- item-slot filtering;
+- stat recomputation;
+- save/reload;
+- Inventory Compare;
+- Dungeon/Raid/Arena shared equipment regression.
+
+Exit condition:
+- Enhance and Empower mechanics are production-safe before presentation is attached.
+
+---
+
+## WAVE 4 — Mythic Boss Weapons + Mythic Set System
+**Status: READY AFTER WAVES 2-3**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: Graphics + QA**
+
+### Boss Materials / Weapons
+- Earth Stone -> Spirit Greatsword;
+- Fire Stone -> Lavalon Sword;
+- Water Stone -> Icicle Longsword;
+- guaranteed 1 Boss Stone + 25% extra;
+- matching Stone x5 + Tier Gold crafting;
+- Mythic rarity / 4 Empower slots;
+- fixed source-specific Signature Effect.
+
+### Mythic Sets
+- `rarity = mythic`;
+- `setId = azure | robot | skeleton`;
+- six-piece set structure;
+- cumulative 2/4/6 bonuses;
+- Azure / Skeleton / Robot approved effects;
+- Set identity separate from rarity;
+- Wings never count as a Set piece.
+
+Graphics collaboration:
+- approved Azure/Robot/Skeleton Hero V5 sets must be reused where valid;
+- Robot/Skeleton item binding must be completed rather than regenerating approved frames;
+- produce missing Boss Weapon icons + Hero V5 synchronized weapon visuals;
+- use real manifest keys only.
+
+QA gate:
+- crafting source/Tier correctness;
+- Boss Signature trigger/reentrancy/multi-hit rules;
+- Set 2/4/6 count and mixed-set behavior;
+- EquipmentVisualResolver mapping;
+- Inventory preview/equip;
+- Dungeon/Raid/Arena combat regression;
+- Battle Core parity.
+
+Exit condition:
+- special Mythic power is shared correctly across combat modes and visuals resolve through the shared renderer.
+
+---
+
+## WAVE 5 — Raid / Wings V2
+**Status: READY AFTER WAVE 4**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: Graphics + QA**
+
+Scope:
+- Raid family mapping: Azure / Robot / Skeleton;
+- Tierless Wings;
+- Rare / Unique / Elite / Mythic Wing rarity;
+- Wing rarity controls Empower-slot count only;
+- Wing Enhance grants family Primary Stat +1 per Enhance;
+- Rank 1/2/3 Wing reward replacement;
+- Last-Hit Set Recipe;
+- contribution milestones;
+- 50% Accessory;
+- 75% Recipe;
+- 99% Set Item Tier snapshot;
+- family-specific Recipes and current-Tier Set crafting;
+- mailbox/idempotency preservation.
+
+Graphics collaboration:
+- audit current Azure/Robot/Skeleton Wing runtime visuals and icons;
+- create only missing runtime layers/presentation assets;
+- prepare Raid presentation assets that WAVE 7 may consume.
+
+QA gate:
+- ranking + milestone stacking;
+- Last Hit;
+- reward exact-once;
+- mailbox replay safety;
+- 99% Tier snapshot timing;
+- stored Tierless Recipe -> later current-Tier craft;
+- Wings Enhance/Empower;
+- Hero V5 rendering;
+- Raid save/auth regression.
+
+Exit condition:
+- Raid reward mechanics are stable before W10 Raid presentation is finalized.
+
+---
+
+## WAVE 6 — V2 Production Cutover + Legacy Special-Item Cleanup
+**Status: BLOCKED UNTIL WAVES 1-5 PASS**
+**Risk: VERY HIGH**
+**Lead: DEV**
+**Collaboration: QA mandatory; Project Lead release approval mandatory**
+
+Scope:
+- migrate temporary Azure QA/Test stock to the V2 item model;
+- remove obsolete legacy special-equipment behavior;
+- delete owned legacy Raid Wings ★1-★5;
+- delete owned legacy Azure/crafted Set equipment using the old stat/rarity model;
+- no compensation, per the approved Reward V2 contract;
+- preserve Gold, Diamonds, Iron, Mana Ore, Protection Stones, Raid materials, valid Recipes and unrelated inventory/save data.
+
+Safety requirements:
+- destructive cleanup must be explicit, narrow and auditable;
+- no broad identity matching that can delete unrelated equipment;
+- validate against representative existing-player data before Production;
+- migration/release path must not depend on replaying migrations;
+- take the final production release decision separately from implementation completion.
+
+QA gate:
+- exact deletion target matrix;
+- unrelated inventory preservation;
+- equipped/unequipped legacy cases;
+- valid Recipe preservation;
+- login/load/save after cleanup;
+- Reward/Crafting/Raid/Arena regression;
+- migration/application logs and Production verification.
+
+Exit condition:
+- V2 is authoritative in Production and legacy special gear can no longer re-enter through old generation paths.
+
+---
+
+## WAVE 7 — Presentation Expansion
+**Status: PLANNED — starts only from stable authoritative mechanics**
+**Risk: MEDIUM**
+**Lead: DEV + Graphics**
+**Collaboration: QA**
+
+### W10 reference — Victory / Boss / Raid Presentation
+May begin after the corresponding mechanics are stable:
+- Victory / Defeat pose and transition;
+- approved wing animation;
+- Boss entrance;
+- camera/impact presentation;
+- Enrage/aura state;
+- Raid presentation using shared actors/VFX/queue.
+
+Dependencies:
+- Victory/Defeat may start independently after W9R;
+- Boss/Enrage presentation depends on WAVE 1;
+- Raid presentation depends on WAVE 5.
+
+### W11 reference — Enhance / Craft / Summoning Presentation
+Enhance/Craft presentation depends on authoritative mechanics:
+- forge/fire/spark;
+- Enhance success/fail/downgrade result presentation;
+- Craft reveal;
+- Mythic/Boss Weapon reveal.
+
+Summoning presentation is independent of Dungeon V2 mechanics and may be scheduled separately:
 - portal;
 - rarity glow;
-- summon reveal;
-- particles;
-- camera effects.
+- reveal;
+- particles/camera presentation.
 
-### Enhance / Craft
-Possible presentation scope:
-- forge/fire/spark effects;
-- success/fail presentation;
-- result reveal.
+Presentation hard rules:
+- React/DOM/API owns item/recipe/cost/mutation/economy state;
+- Phaser owns presentation only;
+- reuse AssetResolver, HeroRenderer, EquipmentVisualResolver, PresentationQueue and VfxManager;
+- no per-screen duplicate renderer or VFX architecture.
 
-React/DOM remains responsible for:
-- item/recipe data;
-- costs;
-- buttons/forms;
-- mutation authority;
-- resulting inventory/economy state.
-
----
-
-## Phaser rollout rules after W5-W11
-
-- Do not migrate the entire application into Phaser.
-- Do not create per-page Hero renderers.
-- Do not create per-scene VFX systems.
-- Do not construct asset URLs independently in screens/scenes.
-- Keep DOM fallbacks until each migrated surface is QA/user verified.
-- Production cutover/removal of obsolete fallback code happens only after the relevant surface is verified.
-- Dungeon exploration/presentation is intentionally **not** part of the active roadmap.
+QA gate:
+- authoritative result remains correct if animation fails;
+- no duplicate mutation/reward;
+- scene teardown/re-entry;
+- x1/x2/terminal presentation compatibility where relevant;
+- mobile safe area/performance;
+- asset fallback and 404 checks.
 
 ---
 
-# PART 3 — GRAPHICS LANE
-## Visual production that can run in parallel
+# PART 4 — PARALLEL TRACKS AFTER W9R
 
-## G1 — Hero V5 Base Hero
+## A1 — Admin V2 Phase 1
+**Status: READY AFTER W9R**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: QA**
 
-Produce/approve:
-- final Base Hero proportions;
-- master canvas 768x768;
-- Idle 3 frames;
-- Attack 3 frames;
-- Death 2–3 frames;
-- facing/right presentation per Hero V5 contract;
-- mobile readability;
-- frame alignment.
+Scope:
+- Admin Dashboard;
+- server-side Player Search;
+- read-only Player Viewer;
+- dedicated Admin V2 session/auth boundary;
+- audit-safe read paths.
 
-This may run in parallel with W0-W7.
+Out of scope:
+- economy mutation;
+- destructive player tools;
+- generic DB editor;
+- generic SQL console.
+
+Dependency:
+- must start from post-W9R `main`;
+- may run in parallel with WAVE 1-5 if branch ownership avoids collisions with the same backend modules.
+
+QA gate:
+- Admin/gameplay token separation;
+- allowlist enforcement;
+- read-only guarantees;
+- no private credential/token exposure;
+- search/result authorization;
+- gameplay regression.
 
 ---
 
-## G2 — Hero V5 Layer / Equipment Validation
+## G4-G9 — Graphics support lane
+**Risk: LOW to MEDIUM depending on runtime binding**
 
-After G1 direction is approved:
-- verify shared coordinate space;
-- hair/head/body/right-arm/torso-leg/weapon layer structure;
-- wings behind all;
-- frame-specific ordering where required;
-- first complete equipment overlay test set;
-- verify full armor coverage where intended;
-- define real manifest keys/paths;
-- transparency/alignment checks.
+Graphics runs only where a wave has a real asset dependency:
 
-G2 approval is the gate for W7.
+- **G4 — Reward V2 icons — LOW:** Earth/Fire/Water Stone and other confirmed missing icons.
+- **G5 — Boss Weapon assets — MEDIUM:** Spirit Greatsword / Lavalon Sword / Icicle Longsword icons and synchronized Hero V5 weapon layers.
+- **G6 — Mythic Set binding/finish — MEDIUM:** reuse approved Azure/Robot/Skeleton assets; fill missing icons/bindings only.
+- **G7 — Wings V2 audit/assets — MEDIUM:** verify family Wing runtime layers/icons and fill real gaps.
+- **G8 — W10 presentation assets — MEDIUM:** Victory/Boss/Raid VFX/presentation.
+- **G9 — W11 presentation assets — MEDIUM:** Enhance/Craft/Summon VFX.
+
+Graphics must not redesign mechanics or publish guessed asset paths.
 
 ---
 
-## G3 — Phaser Visual QA / Asset Gaps
+## Q1-Q8 — QA gate lane
+**Risk follows the wave under test**
 
-During W5-W11:
-- inspect actual presentation for scale/clarity;
-- produce only missing presentation assets explicitly identified by implementation/QA;
-- target marker/VFX/feedback adjustments if existing assets are insufficient;
-- never redesign gameplay from Graphics scope;
-- update R2/manifest using real paths only.
+- **Q1 — W9R regression — HIGH**
+- **Q2 — Dungeon encounter/stat verification — HIGH**
+- **Q3 — Reward/item/drop/economy verification — HIGH**
+- **Q4 — Enhance/Empower verification — HIGH**
+- **Q5 — Boss Weapon/Set cross-mode verification — HIGH**
+- **Q6 — Raid/Wings verification — HIGH**
+- **Q7 — Legacy cleanup/cutover verification — VERY HIGH**
+- **Q8 — W10/W11 presentation integration — MEDIUM**
+
+QA must validate the source-of-truth contract rather than only retesting DEV's implementation assumptions.
 
 ---
 
 # 4. Master execution order
 
 ```text
-W0  Social 3+4 Hotfix ✅ COMPLETE
+W0-W8                         ✅ COMPLETE
  ↓
-W1  Inventory Refactor + Donation-ready Boundary ✅ COMPLETE
+W9 Arena V2                   ✅ COMPLETE / PRODUCTION VERIFIED
  ↓
-W2  Guild Donation ✅ COMPLETE
+W9R API Worker Refactor       🔴 HIGH — CURRENT GATE
  ↓
-W3  Guild Chat + Social Integration/UX ✅ COMPLETE
+WAVE 1 Dungeon V2 Foundation  🔴 HIGH
  ↓
-W4  Social Production E2E / Release QA
+WAVE 2 Reward V2 Foundation   🔴 HIGH
  ↓
-W5  Phaser Combat Foundation + Presentation
+WAVE 3 Enhance + Empower      🔴 HIGH
  ↓
-W6  Shared Phaser Presentation Architecture
+WAVE 4 Mythic Weapons/Sets    🔴 HIGH
  ↓
-W7  Hero V5 Runtime Integration
+WAVE 5 Raid / Wings V2        🔴 HIGH
  ↓
-W8  Inventory + Character Live Preview
+WAVE 6 V2 Cutover/Cleanup     🟣 VERY HIGH
  ↓
-W9  Arena V2 + Phaser
- ↓
-W9R API Worker Modularization Refactor
- ↓
-W10 Victory / Boss / Raid Presentation
- ↓
-W11 Summoning / Enhance / Craft Presentation
+WAVE 7 Presentation Expansion 🟠 MEDIUM
 ```
 
-Parallel Graphics path:
+Parallel after W9R:
 
 ```text
-G1 Hero V5 Base
- ↓
-G2 Layer / Wing / Equipment Validation
- └──────────────> required before W7
+Admin V2 Phase 1              🔴 HIGH
+   └─ may run beside WAVE 1-5 with collision-safe branch ownership
 
-G3 Visual asset support runs only when W5-W11 identifies a real need.
+Graphics G4-G9
+   └─ run only when the target wave has a confirmed asset dependency
+
+QA Q1-Q8
+   └─ independent gate after each implementation wave
 ```
 
-CHAT lane C1-C4 runs continuously between WORK/GRAPHICS milestones for audit, documentation, QA and small low-risk polish.
+Do not hold all presentation work until the very end unnecessarily:
+- W10 Victory may begin once W9R is stable;
+- Boss presentation may begin after WAVE 1;
+- W11 Enhance/Craft presentation may begin after WAVE 3;
+- Raid presentation may begin after WAVE 5;
+- final integrated presentation QA remains WAVE 7.
+
+CHAT lane C1-C4 continues for roadmap maintenance, audits, focused QA review and isolated LOW-risk polish.
 
 ---
 
 # 5. Completion condition
 
 The active roadmap is complete when:
-- Social Phase 3/4 audit issues are fixed;
-- Guild Donation and Guild Chat V1 are production-verified;
-- Friend/Chat/Guild integration passes E2E;
-- Inventory V2 is structurally clean and behavior-stable;
-- Combat presentation uses the approved shared Phaser architecture;
-- Hero V5 is integrated once through the shared HeroRenderer and equipment resolver;
-- Inventory/Character preview reuses the shared Hero renderer without moving Inventory UI into Phaser;
-- Arena reuses the same presentation infrastructure;
-- the API Worker is modularized after W9 without changing API/gameplay behavior, and Admin Phase 1 starts from that stabilized structure;
-- Victory/Boss/Raid and Summoning/Enhance/Craft presentation reuse shared modules where implemented;
-- temporary fallbacks are removed only after surface-specific QA/user verification;
-- App/styles/Phaser boundaries remain documented and stable.
+- W9R modularization is production-safe with no intentional behavior drift;
+- Dungeon V2 encounter/stat generation is authoritative;
+- Reward V2 Tier/Rarity/item/drop/economy rules are authoritative;
+- Enhance and Empower V2 are persistent, transaction-safe and shared across equipment consumers;
+- Boss Weapons and Mythic Sets use the approved mechanics and shared Hero V5 visual resolver;
+- Raid/Wings V2 rewards, Recipes and family mappings are production-verified;
+- the approved legacy special-item cleanup is completed without unrelated player-data loss;
+- Admin V2 Phase 1 is available from the post-W9R architecture;
+- W10/W11 presentation consumes authoritative mechanics without owning gameplay/economy state;
+- Graphics assets use canonical R2/manifest paths and approved shared visual contracts;
+- every HIGH/VERY HIGH wave passes its focused QA, build/regression gate and live verification where deployed;
+- Battle Core, save reliability, exact-once rewards and unrelated production systems remain intact.
