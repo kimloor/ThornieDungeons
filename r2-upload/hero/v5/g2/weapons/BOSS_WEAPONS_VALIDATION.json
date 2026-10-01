@@ -1,0 +1,437 @@
+{
+  "status": "APPROVED_R1_PLUS_R3",
+  "sourceMain": "d464be4e43880d3d704401b263956ab7f1c4fa4a",
+  "masters": 3,
+  "weaponLayers": 24,
+  "visibleWeaponLayers": 18,
+  "transparentDeathLayers": 6,
+  "r3AppliedAsCompositionContract": true,
+  "attack01FrontToBack": [
+    "arm_front",
+    "sword",
+    "hair"
+  ],
+  "approvedSourceWeaponHashesUnchanged": true,
+  "existingSetsUnchanged": true,
+  "runtimeBindingPending": true,
+  "files": [
+    {
+      "path": "hero/v5/g2/weapons/shared/attack_01/right_arm.png",
+      "sha256": "2c8a1a4e62e0c03df244bc10dc45ff15b30d4d37c91989c6fe9aeb1585efca5f",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        233,
+        278,
+        341,
+        464
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/masters/SPIRIT_GREATSWORD_UPRIGHT.png",
+      "sha256": "5e9409c54a21cf4809affe04bb828ed42950fc6dc6f3a8f5bd2699fb2d1db46e",
+      "dimensions": [
+        887,
+        1774
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        19,
+        21,
+        833,
+        1758
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/idle_01/sword.png",
+      "sha256": "b3ce1e3473ea64c45a49d98583dd05b9109f0cc520986081fae386b527cce73d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        202,
+        451,
+        489,
+        724
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/idle_02/sword.png",
+      "sha256": "ac92f6c4cd13269f7cc898e46c2e4a46c1195148dd30e68041d2fd1df78e6fad",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        202,
+        439,
+        489,
+        712
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/idle_03/sword.png",
+      "sha256": "d13146c19433df869cf160ee09974b7d9b7670eb33d57ceb4539456dfe6564e2",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        202,
+        447,
+        489,
+        720
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/attack_01/sword.png",
+      "sha256": "e1e83226f7ffcccf0c9aed725bcd587b11c60354c517c5c4f1b6c98fb812f68d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        63,
+        122,
+        370,
+        357
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/attack_02/sword.png",
+      "sha256": "1294cf08791244528ec5d123d82365cf3aa0cc8fd369b8cc0357f985b22cec9f",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        442,
+        195,
+        667,
+        509
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/attack_03/sword.png",
+      "sha256": "a694324bc99e81cb885aac99607f06a0d2203ca78b62d1e09e7320ddf06a0ac9",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        345,
+        513,
+        699,
+        672
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/death_01/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": true,
+      "alphaBounds": null
+    },
+    {
+      "path": "hero/v5/g2/weapons/spirit_greatsword/death_02/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": true,
+      "alphaBounds": null
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/masters/LAVALON_SWORD_UPRIGHT.png",
+      "sha256": "12e9c3bcee13affb16c774316864c5be71c238c6d6e608a0bfd50e8d9141439b",
+      "dimensions": [
+        887,
+        1774
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        41,
+        11,
+        815,
+        1774
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/idle_01/sword.png",
+      "sha256": "f2f9ab94311ef7f5ba7247adbf42a89625bbe89e0482d9cb8a49adc46424912c",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        218,
+        454,
+        472,
+        736
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/idle_02/sword.png",
+      "sha256": "14b0042d442796762ee621537adc8009ab4413aca4505659ca74b1987ce51b73",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        218,
+        442,
+        472,
+        724
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/idle_03/sword.png",
+      "sha256": "1b43fcf6a3a6deb85c159c55667930cad99de2c1964370f05e1e6ede780337e3",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        218,
+        450,
+        472,
+        732
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/attack_01/sword.png",
+      "sha256": "e9e4318c4fc3da5eec20245037dc397871843c83c6759e2e2316455d2cef5ef3",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        78,
+        106,
+        393,
+        353
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/attack_02/sword.png",
+      "sha256": "68959bf4019efd17f5d7d252fa7b31321e8fa1e12acac311f77cca09b1206eff",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        448,
+        210,
+        684,
+        507
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/attack_03/sword.png",
+      "sha256": "6ae9f3a6e1c40f56b831203f0122fd13334197e88db04d844baabf1bfb4c597b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        346,
+        508,
+        688,
+        691
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/death_01/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": true,
+      "alphaBounds": null
+    },
+    {
+      "path": "hero/v5/g2/weapons/lavalon_sword/death_02/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": true,
+      "alphaBounds": null
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/masters/ICICLE_LONGSWORD_UPRIGHT.png",
+      "sha256": "6e81e2a27c88099871a4dd771ae4d82938794502b00764ad49b4d3129b75a389",
+      "dimensions": [
+        887,
+        1774
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        27,
+        0,
+        871,
+        1763
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/idle_01/sword.png",
+      "sha256": "fe2afcc3481f471a4d1ce1eb5ff599c5fe393b9a8123f3f9a9fdde514129d49f",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        219,
+        455,
+        495,
+        730
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/idle_02/sword.png",
+      "sha256": "f9b886f1d6041dd095f7a79a61c8af71d06a1765546842f2b2e595b577fc720d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        219,
+        443,
+        495,
+        718
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/idle_03/sword.png",
+      "sha256": "66aad8eca949fd46ac52630f46fbcf2fb676dca7c84e9cbd97591fcc9b2b0f5f",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        219,
+        451,
+        495,
+        726
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/attack_01/sword.png",
+      "sha256": "55d466bb634b970eaf2be9a7bfc3971f931583610f77021657cac99e28256b9c",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        56,
+        118,
+        366,
+        353
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/attack_02/sword.png",
+      "sha256": "709d8f52226e5e9be487d6f11671da0fd8b99991b8e51727b0f75d7413a43c15",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        443,
+        188,
+        672,
+        506
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/attack_03/sword.png",
+      "sha256": "352f0339df40b93fef3b60e801f8c1c2dfb1b632ff32a4f3a6c37451a3751fd4",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": false,
+      "alphaBounds": [
+        348,
+        491,
+        707,
+        671
+      ]
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/death_01/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": true,
+      "alphaBounds": null
+    },
+    {
+      "path": "hero/v5/g2/weapons/icicle_longsword/death_02/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "format": "PNG RGBA",
+      "empty": true,
+      "alphaBounds": null
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "status": "APPROVED_FOR_PUBLICATION",
+  "assetRevision": "r1-plus-r3-attack01",
+  "sourceMain": "d464be4e43880d3d704401b263956ab7f1c4fa4a",
+  "weaponOnly": true,
+  "runtimeIntegrated": false,
+  "itemBinding": "pending DEV/WAVE 4",
+  "canvas": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    0
+  ],
+  "runtimeTransforms": false,
+  "frameMs": {
+    "idle": 440,
+    "attack": 300,
+    "death": 360
+  },
+  "layerOrder": [
+    "sword"
+  ],
+  "frames": {
+    "idle_01": {
+      "sword": "hero/v5/g2/weapons/spirit_greatsword/idle_01/sword.png"
+    },
+    "idle_02": {
+      "sword": "hero/v5/g2/weapons/spirit_greatsword/idle_02/sword.png"
+    },
+    "idle_03": {
+      "sword": "hero/v5/g2/weapons/spirit_greatsword/idle_03/sword.png"
+    },
+    "attack_01": {
+      "sword": "hero/v5/g2/weapons/spirit_greatsword/attack_01/sword.png"
+    },
+    "attack_02": {
+      "sword": "hero/v5/g2/weapons/spirit_greatsword/attack_02/sword.png"
+    },
+    "attack_03": {
+      "sword": "hero/v5/g2/weapons/spirit_greatsword/attack_03/sword.png"
+    },
+    "death_01": {
+      "sword": "hero/v5/g2/weapons/spirit_greatsword/death_01/sword.png"
+    },
+    "death_02": {
+      "sword": "hero/v5/g2/weapons/spirit_greatsword/death_02/sword.png"
+    }
+  },
+  "swordMaster": "hero/v5/g2/weapons/spirit_greatsword/masters/SPIRIT_GREATSWORD_UPRIGHT.png",
+  "masterCanvas": [
+    887,
+    1774
+  ],
+  "poses": {
+    "idle_01": {
+      "targetGrip": [
+        270,
+        505
+      ],
+      "scale": 0.22,
+      "rotationDegreesClockwise": 135,
+      "emptyReason": null
+    },
+    "idle_02": {
+      "targetGrip": [
+        270,
+        493
+      ],
+      "scale": 0.22,
+      "rotationDegreesClockwise": 135,
+      "emptyReason": null
+    },
+    "idle_03": {
+      "targetGrip": [
+        270,
+        501
+      ],
+      "scale": 0.22,
+      "rotationDegreesClockwise": 135,
+      "emptyReason": null
+    },
+    "attack_01": {
+      "targetGrip": [
+        310,
+        309
+      ],
+      "scale": 0.22,
+      "rotationDegreesClockwise": -53,
+      "emptyReason": null
+    },
+    "attack_02": {
+      "targetGrip": [
+        489,
+        448
+      ],
+      "scale": 0.22,
+      "rotationDegreesClockwise": 35,
+      "emptyReason": null
+    },
+    "attack_03": {
+      "targetGrip": [
+        413,
+        551
+      ],
+      "scale": 0.22,
+      "rotationDegreesClockwise": 112,
+      "emptyReason": null
+    },
+    "death_01": {
+      "targetGrip": null,
+      "scale": null,
+      "rotationDegreesClockwise": null,
+      "emptyReason": "Preserves approved Azure empty Death weapon convention and unchanged open-hand pose"
+    },
+    "death_02": {
+      "targetGrip": null,
+      "scale": null,
+      "rotationDegreesClockwise": null,
+      "emptyReason": "Preserves approved Azure empty Death weapon convention and unchanged open-hand pose"
+    }
+  },
+  "frameOverrides": {
+    "attack_01": {
+      "drawOrderBackToFront": [
+        "hair_back",
+        "hair_front",
+        "sword",
+        "arm_front"
+      ],
+      "neutralArmFront": "hero/v5/g2/weapons/shared/attack_01/right_arm.png",
+      "equipmentArmFront": "Use selected approved equipment arm_front instead of neutral arm when present; always after sword.",
+      "requiredFrontToBack": [
+        "arm_front",
+        "sword",
+        "hair"
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "modifiesBase": false,
+      "modifiesHair": false
+    }
+  },
+  "wingContract": "hero/v5/g2/wings/WING_FRAME_CONTRACT.json",
+  "wingOrderUnchanged": true,
+  "deathConvention": "6 empty transparent layers: two per weapon, matching approved Azure Death behavior",
+  "validation": "hero/v5/g2/weapons/BOSS_WEAPONS_VALIDATION.json"
+}
