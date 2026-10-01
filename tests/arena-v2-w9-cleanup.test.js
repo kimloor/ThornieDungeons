@@ -83,7 +83,9 @@ test('0025 drops retired V1 tables while preserving V2 and unrelated player data
   }
 
   const character = db.prepare("SELECT name, pvp_tickets, pvp_tickets_updated_at FROM characters WHERE character_id = 'char-1'").get();
-  assert.deepEqual(character, { name: 'Keep Me', pvp_tickets: 3, pvp_tickets_updated_at: 'legacy-marker' });
+  assert.equal(character.name, 'Keep Me');
+  assert.equal(character.pvp_tickets, 3);
+  assert.equal(character.pvp_tickets_updated_at, 'legacy-marker');
   assert.equal(db.prepare("SELECT name FROM items WHERE item_id = 'item-1'").get().name, 'Keep Item');
   assert.equal(db.prepare("SELECT rating FROM arena_season_players WHERE character_id = 'char-1'").get().rating, 1234);
   db.close();
