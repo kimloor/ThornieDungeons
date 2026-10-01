@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — W9 complete; W9R is the current gate; post-W9R execution waves are locked**
+Status: **ACTIVE-EXECUTION — W9R complete in Production; WAVE 1 is the current DEV gate; Graphics G4 may proceed in parallel**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -603,87 +603,54 @@ Battle Core and server authority remain outside Phaser. Do not infer that older 
 ---
 
 ## W9R — API Worker Modularization Refactor
-**Status: READY_FOR_DEV — CURRENT EXECUTION GATE after W9**
+**Status: COMPLETE — MERGED / PRODUCTION DEPLOYED — 2026-10-01**
 **Risk: HIGH**
-**Execution: SINGLE REFACTOR BATCH**
+**Execution: SINGLE REFACTOR BATCH — CLOSED**
 
-Purpose:
-- reduce the size and change-collision surface of `workers/thornie-dungeons-api.js`;
-- separate domain ownership without changing gameplay, API contracts, persistence semantics, auth boundaries, economy, or deployed Worker identity;
-- make future Arena/Admin/Social work safer for DEV/QA and easier to review.
+Production result:
+- PR #39 merged to `main`;
+- merge commit: `445ebcaaf2a608947148f7ad80456b06f59ced4a`;
+- Production API deploy workflow run: `36829143234` — SUCCESS;
+- Production Worker version: `f1516c5b-052e-4d52-b1a4-a07092f8e6f6`;
+- D1: `thornie-dungeons-db`; no pending migration was applied;
+- full reported local regression: 378 passed, 0 failed;
+- Battle Core / W9 Arena parity and post-merge verification: PASS.
 
-Current trigger:
-- the W9 branch Worker has grown beyond 7,000 lines;
-- Arena, Admin, Auth, Mailbox, Guild, Social, Crafting and shared helpers currently coexist in one large file;
-- Admin Phase 1 would otherwise continue adding code to the same monolith.
-
-Target direction:
-
+Delivered module structure:
 ```text
 workers/
-  thornie-dungeons-api-entry.js
-  thornie-dungeons-api.js        # thin compatibility/router boundary
+  thornie-dungeons-api.js
   modules/
-    shared/
-      db.js
-      response.js
-      time.js
-      security.js
-    auth/
-    admin/
-    arena/
-      status.js
-      matchmaking.js
-      lifecycle.js
-      combat.js
-      settlement.js
-      rewards.js
-    mailbox/
-    social/
-    guild/
-    crafting/
+    shared.js
+    auth.js
+    social.js
+    mailbox.js
+    leaderboard.js
 ```
 
-The exact filenames may change during implementation. Domain boundaries and behavior-preservation rules are the contract.
+Implemented outcome:
+- Worker entrypoint reduced by approximately 2,500 lines;
+- Shared helpers, Auth/Admin primitives, Social/Friend/Chat/Guild, Mailbox and Leaderboard ownership moved behind explicit dependency injection;
+- Arena V2 and embedded Battle Core remained byte-for-byte unchanged in the Worker during W9R;
+- schema/migrations, visible version, API contracts, gameplay, economy and transaction behavior remained unchanged;
+- generated frontend remained unchanged;
+- Wrangler ESM/import dry-run passed before release.
 
-### Single-batch execution
-W9R is implemented and reviewed as one HIGH-risk refactor batch, not as separate W9R.0–W9R.5 releases.
+QA closeout:
+- Auth moved functions: exact vs base;
+- Social moved functions: exact vs base;
+- Mailbox exact-once behavior: exact vs base;
+- Arena + Battle Core retained block: byte-for-byte exact vs base;
+- push parity run `36828051453`: SUCCESS;
+- PR parity run `36828216679`: SUCCESS;
+- Admin V2 QA run `36828216674`: SUCCESS;
+- post-merge parity run `36829142882`: SUCCESS.
 
-Within that one batch DEV should still use internal checkpoints:
-1. characterize current behavior and map dependencies;
-2. extract shared infrastructure;
-3. extract Auth/Admin foundation;
-4. extract Arena V2;
-5. extract Mailbox/Social/Guild/Crafting;
-6. reduce the legacy Worker file to thin routing/composition;
-7. run the complete regression/build gate before publication.
+Known non-blocking infrastructure note:
+- the separate Cloudflare GitHub App `Workers Builds: thorniedungeons` check continues to report the known pre-existing integration failure pattern;
+- the supported repository `deploy-api.yml` pipeline deployed and activated the Production API Worker successfully.
 
-These checkpoints are implementation discipline only. They do not require separate Project Lead approvals, separate feature branches, separate releases, or separate QA handoffs unless a blocker forces the work to be split.
-
-### W9R hard rules
-- behavior-preserving refactor only;
-- no feature work mixed into the refactor;
-- no migration/schema changes unless a separate approved task requires them;
-- no economy/balance changes;
-- no endpoint/action renames;
-- no Battle Core redesign;
-- no destructive cleanup;
-- preserve gameplay/Admin session separation;
-- preserve Mailbox/Arena exact-once behavior;
-- preserve all W9.1-W9.9 contracts;
-- if extraction reveals a real bug, record it separately rather than hiding a behavior change inside the refactor.
-
-### Required validation inside the single batch
-Before publish/QA handoff, verify:
-- current public/admin/gameplay API behavior is preserved;
-- Worker entry/deploy contract is unchanged;
-- Auth/Admin session separation passes;
-- W9 Arena full regression passes;
-- Mailbox exact-once tests pass;
-- Social/Guild/Crafting regression passes;
-- generated frontend/build checks pass where relevant;
-- module ownership/import boundaries are documented;
-- `workers/thornie-dungeons-api.js` is materially reduced and no longer the primary home for every domain.
+W9R is closed. Future modularization may continue opportunistically inside later approved scopes, but it is not a blocker for WAVE 1.
 
 Admin Phase 1 (Dashboard + read-only Player Viewer) starts from the post-W9R `main`, not from the old `feat/admin-v2-auth` branch.
 
@@ -707,7 +674,7 @@ Rules for all waves:
 ---
 
 ## WAVE 1 — Dungeon V2 Encounter + Stat Foundation
-**Status: READY AFTER W9R**
+**Status: READY_FOR_DEV — CURRENT EXECUTION GATE**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA; Graphics only for identified presentation gaps**
@@ -1073,9 +1040,9 @@ W0-W8                         ✅ COMPLETE
  ↓
 W9 Arena V2                   ✅ COMPLETE / PRODUCTION VERIFIED
  ↓
-W9R API Worker Refactor       🔴 HIGH — CURRENT GATE
+W9R API Worker Refactor       ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 1 Dungeon V2 Foundation  🔴 HIGH
+WAVE 1 Dungeon V2 Foundation  🔴 HIGH — CURRENT DEV GATE
  ↓
 WAVE 2 Reward V2 Foundation   🔴 HIGH
  ↓
@@ -1097,7 +1064,8 @@ Admin V2 Phase 1              🔴 HIGH
    └─ may run beside WAVE 1-5 with collision-safe branch ownership
 
 Graphics G4-G9
-   └─ run only when the target wave has a confirmed asset dependency
+   ├─ G4 Reward V2 icons may start now
+   └─ later batches run only when the target wave has a confirmed asset dependency
 
 QA Q1-Q8
    └─ independent gate after each implementation wave
