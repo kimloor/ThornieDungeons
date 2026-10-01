@@ -1,8 +1,9 @@
 # ThornieDungeons — Arena V2 / W9
 
-Status: **ACTIVE-DESIGN — USER-APPROVED W9 SOURCE OF TRUTH**
+Status: **COMPLETE — PRODUCTION VERIFIED / W9 CLOSED**
 
 Last design lock: 2026-09-28  
+Final production closeout: 2026-10-01  
 Baseline main when this contract was recorded: c7bc3fe350d5cc8b08d3162f16e2daf803e5cefd
 
 This document is the dedicated gameplay, economy, UX, season, persistence and presentation contract for W9 Arena V2.
@@ -920,50 +921,41 @@ Mailbox remains authoritative for season rewards.
 
 ## 27. Legacy Arena V1 cutover and cleanup
 
-Arena V2 Season 1 starts clean:
-- all players begin V2 at Rating 1000 / Bronze when their V2 season record is created;
-- do not migrate V1 Rating, W/L or V1 match history into V2 competition.
+**Status: COMPLETE — PRODUCTION VERIFIED**
 
-Deployment safety:
-1. deploy Arena V2 additively first;
-2. verify production V2 behavior;
-3. only after V2 production verification, perform a separate legacy cleanup;
-4. remove old Arena V1 data/schema/code paths that are proven unused.
+Arena V2 Season 1 remains clean:
+- V2 starts at Rating 1000 / Bronze;
+- V1 Rating/W-L/history were not migrated into the V2 competition.
 
-User explicitly approved deleting old Arena V1 data after V2 deployment is complete and verified.
+Final cutover and cleanup:
+- Arena V2 was deployed additively and production-verified first;
+- legacy Arena V1 frontend/API runtime entry points were then removed;
+- public leaderboard key `pvp` was preserved as a compatibility surface but now reads authoritative Arena V2 season data;
+- migration `0025_arena_v1_cleanup.sql` removed:
+  - `pvp_snapshots`;
+  - `pvp_ranking`;
+  - `pvp_match_log`;
+  - `pvp_matches`;
+- `characters.pvp_tickets` and `characters.pvp_tickets_updated_at` remain as inert compatibility columns because removing them would require a risky table rebuild with no runtime benefit;
+- unrelated character, inventory and progression data were preserved.
 
-Candidate legacy objects from current audit include:
-- pvp_snapshots;
-- pvp_ranking;
-- pvp_match_log;
-- pvp_matches;
-- old Arena ticket fields/paths if superseded.
-
-Do not blindly drop candidates:
-- audit live dependencies first;
-- cleanup migration must be explicit and focused;
-- do not delete unrelated player data.
+Production cleanup deployment:
+- API run `36812924931`: SUCCESS;
+- migration `0025_arena_v1_cleanup.sql`: applied successfully;
+- deployed API Worker Version ID: `09a61e53-04dc-49c7-8c2f-28ad3282e501`.
 
 ---
 
-## 28. Current Arena V1 audit baseline
+## 28. Arena V1 audit baseline — historical
 
-Current repo before W9 redesign contains:
-- pvp_snapshots;
-- pvp_ranking;
-- pvp_match_log;
-- pvp_matches;
-- character pvp ticket fields;
-- Arena DOM lobby/opponent list/battle/result UI;
-- server-resolved Arena actions using shared Battle Core;
-- old tickets max 5 / +1 per 20m / 30-Diamond extra attack;
-- Elo K 24;
-- old reward Diamonds;
-- current snapshot refresh tied to Arena entry;
-- simple/random-ish defender AI;
-- pvp_match_log table not used by current settlement path.
+The following list records the pre-W9 legacy state for audit/history only. These runtime paths are no longer active after final closeout:
+- V1 `pvp_snapshots`, `pvp_ranking`, `pvp_match_log`, `pvp_matches`;
+- Arena V1 lobby/opponent/battle/result runtime;
+- old Arena ticket behavior;
+- old V1 settlement/reward path;
+- old defender AI and snapshot refresh path.
 
-W9 should replace these behaviors only where this dedicated contract requires it; preserve unrelated systems.
+The inert character ticket columns are intentionally retained only for schema compatibility and are not authoritative Arena V2 state.
 
 ---
 

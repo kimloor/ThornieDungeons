@@ -1,12 +1,15 @@
 # Arena V2 W9 — Implementation Roadmap
 
-Status: **READY_FOR_IMPLEMENTATION — HIGH RISK**
+Status: **COMPLETE — PRODUCTION VERIFIED / W9 CLOSED**
 
-Branch:
+Implementation branch (historical):
 - `feat/w9-arena-v2`
 
-Base:
+Original implementation base:
 - `c101ead2e4a36ed7bed9c895fe9aadbb16400ebf`
+
+Final production closeout baseline:
+- `65247c7281d50fc4ca4e0f99f8cd365132067018`
 
 Source of truth:
 - `docs/ARENA-V2-W9.md`
@@ -23,7 +26,7 @@ Supporting contracts:
 
 Ship full Arena V2 with the approved Arena Hub, Arena Setup, weekly seasons, Ticket V2, Arena Coin, matchmaking, bots, tactical Battle Core combat, Phaser 2v2 presentation, History/Revenge, seasonal rewards and global Top-3 Profile Frames.
 
-Arena V2 must be deployed additively. Arena V1 cleanup is a separate post-production-verification step.
+Arena V2 was deployed additively and production-verified. The separately controlled Arena V1 cleanup is also complete.
 
 ## Locked architecture
 
@@ -231,7 +234,7 @@ Gate:
 
 ## W9.5 — Two-phase match lifecycle
 
-**Status: COMPLETE — READY_FOR_QA**
+**Status: COMPLETE — PRODUCTION VERIFIED**
 
 Purpose: satisfy the W9 rule that presentation preparation succeeds before a Ticket is consumed.
 
@@ -266,7 +269,9 @@ Out of scope and reserved for later W9 batches:
 - Battle Core action/target/AI orchestration;
 - settlement, surrender, timeout/cutoff results, rating, rewards and history.
 
-## W9.6 — Arena combat orchestration and AI — COMPLETE / READY_FOR_QA
+## W9.6 — Arena combat orchestration and AI
+
+**Status: COMPLETE — PRODUCTION VERIFIED**
 
 Purpose: connect Arena V2 lifecycle to shared Battle Core.
 
@@ -302,7 +307,9 @@ Gate:
 - surrender and normal combat completion store combat result only; W9.7 owns
   settlement/economy/rewards.
 
-## W9.7 — Settlement, economy and rewards — IMPLEMENTED / READY_FOR_QA
+## W9.7 — Settlement, economy and rewards
+
+**Status: COMPLETE — PRODUCTION VERIFIED**
 
 Purpose: one idempotent authoritative settlement path for every Arena result.
 
@@ -336,8 +343,14 @@ Work:
 Exact-once requirement:
 - duplicate action/settlement/retry must return the already stored result and must not duplicate rating, tickets, pair count, Coin, milestones, mail or frames.
 
-Content dependency:
-- final progression-material item ID/quantity for season rank rewards must be approved before enabling that reward component; do not guess.
+Final progression-material reward:
+- existing material identity: `manaOre`;
+- Rank 1: Mana Ore ×25;
+- Rank 2: Mana Ore ×20;
+- Rank 3: Mana Ore ×15;
+- Rank 4–10: Mana Ore ×10;
+- Rank 11+: none;
+- Mana Ore is delivered through Mailbox using the deterministic season-reward source identity, so retry/replay remains exact-once.
 
 Implementation boundary:
 - `workers/thornie-dungeons-api.js` now owns one authoritative settlement path for normal terminal results, surrender, timeout and season cutoff.
@@ -349,10 +362,12 @@ Implementation boundary:
 - Recovery respects the authoritative terminal timestamp: a result completed before season cutoff keeps its normal/surrender settlement even if recovery runs after cutoff; only unresolved active matches (or terminal rows completed at/after cutoff) use cutoff Coin-only settlement.
 - Live and final rank ordering is identical: rating DESC, Attack Wins DESC, rating_reached_at ASC, character_id ASC. Result/history rating deltas are computed after floor and bot-cap clamping.
 - Season rollover finalizes expired active and terminal-but-unsettled matches, ranks by rating → Attack Wins → rating reached time → character ID, and initializes the next season with the locked one-tier-drop base.
-- Arena Coin and Diamonds settle immediately where approved. Progression-material reward is explicitly disabled pending an approved item ID/quantity. W9.8 now owns delayed mailbox identity/claim receipts and global frame delivery.
+- Arena Coin and Diamonds settle immediately where approved. Season progression material is Mana Ore using the locked rank quantities above and Mailbox exact-once delivery. W9.8 owns delayed mailbox identity/claim receipts and global frame delivery.
 - W9.5/W9.6 combat action receipts and Ticket activation semantics remain unchanged; W9.8 adds only additive migration 0024 for mailbox source/claim identities.
 
 ## W9.8 — Mailbox + global Profile Frames
+
+**Status: COMPLETE — PRODUCTION VERIFIED**
 
 Purpose: support delayed/offline Arena rewards safely.
 
@@ -386,6 +401,8 @@ Implementation status:
 - expired equipped frames are disabled and omitted from Arena/Player Card responses.
 
 ## W9.9 — Arena V2 frontend + staging QA
+
+**Status: COMPLETE — PRODUCTION VERIFIED**
 
 Frontend:
 - locked view below Lv.10;
@@ -454,33 +471,33 @@ Final W9 QA gates:
 
 ## Production cutover
 
-Only after explicit release authorization:
-1. sync W9 branch with latest main;
-2. run final QA;
-3. merge approved W9;
-4. deploy additive Arena V2;
-5. verify production V2 using QA-only data;
-6. confirm V2 endpoints/UI no longer depend on V1 objects.
+**Status: COMPLETE — PRODUCTION VERIFIED**
 
-Do not delete Arena V1 during this release.
+Completed production state:
+- Arena V2 gameplay/lifecycle/settlement/frontend is live;
+- current visible frontend version: **Ver 1.0.34**;
+- Production frontend deployment run `36812475614`: SUCCESS, Worker Version ID `bece6c79-87cb-48a2-b610-0e6f2fd4d48d`;
+- Mana Ore season reward API deployment run `36811646204`: SUCCESS;
+- Arena V1 cleanup API deployment run `36812924931`: SUCCESS, Worker Version ID `09a61e53-04dc-49c7-8c2f-28ad3282e501`;
+- migration `0025_arena_v1_cleanup.sql` applied successfully in Production;
+- public leaderboard compatibility key `pvp` now reads authoritative Arena V2 season data.
 
 ## Post-W9 — Arena V1 cleanup
 
-Separate controlled change after Arena V2 production verification.
+**Status: COMPLETE — PRODUCTION VERIFIED**
 
-Audit and remove only proven-unused legacy objects/callers, including candidates:
-- `pvp_snapshots`;
-- `pvp_ranking`;
-- `pvp_match_log`;
-- `pvp_matches`;
-- old Arena ticket columns/paths;
-- old Arena V1 frontend/API code;
-- old public PvP leaderboard path after its V2 replacement is verified.
-
-Cleanup must use a separate explicit migration and regression gate.
+Completed cleanup:
+- removed legacy Arena V1 frontend/runtime callers and API routes;
+- dropped retired tables through explicit migration `0025_arena_v1_cleanup.sql`:
+  - `pvp_matches`;
+  - `pvp_match_log`;
+  - `pvp_snapshots`;
+  - `pvp_ranking`;
+- retained `characters.pvp_tickets` and `characters.pvp_tickets_updated_at` as inert compatibility columns because removing them would require an unnecessary characters-table rebuild;
+- preserved Arena V2 tables, unrelated character/items data, Battle Core and shared gameplay systems.
 
 ## Recommended execution order
 
-`W9.0 → W9.1 → W9.2 → W9.3 → W9.4 → W9.5 → W9.6 → W9.7 → W9.8 → W9.9 → Production Verification → V1 Cleanup`
+`W9.0 → W9.1 → W9.2 → W9.3 → W9.4 → W9.5 → W9.6 → W9.7 → W9.8 → W9.9 → Production Verification → V1 Cleanup` — **COMPLETE**.
 
-Do not skip W9.0 or collapse schema, lifecycle, settlement and frontend work into one uncontrolled batch.
+All closeout work is now on `main`; future Arena work belongs to a new explicitly scoped phase.

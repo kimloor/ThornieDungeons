@@ -543,17 +543,17 @@ This is not required to remove CSS from the first Hub pass, but should belong to
 
 These are presentation emblems only. Result text remains DOM.
 
-- [ ] **WIN emblem**
+- [x] **WIN emblem**
   - Proposed path: `r2-upload/ui/arena/results/result_win.png`
   - Direction: victory laurel / champion mark
   - Positive but not visually stronger than Rank 1 seasonal frame.
 
-- [ ] **LOSS emblem**
+- [x] **LOSS emblem**
   - Proposed path: `r2-upload/ui/arena/results/result_loss.png`
   - Direction: restrained defeat/broken crest
   - Avoid overly punitive/gory art.
 
-- [ ] **DRAW emblem**
+- [x] **DRAW emblem**
   - Proposed path: `r2-upload/ui/arena/results/result_draw.png`
   - Direction: balanced crossed shields/weapons
   - Must not look like WIN or LOSS.
@@ -566,7 +566,7 @@ Most Arena Battle UI should reuse the existing shared Battle pack.
 
 ## 18. Surrender button
 
-- [ ] **Arena Surrender button**
+- [x] **Arena Surrender button**
   - Proposed path: `r2-upload/ui/arena/battle/button_surrender.png`
   - Reason:
     - Dungeon has `button_flee.png`
@@ -583,13 +583,13 @@ Most Arena Battle UI should reuse the existing shared Battle pack.
 
 These are **optional** and should be created only if runtime presentation needs them.
 
-- [ ] **Hero fallback ATB icon — OPTIONAL**
+- [ ] **Hero fallback ATB icon — OPTIONAL / DEFERRED (not required by current runtime)**
   - Proposed path: `r2-upload/ui/arena/battle/icon_hero_fallback.png`
   - Use only when a real Hero portrait/head asset cannot be resolved.
   - Generic silhouette only.
   - Never replace the real actor portrait when available.
 
-- [ ] **Pet fallback ATB icon — OPTIONAL**
+- [ ] **Pet fallback ATB icon — OPTIONAL / DEFERRED (not required by current runtime)**
   - Proposed path: `r2-upload/ui/arena/battle/icon_pet_fallback.png`
   - Use only when real Pet icon/presentation cannot be resolved.
   - Never bake a specific Pet into the fallback.
