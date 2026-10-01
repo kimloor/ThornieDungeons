@@ -11,7 +11,7 @@ const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
 
 test('W9 closeout removes legacy Arena V1 runtime entry points', () => {
   for (const route of ['getArenaStatus', 'getArenaOpponents', 'startArenaMatch', 'submitArenaTurn']) {
-    assert.doesNotMatch(worker, new RegExp('["\\']' + route + '["\\']'));
+    assert.equal(worker.includes('"' + route + '"') || worker.includes("'" + route + "'"), false, route);
   }
   for (const helper of ['cloudGetArenaStatus', 'cloudGetArenaOpponents', 'cloudStartArenaMatch', 'cloudSubmitArenaTurn']) {
     assert.doesNotMatch(api, new RegExp('function ' + helper + '\\b'));
