@@ -45,7 +45,7 @@ test("authenticated gameplay helpers send bearer auth without id/password payloa
   await sandbox.cloudDeleteAllClaimedMail("https://api.test", "char-1");
   await sandbox.cloudCraftItem("https://api.test", "char-1", "recipe-1");
   await sandbox.cloudGetRaidStatus("https://api.test", "char-1");
-  await sandbox.cloudGetArenaStatus("https://api.test", "char-1");
+  await sandbox.cloudGetArenaV2Status("https://api.test", "char-1");
 
   assert.equal(requests.length, 9);
   for (const request of requests) {
