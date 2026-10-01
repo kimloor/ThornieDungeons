@@ -4,9 +4,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const vm = require('node:vm');
+const { loadWorkerSource } = require('./helpers/worker-source');
 
 const ROOT = path.join(__dirname, '..');
-const worker = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8');
+const worker = loadWorkerSource(ROOT);
 const playerCard = fs.readFileSync(path.join(ROOT, 'src/ui/playerCard.js'), 'utf8');
 const arenaUi = fs.readFileSync(path.join(ROOT, 'src/ui/components.js'), 'utf8');
 const arenaApi = fs.readFileSync(path.join(ROOT, 'src/state/api.js'), 'utf8');

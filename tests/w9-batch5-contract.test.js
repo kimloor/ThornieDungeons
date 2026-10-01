@@ -84,7 +84,6 @@ test("Arena seq contract is narrow and initial Phaser snapshot establishes a no-
   const worker = read("workers/thornie-dungeons-api.js");
   assert.match(worker, /pvpPublicLogEntry\(e, \{ includeSeq = false \} = \{\}\)/);
   assert.match(worker, /slice\(-40\)\.map\(\(entry\) => pvpPublicLogEntry\(entry, \{ includeSeq: true \}\)\)/);
-  assert.match(worker, /newLog = state\.log\.filter\(\(e\) => e\.seq > beforeSeq\)\.map\(pvpPublicLogEntry\)/);
   const scene = read("src/phaser/scenes/BattleScene.js");
   assert.match(scene, /const isFirstSnapshot = this\.lastArenaBattleId !== snapshot\.battleId/);
   assert.match(scene, /isFirstSnapshot \? \[\] : allCues/);

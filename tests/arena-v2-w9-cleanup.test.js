@@ -5,7 +5,8 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 
 const ROOT = path.join(__dirname, '..');
-const worker = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8');
+const worker = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8')
+  + fs.readFileSync(path.join(ROOT, 'workers/modules/leaderboard.js'), 'utf8');
 const api = fs.readFileSync(path.join(ROOT, 'src/state/api.js'), 'utf8');
 const ui = fs.readFileSync(path.join(ROOT, 'src/ui/components.js'), 'utf8');
 const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
