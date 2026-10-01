@@ -868,6 +868,12 @@ Runtime scope:
 
 Manifest keys and nine-slice metadata are recorded in `r2-upload/ui/arena/GRAPHICS_CONTRACT.json` → `hubExtensionR1`.
 
+Publication / verification:
+- integration commit: `dd58c0cad8ebf49524ea9134651ebc05f46cd643`;
+- R2 run: `36801032793` — SUCCESS, 20 changed R2 objects uploaded and downloaded with matching SHA-256;
+- Frontend Production run: `36801032829` — SUCCESS, Worker Version ID `e06e078b-7ac2-4abd-bd9b-506096cacc7d`;
+- Battle Core parity run: `36801032827` — SUCCESS, including W9 suites and `node build.js` generated-frontend equality check.
+
 Next Arena graphics scope remains Battle/Result only: Surrender button and WIN/LOSS/DRAW result emblems; fallback actor icons only if runtime proves they are needed.
 
 
