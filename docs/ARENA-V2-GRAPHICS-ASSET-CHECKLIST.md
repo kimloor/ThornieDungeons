@@ -895,6 +895,14 @@ Runtime scope:
 
 Manifest and final asset metadata are recorded in `r2-upload/ui/arena/GRAPHICS_CONTRACT.json` → `battleResultR1`.
 
+Publication / verification:
+- integration commit: `8e13b69ce5bfb393e7de0f098df2bde8b17b9710`;
+- version-assertion sync: `f50cd98425fc49b82684e0ae7031a2f3cef8be11`;
+- R2 run: `36809689360` — SUCCESS, 6 changed R2 objects uploaded/downloaded with matching SHA-256;
+- Frontend Production run: `36809689390` — SUCCESS, Worker Version ID `052fce66-4e0a-4a74-a3da-9cecd3f955f5`;
+- final Battle Core parity run: `36809769185` — SUCCESS, including W9 suites and `node build.js` generated-frontend equality check;
+- Battle Core and API Worker blob SHAs are unchanged from the pre-integration base.
+
 # PART O — HANDOFF TEMPLATE
 
 Use this after each graphics batch:
