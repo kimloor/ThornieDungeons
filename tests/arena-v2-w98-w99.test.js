@@ -313,6 +313,10 @@ test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Resu
   assert.match(arenaUi, /optionalAsset\("arenaUi\.tiers\.bronze"\)/);
   assert.match(arenaUi, /md-arena-milestone-panel/);
   assert.match(arenaUi, /className: !match \? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card"/);
+  assert.match(arenaUi, /!match && currentTierBadge/);
+  assert.match(arenaUi, /!match && arenaHubAssets\.icons\.season/);
+  assert.match(arenaUi, /className: !match \? "md-btn small md-arena-art-btn secondary md-arena-info-button" : "md-btn small"/);
+  assert.match(arenaUi, /!match && arenaHubAssets\.icons\.info/);
   assert.match(styles, /border-image-slice:32 fill/);
   assert.match(styles, /border-image-slice:16 fill/);
   assert.match(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
