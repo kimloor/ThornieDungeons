@@ -155,56 +155,81 @@ function freshPlayerFromSave(save, carry = null) {
   };
 }
 function makeEnemy(floor, options = {}) {
-  const isBoss = floor % 5 === 0;
-  const isEliteBoss = floor % 10 === 0;
-  const modifier = isBoss ? null : rollFloorModifier();
+  const encounterType = options.encounterType || DUNGEON_V2.classifyDungeonEncounter(floor);
+  const isBoss = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS;
+  const isElite = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.ELITE;
+  const modifier = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL ? (options.modifier === undefined ? rollFloorModifier() : options.modifier) : null;
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
-  const t = pool[Math.floor(Math.random() * pool.length)];
-  const mult = isEliteBoss ? 4.2 : isBoss ? 2.6 : 1;
-  // groupScale softens HP/ATK a bit per monster when multiple spawn together in one encounter,
-  // so a 3-monster pack isn't simply 3x harder than a solo fight.
-  const groupScale = options.groupScale || 1;
-  const hpM = (t.hpMult || 1) * (modifier?.hpMult || 1) * groupScale;
-  const atkM = (t.atkMult || 1) * (modifier?.atkMult || 1) * groupScale;
-  const defB = t.defBonus || 0;
+  const t = pool[Math.floor(Math.random() * pool.length)] || pool[0];
+  const packCount = Math.max(1, Math.min(3, Math.floor(Number(options.packCount) || 1)));
+  const v2ProfileId = t.dungeonV2Id || t.id;
+  const v2Stats = isBoss
+    ? DUNGEON_V2.resolveDungeonV2BossStats(floor, v2ProfileId)
+    : DUNGEON_V2.resolveDungeonV2NormalStats(floor, v2ProfileId, { packCount, elite: isElite, modifier });
   const goldM = (t.goldMult || 1) * (modifier?.goldMult || 1);
   const xpM = (t.xpMult || 1) * (modifier?.xpMult || 1);
-  const name = isEliteBoss ? `${t.name} (Elite Boss)` : isBoss ? `${t.name} (Boss)` : modifier ? `${t.name} ${modifier.icon}` : t.name;
+  const name = isBoss ? `${t.name} (Boss)` : isElite ? `${t.name} (Elite)` : modifier ? `${t.name} ${modifier.icon}` : t.name;
   const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
+  const speedAdjustment = Number(v2Stats.speedAdjustment) || 0;
+  const baseAtk = v2Stats.atk;
+  const skillConfig = DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
   return {
     id: t.id,
     uid: `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name,
     color: t.color,
     isBoss,
-    isEliteBoss,
-    sizeClass: isEliteBoss ? "elite" : t.sizeClass || (isBoss ? "large" : "medium"),
+    isElite,
+    // Kept false for V2 Elite encounters so old reward/UI branches cannot
+    // accidentally treat an Elite midpoint as a Chapter Boss.
+    isEliteBoss: false,
+    encounterType,
+    floor: Math.max(1, Math.floor(Number(floor) || 1)),
+    chapter: DUNGEON_V2.dungeonChapterForFloor(floor),
+    chapterFloor: DUNGEON_V2.dungeonChapterFloor(floor),
+    sourceIdentity: isBoss ? `chapter_boss:${t.id}` : `${encounterType}:${t.id}`,
+    dungeonV2ProfileId: v2Stats.profileId,
+    dungeonV2SkillSetId: skillConfig?.skillSetId || null,
+    dungeonV2SkillCycle: skillConfig?.cycle || null,
+    dungeonV2SkillPhase2Cycle: skillConfig?.phase2Cycle || null,
+    dungeonV2PhaseAction: skillConfig?.phaseAction || null,
+    dungeonV2CycleIndex: 0,
+    dungeonV2Phase: "base",
+    dungeonV2PendingAction: null,
+    dungeonV2OvergrowthQueued: false,
+    dungeonV2OvergrowthUsed: false,
+    dungeonV2BaseAtk: baseAtk,
+    flags: { dungeonV2BaseAtk: baseAtk },
+    sizeClass: isBoss ? (t.sizeClass || "large") : isElite ? "elite" : t.sizeClass || "medium",
     anchorType: t.anchorType === "flying" ? "flying" : "ground",
     modifier,
     agi,
-    speed: speedFromAgi(agi),
-    evasion: evasionFromAgi(agi),
+    speed: speedFromAgi(agi) + speedAdjustment,
+    evasion: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
+    dodge: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
     hitRate: hitRateFromDex(t.dex || (isBoss ? 6 : 2)),
-    hp: roundInt((18 + floor * 7) * mult * hpM),
-    maxHp: roundInt((18 + floor * 7) * mult * hpM),
-    atk: roundInt((3 + floor * 1.6) * (isBoss ? 1.3 : 1) * atkM),
-    def: roundInt(Math.floor(floor * 0.7) + (isBoss ? 3 : 0) + (isEliteBoss ? 4 : 0) + defB),
-    xp: roundInt((6 + floor * 3) * (isBoss ? 2.2 : 1) * xpM),
-    gold: roundInt((4 + floor * 2.5) * (isBoss ? 2.2 : 1) * goldM)
+    statusResist: Number(v2Stats.statusResist) || 0,
+    hp: v2Stats.hp,
+    maxHp: v2Stats.hp,
+    atk: v2Stats.atk,
+    def: v2Stats.def,
+    xp: roundInt((6 + floor * 3) * (isBoss ? 2.2 : isElite ? 1.5 : 1) * xpM),
+    gold: roundInt((4 + floor * 2.5) * (isBoss ? 2.2 : isElite ? 1.5 : 1) * goldM)
   };
 }
-// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss). Floors 1-4
-// are single-monster only (easing new players in before multi-monster fights start) — floor 5+
-// non-boss floors spawn 1-3 regular monsters that share the field together.
+// Builds a full encounter from the locked V2 structure. F1-F4 remain single
+// normal encounters for the onboarding flow; later normal floors use the
+// existing 1-3 pack distribution. Midpoint Elite and Chapter Boss floors are
+// always single-monster encounters.
 function makeEncounter(floor) {
-  const isBoss = floor % 5 === 0;
-  if (isBoss) return [makeEnemy(floor)];
-  if (floor < 5) return [makeEnemy(floor)];
+  const encounterType = DUNGEON_V2.classifyDungeonEncounter(floor);
+  if (encounterType !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL || Number(floor) < 5) {
+    return [makeEnemy(floor, { encounterType, packCount: 1 })];
+  }
   const roll = Math.random();
   const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
-  const groupScale = count === 1 ? 1 : count === 2 ? 0.72 : 0.55;
   const monsters = [];
-  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { groupScale }));
+  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count }));
   return monsters;
 }
 // Builds the round's initiative queue: every living unit on the field

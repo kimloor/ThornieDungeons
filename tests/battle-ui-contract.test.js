@@ -43,7 +43,8 @@ test("Battle rendering preserves manifest resolvers and App has one gameplay res
   assert.match(manifest, /getPetSpriteConfig/);
   assert.match(manifest, /getMonsterSpriteConfig/);
   assert.match(app, /BATTLE_CORE_V1\.battleStep/);
-  assert.match(app, /BATTLE_CORE_V1\.simulateBattle/);
+  assert.match(app, /DUNGEON_V2\.simulateDungeonV2Battle\(state, BATTLE_CORE_V1\)/);
+  assert.doesNotMatch(app, /Legacy source-contract marker/);
   assert.doesNotMatch(app, /function (processQueue|doPetAction|doMonsterAction|enemyTurn)/);
 });
 

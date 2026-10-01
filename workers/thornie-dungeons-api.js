@@ -2016,7 +2016,13 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     const pierce = Math.max(Number(spec.defPierce) || 0, conversions.includes("armor_pierce") ? 0.3 : 0);
     const attackPower = actor.atk * (Number(spec.mult) || 1) * activeBuffDamageMultiplier(actor) * heroPassiveDamageMultiplier(state, actor, target);
     const critMult = crit ? actor.critDamage + pct(Number(spec.critDamageBonus) || 0) + pct((skillData(actor, "critical_mastery") || {}).critDamagePct || 0) : 1;
-    const damage = Math.max(1, Math.round((attackPower - targetDefAtHitStart * (1 - pierce)) * critMult));
+    const baseDamage = Math.max(1, Math.round((attackPower - targetDefAtHitStart * (1 - pierce)) * critMult));
+    // Optional generic actor modifier. Omitted/invalid values remain neutral;
+    // Dungeon V2 sets it only after its Boss Enrage threshold is crossed.
+    const damageMultiplier = Number.isFinite(Number(actor.damageMultiplier))
+      ? Math.max(0, Number(actor.damageMultiplier))
+      : 1;
+    const damage = Math.max(1, Math.round(baseDamage * damageMultiplier));
     const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
     actionContext.totalDamage += dealt;
     actionContext.hitAny = true;
@@ -2313,7 +2319,64 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     actor.cooldowns.pet_active = Number(active.cooldown) || 0; context.usedSkillId = "pet_active";
   }
 
+  function nextDungeonEnemyAction(actor) {
+    if (!Array.isArray(actor.dungeonV2SkillCycle) || !actor.dungeonV2SkillCycle.length) return null;
+    if (actor.dungeonV2PendingAction) {
+      const pending = actor.dungeonV2PendingAction;
+      actor.dungeonV2PendingAction = null;
+      if (pending.id === "overgrowth") actor.dungeonV2OvergrowthUsed = true;
+      return pending;
+    }
+    const index = Math.max(0, Math.floor(Number(actor.dungeonV2CycleIndex) || 0)) % actor.dungeonV2SkillCycle.length;
+    actor.dungeonV2CycleIndex = (index + 1) % actor.dungeonV2SkillCycle.length;
+    return actor.dungeonV2SkillCycle[index];
+  }
+
+  function materializeEnemyStatuses(actor, statuses) {
+    return (statuses || []).map(statusSpec => ({
+      ...statusSpec,
+      damage: statusSpec.damagePct == null
+        ? statusSpec.damage
+        : Math.max(1, Math.round(actor.atk * Number(statusSpec.damagePct)))
+    }));
+  }
+
+  function resolveDungeonEnemyAction(state, actor, action, context) {
+    if (!action) return;
+    log(state, "enemy_skill", `${unitName(actor)} use ${action.actionName || action.id || "skill"}.`, {
+      actorId: actor.id,
+      skillId: action.id || null,
+      actionName: action.actionName || action.id || "skill"
+    });
+    if (action.kind === "utility") {
+      if (action.selfStatus) {
+        applyStatus(state, actor, actor, action.selfStatus.key, { ...action.selfStatus, chance: 100 }, context);
+      }
+      return;
+    }
+    const targets = action.targetMode === "all_opposing"
+      ? opposingUnits(state, actor)
+      : [choose(state, opposingUnits(state, actor))].filter(Boolean);
+    const statuses = materializeEnemyStatuses(actor, action.statuses);
+    const hits = Math.max(1, Math.floor(Number(action.hits) || 1));
+    for (const target of targets) {
+      for (let hit = 0; hit < hits && living(target); hit++) {
+        attackHit(state, actor, target, {
+          mult: Number(action.mult) || 1,
+          actionType: "enemy",
+          actionName: action.actionName || action.id || "skill",
+          statuses: statuses.map(statusSpec => ({ ...statusSpec }))
+        }, context);
+      }
+    }
+  }
+
   function resolveEnemyAction(state, actor, context) {
+    const dungeonAction = state.mode === "dungeon" ? nextDungeonEnemyAction(actor) : null;
+    if (dungeonAction) {
+      resolveDungeonEnemyAction(state, actor, dungeonAction, context);
+      return;
+    }
     const targets = opposingUnits(state, actor);
     if (!targets.length) return;
     const target = choose(state, targets);

@@ -5653,8 +5653,18 @@ function applyGameConfig(cfg) {
   if (!cfg || cfg.error) return;
   try {
     if (Array.isArray(cfg.monsters) && cfg.monsters.length) {
-      const normal = cfg.monsters.filter(m => !m.isBoss).map(monsterFromConfig);
-      const bosses = cfg.monsters.filter(m => m.isBoss).map(monsterFromConfig);
+      const configured = cfg.monsters.map(monsterFromConfig);
+      // Dungeon V2 owns encounter role and combat identity. Legacy admin rows
+      // may still provide presentation/config fields, but an old `isBoss` flag
+      // must not silently move a canonical V2 monster into the wrong pool.
+      const v2Role = monster => {
+        const v2Id = monster.dungeonV2Id || monster.id;
+        if (typeof DUNGEON_V2 !== "undefined" && DUNGEON_V2.getDungeonV2BossProfile(v2Id)) return "boss";
+        if (typeof DUNGEON_V2 !== "undefined" && DUNGEON_V2.getDungeonV2MonsterProfile(v2Id)) return "normal";
+        return monster.isBoss ? "boss" : "normal";
+      };
+      const normal = configured.filter(m => v2Role(m) !== "boss");
+      const bosses = configured.filter(m => v2Role(m) === "boss");
       if (normal.length) ENEMY_POOL = normal;
       if (bosses.length) BOSS_POOL = bosses;
     }
@@ -5714,6 +5724,9 @@ function monsterFromConfig(m) {
   const staticMatch = (ENEMY_POOL || []).find(s => s.name === m.name) || (BOSS_POOL || []).find(s => s.name === m.name);
   return {
     id: m.id || (staticMatch && staticMatch.id) || slugifyMonsterName(m.name),
+    // Keep the stable runtime id for loot/config joins, but retain the
+    // canonical V2 identity when an old row supplied a renamed/legacy id.
+    dungeonV2Id: (staticMatch && staticMatch.id) || m.id || slugifyMonsterName(m.name),
     name: m.name,
     color: m.color || "#7ED9A8",
     sizeClass: ["small", "medium", "large"].includes(m.sizeClass) ? m.sizeClass : staticMatch?.sizeClass || "medium",
@@ -7229,7 +7242,13 @@ if (typeof module !== "undefined") module.exports = {
     const pierce = Math.max(Number(spec.defPierce) || 0, conversions.includes("armor_pierce") ? 0.3 : 0);
     const attackPower = actor.atk * (Number(spec.mult) || 1) * activeBuffDamageMultiplier(actor) * heroPassiveDamageMultiplier(state, actor, target);
     const critMult = crit ? actor.critDamage + pct(Number(spec.critDamageBonus) || 0) + pct((skillData(actor, "critical_mastery") || {}).critDamagePct || 0) : 1;
-    const damage = Math.max(1, Math.round((attackPower - targetDefAtHitStart * (1 - pierce)) * critMult));
+    const baseDamage = Math.max(1, Math.round((attackPower - targetDefAtHitStart * (1 - pierce)) * critMult));
+    // Optional generic actor modifier. Omitted/invalid values remain neutral;
+    // Dungeon V2 sets it only after its Boss Enrage threshold is crossed.
+    const damageMultiplier = Number.isFinite(Number(actor.damageMultiplier))
+      ? Math.max(0, Number(actor.damageMultiplier))
+      : 1;
+    const damage = Math.max(1, Math.round(baseDamage * damageMultiplier));
     const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
     actionContext.totalDamage += dealt;
     actionContext.hitAny = true;
@@ -7526,7 +7545,64 @@ if (typeof module !== "undefined") module.exports = {
     actor.cooldowns.pet_active = Number(active.cooldown) || 0; context.usedSkillId = "pet_active";
   }
 
+  function nextDungeonEnemyAction(actor) {
+    if (!Array.isArray(actor.dungeonV2SkillCycle) || !actor.dungeonV2SkillCycle.length) return null;
+    if (actor.dungeonV2PendingAction) {
+      const pending = actor.dungeonV2PendingAction;
+      actor.dungeonV2PendingAction = null;
+      if (pending.id === "overgrowth") actor.dungeonV2OvergrowthUsed = true;
+      return pending;
+    }
+    const index = Math.max(0, Math.floor(Number(actor.dungeonV2CycleIndex) || 0)) % actor.dungeonV2SkillCycle.length;
+    actor.dungeonV2CycleIndex = (index + 1) % actor.dungeonV2SkillCycle.length;
+    return actor.dungeonV2SkillCycle[index];
+  }
+
+  function materializeEnemyStatuses(actor, statuses) {
+    return (statuses || []).map(statusSpec => ({
+      ...statusSpec,
+      damage: statusSpec.damagePct == null
+        ? statusSpec.damage
+        : Math.max(1, Math.round(actor.atk * Number(statusSpec.damagePct)))
+    }));
+  }
+
+  function resolveDungeonEnemyAction(state, actor, action, context) {
+    if (!action) return;
+    log(state, "enemy_skill", `${unitName(actor)} use ${action.actionName || action.id || "skill"}.`, {
+      actorId: actor.id,
+      skillId: action.id || null,
+      actionName: action.actionName || action.id || "skill"
+    });
+    if (action.kind === "utility") {
+      if (action.selfStatus) {
+        applyStatus(state, actor, actor, action.selfStatus.key, { ...action.selfStatus, chance: 100 }, context);
+      }
+      return;
+    }
+    const targets = action.targetMode === "all_opposing"
+      ? opposingUnits(state, actor)
+      : [choose(state, opposingUnits(state, actor))].filter(Boolean);
+    const statuses = materializeEnemyStatuses(actor, action.statuses);
+    const hits = Math.max(1, Math.floor(Number(action.hits) || 1));
+    for (const target of targets) {
+      for (let hit = 0; hit < hits && living(target); hit++) {
+        attackHit(state, actor, target, {
+          mult: Number(action.mult) || 1,
+          actionType: "enemy",
+          actionName: action.actionName || action.id || "skill",
+          statuses: statuses.map(statusSpec => ({ ...statusSpec }))
+        }, context);
+      }
+    }
+  }
+
   function resolveEnemyAction(state, actor, context) {
+    const dungeonAction = state.mode === "dungeon" ? nextDungeonEnemyAction(actor) : null;
+    if (dungeonAction) {
+      resolveDungeonEnemyAction(state, actor, dungeonAction, context);
+      return;
+    }
     const targets = opposingUnits(state, actor);
     if (!targets.length) return;
     const target = choose(state, targets);
@@ -8452,6 +8528,393 @@ const SLOT_LABEL = {
 // are already accepted by the API worker with no schema change needed.
 const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"];
 
+// ===== systems/dungeonV2.js =====
+// ---------- Dungeon V2 encounter, stat, and skill foundation ----------
+// This module owns Dungeon encounter identity, enemy stat generation, skill
+// definitions, deterministic cycle/phase state preparation, and checkpoint
+// hydration. It deliberately does not resolve damage, turns, or statuses;
+// Battle Core remains the sole combat resolver. Rewards and persistence
+// transactions remain owned by the existing Dungeon result/checkpoint flow.
+(function dungeonV2Factory(root) {
+  const ENCOUNTER_TYPES = Object.freeze({
+    NORMAL: "normal",
+    ELITE: "elite",
+    CHAPTER_BOSS: "chapter_boss"
+  });
+
+  const NORMAL_REFERENCE_POINTS = Object.freeze([
+    Object.freeze({ floor: 1, hp: 29, atk: 6, def: 1 }),
+    Object.freeze({ floor: 30, hp: 328, atk: 64, def: 28 }),
+    Object.freeze({ floor: 71, hp: 829, atk: 155, def: 70 }),
+    Object.freeze({ floor: 105, hp: 1300, atk: 236, def: 109 })
+  ]);
+
+  const MONSTER_IDENTITY_PROFILES = Object.freeze({
+    jelly_slime: Object.freeze({ id: "jelly_slime", name: "Jelly Slime", hp: 1, atk: 0.9, def: 0.9, speedAdjustment: 0, dodge: 0, identity: "Balanced" }),
+    spore_cap: Object.freeze({ id: "spore_cap", name: "Spore Cap", hp: 0.9, atk: 0.85, def: 0.85, speedAdjustment: 1, dodge: 2, identity: "Glass / Poison" }),
+    tusky_boar: Object.freeze({ id: "tusky_boar", name: "Tusky Boar", hp: 1.3, atk: 1.25, def: 1.05, speedAdjustment: -1, dodge: 0, identity: "Heavy bruiser" }),
+    bramble_bat: Object.freeze({ id: "bramble_bat", name: "Bramble Bat", hp: 0.7, atk: 0.9, def: 0.65, speedAdjustment: 4, dodge: 12, identity: "Fast / evasive" }),
+    bone_rattler: Object.freeze({ id: "bone_rattler", name: "Bone Rattler", hp: 1.1, atk: 0.95, def: 1.35, speedAdjustment: -1, dodge: 0, identity: "Defensive" }),
+    sandy_crab: Object.freeze({ id: "sandy_crab", name: "Sandy Crab", hp: 1.2, atk: 0.75, def: 1.55, speedAdjustment: -2, dodge: 0, identity: "Tank" })
+  });
+
+  const BOSS_PROFILES = Object.freeze({
+    moss_king: Object.freeze({ id: "moss_king", name: "Moss King", hp: 3, atk: 1.15, def: 1.35, statusResist: 10, identity: "Tank / sustain-pressure" }),
+    ember_drake: Object.freeze({ id: "ember_drake", name: "Ember Drake", hp: 3.2, atk: 1.35, def: 1.1, statusResist: 15, identity: "Aggressive" }),
+    frost_warden: Object.freeze({ id: "frost_warden", name: "Frost Warden", hp: 3.6, atk: 1.15, def: 1.5, statusResist: 20, identity: "Defensive" })
+  });
+
+  const PACK_MODIFIERS = Object.freeze({ 1: Object.freeze({ hp: 1, atk: 1 }), 2: Object.freeze({ hp: 0.72, atk: 0.72 }), 3: Object.freeze({ hp: 0.605, atk: 0.605 }) });
+  const ELITE_MODIFIERS = Object.freeze({ hp: 1.3, atk: 1.1, def: 1.05 });
+  const BOSS_ENRAGE_THRESHOLD = 0.5;
+  const BOSS_ENRAGE_DAMAGE_MULTIPLIER = 1.2;
+
+  const BASIC_ACTION = Object.freeze({
+    id: "basic_attack",
+    kind: "attack",
+    actionName: "basic attack",
+    mult: 1,
+    hits: 1,
+    targetMode: "single",
+    statuses: Object.freeze([])
+  });
+
+  const MONSTER_SKILLS = Object.freeze({
+    jelly_slime: Object.freeze({
+      normal: Object.freeze({ id: "body_slam", kind: "attack", actionName: "Body Slam", mult: 1.25, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+      elite: Object.freeze({ id: "heavy_body_slam", kind: "attack", actionName: "Heavy Body Slam", mult: 1.45, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+      cycle: Object.freeze(["basic", "skill"])
+    }),
+    spore_cap: Object.freeze({
+      normal: Object.freeze({ id: "toxic_spores", kind: "attack", actionName: "Toxic Spores", mult: 0.90, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "poison", chance: 35, duration: 2, damagePct: 0.10 }]) }),
+      elite: Object.freeze({ id: "noxious_spores", kind: "attack", actionName: "Noxious Spores", mult: 1.00, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "poison", chance: 45, duration: 3, damagePct: 0.12 }]) }),
+      cycle: Object.freeze(["basic", "skill", "basic"])
+    }),
+    tusky_boar: Object.freeze({
+      normal: Object.freeze({ id: "heavy_cleave", kind: "attack", actionName: "Heavy Cleave", mult: 1.40, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "armor_break", chance: 35, duration: 2 }]) }),
+      elite: Object.freeze({ id: "brutal_cleave", kind: "attack", actionName: "Brutal Cleave", mult: 1.55, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "armor_break", chance: 45, duration: 2 }]) }),
+      cycle: Object.freeze(["basic", "skill"])
+    }),
+    bramble_bat: Object.freeze({
+      normal: Object.freeze({ id: "wing_flurry", kind: "attack", actionName: "Wing Flurry", mult: 0.65, hits: 2, targetMode: "single", statuses: Object.freeze([]) }),
+      elite: Object.freeze({ id: "razor_flurry", kind: "attack", actionName: "Razor Flurry", mult: 0.50, hits: 3, targetMode: "single", statuses: Object.freeze([]) }),
+      cycle: Object.freeze(["skill", "basic", "basic"])
+    }),
+    bone_rattler: Object.freeze({
+      normal: Object.freeze({ id: "bone_bash", kind: "attack", actionName: "Bone Bash", mult: 1.15, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "stun", chance: 20, duration: 1 }]) }),
+      elite: Object.freeze({ id: "skull_crusher", kind: "attack", actionName: "Skull Crusher", mult: 1.30, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "stun", chance: 25, duration: 1 }]) }),
+      cycle: Object.freeze(["basic", "skill", "basic"])
+    }),
+    sandy_crab: Object.freeze({
+      normal: Object.freeze({ id: "shell_guard", kind: "utility", actionName: "Shell Guard", selfStatus: Object.freeze({ key: "def_up", duration: 2 }), targetMode: "self", statuses: Object.freeze([]) }),
+      elite: Object.freeze({ id: "iron_shell", kind: "utility", actionName: "Iron Shell", selfStatus: Object.freeze({ key: "def_up", duration: 3 }), targetMode: "self", statuses: Object.freeze([]) }),
+      cycle: Object.freeze(["basic", "skill", "basic", "basic"])
+    })
+  });
+
+  const BOSS_SKILLS = Object.freeze({
+    moss_king: Object.freeze({
+      cycle: Object.freeze([
+        Object.freeze({ id: "vine_slam", kind: "attack", actionName: "Vine Slam", mult: 1.30, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        BASIC_ACTION,
+        Object.freeze({ id: "toxic_bloom", kind: "attack", actionName: "Toxic Bloom", mult: 0.90, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "poison", chance: 40, duration: 3, damagePct: 0.12 }]) }),
+        BASIC_ACTION
+      ]),
+      phaseAction: Object.freeze({ id: "overgrowth", kind: "utility", actionName: "Overgrowth", targetMode: "self", selfStatus: Object.freeze({ key: "def_up", duration: 2 }), statuses: Object.freeze([]) })
+    }),
+    ember_drake: Object.freeze({
+      cycle: Object.freeze([
+        Object.freeze({ id: "flame_bite", kind: "attack", actionName: "Flame Bite", mult: 1.40, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        BASIC_ACTION,
+        Object.freeze({ id: "flame_breath", kind: "attack", actionName: "Flame Breath", mult: 0.80, hits: 1, targetMode: "all_opposing", statuses: Object.freeze([]) }),
+        BASIC_ACTION
+      ]),
+      phase2Cycle: Object.freeze([
+        Object.freeze({ id: "flame_bite", kind: "attack", actionName: "Flame Bite", mult: 1.40, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        Object.freeze({ id: "inferno_rush", kind: "attack", actionName: "Inferno Rush", mult: 1.70, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        Object.freeze({ id: "flame_breath", kind: "attack", actionName: "Flame Breath", mult: 0.80, hits: 1, targetMode: "all_opposing", statuses: Object.freeze([]) }),
+        BASIC_ACTION
+      ])
+    }),
+    frost_warden: Object.freeze({
+      cycle: Object.freeze([
+        Object.freeze({ id: "frost_strike", kind: "attack", actionName: "Frost Strike", mult: 1.20, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        Object.freeze({ id: "frozen_shackles", kind: "attack", actionName: "Frozen Shackles", mult: 0.90, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "stun", chance: 25, duration: 1 }]) }),
+        BASIC_ACTION,
+        Object.freeze({ id: "ice_fortress", kind: "utility", actionName: "Ice Fortress", targetMode: "self", selfStatus: Object.freeze({ key: "def_up", duration: 2 }), statuses: Object.freeze([]) })
+      ])
+    })
+  });
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function resolveMonsterSkillCycle(monsterId, encounterType) {
+    const entry = MONSTER_SKILLS[String(monsterId || "")];
+    if (!entry) return null;
+    const skill = encounterType === ENCOUNTER_TYPES.ELITE ? entry.elite : entry.normal;
+    const byId = { basic: BASIC_ACTION, skill };
+    return entry.cycle.map(slot => clone(byId[slot] || BASIC_ACTION));
+  }
+
+  function getDungeonV2SkillConfig(monsterId, encounterType) {
+    const id = String(monsterId || "");
+    if (encounterType === ENCOUNTER_TYPES.CHAPTER_BOSS) {
+      const entry = BOSS_SKILLS[id];
+      if (!entry) return null;
+      return {
+        skillSetId: id,
+        cycle: clone(entry.cycle),
+        phase2Cycle: entry.phase2Cycle ? clone(entry.phase2Cycle) : null,
+        phaseAction: entry.phaseAction ? clone(entry.phaseAction) : null
+      };
+    }
+    const cycle = resolveMonsterSkillCycle(id, encounterType);
+    if (!cycle) return null;
+    return { skillSetId: id, cycle, phase2Cycle: null, phaseAction: null };
+  }
+
+  function hydrateDungeonV2SkillState(state) {
+    if (!state || !state.units) return state;
+    Object.values(state.units).forEach(unit => {
+      if (!unit || (unit.kind !== "monster" && unit.kind !== "boss") || Array.isArray(unit.dungeonV2SkillCycle)) return;
+      const encounterType = unit.encounterType
+        || (unit.kind === "boss" ? ENCOUNTER_TYPES.CHAPTER_BOSS : unit.isElite ? ENCOUNTER_TYPES.ELITE : ENCOUNTER_TYPES.NORMAL);
+      const profileId = unit.dungeonV2ProfileId || unit.monsterDefId || unit.id;
+      const config = getDungeonV2SkillConfig(profileId, encounterType);
+      if (!config) return;
+      unit.dungeonV2SkillSetId = config.skillSetId;
+      const enraged = !!(unit.flags && unit.flags.dungeonV2Enraged);
+      unit.dungeonV2SkillCycle = enraged && config.phase2Cycle ? config.phase2Cycle : config.cycle;
+      unit.dungeonV2SkillPhase2Cycle = config.phase2Cycle;
+      unit.dungeonV2PhaseAction = config.phaseAction;
+      unit.dungeonV2CycleIndex = Math.max(0, Math.floor(Number(unit.dungeonV2CycleIndex) || 0)) % config.cycle.length;
+      unit.dungeonV2Phase = unit.dungeonV2Phase || (enraged ? "enraged" : "base");
+      unit.dungeonV2PendingAction = unit.dungeonV2PendingAction || null;
+      unit.dungeonV2OvergrowthQueued = unit.dungeonV2OvergrowthQueued === true;
+      unit.dungeonV2OvergrowthUsed = unit.dungeonV2OvergrowthUsed === true;
+    });
+    return state;
+  }
+
+  function numberOr(value, fallback) {
+    return Number.isFinite(Number(value)) ? Number(value) : fallback;
+  }
+
+  function dungeonV2Round(value) {
+    return Math.round(Number(value) || 0);
+  }
+
+  function clampFloor(floor) {
+    return Math.max(1, Math.floor(Number(floor) || 1));
+  }
+
+  function classifyDungeonEncounter(floor) {
+    const value = clampFloor(floor);
+    if (value % 10 === 0) return ENCOUNTER_TYPES.CHAPTER_BOSS;
+    if (value % 10 === 5) return ENCOUNTER_TYPES.ELITE;
+    return ENCOUNTER_TYPES.NORMAL;
+  }
+
+  function dungeonChapterForFloor(floor) {
+    const value = clampFloor(floor);
+    return Math.floor((value - 1) / 10) + 1;
+  }
+
+  function dungeonChapterFloor(floor) {
+    const value = clampFloor(floor);
+    return ((value - 1) % 10) + 1;
+  }
+
+  // Monotone cubic interpolation gives a continuous, smooth curve through the
+  // four locked sample points without introducing floor breakpoints in gameplay.
+  // Outside the approved samples it continues with the nearest endpoint slope.
+  function interpolateDungeonV2Curve(floor, key) {
+    const x = clampFloor(floor);
+    const points = NORMAL_REFERENCE_POINTS;
+    if (x <= points[0].floor) return points[0][key];
+    if (x >= points[points.length - 1].floor) {
+      const a = points[points.length - 2];
+      const b = points[points.length - 1];
+      return b[key] + (x - b.floor) * ((b[key] - a[key]) / (b.floor - a.floor));
+    }
+
+    let index = 0;
+    while (index < points.length - 2 && x > points[index + 1].floor) index += 1;
+    const p0 = points[index];
+    const p1 = points[index + 1];
+    const pPrev = points[Math.max(0, index - 1)];
+    const pNext = points[Math.min(points.length - 1, index + 2)];
+    const h = p1.floor - p0.floor;
+    const t = (x - p0.floor) / h;
+    const secant = (p1[key] - p0[key]) / h;
+    const m0 = index === 0 ? secant : (p1[key] - pPrev[key]) / (p1.floor - pPrev.floor);
+    const m1 = index + 1 === points.length - 1 ? secant : (pNext[key] - p0[key]) / (pNext.floor - p0.floor);
+    const t2 = t * t;
+    const t3 = t2 * t;
+    const h00 = 2 * t3 - 3 * t2 + 1;
+    const h10 = t3 - 2 * t2 + t;
+    const h01 = -2 * t3 + 3 * t2;
+    const h11 = t3 - t2;
+    return h00 * p0[key] + h10 * h * m0 + h01 * p1[key] + h11 * h * m1;
+  }
+
+  function dungeonV2NormalBaseStats(floor) {
+    return {
+      hp: dungeonV2Round(interpolateDungeonV2Curve(floor, "hp")),
+      atk: dungeonV2Round(interpolateDungeonV2Curve(floor, "atk")),
+      def: dungeonV2Round(interpolateDungeonV2Curve(floor, "def"))
+    };
+  }
+
+  function getDungeonV2MonsterProfile(monsterId) {
+    return MONSTER_IDENTITY_PROFILES[String(monsterId || "")] || null;
+  }
+
+  function getDungeonV2BossProfile(bossId) {
+    return BOSS_PROFILES[String(bossId || "")] || null;
+  }
+
+  function resolveDungeonV2NormalStats(floor, monsterId, options = {}) {
+    const profile = getDungeonV2MonsterProfile(monsterId) || MONSTER_IDENTITY_PROFILES.jelly_slime;
+    const packCount = Math.max(1, Math.min(3, Math.floor(Number(options.packCount) || 1)));
+    const pack = PACK_MODIFIERS[packCount];
+    const base = dungeonV2NormalBaseStats(floor);
+    const elite = options.elite === true;
+    const modifier = options.modifier || {};
+    return {
+      hp: dungeonV2Round(base.hp * profile.hp * pack.hp * (elite ? ELITE_MODIFIERS.hp : 1) * numberOr(modifier.hpMult, 1)),
+      atk: dungeonV2Round(base.atk * profile.atk * pack.atk * (elite ? ELITE_MODIFIERS.atk : 1) * numberOr(modifier.atkMult, 1)),
+      def: Math.max(0, dungeonV2Round(base.def * profile.def * (elite ? ELITE_MODIFIERS.def : 1) * numberOr(modifier.defMult, 1))),
+      speedAdjustment: profile.speedAdjustment,
+      dodge: profile.dodge,
+      profileId: profile.id,
+      identity: profile.identity,
+      encounterType: elite ? ENCOUNTER_TYPES.ELITE : ENCOUNTER_TYPES.NORMAL,
+      packCount
+    };
+  }
+
+  function resolveDungeonV2BossStats(floor, bossId) {
+    const profile = getDungeonV2BossProfile(bossId) || BOSS_PROFILES.moss_king;
+    const base = dungeonV2NormalBaseStats(floor);
+    return {
+      hp: dungeonV2Round(base.hp * profile.hp),
+      atk: dungeonV2Round(base.atk * profile.atk),
+      def: Math.max(0, dungeonV2Round(base.def * profile.def)),
+      statusResist: profile.statusResist,
+      profileId: profile.id,
+      identity: profile.identity,
+      encounterType: ENCOUNTER_TYPES.CHAPTER_BOSS,
+      packCount: 1
+    };
+  }
+
+  function isDungeonV2BossEnraged(unit) {
+    return !!(unit && unit.flags && unit.flags.dungeonV2Enraged);
+  }
+
+  function toDungeonV2BattleEnemy(monster, index = 0) {
+    return {
+      ...monster,
+      monsterDefId: monster.id,
+      id: monster.uid,
+      kind: monster.isBoss ? "boss" : "monster",
+      side: "enemy",
+      maxHp: monster.maxHp,
+      accuracy: 92,
+      // Dodge is resolved by Dungeon V2 and passed through unchanged. This
+      // adapter must not calculate a second profile or AGI-based value.
+      dodge: numberOr(monster.dodge, 0),
+      crit: 5,
+      tieOrder: index + 2
+    };
+  }
+
+  function isDungeonV2StarterPetEligible({ floor, monsters, unlockedNext, alreadyHasStarter }) {
+    return Number(floor) === 5
+      && unlockedNext === true
+      && alreadyHasStarter !== true
+      && Array.isArray(monsters)
+      && monsters.some(monster => monster && monster.encounterType === ENCOUNTER_TYPES.ELITE);
+  }
+
+  // Dungeon V2 owns the threshold and one-time state. Battle Core owns the
+  // damage calculation and applies this generic outgoing multiplier per hit.
+  function applyDungeonV2BossEnrage(state) {
+    if (!state || !state.units) return state;
+    hydrateDungeonV2SkillState(state);
+    Object.values(state.units).forEach(unit => {
+      if (!unit || unit.kind !== "boss" || unit.hp <= 0 || unit.dead || unit.hp >= unit.maxHp * BOSS_ENRAGE_THRESHOLD || isDungeonV2BossEnraged(unit)) return;
+      unit.flags = unit.flags || {};
+      unit.flags.dungeonV2Enraged = true;
+      unit.flags.dungeonV2EnrageDamageMultiplier = BOSS_ENRAGE_DAMAGE_MULTIPLIER;
+      unit.damageMultiplier = BOSS_ENRAGE_DAMAGE_MULTIPLIER;
+      unit.dungeonV2Phase = "enraged";
+      if (Array.isArray(unit.dungeonV2SkillPhase2Cycle) && unit.dungeonV2SkillPhase2Cycle.length) {
+        // Preserve the next slot; only the slot mapping changes for Ember Drake.
+        unit.dungeonV2SkillCycle = clone(unit.dungeonV2SkillPhase2Cycle);
+      }
+      if (unit.dungeonV2SkillSetId === "moss_king"
+          && unit.dungeonV2PhaseAction
+          && !unit.dungeonV2OvergrowthQueued
+          && !unit.dungeonV2OvergrowthUsed) {
+        unit.dungeonV2PendingAction = clone(unit.dungeonV2PhaseAction);
+        unit.dungeonV2OvergrowthQueued = true;
+      }
+    });
+    return state;
+  }
+
+  // Skip uses the exact same Battle Core battleStep resolver as normal play;
+  // this helper only inserts the Dungeon V2 enrage boundary between actions.
+  function simulateDungeonV2Battle(inputState, battleCore, maxActions = 10000) {
+    if (!battleCore || typeof battleCore.battleStep !== "function") throw new Error("battle_core_required");
+    let state = JSON.parse(JSON.stringify(inputState));
+    hydrateDungeonV2SkillState(state);
+    state.flags = { ...(state.flags || {}), skipResolving: true, auto: false };
+    let actions = 0;
+    while (!state.result && actions < maxActions) {
+      const result = battleCore.battleStep(state, { type: "basic" });
+      state = applyDungeonV2BossEnrage(result.state);
+      actions += result.completedAction ? 1 : 0;
+    }
+    state.flags.skipResolving = false;
+    if (!state.result) state.result = "invalid";
+    return state;
+  }
+
+  const api = {
+    ENCOUNTER_TYPES,
+    NORMAL_REFERENCE_POINTS,
+    MONSTER_IDENTITY_PROFILES,
+    BOSS_PROFILES,
+    PACK_MODIFIERS,
+    ELITE_MODIFIERS,
+    BOSS_ENRAGE_THRESHOLD,
+    BOSS_ENRAGE_DAMAGE_MULTIPLIER,
+    classifyDungeonEncounter,
+    dungeonChapterForFloor,
+    dungeonChapterFloor,
+    interpolateDungeonV2Curve,
+    dungeonV2NormalBaseStats,
+    getDungeonV2MonsterProfile,
+    getDungeonV2BossProfile,
+    resolveDungeonV2NormalStats,
+    resolveDungeonV2BossStats,
+    getDungeonV2SkillConfig,
+    hydrateDungeonV2SkillState,
+    isDungeonV2BossEnraged,
+    toDungeonV2BattleEnemy,
+    isDungeonV2StarterPetEligible,
+    applyDungeonV2BossEnrage,
+    simulateDungeonV2Battle
+  };
+  Object.assign(root, { DUNGEON_V2: api });
+  if (typeof module !== "undefined") module.exports = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
 // ===== systems/stats.js =====
 // ---------- floating-point-safe math helpers ----------
 // JS floats can't exactly represent most decimal fractions (5.1 + 2.3 === 7.3999999999999995,
@@ -8610,56 +9073,81 @@ function freshPlayerFromSave(save, carry = null) {
   };
 }
 function makeEnemy(floor, options = {}) {
-  const isBoss = floor % 5 === 0;
-  const isEliteBoss = floor % 10 === 0;
-  const modifier = isBoss ? null : rollFloorModifier();
+  const encounterType = options.encounterType || DUNGEON_V2.classifyDungeonEncounter(floor);
+  const isBoss = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS;
+  const isElite = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.ELITE;
+  const modifier = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL ? (options.modifier === undefined ? rollFloorModifier() : options.modifier) : null;
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
-  const t = pool[Math.floor(Math.random() * pool.length)];
-  const mult = isEliteBoss ? 4.2 : isBoss ? 2.6 : 1;
-  // groupScale softens HP/ATK a bit per monster when multiple spawn together in one encounter,
-  // so a 3-monster pack isn't simply 3x harder than a solo fight.
-  const groupScale = options.groupScale || 1;
-  const hpM = (t.hpMult || 1) * (modifier?.hpMult || 1) * groupScale;
-  const atkM = (t.atkMult || 1) * (modifier?.atkMult || 1) * groupScale;
-  const defB = t.defBonus || 0;
+  const t = pool[Math.floor(Math.random() * pool.length)] || pool[0];
+  const packCount = Math.max(1, Math.min(3, Math.floor(Number(options.packCount) || 1)));
+  const v2ProfileId = t.dungeonV2Id || t.id;
+  const v2Stats = isBoss
+    ? DUNGEON_V2.resolveDungeonV2BossStats(floor, v2ProfileId)
+    : DUNGEON_V2.resolveDungeonV2NormalStats(floor, v2ProfileId, { packCount, elite: isElite, modifier });
   const goldM = (t.goldMult || 1) * (modifier?.goldMult || 1);
   const xpM = (t.xpMult || 1) * (modifier?.xpMult || 1);
-  const name = isEliteBoss ? `${t.name} (Elite Boss)` : isBoss ? `${t.name} (Boss)` : modifier ? `${t.name} ${modifier.icon}` : t.name;
+  const name = isBoss ? `${t.name} (Boss)` : isElite ? `${t.name} (Elite)` : modifier ? `${t.name} ${modifier.icon}` : t.name;
   const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
+  const speedAdjustment = Number(v2Stats.speedAdjustment) || 0;
+  const baseAtk = v2Stats.atk;
+  const skillConfig = DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
   return {
     id: t.id,
     uid: `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name,
     color: t.color,
     isBoss,
-    isEliteBoss,
-    sizeClass: isEliteBoss ? "elite" : t.sizeClass || (isBoss ? "large" : "medium"),
+    isElite,
+    // Kept false for V2 Elite encounters so old reward/UI branches cannot
+    // accidentally treat an Elite midpoint as a Chapter Boss.
+    isEliteBoss: false,
+    encounterType,
+    floor: Math.max(1, Math.floor(Number(floor) || 1)),
+    chapter: DUNGEON_V2.dungeonChapterForFloor(floor),
+    chapterFloor: DUNGEON_V2.dungeonChapterFloor(floor),
+    sourceIdentity: isBoss ? `chapter_boss:${t.id}` : `${encounterType}:${t.id}`,
+    dungeonV2ProfileId: v2Stats.profileId,
+    dungeonV2SkillSetId: skillConfig?.skillSetId || null,
+    dungeonV2SkillCycle: skillConfig?.cycle || null,
+    dungeonV2SkillPhase2Cycle: skillConfig?.phase2Cycle || null,
+    dungeonV2PhaseAction: skillConfig?.phaseAction || null,
+    dungeonV2CycleIndex: 0,
+    dungeonV2Phase: "base",
+    dungeonV2PendingAction: null,
+    dungeonV2OvergrowthQueued: false,
+    dungeonV2OvergrowthUsed: false,
+    dungeonV2BaseAtk: baseAtk,
+    flags: { dungeonV2BaseAtk: baseAtk },
+    sizeClass: isBoss ? (t.sizeClass || "large") : isElite ? "elite" : t.sizeClass || "medium",
     anchorType: t.anchorType === "flying" ? "flying" : "ground",
     modifier,
     agi,
-    speed: speedFromAgi(agi),
-    evasion: evasionFromAgi(agi),
+    speed: speedFromAgi(agi) + speedAdjustment,
+    evasion: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
+    dodge: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
     hitRate: hitRateFromDex(t.dex || (isBoss ? 6 : 2)),
-    hp: roundInt((18 + floor * 7) * mult * hpM),
-    maxHp: roundInt((18 + floor * 7) * mult * hpM),
-    atk: roundInt((3 + floor * 1.6) * (isBoss ? 1.3 : 1) * atkM),
-    def: roundInt(Math.floor(floor * 0.7) + (isBoss ? 3 : 0) + (isEliteBoss ? 4 : 0) + defB),
-    xp: roundInt((6 + floor * 3) * (isBoss ? 2.2 : 1) * xpM),
-    gold: roundInt((4 + floor * 2.5) * (isBoss ? 2.2 : 1) * goldM)
+    statusResist: Number(v2Stats.statusResist) || 0,
+    hp: v2Stats.hp,
+    maxHp: v2Stats.hp,
+    atk: v2Stats.atk,
+    def: v2Stats.def,
+    xp: roundInt((6 + floor * 3) * (isBoss ? 2.2 : isElite ? 1.5 : 1) * xpM),
+    gold: roundInt((4 + floor * 2.5) * (isBoss ? 2.2 : isElite ? 1.5 : 1) * goldM)
   };
 }
-// Builds a full encounter: boss floors always spawn exactly 1 (boss or elite boss). Floors 1-4
-// are single-monster only (easing new players in before multi-monster fights start) — floor 5+
-// non-boss floors spawn 1-3 regular monsters that share the field together.
+// Builds a full encounter from the locked V2 structure. F1-F4 remain single
+// normal encounters for the onboarding flow; later normal floors use the
+// existing 1-3 pack distribution. Midpoint Elite and Chapter Boss floors are
+// always single-monster encounters.
 function makeEncounter(floor) {
-  const isBoss = floor % 5 === 0;
-  if (isBoss) return [makeEnemy(floor)];
-  if (floor < 5) return [makeEnemy(floor)];
+  const encounterType = DUNGEON_V2.classifyDungeonEncounter(floor);
+  if (encounterType !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL || Number(floor) < 5) {
+    return [makeEnemy(floor, { encounterType, packCount: 1 })];
+  }
   const roll = Math.random();
   const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
-  const groupScale = count === 1 ? 1 : count === 2 ? 0.72 : 0.55;
   const monsters = [];
-  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { groupScale }));
+  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count }));
   return monsters;
 }
 // Builds the round's initiative queue: every living unit on the field
@@ -12919,14 +13407,14 @@ function ThornieDungeons() {
     setBusy(true);
     if (heroCommand?.type === "skip_battle") {
       setBattleVfx([]);
-      const resolved = BATTLE_CORE_V1.simulateBattle(state);
+      const resolved = DUNGEON_V2.simulateDungeonV2Battle(state, BATTLE_CORE_V1);
       applyCoreBattleState(resolved, false); finishCoreBattle(resolved); return;
     }
     if (actor.kind === "hero" && ["basic", "active"].includes(heroCommand?.type)) setHeroAnim("attack");
     else if (actor.kind === "pet") setPetAnim("attack");
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
     const result = BATTLE_CORE_V1.battleStep(state, actor.kind === "hero" ? heroCommand : undefined);
-    const next = result.state;
+    const next = DUNGEON_V2.applyDungeonV2BossEnrage(result.state);
     const optionalBasicKey = BATTLE_VFX_PRESENTATION.OPTIONAL_BASIC_EFFECT_KEY;
     const basicEffectKey = battleVfxFrames(optionalBasicKey).length ? optionalBasicKey : "";
     const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(
@@ -13083,11 +13571,11 @@ function ThornieDungeons() {
         crit: initialPet.critChance + (petDefId === "ember_fox" ? 10 : 0),
         statusResist: petDefId === "moon_hare" ? 15 : 0
       },
-      enemies: spawned.map((monster, index) => ({
-        ...monster, monsterDefId: monster.id, id: monster.uid, kind: monster.isBoss ? "boss" : "monster", side: "enemy",
-        maxHp: monster.maxHp, accuracy: 92, dodge: 0, crit: 5, tieOrder: index + 2
-      }))
+      enemies: spawned.map((monster, index) => DUNGEON_V2.toDungeonV2BattleEnemy(monster, index))
     });
+    // Apply the Dungeon V2 enrage boundary before the first resumed checkpoint;
+    // the serialized unit flag makes this exact-once across save/reload/resume.
+    DUNGEON_V2.applyDungeonV2BossEnrage(initialBattle);
     applyCoreBattleState(initialBattle, false);
     if (resetOldCheckpoint) resetOldCheckpoint.then(result => {
       if (result?.ok) pushBattleCheckpoint(initialBattle);
@@ -13257,7 +13745,12 @@ function ThornieDungeons() {
     let newActivePetId = save.activePetId;
     let newPet = null;
     const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
-    if (selectedFloor === 5 && bossMonster && unlockedNext && !alreadyHasStarter) {
+    if (DUNGEON_V2.isDungeonV2StarterPetEligible({
+      floor: selectedFloor,
+      monsters: currentMonsters,
+      unlockedNext,
+      alreadyHasStarter
+    })) {
       const starter = starterPetDef();
       const inst = newPetInstance(starter.id);
       newPets = [...newPets, inst];
@@ -18402,13 +18895,22 @@ function floorEventPreview(monsters) {
     });
   });
   const events = Array.from(modifierEvents.values());
+  const elite = monsters.find(monster => monster.isElite);
+  if (elite) events.push({
+    id: "elite",
+    icon: "♛",
+    name: "Elite Encounter",
+    desc: "ศัตรู Elite ที่คงเอกลักษณ์ของมอนสเตอร์ต้นทาง",
+    color: "#b48cff",
+    effects: ["Enemy HP +30%", "Enemy ATK +10%", "Enemy DEF +5%"]
+  });
   const boss = monsters.find(monster => monster.isBoss);
   if (boss) {
     events.push({
-      id: boss.isEliteBoss ? "elite-boss" : "boss",
+      id: "boss",
       icon: "♛",
-      name: boss.isEliteBoss ? "Elite Boss" : "Boss Gate",
-      desc: boss.isEliteBoss ? "บอสระดับสูง พร้อมหีบการันตี Elite / Mythic" : "เอาชนะบอสเพื่อปลดล็อกหีบรางวัล",
+      name: "Chapter Boss",
+      desc: "เอาชนะบอสประจำ Chapter เพื่อปลดล็อกเส้นทางต่อไป",
       color: "#e2aa38",
       effects: []
     });
@@ -18517,8 +19019,9 @@ function MapScreen({
         const locked = floor > unlockedFloor;
         const current = floor === unlockedFloor;
         const cleared = floor < unlockedFloor;
-        const boss = floor % 5 === 0;
-        const elite = floor % 10 === 0;
+        const encounterType = DUNGEON_V2.classifyDungeonEncounter(floor);
+        const boss = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS;
+        const elite = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.ELITE;
         const slot = gateSlots[index];
         const state = locked ? "locked" : current ? "current" : "cleared";
         return e("button", {
@@ -18535,7 +19038,7 @@ function MapScreen({
           "aria-label": `ชั้น ${floor} ${locked ? "ล็อกอยู่" : current ? "ชั้นปัจจุบัน" : "เคลียร์แล้ว"}`
         },
           e("span", { className: "md-dungeon-floor-number" }, floor),
-          boss && e("span", { className: "md-dungeon-boss-label" }, elite ? "ELITE BOSS" : "BOSS"),
+          (boss || elite) && e("span", { className: "md-dungeon-boss-label" }, elite ? "ELITE" : "BOSS"),
           e("span", { className: "md-dungeon-door" },
             e("img", {
               src: boss ? "/assets/ui/dungeon-select/dungeon-gate-boss-v2.webp" : "/assets/ui/dungeon-select/dungeon-gate-normal-v2.webp",
@@ -18569,9 +19072,9 @@ function MapScreen({
         onClick: event => event.stopPropagation()
       },
         e("button", { type: "button", className: "md-floor-detail-x", onClick: () => setDetail(null), "aria-label": "ปิด" }, "✕"),
-        e("div", { className: `md-floor-detail-heading${detail.floor % 5 === 0 ? " boss" : ""}` },
+        e("div", { className: `md-floor-detail-heading${DUNGEON_V2.classifyDungeonEncounter(detail.floor) !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL ? " boss" : ""}` },
           e("div", { className: "md-floor-title" },
-            e("small", null, detail.floor % 5 === 0 ? "BOSS GATE" : "DUNGEON FLOOR"),
+            e("small", null, DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS ? "CHAPTER BOSS" : DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.ELITE ? "ELITE ENCOUNTER" : "DUNGEON FLOOR"),
             e("h2", { id: "md-floor-detail-title" }, "ชั้น ", detail.floor)
           ),
           e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, formatNumber(recommendedFloorCp(detail.monsters))))
@@ -19171,7 +19674,7 @@ const PET_COMBAT_VISUAL_SIZES = {
 function getMonsterPresentation(enemy) {
   const config = getMonsterSpriteConfig(enemy);
   const configuredSize = config?.presentation?.sizeClass;
-  const requestedSize = enemy?.isEliteBoss ? "elite" : configuredSize || enemy?.sizeClass || (enemy?.isBoss ? "large" : "medium");
+  const requestedSize = (enemy?.isElite || enemy?.isEliteBoss) ? "elite" : configuredSize || enemy?.sizeClass || (enemy?.isBoss ? "large" : "medium");
   const sizeClass = MONSTER_VISUAL_SIZES[requestedSize] ? requestedSize : "medium";
   const configuredAnchor = config?.presentation?.anchorType;
   const anchorType = configuredAnchor === "flying" || enemy?.anchorType === "flying" ? "flying" : "ground";
@@ -19226,7 +19729,7 @@ function EnemySprite({
   }, enemy.hp, "/", enemy.maxHp)), /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status",
     "aria-label": "Enemy status effects"
-  }, enemy.isEliteBoss && /*#__PURE__*/React.createElement("span", {
+  }, (enemy.isElite || enemy.isEliteBoss) && /*#__PURE__*/React.createElement("span", {
     className: "elite",
     title: "Elite Boss"
   }, "👑 ELITE"), enemy.frozenTurns > 0 && /*#__PURE__*/React.createElement("span", {
@@ -19430,7 +19933,7 @@ function buildMonsterFormation(monsters) {
     return aFlying - bFlying || a.encounterIndex - b.encounterIndex;
   }).map(entry => entry.monster);
   const count = Math.min(3, Math.max(1, ordered.length));
-  const boss = ordered.find(monster => monster.isBoss || monster.isEliteBoss);
+  const boss = ordered.find(monster => monster.isBoss || monster.isEliteBoss || monster.isElite);
   if (boss) {
     const adds = ordered.filter(monster => monster !== boss);
     if (count === 1) return [{ monster: boss, slotIndex: 1 }];
@@ -19534,7 +20037,7 @@ function CombatScreen({
   const xpNeed = xpToNext(player.level);
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
-  const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
+  const bossOrModifier = monsters.find(m => m.isElite || m.isEliteBoss || m.modifier);
   const modifierBanner = bossOrModifier?.modifier && String(bossOrModifier.modifier.name || "").trim()
     ? {
         icon: String(bossOrModifier.modifier.icon || "✨"),
@@ -19771,7 +20274,7 @@ function CombatScreen({
     style: phaserActive ? { display: "none" } : undefined
   }, formationMonsters.map(({ monster: m, slotIndex }) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
-    className: `md-monster-slot md-monster-slot-${slotIndex} ${m.isEliteBoss ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
+    className: `md-monster-slot md-monster-slot-${slotIndex} ${(m.isElite || m.isEliteBoss) ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
     anim: enemyAnims[m.uid],
