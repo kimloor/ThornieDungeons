@@ -706,25 +706,25 @@ Final season leaderboard reward bands:
 - Rank 1:
   - 5,000 Arena Coin
   - 1,000 Diamonds
-  - progression material
+  - Mana Ore ×25
   - Rank 1 Profile Frame, 7 days
 
 - Rank 2:
   - 4,000 Arena Coin
   - 750 Diamonds
-  - progression material
+  - Mana Ore ×20
   - Rank 2 Profile Frame, 7 days
 
 - Rank 3:
   - 3,000 Arena Coin
   - 500 Diamonds
-  - progression material
+  - Mana Ore ×15
   - Rank 3 Profile Frame, 7 days
 
 - Rank 4–10:
   - 2,000 Arena Coin
   - 300 Diamonds
-  - progression material
+  - Mana Ore ×10
 
 - Rank 11–100:
   - 1,000 Arena Coin
@@ -734,7 +734,14 @@ Final season leaderboard reward bands:
   - 500 Arena Coin
   - 100 Diamonds
 
-Exact progression-material item IDs/quantities are intentionally not guessed in design. Audit the real economy/items before implementation.
+Progression material is locked to the existing `manaOre` material identity:
+- Rank 1: Mana Ore ×25
+- Rank 2: Mana Ore ×20
+- Rank 3: Mana Ore ×15
+- Rank 4–10: Mana Ore ×10
+- Rank 11+: none
+
+Mana Ore is delivered through Mailbox using the deterministic season-reward source identity, so finalization retry/replay cannot duplicate it. Arena Coin, Diamonds, and Profile Frame behavior remain unchanged.
 
 Season rank rewards are sent automatically through Mailbox.
 

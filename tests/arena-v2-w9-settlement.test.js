@@ -7,6 +7,7 @@ const { DatabaseSync } = require('node:sqlite');
 
 const ROOT = path.join(__dirname, '..');
 const migration = fs.readFileSync(path.join(ROOT, 'migrations/auto/0023_arena_v2_foundation.sql'), 'utf8');
+const mailboxMigration = fs.readFileSync(path.join(ROOT, 'migrations/auto/0024_arena_w98_rewards.sql'), 'utf8');
 const workerSource = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8');
 
 class Statement {
@@ -32,7 +33,7 @@ function loadArena() {
   const source = workerSource.replace('export default {', 'const workerDefault = {') + `
 globalThis.__arenaSettlement = {
   workerDefault, arenaSettleV2Match, arenaFinalizeSeason, ensureArenaSeasonPlayer,
-  arenaSettleStoredTerminalMatch, arenaRankAheadSql,
+  arenaSettleStoredTerminalMatch, arenaRankAheadSql, arenaSeasonRewardForRank,
   arenaTierRank, arenaRoundRatingDelta, arenaApplyPairMultiplier
 };`;
   const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
@@ -60,7 +61,16 @@ function createDb() {
   `);
   db.raw.prepare("INSERT INTO players (id, password, diamonds) VALUES ('p1', 'x', 0), ('p2', 'x', 0)").run();
   db.raw.prepare("INSERT INTO characters (character_id, player_id, slot_index, name) VALUES ('char-10', 'p1', 0, 'Attacker'), ('char-11', 'p2', 0, 'Defender')").run();
+  db.raw.exec(`
+    CREATE TABLE mailbox (
+      mail_id TEXT PRIMARY KEY, character_id TEXT NOT NULL, title TEXT NOT NULL DEFAULT '',
+      body TEXT NOT NULL DEFAULT '', gold INTEGER NOT NULL DEFAULT 0, diamonds INTEGER NOT NULL DEFAULT 0,
+      junk_json TEXT NOT NULL DEFAULT '', items_json TEXT NOT NULL DEFAULT '',
+      claimed INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, claimed_at TEXT NOT NULL DEFAULT ''
+    );
+  `);
   db.raw.exec(migration);
+  db.raw.exec(mailboxMigration);
   const season = 'season-1';
   const now = '2026-09-28T12:00:00.000Z';
   db.raw.prepare("INSERT INTO arena_seasons (season_id, season_number, starts_at, ends_at, status, created_at, updated_at) VALUES (?, 1, ?, ?, 'active', ?, ?)").run(season, '2026-09-21T16:00:00.000Z', '2026-10-04T16:00:00.000Z', now, now);
@@ -279,7 +289,17 @@ test('cutoff grants only base loss coin and never changes rating, stats or rewar
   db.close();
 });
 
-test('season finalization ranks deterministically, pays currency once, disables undefined material and resets next season by one tier', async () => {
+test('season progression material uses approved Mana Ore quantities', () => {
+  assert.equal(arena.arenaSeasonRewardForRank(1).manaOre, 25);
+  assert.equal(arena.arenaSeasonRewardForRank(2).manaOre, 20);
+  assert.equal(arena.arenaSeasonRewardForRank(3).manaOre, 15);
+  assert.equal(arena.arenaSeasonRewardForRank(4).manaOre, 10);
+  assert.equal(arena.arenaSeasonRewardForRank(10).manaOre, 10);
+  assert.equal(arena.arenaSeasonRewardForRank(11).manaOre, 0);
+  assert.equal(arena.arenaSeasonRewardForRank(101).manaOre, 0);
+});
+
+test('season finalization ranks deterministically, pays currency/material once and resets next season by one tier', async () => {
   const db = createDb();
   db.raw.prepare("UPDATE arena_seasons SET status = 'finalizing' WHERE season_id = 'season-1'").run();
   db.raw.prepare("UPDATE arena_season_players SET rating = 1300, attack_wins = 2 WHERE character_id = 'char-10'").run();
@@ -291,9 +311,17 @@ test('season finalization ranks deterministically, pays currency once, disables 
   assert.equal(db.raw.prepare("SELECT arena_coin FROM arena_character_state WHERE character_id = 'char-11'").get().arena_coin, 5000);
   assert.equal(db.raw.prepare("SELECT diamonds FROM players WHERE id = 'p2'").get().diamonds, 1000);
   const reward = db.raw.prepare("SELECT payload_json FROM arena_idempotency_receipts WHERE receipt_key = 'arena:season-reward:season-1:char-11'").get();
-  assert.equal(JSON.parse(reward.payload_json).progressionMaterial.enabled, false);
+  const rewardPayload = JSON.parse(reward.payload_json);
+  assert.deepEqual(rewardPayload.progressionMaterial, {
+    enabled: true, junkId: 'manaOre', quantity: 25, delivery: 'mailbox',
+    sourceKey: 'arena:season-reward:season-1:char-11'
+  });
+  const materialMail = db.raw.prepare("SELECT source_key, junk_json FROM mailbox WHERE source_key = 'arena:season-reward:season-1:char-11'").get();
+  assert.ok(materialMail);
+  assert.deepEqual(JSON.parse(materialMail.junk_json), [{ junkId: 'manaOre', quantity: 25 }]);
   await arena.arenaFinalizeSeason(db, { season_id: 'season-1', status: 'finalizing' }, Date.parse('2026-09-28T12:00:00.000Z'));
   assert.equal(db.raw.prepare("SELECT arena_coin FROM arena_character_state WHERE character_id = 'char-11'").get().arena_coin, 5000);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM mailbox WHERE source_key = 'arena:season-reward:season-1:char-11'").get().c, 1);
   db.raw.prepare("INSERT INTO arena_seasons (season_id, season_number, starts_at, ends_at, status, created_at, updated_at) VALUES ('season-2', 2, '2026-09-28T12:00:00.000Z', '2026-10-05T16:00:00.000Z', 'active', 'now', 'now')").run();
   const next = await arena.ensureArenaSeasonPlayer(db, { season_id: 'season-2', season_number: 2 }, { character_id: 'char-11' }, Date.parse('2026-09-28T12:00:00.000Z'));
   assert.equal(next.rating, 1100);

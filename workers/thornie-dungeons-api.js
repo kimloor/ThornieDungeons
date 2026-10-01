@@ -5592,12 +5592,12 @@ const ARENA_MILESTONE_REWARDS = Object.freeze({
   ],
 });
 const ARENA_SEASON_REWARDS = Object.freeze({
-  rank1: { arenaCoin: 5000, diamonds: 1000, frameKey: "arena_rank_1" },
-  rank2: { arenaCoin: 4000, diamonds: 750, frameKey: "arena_rank_2" },
-  rank3: { arenaCoin: 3000, diamonds: 500, frameKey: "arena_rank_3" },
-  rank4to10: { arenaCoin: 2000, diamonds: 300 },
-  rank11to100: { arenaCoin: 1000, diamonds: 150 },
-  rank101plus: { arenaCoin: 500, diamonds: 100 },
+  rank1: { arenaCoin: 5000, diamonds: 1000, manaOre: 25, frameKey: "arena_rank_1" },
+  rank2: { arenaCoin: 4000, diamonds: 750, manaOre: 20, frameKey: "arena_rank_2" },
+  rank3: { arenaCoin: 3000, diamonds: 500, manaOre: 15, frameKey: "arena_rank_3" },
+  rank4to10: { arenaCoin: 2000, diamonds: 300, manaOre: 10 },
+  rank11to100: { arenaCoin: 1000, diamonds: 150, manaOre: 0 },
+  rank101plus: { arenaCoin: 500, diamonds: 100, manaOre: 0 },
 });
 
 function arenaTierRank(rating) {
@@ -6964,7 +6964,9 @@ async function arenaFinalizeSeason(db, season, nowMs = Date.now()) {
       operationToken, seasonId: current.season_id, characterId: player.character_id, rank,
       bucket: rank === 1 ? "1" : rank === 2 ? "2" : rank === 3 ? "3" : rank <= 10 ? "4-10" : rank <= 100 ? "11-100" : "101+",
       arenaCoin: reward.arenaCoin, diamonds: reward.diamonds,
-      progressionMaterial: { enabled: false, reason: "pending_approved_item_id_and_quantity" },
+      progressionMaterial: reward.manaOre > 0
+        ? { enabled: true, junkId: "manaOre", quantity: reward.manaOre, delivery: "mailbox", sourceKey: receiptKey }
+        : { enabled: false },
       profileFrame: reward.frameKey ? { enabled: true, frameKey: reward.frameKey, expiresAt } : { enabled: false },
     };
     const rewardStatements = [
@@ -6995,6 +6997,16 @@ async function arenaFinalizeSeason(db, season, nowMs = Date.now()) {
       `).bind(player.character_id, reward.frameKey, now, receiptKey, operationToken));
     }
     await db.batch(rewardStatements);
+    if (reward.manaOre > 0) {
+      await sendMail(
+        db,
+        player.character_id,
+        "Arena Season Reward",
+        `Season ${current.season_number} Rank ${rank} · Mana Ore ×${reward.manaOre}`,
+        { junk: [{ junkId: "manaOre", quantity: reward.manaOre }] },
+        receiptKey,
+      );
+    }
   }
   const finalizedAt = arenaNowIso(nowMs);
   await db.batch([
