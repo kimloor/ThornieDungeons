@@ -4941,8 +4941,8 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
   if (typeof module !== "undefined") module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
 
-// ---------- Arena shared Worker helpers ----------
-// Retained by Arena V2 after the legacy V1 routes/tables were retired.
+// ---------- Phase 5: PvP Arena orchestration ----------
+// W9 closeout: legacy V1 orchestration is retired; only helpers still shared by Arena V2 remain below.
 const PVP_BASE_SPEED = 10; // shared Arena speed baseline retained for V2 combat snapshots
 
 function petBattleStats(instance) {
