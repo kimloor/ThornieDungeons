@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — W9R complete in Production; WAVE 1 is the current DEV gate; Graphics G4 may proceed in parallel**
+Status: **ACTIVE-EXECUTION — W9R complete in Production; WAVE 1 QA-approved and held; WAVE 1.5 is the current DEV gate; Graphics G4 may proceed in parallel**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -674,7 +674,7 @@ Rules for all waves:
 ---
 
 ## WAVE 1 — Dungeon V2 Encounter + Stat Foundation
-**Status: READY_FOR_DEV — CURRENT EXECUTION GATE**
+**Status: QA APPROVED — HELD FOR COMBINED RELEASE WITH WAVE 1.5**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA; Graphics only for identified presentation gaps**
