@@ -1,6 +1,6 @@
 # ThornieDungeons — Dungeon Reward Progression V2
 
-Status: **ACTIVE-DESIGN / USER-APPROVED**
+Status: **LOCKED / USER-APPROVED — READY FOR V2 IMPLEMENTATION**
 
 Scope: Dungeon reward progression, equipment tier/rarity, monster equipment drops, Elite/Boss rewards, Boss crafting, Gold/EXP/material economy, salvage, and the reward-facing roles of Shop/Crafting.
 
@@ -22,7 +22,7 @@ Dungeon Reward Progression V2 must:
 - keep Boss reruns useful through targeted materials rather than repeatable Boss chests;
 - support future monster/source-specific loot pools without rebuilding the reward system;
 - keep Gold and materials useful as the game expands to higher Floors;
-- preserve existing-player compatibility when implemented.
+- preserve save/currency integrity while applying the explicitly approved destructive cleanup of overpowered legacy Wings and legacy crafted Set items.
 
 ---
 
@@ -59,7 +59,7 @@ Rules:
 - **Mythic never drops from the generic monster equipment roll.**
 - Azure, Robot, and future equipment sets are conceptually **Mythic sets**, not separate rarities.
 - New architecture should represent set identity separately, e.g. rarity = mythic plus setId = azure / robot / future set.
-- Existing legacy azure rarity items require backward-compatible migration/normalization when implementation begins.
+- Legacy Azure/crafted Set items that use the old overpowered rarity/stat model are explicitly removed during V2 migration rather than normalized; see Production migration notes.
 
 ### 3.1 Rarity power relationship
 
@@ -297,43 +297,36 @@ Why T2+ begins at Unique:
 - T1 Elite and T2 Rare have equal raw-stat budget under the approved multipliers.
 - A later Boss First-Clear chest should represent a meaningful upgrade rather than repeat equal power.
 
-Accessory acquisition is **not intended to remain Dungeon-only forever**. Future alternate sources may include systems such as:
-
-- Raid Boss milestones;
-- Daily Login streaks;
-- other approved special content.
-
-Those channels are not designed by this document.
+Accessory acquisition is not Dungeon-only. Raid milestone Accessory rewards are now defined in the Raid / Wings V2 section below. Daily Login and other future special sources remain separate future content.
 
 ---
+
 
 ## 9. Boss-specific materials
 
-Every Chapter Boss should have its own identifiable material.
+Chapter Bosses use one dedicated Stone material each:
 
-Examples are content placeholders only:
-
-- Boss A Core
-- Boss B Fang
-- Boss C Crystal
+| Chapter Boss | Boss Material | Mythic Boss Weapon |
+| --- | --- | --- |
+| Moss King | **Earth Stone** | **Spirit Greatsword** |
+| Ember Drake | **Fire Stone** | **Lavalon Sword** |
+| Frost Warden | **Water Stone** | **Icicle Longsword** |
 
 Drop rule per Boss clear:
 
-- **1 Boss Material guaranteed**
-- **25% chance for +1 additional material**
+- **1 matching Boss Stone guaranteed**
+- **25% chance for +1 additional matching Stone**
 
 Expected value:
 
-**1.25 Boss Materials per clear**
+**1.25 Boss Stones per clear**
 
-Reasoning:
+Rules:
 
-- targeted Boss crafting should make progress every successful clear;
-- difficulty should come from completing several Boss clears, not from repeatedly receiving zero progress.
-
-Boss material data must not be hardcoded to a single recipe forever. Architecture should permit future additional recipes, exchanges, upgrades, or reforges.
-
----
+- Earth / Fire / Water Stone do not substitute for one another.
+- Normal and Elite encounters do not drop these Boss-exclusive Stones.
+- First Clear does not add a separate Stone bonus; reruns retain value through the same guaranteed Stone progression.
+- Boss material data should remain source-aware so future recipes/exchanges can reuse the material without hardcoding one recipe forever.
 
 ## 10. Mythic Boss Weapon crafting
 
@@ -357,6 +350,8 @@ Boss-specific Material ×5
 
 At 1.25 materials per Boss clear, the target is approximately **4 Boss clears per weapon on average**.
 
+Boss Weapon salvage does **not** return Earth / Fire / Water Stone and does not refund crafting Gold. Boss Weapons use source-aware Mythic salvage behavior rather than the normal Rare/Unique/Elite salvage table.
+
 ### 10.1 Boss Weapons inside the same Tier
 
 Boss Weapons from different Bosses inside the same Tier share the same raw-stat power budget.
@@ -370,7 +365,7 @@ Example:
 
 Boss Weapons inside the same Tier do not power-creep each other through raw ATK. Their identity comes from the fixed Signature Effect.
 
-### 10.2 Moss King Weapon — sustain signature
+### 10.2 Moss King — Spirit Greatsword
 
 When the Hero completes a successful Basic Attack or damaging Skill action:
 
@@ -385,7 +380,7 @@ Short item description:
 โจมตีโดน: 30% ฟื้น HP 10%
 ~~~
 
-### 10.3 Ember Drake Weapon — follow-up signature
+### 10.3 Ember Drake — Lavalon Sword
 
 For every successful hit caused by a Skill:
 
@@ -401,7 +396,7 @@ Short item description:
 สกิลโดน: 10%/Hit โจมตีปกติเพิ่ม 1 ครั้ง
 ~~~
 
-### 10.4 Frost Warden Weapon — counter signature
+### 10.4 Frost Warden — Icicle Longsword
 
 After the Hero receives a successful **direct damaging action**:
 
@@ -440,9 +435,10 @@ setId = azure | robot | skeleton
 
 Set identity and Rarity are separate concepts.
 
-Current full sets use six equipment pieces and activate cumulative bonuses at **2 / 4 / 6 equipped pieces**.
+Current full sets use six equipment pieces — **Weapon, Helmet, Chest, Gloves, Boots, Accessory** — and activate cumulative bonuses at **2 / 4 / 6 equipped pieces**. **Wings are a separate slot and never count as a Set piece.**
 
 A Mythic Set Item does **not** receive an additional standalone Boss-Weapon-style Signature Effect per piece. Its special power budget comes from its Set Bonus.
+
 
 ### 11.1 Azure Set — CC / tempo
 
@@ -452,10 +448,18 @@ A Mythic Set Item does **not** receive an additional standalone Boss-Weapon-styl
 
 **4 pieces**
 
-- restore MP equal to **5% of total actual damage dealt by the damaging action**;
-- calculate once from total action damage, **not separately per hit**;
-- restoration is capped at **10% of Max MP per action**;
-- if another passive provides the same damage-to-MP-drain behavior, they do not stack; use the stronger applicable effect rather than adding the percentages.
+- Hero **Active Skill MP cost is reduced by 50%**.
+- Applies to costed Hero Active Skills only.
+- Does not apply to Basic Attack, Potion, or Pet Skill.
+- Combine with Skill Efficiency multiplicatively rather than additively:
+
+~~~text
+Final MP Cost
+= ceil(Base MP Cost × Skill Efficiency multiplier × 0.50)
+~~~
+
+- A costed skill cannot be reduced below **1 MP**.
+- Example: Skill Efficiency 10% plus Azure 4pc means 45% of base MP cost, not 40%.
 
 **6 pieces**
 
@@ -614,22 +618,19 @@ Reason:
 
 ---
 
+
 ## 15. Enhance
 
-Status: **LOCKED / USER-APPROVED**
+Status: **LOCKED / USER-APPROVED — FINAL**
 
-Enhance V2 keeps the current core identity but slightly improves the late-stage success curve.
-
-Rules:
+### 15.1 Core rules
 
 - Maximum Enhance level: **+10**
-- Each successful +1 adds **+6% of the item's base stat**
-- The bonus is linear from the item's base stat, not compounded from the previous Enhance level
-- +6 therefore adds **+36%**
-- +10 adds **+60%**
-- Failure consumes the attempt cost
-- Failure while attempting +7 and above may downgrade the item by 1 level
-- **Protection Stone prevents that downgrade**
+- Normal equipment gains **+6% of item base stat per successful +1**
+- Normal-equipment Enhance is linear from base stat, not compounded
+- +6 = **+36%**
+- +10 = **+60%**
+- Every attempt consumes its Gold cost and **Iron ×1**
 - Item never breaks
 
 Approved success rates:
@@ -650,14 +651,75 @@ Approved success rates:
 Design intent:
 
 - +0 to +6 is the normal progression-investment range.
-- Early/midgame equipment changes quickly, so players are not expected to push every temporary item to +10.
-- +7 to +10 is primarily a late/endgame optimization layer.
-- Protection Stones remain part of the intended endgame loop rather than being removed.
-- +10 should feel expensive and deliberate, but less punitive than the legacy 10% final-step rate.
+- +7 to +10 is the endgame optimization range.
+- Temporary early/midgame items are not expected to be pushed to +10.
 
-Current production Gold/Iron attempt-cost formulas are **not yet automatically locked as V2 economy values**. Final cost pacing should be checked against the approved Dungeon Gold/material economy before implementation.
+### 15.2 Downgrade / Protection Stone
 
----
+Starting with the **+6 → +7** attempt and every later attempt:
+
+- if Enhance fails, roll **50% chance to downgrade the item by 1 Enhance level**;
+- if the downgrade roll does not trigger, the item stays at its current level;
+- **Protection Stone** prevents a triggered downgrade completely;
+- consume **1 Protection Stone only when it actually blocks a triggered downgrade**;
+- no item destruction occurs.
+
+Protection Stone acquisition:
+
+- **Shop only**
+- current approved price: **30 Diamonds each**
+- no other V2 drop/source is approved yet.
+
+This leaves a deliberate gamble path for players who choose not to spend Protection Stones.
+
+### 15.3 Gold / Iron cost
+
+Base Gold cost per attempt:
+
+~~~text
+Base Gold = 25 + (Current Enhance Level × 35)
+Final Gold = round(Base Gold × Tier economy multiplier)
+~~~
+
+Tier economy multiplier:
+
+| Tier | Multiplier |
+| --- | ---: |
+| T1 | ×1.00 |
+| T2 | ×2.25 |
+| T3 | ×3.75 |
+| T4 | ×5.75 |
+| T5 | ×8.50 |
+
+Iron cost is always:
+
+**Iron ×1 per attempt**
+
+Rarity does not change Enhance attempt cost.
+
+### 15.4 Raid Wings special Enhance rule
+
+Raid Wings are **Tierless**, but their Enhance Gold cost always uses the **T5 economy multiplier ×8.50**.
+
+Wings do not use the normal +6%-per-level stat formula.
+
+Instead:
+
+~~~text
+Wing +0 = Primary Stat +0
+Wing +N = Primary Stat +N
+Wing +10 = Primary Stat +10
+~~~
+
+Family Primary Stat:
+
+| Wing family | Primary Stat |
+| --- | --- |
+| Azure Wings | AGI |
+| Robot Wings | VIT |
+| Skeleton Wings | STR |
+
+All Wings still use Iron ×1 per attempt and the same success / downgrade / Protection rules above.
 
 ## 16. Empower
 
@@ -890,11 +952,14 @@ Rules:
 - Gold surcharge, not extra Mana Ore, is the primary cost of progressively narrowing RNG through Lock.
 - This intentionally creates a long-term endgame chase without making basic Empower access expensive.
 
-### 16.11 Final global validation
 
-Empower itself is locked. After Character Stats, equipment, Enhance, Empower, skills, pets, and other relevant combat-power systems are fully settled, run a final endgame power stress test against Dungeon Monster Scaling V2 and adjust only through a new explicit balance decision if required.
+### 16.11 V2 validation decision
 
----
+Empower V2 is locked.
+
+A broad player-power stress test was already reviewed during V2 design. The Project Lead explicitly chose **not to require another mandatory full simulation before implementation**, because the current package remains playable enough for V2.
+
+If live play later shows a concrete balance problem, do not silently alter this V2 contract. Open a new explicit **V3 balance pass**.
 
 ## 17. Normal materials
 
@@ -932,29 +997,37 @@ Material roles:
 
 ---
 
+
 ## 18. Salvage
 
-Normal dropped equipment should return a controlled amount of progression material.
-
-Target V2 salvage:
+Normal dropped equipment returns controlled progression material:
 
 | Rarity | Salvage return |
 | --- | --- |
 | Rare | Iron ×2 |
 | Unique | Iron ×4 + Mana Ore ×1 |
 | Elite | Iron ×8 + Mana Ore ×3 |
-| Mythic | Do not use the normal salvage table |
+| Mythic | Source-aware; do not use the normal table |
 
-Mythic crafted equipment should use source/recipe-aware refund rules.
+### 18.1 Crafted Set salvage
 
-Principles:
+Crafted Set items use their crafting source for salvage.
 
-- Gold spent on crafting is not refunded.
-- Crafted material refund should be partial.
-- Salvage is a secondary material source, not the primary farming source.
-- Salvage values may be tuned after real drop telemetry/playtesting, but the source-role distinction must remain.
+Approved rules:
 
----
+- crafting Gold is **never refunded**;
+- the consumed Recipe is **never returned**;
+- the Recipe remains a one-use sink;
+- Raid raw materials used by the Set recipe (Boss Horn / Boss Hide) keep the existing partial-refund direction at **50% of the original material amount, rounded down with minimum 1 for a material that was actually required**;
+- do not generate a replacement Recipe on salvage.
+
+### 18.2 Boss Weapon salvage
+
+- do not refund Earth Stone / Fire Stone / Water Stone;
+- do not refund Boss Weapon crafting Gold;
+- any future source-aware Mythic salvage output must be explicitly defined rather than falling through to the normal Rare/Unique/Elite table.
+
+Salvage remains a secondary material source, not the primary farming source.
 
 ## 19. Boss Weapon Gold cost
 
@@ -974,21 +1047,21 @@ Boss Material ×5 remains the targeted crafting requirement.
 
 ---
 
+
 ## 20. Shop role
 
-Shop is:
+Normal Shop role:
 
 **Bad-luck protection + Gold sink**
 
-It is not a Best-in-Slot source.
+It is not a normal Best-in-Slot source.
 
-Target Shop rules:
+Target normal-stock rules:
 
-- normal stock: Rare / Unique;
+- Rare / Unique are regular stock;
 - Elite may appear as a rare/special rotation;
-- Mythic is never sold through the normal Shop;
-- Shop stock Tier follows player progression/current eligible Tier;
-- Shop should help players recover from poor slot RNG without replacing Dungeon farming.
+- Mythic is not sold through normal progression stock;
+- Shop stock Tier follows player progression/current eligible Tier.
 
 Initial pricing targets:
 
@@ -1000,29 +1073,106 @@ Initial pricing targets:
 | T4 | 4,600 | 7,700 | 13,500 |
 | T5 | 6,900 | 11,500 | 20,000 |
 
-The temporary Azure sprite-QA shop stock currently present in legacy code is not part of this design.
+Protection Stone is a separate Diamond-shop progression item:
 
----
+- **30 Diamonds each**
+- Shop is its only approved V2 acquisition source.
+
+### 20.1 Azure QA/Test Shop exception
+
+The existing temporary Azure Shop stock is intentionally retained as a **QA/Test shortcut**, not as a live economy rule.
+
+Those test items must be migrated to the V2 item model:
+
+- rarity = mythic
+- setId = azure
+- 4 Empower slots
+- Tier derived from the tester character's current unlockedFloor
+- base stats use the V2 fixed Tier budget + Mythic rarity multiplier
+- no legacy continuous-Floor crafted stat formula
+- no legacy rarity = azure power tier
+- Azure Set bonuses use the current V2 2pc / 4pc / 6pc rules
+
+The QA/Test stock must not be used to justify normal Shop Mythic availability or pricing.
+
 
 ## 21. Crafting role
 
 Crafting is the deterministic path to special Mythic equipment.
 
-At minimum:
+### 21.1 Mythic Boss Weapon
 
 ~~~text
-Boss Craft
-→ Boss-specific Material + Gold
+Matching Boss Stone ×5
++ Tier-specific Gold
 → Mythic Boss Weapon
-
-Set Craft
-→ Set-specific requirements + Gold
-→ Mythic Azure / Robot / future set
 ~~~
 
-Legacy behavior that calculates crafted stats from the character's current unlocked Floor must be replaced. Crafted output must have a defined Tier/source budget so an old recipe cannot be held until a much later Floor and then produce unintended endgame power.
+Weapon Tier is the Boss Tier. Boss Weapon Gold costs are defined in section 19.
 
----
+### 21.2 Raid Set crafting
+
+Azure / Robot / Skeleton Set Recipes are:
+
+- family-specific;
+- slot-specific;
+- **Tierless Recipe items**;
+- consumed once when crafting;
+- allowed to be stored indefinitely.
+
+The crafted Set Item Tier is resolved from the player's **current unlockedFloor at the moment of Craft**.
+
+Therefore a Recipe earned earlier may intentionally be saved and crafted later at a higher unlocked Tier. This is approved V2 behavior.
+
+All Set families use the same slot cost structure:
+
+| Slot | Boss Horn | Boss Hide | Base Gold |
+| --- | ---: | ---: | ---: |
+| Helmet | 5 | 5 | 300 |
+| Chest | 6 | 6 | 350 |
+| Gloves | 5 | 5 | 300 |
+| Boots | 5 | 5 | 300 |
+| Weapon | 8 | 8 | 500 |
+| Accessory | 6 | 6 | 350 |
+
+Set-craft Gold:
+
+~~~text
+Final Craft Gold
+= round(Base Gold × output Tier economy multiplier)
+~~~
+
+Full six-piece base requirement:
+
+- Boss Horn ×35
+- Boss Hide ×35
+- Base Gold 2,100 before Tier multiplier
+- six matching slot Recipes
+
+Approximate full-set Gold:
+
+| Output Tier | Full-set Gold |
+| --- | ---: |
+| T1 | 2,100 |
+| T2 | 4,725 |
+| T3 | 7,875 |
+| T4 | 12,075 |
+| T5 | 17,850 |
+
+Do not add Iron or Mana Ore to Set crafting. Recipe + Raid materials + Gold are the intended gates.
+
+### 21.3 Set output model
+
+Crafted Set output uses the normal V2 item architecture:
+
+~~~text
+rarity = mythic
+setId = azure | robot | skeleton
+gearTier = current eligible Tier at craft time
+empowerSlotCount = 4
+~~~
+
+Do not use legacy continuous-Floor crafted stat formulas.
 
 ## 22. Item Drop Pool architecture
 
@@ -1058,52 +1208,164 @@ The following controls are part of the design and must not be removed independen
 
 ---
 
+
 ## 24. Production migration notes
 
 Current production code does not yet match this document.
 
-Known legacy areas that implementation must intentionally replace or migrate include:
+Known legacy areas that implementation must intentionally replace include:
 
-- rarity multipliers currently much larger than V2;
-- legacy Empower slot counts;
-- gear Tier mapping that currently changes roughly every 4 Floors;
-- equipment base stats currently scaling continuously with Floor;
-- normal random rarity logic currently capped differently;
-- legacy Boss chest/pity logic that allows repeatable equipment generation;
-- legacy Boss Diamond reward behavior;
-- generic bossHorn / bossHide crafting materials;
-- crafted Azure output using current unlocked Floor;
-- Azure encoded as its own rarity key;
-- Shop price/value formulas tied to legacy rarity multipliers;
-- temporary Azure QA Shop items.
+- oversized legacy rarity multipliers;
+- legacy Empower slot counts/pool;
+- old gear Tier mapping;
+- continuous per-Floor equipment-stat generation;
+- legacy Boss chest/pity reward behavior;
+- generic/legacy Chapter Boss material handling;
+- old crafted Azure continuous-Floor stat formula;
+- Azure encoded as its own rarity/power key;
+- Raid Wings encoded as ★1–★5 with large direct Dodge;
+- old Azure/Set item data using the legacy stat model;
+- temporary Azure QA/Test Shop items using legacy item generation.
 
-Implementation must preserve existing saves/items and provide explicit compatibility handling. Do not silently rewrite owned player inventory.
+### 24.1 Approved destructive legacy cleanup
 
-Reward/persistence operations must remain compatible with Battle Result commit/idempotency and overflow safety.
+The Project Lead explicitly approved a clean V2 reset for the overpowered legacy special equipment.
 
----
+During V2 migration:
 
-## 25. Not yet locked
+- **delete all owned legacy Raid Wings ★1–★5**;
+- **delete all owned legacy Azure / crafted Set equipment that uses the old stat/rarity model**;
+- give **no Gold, materials, Recipes, Diamonds, or other compensation** for those deleted items;
+- do not attempt to stat-normalize or convert those old special items.
 
-The following remain open for later design:
+This destructive cleanup is intentional and overrides the normal preference for item backward compatibility.
 
-- exact names and identities of Boss-specific materials;
-- exact Boss Weapon names;
-- detailed set recipe costs and acquisition;
-- acquisition/content details for Robot and Skeleton where not yet implemented;
-- future Mythic Accessory sources;
-- Raid milestone Accessory details;
-- Daily Login streak Accessory details;
+Do **not** delete unrelated player progression/resources:
+
+- Gold
+- Diamonds
+- Iron
+- Mana Ore
+- Protection Stones
+- Raid materials
+- valid Recipe items
+- unrelated inventory/save data
+
+Valid existing Set Recipes may remain because they have no combat stats; crafting after migration produces a new V2 item using the approved current-Tier craft rule.
+
+Normal non-Set Rare / Unique / Elite equipment is not part of this special destructive reset unless a separate migration requirement is explicitly approved.
+
+### 24.2 Data / transaction safety
+
+- migration must be explicit, auditable, and targeted to legacy special-item identities;
+- unrelated inventory rows/fields must be preserved;
+- reward/persistence operations remain compatible with Battle Result commit/idempotency and overflow safety;
+- server-granted Raid rewards must preserve mailbox/idempotency guarantees already used by production.
+
+
+## 25. Not yet locked / future V3 content
+
+The following are intentionally deferred and do **not** block V2 implementation:
+
+- future Mythic Accessory sources beyond the approved Raid milestone path;
+- Daily Login streak Accessory redesign;
 - T6 and post-T5 progression;
 - monster-specific equipment pools beyond the generic fallback;
-- exact Enhance V2 Gold/Iron cost pacing and Protection Stone economy;
-- final global player-power stress test against Dungeon Monster Scaling V2 after all relevant progression systems are settled.
+- future additional Set families / Raid bosses;
+- any post-launch balance changes, which should be handled as an explicit V3 pass.
 
-These must not be invented during implementation without a new user-approved design decision.
+One implementation-economy detail remains intentionally separate from Enhance: **Tierless Raid Wing Empower opening/reroll Gold multiplier** is not redefined by the Enhance rule in section 15. Do not silently invent a different multiplier during implementation; resolve it explicitly if the existing Empower implementation requires a Tier value.
 
----
 
-## 26. Core reward loop
+## 26. Raid / Wings V2
+
+### 26.1 Raid family mapping
+
+| Raid Boss | Wing family | Wing Primary Stat | Set family |
+| --- | --- | --- | --- |
+| Azure Angel | **Azure Wings** | **AGI** | Azure |
+| Robo Phoenix | **Robot Wings** | **VIT** | Robot |
+| Dark Dragonlord | **Skeleton Wings** | **STR** | Skeleton |
+
+Raid Set Recipe / Set Item rewards must follow the current Raid Boss family. They are no longer hardcoded to Azure.
+
+### 26.2 Wings item model
+
+Raid Wings:
+
+- are type = wings;
+- have **no Tier**;
+- do not count toward Azure / Robot / Skeleton Set-piece count;
+- do not use the old Raid ★1–★5 model;
+- do not grant the old fixed Dodge bonuses;
+- use normal rarity names: Rare / Unique / Elite / Mythic;
+- use Empower slots from rarity: **1 / 2 / 3 / 4**;
+- rarity changes Empower-slot count, but does **not** multiply the Wing's fixed family Primary Stat;
+- Wing +0 grants **0** family Primary Stat;
+- Wing +N grants **+N** family Primary Stat, up to +10.
+
+Wings use the approved Wings Empower pool:
+
+- HP %
+- MP %
+- Crit Chance
+- Crit Damage
+
+They do not directly roll STR / VIT / AGI / DEX / LUK in Empower; family Primary Stat comes from Enhance.
+
+### 26.3 Raid ranking rewards
+
+Keep the existing non-Wing Rank rewards while replacing Wing stars with rarity:
+
+| Raid Rank | Wing reward | Additional reward |
+| --- | --- | --- |
+| Rank 1 | **Mythic Wing** of that Raid family | Boss Horn ×3 + Boss Hide ×3 + random Set Recipe ×1 of that family |
+| Rank 2 | **Elite Wing** of that Raid family | Boss Horn ×2 + Boss Hide ×2 + random Set Recipe ×1 of that family |
+| Rank 3 | **Unique Wing** of that Raid family | Boss Horn ×1 + Boss Hide ×1 + random Set Recipe ×1 of that family |
+| Rank 4+ | none | keep existing two random Boss-material rolls |
+
+Rank rewards may stack with milestone and Last-Hit rewards when the player independently qualifies for them.
+
+### 26.4 Last Hit
+
+Last Hit no longer awards a random ★ Wing.
+
+New Last-Hit reward:
+
+- **random Set Recipe ×1**
+- Recipe family must match the defeated Raid Boss.
+
+### 26.5 Contribution milestones
+
+Base milestone rewards remain cumulative:
+
+- every **5% Contribution** → Diamond ×5
+- every **10% Contribution** → Boss Material ×1
+
+Special milestones:
+
+| Contribution | Special reward |
+| --- | --- |
+| **25%** | **Rare Wing** of that Raid family |
+| **50%** | random Accessory: **Unique 80% / Elite 20%** |
+| **75%** | random Set Recipe ×1 of that Raid family |
+| **99%** | random Set Item ×1 of that Raid family |
+
+50% Accessory Tier follows the player's eligible Tier from unlockedFloor when the reward is generated.
+
+For the **99% Set Item**, resolve and snapshot the output Tier **immediately when the character reaches 99% Contribution**. Waiting to claim later must not upgrade the reward into a newer Tier.
+
+The 75% Recipe is Tierless and may intentionally be stored for later crafting.
+
+### 26.6 Raid Recipe / Set Tier behavior
+
+- Recipes themselves have no Tier.
+- A stored Recipe may be crafted after the player advances.
+- Crafting resolves Set Item Tier from current unlockedFloor at craft time.
+- Direct 99% Set Item is different: its Tier is fixed at the 99%-threshold moment.
+
+
+## 27. Core reward loop
 
 ~~~text
 NORMAL
@@ -1121,23 +1383,30 @@ ELITE
 
 CHAPTER BOSS — FIRST CLEAR
 → EXP + Gold
-→ Boss-specific Material
+→ Earth / Fire / Water Stone
 → One-time Accessory Chest
 
 CHAPTER BOSS — RERUN
 → EXP + Gold
-→ Boss-specific Material
+→ Earth / Fire / Water Stone
 
-BOSS-SPECIFIC MATERIAL ×5 + GOLD
-→ Mythic Boss Weapon
+MATCHING BOSS STONE ×5 + GOLD
+→ Spirit Greatsword / Lavalon Sword / Icicle Longsword
 
-SPECIAL SET CRAFT
-→ Mythic Azure / Robot / future sets
+RAID
+→ Rank / Contribution / Last Hit
+→ Family Wings / Recipes / Set Items / Accessory / Raid Materials
+
+TIERLESS RAID SET RECIPE + HORN/HIDE + GOLD
+→ Mythic Set Item at current eligible Tier
 
 UNWANTED NORMAL GEAR
 → Salvage
 → Iron / Mana Ore
-→ Enhance / Empower
+
+ENHANCE
+→ Gold + Iron ×1 / attempt
+→ Protection Stone optional for risky +7 to +10 progression
 ~~~
 
-This loop is the baseline for Dungeon Reward Progression V2 implementation and future balance work.
+This loop is the locked V2 baseline. Future balance changes should be handled as an explicit V3 design pass rather than silently changing these values.
