@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — W9R complete in Production; WAVE 1 is the current DEV gate; Graphics G4 may proceed in parallel**
+Status: **ACTIVE-EXECUTION — W9R complete in Production; WAVE 1 QA-approved and held; WAVE 1.5 is the current DEV gate; Graphics G4 may proceed in parallel**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -674,7 +674,7 @@ Rules for all waves:
 ---
 
 ## WAVE 1 — Dungeon V2 Encounter + Stat Foundation
-**Status: READY_FOR_DEV — CURRENT EXECUTION GATE**
+**Status: QA APPROVED — HELD FOR COMBINED RELEASE WITH WAVE 1.5**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA; Graphics only for identified presentation gaps**
@@ -709,8 +709,61 @@ Exit condition:
 
 ---
 
+## WAVE 1.5 — Dungeon Monster Skills + Boss Mechanics
+**Status: READY AFTER WAVE 1 QA — RELEASE TOGETHER WITH WAVE 1**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: QA mandatory**
+
+Source of truth:
+- `docs/DUNGEON-MONSTER-SKILLS-V2.md`
+
+Scope:
+- implement six Normal Monster deterministic skill cycles;
+- implement six Elite skill variants while retaining source-monster identity;
+- implement Moss King / Ember Drake / Frost Warden skill kits and rotations;
+- persist enemy action-cycle state across checkpoint/reload/resume;
+- preserve Auto / Skip / normal-play deterministic parity;
+- integrate Boss phase behavior with WAVE 1 Enrage;
+- reuse shared Poison / Stun / Armor Break / DEF Up semantics;
+- preserve existing authoritative targeting and Battle Core resolution.
+
+Hard boundaries:
+- no random enemy skill-selection system;
+- no enemy MP/resource system;
+- no new Freeze/Burn status type;
+- no Reward V2/economy/item/crafting work;
+- no Arena/Raid Dungeon-skill leakage;
+- shared Battle Core changes, if required, must be generic and default-neutral.
+
+QA gate:
+- all Normal/Elite cycles and exact skill values;
+- multi-hit/AoE/guard behavior;
+- Poison/status duration/proc semantics;
+- Moss King one-time Overgrowth phase insertion;
+- Ember Drake phase-2 cycle continuity;
+- Frost Warden repeatable Ice Fortress;
+- Enrage direct-damage interaction and DoT exclusion;
+- Auto/Skip/checkpoint/resume determinism;
+- Battle Core + Worker parity when shared core changes;
+- Dungeon persistence;
+- Arena/Raid regression;
+- build/generated-output checks.
+
+Release rule:
+- WAVE 1 is QA-approved but intentionally held from Production.
+- WAVE 1.5 continues on the same WAVE 1 feature branch / PR #40 after syncing the latest main documentation commit.
+- Final QA must cover the combined WAVE 1 + WAVE 1.5 head.
+- Merge/deploy WAVE 1 and WAVE 1.5 together only after combined QA approval.
+- Verify both frontend Production and API Worker Production if the final combined diff still changes the Worker/shared Battle Core.
+
+Exit condition:
+- Dungeon V2 encounter/stat/skill combat foundation is authoritative and Production-ready before Reward V2 begins.
+
+---
+
 ## WAVE 2 — Reward V2 Item / Drop / Economy Foundation
-**Status: READY AFTER WAVE 1**
+**Status: READY AFTER WAVE 1.5**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA + Graphics for missing icons**
@@ -1021,7 +1074,8 @@ Graphics must not redesign mechanics or publish guessed asset paths.
 **Risk follows the wave under test**
 
 - **Q1 — W9R regression — HIGH**
-- **Q2 — Dungeon encounter/stat verification — HIGH**
+- **Q2 — Dungeon encounter/stat verification — HIGH — WAVE 1 QA APPROVED; final combined retest after WAVE 1.5**
+- **Q2.5 — Dungeon Monster Skills/Boss Mechanics verification — HIGH**
 - **Q3 — Reward/item/drop/economy verification — HIGH**
 - **Q4 — Enhance/Empower verification — HIGH**
 - **Q5 — Boss Weapon/Set cross-mode verification — HIGH**
@@ -1042,7 +1096,9 @@ W9 Arena V2                   ✅ COMPLETE / PRODUCTION VERIFIED
  ↓
 W9R API Worker Refactor       ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 1 Dungeon V2 Foundation  🔴 HIGH — CURRENT DEV GATE
+WAVE 1 Dungeon V2 Foundation  ✅ QA APPROVED — HELD FOR COMBINED RELEASE
+ ↓
+WAVE 1.5 Monster Skills/Boss   🔴 HIGH — CURRENT DEV GATE
  ↓
 WAVE 2 Reward V2 Foundation   🔴 HIGH
  ↓
@@ -1073,7 +1129,7 @@ QA Q1-Q8
 
 Do not hold all presentation work until the very end unnecessarily:
 - W10 Victory may begin once W9R is stable;
-- Boss presentation may begin after WAVE 1;
+- Boss stat/Enrage presentation may begin after WAVE 1; Boss skill presentation depends on WAVE 1.5;
 - W11 Enhance/Craft presentation may begin after WAVE 3;
 - Raid presentation may begin after WAVE 5;
 - final integrated presentation QA remains WAVE 7.
@@ -1086,7 +1142,7 @@ CHAT lane C1-C4 continues for roadmap maintenance, audits, focused QA review and
 
 The active roadmap is complete when:
 - W9R modularization is production-safe with no intentional behavior drift;
-- Dungeon V2 encounter/stat generation is authoritative;
+- Dungeon V2 encounter/stat generation and Monster Skill/Boss Mechanics are authoritative;
 - Reward V2 Tier/Rarity/item/drop/economy rules are authoritative;
 - Enhance and Empower V2 are persistent, transaction-safe and shared across equipment consumers;
 - Boss Weapons and Mythic Sets use the approved mechanics and shared Hero V5 visual resolver;

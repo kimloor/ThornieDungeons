@@ -1,8 +1,9 @@
-// ---------- Dungeon V2 encounter and stat foundation ----------
-// This module owns Dungeon encounter identity and enemy stat generation only.
-// It deliberately does not resolve damage, turns, skills, statuses, rewards, or
-// persistence transactions. Those remain owned by Battle Core and the existing
-// Dungeon result/checkpoint flow.
+// ---------- Dungeon V2 encounter, stat, and skill foundation ----------
+// This module owns Dungeon encounter identity, enemy stat generation, skill
+// definitions, deterministic cycle/phase state preparation, and checkpoint
+// hydration. It deliberately does not resolve damage, turns, or statuses;
+// Battle Core remains the sole combat resolver. Rewards and persistence
+// transactions remain owned by the existing Dungeon result/checkpoint flow.
 (function dungeonV2Factory(root) {
   const ENCOUNTER_TYPES = Object.freeze({
     NORMAL: "normal",
@@ -36,6 +37,135 @@
   const ELITE_MODIFIERS = Object.freeze({ hp: 1.3, atk: 1.1, def: 1.05 });
   const BOSS_ENRAGE_THRESHOLD = 0.5;
   const BOSS_ENRAGE_DAMAGE_MULTIPLIER = 1.2;
+
+  const BASIC_ACTION = Object.freeze({
+    id: "basic_attack",
+    kind: "attack",
+    actionName: "basic attack",
+    mult: 1,
+    hits: 1,
+    targetMode: "single",
+    statuses: Object.freeze([])
+  });
+
+  const MONSTER_SKILLS = Object.freeze({
+    jelly_slime: Object.freeze({
+      normal: Object.freeze({ id: "body_slam", kind: "attack", actionName: "Body Slam", mult: 1.25, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+      elite: Object.freeze({ id: "heavy_body_slam", kind: "attack", actionName: "Heavy Body Slam", mult: 1.45, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+      cycle: Object.freeze(["basic", "skill"])
+    }),
+    spore_cap: Object.freeze({
+      normal: Object.freeze({ id: "toxic_spores", kind: "attack", actionName: "Toxic Spores", mult: 0.90, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "poison", chance: 35, duration: 2, damagePct: 0.10 }]) }),
+      elite: Object.freeze({ id: "noxious_spores", kind: "attack", actionName: "Noxious Spores", mult: 1.00, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "poison", chance: 45, duration: 3, damagePct: 0.12 }]) }),
+      cycle: Object.freeze(["basic", "skill", "basic"])
+    }),
+    tusky_boar: Object.freeze({
+      normal: Object.freeze({ id: "heavy_cleave", kind: "attack", actionName: "Heavy Cleave", mult: 1.40, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "armor_break", chance: 35, duration: 2 }]) }),
+      elite: Object.freeze({ id: "brutal_cleave", kind: "attack", actionName: "Brutal Cleave", mult: 1.55, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "armor_break", chance: 45, duration: 2 }]) }),
+      cycle: Object.freeze(["basic", "skill"])
+    }),
+    bramble_bat: Object.freeze({
+      normal: Object.freeze({ id: "wing_flurry", kind: "attack", actionName: "Wing Flurry", mult: 0.65, hits: 2, targetMode: "single", statuses: Object.freeze([]) }),
+      elite: Object.freeze({ id: "razor_flurry", kind: "attack", actionName: "Razor Flurry", mult: 0.50, hits: 3, targetMode: "single", statuses: Object.freeze([]) }),
+      cycle: Object.freeze(["skill", "basic", "basic"])
+    }),
+    bone_rattler: Object.freeze({
+      normal: Object.freeze({ id: "bone_bash", kind: "attack", actionName: "Bone Bash", mult: 1.15, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "stun", chance: 20, duration: 1 }]) }),
+      elite: Object.freeze({ id: "skull_crusher", kind: "attack", actionName: "Skull Crusher", mult: 1.30, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "stun", chance: 25, duration: 1 }]) }),
+      cycle: Object.freeze(["basic", "skill", "basic"])
+    }),
+    sandy_crab: Object.freeze({
+      normal: Object.freeze({ id: "shell_guard", kind: "utility", actionName: "Shell Guard", selfStatus: Object.freeze({ key: "def_up", duration: 2 }), targetMode: "self", statuses: Object.freeze([]) }),
+      elite: Object.freeze({ id: "iron_shell", kind: "utility", actionName: "Iron Shell", selfStatus: Object.freeze({ key: "def_up", duration: 3 }), targetMode: "self", statuses: Object.freeze([]) }),
+      cycle: Object.freeze(["basic", "skill", "basic", "basic"])
+    })
+  });
+
+  const BOSS_SKILLS = Object.freeze({
+    moss_king: Object.freeze({
+      cycle: Object.freeze([
+        Object.freeze({ id: "vine_slam", kind: "attack", actionName: "Vine Slam", mult: 1.30, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        BASIC_ACTION,
+        Object.freeze({ id: "toxic_bloom", kind: "attack", actionName: "Toxic Bloom", mult: 0.90, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "poison", chance: 40, duration: 3, damagePct: 0.12 }]) }),
+        BASIC_ACTION
+      ]),
+      phaseAction: Object.freeze({ id: "overgrowth", kind: "utility", actionName: "Overgrowth", targetMode: "self", selfStatus: Object.freeze({ key: "def_up", duration: 2 }), statuses: Object.freeze([]) })
+    }),
+    ember_drake: Object.freeze({
+      cycle: Object.freeze([
+        Object.freeze({ id: "flame_bite", kind: "attack", actionName: "Flame Bite", mult: 1.40, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        BASIC_ACTION,
+        Object.freeze({ id: "flame_breath", kind: "attack", actionName: "Flame Breath", mult: 0.80, hits: 1, targetMode: "all_opposing", statuses: Object.freeze([]) }),
+        BASIC_ACTION
+      ]),
+      phase2Cycle: Object.freeze([
+        Object.freeze({ id: "flame_bite", kind: "attack", actionName: "Flame Bite", mult: 1.40, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        Object.freeze({ id: "inferno_rush", kind: "attack", actionName: "Inferno Rush", mult: 1.70, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        Object.freeze({ id: "flame_breath", kind: "attack", actionName: "Flame Breath", mult: 0.80, hits: 1, targetMode: "all_opposing", statuses: Object.freeze([]) }),
+        BASIC_ACTION
+      ])
+    }),
+    frost_warden: Object.freeze({
+      cycle: Object.freeze([
+        Object.freeze({ id: "frost_strike", kind: "attack", actionName: "Frost Strike", mult: 1.20, hits: 1, targetMode: "single", statuses: Object.freeze([]) }),
+        Object.freeze({ id: "frozen_shackles", kind: "attack", actionName: "Frozen Shackles", mult: 0.90, hits: 1, targetMode: "single", statuses: Object.freeze([{ key: "stun", chance: 25, duration: 1 }]) }),
+        BASIC_ACTION,
+        Object.freeze({ id: "ice_fortress", kind: "utility", actionName: "Ice Fortress", targetMode: "self", selfStatus: Object.freeze({ key: "def_up", duration: 2 }), statuses: Object.freeze([]) })
+      ])
+    })
+  });
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function resolveMonsterSkillCycle(monsterId, encounterType) {
+    const entry = MONSTER_SKILLS[String(monsterId || "")];
+    if (!entry) return null;
+    const skill = encounterType === ENCOUNTER_TYPES.ELITE ? entry.elite : entry.normal;
+    const byId = { basic: BASIC_ACTION, skill };
+    return entry.cycle.map(slot => clone(byId[slot] || BASIC_ACTION));
+  }
+
+  function getDungeonV2SkillConfig(monsterId, encounterType) {
+    const id = String(monsterId || "");
+    if (encounterType === ENCOUNTER_TYPES.CHAPTER_BOSS) {
+      const entry = BOSS_SKILLS[id];
+      if (!entry) return null;
+      return {
+        skillSetId: id,
+        cycle: clone(entry.cycle),
+        phase2Cycle: entry.phase2Cycle ? clone(entry.phase2Cycle) : null,
+        phaseAction: entry.phaseAction ? clone(entry.phaseAction) : null
+      };
+    }
+    const cycle = resolveMonsterSkillCycle(id, encounterType);
+    if (!cycle) return null;
+    return { skillSetId: id, cycle, phase2Cycle: null, phaseAction: null };
+  }
+
+  function hydrateDungeonV2SkillState(state) {
+    if (!state || !state.units) return state;
+    Object.values(state.units).forEach(unit => {
+      if (!unit || (unit.kind !== "monster" && unit.kind !== "boss") || Array.isArray(unit.dungeonV2SkillCycle)) return;
+      const encounterType = unit.encounterType
+        || (unit.kind === "boss" ? ENCOUNTER_TYPES.CHAPTER_BOSS : unit.isElite ? ENCOUNTER_TYPES.ELITE : ENCOUNTER_TYPES.NORMAL);
+      const profileId = unit.dungeonV2ProfileId || unit.monsterDefId || unit.id;
+      const config = getDungeonV2SkillConfig(profileId, encounterType);
+      if (!config) return;
+      unit.dungeonV2SkillSetId = config.skillSetId;
+      const enraged = !!(unit.flags && unit.flags.dungeonV2Enraged);
+      unit.dungeonV2SkillCycle = enraged && config.phase2Cycle ? config.phase2Cycle : config.cycle;
+      unit.dungeonV2SkillPhase2Cycle = config.phase2Cycle;
+      unit.dungeonV2PhaseAction = config.phaseAction;
+      unit.dungeonV2CycleIndex = Math.max(0, Math.floor(Number(unit.dungeonV2CycleIndex) || 0)) % config.cycle.length;
+      unit.dungeonV2Phase = unit.dungeonV2Phase || (enraged ? "enraged" : "base");
+      unit.dungeonV2PendingAction = unit.dungeonV2PendingAction || null;
+      unit.dungeonV2OvergrowthQueued = unit.dungeonV2OvergrowthQueued === true;
+      unit.dungeonV2OvergrowthUsed = unit.dungeonV2OvergrowthUsed === true;
+    });
+    return state;
+  }
 
   function numberOr(value, fallback) {
     return Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -183,12 +313,25 @@
   // damage calculation and applies this generic outgoing multiplier per hit.
   function applyDungeonV2BossEnrage(state) {
     if (!state || !state.units) return state;
+    hydrateDungeonV2SkillState(state);
     Object.values(state.units).forEach(unit => {
       if (!unit || unit.kind !== "boss" || unit.hp <= 0 || unit.dead || unit.hp >= unit.maxHp * BOSS_ENRAGE_THRESHOLD || isDungeonV2BossEnraged(unit)) return;
       unit.flags = unit.flags || {};
       unit.flags.dungeonV2Enraged = true;
       unit.flags.dungeonV2EnrageDamageMultiplier = BOSS_ENRAGE_DAMAGE_MULTIPLIER;
       unit.damageMultiplier = BOSS_ENRAGE_DAMAGE_MULTIPLIER;
+      unit.dungeonV2Phase = "enraged";
+      if (Array.isArray(unit.dungeonV2SkillPhase2Cycle) && unit.dungeonV2SkillPhase2Cycle.length) {
+        // Preserve the next slot; only the slot mapping changes for Ember Drake.
+        unit.dungeonV2SkillCycle = clone(unit.dungeonV2SkillPhase2Cycle);
+      }
+      if (unit.dungeonV2SkillSetId === "moss_king"
+          && unit.dungeonV2PhaseAction
+          && !unit.dungeonV2OvergrowthQueued
+          && !unit.dungeonV2OvergrowthUsed) {
+        unit.dungeonV2PendingAction = clone(unit.dungeonV2PhaseAction);
+        unit.dungeonV2OvergrowthQueued = true;
+      }
     });
     return state;
   }
@@ -198,6 +341,7 @@
   function simulateDungeonV2Battle(inputState, battleCore, maxActions = 10000) {
     if (!battleCore || typeof battleCore.battleStep !== "function") throw new Error("battle_core_required");
     let state = JSON.parse(JSON.stringify(inputState));
+    hydrateDungeonV2SkillState(state);
     state.flags = { ...(state.flags || {}), skipResolving: true, auto: false };
     let actions = 0;
     while (!state.result && actions < maxActions) {
@@ -228,6 +372,8 @@
     getDungeonV2BossProfile,
     resolveDungeonV2NormalStats,
     resolveDungeonV2BossStats,
+    getDungeonV2SkillConfig,
+    hydrateDungeonV2SkillState,
     isDungeonV2BossEnraged,
     toDungeonV2BattleEnemy,
     isDungeonV2StarterPetEligible,

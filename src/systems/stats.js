@@ -172,6 +172,7 @@ function makeEnemy(floor, options = {}) {
   const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
   const speedAdjustment = Number(v2Stats.speedAdjustment) || 0;
   const baseAtk = v2Stats.atk;
+  const skillConfig = DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
   return {
     id: t.id,
     uid: `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -188,6 +189,15 @@ function makeEnemy(floor, options = {}) {
     chapterFloor: DUNGEON_V2.dungeonChapterFloor(floor),
     sourceIdentity: isBoss ? `chapter_boss:${t.id}` : `${encounterType}:${t.id}`,
     dungeonV2ProfileId: v2Stats.profileId,
+    dungeonV2SkillSetId: skillConfig?.skillSetId || null,
+    dungeonV2SkillCycle: skillConfig?.cycle || null,
+    dungeonV2SkillPhase2Cycle: skillConfig?.phase2Cycle || null,
+    dungeonV2PhaseAction: skillConfig?.phaseAction || null,
+    dungeonV2CycleIndex: 0,
+    dungeonV2Phase: "base",
+    dungeonV2PendingAction: null,
+    dungeonV2OvergrowthQueued: false,
+    dungeonV2OvergrowthUsed: false,
     dungeonV2BaseAtk: baseAtk,
     flags: { dungeonV2BaseAtk: baseAtk },
     sizeClass: isBoss ? (t.sizeClass || "large") : isElite ? "elite" : t.sizeClass || "medium",

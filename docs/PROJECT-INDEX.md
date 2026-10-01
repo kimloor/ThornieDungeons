@@ -34,6 +34,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. |
 | [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md) | Dungeon Floor Select, Floor Detail, floor event/modifier presentation, monster preview, door states, and responsive entry flow. |
 | [`DUNGEON-STAT-SCALING-V2.md`](DUNGEON-STAT-SCALING-V2.md) | **ACTIVE-DESIGN / USER-APPROVED** Dungeon V2 Normal/Elite/Boss combat-stat scaling, monster identity profiles, pack scaling, Boss profiles, and Enrage. |
+| [`DUNGEON-MONSTER-SKILLS-V2.md`](DUNGEON-MONSTER-SKILLS-V2.md) | **LOCKED / USER-APPROVED** WAVE 1.5 Normal/Elite Monster skill cycles, Boss skills/phases, targeting and checkpoint/Skip determinism. |
 | [`DUNGEON-REWARD-PROGRESSION-V2.md`](DUNGEON-REWARD-PROGRESSION-V2.md) | **ACTIVE-DESIGN / USER-APPROVED** Dungeon Reward V2: Tier/Rarity, Normal/Elite/Boss rewards, First-Clear Accessory, Boss materials/Mythic crafting, EXP/Gold/material economy, salvage, and Shop/Crafting reward roles. |
 | [`SOCIAL-SYSTEM-V1.md`](SOCIAL-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** shared character-scoped Social foundation: identity, presence, block, unread, lifecycle, security, and shared errors. Live; consumed by Friend V1. |
 | [`FRIEND-SYSTEM-V1.md`](FRIEND-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** Friend search/requests, 50-friend cap, remove/block, presence, profile, and DM eligibility. |
@@ -107,6 +108,7 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 - [`AGENTS.md`](../AGENTS.md)
 - [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md)
 - [`DUNGEON-STAT-SCALING-V2.md`](DUNGEON-STAT-SCALING-V2.md) when monster/Elite/Boss stats, pack scaling, monster identity, Boss profile, or Enrage balance is affected
+- [`DUNGEON-MONSTER-SKILLS-V2.md`](DUNGEON-MONSTER-SKILLS-V2.md) when Normal/Elite/Boss Dungeon skills, rotations, phase mechanics, targeting, or Skip/checkpoint determinism is affected
 - [`DUNGEON-REWARD-PROGRESSION-V2.md`](DUNGEON-REWARD-PROGRESSION-V2.md) when Dungeon rewards, equipment Tier/Rarity, drops, Boss chest/materials, Gold/EXP/material economy, Shop reward role, or Crafting reward role is affected
 - [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) when entry/battle behavior is affected
 - [`r2-upload/README.md`](../r2-upload/README.md) when Dungeon assets are affected
@@ -248,3 +250,8 @@ When an approved production contract changes:
 - Update `PROJECT-INDEX.md` if document status or task mapping changes.
 - Avoid creating duplicate, competing specifications.
 - Retire or remove obsolete documents when safe.
+
+### Current post-W9R execution update
+- WAVE 1 Dungeon V2 Encounter + Stat Foundation: QA APPROVED, held for combined release.
+- WAVE 1.5 Dungeon Monster Skills + Boss Mechanics: CURRENT DEV GATE, HIGH risk, same PR #40, combined release with WAVE 1.
+- WAVE 2 Reward V2 starts only after combined WAVE 1 + 1.5 QA/release.
