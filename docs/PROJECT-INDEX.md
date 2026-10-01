@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-DESIGN** master execution roadmap split into CHAT / WORK / GRAPHICS lanes, covering Social completion, Inventory V2, Phaser Dungeon/Arena, Hero V5 and final architecture cleanup. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. W9R is COMPLETE in Production; WAVE 1 Dungeon V2 is the current DEV gate; Graphics G4 Reward V2 icons may proceed in parallel; each wave carries explicit DEV/Graphics/QA ownership and risk. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
@@ -69,7 +69,7 @@ Repository-wide references:
 
 ## 5. Read-by-task map
 
-For active sequencing/priorities across Social completion, Inventory refactor, Phaser migration, Hero V5 and final architecture cleanup, read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
+For active sequencing/priorities from the current post-W9R baseline — Dungeon V2, Reward V2, Enhance/Empower, Mythic content, Raid/Wings, cutover, presentation, Admin V2 and Graphics/QA parallel lanes — read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
 
 Read only the documents relevant to the requested scope. Do not load unrelated system specifications unless a dependency or conflict requires them.
 
@@ -210,7 +210,8 @@ Until a dedicated contract exists, inspect latest `main`, the latest approved ta
 
 ### Graphics
 
-- Read the relevant visual contract and R2 rules.
+- Read the relevant visual contract, current execution wave, and R2 rules.
+- Current post-W9R graphics entry point is G4 Reward V2 icons unless a newer explicit task overrides it.
 - Do not infer asset names, manifest keys, or paths.
 
 ### QA
