@@ -4,13 +4,14 @@ Status: **ACTIVE-EXECUTION — W9 complete; W9R is the current gate; post-W9R ex
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
-Work is split into three execution lanes:
+Work is coordinated across four execution roles:
 
-1. **CHAT** — low-complexity / low-risk work the Project Lead can handle directly.
-2. **WORK** — medium/high-complexity implementation, transactional/backend work, large refactors and renderer migration.
-3. **GRAPHICS** — visual asset production and approval.
+1. **PROJECT LEAD / CHAT** — roadmap ownership, audits, low-risk polish and release decisions.
+2. **DEV / WORK** — implementation, backend/transactional work, gameplay systems and refactors.
+3. **GRAPHICS** — approved visual asset production, R2/manifest publication and visual contracts.
+4. **QA** — independent contract verification, regression gates and release acceptance.
 
-The lanes may run in parallel where dependencies allow.
+The roles may run in parallel only where the dependency map explicitly allows it.
 
 ---
 
@@ -207,6 +208,7 @@ W4 may now proceed from latest `main`.
 ---
 
 ## W4 — Social Production E2E / Release QA
+**Status: COMPLETE / PRODUCTION VERIFIED**
 
 After W0-W3:
 - Friend request/accept/remove/block;
@@ -1064,7 +1066,7 @@ QA must validate the source-of-truth contract rather than only retesting DEV's i
 
 ---
 
-# 4. Master execution order
+# PART 5 — MASTER EXECUTION ORDER
 
 ```text
 W0-W8                         ✅ COMPLETE
@@ -1112,7 +1114,7 @@ CHAT lane C1-C4 continues for roadmap maintenance, audits, focused QA review and
 
 ---
 
-# 5. Completion condition
+# PART 6 — COMPLETION CONDITION
 
 The active roadmap is complete when:
 - W9R modularization is production-safe with no intentional behavior drift;
