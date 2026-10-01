@@ -82,6 +82,9 @@ const defaultCharacterSlot = () => ({
   activePetId: null,
   protectionStones: 0,
   chestPity: 0,
+  // Permanent Dungeon V2 entitlements are separate from the bounded replay cache.
+  firstClearAccessoryClaims: {},
+  battleRewardReceipts: [],
   rewardReceipts: []
 });
 
@@ -98,7 +101,17 @@ function characterFromServerRow(row) {
   const petDuplicates = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.dup === "object" && petsRaw.dup ? petsRaw.dup : {});
   const skillLevels = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.skills === "object" && petsRaw.skills ? petsRaw.skills : {});
   const skillVersion = Array.isArray(petsRaw) ? 0 : numOr(petsRaw && petsRaw.skillVersion, 0);
-  const rewardReceipts = Array.isArray(petsRaw) ? [] : (Array.isArray(petsRaw?.rewardReceipts) ? petsRaw.rewardReceipts.filter(Boolean).slice(-128) : []);
+  const legacyReceipts = Array.isArray(petsRaw) ? [] : (Array.isArray(petsRaw?.rewardReceipts) ? petsRaw.rewardReceipts.filter(Boolean) : []);
+  const migratedClaims = {};
+  legacyReceipts.forEach(key => {
+    const match = String(key).match(/^first-clear-accessory:(\d+)$/);
+    if (match) migratedClaims[match[1]] = true;
+  });
+  const storedClaims = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.firstClearAccessoryClaims === "object" && petsRaw.firstClearAccessoryClaims ? petsRaw.firstClearAccessoryClaims : {});
+  const firstClearAccessoryClaims = Object.fromEntries(Object.entries({ ...migratedClaims, ...storedClaims }).filter(([floor, claimed]) => /^\d+$/.test(floor) && claimed === true));
+  const battleRewardReceipts = Array.isArray(petsRaw?.battleRewardReceipts)
+    ? petsRaw.battleRewardReceipts.filter(Boolean).slice(-128)
+    : legacyReceipts.filter(key => !/^first-clear-accessory:\d+$/.test(String(key))).slice(-128);
   const migratedPets = typeof migratePetV2Instance === "function" ? pets.map(migratePetV2Instance) : pets;
   const migratedDuplicates = typeof migratePetDuplicatePoolV2 === "function" ? migratePetDuplicatePoolV2(petDuplicates) : petDuplicates;
   return {
@@ -125,7 +138,11 @@ function characterFromServerRow(row) {
     activePetId: row.active_pet_id || null,
     protectionStones: numOr(row.protection_stones, 0),
     chestPity: numOr(row.chest_pity, 0),
-    rewardReceipts
+    firstClearAccessoryClaims,
+    battleRewardReceipts,
+    // Kept as a compatibility alias for older local/runtime callers. New reward code
+    // uses battleRewardReceipts and firstClearAccessoryClaims independently.
+    rewardReceipts: battleRewardReceipts
   };
 }
 
@@ -187,7 +204,9 @@ function flattenCharacterForRuntime(account, slotIndex) {
     activePetId: slot.activePetId,
     protectionStones: slot.protectionStones,
     chestPity: slot.chestPity,
-    rewardReceipts: Array.isArray(slot.rewardReceipts) ? slot.rewardReceipts.slice(-128) : [],
+    firstClearAccessoryClaims: slot.firstClearAccessoryClaims && typeof slot.firstClearAccessoryClaims === "object" ? { ...slot.firstClearAccessoryClaims } : {},
+    battleRewardReceipts: Array.isArray(slot.battleRewardReceipts) ? slot.battleRewardReceipts.slice(-128) : (Array.isArray(slot.rewardReceipts) ? slot.rewardReceipts.slice(-128) : []),
+    rewardReceipts: Array.isArray(slot.battleRewardReceipts) ? slot.battleRewardReceipts.slice(-128) : (Array.isArray(slot.rewardReceipts) ? slot.rewardReceipts.slice(-128) : []),
     character: {
       level: slot.level,
       xp: slot.xp,
@@ -245,6 +264,9 @@ function packRuntimeIntoSlot(existingSlot, flatSave) {
     activePetId: flatSave.activePetId,
     protectionStones: flatSave.protectionStones,
     chestPity: flatSave.chestPity,
-    rewardReceipts: Array.isArray(flatSave.rewardReceipts) ? flatSave.rewardReceipts.slice(-128) : []
+    firstClearAccessoryClaims: flatSave.firstClearAccessoryClaims && typeof flatSave.firstClearAccessoryClaims === "object" ? { ...flatSave.firstClearAccessoryClaims } : (existingSlot.firstClearAccessoryClaims || {}),
+    battleRewardReceipts: Array.isArray(flatSave.battleRewardReceipts) ? flatSave.battleRewardReceipts.slice(-128) : (Array.isArray(flatSave.rewardReceipts) ? flatSave.rewardReceipts.slice(-128) : (Array.isArray(existingSlot.battleRewardReceipts) ? existingSlot.battleRewardReceipts.slice(-128) : [])),
+    // Compatibility for older clients reading this envelope.
+    rewardReceipts: Array.isArray(flatSave.battleRewardReceipts) ? flatSave.battleRewardReceipts.slice(-128) : (Array.isArray(flatSave.rewardReceipts) ? flatSave.rewardReceipts.slice(-128) : (Array.isArray(existingSlot.battleRewardReceipts) ? existingSlot.battleRewardReceipts.slice(-128) : []))
   };
 }

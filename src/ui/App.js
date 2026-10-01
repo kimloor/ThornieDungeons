@@ -159,6 +159,10 @@ function ThornieDungeons() {
       }
     };
   }
+  function v2BlacksmithBlocked(item, action) {
+    if (typeof DUNGEON_REWARD_V2 === "undefined" || !DUNGEON_REWARD_V2.dungeonV2IsV2Item(item)) return null;
+    return { ok: false, message: `W3 ${action} ยังไม่เปิดใช้กับอุปกรณ์ Reward V2` };
+  }
   const monstersRef = useRef([]);
   const petCombatRef = useRef(null);
   const playerRef = useRef(null);
@@ -1006,6 +1010,7 @@ function ThornieDungeons() {
     setBattleFinishing(true);
     setBusy(true);
     setLog("Confirming battle result…");
+    let completionReceipt = null;
     if (save?.characterId) {
       // Completion requires a previously persisted safe Action boundary. If the
       // persistence queue has not confirmed it yet, write that idempotent snapshot
@@ -1034,7 +1039,13 @@ function ThornieDungeons() {
           safeActionSeq: safeCheckpoint.safeActionSeq
         };
       }
-      const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, { result: next.result, safeActionSeq: next.safeActionSeq, floor: next.floor });
+      const rewardPlan = next.result === "victory" ? buildDungeonRewardPlan(next.battleId) : null;
+      const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, {
+        result: next.result,
+        safeActionSeq: next.safeActionSeq,
+        floor: next.floor,
+        reward: rewardPlan
+      });
       if (!receipt?.ok) {
         finishingBattleIdRef.current = null;
         setBattleFinishing(false);
@@ -1042,9 +1053,38 @@ function ThornieDungeons() {
         setLog("Battle result sync failed — tap Attack to retry safely.");
         return;
       }
+      completionReceipt = receipt;
     }
     setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
-    if (next.result === "victory") endCombatWin(next.battleId);
+    if (next.result === "victory") {
+      if (completionReceipt && completionReceipt.firstCompletion === false) {
+        // The server already applied this battle. Hydrate its authoritative snapshot rather
+        // than replaying Gold/EXP/items locally, including after a crash before the first
+        // client mirror completed.
+        hydrateCommittedBattleSnapshot(completionReceipt);
+        combatOutcomeRef.current = "victory";
+        setDropItem(completionReceipt.result?.reward?.drop || null);
+        setLastRewards({
+          gold: 0,
+          xp: 0,
+          leveledUp: false,
+          unlockedNext: false,
+          newSkill: null,
+          newPet: null,
+          alreadyApplied: true,
+          encounterType: completionReceipt.result?.reward?.encounterType,
+          rewardRole: completionReceipt.result?.reward?.rewardRole,
+          equipmentDrop: completionReceipt.result?.reward?.drop || null,
+          firstClearAccessory: false,
+          junkDrop: completionReceipt.result?.reward?.junkDrop || null
+        });
+        setBattleFinishing(false);
+        setBusy(false);
+        setPhase("result");
+      } else {
+        endCombatWin(next.battleId, completionReceipt?.result?.reward || null);
+      }
+    }
     else if (next.result === "defeat") playerLost();
     else if (next.result === "fled") backToMap();
   }
@@ -1308,7 +1348,246 @@ function ThornieDungeons() {
     };
   }, [player?.hp, player?.mp, petCombat?.hp, petCombat?.instId, selectedFloor, cred.url, cred.id, save, pushRunState]);
 
-  function endCombatWin(battleId = battleStateRef.current?.battleId || "") {
+  // Build the reward descriptor before Battle Result is committed. The Worker validates and
+  // commits this descriptor together with the battle completion; this function has no state or
+  // persistence side effects so a retry can submit the same plan safely.
+  function buildDungeonRewardPlan(battleId = battleStateRef.current?.battleId || "") {
+    const currentMonsters = monstersRef.current.length ? monstersRef.current : monsters;
+    const currentPlayer = playerRef.current || player;
+    if (!currentMonsters.length || currentMonsters.some(m => m.hp > 0)) return null;
+    const encounterType = currentMonsters.map(m => m.encounterType).find(Boolean)
+      || DUNGEON_V2.classifyDungeonEncounter(selectedFloor);
+    const rewardRole = DUNGEON_REWARD_V2.dungeonV2RewardRole(encounterType);
+    const packCount = currentMonsters.length;
+    const gained = DUNGEON_REWARD_V2.dungeonV2RewardGold(selectedFloor, encounterType, packCount);
+    const xpGained = DUNGEON_REWARD_V2.dungeonV2RewardExp(selectedFloor, encounterType, packCount);
+    const bossMonster = currentMonsters.find(m => m.isBoss) || null;
+    const currentReceipts = Array.isArray(save?.battleRewardReceipts) ? save.battleRewardReceipts : (Array.isArray(save?.rewardReceipts) ? save.rewardReceipts : []);
+    const firstClearClaims = save?.firstClearAccessoryClaims || {};
+    const unlockedNext = selectedFloor === save?.unlockedFloor;
+    const firstClear = DUNGEON_REWARD_V2.dungeonV2FirstClearEligible({
+      floor: selectedFloor,
+      encounterType,
+      unlockedNext,
+      receipts: currentReceipts,
+      firstClearAccessoryClaims: firstClearClaims
+    });
+    const starter = typeof starterPetDef === "function" ? starterPetDef() : null;
+    const starterPetEligible = !!(starter && DUNGEON_V2.isDungeonV2StarterPetEligible({
+      floor: selectedFloor,
+      monsters: currentMonsters,
+      unlockedNext,
+      alreadyHasStarter: (save?.pets || []).some(p => p.defId === starter.id)
+    }));
+    let drop = null;
+    let junkDrop = null;
+    const incomingItems = [];
+    if (rewardRole === "normal") {
+      const junkDrops = [];
+      currentMonsters.forEach(m => {
+        const matChance = 0.45 + (currentPlayer?.dropBonus || 0) / 100 + (m.modifier?.dropBonusFlat || 0) / 100;
+        if (Math.random() < matChance) {
+          const jd = rollJunkDrop(selectedFloor, m.modifier);
+          junkDrops.push(jd);
+          incomingItems.push({ ...makeJunkItem(jd.type, 1), quantity: jd.amount });
+        }
+      });
+      if (junkDrops.length) {
+        const merged = {};
+        junkDrops.forEach(jd => { merged[jd.type] = (merged[jd.type] || 0) + jd.amount; });
+        const [type, amount] = Object.entries(merged)[0];
+        junkDrop = { type, amount };
+      }
+      for (const monster of currentMonsters) {
+        if (Math.random() < DUNGEON_REWARD_V2.dungeonV2GenericEquipmentChance("normal", currentPlayer?.dropBonus)) {
+          drop = DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
+            floor: selectedFloor,
+            sourceType: "dungeon_normal",
+            sourceIdentity: monster.id,
+            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null
+          });
+          incomingItems.push(drop);
+          break;
+        }
+      }
+    } else if (rewardRole === "elite") {
+      if (Math.random() < DUNGEON_REWARD_V2.dungeonV2GenericEquipmentChance("elite")) {
+        drop = DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
+          floor: selectedFloor,
+          sourceType: "dungeon_elite",
+          sourceIdentity: currentMonsters[0]?.id || null,
+          lootTable: typeof monsterLootFor === "function" ? monsterLootFor(currentMonsters[0]?.id) : null
+        });
+        incomingItems.push(drop);
+      }
+      const eliteMonster = currentMonsters[0];
+      const eliteMaterialChance = 0.45 + (currentPlayer?.dropBonus || 0) / 100 + (eliteMonster?.modifier?.dropBonusFlat || 0) / 100;
+      if (Math.random() < eliteMaterialChance) {
+        const material = rollJunkDrop(selectedFloor, eliteMonster?.modifier);
+        material.amount = Math.max(1, Math.round(material.amount * 2));
+        incomingItems.push({ ...makeJunkItem(material.type, 1), quantity: material.amount });
+        junkDrop = { type: material.type, amount: material.amount };
+      }
+    } else if (firstClear) {
+      const accessory = DUNGEON_REWARD_V2.dungeonV2FirstClearAccessory(selectedFloor);
+      drop = DUNGEON_REWARD_V2.dungeonV2EquipmentItem({
+        floor: selectedFloor,
+        type: "accessory",
+        rarity: accessory.rarity,
+        sourceType: "dungeon_boss_first_clear",
+        specialSource: "first_clear_accessory",
+        sourceIdentity: bossMonster?.id || "chapter_boss"
+      });
+      incomingItems.push(drop);
+    }
+    const bonusJunk = [];
+    currentMonsters.forEach(m => { bonusJunk.push(...rollMonsterBonusJunk(m.id)); });
+    if (bonusJunk.length) {
+      bonusJunk.forEach(jd => { incomingItems.push({ ...makeJunkItem(jd.type, 1), quantity: jd.amount }); });
+      const merged = {};
+      if (junkDrop) merged[junkDrop.type] = junkDrop.amount;
+      bonusJunk.forEach(jd => { merged[jd.type] = (merged[jd.type] || 0) + jd.amount; });
+      const [type, amount] = Object.entries(merged)[0];
+      junkDrop = { type, amount };
+    }
+    return {
+      battleId,
+      floor: selectedFloor,
+      encounterType,
+      rewardRole,
+      packCount,
+      gold: gained,
+      xp: xpGained,
+      diamonds: bossMonster && bossMonster.isEliteBoss ? 20 + Math.round(selectedFloor / 2) : 0,
+      unlockedNext,
+      firstClear,
+      starterPetGrant: starterPetEligible ? { instance: newPetInstance(starter.id), defId: starter.id } : null,
+      items: incomingItems,
+      drop,
+      junkDrop,
+      sourceIdentity: bossMonster?.id || currentMonsters[0]?.id || null
+    };
+  }
+
+  function applyCommittedDungeonReward(plan) {
+    const currentMonsters = monstersRef.current.length ? monstersRef.current : monsters;
+    const currentPlayer = playerRef.current || player;
+    const gained = Number(plan?.gold) || 0;
+    const xpGained = Number(plan?.xp) || 0;
+    const selectedRewardFloor = Number(plan?.floor) || selectedFloor;
+    const unlockedNext = !!plan?.unlockedNext;
+    const firstClear = !!plan?.firstClear;
+    const drop = plan?.drop || null;
+    const junkDrop = plan?.junkDrop || null;
+    const incomingItems = Array.isArray(plan?.items) ? plan.items : [];
+    if (incomingItems.length) insertCarriedItems(incomingItems);
+    setDropItem(drop);
+    const bossMonster = currentMonsters.find(m => m.isBoss) || null;
+    const diamondsGained = Number(plan?.diamonds) || 0;
+    let xp = save.character.xp + xpGained;
+    let level = save.character.level;
+    let statPoints = save.character.statPoints;
+    let leveledUp = false;
+    while (level < MAX_LEVEL && xp >= xpToNext(level)) {
+      xp -= xpToNext(level);
+      level += 1;
+      statPoints += STAT_POINTS_PER_LEVEL;
+      leveledUp = true;
+    }
+    if (level >= MAX_LEVEL) {
+      level = MAX_LEVEL;
+      xp = 0;
+    }
+    const newSkill = null;
+    let newPets = grantActivePetBattleXp(save.pets, save.activePetId, xpGained);
+    const petProgress = petProgressChange(save.pets, newPets, save.activePetId);
+    let newActivePetId = save.activePetId;
+    let newPet = null;
+    const alreadyHasStarter = (save.pets || []).some(p => p.defId === starterPetDef().id);
+    const committedStarter = plan?.starterPetGrant?.instance;
+    if (committedStarter && !alreadyHasStarter) {
+      newPets = [...newPets, committedStarter];
+      if (!newActivePetId) newActivePetId = committedStarter.instId;
+      newPet = starterPetDef();
+    }
+    if (!committedStarter && DUNGEON_V2.isDungeonV2StarterPetEligible({
+      floor: selectedRewardFloor,
+      monsters: currentMonsters,
+      unlockedNext,
+      alreadyHasStarter
+    })) {
+      const starter = starterPetDef();
+      const inst = newPetInstance(starter.id);
+      newPets = [...newPets, inst];
+      if (!newActivePetId) newActivePetId = inst.instId;
+      newPet = starter;
+    }
+    const battleReceipt = DUNGEON_REWARD_V2.dungeonV2RewardReceiptKey(plan?.battleId || battleStateRef.current?.battleId || "");
+    const currentBattleReceipts = Array.isArray(save.battleRewardReceipts) ? save.battleRewardReceipts : (Array.isArray(save.rewardReceipts) ? save.rewardReceipts : []);
+    const nextClaims = firstClear
+      ? DUNGEON_REWARD_V2.dungeonV2ClaimFirstClear(save.firstClearAccessoryClaims, selectedRewardFloor)
+      : (save.firstClearAccessoryClaims || {});
+    const nextBattleReceipts = DUNGEON_REWARD_V2.dungeonV2AppendReceipts(currentBattleReceipts, battleReceipt);
+    const nextSave = {
+      ...save,
+      gold: save.gold + gained,
+      diamonds: save.diamonds + diamondsGained,
+      unlockedFloor: unlockedNext ? save.unlockedFloor + 1 : save.unlockedFloor,
+      chestPity: save.chestPity || 0,
+      firstClearAccessoryClaims: nextClaims,
+      battleRewardReceipts: nextBattleReceipts,
+      rewardReceipts: nextBattleReceipts,
+      character: { ...save.character, level, xp, statPoints },
+      pets: newPets,
+      activePetId: newActivePetId
+    };
+    persistSave(nextSave);
+    const postBattlePlayer = freshPlayerFromSave(nextSave, {
+      hp: battleStateRef.current?.flags.heroReviveNextFloor ? 1 : currentPlayer.hp,
+      mp: currentPlayer.mp
+    });
+    setPlayer(postBattlePlayer);
+    saveCombatRunState(selectedRewardFloor, postBattlePlayer);
+    setLastRewards({
+      gold: gained,
+      xp: xpGained,
+      leveledUp,
+      unlockedNext,
+      newSkill,
+      newPet,
+      isBoss: !!bossMonster,
+      encounterType: plan.encounterType,
+      rewardRole: plan.rewardRole,
+      equipmentDrop: drop,
+      firstClearAccessory: firstClear,
+      junkDrop,
+      modifier: currentMonsters.map(m => m.modifier).find(Boolean) || null,
+      isEliteBoss: !!(bossMonster && bossMonster.isEliteBoss),
+      diamonds: diamondsGained,
+      petProgress: petProgress ? { ...petProgress, name: getPetDef(petProgress.defId)?.name || petCombatRef.current?.name || "Pet" } : null
+    });
+    setLog(newPet ? `Victory! You received a companion: ${newPet.name}!` : newSkill ? `Victory! Level up! New skill: ${newSkill.name}!` : leveledUp ? `Victory! Level up! +${gained}g` : `Victory! +${gained}g, +${xpGained}xp`);
+    setPhase("result");
+  }
+  function hydrateCommittedBattleSnapshot(snapshot) {
+    if (!snapshot?.character) return;
+    const slot = characterFromServerRow(snapshot.character);
+    const nextSave = flattenCharacterForRuntime({
+      saveVersion: save.saveVersion,
+      diamonds: snapshot.diamonds === undefined ? save.diamonds : Number(snapshot.diamonds) || 0,
+      characters: [slot]
+    }, 0);
+    const loaded = itemsFromServerList(snapshot.items || []);
+    equippedRef.current = loaded.equipped;
+    inventoryRef.current = loaded.inventory;
+    inventoryOverflowRef.current = loaded.overflow;
+    setEquipped(loaded.equipped);
+    setInventory(loaded.inventory);
+    setInventoryOverflow(loaded.overflow);
+    setSave(nextSave);
+  }
+
+  function endCombatWin(battleId = battleStateRef.current?.battleId || "", committedReward = null) {
     if (combatOutcomeRef.current) return;
     const currentMonsters = monstersRef.current.length ? monstersRef.current : monsters;
     const currentPlayer = playerRef.current || player;
@@ -1316,6 +1595,10 @@ function ThornieDungeons() {
     combatOutcomeRef.current = "victory";
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     setBusy(false);
+    if (committedReward) {
+      applyCommittedDungeonReward({ ...committedReward, battleId });
+      return;
+    }
     const encounterType = currentMonsters.map(m => m.encounterType).find(Boolean)
       || DUNGEON_V2.classifyDungeonEncounter(selectedFloor);
     const rewardRole = DUNGEON_REWARD_V2.dungeonV2RewardRole(encounterType);
@@ -1324,7 +1607,8 @@ function ThornieDungeons() {
     const xpGained = DUNGEON_REWARD_V2.dungeonV2RewardExp(selectedFloor, encounterType, packCount);
     const bossMonster = currentMonsters.find(m => m.isBoss) || null;
     const modifier = currentMonsters.map(m => m.modifier).find(Boolean) || null;
-    const currentReceipts = Array.isArray(save.rewardReceipts) ? save.rewardReceipts : [];
+    const currentReceipts = Array.isArray(save.battleRewardReceipts) ? save.battleRewardReceipts : (Array.isArray(save.rewardReceipts) ? save.rewardReceipts : []);
+    const firstClearClaims = save.firstClearAccessoryClaims || {};
     const battleReceipt = DUNGEON_REWARD_V2.dungeonV2RewardReceiptKey(battleId);
     if (DUNGEON_REWARD_V2.dungeonV2HasReceipt(currentReceipts, battleReceipt)) return;
     let drop = null;
@@ -1335,7 +1619,8 @@ function ThornieDungeons() {
       floor: selectedFloor,
       encounterType,
       unlockedNext,
-      receipts: currentReceipts
+      receipts: currentReceipts,
+      firstClearAccessoryClaims: firstClearClaims
     });
     if (rewardRole === "normal") {
       // Each defeated monster in the pack gets its own independent roll for junk material.
@@ -1464,10 +1749,11 @@ function ThornieDungeons() {
       diamonds: save.diamonds + diamondsGained,
       unlockedFloor: unlockedNext ? save.unlockedFloor + 1 : save.unlockedFloor,
       chestPity: save.chestPity || 0,
-      rewardReceipts: DUNGEON_REWARD_V2.dungeonV2AppendReceipts(currentReceipts, [
-        battleReceipt,
-        firstClear ? DUNGEON_REWARD_V2.dungeonV2FirstClearReceiptKey(selectedFloor) : null
-      ]),
+      firstClearAccessoryClaims: firstClear
+        ? DUNGEON_REWARD_V2.dungeonV2ClaimFirstClear(firstClearClaims, selectedFloor)
+        : firstClearClaims,
+      battleRewardReceipts: DUNGEON_REWARD_V2.dungeonV2AppendReceipts(currentReceipts, battleReceipt),
+      rewardReceipts: DUNGEON_REWARD_V2.dungeonV2AppendReceipts(currentReceipts, battleReceipt),
       character: {
         ...save.character,
         level,
@@ -1719,6 +2005,8 @@ function ThornieDungeons() {
       message: "ไม่พบไอเทม"
     };
     const it = found.item;
+    const blocked = v2BlacksmithBlocked(it, "Enhance");
+    if (blocked) return blocked;
     const level = it.enhanceLevel || 0;
     if (level >= ENHANCE_MAX) return {
       ok: false,
@@ -1782,6 +2070,9 @@ function ThornieDungeons() {
     };
   }
   function toggleEmpowerLock(itemId, slotIndex) {
+    const found = findItemAndLocation(itemId);
+    const blocked = v2BlacksmithBlocked(found?.item, "Lock");
+    if (blocked) return blocked;
     applyItemUpdate(itemId, prev => {
       const slots = [...(prev.empowerSlots || [])];
       const s = slots[slotIndex];
@@ -1803,6 +2094,8 @@ function ThornieDungeons() {
       message: "ไม่พบไอเทม"
     };
     const it = found.item;
+    const blocked = v2BlacksmithBlocked(it, "Reroll");
+    if (blocked) return blocked;
     const slots = it.empowerSlots || [];
     const filled = slots.filter(Boolean);
     if (!filled.length) return {
@@ -1903,6 +2196,8 @@ function ThornieDungeons() {
       message: "ไม่พบไอเทม"
     };
     const it = found.item;
+    const blocked = v2BlacksmithBlocked(it, "Empower");
+    if (blocked) return blocked;
     const slots = it.empowerSlots || [];
     const nextIndex = slots.findIndex(s => !s);
     if (nextIndex === -1) return {

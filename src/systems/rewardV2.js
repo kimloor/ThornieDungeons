@@ -129,6 +129,25 @@
   function dungeonV2RewardReceiptKey(battleId) { return battleId ? `battle:${String(battleId)}` : ""; }
   function dungeonV2FirstClearReceiptKey(floor) { return `first-clear-accessory:${floorNumber(floor)}`; }
   function dungeonV2HasReceipt(receipts, key) { return !!key && Array.isArray(receipts) && receipts.includes(key); }
+  function dungeonV2IsV2Item(item) {
+    return Number(item?.rewardVersion) === 2 || Number(item?.itemModelVersion) === 2;
+  }
+  function dungeonV2FirstClearClaimsFromReceipts(receipts) {
+    const claims = {};
+    (Array.isArray(receipts) ? receipts : []).forEach(key => {
+      const match = String(key).match(/^first-clear-accessory:(\d+)$/);
+      if (match) claims[match[1]] = true;
+    });
+    return claims;
+  }
+  function dungeonV2HasFirstClearClaim(claims, floor, receipts = []) {
+    const key = String(floorNumber(floor));
+    return !!(claims && typeof claims === "object" && claims[key])
+      || dungeonV2HasReceipt(receipts, dungeonV2FirstClearReceiptKey(floor));
+  }
+  function dungeonV2ClaimFirstClear(claims, floor) {
+    return { ...(claims && typeof claims === "object" ? claims : {}), [String(floorNumber(floor))]: true };
+  }
   function dungeonV2AppendReceipts(receipts, keys, max = 128) {
     const merged = [...(Array.isArray(receipts) ? receipts : []), ...(Array.isArray(keys) ? keys : [keys])].filter(Boolean);
     return [...new Set(merged)].slice(-Math.max(1, max));
@@ -145,7 +164,7 @@
     const last = rows.at(-1);
     return { itemType: last.itemType, rarity: last.rarity || null };
   }
-  function dungeonV2EquipmentItem({ floor, type, rarity, sourceType = "dungeon_normal", specialSource = null, sourceIdentity = null, rng = Math.random } = {}) {
+  function dungeonV2EquipmentItem({ floor, type, rarity, sourceType = "dungeon_normal", specialSource = null, sourceIdentity = null, utilityKey = null, rng = Math.random } = {}) {
     const resolvedFloor = floorNumber(floor);
     const gearTier = dungeonV2GearTierForFloor(resolvedFloor);
     const resolvedType = VALID_GENERIC_TYPES.has(type) || type === "accessory" ? type : GENERIC_SLOTS[Math.floor(Math.max(0, Math.min(0.999999, Number(rng()) || 0)) * GENERIC_SLOTS.length)];
@@ -161,10 +180,16 @@
       sourceIdentity: sourceIdentity || undefined,
       setId: undefined,
       enhanceLevel: 0,
+      empowerSlotCapacity: dungeonV2EmpowerSlots(resolvedRarity),
       empowerSlots: Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
     };
     if (resolvedType === "accessory") {
-      Object.entries(ACCESSORY_BASE).forEach(([key, value]) => { item[key] = roundUtility(value * dungeonV2TierMultiplier(gearTier) * multiplier); });
+      const utilityKeys = Object.keys(ACCESSORY_BASE);
+      const selectedKey = utilityKeys.includes(utilityKey)
+        ? utilityKey
+        : utilityKeys[Math.floor(Math.max(0, Math.min(0.999999, Number(rng()) || 0)) * utilityKeys.length)];
+      item.utilityStat = selectedKey;
+      item[selectedKey] = roundUtility(ACCESSORY_BASE[selectedKey] * dungeonV2TierMultiplier(gearTier) * multiplier);
     } else {
       const base = BASE_STATS[resolvedType][gearTier - 1];
       item[resolvedType === "weapon" || resolvedType === "gloves" ? "atk" : "def"] = roundStat(base * multiplier);
@@ -180,8 +205,9 @@
       sourceType, specialSource, sourceIdentity, rng
     });
   }
-  function dungeonV2FirstClearEligible({ floor, encounterType, unlockedNext, receipts }) {
-    return encounterType === "chapter_boss" && !!dungeonV2FirstClearAccessory(floor) && !!unlockedNext && !dungeonV2HasReceipt(receipts, dungeonV2FirstClearReceiptKey(floor));
+  function dungeonV2FirstClearEligible({ floor, encounterType, unlockedNext, receipts, firstClearAccessoryClaims }) {
+    return encounterType === "chapter_boss" && !!dungeonV2FirstClearAccessory(floor) && !!unlockedNext
+      && !dungeonV2HasFirstClearClaim(firstClearAccessoryClaims, floor, receipts);
   }
 
   const api = {
@@ -190,7 +216,8 @@
     dungeonV2RarityWeights, dungeonV2RollRarity, dungeonV2RewardRole, dungeonV2PackMultiplier, dungeonV2RewardExp,
     dungeonV2RewardGold, dungeonV2GenericEquipmentChance, dungeonV2FirstClearAccessory, dungeonV2ShopTier,
     dungeonV2ShopPrice, dungeonV2SalvageYield, dungeonV2RewardReceiptKey, dungeonV2FirstClearReceiptKey,
-    dungeonV2HasReceipt, dungeonV2AppendReceipts, dungeonV2CustomLootChoice, dungeonV2EquipmentItem,
+    dungeonV2HasReceipt, dungeonV2IsV2Item, dungeonV2FirstClearClaimsFromReceipts, dungeonV2HasFirstClearClaim,
+    dungeonV2ClaimFirstClear, dungeonV2AppendReceipts, dungeonV2CustomLootChoice, dungeonV2EquipmentItem,
     dungeonV2GenerateEquipment, dungeonV2FirstClearEligible
   };
   root.DUNGEON_REWARD_V2 = api;

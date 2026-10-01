@@ -30,11 +30,14 @@ function applyGameConfig(cfg) {
     if (n && Array.isArray(n.boots) && n.boots.length) BOOTS_NAMES = n.boots;
     if (n && Array.isArray(n.accessory) && n.accessory.length) ACCESSORY_NAMES = n.accessory;
   } catch (e) {}
-  // Dungeon Reward V2 owns the canonical R/U/E/Mythic multipliers.  Legacy remote
-  // rows used values such as Unique 1.9 and Elite 3.2; accepting them here would
-  // silently change newly generated V2 items.  Keep the config field readable for
-  // older clients, but never let it override the locked V2 contract.
+  // Legacy remote rows are still allowed to tune legacy item behavior. Dungeon Reward
+  // V2 generation never reads RARITY_MULT, so this cannot override the V2 contract.
   try {
+    if (cfg.rarityMult && typeof cfg.rarityMult === "object") {
+      Object.keys(RARITY_MULT).forEach(k => {
+        if (Number.isFinite(Number(cfg.rarityMult[k])) && Number(cfg.rarityMult[k]) > 0) RARITY_MULT[k] = Number(cfg.rarityMult[k]);
+      });
+    }
     // Pre-V2 remote rows contain the retired 5-star/Thunder Cub balance. Do not
     // let that legacy config silently replace the Battle V1 Pet contract.
     if (Number(cfg.petSystemVersion) >= 2 && Array.isArray(cfg.pets) && cfg.pets.length) {

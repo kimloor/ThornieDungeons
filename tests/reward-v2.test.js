@@ -29,13 +29,17 @@ test("fixed Rare equipment budgets match every locked Tier and slot", () => {
   assert.equal(reward.dungeonV2EquipmentItem({ floor: 1, type: "weapon", rarity: "mythic" }).atk, 21);
 });
 
-test("accessory utility uses only the approved three stats and Tier/Rarity multipliers", () => {
-  const accessory = reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "unique" });
-  assert.deepEqual(Object.keys(accessory).filter(key => ["critChance", "dodgeChance", "critDamage"].includes(key)).sort(), ["critChance", "critDamage", "dodgeChance"]);
+test("accessory utility selects exactly one approved stat with Tier/Rarity multipliers", () => {
+  const accessory = reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "unique", utilityKey: "critChance" });
+  assert.deepEqual(Object.keys(accessory).filter(key => ["critChance", "dodgeChance", "critDamage"].includes(key)), ["critChance"]);
+  assert.equal(accessory.utilityStat, "critChance");
   assert.equal(accessory.critChance, 3.7);
-  assert.equal(accessory.dodgeChance, 3);
-  assert.equal(accessory.critDamage, 12);
   assert.equal(accessory.empowerSlots.length, 2);
+  for (const utilityKey of Object.keys(reward.ACCESSORY_BASE)) {
+    const selected = reward.dungeonV2EquipmentItem({ floor: 1, type: "accessory", rarity: "rare", utilityKey });
+    assert.equal(Object.keys(selected).filter(key => Object.hasOwn(reward.ACCESSORY_BASE, key)).length, 1);
+    assert.equal(selected.utilityStat, utilityKey);
+  }
 });
 
 test("normal drop chance is multiplicative, capped per encounter, and generic-only", () => {
@@ -87,6 +91,8 @@ test("First-Clear Accessory table, metadata, and exact-once receipts are determi
   assert.equal(reward.dungeonV2FirstClearEligible({ floor: 10, encounterType: "chapter_boss", unlockedNext: false, receipts: [] }), false);
   const key = reward.dungeonV2FirstClearReceiptKey(10);
   assert.equal(reward.dungeonV2FirstClearEligible({ floor: 10, encounterType: "chapter_boss", unlockedNext: true, receipts: [key] }), false);
+  assert.equal(reward.dungeonV2FirstClearEligible({ floor: 10, encounterType: "chapter_boss", unlockedNext: true, firstClearAccessoryClaims: { 10: true } }), false);
+  assert.deepEqual(reward.dungeonV2ClaimFirstClear({}, 10), { 10: true });
   const item = reward.dungeonV2EquipmentItem({ floor: 10, type: "accessory", rarity: "rare", sourceType: "dungeon_boss_first_clear", specialSource: "first_clear_accessory", sourceIdentity: "moss_king" });
   assert.deepEqual({ sourceType: item.sourceType, sourceFloor: item.sourceFloor, gearTier: item.gearTier, rarity: item.rarity, type: item.type, specialSource: item.specialSource }, {
     sourceType: "dungeon_boss_first_clear", sourceFloor: 10, gearTier: 1, rarity: "rare", type: "accessory", specialSource: "first_clear_accessory"
@@ -120,9 +126,17 @@ test("Shop V2 prices follow eligible Tier and never expose Mythic as normal stoc
   assert.match(shopSource, /const PROTECTION_STONE_PRICE = 30/);
 });
 
-test("legacy remote rarity rows cannot override V2 multipliers", () => {
+test("legacy rarity constants stay isolated from V2 multipliers", () => {
   const source = fs.readFileSync(path.join(__dirname, "../src/data/gameConfig.js"), "utf8");
-  assert.doesNotMatch(source, /RARITY_MULT\s*=\s*\{/);
+  assert.match(source, /cfg\.rarityMult/);
+  assert.match(source, /RARITY_MULT\[k\]/);
+  assert.equal(reward.dungeonV2RarityMultiplier("unique"), 1.15);
+  assert.equal(reward.dungeonV2RarityMultiplier("elite"), 1.3);
+  const petsSource = fs.readFileSync(path.join(__dirname, "../src/systems/pets.js"), "utf8");
+  assert.match(petsSource, /unique:\s*1\.9/);
+  assert.match(petsSource, /elite:\s*3\.2/);
+  assert.match(petsSource, /mythic:\s*5\.4/);
+  assert.match(petsSource, /unique:\s*3,\s*elite:\s*5/);
 });
 
 test("existing item persistence remains additive and round-trips V2 metadata", () => {
@@ -132,7 +146,7 @@ test("existing item persistence remains additive and round-trips V2 metadata", (
     emptyEquipped: () => ({ weapon: null, helmet: null, chest: null, gloves: null, boots: null, accessory: null, wings: null }),
     normalizeEquipmentNameForLoad: (type, name, gearTier) => ({ name, gearTier: Number(gearTier) || 0, migrated: false }),
     numOr: (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback,
-    RARITY_STARS: { rare: 1, unique: 2, elite: 3, mythic: 4 },
+    RARITY_STARS: { rare: 1, unique: 3, elite: 5, mythic: 7, azure: 5 },
     JUNK_INFO: {},
     getPotionDef: () => null,
     console
@@ -147,6 +161,56 @@ test("existing item persistence remains additive and round-trips V2 metadata", (
     enhance_level: row.enhanceLevel, item_level: row.itemLevel, extra_json: JSON.stringify(row.extra)
   }))).inventory[0];
   assert.equal(loaded.rewardVersion, 2);
+  assert.equal(loaded.empowerSlotCapacity, 2);
   assert.equal(loaded.sourceFloor, 31);
   assert.equal(loaded.sourceIdentity, "jelly_slime");
+});
+
+test("W3 blacksmith actions are gated only for V2 items", () => {
+  const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
+  assert.match(appSource, /v2BlacksmithBlocked\(item, action\)/);
+  for (const action of ["Enhance", "Empower", "Reroll", "Lock"]) assert.match(appSource, new RegExp(`v2BlacksmithBlocked\\([^\\n]+\\"${action}\\"`));
+  assert.match(appSource, /dungeonV2IsV2Item\(item\)/);
+  const rewardSource = fs.readFileSync(path.join(__dirname, "../src/systems/rewardV2.js"), "utf8");
+  assert.match(rewardSource, /itemModelVersion\) === 2/);
+  assert.match(rewardSource, /rewardVersion\) === 2/);
+});
+
+test("permanent first-clear claims are not stored in the rolling battle receipt", () => {
+  const saveSource = fs.readFileSync(path.join(__dirname, "../src/state/save.js"), "utf8");
+  const serializeSource = fs.readFileSync(path.join(__dirname, "../src/state/serialize.js"), "utf8");
+  const workerSource = fs.readFileSync(path.join(__dirname, "../workers/thornie-dungeons-api.js"), "utf8");
+  assert.match(saveSource, /firstClearAccessoryClaims/);
+  assert.match(saveSource, /battleRewardReceipts/);
+  assert.match(serializeSource, /firstClearAccessoryClaims/);
+  assert.match(workerSource, /envelope\.firstClearAccessoryClaims = nextClaims/);
+  assert.match(workerSource, /battleReceipts = \[\.\.\.new Set/);
+  assert.match(workerSource, /db\.batch\(\[completionStmt, characterStmt, playerStmt/);
+  assert.match(workerSource, /AND changes\(\) > 0/);
+});
+
+test("legacy item fallback slots and sell values remain unchanged", () => {
+  const serializeSource = fs.readFileSync(path.join(__dirname, "../src/state/serialize.js"), "utf8");
+  const sandbox = {
+    safeJsonParse: (value, fallback) => { try { return JSON.parse(value); } catch (e) { return fallback; } },
+    emptyEquipped: () => ({ weapon: null, helmet: null, chest: null, gloves: null, boots: null, accessory: null, wings: null }),
+    normalizeEquipmentNameForLoad: (type, name, gearTier) => ({ name, gearTier: Number(gearTier) || 0, migrated: false }),
+    numOr: (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback,
+    RARITY_STARS: { rare: 1, unique: 3, elite: 5, mythic: 7, azure: 5 },
+    JUNK_INFO: {}, getPotionDef: () => null, console
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(`${serializeSource}\nthis.itemsFromServerList = itemsFromServerList;`, sandbox);
+  const rows = ["rare", "unique", "elite", "mythic", "azure"].map((rarity, index) => ({
+    item_id: `legacy-${rarity}`, slot_type: "weapon", equipped: 0, rarity, name: "Old Weapon", atk: 10,
+    def: 0, hp: 0, mp: 0, enhance_level: 0, item_level: 0, extra_json: "{}", inventory_slot: index
+  }));
+  assert.deepEqual(Array.from(sandbox.itemsFromServerList(rows).inventory, item => item.empowerSlots.length), [1, 3, 5, 7, 5]);
+
+  const shopSource = fs.readFileSync(path.join(__dirname, "../src/systems/shop.js"), "utf8");
+  const shopSandbox = { RARITY_MULT: { rare: 1, unique: 1.9, elite: 3.2, mythic: 5.4, azure: 5.4 }, JUNK_SELL_VALUE: {} };
+  vm.createContext(shopSandbox);
+  vm.runInContext(`${shopSource}\nthis.sellPrice = sellPrice;`, shopSandbox);
+  assert.equal(shopSandbox.sellPrice({ type: "weapon", rarity: "unique", atk: 10 }), 51);
+  assert.equal(shopSandbox.sellPrice({ type: "weapon", rarity: "mythic", atk: 10 }), 146);
 });

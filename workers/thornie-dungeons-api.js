@@ -604,6 +604,147 @@ async function handleClearBattleCheckpoint(db, id, session, characterId, battleI
   return json({ ok: true });
 }
 
+const DUNGEON_V2_REWARD_SLOTS = new Set(["weapon", "helmet", "chest", "gloves", "boots"]);
+const DUNGEON_V2_REWARD_RARITIES = new Set(["rare", "unique", "elite"]);
+const DUNGEON_V2_FIRST_CLEAR_ACCESSORIES = {
+  10: { gearTier: 1, rarity: "rare" }, 20: { gearTier: 1, rarity: "unique" }, 30: { gearTier: 1, rarity: "elite" },
+  40: { gearTier: 2, rarity: "unique" }, 50: { gearTier: 2, rarity: "elite" }, 60: { gearTier: 3, rarity: "unique" },
+  70: { gearTier: 3, rarity: "elite" }, 80: { gearTier: 4, rarity: "unique" }, 90: { gearTier: 4, rarity: "elite" },
+  100: { gearTier: 5, rarity: "unique" }, 110: { gearTier: 5, rarity: "elite" },
+};
+function dungeonV2ServerPackMultiplier(pack) { return ({ 1: 1, 2: 1.35, 3: 1.65 })[Math.max(1, Math.min(3, Number(pack) || 1))] || 1; }
+function dungeonV2ServerExp(floor, role, pack) {
+  const base = Math.round(6 + Math.max(1, Math.floor(Number(floor) || 1)) * 2.4);
+  const encounter = role === "chapter_boss" ? 2 : role === "elite" ? 1.5 : 1;
+  return Math.round(base * encounter * (role === "normal" ? dungeonV2ServerPackMultiplier(pack) : 1));
+}
+function dungeonV2ServerGold(floor, role, pack) {
+  const f = Math.max(1, Math.floor(Number(floor) || 1));
+  const base = f <= 30 ? 20 + 3 * f : f <= 50 ? 120 + 4 * (f - 31) : f <= 70 ? 210 + 5 * (f - 51) : f <= 90 ? 320 + 7 * (f - 71) : 480 + 10 * (f - 91);
+  const encounter = role === "chapter_boss" ? 2 : role === "elite" ? 1.5 : 1;
+  return Math.round(base * encounter * (role === "normal" ? dungeonV2ServerPackMultiplier(pack) : 1));
+}
+function dungeonV2ServerClaims(petsRaw) {
+  const object = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw === "object" ? petsRaw : {});
+  const claims = { ...(object.firstClearAccessoryClaims || {}) };
+  (Array.isArray(object.rewardReceipts) ? object.rewardReceipts : []).forEach(key => {
+    const match = String(key).match(/^first-clear-accessory:(\d+)$/);
+    if (match) claims[match[1]] = true;
+  });
+  return Object.fromEntries(Object.entries(claims).filter(([floor, value]) => /^\d+$/.test(floor) && value === true));
+}
+function dungeonV2ServerRewardItem(item, index, overflow) {
+  if (!item || typeof item !== "object") return null;
+  const id = String(item.id || `v2-reward-${Date.now()}-${index}`).slice(0, 160);
+  const type = String(item.type || "");
+  if (type === "junk") {
+    const junkId = String(item.junkId || "").slice(0, 80);
+    if (!junkId) return null;
+    return {
+      item_id: id, slot_type: "junk", equipped: 0, inventory_slot: "", item_template_id: "",
+      rarity: "common", name: String(item.name || junkId).slice(0, 160), item_level: 0, enhance_level: 0,
+      bound: 0, quantity: Math.max(1, Number(item.quantity) || 1), atk: 0, def: 0, hp: 0, mp: 0,
+      extra_json: JSON.stringify({ junkId, quantity: Math.max(1, Number(item.quantity) || 1), icon: item.icon || "📦", overflow: !!overflow }),
+    };
+  }
+  if (!(DUNGEON_V2_REWARD_SLOTS.has(type) || type === "accessory")) return null;
+  if (!DUNGEON_V2_REWARD_RARITIES.has(item.rarity) || Number(item.rewardVersion) !== 2 || Number(item.itemModelVersion) !== 2) return null;
+  const extra = {
+    empowerSlots: Array.isArray(item.empowerSlots) ? item.empowerSlots : [],
+    empowerSlotCapacity: Math.max(0, Number(item.empowerSlotCapacity) || 0),
+    rewardVersion: 2, itemModelVersion: 2, gearTier: Math.max(1, Math.min(5, Number(item.gearTier) || 1)),
+    sourceType: String(item.sourceType || "dungeon").slice(0, 80), sourceFloor: Number(item.sourceFloor) || 0,
+    specialSource: item.specialSource ? String(item.specialSource).slice(0, 80) : undefined,
+    sourceIdentity: item.sourceIdentity ? String(item.sourceIdentity).slice(0, 120) : undefined,
+    utilityStat: item.utilityStat ? String(item.utilityStat).slice(0, 40) : undefined,
+    critChance: item.critChance || undefined, dodgeChance: item.dodgeChance || undefined, critDamage: item.critDamage || undefined,
+    overflow: !!overflow
+  };
+  return {
+    item_id: id, slot_type: type, equipped: 0, inventory_slot: "", item_template_id: "", rarity: item.rarity,
+    name: String(item.name || type).slice(0, 160), item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
+    atk: Number(item.atk) || 0, def: Number(item.def) || 0, hp: Number(item.hp) || 0, mp: Number(item.mp) || 0,
+    extra_json: JSON.stringify(extra)
+  };
+}
+async function commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, ownedRow, completionEncoded, now) {
+  const reward = resultPayload?.reward;
+  if (!reward || resultPayload.result !== "victory") return { completionEncoded, reward: null };
+  const floor = Math.max(1, Math.floor(Number(reward.floor) || 1));
+  const role = String(reward.rewardRole || "normal");
+  const packCount = Math.max(1, Math.min(3, Math.floor(Number(reward.packCount) || 1)));
+  if (floor !== Math.max(1, Math.floor(Number(resultPayload.floor) || 1)) || !["normal", "elite", "chapter_boss"].includes(role)) return { error: "invalid_reward_plan" };
+  if (Number(reward.gold) !== dungeonV2ServerGold(floor, role, packCount) || Number(reward.xp) !== dungeonV2ServerExp(floor, role, packCount)) return { error: "invalid_reward_plan" };
+  const petsRaw = parseJsonColumn(ownedRow.pets_json, []);
+  const envelope = Array.isArray(petsRaw) ? { list: petsRaw } : { ...petsRaw };
+  if (!Array.isArray(envelope.list)) envelope.list = [];
+  const claims = dungeonV2ServerClaims(petsRaw);
+  const unlockedNext = floor === Number(ownedRow.unlocked_floor || 1);
+  const contractAccessory = DUNGEON_V2_FIRST_CLEAR_ACCESSORIES[floor];
+  const firstClearEligible = role === "chapter_boss" && !!contractAccessory && unlockedNext && !claims[String(floor)];
+  const inputItems = Array.isArray(reward.items) ? reward.items : [];
+  const equipmentItems = inputItems.filter(item => item && item.type !== "junk");
+  const genericItems = equipmentItems.filter(item => item.type !== "accessory");
+  if (role === "chapter_boss" && genericItems.length) return { error: "invalid_reward_plan" };
+  if (role !== "chapter_boss" && equipmentItems.length > 1) return { error: "invalid_reward_plan" };
+  const accepted = [];
+  let acceptedAccessory = false;
+  for (const item of inputItems) {
+    if (item?.type === "junk") { accepted.push(item); continue; }
+    if (item?.type === "accessory") {
+      if (!firstClearEligible || acceptedAccessory || item.specialSource !== "first_clear_accessory" || item.rarity !== contractAccessory.rarity || Number(item.gearTier) !== contractAccessory.gearTier) continue;
+      acceptedAccessory = true;
+      accepted.push(item);
+      continue;
+    }
+    if (role === "chapter_boss" || !DUNGEON_V2_REWARD_SLOTS.has(item?.type)) return { error: "invalid_reward_plan" };
+    accepted.push(item);
+  }
+  const firstClear = firstClearEligible && acceptedAccessory;
+  const starterEligible = floor === 5 && role === "elite" && unlockedNext && !envelope.list.some(pet => pet && pet.defId === "sprout");
+  const starterGrant = starterEligible && reward.starterPetGrant?.instance && reward.starterPetGrant.instance.defId === "sprout"
+    ? reward.starterPetGrant.instance
+    : null;
+  if (starterGrant) envelope.list.push(starterGrant);
+  const nextClaims = firstClear ? { ...claims, [String(floor)]: true } : claims;
+  const battleKey = `battle:${String(battleId)}`;
+  const oldBattleReceipts = Array.isArray(envelope.battleRewardReceipts) ? envelope.battleRewardReceipts : [];
+  const battleReceipts = [...new Set([...oldBattleReceipts.filter(Boolean), battleKey])].slice(-128);
+  envelope.firstClearAccessoryClaims = nextClaims;
+  envelope.battleRewardReceipts = battleReceipts;
+  envelope.rewardReceipts = battleReceipts;
+  const normalizedReward = { ...reward, floor, rewardRole: role, packCount, gold: Number(reward.gold), xp: Number(reward.xp), unlockedNext, firstClear, starterPetGrant: starterGrant ? { defId: "sprout", instance: starterGrant } : null, items: accepted };
+  const encoded = JSON.stringify({ ...resultPayload, reward: normalizedReward });
+  if (encoded.length > 512000) return { error: "battle_result_too_large" };
+  const countRow = await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first();
+  const currentCount = Number(countRow?.c) || 0;
+  const rows = accepted.map((item, index) => dungeonV2ServerRewardItem(item, index, currentCount + index >= 30)).filter(Boolean);
+  if (rows.length !== accepted.length) return { error: "invalid_reward_plan" };
+  const cols = TABLES.items.cols.filter(c => c !== "player_id" && c !== "character_id" && c !== "created_at" && c !== "updated_at");
+  const itemStmt = rows.length ? db.prepare(
+    `INSERT INTO items (item_id, player_id, character_id, ${cols.filter(c => c !== "item_id").join(",")}, created_at, updated_at)
+     ${rows.map(() => `SELECT ?, ?, ?, ${cols.filter(c => c !== "item_id").map(() => "?").join(",")}, ?, ? WHERE changes() > 0`).join(" UNION ALL ")}
+     ON CONFLICT(item_id) DO NOTHING`
+  ).bind(...rows.flatMap(row => [row.item_id, id, characterId, ...cols.filter(c => c !== "item_id").map(c => row[c]), now, now])) : null;
+  const completionStmt = db.prepare(
+    `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
+  ).bind(String(battleId), characterId, encoded, now);
+  const characterStmt = db.prepare(
+    `UPDATE characters SET gold = gold + ?, xp = xp + ?, unlocked_floor = CASE WHEN ? THEN unlocked_floor + 1 ELSE unlocked_floor END, pets_json = ?, updated_at = ? WHERE character_id = ? AND changes() > 0`
+  ).bind(Number(normalizedReward.gold), Number(normalizedReward.xp), unlockedNext ? 1 : 0, JSON.stringify(envelope), now, characterId);
+  const playerStmt = db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ? AND changes() > 0`).bind(Math.max(0, Number(reward.diamonds) || 0), id);
+  await db.batch([completionStmt, characterStmt, playerStmt, ...(itemStmt ? [itemStmt] : [])]);
+  return { completionEncoded: encoded, reward: normalizedReward };
+}
+async function battleCompletionSnapshot(db, id, characterId) {
+  const [character, items, player] = await Promise.all([
+    getRow(db, "characters", "character_id", characterId),
+    getRows(db, "items", "character_id", characterId),
+    getRow(db, "players", "id", id),
+  ]);
+  return { character, items, diamonds: Number(player?.diamonds) || 0 };
+}
+
 async function handleCompleteBattle(db, id, session, characterId, battleId, resultPayload) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
@@ -616,7 +757,7 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
     if (prior.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
     await db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`)
       .bind(nowIso(), String(battleId), characterId).run();
-    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at });
+    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at, ...(await battleCompletionSnapshot(db, id, characterId)) });
   }
   const checkpoint = await db.prepare(
     `SELECT checkpoint_seq FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`
@@ -628,15 +769,23 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
   const encoded = JSON.stringify(resultPayload);
   if (encoded.length > 512000) return json({ error: "battle_result_too_large" }, 413);
   const now = nowIso();
-  const insert = await db.prepare(
-    `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at)
-     VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
-  ).bind(String(battleId), characterId, encoded, now).run();
+  const rewardCommit = resultPayload?.reward && resultName === "victory"
+    ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, encoded, now)
+    : { completionEncoded: encoded, reward: null };
+  if (rewardCommit.error) return json({ error: rewardCommit.error }, 400);
+  let insert = { meta: { changes: 0 } };
+  if (!resultPayload?.reward || resultName !== "victory") {
+    insert = await db.prepare(
+      `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at)
+       VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
+    ).bind(String(battleId), characterId, encoded, now).run();
+  }
   const row = await db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(String(battleId)).first();
   if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
   await db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`)
     .bind(now, String(battleId), characterId).run();
-  return json({ ok: true, firstCompletion: !!(insert.meta && insert.meta.changes), result: parseJsonColumn(row.result_json, null), completedAt: row.completed_at });
+  const storedResult = parseJsonColumn(row.result_json, null);
+  return json({ ok: true, firstCompletion: !!(insert.meta && insert.meta.changes) || !!rewardCommit.reward, result: storedResult, completedAt: row.completed_at, ...(await battleCompletionSnapshot(db, id, characterId)) });
 }
 
 async function handleSaveQuickSlots(db, id, session, characterId, quickSlots) {
