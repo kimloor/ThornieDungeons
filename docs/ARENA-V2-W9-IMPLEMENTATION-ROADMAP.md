@@ -8,8 +8,8 @@ Implementation branch (historical):
 Original implementation base:
 - `c101ead2e4a36ed7bed9c895fe9aadbb16400ebf`
 
-Final production closeout baseline:
-- `65247c7281d50fc4ca4e0f99f8cd365132067018`
+Final closeout verification:
+- verify against the current `main` HEAD and the closeout report rather than pinning a stale intermediate SHA.
 
 Source of truth:
 - `docs/ARENA-V2-W9.md`
