@@ -18,8 +18,8 @@ The approved scaling is designed around the following player-side assumptions:
 - Existing stat meanings remain unchanged unless separately redesigned.
 - Equipment Tier/Rarity follows `DUNGEON-REWARD-PROGRESSION-V2.md`.
 - The approved base equipment-stat budget may be considered when validating combat pacing.
-- **Enhance and Empower exact balance are not part of the locked baseline yet.** They must be stress-tested later as additional player-power headroom.
-- Pet, Hero Skill, Critical Hit, special Boss Weapon passive, set bonus, and other build effects are additional combat power and should not be assumed as mandatory baseline power.
+- **Enhance V2, Empower V2, Mythic Boss Weapon Signatures, and Azure/Robot/Skeleton Set Effects are now locked in `DUNGEON-REWARD-PROGRESSION-V2.md`.** They remain additional player-power headroom rather than mandatory baseline power for every character.
+- Pet, Hero Skill, Critical Hit, and other build effects are also additional combat power and should not be assumed as mandatory baseline power.
 
 The target is not to make every build require the same number of actions. Offensive builds should clear faster while accepting lower survivability.
 
@@ -178,15 +178,17 @@ The player should be allowed to become stronger through build choices, equipment
 
 ## 11. Deferred final stress test
 
-Before implementation/release, repeat combat simulations after Enhance and Empower V2 are finalized.
+Before implementation/release, repeat combat simulations using the now-locked Enhance, Empower, Mythic Boss Weapon Signature, and Set Effect rules.
 
 Required stress-test profiles should include at minimum:
 
 1. balanced stat allocation + ordinary expected gear;
 2. offense-heavy stat allocation;
 3. strong/high-rarity gear;
-4. later, high-end Enhance/Empower;
-5. Hero Skill + Pet + Critical Hit contribution.
+4. high-end Enhance/Empower;
+5. full Mythic Set builds and mixed 4+2 / 2+2+2 builds;
+6. Boss Weapon Signature contribution;
+7. Hero Skill + Pet + Critical Hit contribution.
 
 The purpose is to verify headroom, not to redesign the approved base curve unless testing identifies a concrete progression failure.
 
@@ -224,4 +226,4 @@ It does not own:
 - Dungeon rewards/economy → `DUNGEON-REWARD-PROGRESSION-V2.md`
 - shared damage/status/turn rules → `BATTLE-SYSTEM-V1.md` / Battle Core
 - Floor Select UI and pre-battle presentation → `DUNGEON-FLOOR-V1.md`
-- Enhance/Empower final balance → pending separate approved design
+- Enhance / Empower / Mythic Boss Weapon Signature / Set Effect rules → `DUNGEON-REWARD-PROGRESSION-V2.md`
