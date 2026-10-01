@@ -468,13 +468,13 @@ let ACCESSORY_NAMES = ["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift An
 let WINGS_NAMES = ["Tattered Wings", "Feathered Cloak", "Gale Wings", "Spectral Wings", "Dragonwing Mantle"];
 let RARITY_MULT = {
   rare: 1,
-  unique: 1.9,
-  elite: 3.2,
-  mythic: 5.4,
+  unique: 1.15,
+  elite: 1.3,
+  mythic: 1.5,
   // Azure (crafted, Phase 4) is deliberately set equal to mythic, not above it — crafting's
   // value is guaranteeing that tier deterministically via materials/gold, not power-creeping
   // past the rarest chest-pity drop in the game.
-  azure: 5.4
+  azure: 1.5
 };
 const RARITY_LABEL = {
   rare: "Rare",
@@ -486,10 +486,10 @@ const RARITY_LABEL = {
 };
 const RARITY_STARS = {
   rare: 1,
-  unique: 3,
-  elite: 5,
-  mythic: 7,
-  azure: 5
+  unique: 2,
+  elite: 3,
+  mythic: 4,
+  azure: 4
 };
 
 if (typeof module !== "undefined") module.exports = { PET_V2_PLAYTEST, PET_POOL, PET_COMBAT_SKILLS_V2, getPetDef };

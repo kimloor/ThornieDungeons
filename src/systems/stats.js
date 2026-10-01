@@ -258,12 +258,26 @@ function rollRarity(boosted = false) {
   return r < 0.28 ? "unique" : "rare";
 }
 function gearTierForFloor(floor) {
-  return Math.min(5, Math.max(1, Math.floor((Number(floor) || 0) / 4) + 1));
+  return typeof DUNGEON_REWARD_V2 !== "undefined"
+    ? DUNGEON_REWARD_V2.dungeonV2GearTierForFloor(floor)
+    : Math.min(5, Math.max(1, Math.floor((Number(floor) || 0) / 4) + 1));
 }
 function pickName(pool, floor) {
   return pool[Math.min(pool.length - 1, Math.floor(floor / 4))];
 }
 function generateDrop(floor, options = {}) {
+  if (typeof DUNGEON_REWARD_V2 !== "undefined") {
+    return DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
+      floor,
+      type: options.forceType,
+      rarity: options.forceRarity,
+      sourceType: options.sourceType || "shop_normal",
+      specialSource: options.specialSource,
+      sourceIdentity: options.sourceIdentity,
+      allowMythic: options.allowMythic === true,
+      rng: options.rng || Math.random
+    });
+  }
   const it = buildDropItem(floor, options);
   it.enhanceLevel = 0;
   it.empowerSlots = Array(RARITY_STARS[it.rarity] || 1).fill(null);
@@ -275,6 +289,19 @@ function generateDrop(floor, options = {}) {
 // existing chest-pity rarity) — otherwise behaves exactly like plain generateDrop(), so a
 // monster with no rows configured is completely unaffected.
 function generateDropForMonster(floor, monsterId, fallbackOptions = {}) {
+  if (typeof DUNGEON_REWARD_V2 !== "undefined") {
+    return DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
+      floor,
+      type: fallbackOptions.forceType,
+      rarity: fallbackOptions.forceRarity,
+      sourceType: fallbackOptions.sourceType || "dungeon_normal",
+      specialSource: fallbackOptions.specialSource,
+      sourceIdentity: fallbackOptions.sourceIdentity || monsterId,
+      lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monsterId) : null,
+      allowMythic: fallbackOptions.allowMythic === true,
+      rng: fallbackOptions.rng || Math.random
+    });
+  }
   const table = monsterLootFor(monsterId);
   if (table && table.gear && table.gear.length) {
     const picked = pickWeightedGear(table.gear);

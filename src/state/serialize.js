@@ -26,7 +26,8 @@ function characterProgressToServer(flatSave) {
       dup: flatSave.petDuplicates || {},
       skills: flatSave.character.skillLevels || {},
       skillVersion: 1,
-      skillResetPoints: Number(flatSave.character.skillResetPoints) || 0
+      skillResetPoints: Number(flatSave.character.skillResetPoints) || 0,
+      rewardReceipts: Array.isArray(flatSave.rewardReceipts) ? flatSave.rewardReceipts.slice(-128) : []
     }),
     active_pet_id: flatSave.activePetId || ""
   };
@@ -116,7 +117,13 @@ function itemsToServerList(inventory, equipped, overflow = []) {
       craftRecipeId: it.craftRecipeId || undefined,
       favorite: it.favorite === true || undefined,
       overflow: it.overflow === true || undefined,
-      gearTier: it.gearTier || undefined
+      gearTier: it.gearTier || undefined,
+      rewardVersion: it.rewardVersion || undefined,
+      itemModelVersion: it.itemModelVersion || undefined,
+      sourceType: it.sourceType || undefined,
+      sourceFloor: it.sourceFloor || undefined,
+      specialSource: it.specialSource || undefined,
+      sourceIdentity: it.sourceIdentity || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -192,6 +199,12 @@ function itemsFromServerList(rows) {
       if (extra.setId) it.setId = extra.setId;
       if (extra.star) it.star = numOr(extra.star, 0);
       if (extra.craftRecipeId) it.craftRecipeId = extra.craftRecipeId;
+      if (extra.rewardVersion) it.rewardVersion = numOr(extra.rewardVersion, 0);
+      if (extra.itemModelVersion) it.itemModelVersion = numOr(extra.itemModelVersion, 0);
+      if (extra.sourceType) it.sourceType = String(extra.sourceType);
+      if (extra.sourceFloor) it.sourceFloor = numOr(extra.sourceFloor, 0);
+      if (extra.specialSource) it.specialSource = String(extra.specialSource);
+      if (extra.sourceIdentity) it.sourceIdentity = String(extra.sourceIdentity);
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });

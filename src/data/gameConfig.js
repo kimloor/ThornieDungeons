@@ -30,18 +30,10 @@ function applyGameConfig(cfg) {
     if (n && Array.isArray(n.boots) && n.boots.length) BOOTS_NAMES = n.boots;
     if (n && Array.isArray(n.accessory) && n.accessory.length) ACCESSORY_NAMES = n.accessory;
   } catch (e) {}
-  try {
-    const rm = cfg.rarityMult;
-    if (rm && typeof rm.rare === "number" && typeof rm.unique === "number" && typeof rm.elite === "number") {
-      RARITY_MULT = {
-        rare: rm.rare,
-        unique: rm.unique,
-        elite: rm.elite,
-        mythic: typeof rm.mythic === "number" ? rm.mythic : RARITY_MULT.mythic,
-        azure: typeof rm.azure === "number" ? rm.azure : RARITY_MULT.azure
-      };
-    }
-  } catch (e) {}
+  // Dungeon Reward V2 owns the canonical R/U/E/Mythic multipliers.  Legacy remote
+  // rows used values such as Unique 1.9 and Elite 3.2; accepting them here would
+  // silently change newly generated V2 items.  Keep the config field readable for
+  // older clients, but never let it override the locked V2 contract.
   try {
     // Pre-V2 remote rows contain the retired 5-star/Thunder Cub balance. Do not
     // let that legacy config silently replace the Battle V1 Pet contract.

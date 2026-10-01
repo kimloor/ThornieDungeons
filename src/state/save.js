@@ -81,7 +81,8 @@ const defaultCharacterSlot = () => ({
   petDuplicates: {},
   activePetId: null,
   protectionStones: 0,
-  chestPity: 0
+  chestPity: 0,
+  rewardReceipts: []
 });
 
 // Converts one `characters` table row (snake_case, straight from the server) into the client's
@@ -97,6 +98,7 @@ function characterFromServerRow(row) {
   const petDuplicates = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.dup === "object" && petsRaw.dup ? petsRaw.dup : {});
   const skillLevels = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw.skills === "object" && petsRaw.skills ? petsRaw.skills : {});
   const skillVersion = Array.isArray(petsRaw) ? 0 : numOr(petsRaw && petsRaw.skillVersion, 0);
+  const rewardReceipts = Array.isArray(petsRaw) ? [] : (Array.isArray(petsRaw?.rewardReceipts) ? petsRaw.rewardReceipts.filter(Boolean).slice(-128) : []);
   const migratedPets = typeof migratePetV2Instance === "function" ? pets.map(migratePetV2Instance) : pets;
   const migratedDuplicates = typeof migratePetDuplicatePoolV2 === "function" ? migratePetDuplicatePoolV2(petDuplicates) : petDuplicates;
   return {
@@ -122,7 +124,8 @@ function characterFromServerRow(row) {
     petDuplicates: migratedDuplicates,
     activePetId: row.active_pet_id || null,
     protectionStones: numOr(row.protection_stones, 0),
-    chestPity: numOr(row.chest_pity, 0)
+    chestPity: numOr(row.chest_pity, 0),
+    rewardReceipts
   };
 }
 
@@ -184,6 +187,7 @@ function flattenCharacterForRuntime(account, slotIndex) {
     activePetId: slot.activePetId,
     protectionStones: slot.protectionStones,
     chestPity: slot.chestPity,
+    rewardReceipts: Array.isArray(slot.rewardReceipts) ? slot.rewardReceipts.slice(-128) : [],
     character: {
       level: slot.level,
       xp: slot.xp,
@@ -240,6 +244,7 @@ function packRuntimeIntoSlot(existingSlot, flatSave) {
     petDuplicates: flatSave.petDuplicates || {},
     activePetId: flatSave.activePetId,
     protectionStones: flatSave.protectionStones,
-    chestPity: flatSave.chestPity
+    chestPity: flatSave.chestPity,
+    rewardReceipts: Array.isArray(flatSave.rewardReceipts) ? flatSave.rewardReceipts.slice(-128) : []
   };
 }

@@ -3733,6 +3733,13 @@ function materializeMailItem(desc) {
     critDamage: desc.critDamage || 0,
     enhanceLevel: 0,
     empowerSlots: Array(Math.max(1, desc.empowerSlotCount || 1)).fill(null),
+    ...(desc.gearTier ? { gearTier: Number(desc.gearTier) || 0 } : {}),
+    ...(desc.rewardVersion ? { rewardVersion: Number(desc.rewardVersion) || 0 } : {}),
+    ...(desc.itemModelVersion ? { itemModelVersion: Number(desc.itemModelVersion) || 0 } : {}),
+    ...(desc.sourceType ? { sourceType: desc.sourceType } : {}),
+    ...(desc.sourceFloor ? { sourceFloor: Number(desc.sourceFloor) || 0 } : {}),
+    ...(desc.specialSource ? { specialSource: desc.specialSource } : {}),
+    ...(desc.sourceIdentity ? { sourceIdentity: desc.sourceIdentity } : {}),
     ...(desc.setId ? { setId: desc.setId } : {}),
     ...(desc.star ? { star: desc.star } : {}),
     ...(desc.craftRecipeId ? { craftRecipeId: desc.craftRecipeId } : {})
@@ -5421,8 +5428,8 @@ function ResultScreen({
   onOpenInv
 }) {
   const [chestOpened, setChestOpened] = useState(false);
-  const showChest = rewards.isBoss && dropItem;
-  const showItemBanner = showChest && chestOpened;
+  const showChest = !!(rewards.firstClearAccessory && dropItem);
+  const showItemBanner = !!dropItem && (!showChest || chestOpened);
   return /*#__PURE__*/React.createElement("div", {
     className: "md-panel",
     style: {
@@ -5443,7 +5450,7 @@ function ResultScreen({
     style: {
       background: "rgba(255,209,102,0.22)"
     }
-  }, "👑🔥 Elite Boss Defeated! Chest guarantees Elite/Mythic gear + bonus 💎"), rewards.petProgress?.xpGained > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "👑🔥 Elite Boss Defeated! + bonus 💎"), rewards.petProgress?.xpGained > 0 && /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner md-pet-result-exp"
   }, /*#__PURE__*/React.createElement("strong", null, "Pet EXP +", rewards.petProgress.xpGained), rewards.petProgress.endLevel > rewards.petProgress.startLevel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), rewards.petProgress.name, " Lv.", rewards.petProgress.startLevel, " → Lv.", rewards.petProgress.endLevel)), rewards.modifier && /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
@@ -5481,7 +5488,7 @@ function ResultScreen({
       marginTop: 4
     },
     onClick: () => setChestOpened(true)
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "chests", iconKey: "equipment", fallback: "🎁", className: "md-game-icon md-inline-item-icon", alt: "Equipment chest" }), " เปิดหีบรางวัลจากบอส"), showItemBanner ? /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(GameIcon, { category: "chests", iconKey: "equipment", fallback: "🎁", className: "md-game-icon md-inline-item-icon", alt: "Equipment chest" }), " เปิด Accessory รางวัล First Clear"), showItemBanner ? /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
     style: {
       background: dropItem.rarity === "mythic" ? "rgba(255,209,102,0.28)" : dropItem.rarity === "elite" ? "rgba(178,106,232,0.18)" : dropItem.rarity === "unique" ? "rgba(79,168,224,0.18)" : "rgba(156,156,168,0.15)"

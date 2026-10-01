@@ -1044,7 +1044,7 @@ function ThornieDungeons() {
       }
     }
     setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
-    if (next.result === "victory") endCombatWin();
+    if (next.result === "victory") endCombatWin(next.battleId);
     else if (next.result === "defeat") playerLost();
     else if (next.result === "fled") backToMap();
   }
@@ -1308,7 +1308,7 @@ function ThornieDungeons() {
     };
   }, [player?.hp, player?.mp, petCombat?.hp, petCombat?.instId, selectedFloor, cred.url, cred.id, save, pushRunState]);
 
-  function endCombatWin() {
+  function endCombatWin(battleId = battleStateRef.current?.battleId || "") {
     if (combatOutcomeRef.current) return;
     const currentMonsters = monstersRef.current.length ? monstersRef.current : monsters;
     const currentPlayer = playerRef.current || player;
@@ -1316,26 +1316,28 @@ function ThornieDungeons() {
     combatOutcomeRef.current = "victory";
     if (runStateSaveTimer.current) clearTimeout(runStateSaveTimer.current);
     setBusy(false);
-    // Rewards aggregate across every monster that was on the field this encounter.
-    const gained = currentMonsters.reduce((sum, m) => sum + m.gold, 0);
-    const xpGained = currentMonsters.reduce((sum, m) => sum + m.xp, 0);
+    const encounterType = currentMonsters.map(m => m.encounterType).find(Boolean)
+      || DUNGEON_V2.classifyDungeonEncounter(selectedFloor);
+    const rewardRole = DUNGEON_REWARD_V2.dungeonV2RewardRole(encounterType);
+    const packCount = currentMonsters.length;
+    const gained = DUNGEON_REWARD_V2.dungeonV2RewardGold(selectedFloor, encounterType, packCount);
+    const xpGained = DUNGEON_REWARD_V2.dungeonV2RewardExp(selectedFloor, encounterType, packCount);
     const bossMonster = currentMonsters.find(m => m.isBoss) || null;
     const modifier = currentMonsters.map(m => m.modifier).find(Boolean) || null;
-    // Equipment now only comes from a reward CHEST on boss floors (every 5th floor).
-    // Regular monsters instead have a chance to drop a stack of junk material (stone/grass/
-    // wood/iron/mana stone) used for crafting, selling, and the Enhancement/Empowerment systems.
+    const currentReceipts = Array.isArray(save.rewardReceipts) ? save.rewardReceipts : [];
+    const battleReceipt = DUNGEON_REWARD_V2.dungeonV2RewardReceiptKey(battleId);
+    if (DUNGEON_REWARD_V2.dungeonV2HasReceipt(currentReceipts, battleReceipt)) return;
     let drop = null;
     let junkDrop = null;
     const incomingItems = [];
-    let nextChestPity = save.chestPity || 0;
-    if (bossMonster) {
-      const chestRarity = rollChestRarity(bossMonster.isEliteBoss, nextChestPity);
-      nextChestPity = chestRarity === "elite" || chestRarity === "mythic" ? 0 : nextChestPity + 1;
-      drop = generateDropForMonster(selectedFloor, bossMonster.id, {
-        forceRarity: chestRarity
-      });
-      incomingItems.push(drop);
-    } else {
+    const unlockedNext = selectedFloor === save.unlockedFloor;
+    const firstClear = DUNGEON_REWARD_V2.dungeonV2FirstClearEligible({
+      floor: selectedFloor,
+      encounterType,
+      unlockedNext,
+      receipts: currentReceipts
+    });
+    if (rewardRole === "normal") {
       // Each defeated monster in the pack gets its own independent roll for junk material.
       const junkDrops = [];
       currentMonsters.forEach(m => {
@@ -1353,6 +1355,55 @@ function ThornieDungeons() {
         const [type, amount] = Object.entries(merged)[0];
         junkDrop = { type, amount };
       }
+      // Generic equipment uses one independent 4% roll per defeated monster, but
+      // the encounter can receive at most one item. Custom monster_loot rows may
+      // choose a slot/rarity, but cannot escape the V2 pool or Mythic cap.
+      for (const monster of currentMonsters) {
+        if (Math.random() < DUNGEON_REWARD_V2.dungeonV2GenericEquipmentChance("normal", currentPlayer?.dropBonus)) {
+          drop = DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
+            floor: selectedFloor,
+            sourceType: "dungeon_normal",
+            sourceIdentity: monster.id,
+            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null
+          });
+          incomingItems.push(drop);
+          break;
+        }
+      }
+    } else if (rewardRole === "elite") {
+      // Elite is one encounter-level roll, not Normal's per-monster roll.
+      if (Math.random() < DUNGEON_REWARD_V2.dungeonV2GenericEquipmentChance("elite")) {
+        drop = DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
+          floor: selectedFloor,
+          sourceType: "dungeon_elite",
+          sourceIdentity: currentMonsters[0]?.id || null,
+          lootTable: typeof monsterLootFor === "function" ? monsterLootFor(currentMonsters[0]?.id) : null
+        });
+        incomingItems.push(drop);
+      }
+      // Preserve the existing junk-material architecture while applying the
+      // contracted approximately x2 Elite quantity where that architecture exists.
+      const eliteMonster = currentMonsters[0];
+      const eliteMaterialChance = 0.45 + (currentPlayer?.dropBonus || 0) / 100 + (eliteMonster?.modifier?.dropBonusFlat || 0) / 100;
+      if (Math.random() < eliteMaterialChance) {
+        const material = rollJunkDrop(selectedFloor, eliteMonster?.modifier);
+        material.amount = Math.max(1, Math.round(material.amount * 2));
+        incomingItems.push({ ...makeJunkItem(material.type, 1), quantity: material.amount });
+        junkDrop = { type: material.type, amount: material.amount };
+      }
+    } else if (firstClear) {
+      const accessory = DUNGEON_REWARD_V2.dungeonV2FirstClearAccessory(selectedFloor);
+      drop = DUNGEON_REWARD_V2.dungeonV2EquipmentItem({
+        floor: selectedFloor,
+        type: "accessory",
+        rarity: accessory.rarity,
+        sourceType: "dungeon_boss_first_clear",
+        specialSource: "first_clear_accessory",
+        sourceIdentity: bossMonster?.id || "chapter_boss"
+      });
+      // The existing capacity-safe insertion boundary routes a full inventory
+      // into persistent Overflow/mailbox-compatible storage.
+      incomingItems.push(drop);
     }
     // Per-monster bonus junk table (design: admin-backend-design.md) — independent of the
     // generic junk roll above and applies to EVERY monster in the encounter, boss included,
@@ -1388,7 +1439,6 @@ function ThornieDungeons() {
     // Hero Skill V1 grants one point per level; skills are no longer auto-owned
     // at legacy level milestones.
     const newSkill = null;
-    const unlockedNext = selectedFloor === save.unlockedFloor;
     // The equipped Pet participated even if it died, so it receives 80% of the
     // total Hero battle EXP before any new starter Pet is awarded.
     let newPets = grantActivePetBattleXp(save.pets, save.activePetId, xpGained);
@@ -1413,7 +1463,11 @@ function ThornieDungeons() {
       gold: save.gold + gained,
       diamonds: save.diamonds + diamondsGained,
       unlockedFloor: unlockedNext ? save.unlockedFloor + 1 : save.unlockedFloor,
-      chestPity: nextChestPity,
+      chestPity: save.chestPity || 0,
+      rewardReceipts: DUNGEON_REWARD_V2.dungeonV2AppendReceipts(currentReceipts, [
+        battleReceipt,
+        firstClear ? DUNGEON_REWARD_V2.dungeonV2FirstClearReceiptKey(selectedFloor) : null
+      ]),
       character: {
         ...save.character,
         level,
@@ -1442,6 +1496,10 @@ function ThornieDungeons() {
       newSkill,
       newPet,
       isBoss: !!bossMonster,
+      encounterType,
+      rewardRole,
+      equipmentDrop: drop,
+      firstClearAccessory: firstClear,
       junkDrop,
       modifier,
       isEliteBoss: !!(bossMonster && bossMonster.isEliteBoss),
@@ -1797,7 +1855,11 @@ function ThornieDungeons() {
     };
     const it = found.item;
     if (it.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนแยกชิ้นส่วน" };
-    const y = salvageYield(it.rarity);
+    const y = salvageYield(it.rarity, it);
+    if (!y) return {
+      ok: false,
+      message: it.rarity === "mythic" ? "Mythic/พิเศษต้องใช้การแยกชิ้นส่วนตามแหล่งที่มา" : "ไอเทมนี้ยังไม่อยู่ในตาราง Salvage V2"
+    };
     let nextInv = inventory.filter(i => i.id !== itemId);
     const incoming = [
       { ...makeJunkItem("iron", 1), quantity: y.iron },
