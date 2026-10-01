@@ -299,4 +299,28 @@ test('Arena active public-state unit arrays keep all 2v2 presentation actors add
   assert.equal(resolveUnit(state, 'team_b', 'pet').id, 'team_b_pet');
 });
 
+test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Result unskinned', () => {
+  const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'r2-upload/manifest.json'), 'utf8'));
+  for (const key of ['primary', 'secondary', 'danger']) assert.ok(manifest.assets.arenaUi.buttons[key]);
+  for (const key of ['bronze', 'silver', 'gold', 'diamond']) assert.ok(manifest.assets.arenaUi.tiers[key]);
+  for (const key of ['frame', 'fill', 'rewardSlot']) assert.ok(manifest.assets.arenaUi.progress[key]);
+  for (const key of ['season', 'refresh', 'playerCard', 'info', 'playMilestone', 'winMilestone', 'attackHistory', 'defenseHistory']) {
+    assert.ok(manifest.assets.arenaUi.icons[key]);
+  }
+  assert.match(arenaUi, /ARENA_HUB_MILESTONE_PRESENTATION/);
+  assert.match(arenaUi, /optionalAsset\("arenaUi\.buttons\.primary"\)/);
+  assert.match(arenaUi, /optionalAsset\("arenaUi\.tiers\.bronze"\)/);
+  assert.match(arenaUi, /md-arena-milestone-panel/);
+  assert.match(arenaUi, /className: !match \? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card"/);
+  assert.match(styles, /border-image-slice:32 fill/);
+  assert.match(styles, /border-image-slice:16 fill/);
+  assert.match(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
+  assert.match(styles, /content: "Ver 1\.0\.32"/);
+  const battleStart = arenaUi.indexOf('    match && /*#__PURE__*/React.createElement(React.Fragment');
+  const dockStart = arenaUi.indexOf('    !match && /*#__PURE__*/React.createElement(GameDock', battleStart);
+  const battleSurface = arenaUi.slice(battleStart, dockStart);
+  assert.doesNotMatch(battleSurface, /md-arena-hub-panel|md-arena-art-btn|arenaUi\.tiers|arenaUi\.progress/);
+});
+
 // W9 browser QA Batch 5 low/medium UI shell fixes only; final parity retrigger after generated frontend sync.

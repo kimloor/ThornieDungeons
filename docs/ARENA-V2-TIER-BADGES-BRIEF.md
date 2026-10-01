@@ -1,16 +1,16 @@
-# Arena V2 Tier Badges — next graphics batch
+# Arena V2 Tier Badges — completed in Arena Hub Extension R1
 
-Status: PREPARED / NOT GENERATED. Hub Core R1 publication confirmed: `3496d9035a1feb759fd239374ed457eac198f7a7`, R2 run `36734738831` SUCCESS.
+Status: **APPROVED / PUBLISHED WITH ARENA HUB EXTENSION R1**
 
-Source of truth: ARENA-V2-GRAPHICS-ASSET-CHECKLIST.md, Part E. Design/review only until separately approved for publication.
+The original prepared-only Tier Badge brief is complete. The four approved transparent PNG badges are now part of the Arena Hub Extension R1 publication/integration batch based on `801611fec0980e74db60532540049fa5eb7443b3`.
 
-| Tier | Proposed repository path | Direction |
-|---|---|---|
-| Bronze | `r2-upload/ui/arena/tiers/tier_bronze.png` | Copper/bronze; simplest ornament |
-| Silver | `r2-upload/ui/arena/tiers/tier_silver.png` | Silver/steel; visibly above Bronze |
-| Gold | `r2-upload/ui/arena/tiers/tier_gold.png` | Warm gold; stronger champion ornament |
-| Diamond | `r2-upload/ui/arena/tiers/tier_diamond.png` | Highest normal tier; crystal treatment distinct from Diamond currency |
+| Tier | Production path | Manifest key | Final canvas |
+|---|---|---|---|
+| Bronze | `r2-upload/ui/arena/tiers/tier_bronze.png` | `assets.arenaUi.tiers.bronze` | 256×256 |
+| Silver | `r2-upload/ui/arena/tiers/tier_silver.png` | `assets.arenaUi.tiers.silver` | 256×256 |
+| Gold | `r2-upload/ui/arena/tiers/tier_gold.png` | `assets.arenaUi.tiers.gold` | 256×256 |
+| Diamond | `r2-upload/ui/arena/tiers/tier_diamond.png` | `assets.arenaUi.tiers.diamond` | 256×256 |
 
-One transparent PNG family with identical canvas/optical footprint. Propose 256×256 masters for review; final dimension remains subject to approval. Preserve R1 navy, shallow blue-steel bevel, restrained warm gold and chamfer vocabulary. Differentiate silhouette and ornament as well as material. No baked tier names, rating or player text.
+All four share the same canvas family and a 224 px maximum artwork extent. Tier names/rating remain runtime DOM text. Diamond uses the approved crystal-shield identity and must remain distinct from the global Diamond currency icon.
 
-Deliver four badges together against approved Arena background with useful inspection size and small header/profile previews at approximately 390 px viewport. Review before publication; do not alter R1 Hub assets. No Platinum, Master, milestones, result emblems, buttons, UI integration or gameplay. Do not mark tier checklist complete or update manifest until tier art is approved.
+Do not regenerate these badges unless Project Lead explicitly requests a revision. Runtime and publication metadata are recorded in `r2-upload/ui/arena/GRAPHICS_CONTRACT.json` → `hubExtensionR1`.

@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.31";
+  content: "Ver 1.0.32";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2499,6 +2499,39 @@ body::after {
 .md-arena-tab-icon { width:28px; height:28px; object-fit:contain; flex:0 0 28px; pointer-events:none; }
 .md-arena-tab-label { font-size:9px; line-height:1; font-weight:900; letter-spacing:.25px; pointer-events:none; }
 .md-arena-tab:active:not(:disabled) { transform:translateY(1px); }
+.md-arena-art-btn { min-height:42px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:6px 12px; border:8px solid transparent !important; border-image-slice:32 fill !important; border-image-width:8px !important; border-image-repeat:stretch !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; color:#f4f7ff; text-shadow:0 1px 2px rgba(0,0,0,.75); }
+.md-arena-art-btn.primary { border-image-source:var(--arena-button-primary) !important; color:#fff1ad; }
+.md-arena-art-btn.secondary { border-image-source:var(--arena-button-secondary) !important; }
+.md-arena-art-btn.danger { border-image-source:var(--arena-button-danger) !important; color:#ffe7e7; }
+.md-arena-art-btn:disabled { opacity:.56; filter:saturate(.72); }
+.md-arena-action-icon { width:20px; height:20px; flex:0 0 20px; object-fit:contain; pointer-events:none; }
+.md-arena-info-button { align-self:flex-start; min-width:138px; }
+.md-arena-refresh-button { min-width:132px; }
+.md-arena-player-card-btn { min-width:126px; }
+.md-arena-summary { flex-wrap:nowrap; gap:10px; margin:2px 0 8px; }
+.md-arena-tier-badge { width:58px; height:58px; flex:0 0 58px; object-fit:contain; filter:drop-shadow(0 2px 5px rgba(0,0,0,.45)); }
+.md-arena-summary-details { min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; }
+.md-arena-season-line { display:inline-flex; align-items:center; gap:4px; }
+.md-arena-inline-icon { width:20px; height:20px; flex:0 0 20px; object-fit:contain; }
+.md-arena-milestone-panel { display:grid; gap:6px; margin-top:4px; padding-top:7px; border-top:1px solid rgba(172,194,220,.16); }
+.md-arena-milestone-row { display:grid; grid-template-columns:32px minmax(0,1fr) 50px; align-items:center; gap:7px; min-height:46px; }
+.md-arena-milestone-icon { width:32px; height:32px; object-fit:contain; filter:drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+.md-arena-milestone-main { min-width:0; }
+.md-arena-milestone-copy { display:flex; justify-content:space-between; gap:8px; margin-bottom:3px; color:#e8edf7; font-size:10px; font-weight:900; }
+.md-arena-milestone-copy span { color:#c7cfe0; white-space:nowrap; }
+.md-arena-progress-shell { --arena-progress:0%; position:relative; height:17px; border:5px solid transparent; border-image-source:var(--arena-progress-frame); border-image-slice:16 fill; border-image-width:5px; border-image-repeat:stretch; background:rgba(4,12,30,.72); overflow:hidden; }
+.md-arena-progress-fill { position:absolute; inset:3px 4px; background-image:var(--arena-progress-fill); background-size:100% 100%; background-repeat:no-repeat; background-position:left center; clip-path:inset(0 calc(100% - var(--arena-progress)) 0 0); }
+.md-arena-reward-slot { width:48px; height:48px; display:grid; grid-template-columns:1fr; grid-template-rows:1fr auto; place-items:center; padding:5px 6px 4px; background-image:var(--arena-reward-slot); background-size:contain; background-position:center; background-repeat:no-repeat; color:#fff1ad; font-size:8px; line-height:1; text-shadow:0 1px 2px #000; }
+.md-arena-reward-coin { width:20px; height:20px; object-fit:contain; }
+.md-arena-ranking-row { gap:7px; }
+.md-arena-ranking-tier { width:30px; height:30px; flex:0 0 30px; object-fit:contain; }
+.md-arena-ranking-main { min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#edf2ff; }
+.md-arena-ranking-meta { margin-left:auto; color:#c9bddf; white-space:nowrap; font-size:10px; }
+.md-arena-history-group + .md-arena-history-group { margin-top:10px; }
+.md-arena-history-heading { display:flex; align-items:center; gap:7px; margin:2px 0 5px; font-size:13px; }
+.md-arena-history-icon { width:28px; height:28px; object-fit:contain; }
+.md-arena-history-row { justify-content:space-between; gap:8px; }
+.md-arena-history-result { min-width:0; overflow-wrap:anywhere; }
 .md-arena-phaser-stage { position:relative; width:100%; min-height:clamp(300px,48dvh,430px); overflow:hidden; border:1px solid rgba(255,209,102,.2); border-radius:14px; background:rgba(3,9,24,.24); }
 .md-arena-phaser-stage .md-phaser-battlefield { position:absolute; inset:0; width:100%; height:100%; }
 .md-arena-phaser-error { position:absolute; inset:auto 10px 10px; z-index:5; padding:7px 9px; border:1px solid rgba(255,107,123,.55); border-radius:9px; background:rgba(45,10,24,.88); color:#ffc2c9; font-size:10px; font-weight:800; text-align:center; }

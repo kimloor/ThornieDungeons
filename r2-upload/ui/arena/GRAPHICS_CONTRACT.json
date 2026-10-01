@@ -343,6 +343,62 @@
       "tabs": 9
     },
     "publicationRecord": "docs/ARENA-V2-HUB-CORE-R1-PUBLICATION.md",
-    "runtimeIntegrated": false
+    "runtimeIntegrated": true
+  },
+  "hubExtensionR1": {
+    "status": "USER_APPROVED_FOR_PUBLICATION_AND_INTEGRATION",
+    "baseMain": "801611fec0980e74db60532540049fa5eb7443b3",
+    "approvalDate": "2026-10-01",
+    "artwork": "Approved Arena Hub Extension R1 review exports; no regeneration",
+    "runtimeScope": "Arena Hub only; shared Arena Battle/Result presentation unchanged",
+    "buttonNineSliceSourceInsets": {
+      "top": 32,
+      "right": 32,
+      "bottom": 32,
+      "left": 32
+    },
+    "progressFrameNineSliceSourceInsets": {
+      "top": 16,
+      "right": 16,
+      "bottom": 16,
+      "left": 16
+    },
+    "progressFill": "Render full strip and clip by percentage; do not scale the strip width by progress percentage",
+    "rewardSlot": "Prefer uniform scaling; 32px inset only if nine-slice is required",
+    "iconDisplayCssPx": {
+      "utilityHistory": [
+        24,
+        32
+      ],
+      "playMilestonePreferred": 32
+    },
+    "tierBadge": {
+      "canvas": [
+        256,
+        256
+      ],
+      "maxArtworkExtent": 224
+    },
+    "manifestKeys": [
+      "assets.arenaUi.buttons.primary",
+      "assets.arenaUi.buttons.secondary",
+      "assets.arenaUi.buttons.danger",
+      "assets.arenaUi.icons.season",
+      "assets.arenaUi.icons.refresh",
+      "assets.arenaUi.icons.playerCard",
+      "assets.arenaUi.icons.info",
+      "assets.arenaUi.tiers.bronze",
+      "assets.arenaUi.tiers.silver",
+      "assets.arenaUi.tiers.gold",
+      "assets.arenaUi.tiers.diamond",
+      "assets.arenaUi.progress.frame",
+      "assets.arenaUi.progress.fill",
+      "assets.arenaUi.progress.rewardSlot",
+      "assets.arenaUi.icons.playMilestone",
+      "assets.arenaUi.icons.winMilestone",
+      "assets.arenaUi.icons.attackHistory",
+      "assets.arenaUi.icons.defenseHistory"
+    ],
+    "runtimeIntegrated": true
   }
 }

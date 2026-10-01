@@ -377,7 +377,7 @@ All button artwork:
 
 ## 11. Buttons
 
-- [ ] **Arena primary button**
+- [x] **Arena primary button**
   - Proposed path: `r2-upload/ui/arena/buttons/button_primary.png`
   - Use:
     - BATTLE
@@ -389,7 +389,7 @@ All button artwork:
     - blue/gold or gold-dominant
     - should not compete visually with destructive states
 
-- [ ] **Arena secondary button**
+- [x] **Arena secondary button**
   - Proposed path: `r2-upload/ui/arena/buttons/button_secondary.png`
   - Use:
     - PLAYER CARD
@@ -400,7 +400,7 @@ All button artwork:
     - navy/steel
     - clearly below primary
 
-- [ ] **Arena danger button**
+- [x] **Arena danger button**
   - Proposed path: `r2-upload/ui/arena/buttons/button_danger.png`
   - Use only for genuinely destructive/danger actions if Arena UI requires one.
   - Red/coral treatment.
@@ -412,24 +412,24 @@ All button artwork:
 
 ## 12. Utility icons
 
-- [ ] **Season / countdown icon**
+- [x] **Season / countdown icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_season.png`
   - Direction: clock / hourglass / calendar-clock
   - Use near season countdown.
   - Must not look like History icon; Season should read as “time remaining”.
 
-- [ ] **Refresh opponent icon**
+- [x] **Refresh opponent icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_refresh.png`
   - Direction: circular refresh arrows
   - Must remain recognizable at 18–24 px.
 
-- [ ] **Player Card icon**
+- [x] **Player Card icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_player_card.png`
   - Direction: profile/card silhouette
   - Use in opponent action/button where desired.
   - Do not duplicate the actual Player Card avatar frame.
 
-- [ ] **Information icon**
+- [x] **Information icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_info.png`
   - Direction: clean circled “i” or equivalent
   - Use:
@@ -462,22 +462,22 @@ Tier artwork must:
 
 ## 13. Tier badges
 
-- [ ] **Bronze tier badge**
+- [x] **Bronze tier badge**
   - Proposed path: `r2-upload/ui/arena/tiers/tier_bronze.png`
   - Material hierarchy: bronze/copper
   - Lowest visual ornament level while still premium.
 
-- [ ] **Silver tier badge**
+- [x] **Silver tier badge**
   - Proposed path: `r2-upload/ui/arena/tiers/tier_silver.png`
   - Material hierarchy: silver/steel
   - Visibly above Bronze.
 
-- [ ] **Gold tier badge**
+- [x] **Gold tier badge**
   - Proposed path: `r2-upload/ui/arena/tiers/tier_gold.png`
   - Gold ornament
   - Visibly above Silver.
 
-- [ ] **Diamond tier badge**
+- [x] **Diamond tier badge**
   - Proposed path: `r2-upload/ui/arena/tiers/tier_diamond.png`
   - Highest normal Arena tier
   - Premium crystal/gem treatment
@@ -491,18 +491,18 @@ This is not required to remove CSS from the first Hub pass, but should belong to
 
 ## 14. Progress UI
 
-- [ ] **Arena progress frame**
+- [x] **Arena progress frame**
   - Proposed path: `r2-upload/ui/arena/progress/progress_frame.png`
   - Reusable for Arena milestones/progress
   - Stretch-safe horizontally
   - No baked progress amount
 
-- [ ] **Arena progress fill**
+- [x] **Arena progress fill**
   - Proposed path: `r2-upload/ui/arena/progress/progress_fill.png`
   - Must crop/mask cleanly from 0–100%
   - Avoid ornament that looks broken when partially filled
 
-- [ ] **Arena reward slot**
+- [x] **Arena reward slot**
   - Proposed path: `r2-upload/ui/arena/progress/reward_slot.png`
   - Use for milestone/reward checkpoints
   - Must support currency/item icon overlay
@@ -510,13 +510,13 @@ This is not required to remove CSS from the first Hub pass, but should belong to
 
 ## 15. Milestone icons
 
-- [ ] **Play milestone icon**
+- [x] **Play milestone icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_play_milestone.png`
   - Meaning: total Arena matches played
   - Direction: crossed weapons / arena participation marker
   - Must not look like WIN.
 
-- [ ] **Win milestone icon**
+- [x] **Win milestone icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_win_milestone.png`
   - Meaning: total Arena wins
   - Direction: wreath/check/trophy
@@ -528,12 +528,12 @@ This is not required to remove CSS from the first Hub pass, but should belong to
 
 ## 16. Battle history icons
 
-- [ ] **Attack history icon**
+- [x] **Attack history icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_attack_history.png`
   - Meaning: matches where the player attacked/challenged
   - Direction: sword/arrow-forward/offense motif
 
-- [ ] **Defense history icon**
+- [x] **Defense history icon**
   - Proposed path: `r2-upload/ui/arena/icons/icon_defense_history.png`
   - Meaning: offline/defense history
   - Direction: shield/guard motif
@@ -706,9 +706,9 @@ Graphics may use a larger working master for quality, but **final production dim
 Once the first approved icon family establishes final canvas dimensions, record that dimension here and reuse it for the whole family:
 
 - Arena icon final canvas: **256×256; display 24–32 px**
-- Tier badge final canvas: **TBD**
+- Tier badge final canvas: **256×256; max artwork extent 224 px**
 - Tab background final size/9-slice contract: **256×128; 22 px source insets on all sides**
-- Button final size/9-slice contract: **TBD**
+- Button final size/9-slice contract: **512×128; 32 px source insets on all sides**
 - Panel frame 9-slice contract: **768×512, 64 px source insets; row 768×160, 48 px source insets**
 
 Do not allow later batches to silently switch canvas geometry.
@@ -739,29 +739,29 @@ Recommended order:
 
 ### Graphics Batch B — Hub controls + tiers
 
-- [ ] Primary button
-- [ ] Secondary button
-- [ ] Danger button
-- [ ] Season icon
-- [ ] Refresh icon
-- [ ] Player Card icon
-- [ ] Info icon
-- [ ] Bronze tier badge
-- [ ] Silver tier badge
-- [ ] Gold tier badge
-- [ ] Diamond tier badge
+- [x] Primary button
+- [x] Secondary button
+- [x] Danger button
+- [x] Season icon
+- [x] Refresh icon
+- [x] Player Card icon
+- [x] Info icon
+- [x] Bronze tier badge
+- [x] Silver tier badge
+- [x] Gold tier badge
+- [x] Diamond tier badge
 
 **Review sheet:** show button hierarchy and all four tier badges side-by-side.
 
 ### Graphics Batch C — Progress + History + Results
 
-- [ ] Progress frame
-- [ ] Progress fill
-- [ ] Reward slot
-- [ ] Play milestone icon
-- [ ] Win milestone icon
-- [ ] Attack history icon
-- [ ] Defense history icon
+- [x] Progress frame
+- [x] Progress fill
+- [x] Reward slot
+- [x] Play milestone icon
+- [x] Win milestone icon
+- [x] Attack history icon
+- [x] Defense history icon
 - [ ] WIN emblem
 - [ ] LOSS emblem
 - [ ] DRAW emblem
@@ -841,6 +841,35 @@ Current rule:
 > Preserve every approved asset. Future graphics batches continue only from unchecked items in this document.
 
 ---
+
+## 2026-10-01 — Arena Hub Extension R1 approved for publication/integration
+
+**Integration base:** `801611fec0980e74db60532540049fa5eb7443b3`
+
+Approved 18 new Arena Hub assets from `ARENA_HUB_EXTENSION_REVIEW_R1` and integrated them without regenerating or altering Hub Core R1.
+
+Completed groups:
+- button family: primary / secondary / danger — 512×128, 32 px source nine-slice insets;
+- utility icons: season / refresh / Player Card / info — 256×256;
+- tier badges: Bronze / Silver / Gold / Diamond — 256×256, shared 224 px maximum artwork extent;
+- progress: frame 512×64 with 16 px source insets, fill 512×32 clipped by percentage, reward slot 256×256;
+- milestone icons: Play / Win — 256×256;
+- history icons: Attack / Defense — 256×256.
+
+Runtime scope:
+- Arena Hub only;
+- manifest/optionalAsset resolution only, no hardcoded R2 URLs;
+- current Tier badge in summary and tier badges in Ranking;
+- Season / Info / Refresh / Player Card utility icons;
+- asset-skinned primary/secondary Hub buttons;
+- compact Play/Win milestone progress using authoritative Attack W/D/L status;
+- Attack/Defense History identity;
+- Arena Battle / Result shared presentation and Battle Core remain unchanged.
+
+Manifest keys and nine-slice metadata are recorded in `r2-upload/ui/arena/GRAPHICS_CONTRACT.json` → `hubExtensionR1`.
+
+Next Arena graphics scope remains Battle/Result only: Surrender button and WIN/LOSS/DRAW result emblems; fallback actor icons only if runtime proves they are needed.
+
 
 # PART O — HANDOFF TEMPLATE
 
