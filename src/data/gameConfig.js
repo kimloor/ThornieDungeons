@@ -5,8 +5,18 @@ function applyGameConfig(cfg) {
   if (!cfg || cfg.error) return;
   try {
     if (Array.isArray(cfg.monsters) && cfg.monsters.length) {
-      const normal = cfg.monsters.filter(m => !m.isBoss).map(monsterFromConfig);
-      const bosses = cfg.monsters.filter(m => m.isBoss).map(monsterFromConfig);
+      const configured = cfg.monsters.map(monsterFromConfig);
+      // Dungeon V2 owns encounter role and combat identity. Legacy admin rows
+      // may still provide presentation/config fields, but an old `isBoss` flag
+      // must not silently move a canonical V2 monster into the wrong pool.
+      const v2Role = monster => {
+        const v2Id = monster.dungeonV2Id || monster.id;
+        if (typeof DUNGEON_V2 !== "undefined" && DUNGEON_V2.getDungeonV2BossProfile(v2Id)) return "boss";
+        if (typeof DUNGEON_V2 !== "undefined" && DUNGEON_V2.getDungeonV2MonsterProfile(v2Id)) return "normal";
+        return monster.isBoss ? "boss" : "normal";
+      };
+      const normal = configured.filter(m => v2Role(m) !== "boss");
+      const bosses = configured.filter(m => v2Role(m) === "boss");
       if (normal.length) ENEMY_POOL = normal;
       if (bosses.length) BOSS_POOL = bosses;
     }
@@ -66,6 +76,9 @@ function monsterFromConfig(m) {
   const staticMatch = (ENEMY_POOL || []).find(s => s.name === m.name) || (BOSS_POOL || []).find(s => s.name === m.name);
   return {
     id: m.id || (staticMatch && staticMatch.id) || slugifyMonsterName(m.name),
+    // Keep the stable runtime id for loot/config joins, but retain the
+    // canonical V2 identity when an old row supplied a renamed/legacy id.
+    dungeonV2Id: (staticMatch && staticMatch.id) || m.id || slugifyMonsterName(m.name),
     name: m.name,
     color: m.color || "#7ED9A8",
     sizeClass: ["small", "medium", "large"].includes(m.sizeClass) ? m.sizeClass : staticMatch?.sizeClass || "medium",

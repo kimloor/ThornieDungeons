@@ -3924,13 +3924,22 @@ function floorEventPreview(monsters) {
     });
   });
   const events = Array.from(modifierEvents.values());
+  const elite = monsters.find(monster => monster.isElite);
+  if (elite) events.push({
+    id: "elite",
+    icon: "♛",
+    name: "Elite Encounter",
+    desc: "ศัตรู Elite ที่คงเอกลักษณ์ของมอนสเตอร์ต้นทาง",
+    color: "#b48cff",
+    effects: ["Enemy HP +30%", "Enemy ATK +10%", "Enemy DEF +5%"]
+  });
   const boss = monsters.find(monster => monster.isBoss);
   if (boss) {
     events.push({
-      id: boss.isEliteBoss ? "elite-boss" : "boss",
+      id: "boss",
       icon: "♛",
-      name: boss.isEliteBoss ? "Elite Boss" : "Boss Gate",
-      desc: boss.isEliteBoss ? "บอสระดับสูง พร้อมหีบการันตี Elite / Mythic" : "เอาชนะบอสเพื่อปลดล็อกหีบรางวัล",
+      name: "Chapter Boss",
+      desc: "เอาชนะบอสประจำ Chapter เพื่อปลดล็อกเส้นทางต่อไป",
       color: "#e2aa38",
       effects: []
     });
@@ -4039,8 +4048,9 @@ function MapScreen({
         const locked = floor > unlockedFloor;
         const current = floor === unlockedFloor;
         const cleared = floor < unlockedFloor;
-        const boss = floor % 5 === 0;
-        const elite = floor % 10 === 0;
+        const encounterType = DUNGEON_V2.classifyDungeonEncounter(floor);
+        const boss = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS;
+        const elite = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.ELITE;
         const slot = gateSlots[index];
         const state = locked ? "locked" : current ? "current" : "cleared";
         return e("button", {
@@ -4057,7 +4067,7 @@ function MapScreen({
           "aria-label": `ชั้น ${floor} ${locked ? "ล็อกอยู่" : current ? "ชั้นปัจจุบัน" : "เคลียร์แล้ว"}`
         },
           e("span", { className: "md-dungeon-floor-number" }, floor),
-          boss && e("span", { className: "md-dungeon-boss-label" }, elite ? "ELITE BOSS" : "BOSS"),
+          (boss || elite) && e("span", { className: "md-dungeon-boss-label" }, elite ? "ELITE" : "BOSS"),
           e("span", { className: "md-dungeon-door" },
             e("img", {
               src: boss ? "ui/dungeon-select/dungeon-gate-boss-v2.webp" : "ui/dungeon-select/dungeon-gate-normal-v2.webp",
@@ -4091,9 +4101,9 @@ function MapScreen({
         onClick: event => event.stopPropagation()
       },
         e("button", { type: "button", className: "md-floor-detail-x", onClick: () => setDetail(null), "aria-label": "ปิด" }, "✕"),
-        e("div", { className: `md-floor-detail-heading${detail.floor % 5 === 0 ? " boss" : ""}` },
+        e("div", { className: `md-floor-detail-heading${DUNGEON_V2.classifyDungeonEncounter(detail.floor) !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL ? " boss" : ""}` },
           e("div", { className: "md-floor-title" },
-            e("small", null, detail.floor % 5 === 0 ? "BOSS GATE" : "DUNGEON FLOOR"),
+            e("small", null, DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS ? "CHAPTER BOSS" : DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.ELITE ? "ELITE ENCOUNTER" : "DUNGEON FLOOR"),
             e("h2", { id: "md-floor-detail-title" }, "ชั้น ", detail.floor)
           ),
           e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, formatNumber(recommendedFloorCp(detail.monsters))))
@@ -4693,7 +4703,7 @@ const PET_COMBAT_VISUAL_SIZES = {
 function getMonsterPresentation(enemy) {
   const config = getMonsterSpriteConfig(enemy);
   const configuredSize = config?.presentation?.sizeClass;
-  const requestedSize = enemy?.isEliteBoss ? "elite" : configuredSize || enemy?.sizeClass || (enemy?.isBoss ? "large" : "medium");
+  const requestedSize = (enemy?.isElite || enemy?.isEliteBoss) ? "elite" : configuredSize || enemy?.sizeClass || (enemy?.isBoss ? "large" : "medium");
   const sizeClass = MONSTER_VISUAL_SIZES[requestedSize] ? requestedSize : "medium";
   const configuredAnchor = config?.presentation?.anchorType;
   const anchorType = configuredAnchor === "flying" || enemy?.anchorType === "flying" ? "flying" : "ground";
@@ -4748,7 +4758,7 @@ function EnemySprite({
   }, enemy.hp, "/", enemy.maxHp)), /*#__PURE__*/React.createElement("div", {
     className: "md-unit-status",
     "aria-label": "Enemy status effects"
-  }, enemy.isEliteBoss && /*#__PURE__*/React.createElement("span", {
+  }, (enemy.isElite || enemy.isEliteBoss) && /*#__PURE__*/React.createElement("span", {
     className: "elite",
     title: "Elite Boss"
   }, "👑 ELITE"), enemy.frozenTurns > 0 && /*#__PURE__*/React.createElement("span", {
@@ -4952,7 +4962,7 @@ function buildMonsterFormation(monsters) {
     return aFlying - bFlying || a.encounterIndex - b.encounterIndex;
   }).map(entry => entry.monster);
   const count = Math.min(3, Math.max(1, ordered.length));
-  const boss = ordered.find(monster => monster.isBoss || monster.isEliteBoss);
+  const boss = ordered.find(monster => monster.isBoss || monster.isEliteBoss || monster.isElite);
   if (boss) {
     const adds = ordered.filter(monster => monster !== boss);
     if (count === 1) return [{ monster: boss, slotIndex: 1 }];
@@ -5056,7 +5066,7 @@ function CombatScreen({
   const xpNeed = xpToNext(player.level);
   const xpPct = player.level >= MAX_LEVEL ? 100 : Math.max(0, Math.min(100, player.xp / xpNeed * 100));
   const primaryEnemy = monsters.find(m => m.uid === targetUid && m.hp > 0) || monsters.find(m => m.hp > 0) || monsters[0];
-  const bossOrModifier = monsters.find(m => m.isEliteBoss || m.modifier);
+  const bossOrModifier = monsters.find(m => m.isElite || m.isEliteBoss || m.modifier);
   const modifierBanner = bossOrModifier?.modifier && String(bossOrModifier.modifier.name || "").trim()
     ? {
         icon: String(bossOrModifier.modifier.icon || "✨"),
@@ -5293,7 +5303,7 @@ function CombatScreen({
     style: phaserActive ? { display: "none" } : undefined
   }, formationMonsters.map(({ monster: m, slotIndex }) => /*#__PURE__*/React.createElement("div", {
     key: m.uid,
-    className: `md-monster-slot md-monster-slot-${slotIndex} ${m.isEliteBoss ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
+    className: `md-monster-slot md-monster-slot-${slotIndex} ${(m.isElite || m.isEliteBoss) ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
     anim: enemyAnims[m.uid],

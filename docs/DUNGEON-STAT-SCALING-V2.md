@@ -4,7 +4,7 @@ Status: **LOCKED / USER-APPROVED — READY FOR V2 IMPLEMENTATION**
 
 Scope: Dungeon Normal Monster, Elite, pack, and Chapter Boss combat-stat scaling.
 
-Implementation status: **DESIGN CONTRACT ONLY — not yet production behavior.**
+Implementation status: **WAVE 1 FEATURE-BRANCH IMPLEMENTATION — pending independent QA; not production behavior until release.**
 
 This document defines the approved Dungeon V2 stat-scaling direction. Current production formulas in `src/systems/stats.js` remain the live implementation until a separate implementation task replaces them.
 

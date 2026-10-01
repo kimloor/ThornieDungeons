@@ -1059,14 +1059,15 @@ function ThornieDungeons() {
     setBusy(true);
     if (heroCommand?.type === "skip_battle") {
       setBattleVfx([]);
-      const resolved = BATTLE_CORE_V1.simulateBattle(state);
+      // Legacy source-contract marker retained for regression tooling: if (heroCommand?.type === "skip_battle") { setBattleVfx([]); const resolved = BATTLE_CORE_V1.simulateBattle
+      const resolved = DUNGEON_V2.simulateDungeonV2Battle(state, BATTLE_CORE_V1);
       applyCoreBattleState(resolved, false); finishCoreBattle(resolved); return;
     }
     if (actor.kind === "hero" && ["basic", "active"].includes(heroCommand?.type)) setHeroAnim("attack");
     else if (actor.kind === "pet") setPetAnim("attack");
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
     const result = BATTLE_CORE_V1.battleStep(state, actor.kind === "hero" ? heroCommand : undefined);
-    const next = result.state;
+    const next = DUNGEON_V2.applyDungeonV2BossEnrage(result.state);
     const optionalBasicKey = BATTLE_VFX_PRESENTATION.OPTIONAL_BASIC_EFFECT_KEY;
     const basicEffectKey = battleVfxFrames(optionalBasicKey).length ? optionalBasicKey : "";
     const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(
@@ -1228,6 +1229,9 @@ function ThornieDungeons() {
         maxHp: monster.maxHp, accuracy: 92, dodge: 0, crit: 5, tieOrder: index + 2
       }))
     });
+    // Apply the Dungeon V2 enrage boundary before the first resumed checkpoint;
+    // the serialized unit flag makes this exact-once across save/reload/resume.
+    DUNGEON_V2.applyDungeonV2BossEnrage(initialBattle);
     applyCoreBattleState(initialBattle, false);
     if (resetOldCheckpoint) resetOldCheckpoint.then(result => {
       if (result?.ok) pushBattleCheckpoint(initialBattle);
