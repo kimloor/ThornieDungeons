@@ -10645,9 +10645,748 @@ class PhaserBattleActor {
       .setVisible(Boolean(this.data.statuses?.length));
 
     this.hpBar.clear();
-    const maxHp = Math.max(1, Number(this.data.max
-... 27196 bytes omitted ...
-es(team)).filter(Boolean).forEach(actor => actor.destroy());
+    const maxHp = Math.max(1, Number(this.data.maxHp) || 1);
+    const hp = Math.max(0, Math.min(maxHp, Number(this.data.hp) || 0));
+    const hpPct = hp / maxHp;
+    const barWidth = Math.max(54, Math.min(112, size * 0.78));
+    const barY = this.data.kind === "pet" ? 2 : 14;
+    this.hpBar.fillStyle(0x071126, 0.82).fillRoundedRect(-barWidth / 2, barY, barWidth, 8, 4);
+    this.hpBar.fillStyle(alive ? 0x55d68b : 0x8c93a3, 1)
+      .fillRoundedRect(-barWidth / 2 + 1, barY + 1, Math.max(0, (barWidth - 2) * hpPct), 6, 3);
+    this.hpBar.lineStyle(1, 0xffffff, 0.35).strokeRoundedRect(-barWidth / 2, barY, barWidth, 8, 4);
+
+    this.statusText.setPosition(0, -Math.round(size * 0.72) - 4);
+    this.hpTextOffsetY = barY + 10;
+    this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
+    const nameY = this.data.kind === "pet" ? 22 : 34;
+    this.nameText.setPosition(0, nameY);
+    this.refreshTargetingPresentation();
+  }
+
+  refresh(data, { animate = true } = {}) {
+    this.data = { ...this.data, ...(data || {}) };
+    this.applyFacing();
+    const state = this.desiredVisualState();
+    const displayedState = animate || !this.visualState ? state : this.visualState;
+    this.applyVisualFrame(displayedState === "hurt" ? "idle" : displayedState, this.frameIndex);
+    this.setVisualAlpha(displayedState === "death" ? 0.72 : 1);
+    this.refreshHud();
+    this.reposition(this.position || { x: 0, y: 0 });
+    if (animate) return this.playVisualState(state, this.data.combatSpeed || 1);
+    return Promise.resolve();
+  }
+
+  reposition(position) {
+    this.position = position || this.position || { x: 0, y: 0 };
+    this.container.setPosition(this.position.x, this.position.y);
+    this.hpBar.setPosition(this.position.x, this.position.y);
+    this.hpText?.setPosition(this.position.x, this.position.y + (this.hpTextOffsetY || 0));
+    this.refreshTargetingPresentation();
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.stopAnimationPlayback();
+    this.scene?.events?.off("shutdown", this.handleSceneShutdown);
+
+    // statusText/nameText/visualRoot/sprite are children of container and are
+    // destroyed by container.destroy(true). Destroying them again can throw
+    // inside Phaser during scene teardown.
+    const container = this.container;
+    const hpBar = this.hpBar;
+    const hpText = this.hpText;
+    const targetRing = this.targetRing;
+    const hitArea = this.hitArea;
+
+    this.container = null;
+    this.visualRoot = null;
+    this.sprite = null;
+    this.hpBar = null;
+    this.statusText = null;
+    this.nameText = null;
+    this.hpText = null;
+    this.targetRing = null;
+    this.hitArea = null;
+    this.handleSceneShutdown = null;
+
+    container?.destroy(true);
+    hpBar?.destroy();
+    hpText?.destroy();
+    targetRing?.destroy();
+    hitArea?.destroy();
+    this.scene = null;
+  }
+}
+
+// ===== phaser/renderers/HeroRenderer.js =====
+// ---------- W7 Shared Hero Renderer ----------
+// Renders normalized layered Hero presentation models from both the production
+// V3 fallback contract and the production-default V5 G2 contract. Asset/equipment resolution remains
+// outside this renderer so Combat, Arena and future previews share one renderer.
+class HeroRenderer {
+  constructor(scene, {
+    root = null,
+    data = {},
+    displaySize = 150,
+    textureKey = null
+  } = {}) {
+    this.scene = scene;
+    this.root = root || scene.add.container(0, 0);
+    this.ownsRoot = !root;
+    this.data = data || {};
+    this.displaySizeSource = displaySize;
+    this.textureKeySource = textureKey;
+    this.layerImages = [];
+    this.destroyed = false;
+  }
+
+  setData(data) {
+    this.data = data || {};
+    return this;
+  }
+
+  displaySize() {
+    const value = typeof this.displaySizeSource === "function"
+      ? this.displaySizeSource()
+      : this.displaySizeSource;
+    return Math.max(1, Number(value) || 1);
+  }
+
+  textureKey(reference) {
+    if (typeof this.textureKeySource === "function") return this.textureKeySource(reference);
+    if (typeof this.scene?.assetKey === "function") return this.scene.assetKey(reference);
+    if (typeof this.scene?.textureRegistry?.keyFor === "function") return this.scene.textureRegistry.keyFor(reference);
+    return "";
+  }
+
+  layerSetForState(state) {
+    const sets = this.data.layerFrames || {};
+    if (state === "attack" && Array.isArray(sets.attack) && sets.attack.length) return sets.attack;
+    if (state === "death" && Array.isArray(sets.death) && sets.death.length) return sets.death;
+    return Array.isArray(sets.idle) && sets.idle.length ? sets.idle : [this.data.layers || []];
+  }
+
+  visualFrameCount(state) {
+    return Math.max(1, this.layerSetForState(state).length || 1);
+  }
+
+  ensureLayerImages(layers) {
+    const size = this.displaySize();
+    (layers || []).forEach((layer, index) => {
+      let entry = this.layerImages.find(item => item.name === layer.name);
+      if (!entry) {
+        const key = this.textureKey(layer.url);
+        if (!key || !this.scene?.textures?.exists(key)) return;
+        const image = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
+        // Presentation models already arrive in authored bottom-to-top order.
+        this.root.addAt(image, Math.min(index, this.root.list?.length || 0));
+        entry = { name: layer.name, image };
+        this.layerImages.push(entry);
+      }
+      entry.image.setDisplaySize(size, size);
+    });
+  }
+
+  applyVisualFrame(state, index = 0) {
+    const frames = this.layerSetForState(state);
+    const layers = frames[Math.min(Math.max(0, index), Math.max(0, frames.length - 1))] || this.data.layers || [];
+    this.ensureLayerImages(layers);
+    const size = this.displaySize();
+    const canvasWidth = Math.max(1, Number(this.data.layerFrames?.canvas?.width) || 1254);
+    const canvasHeight = Math.max(1, Number(this.data.layerFrames?.canvas?.height) || 1254);
+
+    this.layerImages.forEach(entry => {
+      const layer = layers.find(candidate => candidate.name === entry.name);
+      if (!layer) {
+        entry.image.setVisible(false);
+        return;
+      }
+      const key = this.textureKey(layer.url);
+      if (key && this.scene?.textures?.exists(key) && entry.image.texture.key !== key) entry.image.setTexture(key);
+      const scale = Number(layer.scale ?? 1);
+      entry.image
+        .setVisible(true)
+        .setDisplaySize(size * scale, size * scale)
+        .setPosition(
+          (Number(layer.x) || 0) * size / canvasWidth,
+          (Number(layer.y) || 0) * size / canvasHeight
+        )
+        .setAngle(Number(layer.rotation) || 0);
+    });
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.layerImages.forEach(entry => entry.image?.destroy());
+    this.layerImages = [];
+    if (this.ownsRoot) this.root?.destroy(true);
+    this.root = null;
+    this.scene = null;
+  }
+}
+
+// ===== phaser/actors/HeroActor.js =====
+// ---------- W6 Combat Hero Actor Wrapper ----------
+class HeroActor extends PhaserBattleActor {
+  constructor(scene, data, options = {}) {
+    super(scene, data, { baseSize: 150, depth: 7, ...options });
+    this.heroRenderer = new HeroRenderer(scene, {
+      root: this.visualRoot,
+      data: this.data,
+      displaySize: () => this.displaySize(),
+      textureKey: reference => this.scene.assetKey(reference)
+    });
+  }
+
+  isV5Presentation() {
+    return String(this.data?.visualMode || "").startsWith("v5-g2");
+  }
+
+  displaySize() {
+    const base = super.displaySize();
+    return this.isV5Presentation() ? Math.round(base * 1.30) : base;
+  }
+
+  hurtVisualState() {
+    return this.isV5Presentation() ? "death" : super.hurtVisualState();
+  }
+
+  frameDelayForState(state) {
+    if (this.isV5Presentation()) {
+      const configured = Number(this.data?.layerFrames?.frameMs?.[state]);
+      if (Number.isFinite(configured) && configured > 0) return configured;
+    }
+    return super.frameDelayForState(state);
+  }
+
+  visualFrameCount(state) {
+    return this.heroRenderer
+      ? this.heroRenderer.setData(this.data).visualFrameCount(state)
+      : 1;
+  }
+
+  applyVisualFrame(state, index = 0) {
+    this.heroRenderer?.setData(this.data).applyVisualFrame(state, index);
+  }
+
+  destroy() {
+    this.heroRenderer?.destroy();
+    this.heroRenderer = null;
+    super.destroy();
+  }
+}
+
+// ===== phaser/actors/PetActor.js =====
+// ---------- W5 Pet Actor ----------
+class PetActor extends PhaserBattleActor {
+  constructor(scene, data, options = {}) {
+    // Pet stands in the foreground lane. Keep its sprite above the Hero HUD when
+    // narrow screens make the two lanes overlap visually.
+    super(scene, data, { baseSize: 118, depth: 8, ...options });
+  }
+}
+
+// ===== phaser/actors/MonsterActor.js =====
+// ---------- W5 Monster Actor ----------
+class MonsterActor extends PhaserBattleActor {
+  constructor(scene, data, onSelect) {
+    super(scene, data, {
+      baseSize: 106,
+      depth: 5,
+      onSelect,
+      targetRingWidth: 84,
+      targetRingHeight: 28
+    });
+  }
+
+  // Production monster artwork is authored facing left. Keep logical facing
+  // for attack/recoil motion, but invert only the visual mirror baseline.
+  applyFacing() {
+    if (!this.visualRoot) return;
+    this.visualRoot.setScale(this.facing() === "left" ? 1 : -1, 1);
+  }
+}
+
+// ===== phaser/presentation/PresentationQueue.js =====
+// ---------- W6 Shared Presentation Queue ----------
+const PRESENTATION_QUEUE_CONTRACT = Object.freeze({
+  version: 1,
+  minSpeed: 1,
+  maxSpeed: 2
+});
+
+function normalizePresentationTask(entry) {
+  if (typeof entry === "function") return Object.freeze({ run: entry });
+  if (entry && typeof entry.run === "function") return entry;
+  return null;
+}
+
+// This queue is intentionally presentation-only. It serializes already-resolved
+// visual callbacks and has no access to gameplay, rewards, persistence or saves.
+function createPresentationQueue({ onDrained, onError } = {}) {
+  const entries = [];
+  let running = false;
+  let speed = 1;
+  let drainPromise = Promise.resolve();
+  let resolveDrain = null;
+
+  function notifyDrained() {
+    if (!running && entries.length === 0) {
+      onDrained?.();
+      resolveDrain?.();
+      resolveDrain = null;
+      drainPromise = Promise.resolve();
+    }
+  }
+
+  async function run() {
+    if (running) return;
+    running = true;
+    while (entries.length) {
+      const task = entries.shift();
+      try {
+        await task.run(speed);
+      } catch (error) {
+        onError?.(error);
+      }
+    }
+    running = false;
+    notifyDrained();
+  }
+
+  function enqueue(entry) {
+    const task = normalizePresentationTask(entry);
+    if (task) entries.push(task);
+    if (!running && entries.length) void run();
+    if (running || entries.length) {
+      drainPromise = new Promise(resolve => { resolveDrain = resolve; });
+    }
+    return drainPromise;
+  }
+
+  return Object.freeze({
+    contract: PRESENTATION_QUEUE_CONTRACT,
+    enqueue,
+    clear() { entries.splice(0, entries.length); },
+    setSpeed(value) {
+      speed = Math.max(
+        PRESENTATION_QUEUE_CONTRACT.minSpeed,
+        Math.min(PRESENTATION_QUEUE_CONTRACT.maxSpeed, Number(value) || 1)
+      );
+    },
+    getSpeed: () => speed,
+    isBusy: () => running || entries.length > 0,
+    whenDrained: () => drainPromise
+  });
+}
+
+// ===== phaser/presentation/VfxManager.js =====
+// ---------- W6 Shared Phaser VFX Manager ----------
+// Consumes already-resolved presentation effects only. It never decides hits,
+// damage, status application, turn order or any other gameplay outcome.
+class VfxManager {
+  constructor(scene, {
+    assetResolver = SHARED_PHASER_ASSET_RESOLVER,
+    textureRegistry = scene?.textureRegistry || null,
+    frameResolver = null,
+    positionResolver = null
+  } = {}) {
+    this.scene = scene;
+    this.assetResolver = assetResolver;
+    this.textureRegistry = textureRegistry;
+    this.frameResolver = frameResolver || (effectKey =>
+      typeof battleVfxFrames === "function" ? battleVfxFrames(effectKey) : []
+    );
+    this.positionResolver = positionResolver;
+    this.active = new Set();
+  }
+
+  framesFor(effectKey) {
+    const rawFrames = this.frameResolver?.(effectKey) || [];
+    return (rawFrames || [])
+      .map(frame => this.assetResolver.resolve(frame))
+      .filter(Boolean);
+  }
+
+  collectFrames(effectKeys) {
+    return [...new Set((effectKeys || []).flatMap(effectKey => this.framesFor(effectKey)))];
+  }
+
+  queueAssets(effectKeys) {
+    if (!this.textureRegistry) return [];
+    return this.textureRegistry.queue(this.scene, this.collectFrames(effectKeys));
+  }
+
+  resolvePosition(effect) {
+    if (typeof this.positionResolver === "function") {
+      const resolved = this.positionResolver(effect);
+      if (resolved) return resolved;
+    }
+    return effect?.position || {
+      x: Number(effect?.x) || 0,
+      y: Number(effect?.y) || 0
+    };
+  }
+
+  wait(ms) {
+    if (!(ms > 0) || !this.scene?.time?.delayedCall) return Promise.resolve();
+    return new Promise(resolve => this.scene.time.delayedCall(ms, resolve));
+  }
+
+  async play(effect, { speed = 1 } = {}) {
+    const effectKey = effect?.effectKey || effect?.key;
+    const frames = this.framesFor(effectKey);
+    if (!frames.length || !this.textureRegistry || !this.scene?.add?.image) return false;
+
+    const position = this.resolvePosition(effect);
+    const firstKey = this.textureRegistry.keyFor(frames[0]);
+    if (!firstKey || !this.scene?.textures?.exists(firstKey)) return false;
+
+    const image = this.scene.add.image(Number(position?.x) || 0, Number(position?.y) || 0, firstKey);
+    image.setOrigin?.(0.5, 0.5);
+    image.setDepth?.(Number(effect?.depth) || 20);
+    if (Number(effect?.displaySize) > 0) image.setDisplaySize?.(Number(effect.displaySize), Number(effect.displaySize));
+    if (Number.isFinite(Number(effect?.alpha))) image.setAlpha?.(Number(effect.alpha));
+    this.active.add(image);
+
+    const frameMs = Math.max(16, Number(effect?.frameMs) || 70);
+    const playbackSpeed = Math.max(1, Number(speed) || 1);
+    try {
+      for (let index = 0; index < frames.length; index += 1) {
+        const key = this.textureRegistry.keyFor(frames[index]);
+        if (key && this.scene?.textures?.exists(key) && image.texture?.key !== key) image.setTexture?.(key);
+        if (index < frames.length - 1) await this.wait(Math.round(frameMs / playbackSpeed));
+      }
+      return true;
+    } finally {
+      this.active.delete(image);
+      image.destroy?.();
+    }
+  }
+
+  clear() {
+    this.active.forEach(image => image?.destroy?.());
+    this.active.clear();
+  }
+
+  destroy() {
+    this.clear();
+    this.scene = null;
+    this.textureRegistry = null;
+  }
+}
+
+function createVfxManager(scene, options = {}) {
+  return new VfxManager(scene, options);
+}
+
+// ===== phaser/scenes/BattleScene.js =====
+// ---------- W6 Shared-asset Dungeon/Arena Combat Scene Shell ----------
+function isArenaPresentationSnapshot(snapshot) {
+  return snapshot?.mode === "arena" && Array.isArray(snapshot?.teams);
+}
+
+function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTargetSelected } = {}) {
+  return class BattleScene extends Phaser.Scene {
+    constructor() {
+      super({ key: "BattleScene" });
+      this.initialSnapshot = initialSnapshot || null;
+      this.snapshot = null;
+      this.actors = { hero: null, pet: null, monsters: [] };
+      this.arenaActors = {
+        attacker: { hero: null, pet: null },
+        defender: { hero: null, pet: null }
+      };
+      this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
+      this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
+      this.readyNotified = false;
+      this.presentationQueue = createPresentationQueue({ onError });
+      this.vfxManager = createVfxManager(this, {
+        assetResolver: this.assetResolver,
+        textureRegistry: this.textureRegistry
+      });
+      this.presentationScale = 1;
+      this.lastArenaCueSeq = -1;
+      this.lastArenaBattleId = null;
+      this.handleResize = this.handleResize.bind(this);
+    }
+
+    assetKey(reference) {
+      // Compatibility surface for W5 actors; key ownership now lives in the
+      // shared registry and can be reused by future scenes/renderers.
+      return this.textureRegistry.keyFor(reference);
+    }
+
+    collectHeroAssets(hero, assets) {
+      (hero?.layers || []).forEach(layer => assets.push(layer.url));
+      const heroSets = hero?.layerFrames || {};
+      ["idle", "attack", "death"].forEach(anim => {
+        (heroSets?.[anim] || []).forEach(frameLayers => {
+          (frameLayers || []).forEach(layer => assets.push(layer.url));
+        });
+      });
+    }
+
+    collectUnitAssets(unit, assets) {
+      if (!unit) return;
+      assets.push(
+        ...(unit.frames?.idle || []),
+        ...(unit.frames?.attack || []),
+        ...(unit.frames?.death || [])
+      );
+    }
+
+    collectAssets(snapshot) {
+      const assets = [];
+      if (isArenaPresentationSnapshot(snapshot)) {
+        (snapshot.teams || []).forEach(team => {
+          this.collectHeroAssets(team?.hero, assets);
+          this.collectUnitAssets(team?.pet, assets);
+        });
+      } else {
+        this.collectHeroAssets(snapshot?.hero, assets);
+        [snapshot?.pet, ...(snapshot?.monsters || [])].filter(Boolean).forEach(unit => {
+          this.collectUnitAssets(unit, assets);
+        });
+      }
+      return this.assetResolver.resolveAll(assets);
+    }
+
+    preload() {
+      const assets = this.collectAssets(this.initialSnapshot);
+      this.textureRegistry.queue(this, assets);
+      this.load.on("loaderror", file => {
+        // Optional art failure is presentation-local. Actors retain a readable
+        // vector fallback and the DOM renderer remains available above us.
+        if (file?.key) this.textureRegistry.forget(file.key);
+      });
+    }
+
+    create() {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+      this.scale.on("resize", this.handleResize, this);
+      this.snapshot = this.initialSnapshot;
+      try {
+        this.createActors();
+        this.sync(this.snapshot);
+        this.readyNotified = true;
+        onReady?.({ scene: this });
+      } catch (error) {
+        onError?.(error);
+      }
+    }
+
+    createActors() {
+      if (!this.snapshot) return;
+      if (isArenaPresentationSnapshot(this.snapshot)) {
+        this.createArenaActors();
+        return;
+      }
+      this.actors.hero = new HeroActor(this, this.snapshot.hero || {});
+      if (this.snapshot.pet) this.actors.pet = new PetActor(this, this.snapshot.pet);
+      this.actors.monsters = (this.snapshot.monsters || []).map(monster => new MonsterActor(this, monster, id => onTargetSelected?.(id)));
+    }
+
+    arenaTeam(role) {
+      return (this.snapshot?.teams || []).find(team => team?.role === role)
+        || (role === "attacker" ? this.snapshot?.teams?.[0] : this.snapshot?.teams?.[1])
+        || null;
+    }
+
+    createArenaActor(data, selectable = false) {
+      if (!data) return null;
+      const options = selectable ? { onSelect: id => onTargetSelected?.(id) } : {};
+      return data.kind === "pet"
+        ? new PetActor(this, data, options)
+        : new HeroActor(this, data, options);
+    }
+
+    createArenaActors() {
+      const attacker = this.arenaTeam("attacker");
+      const defender = this.arenaTeam("defender");
+      this.arenaActors.attacker.hero = this.createArenaActor(attacker?.hero, false);
+      this.arenaActors.attacker.pet = this.createArenaActor(attacker?.pet, false);
+      this.arenaActors.defender.hero = this.createArenaActor(defender?.hero, true);
+      this.arenaActors.defender.pet = this.createArenaActor(defender?.pet, true);
+    }
+
+    consume(event) {
+      if (!event || event.type !== "BATTLEFIELD_SYNC") return;
+      try {
+        this.sync(event.snapshot);
+      } catch (error) {
+        onError?.(error);
+      }
+    }
+
+    queueActorAnimation(actor, data, animationJobs) {
+      if (!actor || !data) return;
+      actor.refresh(data, { animate: false });
+      const state = actor.desiredVisualState();
+      if (state !== actor.visualState) animationJobs.push([actor, state]);
+    }
+
+    syncArenaActor(role, kind, data, animationJobs) {
+      let actor = this.arenaActors[role][kind];
+      if (data && !actor) {
+        actor = this.createArenaActor(data, role === "defender");
+        this.arenaActors[role][kind] = actor;
+      }
+      if (!data && actor) {
+        actor.destroy();
+        this.arenaActors[role][kind] = null;
+        return;
+      }
+      if (!actor || !data) return;
+      this.queueActorAnimation(actor, data, animationJobs);
+      actor.setSelected(role === "defender" && data.id === this.snapshot.selectedTargetId);
+    }
+
+    syncArena(snapshot) {
+      this.presentationQueue.setSpeed(snapshot.combatSpeed || 1);
+      const animationJobs = [];
+      const isFirstSnapshot = this.lastArenaBattleId !== snapshot.battleId;
+      if (isFirstSnapshot) {
+        this.lastArenaBattleId = snapshot.battleId;
+      }
+      const allCues = (Array.isArray(snapshot.animationCues) ? snapshot.animationCues : [])
+        .filter(cue => Number.isFinite(Number(cue?.seq)));
+      const cues = (isFirstSnapshot ? [] : allCues)
+        .filter(cue => Number(cue?.seq) > this.lastArenaCueSeq);
+      if (isFirstSnapshot) {
+        // A first snapshot may include the authoritative historical log on
+        // resume. Establish a baseline without replaying old presentation.
+        this.lastArenaCueSeq = allCues.reduce((max, cue) => Math.max(max, Number(cue.seq)), -1);
+      }
+      if (cues.length) this.lastArenaCueSeq = Math.max(...cues.map(cue => Number(cue.seq) || 0));
+      const attacker = this.arenaTeam("attacker");
+      const defender = this.arenaTeam("defender");
+      this.syncArenaActor("attacker", "hero", attacker?.hero, animationJobs);
+      this.syncArenaActor("attacker", "pet", attacker?.pet, animationJobs);
+      this.syncArenaActor("defender", "hero", defender?.hero, animationJobs);
+      this.syncArenaActor("defender", "pet", defender?.pet, animationJobs);
+      this.layoutArenaActors();
+      this.enqueueArenaAnimations(animationJobs, cues);
+    }
+
+    sync(snapshot) {
+      if (!snapshot) return;
+      this.snapshot = snapshot;
+      if (isArenaPresentationSnapshot(snapshot)) {
+        this.syncArena(snapshot);
+        return;
+      }
+
+      const monsterCount = Math.max(1, Math.min(3, snapshot.monsters?.length || 1));
+      this.presentationQueue.setSpeed(snapshot.combatSpeed || 1);
+      if (!this.actors.hero) this.createActors();
+
+      const animationJobs = [];
+      const heroData = snapshot.hero || {};
+      this.queueActorAnimation(this.actors.hero, heroData, animationJobs);
+
+      if (snapshot.pet && !this.actors.pet) this.actors.pet = new PetActor(this, snapshot.pet);
+      if (!snapshot.pet && this.actors.pet) { this.actors.pet.destroy(); this.actors.pet = null; }
+      this.queueActorAnimation(this.actors.pet, snapshot.pet || null, animationJobs);
+
+      (snapshot.monsters || []).forEach((monster, index) => {
+        let actor = this.actors.monsters[index];
+        if (!actor) {
+          actor = new MonsterActor(this, monster, id => onTargetSelected?.(id));
+          this.actors.monsters[index] = actor;
+        }
+        this.queueActorAnimation(actor, monster, animationJobs);
+        actor.setSelected(monster.id === snapshot.selectedTargetId);
+      });
+
+      this.actors.monsters.slice(snapshot.monsters?.length || 0).forEach(actor => actor.destroy());
+      this.actors.monsters.length = snapshot.monsters?.length || 0;
+      this.layoutActors(monsterCount);
+      this.enqueueAnimations(animationJobs);
+    }
+
+    enqueueAnimations(animationJobs) {
+      if (!animationJobs.length) return;
+      void this.presentationQueue.enqueue({
+        run: speed => Promise.all(animationJobs.map(([actor, state]) =>
+          actor.playVisualState(state, speed)
+        ))
+      });
+    }
+
+    arenaActorById(actorId) {
+      const key = String(actorId || "");
+      return Object.values(this.arenaActors)
+        .flatMap(team => Object.values(team))
+        .find(actor => String(actor?.data?.id || "") === key) || null;
+    }
+
+    enqueueArenaAnimations(animationJobs, cues) {
+      if (!animationJobs.length && !cues.length) return;
+      void this.presentationQueue.enqueue({
+        run: async speed => {
+          // The authoritative log is already in speed-queue order. Keep that order
+          // for presentation without allowing Phaser to resolve or reorder combat.
+          for (const cue of cues) {
+            const actor = this.arenaActorById(cue.actorId);
+            if (actor) await actor.playVisualState(cue.animation || "attack", speed, { force: true });
+          }
+          for (const [actor, state] of animationJobs) {
+            if (actor) await actor.playVisualState(state, speed);
+          }
+        }
+      });
+    }
+
+    layoutActors(monsterCount) {
+      const width = Math.max(1, this.scale.width || this.game.config.width || 1);
+      const height = Math.max(1, this.scale.height || this.game.config.height || 1);
+      const layout = responsiveBattlefieldLayout(width, height, monsterCount);
+      this.presentationScale = layout.actorScale;
+      const actors = [this.actors.hero, this.actors.pet, ...this.actors.monsters].filter(Boolean);
+      actors.forEach(actor => actor.refresh(actor.data, { animate: false }));
+      this.actors.hero?.reposition(layout.pixels.hero);
+      this.actors.pet?.reposition(layout.pixels.pet);
+      this.actors.monsters.forEach((actor, index) => actor.reposition(layout.pixels.monsters[index] || layout.pixels.monsters[0]));
+    }
+
+    layoutArenaActors() {
+      const width = Math.max(1, this.scale.width || this.game.config.width || 1);
+      const height = Math.max(1, this.scale.height || this.game.config.height || 1);
+      const layout = responsiveArenaBattlefieldLayout(width, height);
+      this.presentationScale = layout.actorScale;
+      const actors = [
+        this.arenaActors.attacker.hero,
+        this.arenaActors.attacker.pet,
+        this.arenaActors.defender.hero,
+        this.arenaActors.defender.pet
+      ].filter(Boolean);
+      actors.forEach(actor => actor.refresh(actor.data, { animate: false }));
+      this.arenaActors.attacker.hero?.reposition(layout.pixels.attackerHero);
+      this.arenaActors.attacker.pet?.reposition(layout.pixels.attackerPet);
+      this.arenaActors.defender.hero?.reposition(layout.pixels.defenderHero);
+      this.arenaActors.defender.pet?.reposition(layout.pixels.defenderPet);
+    }
+
+    handleResize(gameSize) {
+      const width = Math.max(1, gameSize?.width || this.scale.width || 1);
+      const height = Math.max(1, gameSize?.height || this.scale.height || 1);
+      if (isArenaPresentationSnapshot(this.snapshot)) {
+        this.layoutArenaActors(width, height);
+        return;
+      }
+      this.layoutActors(this.snapshot?.monsters?.length || 1);
+    }
+
+    shutdown() {
+      this.scale.off("resize", this.handleResize, this);
+      this.presentationQueue?.clear();
+      this.vfxManager?.destroy();
+      this.vfxManager = null;
+      Object.values(this.actors).flatMap(value => Array.isArray(value) ? value : [value]).filter(Boolean).forEach(actor => actor.destroy());
+      Object.values(this.arenaActors).flatMap(team => Object.values(team)).filter(Boolean).forEach(actor => actor.destroy());
       this.actors = { hero: null, pet: null, monsters: [] };
       this.arenaActors = {
         attacker: { hero: null, pet: null },
