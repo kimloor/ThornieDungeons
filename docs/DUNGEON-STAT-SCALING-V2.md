@@ -1,6 +1,6 @@
 # ThornieDungeons — Dungeon Stat Scaling V2
 
-Status: **ACTIVE-DESIGN / USER-APPROVED**
+Status: **LOCKED / USER-APPROVED — READY FOR V2 IMPLEMENTATION**
 
 Scope: Dungeon Normal Monster, Elite, pack, and Chapter Boss combat-stat scaling.
 
@@ -18,7 +18,7 @@ The approved scaling is designed around the following player-side assumptions:
 - Existing stat meanings remain unchanged unless separately redesigned.
 - Equipment Tier/Rarity follows `DUNGEON-REWARD-PROGRESSION-V2.md`.
 - The approved base equipment-stat budget may be considered when validating combat pacing.
-- **Enhance V2, Empower V2, Mythic Boss Weapon Signatures, and Azure/Robot/Skeleton Set Effects are now locked in `DUNGEON-REWARD-PROGRESSION-V2.md`.** They remain additional player-power headroom rather than mandatory baseline power for every character.
+- **Enhance V2, Empower V2, Mythic Boss Weapon Signatures, Azure/Robot/Skeleton Set Effects, Raid Wings, and Raid reward gear rules are locked in `DUNGEON-REWARD-PROGRESSION-V2.md`.** They remain additional player-power headroom rather than mandatory baseline power for every character.
 - Pet, Hero Skill, Critical Hit, and other build effects are also additional combat power and should not be assumed as mandatory baseline power.
 
 The target is not to make every build require the same number of actions. Offensive builds should clear faster while accepting lower survivability.
@@ -95,6 +95,7 @@ Do not flatten all monsters back to identical stats merely because they share th
 
 ---
 
+
 ## 6. Multi-monster pack scaling
 
 Normal multi-monster encounters soften each monster's HP and ATK.
@@ -103,17 +104,23 @@ Normal multi-monster encounters soften each monster's HP and ATK.
 | --- | ---: | ---: | ---: |
 | 1 monster | ×1.00 | ×1.00 | unchanged |
 | 2 monsters | ×0.72 | ×0.72 | unchanged |
-| 3 monsters | ×0.55 | ×0.55 | unchanged |
+| 3 monsters | **×0.605** | **×0.605** | unchanged |
+
+The 3-monster value is the approved **+10% relative increase** from the earlier ×0.55 candidate:
+
+~~~text
+0.55 × 1.10 = 0.605
+~~~
 
 Approximate total encounter HP pool:
 
 - 1 monster = 100%
 - 2 monsters = 144%
-- 3 monsters = 165%
+- 3 monsters = **181.5%**
 
-This makes larger packs meaningfully harder without making them a literal 2× or 3× copy of a solo encounter.
+DEF remains unchanged per monster.
 
----
+This keeps larger packs meaningfully harder while avoiding literal 2× / 3× solo copies. The ×0.605 choice is intentionally retained for V2 even though the shared subtractive damage model can make high-DEF builds strong against multi-target ATK; any later balance adjustment belongs to an explicit V3 pass.
 
 ## 7. Elite scaling
 
@@ -176,23 +183,20 @@ The player should be allowed to become stronger through build choices, equipment
 
 ---
 
-## 11. Deferred final stress test
 
-Before implementation/release, repeat combat simulations using the now-locked Enhance, Empower, Mythic Boss Weapon Signature, and Set Effect rules.
+## 11. V2 validation decision
 
-Required stress-test profiles should include at minimum:
+The major player-power package was reviewed during design against representative early/mid/late/endgame Dungeon values, including high-rarity gear, Enhance, Empower, Mythic Sets, Boss Weapons, skills, pets, and multi-monster packs.
 
-1. balanced stat allocation + ordinary expected gear;
-2. offense-heavy stat allocation;
-3. strong/high-rarity gear;
-4. high-end Enhance/Empower;
-5. full Mythic Set builds and mixed 4+2 / 2+2+2 builds;
-6. Boss Weapon Signature contribution;
-7. Hero Skill + Pet + Critical Hit contribution.
+The Project Lead explicitly decided that **another mandatory full stress-test pass is not required before V2 implementation**.
 
-The purpose is to verify headroom, not to redesign the approved base curve unless testing identifies a concrete progression failure.
+Reason:
 
----
+- the current V2 package remains playable enough to ship as the agreed baseline;
+- further tuning without live evidence risks extending design indefinitely;
+- if real play later shows concrete balance problems, open an explicit **V3 balance pass** rather than silently changing V2 values.
+
+Implementation still requires ordinary correctness/regression QA for the formulas and encounter generation. This decision removes only the extra balance-simulation gate.
 
 ## 12. Migration / implementation boundary
 
