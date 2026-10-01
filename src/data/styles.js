@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.32";
+  content: "Ver 1.0.33";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2532,6 +2532,13 @@ body::after {
 .md-arena-history-icon { width:28px; height:28px; object-fit:contain; }
 .md-arena-history-row { justify-content:space-between; gap:8px; }
 .md-arena-history-result { min-width:0; overflow-wrap:anywhere; }
+.md-arena-surrender-btn { min-height:44px; padding:6px 18px; border:10px solid transparent !important; border-image-source:var(--arena-surrender-button) !important; border-image-slice:32 fill !important; border-image-width:10px !important; border-image-repeat:stretch !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; color:#ffe6e9 !important; text-shadow:0 1px 2px rgba(0,0,0,.82); }
+.md-arena-surrender-btn:disabled { opacity:.56; filter:saturate(.72); }
+.md-arena-result-card { display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center; }
+.md-arena-result-emblem { display:block; width:min(76%,240px); max-height:120px; margin:0 auto -2px; object-fit:contain; filter:drop-shadow(0 4px 10px rgba(0,0,0,.42)); pointer-events:none; }
+.md-arena-result-title { margin:0 0 2px; text-transform:uppercase; color:#fff0a8; }
+.md-arena-result-card > .md-sub { width:100%; margin:2px 0; text-align:left; }
+.md-arena-result-card > .md-btn { margin-top:5px; }
 .md-arena-phaser-stage { position:relative; width:100%; min-height:clamp(300px,48dvh,430px); overflow:hidden; border:1px solid rgba(255,209,102,.2); border-radius:14px; background:rgba(3,9,24,.24); }
 .md-arena-phaser-stage .md-phaser-battlefield { position:absolute; inset:0; width:100%; height:100%; }
 .md-arena-phaser-error { position:absolute; inset:auto 10px 10px; z-index:5; padding:7px 9px; border:1px solid rgba(255,107,123,.55); border-radius:9px; background:rgba(45,10,24,.88); color:#ffc2c9; font-size:10px; font-weight:800; text-align:center; }

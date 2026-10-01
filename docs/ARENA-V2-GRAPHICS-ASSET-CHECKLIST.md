@@ -709,6 +709,7 @@ Once the first approved icon family establishes final canvas dimensions, record 
 - Tier badge final canvas: **256×256; max artwork extent 224 px**
 - Tab background final size/9-slice contract: **256×128; 22 px source insets on all sides**
 - Button final size/9-slice contract: **512×128; 32 px source insets on all sides**
+- Result emblem final canvas: **512×256; common 440×200 alpha footprint; uniform scaling only**
 - Panel frame 9-slice contract: **768×512, 64 px source insets; row 768×160, 48 px source insets**
 
 Do not allow later batches to silently switch canvas geometry.
@@ -762,13 +763,13 @@ Recommended order:
 - [x] Win milestone icon
 - [x] Attack history icon
 - [x] Defense history icon
-- [ ] WIN emblem
-- [ ] LOSS emblem
-- [ ] DRAW emblem
+- [x] WIN emblem
+- [x] LOSS emblem
+- [x] DRAW emblem
 
 ### Graphics Batch D — Arena Battle additions
 
-- [ ] Surrender button
+- [x] Surrender button
 - [ ] Hero fallback ATB icon — only if runtime needs it
 - [ ] Pet fallback ATB icon — only if runtime needs it
 
@@ -876,6 +877,23 @@ Publication / verification:
 
 Next Arena graphics scope remains Battle/Result only: Surrender button and WIN/LOSS/DRAW result emblems; fallback actor icons only if runtime proves they are needed.
 
+
+## 2026-10-01 — Arena Battle + Result Graphics R1 approved for publication/integration
+
+**Integration base:** `235b7714c16e24f80a5cfb5110503b050d585ff1`
+
+Approved four review candidates without regeneration:
+- Surrender button — 512×128 RGBA, 32 px source nine-slice insets, runtime text/cooldown retained;
+- WIN / LOSS / DRAW result emblems — 512×256 RGBA, common 440×200 alpha footprint, uniform scaling only.
+
+Runtime scope:
+- existing Arena Surrender action/cooldown only receives presentation skin;
+- Result chooses emblem from authoritative settlement outcome (`win/victory`, `loss/defeat`, `draw`);
+- rating, Arena Coin, reward/milestone and resolution values remain authoritative server data;
+- Battle Core, resolver, API and shared Phaser battlefield are unchanged;
+- optional Hero/Pet fallback ATB art remains deferred.
+
+Manifest and final asset metadata are recorded in `r2-upload/ui/arena/GRAPHICS_CONTRACT.json` → `battleResultR1`.
 
 # PART O — HANDOFF TEMPLATE
 

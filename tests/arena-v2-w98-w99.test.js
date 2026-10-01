@@ -327,4 +327,25 @@ test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Resu
   assert.doesNotMatch(battleSurface, /md-arena-hub-panel|md-arena-art-btn|arenaUi\.tiers|arenaUi\.progress/);
 });
 
+test('Arena Battle + Result Graphics R1 binds approved art without changing authoritative combat behavior', () => {
+  const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'r2-upload/manifest.json'), 'utf8'));
+  assert.equal(manifest.assets.arenaUi.battle.surrender, 'ui/arena/battle/button_surrender.png');
+  assert.equal(manifest.assets.arenaUi.results.win, 'ui/arena/results/result_win.png');
+  assert.equal(manifest.assets.arenaUi.results.loss, 'ui/arena/results/result_loss.png');
+  assert.equal(manifest.assets.arenaUi.results.draw, 'ui/arena/results/result_draw.png');
+  assert.match(arenaUi, /function arenaResultGraphicKey\(outcome\)/);
+  assert.match(arenaUi, /optionalAsset\("arenaUi\.battle\.surrender"\)/);
+  assert.match(arenaUi, /optionalAsset\("arenaUi\.results\.win"\)/);
+  assert.match(arenaUi, /className: "md-card md-arena-result-card"/);
+  assert.match(arenaUi, /className: "md-arena-result-emblem"/);
+  assert.match(arenaUi, /className: "md-btn flee md-arena-surrender-btn"/);
+  assert.match(arenaUi, /onClick: \(\) => action\("surrender", null, selected\)/);
+  assert.match(arenaUi, /SURRENDER \(10s\)/);
+  assert.match(arenaUi, /arenaResultGraphicKey\(resultView\.outcome\)/);
+  assert.match(styles, /border-image-source:var\(--arena-surrender-button\)/);
+  assert.match(styles, /\.md-arena-result-emblem/);
+  assert.match(styles, /content: "Ver 1\.0\.33"/);
+});
+
 // W9 browser QA Batch 5 low/medium UI shell fixes only; final parity retrigger after generated frontend sync.

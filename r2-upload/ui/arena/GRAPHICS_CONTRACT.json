@@ -400,5 +400,61 @@
       "assets.arenaUi.icons.defenseHistory"
     ],
     "runtimeIntegrated": true
+  },
+  "battleResultR1": {
+    "status": "USER_APPROVED_FOR_PUBLICATION_AND_INTEGRATION",
+    "baseMain": "235b7714c16e24f80a5cfb5110503b050d585ff1",
+    "approvalDate": "2026-10-01",
+    "artwork": "Approved Arena Battle + Result Graphics R1 review exports; no regeneration",
+    "runtimeScope": "Arena Battle Surrender presentation + Arena Result emblem presentation only; Battle Core/resolver/API unchanged",
+    "surrender": {
+      "path": "ui/arena/battle/button_surrender.png",
+      "manifestKey": "assets.arenaUi.battle.surrender",
+      "dimensions": [
+        512,
+        128
+      ],
+      "mode": "RGBA",
+      "sha256": "30e2ab58fe706c3850401e99b669e18191f12e5e708a517655911d512862dd52",
+      "nineSliceSourceInsets": {
+        "top": 32,
+        "right": 32,
+        "bottom": 32,
+        "left": 32
+      },
+      "suggestedMobileDestinationInsetCssPx": 10,
+      "minimumHitTargetCssPx": 44
+    },
+    "results": {
+      "commonCanvas": [
+        512,
+        256
+      ],
+      "commonAlphaFootprint": [
+        440,
+        200
+      ],
+      "scaling": "Uniform only; no nine-slice",
+      "text": "WIN / LOSS / DRAW remains runtime DOM text",
+      "assets": {
+        "win": {
+          "path": "ui/arena/results/result_win.png",
+          "manifestKey": "assets.arenaUi.results.win",
+          "sha256": "5fa30f1a3f70906968e5aae78825847aeacce68c160953248adb1164bb567316"
+        },
+        "loss": {
+          "path": "ui/arena/results/result_loss.png",
+          "manifestKey": "assets.arenaUi.results.loss",
+          "sha256": "321560558c0b35272697d7f3c17b422a79d6e16fcf6e3a3ddbcbac5e3350c99c"
+        },
+        "draw": {
+          "path": "ui/arena/results/result_draw.png",
+          "manifestKey": "assets.arenaUi.results.draw",
+          "sha256": "ab823eb76e98c771fecf6bd0775b5eb9ad89d74cc578b0141f84948e6109d4aa"
+        }
+      }
+    },
+    "optionalAtbFallback": "DEFERRED — existing runtime fallback symbols are sufficient; no new Hero/Pet art approved",
+    "runtimeIntegrated": true
   }
 }

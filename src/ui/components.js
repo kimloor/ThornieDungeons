@@ -3338,6 +3338,14 @@ function arenaResultViewModel(result = {}) {
   });
 }
 
+function arenaResultGraphicKey(outcome) {
+  const value = String(outcome || "").trim().toLowerCase();
+  if (value === "win" || value === "victory") return "win";
+  if (value === "loss" || value === "defeat") return "loss";
+  if (value === "draw") return "draw";
+  return "";
+}
+
 // Public Arena state serializes units as an array. Keep this compatibility boundary
 // in one place so Auto never depends on the worker's private unit-map representation.
 function arenaPublicUnitById(state, unitId) {
@@ -3984,6 +3992,14 @@ function ArenaV2Screen({
       playMilestone: typeof optionalAsset === "function" ? optionalAsset("arenaUi.icons.playMilestone") : "", winMilestone: typeof optionalAsset === "function" ? optionalAsset("arenaUi.icons.winMilestone") : "", attackHistory: typeof optionalAsset === "function" ? optionalAsset("arenaUi.icons.attackHistory") : "", defenseHistory: typeof optionalAsset === "function" ? optionalAsset("arenaUi.icons.defenseHistory") : ""
     }
   };
+  const arenaBattleAssets = {
+    surrender: typeof optionalAsset === "function" ? optionalAsset("arenaUi.battle.surrender") : "",
+    results: {
+      win: typeof optionalAsset === "function" ? optionalAsset("arenaUi.results.win") : "",
+      loss: typeof optionalAsset === "function" ? optionalAsset("arenaUi.results.loss") : "",
+      draw: typeof optionalAsset === "function" ? optionalAsset("arenaUi.results.draw") : ""
+    }
+  };
   const arenaArtStyle = {
     flex: 1,
     ...(arenaBackgroundSrc ? { "--arena-ui-background": `url("${arenaBackgroundSrc}")` } : {}),
@@ -3996,7 +4012,8 @@ function ArenaV2Screen({
     ...(arenaHubAssets.buttons.danger ? { "--arena-button-danger": `url("${arenaHubAssets.buttons.danger}")` } : {}),
     ...(arenaHubAssets.progress.frame ? { "--arena-progress-frame": `url("${arenaHubAssets.progress.frame}")` } : {}),
     ...(arenaHubAssets.progress.fill ? { "--arena-progress-fill": `url("${arenaHubAssets.progress.fill}")` } : {}),
-    ...(arenaHubAssets.progress.rewardSlot ? { "--arena-reward-slot": `url("${arenaHubAssets.progress.rewardSlot}")` } : {})
+    ...(arenaHubAssets.progress.rewardSlot ? { "--arena-reward-slot": `url("${arenaHubAssets.progress.rewardSlot}")` } : {}),
+    ...(arenaBattleAssets.surrender ? { "--arena-surrender-button": `url("${arenaBattleAssets.surrender}")` } : {})
   };
   const refreshAtMs = Date.parse(refreshAvailableAt || "");
   const refreshSeconds = Number.isFinite(refreshAtMs) ? Math.max(0, Math.ceil((refreshAtMs - now) / 1000)) : 0;
@@ -4004,6 +4021,8 @@ function ArenaV2Screen({
   const matchIsActive = arenaMatchIsActive(match) && !match.result;
   const matchIsPrepared = arenaMatchIsPrepared(match);
   const resultView = match?.resultViewModel || arenaResultViewModel(match?.result);
+  const resultGraphicKey = arenaResultGraphicKey(resultView.outcome);
+  const resultGraphicSrc = resultGraphicKey ? arenaBattleAssets.results[resultGraphicKey] : "";
   const units = match?.state?.units || {};
   const playerUnits = Object.values(units).filter(u => u.side === "team_a").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
   const enemyUnits = Object.values(units).filter(u => u.side === "team_b").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
@@ -4129,7 +4148,12 @@ function ArenaV2Screen({
           }
         } }),
         phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, matchIsPrepared ? "Battle presentation unavailable" : "Battle presentation unavailable · controls remain active")), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "loading" ? "Loading Battle…" : preloadState === "failed" ? "Battle preload failed" : "", " · ", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · ")), /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "Targets: ", enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive || !matchIsActive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line), " ")), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setShowFullLog(!showFullLog) }, showFullLog ? "HIDE LOG" : "FULL LOG")), showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-card" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line))))),
-      match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "RESULT · ", resultView.outcome), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Combat: ", resultView.combatResult, " · Rating change: ", resultView.ratingChange ?? "—", " · Arena Coin: ", resultView.arenaCoinEarned ?? "—"), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Reward: ", resultView.rewardSlot, " · Resolution: ", resultView.resolution), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map(skill => /*#__PURE__*/React.createElement("button", { key: skill || "empty", className: "md-btn small", disabled: busy || !skill, onClick: () => action("active", skill, selected) }, skill || "—"))) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
+      match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-result-card" },
+        resultGraphicSrc && /*#__PURE__*/React.createElement("img", { className: "md-arena-result-emblem", src: resultGraphicSrc, alt: "", "aria-hidden": "true" }),
+        /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-result-title" }, "RESULT · ", resultView.outcome),
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Combat: ", resultView.combatResult, " · Rating change: ", resultView.ratingChange ?? "—", " · Arena Coin: ", resultView.arenaCoinEarned ?? "—"),
+        /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Reward: ", resultView.rewardSlot, " · Resolution: ", resultView.resolution),
+        /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee md-arena-surrender-btn", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map(skill => /*#__PURE__*/React.createElement("button", { key: skill || "empty", className: "md-btn small", disabled: busy || !skill, onClick: () => action("active", skill, selected) }, skill || "—"))) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
     ),
     !match && /*#__PURE__*/React.createElement(GameDock, {
       onCharacter,
