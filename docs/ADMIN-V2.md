@@ -194,13 +194,22 @@ Admin V2 does not depend on `ADMIN_API_KEY`.
 
 Phase 0 rules:
 
-- do not rotate it;
 - do not read it from the Admin V2 UI;
 - do not add new code that depends on it;
-- keep the existing secret/path temporarily only for rollback compatibility while Admin V2 is being verified;
-- remove or disable the legacy path only in a later cleanup after production verification.
+- keep the existing secret/path only for rollback compatibility while Admin V2 is being verified;
+- retire or harden the legacy path in WAVE 5.5 after Admin V2 production verification;
+- rotate the legacy secret during the approved retirement/cutover if the path is removed or replaced.
 
 The forgotten legacy key therefore does not block Admin V2 implementation.
+
+### WAVE 5.5 security hardening gate
+
+Before WAVE 6 destructive cutover:
+- normal Admin operations must use dedicated Admin V2 sessions;
+- legacy Admin-key query-string access must be retired or explicitly hardened;
+- failed legacy/Admin auth must be rate-limited and auditable as appropriate;
+- raw Admin/legacy credentials must not appear in URLs;
+- secret rotation is performed only as part of the approved cutover.
 
 ---
 
