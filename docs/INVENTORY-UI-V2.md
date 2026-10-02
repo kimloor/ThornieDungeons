@@ -94,7 +94,7 @@ Filter should support, as applicable:
 - Equipment Type / slot;
 - Rarity;
 - Enhanced / Not Enhanced;
-- Enchanted / Not Enchanted.
+- Empowered / Not Empowered.
 
 Future filters such as Level, Set, Element, etc. may be added inside the same Filter popup without changing the main Inventory layout.
 
@@ -156,7 +156,7 @@ Approved comparison header direction:
 
 ```text
 [ICON] Azure Blade +7   >   [ICON] Dragon Fang +8
-       Lv.40 • Enchanted     Lv.45 • No Enchant
+       Lv.40 • Empowered     Lv.45 • No Empower
 ```
 
 Header requirements:
@@ -167,7 +167,7 @@ Header requirements:
 - item name;
 - `+Enhance` level;
 - item level if available;
-- enchant state only as a simple boolean presentation: `Enchanted` / `No Enchant`.
+- enchant state only as a simple boolean presentation: `Empowered` / `No Empower`.
 
 Do NOT duplicate individual enchant-option details in the comparison header. Those effects belong in the calculated stat comparison below.
 
@@ -177,7 +177,7 @@ If the player is inspecting the item that is already equipped, no current-vs-new
 
 ## 9. Stat Comparison
 
-Comparison must use the **final calculated result**, including base item stats, Enhance, Enchant options, and other item-derived values that affect the displayed character stats.
+Comparison must use the **final calculated result**, including base item stats, Enhance, Empower options, primary stats (STR/VIT/AGI/DEX/LUK), HP%/MP%, and other item-derived values that affect the displayed character stats.
 
 Example:
 
@@ -191,9 +191,9 @@ CP       2840 >  2912   +72
 Rules:
 
 - Prefer showing stats that actually change.
-- If an old item has an Enchant option and the new item does not, losing that option must appear as a negative delta.
-- If the new item has an Enchant option and the old item does not, gaining that option must appear as a positive delta.
-- If both items have different Enchant options, compare the final resulting values rather than comparing only base item data.
+- If an old item has an Empower option and the new item does not, losing that option must appear as a negative delta.
+- If the new item has an Empower option and the old item does not, gaining that option must appear as a positive delta.
+- If both items have different Empower options, compare the final resulting values rather than comparing only base item data.
 - CP delta may be shown if it can be calculated consistently from the real character-stat pipeline.
 
 ### Delta colors
@@ -420,7 +420,7 @@ Inventory presentation rules:
 - the Phaser Hero host may fill the complete equipment stage so the Hero can render substantially larger than the old DOM preview;
 - weapon and wings may visually extend into the equipment-slot lanes;
 - equipment slots remain DOM foreground controls above the Hero;
-- the current production Wings visual selection is reused as the canonical resolver input, so an equipped Wings item renders the approved Angel wing family until a future multi-wing visual contract is explicitly introduced.
+- equipped V2 Wings resolve their authoritative `wingFamily` through the shared EquipmentVisualResolver: Azure -> Azure wings, Robot -> Robot wings, Skeleton -> Skeleton wings. Legacy Angel-wing identity remains a compatibility path for older items.
 
 Equipment slots remain DOM foreground controls even when placed around the Phaser preview.
 
