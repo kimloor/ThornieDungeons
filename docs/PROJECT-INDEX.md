@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-4 are COMPLETE in Production; WAVE 4.5 Server Authority / Economy Security is implemented on a feature branch and QA is required before WAVE 5; WAVE 5.5 Security Hardening precedes WAVE 6 cutover. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-4.5 are COMPLETE in Production; WAVE 5 Raid / Wings V2 is the next execution gate; WAVE 5.5 Security Hardening precedes WAVE 6 cutover. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
@@ -66,7 +66,6 @@ Repository-wide references:
 | --- | --- | --- |
 | **SUPPORTING** | [`BATTLE-V1-IMPLEMENTATION-NOTES.md`](BATTLE-V1-IMPLEMENTATION-NOTES.md) | Battle V1 implementation and rollout context. It does not override the active Battle contract. |
 | **SUPPORTING / PREPARATION** | [`W2-GUILD-DONATION-V1-PREP.md`](W2-GUILD-DONATION-V1-PREP.md) | Frozen implementation preparation for W2 Guild Donation V1: approved balance/whitelist, migration shape, API/error/transaction contract, and QA gate. |
-| **TEMPORARY / SUPERSEDED** | [`TEMP-REFACTOR-ROADMAP.md`](TEMP-REFACTOR-ROADMAP.md) | Historical refactor plan. Superseded for active execution by `ACTIVE-DEVELOPMENT-ROADMAP-V1.md`; use only for implementation-history context. |
 
 ## 5. Read-by-task map
 
@@ -255,8 +254,8 @@ When an approved production contract changes:
 - WAVE 1 Dungeon V2 Encounter + Stat Foundation: COMPLETE / PRODUCTION.
 - WAVE 1.5 Dungeon Monster Skills + Boss Mechanics: COMPLETE / PRODUCTION.
 - WAVES 1-3: COMPLETE / PRODUCTION VERIFIED.
-- WAVE 4 Mythic Boss Weapons + Mythic Set System: IN PROGRESS.
-- WAVE 4.5 Server Authority / Economy Security: mandatory release gate before WAVE 5.
-- WAVE 5 Raid / Wings V2: blocked until WAVE 4 + WAVE 4.5 pass.
+- WAVE 4 Mythic Boss Weapons + Mythic Set System: COMPLETE / PRODUCTION VERIFIED.
+- WAVE 4.5 Server Authority / Economy Security: COMPLETE / PRODUCTION VERIFIED.
+- WAVE 5 Raid / Wings V2: READY / NEXT EXECUTION GATE.
 - WAVE 5.5 Security Hardening: mandatory before WAVE 6.
 - Post-WAVE 6: Full Project Gap Audit + Security Re-Audit before WAVE 7 closeout.
