@@ -842,19 +842,24 @@ Display-quality rule:
 - Intermediate rolls use the normal/default value color.
 - Fixed-value Primary Stat rolls (+1 only) use the normal/default value color because they have no low/max range.
 
-### 16.7 Duplicate / Lock / Reroll
+### 16.7 Empower V2.1 creation / Lock / Reroll
 
-Duplicate Empower options are allowed.
+New V2 equipment is created with every rarity-allowed Empower slot already populated server-side.
 
-The current Lock + Reroll behavior is retained as the V2 direction:
+For each slot at item creation:
+- the option type is rolled once;
+- the initial value is rolled from that option's canonical range;
+- the option type becomes immutable for the lifetime of that item instance.
 
+Lock + Reroll behavior:
 - the player may Lock an already-filled option;
-- Reroll changes only unlocked filled options;
+- Reroll changes only the numeric value of unlocked filled options;
+- Reroll never changes an option type;
 - locked options remain unchanged;
-- duplicates remain possible after reroll;
-- this is intended to provide a long-term endgame optimization chase.
+- duplicate option types remain possible because duplicates may be rolled at item creation;
+- existing pre-V2.1 player items are preserved rather than automatically rebuilt or rerolled.
 
-Exact Reroll economy is finalized separately below.
+There is no Reset/Reforge operation that changes Empower option type.
 
 ### 16.8 HP / MP percentage boundary
 
@@ -876,7 +881,9 @@ Multiple HP% or MP% Empower rolls add together before multiplication. They do no
 
 ### 16.9 Empower economy
 
-Opening a new Empower slot costs **Mana Ore ×1** plus Gold.
+New V2.1 items are created with their allowed Empower slots already filled and therefore do not require an initial slot-opening action.
+
+Existing pre-V2.1 items that still contain an empty legacy Empower slot retain the existing slot-open compatibility path. Opening such a slot costs **Mana Ore ×1** plus Gold.
 
 Base Gold cost by slot:
 
@@ -945,7 +952,8 @@ For a fully opened 4-slot Mythic item, reference costs are:
 
 Rules:
 
-- Reroll changes only filled, unlocked Empower slots.
+- Reroll changes only the numeric value of filled, unlocked Empower slots.
+- The option key/type remains immutable.
 - Locked slots remain unchanged.
 - All filled slots cannot be locked if that would leave nothing eligible to reroll.
 - Duplicate options remain allowed.
