@@ -997,6 +997,24 @@ Exit condition:
 
 ---
 
+## WAVE 5.1 — Empower V2.1 + Item Pipeline Consistency
+**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
+**Risk: HIGH**
+
+Scope completed on the feature branch:
+- new V2 equipment fills its server-authoritative Empower slots at creation; reroll preserves option type and changes value only;
+- additive item provenance and append-only ownership-event foundation;
+- authoritative Wing family visuals, primary-stat display/valuation, Wing Empower UI, and Reward V2 salvage eligibility;
+- existing item options and player data remain untouched; Market/Trade and W6 cleanup remain out of scope.
+
+QA gate:
+- Empower rarity boundaries, reroll/lock behavior and existing-item preservation;
+- Wing family stat/visual/display/sell regressions;
+- mailbox/craft provenance and exact-once authority regressions;
+- full W2/W3/W4/W4.5/W5, build, generated-index and Wrangler checks.
+
+---
+
 ## WAVE 5.5 — Security Hardening
 **Status: PLANNED — AFTER WAVE 5 / BEFORE WAVE 6**
 **Risk: HIGH**

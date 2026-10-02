@@ -8318,7 +8318,9 @@ function rollChestRarity(isEliteBoss, pity = 0) {
       setId: undefined,
       enhanceLevel: 0,
       empowerSlotCapacity: dungeonV2EmpowerSlots(resolvedRarity),
-      empowerSlots: Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
+      empowerSlots: (typeof root.ENHANCEMENT_V2 !== "undefined" && root.ENHANCEMENT_V2.fillEmpowerSlots)
+        ? root.ENHANCEMENT_V2.fillEmpowerSlots(resolvedType, resolvedRarity, rng)
+        : Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
     };
     if (resolvedType === "accessory") {
       const utilityKeys = Object.keys(ACCESSORY_BASE);
@@ -8481,6 +8483,19 @@ function rollChestRarity(isEliteBoss, pity = 0) {
     const value = weightedValue(def, valueRoll);
     return Object.freeze({ key, label: def.label, icon: def.icon, value, locked: false, quality: optionQuality(def, value), modelVersion: 2 });
   }
+  function rollEmpowerOptionValue(type, key, valueRoll, locked = false) {
+    if (!validEmpowerPool(type).includes(key) || !OPTION_DEFS[key]) return null;
+    const def = OPTION_DEFS[key];
+    const value = weightedValue(def, valueRoll);
+    return Object.freeze({ key, label: def.label, icon: def.icon, value, locked: locked === true, quality: optionQuality(def, value), modelVersion: 2 });
+  }
+  function fillEmpowerSlots(type, rarity, rng = Math.random) {
+    const capacity = EMPOWER_CAPACITY[String(rarity || "").toLowerCase()] || 0;
+    return Array.from({ length: capacity }, () => rollEmpowerOption(type, rng(), rng()));
+  }
+  function rerollEmpowerOptionValue(type, option, valueRoll) {
+    return option ? rollEmpowerOptionValue(type, String(option.key || ""), valueRoll, option.locked === true) : null;
+  }
   function resolveEnhanceAttempt({ level, successRoll, downgradeRoll, protectionRequested, protectionStones }) {
     const current = Math.max(0, Math.min(ENHANCE_MAX, Math.floor(Number(level) || 0)));
     if (current >= ENHANCE_MAX) return Object.freeze({ ok: false, error: "enhance_max" });
@@ -8509,7 +8524,8 @@ function rollChestRarity(isEliteBoss, pity = 0) {
     EMPOWER_OPEN_BASE_GOLD, WING_PRIMARY_STAT, OPTION_DEFS, SLOT_POOLS,
     isV2Item, enhanceSuccessRate, itemTier, wingFamily, enhanceEconomyMultiplier,
     empowerEconomyMultiplier, enhanceCost, empowerCapacity, empowerOpenCost,
-    empowerRerollCost, validEmpowerPool, rollEmpowerOption, resolveEnhanceAttempt,
+    empowerRerollCost, validEmpowerPool, rollEmpowerOption, rollEmpowerOptionValue, fillEmpowerSlots,
+    rerollEmpowerOptionValue, resolveEnhanceAttempt,
     isValidEmpowerOption
   });
   root.ENHANCEMENT_V2 = api;
@@ -8632,7 +8648,10 @@ function rollChestRarity(isEliteBoss, pity = 0) {
       sourceType: recipe.kind === "boss_weapon" ? "boss_weapon" : "mythic_set_craft",
       specialSource: recipe.kind === "boss_weapon" ? recipe.bossWeaponId : recipe.setId,
       sourceIdentity: recipe.kind === "boss_weapon" ? `boss_weapon:${recipe.bossWeaponId}` : `mythic_set:${recipe.setId}:${recipe.type}`, rng });
-    item.name = recipe.name; item.craftRecipeId = recipe.recipeId; item.empowerSlotCapacity = 4; item.empowerSlots = Array(4).fill(null);
+    item.name = recipe.name; item.craftRecipeId = recipe.recipeId; item.empowerSlotCapacity = 4;
+    item.empowerSlots = (root.ENHANCEMENT_V2?.fillEmpowerSlots)
+      ? root.ENHANCEMENT_V2.fillEmpowerSlots(item.type, "mythic", rng)
+      : Array(4).fill(null);
     if (recipe.kind === "boss_weapon") {
       const def = BOSS_WEAPONS[recipe.bossWeaponId];
       item.bossWeaponId = def.id; item.signatureId = def.signatureId; item.sourceBossId = def.bossId;
@@ -10104,7 +10123,18 @@ function combatPower(stats, level) {
 // ===== systems/shop.js =====
 // ---------- shop & selling ----------
 function itemValueScore(it) {
-  return (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6 + (it.dodgeChance || 0) * 4 + (it.critChance || 0) * 4 + (it.critDamage || 0) * 2.5;
+  let score = (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6 + (it.dodgeChance || 0) * 4 + (it.critChance || 0) * 4 + (it.critDamage || 0) * 2.5;
+  if (String(it.type || "").toLowerCase() === "wings") {
+    const family = String(it.wingFamily || it.wingId || it.wingsId || it.setId || "").toLowerCase();
+    const primary = { azure: "agi", robot: "vit", skeleton: "str" }[family];
+    score += (Number(it.enhanceLevel) || 0) * 3;
+    (it.empowerSlots || []).filter(Boolean).forEach(slot => {
+      const key = String(slot.key || "");
+      score += Number(slot.value) || 0;
+      if (key === primary) score += Number(slot.value) || 0;
+    });
+  }
+  return score;
 }
 function sellPrice(it) {
   if (it.type === "junk") return Math.max(1, (JUNK_SELL_VALUE[it.junkId] || 1) * (it.quantity || 1));
@@ -10569,6 +10599,7 @@ function heroV5WingVisualId(item) {
   const identities = [
     item.id,
     item.itemId,
+    item.wingFamily,
     item.wingId,
     item.wingsId,
     item.visualId,
@@ -21623,7 +21654,7 @@ function DefeatScreen({
   }, "🗺️ Back to Map")));
 }
 function inventoryStatRows(item) {
-  const labels = { hp: "HP", mp: "SP", atk: "ATK", def: "DEF", accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit", critDamage: "Crit DMG", dropBonus: "Drop" };
+  const labels = { hp: "HP", mp: "SP", hpPct: "HP%", mpPct: "MP%", atk: "ATK", def: "DEF", str: "STR", vit: "VIT", agi: "AGI", dex: "DEX", luk: "LUK", accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit", critDamage: "Crit DMG", dropBonus: "Drop" };
   const finalStats = itemBonus(item) || {};
   return Object.keys(labels).filter(key => Number(finalStats[key])).map(key => ({ key, label: labels[key], value: Math.round(Number(finalStats[key]) * 10) / 10 }));
 }
@@ -21633,7 +21664,8 @@ function inventoryComparisonRows(currentItem, nextItem) {
   const currentStats = itemBonus(currentItem) || {};
   const nextStats = itemBonus(nextItem) || {};
   const definitions = [
-    ["hp", "HP"], ["mp", "SP"], ["atk", "ATK"], ["def", "DEF"],
+    ["hp", "HP"], ["mp", "SP"], ["hpPct", "HP%"], ["mpPct", "MP%"], ["atk", "ATK"], ["def", "DEF"],
+    ["str", "STR"], ["vit", "VIT"], ["agi", "AGI"], ["dex", "DEX"], ["luk", "LUK"],
     ["accuracy", "Accuracy"], ["dodgeChance", "Dodge"], ["critChance", "Crit"],
     ["critDamage", "Crit DMG"], ["dropBonus", "Drop"]
   ];
@@ -21798,7 +21830,7 @@ function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, 
     detail.location === "inventory" && SLOT_ORDER.includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); onClose(); } }, "Equip"),
     detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); onClose(); } }, "Unequip"),
     detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSell }, "Sell"),
-    detail.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSalvage }, "Salvage"));
+    detail.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) && inventorySalvagePreview(currentDetail) && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSalvage }, "Salvage"));
 }
 
 function inventorySalvagePreview(item) {
@@ -22359,12 +22391,12 @@ function BlacksmithOverlay({
         /*#__PURE__*/React.createElement("button", {
           className: "md-btn info small",
           style: { flex: 1, minHeight: 38, fontSize: 10 },
-          disabled: !(detailTarget.empowerSlots || []).some(s => !s) || busy || (ENHANCEMENT_V2.isV2Item(detailTarget) && detailTarget.type === "wings"),
+          disabled: !(detailTarget.empowerSlots || []).some(s => !s) || busy,
           onClick: doEmpower
         }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : (() => {
           const nextIndex = (detailTarget.empowerSlots || []).findIndex(s => !s);
           const c = ENHANCEMENT_V2.isV2Item(detailTarget) ? ENHANCEMENT_V2.empowerOpenCost(detailTarget, nextIndex) : empowerCost(nextIndex);
-          if (!c) return "🔮 Empower Wings รอ W5 economy";
+          if (!c) return "🔮 Empower ใช้งานไม่ได้";
           const haveManaOre = junkTotal(inventory, "manaOre");
           return ["🔮 เสริมพลัง (",
             /*#__PURE__*/React.createElement(GameIcon, { key: "mana-icon", item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }),
@@ -22378,7 +22410,7 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("button", {
         className: "md-btn info small",
         style: { width: "100%", minHeight: 38, fontSize: 10, marginTop: 6 },
-        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked) || busy || (ENHANCEMENT_V2.isV2Item(detailTarget) && detailTarget.type === "wings"),
+        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked) || busy,
         onClick: doReroll
       }, (() => {
         const filled = (detailTarget.empowerSlots || []).filter(Boolean);
@@ -22387,7 +22419,7 @@ function BlacksmithOverlay({
         const c = ENHANCEMENT_V2.isV2Item(detailTarget)
           ? ENHANCEMENT_V2.empowerRerollCost(detailTarget, filled.length, lockedCount)
           : rerollCost(filled.length, lockedCount);
-        if (!c) return "🔄 Empower Wings รอ W5 economy";
+        if (!c) return "🔄 Reroll ใช้งานไม่ได้";
         const haveManaOre = junkTotal(inventory, "manaOre");
         return ["🔄 รีรอลออฟชั่น (",
           /*#__PURE__*/React.createElement(GameIcon, { key: "mana-icon", item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }),

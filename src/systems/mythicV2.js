@@ -113,7 +113,10 @@
       sourceType: recipe.kind === "boss_weapon" ? "boss_weapon" : "mythic_set_craft",
       specialSource: recipe.kind === "boss_weapon" ? recipe.bossWeaponId : recipe.setId,
       sourceIdentity: recipe.kind === "boss_weapon" ? `boss_weapon:${recipe.bossWeaponId}` : `mythic_set:${recipe.setId}:${recipe.type}`, rng });
-    item.name = recipe.name; item.craftRecipeId = recipe.recipeId; item.empowerSlotCapacity = 4; item.empowerSlots = Array(4).fill(null);
+    item.name = recipe.name; item.craftRecipeId = recipe.recipeId; item.empowerSlotCapacity = 4;
+    item.empowerSlots = (root.ENHANCEMENT_V2?.fillEmpowerSlots)
+      ? root.ENHANCEMENT_V2.fillEmpowerSlots(item.type, "mythic", rng)
+      : Array(4).fill(null);
     if (recipe.kind === "boss_weapon") {
       const def = BOSS_WEAPONS[recipe.bossWeaponId];
       item.bossWeaponId = def.id; item.signatureId = def.signatureId; item.sourceBossId = def.bossId;

@@ -29,6 +29,7 @@ function heroV5WingVisualId(item) {
   const identities = [
     item.id,
     item.itemId,
+    item.wingFamily,
     item.wingId,
     item.wingsId,
     item.visualId,

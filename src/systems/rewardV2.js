@@ -181,7 +181,9 @@
       setId: undefined,
       enhanceLevel: 0,
       empowerSlotCapacity: dungeonV2EmpowerSlots(resolvedRarity),
-      empowerSlots: Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
+      empowerSlots: (typeof root.ENHANCEMENT_V2 !== "undefined" && root.ENHANCEMENT_V2.fillEmpowerSlots)
+        ? root.ENHANCEMENT_V2.fillEmpowerSlots(resolvedType, resolvedRarity, rng)
+        : Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
     };
     if (resolvedType === "accessory") {
       const utilityKeys = Object.keys(ACCESSORY_BASE);

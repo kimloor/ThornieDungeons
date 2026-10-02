@@ -5593,7 +5593,7 @@ function DefeatScreen({
   }, "🗺️ Back to Map")));
 }
 function inventoryStatRows(item) {
-  const labels = { hp: "HP", mp: "SP", atk: "ATK", def: "DEF", accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit", critDamage: "Crit DMG", dropBonus: "Drop" };
+  const labels = { hp: "HP", mp: "SP", hpPct: "HP%", mpPct: "MP%", atk: "ATK", def: "DEF", str: "STR", vit: "VIT", agi: "AGI", dex: "DEX", luk: "LUK", accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit", critDamage: "Crit DMG", dropBonus: "Drop" };
   const finalStats = itemBonus(item) || {};
   return Object.keys(labels).filter(key => Number(finalStats[key])).map(key => ({ key, label: labels[key], value: Math.round(Number(finalStats[key]) * 10) / 10 }));
 }
@@ -5603,7 +5603,8 @@ function inventoryComparisonRows(currentItem, nextItem) {
   const currentStats = itemBonus(currentItem) || {};
   const nextStats = itemBonus(nextItem) || {};
   const definitions = [
-    ["hp", "HP"], ["mp", "SP"], ["atk", "ATK"], ["def", "DEF"],
+    ["hp", "HP"], ["mp", "SP"], ["hpPct", "HP%"], ["mpPct", "MP%"], ["atk", "ATK"], ["def", "DEF"],
+    ["str", "STR"], ["vit", "VIT"], ["agi", "AGI"], ["dex", "DEX"], ["luk", "LUK"],
     ["accuracy", "Accuracy"], ["dodgeChance", "Dodge"], ["critChance", "Crit"],
     ["critDamage", "Crit DMG"], ["dropBonus", "Drop"]
   ];
@@ -5768,7 +5769,7 @@ function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, 
     detail.location === "inventory" && SLOT_ORDER.includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); onClose(); } }, "Equip"),
     detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); onClose(); } }, "Unequip"),
     detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSell }, "Sell"),
-    detail.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSalvage }, "Salvage"));
+    detail.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) && inventorySalvagePreview(currentDetail) && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSalvage }, "Salvage"));
 }
 
 function inventorySalvagePreview(item) {
@@ -6329,12 +6330,12 @@ function BlacksmithOverlay({
         /*#__PURE__*/React.createElement("button", {
           className: "md-btn info small",
           style: { flex: 1, minHeight: 38, fontSize: 10 },
-          disabled: !(detailTarget.empowerSlots || []).some(s => !s) || busy || (ENHANCEMENT_V2.isV2Item(detailTarget) && detailTarget.type === "wings"),
+          disabled: !(detailTarget.empowerSlots || []).some(s => !s) || busy,
           onClick: doEmpower
         }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : (() => {
           const nextIndex = (detailTarget.empowerSlots || []).findIndex(s => !s);
           const c = ENHANCEMENT_V2.isV2Item(detailTarget) ? ENHANCEMENT_V2.empowerOpenCost(detailTarget, nextIndex) : empowerCost(nextIndex);
-          if (!c) return "🔮 Empower Wings รอ W5 economy";
+          if (!c) return "🔮 Empower ใช้งานไม่ได้";
           const haveManaOre = junkTotal(inventory, "manaOre");
           return ["🔮 เสริมพลัง (",
             /*#__PURE__*/React.createElement(GameIcon, { key: "mana-icon", item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }),
@@ -6348,7 +6349,7 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("button", {
         className: "md-btn info small",
         style: { width: "100%", minHeight: 38, fontSize: 10, marginTop: 6 },
-        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked) || busy || (ENHANCEMENT_V2.isV2Item(detailTarget) && detailTarget.type === "wings"),
+        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked) || busy,
         onClick: doReroll
       }, (() => {
         const filled = (detailTarget.empowerSlots || []).filter(Boolean);
@@ -6357,7 +6358,7 @@ function BlacksmithOverlay({
         const c = ENHANCEMENT_V2.isV2Item(detailTarget)
           ? ENHANCEMENT_V2.empowerRerollCost(detailTarget, filled.length, lockedCount)
           : rerollCost(filled.length, lockedCount);
-        if (!c) return "🔄 Empower Wings รอ W5 economy";
+        if (!c) return "🔄 Reroll ใช้งานไม่ได้";
         const haveManaOre = junkTotal(inventory, "manaOre");
         return ["🔄 รีรอลออฟชั่น (",
           /*#__PURE__*/React.createElement(GameIcon, { key: "mana-icon", item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }),
