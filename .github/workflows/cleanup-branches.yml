@@ -1,0 +1,127 @@
+name: Cleanup merged branches
+
+# Manual only. Deletes remote branches that are already fully merged into the default branch.
+# Safe by default: dry_run=true only reports what WOULD be deleted.
+#
+# A branch is deleted only if ALL of these are true:
+#   - it is not the default branch, not a protected branch, and not in `keep`
+#   - it has no open pull request
+#   - its tip is older than `min_age_days`
+#   - it is fully merged: either 0 commits ahead of the default branch,
+#     or a merged PR exists whose head SHA equals the branch tip (covers squash/rebase merges)
+#
+# Restore a deleted branch (SHA is printed in the run summary):
+#   git push origin <sha>:refs/heads/<branch-name>
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only report, do not delete (set false to actually delete)"
+        type: boolean
+        default: true
+      min_age_days:
+        description: "Skip branches whose last commit is newer than this many days"
+        type: number
+        default: 3
+      keep:
+        description: "Comma-separated branch names to never delete (e.g. feat/foo,fix/bar)"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cleanup-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      MIN_AGE_DAYS: ${{ inputs.min_age_days }}
+      KEEP: ${{ inputs.keep }}
+    steps:
+      - name: Find and delete merged branches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          owner="${REPO%%/*}"
+          default_branch="$(gh api "repos/$REPO" --jq .default_branch)"
+          cutoff_epoch=$(( $(date +%s) - ${MIN_AGE_DAYS:-3} * 86400 ))
+
+          # Normalised keep list, one name per line
+          keep_list="$(printf '%s' "${KEEP:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed '/^$/d')"
+
+          uri() { jq -rn --arg v "$1" '$v|@uri'; }
+
+          deleted=0; skipped=0; would=0
+          {
+            echo "## Cleanup merged branches"
+            echo "Default branch: \`$default_branch\` · dry_run: \`$DRY_RUN\` · min_age_days: \`${MIN_AGE_DAYS:-3}\`"
+            echo
+            echo "| Branch | Tip SHA | Result |"
+            echo "| --- | --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          row() { echo "| \`$1\` | \`${2:0:12}\` | $3 |" >> "$GITHUB_STEP_SUMMARY"; }
+
+          while IFS=$'\t' read -r name sha protected; do
+            [ -n "$name" ] || continue
+
+            if [ "$name" = "$default_branch" ]; then continue; fi
+            if [ "$protected" = "true" ]; then row "$name" "$sha" "skip: protected"; skipped=$((skipped+1)); continue; fi
+            if printf '%s\n' "$keep_list" | grep -Fxq -- "$name"; then row "$name" "$sha" "skip: in keep list"; skipped=$((skipped+1)); continue; fi
+
+            enc="$(uri "$name")"
+
+            # Open PR from this branch?
+            open_prs="$(gh api "repos/$REPO/pulls?state=open&head=$owner:$enc" --jq 'length')"
+            if [ "$open_prs" != "0" ]; then row "$name" "$sha" "skip: open PR"; skipped=$((skipped+1)); continue; fi
+
+            # Age check (tip commit date)
+            tip_date="$(gh api "repos/$REPO/commits/$sha" --jq .commit.committer.date)"
+            tip_epoch="$(date -d "$tip_date" +%s)"
+            if [ "$tip_epoch" -gt "$cutoff_epoch" ]; then row "$name" "$sha" "skip: newer than ${MIN_AGE_DAYS:-3} days"; skipped=$((skipped+1)); continue; fi
+
+            # Fully merged? (a) nothing ahead of default branch
+            ahead="$(gh api "repos/$REPO/compare/$default_branch...$sha" --jq .ahead_by)"
+            merged_how=""
+            if [ "$ahead" = "0" ]; then
+              merged_how="merged (0 commits ahead)"
+            else
+              # (b) squash/rebase merge: a merged PR whose head SHA is exactly this tip
+              pr_hit="$(gh api "repos/$REPO/pulls?state=closed&head=$owner:$enc" \
+                --jq "[.[] | select(.merged_at != null and .head.sha == \"$sha\")] | length")"
+              if [ "$pr_hit" != "0" ]; then merged_how="merged via PR (squash/rebase)"; fi
+            fi
+
+            if [ -z "$merged_how" ]; then
+              row "$name" "$sha" "skip: not merged ($ahead commits ahead)"
+              skipped=$((skipped+1)); continue
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              row "$name" "$sha" "would delete — $merged_how"; would=$((would+1))
+            else
+              gh api -X DELETE "repos/$REPO/git/refs/heads/$name" >/dev/null
+              row "$name" "$sha" "deleted — $merged_how"; deleted=$((deleted+1))
+            fi
+          done < <(gh api --paginate "repos/$REPO/branches" --jq '.[] | [.name, .commit.sha, (.protected|tostring)] | @tsv')
+
+          {
+            echo
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "**Dry run:** would delete $would, skipped $skipped. Re-run with dry_run=false to delete."
+            else
+              echo "**Deleted $deleted, skipped $skipped.** Restore with \`git push origin <sha>:refs/heads/<name>\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "dry_run=$DRY_RUN deleted=$deleted would_delete=$would skipped=$skipped"
