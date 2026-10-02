@@ -275,6 +275,28 @@ test("W4 Boss Weapon crafting is server-derived, exact-once, and W3-compatible",
   assert.equal(enhanced.body.ok, true);
 });
 
+test("failed craft conflict does not create orphan provenance or ownership events", async () => {
+  const context = await setup();
+  const requestId = "craft-orphan-guard";
+  const conflictingItemId = `item-craft-${context.characterId}-${requestId}`.slice(0, 160);
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+    VALUES (?, ?, ?, 'weapon', 'rare', 'Conflicting Item', '{}')`)
+    .run(conflictingItemId, context.playerId, context.characterId);
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+    VALUES ('craft-conflict-earth', ?, ?, 'junk', 'common', 'Earth Stone', ?)`)
+    .run(context.playerId, context.characterId, JSON.stringify({ junkId: "earthStone", quantity: 10 }));
+
+  const result = await post(context.api, context.db, context.token, {
+    action: "craftItem", characterId: context.characterId,
+    recipeId: "boss_weapon_spirit_greatsword", requestId
+  });
+
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, "craft_conflict");
+  assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM item_provenance WHERE item_id = ?").get(conflictingItemId).c, 0);
+  assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM item_ownership_events WHERE item_id = ?").get(conflictingItemId).c, 0);
+});
+
 test("W4 set crafting consumes canonical recipe/material cost and rejects forged identities", async () => {
   const context = await setup();
   context.db.raw.prepare("UPDATE characters SET unlocked_floor = 31 WHERE character_id = ?").run(context.characterId);
