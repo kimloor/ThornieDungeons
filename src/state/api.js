@@ -141,13 +141,38 @@ function cloudEnterCharacter(url, slotIndex) {
     slotIndex
   });
 }
-function cloudSaveCharacterProgress(url, characterId, diamonds, progress) {
-  return cloudAuthPost(url, {
-    action: "saveCharacterProgress",
-    characterId,
-    diamonds,
-    progress
-  });
+function cloudAllocateStats(url, characterId, allocations, requestId) {
+  return cloudAuthPost(url, { action: "allocateStats", characterId, allocations, requestId });
+}
+function cloudAllocateHeroSkills(url, characterId, allocations, requestId) {
+  return cloudAuthPost(url, { action: "allocateHeroSkills", characterId, allocations, requestId });
+}
+function cloudResetCharacterStats(url, characterId, requestId) {
+  return cloudAuthPost(url, { action: "resetCharacterStats", characterId, requestId });
+}
+function cloudResetHeroSkills(url, characterId, requestId) {
+  return cloudAuthPost(url, { action: "resetHeroSkills", characterId, requestId });
+}
+function cloudPetEconomyAction(url, characterId, petAction, petInstId, requestId) {
+  return cloudAuthPost(url, { action: "petEconomyAction", characterId, petAction, petInstId, requestId });
+}
+function cloudConsumePotion(url, characterId, potionId, requestId) {
+  return cloudAuthPost(url, { action: "consumePotion", characterId, potionId, requestId });
+}
+function cloudPurchaseCharacterResource(url, characterId, resource, requestId) {
+  return cloudAuthPost(url, { action: "purchaseCharacterResource", characterId, resource, requestId });
+}
+function cloudGetCharacterShopStock(url, characterId, requestId) {
+  return cloudAuthPost(url, { action: "getCharacterShopStock", characterId, requestId });
+}
+function cloudPurchaseShopEquipment(url, characterId, offerId, requestId) {
+  return cloudAuthPost(url, { action: "purchaseShopEquipment", characterId, offerId, requestId });
+}
+function cloudSellCharacterItem(url, characterId, itemId, requestId) {
+  return cloudAuthPost(url, { action: "sellCharacterItem", characterId, itemId, requestId });
+}
+function cloudSalvageItem(url, characterId, itemId, requestId) {
+  return cloudAuthPost(url, { action: "salvageItem", characterId, itemId, requestId });
 }
 function cloudSyncItems(url, characterId, items) {
   return cloudAuthPost(url, {
@@ -164,6 +189,9 @@ function cloudMutateV2Blacksmith(url, characterId, itemId, mutation, requestId) 
     mutation,
     requestId
   });
+}
+function cloudMutateLegacyBlacksmith(url, characterId, itemId, mutation, requestId) {
+  return cloudAuthPost(url, { action: "mutateLegacyBlacksmith", characterId, itemId, mutation, requestId });
 }
 function cloudSaveRunState(url, characterId, runState) {
   return cloudAuthPost(url, {
@@ -206,14 +234,6 @@ function cloudSaveQuickSlots(url, characterId, quickSlots) {
 // gameplay state or snapshot payloads.
 function cloudSaveSnapshot(context, domain, snapshot) {
   if (!context || context.sessionGeneration !== AUTH_SESSION.getGeneration()) return Promise.resolve({ error: "invalid_session" });
-  if (domain === "character_progress") {
-    return cloudAuthPost(context.url, {
-      action: "saveCharacterProgress",
-      characterId: context.characterId,
-      diamonds: snapshot.diamonds,
-      progress: snapshot.progress
-    });
-  }
   if (domain === "items") {
     return cloudAuthPost(context.url, {
       action: "syncItems",
@@ -297,11 +317,12 @@ function cloudGetRaidStatus(url, characterId) {
     characterId
   });
 }
-function cloudAttackRaidBoss(url, characterId, paidDiamonds) {
+function cloudAttackRaidBoss(url, characterId, paidDiamonds, requestId) {
   return cloudAuthPost(url, {
     action: "attackRaidBoss",
     characterId,
-    paidDiamonds: !!paidDiamonds
+    paidDiamonds: !!paidDiamonds,
+    requestId
   });
 }
 function cloudClaimRaidMilestones(url, characterId) {

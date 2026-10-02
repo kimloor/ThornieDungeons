@@ -322,6 +322,9 @@ test("F5 starter Pet remains an exact-once entitlement in the atomic reward boun
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "F5 QA" });
   const characterId = created.body.character.character_id;
   db.raw.prepare("UPDATE characters SET unlocked_floor = 5 WHERE character_id = ?").run(characterId);
+  const activePet = { instId: "active-flamekit", defId: "flamekit", level: 1, xp: 0, star: 1, stats: { str: 5, vit: 3, agi: 4, dex: 4, luk: 4 } };
+  db.raw.prepare("UPDATE characters SET pets_json = ?, active_pet_id = ? WHERE character_id = ?")
+    .run(JSON.stringify({ list: [activePet], dup: {}, skills: {}, skillVersion: 1 }), activePet.instId, characterId);
   const starter = { instId: "starter-qa", defId: "sprout", level: 1, star: 1, exp: 0, stats: { str: 3, vit: 5, agi: 4, dex: 4, luk: 4 } };
   const reward = {
     floor: 5, encounterType: "elite", rewardRole: "elite", packCount: 1,
@@ -339,10 +342,13 @@ test("F5 starter Pet remains an exact-once entitlement in the atomic reward boun
     defId: "sprout", level: 1, xp: 0, star: 1,
     stats: { str: 3, vit: 5, agi: 4, dex: 4, luk: 4 }
   });
+  assert.equal(petsAfterFirst.find(pet => pet.instId === activePet.instId).xp, 22);
+  assert.equal(first.body.result.reward.petProgress.xpGained, 22);
   const replay = await post(api, db, token, { action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory", safeActionSeq: 2, floor: 5, reward: { ...reward, ...rewardForContext(started.body.context), starterPetGrant: reward.starterPetGrant } } });
   assert.equal(replay.body.firstCompletion, false);
   const petsAfterReplay = JSON.parse(db.raw.prepare("SELECT pets_json FROM characters WHERE character_id = ?").get(characterId).pets_json).list;
   assert.equal(petsAfterReplay.filter(pet => pet.defId === "sprout").length, 1);
+  assert.equal(petsAfterReplay.find(pet => pet.instId === activePet.instId).xp, 22);
 });
 
 test("atomic Dungeon V2 item commit preserves overflow when the carried inventory is full", async () => {

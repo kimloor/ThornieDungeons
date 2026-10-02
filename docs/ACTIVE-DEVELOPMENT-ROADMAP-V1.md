@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — WAVES 1-3 complete in Production; WAVE 4 implemented on feature branch and awaiting QA; WAVE 4.5 Server Authority / Economy Security is the mandatory gate before WAVE 5**
+Status: **ACTIVE-EXECUTION — WAVES 1-4 complete in Production; WAVE 4.5 Server Authority / Economy Security is implemented on a feature branch and awaiting QA; WAVE 5 remains blocked**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -898,7 +898,7 @@ Exit condition:
 ---
 
 ## WAVE 4.5 — Server Authority / Economy Security Gate
-**Status: PLANNED — MANDATORY AFTER WAVE 4 / BEFORE WAVE 5**
+**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory; Project Lead release approval mandatory**
@@ -907,6 +907,15 @@ Purpose:
 - close the remaining client-authoritative save/economy boundary before Raid/Wings V2 builds on it;
 - preserve W2/W3 server-authoritative reward, Enhance and Empower behavior;
 - prevent W4 Mythic items/sets from creating new dependencies on generic client-authoritative persistence.
+
+Implementation summary (feature branch; not Production-verified):
+- `saveCharacterProgress` rejects generic character snapshots. The client no longer queues a `character_progress` snapshot; authoritative changes use cause-specific operations.
+- `syncItems` updates approved presentation fields on existing owned rows only. It does not create/delete/re-parent items or accept stat, rarity, enhancement, identity, or quantity changes.
+- Dungeon results, Mail, Daily Login, stat/skill allocation and resets, Pet economy, consumables, Shop, Craft, Enhance/Empower, sale, salvage, Guild Donation, Raid refill and Arena settlement use server-side mutations and authoritative responses.
+- Craft and non-idempotent character operations use request receipts/guarded writes; Raid attacks carry a request ID to prevent duplicate charges from replaying the same request.
+- Mythic Set salvage uses server-recorded crafting inputs and server-side item/resource mutation.
+- `migrations/auto/0026_w45_authority_receipts.sql` is additive and re-check safe.
+- Full suite and build verification are required on the feature branch before QA handoff. This status is not a merge, release, or Production completion claim.
 
 Public scope summary:
 - restrict generic character-save writes to explicitly client-owned/non-economy state;

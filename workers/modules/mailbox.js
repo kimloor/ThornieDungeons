@@ -1,13 +1,8 @@
 export function createMailboxHandlers(deps) {
-  const { json, nowIso, verifyPlayer, verifyOwnedCharacter, parseJsonColumn } = deps;
+  const { json, nowIso, verifyPlayer, verifyOwnedCharacter, parseJsonColumn, buildRewardStatements, getSnapshot } = deps;
 
-// W9.8 QA boundary: reward delivery remains mailbox-backed and replay-safe.
-// Server-side reward mutations (UPDATE characters/items directly) get silently
-// clobbered by this project's client-authoritative full-sync save model — the next
-// saveCharacterProgress/syncItems push from the client overwrites them with its own
-// stale local copy. So ANY server-granted reward (raid, and future PvP/guild/event)
-// must go through here instead: drop a mail row, let the client claim it and merge
-// the reward into its own local state, then the normal autosave persists it correctly.
+// Mail reward claims commit the claim marker and authoritative resource/item credit as one
+// server transaction. The mailbox row remains as compatible claim history after completion.
 function newMailId() {
   return `mail-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -51,64 +46,47 @@ async function handleClaimMail(db, id, session, characterId, mailId) {
 
   const mail = await db.prepare(`SELECT * FROM mailbox WHERE mail_id = ? AND character_id = ?`).bind(mailId, characterId).first();
   if (!mail) return json({ error: "not_found" });
-  if (Number(mail.claimed)) return json({ error: "already_claimed" });
-
-  const guard = await db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND claimed = 0`).bind(nowIso(), mailId).run();
-  if (!guard.meta || !guard.meta.changes) return json({ error: "already_claimed" });
-
-  return json({
-    ok: true, mailId, gold: Number(mail.gold) || 0, diamonds: Number(mail.diamonds) || 0,
-    junk: mail.junk_json ? JSON.parse(mail.junk_json) : [], items: mail.items_json ? JSON.parse(mail.items_json) : [],
-  });
+  let replayed = !!Number(mail.claimed);
+  if (!replayed) {
+    const claimedAt = `${nowIso()}#${crypto.randomUUID()}`;
+    const statements = [db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND character_id = ? AND claimed = 0`).bind(claimedAt, mailId, characterId)];
+    statements.push(...await buildRewardStatements(db, id, characterId, mail, claimedAt, Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0));
+    const results = await db.batch(statements);
+    replayed = !(Number(results?.[0]?.meta?.changes) > 0);
+    const latest = await db.prepare(`SELECT claimed FROM mailbox WHERE mail_id = ? AND character_id = ?`).bind(mailId, characterId).first();
+    if (!Number(latest?.claimed)) return json({ error: "claim_conflict" }, 409);
+  }
+  return json({ ok: true, mailId, replayed, ...(await getSnapshot(db, id, characterId)) });
 }
 async function handleClaimAllMail(db, id, session, characterId, requestId = "") {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
+  // Keep the requestId argument for client compatibility. Exact-once is enforced per
+  // mail row by claimed=0 plus a unique claim token gating every credit statement.
+  void requestId;
 
-  const receiptKey = requestId ? `mailbox:claim-all:${characterId}:${String(requestId).slice(0, 128)}` : "";
-  if (receiptKey) {
-    const prior = await db.prepare(`SELECT mail_ids_json, reward_json FROM mailbox_claim_receipts WHERE receipt_key = ? AND character_id = ?`).bind(receiptKey, characterId).first();
-    if (prior) return json({ ok: true, replayed: true, mailIds: parseJsonColumn(prior.mail_ids_json, []), ...parseJsonColumn(prior.reward_json, {}) });
+  const rows = (await db.prepare(`SELECT * FROM mailbox WHERE character_id = ? AND claimed = 0 ORDER BY created_at ASC, mail_id ASC`).bind(characterId).all()).results || [];
+  let inventoryOffset = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
+  const statements = [];
+  const claimIndices = [];
+  const mailIds = [];
+  for (const mail of rows) {
+    const claimedAt = `${nowIso()}#${crypto.randomUUID()}`;
+    claimIndices.push(statements.length);
+    statements.push(db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND character_id = ? AND claimed = 0`).bind(claimedAt, mail.mail_id, characterId));
+    statements.push(...await buildRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset));
+    mailIds.push(mail.mail_id);
+    const junkIds = new Set((Array.isArray(parseJsonColumn(mail.junk_json, [])) ? parseJsonColumn(mail.junk_json, []) : [])
+      .filter(item => item?.junkId && Number(item.quantity) > 0).map(item => String(item.junkId)));
+    const equipmentCount = (Array.isArray(parseJsonColumn(mail.items_json, [])) ? parseJsonColumn(mail.items_json, []) : [])
+      .filter(item => ["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(String(item?.type || ""))).length;
+    inventoryOffset += junkIds.size + equipmentCount;
   }
-  const unclaimed = await db.prepare(`SELECT * FROM mailbox WHERE character_id = ? AND claimed = 0 ORDER BY created_at ASC, mail_id ASC`).bind(characterId).all();
-  const rows = unclaimed.results || [];
-  if (!rows.length) {
-    const empty = { ok: true, mailIds: [], gold: 0, diamonds: 0, junk: [], items: [] };
-    if (receiptKey) {
-      await db.prepare(`INSERT INTO mailbox_claim_receipts (receipt_key, character_id, mail_ids_json, reward_json, created_at) VALUES (?, ?, '[]', ?, ?) ON CONFLICT(receipt_key) DO NOTHING`).bind(receiptKey, characterId, JSON.stringify(empty), nowIso()).run();
-      const canonical = await db.prepare(`SELECT mail_ids_json, reward_json FROM mailbox_claim_receipts WHERE receipt_key = ? AND character_id = ?`).bind(receiptKey, characterId).first();
-      return json({ ok: true, replayed: true, mailIds: parseJsonColumn(canonical?.mail_ids_json, []), ...parseJsonColumn(canonical?.reward_json, empty) });
-    }
-    return json(empty);
-  }
-
-  const now = nowIso();
-  const claimResults = await db.batch(rows.map((m) => db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND character_id = ? AND claimed = 0`).bind(now, m.mail_id, characterId)));
-  const claimedRows = rows.filter((m, index) => Number(claimResults?.[index]?.meta?.changes) === 1);
-
-  let gold = 0, diamonds = 0;
-  const junkTotals = {};
-  const items = [];
-  claimedRows.forEach((m) => {
-    gold += Number(m.gold) || 0;
-    diamonds += Number(m.diamonds) || 0;
-    (m.junk_json ? JSON.parse(m.junk_json) : []).forEach((j) => { junkTotals[j.junkId] = (junkTotals[j.junkId] || 0) + (Number(j.quantity) || 0); });
-    (m.items_json ? JSON.parse(m.items_json) : []).forEach((it) => items.push(it));
-  });
-  const junk = Object.keys(junkTotals).map((junkId) => ({ junkId, quantity: junkTotals[junkId] }));
-  const reward = { gold, diamonds, junk, items };
-  if (receiptKey) {
-    await db.prepare(`INSERT INTO mailbox_claim_receipts (receipt_key, character_id, mail_ids_json, reward_json, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(receipt_key) DO NOTHING`)
-      .bind(receiptKey, characterId, JSON.stringify(claimedRows.map((m) => m.mail_id)), JSON.stringify(reward), now).run();
-    // A concurrent request with the same receipt key may have won the insert.
-    // Always return the stored canonical payload so retries and concurrent calls
-    // are byte-for-byte reward-equivalent and cannot lose the winner's reward.
-    const canonical = await db.prepare(`SELECT mail_ids_json, reward_json FROM mailbox_claim_receipts WHERE receipt_key = ? AND character_id = ?`).bind(receiptKey, characterId).first();
-    return json({ ok: true, replayed: true, mailIds: parseJsonColumn(canonical?.mail_ids_json, []), ...parseJsonColumn(canonical?.reward_json, reward) });
-  }
-  return json({ ok: true, replayed: false, mailIds: claimedRows.map((m) => m.mail_id), ...reward });
+  const results = statements.length ? await db.batch(statements) : [];
+  const claimedAny = claimIndices.some(index => Number(results?.[index]?.meta?.changes) > 0);
+  return json({ ok: true, replayed: !claimedAny, mailIds: claimedAny ? mailIds : [], ...(await getSnapshot(db, id, characterId)) });
 }
 // Deletes only CLAIMED mail — deleting an unclaimed one would silently discard whatever
 // reward it was carrying, so the WHERE clause refuses to touch claimed=0 rows regardless
@@ -164,4 +142,3 @@ async function handleDeleteAllClaimedMail(db, id, session, characterId) {
     handleDeleteAllClaimedMail
   };
 }
-

@@ -14,6 +14,7 @@ const arenaApi = fs.readFileSync(path.join(ROOT, 'src/state/api.js'), 'utf8');
 const appUi = fs.readFileSync(path.join(ROOT, 'src/ui/App.js'), 'utf8');
 const phaserUi = fs.readFileSync(path.join(ROOT, 'src/phaser/ui/PhaserBattlefield.js'), 'utf8');
 const migration = fs.readFileSync(path.join(ROOT, 'migrations/auto/0024_arena_w98_rewards.sql'), 'utf8');
+const mailboxModule = fs.readFileSync(path.join(ROOT, 'workers/modules/mailbox.js'), 'utf8');
 
 class D1Statement {
   constructor(db, sql, values = []) { this.db = db; this.sql = sql; this.values = values; }
@@ -31,6 +32,13 @@ function loadMailboxFns() {
   const source = worker.replace('export default {', 'const workerDefault = {') + '\nglobalThis.__mailboxFns = { sendMail, handleClaimAllMail };';
   const sandbox = { console, Response, crypto, TextEncoder, Uint8Array };
   vm.createContext(sandbox); vm.runInContext(source, sandbox); return sandbox.__mailboxFns;
+}
+function loadMailboxHandlers(deps) {
+  const source = mailboxModule.replace('export function createMailboxHandlers', 'function createMailboxHandlers')
+    + '\nglobalThis.__createMailboxHandlers = createMailboxHandlers;';
+  const sandbox = { console, Response, crypto, TextEncoder, Uint8Array };
+  vm.createContext(sandbox); vm.runInContext(source, sandbox);
+  return sandbox.__createMailboxHandlers(deps);
 }
 const mailboxFns = loadMailboxFns();
 
@@ -57,20 +65,31 @@ test('sendMail works against the real SQLite partial unique index and preserves 
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS n FROM mailbox WHERE source_key = ''").get().n, 2);
 });
 
-test('Claim All concurrent calls and lost-response replay return the same stored reward exactly once', async () => {
+test('Claim All concurrent calls claim each mail row once and replay from the committed snapshot', async () => {
   const db = new D1TestDb();
-  db.raw.exec(`CREATE TABLE players (id TEXT PRIMARY KEY); CREATE TABLE characters (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL); CREATE TABLE mailbox (mail_id TEXT PRIMARY KEY, character_id TEXT NOT NULL, title TEXT, body TEXT, gold INTEGER, diamonds INTEGER, junk_json TEXT, items_json TEXT, claimed INTEGER, created_at TEXT, claimed_at TEXT DEFAULT '')`);
+  db.raw.exec(`CREATE TABLE players (id TEXT PRIMARY KEY); CREATE TABLE characters (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL); CREATE TABLE items (item_id TEXT PRIMARY KEY, character_id TEXT NOT NULL); CREATE TABLE mailbox (mail_id TEXT PRIMARY KEY, character_id TEXT NOT NULL, title TEXT, body TEXT, gold INTEGER, diamonds INTEGER, junk_json TEXT, items_json TEXT, claimed INTEGER, created_at TEXT, claimed_at TEXT DEFAULT '')`);
   db.raw.exec(migration);
   db.raw.prepare("INSERT INTO players VALUES ('p1')").run(); db.raw.prepare("INSERT INTO characters VALUES ('c1','p1')").run();
   db.raw.prepare("INSERT INTO mailbox (mail_id, character_id, gold, diamonds, junk_json, items_json, claimed, created_at) VALUES ('m1','c1',25,0,'','',0,'2026-01-01')").run();
   const session = { ok: true, row: { id: 'p1' } };
-  const calls = await Promise.all([1, 2].map(() => mailboxFns.handleClaimAllMail(db, 'p1', session, 'c1', 'stable-request')));
+  const handlers = loadMailboxHandlers({
+    json: value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } }),
+    nowIso: () => '2026-01-02T00:00:00.000Z',
+    verifyPlayer: async () => ({ ok: true }),
+    verifyOwnedCharacter: async () => ({ row: { character_id: 'c1', player_id: 'p1' } }),
+    parseJsonColumn: (value, fallback) => { try { return JSON.parse(value || ''); } catch (_) { return fallback; } },
+    buildRewardStatements: async () => [],
+    getSnapshot: async () => ({ committedSnapshot: true })
+  });
+  const calls = await Promise.all([1, 2].map(() => handlers.handleClaimAllMail(db, 'p1', session, 'c1', 'stable-request')));
   const payloads = await Promise.all(calls.map(r => r.json()));
-  assert.deepEqual(payloads[0].mailIds, ['m1']);
-  assert.deepEqual(payloads[1].mailIds, ['m1']);
-  assert.equal(payloads[0].gold, 25); assert.equal(payloads[1].gold, 25);
-  const replay = await (await mailboxFns.handleClaimAllMail(db, 'p1', session, 'c1', 'stable-request')).json();
-  assert.deepEqual(replay, payloads[0]);
+  assert.equal(payloads.filter(payload => payload.mailIds?.includes('m1')).length, 1);
+  assert.equal(payloads.filter(payload => payload.replayed).length, 1);
+  assert.ok(payloads.every(payload => payload.committedSnapshot));
+  const replay = await (await handlers.handleClaimAllMail(db, 'p1', session, 'c1', 'stable-request')).json();
+  assert.equal(replay.replayed, true);
+  assert.deepEqual(replay.mailIds, []);
+  assert.equal(replay.committedSnapshot, true);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS n FROM mailbox WHERE claimed = 1").get().n, 1);
 });
 
@@ -81,7 +100,7 @@ test('W9.8/W9.9 uses deterministic frame assets, rank history and V2 routes', ()
   assert.match(worker, /handleGetArenaV2History/);
   assert.match(worker, /handleGetArenaV2Ranking/);
   assert.match(worker, /refreshAvailableAt: state\?\.refresh_available_at \|\| null/);
-  assert.match(worker, /claim-all:\$\{characterId\}/);
+  assert.match(worker, /claimedAt = `\$\{nowIso\(\)\}#\$\{crypto\.randomUUID\(\)\}`/);
   assert.match(worker, /character_id = \? AND claimed = 0/);
 });
 

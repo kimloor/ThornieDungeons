@@ -1,40 +1,3 @@
-// ---------- character progress <-> server (schema v2: real per-character rows) ----------
-// Maps the flat "runtime save" (see save.js) into the field names
-// handleSaveCharacterProgress on the server expects — a plain, mostly 1:1 mapping now that
-// each character has its own real columns server-side, instead of the old JSON-blob-inside-a-
-// single-shared-row trick that turned out to silently drop data (the server's fixed column
-// list never even included that blob's column).
-function characterProgressToServer(flatSave) {
-  return {
-    level: flatSave.character.level,
-    xp: flatSave.character.xp,
-    stat_points: flatSave.character.statPoints,
-    str: flatSave.character.stats.str,
-    vit: flatSave.character.stats.vit,
-    agi: flatSave.character.stats.agi,
-    dex: flatSave.character.stats.dex,
-    luk: flatSave.character.stats.luk,
-    gold: flatSave.gold,
-    unlocked_floor: flatSave.unlockedFloor,
-    potions: flatSave.potions,
-    protection_stones: flatSave.protectionStones,
-    chest_pity: flatSave.chestPity,
-    // Skill progression shares this existing per-character JSON envelope so it remains cloud
-    // persistent without a production D1 schema migration.
-    pets_json: JSON.stringify({
-      list: flatSave.pets || [],
-      dup: flatSave.petDuplicates || {},
-      skills: flatSave.character.skillLevels || {},
-      skillVersion: 1,
-      skillResetPoints: Number(flatSave.character.skillResetPoints) || 0,
-      firstClearAccessoryClaims: flatSave.firstClearAccessoryClaims && typeof flatSave.firstClearAccessoryClaims === "object" ? { ...flatSave.firstClearAccessoryClaims } : {},
-      battleRewardReceipts: Array.isArray(flatSave.battleRewardReceipts) ? flatSave.battleRewardReceipts.slice(-128) : (Array.isArray(flatSave.rewardReceipts) ? flatSave.rewardReceipts.slice(-128) : []),
-      rewardReceipts: Array.isArray(flatSave.battleRewardReceipts) ? flatSave.battleRewardReceipts.slice(-128) : (Array.isArray(flatSave.rewardReceipts) ? flatSave.rewardReceipts.slice(-128) : [])
-    }),
-    active_pet_id: flatSave.activePetId || ""
-  };
-}
-
 // ---------- items <-> server ----------
 // Standard equipment names changed after launch. Legacy items have no gearTier in extra_json,
 // so exact old-name matches can be upgraded once on load. New drops always carry gearTier,
@@ -82,11 +45,8 @@ function normalizeEquipmentNameForLoad(type, name, gearTier) {
   const legacy = LEGACY_EQUIPMENT_NAME_MIGRATIONS[type]?.[name];
   return legacy ? { ...legacy, migrated: true } : { name, gearTier: 0, migrated: false };
 }
-// No characterId tagging needed here anymore — syncItems takes characterId as its own
-// authenticated top-level parameter (see App.js's pushItems), and the server stamps every row
-// with THAT value server-side rather than trusting anything the client puts in extra_json. This
-// is what makes it structurally impossible for syncing one character's inventory to touch
-// another's: the server's delete-stale-rows query is scoped by character_id, not just player_id.
+// syncItems sends existing row ids and approved presentation fields only. The Worker owns item
+// identity, quantities, stats and ownership; the authenticated character scope comes separately.
 function itemsToServerList(inventory, equipped, overflow = []) {
   const list = [];
   const pack = (it, equippedFlag) => ({
@@ -117,8 +77,8 @@ function itemsToServerList(inventory, equipped, overflow = []) {
       setId: it.setId || undefined,
       star: it.star || undefined,
       craftRecipeId: it.craftRecipeId || undefined,
-      favorite: it.favorite === true || undefined,
-      overflow: it.overflow === true || undefined,
+      favorite: it.favorite === true,
+      overflow: it.overflow === true,
       gearTier: it.gearTier || undefined,
       rewardVersion: it.rewardVersion || undefined,
       itemModelVersion: it.itemModelVersion || undefined,

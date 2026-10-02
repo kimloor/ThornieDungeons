@@ -976,6 +976,7 @@ function StatusScreen({
   const [draft, setDraft] = useState(emptyDraft);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [statsBusy, setStatsBusy] = useState(false);
   const used = Object.values(draft).reduce((sum, value) => sum + value, 0);
   const pointsLeft = Math.max(0, save.character.statPoints - used);
   const previewStatsRaw = { ...save.character.stats };
@@ -999,14 +1000,19 @@ function StatusScreen({
     if (delta > 0 && pointsLeft <= 0) return current;
     return { ...current, [key]: next };
   });
-  const commit = () => {
-    if (onCommitStats(draft)) setDraft(emptyDraft());
+  const commit = async () => {
+    if (statsBusy) return;
+    setStatsBusy(true);
+    try { if (await onCommitStats(draft)) setDraft(emptyDraft()); }
+    finally { setStatsBusy(false); }
   };
-  const doPaidReset = () => {
-    if (onResetStats()) {
+  const doPaidReset = async () => {
+    if (statsBusy) return;
+    setStatsBusy(true);
+    try { if (await onResetStats()) {
       setDraft(emptyDraft());
       setConfirmReset(false);
-    }
+    } } finally { setStatsBusy(false); }
   };
   const combatRows = [
     ["♥", "HP", charStats.maxHp, preview.maxHp, ""],
@@ -1057,8 +1063,8 @@ function StatusScreen({
         }),
         /*#__PURE__*/React.createElement("div", { className: "md-preview-help" }, /*#__PURE__*/React.createElement("span", null, "● ค่าที่เปลี่ยนจากการทดลองอัป"), /*#__PURE__*/React.createElement("button", { type: "button", disabled: !used, onClick: () => setDraft(emptyDraft()) }, "↻ รีเซ็ต")),
         /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
-          /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !allocatedStats, onClick: () => setConfirmReset(true) }, "↻ รีสเตตัส ", /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " 100")),
-          /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used, onClick: commit }, "ยืนยันการอัปสเตตัส")
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !allocatedStats || statsBusy, onClick: () => setConfirmReset(true) }, "↻ รีสเตตัส ", /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), " 100")),
+            /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used || statsBusy, onClick: commit }, statsBusy ? "กำลังบันทึก…" : "ยืนยันการอัปสเตตัส")
         )
       )
     ),
@@ -1099,14 +1105,20 @@ function SkillScreen({
     if (Number.isFinite(scaled.healPct)) return `ฟื้นฟู ${roundInt(scaled.healPct * 100)}% HP`;
     return skill.desc;
   };
-  const commit = () => {
-    if (onCommitSkills(draft)) setDraft({});
+  const [skillsBusy, setSkillsBusy] = useState(false);
+  const commit = async () => {
+    if (skillsBusy) return;
+    setSkillsBusy(true);
+    try { if (await onCommitSkills(draft)) setDraft({}); }
+    finally { setSkillsBusy(false); }
   };
-  const doPaidReset = () => {
-    if (onResetSkills()) {
+  const doPaidReset = async () => {
+    if (skillsBusy) return;
+    setSkillsBusy(true);
+    try { if (await onResetSkills()) {
       setDraft({});
       setConfirmReset(false);
-    }
+    } } finally { setSkillsBusy(false); }
   };
   return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
     /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
@@ -1183,18 +1195,18 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
               ),
               /*#__PURE__*/React.createElement("div", { className: "md-skill-level-control" },
                 /*#__PURE__*/React.createElement("span", null, rankLabel, ". ", current),
-                /*#__PURE__*/React.createElement("button", { type: "button", disabled: !check.ok, onClick: () => onLearnSkill(skill.id), "aria-label": `Learn ${title(skill.id)}` }, "+")
+                /*#__PURE__*/React.createElement("button", { type: "button", disabled: !check.ok || skillsBusy, onClick: async () => { setSkillsBusy(true); try { await onLearnSkill(skill.id); } finally { setSkillsBusy(false); } }, "aria-label": `Learn ${title(skill.id)}` }, "+")
               )
             );
           })
         );
       }),
       /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
-        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent || skillsBusy, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
       )
     ),
     /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }),
-    confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: () => { if (onResetSkills()) setConfirmReset(false); } })
+    confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
 // ---------- Phase 2/3/5: Leaderboard ----------
@@ -2676,6 +2688,7 @@ function RaidScreen({
   const [hurtToken, setHurtToken] = useState(0);
   const [hurtPlaying, setHurtPlaying] = useState(false);
   const [pendingPetHit, setPendingPetHit] = useState(false);
+  const attackRequestIdRef = useRef(null);
 
   const load = React.useCallback(() => {
     setError(null);
@@ -2732,9 +2745,15 @@ function RaidScreen({
     if (attacking || hurtPlaying) return;
     setAttacking(true);
     setLastResult(null);
-    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, useDiamonds).then(res => {
-      if (!res || res.error) { setLastResult({ error: res && res.error }); return; }
-      if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamondsSpent || status.me.diamondRefillCost || 50);
+    const pendingAttack = attackRequestIdRef.current || { requestId: globalThis.crypto?.randomUUID?.() || `raid-${Date.now()}-${Math.random().toString(36).slice(2)}`, paidDiamonds: !!useDiamonds };
+    attackRequestIdRef.current = pendingAttack;
+    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, pendingAttack.paidDiamonds, pendingAttack.requestId).then(res => {
+      if (!res || res.error) {
+        if (!res?.error || !["network_error", "server_error", "timeout", "operation_in_progress"].includes(res.error)) attackRequestIdRef.current = null;
+        setLastResult({ error: res && res.error }); return;
+      }
+      attackRequestIdRef.current = null;
+      if (res.paidDiamonds && onSpendDiamonds) onSpendDiamonds(res.diamonds);
       setLastResult(res);
       // A successful server-side hit is the only trigger for hurt. Delay the
       // status refresh until all three frames finish so a respawn cannot reset
@@ -3764,6 +3783,7 @@ function formatMailDate(iso) {
 function MailboxScreen({
   serverUrl,
   characterId,
+  onBeforeClaim,
   onApplyReward,
   onBack
 }) {
@@ -3802,19 +3822,21 @@ function MailboxScreen({
   };
   React.useEffect(() => { load(); }, [characterId]);
 
-  const handleClaim = (mailId) => {
+  const handleClaim = async (mailId) => {
     if (busy) return;
     setBusy(true);
     setMailError("");
-    cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
-      setBusy(false);
+    try {
+      if (onBeforeClaim && !await onBeforeClaim(characterId)) throw new Error("save_barrier_failed");
+      const res = await cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId);
       if (!res || res.error) { setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); return; }
-      onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
+      onApplyReward(res, characterId);
       load();
-    }).catch(() => { setBusy(false); setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); });
+    } catch { setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); }
+    finally { setBusy(false); }
   };
 
-  const handleClaimAll = () => {
+  const handleClaimAll = async () => {
     if (busy) return;
     setBusy(true);
     setMailError("");
@@ -3823,13 +3845,15 @@ function MailboxScreen({
       claimAllRequestRef.current = `claim-all-${characterId}-${entropy}`;
     }
     const requestId = claimAllRequestRef.current;
-    cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId, requestId).then(res => {
-      setBusy(false);
+    try {
+      if (onBeforeClaim && !await onBeforeClaim(characterId)) throw new Error("save_barrier_failed");
+      const res = await cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId, requestId);
       if (!res || res.error) { setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); return; }
       claimAllRequestRef.current = null;
-      if (res.mailIds && res.mailIds.length) onApplyReward({ gold: res.gold, diamonds: res.diamonds, junk: res.junk, items: res.items });
+      onApplyReward(res, characterId);
       load();
-    }).catch(() => { setBusy(false); setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); });
+    } catch { setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); }
+    finally { setBusy(false); }
   };
 
   const toggleSelect = (mailId) => setSelected(prev => ({ ...prev, [mailId]: !prev[mailId] }));
@@ -4377,8 +4401,8 @@ function PetScreen({
   const roleLabel = { attack: "Attack", support: "Support", tank: "Tank", control: "Control" }[selectedRole] || "Attack";
   const spriteConfig = selectedDef ? getPetSpriteConfig(selectedDef.id) : null;
   const auraUrl = selectedStar === 3 ? petUiUrl("starAuras.threeStar") : selectedStar === 2 ? petUiUrl("starAuras.twoStar") : "";
-  function handleStarUp(inst) {
-    const res = onStarUp(inst.instId);
+  async function handleStarUp(inst) {
+    const res = await onStarUp(inst.instId);
     if (res && res.ok) {
       setStarUpMsg(m => ({ ...m, [inst.instId]: null }));
       return;
@@ -4550,7 +4574,6 @@ function GachaScreen({
   gachaResult,
   onClearGachaResult,
   onGacha,
-  onClaimDiamonds,
   onBack
 }) {
   return /*#__PURE__*/React.createElement("div", {
@@ -4582,13 +4605,7 @@ function GachaScreen({
       margin: "0 0 6px",
       color: "var(--ink-soft)"
     }
-  }, "🧪 อยู่ระหว่างช่วงทดสอบ — ใช้ปุ่มด้านล่างรับเพชรฟรีเพื่อทดสอบระบบสุ่มได้เลย (ระบบเติมเงินจริงยังไม่เปิด)"), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn item wide",
-    style: {
-      marginBottom: 8
-    },
-    onClick: onClaimDiamonds
-  }, "🎁 รับเพชรทดสอบ +500"), /*#__PURE__*/React.createElement("button", {
+  }, "สุ่มสัตว์เลี้ยงจากแค็ตตาล็อกที่กำหนด ใช้ 100 Diamonds ต่อครั้ง"), /*#__PURE__*/React.createElement("button", {
     className: "md-btn primary wide",
     disabled: save.diamonds < GACHA_COST,
     onClick: onGacha
@@ -5754,6 +5771,17 @@ function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, 
     detail.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSalvage }, "Salvage"));
 }
 
+function inventorySalvagePreview(item) {
+  if (!item) return null;
+  if (globalThis.MYTHIC_V2?.validSetItem(item)) {
+    return { kind: "mythic_set", materials: globalThis.MYTHIC_V2.setSalvage(item) || [] };
+  }
+  if (globalThis.MYTHIC_V2?.bossWeapon(item)) return { kind: "mythic_boss_weapon", materials: [] };
+  const yieldPlan = salvageYield(item.rarity, item);
+  if (!yieldPlan) return null;
+  return { kind: "normal", materials: Object.entries(yieldPlan).filter(([, quantity]) => Number(quantity) > 0).map(([junkId, quantity]) => ({ junkId, quantity })) };
+}
+
 function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy, onToggleFavorite, onEquip, onUnequip, onSell, onSalvage, onClose }) {
   const rarityLabel = item => ({ common: "Common", junk: "Junk", rare: "Rare", unique: "Unique", elite: "Elite", mythic: "Mythic" })[inventoryRarityKey(item)] || "Common";
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
@@ -5784,8 +5812,9 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
     /*#__PURE__*/React.createElement(ItemComparison, { currentEquipped, currentDetail, compareRows }),
     salvagePreview && /*#__PURE__*/React.createElement("div", { className:"md-inv2-salvage-preview" },
       /*#__PURE__*/React.createElement("strong", null, "Salvage Yield"),
-      /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"iron" }, fallback:JUNK_INFO.iron.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.iron.name }), "Iron ", salvagePreview.iron),
-      salvagePreview.manaOre > 0 && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:"manaOre" }, fallback:JUNK_INFO.manaOre.icon, className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO.manaOre.name }), "Mana Stone ", salvagePreview.manaOre)),
+      salvagePreview.materials.length
+        ? salvagePreview.materials.map(material => /*#__PURE__*/React.createElement("span", { key:material.junkId }, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:material.junkId }, fallback:JUNK_INFO[material.junkId]?.icon || "📦", className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO[material.junkId]?.name || material.junkId }), JUNK_INFO[material.junkId]?.name || material.junkId, " ×", material.quantity))
+        : /*#__PURE__*/React.createElement("span", null, "ไม่มีวัสดุคืน")),
     message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
     /*#__PURE__*/React.createElement(ItemActions, { detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose })));
 }
@@ -5841,7 +5870,7 @@ function InventoryOverlayV2({
   const previewEquipped = previewSlot ? { ...equipped, [previewSlot]: currentDetail } : equipped;
   const currentEquipped = currentDetail && SLOT_ORDER.includes(inventoryItemType(currentDetail)) ? equipped[inventoryItemType(currentDetail)] : null;
   const compareRows = detail?.location === "inventory" ? inventoryComparisonRows(currentEquipped, currentDetail) : [];
-  const salvagePreview = currentDetail && detail?.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) ? salvageYield(currentDetail.rarity) : null;
+  const salvagePreview = currentDetail && detail?.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) ? inventorySalvagePreview(currentDetail) : null;
   const closeDetail = () => { setDetail(null); setMessage(""); };
   const destructiveConfirm = (item, action) => {
     if (!item) return false;
@@ -5853,11 +5882,11 @@ function InventoryOverlayV2({
     const result = onSell(currentDetail);
     if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้"); else closeDetail();
   };
-  const runSalvage = () => {
-    if (!currentDetail || inventoryItemLocked(currentDetail) || !salvagePreview) return;
-    const yieldText = `Iron ${salvagePreview.iron}${salvagePreview.manaOre ? ` + Mana Stone ${salvagePreview.manaOre}` : ""}`;
+  const runSalvage = async () => {
+    if (!currentDetail || inventoryItemLocked(currentDetail) || !salvagePreview || busy) return;
+    const yieldText = salvagePreview.materials.map(material => `${JUNK_INFO[material.junkId]?.name || material.junkId} ×${material.quantity}`).join(" + ") || "ไม่มีวัสดุคืน";
     if (!window.confirm(`แยกชิ้นส่วน ${itemDisplayName(currentDetail)} หรือไม่?\nได้รับ ${yieldText}`)) return;
-    const result = onSalvage(inventoryItemRuntimeId(currentDetail));
+    const result = await onSalvage(inventoryItemRuntimeId(currentDetail));
     if (result?.ok === false) setMessage(result.message || "ไม่สามารถแยกชิ้นส่วนได้"); else closeDetail();
   };
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
@@ -5921,6 +5950,7 @@ function InventoryOverlay({
   const visibleInventory = sortedInventory.slice(0, 25);
   const gridSlotCount = gridExpanded ? 25 : Math.min(GRID_COLLAPSED_COUNT, 25);
   const selectedItem = selectedId ? inventory.find(i => i.id === selectedId) : null;
+  const selectedSalvagePreview = selectedItem && selectedItem.type !== "junk" ? inventorySalvagePreview(selectedItem) : null;
   const selectedEquipped = selectedEquippedSlot ? equipped[selectedEquippedSlot] : null;
   const detailTarget = selectedItem || selectedEquipped;
 
@@ -5950,9 +5980,9 @@ function InventoryOverlay({
     onSell(selectedItem);
     setSelectedId(null);
   };
-  const doSalvage = () => {
-    if (!selectedItem) return;
-    const res = onSalvage(selectedItem.id);
+  const doSalvage = async () => {
+    if (!selectedItem || busy || !selectedSalvagePreview) return;
+    const res = await onSalvage(selectedItem.id);
     setActionMsg(res.message);
     if (res.ok) setSelectedId(null);
   };
@@ -6123,12 +6153,10 @@ function InventoryOverlay({
       /*#__PURE__*/React.createElement("button", { className: "md-btn info", disabled: !selectedEquippedSlot || busy, onClick: doUnequip }, "↩️ ถอด"),
       /*#__PURE__*/React.createElement("button", {
         className: "md-btn flee",
-        disabled: !selectedItem || selectedItem.type === "junk" || busy,
+        disabled: !selectedItem || selectedItem.type === "junk" || busy || !selectedSalvagePreview,
         onClick: doSalvage
-      }, selectedItem && selectedItem.type !== "junk" ? (() => {
-        const y = salvageYield(selectedItem.rarity);
-        return /*#__PURE__*/React.createElement(React.Fragment, null, "♻️ ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }), y.iron, " ", /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }), y.manaOre);
-      })() : "♻️ ย่อย")
+      }, selectedItem && selectedItem.type !== "junk" && selectedSalvagePreview ? /*#__PURE__*/React.createElement(React.Fragment, null,
+        "♻️ ", selectedSalvagePreview.materials.length ? selectedSalvagePreview.materials.map(material => `${JUNK_INFO[material.junkId]?.icon || "📦"}${material.quantity}`).join(" ") : "ไม่มีวัสดุคืน") : "♻️ ย่อย")
     ),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิด Inventory")
   ));
