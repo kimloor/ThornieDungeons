@@ -1263,6 +1263,20 @@ Normal non-Set Rare / Unique / Elite equipment is not part of this special destr
 - server-granted Raid rewards must preserve mailbox/idempotency guarantees already used by production.
 
 
+### 24.3 Server-authority prerequisite before Raid/Wings V2
+
+Reward V2 / Enhance V2 / Empower V2 server-authoritative mutations are the foundation, but generic save/item-sync paths must also be narrowed before Raid/Wings V2.
+
+Roadmap requirement:
+- complete WAVE 4 Mythic content first;
+- complete WAVE 4.5 Server Authority / Economy Security before WAVE 5;
+- generic client saves must not be able to raise authoritative currency/progression values;
+- generic item sync must not create/delete/re-stat authoritative items;
+- reward/claim/craft economy mutations must be exact-once and server-owned;
+- do not combine this trust-boundary work with the destructive legacy special-item deletion in WAVE 6.
+
+---
+
 ## 25. Not yet locked / future V3 content
 
 The following are intentionally deferred and do **not** block V2 implementation:
