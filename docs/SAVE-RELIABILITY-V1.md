@@ -152,13 +152,13 @@ Because several current endpoints save full snapshots, repeated intermediate sna
 
 ### Character progress
 
-May use **latest snapshot wins** inside the same account/character/session generation, provided ordering against other dependent operations remains correct.
+Legacy full snapshots may be coalesced only for fields that are explicitly client-owned. Economy, progression, currencies, combat stats and other server-authoritative fields must not use client snapshot authority. The WAVE 4.5 Server Authority gate narrows `saveCharacterProgress` to an explicit non-economy/client-owned allowlist.
 
 ### Inventory/equipment
 
-May use **latest full item snapshot wins** for the same character, because `syncItems` represents the complete character item state.
+`syncItems` must no longer be treated as authority for the complete item row. Under the WAVE 4.5 Server Authority gate it may persist only whitelisted presentation state on existing authoritative items (for example equipped/inventory-slot/favorite/overflow state as approved). It must not create/delete items or overwrite rarity/stats/enhance/quantity/server-owned metadata.
 
-Never coalesce inventory snapshots across different characters.
+Never coalesce inventory presentation writes across different characters.
 
 ### Battle checkpoint
 
@@ -280,19 +280,34 @@ If DEV cannot prove a cross-session replay is conflict-safe, prefer server state
 
 Generic client persistence must update only fields it owns.
 
-Server-authoritative fields such as Raid stamina and Arena tickets must remain excluded from client-authoritative full overwrites.
+Server-authoritative fields include Raid stamina, Arena tickets, currencies, progression, authoritative combat stats, item identity/stats/rarity/quantity, reward state and any other economy-bearing value. They must remain excluded from client-authoritative full overwrites.
 
-Any future server-owned economy field must follow the same rule.
+Any future server-owned economy/progression/item field must follow the same rule.
 
-Do not expand `saveCharacterProgress` to overwrite every physical column in `characters` merely because the column exists.
+Do not expand `saveCharacterProgress` to overwrite every physical column in `characters` merely because the column exists. WAVE 4.5 explicitly requires narrowing this endpoint so generic client saves cannot raise Gold, Diamonds, level/XP, unlocked progression or other authoritative economy/progression values.
 
 The persistence contract should use an explicit allowlist of client-owned fields.
 
 ---
 
+### 10.1 WAVE 4.5 authority migration gate
+
+Before WAVE 5 Raid/Wings V2 begins, Production must verify the Server Authority / Economy Security gate:
+
+- generic character persistence is limited to explicitly client-owned state;
+- generic item synchronization cannot insert/delete/re-stat authoritative items;
+- equip/presentation state is validated against character ownership and existing item identity;
+- reward/claim mutations are server-credited and exact-once;
+- Craft and other economy mutations use guarded/idempotent concurrency-safe writes;
+- forged-payload and two-account isolation regression tests pass.
+
+This is a trust-boundary migration, not a destructive player-data cleanup. Existing player data must not be silently deleted or normalized; destructive legacy special-item cleanup remains WAVE 6.
+
+---
+
 ## 11. Transaction/reward safety
 
-Rewards and irreversible transactions must not depend on a fragile sequence where a client can receive a reward locally but permanently lose the corresponding server commit, or commit twice after retry.
+Rewards and irreversible transactions must not depend on a fragile sequence where a client can receive a reward locally but permanently lose the corresponding server commit, or commit twice after retry. Claim endpoints should credit authoritative balances/items in the same guarded server transaction that marks the claim complete.
 
 For server-side transactional actions:
 
