@@ -1783,7 +1783,7 @@ async function battleCompletionSnapshot(db, id, characterId) {
   return { character, items, diamonds: Number(player?.diamonds) || 0 };
 }
 function itemProvenanceStatement(db, itemId, playerId, characterId, originType, originSourceId, context, timestamp, gateSql = null, gateBinds = []) {
-  const gate = gateSql ? ` AND ${gateSql}` : "";
+  const gate = gateSql ? ` WHERE ${gateSql}` : "";
   return db.prepare(`INSERT OR IGNORE INTO item_provenance
     (item_id, original_player_id, original_character_id, origin_type, origin_source_id, origin_context_json, created_at, acquired_at, tradeable, bound)
     SELECT ?, ?, ?, ?, ?, ?, ?, ?, 0, 0${gate}`)
@@ -1791,7 +1791,7 @@ function itemProvenanceStatement(db, itemId, playerId, characterId, originType, 
       JSON.stringify(context || {}), timestamp, timestamp, ...gateBinds);
 }
 function itemOwnershipAcquireStatement(db, itemId, playerId, characterId, originType, context, timestamp, gateSql = null, gateBinds = []) {
-  const gate = gateSql ? ` AND ${gateSql}` : "";
+  const gate = gateSql ? ` WHERE ${gateSql}` : "";
   return db.prepare(`INSERT OR IGNORE INTO item_ownership_events
     (event_id, item_id, from_player_id, from_character_id, to_player_id, to_character_id, event_type, context_json, occurred_at)
     SELECT ?, ?, NULL, NULL, ?, ?, 'acquire', ?, ?${gate}`)
