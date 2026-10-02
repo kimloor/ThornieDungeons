@@ -1,8 +1,14 @@
 # Save Reliability V1 — Master Contract
 
-Status: **approved prerequisite persistence contract for ThornieDungeons**.
+Status: **approved contract; W5.5 security hardening implemented on feature branch / QA required**.
 
 This document records save reliability contracts and implementation status for the authenticated cloud-save model. WAVE 4.5 replaces the former client-authoritative character snapshot path with cause-specific server mutations.
+
+W5.5 additionally treats resumable `run_state` as a presentation/checkpoint cache:
+its level, XP, currency and consumable columns are normalized from the authoritative
+character row, and dungeon reward settlement uses the server-issued battle context.
+The API boundary applies approved-origin CORS, a general request-body limit, and
+stable external error codes while retaining diagnostics in Worker logs.
 
 It supplements:
 

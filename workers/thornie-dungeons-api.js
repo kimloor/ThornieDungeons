@@ -23,26 +23,27 @@
  *   POST { action: "logout"|"changePassword"|"createRecoveryCode", ... }
  * All character/gameplay endpoints below use the same Authorization header; player_id is
  * derived from the validated session and id/password are never accepted as ownership proof.
- * Public/admin endpoints remain unchanged:
+ * Public endpoints remain unauthenticated; Admin endpoints require the dedicated
+ * Admin V2 Bearer session and never accept the historical static key:
  *   GET  ?action=getGameConfig
  *   GET  ?action=getRecipes                                                (NEW, Phase 4 refactor)
  *   GET  ?action=getMonsterLoot                                             (NEW, monster loot table)
  *   GET  ?action=getJunkInfo                                                (NEW, admin.html — material names/icons)
- *   POST { action: "adminUpsertJunkInfo", adminKey, junkId, name, icon }     (NEW, admin.html)
- *   POST { action: "adminDeleteJunkInfo", adminKey, junkId }                 (NEW, admin.html)
+ *   POST { action: "adminUpsertJunkInfo", junkId, name, icon }                (NEW, Admin Bearer)
+ *   POST { action: "adminDeleteJunkInfo", junkId }                            (NEW, Admin Bearer)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid|pvp            (pvp = NEW)
  *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD             (NEW, Phase 2.1, last 7 days)
- *   GET  ?action=getPlayer&adminKey=&id=            (admin)
- *   GET  ?action=getAllPlayers&adminKey=            (admin)
- *   GET  ?action=getPlayerItems&adminKey=&id=        (admin)
- *   GET  ?action=getGameStats&adminKey=              (admin)
- *   GET  ?action=getSheet&adminKey=&sheet=           (admin — "sheet" name kept from before, means "table")
- *   POST { action: "saveGameConfig", adminKey, config }
- *   POST { action: "setGameConfigItem", adminKey, key, value }
- *   POST { action: "adminUpsertRecipe", adminKey, recipeId, type, name, setId, empowerSlotCount, materials }  (NEW, admin.html)
- *   POST { action: "adminDeleteRecipe", adminKey, recipeId }                                                  (NEW, admin.html)
- *   POST { action: "adminUpsertMonsterLootEntry", adminKey, entry: {...} }                                    (NEW, admin.html)
- *   POST { action: "adminDeleteMonsterLootEntry", adminKey, entryId }                                         (NEW, admin.html)
+ *   GET  ?action=getPlayer&id=            (admin, Admin Bearer)
+ *   GET  ?action=getAllPlayers=            (admin, Admin Bearer)
+ *   GET  ?action=getPlayerItems&id=        (admin, Admin Bearer)
+ *   GET  ?action=getGameStats=              (admin, Admin Bearer)
+ *   GET  ?action=getSheet&sheet=           (admin, Admin Bearer)
+ *   POST { action: "saveGameConfig", config } (Admin Bearer)
+ *   POST { action: "setGameConfigItem", key, value } (Admin Bearer)
+ *   POST { action: "adminUpsertRecipe", recipeId, type, name, setId, empowerSlotCount, materials } (Admin Bearer)
+ *   POST { action: "adminDeleteRecipe", recipeId } (Admin Bearer)
+ *   POST { action: "adminUpsertMonsterLootEntry", entry: {...} } (Admin Bearer)
+ *   POST { action: "adminDeleteMonsterLootEntry", entryId } (Admin Bearer)
  *
  * Phase 2 (leaderboard, migration_v3.sql already applied — leaderboard_stats exists):
  *   - GET ?action=getLeaderboard&board=floor|cp|pet_cp returns top 50 rows, read-only,
@@ -212,7 +213,10 @@ async function handleRegister(db, id, password, confirmPassword, rememberLogin, 
   if (passwordError) return await fail({ error: passwordError });
   if (String(password) !== String(confirmPassword)) return await fail({ error: "password_mismatch" });
   const existing = await playerByLoginId(db, cleanId);
-  if (existing) return await fail({ error: "id_unavailable" });
+  // Do not reveal whether a submitted Player ID already exists. Keep the
+  // validation-specific errors above for actionable client correction, but use
+  // one generic availability result for account-existence privacy.
+  if (existing) return await fail({ error: "registration_unavailable" });
 
   const now = nowIso();
   const passwordHash = await hashPassword(password);
@@ -463,7 +467,7 @@ async function handleEnterCharacter(db, id, session, slotIndex) {
        LIMIT 1`
     ).bind(character.character_id, id).first();
     if (legacyRun) {
-      runState = normalizedRunState(character.character_id, legacyRun);
+      runState = normalizedRunState(character.character_id, legacyRun, character);
       await upsertRow(db, "run_state", "character_id", runState);
     }
   }
@@ -472,7 +476,7 @@ async function handleEnterCharacter(db, id, session, slotIndex) {
 }
 
 // ---------- per-character progress / items / run-state ----------
-function normalizedRunState(characterId, runState) {
+function normalizedRunState(characterId, runState, authoritativeCharacter = null) {
   let petState = runState.pet_state_json ?? runState.petState ?? null;
   if (typeof petState === "string") {
     try { petState = JSON.parse(petState); } catch (e) { petState = null; }
@@ -484,17 +488,25 @@ function normalizedRunState(characterId, runState) {
     : {};
   return {
     character_id: characterId,
-    floor: Math.max(1, Number(runState.floor) || 1),
-    level: Math.max(1, Number(runState.level) || 1),
-    xp: Math.max(0, Number(runState.xp) || 0),
+    // This row is a resumable presentation/checkpoint cache. Progression and
+    // economy remain sourced from the authoritative character row.
+    // Floor is retained only as a resumable checkpoint hint.  Dungeon entry and
+    // reward settlement re-authorize it from the character/battle rows; do not
+    // rewrite this legacy presentation value on save or old clients lose their
+    // resume point when unlocked_floor has not yet been migrated.
+    floor: Math.max(1, Math.min(999, Math.floor(Number(runState.floor) || 1))),
+    level: Math.max(1, Number(authoritativeCharacter?.level) || 1),
+    xp: Math.max(0, Number(authoritativeCharacter?.xp) || 0),
     hp: Math.max(0, Number(runState.hp) || 0),
     mp: Math.max(0, Number(runState.mp) || 0),
     base_atk: Math.max(0, Number(runState.base_atk) || 0),
     base_def: Math.max(0, Number(runState.base_def) || 0),
     base_max_hp: Math.max(0, Number(runState.base_max_hp) || 0),
     base_max_mp: Math.max(0, Number(runState.base_max_mp) || 0),
-    run_gold: Math.max(0, Number(runState.run_gold) || 0),
-    potions: Math.max(0, Number(runState.potions) || 0),
+    // Legacy columns remain readable for compatibility, but are never accepted
+    // as authoritative currency/consumable writes from a client payload.
+    run_gold: 0,
+    potions: Math.max(0, Number(authoritativeCharacter?.potions) || 0),
     pet_state_json: JSON.stringify(safePetState),
     updated_at: runState.updated_at || nowIso()
   };
@@ -1136,7 +1148,7 @@ async function handleSaveRunState(db, id, session, characterId, runState) {
 
   // Migration v12 supplies this additive per-character table. The legacy
   // player-keyed run_state table remains untouched for rollback compatibility.
-  const obj = normalizedRunState(characterId, { ...runState, updated_at: nowIso() });
+  const obj = normalizedRunState(characterId, { ...runState, updated_at: nowIso() }, owned.row);
   await upsertRow(db, "run_state", "character_id", obj);
   return json({ ok: true });
 }
@@ -1963,7 +1975,7 @@ async function handleSyncItems(db, id, session, characterId, items) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
-  if (owned.error) return json({ error: owned.error });
+  if (owned.error) return json({ error: owned.error }, 403);
   if (!Array.isArray(items)) return json({ error: "invalid_items" }, 400);
   if (items.length > 5000) return json({ error: "inventory_too_large", max: 5000 }, 413);
 
@@ -1974,6 +1986,12 @@ async function handleSyncItems(db, id, session, characterId, items) {
   const seen = new Set();
   const equippedStateById = new Map(rows.map(row => [String(row.item_id), Number(row.equipped) === 1]));
   const stmts = [];
+  const allowedItemTypes = new Set(["junk", "potion", "weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"]);
+  const normalizeInventorySlot = value => {
+    if (value === "" || value === null || value === undefined) return "";
+    if (!Number.isInteger(value) || value < 0 || value >= 5000) return null;
+    return value;
+  };
   for (const incoming of items) {
     const itemId = String(incoming?.itemId || "");
     if (!itemId || seen.has(itemId)) return json({ error: "invalid_item_reference" }, 400);
@@ -1985,6 +2003,7 @@ async function handleSyncItems(db, id, session, characterId, items) {
     const existingV2 = !!existing && ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: storedExtra.rewardVersion, itemModelVersion: storedExtra.itemModelVersion });
     if (incomingV2 && !existingV2) return json({ error: "untrusted_v2_item" }, 403);
     if (!existing) return json({ error: "item_not_owned" }, 403);
+    if (!allowedItemTypes.has(String(existing.slot_type || ""))) return json({ error: "invalid_item_slot_type" }, 400);
 
     if (typeof incoming.equipped !== "boolean") return json({ error: "invalid_presentation_state" }, 400);
     equippedStateById.set(itemId, incoming.equipped);
@@ -1992,13 +2011,17 @@ async function handleSyncItems(db, id, session, characterId, items) {
       if (!["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(existing.slot_type)) {
         return json({ error: "invalid_equip_slot" }, 400);
       }
+    } else if (["junk", "potion"].includes(existing.slot_type) && Number(existing.equipped) === 1) {
+      return json({ error: "invalid_equip_slot" }, 400);
     }
+    const nextInventorySlot = normalizeInventorySlot(incoming.inventorySlot);
+    if (nextInventorySlot === null) return json({ error: "invalid_inventory_slot" }, 400);
     const nextExtra = { ...storedExtra };
     if (typeof incomingExtra.favorite === "boolean") nextExtra.favorite = incomingExtra.favorite;
     if (typeof incomingExtra.overflow === "boolean") nextExtra.overflow = incomingExtra.overflow;
     stmts.push(db.prepare(
-      `UPDATE items SET equipped = ?, extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND player_id = ?`
-    ).bind(incoming.equipped ? 1 : 0, JSON.stringify(nextExtra), nowIso(), itemId, characterId, id));
+      `UPDATE items SET equipped = ?, inventory_slot = COALESCE(?, inventory_slot), extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND player_id = ?`
+    ).bind(incoming.equipped ? 1 : 0, nextInventorySlot, JSON.stringify(nextExtra), nowIso(), itemId, characterId, id));
   }
 
   // Omitted rows retain their existing state. Validate the resulting DB state, not
@@ -2335,18 +2358,24 @@ async function handleGetInventory(db, id, session, characterId, page, pageSize) 
   });
 }
 
-async function handleSetInventorySlot(db, id, session, itemId, inventorySlot) {
+async function handleSetInventorySlot(db, id, session, characterId, itemId, inventorySlot) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   if (!itemId) return json({ error: "missing_fields" });
+  const ownedCharacter = await verifyOwnedCharacter(db, id, characterId);
+  if (ownedCharacter.error) return json({ error: ownedCharacter.error }, 403);
 
-  const row = await db.prepare(`SELECT * FROM items WHERE player_id = ? AND item_id = ?`).bind(id, itemId).first();
+  const row = await db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? AND item_id = ?`).bind(id, characterId, itemId).first();
   if (!row) return json({ error: "item_not_found" });
+  if (!new Set(["junk", "potion", "weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"]).has(String(row.slot_type || ""))) {
+    return json({ error: "invalid_item_slot_type" }, 400);
+  }
 
   const slot = inventorySlot === undefined ? "" : inventorySlot;
+  if (slot !== "" && (!Number.isInteger(slot) || slot < 0 || slot >= 5000)) return json({ error: "invalid_inventory_slot" }, 400);
   await db
-    .prepare(`UPDATE items SET inventory_slot = ?, updated_at = ? WHERE player_id = ? AND item_id = ?`)
-    .bind(slot, nowIso(), id, itemId)
+    .prepare(`UPDATE items SET inventory_slot = ?, updated_at = ? WHERE player_id = ? AND character_id = ? AND item_id = ?`)
+    .bind(slot, nowIso(), id, characterId, itemId)
     .run();
 
   return json({ ok: true, itemId: String(itemId), inventorySlot: slot });
@@ -6320,14 +6349,64 @@ async function handleAdminDeleteJunkInfo(db, adminAuth, junkId) {
   return json({ ok: true });
 }
 
+// ---------- request boundary hardening ----------
+const MAX_REQUEST_BODY_BYTES = 512 * 1024;
+const DEFAULT_CORS_ORIGINS = Object.freeze([
+  "https://thorniedungeons.ekqtjl.workers.dev",
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+]);
+
+function corsOrigins(env) {
+  const configured = String(env?.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(value => value.trim())
+    .filter(Boolean);
+  return new Set([...DEFAULT_CORS_ORIGINS, ...configured]);
+}
+
+function requestOriginAllowed(request, env) {
+  const origin = request.headers.get("Origin");
+  return !origin || corsOrigins(env).has(origin);
+}
+
+function withCorsHeaders(response, request, env) {
+  const headers = new Headers(response.headers);
+  const origin = request.headers.get("Origin");
+  headers.delete("Access-Control-Allow-Origin");
+  if (origin && corsOrigins(env).has(origin)) {
+    headers.set("Access-Control-Allow-Origin", origin);
+    headers.set("Vary", "Origin");
+  }
+  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function enforceRequestBodyLimit(request) {
+  const declared = Number(request.headers.get("Content-Length"));
+  if (Number.isFinite(declared) && declared > MAX_REQUEST_BODY_BYTES) return false;
+  if (!request.body) return true;
+  const body = await request.clone().arrayBuffer();
+  return body.byteLength <= MAX_REQUEST_BODY_BYTES;
+}
+
 // ---------- router ----------
-export default {
-  async fetch(request, env) {
+async function apiFetch(request, env) {
     const db = env.DB;
     const url = new URL(request.url);
 
+    if (!requestOriginAllowed(request, env)) {
+      return json({ error: "cors_origin_not_allowed" }, 403);
+    }
     if (request.method === "OPTIONS") {
       return json({ ok: true });
+    }
+
+    if (request.method === "POST" && !(await enforceRequestBodyLimit(request))) {
+      return json({ error: "request_body_too_large" }, 413);
     }
 
     try {
@@ -6484,7 +6563,7 @@ export default {
           case "mutateLegacyBlacksmith":
             return await handleMutateLegacyBlacksmith(db, id, auth, body.characterId, body.itemId, body.mutation, body.requestId);
           case "setInventorySlot":
-            return await handleSetInventorySlot(db, id, auth, body.itemId, body.inventorySlot);
+            return await handleSetInventorySlot(db, id, auth, body.characterId, body.itemId, body.inventorySlot);
           case "claimDailyLogin":
             return await handleClaimDailyLogin(db, id, auth, body.characterId);
           case "attackRaidBoss":
@@ -6575,8 +6654,22 @@ export default {
 
       return json({ error: "method_not_allowed" }, 405);
     } catch (err) {
-      return json({ error: "server_error", message: String((err && err.message) || err) }, 500);
+      // Keep SQL/stack details in Worker logs only.  Clients receive one stable
+      // code so internal schema and implementation details cannot be fingerprinted.
+      console.error("[api-error]", JSON.stringify({
+        method: request.method,
+        path: url.pathname,
+        action: request.method === "GET" ? url.searchParams.get("action") : "post",
+        error: String((err && err.message) || err).slice(0, 500)
+      }));
+      if (err instanceof SyntaxError || String(err?.name || "") === "SyntaxError") return json({ error: "invalid_json" }, 400);
+      return json({ error: "server_error" }, 500);
     }
+}
+
+export default {
+  async fetch(request, env) {
+    return withCorsHeaders(await apiFetch(request, env), request, env);
   },
 
   // Cron Trigger entry point (set up in Cloudflare Dashboard -> this worker -> Trigger

@@ -1,6 +1,7 @@
 import worker from "./thornie-dungeons-api.js";
 
 const COMPLETE_BATTLE_RETRY_DELAYS_MS = [80, 180, 360];
+const MAX_REQUEST_BODY_BYTES = 512 * 1024;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -23,6 +24,16 @@ function safeBattleLog(event, detail) {
 
 async function fetchWithBattleCompletionRaceGuard(request, env, ctx) {
   if (request.method !== "POST") return worker.fetch(request, env, ctx);
+
+  // The deployed entrypoint performs a completion retry inspection before the
+  // core router. Enforce the same boundary here so oversized bodies never reach
+  // JSON parsing or retry orchestration.
+  const declaredLength = Number(request.headers.get("Content-Length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BODY_BYTES) return worker.fetch(request, env, ctx);
+  if (request.body) {
+    const bytes = await request.clone().arrayBuffer();
+    if (bytes.byteLength > MAX_REQUEST_BODY_BYTES) return worker.fetch(request, env, ctx);
+  }
 
   let body;
   try {

@@ -10,7 +10,7 @@ It does not authorize generic database editing, destructive maintenance, or prod
 
 ## 1. Problem being solved
 
-Current `/admin` access depends on one static `ADMIN_API_KEY`:
+The historical `/admin` access depended on one static `ADMIN_API_KEY`:
 
 - the operator types the raw key into the page;
 - the page stores it in browser `localStorage`;
@@ -268,9 +268,7 @@ Revokes current Admin session.
 
 ## 10. Existing Admin API transition
 
-Current Admin endpoints use `verifyAdminKey(env, adminKey)`.
-
-Admin V2 moves the UI to a shared session verifier:
+Admin V2 endpoints use the shared session verifier:
 
 `verifyAdminSession(db, bearerToken(request))`
 
@@ -280,12 +278,10 @@ All Admin V2 UI requests must use the dedicated Admin Bearer token.
 
 Existing dedicated handlers remain authoritative for their own operation; authentication changes must not accidentally make them public.
 
-During initial rollout the legacy `adminKey` route may remain for rollback, but:
-
-- the Admin V2 page must stop using it;
-- no new Admin feature may use it;
-- it is not considered the new security contract;
-- cleanup is a later controlled change.
+The legacy `adminKey` query/body compatibility path is retired. Requests without
+an active Admin Bearer session receive `admin_session_required`; no live Admin
+route falls back to `ADMIN_API_KEY`. `verifyAdminKey` remains only as an exported
+compatibility primitive for migration tooling and is not an authorization path.
 
 ---
 
@@ -475,7 +471,7 @@ At minimum verify:
 - existing Recipes / Monster Drops / Junk Info reads/writes work with Admin Bearer session;
 - Admin page does not read/write `thornie-admin-key`;
 - Admin page sends no `adminKey` query/body field;
-- legacy Admin key path remains unchanged if retained for rollback;
+- legacy Admin key requests are rejected and do not bypass Admin session expiry, revocation, or audit identity;
 - normal Auth V2 regression passes;
 - no production player/account data is mutated by Admin authentication;
 - build passes;

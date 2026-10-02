@@ -257,6 +257,15 @@ const STATIC_MONSTERS = [
 
 function adminToken() { return sessionStorage.getItem(ADMIN_SESSION_STORAGE) || ""; }
 
+// Values displayed in Admin tables/forms may originate from D1 configuration.
+// Keep interpolation for the existing compact table renderer, but escape every
+// untrusted value before it enters an HTML context.
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
 function setAdminUi(auth) {
   const loggedIn = !!auth?.admin;
   document.getElementById("adminLoginGate").style.display = loggedIn ? "none" : "flex";
@@ -392,7 +401,7 @@ function junkSelectOptions(selected) {
   return Array.from(ids).sort().map(id => {
     const match = junkInfoCache.find(j => j.junk_id === id);
     const label = id === "gold" ? "gold (ทอง)" : (match ? `${id} (${match.name})` : id);
-    return `<option value="${id}"${id === selected ? " selected" : ""}>${label}</option>`;
+    return `<option value="${escapeHtml(id)}"${id === selected ? " selected" : ""}>${escapeHtml(label)}</option>`;
   }).join("");
 }
 
@@ -400,7 +409,7 @@ function materialRow(key = "", qty = "") {
   const div = document.createElement("div");
   div.className = "matRow";
   div.innerHTML = `<select class="matKey">${junkSelectOptions(key)}</select>
-    <input class="matQty" type="number" placeholder="จำนวน" value="${qty}" style="max-width:100px">
+    <input class="matQty" type="number" placeholder="จำนวน" value="${escapeHtml(qty)}" style="max-width:100px">
     <button type="button">ลบ</button>`;
   div.querySelector("button").onclick = () => div.remove();
   return div;
@@ -459,7 +468,7 @@ function renderRecipeTable() {
   recipesCache.forEach(r => {
     const tr = document.createElement("tr");
     const matStr = Object.entries(r.materials || {}).map(([k, v]) => `${k}:${v}`).join(", ");
-    tr.innerHTML = `<td>${r.recipeId}</td><td>${r.type || ""}</td><td>${r.name || ""}</td><td>${r.setId || ""}</td><td>${matStr}</td>
+    tr.innerHTML = `<td>${escapeHtml(r.recipeId)}</td><td>${escapeHtml(r.type || "")}</td><td>${escapeHtml(r.name || "")}</td><td>${escapeHtml(r.setId || "")}</td><td>${escapeHtml(matStr)}</td>
       <td class="rowActions"><button class="edit">แก้</button><button class="del">ลบ</button></td>`;
     tr.querySelector(".edit").onclick = () => editRecipe(r);
     tr.querySelector(".del").onclick = () => deleteRecipe(r.recipeId);
@@ -592,7 +601,7 @@ function renderGearTable() {
   rows.forEach(r => {
     const pct = ((Number(r.weight) || 0) / totalWeight * 100).toFixed(1);
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${r.item_type || ""}</td><td>${r.rarity || "(ตามระบบเดิม)"}</td><td>${r.weight}</td><td>${pct}%</td>
+    tr.innerHTML = `<td>${escapeHtml(r.item_type || "")}</td><td>${escapeHtml(r.rarity || "(ตามระบบเดิม)")}</td><td>${escapeHtml(r.weight)}</td><td>${escapeHtml(pct)}%</td>
       <td class="rowActions"><button class="del">ลบ</button></td>`;
     tr.querySelector(".del").onclick = () => deleteLootEntry(r.entry_id, "gear");
     tbody.appendChild(tr);
@@ -604,7 +613,7 @@ function renderJunkTable() {
   const rows = monsterLootCache.filter(r => r.monster_id === currentMonsterId && r.kind === "junk");
   rows.forEach(r => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${r.junk_id}</td><td>${r.qty_min}-${r.qty_max}</td><td>${Math.round((Number(r.drop_chance) || 0) * 100)}%</td>
+    tr.innerHTML = `<td>${escapeHtml(r.junk_id)}</td><td>${escapeHtml(r.qty_min)}-${escapeHtml(r.qty_max)}</td><td>${escapeHtml(Math.round((Number(r.drop_chance) || 0) * 100))}%</td>
       <td class="rowActions"><button class="del">ลบ</button></td>`;
     tr.querySelector(".del").onclick = () => deleteLootEntry(r.entry_id, "junk");
     tbody.appendChild(tr);
@@ -679,7 +688,7 @@ function renderJunkInfoTable() {
   document.getElementById("junkInfoEmptyMsg").style.display = junkInfoCache.length ? "none" : "block";
   junkInfoCache.forEach(j => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${j.junk_id}</td><td>${j.name}</td><td>${j.icon}</td>
+    tr.innerHTML = `<td>${escapeHtml(j.junk_id)}</td><td>${escapeHtml(j.name)}</td><td>${escapeHtml(j.icon)}</td>
       <td class="rowActions"><button class="edit">แก้</button><button class="del">ลบ</button></td>`;
     tr.querySelector(".edit").onclick = () => editJunkInfo(j);
     tr.querySelector(".del").onclick = () => deleteJunkInfo(j.junk_id);

@@ -291,17 +291,18 @@ test("Admin Bearer session authorizes existing Admin reads without adminKey", as
   assert.equal(result.rows.length, 1);
 });
 
-test("legacy ADMIN_API_KEY rollback path remains available but Admin V2 UI no longer uses it", async () => {
+test("legacy ADMIN_API_KEY compatibility is retired while Admin V2 UI remains session-only", async () => {
   const db = createDb();
   await createAccount(db);
   const env = { DB: db, ADMIN_API_KEY: "legacy-key" };
 
-  const legacy = await body(await worker.fetch(
+  const legacyResponse = await worker.fetch(
     new Request("https://api.example.test/?action=getSheet&sheet=players&adminKey=legacy-key"),
     env
-  ));
-  assert.equal(legacy.ok, true);
-  assert.equal(legacy.sheet, "players");
+  );
+  const legacy = await body(legacyResponse);
+  assert.equal(legacyResponse.status, 401);
+  assert.equal(legacy.error, "admin_session_required");
 
   const html = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
   assert.doesNotMatch(html, /thornie-admin-key/);
