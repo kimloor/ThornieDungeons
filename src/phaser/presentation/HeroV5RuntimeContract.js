@@ -1,6 +1,6 @@
 // ---------- W8 Hero V5 G2 Runtime Contract ----------
 const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
-  version: 2,
+  version: 3,
   characterId: "hero001",
   variant: "g2",
   canvas: Object.freeze({ width: 768, height: 768 }),
@@ -29,6 +29,7 @@ const HERO_V5_AZURE_SLOT_LAYERS = Object.freeze({
   boots: Object.freeze(["legs_boots"]),
   weapon: Object.freeze(["sword"])
 });
+const HERO_V5_SET_FAMILIES = Object.freeze(["azure", "robot", "skeleton"]);
 
 function isHeroV5RuntimeEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
@@ -77,51 +78,65 @@ function heroV5WingBundleComplete(config) {
   });
 }
 
-function heroV5AzureSlotBundleComplete(config, slot) {
-  const azureConfig = config?.equipment?.azure;
+function heroV5EquipmentSlotBundleComplete(config, family, slot) {
+  const equipmentConfig = config?.equipment?.[family];
   const layers = HERO_V5_AZURE_SLOT_LAYERS[slot] || [];
-  if (!layers.length || azureConfig?.approval !== "approved") return false;
+  if (!HERO_V5_SET_FAMILIES.includes(family) || !layers.length || equipmentConfig?.approval !== "approved") return false;
   return heroV5AllFrameIds().every(frameId => {
-    const frame = azureConfig.frames?.[frameId];
+    const frame = equipmentConfig.frames?.[frameId];
     return layers.every(layer => !!frame?.[layer]);
   });
 }
 
+function heroV5BossWeaponBundleComplete(config, visualId) {
+  const weapon = config?.equipment?.[visualId];
+  return !!weapon && weapon.approval === "approved" && heroV5AllFrameIds().every(frameId => !!weapon.frames?.[frameId]?.sword);
+}
+
 function heroV5SanitizeEquipmentSelection(config, selection = {}) {
-  const requestedAzure = selection?.azure || {};
+  const requestedEquipment = selection?.equipment || Object.fromEntries(Object.entries(selection?.azure || {}).map(([slot, enabled]) => [slot, enabled ? "azure" : null]));
+  const equipment = {};
   const azure = {};
   const fallbackSlots = [];
   Object.keys(HERO_V5_AZURE_SLOT_LAYERS).forEach(slot => {
-    const requested = !!requestedAzure[slot];
-    const supported = requested && heroV5AzureSlotBundleComplete(config, slot);
-    azure[slot] = supported;
+    const requested = requestedEquipment[slot];
+    const supported = requested && heroV5EquipmentSlotBundleComplete(config, requested, slot) ? requested : null;
+    equipment[slot] = supported;
+    azure[slot] = supported === "azure";
     if (requested && !supported) fallbackSlots.push(slot);
   });
+  const requestedBossWeapon = selection?.bossWeapon || null;
+  const bossWeapon = requestedBossWeapon && heroV5BossWeaponBundleComplete(config, requestedBossWeapon) ? requestedBossWeapon : null;
+  if (requestedBossWeapon && !bossWeapon && !fallbackSlots.includes("weapon")) fallbackSlots.push("weapon");
   const requestedWings = selection?.wings === "angel";
   const wings = requestedWings && heroV5WingBundleComplete(config) ? "angel" : null;
   if (requestedWings && !wings) fallbackSlots.push("wings");
   return {
     wings,
+    equipment,
+    bossWeapon,
     azure,
     fallbackSlots
   };
 }
 
-function heroV5AzureLayersForSelection(selection = {}) {
-  const azure = selection?.azure || {};
+function heroV5EquipmentLayersForSelection(selection = {}) {
+  const equipment = selection?.equipment || Object.fromEntries(Object.entries(selection?.azure || {}).map(([slot, enabled]) => [slot, enabled ? "azure" : null]));
   const requested = [];
   // The underlay is a whole-body seam closer. Only use it when the three
   // body-coverage slots are present; otherwise the neutral Base must remain
   // visible in unequipped areas.
-  if (azure.chest && azure.gloves && azure.boots) requested.push("coverage_underlay");
-  if (azure.chest) requested.push("torso_armor");
-  if (azure.boots) requested.push("legs_boots");
-  if (azure.gloves) requested.push("arm_rear");
-  if (azure.helmet) requested.push("helmet");
-  if (azure.weapon) requested.push("sword");
-  if (azure.gloves) requested.push("arm_front");
+  if (equipment.chest && equipment.chest === equipment.gloves && equipment.chest === equipment.boots) requested.push("coverage_underlay");
+  if (equipment.chest) requested.push("torso_armor");
+  if (equipment.boots) requested.push("legs_boots");
+  if (equipment.gloves) requested.push("arm_rear");
+  if (equipment.helmet) requested.push("helmet");
+  if (selection.bossWeapon || equipment.weapon) requested.push("sword");
+  if (equipment.gloves) requested.push("arm_front");
   return HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
 }
+
+function heroV5AzureLayersForSelection(selection = {}) { return heroV5EquipmentLayersForSelection(selection); }
 
 function heroV5FrameLayer(name, path) {
   return {
@@ -155,18 +170,21 @@ function heroV5FrameLayers(config, frameId, {
   if (!basePath) return null;
 
   const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
-  const azureLayerNames = heroV5AzureLayersForSelection(equipmentSelection);
-  const azureFrame = azureLayerNames.length ? config?.equipment?.azure?.frames?.[frameId] : null;
+  const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection);
 
   const layers = [];
   if (includeWings && wingFrame?.wing_far) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
   layers.push(heroV5FrameLayer("base", basePath));
   // Suppress hair only when a complete full-face helmet is actually selected.
-  const fullFaceHelmet = azureLayerNames.includes("helmet") && !!azureFrame?.helmet
-    && config?.equipment?.azure?.fullFaceHelmet === true;
+  const helmetFamily = equipmentSelection?.equipment?.helmet;
+  const helmetFrame = helmetFamily ? config?.equipment?.[helmetFamily]?.frames?.[frameId] : null;
+  const fullFaceHelmet = equipmentLayerNames.includes("helmet") && !!helmetFrame?.helmet
+    && config?.equipment?.[helmetFamily]?.fullFaceHelmet === true;
   layers.push(...heroV5HairLayers(config, frameId, includeHair && !fullFaceHelmet));
-  azureLayerNames.forEach(name => {
-    const path = azureFrame?.[name];
+  equipmentLayerNames.forEach(name => {
+    const slot = name === "torso_armor" || name === "coverage_underlay" ? "chest" : name === "legs_boots" ? "boots" : name === "arm_rear" || name === "arm_front" ? "gloves" : name === "helmet" ? "helmet" : "weapon";
+    const family = slot === "weapon" && equipmentSelection?.bossWeapon ? equipmentSelection.bossWeapon : equipmentSelection?.equipment?.[slot];
+    const path = family ? config?.equipment?.[family]?.frames?.[frameId]?.[name] : null;
     if (path) layers.push(heroV5FrameLayer(name, path));
   });
   if (includeWings && wingFrame?.wing_near) layers.push(heroV5FrameLayer("wing_near", wingFrame.wing_near));
@@ -199,9 +217,11 @@ function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings =
     resolved[state] = frames;
   }
 
-  const hasAzureEquipment = heroV5AzureLayersForSelection(sanitizedSelection).length > 0;
+  const hasEquipment = heroV5EquipmentLayersForSelection(sanitizedSelection).length > 0;
+  const families = Object.values(sanitizedSelection.equipment || {}).filter(Boolean);
+  const familyMode = sanitizedSelection.bossWeapon || (families.length && families.every(value => value === families[0]) ? families[0] : "mixed");
   return Object.freeze({
-    mode: hasAzureEquipment ? "v5-g2-azure" : "v5-g2",
+    mode: hasEquipment ? `v5-g2-${familyMode || "equipment"}` : "v5-g2",
     canvas: {
       width: HERO_V5_RUNTIME_CONTRACT.canvas.width,
       height: HERO_V5_RUNTIME_CONTRACT.canvas.height

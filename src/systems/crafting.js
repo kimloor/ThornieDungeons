@@ -1,21 +1,12 @@
-// ---------- Phase 4: Crafting ----------
-// Recipes are fetched from the server on app load (getRecipes, see api.js/App.js) rather
-// than hardcoded — this is what lets Kimmie add a whole new crafted set later with just a
-// `recipes` D1 insert, no client code change or redeploy. CRAFTING_RECIPES starts as a
-// small built-in fallback (today's 6 Azure pieces) so the Craft screen still works if the
-// fetch fails and there's no cache yet; applyRecipes() below replaces it wholesale once
-// real data comes back, same pattern as applyGameConfig() for RARITY_MULT/ENEMY_POOL/etc.
-let CRAFTING_RECIPES = [
-  { recipeId: "azure_helmet", type: "helmet", name: "หมวก Azure", materials: { recipe_azure_helmet: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_chest", type: "chest", name: "เสื้อ Azure", materials: { recipe_azure_chest: 1, bossHorn: 6, bossHide: 6, gold: 350 } },
-  { recipeId: "azure_gloves", type: "gloves", name: "ถุงมือ Azure", materials: { recipe_azure_gloves: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_boots", type: "boots", name: "รองเท้า Azure", materials: { recipe_azure_boots: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_weapon", type: "weapon", name: "อาวุธ Azure", materials: { recipe_azure_weapon: 1, bossHorn: 8, bossHide: 8, gold: 500 } },
-  { recipeId: "azure_ring", type: "accessory", name: "แหวน Azure", materials: { recipe_azure_ring: 1, bossHorn: 6, bossHide: 6, gold: 350 } }
-];
-// Recipes only carry type/name/materials from the server — icon is purely presentational
-// and looked up locally by type, so new crafted types (if any are ever added beyond the
-// existing 6 gear slots) just need an entry here, not a schema change.
+// ---------- Wave 4 Mythic Crafting ----------
+// W4 recipes are canonical contract data. Remote rows may add legacy presentation
+// entries, but cannot replace W4 identity, costs, Tier, or generated stats.
+let CRAFTING_RECIPES = [];
+function refreshMythicRecipes(floor = 1) {
+  CRAFTING_RECIPES = MYTHIC_V2.allRecipes(floor);
+  return CRAFTING_RECIPES;
+}
+refreshMythicRecipes(1);
 const CRAFT_ICON_BY_TYPE = {
   helmet: "⛑️", chest: "🥋", gloves: "🧤", boots: "🥾", weapon: "⚔️", accessory: "💍"
 };
@@ -27,41 +18,27 @@ function craftIcon(recipe) {
 function applyRecipes(list) {
   if (!Array.isArray(list) || !list.length) return;
   const valid = list.filter(r => r && r.recipeId && r.type && r.materials);
-  if (valid.length) CRAFTING_RECIPES = valid;
+  if (valid.length) {
+    const canonical = new Map(CRAFTING_RECIPES.map(recipe => [recipe.recipeId, recipe]));
+    valid.forEach(recipe => { if (!canonical.has(recipe.recipeId)) canonical.set(recipe.recipeId, recipe); });
+    CRAFTING_RECIPES = [...canonical.values()];
+  }
 }
-
-// Mirrors generateDrop()'s per-type formulas in stats.js, pinned to CRAFTED_RARITY_MULT.
-// KEEP IN SYNC with CRAFTED_STAT_FORMULA in workers/thornie-dungeons-api.js — the worker is
-// authoritative (uses the character's real unlocked_floor at craft time); this copy only
-// exists so the UI can show an accurate "you'll get ~X atk" preview before crafting. Shared
-// by every crafted set (present and future) — mythic is this game's permanent rarity
-// ceiling, so all crafted output is pinned to that same ceiling regardless of setId.
-const CRAFTED_RARITY_MULT = 5.4;
-const CRAFTED_STAT_FORMULA = {
-  weapon: floor => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * CRAFTED_RARITY_MULT)) }),
-  helmet: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
-  chest: floor => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * CRAFTED_RARITY_MULT)) }),
-  gloves: floor => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
-  boots: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * CRAFTED_RARITY_MULT)) }),
-  accessory: floor => ({ dodgeChance: Math.round((1 + floor * 0.12) * CRAFTED_RARITY_MULT * 10) / 10 })
-};
 
 function craftPreviewStats(recipe, floor) {
-  const fn = CRAFTED_STAT_FORMULA[recipe.type];
-  return fn ? fn(Math.max(1, floor || 1)) : {};
+  const canonical = MYTHIC_V2.recipeById(recipe.recipeId, floor);
+  const item = canonical ? MYTHIC_V2.createMythicItem(canonical, floor, () => 0) : null;
+  return item ? { atk: item.atk || 0, def: item.def || 0, dodgeChance: item.dodgeChance || 0, critChance: item.critChance || 0, critDamage: item.critDamage || 0 } : {};
 }
 
-// Salvaging a crafted item returns a portion of what it cost to make: the recipe scroll
-// back in full (it's the "proof of design", not consumed materials — refunding it in full
-// means salvaging a mis-craft doesn't lose you the recipe, just the raw materials) plus a
-// cut of the raw junk materials (bossHorn/bossHide etc, NOT the gold — gold sunk into a
-// craft is gone either way, same as any other gold sink in this game). This works for ANY
-// crafted item (Azure today, any future set) because it keys off craftRecipeId — the exact
-// recipe stamped on the item at craft time — rather than checking a specific setId string.
-// CRAFT_SALVAGE_REFUND_RATE is a tunable balance knob, easy to adjust later.
+// W4 V2 items use source-aware salvage above. The old refund table remains only for
+// pre-V2 crafted inventory until the separately approved W6 cleanup.
 const CRAFT_SALVAGE_REFUND_RATE = 0.5;
 function craftSalvageRefund(item) {
   if (!item) return null;
+  const v2Refund = MYTHIC_V2.setSalvage(item);
+  if (v2Refund) return v2Refund;
+  if (Number(item.itemModelVersion) === 2 || item.rarity === "mythic") return null;
   // craftRecipeId is the source of truth (stamped by the worker at craft time and carried
   // through extra_json ever since). Fall back to matching by type only for items crafted
   // before that field existed — a small, closing window, and only ambiguous if two recipes

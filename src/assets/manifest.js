@@ -158,6 +158,9 @@ function resolveItemIconPath(item) {
   if (explicitWingFamily === "angel") {
     return icons.wings?.angel || "";
   }
+  const bossWeaponId = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
+  const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  if (bossWeaponIcons[bossWeaponId]) return icons.bossWeapons?.[bossWeaponIcons[bossWeaponId]] || "";
   if (item.setId === "azure" && item.type) {
     return icons.azure?.[item.type] || "";
   }

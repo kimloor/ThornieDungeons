@@ -113,6 +113,29 @@ test('prepare is ticket-free, snapshots current state, and retries reuse one ope
   db.close();
 });
 
+test('Arena snapshot preserves W4 Mythic set stats and Boss Weapon combat identity', async () => {
+  const db = createDb();
+  db.raw.prepare("DELETE FROM items WHERE character_id = 'char-10'").run();
+  const insert = db.raw.prepare(`INSERT INTO items
+    (item_id, player_id, character_id, equipped, slot_type, item_template_id, rarity, name, atk, def, hp, mp, extra_json)
+    VALUES (?, 'p1', 'char-10', 1, ?, ?, 'mythic', ?, ?, ?, 0, 0, ?)`);
+  for (const [index, slot] of ['helmet', 'chest', 'gloves', 'boots'].entries()) {
+    insert.run(`skeleton-${slot}`, slot, `skeleton_${slot}`, `Skeleton ${slot}`, slot === 'gloves' ? 10 : 0, slot === 'gloves' ? 0 : 10,
+      JSON.stringify({ itemModelVersion: 2, rewardVersion: 2, setId: 'skeleton', empowerSlotCapacity: 4, empowerSlots: [null, null, null, null] }));
+  }
+  insert.run('spirit-weapon', 'weapon', 'spirit_greatsword', 'Spirit Greatsword', 21, 0,
+    JSON.stringify({ itemModelVersion: 2, rewardVersion: 2, bossWeaponId: 'spirit_greatsword', signatureId: 'spirit_restore', empowerSlotCapacity: 4, empowerSlots: [null, null, null, null] }));
+  const { opponents } = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  assert.equal(prepared.match.snapshot.attacker.stats.critDamage, 80);
+  assert.equal(prepared.match.snapshot.attacker.equipmentEffects.skeletonCritArmorBreak, false);
+  assert.equal(prepared.match.snapshot.attacker.equipmentEffects.bossWeaponSignature, 'spirit_restore');
+  const weapon = prepared.match.snapshot.attacker.equipment.find(item => item.slotType === 'weapon');
+  assert.equal(weapon.bossWeaponId, 'spirit_greatsword');
+  assert.equal(weapon.itemModelVersion, 2);
+  db.close();
+});
+
 test('prepared expiry costs zero tickets and permits a fresh prepare', async () => {
   const db = createDb();
   const { opponents } = await ready(db);

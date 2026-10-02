@@ -1,6 +1,6 @@
 // ---------- W7 Equipment Visual Resolver Boundary ----------
 const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
-  version: 4,
+  version: 5,
   currentHeroMode: "v3",
   v5OptIn: true
 });
@@ -10,6 +10,18 @@ function isAzureVisualItem(item) {
     item.setId === "azure"
     || String(item.name || "").toLowerCase().includes("azure")
   );
+}
+
+function heroV5SetFamily(item) {
+  const setId = String(item?.setId || "").trim().toLowerCase();
+  return ["azure", "robot", "skeleton"].includes(setId) ? setId : null;
+}
+
+function heroV5BossWeaponVisualId(item) {
+  if (!item) return null;
+  const id = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
+  const map = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  return map[id] || null;
 }
 
 function heroV5WingVisualId(item) {
@@ -28,11 +40,16 @@ function heroV5WingVisualId(item) {
 }
 
 function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
+  const slots = ["helmet", "chest", "gloves", "boots", "weapon"];
+  const equipment = Object.fromEntries(slots.map(slot => [slot, heroV5SetFamily(equipped?.[slot])]));
+  const bossWeapon = heroV5BossWeaponVisualId(equipped?.weapon);
   return {
     // Current production equipment contract resolves any equipped Wings item
     // to the shared Angel visual family. Reuse that canonical selection instead
     // of independently guessing item ids in the Phaser renderer.
     wings: legacySelection?.wings === "angel" ? "angel" : heroV5WingVisualId(equipped?.wings),
+    equipment,
+    bossWeapon,
     azure: {
       helmet: isAzureVisualItem(equipped?.helmet),
       chest: isAzureVisualItem(equipped?.chest),
@@ -56,8 +73,12 @@ function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = 
     resolveHeroV5Selection(equipped = {}) {
       const legacySelection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
       const selection = resolveHeroV5EquipmentSelection(equipped || {}, legacySelection);
+      const extended = selection.bossWeapon || Object.values(selection.equipment).some(family => family && family !== "azure");
+      if (!extended) return { wings: selection.wings, azure: { ...selection.azure } };
       return {
         wings: selection.wings,
+        equipment: { ...selection.equipment },
+        bossWeapon: selection.bossWeapon,
         azure: { ...selection.azure }
       };
     }

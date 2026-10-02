@@ -524,42 +524,23 @@ function getEquipBonus(equipped) {
   b.dropBonus = roundTo(b.dropBonus, 1);
   return b;
 }
-// Equipment set bonuses (raid-exclusive Azure set for now — see AZURE_SET_DEFS in the
-// worker). Items carry a plain `setId` string (round-tripped via items_json extra, same
-// as junkId/potionId); count how many equipped pieces share a setId and apply the
-// highest tier reached. Placeholder numbers — revisit once actual balance is decided.
-const SET_BONUS_DEFS = {
-  azure: [
-    { count: 2, atkPct: 0.05 },
-    { count: 4, atkPct: 0.10, defPct: 0.05 },
-    { count: 6, atkPct: 0.15, defPct: 0.10, critChance: 5 },
-  ],
-};
 function getSetBonusPct(equipped) {
-  const counts = {};
-  Object.values(equipped).forEach(it => { if (it && it.setId) counts[it.setId] = (counts[it.setId] || 0) + 1; });
-  const out = { atkPct: 0, defPct: 0, critChance: 0 };
-  Object.keys(counts).forEach(setId => {
-    (SET_BONUS_DEFS[setId] || []).forEach(tier => {
-      if (counts[setId] >= tier.count) {
-        out.atkPct += tier.atkPct || 0;
-        out.defPct += tier.defPct || 0;
-        out.critChance += tier.critChance || 0;
-      }
-    });
-  });
-  return out;
+  if (typeof MYTHIC_V2 === "undefined") return { str: 0, vit: 0, agi: 0, critDamage: 0, ccResist: 0 };
+  return MYTHIC_V2.setEffects(equipped);
 }
 function getStats(player, equipped) {
   const b = getEquipBonus(equipped);
   const setBonus = getSetBonusPct(equipped);
+  b.str += setBonus.str || 0;
+  b.vit += setBonus.vit || 0;
+  b.agi += setBonus.agi || 0;
   const primary = player.primaryStats || { str: 0, vit: 0, agi: 0, dex: 0, luk: 0 };
   const adjustedBaseAtk = player.baseAtk + b.str * 3 + Math.floor((primary.dex + b.dex) * 0.5) - Math.floor(primary.dex * 0.5);
   const adjustedBaseDef = player.baseDef + Math.floor((primary.vit + b.vit) * 0.5) - Math.floor(primary.vit * 0.5);
   const adjustedBaseHp = player.baseMaxHp + b.vit * 12;
   const adjustedBaseSpeed = (player.baseSpeed || BASE_SPEED) + b.agi * 2;
-  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0) + setBonus.atkPct);
-  const defBuff = 1 + (player.defBuffPct || 0) + setBonus.defPct;
+  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0));
+  const defBuff = 1 + (player.defBuffPct || 0);
   return {
     atk: roundInt((adjustedBaseAtk + b.atk) * atkMult),
     def: roundInt((adjustedBaseDef + b.def) * defBuff),
@@ -570,10 +551,11 @@ function getStats(player, equipped) {
     // point can turn into 7.3999999999999995 even though both inputs were "clean" — re-round
     // every percentage stat here, since this is the value combat rolls and the UI both read.
     accuracy: roundTo(Math.min(99, (player.accuracy || 0) + b.accuracy + b.dex * 0.5), 1),
-    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + b.luk * 0.5 + setBonus.critChance), 1),
-    critDamage: roundTo(Math.min(300, (player.critDamage || 0) + b.critDamage), 1),
+    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + b.luk * 0.5), 1),
+    critDamage: roundTo(Math.min(300, (player.critDamage || 0) + b.critDamage + (setBonus.critDamage || 0)), 1),
     dodgeChance: roundTo(Math.min(60, (player.dodgeChance || 0) + b.dodgeChance + b.agi * 0.5), 1),
-    dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus + b.luk * 0.2, 1)
+    dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus + b.luk * 0.2, 1),
+    statusResist: roundTo(player.statusResist || 0, 1)
   };
 }
 function combatPower(stats, level) {

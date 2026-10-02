@@ -3720,7 +3720,7 @@ function ArenaV2Screen({
 // api.js) — this is the one place a mail's equipment reward actually "becomes" a real item.
 function materializeMailItem(desc) {
   return {
-    id: `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: desc.id || `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     type: desc.type,
     rarity: desc.rarity,
     name: desc.name,
@@ -3744,7 +3744,10 @@ function materializeMailItem(desc) {
     ...(desc.utilityStat ? { utilityStat: desc.utilityStat } : {}),
     ...(desc.setId ? { setId: desc.setId } : {}),
     ...(desc.star ? { star: desc.star } : {}),
-    ...(desc.craftRecipeId ? { craftRecipeId: desc.craftRecipeId } : {})
+    ...(desc.craftRecipeId ? { craftRecipeId: desc.craftRecipeId } : {}),
+    ...(desc.bossWeaponId ? { bossWeaponId: desc.bossWeaponId } : {}),
+    ...(desc.signatureId ? { signatureId: desc.signatureId } : {}),
+    ...(desc.sourceBossId ? { sourceBossId: desc.sourceBossId } : {})
   };
 }
 // ---------- Phase 3.1: Mailbox ----------
@@ -6075,6 +6078,8 @@ function InventoryOverlay({
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: detailTarget.icon || SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       detailTarget.type === "junk" ? /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `วัตถุดิบขยะ · มี ${detailTarget.quantity} ชิ้น (สูงสุด 99/ช่อง) · ขายได้ ${sellPrice(detailTarget)} `, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" })) : /*#__PURE__*/React.createElement(React.Fragment, null,
         /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
+        detailTarget.setId && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `Mythic Set: ${detailTarget.setId}`),
+        MYTHIC_V2.signatureText(detailTarget) && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { color: "var(--gold)", fontWeight: 800 } }, `✦ ${MYTHIC_V2.signatureText(detailTarget)}`),
         renderEmpowerSlotsReadOnly(detailTarget)
       ),
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
@@ -6264,6 +6269,7 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
+      MYTHIC_V2.signatureText(detailTarget) && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { color: "var(--gold)", fontWeight: 800 } }, `✦ ${MYTHIC_V2.signatureText(detailTarget)}`),
       renderEmpowerSlots(detailTarget),
       ENHANCEMENT_V2.isV2Item(detailTarget) && (Number(detailTarget.enhanceLevel) || 0) >= 6 && (Number(detailTarget.enhanceLevel) || 0) < ENHANCEMENT_V2.ENHANCE_MAX && /*#__PURE__*/React.createElement("label", {
         className: "md-item-detail-sub",
@@ -6355,12 +6361,13 @@ function CraftingOverlay({
 }) {
   const [craftingId, setCraftingId] = useState(null);
   const [msg, setMsg] = useState("");
+  const recipes = MYTHIC_V2.allRecipes(floor);
 
   const doCraft = recipe => {
     if (craftingId || busy) return;
     setCraftingId(recipe.recipeId);
     setMsg("");
-    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, characterId, recipe.recipeId)
+    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, characterId, recipe.recipeId, crypto.randomUUID())
       .then(res => {
         if (!res || res.error) {
           const errMsg = res && res.error === "insufficient_gold" ? /*#__PURE__*/React.createElement(React.Fragment, null, "ทองไม่พอ (ต้องการ ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), res.need, ")")
@@ -6380,7 +6387,7 @@ function CraftingOverlay({
     /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "🛠️ ประดิษฐ์ไอเทม"),
-        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ใช้แบบร่าง + วัตถุดิบจากบอส Raid เพื่อประดิษฐ์ชุด Azure (สเกลสเตตัสตาม floor สูงสุด ", floor || 1, ")")
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ประดิษฐ์ Mythic Set และ Boss Weapon ตาม Tier ของชั้นสูงสุด ", floor || 1)
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
@@ -6390,18 +6397,18 @@ function CraftingOverlay({
       // hardcoded to bossHorn/bossHide (Azure-only) before; now reads whatever the current
       // recipe list actually needs, so a future set with different materials shows up here
       // automatically with no code change.
-      ...Array.from(new Set(CRAFTING_RECIPES.flatMap(r => Object.keys(r.materials)))).filter(k => k !== "gold" && k.indexOf("recipe_") !== 0).map(key =>
+      ...Array.from(new Set(recipes.flatMap(r => Object.keys(r.materials)))).filter(k => k !== "gold" && k.indexOf("recipe_") !== 0).map(key =>
         /*#__PURE__*/React.createElement("span", { key: key, className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: key }, fallback: (JUNK_INFO[key] || {}).icon || "📦", className: "md-game-icon md-inline-item-icon", alt: (JUNK_INFO[key] || {}).name || key }), " ", junkTotal(inventory, key))
       )
     ),
-    CRAFTING_RECIPES.map(recipe => {
+    recipes.map(recipe => {
       const afford = canAffordRecipe(recipe, inventory, gold);
       const preview = craftPreviewStats(recipe, floor);
       const statText = [preview.atk ? `⚔️${preview.atk}` : "", preview.def ? `🛡️${preview.def}` : "", preview.dodgeChance ? `💨${preview.dodgeChance}%` : ""].filter(Boolean).join(" ");
       return /*#__PURE__*/React.createElement("div", { key: recipe.recipeId, className: "md-card", style: { marginBottom: 8, padding: 10 } },
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           /*#__PURE__*/React.createElement("div", null,
-            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: recipe.type, setId: "azure" }, fallback: craftIcon(recipe), className: "md-game-icon md-detail-item-icon", alt: recipe.name }), " ", recipe.name),
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: recipe.type, setId: recipe.setId, bossWeaponId: recipe.bossWeaponId }, fallback: craftIcon(recipe), className: "md-game-icon md-detail-item-icon", alt: recipe.name }), " ", recipe.name),
             /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { fontSize: 11 } }, statText)
           ),
           /*#__PURE__*/React.createElement("button", {

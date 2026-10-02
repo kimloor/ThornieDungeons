@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — WAVES 1-3 complete in Production; WAVE 4 implementation is in progress; WAVE 4.5 Server Authority / Economy Security is the mandatory gate before WAVE 5**
+Status: **ACTIVE-EXECUTION — WAVES 1-3 complete in Production; WAVE 4 implemented on feature branch and awaiting QA; WAVE 4.5 Server Authority / Economy Security is the mandatory gate before WAVE 5**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -854,7 +854,7 @@ Exit condition:
 ---
 
 ## WAVE 4 — Mythic Boss Weapons + Mythic Set System
-**Status: IN PROGRESS — IMPLEMENTATION ACTIVE**
+**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: Graphics + QA**
@@ -914,6 +914,7 @@ Public scope summary:
 - move claim/reward crediting to atomic server-side transactions where still client-applied;
 - make Craft mutations concurrency-safe and idempotent;
 - re-verify Craft, Raid, Arena and leaderboard consumers against authoritative data;
+- activate source-aware Mythic Set salvage through an atomic server mutation; WAVE 4 keeps the client-local Mythic salvage action blocked;
 - add forged-payload and two-account regression coverage.
 
 WAVE 4 integration guardrail:

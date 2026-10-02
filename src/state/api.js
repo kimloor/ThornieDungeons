@@ -356,11 +356,12 @@ function cloudDeleteAllClaimedMail(url, characterId) {
 // (never trusts the client), consumes them, and returns the crafted item as a plain
 // descriptor — same shape as a mail item reward — for materializeMailItem() to turn into
 // a real local item. See worker's handleCraftItem for the authoritative logic.
-function cloudCraftItem(url, characterId, recipeId) {
+function cloudCraftItem(url, characterId, recipeId, requestId) {
   return cloudAuthPost(url, {
     action: "craftItem",
     characterId,
-    recipeId
+    recipeId,
+    requestId
   });
 }
 // W9 Arena V2 API helpers.
