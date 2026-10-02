@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — WAVE 1 + WAVE 1.5 complete in Production; WAVE 2 is the current DEV gate; Graphics G4/G5 may proceed in parallel**
+Status: **ACTIVE-EXECUTION — WAVES 1-3 complete in Production; WAVE 4 implementation is in progress; WAVE 4.5 Server Authority / Economy Security is the mandatory gate before WAVE 5**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -763,7 +763,7 @@ Exit condition:
 ---
 
 ## WAVE 2 — Reward V2 Item / Drop / Economy Foundation
-**Status: READY_FOR_DEV — CURRENT EXECUTION GATE**
+**Status: COMPLETE — PRODUCTION VERIFIED — 2026-10-02**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA + Graphics for missing icons**
@@ -805,7 +805,7 @@ Exit condition:
 ---
 
 ## WAVE 3 — Enhance + Empower V2
-**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
+**Status: COMPLETE — PRODUCTION VERIFIED — 2026-10-02**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA; Graphics may prepare W11 presentation assets in parallel**
@@ -854,7 +854,7 @@ Exit condition:
 ---
 
 ## WAVE 4 — Mythic Boss Weapons + Mythic Set System
-**Status: READY AFTER WAVES 2-3**
+**Status: IN PROGRESS — IMPLEMENTATION ACTIVE**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: Graphics + QA**
@@ -897,8 +897,55 @@ Exit condition:
 
 ---
 
+## WAVE 4.5 — Server Authority / Economy Security Gate
+**Status: PLANNED — MANDATORY AFTER WAVE 4 / BEFORE WAVE 5**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: QA mandatory; Project Lead release approval mandatory**
+
+Purpose:
+- close the remaining client-authoritative save/economy boundary before Raid/Wings V2 builds on it;
+- preserve W2/W3 server-authoritative reward, Enhance and Empower behavior;
+- prevent W4 Mythic items/sets from creating new dependencies on generic client-authoritative persistence.
+
+Public scope summary:
+- restrict generic character-save writes to explicitly client-owned/non-economy state;
+- make inventory synchronization presentation-state-only for existing authoritative items;
+- move claim/reward crediting to atomic server-side transactions where still client-applied;
+- make Craft mutations concurrency-safe and idempotent;
+- re-verify Craft, Raid, Arena and leaderboard consumers against authoritative data;
+- add forged-payload and two-account regression coverage.
+
+WAVE 4 integration guardrail:
+- WAVE 4 continues to completion and is not interrupted mid-implementation;
+- WAVE 4 must not add new currency/stat/progression grants through generic client save endpoints;
+- WAVE 4 must not rely on generic inventory sync to create/delete authoritative items;
+- any unavoidable dependency is recorded explicitly for WAVE 4.5.
+
+Hard boundaries:
+- do not perform W6 destructive legacy-item cleanup here;
+- do not silently delete or normalize existing player data;
+- schema changes, if required, are forward-only under `migrations/auto/`;
+- confidential vulnerability details remain outside the public repository.
+
+QA gate:
+- forged currency/progression payloads cannot raise authoritative values;
+- client item payloads cannot create/delete/re-stat authoritative inventory;
+- legitimate equip/favorite/slot presentation state persists;
+- reward claims are exact-once and server-credited;
+- Craft duplicate/concurrent submission cannot double-spend/double-craft;
+- W2/W3/W4 item/economy regression;
+- Raid/Arena/leaderboard regression;
+- two-account authorization/isolation tests;
+- build/deploy/Production verification.
+
+Exit condition:
+- server authority and economy integrity are production-verified before WAVE 5 starts.
+
+---
+
 ## WAVE 5 — Raid / Wings V2
-**Status: READY AFTER WAVE 4**
+**Status: BLOCKED UNTIL WAVE 4 + WAVE 4.5 PASS**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: Graphics + QA**
@@ -939,8 +986,34 @@ Exit condition:
 
 ---
 
+## WAVE 5.5 — Security Hardening
+**Status: PLANNED — AFTER WAVE 5 / BEFORE WAVE 6**
+**Risk: HIGH**
+**Lead: DEV**
+**Collaboration: QA mandatory**
+
+Scope:
+- retire or harden the legacy Admin-key compatibility path after Admin V2 verification;
+- validate inventory-slot ownership/range;
+- return generic server errors while keeping diagnostic detail server-side;
+- verify run-state data can never become an authoritative reward source;
+- restrict CORS to approved origins;
+- add general request-body limits;
+- remove unsafe Admin HTML interpolation;
+- review account-enumeration behavior and retain or normalize it explicitly.
+
+Process/security:
+- rotate retired legacy credentials/secrets during the approved cutover;
+- keep confidential audit detail out of the public repository;
+- re-run focused auth/admin/security regression before W6.
+
+Exit condition:
+- remaining non-economy security hardening is production-verified before destructive W6 cutover.
+
+---
+
 ## WAVE 6 — V2 Production Cutover + Legacy Special-Item Cleanup
-**Status: BLOCKED UNTIL WAVES 1-5 PASS**
+**Status: BLOCKED UNTIL WAVES 1-5.5 PASS**
 **Risk: VERY HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory; Project Lead release approval mandatory**
@@ -972,9 +1045,9 @@ QA gate:
 Exit condition:
 - V2 is authoritative in Production and legacy special gear can no longer re-enter through old generation paths.
 
-### Post-WAVE 6 — Full Project Gap Audit (mandatory gate before final WAVE 7 closeout)
+### Post-WAVE 6 — Full Project Gap Audit + Security Re-Audit (mandatory gate before final WAVE 7 closeout)
 
-After WAVE 6 is production-verified, Project Lead performs a full-system audit before WAVE 7 is treated as the final presentation/polish closeout.
+After WAVE 6 is production-verified, Project Lead performs a full-system gap audit plus a security re-audit before WAVE 7 is treated as the final presentation/polish closeout.
 
 Audit coverage:
 - Login / Character / Main Hub / Town;
@@ -987,7 +1060,11 @@ Audit coverage:
 - Audio;
 - Hero/Equipment/Item graphics and runtime bindings;
 - mobile UX, save/persistence, economy integrity, cross-mode regressions;
-- legacy/fallback/dead paths that remain after V2 cutover.
+- legacy/fallback/dead paths that remain after V2 cutover;
+- forged-payload protection for currency/progression/items;
+- two-account authorization/isolation regression;
+- reward/claim/craft exact-once and concurrency safety;
+- Admin/auth/security hardening verification.
 
 Audit outputs:
 - classify findings as COMPLETE / GAP / DEFERRED / INTENTIONAL OUT-OF-SCOPE;
@@ -1113,8 +1190,11 @@ Graphics must not redesign mechanics or publish guessed asset paths.
 - **Q3 — Reward/item/drop/economy verification — HIGH**
 - **Q4 — Enhance/Empower verification — HIGH**
 - **Q5 — Boss Weapon/Set cross-mode verification — HIGH**
+- **Q5.5 — Server authority/economy security verification — HIGH**
 - **Q6 — Raid/Wings verification — HIGH**
+- **Q6.5 — Security hardening verification — HIGH**
 - **Q7 — Legacy cleanup/cutover verification — VERY HIGH**
+- **Q7.5 — Full Project Gap Audit + Security Re-Audit — HIGH**
 - **Q8 — W10/W11 presentation integration — MEDIUM**
 
 QA must validate the source-of-truth contract rather than only retesting DEV's implementation assumptions.
@@ -1134,13 +1214,17 @@ WAVE 1 Dungeon V2 Foundation  ✅ COMPLETE / PRODUCTION
  ↓
 WAVE 1.5 Monster Skills/Boss   ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 2 Reward V2 Foundation   🔴 HIGH — CURRENT DEV GATE
+WAVE 2 Reward V2 Foundation   ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 3 Enhance + Empower      🔴 HIGH
+WAVE 3 Enhance + Empower      ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 4 Mythic Weapons/Sets    🔴 HIGH
+WAVE 4 Mythic Weapons/Sets    🔴 HIGH — IN PROGRESS
+ ↓
+WAVE 4.5 Server Authority     🔴 HIGH — MANDATORY GATE
  ↓
 WAVE 5 Raid / Wings V2        🔴 HIGH
+ ↓
+WAVE 5.5 Security Hardening   🔴 HIGH
  ↓
 WAVE 6 V2 Cutover/Cleanup     🟣 VERY HIGH
  ↓
@@ -1157,7 +1241,7 @@ Graphics G4-G9
    ├─ G4 Reward V2 icons may start now
    └─ later batches run only when the target wave has a confirmed asset dependency
 
-QA Q1-Q8
+QA Q1-Q10
    └─ independent gate after each implementation wave
 ```
 
@@ -1180,8 +1264,11 @@ The active roadmap is complete when:
 - Reward V2 Tier/Rarity/item/drop/economy rules are authoritative;
 - Enhance and Empower V2 are persistent, transaction-safe and shared across equipment consumers;
 - Boss Weapons and Mythic Sets use the approved mechanics and shared Hero V5 visual resolver;
+- Server Authority / Economy Security gate is production-verified before Raid/Wings V2;
 - Raid/Wings V2 rewards, Recipes and family mappings are production-verified;
+- Security Hardening is production-verified before destructive cutover;
 - the approved legacy special-item cleanup is completed without unrelated player-data loss;
+- the post-W6 Full Project Gap Audit + Security Re-Audit closes release-blocking authority/auth/integrity findings;
 - Admin V2 Phase 1 is available from the post-W9R architecture;
 - W10/W11 presentation consumes authoritative mechanics without owning gameplay/economy state;
 - Graphics assets use canonical R2/manifest paths and approved shared visual contracts;
