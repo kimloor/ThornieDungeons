@@ -1,6 +1,6 @@
 # ThornieDungeons Raid System V1
 
-Status: **ACTIVE — current Raid contract and implementation reference**
+Status: **ACTIVE — W5 Raid / Wings V2 implemented on feature branch; QA required**
 
 ## 1. Purpose
 
@@ -61,7 +61,7 @@ Backend changes must preserve unrelated player, Raid, Arena, inventory, currency
 
 If a Raid change touches rewards, attempts, contribution, settlement, stamina, or persistence, treat it as high-impact and run targeted regression checks.
 
-Roadmap gate: Raid/Wings V2 implementation must not begin until WAVE 4 Mythic content and WAVE 4.5 Server Authority / Economy Security are production-verified. Raid damage/reward/leaderboard consumers must read authoritative server-owned character/item/economy state.
+Roadmap gate: WAVE 4 Mythic content and WAVE 4.5 Server Authority / Economy Security are production-verified. W5 Raid damage/reward/leaderboard consumers read authoritative server-owned character/item/economy state; this branch remains QA-gated.
 
 ## 7. Change boundaries
 

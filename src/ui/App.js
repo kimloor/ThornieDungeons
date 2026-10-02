@@ -2105,7 +2105,7 @@ function ThornieDungeons() {
         empower_slots_full: "เสริมพลังครบทุกช่องแล้ว",
         cannot_lock_all_empower_slots: "ต้องเหลืออย่างน้อย 1 ช่องที่ปลดล็อกสำหรับรีโรล",
         all_empower_slots_locked: "ล็อกไว้ทุกออฟชั่นแล้ว ไม่มีช่องให้รีโรล",
-        wing_empower_economy_unresolved: "Empower ของ Raid Wings รอค่า Tierless economy ที่ล็อกใน W5",
+        wing_empower_economy_unresolved: "Empower ของปีก Raid ยังไม่พร้อม",
         blacksmith_conflict: "สถานะไอเทมเปลี่ยนแล้ว กรุณาลองใหม่",
         blacksmith_version_conflict: "สถานะไอเทมเปลี่ยนแล้ว กรุณาโหลดสถานะล่าสุด"
       };

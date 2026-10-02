@@ -35,6 +35,9 @@ function heroV5WingVisualId(item) {
     item.setId
   ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean);
   if (identities.some(value => ["angel", "wing01", "angel_wings", "angel-wings"].includes(value))) return "angel";
+  if (identities.includes("azure")) return "azure";
+  if (identities.includes("robot")) return "robot";
+  if (identities.includes("skeleton")) return "skeleton";
   if (String(item.name || "").toLowerCase().includes("angel")) return "angel";
   return null;
 }
@@ -44,9 +47,7 @@ function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
   const equipment = Object.fromEntries(slots.map(slot => [slot, heroV5SetFamily(equipped?.[slot])]));
   const bossWeapon = heroV5BossWeaponVisualId(equipped?.weapon);
   return {
-    // Current production equipment contract resolves any equipped Wings item
-    // to the shared Angel visual family. Reuse that canonical selection instead
-    // of independently guessing item ids in the Phaser renderer.
+    // Family identity is authoritative metadata on the server-owned Wing item.
     wings: legacySelection?.wings === "angel" ? "angel" : heroV5WingVisualId(equipped?.wings),
     equipment,
     bossWeapon,

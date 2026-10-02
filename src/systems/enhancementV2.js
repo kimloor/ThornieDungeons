@@ -61,6 +61,9 @@
     return tier ? TIER_ECONOMY[tier] : null;
   }
   function empowerEconomyMultiplier(item) {
+    // Wings are intentionally tierless in W5. Their Empower economy is a
+    // fixed, rarity-independent resource cost; rarity only controls capacity.
+    if (String(item?.type || "").toLowerCase() === "wings") return wingFamily(item) ? 1 : null;
     const tier = itemTier(item);
     return tier ? TIER_ECONOMY[tier] : null;
   }

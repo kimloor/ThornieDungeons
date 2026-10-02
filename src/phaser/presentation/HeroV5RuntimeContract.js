@@ -71,9 +71,11 @@ function heroV5HairBundleComplete(config) {
   });
 }
 
-function heroV5WingBundleComplete(config) {
+function heroV5WingBundleComplete(config, family = "azure") {
+  const wingConfig = family === "azure" ? { frames: config?.wingTemplate?.frames, approval: "approved" } : config?.wings?.[family];
+  if (wingConfig?.approval && wingConfig.approval !== "approved") return false;
   return heroV5AllFrameIds().every(frameId => {
-    const frame = config?.wingTemplate?.frames?.[frameId];
+    const frame = wingConfig?.frames?.[frameId];
     return !!(frame?.wing_far && frame?.wing_near);
   });
 }
@@ -108,8 +110,8 @@ function heroV5SanitizeEquipmentSelection(config, selection = {}) {
   const requestedBossWeapon = selection?.bossWeapon || null;
   const bossWeapon = requestedBossWeapon && heroV5BossWeaponBundleComplete(config, requestedBossWeapon) ? requestedBossWeapon : null;
   if (requestedBossWeapon && !bossWeapon && !fallbackSlots.includes("weapon")) fallbackSlots.push("weapon");
-  const requestedWings = selection?.wings === "angel";
-  const wings = requestedWings && heroV5WingBundleComplete(config) ? "angel" : null;
+  const requestedWings = ["angel", "azure", "robot", "skeleton"].includes(selection?.wings) ? selection.wings : null;
+  const wings = requestedWings && heroV5WingBundleComplete(config, requestedWings === "angel" ? "azure" : requestedWings) ? requestedWings : null;
   if (requestedWings && !wings) fallbackSlots.push("wings");
   return {
     wings,
@@ -169,7 +171,9 @@ function heroV5FrameLayers(config, frameId, {
   const basePath = config?.base?.frames?.[frameId];
   if (!basePath) return null;
 
-  const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
+  const wingFamily = equipmentSelection?.wings === "robot" || equipmentSelection?.wings === "skeleton" ? equipmentSelection.wings : "azure";
+  const wingConfig = wingFamily === "azure" ? config?.wingTemplate : config?.wings?.[wingFamily];
+  const wingFrame = includeWings ? wingConfig?.frames?.[frameId] : null;
   const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection);
 
   const layers = [];
@@ -197,11 +201,11 @@ function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings =
 
   const requestedSelection = {
     ...(equipmentSelection || {}),
-    wings: equipmentSelection?.wings === "angel" || includeWings ? "angel" : null
+    wings: equipmentSelection?.wings || (includeWings ? "angel" : null)
   };
   const sanitizedSelection = heroV5SanitizeEquipmentSelection(config, requestedSelection);
-  const requestedWings = requestedSelection.wings === "angel";
-  const renderWings = requestedWings && sanitizedSelection.wings === "angel";
+  const requestedWings = !!sanitizedSelection.wings;
+  const renderWings = requestedWings;
   const includeHair = heroV5HairBundleComplete(config);
   const fallbackSlots = [...sanitizedSelection.fallbackSlots];
   if (requestedWings && !renderWings && !fallbackSlots.includes("wings")) fallbackSlots.push("wings");

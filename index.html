@@ -8425,6 +8425,9 @@ function rollChestRarity(isEliteBoss, pity = 0) {
     return tier ? TIER_ECONOMY[tier] : null;
   }
   function empowerEconomyMultiplier(item) {
+    // Wings are intentionally tierless in W5. Their Empower economy is a
+    // fixed, rarity-independent resource cost; rarity only controls capacity.
+    if (String(item?.type || "").toLowerCase() === "wings") return wingFamily(item) ? 1 : null;
     const tier = itemTier(item);
     return tier ? TIER_ECONOMY[tier] : null;
   }
@@ -10572,6 +10575,9 @@ function heroV5WingVisualId(item) {
     item.setId
   ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean);
   if (identities.some(value => ["angel", "wing01", "angel_wings", "angel-wings"].includes(value))) return "angel";
+  if (identities.includes("azure")) return "azure";
+  if (identities.includes("robot")) return "robot";
+  if (identities.includes("skeleton")) return "skeleton";
   if (String(item.name || "").toLowerCase().includes("angel")) return "angel";
   return null;
 }
@@ -10581,9 +10587,7 @@ function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
   const equipment = Object.fromEntries(slots.map(slot => [slot, heroV5SetFamily(equipped?.[slot])]));
   const bossWeapon = heroV5BossWeaponVisualId(equipped?.weapon);
   return {
-    // Current production equipment contract resolves any equipped Wings item
-    // to the shared Angel visual family. Reuse that canonical selection instead
-    // of independently guessing item ids in the Phaser renderer.
+    // Family identity is authoritative metadata on the server-owned Wing item.
     wings: legacySelection?.wings === "angel" ? "angel" : heroV5WingVisualId(equipped?.wings),
     equipment,
     bossWeapon,
@@ -10698,9 +10702,11 @@ function heroV5HairBundleComplete(config) {
   });
 }
 
-function heroV5WingBundleComplete(config) {
+function heroV5WingBundleComplete(config, family = "azure") {
+  const wingConfig = family === "azure" ? { frames: config?.wingTemplate?.frames, approval: "approved" } : config?.wings?.[family];
+  if (wingConfig?.approval && wingConfig.approval !== "approved") return false;
   return heroV5AllFrameIds().every(frameId => {
-    const frame = config?.wingTemplate?.frames?.[frameId];
+    const frame = wingConfig?.frames?.[frameId];
     return !!(frame?.wing_far && frame?.wing_near);
   });
 }
@@ -10735,8 +10741,8 @@ function heroV5SanitizeEquipmentSelection(config, selection = {}) {
   const requestedBossWeapon = selection?.bossWeapon || null;
   const bossWeapon = requestedBossWeapon && heroV5BossWeaponBundleComplete(config, requestedBossWeapon) ? requestedBossWeapon : null;
   if (requestedBossWeapon && !bossWeapon && !fallbackSlots.includes("weapon")) fallbackSlots.push("weapon");
-  const requestedWings = selection?.wings === "angel";
-  const wings = requestedWings && heroV5WingBundleComplete(config) ? "angel" : null;
+  const requestedWings = ["angel", "azure", "robot", "skeleton"].includes(selection?.wings) ? selection.wings : null;
+  const wings = requestedWings && heroV5WingBundleComplete(config, requestedWings === "angel" ? "azure" : requestedWings) ? requestedWings : null;
   if (requestedWings && !wings) fallbackSlots.push("wings");
   return {
     wings,
@@ -10796,7 +10802,9 @@ function heroV5FrameLayers(config, frameId, {
   const basePath = config?.base?.frames?.[frameId];
   if (!basePath) return null;
 
-  const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
+  const wingFamily = equipmentSelection?.wings === "robot" || equipmentSelection?.wings === "skeleton" ? equipmentSelection.wings : "azure";
+  const wingConfig = wingFamily === "azure" ? config?.wingTemplate : config?.wings?.[wingFamily];
+  const wingFrame = includeWings ? wingConfig?.frames?.[frameId] : null;
   const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection);
 
   const layers = [];
@@ -10824,11 +10832,11 @@ function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings =
 
   const requestedSelection = {
     ...(equipmentSelection || {}),
-    wings: equipmentSelection?.wings === "angel" || includeWings ? "angel" : null
+    wings: equipmentSelection?.wings || (includeWings ? "angel" : null)
   };
   const sanitizedSelection = heroV5SanitizeEquipmentSelection(config, requestedSelection);
-  const requestedWings = requestedSelection.wings === "angel";
-  const renderWings = requestedWings && sanitizedSelection.wings === "angel";
+  const requestedWings = !!sanitizedSelection.wings;
+  const renderWings = requestedWings;
   const includeHair = heroV5HairBundleComplete(config);
   const fallbackSlots = [...sanitizedSelection.fallbackSlots];
   if (requestedWings && !renderWings && !fallbackSlots.includes("wings")) fallbackSlots.push("wings");
@@ -15197,7 +15205,7 @@ function ThornieDungeons() {
         empower_slots_full: "เสริมพลังครบทุกช่องแล้ว",
         cannot_lock_all_empower_slots: "ต้องเหลืออย่างน้อย 1 ช่องที่ปลดล็อกสำหรับรีโรล",
         all_empower_slots_locked: "ล็อกไว้ทุกออฟชั่นแล้ว ไม่มีช่องให้รีโรล",
-        wing_empower_economy_unresolved: "Empower ของ Raid Wings รอค่า Tierless economy ที่ล็อกใน W5",
+        wing_empower_economy_unresolved: "Empower ของปีก Raid ยังไม่พร้อม",
         blacksmith_conflict: "สถานะไอเทมเปลี่ยนแล้ว กรุณาลองใหม่",
         blacksmith_version_conflict: "สถานะไอเทมเปลี่ยนแล้ว กรุณาโหลดสถานะล่าสุด"
       };

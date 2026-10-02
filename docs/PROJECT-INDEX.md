@@ -256,6 +256,6 @@ When an approved production contract changes:
 - WAVES 1-3: COMPLETE / PRODUCTION VERIFIED.
 - WAVE 4 Mythic Boss Weapons + Mythic Set System: COMPLETE / PRODUCTION VERIFIED.
 - WAVE 4.5 Server Authority / Economy Security: COMPLETE / PRODUCTION VERIFIED.
-- WAVE 5 Raid / Wings V2: READY / NEXT EXECUTION GATE.
+- WAVE 5 Raid / Wings V2: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED.
 - WAVE 5.5 Security Hardening: mandatory before WAVE 6.
 - Post-WAVE 6: Full Project Gap Audit + Security Re-Audit before WAVE 7 closeout.

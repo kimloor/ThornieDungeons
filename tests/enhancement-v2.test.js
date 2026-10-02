@@ -49,12 +49,12 @@ test("Enhance failure boundary, 50% downgrade, and Protection consumption are ex
   assert.deepEqual({ level: success.levelAfter, consumed: success.protectionConsumed }, { level: 7, consumed: false });
 });
 
-test("Raid Wing Enhance uses T5 cost and grants only its family Primary Stat", () => {
+test("W5 Raid Wing Enhance uses tierless Empower cost and grants only its family Primary Stat", () => {
   for (const [family, primary] of Object.entries({ azure: "agi", robot: "vit", skeleton: "str" })) {
     const wing = item({ type: "wings", rarity: "rare", empowerSlotCapacity: 1, empowerSlots: [null], gearTier: undefined, wingFamily: family, enhanceLevel: 5 });
     assert.deepEqual(v2.enhanceCost(wing), { iron: 1, gold: Math.round((25 + 5 * 35) * 8.5) });
     assert.equal(v2.WING_PRIMARY_STAT[family], primary);
-    assert.equal(v2.empowerOpenCost(wing, 0), null, "Tierless Wing Empower economy remains intentionally unresolved");
+    assert.deepEqual(v2.empowerOpenCost(wing, 0), { manaOre: 1, gold: 30 });
   }
 });
 
