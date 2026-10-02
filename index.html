@@ -3201,6 +3201,9 @@ function resolveItemIconPath(item) {
   if (explicitWingFamily === "angel") {
     return icons.wings?.angel || "";
   }
+  const bossWeaponId = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
+  const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  if (bossWeaponIcons[bossWeaponId]) return icons.bossWeapons?.[bossWeaponIcons[bossWeaponId]] || "";
   if (item.setId === "azure" && item.type) {
     return icons.azure?.[item.type] || "";
   }
@@ -4902,11 +4905,12 @@ function cloudDeleteAllClaimedMail(url, characterId) {
 // (never trusts the client), consumes them, and returns the crafted item as a plain
 // descriptor — same shape as a mail item reward — for materializeMailItem() to turn into
 // a real local item. See worker's handleCraftItem for the authoritative logic.
-function cloudCraftItem(url, characterId, recipeId) {
+function cloudCraftItem(url, characterId, recipeId, requestId) {
   return cloudAuthPost(url, {
     action: "craftItem",
     characterId,
-    recipeId
+    recipeId,
+    requestId
   });
 }
 // W9 Arena V2 API helpers.
@@ -5907,7 +5911,10 @@ function itemsToServerList(inventory, equipped, overflow = []) {
       wingFamily: it.wingFamily || undefined,
       blacksmithVersion: it.blacksmithVersion || undefined,
       blacksmithReceipts: Array.isArray(it.blacksmithReceipts) ? it.blacksmithReceipts.slice(-32) : undefined,
-      blacksmithLastResult: it.blacksmithLastResult || undefined
+      blacksmithLastResult: it.blacksmithLastResult || undefined,
+      bossWeaponId: it.bossWeaponId || undefined,
+      signatureId: it.signatureId || undefined,
+      sourceBossId: it.sourceBossId || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -5942,7 +5949,10 @@ function itemsFromServerList(rows) {
           icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
           rarity: r.rarity || "common",
           quantity: numOr(extra.quantity, 1),
-          favorite: extra.favorite === true
+          favorite: extra.favorite === true,
+          ...(extra.sourceType ? { sourceType: String(extra.sourceType) } : {}),
+          ...(extra.sourceFloor ? { sourceFloor: numOr(extra.sourceFloor, 0) } : {}),
+          ...(extra.sourceIdentity ? { sourceIdentity: String(extra.sourceIdentity) } : {})
         });
         return;
       }
@@ -5999,6 +6009,9 @@ function itemsFromServerList(rows) {
       if (extra.blacksmithVersion) it.blacksmithVersion = numOr(extra.blacksmithVersion, 0);
       if (Array.isArray(extra.blacksmithReceipts)) it.blacksmithReceipts = extra.blacksmithReceipts.map(String).filter(Boolean).slice(-32);
       if (extra.blacksmithLastResult && typeof extra.blacksmithLastResult === "object") it.blacksmithLastResult = extra.blacksmithLastResult;
+      if (extra.bossWeaponId) it.bossWeaponId = String(extra.bossWeaponId);
+      if (extra.signatureId) it.signatureId = String(extra.signatureId);
+      if (extra.sourceBossId) it.sourceBossId = String(extra.sourceBossId);
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });
@@ -6941,6 +6954,7 @@ if (typeof module !== "undefined") module.exports = {
     unit.crit = clamp(unit.crit == null ? unit.critChance || 0 : unit.crit, 0, 100);
     unit.critDamage = Math.max(1, Number(unit.critDamage) || 1.5);
     unit.statusResist = clamp(unit.statusResist || 0, 0, 100);
+    unit.equipmentEffects = copy(unit.equipmentEffects || {});
     unit.statuses = copy(unit.statuses || {});
     unit.cooldowns = copy(unit.cooldowns || {});
     unit.skills = copy(unit.skills || {});
@@ -7166,7 +7180,9 @@ if (typeof module !== "undefined") module.exports = {
       if (options.active) value += Number(options.activeDebuffBonus) || Number(resources.nextActiveDebuffBonus) || 0;
     }
     if (!HARMFUL.has(type)) return clamp(value, 0, 100);
-    return Math.max(0, Math.min(STATUS_PROC_CAP, value) - (Number(target.statusResist) || 0));
+    if (options.bypassStatusResist) return clamp(value, 0, 100);
+    const controlResist = type === "stun" || type === "silence" ? Number(target.equipmentEffects?.ccResist) || 0 : 0;
+    return Math.max(0, Math.min(STATUS_PROC_CAP, value) - (Number(target.statusResist) || 0) - controlResist);
   }
 
   function applyStatus(state, actor, target, key, spec = {}, context = {}) {
@@ -7234,6 +7250,12 @@ if (typeof module !== "undefined") module.exports = {
     }
     const before = target.hp;
     target.hp = Math.max(0, target.hp - amount);
+    if (target.kind === "hero" && target.equipmentEffects?.robotThresholdDefUp
+        && before >= target.maxHp * 0.5 && target.hp < target.maxHp * 0.5 && target.hp > 0) {
+      target.statuses.def_up = { key: "def_up", duration: 2, harmful: false };
+      context.appliedStatuses?.add(`${target.id}:def_up`);
+      log(state, "status", "Robot Set granted DEF Up", { targetId: target.id, status: "def_up" });
+    }
     if (directHit && target.kind === "hero" && target.hp <= 0 && rank(target, "thorned_aegis") >= 2 && !target.flags.aegisLethalUsed) {
       const resources = resourcesFor(state, target);
       const priorAegis = resources.aegis;
@@ -7290,7 +7312,16 @@ if (typeof module !== "undefined") module.exports = {
     // that created it. Snapshot DEF before applying this hit's statuses.
     const targetDefAtHitStart = effectiveDef(target);
     const conversions = [];
-    for (const statusSpec of spec.statuses || []) {
+    const hitStatuses = (spec.statuses || []).map(statusSpec => ({ ...statusSpec }));
+    if (actor.kind === "hero" && actor.equipmentEffects?.azureControlProc && !actionContext.azureProcRolled
+        && (spec.actionType === "basic" || spec.actionType === "active")) {
+      actionContext.azureProcRolled = true;
+      if (chance(state, 30)) {
+        const key = chance(state, 50) ? "stun" : "silence";
+        hitStatuses.push({ key, chance: 100, duration: key === "stun" ? 1 : 2, fixed: true });
+      }
+    }
+    for (const statusSpec of hitStatuses) {
       const result = applyStatus(state, actor, target, statusSpec.key, statusSpec, { ...actionContext, active: spec.actionType === "active", fixed: !!statusSpec.fixed });
       if (result.converted) conversions.push(result.converted);
       if (result.applied) actionContext.debuffApplied = actionContext.debuffApplied || HARMFUL.has(statusSpec.key);
@@ -7316,6 +7347,12 @@ if (typeof module !== "undefined") module.exports = {
     const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
     actionContext.totalDamage += dealt;
     actionContext.hitAny = true;
+    actionContext.firstHitTargetId = actionContext.firstHitTargetId || target.id;
+    if (spec.actionType === "active") actionContext.activeHitTargetIds.push(target.id);
+    if (crit && actor.kind === "hero" && actor.equipmentEffects?.skeletonCritArmorBreak && living(target)) {
+      const result = applyStatus(state, actor, target, "armor_break", { chance: 100, duration: 2 }, { ...actionContext, bypassStatusResist: true });
+      if (result.applied) actionContext.debuffApplied = true;
+    }
     if (target.kind === "hero" && dealt > 0) {
       actionContext.heroStruck = true;
       actionContext.struckHeroIds.add(target.id);
@@ -7422,7 +7459,8 @@ if (typeof module !== "undefined") module.exports = {
       if (!spec || !actor.activeSkills.includes(command.skillId) || (actor.cooldowns[command.skillId] || 0) > 0 || status(actor, "silence")) reason = "Active skill unavailable";
       else {
         const efficiency = skillData(actor, "skill_efficiency");
-        spCost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+        const equipmentMultiplier = Math.max(0, Number(actor.equipmentEffects?.activeSkillMpMultiplier) || 1);
+        spCost = spec.sp > 0 ? Math.max(1, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0)) * equipmentMultiplier)) : 0;
         cooldown = Number(spec.cooldown) || 0;
         if (actor.sp < spCost) reason = "Not enough SP";
       }
@@ -7513,7 +7551,8 @@ if (typeof module !== "undefined") module.exports = {
       const spec = heroActiveSpec(state, actor, id);
       if (!spec || !actor.activeSkills.includes(id) || (actor.cooldowns[id] || 0) > 0 || status(actor, "silence")) { log(state, "invalid", "Active skill unavailable"); return; }
       const efficiency = skillData(actor, "skill_efficiency");
-      const cost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+      const equipmentMultiplier = Math.max(0, Number(actor.equipmentEffects?.activeSkillMpMultiplier) || 1);
+      const cost = spec.sp > 0 ? Math.max(1, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0)) * equipmentMultiplier)) : 0;
       if (actor.sp < cost) { log(state, "invalid", "Not enough SP"); return; }
       actor.sp -= cost; context.usedSkillId = id; context.wasActive = true;
       context.attackAction = Number(spec.mult) > 0;
@@ -7699,6 +7738,35 @@ if (typeof module !== "undefined") module.exports = {
     }
   }
 
+  function resolveMythicEffectsAfterAction(state, actor, context) {
+    if (actor.kind === "hero" && context.attackAction && context.hitAny) {
+      const effects = actor.equipmentEffects || {};
+      if (effects.bossWeaponSignature === "spirit_restore" && chance(state, 30)) {
+        heal(state, actor, actor.maxHp * 0.10, actor, "Spirit Greatsword");
+      }
+      if (effects.bossWeaponSignature === "lavalon_extra_basic" && context.wasActive) {
+        let extras = 0;
+        for (const targetId of context.activeHitTargetIds) {
+          if (extras >= 3) break;
+          const target = state.units[targetId];
+          if (living(target) && chance(state, 10)) {
+            attackHit(state, actor, target, { mult: 1, actionType: "basic", actionName: "Lavalon extra attack", statuses: [] }, context);
+            extras += 1;
+          }
+        }
+      }
+    }
+    if (actor.kind !== "hero" && context.heroStruck) {
+      for (const heroId of context.struckHeroIds) {
+        const hero = state.units[heroId];
+        if (living(hero) && living(actor) && hero.equipmentEffects?.bossWeaponSignature === "icicle_counter" && chance(state, 20)) {
+          attackHit(state, hero, actor, { mult: 1, actionType: "counter", actionName: "Icicle counter", statuses: [] }, context);
+          log(state, "counter", "Icicle Longsword countered", { actorId: hero.id, targetId: actor.id });
+        }
+      }
+    }
+  }
+
   function finishBattle(state, result, winnerSide = null, text = null) {
     if (state.result) return;
     state.winnerSide = winnerSide;
@@ -7777,7 +7845,7 @@ if (typeof module !== "undefined") module.exports = {
         return { state, waiting: true, completedAction: false, error: invalid };
       }
     }
-    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
+    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), activeHitTargetIds: [], firstHitTargetId: null, azureProcRolled: false, totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
     startEffects(state, actor, context);
     if (living(actor)) {
       if (status(actor, "stun")) { delete actor.statuses.stun; log(state, "stun", `${actor.name || actor.id} lost the Action`); }
@@ -7789,6 +7857,7 @@ if (typeof module !== "undefined") module.exports = {
       else resolveEnemyAction(state, actor, context);
     }
     resolveHeroReactionsAfterAction(state, actor, context);
+    resolveMythicEffectsAfterAction(state, actor, context);
     const pet = petForSide(state, actor.side);
     const petCdr = pet && petSkillData(pet).extra;
     if (context.debuffApplied && (actor.kind === "hero" || actor.kind === "pet") && pet && living(pet) && petCdr.type === "petCdrOnDebuff" && !context.cdrUsed && !(actor.id === pet.id && context.usedSkillId === "pet_active") && Number(pet.cooldowns.pet_active) > 0 && chance(state, chancePercent(petCdr.pct))) {
@@ -7871,6 +7940,9 @@ const JUNK_INFO = {
     name: "หินมานา",
     icon: "🔮"
   },
+  earthStone: { name: "Earth Stone", icon: "🟢" },
+  fireStone: { name: "Fire Stone", icon: "🔴" },
+  waterStone: { name: "Water Stone", icon: "🔵" },
   // Raid boss materials (shared across all boss types for now).
   bossHorn: {
     name: "เขาบอส",
@@ -7888,6 +7960,11 @@ const JUNK_INFO = {
   recipe_azure_weapon: { name: "แบบร่างอาวุธ Azure", icon: "📜" },
   recipe_azure_ring: { name: "แบบร่างแหวน Azure", icon: "📜" }
 };
+["robot", "skeleton"].forEach(family => {
+  ["helmet", "chest", "gloves", "boots", "weapon", "ring"].forEach(slot => {
+    JUNK_INFO[`recipe_${family}_${slot}`] = { name: `แบบร่าง ${family} ${slot}`, icon: "📜" };
+  });
+});
 // Merges server-managed junk_info rows (admin.html) into the built-in defaults above —
 // merge, not replace, so newly-added materials show up without needing every existing
 // one re-declared server-side, and nothing breaks if the table is ever emptied.
@@ -8076,25 +8153,533 @@ function rollChestRarity(isEliteBoss, pity = 0) {
   return "rare";
 }
 
+// ===== systems/rewardV2.js =====
+// ---------- Dungeon V2 reward, item, and economy foundation ----------
+// Pure contract helpers for WAVE 2.  Combat remains owned by Battle Core and this
+// module deliberately contains no persistence or UI code.
+(function dungeonRewardV2Factory(root) {
+  const TIERS = Object.freeze({
+    1: Object.freeze({ minFloor: 1, maxFloor: 30, multiplier: 1 }),
+    2: Object.freeze({ minFloor: 31, maxFloor: 50, multiplier: 1.3 }),
+    3: Object.freeze({ minFloor: 51, maxFloor: 70, multiplier: 1.69 }),
+    4: Object.freeze({ minFloor: 71, maxFloor: 90, multiplier: 2.197 }),
+    5: Object.freeze({ minFloor: 91, maxFloor: Infinity, multiplier: 2.856 })
+  });
+  const RARITIES = Object.freeze({
+    rare: Object.freeze({ multiplier: 1, empowerSlots: 1 }),
+    unique: Object.freeze({ multiplier: 1.15, empowerSlots: 2 }),
+    elite: Object.freeze({ multiplier: 1.3, empowerSlots: 3 }),
+    mythic: Object.freeze({ multiplier: 1.5, empowerSlots: 4 })
+  });
+  const BASE_STATS = Object.freeze({
+    weapon: Object.freeze([14, 18, 24, 31, 40]),
+    gloves: Object.freeze([6, 8, 10, 13, 17]),
+    chest: Object.freeze([9, 12, 15, 20, 26]),
+    helmet: Object.freeze([6, 8, 10, 13, 17]),
+    boots: Object.freeze([5, 6, 9, 11, 14])
+  });
+  const ACCESSORY_BASE = Object.freeze({ critChance: 2.5, dodgeChance: 2, critDamage: 8 });
+  const GENERIC_SLOTS = Object.freeze(["weapon", "helmet", "chest", "gloves", "boots"]);
+  const RARITY_BANDS = Object.freeze([
+    Object.freeze({ minFloor: 1, maxFloor: 10, weights: Object.freeze({ rare: 82.5, unique: 15, elite: 2.5 }) }),
+    Object.freeze({ minFloor: 11, maxFloor: 20, weights: Object.freeze({ rare: 78, unique: 18, elite: 4 }) }),
+    Object.freeze({ minFloor: 21, maxFloor: 30, weights: Object.freeze({ rare: 73, unique: 21, elite: 6 }) }),
+    Object.freeze({ minFloor: 31, maxFloor: 50, weights: Object.freeze({ rare: 69, unique: 24, elite: 7 }) }),
+    Object.freeze({ minFloor: 51, maxFloor: 70, weights: Object.freeze({ rare: 64, unique: 28, elite: 8 }) }),
+    Object.freeze({ minFloor: 71, maxFloor: 90, weights: Object.freeze({ rare: 60, unique: 30, elite: 10 }) }),
+    Object.freeze({ minFloor: 91, maxFloor: Infinity, weights: Object.freeze({ rare: 55, unique: 33, elite: 12 }) })
+  ]);
+  const FIRST_CLEAR_ACCESSORIES = Object.freeze({
+    10: Object.freeze({ gearTier: 1, rarity: "rare" }),
+    20: Object.freeze({ gearTier: 1, rarity: "unique" }),
+    30: Object.freeze({ gearTier: 1, rarity: "elite" }),
+    40: Object.freeze({ gearTier: 2, rarity: "unique" }),
+    50: Object.freeze({ gearTier: 2, rarity: "elite" }),
+    60: Object.freeze({ gearTier: 3, rarity: "unique" }),
+    70: Object.freeze({ gearTier: 3, rarity: "elite" }),
+    80: Object.freeze({ gearTier: 4, rarity: "unique" }),
+    90: Object.freeze({ gearTier: 4, rarity: "elite" }),
+    100: Object.freeze({ gearTier: 5, rarity: "unique" }),
+    110: Object.freeze({ gearTier: 5, rarity: "elite" })
+  });
+  const PACK_REWARD_MULTIPLIERS = Object.freeze({ 1: 1, 2: 1.35, 3: 1.65 });
+  const SHOP_PRICES = Object.freeze({
+    1: Object.freeze({ rare: 800, unique: 1300, elite: 2300 }),
+    2: Object.freeze({ rare: 1900, unique: 3200, elite: 5500 }),
+    3: Object.freeze({ rare: 3100, unique: 5200, elite: 9000 }),
+    4: Object.freeze({ rare: 4600, unique: 7700, elite: 13500 }),
+    5: Object.freeze({ rare: 6900, unique: 11500, elite: 20000 })
+  });
+  const TYPE_NAMES = Object.freeze({
+    weapon: Object.freeze(["Beginner Sword", "Copper Blade", "Steel Greatsword", "Platinum Greatsword", "Dragon Slayer Sword"]),
+    helmet: Object.freeze(["Leather Cap", "Bronze Guard Helm", "Steel Helm", "Platinum Helm", "Dragon Scale Helm"]),
+    chest: Object.freeze(["Leather Vest", "Bronze Armor", "Chain Armor", "Platinum Plate Armor", "Dragon Scale Armor"]),
+    gloves: Object.freeze(["Leather Gloves", "Bronze Gauntlets", "Chain Gloves", "Platinum Gauntlets", "Dragonhide Gloves"]),
+    boots: Object.freeze(["Leather Boots", "Bronze Greaves", "Chain Boots", "Platinum Sabatons", "Dragonhide Boots"]),
+    accessory: Object.freeze(["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"])
+  });
+  const VALID_GENERIC_RARITIES = Object.freeze(["rare", "unique", "elite"]);
+  const VALID_GENERIC_TYPES = new Set(GENERIC_SLOTS);
+
+  function floorNumber(floor) { return Math.max(1, Math.floor(Number(floor) || 1)); }
+  function roundStat(value) { return Math.max(1, Math.round(Number(value) || 0)); }
+  function roundUtility(value) { return Math.round((Number(value) || 0) * 10) / 10; }
+  function dungeonV2GearTierForFloor(floor) {
+    const f = floorNumber(floor);
+    return f <= 30 ? 1 : f <= 50 ? 2 : f <= 70 ? 3 : f <= 90 ? 4 : 5;
+  }
+  function dungeonV2TierMultiplier(tierOrFloor) {
+    const tier = Number(tierOrFloor) > 5 ? dungeonV2GearTierForFloor(tierOrFloor) : Math.max(1, Math.min(5, Math.floor(Number(tierOrFloor) || 1)));
+    return TIERS[tier].multiplier;
+  }
+  function dungeonV2RarityMultiplier(rarity) { return RARITIES[rarity]?.multiplier || 0; }
+  function dungeonV2EmpowerSlots(rarity) { return RARITIES[rarity]?.empowerSlots || 0; }
+  function dungeonV2RarityWeights(floor) {
+    const f = floorNumber(floor);
+    return (RARITY_BANDS.find(band => f >= band.minFloor && f <= band.maxFloor) || RARITY_BANDS.at(-1)).weights;
+  }
+  function dungeonV2RollRarity(floor, rng = Math.random) {
+    const weights = dungeonV2RarityWeights(floor);
+    const roll = Math.max(0, Math.min(99.999999, Number(rng()) * 100));
+    if (roll < weights.rare) return "rare";
+    if (roll < weights.rare + weights.unique) return "unique";
+    return "elite";
+  }
+  function dungeonV2RewardRole(encounterType) {
+    if (encounterType === "chapter_boss") return "chapter_boss";
+    if (encounterType === "elite") return "elite";
+    return "normal";
+  }
+  function dungeonV2PackMultiplier(packCount) { return PACK_REWARD_MULTIPLIERS[Math.max(1, Math.min(3, Number(packCount) || 1))] || 1; }
+  function dungeonV2RewardExp(floor, encounterType = "normal", packCount = 1) {
+    const base = Math.round(6 + floorNumber(floor) * 2.4);
+    const encounter = encounterType === "chapter_boss" ? 2 : encounterType === "elite" ? 1.5 : 1;
+    const pack = encounterType === "normal" ? dungeonV2PackMultiplier(packCount) : 1;
+    return Math.round(base * encounter * pack);
+  }
+  function dungeonV2RewardGold(floor, encounterType = "normal", packCount = 1) {
+    const f = floorNumber(floor);
+    const base = f <= 30 ? 20 + 3 * f : f <= 50 ? 120 + 4 * (f - 31) : f <= 70 ? 210 + 5 * (f - 51) : f <= 90 ? 320 + 7 * (f - 71) : 480 + 10 * (f - 91);
+    const encounter = encounterType === "chapter_boss" ? 2 : encounterType === "elite" ? 1.5 : 1;
+    const pack = encounterType === "normal" ? dungeonV2PackMultiplier(packCount) : 1;
+    return Math.round(base * encounter * pack);
+  }
+  function dungeonV2GenericEquipmentChance(encounterType = "normal", dropBonus = 0) {
+    if (encounterType === "chapter_boss") return 0;
+    if (encounterType === "elite") return 0.08;
+    return 0.04 * (1 + Math.max(0, Number(dropBonus) || 0) / 100);
+  }
+  function dungeonV2FirstClearAccessory(floor) {
+    const f = floorNumber(floor);
+    return FIRST_CLEAR_ACCESSORIES[f] ? { ...FIRST_CLEAR_ACCESSORIES[f] } : null;
+  }
+  function dungeonV2ShopTier(floor) { return dungeonV2GearTierForFloor(floor); }
+  function dungeonV2ShopPrice(tier, rarity) { return SHOP_PRICES[Math.max(1, Math.min(5, Number(tier) || 1))]?.[rarity] || 0; }
+  function dungeonV2SalvageYield(rarity, item = {}) {
+    if (rarity === "mythic" || rarity === "azure" || item.sourceType === "raid" || item.sourceType === "boss_weapon") return null;
+    if (rarity === "elite") return { iron: 8, manaOre: 3 };
+    if (rarity === "unique") return { iron: 4, manaOre: 1 };
+    if (rarity === "rare") return { iron: 2, manaOre: 0 };
+    return null;
+  }
+  function dungeonV2RewardReceiptKey(battleId) { return battleId ? `battle:${String(battleId)}` : ""; }
+  function dungeonV2FirstClearReceiptKey(floor) { return `first-clear-accessory:${floorNumber(floor)}`; }
+  function dungeonV2HasReceipt(receipts, key) { return !!key && Array.isArray(receipts) && receipts.includes(key); }
+  function dungeonV2IsV2Item(item) {
+    return Number(item?.rewardVersion) === 2 || Number(item?.itemModelVersion) === 2;
+  }
+  function dungeonV2FirstClearClaimsFromReceipts(receipts) {
+    const claims = {};
+    (Array.isArray(receipts) ? receipts : []).forEach(key => {
+      const match = String(key).match(/^first-clear-accessory:(\d+)$/);
+      if (match) claims[match[1]] = true;
+    });
+    return claims;
+  }
+  function dungeonV2HasFirstClearClaim(claims, floor, receipts = []) {
+    const key = String(floorNumber(floor));
+    return !!(claims && typeof claims === "object" && claims[key])
+      || dungeonV2HasReceipt(receipts, dungeonV2FirstClearReceiptKey(floor));
+  }
+  function dungeonV2ClaimFirstClear(claims, floor) {
+    return { ...(claims && typeof claims === "object" ? claims : {}), [String(floorNumber(floor))]: true };
+  }
+  function dungeonV2AppendReceipts(receipts, keys, max = 128) {
+    const merged = [...(Array.isArray(receipts) ? receipts : []), ...(Array.isArray(keys) ? keys : [keys])].filter(Boolean);
+    return [...new Set(merged)].slice(-Math.max(1, max));
+  }
+  function dungeonV2CustomLootChoice(table, rng = Math.random) {
+    const rows = Array.isArray(table?.gear) ? table.gear.filter(row => VALID_GENERIC_TYPES.has(row?.itemType) && (!row.rarity || VALID_GENERIC_RARITIES.includes(row.rarity)) && Number(row.weight ?? 1) > 0) : [];
+    if (!rows.length) return null;
+    const total = rows.reduce((sum, row) => sum + Number(row.weight ?? 1), 0);
+    let cursor = Math.max(0, Number(rng()) || 0) * total;
+    for (const row of rows) {
+      cursor -= Number(row.weight ?? 1);
+      if (cursor < 0) return { itemType: row.itemType, rarity: row.rarity || null };
+    }
+    const last = rows.at(-1);
+    return { itemType: last.itemType, rarity: last.rarity || null };
+  }
+  function dungeonV2EquipmentItem({ floor, type, rarity, sourceType = "dungeon_normal", specialSource = null, sourceIdentity = null, utilityKey = null, rng = Math.random } = {}) {
+    const resolvedFloor = floorNumber(floor);
+    const gearTier = dungeonV2GearTierForFloor(resolvedFloor);
+    const resolvedType = VALID_GENERIC_TYPES.has(type) || type === "accessory" ? type : GENERIC_SLOTS[Math.floor(Math.max(0, Math.min(0.999999, Number(rng()) || 0)) * GENERIC_SLOTS.length)];
+    const resolvedRarity = RARITIES[rarity] ? rarity : "rare";
+    const multiplier = dungeonV2RarityMultiplier(resolvedRarity);
+    const id = `v2-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const item = {
+      id, type: resolvedType, rarity: resolvedRarity,
+      name: (TYPE_NAMES[resolvedType] || TYPE_NAMES.weapon)[gearTier - 1],
+      gearTier, rewardVersion: 2, itemModelVersion: 2,
+      sourceType, sourceFloor: resolvedFloor,
+      specialSource: specialSource || undefined,
+      sourceIdentity: sourceIdentity || undefined,
+      setId: undefined,
+      enhanceLevel: 0,
+      empowerSlotCapacity: dungeonV2EmpowerSlots(resolvedRarity),
+      empowerSlots: Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
+    };
+    if (resolvedType === "accessory") {
+      const utilityKeys = Object.keys(ACCESSORY_BASE);
+      const selectedKey = utilityKeys.includes(utilityKey)
+        ? utilityKey
+        : utilityKeys[Math.floor(Math.max(0, Math.min(0.999999, Number(rng()) || 0)) * utilityKeys.length)];
+      item.utilityStat = selectedKey;
+      item[selectedKey] = roundUtility(ACCESSORY_BASE[selectedKey] * dungeonV2TierMultiplier(gearTier) * multiplier);
+    } else {
+      const base = BASE_STATS[resolvedType][gearTier - 1];
+      item[resolvedType === "weapon" || resolvedType === "gloves" ? "atk" : "def"] = roundStat(base * multiplier);
+    }
+    return item;
+  }
+  function dungeonV2GenerateEquipment({ floor, type, rarity, sourceType, specialSource, sourceIdentity, lootTable, allowMythic = false, rng = Math.random } = {}) {
+    const custom = dungeonV2CustomLootChoice(lootTable, rng);
+    const requestedRarity = custom?.rarity || rarity || dungeonV2RollRarity(floor, rng);
+    return dungeonV2EquipmentItem({
+      floor, type: custom?.itemType || type,
+      rarity: requestedRarity === "mythic" && !allowMythic ? "elite" : requestedRarity,
+      sourceType, specialSource, sourceIdentity, rng
+    });
+  }
+  function dungeonV2FirstClearEligible({ floor, encounterType, unlockedNext, receipts, firstClearAccessoryClaims }) {
+    return encounterType === "chapter_boss" && !!dungeonV2FirstClearAccessory(floor) && !!unlockedNext
+      && !dungeonV2HasFirstClearClaim(firstClearAccessoryClaims, floor, receipts);
+  }
+
+  const api = {
+    TIERS, RARITIES, BASE_STATS, ACCESSORY_BASE, GENERIC_SLOTS, RARITY_BANDS, FIRST_CLEAR_ACCESSORIES, PACK_REWARD_MULTIPLIERS, SHOP_PRICES,
+    dungeonV2GearTierForFloor, dungeonV2TierMultiplier, dungeonV2RarityMultiplier, dungeonV2EmpowerSlots,
+    dungeonV2RarityWeights, dungeonV2RollRarity, dungeonV2RewardRole, dungeonV2PackMultiplier, dungeonV2RewardExp,
+    dungeonV2RewardGold, dungeonV2GenericEquipmentChance, dungeonV2FirstClearAccessory, dungeonV2ShopTier,
+    dungeonV2ShopPrice, dungeonV2SalvageYield, dungeonV2RewardReceiptKey, dungeonV2FirstClearReceiptKey,
+    dungeonV2HasReceipt, dungeonV2IsV2Item, dungeonV2FirstClearClaimsFromReceipts, dungeonV2HasFirstClearClaim,
+    dungeonV2ClaimFirstClear, dungeonV2AppendReceipts, dungeonV2CustomLootChoice, dungeonV2EquipmentItem,
+    dungeonV2GenerateEquipment, dungeonV2FirstClearEligible
+  };
+  root.DUNGEON_REWARD_V2 = api;
+  if (typeof module !== "undefined") module.exports = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+// ===== systems/enhancementV2.js =====
+// ---------- Reward V2 Enhance / Empower contract ----------
+// Pure, deterministic helpers shared by the browser bundle and API Worker. The Worker owns
+// gameplay RNG and persistence; the browser uses these helpers only for previews/stat math.
+(function enhancementV2Factory(root) {
+  const ENHANCE_MAX = 10;
+  const ENHANCE_STAT_PCT = 0.06;
+  const ENHANCE_RATES = Object.freeze([95, 90, 82, 72, 60, 50, 40, 30, 20, 15]);
+  const TIER_ECONOMY = Object.freeze({ 1: 1, 2: 2.25, 3: 3.75, 4: 5.75, 5: 8.5 });
+  const EMPOWER_CAPACITY = Object.freeze({ rare: 1, unique: 2, elite: 3, mythic: 4 });
+  const EMPOWER_OPEN_BASE_GOLD = Object.freeze([30, 75, 120, 165]);
+  const WING_PRIMARY_STAT = Object.freeze({ azure: "agi", robot: "vit", skeleton: "str" });
+
+  const OPTION_DEFS = Object.freeze({
+    atkPct: Object.freeze({ label: "ATK", icon: "⚔️", values: Object.freeze([4, 5, 6, 7, 8]), weights: Object.freeze([25, 25, 25, 15, 10]) }),
+    defPct: Object.freeze({ label: "DEF", icon: "🛡️", values: Object.freeze([3, 4, 5, 6]), weights: Object.freeze([35, 35, 20, 10]) }),
+    hpPct: Object.freeze({ label: "HP", icon: "❤️", values: Object.freeze([1, 2, 3]), weights: Object.freeze([50, 35, 15]) }),
+    mpPct: Object.freeze({ label: "MP", icon: "💧", values: Object.freeze([2, 3, 4]), weights: Object.freeze([50, 35, 15]) }),
+    critChance: Object.freeze({ label: "Crit", icon: "💥", values: Object.freeze([1, 2]), weights: Object.freeze([75, 25]) }),
+    critDamage: Object.freeze({ label: "Crit Dmg", icon: "✨", values: Object.freeze([2, 3, 4]), weights: Object.freeze([50, 35, 15]) }),
+    str: Object.freeze({ label: "STR", icon: "💪", values: Object.freeze([1]), weights: Object.freeze([100]) }),
+    vit: Object.freeze({ label: "VIT", icon: "🫀", values: Object.freeze([1]), weights: Object.freeze([100]) }),
+    agi: Object.freeze({ label: "AGI", icon: "⚡", values: Object.freeze([1]), weights: Object.freeze([100]) }),
+    dex: Object.freeze({ label: "DEX", icon: "🎯", values: Object.freeze([1]), weights: Object.freeze([100]) }),
+    luk: Object.freeze({ label: "LUK", icon: "🍀", values: Object.freeze([1]), weights: Object.freeze([100]) })
+  });
+  const SLOT_POOLS = Object.freeze({
+    weapon: Object.freeze(["atkPct", "critChance", "critDamage", "str", "dex"]),
+    gloves: Object.freeze(["atkPct", "critChance", "critDamage", "str", "agi", "dex"]),
+    helmet: Object.freeze(["defPct", "hpPct", "mpPct", "vit", "agi", "dex", "luk"]),
+    chest: Object.freeze(["defPct", "hpPct", "vit", "agi", "luk"]),
+    boots: Object.freeze(["defPct", "hpPct", "vit", "agi", "luk"]),
+    accessory: Object.freeze(["hpPct", "mpPct", "critChance", "critDamage", "str", "vit", "agi", "dex", "luk"]),
+    wings: Object.freeze(["hpPct", "mpPct", "critChance", "critDamage"])
+  });
+
+  function isV2Item(item) {
+    return Number(item?.itemModelVersion) === 2 || Number(item?.rewardVersion) === 2;
+  }
+  function normalizeUnitRoll(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(0.999999999999, n));
+  }
+  function enhanceSuccessRate(level) {
+    const current = Math.floor(Number(level));
+    return current >= 0 && current < ENHANCE_MAX ? ENHANCE_RATES[current] : 0;
+  }
+  function itemTier(item) {
+    if (String(item?.type || "").toLowerCase() === "wings") return null;
+    const tier = Math.floor(Number(item?.gearTier));
+    return TIER_ECONOMY[tier] ? tier : null;
+  }
+  function wingFamily(item) {
+    if (String(item?.type || "").toLowerCase() !== "wings") return null;
+    const raw = String(item?.wingFamily || item?.wingId || item?.wingsId || item?.setId || "").toLowerCase();
+    return WING_PRIMARY_STAT[raw] ? raw : null;
+  }
+  function enhanceEconomyMultiplier(item) {
+    if (String(item?.type || "").toLowerCase() === "wings") return wingFamily(item) ? TIER_ECONOMY[5] : null;
+    const tier = itemTier(item);
+    return tier ? TIER_ECONOMY[tier] : null;
+  }
+  function empowerEconomyMultiplier(item) {
+    const tier = itemTier(item);
+    return tier ? TIER_ECONOMY[tier] : null;
+  }
+  function enhanceCost(item, level = item?.enhanceLevel) {
+    const current = Math.floor(Number(level));
+    const multiplier = enhanceEconomyMultiplier(item);
+    if (!isV2Item(item) || current < 0 || current >= ENHANCE_MAX || !multiplier) return null;
+    return Object.freeze({ iron: 1, gold: Math.round((25 + current * 35) * multiplier) });
+  }
+  function empowerCapacity(item) {
+    if (!isV2Item(item)) return 0;
+    const canonical = EMPOWER_CAPACITY[String(item?.rarity || "").toLowerCase()] || 0;
+    const stored = Math.floor(Number(item?.empowerSlotCapacity));
+    return stored === canonical ? canonical : 0;
+  }
+  function empowerOpenCost(item, slotIndex) {
+    const index = Math.floor(Number(slotIndex));
+    const multiplier = empowerEconomyMultiplier(item);
+    if (!multiplier || index < 0 || index >= empowerCapacity(item) || index >= EMPOWER_OPEN_BASE_GOLD.length) return null;
+    return Object.freeze({ manaOre: 1, gold: Math.round(EMPOWER_OPEN_BASE_GOLD[index] * multiplier) });
+  }
+  function empowerRerollCost(item, filledCount, lockedCount) {
+    const filled = Math.floor(Number(filledCount));
+    const locked = Math.floor(Number(lockedCount));
+    const multiplier = empowerEconomyMultiplier(item);
+    if (!multiplier || filled <= 0 || locked < 0 || locked >= filled) return null;
+    return Object.freeze({ manaOre: 1, gold: Math.round((25 + filled * 15) * (1 + locked * 0.6) * multiplier) });
+  }
+  function validEmpowerPool(type) {
+    return SLOT_POOLS[String(type || "").toLowerCase()] || Object.freeze([]);
+  }
+  function weightedValue(def, roll) {
+    let cursor = normalizeUnitRoll(roll) * 100;
+    for (let index = 0; index < def.values.length; index += 1) {
+      cursor -= def.weights[index];
+      if (cursor < 0) return def.values[index];
+    }
+    return def.values[def.values.length - 1];
+  }
+  function optionQuality(def, value) {
+    if (def.values.length === 1) return "fixed";
+    if (value === def.values[def.values.length - 1]) return "max";
+    if (value === def.values[0]) return "low";
+    return "normal";
+  }
+  function rollEmpowerOption(type, typeRoll, valueRoll) {
+    const pool = validEmpowerPool(type);
+    if (!pool.length) return null;
+    const key = pool[Math.floor(normalizeUnitRoll(typeRoll) * pool.length)];
+    const def = OPTION_DEFS[key];
+    const value = weightedValue(def, valueRoll);
+    return Object.freeze({ key, label: def.label, icon: def.icon, value, locked: false, quality: optionQuality(def, value), modelVersion: 2 });
+  }
+  function resolveEnhanceAttempt({ level, successRoll, downgradeRoll, protectionRequested, protectionStones }) {
+    const current = Math.max(0, Math.min(ENHANCE_MAX, Math.floor(Number(level) || 0)));
+    if (current >= ENHANCE_MAX) return Object.freeze({ ok: false, error: "enhance_max" });
+    const success = normalizeUnitRoll(successRoll) * 100 < enhanceSuccessRate(current);
+    if (success) return Object.freeze({ ok: true, success: true, levelBefore: current, levelAfter: current + 1, downgraded: false, protectionConsumed: false });
+    const downgradeTriggered = current >= 6 && normalizeUnitRoll(downgradeRoll) < 0.5;
+    const protectionConsumed = downgradeTriggered && protectionRequested === true && Math.floor(Number(protectionStones) || 0) > 0;
+    return Object.freeze({
+      ok: true,
+      success: false,
+      levelBefore: current,
+      levelAfter: downgradeTriggered && !protectionConsumed ? Math.max(0, current - 1) : current,
+      downgradeTriggered,
+      downgraded: downgradeTriggered && !protectionConsumed,
+      protectionConsumed
+    });
+  }
+  function isValidEmpowerOption(type, option) {
+    if (!option || !validEmpowerPool(type).includes(option.key)) return false;
+    const def = OPTION_DEFS[option.key];
+    return def.values.includes(Number(option.value)) && typeof option.locked === "boolean";
+  }
+
+  const api = Object.freeze({
+    ENHANCE_MAX, ENHANCE_STAT_PCT, ENHANCE_RATES, TIER_ECONOMY, EMPOWER_CAPACITY,
+    EMPOWER_OPEN_BASE_GOLD, WING_PRIMARY_STAT, OPTION_DEFS, SLOT_POOLS,
+    isV2Item, enhanceSuccessRate, itemTier, wingFamily, enhanceEconomyMultiplier,
+    empowerEconomyMultiplier, enhanceCost, empowerCapacity, empowerOpenCost,
+    empowerRerollCost, validEmpowerPool, rollEmpowerOption, resolveEnhanceAttempt,
+    isValidEmpowerOption
+  });
+  root.ENHANCEMENT_V2 = api;
+  if (typeof module !== "undefined") module.exports = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+// ===== systems/mythicV2.js =====
+// ---------- Wave 4 Mythic Boss Weapons + Set contract ----------
+// Pure shared helpers. Persistence and gameplay RNG remain server/Battle Core owned.
+(function mythicV2Factory(root) {
+  const SET_IDS = Object.freeze(["azure", "robot", "skeleton"]);
+  const SET_SLOTS = Object.freeze(["weapon", "helmet", "chest", "gloves", "boots", "accessory"]);
+  const SET_SLOT_COSTS = Object.freeze({
+    helmet: Object.freeze({ bossHorn: 5, bossHide: 5, gold: 300 }),
+    chest: Object.freeze({ bossHorn: 6, bossHide: 6, gold: 350 }),
+    gloves: Object.freeze({ bossHorn: 5, bossHide: 5, gold: 300 }),
+    boots: Object.freeze({ bossHorn: 5, bossHide: 5, gold: 300 }),
+    weapon: Object.freeze({ bossHorn: 8, bossHide: 8, gold: 500 }),
+    accessory: Object.freeze({ bossHorn: 6, bossHide: 6, gold: 350 })
+  });
+  const BOSS_WEAPONS = Object.freeze({
+    spirit_greatsword: Object.freeze({ id: "spirit_greatsword", name: "Spirit Greatsword", bossId: "moss_king", stoneId: "earthStone", signatureId: "spirit_restore", visualId: "spiritGreatsword" }),
+    lavalon_sword: Object.freeze({ id: "lavalon_sword", name: "Lavalon Sword", bossId: "ember_drake", stoneId: "fireStone", signatureId: "lavalon_extra_basic", visualId: "lavalonSword" }),
+    icicle_longsword: Object.freeze({ id: "icicle_longsword", name: "Icicle Longsword", bossId: "frost_warden", stoneId: "waterStone", signatureId: "icicle_counter", visualId: "icicleLongsword" })
+  });
+  const BOSS_WEAPON_GOLD = Object.freeze({ 1: 2500, 2: 6000, 3: 10000, 4: 15000, 5: 22500 });
+  const STONES = Object.freeze({
+    moss_king: Object.freeze({ junkId: "earthStone", name: "Earth Stone" }),
+    ember_drake: Object.freeze({ junkId: "fireStone", name: "Fire Stone" }),
+    frost_warden: Object.freeze({ junkId: "waterStone", name: "Water Stone" })
+  });
+
+  const clean = value => String(value || "").trim().toLowerCase();
+  function canonicalSetId(value) { const id = clean(value); return SET_IDS.includes(id) ? id : null; }
+  function validSetItem(item) {
+    return !!item && Number(item.itemModelVersion) === 2 && clean(item.rarity) === "mythic"
+      && SET_SLOTS.includes(clean(item.type)) && !!canonicalSetId(item.setId);
+  }
+  function setCounts(equipped = {}) {
+    const counts = { azure: 0, robot: 0, skeleton: 0 };
+    for (const slot of SET_SLOTS) {
+      const item = equipped?.[slot];
+      if (validSetItem(item) && clean(item.type) === slot) counts[clean(item.setId)] += 1;
+    }
+    return counts;
+  }
+  function setEffects(equipped = {}) {
+    const counts = setCounts(equipped);
+    return Object.freeze({
+      counts: Object.freeze({ ...counts }),
+      str: counts.skeleton >= 2 ? 5 : 0,
+      vit: counts.robot >= 2 ? 5 : 0,
+      agi: counts.azure >= 2 ? 5 : 0,
+      critDamage: counts.skeleton >= 4 ? 30 : 0,
+      activeSkillMpMultiplier: counts.azure >= 4 ? 0.5 : 1,
+      ccResist: counts.robot >= 4 ? 10 : 0,
+      azureControlProc: counts.azure >= 6,
+      skeletonCritArmorBreak: counts.skeleton >= 6,
+      robotThresholdDefUp: counts.robot >= 6
+    });
+  }
+  function bossWeapon(item) {
+    if (!item || Number(item.itemModelVersion) !== 2 || clean(item.rarity) !== "mythic" || clean(item.type) !== "weapon") return null;
+    const id = clean(item.bossWeaponId || item.specialSource || item.sourceIdentity).replace(/^boss_weapon:/, "");
+    return BOSS_WEAPONS[id] || Object.values(BOSS_WEAPONS).find(def => clean(item.name) === clean(def.name)) || null;
+  }
+  function signatureText(item) {
+    const signature = bossWeapon(item)?.signatureId || item?.signatureId;
+    return ({
+      spirit_restore: "โจมตีโดน: 30% ฟื้น HP 10%",
+      lavalon_extra_basic: "สกิลโดน: 10%/Hit โจมตีปกติเพิ่ม 1 ครั้ง",
+      icicle_counter: "ถูกโจมตี: 20% สวนกลับ 1 ครั้ง"
+    })[signature] || "";
+  }
+  function combatEffects(equipped = {}) {
+    const sets = setEffects(equipped);
+    const weapon = bossWeapon(equipped.weapon);
+    return Object.freeze({
+      activeSkillMpMultiplier: sets.activeSkillMpMultiplier,
+      ccResist: sets.ccResist,
+      azureControlProc: sets.azureControlProc,
+      skeletonCritArmorBreak: sets.skeletonCritArmorBreak,
+      robotThresholdDefUp: sets.robotThresholdDefUp,
+      bossWeaponSignature: weapon?.signatureId || null
+    });
+  }
+  function tierForFloor(floor) {
+    const rewards = root.DUNGEON_REWARD_V2;
+    return rewards ? rewards.dungeonV2GearTierForFloor(floor) : Math.max(1, Math.min(5, Math.ceil((Number(floor) || 1) / 30)));
+  }
+  function setRecipeId(setId, slot) { return `${setId}_${slot === "accessory" ? "ring" : slot}`; }
+  function setRecipe(setId, slot, floor = 1) {
+    const family = canonicalSetId(setId); const type = slot === "ring" ? "accessory" : clean(slot);
+    if (!family || !SET_SLOTS.includes(type)) return null;
+    const tier = tierForFloor(floor); const base = SET_SLOT_COSTS[type];
+    const mult = root.ENHANCEMENT_V2?.TIER_ECONOMY?.[tier] || 1;
+    return Object.freeze({ recipeId: setRecipeId(family, type), kind: "set", setId: family, type,
+      name: `${family[0].toUpperCase()}${family.slice(1)} ${type[0].toUpperCase()}${type.slice(1)}`,
+      materials: Object.freeze({ [`recipe_${setRecipeId(family, type)}`]: 1, bossHorn: base.bossHorn, bossHide: base.bossHide, gold: Math.round(base.gold * mult) }), tier });
+  }
+  function bossWeaponRecipe(weaponId, floor = 1) {
+    const def = BOSS_WEAPONS[clean(weaponId)]; if (!def) return null;
+    const tier = tierForFloor(floor);
+    return Object.freeze({ recipeId: `boss_weapon_${def.id}`, kind: "boss_weapon", type: "weapon", bossWeaponId: def.id,
+      name: def.name, tier, materials: Object.freeze({ [def.stoneId]: 5, gold: BOSS_WEAPON_GOLD[tier] }) });
+  }
+  function recipeById(recipeId, floor = 1) {
+    const id = clean(recipeId);
+    if (id.startsWith("boss_weapon_")) return bossWeaponRecipe(id.slice(12), floor);
+    for (const family of SET_IDS) for (const slot of SET_SLOTS) if (id === setRecipeId(family, slot)) return setRecipe(family, slot, floor);
+    return null;
+  }
+  function allRecipes(floor = 1) {
+    return [...Object.keys(BOSS_WEAPONS).map(id => bossWeaponRecipe(id, floor)), ...SET_IDS.flatMap(setId => SET_SLOTS.map(slot => setRecipe(setId, slot, floor)))];
+  }
+  function createMythicItem(recipe, floor, rng = Math.random) {
+    if (!recipe || !root.DUNGEON_REWARD_V2) return null;
+    const sourceFloor = Math.max(1, Math.floor(Number(floor) || 1));
+    const item = root.DUNGEON_REWARD_V2.dungeonV2EquipmentItem({ floor: sourceFloor, type: recipe.type, rarity: "mythic",
+      sourceType: recipe.kind === "boss_weapon" ? "boss_weapon" : "mythic_set_craft",
+      specialSource: recipe.kind === "boss_weapon" ? recipe.bossWeaponId : recipe.setId,
+      sourceIdentity: recipe.kind === "boss_weapon" ? `boss_weapon:${recipe.bossWeaponId}` : `mythic_set:${recipe.setId}:${recipe.type}`, rng });
+    item.name = recipe.name; item.craftRecipeId = recipe.recipeId; item.empowerSlotCapacity = 4; item.empowerSlots = Array(4).fill(null);
+    if (recipe.kind === "boss_weapon") {
+      const def = BOSS_WEAPONS[recipe.bossWeaponId];
+      item.bossWeaponId = def.id; item.signatureId = def.signatureId; item.sourceBossId = def.bossId;
+    } else item.setId = recipe.setId;
+    return item;
+  }
+  function setSalvage(item) {
+    if (!validSetItem(item) || !item.craftRecipeId) return null;
+    const recipe = recipeById(item.craftRecipeId, item.sourceFloor || 1);
+    if (!recipe || recipe.kind !== "set") return null;
+    return Object.freeze([{ junkId: "bossHorn", qty: Math.max(1, Math.floor(recipe.materials.bossHorn * 0.5)) }, { junkId: "bossHide", qty: Math.max(1, Math.floor(recipe.materials.bossHide * 0.5)) }]);
+  }
+  function bossStoneForEnemy(enemyId) { return STONES[clean(enemyId)] || null; }
+
+  const api = Object.freeze({ SET_IDS, SET_SLOTS, SET_SLOT_COSTS, BOSS_WEAPONS, BOSS_WEAPON_GOLD, STONES,
+    canonicalSetId, validSetItem, setCounts, setEffects, bossWeapon, signatureText, combatEffects, tierForFloor,
+    setRecipeId, setRecipe, bossWeaponRecipe, recipeById, allRecipes, createMythicItem, setSalvage, bossStoneForEnemy });
+  root.MYTHIC_V2 = api;
+  if (typeof module !== "undefined") module.exports = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
 // ===== systems/crafting.js =====
-// ---------- Phase 4: Crafting ----------
-// Recipes are fetched from the server on app load (getRecipes, see api.js/App.js) rather
-// than hardcoded — this is what lets Kimmie add a whole new crafted set later with just a
-// `recipes` D1 insert, no client code change or redeploy. CRAFTING_RECIPES starts as a
-// small built-in fallback (today's 6 Azure pieces) so the Craft screen still works if the
-// fetch fails and there's no cache yet; applyRecipes() below replaces it wholesale once
-// real data comes back, same pattern as applyGameConfig() for RARITY_MULT/ENEMY_POOL/etc.
-let CRAFTING_RECIPES = [
-  { recipeId: "azure_helmet", type: "helmet", name: "หมวก Azure", materials: { recipe_azure_helmet: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_chest", type: "chest", name: "เสื้อ Azure", materials: { recipe_azure_chest: 1, bossHorn: 6, bossHide: 6, gold: 350 } },
-  { recipeId: "azure_gloves", type: "gloves", name: "ถุงมือ Azure", materials: { recipe_azure_gloves: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_boots", type: "boots", name: "รองเท้า Azure", materials: { recipe_azure_boots: 1, bossHorn: 5, bossHide: 5, gold: 300 } },
-  { recipeId: "azure_weapon", type: "weapon", name: "อาวุธ Azure", materials: { recipe_azure_weapon: 1, bossHorn: 8, bossHide: 8, gold: 500 } },
-  { recipeId: "azure_ring", type: "accessory", name: "แหวน Azure", materials: { recipe_azure_ring: 1, bossHorn: 6, bossHide: 6, gold: 350 } }
-];
-// Recipes only carry type/name/materials from the server — icon is purely presentational
-// and looked up locally by type, so new crafted types (if any are ever added beyond the
-// existing 6 gear slots) just need an entry here, not a schema change.
+// ---------- Wave 4 Mythic Crafting ----------
+// W4 recipes are canonical contract data. Remote rows may add legacy presentation
+// entries, but cannot replace W4 identity, costs, Tier, or generated stats.
+let CRAFTING_RECIPES = [];
+function refreshMythicRecipes(floor = 1) {
+  CRAFTING_RECIPES = MYTHIC_V2.allRecipes(floor);
+  return CRAFTING_RECIPES;
+}
+refreshMythicRecipes(1);
 const CRAFT_ICON_BY_TYPE = {
   helmet: "⛑️", chest: "🥋", gloves: "🧤", boots: "🥾", weapon: "⚔️", accessory: "💍"
 };
@@ -8106,41 +8691,27 @@ function craftIcon(recipe) {
 function applyRecipes(list) {
   if (!Array.isArray(list) || !list.length) return;
   const valid = list.filter(r => r && r.recipeId && r.type && r.materials);
-  if (valid.length) CRAFTING_RECIPES = valid;
+  if (valid.length) {
+    const canonical = new Map(CRAFTING_RECIPES.map(recipe => [recipe.recipeId, recipe]));
+    valid.forEach(recipe => { if (!canonical.has(recipe.recipeId)) canonical.set(recipe.recipeId, recipe); });
+    CRAFTING_RECIPES = [...canonical.values()];
+  }
 }
-
-// Mirrors generateDrop()'s per-type formulas in stats.js, pinned to CRAFTED_RARITY_MULT.
-// KEEP IN SYNC with CRAFTED_STAT_FORMULA in workers/thornie-dungeons-api.js — the worker is
-// authoritative (uses the character's real unlocked_floor at craft time); this copy only
-// exists so the UI can show an accurate "you'll get ~X atk" preview before crafting. Shared
-// by every crafted set (present and future) — mythic is this game's permanent rarity
-// ceiling, so all crafted output is pinned to that same ceiling regardless of setId.
-const CRAFTED_RARITY_MULT = 5.4;
-const CRAFTED_STAT_FORMULA = {
-  weapon: floor => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * CRAFTED_RARITY_MULT)) }),
-  helmet: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
-  chest: floor => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * CRAFTED_RARITY_MULT)) }),
-  gloves: floor => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
-  boots: floor => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * CRAFTED_RARITY_MULT)) }),
-  accessory: floor => ({ dodgeChance: Math.round((1 + floor * 0.12) * CRAFTED_RARITY_MULT * 10) / 10 })
-};
 
 function craftPreviewStats(recipe, floor) {
-  const fn = CRAFTED_STAT_FORMULA[recipe.type];
-  return fn ? fn(Math.max(1, floor || 1)) : {};
+  const canonical = MYTHIC_V2.recipeById(recipe.recipeId, floor);
+  const item = canonical ? MYTHIC_V2.createMythicItem(canonical, floor, () => 0) : null;
+  return item ? { atk: item.atk || 0, def: item.def || 0, dodgeChance: item.dodgeChance || 0, critChance: item.critChance || 0, critDamage: item.critDamage || 0 } : {};
 }
 
-// Salvaging a crafted item returns a portion of what it cost to make: the recipe scroll
-// back in full (it's the "proof of design", not consumed materials — refunding it in full
-// means salvaging a mis-craft doesn't lose you the recipe, just the raw materials) plus a
-// cut of the raw junk materials (bossHorn/bossHide etc, NOT the gold — gold sunk into a
-// craft is gone either way, same as any other gold sink in this game). This works for ANY
-// crafted item (Azure today, any future set) because it keys off craftRecipeId — the exact
-// recipe stamped on the item at craft time — rather than checking a specific setId string.
-// CRAFT_SALVAGE_REFUND_RATE is a tunable balance knob, easy to adjust later.
+// W4 V2 items use source-aware salvage above. The old refund table remains only for
+// pre-V2 crafted inventory until the separately approved W6 cleanup.
 const CRAFT_SALVAGE_REFUND_RATE = 0.5;
 function craftSalvageRefund(item) {
   if (!item) return null;
+  const v2Refund = MYTHIC_V2.setSalvage(item);
+  if (v2Refund) return v2Refund;
+  if (Number(item.itemModelVersion) === 2 || item.rarity === "mythic") return null;
   // craftRecipeId is the source of truth (stamped by the worker at craft time and carried
   // through extra_json ever since). Fall back to matching by type only for items crafted
   // before that field existed — a small, closing window, and only ambiguous if two recipes
@@ -8981,385 +9552,6 @@ const SLOT_ORDER = ["weapon", "helmet", "chest", "gloves", "boots", "accessory",
   if (typeof module !== "undefined") module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
 
-// ===== systems/rewardV2.js =====
-// ---------- Dungeon V2 reward, item, and economy foundation ----------
-// Pure contract helpers for WAVE 2.  Combat remains owned by Battle Core and this
-// module deliberately contains no persistence or UI code.
-(function dungeonRewardV2Factory(root) {
-  const TIERS = Object.freeze({
-    1: Object.freeze({ minFloor: 1, maxFloor: 30, multiplier: 1 }),
-    2: Object.freeze({ minFloor: 31, maxFloor: 50, multiplier: 1.3 }),
-    3: Object.freeze({ minFloor: 51, maxFloor: 70, multiplier: 1.69 }),
-    4: Object.freeze({ minFloor: 71, maxFloor: 90, multiplier: 2.197 }),
-    5: Object.freeze({ minFloor: 91, maxFloor: Infinity, multiplier: 2.856 })
-  });
-  const RARITIES = Object.freeze({
-    rare: Object.freeze({ multiplier: 1, empowerSlots: 1 }),
-    unique: Object.freeze({ multiplier: 1.15, empowerSlots: 2 }),
-    elite: Object.freeze({ multiplier: 1.3, empowerSlots: 3 }),
-    mythic: Object.freeze({ multiplier: 1.5, empowerSlots: 4 })
-  });
-  const BASE_STATS = Object.freeze({
-    weapon: Object.freeze([14, 18, 24, 31, 40]),
-    gloves: Object.freeze([6, 8, 10, 13, 17]),
-    chest: Object.freeze([9, 12, 15, 20, 26]),
-    helmet: Object.freeze([6, 8, 10, 13, 17]),
-    boots: Object.freeze([5, 6, 9, 11, 14])
-  });
-  const ACCESSORY_BASE = Object.freeze({ critChance: 2.5, dodgeChance: 2, critDamage: 8 });
-  const GENERIC_SLOTS = Object.freeze(["weapon", "helmet", "chest", "gloves", "boots"]);
-  const RARITY_BANDS = Object.freeze([
-    Object.freeze({ minFloor: 1, maxFloor: 10, weights: Object.freeze({ rare: 82.5, unique: 15, elite: 2.5 }) }),
-    Object.freeze({ minFloor: 11, maxFloor: 20, weights: Object.freeze({ rare: 78, unique: 18, elite: 4 }) }),
-    Object.freeze({ minFloor: 21, maxFloor: 30, weights: Object.freeze({ rare: 73, unique: 21, elite: 6 }) }),
-    Object.freeze({ minFloor: 31, maxFloor: 50, weights: Object.freeze({ rare: 69, unique: 24, elite: 7 }) }),
-    Object.freeze({ minFloor: 51, maxFloor: 70, weights: Object.freeze({ rare: 64, unique: 28, elite: 8 }) }),
-    Object.freeze({ minFloor: 71, maxFloor: 90, weights: Object.freeze({ rare: 60, unique: 30, elite: 10 }) }),
-    Object.freeze({ minFloor: 91, maxFloor: Infinity, weights: Object.freeze({ rare: 55, unique: 33, elite: 12 }) })
-  ]);
-  const FIRST_CLEAR_ACCESSORIES = Object.freeze({
-    10: Object.freeze({ gearTier: 1, rarity: "rare" }),
-    20: Object.freeze({ gearTier: 1, rarity: "unique" }),
-    30: Object.freeze({ gearTier: 1, rarity: "elite" }),
-    40: Object.freeze({ gearTier: 2, rarity: "unique" }),
-    50: Object.freeze({ gearTier: 2, rarity: "elite" }),
-    60: Object.freeze({ gearTier: 3, rarity: "unique" }),
-    70: Object.freeze({ gearTier: 3, rarity: "elite" }),
-    80: Object.freeze({ gearTier: 4, rarity: "unique" }),
-    90: Object.freeze({ gearTier: 4, rarity: "elite" }),
-    100: Object.freeze({ gearTier: 5, rarity: "unique" }),
-    110: Object.freeze({ gearTier: 5, rarity: "elite" })
-  });
-  const PACK_REWARD_MULTIPLIERS = Object.freeze({ 1: 1, 2: 1.35, 3: 1.65 });
-  const SHOP_PRICES = Object.freeze({
-    1: Object.freeze({ rare: 800, unique: 1300, elite: 2300 }),
-    2: Object.freeze({ rare: 1900, unique: 3200, elite: 5500 }),
-    3: Object.freeze({ rare: 3100, unique: 5200, elite: 9000 }),
-    4: Object.freeze({ rare: 4600, unique: 7700, elite: 13500 }),
-    5: Object.freeze({ rare: 6900, unique: 11500, elite: 20000 })
-  });
-  const TYPE_NAMES = Object.freeze({
-    weapon: Object.freeze(["Beginner Sword", "Copper Blade", "Steel Greatsword", "Platinum Greatsword", "Dragon Slayer Sword"]),
-    helmet: Object.freeze(["Leather Cap", "Bronze Guard Helm", "Steel Helm", "Platinum Helm", "Dragon Scale Helm"]),
-    chest: Object.freeze(["Leather Vest", "Bronze Armor", "Chain Armor", "Platinum Plate Armor", "Dragon Scale Armor"]),
-    gloves: Object.freeze(["Leather Gloves", "Bronze Gauntlets", "Chain Gloves", "Platinum Gauntlets", "Dragonhide Gloves"]),
-    boots: Object.freeze(["Leather Boots", "Bronze Greaves", "Chain Boots", "Platinum Sabatons", "Dragonhide Boots"]),
-    accessory: Object.freeze(["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"])
-  });
-  const VALID_GENERIC_RARITIES = Object.freeze(["rare", "unique", "elite"]);
-  const VALID_GENERIC_TYPES = new Set(GENERIC_SLOTS);
-
-  function floorNumber(floor) { return Math.max(1, Math.floor(Number(floor) || 1)); }
-  function roundStat(value) { return Math.max(1, Math.round(Number(value) || 0)); }
-  function roundUtility(value) { return Math.round((Number(value) || 0) * 10) / 10; }
-  function dungeonV2GearTierForFloor(floor) {
-    const f = floorNumber(floor);
-    return f <= 30 ? 1 : f <= 50 ? 2 : f <= 70 ? 3 : f <= 90 ? 4 : 5;
-  }
-  function dungeonV2TierMultiplier(tierOrFloor) {
-    const tier = Number(tierOrFloor) > 5 ? dungeonV2GearTierForFloor(tierOrFloor) : Math.max(1, Math.min(5, Math.floor(Number(tierOrFloor) || 1)));
-    return TIERS[tier].multiplier;
-  }
-  function dungeonV2RarityMultiplier(rarity) { return RARITIES[rarity]?.multiplier || 0; }
-  function dungeonV2EmpowerSlots(rarity) { return RARITIES[rarity]?.empowerSlots || 0; }
-  function dungeonV2RarityWeights(floor) {
-    const f = floorNumber(floor);
-    return (RARITY_BANDS.find(band => f >= band.minFloor && f <= band.maxFloor) || RARITY_BANDS.at(-1)).weights;
-  }
-  function dungeonV2RollRarity(floor, rng = Math.random) {
-    const weights = dungeonV2RarityWeights(floor);
-    const roll = Math.max(0, Math.min(99.999999, Number(rng()) * 100));
-    if (roll < weights.rare) return "rare";
-    if (roll < weights.rare + weights.unique) return "unique";
-    return "elite";
-  }
-  function dungeonV2RewardRole(encounterType) {
-    if (encounterType === "chapter_boss") return "chapter_boss";
-    if (encounterType === "elite") return "elite";
-    return "normal";
-  }
-  function dungeonV2PackMultiplier(packCount) { return PACK_REWARD_MULTIPLIERS[Math.max(1, Math.min(3, Number(packCount) || 1))] || 1; }
-  function dungeonV2RewardExp(floor, encounterType = "normal", packCount = 1) {
-    const base = Math.round(6 + floorNumber(floor) * 2.4);
-    const encounter = encounterType === "chapter_boss" ? 2 : encounterType === "elite" ? 1.5 : 1;
-    const pack = encounterType === "normal" ? dungeonV2PackMultiplier(packCount) : 1;
-    return Math.round(base * encounter * pack);
-  }
-  function dungeonV2RewardGold(floor, encounterType = "normal", packCount = 1) {
-    const f = floorNumber(floor);
-    const base = f <= 30 ? 20 + 3 * f : f <= 50 ? 120 + 4 * (f - 31) : f <= 70 ? 210 + 5 * (f - 51) : f <= 90 ? 320 + 7 * (f - 71) : 480 + 10 * (f - 91);
-    const encounter = encounterType === "chapter_boss" ? 2 : encounterType === "elite" ? 1.5 : 1;
-    const pack = encounterType === "normal" ? dungeonV2PackMultiplier(packCount) : 1;
-    return Math.round(base * encounter * pack);
-  }
-  function dungeonV2GenericEquipmentChance(encounterType = "normal", dropBonus = 0) {
-    if (encounterType === "chapter_boss") return 0;
-    if (encounterType === "elite") return 0.08;
-    return 0.04 * (1 + Math.max(0, Number(dropBonus) || 0) / 100);
-  }
-  function dungeonV2FirstClearAccessory(floor) {
-    const f = floorNumber(floor);
-    return FIRST_CLEAR_ACCESSORIES[f] ? { ...FIRST_CLEAR_ACCESSORIES[f] } : null;
-  }
-  function dungeonV2ShopTier(floor) { return dungeonV2GearTierForFloor(floor); }
-  function dungeonV2ShopPrice(tier, rarity) { return SHOP_PRICES[Math.max(1, Math.min(5, Number(tier) || 1))]?.[rarity] || 0; }
-  function dungeonV2SalvageYield(rarity, item = {}) {
-    if (rarity === "mythic" || rarity === "azure" || item.sourceType === "raid" || item.sourceType === "boss_weapon") return null;
-    if (rarity === "elite") return { iron: 8, manaOre: 3 };
-    if (rarity === "unique") return { iron: 4, manaOre: 1 };
-    if (rarity === "rare") return { iron: 2, manaOre: 0 };
-    return null;
-  }
-  function dungeonV2RewardReceiptKey(battleId) { return battleId ? `battle:${String(battleId)}` : ""; }
-  function dungeonV2FirstClearReceiptKey(floor) { return `first-clear-accessory:${floorNumber(floor)}`; }
-  function dungeonV2HasReceipt(receipts, key) { return !!key && Array.isArray(receipts) && receipts.includes(key); }
-  function dungeonV2IsV2Item(item) {
-    return Number(item?.rewardVersion) === 2 || Number(item?.itemModelVersion) === 2;
-  }
-  function dungeonV2FirstClearClaimsFromReceipts(receipts) {
-    const claims = {};
-    (Array.isArray(receipts) ? receipts : []).forEach(key => {
-      const match = String(key).match(/^first-clear-accessory:(\d+)$/);
-      if (match) claims[match[1]] = true;
-    });
-    return claims;
-  }
-  function dungeonV2HasFirstClearClaim(claims, floor, receipts = []) {
-    const key = String(floorNumber(floor));
-    return !!(claims && typeof claims === "object" && claims[key])
-      || dungeonV2HasReceipt(receipts, dungeonV2FirstClearReceiptKey(floor));
-  }
-  function dungeonV2ClaimFirstClear(claims, floor) {
-    return { ...(claims && typeof claims === "object" ? claims : {}), [String(floorNumber(floor))]: true };
-  }
-  function dungeonV2AppendReceipts(receipts, keys, max = 128) {
-    const merged = [...(Array.isArray(receipts) ? receipts : []), ...(Array.isArray(keys) ? keys : [keys])].filter(Boolean);
-    return [...new Set(merged)].slice(-Math.max(1, max));
-  }
-  function dungeonV2CustomLootChoice(table, rng = Math.random) {
-    const rows = Array.isArray(table?.gear) ? table.gear.filter(row => VALID_GENERIC_TYPES.has(row?.itemType) && (!row.rarity || VALID_GENERIC_RARITIES.includes(row.rarity)) && Number(row.weight ?? 1) > 0) : [];
-    if (!rows.length) return null;
-    const total = rows.reduce((sum, row) => sum + Number(row.weight ?? 1), 0);
-    let cursor = Math.max(0, Number(rng()) || 0) * total;
-    for (const row of rows) {
-      cursor -= Number(row.weight ?? 1);
-      if (cursor < 0) return { itemType: row.itemType, rarity: row.rarity || null };
-    }
-    const last = rows.at(-1);
-    return { itemType: last.itemType, rarity: last.rarity || null };
-  }
-  function dungeonV2EquipmentItem({ floor, type, rarity, sourceType = "dungeon_normal", specialSource = null, sourceIdentity = null, utilityKey = null, rng = Math.random } = {}) {
-    const resolvedFloor = floorNumber(floor);
-    const gearTier = dungeonV2GearTierForFloor(resolvedFloor);
-    const resolvedType = VALID_GENERIC_TYPES.has(type) || type === "accessory" ? type : GENERIC_SLOTS[Math.floor(Math.max(0, Math.min(0.999999, Number(rng()) || 0)) * GENERIC_SLOTS.length)];
-    const resolvedRarity = RARITIES[rarity] ? rarity : "rare";
-    const multiplier = dungeonV2RarityMultiplier(resolvedRarity);
-    const id = `v2-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const item = {
-      id, type: resolvedType, rarity: resolvedRarity,
-      name: (TYPE_NAMES[resolvedType] || TYPE_NAMES.weapon)[gearTier - 1],
-      gearTier, rewardVersion: 2, itemModelVersion: 2,
-      sourceType, sourceFloor: resolvedFloor,
-      specialSource: specialSource || undefined,
-      sourceIdentity: sourceIdentity || undefined,
-      setId: undefined,
-      enhanceLevel: 0,
-      empowerSlotCapacity: dungeonV2EmpowerSlots(resolvedRarity),
-      empowerSlots: Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
-    };
-    if (resolvedType === "accessory") {
-      const utilityKeys = Object.keys(ACCESSORY_BASE);
-      const selectedKey = utilityKeys.includes(utilityKey)
-        ? utilityKey
-        : utilityKeys[Math.floor(Math.max(0, Math.min(0.999999, Number(rng()) || 0)) * utilityKeys.length)];
-      item.utilityStat = selectedKey;
-      item[selectedKey] = roundUtility(ACCESSORY_BASE[selectedKey] * dungeonV2TierMultiplier(gearTier) * multiplier);
-    } else {
-      const base = BASE_STATS[resolvedType][gearTier - 1];
-      item[resolvedType === "weapon" || resolvedType === "gloves" ? "atk" : "def"] = roundStat(base * multiplier);
-    }
-    return item;
-  }
-  function dungeonV2GenerateEquipment({ floor, type, rarity, sourceType, specialSource, sourceIdentity, lootTable, allowMythic = false, rng = Math.random } = {}) {
-    const custom = dungeonV2CustomLootChoice(lootTable, rng);
-    const requestedRarity = custom?.rarity || rarity || dungeonV2RollRarity(floor, rng);
-    return dungeonV2EquipmentItem({
-      floor, type: custom?.itemType || type,
-      rarity: requestedRarity === "mythic" && !allowMythic ? "elite" : requestedRarity,
-      sourceType, specialSource, sourceIdentity, rng
-    });
-  }
-  function dungeonV2FirstClearEligible({ floor, encounterType, unlockedNext, receipts, firstClearAccessoryClaims }) {
-    return encounterType === "chapter_boss" && !!dungeonV2FirstClearAccessory(floor) && !!unlockedNext
-      && !dungeonV2HasFirstClearClaim(firstClearAccessoryClaims, floor, receipts);
-  }
-
-  const api = {
-    TIERS, RARITIES, BASE_STATS, ACCESSORY_BASE, GENERIC_SLOTS, RARITY_BANDS, FIRST_CLEAR_ACCESSORIES, PACK_REWARD_MULTIPLIERS, SHOP_PRICES,
-    dungeonV2GearTierForFloor, dungeonV2TierMultiplier, dungeonV2RarityMultiplier, dungeonV2EmpowerSlots,
-    dungeonV2RarityWeights, dungeonV2RollRarity, dungeonV2RewardRole, dungeonV2PackMultiplier, dungeonV2RewardExp,
-    dungeonV2RewardGold, dungeonV2GenericEquipmentChance, dungeonV2FirstClearAccessory, dungeonV2ShopTier,
-    dungeonV2ShopPrice, dungeonV2SalvageYield, dungeonV2RewardReceiptKey, dungeonV2FirstClearReceiptKey,
-    dungeonV2HasReceipt, dungeonV2IsV2Item, dungeonV2FirstClearClaimsFromReceipts, dungeonV2HasFirstClearClaim,
-    dungeonV2ClaimFirstClear, dungeonV2AppendReceipts, dungeonV2CustomLootChoice, dungeonV2EquipmentItem,
-    dungeonV2GenerateEquipment, dungeonV2FirstClearEligible
-  };
-  root.DUNGEON_REWARD_V2 = api;
-  if (typeof module !== "undefined") module.exports = api;
-})(typeof globalThis !== "undefined" ? globalThis : this);
-
-// ===== systems/enhancementV2.js =====
-// ---------- Reward V2 Enhance / Empower contract ----------
-// Pure, deterministic helpers shared by the browser bundle and API Worker. The Worker owns
-// gameplay RNG and persistence; the browser uses these helpers only for previews/stat math.
-(function enhancementV2Factory(root) {
-  const ENHANCE_MAX = 10;
-  const ENHANCE_STAT_PCT = 0.06;
-  const ENHANCE_RATES = Object.freeze([95, 90, 82, 72, 60, 50, 40, 30, 20, 15]);
-  const TIER_ECONOMY = Object.freeze({ 1: 1, 2: 2.25, 3: 3.75, 4: 5.75, 5: 8.5 });
-  const EMPOWER_CAPACITY = Object.freeze({ rare: 1, unique: 2, elite: 3, mythic: 4 });
-  const EMPOWER_OPEN_BASE_GOLD = Object.freeze([30, 75, 120, 165]);
-  const WING_PRIMARY_STAT = Object.freeze({ azure: "agi", robot: "vit", skeleton: "str" });
-
-  const OPTION_DEFS = Object.freeze({
-    atkPct: Object.freeze({ label: "ATK", icon: "⚔️", values: Object.freeze([4, 5, 6, 7, 8]), weights: Object.freeze([25, 25, 25, 15, 10]) }),
-    defPct: Object.freeze({ label: "DEF", icon: "🛡️", values: Object.freeze([3, 4, 5, 6]), weights: Object.freeze([35, 35, 20, 10]) }),
-    hpPct: Object.freeze({ label: "HP", icon: "❤️", values: Object.freeze([1, 2, 3]), weights: Object.freeze([50, 35, 15]) }),
-    mpPct: Object.freeze({ label: "MP", icon: "💧", values: Object.freeze([2, 3, 4]), weights: Object.freeze([50, 35, 15]) }),
-    critChance: Object.freeze({ label: "Crit", icon: "💥", values: Object.freeze([1, 2]), weights: Object.freeze([75, 25]) }),
-    critDamage: Object.freeze({ label: "Crit Dmg", icon: "✨", values: Object.freeze([2, 3, 4]), weights: Object.freeze([50, 35, 15]) }),
-    str: Object.freeze({ label: "STR", icon: "💪", values: Object.freeze([1]), weights: Object.freeze([100]) }),
-    vit: Object.freeze({ label: "VIT", icon: "🫀", values: Object.freeze([1]), weights: Object.freeze([100]) }),
-    agi: Object.freeze({ label: "AGI", icon: "⚡", values: Object.freeze([1]), weights: Object.freeze([100]) }),
-    dex: Object.freeze({ label: "DEX", icon: "🎯", values: Object.freeze([1]), weights: Object.freeze([100]) }),
-    luk: Object.freeze({ label: "LUK", icon: "🍀", values: Object.freeze([1]), weights: Object.freeze([100]) })
-  });
-  const SLOT_POOLS = Object.freeze({
-    weapon: Object.freeze(["atkPct", "critChance", "critDamage", "str", "dex"]),
-    gloves: Object.freeze(["atkPct", "critChance", "critDamage", "str", "agi", "dex"]),
-    helmet: Object.freeze(["defPct", "hpPct", "mpPct", "vit", "agi", "dex", "luk"]),
-    chest: Object.freeze(["defPct", "hpPct", "vit", "agi", "luk"]),
-    boots: Object.freeze(["defPct", "hpPct", "vit", "agi", "luk"]),
-    accessory: Object.freeze(["hpPct", "mpPct", "critChance", "critDamage", "str", "vit", "agi", "dex", "luk"]),
-    wings: Object.freeze(["hpPct", "mpPct", "critChance", "critDamage"])
-  });
-
-  function isV2Item(item) {
-    return Number(item?.itemModelVersion) === 2 || Number(item?.rewardVersion) === 2;
-  }
-  function normalizeUnitRoll(value) {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return 0;
-    return Math.max(0, Math.min(0.999999999999, n));
-  }
-  function enhanceSuccessRate(level) {
-    const current = Math.floor(Number(level));
-    return current >= 0 && current < ENHANCE_MAX ? ENHANCE_RATES[current] : 0;
-  }
-  function itemTier(item) {
-    if (String(item?.type || "").toLowerCase() === "wings") return null;
-    const tier = Math.floor(Number(item?.gearTier));
-    return TIER_ECONOMY[tier] ? tier : null;
-  }
-  function wingFamily(item) {
-    if (String(item?.type || "").toLowerCase() !== "wings") return null;
-    const raw = String(item?.wingFamily || item?.wingId || item?.wingsId || item?.setId || "").toLowerCase();
-    return WING_PRIMARY_STAT[raw] ? raw : null;
-  }
-  function enhanceEconomyMultiplier(item) {
-    if (String(item?.type || "").toLowerCase() === "wings") return wingFamily(item) ? TIER_ECONOMY[5] : null;
-    const tier = itemTier(item);
-    return tier ? TIER_ECONOMY[tier] : null;
-  }
-  function empowerEconomyMultiplier(item) {
-    const tier = itemTier(item);
-    return tier ? TIER_ECONOMY[tier] : null;
-  }
-  function enhanceCost(item, level = item?.enhanceLevel) {
-    const current = Math.floor(Number(level));
-    const multiplier = enhanceEconomyMultiplier(item);
-    if (!isV2Item(item) || current < 0 || current >= ENHANCE_MAX || !multiplier) return null;
-    return Object.freeze({ iron: 1, gold: Math.round((25 + current * 35) * multiplier) });
-  }
-  function empowerCapacity(item) {
-    if (!isV2Item(item)) return 0;
-    const canonical = EMPOWER_CAPACITY[String(item?.rarity || "").toLowerCase()] || 0;
-    const stored = Math.floor(Number(item?.empowerSlotCapacity));
-    return stored === canonical ? canonical : 0;
-  }
-  function empowerOpenCost(item, slotIndex) {
-    const index = Math.floor(Number(slotIndex));
-    const multiplier = empowerEconomyMultiplier(item);
-    if (!multiplier || index < 0 || index >= empowerCapacity(item) || index >= EMPOWER_OPEN_BASE_GOLD.length) return null;
-    return Object.freeze({ manaOre: 1, gold: Math.round(EMPOWER_OPEN_BASE_GOLD[index] * multiplier) });
-  }
-  function empowerRerollCost(item, filledCount, lockedCount) {
-    const filled = Math.floor(Number(filledCount));
-    const locked = Math.floor(Number(lockedCount));
-    const multiplier = empowerEconomyMultiplier(item);
-    if (!multiplier || filled <= 0 || locked < 0 || locked >= filled) return null;
-    return Object.freeze({ manaOre: 1, gold: Math.round((25 + filled * 15) * (1 + locked * 0.6) * multiplier) });
-  }
-  function validEmpowerPool(type) {
-    return SLOT_POOLS[String(type || "").toLowerCase()] || Object.freeze([]);
-  }
-  function weightedValue(def, roll) {
-    let cursor = normalizeUnitRoll(roll) * 100;
-    for (let index = 0; index < def.values.length; index += 1) {
-      cursor -= def.weights[index];
-      if (cursor < 0) return def.values[index];
-    }
-    return def.values[def.values.length - 1];
-  }
-  function optionQuality(def, value) {
-    if (def.values.length === 1) return "fixed";
-    if (value === def.values[def.values.length - 1]) return "max";
-    if (value === def.values[0]) return "low";
-    return "normal";
-  }
-  function rollEmpowerOption(type, typeRoll, valueRoll) {
-    const pool = validEmpowerPool(type);
-    if (!pool.length) return null;
-    const key = pool[Math.floor(normalizeUnitRoll(typeRoll) * pool.length)];
-    const def = OPTION_DEFS[key];
-    const value = weightedValue(def, valueRoll);
-    return Object.freeze({ key, label: def.label, icon: def.icon, value, locked: false, quality: optionQuality(def, value), modelVersion: 2 });
-  }
-  function resolveEnhanceAttempt({ level, successRoll, downgradeRoll, protectionRequested, protectionStones }) {
-    const current = Math.max(0, Math.min(ENHANCE_MAX, Math.floor(Number(level) || 0)));
-    if (current >= ENHANCE_MAX) return Object.freeze({ ok: false, error: "enhance_max" });
-    const success = normalizeUnitRoll(successRoll) * 100 < enhanceSuccessRate(current);
-    if (success) return Object.freeze({ ok: true, success: true, levelBefore: current, levelAfter: current + 1, downgraded: false, protectionConsumed: false });
-    const downgradeTriggered = current >= 6 && normalizeUnitRoll(downgradeRoll) < 0.5;
-    const protectionConsumed = downgradeTriggered && protectionRequested === true && Math.floor(Number(protectionStones) || 0) > 0;
-    return Object.freeze({
-      ok: true,
-      success: false,
-      levelBefore: current,
-      levelAfter: downgradeTriggered && !protectionConsumed ? Math.max(0, current - 1) : current,
-      downgradeTriggered,
-      downgraded: downgradeTriggered && !protectionConsumed,
-      protectionConsumed
-    });
-  }
-  function isValidEmpowerOption(type, option) {
-    if (!option || !validEmpowerPool(type).includes(option.key)) return false;
-    const def = OPTION_DEFS[option.key];
-    return def.values.includes(Number(option.value)) && typeof option.locked === "boolean";
-  }
-
-  const api = Object.freeze({
-    ENHANCE_MAX, ENHANCE_STAT_PCT, ENHANCE_RATES, TIER_ECONOMY, EMPOWER_CAPACITY,
-    EMPOWER_OPEN_BASE_GOLD, WING_PRIMARY_STAT, OPTION_DEFS, SLOT_POOLS,
-    isV2Item, enhanceSuccessRate, itemTier, wingFamily, enhanceEconomyMultiplier,
-    empowerEconomyMultiplier, enhanceCost, empowerCapacity, empowerOpenCost,
-    empowerRerollCost, validEmpowerPool, rollEmpowerOption, resolveEnhanceAttempt,
-    isValidEmpowerOption
-  });
-  root.ENHANCEMENT_V2 = api;
-  if (typeof module !== "undefined") module.exports = api;
-})(typeof globalThis !== "undefined" ? globalThis : this);
-
 // ===== systems/stats.js =====
 // ---------- floating-point-safe math helpers ----------
 // JS floats can't exactly represent most decimal fractions (5.1 + 2.3 === 7.3999999999999995,
@@ -9887,42 +10079,23 @@ function getEquipBonus(equipped) {
   b.dropBonus = roundTo(b.dropBonus, 1);
   return b;
 }
-// Equipment set bonuses (raid-exclusive Azure set for now — see AZURE_SET_DEFS in the
-// worker). Items carry a plain `setId` string (round-tripped via items_json extra, same
-// as junkId/potionId); count how many equipped pieces share a setId and apply the
-// highest tier reached. Placeholder numbers — revisit once actual balance is decided.
-const SET_BONUS_DEFS = {
-  azure: [
-    { count: 2, atkPct: 0.05 },
-    { count: 4, atkPct: 0.10, defPct: 0.05 },
-    { count: 6, atkPct: 0.15, defPct: 0.10, critChance: 5 },
-  ],
-};
 function getSetBonusPct(equipped) {
-  const counts = {};
-  Object.values(equipped).forEach(it => { if (it && it.setId) counts[it.setId] = (counts[it.setId] || 0) + 1; });
-  const out = { atkPct: 0, defPct: 0, critChance: 0 };
-  Object.keys(counts).forEach(setId => {
-    (SET_BONUS_DEFS[setId] || []).forEach(tier => {
-      if (counts[setId] >= tier.count) {
-        out.atkPct += tier.atkPct || 0;
-        out.defPct += tier.defPct || 0;
-        out.critChance += tier.critChance || 0;
-      }
-    });
-  });
-  return out;
+  if (typeof MYTHIC_V2 === "undefined") return { str: 0, vit: 0, agi: 0, critDamage: 0, ccResist: 0 };
+  return MYTHIC_V2.setEffects(equipped);
 }
 function getStats(player, equipped) {
   const b = getEquipBonus(equipped);
   const setBonus = getSetBonusPct(equipped);
+  b.str += setBonus.str || 0;
+  b.vit += setBonus.vit || 0;
+  b.agi += setBonus.agi || 0;
   const primary = player.primaryStats || { str: 0, vit: 0, agi: 0, dex: 0, luk: 0 };
   const adjustedBaseAtk = player.baseAtk + b.str * 3 + Math.floor((primary.dex + b.dex) * 0.5) - Math.floor(primary.dex * 0.5);
   const adjustedBaseDef = player.baseDef + Math.floor((primary.vit + b.vit) * 0.5) - Math.floor(primary.vit * 0.5);
   const adjustedBaseHp = player.baseMaxHp + b.vit * 12;
   const adjustedBaseSpeed = (player.baseSpeed || BASE_SPEED) + b.agi * 2;
-  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0) + setBonus.atkPct);
-  const defBuff = 1 + (player.defBuffPct || 0) + setBonus.defPct;
+  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0));
+  const defBuff = 1 + (player.defBuffPct || 0);
   return {
     atk: roundInt((adjustedBaseAtk + b.atk) * atkMult),
     def: roundInt((adjustedBaseDef + b.def) * defBuff),
@@ -9933,10 +10106,11 @@ function getStats(player, equipped) {
     // point can turn into 7.3999999999999995 even though both inputs were "clean" — re-round
     // every percentage stat here, since this is the value combat rolls and the UI both read.
     accuracy: roundTo(Math.min(99, (player.accuracy || 0) + b.accuracy + b.dex * 0.5), 1),
-    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + b.luk * 0.5 + setBonus.critChance), 1),
-    critDamage: roundTo(Math.min(300, (player.critDamage || 0) + b.critDamage), 1),
+    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + b.luk * 0.5), 1),
+    critDamage: roundTo(Math.min(300, (player.critDamage || 0) + b.critDamage + (setBonus.critDamage || 0)), 1),
     dodgeChance: roundTo(Math.min(60, (player.dodgeChance || 0) + b.dodgeChance + b.agi * 0.5), 1),
-    dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus + b.luk * 0.2, 1)
+    dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus + b.luk * 0.2, 1),
+    statusResist: roundTo(player.statusResist || 0, 1)
   };
 }
 function combatPower(stats, level) {
@@ -10382,7 +10556,7 @@ const ACTOR_PRESENTATION_MODEL = Object.freeze({
 // ===== phaser/presentation/EquipmentVisualResolver.js =====
 // ---------- W7 Equipment Visual Resolver Boundary ----------
 const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
-  version: 4,
+  version: 5,
   currentHeroMode: "v3",
   v5OptIn: true
 });
@@ -10392,6 +10566,18 @@ function isAzureVisualItem(item) {
     item.setId === "azure"
     || String(item.name || "").toLowerCase().includes("azure")
   );
+}
+
+function heroV5SetFamily(item) {
+  const setId = String(item?.setId || "").trim().toLowerCase();
+  return ["azure", "robot", "skeleton"].includes(setId) ? setId : null;
+}
+
+function heroV5BossWeaponVisualId(item) {
+  if (!item) return null;
+  const id = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
+  const map = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  return map[id] || null;
 }
 
 function heroV5WingVisualId(item) {
@@ -10410,11 +10596,16 @@ function heroV5WingVisualId(item) {
 }
 
 function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
+  const slots = ["helmet", "chest", "gloves", "boots", "weapon"];
+  const equipment = Object.fromEntries(slots.map(slot => [slot, heroV5SetFamily(equipped?.[slot])]));
+  const bossWeapon = heroV5BossWeaponVisualId(equipped?.weapon);
   return {
     // Current production equipment contract resolves any equipped Wings item
     // to the shared Angel visual family. Reuse that canonical selection instead
     // of independently guessing item ids in the Phaser renderer.
     wings: legacySelection?.wings === "angel" ? "angel" : heroV5WingVisualId(equipped?.wings),
+    equipment,
+    bossWeapon,
     azure: {
       helmet: isAzureVisualItem(equipped?.helmet),
       chest: isAzureVisualItem(equipped?.chest),
@@ -10438,8 +10629,12 @@ function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = 
     resolveHeroV5Selection(equipped = {}) {
       const legacySelection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
       const selection = resolveHeroV5EquipmentSelection(equipped || {}, legacySelection);
+      const extended = selection.bossWeapon || Object.values(selection.equipment).some(family => family && family !== "azure");
+      if (!extended) return { wings: selection.wings, azure: { ...selection.azure } };
       return {
         wings: selection.wings,
+        equipment: { ...selection.equipment },
+        bossWeapon: selection.bossWeapon,
         azure: { ...selection.azure }
       };
     }
@@ -10451,7 +10646,7 @@ const SHARED_EQUIPMENT_VISUAL_RESOLVER = createEquipmentVisualResolver();
 // ===== phaser/presentation/HeroV5RuntimeContract.js =====
 // ---------- W8 Hero V5 G2 Runtime Contract ----------
 const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
-  version: 2,
+  version: 3,
   characterId: "hero001",
   variant: "g2",
   canvas: Object.freeze({ width: 768, height: 768 }),
@@ -10480,6 +10675,7 @@ const HERO_V5_AZURE_SLOT_LAYERS = Object.freeze({
   boots: Object.freeze(["legs_boots"]),
   weapon: Object.freeze(["sword"])
 });
+const HERO_V5_SET_FAMILIES = Object.freeze(["azure", "robot", "skeleton"]);
 
 function isHeroV5RuntimeEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
@@ -10528,51 +10724,65 @@ function heroV5WingBundleComplete(config) {
   });
 }
 
-function heroV5AzureSlotBundleComplete(config, slot) {
-  const azureConfig = config?.equipment?.azure;
+function heroV5EquipmentSlotBundleComplete(config, family, slot) {
+  const equipmentConfig = config?.equipment?.[family];
   const layers = HERO_V5_AZURE_SLOT_LAYERS[slot] || [];
-  if (!layers.length || azureConfig?.approval !== "approved") return false;
+  if (!HERO_V5_SET_FAMILIES.includes(family) || !layers.length || equipmentConfig?.approval !== "approved") return false;
   return heroV5AllFrameIds().every(frameId => {
-    const frame = azureConfig.frames?.[frameId];
+    const frame = equipmentConfig.frames?.[frameId];
     return layers.every(layer => !!frame?.[layer]);
   });
 }
 
+function heroV5BossWeaponBundleComplete(config, visualId) {
+  const weapon = config?.equipment?.[visualId];
+  return !!weapon && weapon.approval === "approved" && heroV5AllFrameIds().every(frameId => !!weapon.frames?.[frameId]?.sword);
+}
+
 function heroV5SanitizeEquipmentSelection(config, selection = {}) {
-  const requestedAzure = selection?.azure || {};
+  const requestedEquipment = selection?.equipment || Object.fromEntries(Object.entries(selection?.azure || {}).map(([slot, enabled]) => [slot, enabled ? "azure" : null]));
+  const equipment = {};
   const azure = {};
   const fallbackSlots = [];
   Object.keys(HERO_V5_AZURE_SLOT_LAYERS).forEach(slot => {
-    const requested = !!requestedAzure[slot];
-    const supported = requested && heroV5AzureSlotBundleComplete(config, slot);
-    azure[slot] = supported;
+    const requested = requestedEquipment[slot];
+    const supported = requested && heroV5EquipmentSlotBundleComplete(config, requested, slot) ? requested : null;
+    equipment[slot] = supported;
+    azure[slot] = supported === "azure";
     if (requested && !supported) fallbackSlots.push(slot);
   });
+  const requestedBossWeapon = selection?.bossWeapon || null;
+  const bossWeapon = requestedBossWeapon && heroV5BossWeaponBundleComplete(config, requestedBossWeapon) ? requestedBossWeapon : null;
+  if (requestedBossWeapon && !bossWeapon && !fallbackSlots.includes("weapon")) fallbackSlots.push("weapon");
   const requestedWings = selection?.wings === "angel";
   const wings = requestedWings && heroV5WingBundleComplete(config) ? "angel" : null;
   if (requestedWings && !wings) fallbackSlots.push("wings");
   return {
     wings,
+    equipment,
+    bossWeapon,
     azure,
     fallbackSlots
   };
 }
 
-function heroV5AzureLayersForSelection(selection = {}) {
-  const azure = selection?.azure || {};
+function heroV5EquipmentLayersForSelection(selection = {}) {
+  const equipment = selection?.equipment || Object.fromEntries(Object.entries(selection?.azure || {}).map(([slot, enabled]) => [slot, enabled ? "azure" : null]));
   const requested = [];
   // The underlay is a whole-body seam closer. Only use it when the three
   // body-coverage slots are present; otherwise the neutral Base must remain
   // visible in unequipped areas.
-  if (azure.chest && azure.gloves && azure.boots) requested.push("coverage_underlay");
-  if (azure.chest) requested.push("torso_armor");
-  if (azure.boots) requested.push("legs_boots");
-  if (azure.gloves) requested.push("arm_rear");
-  if (azure.helmet) requested.push("helmet");
-  if (azure.weapon) requested.push("sword");
-  if (azure.gloves) requested.push("arm_front");
+  if (equipment.chest && equipment.chest === equipment.gloves && equipment.chest === equipment.boots) requested.push("coverage_underlay");
+  if (equipment.chest) requested.push("torso_armor");
+  if (equipment.boots) requested.push("legs_boots");
+  if (equipment.gloves) requested.push("arm_rear");
+  if (equipment.helmet) requested.push("helmet");
+  if (selection.bossWeapon || equipment.weapon) requested.push("sword");
+  if (equipment.gloves) requested.push("arm_front");
   return HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
 }
+
+function heroV5AzureLayersForSelection(selection = {}) { return heroV5EquipmentLayersForSelection(selection); }
 
 function heroV5FrameLayer(name, path) {
   return {
@@ -10606,18 +10816,21 @@ function heroV5FrameLayers(config, frameId, {
   if (!basePath) return null;
 
   const wingFrame = includeWings ? config?.wingTemplate?.frames?.[frameId] : null;
-  const azureLayerNames = heroV5AzureLayersForSelection(equipmentSelection);
-  const azureFrame = azureLayerNames.length ? config?.equipment?.azure?.frames?.[frameId] : null;
+  const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection);
 
   const layers = [];
   if (includeWings && wingFrame?.wing_far) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
   layers.push(heroV5FrameLayer("base", basePath));
   // Suppress hair only when a complete full-face helmet is actually selected.
-  const fullFaceHelmet = azureLayerNames.includes("helmet") && !!azureFrame?.helmet
-    && config?.equipment?.azure?.fullFaceHelmet === true;
+  const helmetFamily = equipmentSelection?.equipment?.helmet;
+  const helmetFrame = helmetFamily ? config?.equipment?.[helmetFamily]?.frames?.[frameId] : null;
+  const fullFaceHelmet = equipmentLayerNames.includes("helmet") && !!helmetFrame?.helmet
+    && config?.equipment?.[helmetFamily]?.fullFaceHelmet === true;
   layers.push(...heroV5HairLayers(config, frameId, includeHair && !fullFaceHelmet));
-  azureLayerNames.forEach(name => {
-    const path = azureFrame?.[name];
+  equipmentLayerNames.forEach(name => {
+    const slot = name === "torso_armor" || name === "coverage_underlay" ? "chest" : name === "legs_boots" ? "boots" : name === "arm_rear" || name === "arm_front" ? "gloves" : name === "helmet" ? "helmet" : "weapon";
+    const family = slot === "weapon" && equipmentSelection?.bossWeapon ? equipmentSelection.bossWeapon : equipmentSelection?.equipment?.[slot];
+    const path = family ? config?.equipment?.[family]?.frames?.[frameId]?.[name] : null;
     if (path) layers.push(heroV5FrameLayer(name, path));
   });
   if (includeWings && wingFrame?.wing_near) layers.push(heroV5FrameLayer("wing_near", wingFrame.wing_near));
@@ -10650,9 +10863,11 @@ function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings =
     resolved[state] = frames;
   }
 
-  const hasAzureEquipment = heroV5AzureLayersForSelection(sanitizedSelection).length > 0;
+  const hasEquipment = heroV5EquipmentLayersForSelection(sanitizedSelection).length > 0;
+  const families = Object.values(sanitizedSelection.equipment || {}).filter(Boolean);
+  const familyMode = sanitizedSelection.bossWeapon || (families.length && families.every(value => value === families[0]) ? families[0] : "mixed");
   return Object.freeze({
-    mode: hasAzureEquipment ? "v5-g2-azure" : "v5-g2",
+    mode: hasEquipment ? `v5-g2-${familyMode || "equipment"}` : "v5-g2",
     canvas: {
       width: HERO_V5_RUNTIME_CONTRACT.canvas.width,
       height: HERO_V5_RUNTIME_CONTRACT.canvas.height
@@ -13400,21 +13615,13 @@ function ThornieDungeons() {
     inventoryOverflowRef.current = ov;
     return persistInventorySnapshot(inv, eq, ov);
   }, [persistInventorySnapshot]);
-  // Applies a server-confirmed craft result (see CraftingOverlay/handleCraftItem): the
-  // server already validated+consumed materials/gold on ITS copy of the items/characters
-  // rows, so this only needs to mirror that same removal locally, add the crafted item,
-  // then push the resulting inventory/gold back up so both sides stay in sync.
-  const applyCraftResult = useCallback((res) => {
+  // Crafting returns the same authoritative character/item snapshot used by W3
+  // mutations. Hydrate it directly; generic item/save sync never creates, deletes, or
+  // spends the W4 result on behalf of the Worker.
+  function applyCraftResult(res) {
     if (!res || !res.item) return;
-    let next = inventoryRef.current;
-    (res.consumed || []).forEach(m => {
-      next = removeJunkFromInventory(next, m.junkId, m.qty) || next;
-    });
-    insertCarriedItems([materializeMailItem(res.item)], next);
-    if (res.goldSpent) {
-      persistSave({ ...save, gold: Math.max(0, save.gold - res.goldSpent) });
-    }
-  }, [insertCarriedItems, save, persistSave]);
+    hydrateAuthoritativeBlacksmithSnapshot(res);
+  }
   function spawnFloat(side, text, color) {
     const id = ++floatId.current;
     setFloats(f => [...f, {
@@ -14138,7 +14345,7 @@ function ThornieDungeons() {
       accuracy: Math.min(99, baseStats.accuracy + (petDefId === "hell_wolf" ? 8 : 0)),
       dodgeChance: baseStats.dodgeChance + (petDefId === "storm_phoenix" ? 8 : 0),
       critChance: baseStats.critChance + (petDefId === "ember_fox" ? 5 : 0),
-      statusResist: (battleHardened?.statusResist || 0) + (petDefId === "moon_hare" ? 15 : 0)
+      statusResist: (baseStats.statusResist || 0) + (battleHardened?.statusResist || 0) + (petDefId === "moon_hare" ? 15 : 0)
     };
     const heroStartHp = (carryPlayer || resumeCarry) ? Math.min(stats.maxHp, nextPlayer.hp) : stats.maxHp;
     const learnedActives = heroActiveSkillList(save.character.skillLevels).map(skill => skill.key);
@@ -14165,7 +14372,8 @@ function ThornieDungeons() {
         sp: nextPlayer.mp, maxSp: stats.maxMp, atk: stats.atk, def: stats.def, speed: stats.speed,
         accuracy: stats.accuracy, dodge: stats.dodgeChance, crit: stats.critChance,
         critDamage: 1 + stats.critDamage / 100, agi: save.character.stats.agi,
-        skills: save.character.skillLevels, activeSkills: equippedActives, statusResist: stats.statusResist
+        skills: save.character.skillLevels, activeSkills: equippedActives, statusResist: stats.statusResist,
+        equipmentEffects: MYTHIC_V2.combatEffects(equipped)
       },
       pet: initialPet && {
         ...initialPet, id: "pet", kind: "pet", side: "ally", petDefId: initialPet.defId,
@@ -19690,7 +19898,7 @@ function ArenaV2Screen({
 // api.js) — this is the one place a mail's equipment reward actually "becomes" a real item.
 function materializeMailItem(desc) {
   return {
-    id: `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: desc.id || `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     type: desc.type,
     rarity: desc.rarity,
     name: desc.name,
@@ -19714,7 +19922,10 @@ function materializeMailItem(desc) {
     ...(desc.utilityStat ? { utilityStat: desc.utilityStat } : {}),
     ...(desc.setId ? { setId: desc.setId } : {}),
     ...(desc.star ? { star: desc.star } : {}),
-    ...(desc.craftRecipeId ? { craftRecipeId: desc.craftRecipeId } : {})
+    ...(desc.craftRecipeId ? { craftRecipeId: desc.craftRecipeId } : {}),
+    ...(desc.bossWeaponId ? { bossWeaponId: desc.bossWeaponId } : {}),
+    ...(desc.signatureId ? { signatureId: desc.signatureId } : {}),
+    ...(desc.sourceBossId ? { sourceBossId: desc.sourceBossId } : {})
   };
 }
 // ---------- Phase 3.1: Mailbox ----------
@@ -22045,6 +22256,8 @@ function InventoryOverlay({
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: detailTarget.icon || SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       detailTarget.type === "junk" ? /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `วัตถุดิบขยะ · มี ${detailTarget.quantity} ชิ้น (สูงสุด 99/ช่อง) · ขายได้ ${sellPrice(detailTarget)} `, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" })) : /*#__PURE__*/React.createElement(React.Fragment, null,
         /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
+        detailTarget.setId && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, `Mythic Set: ${detailTarget.setId}`),
+        MYTHIC_V2.signatureText(detailTarget) && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { color: "var(--gold)", fontWeight: 800 } }, `✦ ${MYTHIC_V2.signatureText(detailTarget)}`),
         renderEmpowerSlotsReadOnly(detailTarget)
       ),
       actionMsg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 4, color: "var(--ink)" } }, actionMsg)
@@ -22234,6 +22447,7 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
+      MYTHIC_V2.signatureText(detailTarget) && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { color: "var(--gold)", fontWeight: 800 } }, `✦ ${MYTHIC_V2.signatureText(detailTarget)}`),
       renderEmpowerSlots(detailTarget),
       ENHANCEMENT_V2.isV2Item(detailTarget) && (Number(detailTarget.enhanceLevel) || 0) >= 6 && (Number(detailTarget.enhanceLevel) || 0) < ENHANCEMENT_V2.ENHANCE_MAX && /*#__PURE__*/React.createElement("label", {
         className: "md-item-detail-sub",
@@ -22325,12 +22539,13 @@ function CraftingOverlay({
 }) {
   const [craftingId, setCraftingId] = useState(null);
   const [msg, setMsg] = useState("");
+  const recipes = MYTHIC_V2.allRecipes(floor);
 
   const doCraft = recipe => {
     if (craftingId || busy) return;
     setCraftingId(recipe.recipeId);
     setMsg("");
-    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, characterId, recipe.recipeId)
+    cloudCraftItem(serverUrl || DEFAULT_SERVER_URL, characterId, recipe.recipeId, crypto.randomUUID())
       .then(res => {
         if (!res || res.error) {
           const errMsg = res && res.error === "insufficient_gold" ? /*#__PURE__*/React.createElement(React.Fragment, null, "ทองไม่พอ (ต้องการ ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), res.need, ")")
@@ -22350,7 +22565,7 @@ function CraftingOverlay({
     /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "🛠️ ประดิษฐ์ไอเทม"),
-        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ใช้แบบร่าง + วัตถุดิบจากบอส Raid เพื่อประดิษฐ์ชุด Azure (สเกลสเตตัสตาม floor สูงสุด ", floor || 1, ")")
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ประดิษฐ์ Mythic Set และ Boss Weapon ตาม Tier ของชั้นสูงสุด ", floor || 1)
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
@@ -22360,18 +22575,18 @@ function CraftingOverlay({
       // hardcoded to bossHorn/bossHide (Azure-only) before; now reads whatever the current
       // recipe list actually needs, so a future set with different materials shows up here
       // automatically with no code change.
-      ...Array.from(new Set(CRAFTING_RECIPES.flatMap(r => Object.keys(r.materials)))).filter(k => k !== "gold" && k.indexOf("recipe_") !== 0).map(key =>
+      ...Array.from(new Set(recipes.flatMap(r => Object.keys(r.materials)))).filter(k => k !== "gold" && k.indexOf("recipe_") !== 0).map(key =>
         /*#__PURE__*/React.createElement("span", { key: key, className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: key }, fallback: (JUNK_INFO[key] || {}).icon || "📦", className: "md-game-icon md-inline-item-icon", alt: (JUNK_INFO[key] || {}).name || key }), " ", junkTotal(inventory, key))
       )
     ),
-    CRAFTING_RECIPES.map(recipe => {
+    recipes.map(recipe => {
       const afford = canAffordRecipe(recipe, inventory, gold);
       const preview = craftPreviewStats(recipe, floor);
       const statText = [preview.atk ? `⚔️${preview.atk}` : "", preview.def ? `🛡️${preview.def}` : "", preview.dodgeChance ? `💨${preview.dodgeChance}%` : ""].filter(Boolean).join(" ");
       return /*#__PURE__*/React.createElement("div", { key: recipe.recipeId, className: "md-card", style: { marginBottom: 8, padding: 10 } },
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           /*#__PURE__*/React.createElement("div", null,
-            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: recipe.type, setId: "azure" }, fallback: craftIcon(recipe), className: "md-game-icon md-detail-item-icon", alt: recipe.name }), " ", recipe.name),
+            /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name", style: { fontSize: 13 } }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: recipe.type, setId: recipe.setId, bossWeaponId: recipe.bossWeaponId }, fallback: craftIcon(recipe), className: "md-game-icon md-detail-item-icon", alt: recipe.name }), " ", recipe.name),
             /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { fontSize: 11 } }, statText)
           ),
           /*#__PURE__*/React.createElement("button", {

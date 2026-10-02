@@ -73,6 +73,8 @@ import { createSocialHandlers } from "./modules/social.js";
 import { createMailboxHandlers } from "./modules/mailbox.js";
 import { createLeaderboardHandlers } from "./modules/leaderboard.js";
 import "../src/systems/enhancementV2.js";
+import "../src/systems/rewardV2.js";
+import "../src/systems/mythicV2.js";
 
 const ENHANCEMENT_V2_RULES = globalThis.ENHANCEMENT_V2;
 
@@ -666,7 +668,14 @@ const DUNGEON_V2_REWARD_RARITY_BANDS = Object.freeze([
   { min: 71, max: 90, weights: { rare: 60, unique: 30, elite: 10 } },
   { min: 91, max: Infinity, weights: { rare: 55, unique: 33, elite: 12 } }
 ]);
+// Remote monster_loot rows and the generic fallback remain limited to ordinary
+// materials. Boss Stones are emitted only by the chapter-boss reward plan below,
+// so config cannot leak an elemental Stone into Normal or Elite encounters.
 const DUNGEON_V2_REWARD_JUNK_IDS = Object.freeze(["iron", "manaOre", "stone", "grass", "wood"]);
+const DUNGEON_V2_REWARD_JUNK_META = Object.freeze({
+  iron: ["Iron", "🔩"], manaOre: ["Mana Ore", "🔮"], stone: ["Stone", "🪨"], grass: ["Grass", "🌿"], wood: ["Wood", "🪵"],
+  earthStone: ["Earth Stone", "🟢"], fireStone: ["Fire Stone", "🔴"], waterStone: ["Water Stone", "🔵"]
+});
 const DUNGEON_V2_ACCESSORY_BASE = Object.freeze({ critChance: 2.5, dodgeChance: 2, critDamage: 8 });
 const DUNGEON_V2_MONSTER_ID_LIST = Object.freeze(["jelly_slime", "spore_cap", "tusky_boar", "bramble_bat", "bone_rattler", "sandy_crab"]);
 const DUNGEON_V2_BOSS_ID_LIST = Object.freeze(["moss_king", "ember_drake", "frost_warden"]);
@@ -946,9 +955,10 @@ function dungeonV2ServerPickWeighted(rows, rng) {
   }
   return valid.at(-1);
 }
-function dungeonV2ServerJunkItem(battleId, junkId, quantity, index, sourceType = "dungeon") {
+function dungeonV2ServerJunkItem(battleId, junkId, quantity, index, sourceType = "dungeon", sourceFloor = 0, sourceIdentity = null) {
   const id = `junk-${dungeonV2ServerHash(`${battleId}:${sourceType}:${junkId}:${index}`)}`;
-  return { id, type: "junk", junkId, quantity: Math.max(1, Math.floor(Number(quantity) || 1)), sourceType };
+  const meta = DUNGEON_V2_REWARD_JUNK_META[junkId] || [junkId, "📦"];
+  return { id, type: "junk", junkId, name: meta[0], icon: meta[1], quantity: Math.max(1, Math.floor(Number(quantity) || 1)), sourceType, sourceFloor, sourceIdentity };
 }
 function dungeonV2ServerGenericJunk(rng, floor) {
   const junkId = DUNGEON_V2_REWARD_JUNK_IDS[Math.floor(rng() * DUNGEON_V2_REWARD_JUNK_IDS.length)];
@@ -993,6 +1003,11 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
       generic.quantity = Math.max(1, Math.round(generic.quantity * 2));
       items.push(dungeonV2ServerJunkItem(battleId, generic.junkId, generic.quantity, items.length, "dungeon_elite"));
     }
+  }
+  if (context.role === "chapter_boss") {
+    const bossId = context.enemies[0]?.id;
+    const stone = globalThis.MYTHIC_V2.bossStoneForEnemy(bossId);
+    if (stone) items.push(dungeonV2ServerJunkItem(battleId, stone.junkId, 1 + (rng() < 0.25 ? 1 : 0), items.length, "chapter_boss_stone", context.floor, bossId));
   }
   if (drop) { items.push(drop); }
   for (const enemy of context.enemies) {
@@ -1060,7 +1075,8 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
       item_id: id, slot_type: "junk", equipped: 0, inventory_slot: "", item_template_id: "",
       rarity: "common", name: String(item.name || junkId).slice(0, 160), item_level: 0, enhance_level: 0,
       bound: 0, quantity: Math.max(1, Number(item.quantity) || 1), atk: 0, def: 0, hp: 0, mp: 0,
-      extra_json: JSON.stringify({ junkId, quantity: Math.max(1, Number(item.quantity) || 1), icon: item.icon || "📦", overflow: !!overflow }),
+      extra_json: JSON.stringify({ junkId, quantity: Math.max(1, Number(item.quantity) || 1), icon: item.icon || "📦", overflow: !!overflow,
+        sourceType: item.sourceType || undefined, sourceFloor: Number(item.sourceFloor) || undefined, sourceIdentity: item.sourceIdentity || undefined }),
     };
   }
   if (!(DUNGEON_V2_REWARD_SLOTS.has(type) || type === "accessory")) return null;
@@ -1219,6 +1235,15 @@ async function handleSyncItems(db, id, session, characterId, items) {
   const existingRowsResult = await db.prepare(`SELECT * FROM items WHERE character_id = ?`).bind(characterId).all();
   const existingRows = existingRowsResult.results || [];
   const existingById = new Map(existingRows.map(row => [String(row.item_id), row]));
+  for (const incoming of items) {
+    const itemId = String(incoming.itemId || "");
+    const existing = existingById.get(itemId);
+    const existingExtra = parseJsonColumn(existing?.extra_json, {});
+    const incomingExtra = incoming.extraJson ? parseJsonColumn(String(incoming.extraJson), {}) : (incoming.extra && typeof incoming.extra === "object" ? incoming.extra : {});
+    const incomingV2 = ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: incomingExtra.rewardVersion, itemModelVersion: incomingExtra.itemModelVersion });
+    const existingV2 = !!existing && ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: existingExtra.rewardVersion, itemModelVersion: existingExtra.itemModelVersion });
+    if (incomingV2 && !existingV2) return json({ error: "untrusted_v2_item" }, 403);
+  }
 
   items.forEach((it, index) => {
     const itemId = String(it.itemId || `item-${characterId}-${Date.now()}-${index}`);
@@ -1245,6 +1270,14 @@ async function handleSyncItems(db, id, session, characterId, items) {
       blacksmithVersion: existingExtra.blacksmithVersion,
       blacksmithReceipts: existingExtra.blacksmithReceipts,
       blacksmithLastResult: existingExtra.blacksmithLastResult,
+      setId: existingExtra.setId,
+      craftRecipeId: existingExtra.craftRecipeId,
+      bossWeaponId: existingExtra.bossWeaponId,
+      signatureId: existingExtra.signatureId,
+      sourceBossId: existingExtra.sourceBossId,
+      craftRequestId: existingExtra.craftRequestId,
+      craftConsumed: existingExtra.craftConsumed,
+      craftGoldSpent: existingExtra.craftGoldSpent,
       // Favorite/equip/overflow remain normal inventory concerns and may still be
       // changed by the client without rewriting authoritative W3 mutation state.
       favorite: incomingExtra.favorite,
@@ -1585,64 +1618,31 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
 }
 
 // ---------- Mailbox: generic reward delivery queue ----------
-// ---------- Phase 4: Crafting ----------
-// Recipes live in the `recipes` table (recipe_id, result_item_def JSON, materials_json
-// JSON, source, created_at). result_item_def only carries identity fields (type/rarity/
-// name/setId/empowerSlotCount) — NOT stat numbers. Stats are computed fresh at craft time
-// from the character's own unlocked_floor using CRAFTED_STAT_FORMULA below, so crafted
-// gear stays "current BiS" forever without needing a rebalance pass every time a new
-// floor is added. Mirrors generateDrop()'s per-type formulas in stats.js, pinned to
-// CRAFTED_RARITY_MULT.
-//
-// This formula table is keyed by item TYPE (weapon/helmet/chest/gloves/boots/accessory),
-// not by set — it's shared by every crafted set, present and future. Mythic is the
-// permanent rarity ceiling in this game (confirmed, no new rarity tier is ever planned
-// above it), so ALL crafted output — Azure today, any future set — is pinned to that same
-// ceiling (5.4, equal to mythic) regardless of which `rarity`/`setId` string a given
-// recipe's result_item_def uses. A new set just needs a `recipes` row; it does NOT need a
-// new rarity tier, a new RARITY_MULT/RARITY_STARS/SALVAGE_TABLE key, or a worker redeploy.
-// KEEP IN SYNC with CRAFTED_STAT_FORMULA in src/systems/crafting.js (client preview copy).
-// Note: every crafted item's DB `rarity` is hardcoded to the literal string "azure" below
-// (see the INSERT), regardless of what a recipe's result_item_def says or which visual
-// setId it uses — "azure" here means "crafted tier", not "the Azure set specifically". This
-// is deliberate: RARITY_MULT/RARITY_STARS/SALVAGE_TABLE only have entries for rare/unique/
-// elite/mythic/azure, so a future set accidentally introducing a new rarity string (e.g.
-// "crimson") would silently fall back to the weakest tier everywhere those tables are
-// read — the exact bug class already hit twice during this phase. A future set should use
-// a new `setId` for its visual identity/set-bonus grouping, but keep `rarity: "azure"`.
-const CRAFTED_RARITY_MULT = 5.4;
-const CRAFTED_STAT_FORMULA = {
-  weapon: (floor) => ({ atk: Math.max(1, Math.round((2 + floor * 0.9) * CRAFTED_RARITY_MULT)) }),
-  helmet: (floor) => ({ def: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
-  chest: (floor) => ({ def: Math.max(1, Math.round((1.5 + floor * 0.5) * CRAFTED_RARITY_MULT)) }),
-  gloves: (floor) => ({ atk: Math.max(1, Math.round((1 + floor * 0.35) * CRAFTED_RARITY_MULT)) }),
-  boots: (floor) => ({ def: Math.max(1, Math.round((1 + floor * 0.3) * CRAFTED_RARITY_MULT)) }),
-  accessory: (floor) => ({ dodgeChance: Math.round((1 + floor * 0.12) * CRAFTED_RARITY_MULT * 10) / 10 }),
-};
-
-// This is a real server-validated mutation (unlike enhance/salvage/shop, which are fully
-// client-authoritative and just ride the next full syncItems push) because Kimmie asked for
-// anti-cheat here specifically, and because "delete these exact item rows, then insert a new
-// one" is impossible to fake safely from a client that could just lie about which stacks it
-// spent. It checks materials/gold against THIS request's own fresh read of items/characters
-// (not anything the client asserts), consumes them, and returns the crafted item descriptor
-// for the client to materialize locally — same "server decides, client mirrors" shape as the
-// mailbox/raid systems, just without needing an actual mailbox row since there's no delay.
-async function handleCraftItem(db, id, session, characterId, recipeId) {
+// ---------- Wave 4 Mythic crafting ----------
+// The Worker resolves canonical V2 recipes, Tier, stats, identity, costs, and random
+// Accessory utility. The request id is only an idempotency key; it is not an RNG seed.
+// One D1 batch conditionally inserts the result and then spends the matching resources.
+async function handleCraftItem(db, id, session, characterId, recipeId, requestId) {
   const [auth, owned] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId)]);
   if (auth.error) return json({ error: auth.error });
   if (owned.error) return json({ error: owned.error });
-  if (!recipeId) return json({ error: "missing_fields" });
-
-  const recipe = await db.prepare(`SELECT * FROM recipes WHERE recipe_id = ?`).bind(recipeId).first();
-  if (!recipe) return json({ error: "recipe_not_found" });
-
-  let resultDef = {};
-  let materials = {};
-  try { resultDef = JSON.parse(recipe.result_item_def || "{}"); } catch (e) { resultDef = {}; }
-  try { materials = JSON.parse(recipe.materials_json || "{}"); } catch (e) { materials = {}; }
-
   const character = owned.row;
+  const floor = Math.max(1, Number(character.unlocked_floor) || 1);
+  const canonicalRecipe = globalThis.MYTHIC_V2.recipeById(recipeId, floor);
+  if (!canonicalRecipe) return json({ error: "recipe_not_found" });
+  const operationId = String(requestId || "").trim();
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(operationId)) return json({ error: "invalid_request_id" });
+  const existing = await db.prepare(`SELECT * FROM items WHERE character_id = ? AND json_extract(extra_json, '$.craftRequestId') = ? LIMIT 1`).bind(characterId, operationId).first();
+  if (existing) {
+    const extra = parseJsonColumn(existing.extra_json, {});
+    return json({ ok: true, replayed: true, item: {
+      id: existing.item_id, type: existing.slot_type, rarity: existing.rarity, name: existing.name,
+      atk: Number(existing.atk) || 0, def: Number(existing.def) || 0, hp: Number(existing.hp) || 0, mp: Number(existing.mp) || 0,
+      ...extra
+    }, consumed: extra.craftConsumed || [], goldSpent: Number(extra.craftGoldSpent) || 0, craftedAtFloor: Number(extra.sourceFloor) || floor,
+      ...(await battleCompletionSnapshot(db, id, characterId)) });
+  }
+  const materials = canonicalRecipe.materials;
   const goldCost = Number(materials.gold) || 0;
   if (goldCost > 0 && (Number(character.gold) || 0) < goldCost) {
     return json({ error: "insufficient_gold", need: goldCost, have: Number(character.gold) || 0 });
@@ -1667,7 +1667,7 @@ async function handleCraftItem(db, id, session, characterId, recipeId) {
   const junkRows = (junkRowsRes.results || []).map((r) => {
     let extra = {};
     try { extra = JSON.parse(r.extra_json || "{}"); } catch (e) { extra = {}; }
-    return { item_id: r.item_id, quantity: Number(extra.quantity) || 0, junkId: extra.junkId, extra };
+    return { item_id: r.item_id, quantity: Number(extra.quantity) || 0, junkId: extra.junkId, extra, rawExtra: r.extra_json || "" };
   });
 
   for (const need of junkNeeds) {
@@ -1676,7 +1676,33 @@ async function handleCraftItem(db, id, session, characterId, recipeId) {
   }
 
   const now = nowIso();
-  const stmts = [];
+  const inventoryCount = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
+  const operationToken = crypto.randomUUID();
+  let seed = 2166136261;
+  for (const ch of operationToken) { seed ^= ch.charCodeAt(0); seed = Math.imul(seed, 16777619); }
+  const authoritativeRng = () => {
+    seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+    return (seed >>> 0) / 4294967296;
+  };
+  const item = globalThis.MYTHIC_V2.createMythicItem(canonicalRecipe, floor, authoritativeRng);
+  const newItemId = `item-craft-${characterId}-${operationId}`.slice(0, 160);
+  const extra = {
+    empowerSlots: item.empowerSlots, empowerSlotCapacity: 4, rewardVersion: 2, itemModelVersion: 2,
+    gearTier: item.gearTier, sourceType: item.sourceType, sourceFloor: item.sourceFloor,
+    specialSource: item.specialSource, sourceIdentity: item.sourceIdentity, utilityStat: item.utilityStat,
+    dodgeChance: item.dodgeChance, critChance: item.critChance, critDamage: item.critDamage,
+    setId: item.setId, craftRecipeId: recipeId, bossWeaponId: item.bossWeaponId,
+    signatureId: item.signatureId, sourceBossId: item.sourceBossId, craftRequestId: operationId,
+    craftConsumed: junkNeeds, craftGoldSpent: goldCost, craftPendingToken: operationToken,
+    overflow: inventoryCount >= 30
+  };
+  const resourceConditions = junkNeeds.map(() => `(SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) FROM items WHERE character_id = ? AND slot_type = 'junk' AND json_extract(extra_json, '$.junkId') = ?) >= ?`);
+  const resourceBinds = junkNeeds.flatMap(need => [characterId, need.junkId, need.qty]);
+  const insertWhere = [`EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ?)`].concat(resourceConditions).join(" AND ");
+  const stmts = [db.prepare(
+    `INSERT OR IGNORE INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+     SELECT ?, ?, ?, ?, 0, '', ?, 'mythic', ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ? WHERE ${insertWhere}`
+  ).bind(newItemId, id, characterId, item.type, recipeId, item.name, Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0, JSON.stringify(extra), now, now, characterId, id, goldCost, ...resourceBinds)];
   junkNeeds.forEach((need) => {
     let remaining = need.qty;
     for (const row of junkRows.filter((r) => r.junkId === need.junkId)) {
@@ -1688,56 +1714,34 @@ async function handleCraftItem(db, id, session, characterId, recipeId) {
         // Write the decremented amount back into extra_json.quantity (preserving every
         // other extra field — icon, empowerSlots, etc.), NOT the top-level column.
         const nextExtra = JSON.stringify({ ...row.extra, quantity: leftover });
-        stmts.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ?`).bind(nextExtra, now, row.item_id, characterId));
+        stmts.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items marker WHERE marker.item_id = ? AND json_extract(marker.extra_json, '$.craftPendingToken') = ?)`)
+          .bind(nextExtra, now, row.item_id, characterId, row.rawExtra, newItemId, operationToken));
       } else {
-        stmts.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND character_id = ?`).bind(row.item_id, characterId));
+        stmts.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items marker WHERE marker.item_id = ? AND json_extract(marker.extra_json, '$.craftPendingToken') = ?)`)
+          .bind(row.item_id, characterId, row.rawExtra, newItemId, operationToken));
       }
     }
   });
   if (goldCost > 0) {
-    stmts.push(db.prepare(`UPDATE characters SET gold = MAX(0, gold - ?), updated_at = ? WHERE character_id = ?`).bind(goldCost, now, characterId));
+    stmts.push(db.prepare(`UPDATE characters SET gold = gold - ?, updated_at = ? WHERE character_id = ? AND gold >= ? AND EXISTS (SELECT 1 FROM items marker WHERE marker.item_id = ? AND json_extract(marker.extra_json, '$.craftPendingToken') = ?)`)
+      .bind(goldCost, now, characterId, goldCost, newItemId, operationToken));
   }
-
-  // Computed fresh from the character's OWN unlocked_floor (already loaded via
-  // verifyOwnedCharacter above) — never trusts a floor value from the client.
-  const floor = Math.max(1, Number(character.unlocked_floor) || 1);
-  const formula = CRAFTED_STAT_FORMULA[resultDef.type] || (() => ({}));
-  const stats = formula(floor);
-
-  const newItemId = `item-craft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const extraJson = JSON.stringify({
-    dodgeChance: stats.dodgeChance || undefined,
-    setId: resultDef.setId || undefined,
-    star: resultDef.star || undefined,
-    craftRecipeId: recipeId,
-  });
-  stmts.push(
-    db
-      .prepare(
-        `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 0, '', ?, ?, ?, 0, 0, 0, 1, ?, ?, 0, 0, ?, ?, ?)`
-      )
-      .bind(newItemId, id, characterId, resultDef.type || "", recipeId, "azure", resultDef.name || "Crafted Item", Number(stats.atk) || 0, Number(stats.def) || 0, extraJson, now, now)
-  );
-
-  await db.batch(stmts);
+  const finalizedExtra = { ...extra }; delete finalizedExtra.craftPendingToken;
+  stmts.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND json_extract(extra_json, '$.craftPendingToken') = ?`)
+    .bind(JSON.stringify(finalizedExtra), now, newItemId, characterId, operationToken));
+  const batch = await db.batch(stmts);
+  if ((Number(batch?.[0]?.meta?.changes) || 0) !== 1) return json({ error: "craft_conflict", retry: true }, 409);
 
   return json({
     ok: true,
     item: {
-      type: resultDef.type,
-      rarity: "azure",
-      name: resultDef.name,
-      atk: Number(stats.atk) || 0,
-      def: Number(stats.def) || 0,
-      dodgeChance: Number(stats.dodgeChance) || 0,
-      setId: resultDef.setId,
-      empowerSlotCount: resultDef.empowerSlotCount || 1,
-      craftRecipeId: recipeId,
+      ...item,
+      id: newItemId,
     },
     consumed: junkNeeds,
     goldSpent: goldCost,
     craftedAtFloor: floor,
+    ...(await battleCompletionSnapshot(db, id, characterId)),
   });
 }
 
@@ -1918,15 +1922,19 @@ function raidCombatStats(character, equippedItems) {
   };
   const level = Number(character.level) || 1;
   const base = characterBaseStats(level, s);
-  const eb = { atk: 0, critChance: 0, critDamage: 0 };
+  const eb = { atk: 0, str: 0, critChance: 0, critDamage: 0 };
   (equippedItems || []).forEach((it) => {
     const ib = itemBonus(it);
     eb.atk += ib.atk;
+    eb.str += ib.str || 0;
     eb.critChance += ib.critChance || 0;
     eb.critDamage += ib.critDamage || 0;
   });
+  const setEffects = globalThis.MYTHIC_V2.setEffects(mythicEquippedFromRows(equippedItems));
+  eb.str += setEffects.str;
+  eb.critDamage += setEffects.critDamage;
   return {
-    atk: Math.round(base.atk + eb.atk),
+    atk: Math.round(base.atk + eb.atk + eb.str * 3),
     critChance: Math.min(100, Math.round((base.critChance + eb.critChance) * 10) / 10),
     critDamage: Math.round((base.critDamage + eb.critDamage) * 10) / 10,
   };
@@ -2036,7 +2044,7 @@ async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) 
     verifyPlayer(db, id, session),
     verifyOwnedCharacter(db, id, characterId),
     getOrCreateActiveRaid(db),
-    db.prepare(`SELECT atk, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
+    db.prepare(`SELECT slot_type, rarity, name, atk, def, hp, mp, extra_json, enhance_level FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all(),
   ]);
   if (auth.error) return json({ error: auth.error });
   if (owned.error) return json({ error: owned.error });
@@ -2413,6 +2421,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     unit.crit = clamp(unit.crit == null ? unit.critChance || 0 : unit.crit, 0, 100);
     unit.critDamage = Math.max(1, Number(unit.critDamage) || 1.5);
     unit.statusResist = clamp(unit.statusResist || 0, 0, 100);
+    unit.equipmentEffects = copy(unit.equipmentEffects || {});
     unit.statuses = copy(unit.statuses || {});
     unit.cooldowns = copy(unit.cooldowns || {});
     unit.skills = copy(unit.skills || {});
@@ -2638,7 +2647,9 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
       if (options.active) value += Number(options.activeDebuffBonus) || Number(resources.nextActiveDebuffBonus) || 0;
     }
     if (!HARMFUL.has(type)) return clamp(value, 0, 100);
-    return Math.max(0, Math.min(STATUS_PROC_CAP, value) - (Number(target.statusResist) || 0));
+    if (options.bypassStatusResist) return clamp(value, 0, 100);
+    const controlResist = type === "stun" || type === "silence" ? Number(target.equipmentEffects?.ccResist) || 0 : 0;
+    return Math.max(0, Math.min(STATUS_PROC_CAP, value) - (Number(target.statusResist) || 0) - controlResist);
   }
 
   function applyStatus(state, actor, target, key, spec = {}, context = {}) {
@@ -2706,6 +2717,12 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     }
     const before = target.hp;
     target.hp = Math.max(0, target.hp - amount);
+    if (target.kind === "hero" && target.equipmentEffects?.robotThresholdDefUp
+        && before >= target.maxHp * 0.5 && target.hp < target.maxHp * 0.5 && target.hp > 0) {
+      target.statuses.def_up = { key: "def_up", duration: 2, harmful: false };
+      context.appliedStatuses?.add(`${target.id}:def_up`);
+      log(state, "status", "Robot Set granted DEF Up", { targetId: target.id, status: "def_up" });
+    }
     if (directHit && target.kind === "hero" && target.hp <= 0 && rank(target, "thorned_aegis") >= 2 && !target.flags.aegisLethalUsed) {
       const resources = resourcesFor(state, target);
       const priorAegis = resources.aegis;
@@ -2762,7 +2779,16 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     // that created it. Snapshot DEF before applying this hit's statuses.
     const targetDefAtHitStart = effectiveDef(target);
     const conversions = [];
-    for (const statusSpec of spec.statuses || []) {
+    const hitStatuses = (spec.statuses || []).map(statusSpec => ({ ...statusSpec }));
+    if (actor.kind === "hero" && actor.equipmentEffects?.azureControlProc && !actionContext.azureProcRolled
+        && (spec.actionType === "basic" || spec.actionType === "active")) {
+      actionContext.azureProcRolled = true;
+      if (chance(state, 30)) {
+        const key = chance(state, 50) ? "stun" : "silence";
+        hitStatuses.push({ key, chance: 100, duration: key === "stun" ? 1 : 2, fixed: true });
+      }
+    }
+    for (const statusSpec of hitStatuses) {
       const result = applyStatus(state, actor, target, statusSpec.key, statusSpec, { ...actionContext, active: spec.actionType === "active", fixed: !!statusSpec.fixed });
       if (result.converted) conversions.push(result.converted);
       if (result.applied) actionContext.debuffApplied = actionContext.debuffApplied || HARMFUL.has(statusSpec.key);
@@ -2788,6 +2814,12 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
     actionContext.totalDamage += dealt;
     actionContext.hitAny = true;
+    actionContext.firstHitTargetId = actionContext.firstHitTargetId || target.id;
+    if (spec.actionType === "active") actionContext.activeHitTargetIds.push(target.id);
+    if (crit && actor.kind === "hero" && actor.equipmentEffects?.skeletonCritArmorBreak && living(target)) {
+      const result = applyStatus(state, actor, target, "armor_break", { chance: 100, duration: 2 }, { ...actionContext, bypassStatusResist: true });
+      if (result.applied) actionContext.debuffApplied = true;
+    }
     if (target.kind === "hero" && dealt > 0) {
       actionContext.heroStruck = true;
       actionContext.struckHeroIds.add(target.id);
@@ -2894,7 +2926,8 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
       if (!spec || !actor.activeSkills.includes(command.skillId) || (actor.cooldowns[command.skillId] || 0) > 0 || status(actor, "silence")) reason = "Active skill unavailable";
       else {
         const efficiency = skillData(actor, "skill_efficiency");
-        spCost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+        const equipmentMultiplier = Math.max(0, Number(actor.equipmentEffects?.activeSkillMpMultiplier) || 1);
+        spCost = spec.sp > 0 ? Math.max(1, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0)) * equipmentMultiplier)) : 0;
         cooldown = Number(spec.cooldown) || 0;
         if (actor.sp < spCost) reason = "Not enough SP";
       }
@@ -2985,7 +3018,8 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
       const spec = heroActiveSpec(state, actor, id);
       if (!spec || !actor.activeSkills.includes(id) || (actor.cooldowns[id] || 0) > 0 || status(actor, "silence")) { log(state, "invalid", "Active skill unavailable"); return; }
       const efficiency = skillData(actor, "skill_efficiency");
-      const cost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+      const equipmentMultiplier = Math.max(0, Number(actor.equipmentEffects?.activeSkillMpMultiplier) || 1);
+      const cost = spec.sp > 0 ? Math.max(1, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0)) * equipmentMultiplier)) : 0;
       if (actor.sp < cost) { log(state, "invalid", "Not enough SP"); return; }
       actor.sp -= cost; context.usedSkillId = id; context.wasActive = true;
       context.attackAction = Number(spec.mult) > 0;
@@ -3171,6 +3205,35 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     }
   }
 
+  function resolveMythicEffectsAfterAction(state, actor, context) {
+    if (actor.kind === "hero" && context.attackAction && context.hitAny) {
+      const effects = actor.equipmentEffects || {};
+      if (effects.bossWeaponSignature === "spirit_restore" && chance(state, 30)) {
+        heal(state, actor, actor.maxHp * 0.10, actor, "Spirit Greatsword");
+      }
+      if (effects.bossWeaponSignature === "lavalon_extra_basic" && context.wasActive) {
+        let extras = 0;
+        for (const targetId of context.activeHitTargetIds) {
+          if (extras >= 3) break;
+          const target = state.units[targetId];
+          if (living(target) && chance(state, 10)) {
+            attackHit(state, actor, target, { mult: 1, actionType: "basic", actionName: "Lavalon extra attack", statuses: [] }, context);
+            extras += 1;
+          }
+        }
+      }
+    }
+    if (actor.kind !== "hero" && context.heroStruck) {
+      for (const heroId of context.struckHeroIds) {
+        const hero = state.units[heroId];
+        if (living(hero) && living(actor) && hero.equipmentEffects?.bossWeaponSignature === "icicle_counter" && chance(state, 20)) {
+          attackHit(state, hero, actor, { mult: 1, actionType: "counter", actionName: "Icicle counter", statuses: [] }, context);
+          log(state, "counter", "Icicle Longsword countered", { actorId: hero.id, targetId: actor.id });
+        }
+      }
+    }
+  }
+
   function finishBattle(state, result, winnerSide = null, text = null) {
     if (state.result) return;
     state.winnerSide = winnerSide;
@@ -3249,7 +3312,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
         return { state, waiting: true, completedAction: false, error: invalid };
       }
     }
-    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
+    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), activeHitTargetIds: [], firstHitTargetId: null, azureProcRolled: false, totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
     startEffects(state, actor, context);
     if (living(actor)) {
       if (status(actor, "stun")) { delete actor.statuses.stun; log(state, "stun", `${actor.name || actor.id} lost the Action`); }
@@ -3261,6 +3324,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
       else resolveEnemyAction(state, actor, context);
     }
     resolveHeroReactionsAfterAction(state, actor, context);
+    resolveMythicEffectsAfterAction(state, actor, context);
     const pet = petForSide(state, actor.side);
     const petCdr = pet && petSkillData(pet).extra;
     if (context.debuffApplied && (actor.kind === "hero" || actor.kind === "pet") && pet && living(pet) && petCdr.type === "petCdrOnDebuff" && !context.cdrUsed && !(actor.id === pet.id && context.usedSkillId === "pet_active") && Number(pet.cooldowns.pet_active) > 0 && chance(state, chancePercent(petCdr.pct))) {
@@ -4068,6 +4132,16 @@ async function handlePurchaseArenaV2Ticket(db, id, session, characterId, request
 function arenaClone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
+function mythicEquippedFromRows(items) {
+  const equipped = {};
+  for (const row of items || []) {
+    const extra = parseJsonColumn(row.extra_json, {});
+    equipped[row.slot_type] = { type: row.slot_type, rarity: row.rarity, itemModelVersion: extra.itemModelVersion,
+      setId: extra.setId, bossWeaponId: extra.bossWeaponId, specialSource: extra.specialSource,
+      sourceIdentity: extra.sourceIdentity, name: row.name };
+  }
+  return equipped;
+}
 function arenaSnapshotStats(character, items) {
   const stats = {
     str: Number(character.str) || 0,
@@ -4082,6 +4156,8 @@ function arenaSnapshotStats(character, items) {
     const current = itemBonus(item);
     for (const key of Object.keys(current)) bonus[key] = (bonus[key] || 0) + (Number(current[key]) || 0);
   }
+  const setEffects = globalThis.MYTHIC_V2.setEffects(mythicEquippedFromRows(items));
+  bonus.str += setEffects.str; bonus.vit += setEffects.vit; bonus.agi += setEffects.agi; bonus.critDamage += setEffects.critDamage;
   return {
     ...stats,
     level: Number(character.level) || 1,
@@ -4104,6 +4180,7 @@ function arenaEquipmentSnapshot(items) {
     rarity: item.rarity || "",
     enhanceLevel: Number(item.enhance_level) || 0,
     stats: itemBonus(item),
+    ...(() => { const extra = parseJsonColumn(item.extra_json, {}); return { setId: extra.setId || null, bossWeaponId: extra.bossWeaponId || null, itemModelVersion: Number(extra.itemModelVersion) || 0 }; })()
   }));
 }
 async function arenaRealSnapshot(db, character, setup, items, rating) {
@@ -4119,6 +4196,7 @@ async function arenaRealSnapshot(db, character, setup, items, rating) {
     cp: combatPowerFromCharacter(character, items),
     stats: arenaSnapshotStats(character, items),
     equipment: arenaEquipmentSnapshot(items),
+    equipmentEffects: globalThis.MYTHIC_V2.combatEffects(mythicEquippedFromRows(items)),
     pet: pet ? arenaClone(pet) : null,
     skillLevels: arenaClone(skillLevels || {}),
     skillSlots: Array.isArray(setup.skillSlots) ? [...setup.skillSlots] : [null, null, null, null],
@@ -4421,7 +4499,7 @@ function arenaCombatHeroUnit(snapshot, id, side) {
     speed: Math.round(PVP_BASE_SPEED + agi * 2), accuracy: Number(stats.accuracy) || 95,
     dodge: Number(stats.dodgeChance) || 0, crit: Number(stats.critChance) || 0,
     critDamage: 1 + (Number(stats.critDamage) || 0) / 100,
-    skills: skillLevels, activeSkills: slots.slice(0, 4),
+    skills: skillLevels, activeSkills: slots.slice(0, 4), equipmentEffects: arenaClone(snapshot?.equipmentEffects || {}),
   };
 }
 function arenaCombatBotUnit(snapshot, id, side) {
@@ -5519,7 +5597,7 @@ export default {
           case "deleteAllClaimedMail":
             return await handleDeleteAllClaimedMail(db, id, auth, body.characterId);
           case "craftItem":
-            return await handleCraftItem(db, id, auth, body.characterId, body.recipeId);
+            return await handleCraftItem(db, id, auth, body.characterId, body.recipeId, body.requestId);
           // Friend System V1 (Phase 2) — write actions
           case "sendFriendRequest":
             return await handleSendFriendRequest(db, id, auth, body.characterId, body.targetCharacterId);

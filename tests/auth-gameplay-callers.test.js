@@ -7,6 +7,7 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..");
 const apiSource = fs.readFileSync(path.join(root, "src/state/api.js"), "utf8");
 const components = fs.readFileSync(path.join(root, "src/ui/components.js"), "utf8");
+const app = fs.readFileSync(path.join(root, "src/ui/App.js"), "utf8");
 
 test("Mailbox and Crafting UI callers use Auth V2 session signatures", () => {
   const mailbox = components.slice(components.indexOf("function MailboxScreen"), components.indexOf("function floorEventPreview"));
@@ -21,7 +22,11 @@ test("Mailbox and Crafting UI callers use Auth V2 session signatures", () => {
   assert.match(mailbox, /cloudDeleteAllClaimedMail\(serverUrl \|\| DEFAULT_SERVER_URL, characterId\)/);
   assert.match(mailbox, /mailError &&/);
   assert.match(mailbox, /onClick: load }, "ลองใหม่"/);
-  assert.match(crafting, /cloudCraftItem\(serverUrl \|\| DEFAULT_SERVER_URL, characterId, recipe\.recipeId\)/);
+  assert.match(crafting, /cloudCraftItem\(serverUrl \|\| DEFAULT_SERVER_URL, characterId, recipe\.recipeId, crypto\.randomUUID\(\)\)/);
+  assert.match(apiSource, /function cloudCraftItem\(url, characterId, recipeId, requestId\)/);
+  const applyCraftResult = app.slice(app.indexOf("function applyCraftResult"), app.indexOf("function spawnFloat"));
+  assert.match(applyCraftResult, /hydrateAuthoritativeBlacksmithSnapshot\(res\)/);
+  assert.doesNotMatch(applyCraftResult, /insertCarriedItems|persistSave|persistItems/);
 });
 
 test("authenticated gameplay helpers send bearer auth without id/password payloads", async () => {

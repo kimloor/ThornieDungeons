@@ -93,6 +93,9 @@ function rewardForContext(context) {
     items: []
   };
 }
+function bossStoneIdForContext(context) {
+  return ({ moss_king: "earthStone", ember_drake: "fireStone", frost_warden: "waterStone" })[context?.enemies?.[0]?.id] || null;
+}
 
 test("saveRunState, Battle checkpoint, quick slots and completion are character-scoped and stale-safe", async () => {
   const api = worker(), db = database();
@@ -278,6 +281,10 @@ test("Dungeon V2 reward commit keeps permanent claims and replay idempotency bey
   assert.equal(first.body.ok, true);
   assert.equal(first.body.firstCompletion, true);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND slot_type = 'accessory'").get(characterId).c, 1);
+  const bossStoneId = bossStoneIdForContext(startedF10.body.context);
+  const bossStone = db.raw.prepare("SELECT extra_json FROM items WHERE character_id = ? AND json_extract(extra_json, '$.junkId') = ?").get(characterId, bossStoneId);
+  assert.ok(bossStone);
+  assert.ok([1, 2].includes(JSON.parse(bossStone.extra_json).quantity));
   const before = db.raw.prepare("SELECT gold, xp, pets_json FROM characters WHERE character_id = ?").get(characterId);
   assert.equal(JSON.parse(before.pets_json).firstClearAccessoryClaims["10"], true);
 
@@ -296,6 +303,7 @@ test("Dungeon V2 reward commit keeps permanent claims and replay idempotency bey
   const after = db.raw.prepare("SELECT gold, xp, pets_json FROM characters WHERE character_id = ?").get(characterId);
   assert.equal(JSON.parse(after.pets_json).firstClearAccessoryClaims["10"], true);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND slot_type = 'accessory'").get(characterId).c, 1);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND json_extract(extra_json, '$.junkId') = ?").get(characterId, bossStoneId).c, 1);
   const replay = await post(api, db, token, {
     action: "completeBattle", characterId, battleId: startedF10.body.battleId,
     result: { result: "victory", safeActionSeq: 2, floor: 10, reward: { ...rewardForContext(startedF10.body.context), unlockedNext: true, firstClear: true, items: [accessory] } }
@@ -418,6 +426,11 @@ test("Dungeon V2 reward authority rebuilds forged diamonds, equipment, utility, 
   assert.equal(extra.sourceType, "dungeon_boss_first_clear");
   assert.equal(extra.specialSource, "first_clear_accessory");
   assert.equal(["critChance", "dodgeChance", "critDamage"].filter(key => Number(extra[key]) > 0).length, 1);
+  const bossStoneId = bossStoneIdForContext(started.body.context);
+  const stone = db.raw.prepare("SELECT extra_json FROM items WHERE character_id = ? AND json_extract(extra_json, '$.junkId') = ?").get(characterId, bossStoneId);
+  assert.ok(stone);
+  assert.ok([1, 2].includes(JSON.parse(stone.extra_json).quantity));
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND json_extract(extra_json, '$.junkId') = 'forged'").get(characterId).c, 0);
   assert.notEqual(extra.critChance, 999999);
   assert.notEqual(extra.dodgeChance, 999999);
   assert.notEqual(extra.critDamage, 999999);

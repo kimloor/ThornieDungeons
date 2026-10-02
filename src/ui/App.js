@@ -517,21 +517,13 @@ function ThornieDungeons() {
     inventoryOverflowRef.current = ov;
     return persistInventorySnapshot(inv, eq, ov);
   }, [persistInventorySnapshot]);
-  // Applies a server-confirmed craft result (see CraftingOverlay/handleCraftItem): the
-  // server already validated+consumed materials/gold on ITS copy of the items/characters
-  // rows, so this only needs to mirror that same removal locally, add the crafted item,
-  // then push the resulting inventory/gold back up so both sides stay in sync.
-  const applyCraftResult = useCallback((res) => {
+  // Crafting returns the same authoritative character/item snapshot used by W3
+  // mutations. Hydrate it directly; generic item/save sync never creates, deletes, or
+  // spends the W4 result on behalf of the Worker.
+  function applyCraftResult(res) {
     if (!res || !res.item) return;
-    let next = inventoryRef.current;
-    (res.consumed || []).forEach(m => {
-      next = removeJunkFromInventory(next, m.junkId, m.qty) || next;
-    });
-    insertCarriedItems([materializeMailItem(res.item)], next);
-    if (res.goldSpent) {
-      persistSave({ ...save, gold: Math.max(0, save.gold - res.goldSpent) });
-    }
-  }, [insertCarriedItems, save, persistSave]);
+    hydrateAuthoritativeBlacksmithSnapshot(res);
+  }
   function spawnFloat(side, text, color) {
     const id = ++floatId.current;
     setFloats(f => [...f, {
@@ -1243,7 +1235,7 @@ function ThornieDungeons() {
       accuracy: Math.min(99, baseStats.accuracy + (petDefId === "hell_wolf" ? 8 : 0)),
       dodgeChance: baseStats.dodgeChance + (petDefId === "storm_phoenix" ? 8 : 0),
       critChance: baseStats.critChance + (petDefId === "ember_fox" ? 5 : 0),
-      statusResist: (battleHardened?.statusResist || 0) + (petDefId === "moon_hare" ? 15 : 0)
+      statusResist: (baseStats.statusResist || 0) + (battleHardened?.statusResist || 0) + (petDefId === "moon_hare" ? 15 : 0)
     };
     const heroStartHp = (carryPlayer || resumeCarry) ? Math.min(stats.maxHp, nextPlayer.hp) : stats.maxHp;
     const learnedActives = heroActiveSkillList(save.character.skillLevels).map(skill => skill.key);
@@ -1270,7 +1262,8 @@ function ThornieDungeons() {
         sp: nextPlayer.mp, maxSp: stats.maxMp, atk: stats.atk, def: stats.def, speed: stats.speed,
         accuracy: stats.accuracy, dodge: stats.dodgeChance, crit: stats.critChance,
         critDamage: 1 + stats.critDamage / 100, agi: save.character.stats.agi,
-        skills: save.character.skillLevels, activeSkills: equippedActives, statusResist: stats.statusResist
+        skills: save.character.skillLevels, activeSkills: equippedActives, statusResist: stats.statusResist,
+        equipmentEffects: MYTHIC_V2.combatEffects(equipped)
       },
       pet: initialPet && {
         ...initialPet, id: "pet", kind: "pet", side: "ally", petDefId: initialPet.defId,

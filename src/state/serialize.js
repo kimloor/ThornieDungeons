@@ -131,7 +131,10 @@ function itemsToServerList(inventory, equipped, overflow = []) {
       wingFamily: it.wingFamily || undefined,
       blacksmithVersion: it.blacksmithVersion || undefined,
       blacksmithReceipts: Array.isArray(it.blacksmithReceipts) ? it.blacksmithReceipts.slice(-32) : undefined,
-      blacksmithLastResult: it.blacksmithLastResult || undefined
+      blacksmithLastResult: it.blacksmithLastResult || undefined,
+      bossWeaponId: it.bossWeaponId || undefined,
+      signatureId: it.signatureId || undefined,
+      sourceBossId: it.sourceBossId || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -166,7 +169,10 @@ function itemsFromServerList(rows) {
           icon: extra.icon || (JUNK_INFO[extra.junkId] || {}).icon || "📦",
           rarity: r.rarity || "common",
           quantity: numOr(extra.quantity, 1),
-          favorite: extra.favorite === true
+          favorite: extra.favorite === true,
+          ...(extra.sourceType ? { sourceType: String(extra.sourceType) } : {}),
+          ...(extra.sourceFloor ? { sourceFloor: numOr(extra.sourceFloor, 0) } : {}),
+          ...(extra.sourceIdentity ? { sourceIdentity: String(extra.sourceIdentity) } : {})
         });
         return;
       }
@@ -223,6 +229,9 @@ function itemsFromServerList(rows) {
       if (extra.blacksmithVersion) it.blacksmithVersion = numOr(extra.blacksmithVersion, 0);
       if (Array.isArray(extra.blacksmithReceipts)) it.blacksmithReceipts = extra.blacksmithReceipts.map(String).filter(Boolean).slice(-32);
       if (extra.blacksmithLastResult && typeof extra.blacksmithLastResult === "object") it.blacksmithLastResult = extra.blacksmithLastResult;
+      if (extra.bossWeaponId) it.bossWeaponId = String(extra.bossWeaponId);
+      if (extra.signatureId) it.signatureId = String(extra.signatureId);
+      if (extra.sourceBossId) it.sourceBossId = String(extra.sourceBossId);
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });

@@ -68,6 +68,7 @@
     unit.crit = clamp(unit.crit == null ? unit.critChance || 0 : unit.crit, 0, 100);
     unit.critDamage = Math.max(1, Number(unit.critDamage) || 1.5);
     unit.statusResist = clamp(unit.statusResist || 0, 0, 100);
+    unit.equipmentEffects = copy(unit.equipmentEffects || {});
     unit.statuses = copy(unit.statuses || {});
     unit.cooldowns = copy(unit.cooldowns || {});
     unit.skills = copy(unit.skills || {});
@@ -293,7 +294,9 @@
       if (options.active) value += Number(options.activeDebuffBonus) || Number(resources.nextActiveDebuffBonus) || 0;
     }
     if (!HARMFUL.has(type)) return clamp(value, 0, 100);
-    return Math.max(0, Math.min(STATUS_PROC_CAP, value) - (Number(target.statusResist) || 0));
+    if (options.bypassStatusResist) return clamp(value, 0, 100);
+    const controlResist = type === "stun" || type === "silence" ? Number(target.equipmentEffects?.ccResist) || 0 : 0;
+    return Math.max(0, Math.min(STATUS_PROC_CAP, value) - (Number(target.statusResist) || 0) - controlResist);
   }
 
   function applyStatus(state, actor, target, key, spec = {}, context = {}) {
@@ -361,6 +364,12 @@
     }
     const before = target.hp;
     target.hp = Math.max(0, target.hp - amount);
+    if (target.kind === "hero" && target.equipmentEffects?.robotThresholdDefUp
+        && before >= target.maxHp * 0.5 && target.hp < target.maxHp * 0.5 && target.hp > 0) {
+      target.statuses.def_up = { key: "def_up", duration: 2, harmful: false };
+      context.appliedStatuses?.add(`${target.id}:def_up`);
+      log(state, "status", "Robot Set granted DEF Up", { targetId: target.id, status: "def_up" });
+    }
     if (directHit && target.kind === "hero" && target.hp <= 0 && rank(target, "thorned_aegis") >= 2 && !target.flags.aegisLethalUsed) {
       const resources = resourcesFor(state, target);
       const priorAegis = resources.aegis;
@@ -417,7 +426,16 @@
     // that created it. Snapshot DEF before applying this hit's statuses.
     const targetDefAtHitStart = effectiveDef(target);
     const conversions = [];
-    for (const statusSpec of spec.statuses || []) {
+    const hitStatuses = (spec.statuses || []).map(statusSpec => ({ ...statusSpec }));
+    if (actor.kind === "hero" && actor.equipmentEffects?.azureControlProc && !actionContext.azureProcRolled
+        && (spec.actionType === "basic" || spec.actionType === "active")) {
+      actionContext.azureProcRolled = true;
+      if (chance(state, 30)) {
+        const key = chance(state, 50) ? "stun" : "silence";
+        hitStatuses.push({ key, chance: 100, duration: key === "stun" ? 1 : 2, fixed: true });
+      }
+    }
+    for (const statusSpec of hitStatuses) {
       const result = applyStatus(state, actor, target, statusSpec.key, statusSpec, { ...actionContext, active: spec.actionType === "active", fixed: !!statusSpec.fixed });
       if (result.converted) conversions.push(result.converted);
       if (result.applied) actionContext.debuffApplied = actionContext.debuffApplied || HARMFUL.has(statusSpec.key);
@@ -443,6 +461,12 @@
     const dealt = receiveDamage(state, actor, target, damage, { ...actionContext, actionName: attackActionName(spec, actionContext), crit, direct: true });
     actionContext.totalDamage += dealt;
     actionContext.hitAny = true;
+    actionContext.firstHitTargetId = actionContext.firstHitTargetId || target.id;
+    if (spec.actionType === "active") actionContext.activeHitTargetIds.push(target.id);
+    if (crit && actor.kind === "hero" && actor.equipmentEffects?.skeletonCritArmorBreak && living(target)) {
+      const result = applyStatus(state, actor, target, "armor_break", { chance: 100, duration: 2 }, { ...actionContext, bypassStatusResist: true });
+      if (result.applied) actionContext.debuffApplied = true;
+    }
     if (target.kind === "hero" && dealt > 0) {
       actionContext.heroStruck = true;
       actionContext.struckHeroIds.add(target.id);
@@ -549,7 +573,8 @@
       if (!spec || !actor.activeSkills.includes(command.skillId) || (actor.cooldowns[command.skillId] || 0) > 0 || status(actor, "silence")) reason = "Active skill unavailable";
       else {
         const efficiency = skillData(actor, "skill_efficiency");
-        spCost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+        const equipmentMultiplier = Math.max(0, Number(actor.equipmentEffects?.activeSkillMpMultiplier) || 1);
+        spCost = spec.sp > 0 ? Math.max(1, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0)) * equipmentMultiplier)) : 0;
         cooldown = Number(spec.cooldown) || 0;
         if (actor.sp < spCost) reason = "Not enough SP";
       }
@@ -640,7 +665,8 @@
       const spec = heroActiveSpec(state, actor, id);
       if (!spec || !actor.activeSkills.includes(id) || (actor.cooldowns[id] || 0) > 0 || status(actor, "silence")) { log(state, "invalid", "Active skill unavailable"); return; }
       const efficiency = skillData(actor, "skill_efficiency");
-      const cost = Math.max(0, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0))));
+      const equipmentMultiplier = Math.max(0, Number(actor.equipmentEffects?.activeSkillMpMultiplier) || 1);
+      const cost = spec.sp > 0 ? Math.max(1, Math.ceil(spec.sp * (1 - pct(efficiency ? efficiency.spReductionPct : 0)) * equipmentMultiplier)) : 0;
       if (actor.sp < cost) { log(state, "invalid", "Not enough SP"); return; }
       actor.sp -= cost; context.usedSkillId = id; context.wasActive = true;
       context.attackAction = Number(spec.mult) > 0;
@@ -826,6 +852,35 @@
     }
   }
 
+  function resolveMythicEffectsAfterAction(state, actor, context) {
+    if (actor.kind === "hero" && context.attackAction && context.hitAny) {
+      const effects = actor.equipmentEffects || {};
+      if (effects.bossWeaponSignature === "spirit_restore" && chance(state, 30)) {
+        heal(state, actor, actor.maxHp * 0.10, actor, "Spirit Greatsword");
+      }
+      if (effects.bossWeaponSignature === "lavalon_extra_basic" && context.wasActive) {
+        let extras = 0;
+        for (const targetId of context.activeHitTargetIds) {
+          if (extras >= 3) break;
+          const target = state.units[targetId];
+          if (living(target) && chance(state, 10)) {
+            attackHit(state, actor, target, { mult: 1, actionType: "basic", actionName: "Lavalon extra attack", statuses: [] }, context);
+            extras += 1;
+          }
+        }
+      }
+    }
+    if (actor.kind !== "hero" && context.heroStruck) {
+      for (const heroId of context.struckHeroIds) {
+        const hero = state.units[heroId];
+        if (living(hero) && living(actor) && hero.equipmentEffects?.bossWeaponSignature === "icicle_counter" && chance(state, 20)) {
+          attackHit(state, hero, actor, { mult: 1, actionType: "counter", actionName: "Icicle counter", statuses: [] }, context);
+          log(state, "counter", "Icicle Longsword countered", { actorId: hero.id, targetId: actor.id });
+        }
+      }
+    }
+  }
+
   function finishBattle(state, result, winnerSide = null, text = null) {
     if (state.result) return;
     state.winnerSide = winnerSide;
@@ -904,7 +959,7 @@
         return { state, waiting: true, completedAction: false, error: invalid };
       }
     }
-    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
+    const context = { appliedStatuses: new Set(), struckHeroIds: new Set(), activeHitTargetIds: [], firstHitTargetId: null, azureProcRolled: false, totalDamage: 0, hitAny: false, heroStruck: false, killed: false, debuffApplied: false, cdrUsed: false, usedSkillId: null, schemeConsumed: false, activeDebuffBonus: 0, attackAction: false, targetHadDebuff: false, strictTarget: strictArenaTarget };
     startEffects(state, actor, context);
     if (living(actor)) {
       if (status(actor, "stun")) { delete actor.statuses.stun; log(state, "stun", `${actor.name || actor.id} lost the Action`); }
@@ -916,6 +971,7 @@
       else resolveEnemyAction(state, actor, context);
     }
     resolveHeroReactionsAfterAction(state, actor, context);
+    resolveMythicEffectsAfterAction(state, actor, context);
     const pet = petForSide(state, actor.side);
     const petCdr = pet && petSkillData(pet).extra;
     if (context.debuffApplied && (actor.kind === "hero" || actor.kind === "pet") && pet && living(pet) && petCdr.type === "petCdrOnDebuff" && !context.cdrUsed && !(actor.id === pet.id && context.usedSkillId === "pet_active") && Number(pet.cooldowns.pet_active) > 0 && chance(state, chancePercent(petCdr.pct))) {

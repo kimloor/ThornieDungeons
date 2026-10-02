@@ -17,6 +17,8 @@ function loadWorkerSource(root) {
   const leaderboard = fs.readFileSync(path.join(repoRoot, "workers/modules/leaderboard.js"), "utf8")
     .replace(/^export function createLeaderboardHandlers/, "function createLeaderboardHandlers");
   const enhancementV2 = fs.readFileSync(path.join(repoRoot, "src/systems/enhancementV2.js"), "utf8");
+  const rewardV2 = fs.readFileSync(path.join(repoRoot, "src/systems/rewardV2.js"), "utf8");
+  const mythicV2 = fs.readFileSync(path.join(repoRoot, "src/systems/mythicV2.js"), "utf8");
   const worker = fs.readFileSync(path.join(repoRoot, "workers/thornie-dungeons-api.js"), "utf8")
     .replace(/^import \{[\s\S]*?\} from "\.\/modules\/shared\.js";\s*/m, "")
     .replace(/^import \{ createSocialHandlers \} from "\.\/modules\/social\.js";\s*/m, "")
@@ -24,7 +26,10 @@ function loadWorkerSource(root) {
     .replace(/^import \{ createAuthHandlers \} from "\.\/modules\/auth\.js";\s*/m, "")
     .replace(/^import \{ createLeaderboardHandlers \} from "\.\/modules\/leaderboard\.js";\s*/m, "")
     .replace(/^import "\.\.\/src\/systems\/enhancementV2\.js";\s*/m, "");
-  return `${shared}\n${auth}\n${social}\n${mailbox}\n${leaderboard}\n${enhancementV2}\n${worker}`;
+  const flattened = worker
+    .replace(/^import "\.\.\/src\/systems\/rewardV2\.js";\s*/m, "")
+    .replace(/^import "\.\.\/src\/systems\/mythicV2\.js";\s*/m, "");
+  return `${shared}\n${auth}\n${social}\n${mailbox}\n${leaderboard}\n${enhancementV2}\n${rewardV2}\n${mythicV2}\n${flattened}`;
 }
 
 module.exports = { loadWorkerSource };

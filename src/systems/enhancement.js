@@ -24,6 +24,9 @@ const JUNK_INFO = {
     name: "หินมานา",
     icon: "🔮"
   },
+  earthStone: { name: "Earth Stone", icon: "🟢" },
+  fireStone: { name: "Fire Stone", icon: "🔴" },
+  waterStone: { name: "Water Stone", icon: "🔵" },
   // Raid boss materials (shared across all boss types for now).
   bossHorn: {
     name: "เขาบอส",
@@ -41,6 +44,11 @@ const JUNK_INFO = {
   recipe_azure_weapon: { name: "แบบร่างอาวุธ Azure", icon: "📜" },
   recipe_azure_ring: { name: "แบบร่างแหวน Azure", icon: "📜" }
 };
+["robot", "skeleton"].forEach(family => {
+  ["helmet", "chest", "gloves", "boots", "weapon", "ring"].forEach(slot => {
+    JUNK_INFO[`recipe_${family}_${slot}`] = { name: `แบบร่าง ${family} ${slot}`, icon: "📜" };
+  });
+});
 // Merges server-managed junk_info rows (admin.html) into the built-in defaults above —
 // merge, not replace, so newly-added materials show up without needing every existing
 // one re-declared server-side, and nothing breaks if the table is ever emptied.

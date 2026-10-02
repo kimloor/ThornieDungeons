@@ -146,6 +146,16 @@ function combatPowerFromCharacter(character, equippedItems) {
     const ib = itemBonus(it);
     Object.keys(ib).forEach((k) => { eb[k] += ib[k]; });
   });
+  if (globalThis.MYTHIC_V2) {
+    const equipped = {};
+    for (const row of equippedItems || []) {
+      let extra = {};
+      try { extra = JSON.parse(row.extra_json || "{}"); } catch (_) {}
+      equipped[row.slot_type] = { type: row.slot_type, rarity: row.rarity, itemModelVersion: extra.itemModelVersion, setId: extra.setId };
+    }
+    const sets = globalThis.MYTHIC_V2.setEffects(equipped);
+    eb.str += sets.str; eb.vit += sets.vit; eb.agi += sets.agi; eb.critDamage += sets.critDamage;
+  }
   const adjustedAtk = base.atk + eb.str * 3 + Math.floor((s.dex + eb.dex) * 0.5) - Math.floor(s.dex * 0.5);
   const adjustedDef = base.def + Math.floor((s.vit + eb.vit) * 0.5) - Math.floor(s.vit * 0.5);
   const atk = Math.round(adjustedAtk + eb.atk);
