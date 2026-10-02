@@ -13205,14 +13205,32 @@ function ThornieDungeons() {
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
+  const [persistenceDiagnostic, setPersistenceDiagnostic] = useState(null);
   const persistenceRef = useRef(null);
   if (!persistenceRef.current) {
     persistenceRef.current = createPersistenceManager({
       onStatusChange: (status, detail) => {
         setPersistenceStatus(status);
-        setPersistenceMessage(status === "failed"
-          ? `บันทึก Cloud ไม่สำเร็จ (${detail?.error?.code || "unknown_error"})`
-          : "");
+        if (status === "failed") {
+          const error = detail?.error;
+          const response = error?.response && typeof error.response === "object" ? error.response : null;
+          setPersistenceMessage(`บันทึก Cloud ไม่สำเร็จ (${error?.code || "unknown_error"})`);
+          setPersistenceDiagnostic({
+            code: error?.code || "unknown_error",
+            status: error?.status || response?.status || null,
+            domain: detail?.domain || "unknown",
+            characterId: detail?.context?.characterId || "",
+            itemId: response?.itemId || "",
+            action: response?.action || "",
+            transient: !!error?.transient,
+            message: error?.message || error?.code || "Cloud persistence failure",
+            response,
+            stack: String(error?.stack || error?.cause?.stack || "")
+          });
+        } else {
+          setPersistenceMessage("");
+          if (status === "saved") setPersistenceDiagnostic(null);
+        }
       }
     });
   }
@@ -15533,10 +15551,7 @@ function ThornieDungeons() {
     className: isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
       : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${phase === "combat" ? " md-root-combat" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), persistenceStatus === "failed" && /*#__PURE__*/React.createElement("div", {
-    className: `md-save-state md-save-state-${persistenceStatus}`,
-    role: persistenceStatus === "failed" ? "alert" : "status"
-  }, persistenceStatus === "saving" ? "กำลังบันทึก…" : persistenceMessage || "บันทึก Cloud ไม่สำเร็จ — กดบันทึกเพื่อลองใหม่"), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && phase !== "arena" && /*#__PURE__*/React.createElement(StatusBar, {
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && phase !== "arena" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -16058,6 +16073,9 @@ function ThornieDungeons() {
     characterId: save.characterId,
     guildId: guildProfileTarget.guildId,
     onClose: () => setGuildProfileTarget(null)
+  }), persistenceDiagnostic && /*#__PURE__*/React.createElement(PersistenceDiagnosticOverlay, {
+    diagnostic: persistenceDiagnostic,
+    onClose: () => setPersistenceDiagnostic(null)
   }), arenaFatal && /*#__PURE__*/React.createElement(ArenaFatalDiagnosticOverlay, {
     diagnostic: arenaFatal,
     onResume: () => {
