@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — WAVES 1-4.5 complete in Production; WAVE 5 Raid / Wings V2 is the next execution gate**
+Status: **ACTIVE-EXECUTION — WAVES 1-5.1 complete in Production; WAVE 5.5 Security Hardening is the next execution gate**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -955,7 +955,7 @@ Exit condition:
 ---
 
 ## WAVE 5 — Raid / Wings V2
-**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
+**Status: COMPLETE / PRODUCTION VERIFIED — 2026-10-02**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: Graphics + QA**
@@ -991,14 +991,19 @@ QA gate:
 - Hero V5 rendering;
 - Raid save/auth regression.
 
+Release result:
+- merged to Production in PR #45; merge baseline `bb4c0d03c1194fc624c3f7e0169b537f65dcea45`;
+- migration `0027_w5_raid_wings_v2.sql` applied successfully;
+- Frontend/API deploy, Battle Core parity and Workers Build passed;
+- authenticated user verification confirmed real Raid milestone reward delivery.
+
 Exit condition:
 - Raid reward mechanics are stable before W10 Raid presentation is finalized.
-- No merge or Production deployment is implied by this feature-branch status.
 
 ---
 
 ## WAVE 5.1 — Empower V2.1 + Item Pipeline Consistency
-**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
+**Status: COMPLETE / PRODUCTION VERIFIED — 2026-10-02**
 **Risk: HIGH**
 
 Scope completed on the feature branch:
@@ -1007,11 +1012,14 @@ Scope completed on the feature branch:
 - authoritative Wing family visuals, primary-stat display/valuation, Wing Empower UI, and Reward V2 salvage eligibility;
 - existing item options and player data remain untouched; Market/Trade and W6 cleanup remain out of scope.
 
-QA gate:
-- Empower rarity boundaries, reroll/lock behavior and existing-item preservation;
-- Wing family stat/visual/display/sell regressions;
-- mailbox/craft provenance and exact-once authority regressions;
-- full W2/W3/W4/W4.5/W5, build, generated-index and Wrangler checks.
+QA / release result:
+- Empower rarity boundaries, immutable option-type reroll, lock behavior and existing-item preservation verified;
+- Wing family stat/visual/display/sell regressions verified;
+- Reward V2 R/U/E salvage and Mythic special salvage verified;
+- provenance + ownership acquire events verified, including no orphan craft logs on conflict;
+- PR #46 merged as `33562eaad3704f4aa62587d53e1848c5cf7f5e4e`;
+- migration `0028_empower_v21_item_provenance.sql` applied successfully;
+- Frontend/API deploy, Battle Core parity, Admin V2 QA and Workers Build passed.
 
 ---
 
