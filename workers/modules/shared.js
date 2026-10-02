@@ -100,9 +100,13 @@ function characterBaseStats(level, s) {
 // critDamage/dodgeChance/empowerSlots that don't have their own columns.
 function itemBonus(it) {
   const lvl = Number(it.enhance_level) || 0;
-  const growMult = 1 + lvl * ENHANCE_STAT_PCT;
   let extra = {};
   try { extra = it.extra_json ? JSON.parse(it.extra_json) : {}; } catch (e) { extra = {}; }
+  const rules = globalThis.ENHANCEMENT_V2;
+  const v2Item = { type: it.slot_type, rewardVersion: extra.rewardVersion, itemModelVersion: extra.itemModelVersion, wingFamily: extra.wingFamily || extra.wingId || extra.wingsId || extra.setId };
+  const isV2 = !!rules?.isV2Item(v2Item);
+  const isV2Wing = isV2 && it.slot_type === "wings";
+  const growMult = isV2Wing ? 1 : 1 + lvl * ENHANCE_STAT_PCT;
   const b = {
     atk: (Number(it.atk) || 0) * growMult,
     def: (Number(it.def) || 0) * growMult,
@@ -111,12 +115,17 @@ function itemBonus(it) {
     critChance: (Number(extra.critChance) || 0) * growMult,
     critDamage: (Number(extra.critDamage) || 0) * growMult,
     dodgeChance: (Number(extra.dodgeChance) || 0) * growMult,
-    dropBonus: 0,
+    dropBonus: 0, hpPct: 0, mpPct: 0,
+    str: 0, vit: 0, agi: 0, dex: 0, luk: 0,
   };
+  if (isV2Wing) {
+    const primary = rules.WING_PRIMARY_STAT[rules.wingFamily(v2Item)];
+    if (primary) b[primary] += lvl;
+  }
   (extra.empowerSlots || []).forEach((slot) => {
     if (!slot) return;
-    if (slot.key === "atkPct") b.atk += (Number(it.atk) || 0) * slot.value;
-    else if (slot.key === "defPct") b.def += (Number(it.def) || 0) * slot.value;
+    if (slot.key === "atkPct") b.atk += (Number(it.atk) || 0) * slot.value * (isV2 ? 0.01 : 1);
+    else if (slot.key === "defPct") b.def += (Number(it.def) || 0) * slot.value * (isV2 ? 0.01 : 1);
     else b[slot.key] = (b[slot.key] || 0) + slot.value;
   });
   return b;
@@ -132,19 +141,21 @@ function combatPowerFromCharacter(character, equippedItems) {
   };
   const level = Number(character.level) || 1;
   const base = characterBaseStats(level, s);
-  const eb = { atk: 0, def: 0, hp: 0, mp: 0, critChance: 0, critDamage: 0, dodgeChance: 0, dropBonus: 0 };
+  const eb = { atk: 0, def: 0, hp: 0, mp: 0, critChance: 0, critDamage: 0, dodgeChance: 0, dropBonus: 0, hpPct: 0, mpPct: 0, str: 0, vit: 0, agi: 0, dex: 0, luk: 0 };
   (equippedItems || []).forEach((it) => {
     const ib = itemBonus(it);
     Object.keys(ib).forEach((k) => { eb[k] += ib[k]; });
   });
-  const atk = Math.round(base.atk + eb.atk);
-  const def = Math.round(base.def + eb.def);
-  const maxHp = Math.round(base.maxHp + eb.hp);
-  const maxMp = Math.round(base.maxMp + eb.mp);
-  const accuracy = Math.min(99, Math.round((base.accuracy + eb.accuracy) * 10) / 10 || base.accuracy);
-  const critChance = Math.round((base.critChance + eb.critChance) * 10) / 10;
+  const adjustedAtk = base.atk + eb.str * 3 + Math.floor((s.dex + eb.dex) * 0.5) - Math.floor(s.dex * 0.5);
+  const adjustedDef = base.def + Math.floor((s.vit + eb.vit) * 0.5) - Math.floor(s.vit * 0.5);
+  const atk = Math.round(adjustedAtk + eb.atk);
+  const def = Math.round(adjustedDef + eb.def);
+  const maxHp = Math.round((base.maxHp + eb.vit * 12 + eb.hp) * (1 + eb.hpPct / 100));
+  const maxMp = Math.round((base.maxMp + eb.mp) * (1 + eb.mpPct / 100));
+  const accuracy = Math.min(99, Math.round((base.accuracy + (eb.accuracy || 0) + eb.dex * 0.5) * 10) / 10 || base.accuracy);
+  const critChance = Math.round((base.critChance + eb.critChance + eb.luk * 0.5) * 10) / 10;
   const critDamage = Math.round((base.critDamage + eb.critDamage) * 10) / 10;
-  const dodgeChance = Math.round((base.dodgeChance + eb.dodgeChance) * 10) / 10;
+  const dodgeChance = Math.round((base.dodgeChance + eb.dodgeChance + eb.agi * 0.5) * 10) / 10;
   return Math.round(
     atk * 12 + def * 15 + maxHp * 2 + maxMp * 1.5 + accuracy * 4 + critChance * 8 + critDamage * 3 + dodgeChance * 6 + level * 50
   );

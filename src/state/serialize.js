@@ -127,7 +127,11 @@ function itemsToServerList(inventory, equipped, overflow = []) {
       specialSource: it.specialSource || undefined,
       sourceIdentity: it.sourceIdentity || undefined,
       empowerSlotCapacity: it.empowerSlotCapacity || undefined,
-      utilityStat: it.utilityStat || undefined
+      utilityStat: it.utilityStat || undefined,
+      wingFamily: it.wingFamily || undefined,
+      blacksmithVersion: it.blacksmithVersion || undefined,
+      blacksmithReceipts: Array.isArray(it.blacksmithReceipts) ? it.blacksmithReceipts.slice(-32) : undefined,
+      blacksmithLastResult: it.blacksmithLastResult || undefined
     }
   });
   Object.values(equipped).forEach(it => {
@@ -215,6 +219,10 @@ function itemsFromServerList(rows) {
       if (extra.sourceFloor) it.sourceFloor = numOr(extra.sourceFloor, 0);
       if (extra.specialSource) it.specialSource = String(extra.specialSource);
       if (extra.sourceIdentity) it.sourceIdentity = String(extra.sourceIdentity);
+      if (extra.wingFamily) it.wingFamily = String(extra.wingFamily);
+      if (extra.blacksmithVersion) it.blacksmithVersion = numOr(extra.blacksmithVersion, 0);
+      if (Array.isArray(extra.blacksmithReceipts)) it.blacksmithReceipts = extra.blacksmithReceipts.map(String).filter(Boolean).slice(-32);
+      if (extra.blacksmithLastResult && typeof extra.blacksmithLastResult === "object") it.blacksmithLastResult = extra.blacksmithLastResult;
       ["atk", "def", "hp", "mp", "dodgeChance", "critChance", "critDamage"].forEach(k => {
         if (!it[k]) delete it[k];
       });

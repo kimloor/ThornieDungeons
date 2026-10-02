@@ -6133,6 +6133,7 @@ function BlacksmithOverlay({
   inventory,
   busy,
   gold,
+  protectionStones,
   onEnhance,
   onEmpower,
   onReroll,
@@ -6144,6 +6145,7 @@ function BlacksmithOverlay({
   const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
   const [actionMsg, setActionMsg] = useState("");
   const [animState, setAnimState] = useState(null); // 'success' | 'fail' | null
+  const [useProtectionStone, setUseProtectionStone] = useState(false);
   const animTimerRef = useRef(null);
   const [gridExpanded, setGridExpanded] = useState(false);
   const GRID_COLLAPSED_COUNT = 10;
@@ -6166,28 +6168,30 @@ function BlacksmithOverlay({
     setSelectedId(item.id);
     setSelectedEquippedSlot(null);
     setActionMsg("");
+    setUseProtectionStone(false);
   };
   const chooseEquipped = slot => {
     if (!equipped[slot]) return;
     setSelectedEquippedSlot(slot);
     setSelectedId(null);
     setActionMsg("");
+    setUseProtectionStone(false);
   };
-  const doEnhance = () => {
+  const doEnhance = async () => {
     if (!detailTarget) return;
-    const res = onEnhance(detailTarget.id);
+    const res = await Promise.resolve(onEnhance(detailTarget.id, useProtectionStone));
     setActionMsg(res.message);
     playAnim(res.ok);
   };
-  const doEmpower = () => {
+  const doEmpower = async () => {
     if (!detailTarget) return;
-    const res = onEmpower(detailTarget.id);
+    const res = await Promise.resolve(onEmpower(detailTarget.id));
     setActionMsg(res.message);
     playAnim(res.ok);
   };
-  const doReroll = () => {
+  const doReroll = async () => {
     if (!detailTarget) return;
-    const res = onReroll(detailTarget.id);
+    const res = await Promise.resolve(onReroll(detailTarget.id));
     setActionMsg(res.message);
     playAnim(res.ok);
   };
@@ -6215,7 +6219,11 @@ function BlacksmithOverlay({
         key: i,
         type: "button",
         disabled: !s,
-        onClick: () => s && onToggleLock(it.id, i),
+        onClick: async () => {
+          if (!s) return;
+          const result = await Promise.resolve(onToggleLock(it.id, i));
+          if (result?.message) setActionMsg(result.message);
+        },
         title: s ? `${s.icon} +${s.value} ${s.label} — แตะเพื่อ${s.locked ? "ปลดล็อก" : "ล็อก"}` : "ยังไม่ปลดล็อก",
         style: {
           fontSize: 10,
@@ -6257,6 +6265,15 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
       renderEmpowerSlots(detailTarget),
+      ENHANCEMENT_V2.isV2Item(detailTarget) && (Number(detailTarget.enhanceLevel) || 0) >= 6 && (Number(detailTarget.enhanceLevel) || 0) < ENHANCEMENT_V2.ENHANCE_MAX && /*#__PURE__*/React.createElement("label", {
+        className: "md-item-detail-sub",
+        style: { display: "flex", alignItems: "center", gap: 6, marginTop: 7 }
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "checkbox",
+        checked: useProtectionStone,
+        disabled: busy || (protectionStones || 0) < 1,
+        onChange: event => setUseProtectionStone(event.target.checked)
+      }), `ใช้ Protection Stone เมื่อ downgrade เกิดขึ้น (มี ${protectionStones || 0})`),
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 6 } },
         /*#__PURE__*/React.createElement("button", {
           className: "md-btn info small",
@@ -6264,9 +6281,10 @@ function BlacksmithOverlay({
           disabled: (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX || busy,
           onClick: doEnhance
         }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : (() => {
-          const c = enhanceCost(detailTarget.enhanceLevel || 0);
+          const isV2 = ENHANCEMENT_V2.isV2Item(detailTarget);
+          const c = isV2 ? ENHANCEMENT_V2.enhanceCost(detailTarget) : enhanceCost(detailTarget.enhanceLevel || 0);
           const haveIron = junkTotal(inventory, "iron");
-          return [`🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · `,
+          return [`🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${isV2 ? ENHANCEMENT_V2.enhanceSuccessRate(detailTarget.enhanceLevel || 0) : enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · `,
             /*#__PURE__*/React.createElement(GameIcon, { key: "iron-icon", item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }),
             /*#__PURE__*/React.createElement("span", { key: "iron", className: haveIron < c.iron ? "md-cost-insufficient" : "" }, c.iron),
             " ",
@@ -6277,10 +6295,12 @@ function BlacksmithOverlay({
         /*#__PURE__*/React.createElement("button", {
           className: "md-btn info small",
           style: { flex: 1, minHeight: 38, fontSize: 10 },
-          disabled: !(detailTarget.empowerSlots || []).some(s => !s) || busy,
+          disabled: !(detailTarget.empowerSlots || []).some(s => !s) || busy || (ENHANCEMENT_V2.isV2Item(detailTarget) && detailTarget.type === "wings"),
           onClick: doEmpower
         }, !(detailTarget.empowerSlots || []).some(s => !s) ? "🔮 เสริมพลังครบแล้ว" : (() => {
-          const c = empowerCost((detailTarget.empowerSlots || []).findIndex(s => !s));
+          const nextIndex = (detailTarget.empowerSlots || []).findIndex(s => !s);
+          const c = ENHANCEMENT_V2.isV2Item(detailTarget) ? ENHANCEMENT_V2.empowerOpenCost(detailTarget, nextIndex) : empowerCost(nextIndex);
+          if (!c) return "🔮 Empower Wings รอ W5 economy";
           const haveManaOre = junkTotal(inventory, "manaOre");
           return ["🔮 เสริมพลัง (",
             /*#__PURE__*/React.createElement(GameIcon, { key: "mana-icon", item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }),
@@ -6294,13 +6314,16 @@ function BlacksmithOverlay({
       /*#__PURE__*/React.createElement("button", {
         className: "md-btn info small",
         style: { width: "100%", minHeight: 38, fontSize: 10, marginTop: 6 },
-        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked) || busy,
+        disabled: !(detailTarget.empowerSlots || []).some(Boolean) || (detailTarget.empowerSlots || []).filter(Boolean).every(s => s.locked) || busy || (ENHANCEMENT_V2.isV2Item(detailTarget) && detailTarget.type === "wings"),
         onClick: doReroll
       }, (() => {
         const filled = (detailTarget.empowerSlots || []).filter(Boolean);
         if (!filled.length) return "🔄 รีรอล (ยังไม่มีออฟชั่น)";
         const lockedCount = filled.filter(s => s.locked).length;
-        const c = rerollCost(filled.length, lockedCount);
+        const c = ENHANCEMENT_V2.isV2Item(detailTarget)
+          ? ENHANCEMENT_V2.empowerRerollCost(detailTarget, filled.length, lockedCount)
+          : rerollCost(filled.length, lockedCount);
+        if (!c) return "🔄 Empower Wings รอ W5 economy";
         const haveManaOre = junkTotal(inventory, "manaOre");
         return ["🔄 รีรอลออฟชั่น (",
           /*#__PURE__*/React.createElement(GameIcon, { key: "mana-icon", item: { type: "junk", junkId: "manaOre" }, fallback: JUNK_INFO.manaOre.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.manaOre.name }),

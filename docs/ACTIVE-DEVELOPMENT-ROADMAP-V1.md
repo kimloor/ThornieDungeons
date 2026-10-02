@@ -805,10 +805,14 @@ Exit condition:
 ---
 
 ## WAVE 3 — Enhance + Empower V2
-**Status: READY AFTER WAVE 2**
+**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA; Graphics may prepare W11 presentation assets in parallel**
+
+Implementation note:
+- V2 Enhance/Empower mutations use a server-authoritative Worker transaction boundary; legacy items retain their existing compatibility paths.
+- Tierless Raid Wing Enhance uses the locked T5 economy. Wing Empower remains deferred until its explicitly unresolved Tierless Gold multiplier is approved with the W5 Wing model.
 
 ### Enhance V2
 - +0 to +10;

@@ -72,6 +72,9 @@ import { createAuthHandlers } from "./modules/auth.js";
 import { createSocialHandlers } from "./modules/social.js";
 import { createMailboxHandlers } from "./modules/mailbox.js";
 import { createLeaderboardHandlers } from "./modules/leaderboard.js";
+import "../src/systems/enhancementV2.js";
+
+const ENHANCEMENT_V2_RULES = globalThis.ENHANCEMENT_V2;
 
 const {
   PASSWORD_MIN, PASSWORD_MAX, PASSWORD_ITERATIONS, SESSION_24H_MS, SESSION_30D_MS, AUTH_ERRORS,
@@ -1213,29 +1216,60 @@ async function handleSyncItems(db, id, session, characterId, items) {
   const now = nowIso();
   const keepIds = [];
   const stmts = [];
+  const existingRowsResult = await db.prepare(`SELECT * FROM items WHERE character_id = ?`).bind(characterId).all();
+  const existingRows = existingRowsResult.results || [];
+  const existingById = new Map(existingRows.map(row => [String(row.item_id), row]));
 
   items.forEach((it, index) => {
     const itemId = String(it.itemId || `item-${characterId}-${Date.now()}-${index}`);
+    const existing = existingById.get(itemId);
+    const existingExtra = parseJsonColumn(existing?.extra_json, {});
+    const incomingExtra = it.extraJson ? parseJsonColumn(String(it.extraJson), {}) : (it.extra && typeof it.extra === "object" ? { ...it.extra } : {});
+    const protectedV2 = !!existing && ENHANCEMENT_V2_RULES?.isV2Item({
+      rewardVersion: existingExtra.rewardVersion,
+      itemModelVersion: existingExtra.itemModelVersion
+    });
+    const protectedExtra = protectedV2 ? {
+      ...incomingExtra,
+      rewardVersion: existingExtra.rewardVersion,
+      itemModelVersion: existingExtra.itemModelVersion,
+      gearTier: existingExtra.gearTier,
+      empowerSlotCapacity: existingExtra.empowerSlotCapacity,
+      empowerSlots: existingExtra.empowerSlots,
+      sourceType: existingExtra.sourceType,
+      sourceFloor: existingExtra.sourceFloor,
+      specialSource: existingExtra.specialSource,
+      sourceIdentity: existingExtra.sourceIdentity,
+      utilityStat: existingExtra.utilityStat,
+      wingFamily: existingExtra.wingFamily,
+      blacksmithVersion: existingExtra.blacksmithVersion,
+      blacksmithReceipts: existingExtra.blacksmithReceipts,
+      blacksmithLastResult: existingExtra.blacksmithLastResult,
+      // Favorite/equip/overflow remain normal inventory concerns and may still be
+      // changed by the client without rewriting authoritative W3 mutation state.
+      favorite: incomingExtra.favorite,
+      overflow: incomingExtra.overflow
+    } : incomingExtra;
     keepIds.push(itemId);
     const obj = {
       item_id: itemId,
       player_id: id,
       character_id: characterId, // always the authenticated/owned character — never trust a client-supplied value here
-      slot_type: it.slotType || "",
+      slot_type: protectedV2 ? existing.slot_type : (it.slotType || ""),
       equipped: it.equipped ? 1 : 0,
       inventory_slot: it.inventorySlot === undefined ? "" : it.inventorySlot,
-      item_template_id: it.itemTemplateId || "",
-      rarity: it.rarity || "",
-      name: it.name || "",
+      item_template_id: protectedV2 ? existing.item_template_id : (it.itemTemplateId || ""),
+      rarity: protectedV2 ? existing.rarity : (it.rarity || ""),
+      name: protectedV2 ? existing.name : (it.name || ""),
       item_level: Number(it.itemLevel) || 0,
-      enhance_level: Number(it.enhanceLevel) || 0,
+      enhance_level: protectedV2 ? (Number(existing.enhance_level) || 0) : (Number(it.enhanceLevel) || 0),
       bound: it.bound ? 1 : 0,
       quantity: Math.max(1, Number(it.quantity) || 1),
-      atk: Number(it.atk) || 0,
-      def: Number(it.def) || 0,
-      hp: Number(it.hp) || 0,
-      mp: Number(it.mp) || 0,
-      extra_json: it.extraJson ? String(it.extraJson) : it.extra ? JSON.stringify(it.extra) : "",
+      atk: protectedV2 ? (Number(existing.atk) || 0) : (Number(it.atk) || 0),
+      def: protectedV2 ? (Number(existing.def) || 0) : (Number(it.def) || 0),
+      hp: protectedV2 ? (Number(existing.hp) || 0) : (Number(it.hp) || 0),
+      mp: protectedV2 ? (Number(existing.mp) || 0) : (Number(it.mp) || 0),
+      extra_json: JSON.stringify(protectedExtra),
       created_at: now,
       updated_at: now,
     };
@@ -1243,11 +1277,10 @@ async function handleSyncItems(db, id, session, characterId, items) {
     const placeholders = cols.map(() => "?").join(",");
     const updates = cols.filter((c) => c !== "item_id" && c !== "created_at").map((c) => `${c}=excluded.${c}`).join(",");
     const values = cols.map((c) => obj[c]);
-    stmts.push(
-      db
-        .prepare(`INSERT INTO items (${cols.join(",")}) VALUES (${placeholders}) ON CONFLICT(item_id) DO UPDATE SET ${updates}`)
-        .bind(...values)
-    );
+    const staleGuard = protectedV2 ? ` WHERE COALESCE(items.extra_json, '') = ?` : "";
+    stmts.push(db
+      .prepare(`INSERT INTO items (${cols.join(",")}) VALUES (${placeholders}) ON CONFLICT(item_id) DO UPDATE SET ${updates}${staleGuard}`)
+      .bind(...values, ...(protectedV2 ? [existing.extra_json || ""] : [])));
   });
 
   // Delete stale rows for THIS CHARACTER ONLY that aren't in the new payload — scoped
@@ -1259,8 +1292,7 @@ async function handleSyncItems(db, id, session, characterId, items) {
     : `DELETE FROM items WHERE character_id = ?`;
   const deleteStmt = keepIds.length ? db.prepare(deleteSql).bind(characterId, ...keepIds) : db.prepare(deleteSql).bind(characterId);
 
-  const beforeIds = await db.prepare(`SELECT item_id FROM items WHERE character_id = ?`).bind(characterId).all();
-  const beforeSet = new Set((beforeIds.results || []).map((r) => r.item_id));
+  const beforeSet = new Set(existingRows.map((r) => r.item_id));
   const keepSet = new Set(keepIds);
   let removed = 0;
   beforeSet.forEach((iid) => { if (!keepSet.has(iid)) removed++; });
@@ -1270,6 +1302,187 @@ async function handleSyncItems(db, id, session, characterId, items) {
   await db.batch([...stmts, deleteStmt]);
 
   return json({ ok: true, count: items.length, added, removed });
+}
+
+// ---------- WAVE 3: authoritative Reward V2 Enhance / Empower ----------
+function secureRandomUnit() {
+  const words = new Uint32Array(1);
+  crypto.getRandomValues(words);
+  return words[0] / 0x100000000;
+}
+function v2BlacksmithItemFromRow(row, extra) {
+  return {
+    id: row.item_id,
+    type: row.slot_type,
+    rarity: row.rarity,
+    enhanceLevel: Number(row.enhance_level) || 0,
+    gearTier: Number(extra.gearTier) || 0,
+    rewardVersion: Number(extra.rewardVersion) || 0,
+    itemModelVersion: Number(extra.itemModelVersion) || 0,
+    empowerSlotCapacity: Number(extra.empowerSlotCapacity) || 0,
+    empowerSlots: Array.isArray(extra.empowerSlots) ? extra.empowerSlots : [],
+    wingFamily: extra.wingFamily || extra.wingId || extra.wingsId || extra.setId || ""
+  };
+}
+function v2BlacksmithReceipts(extra) {
+  return Array.isArray(extra?.blacksmithReceipts)
+    ? extra.blacksmithReceipts.map(String).filter(Boolean).slice(-32)
+    : [];
+}
+async function v2BlacksmithSnapshot(db, id, characterId) {
+  const [character, items, player] = await Promise.all([
+    getRow(db, "characters", "character_id", characterId),
+    getRows(db, "items", "character_id", characterId),
+    getRow(db, "players", "id", id),
+  ]);
+  return { character, items, diamonds: Number(player?.diamonds) || 0 };
+}
+async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mutation, requestId) {
+  const [auth, owned] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId)]);
+  if (auth.error) return json({ error: auth.error });
+  if (owned.error) return json({ error: owned.error });
+  const key = String(requestId || "").trim();
+  if (!key || key.length > 128) return json({ error: "missing_request_id" }, 400);
+  const action = String(mutation?.type || "");
+  if (!["enhance", "empower_open", "empower_lock", "empower_reroll"].includes(action)) return json({ error: "invalid_blacksmith_action" }, 400);
+  const row = await db.prepare(`SELECT * FROM items WHERE item_id = ? AND character_id = ? LIMIT 1`).bind(String(itemId || ""), characterId).first();
+  if (!row) return json({ error: "item_not_found" }, 404);
+  const originalExtra = parseJsonColumn(row.extra_json, {});
+  const receipts = v2BlacksmithReceipts(originalExtra);
+  if (receipts.includes(key)) return json({ ok: true, replayed: true, mutation: originalExtra.blacksmithLastResult || { type: action }, ...(await v2BlacksmithSnapshot(db, id, characterId)) });
+  const currentVersion = Math.max(0, Number(originalExtra.blacksmithVersion) || 0);
+  if (Math.floor(Number(mutation?.expectedVersion)) !== currentVersion) return json({ error: "blacksmith_version_conflict", currentVersion, retry: true, ...(await v2BlacksmithSnapshot(db, id, characterId)) }, 409);
+  const item = v2BlacksmithItemFromRow(row, originalExtra);
+  if (!ENHANCEMENT_V2_RULES?.isV2Item(item)) return json({ error: "not_v2_item" }, 400);
+  const canonicalCapacity = ENHANCEMENT_V2_RULES.empowerCapacity(item);
+  if (!canonicalCapacity || item.empowerSlots.length !== canonicalCapacity) return json({ error: "invalid_v2_empower_shape" }, 409);
+
+  const character = owned.row;
+  const oldGold = Math.max(0, Number(character.gold) || 0);
+  const oldProtection = Math.max(0, Number(character.protection_stones) || 0);
+  let goldCost = 0;
+  let junkId = "";
+  let protectionConsumed = 0;
+  let nextLevel = item.enhanceLevel;
+  let nextSlots = item.empowerSlots.map(slot => slot ? { ...slot } : null);
+  let outcome = { type: action };
+
+  if (action === "enhance") {
+    const cost = ENHANCEMENT_V2_RULES.enhanceCost(item, item.enhanceLevel);
+    if (!cost) return json({ error: item.enhanceLevel >= ENHANCEMENT_V2_RULES.ENHANCE_MAX ? "enhance_max" : "invalid_enhance_item" }, 400);
+    const risky = item.enhanceLevel >= 6;
+    const wantsProtection = mutation?.useProtectionStone === true;
+    if (wantsProtection && !risky) return json({ error: "protection_not_eligible" }, 400);
+    if (wantsProtection && oldProtection < 1) return json({ error: "insufficient_protection_stones", need: 1, have: oldProtection }, 400);
+    const resolved = ENHANCEMENT_V2_RULES.resolveEnhanceAttempt({
+      level: item.enhanceLevel,
+      successRoll: secureRandomUnit(),
+      downgradeRoll: secureRandomUnit(),
+      protectionRequested: wantsProtection,
+      protectionStones: oldProtection
+    });
+    goldCost = cost.gold;
+    junkId = "iron";
+    protectionConsumed = resolved.protectionConsumed ? 1 : 0;
+    nextLevel = resolved.levelAfter;
+    outcome = { ...resolved, type: action, cost };
+  } else if (action === "empower_open") {
+    if (item.type === "wings") return json({ error: "wing_empower_economy_unresolved" }, 409);
+    const slotIndex = nextSlots.findIndex(slot => !slot);
+    if (slotIndex < 0) return json({ error: "empower_slots_full" }, 400);
+    const cost = ENHANCEMENT_V2_RULES.empowerOpenCost(item, slotIndex);
+    if (!cost) return json({ error: "invalid_empower_cost" }, 400);
+    const rolled = ENHANCEMENT_V2_RULES.rollEmpowerOption(item.type, secureRandomUnit(), secureRandomUnit());
+    if (!rolled) return json({ error: "invalid_empower_item_type" }, 400);
+    nextSlots[slotIndex] = { ...rolled };
+    goldCost = cost.gold;
+    junkId = "manaOre";
+    outcome = { type: action, slotIndex, option: rolled, cost };
+  } else if (action === "empower_lock") {
+    const slotIndex = Math.floor(Number(mutation?.slotIndex));
+    const slot = nextSlots[slotIndex];
+    if (!slot || !ENHANCEMENT_V2_RULES.isValidEmpowerOption(item.type, { ...slot, locked: !!slot.locked })) return json({ error: "invalid_empower_slot" }, 400);
+    const nextLocked = !slot.locked;
+    const filledCount = nextSlots.filter(Boolean).length;
+    const lockedAfter = nextSlots.filter((current, index) => current && (index === slotIndex ? nextLocked : !!current.locked)).length;
+    if (nextLocked && filledCount > 0 && lockedAfter >= filledCount) return json({ error: "cannot_lock_all_empower_slots" }, 400);
+    nextSlots[slotIndex] = { ...slot, locked: nextLocked };
+    outcome = { type: action, slotIndex, locked: nextLocked, cost: { gold: 0, manaOre: 0 } };
+  } else {
+    if (item.type === "wings") return json({ error: "wing_empower_economy_unresolved" }, 409);
+    const filledCount = nextSlots.filter(Boolean).length;
+    const lockedCount = nextSlots.filter(slot => slot?.locked).length;
+    const cost = ENHANCEMENT_V2_RULES.empowerRerollCost(item, filledCount, lockedCount);
+    if (!cost) return json({ error: filledCount && lockedCount >= filledCount ? "all_empower_slots_locked" : "invalid_reroll" }, 400);
+    nextSlots = nextSlots.map(slot => !slot || slot.locked ? slot : { ...ENHANCEMENT_V2_RULES.rollEmpowerOption(item.type, secureRandomUnit(), secureRandomUnit()) });
+    goldCost = cost.gold;
+    junkId = "manaOre";
+    outcome = { type: action, filledCount, lockedCount, cost };
+  }
+
+  if (oldGold < goldCost) return json({ error: "insufficient_gold", need: goldCost, have: oldGold }, 400);
+  let junkRow = null;
+  let junkExtra = null;
+  if (junkId) {
+    const rows = await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND slot_type = 'junk' ORDER BY item_id`).bind(characterId).all();
+    for (const candidate of rows.results || []) {
+      const extra = parseJsonColumn(candidate.extra_json, {});
+      if (extra.junkId === junkId && Number(extra.quantity) > 0) { junkRow = candidate; junkExtra = extra; break; }
+    }
+    if (!junkRow) return json({ error: "insufficient_materials", junkId, need: 1, have: 0 }, 400);
+  }
+
+  const operationToken = randomToken(12);
+  const now = nowIso();
+  const finalReceipts = [...receipts.filter(receipt => receipt !== key), key].slice(-32);
+  const finalExtra = {
+    ...originalExtra,
+    empowerSlots: nextSlots,
+    blacksmithVersion: currentVersion + 1,
+    blacksmithReceipts: finalReceipts,
+    blacksmithLastResult: { requestId: key, ...outcome }
+  };
+  const pendingExtra = { ...originalExtra, blacksmithPending: operationToken };
+  const oldExtraEncoded = row.extra_json || "";
+  const pendingEncoded = JSON.stringify(pendingExtra);
+  const finalEncoded = JSON.stringify(finalExtra);
+  const resourceChecks = [
+    `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND gold = ? AND gold >= ? AND protection_stones = ? AND protection_stones >= ?)`
+  ];
+  const claimBinds = [characterId, oldGold, goldCost, oldProtection, protectionConsumed];
+  if (junkRow) {
+    resourceChecks.push(`EXISTS (SELECT 1 FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) >= 1)`);
+    claimBinds.push(junkRow.item_id, characterId, junkRow.extra_json || "");
+  }
+  const statements = [
+    db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND enhance_level = ? AND COALESCE(extra_json, '') = ? AND ${resourceChecks.join(" AND ")}`)
+      .bind(pendingEncoded, now, row.item_id, characterId, Number(row.enhance_level) || 0, oldExtraEncoded, ...claimBinds),
+    db.prepare(`UPDATE characters SET gold = gold - ?, protection_stones = protection_stones - ?, updated_at = ? WHERE character_id = ? AND gold = ? AND protection_stones = ? AND EXISTS (SELECT 1 FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ?)`)
+      .bind(goldCost, protectionConsumed, now, characterId, oldGold, oldProtection, row.item_id, characterId, pendingEncoded)
+  ];
+  if (junkRow) {
+    const remaining = Number(junkExtra.quantity) - 1;
+    if (remaining > 0) {
+      statements.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ?)`)
+        .bind(JSON.stringify({ ...junkExtra, quantity: remaining }), now, junkRow.item_id, characterId, junkRow.extra_json || "", row.item_id, characterId, pendingEncoded));
+    } else {
+      statements.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items target WHERE target.item_id = ? AND target.character_id = ? AND target.extra_json = ?)`)
+        .bind(junkRow.item_id, characterId, junkRow.extra_json || "", row.item_id, characterId, pendingEncoded));
+    }
+  }
+  statements.push(db.prepare(`UPDATE items SET enhance_level = ?, extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND extra_json = ?`)
+    .bind(nextLevel, finalEncoded, now, row.item_id, characterId, pendingEncoded));
+  const batch = await db.batch(statements);
+  const claimed = Number(batch?.[0]?.meta?.changes) || 0;
+  const characterUpdated = Number(batch?.[1]?.meta?.changes) || 0;
+  const finalized = Number(batch?.[batch.length - 1]?.meta?.changes) || 0;
+  if (claimed !== 1 || characterUpdated !== 1 || finalized !== 1) {
+    const current = await db.prepare(`SELECT extra_json FROM items WHERE item_id = ? AND character_id = ?`).bind(row.item_id, characterId).first();
+    const currentExtra = parseJsonColumn(current?.extra_json, {});
+    if (v2BlacksmithReceipts(currentExtra).includes(key)) return json({ ok: true, replayed: true, mutation: currentExtra.blacksmithLastResult || { type: action }, ...(await v2BlacksmithSnapshot(db, id, characterId)) });
+    return json({ error: "blacksmith_conflict", retry: true }, 409);
+  }
+  return json({ ok: true, replayed: false, mutation: outcome, ...(await v2BlacksmithSnapshot(db, id, characterId)) });
 }
 
 async function handleGetInventory(db, id, session, characterId, page, pageSize) {
@@ -3864,7 +4077,7 @@ function arenaSnapshotStats(character, items) {
     luk: Number(character.luk) || 0,
   };
   const base = characterBaseStats(Number(character.level) || 1, stats);
-  const bonus = { atk: 0, def: 0, hp: 0, mp: 0, accuracy: 0, critChance: 0, critDamage: 0, dodgeChance: 0 };
+  const bonus = { atk: 0, def: 0, hp: 0, mp: 0, hpPct: 0, mpPct: 0, str: 0, vit: 0, agi: 0, dex: 0, luk: 0, accuracy: 0, critChance: 0, critDamage: 0, dodgeChance: 0 };
   for (const item of items || []) {
     const current = itemBonus(item);
     for (const key of Object.keys(current)) bonus[key] = (bonus[key] || 0) + (Number(current[key]) || 0);
@@ -3872,14 +4085,14 @@ function arenaSnapshotStats(character, items) {
   return {
     ...stats,
     level: Number(character.level) || 1,
-    maxHp: Math.round(base.maxHp + bonus.hp),
-    maxMp: Math.round(base.maxMp + bonus.mp),
-    atk: Math.round(base.atk + bonus.atk),
-    def: Math.round(base.def + bonus.def),
-    accuracy: Math.min(99, Math.round((base.accuracy + bonus.accuracy) * 10) / 10),
-    critChance: Math.round((base.critChance + bonus.critChance) * 10) / 10,
+    maxHp: Math.round((base.maxHp + bonus.vit * 12 + bonus.hp) * (1 + bonus.hpPct / 100)),
+    maxMp: Math.round((base.maxMp + bonus.mp) * (1 + bonus.mpPct / 100)),
+    atk: Math.round(base.atk + bonus.str * 3 + Math.floor((stats.dex + bonus.dex) * 0.5) - Math.floor(stats.dex * 0.5) + bonus.atk),
+    def: Math.round(base.def + Math.floor((stats.vit + bonus.vit) * 0.5) - Math.floor(stats.vit * 0.5) + bonus.def),
+    accuracy: Math.min(99, Math.round((base.accuracy + bonus.accuracy + bonus.dex * 0.5) * 10) / 10),
+    critChance: Math.round((base.critChance + bonus.critChance + bonus.luk * 0.5) * 10) / 10,
     critDamage: Math.round((base.critDamage + bonus.critDamage) * 10) / 10,
-    dodgeChance: Math.round((base.dodgeChance + bonus.dodgeChance) * 10) / 10,
+    dodgeChance: Math.round((base.dodgeChance + bonus.dodgeChance + bonus.agi * 0.5) * 10) / 10,
   };
 }
 function arenaEquipmentSnapshot(items) {
@@ -5269,6 +5482,8 @@ export default {
             return await handleSaveQuickSlots(db, id, auth, body.characterId, body.quickSlots);
           case "syncItems":
             return await handleSyncItems(db, id, auth, body.characterId, body.items || []);
+          case "mutateV2Blacksmith":
+            return await handleMutateV2Blacksmith(db, id, auth, body.characterId, body.itemId, body.mutation, body.requestId);
           case "setInventorySlot":
             return await handleSetInventorySlot(db, id, auth, body.itemId, body.inventorySlot);
           case "claimDailyLogin":

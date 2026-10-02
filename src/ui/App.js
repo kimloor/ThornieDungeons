@@ -138,6 +138,7 @@ function ThornieDungeons() {
   // not at the end of the (synchronous) handler itself. itemActionBusy is the render-visible
   // twin used to actually disable/gray out the buttons in the UI.
   const itemActionLockRef = useRef(false);
+  const blacksmithRequestRef = useRef(new Map());
   const [itemActionBusy, setItemActionBusy] = useState(false);
   function guardItemAction(fn) {
     return (...args) => {
@@ -149,19 +150,22 @@ function ThornieDungeons() {
       }
       itemActionLockRef.current = true;
       setItemActionBusy(true);
-      try {
-        return fn(...args);
-      } finally {
+      const release = () => {
         setTimeout(() => {
           itemActionLockRef.current = false;
           setItemActionBusy(false);
         }, 0);
+      };
+      try {
+        const result = fn(...args);
+        if (result && typeof result.then === "function") return result.finally(release);
+        release();
+        return result;
+      } catch (error) {
+        release();
+        throw error;
       }
     };
-  }
-  function v2BlacksmithBlocked(item, action) {
-    if (typeof DUNGEON_REWARD_V2 === "undefined" || !DUNGEON_REWARD_V2.dungeonV2IsV2Item(item)) return null;
-    return { ok: false, message: `W3 ${action} ยังไม่เปิดใช้กับอุปกรณ์ Reward V2` };
   }
   const monstersRef = useRef([]);
   const petCombatRef = useRef(null);
@@ -2005,6 +2009,77 @@ function ThornieDungeons() {
     }
     persistItems(nextInventory, nextEquipped);
   }
+  function hydrateAuthoritativeBlacksmithSnapshot(snapshot) {
+    if (!snapshot?.character) return;
+    const slot = characterFromServerRow(snapshot.character);
+    const loaded = itemsFromServerList(snapshot.items || []);
+    equippedRef.current = loaded.equipped;
+    inventoryRef.current = loaded.inventory;
+    inventoryOverflowRef.current = loaded.overflow;
+    setEquipped(loaded.equipped);
+    setInventory(loaded.inventory);
+    setInventoryOverflow(loaded.overflow);
+    const diamonds = snapshot.diamonds === undefined ? save.diamonds : Number(snapshot.diamonds) || 0;
+    const nextSave = flattenCharacterForRuntime({ saveVersion: save.saveVersion, diamonds, characters: [slot] }, 0);
+    setSave(nextSave);
+    setAccount(previous => {
+      if (!previous || previous.activeSlot === null) return previous;
+      const characters = previous.characters.slice();
+      characters[previous.activeSlot] = slot;
+      return { ...previous, diamonds, characters };
+    });
+  }
+  function blacksmithRequestId(action, itemId) {
+    const suffix = typeof globalThis.crypto?.randomUUID === "function"
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `w3:${action}:${itemId}:${suffix}`;
+  }
+  async function mutateV2Blacksmith(itemId, mutation) {
+    const context = persistenceContextFor(save.characterId);
+    if (!context) return { ok: false, message: "ไม่พบสถานะ Cloud ของตัวละคร" };
+    // Drain every older full-snapshot write before the authoritative transaction. Without
+    // this barrier, a delayed pre-mutation Gold/items snapshot could arrive afterward and
+    // restore resources or overwrite the server-confirmed item state.
+    persistSave(save);
+    persistItems(inventoryRef.current, equippedRef.current, inventoryOverflowRef.current);
+    const flushed = await persistenceRef.current.flush(context, { retryFailed: true });
+    if (!flushed) return { ok: false, message: "บันทึกสถานะก่อนทำรายการไม่สำเร็จ กรุณาลองใหม่" };
+    const requestKey = `${mutation.type}:${itemId}:${Number(mutation.expectedVersion) || 0}:${Number(mutation.slotIndex) || 0}:${mutation.useProtectionStone === true ? 1 : 0}`;
+    const requestId = blacksmithRequestRef.current.get(requestKey) || blacksmithRequestId(mutation.type, itemId);
+    blacksmithRequestRef.current.set(requestKey, requestId);
+    const res = await cloudMutateV2Blacksmith(cred.url, save.characterId, itemId, mutation, requestId);
+    if (!res?.ok) {
+      if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
+      if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
+      const messages = {
+        enhance_max: "ตีบวกถึงระดับสูงสุดแล้ว (+10)",
+        insufficient_gold: "ทองไม่พอ",
+        insufficient_materials: res?.junkId === "iron" ? "เหล็กไม่พอ" : "Mana Ore ไม่พอ",
+        insufficient_protection_stones: "Protection Stone ไม่พอ",
+        protection_not_eligible: "ใช้ Protection Stone ได้ตั้งแต่การตี +6 → +7",
+        empower_slots_full: "เสริมพลังครบทุกช่องแล้ว",
+        cannot_lock_all_empower_slots: "ต้องเหลืออย่างน้อย 1 ช่องที่ปลดล็อกสำหรับรีโรล",
+        all_empower_slots_locked: "ล็อกไว้ทุกออฟชั่นแล้ว ไม่มีช่องให้รีโรล",
+        wing_empower_economy_unresolved: "Empower ของ Raid Wings รอค่า Tierless economy ที่ล็อกใน W5",
+        blacksmith_conflict: "สถานะไอเทมเปลี่ยนแล้ว กรุณาลองใหม่",
+        blacksmith_version_conflict: "สถานะไอเทมเปลี่ยนแล้ว กรุณาโหลดสถานะล่าสุด"
+      };
+      return { ok: false, message: messages[res?.error] || "ทำรายการ Blacksmith V2 ไม่สำเร็จ" };
+    }
+    blacksmithRequestRef.current.delete(requestKey);
+    hydrateAuthoritativeBlacksmithSnapshot(res);
+    const result = res.mutation || {};
+    if (mutation.type === "enhance") {
+      if (result.success) return { ok: true, message: `✨ ตีบวกสำเร็จ! +${result.levelAfter}` };
+      if (result.protectionConsumed) return { ok: false, message: `🛡️ ตีบวกล้มเหลว แต่ Protection Stone ป้องกันการลดระดับไว้ (+${result.levelAfter})` };
+      if (result.downgraded) return { ok: false, message: `💥 ตีบวกล้มเหลว ลดเหลือ +${result.levelAfter}` };
+      return { ok: false, message: `💢 ตีบวกล้มเหลว ระดับคงเดิม +${result.levelAfter}` };
+    }
+    if (mutation.type === "empower_open") return { ok: true, message: `🔮 เสริมพลังสำเร็จ! ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` };
+    if (mutation.type === "empower_lock") return { ok: true, message: result.locked ? "🔒 ล็อกออฟชั่นแล้ว" : "🔓 ปลดล็อกออฟชั่นแล้ว" };
+    return { ok: true, message: `🔄 รีโรลออฟชั่นสำเร็จ! (ใช้ Mana Ore ×1 และ Gold ${result.cost?.gold || 0})` };
+  }
   function toggleItemFavorite(itemId) {
     const found = findItemAndLocation(itemId);
     if (!found) return;
@@ -2020,15 +2095,14 @@ function ThornieDungeons() {
   function claimOverflowAll() {
     return commitInventorySnapshot(claimAllOverflowThatFits(inventoryRef.current, inventoryOverflowRef.current));
   }
-  function enhanceItem(itemId) {
+  function enhanceItem(itemId, useProtectionStone = false) {
     const found = findItemAndLocation(itemId);
     if (!found) return {
       ok: false,
       message: "ไม่พบไอเทม"
     };
     const it = found.item;
-    const blocked = v2BlacksmithBlocked(it, "Enhance");
-    if (blocked) return blocked;
+    if (ENHANCEMENT_V2.isV2Item(it)) return mutateV2Blacksmith(itemId, { type: "enhance", useProtectionStone: useProtectionStone === true, expectedVersion: Number(it.blacksmithVersion) || 0 });
     const level = it.enhanceLevel || 0;
     if (level >= ENHANCE_MAX) return {
       ok: false,
@@ -2093,8 +2167,8 @@ function ThornieDungeons() {
   }
   function toggleEmpowerLock(itemId, slotIndex) {
     const found = findItemAndLocation(itemId);
-    const blocked = v2BlacksmithBlocked(found?.item, "Lock");
-    if (blocked) return blocked;
+    if (!found) return { ok: false, message: "ไม่พบไอเทม" };
+    if (ENHANCEMENT_V2.isV2Item(found.item)) return mutateV2Blacksmith(itemId, { type: "empower_lock", slotIndex, expectedVersion: Number(found.item.blacksmithVersion) || 0 });
     applyItemUpdate(itemId, prev => {
       const slots = [...(prev.empowerSlots || [])];
       const s = slots[slotIndex];
@@ -2116,8 +2190,7 @@ function ThornieDungeons() {
       message: "ไม่พบไอเทม"
     };
     const it = found.item;
-    const blocked = v2BlacksmithBlocked(it, "Reroll");
-    if (blocked) return blocked;
+    if (ENHANCEMENT_V2.isV2Item(it)) return mutateV2Blacksmith(itemId, { type: "empower_reroll", expectedVersion: Number(it.blacksmithVersion) || 0 });
     const slots = it.empowerSlots || [];
     const filled = slots.filter(Boolean);
     if (!filled.length) return {
@@ -2218,8 +2291,7 @@ function ThornieDungeons() {
       message: "ไม่พบไอเทม"
     };
     const it = found.item;
-    const blocked = v2BlacksmithBlocked(it, "Empower");
-    if (blocked) return blocked;
+    if (ENHANCEMENT_V2.isV2Item(it)) return mutateV2Blacksmith(itemId, { type: "empower_open", expectedVersion: Number(it.blacksmithVersion) || 0 });
     const slots = it.empowerSlots || [];
     const nextIndex = slots.findIndex(s => !s);
     if (nextIndex === -1) return {
@@ -2950,10 +3022,11 @@ function ThornieDungeons() {
     inventory: inventory,
     busy: itemActionBusy,
     gold: save.gold,
+    protectionStones: save.protectionStones || 0,
     onEnhance: guardItemAction(enhanceItem),
     onEmpower: guardItemAction(empowerItem),
     onReroll: guardItemAction(rerollEmpowerItem),
-    onToggleLock: toggleEmpowerLock,
+    onToggleLock: guardItemAction(toggleEmpowerLock),
     onOpenInventory: () => { setBlacksmithOpen(false); setInvOpen(true); },
     onClose: () => setBlacksmithOpen(false)
   }), craftingOpen && /*#__PURE__*/React.createElement(CraftingOverlay, {
