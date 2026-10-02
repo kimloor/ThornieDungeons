@@ -349,7 +349,7 @@ Gameplay endpoints that currently send `id/password` — including character ent
 
 Public endpoints such as public config/reference/leaderboard reads may remain unauthenticated where already intentionally public.
 
-Admin authentication is outside normal player-session V2 unless explicitly included in a later task; do not accidentally replace/remove `adminKey` security while doing player auth.
+Admin authentication remains separate from normal player-session V2. Admin V2 owns the dedicated Admin-session path. The legacy `adminKey` compatibility path must not be expanded; its retirement/hardening is scheduled under WAVE 5.5 after Admin V2 production verification.
 
 ---
 
