@@ -2522,8 +2522,10 @@ async function handleCraftItem(db, id, session, characterId, recipeId, requestId
     `INSERT OR IGNORE INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
      SELECT ?, ?, ?, ?, 0, '', ?, 'mythic', ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ? WHERE ${insertWhere}`
   ).bind(newItemId, id, characterId, item.type, recipeId, item.name, Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0, JSON.stringify(extra), now, now, characterId, id, goldCost, ...resourceBinds)];
-  stmts.push(itemProvenanceStatement(db, newItemId, id, characterId, "craft", recipeId, { recipeId, floor }, now));
-  stmts.push(itemOwnershipAcquireStatement(db, newItemId, id, characterId, "craft", { recipeId, floor }, now));
+  const craftLogGate = `EXISTS (SELECT 1 FROM items marker WHERE marker.item_id = ? AND marker.character_id = ? AND json_extract(marker.extra_json, '$.craftPendingToken') = ?)`;
+  const craftLogBinds = [newItemId, characterId, operationToken];
+  stmts.push(itemProvenanceStatement(db, newItemId, id, characterId, "craft", recipeId, { recipeId, floor }, now, craftLogGate, craftLogBinds));
+  stmts.push(itemOwnershipAcquireStatement(db, newItemId, id, characterId, "craft", { recipeId, floor }, now, craftLogGate, craftLogBinds));
   junkNeeds.forEach((need) => {
     let remaining = need.qty;
     for (const row of junkRows.filter((r) => r.junkId === need.junkId)) {
