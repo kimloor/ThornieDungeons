@@ -955,6 +955,7 @@ async function handlePurchaseShopEquipment(db, id, session, characterId, offerId
   const itemId = String(offer.item.id || `shop-item-${randomToken(14)}`);
   const itemRow = dungeonV2ServerRewardItem({ ...offer.item, id: itemId }, 0, inventoryCount >= 30);
   if (!itemRow) return json({ error: "shop_offer_invalid" }, 409);
+  await ensureItemAuthorityTables(db);
   const now = nowIso();
   const result = { offerId: keyOffer, itemId, price };
   return runCharacterReceiptMutation(db, {
@@ -971,13 +972,9 @@ async function handlePurchaseShopEquipment(db, id, session, characterId, offerId
         WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
         ON CONFLICT(item_id) DO NOTHING`)
         .bind(itemRow.item_id, id, characterId, itemRow.slot_type, itemRow.rarity, itemRow.name, itemRow.atk, itemRow.def, itemRow.hp, itemRow.mp, itemRow.extra_json, now, now, token),
-      db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
-        item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
-        origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
-        origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
-        acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
-      )`),
       itemProvenanceStatement(db, itemRow.item_id, id, characterId, "shop_purchase", keyOffer, { offerId: keyOffer, floor: shop.floor }, now,
+        `EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`, [token]),
+      itemOwnershipAcquireStatement(db, itemRow.item_id, id, characterId, "shop_purchase", { offerId: keyOffer, floor: shop.floor }, now,
         `EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`, [token]),
       db.prepare(`UPDATE character_shop_offers SET offers_json = ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND offers_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
         .bind(JSON.stringify(nextOffers), now, characterId, id, shop.offers_json, token)
@@ -1073,7 +1070,13 @@ async function handleSalvageItem(db, id, session, characterId, itemId, requestId
       materials = [];
       salvageKind = "mythic_boss_weapon";
     } else {
-      return json({ error: "mythic_salvage_not_eligible" }, 409);
+      // Reward V2 Rare/Unique/Elite equipment is normal salvage. Only Mythic
+      // Set/Boss Weapon uses the special rules above; Raid/Wing sources remain
+      // blocked by the canonical Reward V2 salvage table.
+      const yieldPlan = globalThis.DUNGEON_REWARD_V2?.dungeonV2SalvageYield(row.rarity, { ...extra, sourceType: extra.sourceType });
+      if (!yieldPlan) return json({ error: "salvage_not_eligible" }, 409);
+      materials = Object.entries(yieldPlan).filter(([, quantity]) => Number(quantity) > 0)
+        .map(([junkId, quantity]) => ({ junkId, quantity: Math.floor(Number(quantity)) }));
     }
   } else {
     const yieldPlan = globalThis.DUNGEON_REWARD_V2?.dungeonV2SalvageYield(row.rarity, { ...extra, sourceType: extra.sourceType });
@@ -1745,6 +1748,7 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   const currentCount = Number(countRow?.c) || 0;
   const rows = serverReward.items.map((item, index) => dungeonV2ServerRewardItem(item, index, currentCount + index >= 30)).filter(Boolean);
   if (rows.length !== serverReward.items.length) return { error: "invalid_reward_plan" };
+  if (rows.length) await ensureItemAuthorityTables(db);
   const cols = TABLES.items.cols.filter(c => c !== "player_id" && c !== "character_id" && c !== "created_at" && c !== "updated_at");
   const itemStmt = rows.length ? db.prepare(
     `INSERT INTO items (item_id, player_id, character_id, ${cols.filter(c => c !== "item_id").join(",")}, created_at, updated_at)
@@ -1761,13 +1765,9 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   // deliberately zero and never reads reward.diamonds from the client.
   const playerStmt = db.prepare(`UPDATE players SET diamonds = diamonds + 0 WHERE id = ? AND changes() > 0`).bind(id);
   const provenance = rows.length ? [
-    db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
-      item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
-      origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
-      origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
-      acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
-    )`),
     ...rows.map(row => itemProvenanceStatement(db, row.item_id, id, characterId, row.slot_type === "junk" ? "dungeon_junk" : (row.sourceType || "dungeon_reward"), row.sourceIdentity || battleId,
+      { battleId, sourceFloor: context.floor }, now))
+    , ...rows.map(row => itemOwnershipAcquireStatement(db, row.item_id, id, characterId, row.slot_type === "junk" ? "dungeon_junk" : "dungeon_reward",
       { battleId, sourceFloor: context.floor }, now))
   ] : [];
   const batchResult = await db.batch([completionStmt, characterStmt, playerStmt, ...(itemStmt ? [itemStmt] : []), ...provenance]);
@@ -1790,23 +1790,36 @@ function itemProvenanceStatement(db, itemId, playerId, characterId, originType, 
     .bind(itemId, playerId, characterId, String(originType || "unknown").slice(0, 80), originSourceId ? String(originSourceId).slice(0, 160) : null,
       JSON.stringify(context || {}), timestamp, timestamp, ...gateBinds);
 }
+function itemOwnershipAcquireStatement(db, itemId, playerId, characterId, originType, context, timestamp, gateSql = null, gateBinds = []) {
+  const gate = gateSql ? ` AND ${gateSql}` : "";
+  return db.prepare(`INSERT OR IGNORE INTO item_ownership_events
+    (event_id, item_id, from_player_id, from_character_id, to_player_id, to_character_id, event_type, context_json, occurred_at)
+    SELECT ?, ?, NULL, NULL, ?, ?, 'acquire', ?, ?${gate}`)
+    .bind(`acquire-${String(itemId).slice(0, 180)}`, itemId, playerId, characterId, JSON.stringify({ originType, ...(context || {}) }), timestamp, ...gateBinds);
+}
+async function ensureItemAuthorityTables(db) {
+  await db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
+    item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
+    origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
+    origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
+    acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS item_ownership_events (
+    event_id TEXT PRIMARY KEY, item_id TEXT NOT NULL, from_player_id TEXT, from_character_id TEXT,
+    to_player_id TEXT, to_character_id TEXT, event_type TEXT NOT NULL, context_json TEXT NOT NULL DEFAULT '{}', occurred_at TEXT NOT NULL
+  )`).run();
+}
 
 // Mail claim credits are derived only from the persisted mailbox row. The claim token
 // gates each credit statement, and callers include these statements in the same D1
 // batch as the claimed marker so disconnects and concurrent retries cannot split them.
 async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset = 0, claimGate = null) {
+  await ensureItemAuthorityTables(db);
   const mailId = String(mail.mail_id || "");
   const timestamp = String(claimedAt).split("#", 1)[0];
   const gate = claimGate?.sql || `EXISTS (SELECT 1 FROM mailbox WHERE mail_id = ? AND character_id = ? AND claimed = 1 AND claimed_at = ?)`;
   const gateBinds = claimGate?.binds || [mailId, characterId, claimedAt];
-  // Keep mailbox claims compatible with pre-0028 QA databases while the additive
-  // migration rolls forward; production applies the same idempotent DDL once.
-  const statements = [db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
-    item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
-    origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
-    origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
-    acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
-  )` )];
+  const statements = [];
   const gold = Math.max(0, Math.trunc(Number(mail.gold) || 0));
   const diamonds = Math.max(0, Math.trunc(Number(mail.diamonds) || 0));
   statements.push(db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ? AND ${gate}`)
@@ -1831,6 +1844,7 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
        ON CONFLICT(item_id) DO NOTHING`
     ).bind(itemId, id, characterId, junkId, extra, timestamp, timestamp, ...gateBinds));
     statements.push(itemProvenanceStatement(db, itemId, id, characterId, "mail_reward", mailId, { mailId, junkId }, timestamp, gate, gateBinds));
+    statements.push(itemOwnershipAcquireStatement(db, itemId, id, characterId, "mail_reward", { mailId, junkId }, timestamp, gate, gateBinds));
     newItemOffset += 1;
   }
 
@@ -1874,6 +1888,8 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
       Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0,
       JSON.stringify(extra), timestamp, timestamp, ...gateBinds));
     statements.push(itemProvenanceStatement(db, itemId, id, characterId, item.sourceType || "mail_reward", item.sourceIdentity || mailId,
+      { mailId, sourceFloor: item.sourceFloor || null }, timestamp, gate, gateBinds));
+    statements.push(itemOwnershipAcquireStatement(db, itemId, id, characterId, item.sourceType || "mail_reward",
       { mailId, sourceFloor: item.sourceFloor || null }, timestamp, gate, gateBinds));
     newItemOffset += 1;
   });
@@ -2501,17 +2517,13 @@ async function handleCraftItem(db, id, session, characterId, recipeId, requestId
   const resourceConditions = junkNeeds.map(() => `(SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) FROM items WHERE character_id = ? AND slot_type = 'junk' AND json_extract(extra_json, '$.junkId') = ?) >= ?`);
   const resourceBinds = junkNeeds.flatMap(need => [characterId, need.junkId, need.qty]);
   const insertWhere = [`EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ?)`].concat(resourceConditions).join(" AND ");
+  await ensureItemAuthorityTables(db);
   const stmts = [db.prepare(
     `INSERT OR IGNORE INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
      SELECT ?, ?, ?, ?, 0, '', ?, 'mythic', ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ? WHERE ${insertWhere}`
   ).bind(newItemId, id, characterId, item.type, recipeId, item.name, Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0, JSON.stringify(extra), now, now, characterId, id, goldCost, ...resourceBinds)];
-  stmts.push(db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
-    item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
-    origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
-    origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
-    acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
-  )`));
   stmts.push(itemProvenanceStatement(db, newItemId, id, characterId, "craft", recipeId, { recipeId, floor }, now));
+  stmts.push(itemOwnershipAcquireStatement(db, newItemId, id, characterId, "craft", { recipeId, floor }, now));
   junkNeeds.forEach((need) => {
     let remaining = need.qty;
     for (const row of junkRows.filter((r) => r.junkId === need.junkId)) {

@@ -385,6 +385,8 @@ test("mail claim atomically credits server balances and items; retries do not do
   assert.equal(first.body.items.length, 2);
   assert.equal(first.body.items.find(item => item.name === "Mail Sword").name, "Mail Sword");
   assert.equal(JSON.parse(first.body.items.find(item => item.name === "Mail Sword").extra_json).overflow, false);
+  assert.equal(context.db.raw.prepare("SELECT event_type, to_player_id, to_character_id FROM item_ownership_events WHERE item_id LIKE 'mail-item-%'").get().event_type, "acquire");
+  assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM item_provenance WHERE item_id LIKE 'mail-item-%'").get().c, 1);
   assert.equal(context.db.raw.prepare("SELECT claimed FROM mailbox WHERE mail_id = 'mail-secure-1'").get().claimed, 1);
   assert.equal(JSON.parse(context.db.raw.prepare("SELECT extra_json FROM items WHERE slot_type = 'junk'").get().extra_json).quantity, 4);
 
@@ -637,6 +639,18 @@ test("Mythic set salvage refunds server-recorded Horn/Hide exactly once; Boss We
   assert.equal(boss.body.salvage.kind, "mythic_boss_weapon");
   assert.deepEqual(boss.body.salvage.materials, []);
   assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE json_extract(extra_json, '$.junkId') LIKE '%Stone'").get().c, 0);
+});
+
+test("V2 Rare/Unique/Elite equipment uses the Reward V2 salvage table", async () => {
+  for (const [rarity, expected] of [["rare", [{ junkId: "iron", quantity: 2 }]], ["unique", [{ junkId: "iron", quantity: 4 }, { junkId: "manaOre", quantity: 1 }]], ["elite", [{ junkId: "iron", quantity: 8 }, { junkId: "manaOre", quantity: 3 }]]]) {
+    const context = await setup();
+    const itemId = `v2-${rarity}-salvage`;
+    const extra = { rewardVersion: 2, itemModelVersion: 2, empowerSlotCapacity: 1, empowerSlots: [{ key: "atkPct", value: 4, locked: false }], sourceType: "dungeon_normal" };
+    context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, atk, extra_json) VALUES (?, ?, ?, 'weapon', ?, ?, 20, ?)`).run(itemId, context.playerId, context.characterId, rarity, `${rarity} sword`, JSON.stringify(extra));
+    const response = await post(context.api, context.db, context.token, { action: "salvageItem", characterId: context.characterId, itemId, requestId: `v2-${rarity}-salvage-001` });
+    assert.equal(response.body.ok, true, rarity);
+    assert.deepEqual(response.body.salvage.materials, expected, rarity);
+  }
 });
 
 test("server item sale consumes the owned row and credits authoritative Gold exactly once", async () => {

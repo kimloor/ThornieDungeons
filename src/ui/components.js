@@ -5593,7 +5593,7 @@ function DefeatScreen({
   }, "🗺️ Back to Map")));
 }
 function inventoryStatRows(item) {
-  const labels = { hp: "HP", mp: "SP", atk: "ATK", def: "DEF", accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit", critDamage: "Crit DMG", dropBonus: "Drop" };
+  const labels = { hp: "HP", mp: "SP", hpPct: "HP%", mpPct: "MP%", atk: "ATK", def: "DEF", str: "STR", vit: "VIT", agi: "AGI", dex: "DEX", luk: "LUK", accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit", critDamage: "Crit DMG", dropBonus: "Drop" };
   const finalStats = itemBonus(item) || {};
   return Object.keys(labels).filter(key => Number(finalStats[key])).map(key => ({ key, label: labels[key], value: Math.round(Number(finalStats[key]) * 10) / 10 }));
 }
@@ -5603,7 +5603,8 @@ function inventoryComparisonRows(currentItem, nextItem) {
   const currentStats = itemBonus(currentItem) || {};
   const nextStats = itemBonus(nextItem) || {};
   const definitions = [
-    ["hp", "HP"], ["mp", "SP"], ["atk", "ATK"], ["def", "DEF"],
+    ["hp", "HP"], ["mp", "SP"], ["hpPct", "HP%"], ["mpPct", "MP%"], ["atk", "ATK"], ["def", "DEF"],
+    ["str", "STR"], ["vit", "VIT"], ["agi", "AGI"], ["dex", "DEX"], ["luk", "LUK"],
     ["accuracy", "Accuracy"], ["dodgeChance", "Dodge"], ["critChance", "Crit"],
     ["critDamage", "Crit DMG"], ["dropBonus", "Drop"]
   ];
