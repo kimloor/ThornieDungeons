@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. W9R is COMPLETE in Production; WAVE 1 Dungeon V2 is the current DEV gate; Graphics G4 Reward V2 icons may proceed in parallel; each wave carries explicit DEV/Graphics/QA ownership and risk. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-3 are COMPLETE in Production; WAVE 4 Mythic Weapons/Sets is in progress; WAVE 4.5 Server Authority / Economy Security is the mandatory gate before WAVE 5; WAVE 5.5 Security Hardening precedes WAVE 6 cutover. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
@@ -70,7 +70,7 @@ Repository-wide references:
 
 ## 5. Read-by-task map
 
-For active sequencing/priorities from the current post-W9R baseline — Dungeon V2, Reward V2, Enhance/Empower, Mythic content, Raid/Wings, cutover, presentation, Admin V2 and Graphics/QA parallel lanes — read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
+For active sequencing/priorities from the current post-W9R baseline — Dungeon V2, Reward V2, Enhance/Empower, Mythic content, Server Authority / Economy Security, Raid/Wings, Security Hardening, cutover, full gap/security re-audit, presentation, Admin V2 and Graphics/QA parallel lanes — read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
 
 Read only the documents relevant to the requested scope. Do not load unrelated system specifications unless a dependency or conflict requires them.
 
@@ -254,4 +254,9 @@ When an approved production contract changes:
 ### Current post-W9R execution update
 - WAVE 1 Dungeon V2 Encounter + Stat Foundation: COMPLETE / PRODUCTION.
 - WAVE 1.5 Dungeon Monster Skills + Boss Mechanics: COMPLETE / PRODUCTION.
-- WAVE 2 Reward V2: CURRENT DEV GATE.
+- WAVES 1-3: COMPLETE / PRODUCTION VERIFIED.
+- WAVE 4 Mythic Boss Weapons + Mythic Set System: IN PROGRESS.
+- WAVE 4.5 Server Authority / Economy Security: mandatory release gate before WAVE 5.
+- WAVE 5 Raid / Wings V2: blocked until WAVE 4 + WAVE 4.5 pass.
+- WAVE 5.5 Security Hardening: mandatory before WAVE 6.
+- Post-WAVE 6: Full Project Gap Audit + Security Re-Audit before WAVE 7 closeout.
