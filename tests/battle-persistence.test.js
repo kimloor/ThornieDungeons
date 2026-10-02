@@ -51,6 +51,48 @@ async function get(api, db, token, params) {
   const response = await api.fetch(new Request(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} }), { DB: db });
   return { status: response.status, body: await response.json() };
 }
+async function startDungeon(api, db, token, characterId, floor) {
+  return post(api, db, token, { action: "startDungeonBattle", characterId, floor });
+}
+function checkpointForStart(started, safeActionSeq = 1) {
+  const context = started.body.context;
+  return {
+    version: 1,
+    battleId: started.body.battleId,
+    mode: "dungeon",
+    floor: context.floor,
+    encounterType: context.role,
+    safeActionSeq,
+    serverContext: context,
+    enemyIds: context.enemies.map(enemy => enemy.instanceId),
+    units: Object.fromEntries(context.enemies.map(enemy => [enemy.instanceId, {
+      id: enemy.instanceId,
+      kind: enemy.kind,
+      side: "enemy",
+      isBoss: enemy.isBoss,
+      monsterDefId: enemy.id,
+      encounterType: context.role,
+      modifier: enemy.modifierId ? { id: enemy.modifierId } : null
+    }]))
+  };
+}
+function rewardForContext(context) {
+  const floor = context.floor;
+  const baseXp = Math.round(6 + floor * 2.4);
+  const baseGold = floor <= 30 ? 20 + 3 * floor : floor <= 50 ? 120 + 4 * (floor - 31) : floor <= 70 ? 210 + 5 * (floor - 51) : floor <= 90 ? 320 + 7 * (floor - 71) : 480 + 10 * (floor - 91);
+  const roleMultiplier = context.role === "chapter_boss" ? 2 : context.role === "elite" ? 1.5 : 1;
+  const packMultiplier = context.role === "normal" ? ({ 1: 1, 2: 1.35, 3: 1.65 })[context.packCount] : 1;
+  return {
+    floor,
+    encounterType: context.role,
+    rewardRole: context.role,
+    packCount: context.packCount,
+    gold: Math.round(baseGold * roleMultiplier * packMultiplier),
+    xp: Math.round(baseXp * roleMultiplier * packMultiplier),
+    diamonds: 0,
+    items: []
+  };
+}
 
 test("saveRunState, Battle checkpoint, quick slots and completion are character-scoped and stale-safe", async () => {
   const api = worker(), db = database();
@@ -93,4 +135,311 @@ test("saveRunState, Battle checkpoint, quick slots and completion are character-
   assert.equal(staleSession.status, 401);
   assert.equal(staleSession.body.error, "session_replaced");
   assert.equal((await get(api, db, loginB.body.sessionToken, { action: "getBattleState", characterId: charB })).body.ok, true);
+});
+
+test("Dungeon battle start is the trust root for floor eligibility and old-floor replay", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Start_Trust_QA", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Start Trust" });
+  const characterId = created.body.character.character_id;
+
+  assert.equal((await startDungeon(api, db, token, characterId, 100)).body.error, "dungeon_floor_locked");
+  assert.equal((await startDungeon(api, db, token, characterId, 10)).body.error, "dungeon_floor_locked");
+  const forgedBoss = {
+    battleId: "client-forged-f100", mode: "dungeon", floor: 100, encounterType: "chapter_boss", safeActionSeq: 1,
+    enemyIds: ["forged-boss"],
+    units: { "forged-boss": { id: "forged-boss", kind: "boss", side: "enemy", monsterDefId: "moss_king", encounterType: "chapter_boss" } }
+  };
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: forgedBoss.battleId, checkpointSeq: 1, payload: forgedBoss })).body.error, "dungeon_battle_not_authorized");
+  const forgedF10 = { ...forgedBoss, battleId: "client-forged-f10", floor: 10 };
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: forgedF10.battleId, checkpointSeq: 1, payload: forgedF10 })).body.error, "dungeon_battle_not_authorized");
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_checkpoints WHERE character_id = ?").get(characterId).c, 0);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE character_id = ?").get(characterId).c, 0);
+
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 50 WHERE character_id = ?").run(characterId);
+  const oldFloor = await startDungeon(api, db, token, characterId, 20);
+  assert.equal(oldFloor.body.ok, true);
+  assert.equal(oldFloor.body.context.floor, 20);
+  assert.equal(oldFloor.body.context.role, "chapter_boss");
+  assert.match(oldFloor.body.battleId, /^dungeon-/);
+  assert.equal((await get(api, db, token, { action: "getBattleState", characterId })).body.checkpoint, null);
+  const premature = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: oldFloor.body.battleId,
+    result: { result: "victory", safeActionSeq: 1, floor: 20, reward: rewardForContext(oldFloor.body.context) }
+  });
+  assert.equal(premature.body.error, "battle_checkpoint_missing");
+});
+
+test("Dungeon checkpoints cannot alter server-issued context but mutable state remains saveable", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Context_Trust_QA", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Context Trust" });
+  const characterId = created.body.character.character_id;
+  const started = await startDungeon(api, db, token, characterId, 1);
+  const legitimate = checkpointForStart(started);
+  const enemyId = legitimate.enemyIds[0];
+
+  const firstForgeries = [
+    { ...legitimate, floor: 100, encounterType: "chapter_boss" },
+    { ...legitimate, encounterType: "chapter_boss", units: { ...legitimate.units, [enemyId]: { ...legitimate.units[enemyId], kind: "boss", isBoss: true, encounterType: "chapter_boss", monsterDefId: "moss_king" } } },
+    { ...legitimate, enemyIds: [...legitimate.enemyIds, "forged-pack"], units: { ...legitimate.units, "forged-pack": { id: "forged-pack", kind: "monster", side: "enemy", monsterDefId: "spore_cap", encounterType: "normal" } } },
+    { ...legitimate, units: { ...legitimate.units, [enemyId]: { ...legitimate.units[enemyId], monsterDefId: legitimate.units[enemyId].monsterDefId === "jelly_slime" ? "spore_cap" : "jelly_slime" } } }
+  ];
+  for (const forged of firstForgeries) {
+    const response = await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: forged });
+    assert.ok([400, 409].includes(response.status));
+  }
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: legitimate })).body.accepted, true);
+
+  for (const forged of firstForgeries) {
+    const response = await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 2, payload: { ...forged, safeActionSeq: 2 } });
+    assert.ok([400, 409].includes(response.status));
+  }
+  const mutable = { ...legitimate, safeActionSeq: 2, units: { ...legitimate.units, hero: { id: "hero", kind: "hero", side: "ally", hp: 17 } } };
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 2, payload: mutable })).body.accepted, true);
+});
+
+test("server-authorized encounter generation covers normal packs, Elite, Boss, and stable restart seeds", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Encounter_Trust_QA", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Encounter Trust" });
+  const characterId = created.body.character.character_id;
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 110 WHERE character_id = ?").run(characterId);
+  const packs = new Set();
+  for (let floor = 6; floor <= 109 && packs.size < 3; floor++) {
+    if (floor % 5 === 0) continue;
+    const started = await startDungeon(api, db, token, characterId, floor);
+    packs.add(started.body.context.packCount);
+    const repeated = await startDungeon(api, db, token, characterId, floor);
+    assert.equal(repeated.body.battleId, started.body.battleId);
+    assert.deepEqual(repeated.body.context, started.body.context);
+    await post(api, db, token, { action: "clearBattleCheckpoint", characterId, battleId: started.body.battleId });
+  }
+  assert.deepEqual([...packs].sort(), [1, 2, 3]);
+  const elite = await startDungeon(api, db, token, characterId, 5);
+  assert.deepEqual({ role: elite.body.context.role, pack: elite.body.context.packCount }, { role: "elite", pack: 1 });
+  await post(api, db, token, { action: "clearBattleCheckpoint", characterId, battleId: elite.body.battleId });
+  const boss = await startDungeon(api, db, token, characterId, 10);
+  assert.deepEqual({ role: boss.body.context.role, pack: boss.body.context.packCount }, { role: "chapter_boss", pack: 1 });
+});
+
+test("Dungeon authorization survives checkpoint reload and completes without reroll", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Resume_Trust_QA", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Resume Trust" });
+  const characterId = created.body.character.character_id;
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 8 WHERE character_id = ?").run(characterId);
+  const started = await startDungeon(api, db, token, characterId, 6);
+  const checkpoint = checkpointForStart(started);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpoint })).body.accepted, true);
+  const restored = await get(api, db, token, { action: "getBattleState", characterId });
+  assert.equal(restored.body.checkpoint.battleId, started.body.battleId);
+  assert.deepEqual(restored.body.checkpoint.payload.serverContext, started.body.context);
+  assert.deepEqual(restored.body.checkpoint.payload.enemyIds, checkpoint.enemyIds);
+  const nextCheckpoint = { ...restored.body.checkpoint.payload, safeActionSeq: 2, round: 2 };
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 2, payload: nextCheckpoint })).body.accepted, true);
+  const completion = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", safeActionSeq: 3, floor: 6, reward: rewardForContext(started.body.context) }
+  });
+  assert.equal(completion.body.firstCompletion, true);
+  const replay = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", safeActionSeq: 3, floor: 6, reward: rewardForContext(started.body.context) }
+  });
+  assert.equal(replay.body.firstCompletion, false);
+  assert.deepEqual(replay.body.result.reward, completion.body.result.reward);
+});
+
+test("Dungeon V2 reward commit keeps permanent claims and replay idempotency beyond 128 battles", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Reward_QA_1", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Reward QA" });
+  const characterId = created.body.character.character_id;
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 10 WHERE character_id = ?").run(characterId);
+  const accessory = {
+    id: "v2-qa-first-clear", type: "accessory", rarity: "rare", name: "Lucky Charm", gearTier: 1,
+    rewardVersion: 2, itemModelVersion: 2, empowerSlotCapacity: 1, empowerSlots: [null],
+    sourceType: "dungeon_boss_first_clear", sourceFloor: 10, specialSource: "first_clear_accessory",
+    sourceIdentity: "moss_king", utilityStat: "critChance", critChance: 2.5
+  };
+  const startedF10 = await startDungeon(api, db, token, characterId, 10);
+  const firstCheckpoint = checkpointForStart(startedF10);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: startedF10.body.battleId, checkpointSeq: 1, payload: firstCheckpoint })).body.accepted, true);
+  const first = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: startedF10.body.battleId,
+    result: { result: "victory", safeActionSeq: 2, floor: 10, reward: { ...rewardForContext(startedF10.body.context), unlockedNext: true, firstClear: true, items: [accessory] } }
+  });
+  assert.equal(first.body.ok, true);
+  assert.equal(first.body.firstCompletion, true);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND slot_type = 'accessory'").get(characterId).c, 1);
+  const before = db.raw.prepare("SELECT gold, xp, pets_json FROM characters WHERE character_id = ?").get(characterId);
+  assert.equal(JSON.parse(before.pets_json).firstClearAccessoryClaims["10"], true);
+
+  for (let i = 0; i < 129; i++) {
+    const seq = 10 + i * 2;
+    const started = await startDungeon(api, db, token, characterId, 11);
+    const battleId = started.body.battleId;
+    const cp = checkpointForStart(started, seq);
+    assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId, checkpointSeq: seq, payload: cp })).body.accepted, true);
+    const later = await post(api, db, token, {
+      action: "completeBattle", characterId, battleId,
+      result: { result: "victory", safeActionSeq: seq + 1, floor: 11, reward: { ...rewardForContext(started.body.context), unlockedNext: false, firstClear: false } }
+    });
+    assert.equal(later.body.firstCompletion, true);
+  }
+  const after = db.raw.prepare("SELECT gold, xp, pets_json FROM characters WHERE character_id = ?").get(characterId);
+  assert.equal(JSON.parse(after.pets_json).firstClearAccessoryClaims["10"], true);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND slot_type = 'accessory'").get(characterId).c, 1);
+  const replay = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: startedF10.body.battleId,
+    result: { result: "victory", safeActionSeq: 2, floor: 10, reward: { ...rewardForContext(startedF10.body.context), unlockedNext: true, firstClear: true, items: [accessory] } }
+  });
+  assert.equal(replay.body.firstCompletion, false);
+  const final = db.raw.prepare("SELECT gold, xp, pets_json FROM characters WHERE character_id = ?").get(characterId);
+  assert.deepEqual({ gold: final.gold, xp: final.xp }, { gold: after.gold, xp: after.xp });
+  assert.equal(JSON.parse(final.pets_json).firstClearAccessoryClaims["10"], true);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND slot_type = 'accessory'").get(characterId).c, 1);
+});
+
+test("F5 starter Pet remains an exact-once entitlement in the atomic reward boundary", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Reward_QA_F5", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "F5 QA" });
+  const characterId = created.body.character.character_id;
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 5 WHERE character_id = ?").run(characterId);
+  const starter = { instId: "starter-qa", defId: "sprout", level: 1, star: 1, exp: 0, stats: { str: 3, vit: 5, agi: 4, dex: 4, luk: 4 } };
+  const reward = {
+    floor: 5, encounterType: "elite", rewardRole: "elite", packCount: 1,
+    gold: 53, xp: 27, diamonds: 0, unlockedNext: true, firstClear: false, items: [],
+    starterPetGrant: { defId: "sprout", instance: starter }
+  };
+  const started = await startDungeon(api, db, token, characterId, 5);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpointForStart(started) })).body.accepted, true);
+  const first = await post(api, db, token, { action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory", safeActionSeq: 2, floor: 5, reward: { ...reward, ...rewardForContext(started.body.context), starterPetGrant: reward.starterPetGrant } } });
+  assert.equal(first.body.firstCompletion, true);
+  const petsAfterFirst = JSON.parse(db.raw.prepare("SELECT pets_json FROM characters WHERE character_id = ?").get(characterId).pets_json).list;
+  assert.equal(petsAfterFirst.filter(pet => pet.defId === "sprout").length, 1);
+  assert.deepEqual(petsAfterFirst.find(pet => pet.defId === "sprout"), {
+    instId: petsAfterFirst.find(pet => pet.defId === "sprout").instId,
+    defId: "sprout", level: 1, xp: 0, star: 1,
+    stats: { str: 3, vit: 5, agi: 4, dex: 4, luk: 4 }
+  });
+  const replay = await post(api, db, token, { action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory", safeActionSeq: 2, floor: 5, reward: { ...reward, ...rewardForContext(started.body.context), starterPetGrant: reward.starterPetGrant } } });
+  assert.equal(replay.body.firstCompletion, false);
+  const petsAfterReplay = JSON.parse(db.raw.prepare("SELECT pets_json FROM characters WHERE character_id = ?").get(characterId).pets_json).list;
+  assert.equal(petsAfterReplay.filter(pet => pet.defId === "sprout").length, 1);
+});
+
+test("atomic Dungeon V2 item commit preserves overflow when the carried inventory is full", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Reward_QA_OV", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Overflow QA" });
+  const characterId = created.body.character.character_id;
+  for (let i = 0; i < 30; i++) {
+    db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, name, rarity, quantity, extra_json) VALUES (?, ?, ?, 'junk', 'Iron', 'common', 1, ?)")
+      .run(`existing-${i}`, "Reward_QA_OV", characterId, JSON.stringify({ junkId: "iron", quantity: 1 }));
+  }
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 10 WHERE character_id = ?").run(characterId);
+  const forgedItem = { id: "v2-overflow-forged", type: "accessory", rarity: "rare", name: "Forged", gearTier: 5, critChance: 999999, dodgeChance: 999999, critDamage: 999999, rewardVersion: 2, itemModelVersion: 2, sourceType: "forged", sourceFloor: 999 };
+  const started = await startDungeon(api, db, token, characterId, 10);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpointForStart(started) })).body.accepted, true);
+  const result = await post(api, db, token, { action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory", safeActionSeq: 2, floor: 10, reward: { ...rewardForContext(started.body.context), unlockedNext: true, firstClear: true, items: [forgedItem] } } });
+  assert.equal(result.body.ok, true);
+  const stored = db.raw.prepare("SELECT extra_json FROM items WHERE character_id = ? AND slot_type = 'accessory' ORDER BY created_at DESC LIMIT 1").get(characterId);
+  const storedExtra = JSON.parse(stored.extra_json);
+  assert.equal(storedExtra.overflow, true);
+  assert.equal(storedExtra.sourceFloor, 10);
+  assert.equal(["critChance", "dodgeChance", "critDamage"].filter(key => Number(storedExtra[key]) > 0).length, 1);
+  assert.notEqual(storedExtra.critChance, 999999);
+  assert.notEqual(storedExtra.dodgeChance, 999999);
+  assert.notEqual(storedExtra.critDamage, 999999);
+});
+
+test("Dungeon V2 reward authority rejects forged floor, role, and pack context", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Reward_QA_CTX", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Context QA" });
+  const characterId = created.body.character.character_id;
+  const started = await startDungeon(api, db, token, characterId, 1);
+  const checkpoint = checkpointForStart(started);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpoint })).body.accepted, true);
+  const complete = (reward, resultFloor = 1) => post(api, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", safeActionSeq: 2, floor: resultFloor, reward }
+  });
+  assert.equal((await complete({ floor: 100, encounterType: "chapter_boss", rewardRole: "chapter_boss", packCount: 1, gold: 1000, xp: 1000, diamonds: 0, items: [] }, 100)).body.error, "invalid_battle_context");
+  assert.equal((await complete({ floor: 1, encounterType: "elite", rewardRole: "elite", packCount: 1, gold: 35, xp: 12, diamonds: 0, items: [] })).body.error, "invalid_reward_context");
+  assert.equal((await complete({ floor: 1, encounterType: "chapter_boss", rewardRole: "chapter_boss", packCount: 1, gold: 46, xp: 16, diamonds: 0, items: [] })).body.error, "invalid_reward_context");
+  assert.equal((await complete({ floor: 1, encounterType: "normal", rewardRole: "normal", packCount: 3, gold: 38, xp: 13, diamonds: 0, items: [] })).body.error, "invalid_reward_context");
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id = ?").get(started.body.battleId).c, 0);
+});
+
+test("Dungeon V2 reward authority rebuilds forged diamonds, equipment, utility, and junk", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Reward_QA_AUTH", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Authority QA" });
+  const characterId = created.body.character.character_id;
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 10 WHERE character_id = ?").run(characterId);
+  const started = await startDungeon(api, db, token, characterId, 10);
+  const checkpoint = checkpointForStart(started);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpoint })).body.accepted, true);
+  const forged = {
+    id: "forged-item", type: "accessory", rarity: "mythic", gearTier: 5,
+    atk: 999999, def: 999999, critChance: 999999, dodgeChance: 999999, critDamage: 999999,
+    rewardVersion: 2, itemModelVersion: 2, empowerSlotCapacity: 999,
+    sourceType: "forged", sourceFloor: 999, specialSource: "forged", sourceIdentity: "forged",
+    utilityStat: "critChance"
+  };
+  const result = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", safeActionSeq: 2, floor: 10, reward: {
+      ...rewardForContext(started.body.context), diamonds: 999999, items: [forged, { type: "junk", junkId: "forged", quantity: 999999, source: "forged" }]
+    } }
+  });
+  assert.equal(result.body.ok, true);
+  assert.equal(result.body.result.reward.diamonds, 0);
+  assert.equal(db.raw.prepare("SELECT diamonds FROM players WHERE id = ?").get("Reward_QA_AUTH").diamonds, 0);
+  const item = db.raw.prepare("SELECT * FROM items WHERE character_id = ? AND slot_type = 'accessory'").get(characterId);
+  assert.ok(item);
+  const extra = JSON.parse(item.extra_json);
+  assert.equal(extra.rewardVersion, 2);
+  assert.equal(extra.itemModelVersion, 2);
+  assert.equal(extra.sourceFloor, 10);
+  assert.equal(extra.sourceType, "dungeon_boss_first_clear");
+  assert.equal(extra.specialSource, "first_clear_accessory");
+  assert.equal(["critChance", "dodgeChance", "critDamage"].filter(key => Number(extra[key]) > 0).length, 1);
+  assert.notEqual(extra.critChance, 999999);
+  assert.notEqual(extra.dodgeChance, 999999);
+  assert.notEqual(extra.critDamage, 999999);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND extra_json LIKE '%forged%'").get(characterId).c, 0);
+});
+
+test("concurrent duplicate Dungeon V2 completions share one atomic reward commit", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Reward_QA_CONCURRENT", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Concurrent QA" });
+  const characterId = created.body.character.character_id;
+  const started = await startDungeon(api, db, token, characterId, 1);
+  const checkpoint = checkpointForStart(started);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpoint })).body.accepted, true);
+  const body = {
+    action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", safeActionSeq: 2, floor: 1, reward: rewardForContext(started.body.context) }
+  };
+  const results = await Promise.all([post(api, db, token, body), post(api, db, token, body)]);
+  assert.equal(results.filter(result => result.body.firstCompletion === true).length, 1);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id = ?").get(started.body.battleId).c, 1);
+  const character = db.raw.prepare("SELECT gold, xp FROM characters WHERE character_id = ?").get(characterId);
+  assert.deepEqual({ gold: character.gold, xp: character.xp }, { gold: 23, xp: 8 });
 });

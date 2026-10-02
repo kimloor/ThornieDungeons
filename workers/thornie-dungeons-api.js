@@ -553,12 +553,16 @@ async function handleGetBattleState(db, id, session, characterId) {
      WHERE character_id = ? AND state = 'active' LIMIT 1`
   ).bind(characterId).first();
   const settings = await db.prepare(`SELECT quick_slots_json FROM character_settings WHERE character_id = ?`).bind(characterId).first();
+  const checkpointPayload = checkpoint ? parseJsonColumn(checkpoint.payload_json, null) : null;
   return json({
     ok: true,
-    checkpoint: checkpoint ? {
+    // An authorization row owns immutable encounter identity but is not yet a
+    // resumable Battle Core checkpoint. A reconnect can safely call
+    // startDungeonBattle again and receive this same authorization.
+    checkpoint: checkpoint && !checkpointPayload?.authorizationOnly ? {
       battleId: checkpoint.battle_id,
       checkpointSeq: Number(checkpoint.checkpoint_seq) || 0,
-      payload: parseJsonColumn(checkpoint.payload_json, null),
+      payload: checkpointPayload,
       updatedAt: checkpoint.updated_at
     } : null,
     quickSlots: parseJsonColumn(settings && settings.quick_slots_json, [null, null, null, null])
@@ -572,10 +576,36 @@ async function handleSaveBattleCheckpoint(db, id, session, characterId, battleId
   if (owned.error) return json({ error: owned.error });
   if (!battleId || !payload || String(payload.battleId || "") !== String(battleId)) return json({ error: "invalid_checkpoint" }, 400);
   const seq = Math.max(0, Math.floor(Number(checkpointSeq) || 0));
-  const encoded = JSON.stringify(payload);
-  if (encoded.length > 512000) return json({ error: "checkpoint_too_large" }, 413);
+  const incomingContext = payload?.mode === "dungeon" ? dungeonV2ServerContextFromClientCheckpoint(payload) : null;
+  if (payload?.mode === "dungeon" && !incomingContext) return json({ error: "invalid_dungeon_checkpoint" }, 400);
   const identity = await db.prepare(`SELECT character_id FROM battle_checkpoints WHERE battle_id = ? LIMIT 1`).bind(String(battleId)).first();
   if (identity && identity.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
+  const priorCheckpoint = await db.prepare(`SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`).bind(String(battleId), characterId).first();
+  if (priorCheckpoint && incomingContext) {
+    const priorPayload = parseJsonColumn(priorCheckpoint.payload_json, null);
+    const priorContext = dungeonV2ServerContextFromStoredCheckpoint(priorPayload);
+    if (!priorContext) return json({ error: "dungeon_battle_not_authorized" }, 409);
+    if (!dungeonV2ServerContextsMatch(priorContext, incomingContext)) return json({ error: "checkpoint_context_conflict" }, 409);
+    const trustedPayload = {
+      ...payload,
+      battleId: String(battleId),
+      mode: "dungeon",
+      floor: priorContext.floor,
+      encounterType: priorContext.role,
+      serverContext: priorContext,
+      authorizationOnly: false
+    };
+    const encoded = JSON.stringify(trustedPayload);
+    if (encoded.length > 512000) return json({ error: "checkpoint_too_large" }, 413);
+    const result = await db.prepare(
+      `UPDATE battle_checkpoints SET checkpoint_seq = ?, payload_json = ?, updated_at = ?
+       WHERE battle_id = ? AND character_id = ? AND state = 'active' AND ? > checkpoint_seq`
+    ).bind(seq, encoded, nowIso(), String(battleId), characterId, seq).run();
+    return json({ ok: true, accepted: !!(result.meta && result.meta.changes), checkpointSeq: seq });
+  }
+  if (payload?.mode === "dungeon") return json({ error: "dungeon_battle_not_authorized" }, 409);
+  const encoded = JSON.stringify(payload);
+  if (encoded.length > 512000) return json({ error: "checkpoint_too_large" }, 413);
   const existing = await db.prepare(`SELECT battle_id FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`).bind(characterId).first();
   if (existing && existing.battle_id !== String(battleId)) return json({ error: "active_battle_conflict" }, 409);
   const now = nowIso();
@@ -604,6 +634,511 @@ async function handleClearBattleCheckpoint(db, id, session, characterId, battleI
   return json({ ok: true });
 }
 
+const DUNGEON_V2_REWARD_SLOTS = new Set(["weapon", "helmet", "chest", "gloves", "boots"]);
+const DUNGEON_V2_REWARD_RARITIES = new Set(["rare", "unique", "elite"]);
+const DUNGEON_V2_REWARD_BASE_STATS = Object.freeze({
+  weapon: [14, 18, 24, 31, 40],
+  gloves: [6, 8, 10, 13, 17],
+  chest: [9, 12, 15, 20, 26],
+  helmet: [6, 8, 10, 13, 17],
+  boots: [5, 6, 9, 11, 14]
+});
+const DUNGEON_V2_REWARD_NAMES = Object.freeze({
+  weapon: ["Beginner Sword", "Copper Blade", "Steel Greatsword", "Platinum Greatsword", "Dragon Slayer Sword"],
+  helmet: ["Leather Cap", "Bronze Guard Helm", "Steel Helm", "Platinum Helm", "Dragon Scale Helm"],
+  chest: ["Leather Vest", "Bronze Armor", "Chain Armor", "Platinum Plate Armor", "Dragon Scale Armor"],
+  gloves: ["Leather Gloves", "Bronze Gauntlets", "Chain Gloves", "Platinum Gauntlets", "Dragonhide Gloves"],
+  boots: ["Leather Boots", "Bronze Greaves", "Chain Boots", "Platinum Sabatons", "Dragonhide Boots"],
+  accessory: ["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"]
+});
+const DUNGEON_V2_REWARD_RARITY_MULT = Object.freeze({ rare: 1, unique: 1.15, elite: 1.3 });
+const DUNGEON_V2_REWARD_EMPOWER_SLOTS = Object.freeze({ rare: 1, unique: 2, elite: 3 });
+const DUNGEON_V2_REWARD_TIER_MULT = Object.freeze([1, 1.3, 1.69, 2.197, 2.856]);
+const DUNGEON_V2_REWARD_RARITY_BANDS = Object.freeze([
+  { min: 1, max: 10, weights: { rare: 82.5, unique: 15, elite: 2.5 } },
+  { min: 11, max: 20, weights: { rare: 78, unique: 18, elite: 4 } },
+  { min: 21, max: 30, weights: { rare: 73, unique: 21, elite: 6 } },
+  { min: 31, max: 50, weights: { rare: 69, unique: 24, elite: 7 } },
+  { min: 51, max: 70, weights: { rare: 64, unique: 28, elite: 8 } },
+  { min: 71, max: 90, weights: { rare: 60, unique: 30, elite: 10 } },
+  { min: 91, max: Infinity, weights: { rare: 55, unique: 33, elite: 12 } }
+]);
+const DUNGEON_V2_REWARD_JUNK_IDS = Object.freeze(["iron", "manaOre", "stone", "grass", "wood"]);
+const DUNGEON_V2_ACCESSORY_BASE = Object.freeze({ critChance: 2.5, dodgeChance: 2, critDamage: 8 });
+const DUNGEON_V2_MONSTER_ID_LIST = Object.freeze(["jelly_slime", "spore_cap", "tusky_boar", "bramble_bat", "bone_rattler", "sandy_crab"]);
+const DUNGEON_V2_BOSS_ID_LIST = Object.freeze(["moss_king", "ember_drake", "frost_warden"]);
+const DUNGEON_V2_MODIFIER_ID_LIST = Object.freeze(["elite_pack", "golden", "arcane", "treasure", "cursed"]);
+const DUNGEON_V2_MONSTER_IDS = new Set(DUNGEON_V2_MONSTER_ID_LIST);
+const DUNGEON_V2_BOSS_IDS = new Set(DUNGEON_V2_BOSS_ID_LIST);
+const DUNGEON_V2_FIRST_CLEAR_ACCESSORIES = {
+  10: { gearTier: 1, rarity: "rare" }, 20: { gearTier: 1, rarity: "unique" }, 30: { gearTier: 1, rarity: "elite" },
+  40: { gearTier: 2, rarity: "unique" }, 50: { gearTier: 2, rarity: "elite" }, 60: { gearTier: 3, rarity: "unique" },
+  70: { gearTier: 3, rarity: "elite" }, 80: { gearTier: 4, rarity: "unique" }, 90: { gearTier: 4, rarity: "elite" },
+  100: { gearTier: 5, rarity: "unique" }, 110: { gearTier: 5, rarity: "elite" },
+};
+function dungeonV2ServerPackMultiplier(pack) { return ({ 1: 1, 2: 1.35, 3: 1.65 })[Math.max(1, Math.min(3, Number(pack) || 1))] || 1; }
+function dungeonV2ServerExp(floor, role, pack) {
+  const base = Math.round(6 + Math.max(1, Math.floor(Number(floor) || 1)) * 2.4);
+  const encounter = role === "chapter_boss" ? 2 : role === "elite" ? 1.5 : 1;
+  return Math.round(base * encounter * (role === "normal" ? dungeonV2ServerPackMultiplier(pack) : 1));
+}
+function dungeonV2ServerGold(floor, role, pack) {
+  const f = Math.max(1, Math.floor(Number(floor) || 1));
+  const base = f <= 30 ? 20 + 3 * f : f <= 50 ? 120 + 4 * (f - 31) : f <= 70 ? 210 + 5 * (f - 51) : f <= 90 ? 320 + 7 * (f - 71) : 480 + 10 * (f - 91);
+  const encounter = role === "chapter_boss" ? 2 : role === "elite" ? 1.5 : 1;
+  return Math.round(base * encounter * (role === "normal" ? dungeonV2ServerPackMultiplier(pack) : 1));
+}
+function dungeonV2ServerTierForFloor(floor) {
+  const f = Math.max(1, Math.floor(Number(floor) || 1));
+  return f <= 30 ? 1 : f <= 50 ? 2 : f <= 70 ? 3 : f <= 90 ? 4 : 5;
+}
+function dungeonV2ServerExpectedRole(floor) {
+  const f = Math.max(1, Math.floor(Number(floor) || 1));
+  return f % 10 === 0 ? "chapter_boss" : f % 10 === 5 ? "elite" : "normal";
+}
+function dungeonV2ServerHash(value) {
+  let hash = 2166136261;
+  for (const char of String(value || "")) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+function dungeonV2ServerRng(seed) {
+  let state = (Number(seed) >>> 0) || 0x6d2b79f5;
+  return () => {
+    let x = state;
+    x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+    state = x >>> 0;
+    return state / 4294967296;
+  };
+}
+function dungeonV2ServerNormalizeContext(value) {
+  if (!value || value.mode !== "dungeon") return null;
+  const floor = Math.floor(Number(value.floor) || 0);
+  if (floor < 1) return null;
+  const role = dungeonV2ServerExpectedRole(floor);
+  if (String(value.role || "") !== role) return null;
+  const entries = Array.isArray(value.enemies) ? value.enemies : [];
+  if (entries.length < 1 || entries.length > 3 || Number(value.packCount) !== entries.length) return null;
+  if (role === "chapter_boss" && entries.length !== 1) return null;
+  const allowedIds = role === "chapter_boss" ? DUNGEON_V2_BOSS_IDS : DUNGEON_V2_MONSTER_IDS;
+  const enemies = entries.map((enemy, index) => ({
+    id: String(enemy?.id || ""),
+    instanceId: String(enemy?.instanceId || ""),
+    modifierId: enemy?.modifierId == null ? null : String(enemy.modifierId),
+    kind: role === "chapter_boss" ? "boss" : "monster",
+    isBoss: role === "chapter_boss"
+  }));
+  if (enemies.some(enemy => !allowedIds.has(enemy.id) || !enemy.instanceId)) return null;
+  if (enemies.some(enemy => enemy.modifierId !== null && (role !== "normal" || !DUNGEON_V2_MODIFIER_ID_LIST.includes(enemy.modifierId)))) return null;
+  const encounterSeed = Number(value.encounterSeed) >>> 0;
+  const rewardSeed = Number(value.rewardSeed) >>> 0;
+  if (!encounterSeed || !rewardSeed) return null;
+  return { version: 1, mode: "dungeon", floor, role, packCount: enemies.length, enemies, encounterSeed, rewardSeed };
+}
+function dungeonV2ServerContextFromStoredCheckpoint(payload) {
+  return dungeonV2ServerNormalizeContext(payload?.serverContext);
+}
+function dungeonV2ServerContextFromClientCheckpoint(payload) {
+  if (!payload || payload.mode !== "dungeon") return null;
+  const floor = Math.floor(Number(payload.floor) || 0);
+  if (floor < 1) return null;
+  const role = dungeonV2ServerExpectedRole(floor);
+  if (payload.encounterType && String(payload.encounterType) !== role) return null;
+  const units = payload.units && typeof payload.units === "object" ? payload.units : {};
+  const enemyIds = Array.isArray(payload.enemyIds) ? payload.enemyIds.map(String).filter(Boolean) : [];
+  const entries = enemyIds.length
+    ? enemyIds.map(id => ({ ...(units[id] || {}), id }))
+    : Object.values(units).filter(unit => unit && (unit.side === "enemy" || unit.kind === "monster" || unit.kind === "boss"));
+  if (entries.length < 1 || entries.length > 3) return null;
+  if (role === "chapter_boss" && entries.length !== 1) return null;
+  if (role === "chapter_boss" && !entries.every(unit => unit.kind === "boss" || unit.isBoss === true)) return null;
+  if (role !== "chapter_boss" && entries.some(unit => unit.kind === "boss" || unit.isBoss === true)) return null;
+  if (entries.some(unit => unit.encounterType && String(unit.encounterType) !== role)) return null;
+  const canonicalIds = entries.map(unit => String(unit.monsterDefId || unit.dungeonV2ProfileId || unit.id || ""));
+  const allowedIds = role === "chapter_boss" ? DUNGEON_V2_BOSS_IDS : DUNGEON_V2_MONSTER_IDS;
+  if (canonicalIds.some(id => !allowedIds.has(id))) return null;
+  return {
+    mode: "dungeon",
+    floor,
+    role,
+    packCount: entries.length,
+    enemies: entries.map(unit => ({
+      id: String(unit.monsterDefId || unit.dungeonV2ProfileId || unit.id || "unknown_monster"),
+      instanceId: String(unit.id || ""),
+      modifierId: unit.modifier?.id == null ? null : String(unit.modifier.id),
+      kind: String(unit.kind || "monster"),
+      isBoss: unit.kind === "boss" || unit.isBoss === true
+    })),
+    encounterSeed: Number(payload.serverContext?.encounterSeed) >>> 0,
+    rewardSeed: Number(payload.serverContext?.rewardSeed) >>> 0
+  };
+}
+function dungeonV2ServerContextsMatch(a, b) {
+  return !!(a && b
+    && a.mode === b.mode
+    && a.floor === b.floor
+    && a.role === b.role
+    && a.packCount === b.packCount
+    && a.encounterSeed === b.encounterSeed
+    && a.rewardSeed === b.rewardSeed
+    && JSON.stringify(a.enemies.map(enemy => [enemy.id, enemy.instanceId, enemy.modifierId]))
+      === JSON.stringify(b.enemies.map(enemy => [enemy.id, enemy.instanceId, enemy.modifierId])));
+}
+function dungeonV2ServerEncounterContext(characterId, floor, ordinal) {
+  const role = dungeonV2ServerExpectedRole(floor);
+  const encounterSeed = dungeonV2ServerHash(`encounter:${characterId}:${floor}:${ordinal}:v1`) || 1;
+  const rewardSeed = dungeonV2ServerHash(`reward:${characterId}:${floor}:${ordinal}:v1`) || 1;
+  const rng = dungeonV2ServerRng(encounterSeed);
+  const packCount = role !== "normal" || floor < 5 ? 1 : (() => {
+    const roll = rng();
+    return roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
+  })();
+  const pool = role === "chapter_boss" ? DUNGEON_V2_BOSS_ID_LIST : DUNGEON_V2_MONSTER_ID_LIST;
+  const enemies = Array.from({ length: packCount }, (_, index) => {
+    const id = pool[Math.floor(rng() * pool.length)] || pool[0];
+    const modifierId = role === "normal" && rng() < 0.4
+      ? DUNGEON_V2_MODIFIER_ID_LIST[Math.floor(rng() * DUNGEON_V2_MODIFIER_ID_LIST.length)]
+      : null;
+    return {
+      id,
+      instanceId: `dungeon-enemy-${index + 1}-${dungeonV2ServerHash(`${encounterSeed}:${id}:${index}`)}`,
+      modifierId,
+      kind: role === "chapter_boss" ? "boss" : "monster",
+      isBoss: role === "chapter_boss"
+    };
+  });
+  return { version: 1, mode: "dungeon", floor, role, packCount, enemies, encounterSeed, rewardSeed };
+}
+async function handleStartDungeonBattle(db, id, session, characterId, requestedFloor) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  const floor = Math.floor(Number(requestedFloor) || 0);
+  const unlockedFloor = Math.max(1, Math.floor(Number(owned.row.unlocked_floor) || 1));
+  if (floor < 1 || floor > unlockedFloor) return json({ error: "dungeon_floor_locked" }, 403);
+
+  const existing = await db.prepare(
+    `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
+  ).bind(characterId).first();
+  if (existing) {
+    const payload = parseJsonColumn(existing.payload_json, null);
+    const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
+    if (payload?.authorizationOnly && context && context.floor === floor) {
+      return json({ ok: true, battleId: existing.battle_id, context });
+    }
+    if (!payload?.authorizationOnly) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+    await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
+      .bind(nowIso(), existing.battle_id, characterId).run();
+  }
+
+  const completed = await db.prepare(`SELECT COUNT(*) AS c FROM battle_completions WHERE character_id = ?`).bind(characterId).first();
+  const ordinal = Math.max(1, (Number(completed?.c) || 0) + 1);
+  const context = dungeonV2ServerEncounterContext(characterId, floor, ordinal);
+  const battleId = `dungeon-${randomToken(16)}`;
+  const now = nowIso();
+  const authorization = JSON.stringify({
+    version: 1,
+    battleId,
+    mode: "dungeon",
+    floor,
+    encounterType: context.role,
+    safeActionSeq: -1,
+    authorizationOnly: true,
+    serverContext: context
+  });
+  try {
+    await db.prepare(
+      `INSERT INTO battle_checkpoints (battle_id, character_id, checkpoint_seq, payload_json, state, created_at, updated_at)
+       VALUES (?, ?, -1, ?, 'active', ?, ?)`
+    ).bind(battleId, characterId, authorization, now, now).run();
+  } catch (error) {
+    const raced = await db.prepare(
+      `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
+    ).bind(characterId).first();
+    const racedPayload = parseJsonColumn(raced?.payload_json, null);
+    const racedContext = dungeonV2ServerContextFromStoredCheckpoint(racedPayload);
+    if (racedPayload?.authorizationOnly && racedContext && racedContext.floor === floor) {
+      return json({ ok: true, battleId: raced.battle_id, context: racedContext });
+    }
+    return json({ error: "active_battle_conflict" }, 409);
+  }
+  return json({ ok: true, battleId, context });
+}
+function dungeonV2ServerRollRarity(floor, rng) {
+  const band = DUNGEON_V2_REWARD_RARITY_BANDS.find(item => floor >= item.min && floor <= item.max) || DUNGEON_V2_REWARD_RARITY_BANDS.at(-1);
+  const roll = rng() * 100;
+  if (roll < band.weights.rare) return "rare";
+  if (roll < band.weights.rare + band.weights.unique) return "unique";
+  return "elite";
+}
+function dungeonV2ServerDropBonus(ownedRow, equippedRows) {
+  let bonus = Math.round((Number(ownedRow?.luk) || 0) * 0.2 * 10) / 10;
+  for (const row of equippedRows || []) {
+    const extra = parseJsonColumn(row.extra_json, {});
+    bonus += Number(extra.dropBonus) || 0;
+    for (const slot of Array.isArray(extra.empowerSlots) ? extra.empowerSlots : []) {
+      if (slot?.key === "dropBonus") bonus += Number(slot.value) || 0;
+    }
+  }
+  return Math.max(0, Math.round(bonus * 10) / 10);
+}
+async function dungeonV2ServerLootRows(db, monsterIds) {
+  const ids = [...new Set((monsterIds || []).map(String).filter(Boolean))];
+  if (!ids.length) return [];
+  try {
+    const placeholders = ids.map(() => "?").join(",");
+    const result = await db.prepare(
+      `SELECT monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance
+       FROM monster_loot WHERE monster_id IN (${placeholders})`
+    ).bind(...ids).all();
+    return result.results || [];
+  } catch (e) {
+    // Older QA schemas may not have the optional loot table. Generic V2 fallback remains valid.
+    return [];
+  }
+}
+function dungeonV2ServerCanonicalEquipment({ battleId, floor, type, rarity, sourceType, sourceFloor, specialSource, sourceIdentity, rng, utilityKey }) {
+  const tier = dungeonV2ServerTierForFloor(floor);
+  const multiplier = DUNGEON_V2_REWARD_RARITY_MULT[rarity];
+  const capacity = DUNGEON_V2_REWARD_EMPOWER_SLOTS[rarity];
+  const item = {
+    id: `v2-${dungeonV2ServerHash(`${battleId}:${type}:${sourceType}:${sourceIdentity || ""}`)}`,
+    type,
+    rarity,
+    name: (DUNGEON_V2_REWARD_NAMES[type] || DUNGEON_V2_REWARD_NAMES.weapon)[tier - 1],
+    gearTier: tier,
+    rewardVersion: 2,
+    itemModelVersion: 2,
+    empowerSlotCapacity: capacity,
+    empowerSlotCount: capacity,
+    empowerSlots: Array(capacity).fill(null),
+    sourceType,
+    sourceFloor,
+    specialSource: specialSource || undefined,
+    sourceIdentity: sourceIdentity || undefined
+  };
+  if (type === "accessory") {
+    const keys = ["critChance", "dodgeChance", "critDamage"];
+    const key = keys.includes(utilityKey) ? utilityKey : keys[Math.floor(rng() * keys.length)];
+    item.utilityStat = key;
+    item[key] = Math.round(DUNGEON_V2_ACCESSORY_BASE[key] * DUNGEON_V2_REWARD_TIER_MULT[tier - 1] * multiplier * 10) / 10;
+    return item;
+  }
+  const stat = Math.max(1, Math.round(DUNGEON_V2_REWARD_BASE_STATS[type][tier - 1] * DUNGEON_V2_REWARD_TIER_MULT[tier - 1] * multiplier));
+  if (type === "weapon" || type === "gloves") item.atk = stat;
+  else item.def = stat;
+  return item;
+}
+function dungeonV2ServerPickWeighted(rows, rng) {
+  const valid = (rows || []).filter(row => DUNGEON_V2_REWARD_SLOTS.has(String(row.item_type || "")) && (!row.rarity || DUNGEON_V2_REWARD_RARITIES.has(String(row.rarity))) && Number(row.weight || 0) > 0);
+  if (!valid.length) return null;
+  const total = valid.reduce((sum, row) => sum + Number(row.weight || 0), 0);
+  let roll = rng() * total;
+  for (const row of valid) {
+    roll -= Number(row.weight || 0);
+    if (roll < 0) return row;
+  }
+  return valid.at(-1);
+}
+function dungeonV2ServerJunkItem(battleId, junkId, quantity, index, sourceType = "dungeon") {
+  const id = `junk-${dungeonV2ServerHash(`${battleId}:${sourceType}:${junkId}:${index}`)}`;
+  return { id, type: "junk", junkId, quantity: Math.max(1, Math.floor(Number(quantity) || 1)), sourceType };
+}
+function dungeonV2ServerGenericJunk(rng, floor) {
+  const junkId = DUNGEON_V2_REWARD_JUNK_IDS[Math.floor(rng() * DUNGEON_V2_REWARD_JUNK_IDS.length)];
+  const quantity = 1 + Math.floor(floor / 12) + (rng() < 0.25 ? 1 : 0);
+  return { junkId, quantity };
+}
+async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload) {
+  // The reward seed is issued and persisted by startDungeonBattle. It is not
+  // derived from a client-selected battle id or mutable checkpoint fields.
+  const seed = context.rewardSeed;
+  const rng = dungeonV2ServerRng(seed);
+  const equipped = await db.prepare(`SELECT extra_json FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all().catch(() => ({ results: [] }));
+  const dropBonus = dungeonV2ServerDropBonus(ownedRow, equipped.results || []);
+  const lootRows = await dungeonV2ServerLootRows(db, context.enemies.map(enemy => enemy.id));
+  const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
+  const items = [];
+  let drop = null;
+  const rollEquipment = (sourceIdentity, rollIndex) => {
+    const chance = context.role === "elite" ? 0.08 : 0.04 * (1 + dropBonus / 100);
+    if (rng() >= Math.min(1, chance)) return null;
+    const custom = dungeonV2ServerPickWeighted((rowsByMonster[sourceIdentity] || []).filter(row => row.kind === "gear"), rng);
+    const type = custom?.item_type || DUNGEON_V2_REWARD_SLOTS.values().next().value;
+    const rarity = dungeonV2ServerRollRarity(context.floor, rng);
+    return dungeonV2ServerCanonicalEquipment({
+      battleId: `${battleId}:${rollIndex}`, floor: context.floor, type, rarity,
+      sourceType: context.role === "elite" ? "dungeon_elite" : "dungeon_normal",
+      sourceFloor: context.floor, sourceIdentity, rng
+    });
+  };
+  if (context.role === "normal") {
+    for (const enemy of context.enemies) {
+      if (!drop) drop = rollEquipment(enemy.id, items.length);
+      if (rng() < 0.45) {
+        const generic = dungeonV2ServerGenericJunk(rng, context.floor);
+        items.push(dungeonV2ServerJunkItem(battleId, generic.junkId, generic.quantity, items.length));
+      }
+    }
+  } else if (context.role === "elite") {
+    drop = rollEquipment(context.enemies[0].id, items.length);
+    if (rng() < 0.45) {
+      const generic = dungeonV2ServerGenericJunk(rng, context.floor);
+      generic.quantity = Math.max(1, Math.round(generic.quantity * 2));
+      items.push(dungeonV2ServerJunkItem(battleId, generic.junkId, generic.quantity, items.length, "dungeon_elite"));
+    }
+  }
+  if (drop) { items.push(drop); }
+  for (const enemy of context.enemies) {
+    for (const row of (rowsByMonster[enemy.id] || []).filter(entry => entry.kind === "junk" && DUNGEON_V2_REWARD_JUNK_IDS.includes(String(entry.junk_id || "")))) {
+      if (rng() >= Math.max(0, Math.min(1, Number(row.drop_chance) || 0))) continue;
+      const min = Math.max(1, Math.floor(Number(row.qty_min) || 1));
+      const max = Math.max(min, Math.floor(Number(row.qty_max) || min));
+      const quantity = min + Math.floor(rng() * (max - min + 1));
+      items.push(dungeonV2ServerJunkItem(battleId, String(row.junk_id), quantity, items.length, "monster_loot"));
+    }
+  }
+  const unlockedNext = context.floor === Number(ownedRow.unlocked_floor || 1);
+  const claims = dungeonV2ServerClaims(parseJsonColumn(ownedRow.pets_json, []));
+  const accessoryContract = DUNGEON_V2_FIRST_CLEAR_ACCESSORIES[context.floor];
+  const firstClear = context.role === "chapter_boss" && !!accessoryContract && unlockedNext && !claims[String(context.floor)];
+  if (firstClear) {
+    const boss = context.enemies[0];
+    const accessory = dungeonV2ServerCanonicalEquipment({
+      battleId: `${battleId}:first-clear`, floor: context.floor, type: "accessory", rarity: accessoryContract.rarity,
+      sourceType: "dungeon_boss_first_clear", sourceFloor: context.floor, specialSource: "first_clear_accessory",
+      sourceIdentity: boss.id, rng
+    });
+    items.push(accessory);
+    drop = accessory;
+  }
+  const starterEligible = context.floor === 5 && context.role === "elite" && unlockedNext
+    && !((Array.isArray(parseJsonColumn(ownedRow.pets_json, [])) ? parseJsonColumn(ownedRow.pets_json, []) : parseJsonColumn(ownedRow.pets_json, {}).list || []).some(pet => pet && pet.defId === "sprout"));
+  const starterPetGrant = starterEligible ? {
+    defId: "sprout",
+    instance: {
+      instId: `pet-${dungeonV2ServerHash(`${battleId}:sprout`)}`,
+      defId: "sprout", level: 1, xp: 0, star: 1,
+      stats: { str: 3, vit: 5, agi: 4, dex: 4, luk: 4 }
+    }
+  } : null;
+  const junkSummary = {};
+  items.filter(item => item.type === "junk").forEach(item => { junkSummary[item.junkId] = (junkSummary[item.junkId] || 0) + item.quantity; });
+  const [junkType, junkAmount] = Object.entries(junkSummary)[0] || [];
+  return {
+    floor: context.floor, encounterType: context.role, rewardRole: context.role, packCount: context.packCount,
+    gold: dungeonV2ServerGold(context.floor, context.role, context.packCount),
+    xp: dungeonV2ServerExp(context.floor, context.role, context.packCount),
+    diamonds: 0, unlockedNext, firstClear, starterPetGrant, items,
+    drop, junkDrop: junkType ? { type: junkType, amount: junkAmount } : null,
+    sourceIdentity: context.enemies[0]?.id || null, rewardSeed: seed
+  };
+}
+function dungeonV2ServerClaims(petsRaw) {
+  const object = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw === "object" ? petsRaw : {});
+  const claims = { ...(object.firstClearAccessoryClaims || {}) };
+  (Array.isArray(object.rewardReceipts) ? object.rewardReceipts : []).forEach(key => {
+    const match = String(key).match(/^first-clear-accessory:(\d+)$/);
+    if (match) claims[match[1]] = true;
+  });
+  return Object.fromEntries(Object.entries(claims).filter(([floor, value]) => /^\d+$/.test(floor) && value === true));
+}
+function dungeonV2ServerRewardItem(item, index, overflow) {
+  if (!item || typeof item !== "object") return null;
+  const id = String(item.id || `v2-reward-${Date.now()}-${index}`).slice(0, 160);
+  const type = String(item.type || "");
+  if (type === "junk") {
+    const junkId = String(item.junkId || "").slice(0, 80);
+    if (!junkId) return null;
+    return {
+      item_id: id, slot_type: "junk", equipped: 0, inventory_slot: "", item_template_id: "",
+      rarity: "common", name: String(item.name || junkId).slice(0, 160), item_level: 0, enhance_level: 0,
+      bound: 0, quantity: Math.max(1, Number(item.quantity) || 1), atk: 0, def: 0, hp: 0, mp: 0,
+      extra_json: JSON.stringify({ junkId, quantity: Math.max(1, Number(item.quantity) || 1), icon: item.icon || "📦", overflow: !!overflow }),
+    };
+  }
+  if (!(DUNGEON_V2_REWARD_SLOTS.has(type) || type === "accessory")) return null;
+  if (!DUNGEON_V2_REWARD_RARITIES.has(item.rarity) || Number(item.rewardVersion) !== 2 || Number(item.itemModelVersion) !== 2) return null;
+  const extra = {
+    empowerSlots: Array.isArray(item.empowerSlots) ? item.empowerSlots : [],
+    empowerSlotCapacity: Math.max(0, Number(item.empowerSlotCapacity) || 0),
+    rewardVersion: 2, itemModelVersion: 2, gearTier: Math.max(1, Math.min(5, Number(item.gearTier) || 1)),
+    sourceType: String(item.sourceType || "dungeon").slice(0, 80), sourceFloor: Number(item.sourceFloor) || 0,
+    specialSource: item.specialSource ? String(item.specialSource).slice(0, 80) : undefined,
+    sourceIdentity: item.sourceIdentity ? String(item.sourceIdentity).slice(0, 120) : undefined,
+    utilityStat: item.utilityStat ? String(item.utilityStat).slice(0, 40) : undefined,
+    critChance: item.critChance || undefined, dodgeChance: item.dodgeChance || undefined, critDamage: item.critDamage || undefined,
+    overflow: !!overflow
+  };
+  return {
+    item_id: id, slot_type: type, equipped: 0, inventory_slot: "", item_template_id: "", rarity: item.rarity,
+    name: String(item.name || type).slice(0, 160), item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
+    atk: Number(item.atk) || 0, def: Number(item.def) || 0, hp: Number(item.hp) || 0, mp: Number(item.mp) || 0,
+    extra_json: JSON.stringify(extra)
+  };
+}
+async function commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, ownedRow, checkpointPayload, context, now) {
+  const reward = resultPayload?.reward;
+  if (!reward || resultPayload.result !== "victory") return { reward: null, committed: false };
+  if (!context || Number(resultPayload.floor) !== context.floor) return { error: "invalid_battle_context" };
+  if (Number(reward.floor) !== context.floor || String(reward.rewardRole || "") !== context.role
+      || String(reward.encounterType || context.role) !== context.role || Number(reward.packCount) !== context.packCount) {
+    return { error: "invalid_reward_context" };
+  }
+  const serverReward = await dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload);
+  if (Number(reward.gold) !== serverReward.gold || Number(reward.xp) !== serverReward.xp) return { error: "invalid_reward_plan" };
+  const petsRaw = parseJsonColumn(ownedRow.pets_json, []);
+  const envelope = Array.isArray(petsRaw) ? { list: petsRaw } : { ...petsRaw };
+  if (!Array.isArray(envelope.list)) envelope.list = [];
+  const claims = dungeonV2ServerClaims(petsRaw);
+  const firstClear = serverReward.firstClear;
+  const starterGrant = serverReward.starterPetGrant;
+  if (starterGrant) envelope.list.push(starterGrant.instance);
+  const nextClaims = firstClear ? { ...claims, [String(context.floor)]: true } : claims;
+  const battleKey = `battle:${String(battleId)}`;
+  const oldBattleReceipts = Array.isArray(envelope.battleRewardReceipts) ? envelope.battleRewardReceipts : [];
+  const battleReceipts = [...new Set([...oldBattleReceipts.filter(Boolean), battleKey])].slice(-128);
+  envelope.firstClearAccessoryClaims = nextClaims;
+  envelope.battleRewardReceipts = battleReceipts;
+  envelope.rewardReceipts = battleReceipts;
+  const normalizedReward = { ...serverReward, battleId, starterPetGrant: starterGrant || null };
+  const encoded = JSON.stringify({ ...resultPayload, floor: context.floor, reward: normalizedReward });
+  if (encoded.length > 512000) return { error: "battle_result_too_large" };
+  const countRow = await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first();
+  const currentCount = Number(countRow?.c) || 0;
+  const rows = serverReward.items.map((item, index) => dungeonV2ServerRewardItem(item, index, currentCount + index >= 30)).filter(Boolean);
+  if (rows.length !== serverReward.items.length) return { error: "invalid_reward_plan" };
+  const cols = TABLES.items.cols.filter(c => c !== "player_id" && c !== "character_id" && c !== "created_at" && c !== "updated_at");
+  const itemStmt = rows.length ? db.prepare(
+    `INSERT INTO items (item_id, player_id, character_id, ${cols.filter(c => c !== "item_id").join(",")}, created_at, updated_at)
+     ${rows.map(() => `SELECT ?, ?, ?, ${cols.filter(c => c !== "item_id").map(() => "?").join(",")}, ?, ? WHERE changes() > 0`).join(" UNION ALL ")}
+     ON CONFLICT(item_id) DO NOTHING`
+  ).bind(...rows.flatMap(row => [row.item_id, id, characterId, ...cols.filter(c => c !== "item_id").map(c => row[c]), now, now])) : null;
+  const completionStmt = db.prepare(
+    `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
+  ).bind(String(battleId), characterId, encoded, now);
+  const characterStmt = db.prepare(
+    `UPDATE characters SET gold = gold + ?, xp = xp + ?, unlocked_floor = CASE WHEN ? THEN unlocked_floor + 1 ELSE unlocked_floor END, pets_json = ?, updated_at = ? WHERE character_id = ? AND changes() > 0`
+  ).bind(Number(normalizedReward.gold), Number(normalizedReward.xp), normalizedReward.unlockedNext ? 1 : 0, JSON.stringify(envelope), now, characterId);
+  // Dungeon V2 currently has no approved Diamond reward source. The server plan is
+  // deliberately zero and never reads reward.diamonds from the client.
+  const playerStmt = db.prepare(`UPDATE players SET diamonds = diamonds + 0 WHERE id = ? AND changes() > 0`).bind(id);
+  const batchResult = await db.batch([completionStmt, characterStmt, playerStmt, ...(itemStmt ? [itemStmt] : [])]);
+  const committed = Number(batchResult?.[0]?.meta?.changes) > 0;
+  return { completionEncoded: encoded, reward: committed ? normalizedReward : null, committed };
+}
+async function battleCompletionSnapshot(db, id, characterId) {
+  const [character, items, player] = await Promise.all([
+    getRow(db, "characters", "character_id", characterId),
+    getRows(db, "items", "character_id", characterId),
+    getRow(db, "players", "id", id),
+  ]);
+  return { character, items, diamonds: Number(player?.diamonds) || 0 };
+}
+
 async function handleCompleteBattle(db, id, session, characterId, battleId, resultPayload) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
@@ -616,27 +1151,41 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
     if (prior.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
     await db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`)
       .bind(nowIso(), String(battleId), characterId).run();
-    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at });
+    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at, ...(await battleCompletionSnapshot(db, id, characterId)) });
   }
   const checkpoint = await db.prepare(
-    `SELECT checkpoint_seq FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`
+    `SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`
   ).bind(String(battleId), characterId).first();
   if (!checkpoint) return json({ error: "battle_checkpoint_missing" }, 409);
   if (Math.floor(Number(resultPayload.safeActionSeq) || 0) <= (Number(checkpoint.checkpoint_seq) || 0)) {
     return json({ error: "battle_result_not_after_checkpoint" }, 409);
   }
+  const checkpointPayload = parseJsonColumn(checkpoint.payload_json, null);
+  if (checkpointPayload?.authorizationOnly) return json({ error: "battle_checkpoint_missing" }, 409);
+  const battleContext = resultName === "victory" && resultPayload?.reward
+    ? dungeonV2ServerContextFromStoredCheckpoint(checkpointPayload)
+    : null;
+  if (resultName === "victory" && resultPayload?.reward && !battleContext) return json({ error: "invalid_battle_context" }, 400);
   const encoded = JSON.stringify(resultPayload);
   if (encoded.length > 512000) return json({ error: "battle_result_too_large" }, 413);
   const now = nowIso();
-  const insert = await db.prepare(
-    `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at)
-     VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
-  ).bind(String(battleId), characterId, encoded, now).run();
+  const rewardCommit = resultPayload?.reward && resultName === "victory"
+    ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, checkpointPayload, battleContext, now)
+    : { reward: null, committed: false };
+  if (rewardCommit.error) return json({ error: rewardCommit.error }, 400);
+  let insert = { meta: { changes: 0 } };
+  if (!resultPayload?.reward || resultName !== "victory") {
+    insert = await db.prepare(
+      `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at)
+       VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
+    ).bind(String(battleId), characterId, encoded, now).run();
+  }
   const row = await db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(String(battleId)).first();
   if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
   await db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`)
     .bind(now, String(battleId), characterId).run();
-  return json({ ok: true, firstCompletion: !!(insert.meta && insert.meta.changes), result: parseJsonColumn(row.result_json, null), completedAt: row.completed_at });
+  const storedResult = parseJsonColumn(row.result_json, null);
+  return json({ ok: true, firstCompletion: !!(insert.meta && insert.meta.changes) || !!rewardCommit.committed, result: storedResult, completedAt: row.completed_at, ...(await battleCompletionSnapshot(db, id, characterId)) });
 }
 
 async function handleSaveQuickSlots(db, id, session, characterId, quickSlots) {
@@ -4708,6 +5257,8 @@ export default {
             return await handleSaveCharacterProgress(db, id, auth, body.characterId, body.diamonds, body.progress);
           case "saveRunState":
             return await handleSaveRunState(db, id, auth, body.characterId, body.runState);
+          case "startDungeonBattle":
+            return await handleStartDungeonBattle(db, id, auth, body.characterId, body.floor);
           case "saveBattleCheckpoint":
             return await handleSaveBattleCheckpoint(db, id, auth, body.characterId, body.battleId, body.checkpointSeq, body.payload);
           case "clearBattleCheckpoint":
