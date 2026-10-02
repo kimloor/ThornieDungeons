@@ -955,7 +955,7 @@ Exit condition:
 ---
 
 ## WAVE 5 — Raid / Wings V2
-**Status: READY — NEXT EXECUTION GATE**
+**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: Graphics + QA**
@@ -993,6 +993,7 @@ QA gate:
 
 Exit condition:
 - Raid reward mechanics are stable before W10 Raid presentation is finalized.
+- No merge or Production deployment is implied by this feature-branch status.
 
 ---
 

@@ -209,7 +209,7 @@ test("Insufficient Gold or Mana Ore rejects without partial deduction", async ()
   assert.equal(state(context).extra.empowerSlots.every(slot => slot === null), true);
 });
 
-test("Tierless V2 Wings support T5 Enhance but do not invent Empower economy", async () => {
+test("Tierless V2 Wings support Enhance and server-owned Empower economy", async () => {
   const context = await setup();
   seedV2(context.db, context.playerId, context.characterId, { itemId: "wing", type: "wings", rarity: "rare", capacity: 1, extra: { gearTier: undefined, wingFamily: "azure" } });
   context.setRolls([0, 0]);
@@ -217,7 +217,7 @@ test("Tierless V2 Wings support T5 Enhance but do not invent Empower economy", a
   assert.equal(enhanced.body.mutation.cost.gold, 213);
   assert.equal(state(context, "wing").item.enhance_level, 1);
   const empower = await mutate(context, "wing-empower", { type: "empower_open" }, "wing");
-  assert.equal(empower.body.error, "wing_empower_economy_unresolved");
+  assert.equal(empower.body.ok, true);
 });
 
 test("legacy full-item sync cannot overwrite authoritative V2 mutation fields", async () => {

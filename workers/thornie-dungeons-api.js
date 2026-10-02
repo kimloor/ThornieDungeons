@@ -1662,11 +1662,12 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
   const extra = {
     empowerSlots: Array.isArray(item.empowerSlots) ? item.empowerSlots : [],
     empowerSlotCapacity: Math.max(0, Number(item.empowerSlotCapacity) || 0),
-    rewardVersion: 2, itemModelVersion: 2, gearTier: Math.max(1, Math.min(5, Number(item.gearTier) || 1)),
+    rewardVersion: 2, itemModelVersion: 2, ...(type === "wings" ? {} : { gearTier: Math.max(1, Math.min(5, Number(item.gearTier) || 1)) }),
     sourceType: String(item.sourceType || "dungeon").slice(0, 80), sourceFloor: Number(item.sourceFloor) || 0,
     specialSource: item.specialSource ? String(item.specialSource).slice(0, 80) : undefined,
     sourceIdentity: item.sourceIdentity ? String(item.sourceIdentity).slice(0, 120) : undefined,
     utilityStat: item.utilityStat ? String(item.utilityStat).slice(0, 40) : undefined,
+    wingFamily: type === "wings" ? String(item.wingFamily || item.setId || "").toLowerCase() : undefined,
     critChance: item.critChance || undefined, dodgeChance: item.dodgeChance || undefined, critDamage: item.critDamage || undefined,
     overflow: !!overflow
   };
@@ -1798,6 +1799,18 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
       empowerSlots: Array(Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCount || item.empowerSlotCapacity) || 1)))).fill(null),
       empowerSlotCapacity: Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCapacity || item.empowerSlotCount) || 1))),
       overflow: newItemOffset >= 30,
+      ...(Number(item.rewardVersion) === 2 || Number(item.itemModelVersion) === 2 ? {
+        rewardVersion: 2, itemModelVersion: 2,
+        ...(slot === "wings" ? {} : { gearTier: Math.max(1, Math.min(5, Number(item.gearTier) || 1)) }),
+        sourceType: item.sourceType ? String(item.sourceType).slice(0, 80) : undefined,
+        sourceFloor: Number(item.sourceFloor) || undefined,
+        sourceIdentity: item.sourceIdentity ? String(item.sourceIdentity).slice(0, 120) : undefined,
+        specialSource: item.specialSource ? String(item.specialSource).slice(0, 80) : undefined,
+        wingFamily: slot === "wings" ? String(item.wingFamily || item.setId || "").toLowerCase() : undefined,
+        utilityStat: item.utilityStat ? String(item.utilityStat).slice(0, 40) : undefined,
+        critChance: item.critChance || undefined, critDamage: item.critDamage || undefined,
+        dodgeChance: item.dodgeChance || undefined
+      } : {}),
       ...(item.dodgeChance ? { dodgeChance: Number(item.dodgeChance) || 0 } : {}),
       ...(item.critChance ? { critChance: Number(item.critChance) || 0 } : {}),
       ...(item.critDamage ? { critDamage: Number(item.critDamage) || 0 } : {}),
@@ -2022,7 +2035,6 @@ async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mu
     nextLevel = resolved.levelAfter;
     outcome = { ...resolved, type: action, cost };
   } else if (action === "empower_open") {
-    if (item.type === "wings") return json({ error: "wing_empower_economy_unresolved" }, 409);
     const slotIndex = nextSlots.findIndex(slot => !slot);
     if (slotIndex < 0) return json({ error: "empower_slots_full" }, 400);
     const cost = ENHANCEMENT_V2_RULES.empowerOpenCost(item, slotIndex);
@@ -2044,7 +2056,6 @@ async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mu
     nextSlots[slotIndex] = { ...slot, locked: nextLocked };
     outcome = { type: action, slotIndex, locked: nextLocked, cost: { gold: 0, manaOre: 0 } };
   } else {
-    if (item.type === "wings") return json({ error: "wing_empower_economy_unresolved" }, 409);
     const filledCount = nextSlots.filter(Boolean).length;
     const lockedCount = nextSlots.filter(slot => slot?.locked).length;
     const cost = ENHANCEMENT_V2_RULES.empowerRerollCost(item, filledCount, lockedCount);
@@ -2492,9 +2503,9 @@ async function handleCraftItem(db, id, session, characterId, recipeId, requestId
 // how many have already spawned today, scales hpMax up a bit each respawn so later
 // bosses in the day are a bit tougher once the playerbase has more total damage output).
 const RAID_BOSS_DEFS = [
-  { id: "azure_angel", name: "Azure Angel", hpBase: 150000 },
-  { id: "robo_phoenix", name: "Robo Phoenix", hpBase: 260000 },
-  { id: "dark_dragonlord", name: "Dark Dragonlord", hpBase: 420000 },
+  { id: "azure_angel", name: "Azure Angel", hpBase: 150000, family: "azure" },
+  { id: "robo_phoenix", name: "Robo Phoenix", hpBase: 260000, family: "robot" },
+  { id: "dark_dragonlord", name: "Dark Dragonlord", hpBase: 420000, family: "skeleton" },
 ];
 const RAID_STAMINA_MAX = 10;
 const RAID_STAMINA_REGEN_MS = 15 * 60 * 1000; // +1 every 15 minutes
@@ -2529,23 +2540,19 @@ function raidStaminaSecondsToNext(updatedAtIso) {
   return Math.max(0, Math.round(remaining / 1000));
 }
 
-// Raid Wings — a separate 1-5★ tier exclusive to raid rewards (not the normal floor-drop
-// wings pool; client's buildDropItem() no longer rolls wings/accessory at all — see stats.js).
-const RAID_WING_DEFS = [
-  { star: 1, name: "ปีกอัศวินฝึกหัด ★1", dodgeChance: 5 },
-  { star: 2, name: "ปีกอัศวินฝึกหัด ★2", dodgeChance: 10 },
-  { star: 3, name: "ปีกนักรบราชวงศ์ ★3", dodgeChance: 18 },
-  { star: 4, name: "ปีกนักรบราชวงศ์ ★4", dodgeChance: 28 },
-  { star: 5, name: "ปีกเทพประจัญบาน ★5", dodgeChance: 40 },
-];
-function raidWingItemDesc(star) {
-  const def = RAID_WING_DEFS[Math.max(1, Math.min(5, star)) - 1];
-  return { type: "wings", rarity: "raid", name: def.name, dodgeChance: def.dodgeChance, star: def.star, empowerSlotCount: def.star };
+const RAID_FAMILIES = Object.freeze({ azure: { name: "Azure", primary: "AGI" }, robot: { name: "Robot", primary: "VIT" }, skeleton: { name: "Skeleton", primary: "STR" } });
+const RAID_WING_RARITIES = Object.freeze({ rare: 1, unique: 2, elite: 3, mythic: 4 });
+function raidFamilyForBoss(def) { return RAID_FAMILIES[def?.family] ? def.family : "azure"; }
+function raidWingItemDesc(family, rarity) {
+  const f = RAID_FAMILIES[family] ? family : "azure";
+  const r = String(rarity || "rare").toLowerCase();
+  const capacity = RAID_WING_RARITIES[r] || RAID_WING_RARITIES.rare;
+  return {
+    type: "wings", rarity: r, name: `${RAID_FAMILIES[f].name} Wings`, wingFamily: f,
+    rewardVersion: 2, itemModelVersion: 2, empowerSlotCapacity: capacity, empowerSlotCount: capacity,
+    empowerSlots: Array(capacity).fill(null), sourceType: "raid", sourceIdentity: `raid_wing:${f}`
+  };
 }
-function randomRaidWingStar() {
-  return 1 + Math.floor(Math.random() * 5);
-}
-
 // Azure set — 6 pieces (helmet/chest/gloves/boots/weapon/ring), set bonus at 2/4/6 equipped
 // (client-side bonus values live in stats.js SET_BONUS_DEFS.azure — keep both in sync).
 const AZURE_SET_DEFS = {
@@ -2564,9 +2571,10 @@ function randomAzureItemDesc() {
 }
 // Recipes are inert placeholder items (stackable, riding the existing junk pipeline) until
 // the Crafting phase exists to consume them — see JUNK_INFO/recipe_* entries in enhancement.js.
-const AZURE_RECIPE_JUNK_IDS = ["recipe_azure_helmet", "recipe_azure_chest", "recipe_azure_gloves", "recipe_azure_boots", "recipe_azure_weapon", "recipe_azure_ring"];
-function randomAzureRecipeJunkId() {
-  return AZURE_RECIPE_JUNK_IDS[Math.floor(Math.random() * AZURE_RECIPE_JUNK_IDS.length)];
+function randomSetRecipeJunkId(family) {
+  const f = RAID_FAMILIES[family] ? family : "azure";
+  const slots = ["helmet", "chest", "gloves", "boots", "weapon", "ring"];
+  return `recipe_${f}_${slots[Math.floor(Math.random() * slots.length)]}`;
 }
 // Boss horn/hide — a single shared material pool across all boss types (not per-boss for now).
 function randomBossMaterialJunkId() {
@@ -2575,12 +2583,12 @@ function randomBossMaterialJunkId() {
 
 // Rank rewards, keyed by cumulative CONTRIBUTION (total_contribution) across the whole
 // raid instance — settled for EVERY participant (rank 1..last), not just a top-N cutoff.
-// Rank 1-3 get a fixed wing tier + boss materials + a random azure recipe; everyone ranked
+// Rank 1-3 get a family Wing + boss materials + a random matching recipe; everyone ranked
 // 4th or lower gets 2 random boss materials as a consolation.
 const RAID_RANK_REWARDS = [
-  { wingStar: 5, junk: [{ junkId: "bossHorn", quantity: 3 }, { junkId: "bossHide", quantity: 3 }], recipe: true },
-  { wingStar: 3, junk: [{ junkId: "bossHorn", quantity: 2 }, { junkId: "bossHide", quantity: 2 }], recipe: true },
-  { wingStar: 1, junk: [{ junkId: "bossHorn", quantity: 1 }, { junkId: "bossHide", quantity: 1 }], recipe: true },
+  { wingRarity: "mythic", junk: [{ junkId: "bossHorn", quantity: 3 }, { junkId: "bossHide", quantity: 3 }], recipe: true },
+  { wingRarity: "elite", junk: [{ junkId: "bossHorn", quantity: 2 }, { junkId: "bossHide", quantity: 2 }], recipe: true },
+  { wingRarity: "unique", junk: [{ junkId: "bossHorn", quantity: 1 }, { junkId: "bossHide", quantity: 1 }], recipe: true },
 ];
 
 // Milestones — % of boss hpMax the character has personally CONTRIBUTED this raid instance
@@ -2699,6 +2707,20 @@ function simulateRaidAttack(stats) {
   return { damage: Math.max(1, Math.round(total)), crit: anyCrit };
 }
 
+function raidAccessoryRewardDesc(floor, rarity) {
+  const item = globalThis.DUNGEON_REWARD_V2.dungeonV2EquipmentItem({
+    floor, type: "accessory", rarity, sourceType: "raid_milestone", sourceIdentity: "raid:accessory", rng: Math.random
+  });
+  return item;
+}
+function raidSetItemRewardDesc(family, floor) {
+  const slots = globalThis.MYTHIC_V2.SET_SLOTS;
+  const slot = slots[Math.floor(Math.random() * slots.length)];
+  const recipe = globalThis.MYTHIC_V2.setRecipe(family, slot, floor);
+  const item = globalThis.MYTHIC_V2.createMythicItem(recipe, floor, Math.random);
+  return item ? { ...item, sourceType: "raid_milestone", sourceIdentity: `raid:99:${family}`, rewardVersion: 2, itemModelVersion: 2 } : null;
+}
+
 // Grants rank-bonus rewards once, the instant the boss dies. Guarded by an atomic
 // UPDATE on settled_at (only succeeds for whichever concurrent attack request gets
 // there first) so two players killing it in the same instant can't double-pay rewards.
@@ -2715,7 +2737,9 @@ async function settleRaidRank(db, raidId) {
   if (!guard.meta || !guard.meta.changes) return; // already settled
 
   const bossRow = await db.prepare(`SELECT boss_def_id FROM raid_boss_state WHERE raid_id = ?`).bind(raidId).first();
-  const bossName = raidBossDefById(bossRow ? bossRow.boss_def_id : "").name;
+  const bossDef = raidBossDefById(bossRow ? bossRow.boss_def_id : "");
+  const bossName = bossDef.name;
+  const family = raidFamilyForBoss(bossDef);
   const allRes = await db
     .prepare(`SELECT character_id, total_contribution FROM raid_participants WHERE raid_id = ? ORDER BY total_contribution DESC`)
     .bind(raidId)
@@ -2726,11 +2750,11 @@ async function settleRaidRank(db, raidId) {
     const top = RAID_RANK_REWARDS[i];
     if (top) {
       const junk = top.junk.slice();
-      if (top.recipe) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
+      if (top.recipe) junk.push({ junkId: randomSetRecipeJunkId(family), quantity: 1 });
       await sendMail(
         db, rows[i].character_id, `🏆 อันดับ ${i + 1} ศึก ${bossName}`,
         `คุณจบการล่า ${bossName} ในอันดับที่ ${i + 1} ด้วยดาเมจสะสม ${rows[i].total_contribution}`,
-        { junk, items: [raidWingItemDesc(top.wingStar)] }, `raid:rank:${raidId}:${rows[i].character_id}`
+        { junk, items: [raidWingItemDesc(family, top.wingRarity)] }, `raid:rank:${raidId}:${rows[i].character_id}`
       );
     } else {
       await sendMail(
@@ -2761,7 +2785,7 @@ async function handleGetRaidStatus(db, id, session, characterId) {
   const contribution = participant ? Number(participant.total_contribution) || 0 : 0;
   return json({
     ok: true,
-    boss: { raidId: raid.raid_id, defId: def.id, name: def.name, hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
+    boss: { raidId: raid.raid_id, defId: def.id, name: def.name, family: raidFamilyForBoss(def), hpMax: Number(raid.boss_hp_max), hpCurrent: Number(raid.boss_hp_current) },
     me: {
       stamina: staminaState.stamina,
       staminaMax: RAID_STAMINA_MAX,
@@ -2774,7 +2798,8 @@ async function handleGetRaidStatus(db, id, session, characterId) {
     },
     milestoneStep: RAID_MILESTONE_STEP,
     milestoneSpecials: [
-      { pct: 25, label: "ปีก 1★" }, { pct: 50, label: "ปีก 3★" }, { pct: 75, label: "แบบร่างชุด Azure" }, { pct: 99, label: "ไอเทมชุด Azure" },
+      { pct: 25, label: `${RAID_FAMILIES[raidFamilyForBoss(def)].name} Wings Rare` }, { pct: 50, label: "Accessory Unique/Elite" },
+      { pct: 75, label: `แบบร่างชุด ${RAID_FAMILIES[raidFamilyForBoss(def)].name}` }, { pct: 99, label: `ไอเทมชุด ${RAID_FAMILIES[raidFamilyForBoss(def)].name}` },
     ],
     top: topRes.results || [],
   });
@@ -2893,10 +2918,20 @@ async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds, 
   const newContribution = participantRow ? Number(participantRow.total_contribution) : appliedDamage;
 
   let bossDied = false;
+  const bossDef = raidBossDefById(raid.boss_def_id);
+  const family = raidFamilyForBoss(bossDef);
+  // Snapshot the 99% direct Set Item at threshold time. The descriptor is kept in
+  // the participant row and delivered later by the exact-once milestone mailbox.
+  if (participantRow && Number(participantRow.total_contribution) >= Number(raid.boss_hp_max) * 0.99) {
+    const current = await db.prepare(`SELECT p99_json FROM raid_milestone_snapshots WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
+    if (!current?.p99_json) {
+      const snapshot = raidSetItemRewardDesc(family, Number(character.unlocked_floor) || 1);
+      if (snapshot) await db.prepare(`INSERT INTO raid_milestone_snapshots (raid_id, character_id, p99_json, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(raid_id, character_id) DO NOTHING`).bind(raid.raid_id, characterId, JSON.stringify(snapshot), nowIso()).run();
+    }
+  }
   if (bossRow && bossHpAfter <= 0 && hpBefore > 0) {
     bossDied = true;
-    const lastHitStar = randomRaidWingStar();
-    await sendMail(db, characterId, `💥 Last Hit! ${raidBossDefById(raid.boss_def_id).name}`, `คุณคือผู้ปิดจ๊อบ! ได้รับปีกสุ่ม ★${lastHitStar}`, { items: [raidWingItemDesc(lastHitStar)] }, `raid:last-hit:${raid.raid_id}:${characterId}`);
+    await sendMail(db, characterId, `💥 Last Hit! ${bossDef.name}`, `คุณคือผู้ปิดจ๊อบ! ได้รับแบบร่างชุด ${RAID_FAMILIES[family].name}`, { junk: [{ junkId: randomSetRecipeJunkId(family), quantity: 1 }] }, `raid:last-hit:${raid.raid_id}:${characterId}`);
     await settleRaidRank(db, raid.raid_id);
   }
 
@@ -2930,6 +2965,7 @@ async function handleClaimRaidMilestones(db, id, session, characterId) {
   if (!participant) return json({ error: "no_participation" });
 
   const claimed = (participant.milestone_claimed || "").split(",").filter(Boolean);
+  const family = raidFamilyForBoss(raidBossDefById(raid.boss_def_id));
   const hpMax = Number(raid.boss_hp_max) || 1;
   const pctReached = ((Number(participant.total_contribution) || 0) / hpMax) * 100;
 
@@ -2943,14 +2979,23 @@ async function handleClaimRaidMilestones(db, id, session, characterId) {
     newKeys.push(key);
     diamonds += RAID_MILESTONE_DIAMOND_PER_STEP;
     if (pct % 10 === 0) junk.push({ junkId: randomBossMaterialJunkId(), quantity: 1 });
-    if (pct === 25) items.push(raidWingItemDesc(1));
-    if (pct === 50) items.push(raidWingItemDesc(3));
-    if (pct === 75) junk.push({ junkId: randomAzureRecipeJunkId(), quantity: 1 });
+    if (pct === 25) items.push(raidWingItemDesc(family, "rare"));
+    if (pct === 50) {
+      const floor = Math.max(1, Number((await db.prepare(`SELECT unlocked_floor FROM characters WHERE character_id = ?`).bind(characterId).first())?.unlocked_floor) || 1);
+      items.push(raidAccessoryRewardDesc(floor, Math.random() < 0.8 ? "unique" : "elite"));
+    }
+    if (pct === 75) junk.push({ junkId: randomSetRecipeJunkId(family), quantity: 1 });
   }
   // 99% is its own checkpoint (not a multiple of 5) — a full random azure piece, not a recipe.
   if (pctReached >= 99 && claimed.indexOf("p99") === -1) {
     newKeys.push("p99");
-    items.push(randomAzureItemDesc());
+    const snapshotRow = await db.prepare(`SELECT p99_json FROM raid_milestone_snapshots WHERE raid_id = ? AND character_id = ?`).bind(raid.raid_id, characterId).first();
+    let snapshot = parseJsonColumn(snapshotRow?.p99_json, null);
+    if (!snapshot) {
+      const currentFloor = Math.max(1, Number((await db.prepare(`SELECT unlocked_floor FROM characters WHERE character_id = ?`).bind(characterId).first())?.unlocked_floor) || 1);
+      snapshot = raidSetItemRewardDesc(family, currentFloor);
+    }
+    if (snapshot) items.push(snapshot);
   }
   if (!newKeys.length) return json({ ok: true, claimed: [] });
 
