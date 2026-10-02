@@ -117,6 +117,19 @@
     const value = weightedValue(def, valueRoll);
     return Object.freeze({ key, label: def.label, icon: def.icon, value, locked: false, quality: optionQuality(def, value), modelVersion: 2 });
   }
+  function rollEmpowerOptionValue(type, key, valueRoll, locked = false) {
+    if (!validEmpowerPool(type).includes(key) || !OPTION_DEFS[key]) return null;
+    const def = OPTION_DEFS[key];
+    const value = weightedValue(def, valueRoll);
+    return Object.freeze({ key, label: def.label, icon: def.icon, value, locked: locked === true, quality: optionQuality(def, value), modelVersion: 2 });
+  }
+  function fillEmpowerSlots(type, rarity, rng = Math.random) {
+    const capacity = EMPOWER_CAPACITY[String(rarity || "").toLowerCase()] || 0;
+    return Array.from({ length: capacity }, () => rollEmpowerOption(type, rng(), rng()));
+  }
+  function rerollEmpowerOptionValue(type, option, valueRoll) {
+    return option ? rollEmpowerOptionValue(type, String(option.key || ""), valueRoll, option.locked === true) : null;
+  }
   function resolveEnhanceAttempt({ level, successRoll, downgradeRoll, protectionRequested, protectionStones }) {
     const current = Math.max(0, Math.min(ENHANCE_MAX, Math.floor(Number(level) || 0)));
     if (current >= ENHANCE_MAX) return Object.freeze({ ok: false, error: "enhance_max" });
@@ -145,7 +158,8 @@
     EMPOWER_OPEN_BASE_GOLD, WING_PRIMARY_STAT, OPTION_DEFS, SLOT_POOLS,
     isV2Item, enhanceSuccessRate, itemTier, wingFamily, enhanceEconomyMultiplier,
     empowerEconomyMultiplier, enhanceCost, empowerCapacity, empowerOpenCost,
-    empowerRerollCost, validEmpowerPool, rollEmpowerOption, resolveEnhanceAttempt,
+    empowerRerollCost, validEmpowerPool, rollEmpowerOption, rollEmpowerOptionValue, fillEmpowerSlots,
+    rerollEmpowerOptionValue, resolveEnhanceAttempt,
     isValidEmpowerOption
   });
   root.ENHANCEMENT_V2 = api;

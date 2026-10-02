@@ -1,6 +1,17 @@
 // ---------- shop & selling ----------
 function itemValueScore(it) {
-  return (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6 + (it.dodgeChance || 0) * 4 + (it.critChance || 0) * 4 + (it.critDamage || 0) * 2.5;
+  let score = (it.atk || 0) * 3 + (it.def || 0) * 3 + (it.hp || 0) * 0.6 + (it.mp || 0) * 0.6 + (it.dodgeChance || 0) * 4 + (it.critChance || 0) * 4 + (it.critDamage || 0) * 2.5;
+  if (String(it.type || "").toLowerCase() === "wings") {
+    const family = String(it.wingFamily || it.wingId || it.wingsId || it.setId || "").toLowerCase();
+    const primary = { azure: "agi", robot: "vit", skeleton: "str" }[family];
+    score += (Number(it.enhanceLevel) || 0) * 3;
+    (it.empowerSlots || []).filter(Boolean).forEach(slot => {
+      const key = String(slot.key || "");
+      score += Number(slot.value) || 0;
+      if (key === primary) score += Number(slot.value) || 0;
+    });
+  }
+  return score;
 }
 function sellPrice(it) {
   if (it.type === "junk") return Math.max(1, (JUNK_SELL_VALUE[it.junkId] || 1) * (it.quantity || 1));

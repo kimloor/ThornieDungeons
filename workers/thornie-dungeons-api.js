@@ -971,6 +971,14 @@ async function handlePurchaseShopEquipment(db, id, session, characterId, offerId
         WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
         ON CONFLICT(item_id) DO NOTHING`)
         .bind(itemRow.item_id, id, characterId, itemRow.slot_type, itemRow.rarity, itemRow.name, itemRow.atk, itemRow.def, itemRow.hp, itemRow.mp, itemRow.extra_json, now, now, token),
+      db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
+        item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
+        origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
+        origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
+        acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
+      )`),
+      itemProvenanceStatement(db, itemRow.item_id, id, characterId, "shop_purchase", keyOffer, { offerId: keyOffer, floor: shop.floor }, now,
+        `EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`, [token]),
       db.prepare(`UPDATE character_shop_offers SET offers_json = ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND offers_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
         .bind(JSON.stringify(nextOffers), now, characterId, id, shop.offers_json, token)
     ], result
@@ -998,8 +1006,17 @@ async function handleSellCharacterItem(db, id, session, characterId, itemId, req
   let price;
   if (row.slot_type === "junk") price = Math.max(1, (junkValues[String(extra.junkId || "")] || 1) * Math.max(1, Math.floor(Number(extra.quantity) || 1)));
   else {
-    const value = (Number(row.atk) || 0) * 3 + (Number(row.def) || 0) * 3 + (Number(row.hp) || 0) * .6 + (Number(row.mp) || 0) * .6
+    let value = (Number(row.atk) || 0) * 3 + (Number(row.def) || 0) * 3 + (Number(row.hp) || 0) * .6 + (Number(row.mp) || 0) * .6
       + (Number(extra.dodgeChance) || 0) * 4 + (Number(extra.critChance) || 0) * 4 + (Number(extra.critDamage) || 0) * 2.5;
+    if (row.slot_type === "wings") {
+      const family = String(extra.wingFamily || extra.wingId || extra.wingsId || extra.setId || "").toLowerCase();
+      const primary = { azure: "agi", robot: "vit", skeleton: "str" }[family];
+      value += (Number(row.enhance_level) || 0) * 3;
+      for (const slot of (Array.isArray(extra.empowerSlots) ? extra.empowerSlots : [])) {
+        value += Number(slot?.value) || 0;
+        if (slot?.key === primary) value += Number(slot.value) || 0;
+      }
+    }
     const rarityMult = { rare: 1, unique: 1.9, elite: 3.2, mythic: 5.4, azure: 5.4 }[String(row.rarity || "")] || 1;
     price = Math.max(3, Math.round(value * rarityMult * .9));
   }
@@ -1504,7 +1521,9 @@ function dungeonV2ServerCanonicalEquipment({ battleId, floor, type, rarity, sour
     itemModelVersion: 2,
     empowerSlotCapacity: capacity,
     empowerSlotCount: capacity,
-    empowerSlots: Array(capacity).fill(null),
+    empowerSlots: globalThis.ENHANCEMENT_V2?.fillEmpowerSlots
+      ? globalThis.ENHANCEMENT_V2.fillEmpowerSlots(type, rarity, rng)
+      : Array(capacity).fill(null),
     sourceType,
     sourceFloor,
     specialSource: specialSource || undefined,
@@ -1741,7 +1760,17 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   // Dungeon V2 currently has no approved Diamond reward source. The server plan is
   // deliberately zero and never reads reward.diamonds from the client.
   const playerStmt = db.prepare(`UPDATE players SET diamonds = diamonds + 0 WHERE id = ? AND changes() > 0`).bind(id);
-  const batchResult = await db.batch([completionStmt, characterStmt, playerStmt, ...(itemStmt ? [itemStmt] : [])]);
+  const provenance = rows.length ? [
+    db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
+      item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
+      origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
+      origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
+      acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
+    )`),
+    ...rows.map(row => itemProvenanceStatement(db, row.item_id, id, characterId, row.slot_type === "junk" ? "dungeon_junk" : (row.sourceType || "dungeon_reward"), row.sourceIdentity || battleId,
+      { battleId, sourceFloor: context.floor }, now))
+  ] : [];
+  const batchResult = await db.batch([completionStmt, characterStmt, playerStmt, ...(itemStmt ? [itemStmt] : []), ...provenance]);
   const committed = Number(batchResult?.[0]?.meta?.changes) > 0;
   return { completionEncoded: encoded, reward: committed ? normalizedReward : null, committed };
 }
@@ -1753,6 +1782,14 @@ async function battleCompletionSnapshot(db, id, characterId) {
   ]);
   return { character, items, diamonds: Number(player?.diamonds) || 0 };
 }
+function itemProvenanceStatement(db, itemId, playerId, characterId, originType, originSourceId, context, timestamp, gateSql = null, gateBinds = []) {
+  const gate = gateSql ? ` AND ${gateSql}` : "";
+  return db.prepare(`INSERT OR IGNORE INTO item_provenance
+    (item_id, original_player_id, original_character_id, origin_type, origin_source_id, origin_context_json, created_at, acquired_at, tradeable, bound)
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?, 0, 0${gate}`)
+    .bind(itemId, playerId, characterId, String(originType || "unknown").slice(0, 80), originSourceId ? String(originSourceId).slice(0, 160) : null,
+      JSON.stringify(context || {}), timestamp, timestamp, ...gateBinds);
+}
 
 // Mail claim credits are derived only from the persisted mailbox row. The claim token
 // gates each credit statement, and callers include these statements in the same D1
@@ -1762,7 +1799,14 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
   const timestamp = String(claimedAt).split("#", 1)[0];
   const gate = claimGate?.sql || `EXISTS (SELECT 1 FROM mailbox WHERE mail_id = ? AND character_id = ? AND claimed = 1 AND claimed_at = ?)`;
   const gateBinds = claimGate?.binds || [mailId, characterId, claimedAt];
-  const statements = [];
+  // Keep mailbox claims compatible with pre-0028 QA databases while the additive
+  // migration rolls forward; production applies the same idempotent DDL once.
+  const statements = [db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
+    item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
+    origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
+    origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
+    acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
+  )` )];
   const gold = Math.max(0, Math.trunc(Number(mail.gold) || 0));
   const diamonds = Math.max(0, Math.trunc(Number(mail.diamonds) || 0));
   statements.push(db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ? AND ${gate}`)
@@ -1786,6 +1830,7 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
        SELECT ?, ?, ?, 'junk', 0, '', '', 'common', ?, 0, 0, 0, 1, 0, 0, 0, 0, ?, ?, ? WHERE ${gate}
        ON CONFLICT(item_id) DO NOTHING`
     ).bind(itemId, id, characterId, junkId, extra, timestamp, timestamp, ...gateBinds));
+    statements.push(itemProvenanceStatement(db, itemId, id, characterId, "mail_reward", mailId, { mailId, junkId }, timestamp, gate, gateBinds));
     newItemOffset += 1;
   }
 
@@ -1796,7 +1841,9 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
     if (!["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(slot)) return;
     const itemId = `mail-item-${dungeonV2ServerHash(`${mailId}:${index}`)}`;
     const extra = {
-      empowerSlots: Array(Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCount || item.empowerSlotCapacity) || 1)))).fill(null),
+      empowerSlots: Array.isArray(item.empowerSlots) ? item.empowerSlots : (globalThis.ENHANCEMENT_V2?.fillEmpowerSlots
+        ? globalThis.ENHANCEMENT_V2.fillEmpowerSlots(slot, String(item.rarity || "rare").toLowerCase(), secureRandomUnit)
+        : Array(Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCount || item.empowerSlotCapacity) || 1)))).fill(null)),
       empowerSlotCapacity: Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCapacity || item.empowerSlotCount) || 1))),
       overflow: newItemOffset >= 30,
       ...(Number(item.rewardVersion) === 2 || Number(item.itemModelVersion) === 2 ? {
@@ -1826,6 +1873,8 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
     ).bind(itemId, id, characterId, slot, String(item.rarity || "common").slice(0, 40), String(item.name || slot).slice(0, 160),
       Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0,
       JSON.stringify(extra), timestamp, timestamp, ...gateBinds));
+    statements.push(itemProvenanceStatement(db, itemId, id, characterId, item.sourceType || "mail_reward", item.sourceIdentity || mailId,
+      { mailId, sourceFloor: item.sourceFloor || null }, timestamp, gate, gateBinds));
     newItemOffset += 1;
   });
   return statements;
@@ -2060,7 +2109,7 @@ async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mu
     const lockedCount = nextSlots.filter(slot => slot?.locked).length;
     const cost = ENHANCEMENT_V2_RULES.empowerRerollCost(item, filledCount, lockedCount);
     if (!cost) return json({ error: filledCount && lockedCount >= filledCount ? "all_empower_slots_locked" : "invalid_reroll" }, 400);
-    nextSlots = nextSlots.map(slot => !slot || slot.locked ? slot : { ...ENHANCEMENT_V2_RULES.rollEmpowerOption(item.type, secureRandomUnit(), secureRandomUnit()) });
+    nextSlots = nextSlots.map(slot => !slot || slot.locked ? slot : ENHANCEMENT_V2_RULES.rerollEmpowerOptionValue(item.type, slot, secureRandomUnit()));
     goldCost = cost.gold;
     junkId = "manaOre";
     outcome = { type: action, filledCount, lockedCount, cost };
@@ -2456,6 +2505,13 @@ async function handleCraftItem(db, id, session, characterId, recipeId, requestId
     `INSERT OR IGNORE INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
      SELECT ?, ?, ?, ?, 0, '', ?, 'mythic', ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ? WHERE ${insertWhere}`
   ).bind(newItemId, id, characterId, item.type, recipeId, item.name, Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0, JSON.stringify(extra), now, now, characterId, id, goldCost, ...resourceBinds)];
+  stmts.push(db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
+    item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
+    origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
+    origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
+    acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
+  )`));
+  stmts.push(itemProvenanceStatement(db, newItemId, id, characterId, "craft", recipeId, { recipeId, floor }, now));
   junkNeeds.forEach((need) => {
     let remaining = need.qty;
     for (const row of junkRows.filter((r) => r.junkId === need.junkId)) {
@@ -2550,7 +2606,9 @@ function raidWingItemDesc(family, rarity) {
   return {
     type: "wings", rarity: r, name: `${RAID_FAMILIES[f].name} Wings`, wingFamily: f,
     rewardVersion: 2, itemModelVersion: 2, empowerSlotCapacity: capacity, empowerSlotCount: capacity,
-    empowerSlots: Array(capacity).fill(null), sourceType: "raid", sourceIdentity: `raid_wing:${f}`
+    empowerSlots: globalThis.ENHANCEMENT_V2_RULES?.fillEmpowerSlots
+      ? globalThis.ENHANCEMENT_V2_RULES.fillEmpowerSlots("wings", r, secureRandomUnit)
+      : Array(capacity).fill(null), sourceType: "raid", sourceIdentity: `raid_wing:${f}`
   };
 }
 // Azure set — 6 pieces (helmet/chest/gloves/boots/weapon/ring), set bonus at 2/4/6 equipped
