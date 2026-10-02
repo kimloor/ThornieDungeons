@@ -1,0 +1,24 @@
+# Cloudflare Workers Static Assets ignore rules.
+# wrangler.jsonc uses assets.directory = ".", so only production web assets at the
+# repository root should be uploaded. Source, tooling, docs, tests and R2 staging
+# are intentionally excluded from the public Static Assets bundle.
+
+.git/
+.github/
+docs/
+src/
+tests/
+workers/
+migrations/
+r2-upload/
+scripts/
+audio-requests/
+
+AGENTS.md
+build.js
+head.html
+tail.html
+worker.js
+wrangler.jsonc
+wrangler.api.template.jsonc
+.assetsignore
