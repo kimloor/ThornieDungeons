@@ -4589,7 +4589,7 @@ async function cloudGet(url, params, { headers = {} } = {}) {
     try {
       const res = await fetch(fullUrl, { headers });
       const data = await res.json();
-      if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
+      if (!res.ok) return { ...data, error: data.error || (res.status >= 500 ? "server_error" : "request_failed"), status: res.status };
       return data;
     } catch (e) {
       return {
