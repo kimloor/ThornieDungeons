@@ -47,9 +47,10 @@ function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
   const slots = ["helmet", "chest", "gloves", "boots", "weapon"];
   const equipment = Object.fromEntries(slots.map(slot => [slot, heroV5SetFamily(equipped?.[slot])]));
   const bossWeapon = heroV5BossWeaponVisualId(equipped?.weapon);
+  const authoritativeWing = heroV5WingVisualId(equipped?.wings);
   return {
-    // Family identity is authoritative metadata on the server-owned Wing item.
-    wings: legacySelection?.wings === "angel" ? "angel" : heroV5WingVisualId(equipped?.wings),
+    // W5+ Wing family metadata is authoritative. Legacy Angel selection is fallback only.
+    wings: authoritativeWing || (legacySelection?.wings === "angel" ? "angel" : null),
     equipment,
     bossWeapon,
     azure: {

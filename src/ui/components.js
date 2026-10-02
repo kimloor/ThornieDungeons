@@ -3175,6 +3175,56 @@ function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
   );
 }
 
+
+function persistenceDiagnosticSafeJson(value) {
+  if (!value || typeof value !== "object") return "";
+  try {
+    return JSON.stringify(value, (key, item) => (
+      /token|password|credential|authorization|session/i.test(String(key)) ? "[redacted]" : item
+    ), 2);
+  } catch (error) {
+    return String(value);
+  }
+}
+
+function persistenceDiagnosticText(diagnostic = {}) {
+  const responseText = persistenceDiagnosticSafeJson(diagnostic.response);
+  return [
+    "Cloud persistence failure",
+    `Code: ${diagnostic.code || "unknown_error"}`,
+    `HTTP: ${diagnostic.status || "unknown"}`,
+    `Domain: ${diagnostic.domain || "unknown"}`,
+    `Character: ${diagnostic.characterId || "unknown"}`,
+    diagnostic.itemId ? `Item: ${diagnostic.itemId}` : "",
+    diagnostic.action ? `Action: ${diagnostic.action}` : "",
+    `Transient: ${diagnostic.transient ? "yes" : "no"}`,
+    `Message: ${diagnostic.message || diagnostic.code || "Unknown persistence error"}`,
+    responseText ? `Response:\n${responseText}` : "",
+    diagnostic.stack ? `Stack:\n${diagnostic.stack}` : ""
+  ].filter(Boolean).join("\n");
+}
+
+function PersistenceDiagnosticOverlay({ diagnostic, onClose }) {
+  if (!diagnostic) return null;
+  const e = React.createElement;
+  return ReactDOM.createPortal(
+    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-persistence-error-title" },
+      e("section", { className: "md-arena-fatal-card" },
+        e("div", { className: "md-arena-fatal-head" },
+          e("strong", { id: "md-persistence-error-title" }, "⚠ Cloud save error"),
+          e("button", { type: "button", className: "md-arena-fatal-close", onClick: onClose, "aria-label": "ปิดรายละเอียด" }, "×")
+        ),
+        e("p", { className: "md-arena-fatal-copy" }, "การบันทึก Cloud ไม่สำเร็จ รายละเอียดด้านล่างใช้ตรวจสอบ state/API ที่ผิดพลาด โดยข้อมูลลับจะถูกปิดบัง"),
+        e("pre", { className: "md-arena-fatal-detail" }, persistenceDiagnosticText(diagnostic)),
+        e("div", { className: "md-arena-fatal-actions" },
+          e("button", { type: "button", className: "md-btn primary small", onClick: onClose }, "CLOSE")
+        )
+      )
+    ),
+    document.body
+  );
+}
+
 function arenaTurnOrderIcon(unit, preparedSnapshot) {
   if (unit?.kind === "pet") {
     const side = String(unit.id || "").startsWith("team_b") ? preparedSnapshot?.defender : preparedSnapshot?.attacker;
