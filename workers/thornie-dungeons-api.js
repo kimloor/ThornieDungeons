@@ -1984,7 +1984,7 @@ async function handleSyncItems(db, id, session, characterId, items) {
     const incomingV2 = ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: incomingExtra.rewardVersion, itemModelVersion: incomingExtra.itemModelVersion });
     const existingV2 = !!existing && ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: storedExtra.rewardVersion, itemModelVersion: storedExtra.itemModelVersion });
     if (incomingV2 && !existingV2) return json({ error: "untrusted_v2_item" }, 403);
-    if (!existing) return json({ error: "item_not_owned" }, 403);
+    if (!existing) return json({ error: "item_not_owned", action: "syncItems", itemId }, 403);
 
     if (typeof incoming.equipped !== "boolean") return json({ error: "invalid_presentation_state" }, 400);
     equippedStateById.set(itemId, incoming.equipped);
