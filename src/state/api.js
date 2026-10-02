@@ -156,6 +156,15 @@ function cloudSyncItems(url, characterId, items) {
     items
   });
 }
+function cloudMutateV2Blacksmith(url, characterId, itemId, mutation, requestId) {
+  return cloudAuthPost(url, {
+    action: "mutateV2Blacksmith",
+    characterId,
+    itemId,
+    mutation,
+    requestId
+  });
+}
 function cloudSaveRunState(url, characterId, runState) {
   return cloudAuthPost(url, {
     action: "saveRunState",

@@ -129,6 +129,7 @@ function freshPlayerFromSave(save, carry = null) {
   const mp = carry && Number.isFinite(carry.mp) ? roundInt(Math.max(0, Math.min(cb.maxMp, carry.mp))) : cb.maxMp;
   return {
     level: save.character.level,
+    primaryStats: { ...save.character.stats },
     xp: save.character.xp,
     baseAtk: cb.atk,
     baseDef: cb.def,
@@ -432,7 +433,9 @@ function itemDisplayName(it) {
 function itemBonus(it) {
   if (!it) return null;
   const lvl = it.enhanceLevel || 0;
-  const growMult = 1 + lvl * ENHANCE_STAT_PCT;
+  const isV2 = typeof ENHANCEMENT_V2 !== "undefined" && ENHANCEMENT_V2.isV2Item(it);
+  const isV2Wing = isV2 && it.type === "wings";
+  const growMult = isV2Wing ? 1 : 1 + lvl * ENHANCE_STAT_PCT;
   // Kept unrounded here on purpose — this gets summed across every equipped item in
   // getEquipBonus() first, and rounding *once* after that sum (rather than once per item)
   // avoids stacking up separate rounding errors. Anything that displays a single item's
@@ -446,11 +449,24 @@ function itemBonus(it) {
     critDamage: (it.critDamage || 0) * growMult,
     accuracy: 0,
     dodgeChance: (it.dodgeChance || 0) * growMult,
-    dropBonus: 0
+    dropBonus: 0,
+    hpPct: 0,
+    mpPct: 0,
+    str: 0,
+    vit: 0,
+    agi: 0,
+    dex: 0,
+    luk: 0
   };
+  if (isV2Wing) {
+    const primary = ENHANCEMENT_V2.WING_PRIMARY_STAT[ENHANCEMENT_V2.wingFamily(it)];
+    if (primary) b[primary] += lvl;
+  }
   (it.empowerSlots || []).forEach(slot => {
     if (!slot) return;
-    if (slot.key === "atkPct") b.atk += (it.atk || 0) * slot.value;else if (slot.key === "defPct") b.def += (it.def || 0) * slot.value;else b[slot.key] = (b[slot.key] || 0) + slot.value;
+    if (slot.key === "atkPct") b.atk += (it.atk || 0) * slot.value * (isV2 ? 0.01 : 1);
+    else if (slot.key === "defPct") b.def += (it.def || 0) * slot.value * (isV2 ? 0.01 : 1);
+    else b[slot.key] = (b[slot.key] || 0) + slot.value;
   });
   return b;
 }
@@ -466,6 +482,11 @@ function itemStatText(it) {
   if (b.accuracy) parts.push(`+${roundTo(b.accuracy, 1)}% Acc`);
   if (b.dodgeChance) parts.push(`+${roundTo(b.dodgeChance, 1)}% Dodge`);
   if (b.dropBonus) parts.push(`+${roundTo(b.dropBonus, 1)}% Drop`);
+  if (b.hpPct) parts.push(`+${roundTo(b.hpPct, 1)}% HP`);
+  if (b.mpPct) parts.push(`+${roundTo(b.mpPct, 1)}% MP`);
+  ["str", "vit", "agi", "dex", "luk"].forEach(key => {
+    if (b[key]) parts.push(`+${roundInt(b[key])} ${key.toUpperCase()}`);
+  });
   return parts.join("  ");
 }
 function getEquipBonus(equipped) {
@@ -478,7 +499,14 @@ function getEquipBonus(equipped) {
     critDamage: 0,
     accuracy: 0,
     dodgeChance: 0,
-    dropBonus: 0
+    dropBonus: 0,
+    hpPct: 0,
+    mpPct: 0,
+    str: 0,
+    vit: 0,
+    agi: 0,
+    dex: 0,
+    luk: 0
   };
   Object.values(equipped).forEach(it => {
     const ib = itemBonus(it);
@@ -525,22 +553,27 @@ function getSetBonusPct(equipped) {
 function getStats(player, equipped) {
   const b = getEquipBonus(equipped);
   const setBonus = getSetBonusPct(equipped);
+  const primary = player.primaryStats || { str: 0, vit: 0, agi: 0, dex: 0, luk: 0 };
+  const adjustedBaseAtk = player.baseAtk + b.str * 3 + Math.floor((primary.dex + b.dex) * 0.5) - Math.floor(primary.dex * 0.5);
+  const adjustedBaseDef = player.baseDef + Math.floor((primary.vit + b.vit) * 0.5) - Math.floor(primary.vit * 0.5);
+  const adjustedBaseHp = player.baseMaxHp + b.vit * 12;
+  const adjustedBaseSpeed = (player.baseSpeed || BASE_SPEED) + b.agi * 2;
   const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0) + setBonus.atkPct);
   const defBuff = 1 + (player.defBuffPct || 0) + setBonus.defPct;
   return {
-    atk: roundInt((player.baseAtk + b.atk) * atkMult),
-    def: roundInt((player.baseDef + b.def) * defBuff),
-    maxHp: roundInt(player.baseMaxHp + b.hp),
-    maxMp: roundInt(player.baseMaxMp + b.mp),
-    speed: roundInt(player.baseSpeed || BASE_SPEED),
+    atk: roundInt((adjustedBaseAtk + b.atk) * atkMult),
+    def: roundInt((adjustedBaseDef + b.def) * defBuff),
+    maxHp: roundInt((adjustedBaseHp + b.hp) * (1 + b.hpPct / 100)),
+    maxMp: roundInt((player.baseMaxMp + b.mp) * (1 + b.mpPct / 100)),
+    speed: roundInt(adjustedBaseSpeed),
     // These are each the sum of two already-rounded numbers (e.g. 5.1 + 2.3), which floating
     // point can turn into 7.3999999999999995 even though both inputs were "clean" — re-round
     // every percentage stat here, since this is the value combat rolls and the UI both read.
-    accuracy: roundTo(Math.min(99, (player.accuracy || 0) + b.accuracy), 1),
-    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + setBonus.critChance), 1),
+    accuracy: roundTo(Math.min(99, (player.accuracy || 0) + b.accuracy + b.dex * 0.5), 1),
+    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + b.luk * 0.5 + setBonus.critChance), 1),
     critDamage: roundTo(Math.min(300, (player.critDamage || 0) + b.critDamage), 1),
-    dodgeChance: roundTo(Math.min(60, (player.dodgeChance || 0) + b.dodgeChance), 1),
-    dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus, 1)
+    dodgeChance: roundTo(Math.min(60, (player.dodgeChance || 0) + b.dodgeChance + b.agi * 0.5), 1),
+    dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus + b.luk * 0.2, 1)
   };
 }
 function combatPower(stats, level) {

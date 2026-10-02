@@ -39,6 +39,7 @@ const MODULE_ORDER = [
   "systems/floorModifier.js",
   "systems/dungeonV2.js",
   "systems/rewardV2.js",
+  "systems/enhancementV2.js",
   "systems/stats.js",
   "systems/shop.js",
   "phaser/runtime/PhaserRuntime.js",

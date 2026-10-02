@@ -166,11 +166,13 @@ test("existing item persistence remains additive and round-trips V2 metadata", (
   assert.equal(loaded.sourceIdentity, "jelly_slime");
 });
 
-test("W3 blacksmith actions are gated only for V2 items", () => {
+test("W3 routes V2 blacksmith actions to the authoritative API while legacy paths remain", () => {
   const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
-  assert.match(appSource, /v2BlacksmithBlocked\(item, action\)/);
-  for (const action of ["Enhance", "Empower", "Reroll", "Lock"]) assert.match(appSource, new RegExp(`v2BlacksmithBlocked\\([^\\n]+\\"${action}\\"`));
-  assert.match(appSource, /dungeonV2IsV2Item\(item\)/);
+  assert.match(appSource, /cloudMutateV2Blacksmith/);
+  for (const action of ["enhance", "empower_open", "empower_reroll", "empower_lock"]) assert.match(appSource, new RegExp(`type: \\"${action}\\"`));
+  assert.match(appSource, /ENHANCEMENT_V2\.isV2Item/);
+  assert.match(appSource, /const success = Math\.random\(\) \* 100 < enhanceSuccessRate\(level\)/);
+  assert.match(appSource, /rollEmpowerBonus\(it\.rarity\)/);
   const rewardSource = fs.readFileSync(path.join(__dirname, "../src/systems/rewardV2.js"), "utf8");
   assert.match(rewardSource, /itemModelVersion\) === 2/);
   assert.match(rewardSource, /rewardVersion\) === 2/);
