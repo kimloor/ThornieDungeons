@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-4.5 are COMPLETE in Production; WAVE 5 Raid / Wings V2 is the next execution gate; WAVE 5.5 Security Hardening precedes WAVE 6 cutover. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-5.1 are COMPLETE in Production; WAVE 5.5 Security Hardening is the next execution gate before WAVE 6 cutover. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
@@ -69,7 +69,7 @@ Repository-wide references:
 
 ## 5. Read-by-task map
 
-For active sequencing/priorities from the current post-W9R baseline — Dungeon V2, Reward V2, Enhance/Empower, Mythic content, Server Authority / Economy Security, Raid/Wings, Security Hardening, cutover, full gap/security re-audit, presentation, Admin V2 and Graphics/QA parallel lanes — read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
+For active sequencing/priorities from the current post-W9R baseline — Dungeon V2, Reward V2, Enhance/Empower V2.1, Mythic content, Server Authority / Economy Security, Raid/Wings, Security Hardening, cutover, full gap/security re-audit, presentation, Admin V2 and Graphics/QA parallel lanes — read [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) first.
 
 Read only the documents relevant to the requested scope. Do not load unrelated system specifications unless a dependency or conflict requires them.
 
