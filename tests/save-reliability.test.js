@@ -162,7 +162,7 @@ test("central snapshot API uses bearer token and never sends password/player id"
   assert.equal("sessionToken" in bodies[0], false);
 });
 
-test("existing character, skill, inventory and equipment shapes remain compatible", () => {
+test("existing character and inventory shapes remain compatible without a generic progress serializer", () => {
   const sandbox = {
     console,
     kvGet: async () => null,
@@ -175,6 +175,7 @@ test("existing character, skill, inventory and equipment shapes remain compatibl
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/state/save.js"), "utf8"), sandbox);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/state/serialize.js"), "utf8"), sandbox);
+  assert.equal(typeof sandbox.characterProgressToServer, "undefined");
 
   const account = sandbox.accountFromLoginResponse({
     player: { diamonds: 12, activeSlot: 0 },
@@ -188,9 +189,6 @@ test("existing character, skill, inventory and equipment shapes remain compatibl
   const flat = sandbox.flattenCharacterForRuntime(account, 0);
   assert.equal(flat.character.level, 9);
   assert.deepEqual(Array.from(flat.pets, pet => pet.instId), ["pet-old"]);
-  flat.character.skillLevels = { powerStrike: 2 };
-  const progress = sandbox.characterProgressToServer(flat);
-  assert.equal(JSON.parse(progress.pets_json).skills.powerStrike, 2);
 
   const equipped = { weapon: { id: "w1", type: "weapon", rarity: "common", name: "Sword", atk: 3 }, armor: null };
   const inventory = [{ id: "j1", type: "junk", junkId: "iron", rarity: "common", name: "Iron", quantity: 4 }];

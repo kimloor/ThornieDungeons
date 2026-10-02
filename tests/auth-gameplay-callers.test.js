@@ -27,6 +27,23 @@ test("Mailbox and Crafting UI callers use Auth V2 session signatures", () => {
   const applyCraftResult = app.slice(app.indexOf("function applyCraftResult"), app.indexOf("function spawnFloat"));
   assert.match(applyCraftResult, /hydrateAuthoritativeBlacksmithSnapshot\(res\)/);
   assert.doesNotMatch(applyCraftResult, /insertCarriedItems|persistSave|persistItems/);
+  assert.match(mailbox, /await onBeforeClaim\(characterId\)/);
+  assert.match(mailbox, /onApplyReward\(res, characterId\)/);
+  assert.match(app, /flushRewardClaimBarrier/);
+  assert.match(app, /hydrateAuthoritativeBlacksmithSnapshot\(claim, characterSlot\.id\)/);
+  assert.match(app, /hydrateAuthoritativeBlacksmithSnapshot\(res, save\.characterId\)/);
+  const dailyClaim = app.slice(app.indexOf("async function claimDailyLogin"), app.indexOf('if (phase === "loading")'));
+  assert.match(dailyClaim, /flushRewardClaimBarrier/);
+  assert.match(dailyClaim, /hydrateAuthoritativeBlacksmithSnapshot\(res, save\.characterId\)/);
+  assert.doesNotMatch(dailyClaim, /insertCarriedItems|setSave\(s => s && \(\{[\s\S]*reward/);
+});
+
+test("Dungeon reward mirror hydrates the committed server snapshot without generic economy writes", () => {
+  const rewardApply = app.slice(app.indexOf("function applyCommittedDungeonReward"), app.indexOf("function endCombatWin"));
+  assert.match(rewardApply, /plan\?\.authoritativeSnapshot\?\.character/);
+  assert.match(rewardApply, /hydrateCommittedBattleSnapshot\(snapshot\)/);
+  assert.doesNotMatch(rewardApply.slice(0, rewardApply.indexOf("const currentMonsters")), /persistSave|persistItems|insertCarriedItems/);
+  assert.match(app, /authoritativeSnapshot: completionReceipt/);
 });
 
 test("authenticated gameplay helpers send bearer auth without id/password payloads", async () => {

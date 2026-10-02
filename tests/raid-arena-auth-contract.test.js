@@ -17,7 +17,11 @@ test("Raid uses the central session-token API signatures", () => {
   assert.doesNotMatch(source, /\bcred\b|password/);
   assert.match(source, /cloudGetRaidStatus\(serverUrl \|\| DEFAULT_SERVER_URL, characterId\)/);
   assert.match(source, /cloudClaimRaidMilestones\(serverUrl \|\| DEFAULT_SERVER_URL, characterId\)/);
-  assert.match(source, /cloudAttackRaidBoss\(serverUrl \|\| DEFAULT_SERVER_URL, characterId, useDiamonds\)/);
+  assert.match(source, /cloudAttackRaidBoss\(serverUrl \|\| DEFAULT_SERVER_URL, characterId, pendingAttack\.paidDiamonds, pendingAttack\.requestId\)/);
+  assert.match(source, /attackRequestIdRef/);
+  const worker = fs.readFileSync(path.join(__dirname, "..", "workers/thornie-dungeons-api.js"), "utf8");
+  assert.match(worker, /const operation = "raid_attack"/);
+  assert.match(worker, /operation_in_progress/);
 });
 
 test("Arena V2 uses the central session-token API signatures", () => {

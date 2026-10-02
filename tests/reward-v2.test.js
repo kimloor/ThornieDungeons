@@ -166,13 +166,16 @@ test("existing item persistence remains additive and round-trips V2 metadata", (
   assert.equal(loaded.sourceIdentity, "jelly_slime");
 });
 
-test("W3 routes V2 blacksmith actions to the authoritative API while legacy paths remain", () => {
+test("W3 routes both V2 and legacy blacksmith mutations to the authoritative API", () => {
   const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
   assert.match(appSource, /cloudMutateV2Blacksmith/);
+  assert.match(appSource, /cloudMutateLegacyBlacksmith/);
   for (const action of ["enhance", "empower_open", "empower_reroll", "empower_lock"]) assert.match(appSource, new RegExp(`type: \\"${action}\\"`));
   assert.match(appSource, /ENHANCEMENT_V2\.isV2Item/);
-  assert.match(appSource, /const success = Math\.random\(\) \* 100 < enhanceSuccessRate\(level\)/);
-  assert.match(appSource, /rollEmpowerBonus\(it\.rarity\)/);
+  assert.doesNotMatch(appSource, /Math\.random\(\) \* 100 < enhanceSuccessRate\(level\)/);
+  assert.doesNotMatch(appSource, /rollEmpowerBonus\(it\.rarity\)/);
+  const workerSource = fs.readFileSync(path.join(__dirname, "../workers/thornie-dungeons-api.js"), "utf8");
+  assert.match(workerSource, /function handleMutateLegacyBlacksmith/);
   const rewardSource = fs.readFileSync(path.join(__dirname, "../src/systems/rewardV2.js"), "utf8");
   assert.match(rewardSource, /itemModelVersion\) === 2/);
   assert.match(rewardSource, /rewardVersion\) === 2/);
@@ -180,11 +183,9 @@ test("W3 routes V2 blacksmith actions to the authoritative API while legacy path
 
 test("permanent first-clear claims are not stored in the rolling battle receipt", () => {
   const saveSource = fs.readFileSync(path.join(__dirname, "../src/state/save.js"), "utf8");
-  const serializeSource = fs.readFileSync(path.join(__dirname, "../src/state/serialize.js"), "utf8");
   const workerSource = fs.readFileSync(path.join(__dirname, "../workers/thornie-dungeons-api.js"), "utf8");
   assert.match(saveSource, /firstClearAccessoryClaims/);
   assert.match(saveSource, /battleRewardReceipts/);
-  assert.match(serializeSource, /firstClearAccessoryClaims/);
   assert.match(workerSource, /envelope\.firstClearAccessoryClaims = nextClaims/);
   assert.match(workerSource, /battleReceipts = \[\.\.\.new Set/);
   assert.match(workerSource, /db\.batch\(\[completionStmt, characterStmt, playerStmt/);

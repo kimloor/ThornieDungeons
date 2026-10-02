@@ -98,10 +98,11 @@ test("Inventory detail keeps corner controls separate and previews salvage yield
   const inventory = components.slice(components.indexOf("function InventoryHeader"), components.indexOf("function InventoryOverlay({"));
   assert.match(styles, /\.md-inv2-popup-close \{ position:absolute !important; right:10px; top:10px/);
   assert.match(styles, /\.md-inv2-favorite-toggle[^}]*top:10px; left:10px/);
-  assert.match(inventory, /const salvagePreview = [\s\S]*salvageYield\(currentDetail\.rarity\)/);
+  assert.match(inventory, /const salvagePreview = [\s\S]*inventorySalvagePreview\(currentDetail\)/);
+  assert.match(components, /MYTHIC_V2\.setSalvage/);
   assert.match(inventory, /className:"md-inv2-salvage-preview"/);
-  assert.match(inventory, /junkId:"iron"/);
-  assert.match(inventory, /junkId:"manaOre"/);
+  assert.match(components, /function inventorySalvagePreview\(item\)/);
+  assert.match(components, /salvageYield\(item\.rarity, item\)/);
   assert.match(inventory, /ได้รับ \$\{yieldText\}/);
 });
 

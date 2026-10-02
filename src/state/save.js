@@ -46,8 +46,8 @@ function safeJsonParse(str, fallback = null) {
 // ---------- two distinct shapes in this file — don't mix them up ----------
 // 1. ACCOUNT save ({saveVersion, diamonds, activeSlot, characters}): built fresh from the
 //    server's `login` response every session — never itself round-tripped back to the server
-//    as one blob (each field is written back through its own dedicated endpoint instead:
-//    createCharacter / deleteCharacter / saveCharacterProgress / syncItems / saveRunState).
+//    as one blob. Character economy/progression uses cause-specific server mutations; syncItems
+//    is presentation-only, while run state/checkpoints/settings have their own endpoints.
 // 2. CHARACTER SLOT (defaultCharacterSlot / characterFromServerRow): one character's own
 //    progression — name, level, stats, gold, floor, pets, etc.
 //
@@ -218,8 +218,8 @@ function flattenCharacterForRuntime(account, slotIndex) {
         ...slot.stats
       }
     },
-    // Not read by any existing gameplay code — kept only so App.js can address this character
-    // in server calls (saveCharacterProgress/syncItems/saveRunState all need characterId) and
+    // Not read by existing gameplay code — kept so App.js can address this character
+    // in authenticated character-scoped operations (syncItems/saveRunState need characterId) and
     // show its name in the UI, without a second piece of state.
     characterId: slot.id,
     characterName: slot.name

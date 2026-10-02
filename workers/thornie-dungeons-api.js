@@ -10,12 +10,9 @@
  * Dashboard editor; the automated pipeline is the only supported release path.
  *
  * v2 change (see migration_v2.sql — RUN THAT FIRST): each account can now have up to
- * MAX_CHARACTER_SLOTS independent characters, each with its own row in `characters`
- * instead of being squeezed into a single `progress` row. Items and run-state
- * checkpoints are now scoped by `character_id` as well as `player_id`, so saving one
- * character's inventory can never touch another character's gear — the old worker
- * deleted any item row for the *player* that wasn't in the sync payload, which is
- * fine for one character but silently unsafe the moment there's more than one.
+ * MAX_CHARACTER_SLOTS independent characters, each with its own row in `characters`.
+ * Items and run-state checkpoints are scoped by `character_id` and `player_id`; each
+ * mutation validates the authenticated owner before committing.
  *
  * The v1 `progress` table is left in place untouched (harmless, no longer written
  * to) purely as a historical backfill source for the one-time migration.
@@ -119,7 +116,8 @@ const {
 const {
   newMailId, sendMail, handleGetMailbox, handleClaimMail, handleClaimAllMail,
   handleDeleteMail, handleDeleteMails, handleDeleteAllClaimedMail,
-} = createMailboxHandlers({ json, nowIso, verifyPlayer, verifyOwnedCharacter, parseJsonColumn });
+} = createMailboxHandlers({ json, nowIso, verifyPlayer, verifyOwnedCharacter, parseJsonColumn,
+  buildRewardStatements: mailboxRewardStatements, getSnapshot: battleCompletionSnapshot });
 
 const {
   runLeaderboardSnapshot,
@@ -507,22 +505,602 @@ async function handleSaveCharacterProgress(db, id, session, characterId, diamond
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
-  if (!progress) return json({ error: "missing_fields" });
+  return json({ error: "character_progress_requires_authoritative_operation" }, 410);
+}
 
-  const editableCols = TABLES.characters.cols.filter((c) => c !== "character_id" && c !== "player_id" && c !== "slot_index" && c !== "name");
-  const sets = editableCols.map((c) => `${c} = ?`).join(",");
-  // updated_at/last_active_at are server-derived timestamps, never taken from the
-  // client's progress payload (last_active_at is the Social Foundation V1 presence
-  // source — SOCIAL-SYSTEM-V1.md §4 — piggybacked onto this existing write so presence
-  // tracking adds no extra round trip).
-  const values = editableCols.map((c) => (c === "updated_at" || c === "last_active_at" ? nowIso() : progress[c] === undefined ? null : progress[c]));
-  await db.prepare(`UPDATE characters SET ${sets} WHERE character_id = ?`).bind(...values, characterId).run();
+async function handleAllocateStats(db, id, session, characterId, allocations, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const validColumns = { str: "str", vit: "vit", agi: "agi", dex: "dex", luk: "luk" };
+  const normalized = {};
+  if (!allocations || typeof allocations !== "object" || Array.isArray(allocations)) return json({ error: "invalid_stat_allocation" }, 400);
+  for (const [stat, raw] of Object.entries(allocations)) {
+    if (!validColumns[stat]) return json({ error: "invalid_stat_allocation" }, 400);
+    const amount = Number(raw);
+    if (!Number.isInteger(amount) || amount < 0 || amount > 100) return json({ error: "invalid_stat_allocation" }, 400);
+    if (amount) normalized[stat] = amount;
+  }
+  const total = Object.values(normalized).reduce((sum, amount) => sum + amount, 0);
+  const operation = "allocate_stats";
+  const key = String(requestId || "");
+  if (!total || total > 500 || key.length < 8 || key.length > 128) return json({ error: "invalid_stat_allocation" }, 400);
+  const payloadJson = JSON.stringify(Object.fromEntries(Object.keys(normalized).sort().map(stat => [stat, normalized[stat]])));
+  const prior = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+    .bind(characterId, operation, key).first();
+  if (prior) {
+    if (prior.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+    if (prior.result_json === "pending") return json({ error: "operation_in_progress", retry: true }, 409);
+    return json({ ok: true, replayed: true, allocation: parseJsonColumn(prior.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
+  }
+  const operationToken = crypto.randomUUID();
+  const now = nowIso();
+  const assignments = Object.entries(validColumns).map(([stat, column]) => `${column} = ${column} + ?`).join(", ");
+  const values = Object.keys(validColumns).map(stat => Number(normalized[stat]) || 0);
+  const result = { allocations: normalized, statPointsSpent: total };
+  const statements = [db.prepare(
+    `INSERT INTO character_operation_receipts (character_id, operation, request_id, operation_token, payload_json, result_json, created_at)
+     SELECT ?, ?, ?, ?, ?, 'pending', ? WHERE EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND stat_points >= ?)
+     ON CONFLICT(character_id, operation, request_id) DO NOTHING`
+  ).bind(characterId, operation, key, operationToken, payloadJson, now, characterId, id, total)];
+  statements.push(db.prepare(
+    `UPDATE characters SET ${assignments}, stat_points = stat_points - ?, updated_at = ?
+     WHERE character_id = ? AND player_id = ? AND stat_points >= ?
+       AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`
+  ).bind(...values, total, now, characterId, id, total, operationToken));
+  statements.push(db.prepare(
+    `UPDATE character_operation_receipts SET result_json = ? WHERE operation_token = ? AND result_json = 'pending' AND changes() = 1`
+  ).bind(JSON.stringify(result), operationToken));
+  statements.push(db.prepare(`DELETE FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending'`).bind(operationToken));
+  const batchResults = await db.batch(statements);
+  const receipt = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+    .bind(characterId, operation, key).first();
+  if (!receipt) return json({ error: "insufficient_stat_points" }, 409);
+  if (receipt.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+  return json({ ok: true, replayed: !(Number(batchResults?.[0]?.meta?.changes) > 0), allocation: parseJsonColumn(receipt.result_json, result), ...(await battleCompletionSnapshot(db, id, characterId)) });
+}
 
-  if (diamonds !== undefined) {
-    await db.prepare(`UPDATE players SET diamonds = ? WHERE id = ?`).bind(Number(diamonds) || 0, id).run();
+function characterPetEnvelope(row) {
+  const value = parseJsonColumn(row?.pets_json, []);
+  if (Array.isArray(value)) return { list: value, dup: {}, skills: {}, skillVersion: 1 };
+  return value && typeof value === "object" ? { ...value, list: Array.isArray(value.list) ? value.list : [], dup: value.dup || {}, skills: value.skills || {}, skillVersion: 1 } : { list: [], dup: {}, skills: {}, skillVersion: 1 };
+}
+
+async function characterOperationReplay(db, id, characterId, operation, requestId, payloadJson) {
+  const prior = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+    .bind(characterId, operation, requestId).first();
+  if (!prior) return null;
+  if (prior.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+  if (prior.result_json === "pending") return json({ error: "operation_in_progress", retry: true }, 409);
+  return json({ ok: true, replayed: true, result: parseJsonColumn(prior.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
+}
+
+async function runCharacterReceiptMutation(db, { id, characterId, operation, requestId, payloadJson, guardSql, guardBinds, mutationStatements, result }) {
+  const replay = await characterOperationReplay(db, id, characterId, operation, requestId, payloadJson);
+  if (replay) return replay;
+  const token = crypto.randomUUID();
+  const now = nowIso();
+  const statements = [db.prepare(
+    `INSERT INTO character_operation_receipts (character_id, operation, request_id, operation_token, payload_json, result_json, created_at)
+     SELECT ?, ?, ?, ?, ?, 'pending', ? WHERE ${guardSql}
+     ON CONFLICT(character_id, operation, request_id) DO NOTHING`
+  ).bind(characterId, operation, requestId, token, payloadJson, now, ...guardBinds)];
+  statements.push(...mutationStatements(token, now));
+  statements.push(db.prepare(
+    `UPDATE character_operation_receipts SET result_json = ? WHERE operation_token = ? AND result_json = 'pending' AND changes() = 1`
+  ).bind(JSON.stringify(result), token));
+  statements.push(db.prepare(`DELETE FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending'`).bind(token));
+  const batch = await db.batch(statements);
+  const receipt = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+    .bind(characterId, operation, requestId).first();
+  if (!receipt) return json({ error: "operation_conflict", retry: true }, 409);
+  if (receipt.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+  const committed = Number(batch?.[0]?.meta?.changes) > 0;
+  return json({ ok: true, replayed: !committed, result: parseJsonColumn(receipt.result_json, result), ...(await battleCompletionSnapshot(db, id, characterId)) });
+}
+
+async function handleAllocateHeroSkills(db, id, session, characterId, allocations, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key) || !allocations || typeof allocations !== "object" || Array.isArray(allocations)) return json({ error: "invalid_skill_allocation" }, 400);
+  const current = characterPetEnvelope(owned.row);
+  const skills = { ...current.skills };
+  const normalized = {};
+  for (const [skillId, raw] of Object.entries(allocations)) {
+    const amount = Number(raw);
+    if (!HERO_SKILLS_V1_BY_ID[skillId] || !Number.isInteger(amount) || amount < 0 || amount > 5) return json({ error: "invalid_skill_allocation" }, 400);
+    if (amount) normalized[skillId] = amount;
+  }
+  if (!Object.keys(normalized).length) return json({ error: "invalid_skill_allocation" }, 400);
+  const payloadJson = JSON.stringify(Object.fromEntries(Object.keys(normalized).sort().map(keyName => [keyName, normalized[keyName]])));
+  const replay = await characterOperationReplay(db, id, characterId, "allocate_skills", key, payloadJson);
+  if (replay) return replay;
+  for (const [skillId, amount] of Object.entries(normalized)) {
+    for (let index = 0; index < amount; index++) {
+      const gate = canSpendHeroSkillPoint(Number(owned.row.level) || 1, skills, skillId);
+      if (!gate.ok) return json({ error: "skill_requirement", reason: gate.reason }, 409);
+      skills[skillId] = heroSkillRank(skills, skillId) + 1;
+    }
+  }
+  const nextJson = JSON.stringify({ ...current, skills, skillVersion: 1 });
+  const result = { allocations: normalized, skills };
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation: "allocate_skills", requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND pets_json = ?)`,
+    guardBinds: [characterId, id, owned.row.pets_json || ""],
+    mutationStatements: token => [db.prepare(`UPDATE characters SET pets_json = ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND pets_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+      .bind(nextJson, nowIso(), characterId, id, owned.row.pets_json || "", token)],
+    result
+  });
+}
+
+async function handleResetCharacterStats(db, id, session, characterId, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_request_id" }, 400);
+  const payloadJson = JSON.stringify({ cost: 100 });
+  const replay = await characterOperationReplay(db, id, characterId, "reset_stats", key, payloadJson);
+  if (replay) return replay;
+  const stats = Object.fromEntries(["str", "vit", "agi", "dex", "luk"].map(field => [field, Math.max(0, Math.floor(Number(owned.row[field]) || 0))]));
+  const refund = Object.values(stats).reduce((sum, points) => sum + points, 0);
+  if (!refund) return json({ error: "no_stats_to_reset" }, 409);
+  const result = { reset: true, statPointsRefunded: refund };
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation: "reset_stats", requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND str = ? AND vit = ? AND agi = ? AND dex = ? AND luk = ?)
+      AND EXISTS (SELECT 1 FROM players WHERE id = ? AND diamonds >= 100)`,
+    guardBinds: [characterId, id, ...Object.values(stats), id],
+    mutationStatements: token => [
+      db.prepare(`UPDATE players SET diamonds = diamonds - 100 WHERE id = ? AND diamonds >= 100 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(id, token),
+      db.prepare(`UPDATE characters SET str = 0, vit = 0, agi = 0, dex = 0, luk = 0, stat_points = stat_points + ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND str = ? AND vit = ? AND agi = ? AND dex = ? AND luk = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+        .bind(refund, nowIso(), characterId, id, ...Object.values(stats), token)
+    ], result
+  });
+}
+
+async function handleResetHeroSkills(db, id, session, characterId, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_request_id" }, 400);
+  const payloadJson = JSON.stringify({ cost: 100 });
+  const replay = await characterOperationReplay(db, id, characterId, "reset_skills", key, payloadJson);
+  if (replay) return replay;
+  const current = characterPetEnvelope(owned.row);
+  const spent = heroSkillSpentPoints(current.skills);
+  if (!spent) return json({ error: "no_skills_to_reset" }, 409);
+  const nextJson = JSON.stringify({ ...current, skills: {}, skillVersion: 1 });
+  const result = { reset: true, skillPointsRefunded: spent };
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation: "reset_skills", requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND pets_json = ?)
+      AND EXISTS (SELECT 1 FROM players WHERE id = ? AND diamonds >= 100)`,
+    guardBinds: [characterId, id, owned.row.pets_json || "", id],
+    mutationStatements: token => [
+      db.prepare(`UPDATE players SET diamonds = diamonds - 100 WHERE id = ? AND diamonds >= 100 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(id, token),
+      db.prepare(`UPDATE characters SET pets_json = ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND pets_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(nextJson, nowIso(), characterId, id, owned.row.pets_json || "", token)
+    ], result
+  });
+}
+
+const W45_PET_GACHA_POOLS = Object.freeze({ r: ["sprout", "flamekit", "sparkpup"], sr: ["ember_fox", "moon_hare", "hell_wolf"], ssr: ["inferno_drake", "storm_phoenix"] });
+function w45RollPetDefId() {
+  const roll = secureRandomUnit();
+  const rarity = roll < 0.05 ? "ssr" : roll < 0.30 ? "sr" : "r";
+  const pool = W45_PET_GACHA_POOLS[rarity];
+  return pool[Math.floor(secureRandomUnit() * pool.length)];
+}
+function w45NewPetInstance(defId, instId) {
+  const base = PET_BASE_STATS[defId] || PET_BASE_STATS.sprout;
+  return { instId, defId, level: 1, xp: 0, star: 1, stats: { str: base[0], vit: base[1], agi: base[2], dex: base[3], luk: base[4] } };
+}
+async function handlePetEconomyAction(db, id, session, characterId, action, petInstId, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const envelope = characterPetEnvelope(owned.row);
+  if (action === "equip" || action === "unequip") {
+    const nextId = action === "unequip" ? "" : String(petInstId || "");
+    if (nextId && !envelope.list.some(pet => pet?.instId === nextId)) return json({ error: "pet_not_owned" }, 403);
+    await db.prepare(`UPDATE characters SET active_pet_id = ?, updated_at = ? WHERE character_id = ? AND player_id = ?`)
+      .bind(nextId, nowIso(), characterId, id).run();
+    return json({ ok: true, ...(await battleCompletionSnapshot(db, id, characterId)) });
+  }
+  const key = String(requestId || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_request_id" }, 400);
+  if (action === "gacha") {
+    const payloadJson = JSON.stringify({ cost: 100 });
+    const replay = await characterOperationReplay(db, id, characterId, "pet_gacha", key, payloadJson);
+    if (replay) return replay;
+    const defId = w45RollPetDefId();
+    const duplicate = envelope.list.some(pet => pet?.defId === defId);
+    const nextEnvelope = { ...envelope };
+    let result;
+    if (duplicate) {
+      nextEnvelope.dup = { ...(nextEnvelope.dup || {}), [defId]: (Number(nextEnvelope.dup?.[defId]) || 0) + 1 };
+      result = { defId, duplicate: true };
+    } else {
+      const instance = w45NewPetInstance(defId, `pet-${randomToken(16)}`);
+      nextEnvelope.list = [...envelope.list, instance];
+      result = { defId, duplicate: false, instance };
+    }
+    const nextJson = JSON.stringify(nextEnvelope);
+    return runCharacterReceiptMutation(db, {
+      id, characterId, operation: "pet_gacha", requestId: key, payloadJson,
+      guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND pets_json = ?)
+        AND EXISTS (SELECT 1 FROM players WHERE id = ? AND diamonds >= 100)`,
+      guardBinds: [characterId, id, owned.row.pets_json || "", id],
+      mutationStatements: token => [
+        db.prepare(`UPDATE players SET diamonds = diamonds - 100 WHERE id = ? AND diamonds >= 100 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(id, token),
+        db.prepare(`UPDATE characters SET pets_json = ?, active_pet_id = CASE WHEN active_pet_id = '' THEN ? ELSE active_pet_id END, updated_at = ? WHERE character_id = ? AND player_id = ? AND pets_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+          .bind(nextJson, result.instance?.instId || "", nowIso(), characterId, id, owned.row.pets_json || "", token)
+      ], result
+    });
+  }
+  if (action === "star_up") {
+    const payloadJson = JSON.stringify({ petInstId: String(petInstId || "") });
+    const replay = await characterOperationReplay(db, id, characterId, "pet_star_up", key, payloadJson);
+    if (replay) return replay;
+    const pet = envelope.list.find(candidate => candidate?.instId === String(petInstId || ""));
+    if (!pet) return json({ error: "pet_not_owned" }, 404);
+    const star = Math.max(1, Math.floor(Number(pet.star) || 1));
+    const cost = star === 1 ? 1 : star === 2 ? 2 : 0;
+    if (!cost) return json({ error: "pet_star_max" }, 409);
+    const available = Math.max(0, Math.floor(Number(envelope.dup?.[pet.defId]) || 0));
+    if (available < cost) return json({ error: "insufficient_pet_duplicates", need: cost, have: available }, 409);
+    const nextEnvelope = {
+      ...envelope,
+      list: envelope.list.map(candidate => candidate?.instId === pet.instId ? { ...candidate, star: star + 1 } : candidate),
+      dup: { ...(envelope.dup || {}), [pet.defId]: available - cost }
+    };
+    return runCharacterReceiptMutation(db, {
+      id, characterId, operation: "pet_star_up", requestId: key, payloadJson,
+      guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND pets_json = ?)`,
+      guardBinds: [characterId, id, owned.row.pets_json || ""],
+      mutationStatements: token => [db.prepare(`UPDATE characters SET pets_json = ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND pets_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+        .bind(JSON.stringify(nextEnvelope), nowIso(), characterId, id, owned.row.pets_json || "", token)],
+      result: { petInstId: pet.instId, star: star + 1, duplicatesSpent: cost }
+    });
+  }
+  return json({ error: "invalid_pet_action" }, 400);
+}
+
+async function handleConsumePotion(db, id, session, characterId, potionId, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  const potion = String(potionId || "");
+  const allowedPotions = new Set(["hp_small", "hp_medium", "hp_high", "hp_full", "mp_small", "mp_medium", "mp_high", "mp_full"]);
+  if (!allowedPotions.has(potion) || !/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_potion_request" }, 400);
+  const payloadJson = JSON.stringify({ potionId: potion });
+  const replay = await characterOperationReplay(db, id, characterId, "consume_potion", key, payloadJson);
+  if (replay) return replay;
+  const rows = (await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ? ORDER BY rowid`)
+    .bind(characterId, id, potion).all()).results || [];
+  const stacks = rows.map(row => ({ ...row, extra: parseJsonColumn(row.extra_json, {}), quantity: Math.max(0, Math.floor(Number(parseJsonColumn(row.extra_json, {}).quantity) || 0)) }));
+  if (stacks.reduce((sum, row) => sum + row.quantity, 0) < 1) return json({ error: "potion_not_owned" }, 409);
+  let remaining = 1;
+  const mutations = [];
+  for (const row of stacks) {
+    if (remaining <= 0) break;
+    if (!row.quantity) continue;
+    const nextQuantity = row.quantity - 1;
+    remaining -= 1;
+    if (nextQuantity) {
+      mutations.push({ row, nextQuantity });
+    } else {
+      mutations.push({ row, nextQuantity: 0 });
+    }
+  }
+  const result = { potionId: potion, consumed: 1 };
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation: "consume_potion", requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?)
+      AND (SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ?) >= 1`,
+    guardBinds: [characterId, id, characterId, id, potion],
+    mutationStatements: token => mutations.map(({ row, nextQuantity }) => nextQuantity > 0
+      ? db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+        .bind(JSON.stringify({ ...row.extra, quantity: nextQuantity }), nowIso(), row.item_id, id, characterId, row.extra_json || "", token)
+      : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+        .bind(row.item_id, id, characterId, row.extra_json || "", token)),
+    result
+  });
+}
+
+async function handlePurchaseCharacterResource(db, id, session, characterId, resource, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  const kind = String(resource?.kind || "");
+  const resourceId = String(resource?.id || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_request_id" }, 400);
+  const definitions = {
+    protection_stone: { currency: "diamonds", cost: 30 },
+    iron: { currency: "gold", cost: 6 },
+    manaOre: { currency: "gold", cost: 22 },
+    hp_small: { currency: "gold", cost: 15, name: "Small HP Potion" },
+    hp_medium: { currency: "gold", cost: 32, name: "Medium HP Potion" },
+    hp_high: { currency: "gold", cost: 60, name: "High HP Potion" },
+    hp_full: { currency: "gold", cost: 110, name: "Full HP Potion" },
+    mp_small: { currency: "gold", cost: 15, name: "Small SP Potion" },
+    mp_medium: { currency: "gold", cost: 32, name: "Medium SP Potion" },
+    mp_high: { currency: "gold", cost: 60, name: "High SP Potion" },
+    mp_full: { currency: "gold", cost: 110, name: "Full SP Potion" }
+  };
+  const definition = definitions[kind === "protection_stone" ? kind : resourceId];
+  if (!definition || !["protection_stone", "material", "potion"].includes(kind)
+      || (kind === "material" && !["iron", "manaOre"].includes(resourceId))
+      || (kind === "potion" && !/^(hp|mp)_(small|medium|high|full)$/.test(resourceId))) return json({ error: "invalid_shop_resource" }, 400);
+  const actionId = kind === "protection_stone" ? "protection_stone" : `${kind}:${resourceId}`;
+  const payloadJson = JSON.stringify({ kind: actionId });
+  const operation = `purchase:${actionId}`;
+  const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
+  if (replay) return replay;
+  const balanceSql = definition.currency === "diamonds"
+    ? `EXISTS (SELECT 1 FROM players WHERE id = ? AND diamonds >= ?)`
+    : `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ?)`;
+  const guardBinds = definition.currency === "diamonds" ? [id, definition.cost] : [characterId, id, definition.cost];
+  const tokenItemId = `shop-${randomToken(18)}`;
+  const overflow = (Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0) >= 30;
+  const result = kind === "protection_stone" ? { resource: kind, amount: 1, cost: definition.cost }
+    : { resource: resourceId, amount: 1, itemId: tokenItemId, cost: definition.cost };
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation, requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?) AND ${balanceSql}`,
+    guardBinds: [characterId, id, ...guardBinds],
+    mutationStatements: token => {
+      if (kind === "protection_stone") return [
+        db.prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(definition.cost, id, definition.cost, token),
+        db.prepare(`UPDATE characters SET protection_stones = protection_stones + 1, updated_at = ? WHERE character_id = ? AND player_id = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(nowIso(), characterId, id, token)
+      ];
+      const potion = kind === "potion";
+      const extra = JSON.stringify(potion ? { potionId: resourceId, quantity: 1, overflow } : { junkId: resourceId, quantity: 1, overflow });
+      const slotType = potion ? "potion" : "junk";
+      const itemName = potion ? definition.name : resourceId === "iron" ? "Iron" : "Mana Ore";
+      return [
+        db.prepare(`UPDATE characters SET gold = gold - ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND gold >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(definition.cost, nowIso(), characterId, id, definition.cost, token),
+        db.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+          SELECT ?, ?, ?, ?, 0, '', '', 'common', ?, 0, 0, 0, 1, 0, 0, 0, 0, ?, ?, ?
+          WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
+          ON CONFLICT(item_id) DO NOTHING`)
+          .bind(tokenItemId, id, characterId, slotType, itemName, extra, nowIso(), nowIso(), token)
+      ];
+    },
+    result
+  });
+}
+
+const W45_SHOP_PRICES = Object.freeze({
+  1: Object.freeze({ rare: 800, unique: 1300, elite: 2300 }),
+  2: Object.freeze({ rare: 1900, unique: 3200, elite: 5500 }),
+  3: Object.freeze({ rare: 3100, unique: 5200, elite: 9000 }),
+  4: Object.freeze({ rare: 4600, unique: 7700, elite: 13500 }),
+  5: Object.freeze({ rare: 6900, unique: 11500, elite: 20000 })
+});
+async function handleGetCharacterShopStock(db, id, session, characterId, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_request_id" }, 400);
+  const floor = Math.max(1, Number(owned.row.unlocked_floor) || 1);
+  const tier = dungeonV2ServerTierForFloor(floor);
+  const operation = "shop_stock";
+  const payloadJson = JSON.stringify({ floor, tier });
+  const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
+  if (replay) return replay;
+  const offers = Array.from({ length: 3 }, (_, index) => {
+    const rarity = secureRandomUnit() < 0.18 ? "unique" : "rare";
+    const type = ["weapon", "helmet", "chest", "gloves", "boots"][Math.floor(secureRandomUnit() * 5)];
+    const offerId = `offer-${randomToken(14)}`;
+    const item = dungeonV2ServerCanonicalEquipment({
+      battleId: `shop-${randomToken(12)}`, floor, type, rarity, sourceType: "shop_normal",
+      sourceFloor: floor, sourceIdentity: `normal-shop-tier-${tier}`, rng: secureRandomUnit
+    });
+    item.id = `shop-item-${randomToken(14)}`;
+    return { offerId, price: W45_SHOP_PRICES[tier][rarity], item };
+  });
+  const result = { tier, items: offers.map(offer => ({ ...offer.item, offerId: offer.offerId, price: offer.price })) };
+  const offersJson = JSON.stringify(offers);
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation, requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND unlocked_floor = ?)`,
+    guardBinds: [characterId, id, owned.row.unlocked_floor],
+    mutationStatements: token => [db.prepare(
+      `INSERT INTO character_shop_offers (character_id, player_id, floor, offers_json, updated_at)
+       SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
+       ON CONFLICT(character_id) DO UPDATE SET player_id = excluded.player_id, floor = excluded.floor, offers_json = excluded.offers_json, updated_at = excluded.updated_at`
+    ).bind(characterId, id, floor, offersJson, nowIso(), token)],
+    result
+  });
+}
+
+async function handlePurchaseShopEquipment(db, id, session, characterId, offerId, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  const keyOffer = String(offerId || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key) || !/^offer-[A-Za-z0-9_-]{10,40}$/.test(keyOffer)) return json({ error: "invalid_shop_purchase" }, 400);
+  const operation = "shop_purchase_equipment";
+  const payloadJson = JSON.stringify({ offerId: keyOffer });
+  const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
+  if (replay) return replay;
+  const shop = await db.prepare(`SELECT floor, offers_json FROM character_shop_offers WHERE character_id = ? AND player_id = ?`).bind(characterId, id).first();
+  if (!shop || Number(shop.floor) !== Math.max(1, Number(owned.row.unlocked_floor) || 1)) return json({ error: "shop_offer_expired" }, 409);
+  const offers = parseJsonColumn(shop.offers_json, []);
+  const offer = (Array.isArray(offers) ? offers : []).find(row => row?.offerId === keyOffer);
+  if (!offer?.item || !DUNGEON_V2_REWARD_SLOTS.has(String(offer.item.type)) || !["rare", "unique"].includes(String(offer.item.rarity))) return json({ error: "shop_offer_not_found" }, 404);
+  const price = Number(offer.price) || 0;
+  if (!price) return json({ error: "shop_offer_invalid" }, 409);
+  if (Number(owned.row.gold) < price) return json({ error: "insufficient_gold", need: price, have: Number(owned.row.gold) || 0 }, 409);
+  const nextOffers = offers.filter(row => row?.offerId !== keyOffer);
+  const inventoryCount = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
+  const itemId = String(offer.item.id || `shop-item-${randomToken(14)}`);
+  const itemRow = dungeonV2ServerRewardItem({ ...offer.item, id: itemId }, 0, inventoryCount >= 30);
+  if (!itemRow) return json({ error: "shop_offer_invalid" }, 409);
+  const now = nowIso();
+  const result = { offerId: keyOffer, itemId, price };
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation, requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ?)
+      AND EXISTS (SELECT 1 FROM character_shop_offers WHERE character_id = ? AND player_id = ? AND floor = ? AND offers_json = ?
+        AND EXISTS (SELECT 1 FROM json_each(character_shop_offers.offers_json) WHERE json_extract(value, '$.offerId') = ?))`,
+    guardBinds: [characterId, id, price, characterId, id, shop.floor, shop.offers_json, keyOffer],
+    mutationStatements: token => [
+      db.prepare(`UPDATE characters SET gold = gold - ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND gold >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+        .bind(price, now, characterId, id, price, token),
+      db.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+        SELECT ?, ?, ?, ?, 0, '', '', ?, ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ?
+        WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
+        ON CONFLICT(item_id) DO NOTHING`)
+        .bind(itemRow.item_id, id, characterId, itemRow.slot_type, itemRow.rarity, itemRow.name, itemRow.atk, itemRow.def, itemRow.hp, itemRow.mp, itemRow.extra_json, now, now, token),
+      db.prepare(`UPDATE character_shop_offers SET offers_json = ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND offers_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+        .bind(JSON.stringify(nextOffers), now, characterId, id, shop.offers_json, token)
+    ], result
+  });
+}
+
+async function handleSellCharacterItem(db, id, session, characterId, itemId, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  const idKey = String(itemId || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key) || !idKey) return json({ error: "invalid_sell_request" }, 400);
+  const operation = "sell_item";
+  const payloadJson = JSON.stringify({ itemId: idKey });
+  const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
+  if (replay) return replay;
+  const row = await db.prepare(`SELECT * FROM items WHERE item_id = ? AND player_id = ? AND character_id = ?`).bind(idKey, id, characterId).first();
+  if (!row) return json({ error: "item_not_owned" }, 403);
+  const extra = parseJsonColumn(row.extra_json, {});
+  if (Number(row.equipped) === 1) return json({ error: "item_equipped" }, 409);
+  if (extra.favorite) return json({ error: "item_favorited" }, 409);
+  const junkValues = { stone: 1, grass: 1, wood: 2, iron: 4, manaOre: 6 };
+  let price;
+  if (row.slot_type === "junk") price = Math.max(1, (junkValues[String(extra.junkId || "")] || 1) * Math.max(1, Math.floor(Number(extra.quantity) || 1)));
+  else {
+    const value = (Number(row.atk) || 0) * 3 + (Number(row.def) || 0) * 3 + (Number(row.hp) || 0) * .6 + (Number(row.mp) || 0) * .6
+      + (Number(extra.dodgeChance) || 0) * 4 + (Number(extra.critChance) || 0) * 4 + (Number(extra.critDamage) || 0) * 2.5;
+    const rarityMult = { rare: 1, unique: 1.9, elite: 3.2, mythic: 5.4, azure: 5.4 }[String(row.rarity || "")] || 1;
+    price = Math.max(3, Math.round(value * rarityMult * .9));
+  }
+  const result = { itemId: idKey, goldGained: price };
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation, requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND (json_extract(extra_json, '$.favorite') IS NULL OR json_extract(extra_json, '$.favorite') = 0))`,
+    guardBinds: [idKey, id, characterId],
+    mutationStatements: token => [
+      db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND (json_extract(extra_json, '$.favorite') IS NULL OR json_extract(extra_json, '$.favorite') = 0)
+        AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(idKey, id, characterId, token),
+      db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ? AND player_id = ?
+        AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(price, nowIso(), characterId, id, token)
+    ], result
+  });
+}
+
+async function handleSalvageItem(db, id, session, characterId, itemId, requestId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const targetId = String(itemId || "");
+  const key = String(requestId || "");
+  if (!targetId || !/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_salvage_request" }, 400);
+  const operation = "salvage_item";
+  const payloadJson = JSON.stringify({ itemId: targetId });
+  const prior = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+    .bind(characterId, operation, key).first();
+  if (prior) {
+    if (prior.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+    return json({ ok: true, replayed: true, salvage: parseJsonColumn(prior.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
   }
 
-  return json({ ok: true });
+  const row = await db.prepare(`SELECT * FROM items WHERE item_id = ? AND character_id = ? AND player_id = ?`).bind(targetId, characterId, id).first();
+  if (!row) return json({ error: "item_not_owned" }, 403);
+  const extra = parseJsonColumn(row.extra_json, {});
+  if (Number(row.equipped)) return json({ error: "item_equipped" }, 409);
+  if (extra.favorite === true) return json({ error: "item_favorited" }, 409);
+
+  let materials = [];
+  let salvageKind = "normal";
+  const v2 = Number(extra.itemModelVersion) === 2 || Number(extra.rewardVersion) === 2;
+  if (v2 || ["mythic", "azure"].includes(String(row.rarity || "").toLowerCase())) {
+    const model = { type: row.slot_type, rarity: row.rarity, itemModelVersion: Number(extra.itemModelVersion), setId: extra.setId };
+    if (globalThis.MYTHIC_V2?.validSetItem(model)) {
+      const consumed = Array.isArray(extra.craftConsumed) ? extra.craftConsumed : [];
+      const needs = Object.fromEntries(consumed.filter(entry => ["bossHorn", "bossHide"].includes(entry?.junkId)).map(entry => [entry.junkId, Math.max(0, Math.floor(Number(entry.qty) || 0))]));
+      if (!needs.bossHorn || !needs.bossHide) return json({ error: "mythic_salvage_source_invalid" }, 409);
+      materials = ["bossHorn", "bossHide"].map(junkId => ({ junkId, quantity: Math.max(1, Math.floor(needs[junkId] / 2)) }));
+      salvageKind = "mythic_set";
+    } else if (globalThis.MYTHIC_V2?.bossWeapon({ type: row.slot_type, rarity: row.rarity, itemModelVersion: Number(extra.itemModelVersion), bossWeaponId: extra.bossWeaponId, specialSource: extra.specialSource })) {
+      // Boss Weapons return no Stones and no crafting Gold.
+      materials = [];
+      salvageKind = "mythic_boss_weapon";
+    } else {
+      return json({ error: "mythic_salvage_not_eligible" }, 409);
+    }
+  } else {
+    const yieldPlan = globalThis.DUNGEON_REWARD_V2?.dungeonV2SalvageYield(row.rarity, { ...extra, sourceType: extra.sourceType });
+    if (!yieldPlan) return json({ error: "salvage_not_eligible" }, 409);
+    materials = Object.entries(yieldPlan).filter(([, quantity]) => Number(quantity) > 0).map(([junkId, quantity]) => ({ junkId, quantity: Math.floor(Number(quantity)) }));
+  }
+
+  const operationToken = crypto.randomUUID();
+  const now = nowIso();
+  const salvage = { itemId: targetId, kind: salvageKind, materials };
+  const statements = [db.prepare(
+    `INSERT INTO character_operation_receipts (character_id, operation, request_id, operation_token, payload_json, result_json, created_at)
+     SELECT ?, ?, ?, ?, ?, 'pending', ? WHERE EXISTS (SELECT 1 FROM items WHERE item_id = ? AND character_id = ? AND player_id = ? AND equipped = 0 AND COALESCE(extra_json, '') = ? AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1)
+     ON CONFLICT(character_id, operation, request_id) DO NOTHING`
+  ).bind(characterId, operation, key, operationToken, payloadJson, now, targetId, characterId, id, row.extra_json || "")];
+  statements.push(db.prepare(
+    `DELETE FROM items WHERE item_id = ? AND character_id = ? AND player_id = ? AND equipped = 0 AND COALESCE(extra_json, '') = ?
+       AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1
+       AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`
+  ).bind(targetId, characterId, id, row.extra_json || "", operationToken));
+  const count = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
+  materials.forEach((material, index) => {
+    const junkId = String(material.junkId).slice(0, 80);
+    const quantity = Math.max(1, Math.floor(Number(material.quantity) || 1));
+    const outId = `salvage-${dungeonV2ServerHash(`${characterId}:${key}:${junkId}`)}`;
+    const meta = DUNGEON_V2_REWARD_JUNK_META[junkId] || [junkId, "📦"];
+    const itemExtra = JSON.stringify({ junkId, quantity, icon: meta[1], overflow: count + index >= 30 });
+    statements.push(db.prepare(
+      `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+       SELECT ?, ?, ?, 'junk', 0, '', '', 'common', ?, 0, 0, 0, 1, 0, 0, 0, 0, ?, ?, ?
+       WHERE changes() = 1 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
+       ON CONFLICT(item_id) DO NOTHING`
+    ).bind(outId, id, characterId, meta[0], itemExtra, now, now, operationToken));
+  });
+  statements.push(db.prepare(`UPDATE character_operation_receipts SET result_json = ? WHERE operation_token = ? AND result_json = 'pending' AND changes() = 1`)
+    .bind(JSON.stringify(salvage), operationToken));
+  statements.push(db.prepare(`DELETE FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending'`).bind(operationToken));
+  const results = await db.batch(statements);
+  const receipt = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+    .bind(characterId, operation, key).first();
+  if (!receipt) return json({ error: "salvage_conflict", retry: true }, 409);
+  if (receipt.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+  const deleted = Number(results?.[1]?.meta?.changes) === 1;
+  return json({ ok: true, replayed: !deleted, salvage: parseJsonColumn(receipt.result_json, salvage), ...(await battleCompletionSnapshot(db, id, characterId)) });
 }
 
 async function handleSaveRunState(db, id, session, characterId, runState) {
@@ -1099,6 +1677,21 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
     extra_json: JSON.stringify(extra)
   };
 }
+function dungeonV2PetXpToNext(level) {
+  const lv = Math.max(1, Math.min(49, Math.floor(Number(level) || 1)));
+  return Math.round(34 + 6 * lv + 0.32 * lv * lv);
+}
+function dungeonV2GrantActivePetXp(list, activePetId, battleXp) {
+  const active = (list || []).find(pet => pet?.instId === activePetId);
+  if (!active || Number(active.level) >= 50) return { list: list || [], progress: null };
+  const before = { level: Math.max(1, Number(active.level) || 1), xp: Math.max(0, Number(active.xp) || 0) };
+  const gained = Math.max(0, Math.round((Number(battleXp) || 0) * 0.8));
+  let level = before.level, xp = before.xp + gained;
+  while (level < 50 && xp >= dungeonV2PetXpToNext(level)) { xp -= dungeonV2PetXpToNext(level); level += 1; }
+  if (level >= 50) xp = 0;
+  const next = (list || []).map(pet => pet?.instId === activePetId ? { ...pet, level, xp } : pet);
+  return { list: next, progress: { instId: activePetId, defId: active.defId, xpGained: gained, levelBefore: before.level, levelAfter: level, xpBefore: before.xp, xpAfter: xp } };
+}
 async function commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, ownedRow, checkpointPayload, context, now) {
   const reward = resultPayload?.reward;
   if (!reward || resultPayload.result !== "victory") return { reward: null, committed: false };
@@ -1112,6 +1705,8 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   const petsRaw = parseJsonColumn(ownedRow.pets_json, []);
   const envelope = Array.isArray(petsRaw) ? { list: petsRaw } : { ...petsRaw };
   if (!Array.isArray(envelope.list)) envelope.list = [];
+  const petXp = dungeonV2GrantActivePetXp(envelope.list, ownedRow.active_pet_id, serverReward.xp);
+  envelope.list = petXp.list;
   const claims = dungeonV2ServerClaims(petsRaw);
   const firstClear = serverReward.firstClear;
   const starterGrant = serverReward.starterPetGrant;
@@ -1123,7 +1718,7 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   envelope.firstClearAccessoryClaims = nextClaims;
   envelope.battleRewardReceipts = battleReceipts;
   envelope.rewardReceipts = battleReceipts;
-  const normalizedReward = { ...serverReward, battleId, starterPetGrant: starterGrant || null };
+  const normalizedReward = { ...serverReward, battleId, starterPetGrant: starterGrant || null, petProgress: petXp.progress };
   const encoded = JSON.stringify({ ...resultPayload, floor: context.floor, reward: normalizedReward });
   if (encoded.length > 512000) return { error: "battle_result_too_large" };
   const countRow = await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first();
@@ -1156,6 +1751,71 @@ async function battleCompletionSnapshot(db, id, characterId) {
     getRow(db, "players", "id", id),
   ]);
   return { character, items, diamonds: Number(player?.diamonds) || 0 };
+}
+
+// Mail claim credits are derived only from the persisted mailbox row. The claim token
+// gates each credit statement, and callers include these statements in the same D1
+// batch as the claimed marker so disconnects and concurrent retries cannot split them.
+async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset = 0, claimGate = null) {
+  const mailId = String(mail.mail_id || "");
+  const timestamp = String(claimedAt).split("#", 1)[0];
+  const gate = claimGate?.sql || `EXISTS (SELECT 1 FROM mailbox WHERE mail_id = ? AND character_id = ? AND claimed = 1 AND claimed_at = ?)`;
+  const gateBinds = claimGate?.binds || [mailId, characterId, claimedAt];
+  const statements = [];
+  const gold = Math.max(0, Math.trunc(Number(mail.gold) || 0));
+  const diamonds = Math.max(0, Math.trunc(Number(mail.diamonds) || 0));
+  statements.push(db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ? AND ${gate}`)
+    .bind(gold, timestamp, characterId, ...gateBinds));
+  statements.push(db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ? AND ${gate}`)
+    .bind(diamonds, id, ...gateBinds));
+
+  const junkTotals = new Map();
+  const junkRows = parseJsonColumn(mail.junk_json, []);
+  for (const value of Array.isArray(junkRows) ? junkRows : []) {
+    const junkId = String(value?.junkId || "").slice(0, 80);
+    const quantity = Math.max(0, Math.trunc(Number(value?.quantity) || 0));
+    if (junkId && quantity) junkTotals.set(junkId, (junkTotals.get(junkId) || 0) + quantity);
+  }
+  let newItemOffset = inventoryOffset;
+  for (const [junkId, quantity] of junkTotals) {
+    const itemId = `mail-junk-${dungeonV2ServerHash(`${mailId}:${junkId}`)}`;
+    const extra = JSON.stringify({ junkId, quantity, overflow: newItemOffset >= 30 });
+    statements.push(db.prepare(
+      `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+       SELECT ?, ?, ?, 'junk', 0, '', '', 'common', ?, 0, 0, 0, 1, 0, 0, 0, 0, ?, ?, ? WHERE ${gate}
+       ON CONFLICT(item_id) DO NOTHING`
+    ).bind(itemId, id, characterId, junkId, extra, timestamp, timestamp, ...gateBinds));
+    newItemOffset += 1;
+  }
+
+  const itemRows = parseJsonColumn(mail.items_json, []);
+  const items = Array.isArray(itemRows) ? itemRows : [];
+  items.forEach((item, index) => {
+    const slot = String(item?.type || "");
+    if (!["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(slot)) return;
+    const itemId = `mail-item-${dungeonV2ServerHash(`${mailId}:${index}`)}`;
+    const extra = {
+      empowerSlots: Array(Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCount || item.empowerSlotCapacity) || 1)))).fill(null),
+      empowerSlotCapacity: Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCapacity || item.empowerSlotCount) || 1))),
+      overflow: newItemOffset >= 30,
+      ...(item.dodgeChance ? { dodgeChance: Number(item.dodgeChance) || 0 } : {}),
+      ...(item.critChance ? { critChance: Number(item.critChance) || 0 } : {}),
+      ...(item.critDamage ? { critDamage: Number(item.critDamage) || 0 } : {}),
+      ...(item.setId ? { setId: String(item.setId).slice(0, 80) } : {}),
+      ...(item.bossWeaponId ? { bossWeaponId: String(item.bossWeaponId).slice(0, 80) } : {}),
+      ...(item.signatureId ? { signatureId: String(item.signatureId).slice(0, 80) } : {}),
+      ...(item.sourceBossId ? { sourceBossId: String(item.sourceBossId).slice(0, 80) } : {})
+    };
+    statements.push(db.prepare(
+      `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+       SELECT ?, ?, ?, ?, 0, '', '', ?, ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ? WHERE ${gate}
+       ON CONFLICT(item_id) DO NOTHING`
+    ).bind(itemId, id, characterId, slot, String(item.rarity || "common").slice(0, 40), String(item.name || slot).slice(0, 160),
+      Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0,
+      JSON.stringify(extra), timestamp, timestamp, ...gateBinds));
+    newItemOffset += 1;
+  });
+  return statements;
 }
 
 async function handleCompleteBattle(db, id, session, characterId, battleId, resultPayload) {
@@ -1226,115 +1886,57 @@ async function handleSyncItems(db, id, session, characterId, items) {
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
-  if (!Array.isArray(items)) return json({ error: "invalid_items" });
-  if (items.length > 5000) return json({ error: "inventory_too_large", max: 5000 });
+  if (!Array.isArray(items)) return json({ error: "invalid_items" }, 400);
+  if (items.length > 5000) return json({ error: "inventory_too_large", max: 5000 }, 413);
 
-  const now = nowIso();
-  const keepIds = [];
+  // This endpoint is presentation-only. Identity, existence, stats, stack size,
+  // ownership and mutation history remain server-owned.
+  const rows = (await db.prepare(`SELECT * FROM items WHERE character_id = ? AND player_id = ?`).bind(characterId, id).all()).results || [];
+  const byId = new Map(rows.map(row => [String(row.item_id), row]));
+  const seen = new Set();
+  const equippedStateById = new Map(rows.map(row => [String(row.item_id), Number(row.equipped) === 1]));
   const stmts = [];
-  const existingRowsResult = await db.prepare(`SELECT * FROM items WHERE character_id = ?`).bind(characterId).all();
-  const existingRows = existingRowsResult.results || [];
-  const existingById = new Map(existingRows.map(row => [String(row.item_id), row]));
   for (const incoming of items) {
-    const itemId = String(incoming.itemId || "");
-    const existing = existingById.get(itemId);
-    const existingExtra = parseJsonColumn(existing?.extra_json, {});
-    const incomingExtra = incoming.extraJson ? parseJsonColumn(String(incoming.extraJson), {}) : (incoming.extra && typeof incoming.extra === "object" ? incoming.extra : {});
+    const itemId = String(incoming?.itemId || "");
+    if (!itemId || seen.has(itemId)) return json({ error: "invalid_item_reference" }, 400);
+    seen.add(itemId);
+    const existing = byId.get(itemId);
+    const incomingExtra = incoming?.extra && typeof incoming.extra === "object" ? incoming.extra : {};
+    const storedExtra = parseJsonColumn(existing?.extra_json, {});
     const incomingV2 = ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: incomingExtra.rewardVersion, itemModelVersion: incomingExtra.itemModelVersion });
-    const existingV2 = !!existing && ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: existingExtra.rewardVersion, itemModelVersion: existingExtra.itemModelVersion });
+    const existingV2 = !!existing && ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: storedExtra.rewardVersion, itemModelVersion: storedExtra.itemModelVersion });
     if (incomingV2 && !existingV2) return json({ error: "untrusted_v2_item" }, 403);
+    if (!existing) return json({ error: "item_not_owned" }, 403);
+
+    if (typeof incoming.equipped !== "boolean") return json({ error: "invalid_presentation_state" }, 400);
+    equippedStateById.set(itemId, incoming.equipped);
+    if (incoming.equipped) {
+      if (!["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(existing.slot_type)) {
+        return json({ error: "invalid_equip_slot" }, 400);
+      }
+    }
+    const nextExtra = { ...storedExtra };
+    if (typeof incomingExtra.favorite === "boolean") nextExtra.favorite = incomingExtra.favorite;
+    if (typeof incomingExtra.overflow === "boolean") nextExtra.overflow = incomingExtra.overflow;
+    stmts.push(db.prepare(
+      `UPDATE items SET equipped = ?, extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND player_id = ?`
+    ).bind(incoming.equipped ? 1 : 0, JSON.stringify(nextExtra), nowIso(), itemId, characterId, id));
   }
 
-  items.forEach((it, index) => {
-    const itemId = String(it.itemId || `item-${characterId}-${Date.now()}-${index}`);
-    const existing = existingById.get(itemId);
-    const existingExtra = parseJsonColumn(existing?.extra_json, {});
-    const incomingExtra = it.extraJson ? parseJsonColumn(String(it.extraJson), {}) : (it.extra && typeof it.extra === "object" ? { ...it.extra } : {});
-    const protectedV2 = !!existing && ENHANCEMENT_V2_RULES?.isV2Item({
-      rewardVersion: existingExtra.rewardVersion,
-      itemModelVersion: existingExtra.itemModelVersion
-    });
-    const protectedExtra = protectedV2 ? {
-      ...incomingExtra,
-      rewardVersion: existingExtra.rewardVersion,
-      itemModelVersion: existingExtra.itemModelVersion,
-      gearTier: existingExtra.gearTier,
-      empowerSlotCapacity: existingExtra.empowerSlotCapacity,
-      empowerSlots: existingExtra.empowerSlots,
-      sourceType: existingExtra.sourceType,
-      sourceFloor: existingExtra.sourceFloor,
-      specialSource: existingExtra.specialSource,
-      sourceIdentity: existingExtra.sourceIdentity,
-      utilityStat: existingExtra.utilityStat,
-      wingFamily: existingExtra.wingFamily,
-      blacksmithVersion: existingExtra.blacksmithVersion,
-      blacksmithReceipts: existingExtra.blacksmithReceipts,
-      blacksmithLastResult: existingExtra.blacksmithLastResult,
-      setId: existingExtra.setId,
-      craftRecipeId: existingExtra.craftRecipeId,
-      bossWeaponId: existingExtra.bossWeaponId,
-      signatureId: existingExtra.signatureId,
-      sourceBossId: existingExtra.sourceBossId,
-      craftRequestId: existingExtra.craftRequestId,
-      craftConsumed: existingExtra.craftConsumed,
-      craftGoldSpent: existingExtra.craftGoldSpent,
-      // Favorite/equip/overflow remain normal inventory concerns and may still be
-      // changed by the client without rewriting authoritative W3 mutation state.
-      favorite: incomingExtra.favorite,
-      overflow: incomingExtra.overflow
-    } : incomingExtra;
-    keepIds.push(itemId);
-    const obj = {
-      item_id: itemId,
-      player_id: id,
-      character_id: characterId, // always the authenticated/owned character — never trust a client-supplied value here
-      slot_type: protectedV2 ? existing.slot_type : (it.slotType || ""),
-      equipped: it.equipped ? 1 : 0,
-      inventory_slot: it.inventorySlot === undefined ? "" : it.inventorySlot,
-      item_template_id: protectedV2 ? existing.item_template_id : (it.itemTemplateId || ""),
-      rarity: protectedV2 ? existing.rarity : (it.rarity || ""),
-      name: protectedV2 ? existing.name : (it.name || ""),
-      item_level: Number(it.itemLevel) || 0,
-      enhance_level: protectedV2 ? (Number(existing.enhance_level) || 0) : (Number(it.enhanceLevel) || 0),
-      bound: it.bound ? 1 : 0,
-      quantity: Math.max(1, Number(it.quantity) || 1),
-      atk: protectedV2 ? (Number(existing.atk) || 0) : (Number(it.atk) || 0),
-      def: protectedV2 ? (Number(existing.def) || 0) : (Number(it.def) || 0),
-      hp: protectedV2 ? (Number(existing.hp) || 0) : (Number(it.hp) || 0),
-      mp: protectedV2 ? (Number(existing.mp) || 0) : (Number(it.mp) || 0),
-      extra_json: JSON.stringify(protectedExtra),
-      created_at: now,
-      updated_at: now,
-    };
-    const cols = TABLES.items.cols;
-    const placeholders = cols.map(() => "?").join(",");
-    const updates = cols.filter((c) => c !== "item_id" && c !== "created_at").map((c) => `${c}=excluded.${c}`).join(",");
-    const values = cols.map((c) => obj[c]);
-    const staleGuard = protectedV2 ? ` WHERE COALESCE(items.extra_json, '') = ?` : "";
-    stmts.push(db
-      .prepare(`INSERT INTO items (${cols.join(",")}) VALUES (${placeholders}) ON CONFLICT(item_id) DO UPDATE SET ${updates}${staleGuard}`)
-      .bind(...values, ...(protectedV2 ? [existing.extra_json || ""] : [])));
-  });
+  // Omitted rows retain their existing state. Validate the resulting DB state, not
+  // only the submitted subset, so partial payloads cannot create duplicate slots.
+  const finalEquippedSlots = new Set();
+  for (const row of rows) {
+    if (!equippedStateById.get(String(row.item_id))) continue;
+    if (!["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(row.slot_type)) {
+      return json({ error: "invalid_equip_slot" }, 400);
+    }
+    if (finalEquippedSlots.has(row.slot_type)) return json({ error: "duplicate_equipped_slot" }, 400);
+    finalEquippedSlots.add(row.slot_type);
+  }
 
-  // Delete stale rows for THIS CHARACTER ONLY that aren't in the new payload — scoped
-  // by character_id (not just player_id), so syncing one character's inventory can
-  // never delete a different character's items on the same account.
-  const placeholders = keepIds.map(() => "?").join(",") || "''";
-  const deleteSql = keepIds.length
-    ? `DELETE FROM items WHERE character_id = ? AND item_id NOT IN (${placeholders})`
-    : `DELETE FROM items WHERE character_id = ?`;
-  const deleteStmt = keepIds.length ? db.prepare(deleteSql).bind(characterId, ...keepIds) : db.prepare(deleteSql).bind(characterId);
-
-  const beforeSet = new Set(existingRows.map((r) => r.item_id));
-  const keepSet = new Set(keepIds);
-  let removed = 0;
-  beforeSet.forEach((iid) => { if (!keepSet.has(iid)) removed++; });
-  let added = 0;
-  keepSet.forEach((iid) => { if (!beforeSet.has(iid)) added++; });
-
-  await db.batch([...stmts, deleteStmt]);
-
-  return json({ ok: true, count: items.length, added, removed });
+  if (stmts.length) await db.batch(stmts);
+  return json({ ok: true, count: stmts.length, added: 0, removed: 0 });
 }
 
 // ---------- WAVE 3: authoritative Reward V2 Enhance / Empower ----------
@@ -1378,7 +1980,7 @@ async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mu
   if (!key || key.length > 128) return json({ error: "missing_request_id" }, 400);
   const action = String(mutation?.type || "");
   if (!["enhance", "empower_open", "empower_lock", "empower_reroll"].includes(action)) return json({ error: "invalid_blacksmith_action" }, 400);
-  const row = await db.prepare(`SELECT * FROM items WHERE item_id = ? AND character_id = ? LIMIT 1`).bind(String(itemId || ""), characterId).first();
+  const row = await db.prepare(`SELECT * FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? LIMIT 1`).bind(String(itemId || ""), id, characterId).first();
   if (!row) return json({ error: "item_not_found" }, 404);
   const originalExtra = parseJsonColumn(row.extra_json, {});
   const receipts = v2BlacksmithReceipts(originalExtra);
@@ -1457,7 +2059,7 @@ async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mu
   let junkRow = null;
   let junkExtra = null;
   if (junkId) {
-    const rows = await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND slot_type = 'junk' ORDER BY item_id`).bind(characterId).all();
+    const rows = await db.prepare(`SELECT item_id, extra_json FROM items WHERE player_id = ? AND character_id = ? AND slot_type = 'junk' ORDER BY item_id`).bind(id, characterId).all();
     for (const candidate of rows.results || []) {
       const extra = parseJsonColumn(candidate.extra_json, {});
       if (extra.junkId === junkId && Number(extra.quantity) > 0) { junkRow = candidate; junkExtra = extra; break; }
@@ -1484,27 +2086,27 @@ async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mu
   ];
   const claimBinds = [characterId, oldGold, goldCost, oldProtection, protectionConsumed];
   if (junkRow) {
-    resourceChecks.push(`EXISTS (SELECT 1 FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) >= 1)`);
-    claimBinds.push(junkRow.item_id, characterId, junkRow.extra_json || "");
+    resourceChecks.push(`EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) >= 1)`);
+    claimBinds.push(junkRow.item_id, id, characterId, junkRow.extra_json || "");
   }
   const statements = [
-    db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND enhance_level = ? AND COALESCE(extra_json, '') = ? AND ${resourceChecks.join(" AND ")}`)
-      .bind(pendingEncoded, now, row.item_id, characterId, Number(row.enhance_level) || 0, oldExtraEncoded, ...claimBinds),
-    db.prepare(`UPDATE characters SET gold = gold - ?, protection_stones = protection_stones - ?, updated_at = ? WHERE character_id = ? AND gold = ? AND protection_stones = ? AND EXISTS (SELECT 1 FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ?)`)
-      .bind(goldCost, protectionConsumed, now, characterId, oldGold, oldProtection, row.item_id, characterId, pendingEncoded)
+    db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND enhance_level = ? AND COALESCE(extra_json, '') = ? AND ${resourceChecks.join(" AND ")}`)
+      .bind(pendingEncoded, now, row.item_id, id, characterId, Number(row.enhance_level) || 0, oldExtraEncoded, ...claimBinds),
+    db.prepare(`UPDATE characters SET gold = gold - ?, protection_stones = protection_stones - ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND gold = ? AND protection_stones = ? AND EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ?)`)
+      .bind(goldCost, protectionConsumed, now, characterId, id, oldGold, oldProtection, row.item_id, id, characterId, pendingEncoded)
   ];
   if (junkRow) {
     const remaining = Number(junkExtra.quantity) - 1;
     if (remaining > 0) {
-      statements.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ?)`)
-        .bind(JSON.stringify({ ...junkExtra, quantity: remaining }), now, junkRow.item_id, characterId, junkRow.extra_json || "", row.item_id, characterId, pendingEncoded));
+      statements.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ?)`)
+        .bind(JSON.stringify({ ...junkExtra, quantity: remaining }), now, junkRow.item_id, id, characterId, junkRow.extra_json || "", row.item_id, id, characterId, pendingEncoded));
     } else {
-      statements.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items target WHERE target.item_id = ? AND target.character_id = ? AND target.extra_json = ?)`)
-        .bind(junkRow.item_id, characterId, junkRow.extra_json || "", row.item_id, characterId, pendingEncoded));
+      statements.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items target WHERE target.item_id = ? AND target.player_id = ? AND target.character_id = ? AND target.extra_json = ?)`)
+        .bind(junkRow.item_id, id, characterId, junkRow.extra_json || "", row.item_id, id, characterId, pendingEncoded));
     }
   }
-  statements.push(db.prepare(`UPDATE items SET enhance_level = ?, extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND extra_json = ?`)
-    .bind(nextLevel, finalEncoded, now, row.item_id, characterId, pendingEncoded));
+  statements.push(db.prepare(`UPDATE items SET enhance_level = ?, extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ?`)
+    .bind(nextLevel, finalEncoded, now, row.item_id, id, characterId, pendingEncoded));
   const batch = await db.batch(statements);
   const claimed = Number(batch?.[0]?.meta?.changes) || 0;
   const characterUpdated = Number(batch?.[1]?.meta?.changes) || 0;
@@ -1516,6 +2118,118 @@ async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mu
     return json({ error: "blacksmith_conflict", retry: true }, 409);
   }
   return json({ ok: true, replayed: false, mutation: outcome, ...(await v2BlacksmithSnapshot(db, id, characterId)) });
+}
+
+async function handleMutateLegacyBlacksmith(db, id, session, characterId, itemId, mutation, requestId) {
+  const [auth, owned] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId)]);
+  if (auth.error) return json({ error: auth.error }, 401);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(requestId || "");
+  const action = String(mutation?.type || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key) || !["enhance", "empower_open", "empower_lock", "empower_reroll"].includes(action)) return json({ error: "invalid_blacksmith_request" }, 400);
+  const row = await db.prepare(`SELECT * FROM items WHERE item_id = ? AND player_id = ? AND character_id = ?`).bind(String(itemId || ""), id, characterId).first();
+  if (!row) return json({ error: "item_not_owned" }, 403);
+  const extra = parseJsonColumn(row.extra_json, {});
+  if (ENHANCEMENT_V2_RULES?.isV2Item({ itemModelVersion: extra.itemModelVersion, rewardVersion: extra.rewardVersion })) return json({ error: "not_legacy_item" }, 409);
+  const operation = `legacy_blacksmith_${action}`;
+  const payload = action === "empower_lock" ? { slotIndex: Math.floor(Number(mutation.slotIndex)) } : { useProtectionStone: mutation?.useProtectionStone === true };
+  const payloadJson = JSON.stringify({ itemId: row.item_id, ...payload });
+  const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
+  if (replay) return replay;
+
+  const slots = Array.isArray(extra.empowerSlots) ? extra.empowerSlots.map(slot => slot ? { ...slot } : null) : [];
+  const level = Math.max(0, Number(row.enhance_level) || 0);
+  let nextLevel = level;
+  let nextSlots = slots;
+  let goldCost = 0;
+  let materialId = "";
+  let protectionCost = 0;
+  const rarityMultiplier = { rare: 1, unique: 1.9, elite: 3.2, mythic: 5.4, azure: 5.4 }[String(row.rarity || "").toLowerCase()] || 1;
+  const outcome = { type: action };
+  if (action === "enhance") {
+    if (level >= 10) return json({ error: "enhance_max" }, 409);
+    goldCost = 25 + level * 35;
+    materialId = "iron";
+    const rates = [95, 90, 82, 72, 60, 48, 36, 25, 16, 10];
+    const success = secureRandomUnit() * 100 < rates[level];
+    const risky = level >= 6;
+    const requestedProtection = mutation?.useProtectionStone === true;
+    if (requestedProtection && !risky) return json({ error: "protection_not_eligible" }, 400);
+    if (success) nextLevel = level + 1;
+    else if (risky && !requestedProtection) nextLevel = Math.max(0, level - 1);
+    else if (risky && requestedProtection) protectionCost = 1;
+    Object.assign(outcome, { success, levelBefore: level, levelAfter: nextLevel, protectionConsumed: protectionCost, cost: { gold: goldCost, iron: 1 } });
+  } else if (action === "empower_open") {
+    if (!slots.length || slots.length > 8) return json({ error: "invalid_legacy_empower_shape" }, 409);
+    const slotIndex = slots.findIndex(slot => !slot);
+    if (slotIndex < 0) return json({ error: "empower_slots_full" }, 409);
+    const defs = [
+      ["atkPct", "ATK", "⚔️", .03], ["defPct", "DEF", "🛡️", .03], ["critChance", "Crit", "💥", 1.2],
+      ["accuracy", "Accuracy", "🎯", 1.2], ["dodgeChance", "Dodge", "💨", 1], ["hp", "HP", "❤️", 6],
+      ["mp", "MP", "💧", 4], ["dropBonus", "Drop", "🎁", 1.5]
+    ];
+    const def = defs[Math.floor(secureRandomUnit() * defs.length)];
+    const raw = def[3] * rarityMultiplier * (.8 + secureRandomUnit() * .4);
+    const option = { key: def[0], label: def[1], icon: def[2], value: ["hp", "mp"].includes(def[0]) ? Math.round(raw) : Math.round(raw * 10) / 10 };
+    nextSlots[slotIndex] = option;
+    materialId = "manaOre";
+    goldCost = 30 + slotIndex * 45;
+    Object.assign(outcome, { slotIndex, option, cost: { gold: goldCost, manaOre: 1 } });
+  } else if (action === "empower_lock") {
+    const index = payload.slotIndex;
+    if (!Number.isInteger(index) || !slots[index]) return json({ error: "invalid_empower_slot" }, 400);
+    nextSlots[index] = { ...slots[index], locked: !slots[index].locked };
+    Object.assign(outcome, { slotIndex: index, locked: nextSlots[index].locked });
+  } else {
+    const filled = slots.filter(Boolean);
+    const locked = filled.filter(slot => slot.locked).length;
+    if (!filled.length || locked >= filled.length) return json({ error: "all_empower_slots_locked" }, 409);
+    goldCost = Math.round((25 + filled.length * 15) * (1 + locked * .6));
+    materialId = "manaOre";
+    const defs = [
+      ["atkPct", "ATK", "⚔️", .03], ["defPct", "DEF", "🛡️", .03], ["critChance", "Crit", "💥", 1.2],
+      ["accuracy", "Accuracy", "🎯", 1.2], ["dodgeChance", "Dodge", "💨", 1], ["hp", "HP", "❤️", 6],
+      ["mp", "MP", "💧", 4], ["dropBonus", "Drop", "🎁", 1.5]
+    ];
+    nextSlots = slots.map(slot => {
+      if (!slot || slot.locked) return slot;
+      const def = defs[Math.floor(secureRandomUnit() * defs.length)];
+      const raw = def[3] * rarityMultiplier * (.8 + secureRandomUnit() * .4);
+      return { key: def[0], label: def[1], icon: def[2], value: ["hp", "mp"].includes(def[0]) ? Math.round(raw) : Math.round(raw * 10) / 10 };
+    });
+    Object.assign(outcome, { filledCount: filled.length, lockedCount: locked, cost: { gold: goldCost, manaOre: 1 } });
+  }
+  if (Number(owned.row.gold) < goldCost) return json({ error: "insufficient_gold" }, 409);
+  if (Number(owned.row.protection_stones) < protectionCost) return json({ error: "insufficient_protection_stones" }, 409);
+  let materialRow = null;
+  let materialExtra = null;
+  if (materialId) {
+    const candidates = await db.prepare(`SELECT item_id, extra_json FROM items WHERE player_id = ? AND character_id = ? AND slot_type = 'junk' ORDER BY item_id`).bind(id, characterId).all();
+    for (const candidate of candidates.results || []) {
+      const parsed = parseJsonColumn(candidate.extra_json, {});
+      if (parsed.junkId === materialId && Number(parsed.quantity) > 0) { materialRow = candidate; materialExtra = parsed; break; }
+    }
+    if (!materialRow) return json({ error: "insufficient_materials", materialId }, 409);
+  }
+  const nextExtra = { ...extra, empowerSlots: nextSlots };
+  const now = nowIso();
+  const result = { ...outcome };
+  return runCharacterReceiptMutation(db, {
+    id, characterId, operation, requestId: key, payloadJson,
+    guardSql: `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND COALESCE(extra_json, '') = ? AND enhance_level = ?)
+      AND EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ? AND protection_stones >= ?)
+      ${materialRow ? "AND EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND COALESCE(extra_json, '') = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) >= 1)" : ""}`,
+    guardBinds: [row.item_id, id, characterId, row.extra_json || "", level, characterId, id, goldCost, protectionCost, ...(materialRow ? [materialRow.item_id, id, characterId, materialRow.extra_json || ""] : [])],
+    mutationStatements: token => [
+      db.prepare(`UPDATE items SET enhance_level = ?, extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND COALESCE(extra_json, '') = ? AND enhance_level = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+        .bind(nextLevel, JSON.stringify(nextExtra), now, row.item_id, id, characterId, row.extra_json || "", level, token),
+      db.prepare(`UPDATE characters SET gold = gold - ?, protection_stones = protection_stones - ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND gold >= ? AND protection_stones >= ? AND changes() = 1 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
+        .bind(goldCost, protectionCost, now, characterId, id, goldCost, protectionCost, token),
+      ...(materialRow ? [Number(materialExtra.quantity) > 1
+        ? db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND COALESCE(extra_json, '') = ? AND changes() = 1 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(JSON.stringify({ ...materialExtra, quantity: Number(materialExtra.quantity) - 1 }), now, materialRow.item_id, id, characterId, materialRow.extra_json || "", token)
+        : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND COALESCE(extra_json, '') = ? AND changes() = 1 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(materialRow.item_id, id, characterId, materialRow.extra_json || "", token)] : [])
+    ], result
+  });
 }
 
 async function handleGetInventory(db, id, session, characterId, page, pageSize) {
@@ -1587,34 +2301,62 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
 
-  const row = await getRow(db, "daily_login_claims", "character_id", characterId);
   const today = todayDateKey();
+  const existingReceipt = await db.prepare(`SELECT reward_json FROM daily_login_claim_receipts WHERE character_id = ? AND claim_date = ?`)
+    .bind(characterId, today).first();
+  if (existingReceipt) {
+    const reward = parseJsonColumn(existingReceipt.reward_json, {});
+    const row = await getRow(db, "daily_login_claims", "character_id", characterId);
+    return json({ ok: true, replayed: true, reward: reward.reward, streak: reward.streak, state: {
+      loginStreak: Number(row?.login_streak) || 0, lastClaimDate: row?.last_claim_date || today, totalClaims: Number(row?.total_claims) || 0
+    }, ...(await battleCompletionSnapshot(db, id, characterId)) });
+  }
+
+  const row = await getRow(db, "daily_login_claims", "character_id", characterId);
   const lastClaimDate = row ? row.last_claim_date || "" : "";
   if (lastClaimDate === today) return json({ error: "already_claimed" });
-
   const prevStreak = row ? Number(row.login_streak) || 0 : 0;
   const streak = lastClaimDate === yesterdayDateKey() ? prevStreak + 1 : 1;
   const rewardDef = dailyLoginReward(streak);
-  // Resolve any random component only at the moment of claiming, never at preview time.
-  const reward = { gold: rewardDef.gold, diamonds: rewardDef.diamonds, junk: rewardDef.junk };
+  const reward = { gold: rewardDef.gold, diamonds: rewardDef.diamonds, junk: rewardDef.junk || [], items: [] };
   if (rewardDef.azureRandom) reward.items = [randomAzureItemDesc()];
   const totalClaims = (row ? Number(row.total_claims) || 0 : 0) + 1;
+  const claimToken = crypto.randomUUID();
   const now = nowIso();
+  const rewardReceipt = { reward, streak };
+  const gate = {
+    sql: `EXISTS (SELECT 1 FROM daily_login_claim_receipts WHERE character_id = ? AND claim_date = ? AND claim_token = ?)`,
+    binds: [characterId, today, claimToken]
+  };
+  const inventoryCount = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
+  const rewardRow = {
+    mail_id: `daily-login:${characterId}:${today}`,
+    gold: reward.gold, diamonds: reward.diamonds,
+    junk_json: JSON.stringify(reward.junk), items_json: JSON.stringify(reward.items)
+  };
+  const statements = [db.prepare(
+    `INSERT INTO daily_login_claim_receipts (character_id, claim_date, claim_token, reward_json, created_at)
+     SELECT ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM daily_login_claims WHERE character_id = ? AND last_claim_date = ?)
+     ON CONFLICT(character_id, claim_date) DO NOTHING`
+  ).bind(characterId, today, claimToken, JSON.stringify(rewardReceipt), now, characterId, today)];
+  statements.push(db.prepare(
+    `INSERT INTO daily_login_claims (character_id, login_streak, last_claim_date, total_claims, updated_at)
+     SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM daily_login_claim_receipts WHERE character_id = ? AND claim_date = ? AND claim_token = ?)
+     ON CONFLICT(character_id) DO UPDATE SET login_streak = excluded.login_streak, last_claim_date = excluded.last_claim_date,
+       total_claims = excluded.total_claims, updated_at = excluded.updated_at
+     WHERE daily_login_claims.last_claim_date <> excluded.last_claim_date
+       AND EXISTS (SELECT 1 FROM daily_login_claim_receipts WHERE character_id = ? AND claim_date = ? AND claim_token = ?)`
+  ).bind(characterId, streak, today, totalClaims, now, characterId, today, claimToken, characterId, today, claimToken));
+  statements.push(...await mailboxRewardStatements(db, id, characterId, rewardRow, now, inventoryCount, gate));
+  const batchResults = await db.batch(statements);
 
-  await upsertRow(db, "daily_login_claims", "character_id", {
-    character_id: characterId,
-    login_streak: streak,
-    last_claim_date: today,
-    total_claims: totalClaims,
-    updated_at: now,
-  });
-
-  return json({
-    ok: true,
-    reward,
-    streak,
-    state: { loginStreak: streak, lastClaimDate: today, totalClaims },
-  });
+  const canonical = await db.prepare(`SELECT reward_json FROM daily_login_claim_receipts WHERE character_id = ? AND claim_date = ?`).bind(characterId, today).first();
+  const committed = parseJsonColumn(canonical?.reward_json, rewardReceipt);
+  const latest = await getRow(db, "daily_login_claims", "character_id", characterId);
+  return json({ ok: true, replayed: !(Number(batchResults?.[0]?.meta?.changes) > 0),
+    reward: committed.reward, streak: committed.streak, state: {
+      loginStreak: Number(latest?.login_streak) || 0, lastClaimDate: latest?.last_claim_date || today, totalClaims: Number(latest?.total_claims) || 0
+    }, ...(await battleCompletionSnapshot(db, id, characterId)) });
 }
 
 // ---------- Mailbox: generic reward delivery queue ----------
@@ -1988,12 +2730,13 @@ async function settleRaidRank(db, raidId) {
       await sendMail(
         db, rows[i].character_id, `🏆 อันดับ ${i + 1} ศึก ${bossName}`,
         `คุณจบการล่า ${bossName} ในอันดับที่ ${i + 1} ด้วยดาเมจสะสม ${rows[i].total_contribution}`,
-        { junk, items: [raidWingItemDesc(top.wingStar)] }
+        { junk, items: [raidWingItemDesc(top.wingStar)] }, `raid:rank:${raidId}:${rows[i].character_id}`
       );
     } else {
       await sendMail(
         db, rows[i].character_id, `⚔️ ร่วมศึก ${bossName}`, `อันดับที่ ${i + 1} ในการล่าครั้งนี้ — ได้วัตถุดิบติดไม้ติดมือ`,
-        { junk: [{ junkId: randomBossMaterialJunkId(), quantity: 1 }, { junkId: randomBossMaterialJunkId(), quantity: 1 }] }
+        { junk: [{ junkId: randomBossMaterialJunkId(), quantity: 1 }, { junkId: randomBossMaterialJunkId(), quantity: 1 }] },
+        `raid:rank:${raidId}:${rows[i].character_id}`
       );
     }
   }
@@ -2037,7 +2780,7 @@ async function handleGetRaidStatus(db, id, session, characterId) {
   });
 }
 
-async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) {
+async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds, requestId) {
   // See handleGetRaidStatus for why these four are safe to fire concurrently — the equipped-
   // items read only needs characterId, so it doesn't have to wait for raid/ownership either.
   const [auth, owned, raid, itemsRes] = await Promise.all([
@@ -2051,6 +2794,27 @@ async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) 
   const character = owned.row;
 
   if (Number(raid.boss_hp_current) <= 0) return json({ error: "boss_already_dead" });
+  const key = String(requestId || "");
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "request_id_required" }, 400);
+  const operation = "raid_attack";
+  const payloadJson = JSON.stringify({ paidDiamonds: !!paidDiamonds, raidId: raid.raid_id });
+  const existing = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`).bind(characterId, operation, key).first();
+  if (existing) {
+    if (existing.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+    if (existing.result_json === "pending") return json({ error: "operation_in_progress", retry: true }, 409);
+    return json({ ...parseJsonColumn(existing.result_json, {}), replayed: true });
+  }
+  const operationToken = randomToken(16);
+  const claimedReceipt = await db.prepare(`INSERT INTO character_operation_receipts (character_id, operation, request_id, operation_token, payload_json, result_json, created_at)
+    SELECT ?, ?, ?, ?, ?, 'pending', ? WHERE EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?)
+    ON CONFLICT(character_id, operation, request_id) DO NOTHING`)
+    .bind(characterId, operation, key, operationToken, payloadJson, nowIso(), characterId, id).run();
+  if (!claimedReceipt.meta?.changes) {
+    const prior = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`).bind(characterId, operation, key).first();
+    if (prior?.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+    return prior?.result_json === "pending" ? json({ error: "operation_in_progress", retry: true }, 409) : json({ ...parseJsonColumn(prior?.result_json, {}), replayed: true });
+  }
+  const clearPendingReceipt = () => db.prepare(`DELETE FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending'`).bind(operationToken).run();
 
   // Stamina is per-character and regenerates over time. Reserve it before applying damage
   // with a compare-and-swap update, so two simultaneous taps cannot both spend the same
@@ -2075,9 +2839,11 @@ async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) 
       .bind(newStamina, newStaminaUpdatedAt, characterId, storedStamina, storedUpdatedAt)
       .run();
     if (!reserved.meta || !reserved.meta.changes) {
+      await clearPendingReceipt();
       return json({ error: "stamina_conflict", retry: true });
     }
   } else if (!paidDiamonds) {
+    await clearPendingReceipt();
     return json({ error: "no_stamina", diamondRefillCost: RAID_DIAMOND_REFILL_COST, staminaRegenSeconds: raidStaminaSecondsToNext(staminaState.updatedAt) });
   } else {
     const charged = await db
@@ -2085,6 +2851,7 @@ async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) 
       .bind(RAID_DIAMOND_REFILL_COST, id, RAID_DIAMOND_REFILL_COST)
       .run();
     if (!charged.meta || !charged.meta.changes) {
+      await clearPendingReceipt();
       return json({ error: "insufficient_diamonds", diamondRefillCost: RAID_DIAMOND_REFILL_COST });
     }
     diamondsSpent = RAID_DIAMOND_REFILL_COST;
@@ -2129,12 +2896,13 @@ async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) 
   if (bossRow && bossHpAfter <= 0 && hpBefore > 0) {
     bossDied = true;
     const lastHitStar = randomRaidWingStar();
-    await sendMail(db, characterId, `💥 Last Hit! ${raidBossDefById(raid.boss_def_id).name}`, `คุณคือผู้ปิดจ๊อบ! ได้รับปีกสุ่ม ★${lastHitStar}`, { items: [raidWingItemDesc(lastHitStar)] });
+    await sendMail(db, characterId, `💥 Last Hit! ${raidBossDefById(raid.boss_def_id).name}`, `คุณคือผู้ปิดจ๊อบ! ได้รับปีกสุ่ม ★${lastHitStar}`, { items: [raidWingItemDesc(lastHitStar)] }, `raid:last-hit:${raid.raid_id}:${characterId}`);
     await settleRaidRank(db, raid.raid_id);
   }
 
-  return json({
+  const response = {
     ok: true,
+    diamonds: Number((await db.prepare(`SELECT diamonds FROM players WHERE id = ?`).bind(id).first())?.diamonds) || 0,
     damage: hit.damage,
     crit: hit.crit,
     appliedDamage,
@@ -2147,7 +2915,10 @@ async function handleAttackRaidBoss(db, id, session, characterId, paidDiamonds) 
     staminaRegenSeconds: raidStaminaSecondsToNext(newStaminaUpdatedAt),
     bestHit: newBest,
     contribution: newContribution,
-  });
+  };
+  await db.prepare(`UPDATE character_operation_receipts SET result_json = ? WHERE operation_token = ? AND result_json = 'pending'`)
+    .bind(JSON.stringify(response), operationToken).run();
+  return json(response);
 }
 
 async function handleClaimRaidMilestones(db, id, session, characterId) {
@@ -2184,12 +2955,21 @@ async function handleClaimRaidMilestones(db, id, session, characterId) {
   if (!newKeys.length) return json({ ok: true, claimed: [] });
 
   const def = raidBossDefById(raid.boss_def_id);
-  await sendMail(db, characterId, `🎁 รางวัลดาเมจสะสม ${def.name}`, `คุณสะสมดาเมจถึง ${newKeys.map((k) => k.replace("p", "")).join("%, ")}%`, { diamonds, junk, items });
-
   const allClaimed = claimed.concat(newKeys).join(",");
-  await db.prepare(`UPDATE raid_participants SET milestone_claimed = ? WHERE raid_id = ? AND character_id = ?`).bind(allClaimed, raid.raid_id, characterId).run();
-
-  return json({ ok: true, claimed: newKeys });
+  const rewardTitle = `🎁 รางวัลดาเมจสะสม ${def.name}`;
+  const rewardBody = `คุณสะสมดาเมจถึง ${newKeys.map((k) => k.replace("p", "")).join("%, ")}%`;
+  const rewardMailId = newMailId();
+  const rewardInsert = db.prepare(`INSERT INTO mailbox (mail_id, character_id, title, body, gold, diamonds, junk_json, items_json, claimed, created_at, claimed_at, source_key)
+    SELECT ?, ?, ?, ?, 0, ?, ?, ?, 0, ?, '', ?
+    WHERE changes() = 1 AND NOT EXISTS (SELECT 1 FROM mailbox WHERE source_key = ? AND source_key <> '')`)
+    .bind(rewardMailId, characterId, rewardTitle, rewardBody, diamonds, junk.length ? JSON.stringify(junk) : "", items.length ? JSON.stringify(items) : "", nowIso(), `raid-milestone:${raid.raid_id}:${characterId}:${allClaimed}`, `raid-milestone:${raid.raid_id}:${characterId}:${allClaimed}`);
+  const batch = await db.batch([
+    db.prepare(`UPDATE raid_participants SET milestone_claimed = ? WHERE raid_id = ? AND character_id = ? AND COALESCE(milestone_claimed, '') = ?`)
+      .bind(allClaimed, raid.raid_id, characterId, participant.milestone_claimed || ""),
+    rewardInsert
+  ]);
+  if (Number(batch?.[0]?.meta?.changes) !== 1 || Number(batch?.[1]?.meta?.changes) !== 1) return json({ ok: true, claimed: [], replayed: true });
+  return json({ ok: true, claimed: newKeys, rewardCommitted: true });
 }
 
 // ---------- Phase 5: PvP Arena (Battle Core V1, symmetric) ----------
@@ -5546,6 +6326,28 @@ export default {
             return await handleEnterCharacter(db, id, auth, body.slotIndex);
           case "saveCharacterProgress":
             return await handleSaveCharacterProgress(db, id, auth, body.characterId, body.diamonds, body.progress);
+          case "allocateStats":
+            return await handleAllocateStats(db, id, auth, body.characterId, body.allocations, body.requestId);
+          case "allocateHeroSkills":
+            return await handleAllocateHeroSkills(db, id, auth, body.characterId, body.allocations, body.requestId);
+          case "resetCharacterStats":
+            return await handleResetCharacterStats(db, id, auth, body.characterId, body.requestId);
+          case "resetHeroSkills":
+            return await handleResetHeroSkills(db, id, auth, body.characterId, body.requestId);
+          case "petEconomyAction":
+            return await handlePetEconomyAction(db, id, auth, body.characterId, body.petAction, body.petInstId, body.requestId);
+          case "consumePotion":
+            return await handleConsumePotion(db, id, auth, body.characterId, body.potionId, body.requestId);
+          case "purchaseCharacterResource":
+            return await handlePurchaseCharacterResource(db, id, auth, body.characterId, body.resource, body.requestId);
+          case "getCharacterShopStock":
+            return await handleGetCharacterShopStock(db, id, auth, body.characterId, body.requestId);
+          case "purchaseShopEquipment":
+            return await handlePurchaseShopEquipment(db, id, auth, body.characterId, body.offerId, body.requestId);
+          case "sellCharacterItem":
+            return await handleSellCharacterItem(db, id, auth, body.characterId, body.itemId, body.requestId);
+          case "salvageItem":
+            return await handleSalvageItem(db, id, auth, body.characterId, body.itemId, body.requestId);
           case "saveRunState":
             return await handleSaveRunState(db, id, auth, body.characterId, body.runState);
           case "startDungeonBattle":
@@ -5562,12 +6364,14 @@ export default {
             return await handleSyncItems(db, id, auth, body.characterId, body.items || []);
           case "mutateV2Blacksmith":
             return await handleMutateV2Blacksmith(db, id, auth, body.characterId, body.itemId, body.mutation, body.requestId);
+          case "mutateLegacyBlacksmith":
+            return await handleMutateLegacyBlacksmith(db, id, auth, body.characterId, body.itemId, body.mutation, body.requestId);
           case "setInventorySlot":
             return await handleSetInventorySlot(db, id, auth, body.itemId, body.inventorySlot);
           case "claimDailyLogin":
             return await handleClaimDailyLogin(db, id, auth, body.characterId);
           case "attackRaidBoss":
-            return await handleAttackRaidBoss(db, id, auth, body.characterId, !!body.paidDiamonds);
+            return await handleAttackRaidBoss(db, id, auth, body.characterId, !!body.paidDiamonds, body.requestId);
           case "claimRaidMilestones":
             return await handleClaimRaidMilestones(db, id, auth, body.characterId);
           case "saveArenaV2Setup":
