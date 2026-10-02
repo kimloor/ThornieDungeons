@@ -61,6 +61,8 @@ Backend changes must preserve unrelated player, Raid, Arena, inventory, currency
 
 If a Raid change touches rewards, attempts, contribution, settlement, stamina, or persistence, treat it as high-impact and run targeted regression checks.
 
+Roadmap gate: Raid/Wings V2 implementation must not begin until WAVE 4 Mythic content and WAVE 4.5 Server Authority / Economy Security are production-verified. Raid damage/reward/leaderboard consumers must read authoritative server-owned character/item/economy state.
+
 ## 7. Change boundaries
 
 A Raid-only task must not silently change:
