@@ -488,3 +488,22 @@ Recommended sequence:
 `A0 Contract -> A0.1 admin_users/admin_sessions/audit schema + Admin auth API -> A0.2 /admin Login/Logout UI -> A0.3 migrate existing Admin tools to Admin Session -> QA -> W9 complete -> W9R Worker Modularization -> A1 Dashboard/Player Viewer`
 
 Do not start Admin Phase 1 Dashboard/Player Viewer until W9 is complete and W9R Worker Modularization has passed QA on latest main. Do not start player/economy mutation tooling before Phase 0 authentication and audit foundations pass QA.
+
+
+---
+
+## Deferred Admin item deletion tooling
+
+Status: **DEFERRED — NOT PART OF W6**
+
+Project Lead direction: keep the design only and implement later during the dedicated Admin page phase.
+
+Planned safety shape:
+- player/character lookup first;
+- exact item-id deletion only;
+- item snapshot + ownership verification before mutation;
+- typed confirmation and operator reason;
+- Admin audit-log entry with actor, target item, owner/character and pre-delete snapshot;
+- no wildcard/name-based bulk delete and no generic SQL editor.
+
+W6 must not add this Admin UI/API.
