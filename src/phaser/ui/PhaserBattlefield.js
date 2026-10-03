@@ -52,3 +52,41 @@ function PhaserBattlefield(props) {
     "aria-hidden": "true"
   });
 }
+
+
+function PhaserRaidBoss({ boss, config, hurtToken = 0, onHurtComplete, onStatus } = {}) {
+  const hostRef = React.useRef(null);
+  const handleRef = React.useRef(null);
+  const snapshot = React.useMemo(
+    () => buildRaidBossPresentationSnapshot({ boss, config, hurtToken }),
+    [boss?.id, boss?.defId, boss?.name, boss?.hpCurrent, boss?.hpMax, config, hurtToken]
+  );
+
+  React.useEffect(() => {
+    if (!hostRef.current) return undefined;
+    let disposed = false;
+    const handle = createRaidBossHost({
+      mountNode: hostRef.current,
+      snapshot,
+      onReady: () => { if (!disposed) onStatus?.("ready"); },
+      onError: error => { if (!disposed) onStatus?.("error", error); },
+      onDestroyed: () => { if (!disposed) onStatus?.("destroyed"); },
+      onHurtComplete
+    });
+    handleRef.current = handle;
+    onStatus?.("loading");
+    void handle.mount();
+    return () => {
+      disposed = true;
+      handle.destroy();
+      handleRef.current = null;
+    };
+  }, []);
+
+  React.useEffect(() => { handleRef.current?.sync(snapshot); }, [snapshot]);
+  return React.createElement("div", {
+    ref: hostRef,
+    className: "md-raid-boss-sprite md-phaser-raid-boss",
+    "aria-hidden": "true"
+  });
+}
