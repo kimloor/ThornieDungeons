@@ -5082,7 +5082,8 @@ function CombatScreen({
   combatSpeed,
   battleVfx = [],
   combatTurnCount,
-  onCycleCombatSpeed
+  onCycleCombatSpeed,
+  onPresentationController
 }) {
   const [editSlots, setEditSlots] = useState(false);
   const [assignSlotIndex, setAssignSlotIndex] = useState(null);
@@ -5291,6 +5292,7 @@ function CombatScreen({
     petAnim: petAnim,
     enemyAnims: enemyAnims,
     combatSpeed: combatSpeed,
+    onPresentationController: onPresentationController,
     onStatus: status => setPhaserStatus(status),
     onTargetSelected: onSelectTarget
   })), /*#__PURE__*/React.createElement("div", {
