@@ -52,11 +52,23 @@ jobs:
         continue-on-error: true
         run: node --test --test-concurrency=1 tests/auth-v2.test.js
 
-      - name: Full suite group A - Admin Arena Auth
+      - name: Full suite group A1 - Admin
         shell: bash
         run: |
           set -euo pipefail
-          node --test --test-concurrency=1 tests/admin*.test.js tests/arena*.test.js tests/auth-client.test.js tests/auth-gameplay-callers.test.js
+          node --test --test-concurrency=1 tests/admin*.test.js
+
+      - name: Full suite group A2 - Arena
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --test-concurrency=1 tests/arena*.test.js
+
+      - name: Full suite group A3 - Auth clients
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --test-concurrency=1 tests/auth-client.test.js tests/auth-gameplay-callers.test.js
 
       - name: Full suite group B - Battle Combat Dungeon
         shell: bash
