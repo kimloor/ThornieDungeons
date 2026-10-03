@@ -359,8 +359,8 @@ function ThornieDungeons() {
     return snapshot;
   }, [persistInventorySnapshot]);
 
-  // Capacity-safe insertion boundary: battle, mail, daily, shop and crafting rewards
-  // all use this path so a full bag can only move items to persistent Overflow.
+  // Capacity-safe local insertion boundary for rewards that are still presented as
+  // local snapshots. Mail Claim is server-settled and hydrates its authoritative response.
   const insertCarriedItems = useCallback((items, inventoryBase = inventoryRef.current, eq = equippedRef.current) => {
     return commitInventorySnapshot(
       insertInventoryItems(inventoryBase, inventoryOverflowRef.current, items, INVENTORY_CAPACITY),

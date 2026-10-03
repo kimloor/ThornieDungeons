@@ -435,15 +435,15 @@ test("claim-all mail commits each reward once and returns an authoritative snaps
   assert.equal(first.body.character.gold, 100050);
   assert.equal(first.body.diamonds, 3);
   assert.equal(first.body.mailIds.length, 2);
-  assert.equal(first.body.items.length, 2);
-  assert.deepEqual(first.body.items.map(item => JSON.parse(item.extra_json).quantity).sort(), [2, 3]);
+  assert.equal(first.body.items.length, 1);
+  assert.deepEqual(first.body.items.map(item => JSON.parse(item.extra_json).quantity), [5]);
 
   const retry = await post(context.api, context.db, context.token, body);
   assert.equal(retry.body.ok, true);
   assert.equal(retry.body.replayed, true);
   assert.equal(retry.body.character.gold, 100050);
   assert.equal(retry.body.diamonds, 3);
-  assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE slot_type = 'junk'").get().c, 2);
+  assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE slot_type = 'junk'").get().c, 1);
   assert.equal(context.db.raw.prepare("SELECT SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)) AS q FROM items WHERE slot_type = 'junk'").get().q, 5);
   assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM mailbox WHERE claimed = 1").get().c, 2);
 });

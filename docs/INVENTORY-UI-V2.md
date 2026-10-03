@@ -305,6 +305,17 @@ When Overflow is empty, hide this row.
 
 Suggested future safety ceiling: a finite Overflow cap may be added, but implementation must never silently delete rare/high-value rewards. If such a cap is introduced, a clear player-facing resolution flow is required.
 
+### 13.1 Server-authoritative reward settlement
+
+Reward settlement must derive capacity from the authenticated character's persisted item rows. The server must:
+
+1. exclude equipped and existing Overflow rows from carried-slot occupancy;
+2. merge compatible junk/material and potion stacks before consuming a new slot;
+3. create carried items only while fewer than 30 logical carried slots are occupied; and
+4. place only the genuine remainder in persistent Overflow.
+
+Mail Claim returns the resulting authoritative snapshot after the same atomic claim transaction. Existing Overflow rows may be reconciled back into carried Inventory when space is available, preserving their item identity and metadata. A client-provided free-slot count is never authoritative.
+
 ## 14. Future Storage/Warehouse
 
 Future direction:
@@ -463,4 +474,3 @@ Additional rules:
 - a visual/load failure never changes item ownership, stats or persistence.
 
 The Hero preview must reuse the same shared `HeroRenderer`, `EquipmentVisualResolver`, `AssetResolver` and `TextureRegistry` used by the Phaser presentation architecture rather than creating Inventory-specific equivalents.
-
