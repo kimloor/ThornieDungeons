@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-5.5 are COMPLETE / Production verified; Pre-W6 Readiness Audit passed; WAVE 6 is ready for separate Project Lead approval. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-6 are COMPLETE / Production verified; Post-W6 Full Gap + Security Re-Audit is the active gate and WAVE 7 is blocked pending HIGH remediation. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
@@ -64,6 +64,7 @@ Repository-wide references:
 
 | Status | Document | Use |
 | --- | --- | --- |
+| **ACTIVE GATE** | [`POST-W6-FULL-GAP-SECURITY-AUDIT-2026-10-03.md`](POST-W6-FULL-GAP-SECURITY-AUDIT-2026-10-03.md) | Post-W6 full-system gap/security re-audit, release blockers, deferred debt, and W7 entry conditions. |
 | **SUPPORTING / COMPLETED GATE** | [`PRE-W6-READINESS-AUDIT-2026-10-03.md`](PRE-W6-READINESS-AUDIT-2026-10-03.md) | Completed Pre-W6 readiness audit, resolved blocker record, expected W6 targets, and release-entry conditions. |
 | **SUPPORTING** | [`BATTLE-V1-IMPLEMENTATION-NOTES.md`](BATTLE-V1-IMPLEMENTATION-NOTES.md) | Battle V1 implementation and rollout context. It does not override the active Battle contract. |
 | **SUPPORTING / RELEASE RECORD** | [`ARENA-V2-HUB-CORE-R1-PUBLICATION.md`](ARENA-V2-HUB-CORE-R1-PUBLICATION.md) | Published Arena Hub Core R1 asset paths, dimensions, manifest keys, and nine-slice contract. |
