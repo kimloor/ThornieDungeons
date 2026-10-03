@@ -4589,7 +4589,7 @@ async function cloudGet(url, params, { headers = {} } = {}) {
     try {
       const res = await fetch(fullUrl, { headers });
       const data = await res.json();
-      if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
+      if (!res.ok) return { ...data, error: data.error || (res.status >= 500 ? "server_error" : "request_failed"), status: res.status };
       return data;
     } catch (e) {
       return {
@@ -4729,9 +4729,6 @@ function cloudSyncItems(url, characterId, items) {
     characterId,
     items
   });
-}
-function cloudSetInventorySlot(url, characterId, itemId, inventorySlot) {
-  return cloudAuthPost(url, { action: "setInventorySlot", characterId, itemId, inventorySlot });
 }
 function cloudMutateV2Blacksmith(url, characterId, itemId, mutation, requestId) {
   return cloudAuthPost(url, {
@@ -5545,6 +5542,11 @@ function GuildProfileOverlay({ serverUrl, characterId, guildId, onClose }) {
       error.code = result?.error || "invalid_response";
       error.status = result?.status;
       error.transient = TRANSIENT_ERRORS.has(error.code) || Number(error.status) >= 500;
+      error.response = result && typeof result === "object" ? { ...result, cause: undefined } : null;
+      if (result?.cause) {
+        error.cause = result.cause;
+        if (!error.stack && result.cause?.stack) error.stack = String(result.cause.stack);
+      }
       return error;
     }
     return null;
@@ -5578,7 +5580,11 @@ function GuildProfileOverlay({ serverUrl, characterId, guildId, onClose }) {
       const status = statusOf(state);
       if (state.context.key === activeKey && onStatusChange) {
         const failed = Array.from(state.domains.values()).find(slot => slot.failed);
-        onStatusChange(status, { context: state.context, error: failed?.failed || null });
+        onStatusChange(status, {
+          context: state.context,
+          domain: failed?.domain || null,
+          error: failed?.failed || null
+        });
       }
       const listeners = state.listeners.splice(0);
       listeners.forEach(resolve => resolve(status));
@@ -10620,9 +10626,10 @@ function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
   const slots = ["helmet", "chest", "gloves", "boots", "weapon"];
   const equipment = Object.fromEntries(slots.map(slot => [slot, heroV5SetFamily(equipped?.[slot])]));
   const bossWeapon = heroV5BossWeaponVisualId(equipped?.weapon);
+  const authoritativeWing = heroV5WingVisualId(equipped?.wings);
   return {
-    // Family identity is authoritative metadata on the server-owned Wing item.
-    wings: legacySelection?.wings === "angel" ? "angel" : heroV5WingVisualId(equipped?.wings),
+    // W5+ Wing family metadata is authoritative. Legacy Angel selection is fallback only.
+    wings: authoritativeWing || (legacySelection?.wings === "angel" ? "angel" : null),
     equipment,
     bossWeapon,
     azure: {
@@ -13198,14 +13205,32 @@ function ThornieDungeons() {
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState("saved");
   const [persistenceMessage, setPersistenceMessage] = useState("");
+  const [persistenceDiagnostic, setPersistenceDiagnostic] = useState(null);
   const persistenceRef = useRef(null);
   if (!persistenceRef.current) {
     persistenceRef.current = createPersistenceManager({
       onStatusChange: (status, detail) => {
         setPersistenceStatus(status);
-        setPersistenceMessage(status === "failed"
-          ? `บันทึก Cloud ไม่สำเร็จ (${detail?.error?.code || "unknown_error"})`
-          : "");
+        if (status === "failed") {
+          const error = detail?.error;
+          const response = error?.response && typeof error.response === "object" ? error.response : null;
+          setPersistenceMessage(`บันทึก Cloud ไม่สำเร็จ (${error?.code || "unknown_error"})`);
+          setPersistenceDiagnostic({
+            code: error?.code || "unknown_error",
+            status: error?.status || response?.status || null,
+            domain: detail?.domain || "unknown",
+            characterId: detail?.context?.characterId || "",
+            itemId: response?.itemId || "",
+            action: response?.action || "",
+            transient: !!error?.transient,
+            message: error?.message || error?.code || "Cloud persistence failure",
+            response,
+            stack: String(error?.stack || error?.cause?.stack || "")
+          });
+        } else {
+          setPersistenceMessage("");
+          if (status === "saved") setPersistenceDiagnostic(null);
+        }
       }
     });
   }
@@ -13700,7 +13725,7 @@ function ThornieDungeons() {
         invalid_password_length: "Password ต้องยาว 4–32 ตัว",
         invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน",
-        registration_unavailable: "สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่",
+        id_unavailable: "Player ID นี้ถูกใช้งานแล้ว",
         rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
       };
       setAuthError(registerErrors[res.error] || "เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");
@@ -15526,10 +15551,7 @@ function ThornieDungeons() {
     className: isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
       : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${phase === "combat" ? " md-root-combat" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), persistenceStatus === "failed" && /*#__PURE__*/React.createElement("div", {
-    className: `md-save-state md-save-state-${persistenceStatus}`,
-    role: persistenceStatus === "failed" ? "alert" : "status"
-  }, persistenceStatus === "saving" ? "กำลังบันทึก…" : persistenceMessage || "บันทึก Cloud ไม่สำเร็จ — กดบันทึกเพื่อลองใหม่"), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && phase !== "arena" && /*#__PURE__*/React.createElement(StatusBar, {
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && phase !== "arena" && /*#__PURE__*/React.createElement(StatusBar, {
     player: player,
     save: save,
     phase: phase,
@@ -16051,6 +16073,9 @@ function ThornieDungeons() {
     characterId: save.characterId,
     guildId: guildProfileTarget.guildId,
     onClose: () => setGuildProfileTarget(null)
+  }), persistenceDiagnostic && /*#__PURE__*/React.createElement(PersistenceDiagnosticOverlay, {
+    diagnostic: persistenceDiagnostic,
+    onClose: () => setPersistenceDiagnostic(null)
   }), arenaFatal && /*#__PURE__*/React.createElement(ArenaFatalDiagnosticOverlay, {
     diagnostic: arenaFatal,
     onResume: () => {
@@ -16209,7 +16234,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
         invalid_password_length: "Password ต้องยาว 4–32 ตัว",
         invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน",
-        registration_unavailable: "สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่",
+        id_unavailable: "Player ID นี้ถูกใช้งานแล้ว",
         rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
       };
       setModalError(registerErrorText[result?.error] || "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่");
@@ -19232,6 +19257,56 @@ function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
         e("div", { className: "md-arena-fatal-actions" },
           e("button", { type: "button", className: "md-btn primary small", onClick: onResume }, "RESUME ARENA"),
           e("button", { type: "button", className: "md-btn small", onClick: onClose }, "CLOSE")
+        )
+      )
+    ),
+    document.body
+  );
+}
+
+
+function persistenceDiagnosticSafeJson(value) {
+  if (!value || typeof value !== "object") return "";
+  try {
+    return JSON.stringify(value, (key, item) => (
+      /token|password|credential|authorization|session/i.test(String(key)) ? "[redacted]" : item
+    ), 2);
+  } catch (error) {
+    return String(value);
+  }
+}
+
+function persistenceDiagnosticText(diagnostic = {}) {
+  const responseText = persistenceDiagnosticSafeJson(diagnostic.response);
+  return [
+    "Cloud persistence failure",
+    `Code: ${diagnostic.code || "unknown_error"}`,
+    `HTTP: ${diagnostic.status || "unknown"}`,
+    `Domain: ${diagnostic.domain || "unknown"}`,
+    `Character: ${diagnostic.characterId || "unknown"}`,
+    diagnostic.itemId ? `Item: ${diagnostic.itemId}` : "",
+    diagnostic.action ? `Action: ${diagnostic.action}` : "",
+    `Transient: ${diagnostic.transient ? "yes" : "no"}`,
+    `Message: ${diagnostic.message || diagnostic.code || "Unknown persistence error"}`,
+    responseText ? `Response:\n${responseText}` : "",
+    diagnostic.stack ? `Stack:\n${diagnostic.stack}` : ""
+  ].filter(Boolean).join("\n");
+}
+
+function PersistenceDiagnosticOverlay({ diagnostic, onClose }) {
+  if (!diagnostic) return null;
+  const e = React.createElement;
+  return ReactDOM.createPortal(
+    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-persistence-error-title" },
+      e("section", { className: "md-arena-fatal-card" },
+        e("div", { className: "md-arena-fatal-head" },
+          e("strong", { id: "md-persistence-error-title" }, "⚠ Cloud save error"),
+          e("button", { type: "button", className: "md-arena-fatal-close", onClick: onClose, "aria-label": "ปิดรายละเอียด" }, "×")
+        ),
+        e("p", { className: "md-arena-fatal-copy" }, "การบันทึก Cloud ไม่สำเร็จ รายละเอียดด้านล่างใช้ตรวจสอบ state/API ที่ผิดพลาด โดยข้อมูลลับจะถูกปิดบัง"),
+        e("pre", { className: "md-arena-fatal-detail" }, persistenceDiagnosticText(diagnostic)),
+        e("div", { className: "md-arena-fatal-actions" },
+          e("button", { type: "button", className: "md-btn primary small", onClick: onClose }, "CLOSE")
         )
       )
     ),

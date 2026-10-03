@@ -22,6 +22,11 @@
       error.code = result?.error || "invalid_response";
       error.status = result?.status;
       error.transient = TRANSIENT_ERRORS.has(error.code) || Number(error.status) >= 500;
+      error.response = result && typeof result === "object" ? { ...result, cause: undefined } : null;
+      if (result?.cause) {
+        error.cause = result.cause;
+        if (!error.stack && result.cause?.stack) error.stack = String(result.cause.stack);
+      }
       return error;
     }
     return null;
@@ -55,7 +60,11 @@
       const status = statusOf(state);
       if (state.context.key === activeKey && onStatusChange) {
         const failed = Array.from(state.domains.values()).find(slot => slot.failed);
-        onStatusChange(status, { context: state.context, error: failed?.failed || null });
+        onStatusChange(status, {
+          context: state.context,
+          domain: failed?.domain || null,
+          error: failed?.failed || null
+        });
       }
       const listeners = state.listeners.splice(0);
       listeners.forEach(resolve => resolve(status));
