@@ -513,7 +513,7 @@ W6 must not add this Admin UI/API.
 
 ## 20. Admin V2 Phase 1 — Dashboard / Player Viewer
 
-Status: **IMPLEMENTED / QA PASSED — RELEASE PENDING**
+Status: **COMPLETE / PRODUCTION VERIFIED — 2026-10-03**
 
 Scope implemented:
 - read-only Admin Dashboard using server-authoritative aggregate stats;
@@ -537,6 +537,9 @@ QA:
 - full suite 543/543 PASS;
 - Admin V2 QA PASS;
 - Battle Core parity PASS;
-- Worker syntax / Admin HTML guard / diff check PASS.
+- Worker syntax / Admin HTML guard / diff check PASS;
+- PR #71 merged as `f7415332cbe5f19ba017eb44508f278f64aad14f`;
+- API Production deployment SUCCESS;
+- Frontend Production deployment + live verification SUCCESS.
 
 Deferred Admin item deletion tooling remains deferred to a separately approved later Admin phase.
