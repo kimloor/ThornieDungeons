@@ -579,35 +579,36 @@ Most Arena Battle UI should reuse the existing shared Battle pack.
     - runtime supplies text/countdown
   - Must work with the 10-second Surrender cooldown presentation.
 
-## 19. Shared ATB actor icon pack — NEXT
+## 19. Shared ATB actor icon pack — COMPLETE / APPROVED / INTEGRATED
 
 The previous optional Arena-only Hero/Pet fallback icons are **CANCELLED**. Do not create `icon_hero_fallback.png` or `icon_pet_fallback.png`.
 
 Create a shared Battle ATB actor icon family instead:
 
-- [ ] **Hero ATB icon**
+- [x] **Hero ATB icon**
   - Shared Battle presentation asset.
   - Readable as the player Hero at small ATB/turn-order size.
 
-- [ ] **Pet ATB icon**
+- [x] **Pet ATB icon**
   - Shared Battle presentation asset.
   - Must read as a companion/pet, distinct from Hero and Monster.
 
-- [ ] **Normal Monster / Elite ATB icon**
+- [x] **Normal Monster / Elite ATB icon**
   - One shared Monster base icon family; do not create one icon per monster species.
   - Normal uses the base presentation.
   - Elite uses the same base icon with runtime Elite accent/frame/glow.
   - When multiple enemies are present, runtime overlays spawn-slot marker **1 / 2 / 3** so each ATB entry maps to the correct actor.
   - Spawn-slot markers are dynamic UI/presentation overlays and must not be baked into the artwork.
 
-- [ ] **Boss ATB icon**
+- [x] **Boss ATB icon**
   - Dedicated Boss identity, visually heavier than Normal/Elite.
   - Boss does not use the normal Monster numbering rule unless a future approved encounter contract supports multiple simultaneous bosses.
 
 Asset location:
-- use the existing shared Battle asset family under `r2-upload/ui/battle/`;
-- inspect current comparable assets and manifest before locking final filenames, dimensions or keys;
-- do not publish guessed manifest paths.
+- production family: `r2-upload/ui/battle/atb/`;
+- manifest group: `assets.battleUi.actorIcons`;
+- final canvas: 256×256 transparent PNG; display at 24–28 px;
+- contract: `r2-upload/ui/battle/G10_ATB_ACTOR_ICON_CONTRACT.json`.
 
 Runtime contract:
 - icons are presentation-only;
@@ -793,7 +794,7 @@ Recommended order:
 - [x] Arena-only Hero fallback ATB icon — CANCELLED by Project Lead; replaced by shared G10 ATB Actor Icon Pack
 - [x] Arena-only Pet fallback ATB icon — CANCELLED by Project Lead; replaced by shared G10 ATB Actor Icon Pack
 
-### Graphics Batch E — Shared ATB Actor Icon Pack — NEXT
+### Graphics Batch E — Shared ATB Actor Icon Pack — COMPLETE / APPROVED / INTEGRATED
 
 - [ ] Hero ATB icon
 - [ ] Pet ATB icon
@@ -931,6 +932,21 @@ Publication / verification:
 - Frontend Production run: `36809689390` — SUCCESS, Worker Version ID `052fce66-4e0a-4a74-a3da-9cecd3f955f5`;
 - final Battle Core parity run: `36809769185` — SUCCESS, including W9 suites and `node build.js` generated-frontend equality check;
 - Battle Core and API Worker blob SHAs are unchanged from the pre-integration base.
+
+
+## 2026-10-03 — G10 Shared ATB Actor Icon Pack approved and integrated
+
+Approved Hero, Pet, shared Normal Monster/Elite and dedicated Boss icons were published as 256×256 transparent PNG assets under `ui/battle/atb/`. All four production exports pass the shared 40–120 KB small-icon budget.
+
+Runtime scope:
+- the existing shared TurnOrderBar resolves `assets.battleUi.actorIcons` in both Dungeon Battle and Arena;
+- Dungeon multi-enemy entries receive runtime spawn-slot markers 1/2/3;
+- Elite uses the shared Monster icon with a runtime gold accent/glow;
+- Boss uses its dedicated icon and omits normal Monster numbering;
+- failed optional icon loads fall back to the previous emoji presentation;
+- Battle Core, Arena resolver/API, actor identity, turn order and targeting authority are unchanged.
+
+Visible version: `1.0.37`. Integration commit and production workflow evidence are recorded in the final Project Lead handoff.
 
 # PART O — HANDOFF TEMPLATE
 

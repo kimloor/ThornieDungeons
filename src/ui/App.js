@@ -951,7 +951,17 @@ function ThornieDungeons() {
   function battleQueueForUi(state) {
     return BATTLE_CORE_V1.upcomingActions(state, 4).map(id => {
       const unit = state.units[id];
-      return { key: unit.kind === "hero" ? "player" : id, kind: unit.kind === "hero" ? "player" : unit.kind === "pet" ? "pet" : "monster", uid: unit.side === "enemy" ? id : undefined, name: unit.name, icon: unit.kind === "hero" ? "🧙" : unit.kind === "pet" ? (unit.icon || "🐾") : "👹", speed: unit.speed };
+      const sourceMonster = unit.side === "enemy" ? monstersRef.current.find(monster => monster.uid === id) : null;
+      return {
+        key: unit.kind === "hero" ? "player" : id,
+        kind: unit.kind === "hero" ? "player" : unit.kind === "pet" ? "pet" : "monster",
+        uid: unit.side === "enemy" ? id : undefined,
+        name: unit.name,
+        icon: unit.kind === "hero" ? "🧙" : unit.kind === "pet" ? (unit.icon || "🐾") : "👹",
+        speed: unit.speed,
+        isBoss: unit.kind === "boss" || !!sourceMonster?.isBoss,
+        isElite: !!(unit.isElite || sourceMonster?.isElite || sourceMonster?.isEliteBoss)
+      };
     });
   }
   function applyCoreBattleState(next, persistCheckpoint = true) {

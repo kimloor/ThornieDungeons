@@ -30,6 +30,14 @@ function battleUiStyle(key) {
   return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
 }
 
+function battleActorIconUrl(kind) {
+  const normalized = kind === "player" || kind === "hero" ? "hero"
+    : kind === "pet" ? "pet"
+    : kind === "boss" ? "boss"
+    : "monster";
+  return optionalAsset(`battleUi.actorIcons.${normalized}`);
+}
+
 function battleVfxFrames(key) {
   const frames = String(key || "").split(".").reduce((obj, part) => obj?.[part], ASSETS?.battleVfx);
   return Array.isArray(frames) ? frames.filter(path => typeof path === "string" && path).map(assetUrl) : [];
@@ -88,7 +96,8 @@ function battleUiAssetUrls() {
   return [
     "background", "topBar", "turnOrderSlot", "quickSlotFrame", "hpStatusFrame",
     "targetSelectedMarker", "buttons.auto", "buttons.flee", "buttons.settings",
-    "buttons.attack", "buttons.skip", "buttons.speedX1", "buttons.speedX2"
+    "buttons.attack", "buttons.skip", "buttons.speedX1", "buttons.speedX2",
+    "actorIcons.hero", "actorIcons.pet", "actorIcons.monster", "actorIcons.boss"
   ]
     .map(key => optionalAsset(`battleUi.${key}`)).filter(Boolean);
 }
