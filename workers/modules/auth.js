@@ -357,10 +357,13 @@ async function commitCredentialChange(db, baseStatements, playerId, reason) {
 
 async function verifyAdminAccess(db, env, request, legacyAdminKey) {
   const token = bearerToken(request);
-  if (token) return await verifyAdminSession(db, token);
-  const legacy = verifyAdminKey(env, legacyAdminKey);
-  if (legacy.error) return legacy;
-  return { ok: true, legacy: true, playerId: null, role: "legacy" };
+  // Admin V2 is now the only authoritative administrative boundary.  The old
+  // query/body `adminKey` compatibility path was useful during the bootstrap
+  // rollout, but it cannot provide session expiry, revocation, or audit identity.
+  // Keep verifyAdminKey exported for migration tooling/tests that still import
+  // the primitive, but never use it to authorize a live request.
+  if (!token) return { error: "admin_session_required" };
+  return await verifyAdminSession(db, token);
 }
 
 
@@ -409,4 +412,3 @@ async function verifyAdminAccess(db, env, request, legacyAdminKey) {
     verifyAdminAccess
   };
 }
-

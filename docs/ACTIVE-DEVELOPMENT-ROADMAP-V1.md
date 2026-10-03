@@ -1024,13 +1024,13 @@ QA / release result:
 ---
 
 ## WAVE 5.5 — Security Hardening
-**Status: PLANNED — AFTER WAVE 5 / BEFORE WAVE 6**
+**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory**
 
 Scope:
-- retire or harden the legacy Admin-key compatibility path after Admin V2 verification;
+- retire the legacy Admin-key compatibility path; Admin V2 Bearer sessions remain authoritative;
 - validate inventory-slot ownership/range;
 - return generic server errors while keeping diagnostic detail server-side;
 - verify run-state data can never become an authoritative reward source;
@@ -1045,7 +1045,7 @@ Process/security:
 - re-run focused auth/admin/security regression before W6.
 
 Exit condition:
-- remaining non-economy security hardening is production-verified before destructive W6 cutover.
+- focused security regression, build and deployment validation pass before destructive W6 cutover.
 
 ---
 

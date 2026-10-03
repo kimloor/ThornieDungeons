@@ -597,7 +597,7 @@ function ThornieDungeons() {
         invalid_password_length: "Password ต้องยาว 4–32 ตัว",
         invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน",
-        id_unavailable: "Player ID นี้ถูกใช้งานแล้ว",
+        registration_unavailable: "สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่",
         rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
       };
       setAuthError(registerErrors[res.error] || "เชื่อมต่อ Server ไม่ได้ ลองใหม่อีกครั้ง");

@@ -207,12 +207,12 @@ test("login and registration rate limits separate failed attempts from successfu
 test("registration UI exposes specific server-side failure reasons", () => {
   const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
   const componentSource = fs.readFileSync(path.join(__dirname, "../src/ui/components.js"), "utf8");
-  for (const code of ["invalid_player_id", "invalid_password_length", "invalid_password_characters", "password_mismatch", "id_unavailable", "rate_limited"]) {
+  for (const code of ["invalid_player_id", "invalid_password_length", "invalid_password_characters", "password_mismatch", "registration_unavailable", "rate_limited"]) {
     assert.match(appSource, new RegExp(code));
     assert.match(componentSource, new RegExp(code));
   }
   assert.match(componentSource, /สมัครบัญชีถี่เกินไปจากเครือข่ายนี้/);
-  assert.match(componentSource, /Player ID นี้ถูกใช้งานแล้ว/);
+  assert.match(componentSource, /สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่/);
   assert.match(componentSource, /ห้ามเว้นวรรคหรือใช้อักขระพิเศษ/);
   assert.match(componentSource, /onSubmit: event =>/);
   assert.match(componentSource, /type: "submit"/);

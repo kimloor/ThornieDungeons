@@ -181,6 +181,9 @@ function cloudSyncItems(url, characterId, items) {
     items
   });
 }
+function cloudSetInventorySlot(url, characterId, itemId, inventorySlot) {
+  return cloudAuthPost(url, { action: "setInventorySlot", characterId, itemId, inventorySlot });
+}
 function cloudMutateV2Blacksmith(url, characterId, itemId, mutation, requestId) {
   return cloudAuthPost(url, {
     action: "mutateV2Blacksmith",
