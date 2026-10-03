@@ -169,6 +169,140 @@ test("inventory reads preserve two-account ownership isolation", async () => {
   assert.deepEqual(allowed.body.items.map(item => item.item_id), ["private-item"]);
 });
 
+test("Dungeon checkpoint accepts canonical server context when mutable combat metadata is incomplete", async () => {
+  const api = worker(), db = database();
+  const token = await register(api, db, "Checkpoint_QA");
+  const characterId = await createCharacter(api, db, token);
+  db.raw.prepare("UPDATE characters SET unlocked_floor=6 WHERE character_id=?").run(characterId);
+
+  const battleId = "battle-checkpoint-context-qa";
+  const serverContext = {
+    version: 1,
+    mode: "dungeon",
+    floor: 6,
+    role: "normal",
+    packCount: 1,
+    enemies: [{
+      id: "jelly_slime",
+      instanceId: "dungeon-enemy-1-context-qa",
+      modifierId: "golden",
+      kind: "monster",
+      isBoss: false
+    }],
+    encounterSeed: 123456789,
+    rewardSeed: 987654321
+  };
+  const authorization = {
+    version: 1,
+    battleId,
+    mode: "dungeon",
+    floor: 6,
+    encounterType: "normal",
+    safeActionSeq: -1,
+    authorizationOnly: true,
+    serverContext
+  };
+  db.raw.prepare(`
+    INSERT INTO battle_checkpoints
+      (battle_id, character_id, checkpoint_seq, payload_json, state, created_at, updated_at)
+    VALUES (?, ?, -1, ?, 'active', 'now', 'now')
+  `).run(battleId, characterId, JSON.stringify(authorization));
+
+  const payload = {
+    version: 1,
+    battleId,
+    mode: "dungeon",
+    floor: 6,
+    encounterType: "normal",
+    safeActionSeq: 0,
+    serverContext,
+    enemyIds: ["dungeon-enemy-1-context-qa"],
+    units: {
+      "dungeon-enemy-1-context-qa": {
+        id: "dungeon-enemy-1-context-qa",
+        monsterDefId: "jelly_slime",
+        kind: "monster",
+        side: "enemy",
+        hp: 1,
+        maxHp: 100
+      }
+    }
+  };
+  const saved = await call(api, db, {
+    action: "saveBattleCheckpoint",
+    characterId,
+    battleId,
+    checkpointSeq: 0,
+    payload
+  }, token);
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.ok, true);
+  assert.equal(saved.body.accepted, true);
+
+  const stored = db.raw.prepare("SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id=?").get(battleId);
+  assert.equal(stored.checkpoint_seq, 0);
+  assert.equal(JSON.parse(stored.payload_json).serverContext.enemies[0].modifierId, "golden");
+});
+
+test("Dungeon checkpoint still rejects forged enemy identity even with copied server context", async () => {
+  const api = worker(), db = database();
+  const token = await register(api, db, "Checkpoint_Forge_QA");
+  const characterId = await createCharacter(api, db, token);
+
+  const battleId = "battle-checkpoint-forge-qa";
+  const serverContext = {
+    version: 1,
+    mode: "dungeon",
+    floor: 1,
+    role: "normal",
+    packCount: 1,
+    enemies: [{
+      id: "jelly_slime",
+      instanceId: "dungeon-enemy-1-forge-qa",
+      modifierId: null,
+      kind: "monster",
+      isBoss: false
+    }],
+    encounterSeed: 111,
+    rewardSeed: 222
+  };
+  db.raw.prepare(`
+    INSERT INTO battle_checkpoints
+      (battle_id, character_id, checkpoint_seq, payload_json, state, created_at, updated_at)
+    VALUES (?, ?, -1, ?, 'active', 'now', 'now')
+  `).run(battleId, characterId, JSON.stringify({
+    version: 1, battleId, mode: "dungeon", floor: 1, encounterType: "normal",
+    safeActionSeq: -1, authorizationOnly: true, serverContext
+  }));
+
+  const denied = await call(api, db, {
+    action: "saveBattleCheckpoint",
+    characterId,
+    battleId,
+    checkpointSeq: 0,
+    payload: {
+      version: 1,
+      battleId,
+      mode: "dungeon",
+      floor: 1,
+      encounterType: "normal",
+      safeActionSeq: 0,
+      serverContext,
+      enemyIds: ["dungeon-enemy-1-forge-qa"],
+      units: {
+        "dungeon-enemy-1-forge-qa": {
+          id: "dungeon-enemy-1-forge-qa",
+          monsterDefId: "sandy_crab",
+          kind: "monster",
+          side: "enemy"
+        }
+      }
+    }
+  }, token);
+  assert.equal(denied.status, 400);
+  assert.equal(denied.body.error, "invalid_dungeon_checkpoint");
+});
+
 test("run-state save cannot forge progression, currency, or consumables", async () => {
   const api = worker(), db = database();
   const token = await register(api, db, "Run_State_QA");
