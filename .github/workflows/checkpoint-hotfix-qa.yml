@@ -187,5 +187,9 @@ jobs:
           node build.js
           git diff --exit-code -- index.html
 
-      - name: Diff check
-        run: git diff --check HEAD^ HEAD
+      - name: Runtime diff check
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=1
+          git diff --check origin/main...HEAD -- . ':(exclude).github/workflows/checkpoint-hotfix-qa.yml'
