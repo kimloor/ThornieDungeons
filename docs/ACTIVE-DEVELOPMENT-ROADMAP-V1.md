@@ -1284,14 +1284,17 @@ Completed graphics support:
   - Presentation-only integration preserves actor ID, turn order, targeting and gameplay authority.
   - Contract: `r2-upload/ui/battle/G10_ATB_ACTOR_ICON_CONTRACT.json`.
 
+Current graphics batch:
+- **G10.5 — Global Icon Asset Audit + Optimization — IN PROGRESS / QA BLOCKED:** audit the shared production icon budget, optimize safe oversized exports, and recover seven already-corrupt legacy Azure/Angel PNGs from intact approved masters. See `docs/G10-5-ICON-ASSET-AUDIT.md` and its CSV inventory. G11 remains gated until G10.5 closes.
+
 Next graphics batch:
-- **G11 — Robot + Skeleton Set Item Icons — QUEUED / LOW (Graphics), MEDIUM when runtime-bound:** create the missing inventory/equipment item icons for Robot and Skeleton after G10.
+- **G11 — Robot + Skeleton Set Item Icons — QUEUED / LOW (Graphics), MEDIUM when runtime-bound:** create the missing inventory/equipment item icons for Robot and Skeleton after G10.5.
   - Robot: weapon / helmet / chest / gloves / boots / accessory.
   - Skeleton: weapon / helmet / chest / gloves / boots / accessory.
   - Reuse the approved Hero V5 Robot/Skeleton visual identity; do not redesign either set.
   - Preserve the existing Azure item-icon set unchanged.
   - After asset publication, runtime item-icon resolution must support `setId = azure | robot | skeleton`; the current Azure-only branch is incomplete for G11.
-  - G11 production exports must pass the shared icon asset budget in `r2-upload/README.md` before publication.
+  - G11 production exports must pass the shared icon asset budget in `r2-upload/README.md` before publication; no new FAIL icons.
 
 Graphics must not redesign mechanics or publish guessed asset paths.
 
