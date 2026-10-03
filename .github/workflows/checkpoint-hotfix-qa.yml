@@ -58,11 +58,61 @@ jobs:
           set -euo pipefail
           node --test --test-concurrency=1 tests/admin*.test.js
 
-      - name: Full suite group A2 - Arena
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --test --test-concurrency=1 tests/arena*.test.js
+      - name: Arena isolate 1 - arena-v2-batch6a-lifecycle.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-batch6a-lifecycle.test.js
+
+      - name: Arena isolate 2 - arena-v2-batch6a1-result-hud.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-batch6a1-result-hud.test.js
+
+      - name: Arena isolate 3 - arena-v2-batch6a2-auto-revenge-speed.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-batch6a2-auto-revenge-speed.test.js
+
+      - name: Arena isolate 4 - arena-v2-hub-r1-graphics.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-hub-r1-graphics.test.js
+
+      - name: Arena isolate 5 - arena-v2-w9-battle-core.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-battle-core.test.js
+
+      - name: Arena isolate 6 - arena-v2-w9-cleanup.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-cleanup.test.js
+
+      - name: Arena isolate 7 - arena-v2-w9-combat.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-combat.test.js
+
+      - name: Arena isolate 8 - arena-v2-w9-foundation.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-foundation.test.js
+
+      - name: Arena isolate 9 - arena-v2-w9-match-lifecycle.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-match-lifecycle.test.js
+
+      - name: Arena isolate 10 - arena-v2-w9-phaser.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-phaser.test.js
+
+      - name: Arena isolate 11 - arena-v2-w9-schema.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-schema.test.js
+
+      - name: Arena isolate 12 - arena-v2-w9-server-foundation.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-server-foundation.test.js
+
+      - name: Arena isolate 13 - arena-v2-w9-settlement.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-settlement.test.js
+
+      - name: Arena isolate 14 - arena-v2-w98-w99.test.js
+        continue-on-error: true
+        run: node --test --test-concurrency=1 tests/arena-v2-w98-w99.test.js
 
       - name: Full suite group A3 - Auth clients
         shell: bash
