@@ -2530,6 +2530,7 @@ function RaidBossCard({
   onHurtComplete,
   isDead
 }) {
+  const [phaserStatus, setPhaserStatus] = useState("loading");
   return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
     /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.name || "Raid Boss"),
     /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
@@ -2538,7 +2539,14 @@ function RaidBossCard({
         style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
       })),
     /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
-    /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
+    bossSpriteConfig && /*#__PURE__*/React.createElement(PhaserRaidBoss, {
+      boss,
+      config: bossSpriteConfig,
+      hurtToken,
+      onHurtComplete,
+      onStatus: status => setPhaserStatus(status)
+    }),
+    (!bossSpriteConfig || phaserStatus === "error") && /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
       config: bossSpriteConfig,
       hurtToken,
       className: "md-raid-boss-sprite",
