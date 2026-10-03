@@ -1147,7 +1147,7 @@ Exit condition:
 ---
 
 ## WAVE 7 — Presentation Expansion
-**Status: ACTIVE — W7A COMPLETE / QA PASSED; W7B IMPLEMENTED / QA PASSED — RELEASE PENDING**
+**Status: COMPLETE / PRODUCTION VERIFIED — 2026-10-03**
 **Risk: MEDIUM**
 **Lead: DEV + Graphics**
 **Collaboration: QA**
@@ -1188,7 +1188,7 @@ Dependencies:
 - Raid presentation depends on WAVE 5.
 
 ### W7B / W11 reference — Enhance / Craft Presentation
-**Status: IMPLEMENTED / QA PASSED — RELEASE PENDING**
+**Status: COMPLETE / PRODUCTION VERIFIED**
 
 Implemented scope:
 - one shared Phaser ForgePresentation scene/host/UI bridge;
@@ -1205,13 +1205,21 @@ Enhance/Craft presentation depends on authoritative mechanics:
 - Craft reveal;
 - Mythic/Boss Weapon reveal.
 
-Summoning presentation is deferred from W7B until its own gameplay contract is approved. Future visual direction may include portal / rarity glow / reveal / particles-camera presentation, but W7 must not define or implement Summoning economy/mechanics.
+Summoning presentation is deferred from W7 and is not counted as unfinished W7 scope. It requires its own approved gameplay contract before implementation. Future visual direction may include portal / rarity glow / reveal / particles-camera presentation, but no Summoning economy/mechanics were defined or implemented in W7.
 
 Presentation hard rules:
 - React/DOM/API owns item/recipe/cost/mutation/economy state;
 - Phaser owns presentation only;
 - reuse AssetResolver, HeroRenderer, EquipmentVisualResolver, PresentationQueue and VfxManager;
 - no per-screen duplicate renderer or VFX architecture.
+
+Release result:
+- W7A Terminal/Boss/Enrage/Raid presentation is merged and QA passed;
+- W7B Enhance/Craft presentation merged in PR #69 as `e8a4b5de4906a3ce168eb54310d45dd09ec1277c`;
+- W7B focused regression 124/124 PASS and full suite 541/541 PASS;
+- production frontend deployment and live verification completed successfully on the merge SHA;
+- presentation remains non-authoritative for Battle/Reward/Raid/Enhance/Craft state;
+- Summoning remains deferred behind its own future contract.
 
 QA gate:
 - authoritative result remains correct if animation fails;
