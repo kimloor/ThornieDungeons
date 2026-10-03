@@ -182,7 +182,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.34";
+  content: "Ver 1.0.35";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1974,7 +1974,10 @@ body::after {
 .md-inv2-slot-icon { height:32px; display:flex; align-items:center; justify-content:center; font-size:22px; }
 .md-inv2-slot-label { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft); font-size:8px; font-weight:800; }
 .md-inv2-badge { position:absolute; z-index:2; right:5px; top:3px; color:#71e8ff; font:900 12px/1 'Baloo 2'; text-shadow:0 1px 3px #000; }
-.md-inv2-overflow-banner { width:100%; min-height:38px; margin:0 0 8px; border:1px solid #ef8b62; border-radius:12px; background-color:rgba(112,31,26,.72); color:#ffe2d2; font-weight:900; cursor:pointer; }
+.md-inv2-overflow-banner { width:100%; min-height:42px; margin:0 0 8px; padding:6px 12px; display:flex; align-items:center; justify-content:flex-start; gap:9px; border:1px solid #ef8b62; border-radius:12px; background-color:rgba(112,31,26,.72); color:#ffe2d2; font-weight:900; cursor:pointer; }
+.md-inv2-overflow-icon { width:28px; height:28px; flex:0 0 28px; display:inline-flex; align-items:center; justify-content:center; border-radius:7px; background-size:contain; background-position:center; background-repeat:no-repeat; font-size:20px; }
+.md-inv2-overflow-icon.has-art { font-size:0; }
+.md-inv2-overflow-label { min-width:0; text-align:left; }
 .md-inv2-tools { margin-top:4px; }
 .md-inv2-tool-buttons { display:flex; gap:6px; }
 .md-inv2-icon-btn { width:44px; height:44px; padding:3px; border:1px solid rgba(255,209,102,.42); border-radius:11px; background-color:rgba(15,9,31,.82); background-size:contain; color:var(--ink); font-size:22px; font-weight:800; cursor:pointer; }
@@ -21860,15 +21863,15 @@ function InventoryFilterModal({ filters, onUpdate, onReset, onClose }) {
 
 function OverflowModal({ overflow, busy, onClaimOverflow, onClaimAllOverflow, onClose }) {
   return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup md-inv2-overflow-popup md-inventory-art", style: inventoryUiStyle("popupFrame") },
-    /*#__PURE__*/React.createElement("h3", null, `Overflow ${overflow.length}`),
-    /*#__PURE__*/React.createElement("p", null, "ไอเท็มเหล่านี้ถูกเก็บไว้อย่างปลอดภัย เคลียร์ช่องในกระเป๋าแล้วจึง Claim"),
+    /*#__PURE__*/React.createElement("h3", null, `ไอเทมที่ล้น (${overflow.length})`),
+    /*#__PURE__*/React.createElement("p", null, "ไอเทมเหล่านี้ถูกเก็บไว้อย่างปลอดภัย เคลียร์ช่องในกระเป๋าแล้วจึงนำกลับเข้ากระเป๋า"),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-list" }, overflow.map(item => /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-row", key: inventoryItemRuntimeId(item) },
       /*#__PURE__*/React.createElement(GameIcon, { item, fallback:item.icon || SLOT_ICON[inventoryItemType(item)] || "📦" }),
       /*#__PURE__*/React.createElement("span", null, itemDisplayName(item), inventoryItemQuantity(item) > 1 ? ` x${inventoryItemQuantity(item)}` : ""),
-      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => onClaimOverflow(inventoryItemRuntimeId(item)) }, "Claim")))),
+      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => onClaimOverflow(inventoryItemRuntimeId(item)) }, "นำเข้ากระเป๋า")))),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup-actions" },
-      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:onClaimAllOverflow }, "Claim All That Fits"),
-      /*#__PURE__*/React.createElement("button", { onClick:onClose }, "Close"))));
+      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:onClaimAllOverflow }, "นำทั้งหมดที่ใส่ได้"),
+      /*#__PURE__*/React.createElement("button", { onClick:onClose }, "ปิด"))));
 }
 
 function ItemStats({ item }) {
@@ -22039,7 +22042,9 @@ function InventoryOverlayV2({
     /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
       /*#__PURE__*/React.createElement(InventoryHeader, { characterName, onClose }),
       /*#__PURE__*/React.createElement(EquipmentStage, { equipped, previewEquipped, characterName, onOpenDetail:setDetail }),
-      overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner md-inventory-art", style: iconButtonStyle("overflow"), onClick: () => setOverflowOpen(true) }, `⚠ Overflow ${overflow.length}`),
+      overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner", onClick: () => setOverflowOpen(true), "aria-label": `ไอเทมที่ล้น ${overflow.length}` },
+        /*#__PURE__*/React.createElement("span", { className: `md-inv2-overflow-icon md-inventory-art ${inventoryUiUrl("icons.overflow") ? "has-art" : ""}`, style: iconButtonStyle("overflow"), "aria-hidden":"true" }, inventoryUiUrl("icons.overflow") ? null : "📦"),
+        /*#__PURE__*/React.createElement("span", { className:"md-inv2-overflow-label" }, `ไอเทมที่ล้น ${overflow.length}`)),
       /*#__PURE__*/React.createElement(InventoryToolbar, { inventoryCount:inventory.length, onFilter:() => setFilterOpen(true), onSort }),
       /*#__PURE__*/React.createElement(InventoryGrid, { items:filtered, expanded, onOpenDetail:setDetail }),
       (filtered.length > 10 || expanded) && /*#__PURE__*/React.createElement("button", { className: "md-inventory-toggle md-inventory-art", style: iconButtonStyle("expand"), onClick: () => setExpanded(value => !value) }, expanded ? "▲ Collapse" : `▼ View All (${filtered.length})`),
