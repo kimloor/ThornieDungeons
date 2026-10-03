@@ -68,15 +68,14 @@ test("Azure 4pc halves active MP after Skill Efficiency boundary", () => {
   assert.equal(next.units.hero.sp, 92);
 });
 
-test("Azure 6pc rolls once per action and keeps Boss control conversion", () => {
-  let observed = null;
-  for (let seed = 1; seed < 200 && !observed; seed++) {
-    const state = battle.createBattle({ seed, hero: hero({ equipmentEffects: { azureControlProc: true } }), enemies: [enemy({ kind: "boss" })] });
-    const next = battle.battleStep(state, { type: "basic", targetId: "enemy" }).state;
-    if (next.log.some(entry => entry.type === "boss_conversion")) observed = next;
-  }
-  assert.ok(observed);
-  assert.equal(observed.log.filter(entry => entry.type === "boss_conversion").length, 1);
+test("Azure has no 6pc combat effect", () => {
+  const equipped = Object.fromEntries(mythic.SET_SLOTS.map(slot => [slot, setPiece("azure", slot)]));
+  const effects = mythic.setEffects(equipped);
+  const combat = mythic.combatEffects(equipped);
+  assert.equal(effects.agi, 5);
+  assert.equal(effects.activeSkillMpMultiplier, 0.5);
+  assert.equal("azureControlProc" in effects, false);
+  assert.equal("azureControlProc" in combat, false);
 });
 
 test("Robot 4pc resists hard control without reducing Poison", () => {
