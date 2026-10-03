@@ -76,6 +76,7 @@ function checkpointForStart(started, safeActionSeq = 1) {
     }]))
   };
 }
+// Mirrors the canonical runtime checkpoint shape at the server-validation boundary.
 function battleCoreLikeCheckpointForStart(started, safeActionSeq = 0, options = {}) {
   const context = started.body.context;
   const omitDefinitionAlias = options.omitDefinitionAlias === true;
