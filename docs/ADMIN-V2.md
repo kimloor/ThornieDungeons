@@ -507,3 +507,36 @@ Planned safety shape:
 - no wildcard/name-based bulk delete and no generic SQL editor.
 
 W6 must not add this Admin UI/API.
+
+
+---
+
+## 20. Admin V2 Phase 1 — Dashboard / Player Viewer
+
+Status: **IMPLEMENTED / QA PASSED — RELEASE PENDING**
+
+Scope implemented:
+- read-only Admin Dashboard using server-authoritative aggregate stats;
+- server-side Player Search by Player ID or Character name;
+- sanitized read-only Player Viewer with Character and Item rows;
+- Admin V2 bearer session required for every Phase 1 read;
+- search/view events recorded in `admin_audit_log`;
+- search audit stores query length/result count only, not raw query text;
+- Player output excludes password/password hash/recovery-code hash;
+- Player Viewer exposes no player/economy mutation controls.
+
+Explicitly out of scope:
+- player Gold/Diamond/stat mutation;
+- item deletion;
+- generic DB editor;
+- generic SQL console;
+- destructive player tools.
+
+QA:
+- focused Admin/Auth regression 34/34 PASS;
+- full suite 543/543 PASS;
+- Admin V2 QA PASS;
+- Battle Core parity PASS;
+- Worker syntax / Admin HTML guard / diff check PASS.
+
+Deferred Admin item deletion tooling remains deferred to a separately approved later Admin phase.
