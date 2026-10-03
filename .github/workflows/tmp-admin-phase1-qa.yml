@@ -1,0 +1,38 @@
+name: Temporary Admin Phase1 QA
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Focused Admin/Auth regression
+        run: >-
+          node --test --test-concurrency=1
+          tests/admin-v2-auth.test.js
+          tests/auth-v2.test.js
+          tests/w5-5-security-hardening.test.js
+      - name: Full suite
+        run: node --test --test-concurrency=2 tests/*.test.js
+      - name: Worker syntax
+        run: node --check workers/thornie-dungeons-api.js
+      - name: Admin HTML guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'data-tab="dashboard"' admin.html
+          grep -Fq 'data-tab="players"' admin.html
+          grep -Fq 'adminSearchPlayers' admin.html
+          ! grep -Eiq 'adminDeletePlayer|adminDeleteItem|setPlayerGold|setPlayerDiamonds|playerMutation' admin.html
+      - name: Diff check
+        run: git diff --check
