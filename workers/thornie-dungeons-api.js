@@ -2076,6 +2076,15 @@ function mailPlanPersistenceStatements(db, plan, id, characterId, timestamp, gat
   return statements;
 }
 
+function isW6RetiredLegacySpecialItem(item) {
+  const slot = String(item?.type || item?.slot_type || "").toLowerCase();
+  const rarity = String(item?.rarity || "").toLowerCase();
+  const isV2 = Number(item?.itemModelVersion) === 2 || Number(item?.rewardVersion) === 2;
+  if (isV2) return false;
+  if (slot === "wings" && rarity === "raid") return true;
+  return ["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(slot) && rarity === "azure";
+}
+
 async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset = 0, claimGate = null, settlementHolder = null) {
   await ensureItemAuthorityTables(db);
   const mailId = String(mail.mail_id || "");
@@ -2114,6 +2123,7 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
   const itemRows = parseJsonColumn(mail.items_json, []);
   const items = Array.isArray(itemRows) ? itemRows : [];
   items.forEach((item, index) => {
+    if (isW6RetiredLegacySpecialItem(item)) return;
     const slot = String(item?.type || "");
     if (!["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(slot)) return;
     const itemId = `mail-item-${dungeonV2ServerHash(`${mailId}:${index}`)}`;
@@ -2666,7 +2676,22 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
   const streak = lastClaimDate === yesterdayDateKey() ? prevStreak + 1 : 1;
   const rewardDef = dailyLoginReward(streak);
   const reward = { gold: rewardDef.gold, diamonds: rewardDef.diamonds, junk: rewardDef.junk || [], items: [] };
-  if (rewardDef.azureRandom) reward.items = [randomAzureItemDesc()];
+  if (rewardDef.mythicSetFamily) {
+    const family = String(rewardDef.mythicSetFamily || "").toLowerCase();
+    const slots = globalThis.MYTHIC_V2?.SET_SLOTS || [];
+    const slot = slots.length ? slots[Math.floor(secureRandomUnit() * slots.length)] : "";
+    const floor = Math.max(1, Number(owned.row.unlocked_floor) || 1);
+    const recipe = slot ? globalThis.MYTHIC_V2?.setRecipe(family, slot, floor) : null;
+    const item = recipe ? globalThis.MYTHIC_V2?.createMythicItem(recipe, floor, secureRandomUnit) : null;
+    if (!item) return json({ error: "daily_reward_contract_unavailable" }, 503);
+    reward.items = [{
+      ...item,
+      sourceType: "daily_login",
+      sourceIdentity: `daily_login:day7:${family}`,
+      rewardVersion: 2,
+      itemModelVersion: 2
+    }];
+  }
   const totalClaims = (row ? Number(row.total_claims) || 0 : 0) + 1;
   const claimToken = crypto.randomUUID();
   const now = nowIso();
@@ -2892,22 +2917,6 @@ function raidWingItemDesc(family, rarity) {
       ? globalThis.ENHANCEMENT_V2_RULES.fillEmpowerSlots("wings", r, secureRandomUnit)
       : Array(capacity).fill(null), sourceType: "raid", sourceIdentity: `raid_wing:${f}`
   };
-}
-// Azure set — 6 pieces (helmet/chest/gloves/boots/weapon/ring), set bonus at 2/4/6 equipped
-// (client-side bonus values live in stats.js SET_BONUS_DEFS.azure — keep both in sync).
-const AZURE_SET_DEFS = {
-  azure_helmet: { type: "helmet", name: "หมวก Azure", def: 60 },
-  azure_chest: { type: "chest", name: "เสื้อ Azure", def: 90 },
-  azure_gloves: { type: "gloves", name: "ถุงมือ Azure", atk: 40 },
-  azure_boots: { type: "boots", name: "รองเท้า Azure", def: 45 },
-  azure_weapon: { type: "weapon", name: "อาวุธ Azure", atk: 120 },
-  azure_ring: { type: "accessory", name: "แหวน Azure", dodgeChance: 15 }, // uses the existing "accessory" equip slot
-};
-function randomAzureItemDesc() {
-  const keys = Object.keys(AZURE_SET_DEFS);
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  const d = AZURE_SET_DEFS[key];
-  return { type: d.type, rarity: "azure", name: d.name, atk: d.atk || 0, def: d.def || 0, dodgeChance: d.dodgeChance || 0, setId: "azure", empowerSlotCount: 5 };
 }
 // Recipes are inert placeholder items (stackable, riding the existing junk pipeline) until
 // the Crafting phase exists to consume them — see JUNK_INFO/recipe_* entries in enhancement.js.

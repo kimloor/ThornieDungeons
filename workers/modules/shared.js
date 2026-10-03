@@ -213,7 +213,7 @@ const DAILY_LOGIN_REWARDS = [
   { day: 4, diamonds: 350 },
   { day: 5, junk: [{ junkId: "bossHide", quantity: 3 }, { junkId: "bossHorn", quantity: 3 }] },
   { day: 6, diamonds: 550 },
-  { day: 7, azureRandom: true }, // bonus day, cycle repeats after this
+  { day: 7, mythicSetFamily: "azure" }, // bonus day, cycle repeats after this; Worker resolves canonical V2 item
 ];
 
 function json(obj, status = 200) {

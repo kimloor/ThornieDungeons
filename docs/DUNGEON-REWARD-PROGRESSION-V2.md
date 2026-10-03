@@ -1215,7 +1215,7 @@ The following controls are part of the design and must not be removed independen
 
 ## 24. Production migration notes
 
-Current production code does not yet match this document.
+W6 implementation now carries the approved cleanup on a feature branch; Production destructive cutover remains separately gated.
 
 Known legacy areas that implementation must intentionally replace include:
 
@@ -1229,7 +1229,8 @@ Known legacy areas that implementation must intentionally replace include:
 - Azure encoded as its own rarity/power key;
 - Raid Wings encoded as ★1–★5 with large direct Dodge;
 - old Azure/Set item data using the legacy stat model;
-- temporary Azure QA/Test Shop items using legacy item generation.
+- temporary Azure QA/Test Shop items using legacy item generation;
+- pending legacy Mail item descriptors that could otherwise recreate retired special items after cleanup.
 
 ### 24.1 Approved destructive legacy cleanup
 
@@ -1262,6 +1263,8 @@ Normal non-Set Rare / Unique / Elite equipment is not part of this special destr
 ### 24.2 Data / transaction safety
 
 - migration must be explicit, auditable, and targeted to legacy special-item identities;
+- snapshot targeted rows to a dedicated W6 cleanup audit table before deletion;
+- Mail claim must refuse to materialize matching retired legacy descriptors after cutover;
 - unrelated inventory rows/fields must be preserved;
 - reward/persistence operations remain compatible with Battle Result commit/idempotency and overflow safety;
 - server-granted Raid rewards must preserve mailbox/idempotency guarantees already used by production.
