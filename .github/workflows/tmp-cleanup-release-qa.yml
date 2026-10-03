@@ -28,10 +28,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pattern='cloudGetRecoveryStatus|cloudSyncItems|cloudSetInventorySlot|cloudSaveRunState|cloudSaveQuickSlots|cloudGetGuildProfile|loadAssetText|preloadAsset|responsiveMonsterVfxAnchor|craftSalvageRefund|removeJunkFromInventory|rollGachaPet|addPotionToInventory|removePotionFromInventory|unlockedSkills|buildTurnQueue|generateDropForMonster|FloatingQuickActions'
+          pattern='\\b(?:cloudGetRecoveryStatus|cloudSyncItems|cloudSetInventorySlot|cloudSaveRunState|cloudSaveQuickSlots|cloudGetGuildProfile|loadAssetText|preloadAsset|responsiveMonsterVfxAnchor|craftSalvageRefund|removeJunkFromInventory|rollGachaPet|addPotionToInventory|removePotionFromInventory|unlockedSkills|buildTurnQueue|generateDropForMonster|FloatingQuickActions)\\b'
           paths=(src tests workers admin.html build.js r2-upload index.html)
           if [ -d scripts ]; then paths+=(scripts); fi
-          if grep -R -n -E "$pattern" "${paths[@]}"; then
+          if grep -R -n -P "$pattern" "${paths[@]}"; then
             echo "Removed function name reference found"
             exit 1
           fi
