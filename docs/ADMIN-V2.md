@@ -1,6 +1,6 @@
 # ThornieDungeons Admin V2 — Security / Auth Contract
 
-Status: **ACTIVE-DESIGN — Phase 0 approved direction**
+Status: **ACTIVE-PRODUCTION — Admin V2 account-backed auth/session foundation deployed; W5.5 legacy-path hardening complete / Production verified**
 
 This document defines the security and authentication foundation for the ThornieDungeons Admin V2 console.
 
