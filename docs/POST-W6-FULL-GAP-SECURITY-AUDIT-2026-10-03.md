@@ -1,6 +1,6 @@
 # ThornieDungeons — Post-W6 Full Project Gap Audit + Security Re-Audit — 2026-10-03
 
-Status: **ACTIVE GATE — one HIGH security remediation required before WAVE 7**
+Status: **COMPLETE / GATE PASSED — WAVE 7 baseline approved from audited post-V2 Production state**
 
 Baseline main:
 `724af6c8377b9c7c349462407e4567f33e9a1e9c`
@@ -26,22 +26,18 @@ Current-main audit baseline:
 - Admin V2 route authorization requires Admin session; the old `adminKey` argument no longer authorizes requests.
 - `verifyAdminKey` remains exported only as compatibility/dead tooling surface; no production route falls back to it.
 
-## GAP — RELEASE BLOCKER
+## RESOLVED RELEASE BLOCKER
 
-### 1. Cross-account Inventory read isolation — HIGH
+### 1. Cross-account Inventory read isolation — RESOLVED / PRODUCTION VERIFIED
 
-`handleGetInventory(db, id, session, characterId, page, pageSize)` verifies the player session but does not verify that a supplied `characterId` belongs to that player before querying `items WHERE character_id = ?`.
-
-Impact:
-- an authenticated account that knows another character id can request that character's item rows;
-- this is a confidentiality/authorization violation even though mutation routes remain ownership-checked;
-- existing security suites did not exercise this read path.
-
-Required remediation:
-- when `characterId` is supplied, require `verifyOwnedCharacter(db, id, characterId)` before the query;
-- preserve the player-wide fallback only when no `characterId` is supplied;
-- add explicit two-account regression proving account B cannot read account A inventory;
-- rerun W5.5/Auth/Mail/Inventory/W6 focused regressions + full suite + deployment verification.
+- PR #63 added `verifyOwnedCharacter(db, id, characterId)` to `handleGetInventory()` whenever `characterId` is supplied.
+- player-wide fallback remains available only when no `characterId` is supplied.
+- explicit two-account regression proves account B receives 403 and no item payload for account A's character.
+- focused security regression: 52/52 PASS.
+- full suite: 524/524 PASS.
+- Battle Core parity: SUCCESS.
+- API Production deployment: SUCCESS.
+- merge SHA: `a0fe7fe985aa6fe6ef5638cbd45a5b2b7d387854`.
 
 ## DEFERRED / NON-BLOCKING
 
@@ -70,9 +66,9 @@ These are documentation-only corrections and may be closed with the audit record
 
 ## Gate result
 
-WAVE 7 remains blocked until the HIGH Inventory read-isolation gap is remediated and Production verified.
+Post-W6 Full Project Gap Audit + Security Re-Audit is COMPLETE / GATE PASSED.
 
-After that remediation:
-- mark this audit COMPLETE / GATE PASSED;
-- route legacy Blacksmith/helper cleanup as non-blocking backlog;
-- use the audited post-V2 production state as the W7 baseline.
+- no unresolved release-blocking security/data-integrity finding remains from this audit;
+- legacy Blacksmith compatibility and exported `verifyAdminKey` helper remain non-blocking cleanup debt;
+- deferred Admin item deletion tooling remains outside this phase;
+- the audited post-V2 Production state is now the baseline for WAVE 7 planning.
