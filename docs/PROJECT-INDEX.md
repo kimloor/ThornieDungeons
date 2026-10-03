@@ -264,4 +264,5 @@ When an approved production contract changes:
 - WAVE 5 Raid / Wings V2: COMPLETE / PRODUCTION VERIFIED.
 - WAVE 5.5 Security Hardening: COMPLETE / PRODUCTION VERIFIED.
 - Pre-WAVE 6 Readiness Audit: COMPLETE / GATE PASSED; Azure 6pc drift resolved and Production verified by PR #58.
-- Post-WAVE 6: Full Project Gap Audit + Security Re-Audit remains mandatory before WAVE 7 closeout.
+- WAVE 6 V2 Production Cutover + Legacy Special-Item Cleanup: COMPLETE / PRODUCTION VERIFIED; PR #60 / merge `9c8f716c6cff1acc38593acf42fafab7d6c11312`.
+- Post-WAVE 6: Full Project Gap Audit + Security Re-Audit is now the active mandatory gate before WAVE 7 closeout.

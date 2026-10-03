@@ -1215,7 +1215,7 @@ The following controls are part of the design and must not be removed independen
 
 ## 24. Production migration notes
 
-W6 implementation now carries the approved cleanup on a feature branch; Production destructive cutover remains separately gated.
+W6 Production cutover is complete / Production verified. PR #60 merged as `9c8f716c6cff1acc38593acf42fafab7d6c11312`; migration `0029_w6_legacy_special_item_cleanup.sql` applied successfully to Production D1.
 
 Known legacy areas that implementation must intentionally replace include:
 
