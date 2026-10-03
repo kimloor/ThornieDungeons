@@ -294,14 +294,14 @@ If a reward requires a new Inventory slot and Inventory is full:
 
 Overflow must persist through save/cloud state and must not be session-only.
 
-Example compact presentation when Overflow exists:
+Example compact player-facing presentation when pending items exist:
 
 ```text
-⚠ Overflow 3 items                         [View]
+[icon] ไอเทมที่ล้น 3
 Inventory 30/30                    [Filter] [Sort]
 ```
 
-When Overflow is empty, hide this row.
+The internal persistence/engineering term may remain `Overflow`, but player-facing Inventory UI should use Thai wording such as `ไอเทมที่ล้น` instead of the English term. When Overflow is empty, hide this row.
 
 Suggested future safety ceiling: a finite Overflow cap may be added, but implementation must never silently delete rare/high-value rewards. If such a cap is introduced, a clear player-facing resolution flow is required.
 
