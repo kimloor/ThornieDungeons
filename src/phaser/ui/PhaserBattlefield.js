@@ -31,11 +31,13 @@ function PhaserBattlefield(props) {
       onTargetSelected: id => props.onTargetSelected?.(id)
     });
     handleRef.current = handle;
+    props.onPresentationController?.(handle);
     setStatus("loading");
     props.onStatus?.("loading");
     void handle.mount();
     return () => {
       disposed = true;
+      props.onPresentationController?.(null);
       handle.destroy();
       handleRef.current = null;
     };
