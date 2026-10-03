@@ -113,6 +113,7 @@ test("W6.2 ActorPresentationModel preserves W5 actor normalization contract", ()
     defId: "slime_01",
     isBoss: false,
     isEliteBoss: false,
+    enraged: false,
     sizeClass: "medium",
     anchorType: "ground",
     facing: "left",
