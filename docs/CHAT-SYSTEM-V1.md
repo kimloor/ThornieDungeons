@@ -1,6 +1,6 @@
 # Chat System V1
 
-Status: **ACTIVE-PRODUCTION for Global + Direct; W3 Guild Chat is implemented on `feat/w3-guild-chat-social-integration` and ready for QA.**
+Status: **ACTIVE-PRODUCTION — Global, Direct, and Guild Chat are released and Production verified.**
 
 Depends on `SOCIAL-SYSTEM-V1.md` and, for Direct Message access, `FRIEND-SYSTEM-V1.md`.
 
