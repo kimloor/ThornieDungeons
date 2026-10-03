@@ -674,3 +674,17 @@ W7A A1 extends the shared presentation boundary without changing Battle authorit
 - Arena behavior is unchanged by this Dungeon terminal step.
 
 A dedicated authored Hero Victory frame is not introduced by A1. Hero V5 remains frame-authored Idle/Attack/Death; future Victory artwork requires separate Graphics approval rather than synthesizing a new pose at runtime.
+
+
+## 15.7 W7A Boss entrance + Enrage presentation — 2026-10-03
+
+W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene:
+
+- fresh Boss battles may play an entrance fade/flash only on the first snapshot with sequence <= 0;
+- resumed battles do not replay the entrance;
+- ActorPresentationModel exposes a read-only `enraged` field derived from authoritative Dungeon V2 state;
+- BattleScene never computes the 50% HP Enrage threshold and never writes `dungeonV2Enraged`;
+- the Enrage cue fires only on a false→true transition observed in successive authoritative snapshots;
+- a resumed already-Enraged Boss is used as the baseline and does not replay the transition;
+- camera flash/shake and actor alpha pulses remain presentation-only queue work;
+- Boss damage multiplier, skill phase, status behavior, save/checkpoint, rewards and result authority remain outside Phaser.

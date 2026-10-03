@@ -10339,8 +10339,9 @@ function createActorPresentationModel(raw, fallback = {}) {
     alive: Number(unit.hp) > 0 && !unit.dead,
     statuses: actorPresentationStatusData(unit),
     defId: unit.defId || fallback.defId || unit.monsterDefId || unit.id,
-    isBoss: !!(unit.isBoss || fallback.isBoss),
+    isBoss: !!(unit.isBoss || fallback.isBoss || kind === "boss"),
     isEliteBoss: !!(unit.isEliteBoss || fallback.isEliteBoss),
+    enraged: !!(unit.flags?.dungeonV2Enraged || fallback.flags?.dungeonV2Enraged || unit.dungeonV2Phase === "enraged" || fallback.dungeonV2Phase === "enraged"),
     sizeClass: unit.sizeClass || fallback.sizeClass || "medium",
     anchorType: unit.anchorType || fallback.anchorType || "ground",
     facing: normalizeActorPresentationFacing(unit.facing || fallback.facing, kind),
@@ -11895,6 +11896,8 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.presentationScale = 1;
       this.lastArenaCueSeq = -1;
       this.lastArenaBattleId = null;
+      this.lastDungeonBattleId = null;
+      this.lastDungeonEnrageByActor = new Map();
       this.lastTerminalPresentationKey = "";
       this.handleResize = this.handleResize.bind(this);
     }
@@ -12069,6 +12072,12 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.presentationQueue.setSpeed(snapshot.combatSpeed || 1);
       if (!this.actors.hero) this.createActors();
 
+      const isFirstDungeonSnapshot = this.lastDungeonBattleId !== snapshot.battleId;
+      if (isFirstDungeonSnapshot) {
+        this.lastDungeonBattleId = snapshot.battleId;
+        this.lastDungeonEnrageByActor.clear();
+      }
+
       const animationJobs = [];
       const heroData = snapshot.hero || {};
       this.queueActorAnimation(this.actors.hero, heroData, animationJobs);
@@ -12090,7 +12099,81 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.actors.monsters.slice(snapshot.monsters?.length || 0).forEach(actor => actor.destroy());
       this.actors.monsters.length = snapshot.monsters?.length || 0;
       this.layoutActors(monsterCount);
+      this.enqueueDungeonPresentationCues(snapshot, isFirstDungeonSnapshot);
       this.enqueueAnimations(animationJobs);
+    }
+
+    enqueueDungeonPresentationCues(snapshot, isFirstDungeonSnapshot) {
+      const bosses = (snapshot.monsters || [])
+        .map((monster, index) => ({ monster, actor: this.actors.monsters[index] }))
+        .filter(entry => entry.actor && (entry.monster?.kind === "boss" || entry.monster?.isBoss));
+
+      if (isFirstDungeonSnapshot) {
+        bosses.forEach(({ monster }) => {
+          this.lastDungeonEnrageByActor.set(String(monster.id || ""), !!monster.enraged);
+        });
+
+        if (Number(snapshot.seq) <= 0 && bosses.length) {
+          void this.presentationQueue.enqueue({
+            run: speed => Promise.all(bosses.map(({ actor }) => new Promise(resolve => {
+              const duration = Math.max(180, Math.round(420 / Math.max(1, Number(speed) || 1)));
+              actor.setVisualAlpha?.(0);
+              this.cameras?.main?.flash?.(Math.max(100, Math.round(duration * 0.45)));
+              if (!this.tweens?.add || !actor.visualRoot) {
+                actor.setVisualAlpha?.(1);
+                resolve();
+                return;
+              }
+              this.tweens.add({
+                targets: actor.visualRoot,
+                alpha: 1,
+                duration,
+                ease: "Quad.easeOut",
+                onComplete: () => {
+                  actor.setVisualAlpha?.(1);
+                  resolve();
+                }
+              });
+            })))
+          });
+        }
+        return;
+      }
+
+      const newlyEnraged = [];
+      bosses.forEach(({ monster, actor }) => {
+        const key = String(monster.id || "");
+        const previous = this.lastDungeonEnrageByActor.get(key) === true;
+        const current = !!monster.enraged;
+        if (!previous && current) newlyEnraged.push(actor);
+        this.lastDungeonEnrageByActor.set(key, current);
+      });
+
+      if (!newlyEnraged.length) return;
+      void this.presentationQueue.enqueue({
+        run: speed => Promise.all(newlyEnraged.map(actor => new Promise(resolve => {
+          const duration = Math.max(160, Math.round(360 / Math.max(1, Number(speed) || 1)));
+          this.cameras?.main?.shake?.(duration, 0.004);
+          this.cameras?.main?.flash?.(Math.max(90, Math.round(duration * 0.45)));
+          if (!this.tweens?.add || !actor.visualRoot) {
+            actor.setVisualAlpha?.(1);
+            resolve();
+            return;
+          }
+          this.tweens.add({
+            targets: actor.visualRoot,
+            alpha: 0.55,
+            duration: Math.max(70, Math.round(duration / 2)),
+            yoyo: true,
+            repeat: 1,
+            ease: "Sine.easeInOut",
+            onComplete: () => {
+              actor.setVisualAlpha?.(1);
+              resolve();
+            }
+          });
+        })))
+      });
     }
 
     enqueueAnimations(animationJobs) {
@@ -12195,6 +12278,8 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         attacker: { hero: null, pet: null },
         defender: { hero: null, pet: null }
       };
+      this.lastDungeonBattleId = null;
+      this.lastDungeonEnrageByActor.clear();
       if (this.readyNotified) onReady?.({ scene: null, destroyed: true });
     }
   };
