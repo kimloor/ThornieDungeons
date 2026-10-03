@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — WAVES 1-5.5 complete / Production verified; next gate requires Project Lead approval before WAVE 6 cutover**
+Status: **ACTIVE-EXECUTION — WAVES 1-5.5 complete / Production verified; PRE-W6 READINESS AUDIT ACTIVE; WAVE 6 blocked pending audit remediation**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -1053,8 +1053,21 @@ Release result:
 
 ---
 
+## PRE-W6 READINESS AUDIT — 2026-10-03
+**Status: ACTIVE GATE — RELEASE-BLOCKING GAP FOUND**
+**Risk: HIGH**
+
+Canonical audit record: `PRE-W6-READINESS-AUDIT-2026-10-03.md`.
+
+Current blocker:
+- Azure Mythic Set still has an active 6pc control proc in shared Battle Core/Worker/tests/docs, but the latest approved contract removes the Azure 6pc effect. Resolve and Production-verify this drift before destructive W6 work.
+
+This pre-W6 audit does not replace the mandatory post-W6 Full Project Gap Audit + Security Re-Audit.
+
+---
+
 ## WAVE 6 — V2 Production Cutover + Legacy Special-Item Cleanup
-**Status: BLOCKED UNTIL WAVES 1-5.5 PASS**
+**Status: BLOCKED UNTIL PRE-W6 AUDIT REMEDIATION PASSES**
 **Risk: VERY HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory; Project Lead release approval mandatory**
@@ -1259,15 +1272,17 @@ WAVE 2 Reward V2 Foundation   ✅ COMPLETE / PRODUCTION
  ↓
 WAVE 3 Enhance + Empower      ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 4 Mythic Weapons/Sets    🔴 HIGH — IN PROGRESS
+WAVE 4 Mythic Weapons/Sets    ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 4.5 Server Authority     🔴 HIGH — MANDATORY GATE
+WAVE 4.5 Server Authority     ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 5 Raid / Wings V2        🔴 HIGH
+WAVE 5 Raid / Wings V2        ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 5.5 Security Hardening   🔴 HIGH
+WAVE 5.5 Security Hardening   ✅ COMPLETE / PRODUCTION
  ↓
-WAVE 6 V2 Cutover/Cleanup     🟣 VERY HIGH
+PRE-W6 Readiness Audit        🔴 ACTIVE — REMEDIATION REQUIRED
+ ↓
+WAVE 6 V2 Cutover/Cleanup     🟣 VERY HIGH — BLOCKED
  ↓
 WAVE 7 Presentation Expansion 🟠 MEDIUM
 ```
