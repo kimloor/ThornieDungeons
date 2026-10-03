@@ -1,0 +1,29 @@
+name: Temporary repo cleanup QA
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  full-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Full test suite
+        run: node --test --test-concurrency=2 tests/*.test.js
+      - name: Build generated frontend
+        if: always()
+        run: node build.js
+      - name: Verify generated frontend
+        if: always()
+        run: git diff --exit-code -- index.html
+      - name: Diff check
+        if: always()
+        run: git diff --check
