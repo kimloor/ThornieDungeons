@@ -34,30 +34,6 @@ function craftPreviewStats(recipe, floor) {
 // W4 V2 items use source-aware salvage above. The old refund table remains only for
 // pre-V2 crafted inventory until the separately approved W6 cleanup.
 const CRAFT_SALVAGE_REFUND_RATE = 0.5;
-function craftSalvageRefund(item) {
-  if (!item) return null;
-  const v2Refund = MYTHIC_V2.setSalvage(item);
-  if (v2Refund) return v2Refund;
-  if (Number(item.itemModelVersion) === 2 || item.rarity === "mythic") return null;
-  // craftRecipeId is the source of truth (stamped by the worker at craft time and carried
-  // through extra_json ever since). Fall back to matching by type only for items crafted
-  // before that field existed — a small, closing window, and only ambiguous if two recipes
-  // ever target the same type, which isn't the case for the legacy Azure-only data it covers.
-  const recipe = (item.craftRecipeId && CRAFTING_RECIPES.find(r => r.recipeId === item.craftRecipeId))
-    || (item.setId === "azure" && !item.craftRecipeId ? CRAFTING_RECIPES.find(r => r.type === item.type) : null);
-  if (!recipe) return null;
-  const refund = [];
-  Object.keys(recipe.materials).forEach(key => {
-    if (key === "gold") return; // gold sunk into a craft isn't recoverable, same as any other gold sink
-    const original = recipe.materials[key];
-    // The recipe's own scroll (recipe_*) always comes back in full; raw farmed materials
-    // (bossHorn/bossHide etc) come back at the partial refund rate.
-    const qty = key.indexOf("recipe_") === 0 ? original : Math.max(1, Math.floor(original * CRAFT_SALVAGE_REFUND_RATE));
-    if (qty > 0) refund.push({ junkId: key, qty });
-  });
-  return refund;
-}
-
 // junkTotal()/JUNK_INFO come from enhancement.js (earlier module in build order).
 function craftMaterialTotal(inventory, junkId) {
   return junkTotal(inventory, junkId);

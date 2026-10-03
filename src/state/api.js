@@ -113,9 +113,6 @@ function cloudValidateSession(url) {
 function cloudLogout(url) {
   return cloudAuthPost(url, { action: "logout" });
 }
-function cloudGetRecoveryStatus(url) {
-  return cloudAuthGet(url, { action: "getRecoveryStatus" });
-}
 function cloudCreateRecoveryCode(url, currentPassword) {
   return cloudAuthPost(url, { action: "createRecoveryCode", currentPassword });
 }
@@ -174,16 +171,6 @@ function cloudSellCharacterItem(url, characterId, itemId, requestId) {
 function cloudSalvageItem(url, characterId, itemId, requestId) {
   return cloudAuthPost(url, { action: "salvageItem", characterId, itemId, requestId });
 }
-function cloudSyncItems(url, characterId, items) {
-  return cloudAuthPost(url, {
-    action: "syncItems",
-    characterId,
-    items
-  });
-}
-function cloudSetInventorySlot(url, characterId, itemId, inventorySlot) {
-  return cloudAuthPost(url, { action: "setInventorySlot", characterId, itemId, inventorySlot });
-}
 function cloudMutateV2Blacksmith(url, characterId, itemId, mutation, requestId) {
   return cloudAuthPost(url, {
     action: "mutateV2Blacksmith",
@@ -195,13 +182,6 @@ function cloudMutateV2Blacksmith(url, characterId, itemId, mutation, requestId) 
 }
 function cloudMutateLegacyBlacksmith(url, characterId, itemId, mutation, requestId) {
   return cloudAuthPost(url, { action: "mutateLegacyBlacksmith", characterId, itemId, mutation, requestId });
-}
-function cloudSaveRunState(url, characterId, runState) {
-  return cloudAuthPost(url, {
-    action: "saveRunState",
-    characterId,
-    runState
-  });
 }
 function cloudGetBattleState(url, characterId) {
   return cloudAuthGet(url, { action: "getBattleState", characterId });
@@ -228,10 +208,6 @@ function cloudClearBattleCheckpoint(url, characterId, battleId) {
 function cloudCompleteBattle(url, characterId, battleId, result) {
   return cloudAuthPost(url, { action: "completeBattle", characterId, battleId, result });
 }
-function cloudSaveQuickSlots(url, characterId, quickSlots) {
-  return cloudAuthPost(url, { action: "saveQuickSlots", characterId, quickSlots });
-}
-
 // Central authenticated boundary for safe persistence snapshots. The persistence context owns
 // only a session generation; the raw token remains inside AUTH_SESSION and is never copied into
 // gameplay state or snapshot payloads.
@@ -610,13 +586,6 @@ function cloudGetInventory(url, characterId, requestNonce) {
 }
 function cloudDonateGuildItem(url, characterId, junkId, quantity, donationId) {
   return cloudAuthPost(url, { action: "donateGuildItem", characterId, junkId, quantity, donationId });
-}
-function cloudGetGuildProfile(url, characterId, guildId) {
-  return cloudAuthGet(url, {
-    action: "getGuildProfile",
-    characterId,
-    guildId
-  });
 }
 function cloudGetMyApplications(url, characterId) {
   return cloudAuthGet(url, {

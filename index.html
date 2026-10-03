@@ -3020,28 +3020,11 @@ async function fetchAsset(path, options = {}) {
   return response;
 }
 
-async function loadAssetText(path) {
-  const response = await fetchAsset(path);
-  return response.text();
-}
-
 async function loadAssetJSON(path, options = {}) {
   const response = await fetchAsset(path, options);
   return response.json();
 }
 
-function preloadAsset(path) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-
-    img.onload = () => resolve(img);
-    img.onerror = () => {
-      reject(new Error(`Failed to load image asset: ${path}`));
-    };
-
-    img.src = assetUrl(path);
-  });
-}
 
 // ===== assets/manifest.js =====
 // ---------- R2 Asset Manifest ----------
@@ -4665,9 +4648,6 @@ function cloudValidateSession(url) {
 function cloudLogout(url) {
   return cloudAuthPost(url, { action: "logout" });
 }
-function cloudGetRecoveryStatus(url) {
-  return cloudAuthGet(url, { action: "getRecoveryStatus" });
-}
 function cloudCreateRecoveryCode(url, currentPassword) {
   return cloudAuthPost(url, { action: "createRecoveryCode", currentPassword });
 }
@@ -4726,16 +4706,6 @@ function cloudSellCharacterItem(url, characterId, itemId, requestId) {
 function cloudSalvageItem(url, characterId, itemId, requestId) {
   return cloudAuthPost(url, { action: "salvageItem", characterId, itemId, requestId });
 }
-function cloudSyncItems(url, characterId, items) {
-  return cloudAuthPost(url, {
-    action: "syncItems",
-    characterId,
-    items
-  });
-}
-function cloudSetInventorySlot(url, characterId, itemId, inventorySlot) {
-  return cloudAuthPost(url, { action: "setInventorySlot", characterId, itemId, inventorySlot });
-}
 function cloudMutateV2Blacksmith(url, characterId, itemId, mutation, requestId) {
   return cloudAuthPost(url, {
     action: "mutateV2Blacksmith",
@@ -4747,13 +4717,6 @@ function cloudMutateV2Blacksmith(url, characterId, itemId, mutation, requestId) 
 }
 function cloudMutateLegacyBlacksmith(url, characterId, itemId, mutation, requestId) {
   return cloudAuthPost(url, { action: "mutateLegacyBlacksmith", characterId, itemId, mutation, requestId });
-}
-function cloudSaveRunState(url, characterId, runState) {
-  return cloudAuthPost(url, {
-    action: "saveRunState",
-    characterId,
-    runState
-  });
 }
 function cloudGetBattleState(url, characterId) {
   return cloudAuthGet(url, { action: "getBattleState", characterId });
@@ -4780,10 +4743,6 @@ function cloudClearBattleCheckpoint(url, characterId, battleId) {
 function cloudCompleteBattle(url, characterId, battleId, result) {
   return cloudAuthPost(url, { action: "completeBattle", characterId, battleId, result });
 }
-function cloudSaveQuickSlots(url, characterId, quickSlots) {
-  return cloudAuthPost(url, { action: "saveQuickSlots", characterId, quickSlots });
-}
-
 // Central authenticated boundary for safe persistence snapshots. The persistence context owns
 // only a session generation; the raw token remains inside AUTH_SESSION and is never copied into
 // gameplay state or snapshot payloads.
@@ -5162,13 +5121,6 @@ function cloudGetInventory(url, characterId, requestNonce) {
 }
 function cloudDonateGuildItem(url, characterId, junkId, quantity, donationId) {
   return cloudAuthPost(url, { action: "donateGuildItem", characterId, junkId, quantity, donationId });
-}
-function cloudGetGuildProfile(url, characterId, guildId) {
-  return cloudAuthGet(url, {
-    action: "getGuildProfile",
-    characterId,
-    guildId
-  });
 }
 function cloudGetMyApplications(url, characterId) {
   return cloudAuthGet(url, {
@@ -6156,10 +6108,6 @@ let SKILLS = [{
   guaranteedCrit: true,
   desc: "ท่าไม้ตาย 4.0x ATK คริติคอลเสมอ"
 }];
-function unlockedSkills(level) {
-  return SKILLS.filter(s => s.unlockLevel <= level);
-}
-
 // Existing characters receive their full budget from their current level. Only committed
 // levels are stored; a missing entry is Lv.1, so old saves migrate without a data rewrite.
 function totalSkillPointBudget(level) {
@@ -6686,13 +6634,6 @@ function getPetDef(defId) {
 }
 function starterPetDef() {
   return PET_POOL.find(p => p.isStarter);
-}
-function rollGachaPet() {
-  const roll = Math.random();
-  let rarity = "r";
-  if (roll < GACHA_RATES.ssr) rarity = "ssr";else if (roll < GACHA_RATES.ssr + GACHA_RATES.sr) rarity = "sr";
-  const pool = PET_POOL.filter(p => p.rarity === rarity);
-  return pool[Math.floor(Math.random() * pool.length)];
 }
 let ENEMY_POOL = [{
   id: "jelly_slime",
@@ -8018,28 +7959,6 @@ function addJunkToInventory(inventory, junkId, amount) {
   }
   return next;
 }
-// Removes `amount` of a junk type, draining partially-filled/emptied stacks first.
-// Returns null if the player doesn't have enough (no partial spend).
-function removeJunkFromInventory(inventory, junkId, amount) {
-  if (!amount || amount <= 0) return inventory;
-  if (junkTotal(inventory, junkId) < amount) return null;
-  let remaining = amount;
-  const next = [];
-  inventory.forEach(it => {
-    if (remaining > 0 && it.type === "junk" && it.junkId === junkId) {
-      const take = Math.min(it.quantity, remaining);
-      remaining -= take;
-      const leftover = it.quantity - take;
-      if (leftover > 0) next.push({
-        ...it,
-        quantity: leftover
-      });
-    } else {
-      next.push(it);
-    }
-  });
-  return next;
-}
 // Regular (non-boss) monsters drop one stack of a random junk material.
 function rollJunkDrop(floor, modifier) {
   const keys = Object.keys(JUNK_INFO);
@@ -8725,30 +8644,6 @@ function craftPreviewStats(recipe, floor) {
 // W4 V2 items use source-aware salvage above. The old refund table remains only for
 // pre-V2 crafted inventory until the separately approved W6 cleanup.
 const CRAFT_SALVAGE_REFUND_RATE = 0.5;
-function craftSalvageRefund(item) {
-  if (!item) return null;
-  const v2Refund = MYTHIC_V2.setSalvage(item);
-  if (v2Refund) return v2Refund;
-  if (Number(item.itemModelVersion) === 2 || item.rarity === "mythic") return null;
-  // craftRecipeId is the source of truth (stamped by the worker at craft time and carried
-  // through extra_json ever since). Fall back to matching by type only for items crafted
-  // before that field existed — a small, closing window, and only ambiguous if two recipes
-  // ever target the same type, which isn't the case for the legacy Azure-only data it covers.
-  const recipe = (item.craftRecipeId && CRAFTING_RECIPES.find(r => r.recipeId === item.craftRecipeId))
-    || (item.setId === "azure" && !item.craftRecipeId ? CRAFTING_RECIPES.find(r => r.type === item.type) : null);
-  if (!recipe) return null;
-  const refund = [];
-  Object.keys(recipe.materials).forEach(key => {
-    if (key === "gold") return; // gold sunk into a craft isn't recoverable, same as any other gold sink
-    const original = recipe.materials[key];
-    // The recipe's own scroll (recipe_*) always comes back in full; raw farmed materials
-    // (bossHorn/bossHide etc) come back at the partial refund rate.
-    const qty = key.indexOf("recipe_") === 0 ? original : Math.max(1, Math.floor(original * CRAFT_SALVAGE_REFUND_RATE));
-    if (qty > 0) refund.push({ junkId: key, qty });
-  });
-  return refund;
-}
-
 // junkTotal()/JUNK_INFO come from enhancement.js (earlier module in build order).
 function craftMaterialTotal(inventory, junkId) {
   return junkTotal(inventory, junkId);
@@ -8804,46 +8699,6 @@ function makePotionItem(potionId, quantity) {
 // Sums every stack of a given potion type currently sitting in the inventory.
 function potionTotal(inventory, potionId) {
   return inventory.reduce((sum, it) => it.type === "potion" && it.potionId === potionId ? sum + (it.quantity || 0) : sum, 0);
-}
-// Adds `amount` of a potion type into existing (non-full) stacks first, then creates new
-// 99-cap stacks for any remainder — identical shape to addJunkToInventory().
-function addPotionToInventory(inventory, potionId, amount) {
-  if (!amount || amount <= 0) return inventory;
-  let remaining = amount;
-  const next = inventory.map(it => {
-    if (remaining > 0 && it.type === "potion" && it.potionId === potionId && it.quantity < POTION_STACK_MAX) {
-      const space = POTION_STACK_MAX - it.quantity;
-      const add = Math.min(space, remaining);
-      remaining -= add;
-      return { ...it, quantity: it.quantity + add };
-    }
-    return it;
-  });
-  while (remaining > 0) {
-    const chunk = Math.min(POTION_STACK_MAX, remaining);
-    next.push(makePotionItem(potionId, chunk));
-    remaining -= chunk;
-  }
-  return next;
-}
-// Removes `amount` of a potion type, draining partially-filled/emptied stacks first.
-// Returns null if the player doesn't have enough (no partial spend).
-function removePotionFromInventory(inventory, potionId, amount) {
-  if (!amount || amount <= 0) return inventory;
-  if (potionTotal(inventory, potionId) < amount) return null;
-  let remaining = amount;
-  const next = [];
-  inventory.forEach(it => {
-    if (remaining > 0 && it.type === "potion" && it.potionId === potionId) {
-      const take = Math.min(it.quantity, remaining);
-      remaining -= take;
-      const leftover = it.quantity - take;
-      if (leftover > 0) next.push({ ...it, quantity: leftover });
-    } else {
-      next.push(it);
-    }
-  });
-  return next;
 }
 // Every distinct potion type currently owned (qty > 0), one entry each, for list UIs.
 function ownedPotionStacks(inventory) {
@@ -9831,16 +9686,6 @@ function makeEncounter(floor, options = {}) {
   for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count }));
   return monsters;
 }
-// Builds the round's initiative queue: every living unit on the field
-// ([Player, Active Pet, ...Monsters]) sorted by Speed (AGI-derived), highest first.
-// Ties are broken randomly so repeated equal-speed matchups don't always favor the same side.
-// Callers are expected to only pass units that are already alive.
-function buildTurnQueue(units) {
-  return units
-    .filter(Boolean)
-    .map(u => ({ ...u, _r: Math.random() }))
-    .sort((a, b) => (b.speed - a.speed) || (b._r - a._r));
-}
 function xpToNext(level) {
   return level * 22 + 18;
 }
@@ -9881,38 +9726,6 @@ function generateDrop(floor, options = {}) {
   it.enhanceLevel = 0;
   it.empowerSlots = Array(RARITY_STARS[it.rarity] || 1).fill(null);
   return it;
-}
-// Per-monster loot table aware wrapper (design: admin-backend-design.md). If `monsterId`
-// has configured gear rows, weighted-picks type+rarity from THAT list only (rarity left
-// null on a row falls back to whatever the caller's own fallbackOptions specify, e.g. the
-// existing chest-pity rarity) — otherwise behaves exactly like plain generateDrop(), so a
-// monster with no rows configured is completely unaffected.
-function generateDropForMonster(floor, monsterId, fallbackOptions = {}) {
-  if (typeof DUNGEON_REWARD_V2 !== "undefined") {
-    return DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
-      floor,
-      type: fallbackOptions.forceType,
-      rarity: fallbackOptions.forceRarity,
-      sourceType: fallbackOptions.sourceType || "dungeon_normal",
-      specialSource: fallbackOptions.specialSource,
-      sourceIdentity: fallbackOptions.sourceIdentity || monsterId,
-      lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monsterId) : null,
-      allowMythic: fallbackOptions.allowMythic === true,
-      rng: fallbackOptions.rng || Math.random
-    });
-  }
-  const table = monsterLootFor(monsterId);
-  if (table && table.gear && table.gear.length) {
-    const picked = pickWeightedGear(table.gear);
-    if (picked) {
-      return generateDrop(floor, {
-        ...fallbackOptions,
-        forceType: picked.itemType,
-        forceRarity: picked.rarity || fallbackOptions.forceRarity
-      });
-    }
-  }
-  return generateDrop(floor, fallbackOptions);
 }
 function buildDropItem(floor, options = {}) {
   const roll = Math.random();
@@ -10524,10 +10337,6 @@ function responsiveArenaBattlefieldLayout(width, height) {
   };
 }
 
-function responsiveMonsterVfxAnchor(slot, monsterCount, width, height) {
-  const base = monsterAnchorsForCount(monsterCount)[Math.max(0, Math.min(2, Number(slot) || 0))] || RESPONSIVE_ANCHORS.MONSTER_SINGLE;
-  return responsiveAnchorPixels({ x: base.x - 0.04, y: base.y - 0.12 }, width, height);
-}
 
 // ===== phaser/presentation/ActorPresentationModel.js =====
 // ---------- W6 Shared Actor Presentation Model ----------
@@ -20787,41 +20596,6 @@ function GachaScreen({
     },
     onClick: onClearGachaResult
   }, "OK"))));
-}
-function FloatingQuickActions({
-  onShop,
-  onCharacter,
-  onBag,
-  onBlacksmith,
-  activePhase
-}) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-fab-stack"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-fab",
-    onClick: onShop,
-    title: "Shop"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-fab-icon"
-  }, "🛒")), /*#__PURE__*/React.createElement("button", {
-    className: "md-fab",
-    onClick: onBlacksmith,
-    title: "Blacksmith"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-fab-icon"
-  }, "⚒️")), /*#__PURE__*/React.createElement("button", {
-    className: `md-fab ${activePhase === "town" ? "active" : ""}`,
-    onClick: onCharacter,
-    title: "Character"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-fab-icon"
-  }, "🧙")), /*#__PURE__*/React.createElement("button", {
-    className: "md-fab",
-    onClick: onBag,
-    title: "Equipment"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-fab-icon"
-  }, "🎒")));
 }
 function HeroSprite({
   anim,

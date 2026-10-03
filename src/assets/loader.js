@@ -18,25 +18,8 @@ async function fetchAsset(path, options = {}) {
   return response;
 }
 
-async function loadAssetText(path) {
-  const response = await fetchAsset(path);
-  return response.text();
-}
-
 async function loadAssetJSON(path, options = {}) {
   const response = await fetchAsset(path, options);
   return response.json();
 }
 
-function preloadAsset(path) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-
-    img.onload = () => resolve(img);
-    img.onerror = () => {
-      reject(new Error(`Failed to load image asset: ${path}`));
-    };
-
-    img.src = assetUrl(path);
-  });
-}

@@ -91,10 +91,6 @@ let SKILLS = [{
   guaranteedCrit: true,
   desc: "ท่าไม้ตาย 4.0x ATK คริติคอลเสมอ"
 }];
-function unlockedSkills(level) {
-  return SKILLS.filter(s => s.unlockLevel <= level);
-}
-
 // Existing characters receive their full budget from their current level. Only committed
 // levels are stored; a missing entry is Lv.1, so old saves migrate without a data rewrite.
 function totalSkillPointBudget(level) {
