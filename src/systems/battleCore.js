@@ -427,14 +427,6 @@
     const targetDefAtHitStart = effectiveDef(target);
     const conversions = [];
     const hitStatuses = (spec.statuses || []).map(statusSpec => ({ ...statusSpec }));
-    if (actor.kind === "hero" && actor.equipmentEffects?.azureControlProc && !actionContext.azureProcRolled
-        && (spec.actionType === "basic" || spec.actionType === "active")) {
-      actionContext.azureProcRolled = true;
-      if (chance(state, 30)) {
-        const key = chance(state, 50) ? "stun" : "silence";
-        hitStatuses.push({ key, chance: 100, duration: key === "stun" ? 1 : 2, fixed: true });
-      }
-    }
     for (const statusSpec of hitStatuses) {
       const result = applyStatus(state, actor, target, statusSpec.key, statusSpec, { ...actionContext, active: spec.actionType === "active", fixed: !!statusSpec.fixed });
       if (result.converted) conversions.push(result.converted);
