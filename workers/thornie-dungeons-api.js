@@ -6426,27 +6426,12 @@ async function handleAdminGetPlayer(db, adminAuth, id) {
   return json({ ok: true, player: publicPlayerFields(player), characters, items });
 }
 
-function adminSearchLikePattern(value) {
-  return "%" + String(value || "").trim().toLowerCase().replace(/[\\%_]/g, "\\async function handleAdminGetPlayer(db, adminAuth, id) {
-  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
-  if (!id) return json({ error: "missing_fields" });
-
-  const player = await getRow(db, "players", "id", id);
-  if (!player) return json({ error: "not_found" });
-  const characters = await getRows(db, "characters", "player_id", id);
-  const items = await getRows(db, "items", "player_id", id);
-
-  return json({ ok: true, player: publicPlayerFields(player), characters, items });
-}
-") + "%";
-}
-
 async function handleAdminSearchPlayers(db, adminAuth, query, limit) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   const q = String(query || "").trim();
   if (!q) return json({ error: "missing_query" }, 400);
   const safeLimit = Math.min(50, Math.max(1, Math.floor(Number(limit) || 25)));
-  const pattern = adminSearchLikePattern(q);
+  const normalized = q.toLowerCase();
   const result = await db.prepare(`
     SELECT
       p.id AS player_id,
@@ -6456,16 +6441,16 @@ async function handleAdminSearchPlayers(db, adminAuth, query, limit) {
       COALESCE(GROUP_CONCAT(NULLIF(c.name, ''), ' · '), '') AS character_names
     FROM players p
     LEFT JOIN characters c ON c.player_id = p.id
-    WHERE LOWER(p.id) LIKE ? ESCAPE '\\'
+    WHERE instr(LOWER(p.id), ?) > 0
        OR EXISTS (
          SELECT 1 FROM characters sc
          WHERE sc.player_id = p.id
-           AND LOWER(sc.name) LIKE ? ESCAPE '\\'
+           AND instr(LOWER(sc.name), ?) > 0
        )
     GROUP BY p.id
     ORDER BY LOWER(p.id)
     LIMIT ?
-  `).bind(pattern, pattern, safeLimit).all();
+  `).bind(normalized, normalized, safeLimit).all();
   const rows = (result.results || []).map(row => ({
     playerId: row.player_id,
     characterCount: Number(row.character_count) || 0,
