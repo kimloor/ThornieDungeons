@@ -30,7 +30,8 @@ function battleUiStyle(key) {
   return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
 }
 
-// Shared by Dungeon Battle and Arena turn-order presentation.\nfunction battleActorIconUrl(kind) {
+// Shared by Dungeon Battle and Arena turn-order presentation.
+function battleActorIconUrl(kind) {
   const normalized = kind === "player" || kind === "hero" ? "hero"
     : kind === "pet" ? "pet"
     : kind === "boss" ? "boss"
