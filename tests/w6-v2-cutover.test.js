@@ -47,7 +47,8 @@ test("W6 migration deletes only exact pre-V2 special-item targets and audits the
   const remain = db.prepare("SELECT item_id FROM items ORDER BY item_id").all().map(r => r.item_id);
   assert.deepEqual(remain, ["ordinary", "recipe", "v2-marker-model", "v2-marker-reward", "v2-mythic-set"]);
 
-  const audit = db.prepare("SELECT item_id, reason, equipped FROM w6_legacy_item_cleanup_audit ORDER BY item_id").all();
+  const audit = db.prepare("SELECT item_id, reason, equipped FROM w6_legacy_item_cleanup_audit ORDER BY item_id").all()
+    .map(r => ({ item_id: r.item_id, reason: r.reason, equipped: r.equipped }));
   assert.deepEqual(audit, [
     { item_id: "legacy-azure", reason: "legacy_azure_set", equipped: 0 },
     { item_id: "legacy-invalid-json", reason: "legacy_azure_set", equipped: 0 },
