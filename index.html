@@ -12629,6 +12629,97 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
   };
 }
 
+// ===== phaser/scenes/ForgePresentationScene.js =====
+// ---------- W7B Shared Enhance / Craft Presentation Scene ----------
+function createForgePresentationScene(Phaser, { initialEvent, onReady, onError } = {}) {
+  return class ForgePresentationScene extends Phaser.Scene {
+    constructor() {
+      super({ key: "ForgePresentationScene" });
+      this.initialEvent = initialEvent || null;
+      this.lastToken = "";
+      this.presentationQueue = createPresentationQueue({ onError });
+      this.vfxManager = null;
+      this.stage = null;
+      this.hammer = null;
+      this.title = null;
+      this.detail = null;
+    }
+
+    create() {
+      try {
+        this.vfxManager = createVfxManager(this);
+        const width = Math.max(1, this.scale.width || 1);
+        const height = Math.max(1, this.scale.height || 1);
+        this.stage = this.add.container(width / 2, height / 2);
+        this.hammer = this.add.text(0, -8, "⚒️", { fontSize: "38px" }).setOrigin(0.5);
+        this.title = this.add.text(0, 28, "", { fontFamily: "system-ui, sans-serif", fontSize: "16px", fontStyle: "bold", color: "#ffffff", align: "center" }).setOrigin(0.5);
+        this.detail = this.add.text(0, 50, "", { fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#ffffff", align: "center" }).setOrigin(0.5);
+        this.stage.add([this.hammer, this.title, this.detail]);
+        this.scale.on("resize", this.handleResize, this);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+        onReady?.({ scene: this });
+        if (this.initialEvent) this.present(this.initialEvent);
+      } catch (error) { onError?.(error); }
+    }
+
+    handleResize(gameSize) {
+      if (!this.stage) return;
+      this.stage.setPosition(Math.max(1, gameSize?.width || this.scale.width || 1) / 2, Math.max(1, gameSize?.height || this.scale.height || 1) / 2);
+    }
+
+    present(event) {
+      if (!event) return Promise.resolve();
+      const token = String(event.token || "");
+      if (token && token === this.lastToken) return this.presentationQueue.whenDrained();
+      this.lastToken = token;
+      return this.presentationQueue.enqueue({ run: speed => this.playResolvedEvent(event, speed) });
+    }
+
+    playResolvedEvent(event, speed = 1) {
+      const kind = String(event.kind || "");
+      const outcome = String(event.outcome || "");
+      const duration = Math.max(180, Math.round(520 / Math.max(1, Number(speed) || 1)));
+      const isCraft = kind === "craft";
+      const title = isCraft ? (event.special ? "MYTHIC REVEAL" : "CRAFT COMPLETE") : outcome === "success" ? "ENHANCE SUCCESS" : outcome === "protected" ? "PROTECTED" : outcome === "downgrade" ? "DOWNGRADE" : "ENHANCE FAILED";
+      const detail = isCraft ? String(event.itemName || "Crafted item") : String(Number(event.levelBefore) || 0) + " → " + String(Number(event.levelAfter) || 0);
+
+      this.title?.setText(title);
+      this.detail?.setText(detail);
+      this.hammer?.setText(isCraft ? (event.special ? "✦" : "✨") : "⚒️");
+      this.stage?.setAlpha(1);
+      this.stage?.setScale(0.86);
+      this.cameras?.main?.flash?.(Math.max(90, Math.round(duration * 0.28)));
+
+      return new Promise(resolve => {
+        if (!this.tweens?.add || !this.stage) {
+          this.time?.delayedCall?.(duration, resolve) || setTimeout(resolve, duration);
+          return;
+        }
+        this.tweens.add({
+          targets: this.stage, scaleX: 1.06, scaleY: 1.06, duration: Math.max(90, Math.round(duration * 0.42)), ease: "Back.easeOut", yoyo: true,
+          onComplete: () => {
+            this.tweens.add({
+              targets: this.stage, alpha: 0.72, duration: Math.max(80, Math.round(duration * 0.25)), yoyo: true,
+              onComplete: () => { this.stage?.setAlpha(1); this.stage?.setScale(1); resolve(); }
+            });
+          }
+        });
+      });
+    }
+
+    shutdown() {
+      this.scale.off("resize", this.handleResize, this);
+      this.presentationQueue?.clear();
+      this.vfxManager?.destroy?.();
+      this.vfxManager = null;
+      this.stage = null;
+      this.hammer = null;
+      this.title = null;
+      this.detail = null;
+    }
+  };
+}
+
 // ===== phaser/runtime/BattlefieldHost.js =====
 // ---------- W5 Phaser Battlefield Host ----------
 function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestroyed, onTargetSelected } = {}) {
@@ -12943,6 +13034,43 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
   return Object.freeze({ mount, sync, destroy, getGame: () => game, getScene: () => scene });
 }
 
+// ===== phaser/runtime/ForgePresentationHost.js =====
+// ---------- W7B Forge Presentation Host ----------
+function createForgePresentationHost({ mountNode, event, onReady, onError, onDestroyed } = {}) {
+  let game = null;
+  let scene = null;
+  let destroyed = false;
+  let resizeObserver = null;
+  let currentEvent = event || null;
+  function size() { return { width: Math.max(1, Math.round(mountNode?.clientWidth || 1)), height: Math.max(1, Math.round(mountNode?.clientHeight || 1)) }; }
+  function resize() { if (!destroyed && game) { const next = size(); game.scale.resize(next.width, next.height); } }
+  async function mount() {
+    if (destroyed || !mountNode) return;
+    try {
+      const Phaser = await THORNIE_PHASER_RUNTIME.load();
+      if (destroyed) return;
+      const initial = size();
+      const SceneClass = createForgePresentationScene(Phaser, { initialEvent: currentEvent, onReady: payload => { scene = payload?.scene || null; onReady?.({ game, scene, version: THORNIE_PHASER_RUNTIME.version }); }, onError });
+      game = new Phaser.Game({ type: Phaser.AUTO, parent: mountNode, width: initial.width, height: initial.height, transparent: true, backgroundColor: "rgba(0,0,0,0)", banner: false, audio: { noAudio: true }, scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH }, render: { antialias: true, pixelArt: false, roundPixels: false }, scene: SceneClass });
+      if (typeof ResizeObserver === "function") { resizeObserver = new ResizeObserver(resize); resizeObserver.observe(mountNode); }
+    } catch (error) { if (!destroyed) onError?.(error); }
+  }
+  function present(nextEvent) {
+    currentEvent = nextEvent || currentEvent;
+    if (destroyed || !scene?.present || !currentEvent) return Promise.resolve();
+    try { return Promise.resolve(scene.present(currentEvent)); } catch (error) { onError?.(error); return Promise.resolve(); }
+  }
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    resizeObserver?.disconnect(); resizeObserver = null;
+    const target = game; game = null; scene = null;
+    try { target?.destroy(true); } catch (error) { console.warn("Phaser Forge teardown failed", error); }
+    onDestroyed?.();
+  }
+  return Object.freeze({ mount, present, destroy, getScene: () => scene });
+}
+
 // ===== phaser/ui/PhaserBattlefield.js =====
 // ---------- W5 React Battlefield Integration ----------
 function isPhaserBattleRendererEnabled() {
@@ -13095,6 +13223,29 @@ function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, 
     React.createElement("div", { ref: hostRef, className: "md-phaser-hero-preview-canvas" }),
     status !== "ready" && React.createElement("div", { className: "md-phaser-hero-preview-fallback" }, fallback)
   );
+}
+
+// ===== phaser/ui/PhaserForgePresentation.js =====
+// ---------- W7B React Forge Presentation Integration ----------
+function PhaserForgePresentation({ event, onStatus } = {}) {
+  const hostRef = React.useRef(null);
+  const handleRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!hostRef.current) return undefined;
+    let disposed = false;
+    const handle = createForgePresentationHost({
+      mountNode: hostRef.current, event,
+      onReady: () => { if (!disposed) onStatus?.("ready"); },
+      onError: error => { if (!disposed) onStatus?.("error", error); },
+      onDestroyed: () => { if (!disposed) onStatus?.("destroyed"); }
+    });
+    handleRef.current = handle;
+    onStatus?.("loading");
+    void handle.mount();
+    return () => { disposed = true; handle.destroy(); handleRef.current = null; };
+  }, []);
+  React.useEffect(() => { if (event) void handleRef.current?.present(event); }, [event?.token]);
+  return React.createElement("div", { ref: hostRef, className: "md-forge-phaser-presentation", style: { position: "relative", width: "100%", height: 96, overflow: "hidden", pointerEvents: "none" }, "aria-hidden": "true" });
 }
 
 // ===== ui/battleVfx.js =====
@@ -15415,14 +15566,14 @@ function ThornieDungeons() {
     hydrateAuthoritativeBlacksmithSnapshot(res);
     const result = res.mutation || {};
     if (mutation.type === "enhance") {
-      if (result.success) return { ok: true, message: `✨ ตีบวกสำเร็จ! +${result.levelAfter}` };
-      if (result.protectionConsumed) return { ok: false, message: `🛡️ ตีบวกล้มเหลว แต่ Protection Stone ป้องกันการลดระดับไว้ (+${result.levelAfter})` };
-      if (result.downgraded) return { ok: false, message: `💥 ตีบวกล้มเหลว ลดเหลือ +${result.levelAfter}` };
-      return { ok: false, message: `💢 ตีบวกล้มเหลว ระดับคงเดิม +${result.levelAfter}` };
+      if (result.success) return { ok: true, result, message: `✨ ตีบวกสำเร็จ! +${result.levelAfter}` };
+      if (result.protectionConsumed) return { ok: false, result, message: `🛡️ ตีบวกล้มเหลว แต่ Protection Stone ป้องกันการลดระดับไว้ (+${result.levelAfter})` };
+      if (result.downgraded) return { ok: false, result, message: `💥 ตีบวกล้มเหลว ลดเหลือ +${result.levelAfter}` };
+      return { ok: false, result, message: `💢 ตีบวกล้มเหลว ระดับคงเดิม +${result.levelAfter}` };
     }
-    if (mutation.type === "empower_open") return { ok: true, message: `🔮 เสริมพลังสำเร็จ! ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` };
-    if (mutation.type === "empower_lock") return { ok: true, message: result.locked ? "🔒 ล็อกออฟชั่นแล้ว" : "🔓 ปลดล็อกออฟชั่นแล้ว" };
-    return { ok: true, message: `🔄 รีโรลออฟชั่นสำเร็จ! (ใช้ Mana Ore ×1 และ Gold ${result.cost?.gold || 0})` };
+    if (mutation.type === "empower_open") return { ok: true, result, message: `🔮 เสริมพลังสำเร็จ! ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` };
+    if (mutation.type === "empower_lock") return { ok: true, result, message: result.locked ? "🔒 ล็อกออฟชั่นแล้ว" : "🔓 ปลดล็อกออฟชั่นแล้ว" };
+    return { ok: true, result, message: `🔄 รีโรลออฟชั่นสำเร็จ! (ใช้ Mana Ore ×1 และ Gold ${result.cost?.gold || 0})` };
   }
   function toggleItemFavorite(itemId) {
     const found = findItemAndLocation(itemId);
@@ -15455,6 +15606,7 @@ function ThornieDungeons() {
     const wantsStone = useProtectionStone === true || (level >= ENHANCE_DOWNGRADE_LEVEL && (save.protectionStones || 0) > 0);
     return mutateLegacyBlacksmith(itemId, { type: "enhance", useProtectionStone: wantsStone }).then(({ ok, result }) => ({
       ok: !!ok && !!result.success,
+      result,
       message: !ok ? "ทำรายการ Blacksmith ไม่สำเร็จ" : result.success ? `✨ ตีบวกสำเร็จ! ${it.name} +${result.levelAfter}` : result.protectionConsumed ? `🛡️ ตีบวกล้มเหลว แต่หินป้องกันช่วยไว้! ${it.name} ยังคง +${result.levelAfter}` : result.levelAfter < level ? `💥 ตีบวกล้มเหลว! ${it.name} ร่วงเหลือ +${result.levelAfter}` : `💢 ตีบวกล้มเหลว... (${it.name} ยังคง +${result.levelAfter})`
     }));
   }
@@ -22437,6 +22589,8 @@ function BlacksmithOverlay({
   const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
   const [actionMsg, setActionMsg] = useState("");
   const [animState, setAnimState] = useState(null); // 'success' | 'fail' | null
+  const [forgePresentation, setForgePresentation] = useState(null);
+  const forgePresentationTokenRef = useRef(0);
   const [useProtectionStone, setUseProtectionStone] = useState(false);
   const animTimerRef = useRef(null);
   const [gridExpanded, setGridExpanded] = useState(false);
@@ -22474,6 +22628,16 @@ function BlacksmithOverlay({
     const res = await Promise.resolve(onEnhance(detailTarget.id, useProtectionStone));
     setActionMsg(res.message);
     playAnim(res.ok);
+    if (res?.result && Number.isFinite(Number(res.result.levelAfter))) {
+      const result = res.result;
+      setForgePresentation({
+        token: `enhance-${++forgePresentationTokenRef.current}`,
+        kind: "enhance",
+        outcome: result.success ? "success" : result.protectionConsumed ? "protected" : result.downgraded ? "downgrade" : "fail",
+        levelBefore: Number(result.levelBefore) || 0,
+        levelAfter: Number(result.levelAfter) || 0
+      });
+    }
   };
   const doEmpower = async () => {
     if (!detailTarget) return;
@@ -22553,6 +22717,7 @@ function BlacksmithOverlay({
       onClick: onOpenInventory
     }, "🎒 ไปที่กระเป๋าไอเทม"),
     /*#__PURE__*/React.createElement("div", { className: `md-item-detail ${anvilClass}` }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      forgePresentation && /*#__PURE__*/React.createElement(PhaserForgePresentation, { event: forgePresentation }),
       /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
@@ -22648,6 +22813,8 @@ function CraftingOverlay({
 }) {
   const [craftingId, setCraftingId] = useState(null);
   const [msg, setMsg] = useState("");
+  const [craftPresentation, setCraftPresentation] = useState(null);
+  const craftPresentationTokenRef = useRef(0);
   const recipes = MYTHIC_V2.allRecipes(floor);
 
   const doCraft = recipe => {
@@ -22664,6 +22831,12 @@ function CraftingOverlay({
           return;
         }
         onCrafted(res);
+        setCraftPresentation({
+          token: `craft-${++craftPresentationTokenRef.current}`,
+          kind: "craft",
+          itemName: String(res.item?.name || recipe.name || "Crafted item"),
+          special: String(res.item?.rarity || "").toLowerCase() === "mythic" || !!res.item?.bossWeaponId || !!res.item?.setId
+        });
         setMsg(`✨ ประดิษฐ์สำเร็จ! ได้รับ ${res.item && res.item.name}`);
       })
       .catch(() => setMsg("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ"))
@@ -22678,6 +22851,7 @@ function CraftingOverlay({
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
+    craftPresentation && /*#__PURE__*/React.createElement(PhaserForgePresentation, { event: craftPresentation }),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", formatNumber(gold)),
       // Union of every non-gold/non-scroll material across ALL loaded recipes — was
