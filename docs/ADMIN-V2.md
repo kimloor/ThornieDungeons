@@ -197,12 +197,14 @@ Phase 0 rules:
 - do not read it from the Admin V2 UI;
 - do not add new code that depends on it;
 - keep the existing secret/path only for rollback compatibility while Admin V2 is being verified;
-- retire or harden the legacy path in WAVE 5.5 after Admin V2 production verification;
+- WAVE 5.5 retirement/hardening of the legacy path is complete and Production verified;
 - rotate the legacy secret during the approved retirement/cutover if the path is removed or replaced.
 
 The forgotten legacy key therefore does not block Admin V2 implementation.
 
 ### WAVE 5.5 security hardening gate
+
+Status: **COMPLETE / PRODUCTION VERIFIED — 2026-10-03**
 
 Before WAVE 6 destructive cutover:
 - normal Admin operations must use dedicated Admin V2 sessions;
