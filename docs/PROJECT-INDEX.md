@@ -220,7 +220,7 @@ Until a dedicated contract exists, inspect latest `main`, the latest approved ta
 - Read the relevant visual contract, current execution wave, and R2 rules.
 - All new/replaced production icons must pass the shared **Production icon asset budget** in `r2-upload/README.md` before publication; keep large editable masters separate from runtime exports.
 - **G10 Shared ATB Actor Icon Pack** is COMPLETE / integrated in shared Dungeon Battle and Arena TurnOrderBar presentation.
-- Current Graphics entry point is **G11 Robot + Skeleton Set Item Icons**, using the shared icon budget.
+- Current Graphics entry point is **G10.5 Global Icon Asset Audit + Optimization**; its reusable inventory is `docs/G10-5-ICON-ASSET-AUDIT.md` and `.csv`. G11 Robot + Skeleton icons remain gated until the outstanding Azure/Angel source recovery and mobile QA close.
 - Do not infer asset names, manifest keys, or paths.
 
 ### QA
