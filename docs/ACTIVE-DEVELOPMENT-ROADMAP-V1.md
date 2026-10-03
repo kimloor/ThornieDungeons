@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — WAVES 1-5.5 complete / Production verified; PRE-W6 READINESS AUDIT PASSED; WAVE 6 ready for separate Project Lead approval**
+Status: **ACTIVE-EXECUTION — WAVES 1-6 complete / Production verified; POST-W6 FULL GAP + SECURITY RE-AUDIT ACTIVE; WAVE 7 blocked pending HIGH remediation**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -1147,7 +1147,7 @@ Exit condition:
 ---
 
 ## WAVE 7 — Presentation Expansion
-**Status: PLANNED — starts only from stable authoritative mechanics**
+**Status: BLOCKED UNTIL POST-W6 HIGH SECURITY REMEDIATION PASSES**
 **Risk: MEDIUM**
 **Lead: DEV + Graphics**
 **Collaboration: QA**
