@@ -2666,7 +2666,22 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
   const streak = lastClaimDate === yesterdayDateKey() ? prevStreak + 1 : 1;
   const rewardDef = dailyLoginReward(streak);
   const reward = { gold: rewardDef.gold, diamonds: rewardDef.diamonds, junk: rewardDef.junk || [], items: [] };
-  if (rewardDef.azureRandom) reward.items = [randomAzureItemDesc()];
+  if (rewardDef.mythicSetFamily) {
+    const family = String(rewardDef.mythicSetFamily || "").toLowerCase();
+    const slots = globalThis.MYTHIC_V2?.SET_SLOTS || [];
+    const slot = slots.length ? slots[Math.floor(secureRandomUnit() * slots.length)] : "";
+    const floor = Math.max(1, Number(owned.row.unlocked_floor) || 1);
+    const recipe = slot ? globalThis.MYTHIC_V2?.setRecipe(family, slot, floor) : null;
+    const item = recipe ? globalThis.MYTHIC_V2?.createMythicItem(recipe, floor, secureRandomUnit) : null;
+    if (!item) return json({ error: "daily_reward_contract_unavailable" }, 503);
+    reward.items = [{
+      ...item,
+      sourceType: "daily_login",
+      sourceIdentity: `daily_login:day7:${family}`,
+      rewardVersion: 2,
+      itemModelVersion: 2
+    }];
+  }
   const totalClaims = (row ? Number(row.total_claims) || 0 : 0) + 1;
   const claimToken = crypto.randomUUID();
   const now = nowIso();
@@ -2892,22 +2907,6 @@ function raidWingItemDesc(family, rarity) {
       ? globalThis.ENHANCEMENT_V2_RULES.fillEmpowerSlots("wings", r, secureRandomUnit)
       : Array(capacity).fill(null), sourceType: "raid", sourceIdentity: `raid_wing:${f}`
   };
-}
-// Azure set — 6 pieces (helmet/chest/gloves/boots/weapon/ring), set bonus at 2/4/6 equipped
-// (client-side bonus values live in stats.js SET_BONUS_DEFS.azure — keep both in sync).
-const AZURE_SET_DEFS = {
-  azure_helmet: { type: "helmet", name: "หมวก Azure", def: 60 },
-  azure_chest: { type: "chest", name: "เสื้อ Azure", def: 90 },
-  azure_gloves: { type: "gloves", name: "ถุงมือ Azure", atk: 40 },
-  azure_boots: { type: "boots", name: "รองเท้า Azure", def: 45 },
-  azure_weapon: { type: "weapon", name: "อาวุธ Azure", atk: 120 },
-  azure_ring: { type: "accessory", name: "แหวน Azure", dodgeChance: 15 }, // uses the existing "accessory" equip slot
-};
-function randomAzureItemDesc() {
-  const keys = Object.keys(AZURE_SET_DEFS);
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  const d = AZURE_SET_DEFS[key];
-  return { type: d.type, rarity: "azure", name: d.name, atk: d.atk || 0, def: d.def || 0, dodgeChance: d.dodgeChance || 0, setId: "azure", empowerSlotCount: 5 };
 }
 // Recipes are inert placeholder items (stackable, riding the existing junk pipeline) until
 // the Crafting phase exists to consume them — see JUNK_INFO/recipe_* entries in enhancement.js.
