@@ -187,3 +187,48 @@ function createRaidBossHost({ mountNode, snapshot, onReady, onError, onDestroyed
   }
   return Object.freeze({ mount, sync, destroy, getScene: () => scene });
 }
+
+
+function createEnhancePresentationHost({ mountNode, snapshot, onReady, onError, onDestroyed, onComplete } = {}) {
+  let game = null;
+  let scene = null;
+  let destroyed = false;
+  let currentSnapshot = snapshot || null;
+  async function mount() {
+    try {
+      const Phaser = await THORNIE_PHASER_RUNTIME.load();
+      if (destroyed || !mountNode) return;
+      const width = Math.max(1, Math.round(mountNode.clientWidth || 1));
+      const height = Math.max(1, Math.round(mountNode.clientHeight || 1));
+      const SceneClass = createEnhancePresentationScene(Phaser, {
+        initialSnapshot: currentSnapshot,
+        onReady: payload => {
+          scene = payload?.scene || null;
+          if (scene) scene.sync(currentSnapshot);
+          if (payload?.destroyed) { scene = null; return; }
+          onReady?.({ game, scene, version: THORNIE_PHASER_RUNTIME.version });
+        },
+        onError,
+        onComplete
+      });
+      game = new Phaser.Game({
+        type: Phaser.AUTO, parent: mountNode, width, height,
+        transparent: true, backgroundColor: "rgba(0,0,0,0)", banner: false, audio: { noAudio: true },
+        scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+        render: { antialias: true, pixelArt: false, roundPixels: false }, scene: SceneClass
+      });
+    } catch (error) { if (!destroyed) onError?.(error); }
+  }
+  function sync(nextSnapshot) {
+    currentSnapshot = nextSnapshot || currentSnapshot;
+    scene?.sync(currentSnapshot);
+  }
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    const target = game; game = null; scene = null;
+    try { target?.destroy(true); } catch (error) { console.warn("Phaser Enhance teardown failed", error); }
+    onDestroyed?.();
+  }
+  return Object.freeze({ mount, sync, destroy });
+}

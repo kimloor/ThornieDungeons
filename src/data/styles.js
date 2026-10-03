@@ -2342,6 +2342,9 @@ body::after {
 }
 .md-anvil-result-success { animation: anvil-success-flash 0.6s ease-out; }
 .md-anvil-result-fail { animation: anvil-fail-shake 0.4s ease-in-out; border-color: #ff5566 !important; }
+.md-blacksmith-presentation { position:relative; width:100%; height:92px; margin:4px 0 6px; overflow:hidden; border-radius:12px; }
+.md-phaser-enhance-result { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.md-blacksmith-presentation .md-blacksmith-icon { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
 .md-blacksmith-icon { font-size: 40px; text-align: center; margin: 6px 0; transition: transform 0.15s ease; }
 .md-friend-player-cell { display:flex; align-items:center; gap:6px; min-width:0; }
 .md-friend-online-dot { flex:0 0 auto; }

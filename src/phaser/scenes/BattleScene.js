@@ -486,3 +486,115 @@ function createRaidBossScene(Phaser, { initialSnapshot, onReady, onError, onHurt
     }
   };
 }
+
+
+function createEnhancePresentationScene(Phaser, { initialSnapshot, onReady, onError, onComplete } = {}) {
+  return class EnhancePresentationScene extends Phaser.Scene {
+    constructor() {
+      super({ key: "EnhancePresentationScene" });
+      this.snapshot = initialSnapshot || null;
+      this.presentationQueue = createPresentationQueue({ onError });
+      this.vfxManager = createVfxManager(this);
+      this.lastToken = Math.max(0, Number(initialSnapshot?.token) || 0);
+      this.anvil = null;
+      this.glow = null;
+      this.sparks = [];
+      this.handleResize = this.handleResize.bind(this);
+    }
+
+    create() {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+      this.scale.on("resize", this.handleResize, this);
+      this.glow = this.add.circle(0, 0, 42, 0xffd166, 0.08).setDepth(1);
+      this.anvil = this.add.rectangle(0, 0, 76, 34, 0x596579, 1).setStrokeStyle(3, 0xcbd5e1, 0.9).setDepth(3);
+      this.layout();
+      onReady?.({ scene: this });
+    }
+
+    layout() {
+      const width = Math.max(1, this.scale.width || this.game.config.width || 1);
+      const height = Math.max(1, this.scale.height || this.game.config.height || 1);
+      const x = width * 0.5;
+      const y = height * 0.64;
+      this.anvil?.setPosition(x, y);
+      this.glow?.setPosition(x, y - 4);
+    }
+
+    clearSparks() {
+      this.sparks.forEach(spark => spark?.destroy?.());
+      this.sparks.length = 0;
+    }
+
+    sync(snapshot) {
+      if (!snapshot) return;
+      this.snapshot = snapshot;
+      const token = Math.max(0, Number(snapshot.token) || 0);
+      if (token <= this.lastToken || !snapshot.result) return;
+      this.lastToken = token;
+      const result = snapshot.result;
+      void this.presentationQueue.enqueue({
+        run: speed => this.playResult(result, speed).then(() => onComplete?.(token, result))
+      });
+    }
+
+    playResult(result, speed = 1) {
+      const success = result.success === true;
+      const protectedFailure = result.protectionConsumed === true;
+      const downgraded = result.downgraded === true || Number(result.levelAfter) < Number(result.levelBefore);
+      const color = success ? 0xffd166 : protectedFailure ? 0x70c9ff : downgraded ? 0xff5f6d : 0xff9f43;
+      const playback = Math.max(1, Number(speed) || 1);
+      const duration = Math.max(180, Math.round(520 / playback));
+      this.clearSparks();
+      this.glow?.setFillStyle(color, 0.24).setScale(0.7).setAlpha(0.35);
+      if (!this.tweens?.add) return Promise.resolve();
+
+      const centerX = Number(this.anvil?.x) || 0;
+      const centerY = Number(this.anvil?.y) || 0;
+      for (let index = 0; index < 10; index += 1) {
+        const angle = (Math.PI * 2 * index) / 10;
+        const spark = this.add.circle(centerX, centerY - 8, 3, color, 0.95).setDepth(5);
+        this.sparks.push(spark);
+        this.tweens.add({
+          targets: spark,
+          x: centerX + Math.cos(angle) * (44 + (index % 3) * 8),
+          y: centerY - 8 + Math.sin(angle) * (34 + (index % 2) * 10),
+          alpha: 0,
+          scale: 0.3,
+          duration,
+          ease: "Quad.easeOut"
+        });
+      }
+      if (downgraded) this.cameras?.main?.shake?.(Math.max(100, Math.round(duration * 0.6)), 0.006);
+      else this.cameras?.main?.flash?.(Math.max(90, Math.round(duration * 0.35)), color >> 16, (color >> 8) & 255, color & 255);
+
+      return new Promise(resolve => {
+        this.tweens.add({
+          targets: this.glow,
+          scale: success ? 1.8 : 1.35,
+          alpha: 0,
+          duration,
+          ease: "Sine.easeOut",
+          onComplete: () => {
+            this.glow?.setScale(1).setAlpha(0.08);
+            this.clearSparks();
+            resolve();
+          }
+        });
+      });
+    }
+
+    handleResize() { this.layout(); }
+
+    shutdown() {
+      this.scale.off("resize", this.handleResize, this);
+      this.presentationQueue?.clear();
+      this.vfxManager?.destroy();
+      this.clearSparks();
+      this.anvil?.destroy?.();
+      this.glow?.destroy?.();
+      this.anvil = null;
+      this.glow = null;
+      onReady?.({ scene: null, destroyed: true });
+    }
+  };
+}

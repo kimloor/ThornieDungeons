@@ -90,3 +90,41 @@ function PhaserRaidBoss({ boss, config, hurtToken = 0, onHurtComplete, onStatus 
     "aria-hidden": "true"
   });
 }
+
+
+function PhaserEnhanceResult({ presentation, onStatus, onComplete } = {}) {
+  const hostRef = React.useRef(null);
+  const handleRef = React.useRef(null);
+  const snapshot = React.useMemo(() => ({
+    token: Math.max(0, Number(presentation?.token) || 0),
+    result: presentation?.result || null
+  }), [presentation?.token, presentation?.result]);
+
+  React.useEffect(() => {
+    if (!hostRef.current) return undefined;
+    let disposed = false;
+    const handle = createEnhancePresentationHost({
+      mountNode: hostRef.current,
+      snapshot,
+      onReady: () => { if (!disposed) onStatus?.("ready"); },
+      onError: error => { if (!disposed) onStatus?.("error", error); },
+      onDestroyed: () => { if (!disposed) onStatus?.("destroyed"); },
+      onComplete
+    });
+    handleRef.current = handle;
+    onStatus?.("loading");
+    void handle.mount();
+    return () => {
+      disposed = true;
+      handle.destroy();
+      handleRef.current = null;
+    };
+  }, []);
+
+  React.useEffect(() => { handleRef.current?.sync(snapshot); }, [snapshot]);
+  return React.createElement("div", {
+    ref: hostRef,
+    className: "md-phaser-enhance-result",
+    "aria-hidden": "true"
+  });
+}
