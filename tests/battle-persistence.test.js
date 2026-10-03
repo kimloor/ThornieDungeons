@@ -308,6 +308,55 @@ test("Dungeon checkpoint validator accepts canonical runtime identity without op
   }
 });
 
+test("Dungeon checkpoint validator accepts a canonical normal multi-enemy pack with exact instance mapping", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "ChkMultiQA", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Checkpoint Multi" });
+  const characterId = created.body.character.character_id;
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 110 WHERE character_id = ?").run(characterId);
+
+  let started = null;
+  for (let floor = 6; floor <= 109; floor += 1) {
+    if (floor % 5 === 0) continue;
+    const candidate = await startDungeon(api, db, token, characterId, floor);
+    if (candidate.body.context.role === "normal" && candidate.body.context.packCount > 1) {
+      started = candidate;
+      break;
+    }
+    await post(api, db, token, { action: "clearBattleCheckpoint", characterId, battleId: candidate.body.battleId });
+  }
+  assert.ok(started, "expected deterministic server generator to produce a multi-enemy normal pack");
+
+  const checkpoint = battleCoreLikeCheckpointForStart(started, 0, { omitDefinitionAlias: true });
+  assert.equal(checkpoint.enemyIds.length, started.body.context.packCount);
+  assert.deepEqual(
+    new Set(checkpoint.enemyIds),
+    new Set(started.body.context.enemies.map(enemy => enemy.instanceId))
+  );
+
+  const saved = await post(api, db, token, {
+    action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 0, payload: checkpoint
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.accepted, true);
+
+  const forgedUnits = { ...checkpoint.units };
+  const first = started.body.context.enemies[0];
+  const second = started.body.context.enemies[1];
+  forgedUnits[first.instanceId] = { ...forgedUnits[first.instanceId], id: second.instanceId };
+  const forged = {
+    ...checkpoint,
+    safeActionSeq: 1,
+    units: forgedUnits
+  };
+  const denied = await post(api, db, token, {
+    action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: forged
+  });
+  assert.equal(denied.status, 400);
+  assert.equal(denied.body.error, "invalid_dungeon_checkpoint");
+});
+
 test("Dungeon checkpoint validator accepts server-issued modifier encounters without trusting client modifier identity", async () => {
   const api = worker(), db = database();
   const registration = await post(api, db, "", { action: "register", id: "ChkModifierQA", password: "pass", confirmPassword: "pass" });
