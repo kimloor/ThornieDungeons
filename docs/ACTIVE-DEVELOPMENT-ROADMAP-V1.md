@@ -1165,8 +1165,11 @@ Current sequence:
    - shared Phaser queue terminal Victory/Defeat transition second;
    - bounded timeout fallback;
    - Result/Defeat navigation only after presentation drain/fallback.
-2. **A2 Boss entrance + Enrage presentation — NEXT**
-3. **A3 Raid presentation using shared actors/VFX/queue — AFTER A2**
+2. **A2 Boss entrance + Enrage presentation — IMPLEMENTED / QA PASSED**
+   - fresh Chapter Boss encounter entrance only;
+   - authoritative Dungeon V2 Enrage false→true cue only;
+   - resume baselines existing Enrage state and does not replay the transition.
+3. **A3 Raid presentation using shared actors/VFX/queue — NEXT**
 
 May begin after the corresponding mechanics are stable:
 - Victory / Defeat pose and transition;
