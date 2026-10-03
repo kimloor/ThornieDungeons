@@ -114,6 +114,7 @@ function ThornieDungeons() {
   const [resumeBattle, setResumeBattle] = useState(null); // Battle V1 safe Action-boundary checkpoint
   const [battleState, setBattleState] = useState(null);
   const battleStateRef = useRef(null);
+  const battlePresentationRef = useRef(null);
   const lastSafeBattleCheckpointRef = useRef(null);
   const confirmedBattleCheckpointRef = useRef({ battleId: null, safeActionSeq: -1 });
   const finishingBattleIdRef = useRef(null);
@@ -994,6 +995,21 @@ function ThornieDungeons() {
     if (messages.length) setLogState(messages);
     if (persistCheckpoint && !next.result) pushBattleCheckpoint(next);
   }
+  async function playTerminalBattlePresentation(result) {
+    const controller = battlePresentationRef.current;
+    if (!controller) return;
+    const fallbackMs = Math.max(500, Math.round(1400 / Math.max(1, Number(combatSpeed) || 1)));
+    try {
+      await Promise.race([
+        Promise.resolve(controller.presentTerminal?.(result))
+          .then(() => controller.whenPresentationDrained?.()),
+        new Promise(resolve => setTimeout(resolve, fallbackMs))
+      ]);
+    } catch (_) {
+      // Presentation is non-authoritative. Result/reward navigation must continue.
+    }
+  }
+
   async function finishCoreBattle(next) {
     if (!next?.battleId || finishingBattleIdRef.current === next.battleId) return;
     finishingBattleIdRef.current = next.battleId;
@@ -1052,6 +1068,7 @@ function ThornieDungeons() {
       completionReceipt = receipt;
     }
     setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
+    await playTerminalBattlePresentation(next.result);
     if (next.result === "victory") {
       if (completionReceipt && completionReceipt.firstCompletion === false) {
         // The server already applied this battle. Hydrate its authoritative snapshot rather
@@ -2814,7 +2831,8 @@ function ThornieDungeons() {
     combatSpeed: combatSpeed,
     battleVfx: battleVfx,
     combatTurnCount: combatTurnCount,
-    onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
+    onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1),
+    onPresentationController: controller => { battlePresentationRef.current = controller; }
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,
