@@ -6206,6 +6206,8 @@ function BlacksmithOverlay({
   const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
   const [actionMsg, setActionMsg] = useState("");
   const [animState, setAnimState] = useState(null); // 'success' | 'fail' | null
+  const [forgePresentation, setForgePresentation] = useState(null);
+  const forgePresentationTokenRef = useRef(0);
   const [useProtectionStone, setUseProtectionStone] = useState(false);
   const animTimerRef = useRef(null);
   const [gridExpanded, setGridExpanded] = useState(false);
@@ -6243,6 +6245,16 @@ function BlacksmithOverlay({
     const res = await Promise.resolve(onEnhance(detailTarget.id, useProtectionStone));
     setActionMsg(res.message);
     playAnim(res.ok);
+    if (res?.result && Number.isFinite(Number(res.result.levelAfter))) {
+      const result = res.result;
+      setForgePresentation({
+        token: `enhance-${++forgePresentationTokenRef.current}`,
+        kind: "enhance",
+        outcome: result.success ? "success" : result.protectionConsumed ? "protected" : result.downgraded ? "downgrade" : "fail",
+        levelBefore: Number(result.levelBefore) || 0,
+        levelAfter: Number(result.levelAfter) || 0
+      });
+    }
   };
   const doEmpower = async () => {
     if (!detailTarget) return;
@@ -6322,6 +6334,7 @@ function BlacksmithOverlay({
       onClick: onOpenInventory
     }, "🎒 ไปที่กระเป๋าไอเทม"),
     /*#__PURE__*/React.createElement("div", { className: `md-item-detail ${anvilClass}` }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      forgePresentation && /*#__PURE__*/React.createElement(PhaserForgePresentation, { event: forgePresentation }),
       /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
@@ -6417,6 +6430,8 @@ function CraftingOverlay({
 }) {
   const [craftingId, setCraftingId] = useState(null);
   const [msg, setMsg] = useState("");
+  const [craftPresentation, setCraftPresentation] = useState(null);
+  const craftPresentationTokenRef = useRef(0);
   const recipes = MYTHIC_V2.allRecipes(floor);
 
   const doCraft = recipe => {
@@ -6433,6 +6448,12 @@ function CraftingOverlay({
           return;
         }
         onCrafted(res);
+        setCraftPresentation({
+          token: `craft-${++craftPresentationTokenRef.current}`,
+          kind: "craft",
+          itemName: String(res.item?.name || recipe.name || "Crafted item"),
+          special: String(res.item?.rarity || "").toLowerCase() === "mythic" || !!res.item?.bossWeaponId || !!res.item?.setId
+        });
         setMsg(`✨ ประดิษฐ์สำเร็จ! ได้รับ ${res.item && res.item.name}`);
       })
       .catch(() => setMsg("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ"))
@@ -6447,6 +6468,7 @@ function CraftingOverlay({
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
+    craftPresentation && /*#__PURE__*/React.createElement(PhaserForgePresentation, { event: craftPresentation }),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", formatNumber(gold)),
       // Union of every non-gold/non-scroll material across ALL loaded recipes — was
