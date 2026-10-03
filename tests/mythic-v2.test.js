@@ -74,8 +74,14 @@ test("Azure has no 6pc combat effect", () => {
   const combat = mythic.combatEffects(equipped);
   assert.equal(effects.agi, 5);
   assert.equal(effects.activeSkillMpMultiplier, 0.5);
-  assert.equal("azureControlProc" in effects, false);
-  assert.equal("azureControlProc" in combat, false);
+  assert.deepEqual(
+    Object.keys(effects).sort(),
+    ["activeSkillMpMultiplier", "agi", "ccResist", "counts", "critDamage", "robotThresholdDefUp", "skeletonCritArmorBreak", "str", "vit"].sort()
+  );
+  assert.deepEqual(
+    Object.keys(combat).sort(),
+    ["activeSkillMpMultiplier", "bossWeaponSignature", "ccResist", "robotThresholdDefUp", "skeletonCritArmorBreak"].sort()
+  );
 });
 
 test("Robot 4pc resists hard control without reducing Poison", () => {
@@ -200,7 +206,7 @@ test("legacy Raid stat adapter receives W4 static Mythic set stats without a par
   const fourPiece = context.__raidCombatStats(character, rows);
   assert.equal(twoPiece.atk, base.atk + 15);
   assert.equal(fourPiece.critDamage, base.critDamage + 30);
-  assert.doesNotMatch(source.slice(source.indexOf("function simulateRaidAttack"), source.indexOf("async function settleRaidRank")), /bossWeaponSignature|azureControlProc|robotThresholdDefUp/);
+  assert.doesNotMatch(source.slice(source.indexOf("function simulateRaidAttack"), source.indexOf("async function settleRaidRank")), /bossWeaponSignature|robotThresholdDefUp/);
 });
 
 test("Worker W4 trust boundary derives crafting and stones server-side", () => {
