@@ -1,6 +1,8 @@
 name: Cleanup merged branches
 
-# Automatic after the current main SHA passes API deploy, Frontend deploy, and Battle Core parity.
+# Automatic cleanup requires only the release gates applicable to the files changed by the current main SHA.
+# A push to main evaluates applicability immediately; workflow_run events re-evaluate after deploy/parity completion.
+# Non-applicable gates are skipped, and applicable-but-pending gates defer cleanup without failing the workflow.
 # Manual workflow_dispatch is retained for dry-run / maintenance.
 # Safe by default: dry_run=true only reports what WOULD be deleted.
 #
@@ -16,6 +18,9 @@ name: Cleanup merged branches
 #   git push origin <sha>:refs/heads/<branch-name>
 
 on:
+  push:
+    branches:
+      - main
   workflow_run:
     workflows:
       - "Deploy ThornieDungeons API"
@@ -41,6 +46,7 @@ on:
 permissions:
   contents: write
   pull-requests: read
+  actions: read
 
 concurrency:
   group: cleanup-branches
@@ -48,7 +54,6 @@ concurrency:
 
 jobs:
   cleanup:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,21 +62,88 @@ jobs:
       MIN_AGE_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.min_age_days || 0 }}
       KEEP: ${{ github.event_name == 'workflow_dispatch' && inputs.keep || '' }}
     steps:
-      - name: Verify automatic release gates
-        if: ${{ github.event_name == 'workflow_run' }}
+      - name: Resolve applicable release gates
+        id: gates
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         shell: bash
         run: |
           set -euo pipefail
-          sha="${{ github.event.workflow_run.head_sha }}"
+
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            sha="${{ github.event.workflow_run.head_sha }}"
+          else
+            sha="${GITHUB_SHA}"
+          fi
+
           current_main="$(gh api "repos/$REPO/branches/main" --jq .commit.sha)"
-          [ "$sha" = "$current_main" ] || { echo "Triggered SHA is no longer current main; skip cleanup."; exit 1; }
-          for workflow in "Deploy ThornieDungeons API" "Deploy ThornieDungeons Frontend" "Battle Core parity"; do
+          if [ "$sha" != "$current_main" ]; then
+            echo "Triggered SHA is no longer current main; skip cleanup."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "current=true" >> "$GITHUB_OUTPUT"
+
+          changed_files="$(gh api "repos/$REPO/commits/$sha" --jq '.files[].filename')"
+          printf 'Changed files for %s:\n%s\n' "$sha" "$changed_files"
+
+          require_api=false
+          require_frontend=false
+          require_battle=false
+
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+
+            case "$file" in
+              index.html|admin.html|worker.js|wrangler.jsonc|.github/workflows/deploy-frontend-production.yml)
+                require_frontend=true ;;
+            esac
+
+            case "$file" in
+              workers/thornie-dungeons-api.js|workers/thornie-dungeons-api-entry.js|wrangler.api.template.jsonc|.github/workflows/deploy-api.yml|migrations/auto/*.sql)
+                require_api=true ;;
+            esac
+
+            case "$file" in
+              src/systems/battleCore.js|workers/thornie-dungeons-api.js|scripts/battle-core-port.js|tests/battle-core-parity.test.js|tests/arena-v2-w9-foundation.test.js|tests/arena-v2-w9-match-lifecycle.test.js|tests/arena-v2-w9-combat.test.js|tests/arena-v2-w9-settlement.test.js|tests/arena-v2-w9-cleanup.test.js|tests/raid-arena-auth-contract.test.js|tests/auth-gameplay-callers.test.js|migrations/auto/0025_arena_v1_cleanup.sql|tests/arena-v2-w98-w99.test.js|tests/fixtures/arena-v2-w9.js|tests/battle-core.test.js|tests/combat-core-teams.test.js|docs/ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md|.github/workflows/battle-core-parity.yml)
+                require_battle=true ;;
+            esac
+          done <<< "$changed_files"
+
+          echo "Applicable gates: api=$require_api frontend=$require_frontend battle=$require_battle"
+          pending=0
+
+          require_success() {
+            local required="$1"
+            local workflow="$2"
+            if [ "$required" != "true" ]; then
+              echo "Gate not applicable: $workflow"
+              return
+            fi
+            local ok
             ok="$(gh run list --repo "$REPO" --commit "$sha" --workflow "$workflow" --limit 20 --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')"
-            [ "$ok" -gt 0 ] || { echo "Release gate not yet successful: $workflow"; exit 1; }
-          done
-          echo "All release gates passed for $sha."
+            if [ "$ok" -gt 0 ]; then
+              echo "Gate passed: $workflow"
+            else
+              echo "Gate pending/not successful yet: $workflow"
+              pending=1
+            fi
+          }
+
+          require_success "$require_api" "Deploy ThornieDungeons API"
+          require_success "$require_frontend" "Deploy ThornieDungeons Frontend"
+          require_success "$require_battle" "Battle Core parity"
+
+          if [ "$pending" -eq 0 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "All applicable release gates passed for $sha."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Applicable release gates are still pending; cleanup will retry after workflow completion."
+          fi
 
       - name: Find and delete merged branches
+        if: ${{ github.event_name == 'workflow_dispatch' || (steps.gates.outputs.current == 'true' && steps.gates.outputs.ready == 'true') }}
         shell: bash
         run: |
           set -euo pipefail
