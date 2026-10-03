@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-6 are COMPLETE / Production verified; Post-W6 Full Gap + Security Re-Audit passed; WAVE 7 is ready for Project Lead scope approval. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-7 are COMPLETE / Production verified; W7 presentation expansion is closed and Summoning remains separately deferred behind its own future gameplay contract. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
@@ -267,4 +267,4 @@ When an approved production contract changes:
 - Pre-WAVE 6 Readiness Audit: COMPLETE / GATE PASSED; Azure 6pc drift resolved and Production verified by PR #58.
 - WAVE 6 V2 Production Cutover + Legacy Special-Item Cleanup: COMPLETE / PRODUCTION VERIFIED; PR #60 / merge `9c8f716c6cff1acc38593acf42fafab7d6c11312`.
 - Post-WAVE 6 Full Project Gap Audit + Security Re-Audit: COMPLETE / GATE PASSED; inventory read-isolation blocker resolved and Production verified by PR #63.
-- WAVE 7 Presentation Expansion: READY FOR PROJECT LEAD SCOPE APPROVAL — NOT STARTED.
+- WAVE 7 Presentation Expansion: COMPLETE / PRODUCTION VERIFIED; W7A Terminal/Boss/Enrage/Raid + W7B Enhance/Craft presentation shipped. Summoning remains separately deferred.
