@@ -1209,8 +1209,15 @@ async function handleSaveBattleCheckpoint(db, id, session, characterId, battleId
     const priorPayload = parseJsonColumn(priorCheckpoint.payload_json, null);
     const priorContext = dungeonV2ServerContextFromStoredCheckpoint(priorPayload);
     if (!priorContext) return json({ error: "dungeon_battle_not_authorized" }, 409);
+    const checkpointValidationReason = dungeonV2ServerCheckpointValidationReason(payload);
     const incomingContext = dungeonV2ServerContextFromClientCheckpoint(payload);
-    if (!incomingContext) return json({ error: "invalid_dungeon_checkpoint" }, 400);
+    if (!incomingContext) {
+      // Keep the player-facing error intentionally generic; the structural
+      // reason is safe for server logs and makes a future runtime-shape drift
+      // diagnosable without exposing authorization context to clients.
+      console.warn("[battle-checkpoint-invalid]", JSON.stringify({ reason: checkpointValidationReason }));
+      return json({ error: "invalid_dungeon_checkpoint" }, 400);
+    }
     if (!dungeonV2ServerContextsMatch(priorContext, incomingContext)) return json({ error: "checkpoint_context_conflict" }, 409);
     const trustedPayload = {
       ...payload,
@@ -1372,10 +1379,10 @@ function dungeonV2ServerNormalizeContext(value) {
 function dungeonV2ServerContextFromStoredCheckpoint(payload) {
   return dungeonV2ServerNormalizeContext(payload?.serverContext);
 }
-function dungeonV2ServerCheckpointIdentityMatches(payload, context) {
-  if (!payload || !context || payload.mode !== "dungeon") return false;
-  if (Math.floor(Number(payload.floor) || 0) !== context.floor) return false;
-  if (payload.encounterType && String(payload.encounterType) !== context.role) return false;
+function dungeonV2ServerCheckpointIdentityReason(payload, context) {
+  if (!payload || !context || payload.mode !== "dungeon") return "mode";
+  if (Math.floor(Number(payload.floor) || 0) !== context.floor) return "floor";
+  if (payload.encounterType && String(payload.encounterType) !== context.role) return "encounter_type";
 
   const units = payload.units && typeof payload.units === "object" ? payload.units : {};
   const enemyIds = Array.isArray(payload.enemyIds) ? payload.enemyIds.map(String).filter(Boolean) : [];
@@ -1384,36 +1391,43 @@ function dungeonV2ServerCheckpointIdentityMatches(payload, context) {
 
   // Battle Core guarantees server-issued enemy instance IDs. Definition aliases
   // are validation hints, not mandatory persistence fields on every checkpoint.
-  if (enemyIds.length !== context.packCount || new Set(enemyIds).size !== enemyIds.length) return false;
-  if (enemyIds.some(id => !expectedInstanceSet.has(id))) return false;
-  if (expectedInstanceIds.some(id => !enemyIds.includes(id))) return false;
+  if (enemyIds.length !== context.packCount || new Set(enemyIds).size !== enemyIds.length) return "enemy_ids_count_or_duplicate";
+  if (enemyIds.some(id => !expectedInstanceSet.has(id))) return "enemy_id_not_authorized";
+  if (expectedInstanceIds.some(id => !enemyIds.includes(id))) return "enemy_id_missing";
 
   const enemyLikeUnits = Object.values(units).filter(unit =>
     unit && (unit.side === "enemy" || unit.kind === "monster" || unit.kind === "boss")
   );
-  if (enemyLikeUnits.length !== context.packCount) return false;
-  if (enemyLikeUnits.some(unit => !expectedInstanceSet.has(String(unit.id || "")))) return false;
+  if (enemyLikeUnits.length !== context.packCount) return "enemy_unit_count";
+  if (enemyLikeUnits.some(unit => !expectedInstanceSet.has(String(unit.id || "")))) return "enemy_unit_not_authorized";
 
-  return context.enemies.every(expected => {
+  for (const expected of context.enemies) {
     const unit = units[expected.instanceId];
-    if (!unit || String(unit.id || "") !== expected.instanceId) return false;
+    if (!unit || String(unit.id || "") !== expected.instanceId) return "enemy_unit_instance_id";
 
     const definitionAlias = unit.monsterDefId ?? unit.dungeonV2ProfileId;
-    if (definitionAlias != null && String(definitionAlias) !== expected.id) return false;
-    if (unit.encounterType && String(unit.encounterType) !== context.role) return false;
+    if (definitionAlias != null && String(definitionAlias) !== expected.id) return "enemy_definition";
+    if (unit.encounterType && String(unit.encounterType) !== context.role) return "enemy_encounter_type";
 
     const hasBossMarker = unit.kind != null || unit.isBoss != null;
     if (hasBossMarker) {
       const bossLike = unit.kind === "boss" || unit.isBoss === true;
-      if (context.role === "chapter_boss" ? !bossLike : bossLike) return false;
+      if (context.role === "chapter_boss" ? !bossLike : bossLike) return "enemy_boss_marker";
     }
-    return true;
-  });
+  }
+  return null;
+}
+function dungeonV2ServerCheckpointIdentityMatches(payload, context) {
+  return dungeonV2ServerCheckpointIdentityReason(payload, context) == null;
 }
 function dungeonV2ServerContextFromClientCheckpoint(payload) {
   const context = dungeonV2ServerNormalizeContext(payload?.serverContext);
   if (!context) return null;
-  return dungeonV2ServerCheckpointIdentityMatches(payload, context) ? context : null;
+  return dungeonV2ServerCheckpointIdentityReason(payload, context) == null ? context : null;
+}
+function dungeonV2ServerCheckpointValidationReason(payload) {
+  const context = dungeonV2ServerNormalizeContext(payload?.serverContext);
+  return context ? dungeonV2ServerCheckpointIdentityReason(payload, context) : "server_context";
 }
 function dungeonV2ServerContextsMatch(a, b) {
   return !!(a && b
