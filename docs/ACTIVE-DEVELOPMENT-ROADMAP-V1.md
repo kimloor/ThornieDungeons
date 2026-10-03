@@ -1234,17 +1234,17 @@ QA gate:
 # PART 4 — PARALLEL TRACKS AFTER W9R
 
 ## A1 — Admin V2 Phase 1
-**Status: READY AFTER W9R**
+**Status: IMPLEMENTED / QA PASSED — RELEASE PENDING**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA**
 
 Scope:
-- Admin Dashboard;
-- server-side Player Search;
-- read-only Player Viewer;
-- dedicated Admin V2 session/auth boundary;
-- audit-safe read paths.
+- Admin Dashboard — IMPLEMENTED;
+- server-side Player Search — IMPLEMENTED;
+- read-only Player Viewer — IMPLEMENTED;
+- dedicated Admin V2 session/auth boundary — REUSED / VERIFIED;
+- audit-safe read paths — IMPLEMENTED / VERIFIED.
 
 Out of scope:
 - economy mutation;
