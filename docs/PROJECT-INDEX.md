@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-5.5 are COMPLETE / Production verified; Pre-W6 Readiness Audit is the active gate and WAVE 6 is blocked pending remediation. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-5.5 are COMPLETE / Production verified; Pre-W6 Readiness Audit passed; WAVE 6 is ready for separate Project Lead approval. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
@@ -64,7 +64,7 @@ Repository-wide references:
 
 | Status | Document | Use |
 | --- | --- | --- |
-| **ACTIVE GATE** | [`PRE-W6-READINESS-AUDIT-2026-10-03.md`](PRE-W6-READINESS-AUDIT-2026-10-03.md) | Pre-W6 readiness findings, blocker classification, expected W6 targets, and release-entry conditions. |
+| **SUPPORTING / COMPLETED GATE** | [`PRE-W6-READINESS-AUDIT-2026-10-03.md`](PRE-W6-READINESS-AUDIT-2026-10-03.md) | Completed Pre-W6 readiness audit, resolved blocker record, expected W6 targets, and release-entry conditions. |
 | **SUPPORTING** | [`BATTLE-V1-IMPLEMENTATION-NOTES.md`](BATTLE-V1-IMPLEMENTATION-NOTES.md) | Battle V1 implementation and rollout context. It does not override the active Battle contract. |
 | **SUPPORTING / RELEASE RECORD** | [`ARENA-V2-HUB-CORE-R1-PUBLICATION.md`](ARENA-V2-HUB-CORE-R1-PUBLICATION.md) | Published Arena Hub Core R1 asset paths, dimensions, manifest keys, and nine-slice contract. |
 | **SUPPORTING / GRAPHICS CONTRACT** | [`ARENA-V2-TIER-BADGES-BRIEF.md`](ARENA-V2-TIER-BADGES-BRIEF.md) | Approved/published Bronze, Silver, Gold, and Diamond Arena tier badge contract. |
@@ -263,5 +263,5 @@ When an approved production contract changes:
 - WAVE 4.5 Server Authority / Economy Security: COMPLETE / PRODUCTION VERIFIED.
 - WAVE 5 Raid / Wings V2: COMPLETE / PRODUCTION VERIFIED.
 - WAVE 5.5 Security Hardening: COMPLETE / PRODUCTION VERIFIED.
-- Pre-WAVE 6 Readiness Audit: ACTIVE; release-blocking Azure 6pc contract/runtime drift must be remediated before W6.
+- Pre-WAVE 6 Readiness Audit: COMPLETE / GATE PASSED; Azure 6pc drift resolved and Production verified by PR #58.
 - Post-WAVE 6: Full Project Gap Audit + Security Re-Audit remains mandatory before WAVE 7 closeout.
