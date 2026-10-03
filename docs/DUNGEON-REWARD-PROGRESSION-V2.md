@@ -463,13 +463,9 @@ Final MP Cost
 
 **6 pieces**
 
-- after a successful damaging action, roll **30% once per action**;
-- on success, randomly apply:
-  - **Stun 1 turn**, or
-  - **Silence 2 turns**;
-- Stun / Silence selection is **50 / 50**;
-- multi-hit actions do not roll separately per hit;
-- normal status resistance and the shared Battle Core Boss control-status conversion rules remain applicable.
+- **No additional Set Bonus.**
+- Azure's current Set identity ends at 4 pieces: 2pc AGI +5 and 4pc Active Skill MP cost ×0.50.
+- Equipping 6 Azure pieces does not add Stun, Silence, control proc, or any other hidden combat effect.
 
 ### 11.2 Skeleton Set — ATK / Crit / Armor Break
 
@@ -520,10 +516,10 @@ The 2 / 4 / 6 structure intentionally supports both full-set and mixed-set build
 
 Examples:
 
-- 6 Azure = full CC / tempo identity;
+- 4 Azure already completes the current Azure tempo identity; extra Azure pieces add no Set Bonus;
 - 6 Skeleton = full Crit / Armor Break identity;
 - 6 Robot = full defensive identity;
-- 4 + 2 or 2 + 2 + 2 combinations may trade the 6-piece Signature for flexible stat/effect combinations.
+- 4 + 2 and 2 + 2 + 2 combinations remain valid mixed-set choices; Azure contributes no 6-piece Signature.
 
 Set bonuses do not add Empower slots and do not raise the Enhance ceiling.
 
