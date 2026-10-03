@@ -340,7 +340,7 @@ test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Resu
   assert.match(styles, /border-image-slice:32 fill/);
   assert.match(styles, /border-image-slice:16 fill/);
   assert.match(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
-  assert.match(styles, /content: "Ver 1\.0\.34"/);
+  assert.match(styles, /content: "Ver 1\.0\.35"/);
   const battleStart = arenaUi.indexOf('    match && /*#__PURE__*/React.createElement(React.Fragment');
   const dockStart = arenaUi.indexOf('    !match && /*#__PURE__*/React.createElement(GameDock', battleStart);
   const battleSurface = arenaUi.slice(battleStart, dockStart);
@@ -365,7 +365,7 @@ test('Arena Battle + Result Graphics R1 binds approved art without changing auth
   assert.match(arenaUi, /arenaResultGraphicKey\(resultView\.outcome\)/);
   assert.match(styles, /border-image-source:var\(--arena-surrender-button\)/);
   assert.match(styles, /\.md-arena-result-emblem/);
-  assert.match(styles, /content: "Ver 1\.0\.34"/);
+  assert.match(styles, /content: "Ver 1\.0\.35"/);
 });
 
 // W9 browser QA Batch 5 low/medium UI shell fixes only; final parity retrigger after generated frontend sync.

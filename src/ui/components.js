@@ -5768,15 +5768,15 @@ function InventoryFilterModal({ filters, onUpdate, onReset, onClose }) {
 
 function OverflowModal({ overflow, busy, onClaimOverflow, onClaimAllOverflow, onClose }) {
   return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer" }, /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup md-inv2-overflow-popup md-inventory-art", style: inventoryUiStyle("popupFrame") },
-    /*#__PURE__*/React.createElement("h3", null, `Overflow ${overflow.length}`),
-    /*#__PURE__*/React.createElement("p", null, "ไอเท็มเหล่านี้ถูกเก็บไว้อย่างปลอดภัย เคลียร์ช่องในกระเป๋าแล้วจึง Claim"),
+    /*#__PURE__*/React.createElement("h3", null, `ไอเทมที่ล้น (${overflow.length})`),
+    /*#__PURE__*/React.createElement("p", null, "ไอเทมเหล่านี้ถูกเก็บไว้อย่างปลอดภัย เคลียร์ช่องในกระเป๋าแล้วจึงนำกลับเข้ากระเป๋า"),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-list" }, overflow.map(item => /*#__PURE__*/React.createElement("div", { className: "md-inv2-overflow-row", key: inventoryItemRuntimeId(item) },
       /*#__PURE__*/React.createElement(GameIcon, { item, fallback:item.icon || SLOT_ICON[inventoryItemType(item)] || "📦" }),
       /*#__PURE__*/React.createElement("span", null, itemDisplayName(item), inventoryItemQuantity(item) > 1 ? ` x${inventoryItemQuantity(item)}` : ""),
-      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => onClaimOverflow(inventoryItemRuntimeId(item)) }, "Claim")))),
+      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => onClaimOverflow(inventoryItemRuntimeId(item)) }, "นำเข้ากระเป๋า")))),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-popup-actions" },
-      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:onClaimAllOverflow }, "Claim All That Fits"),
-      /*#__PURE__*/React.createElement("button", { onClick:onClose }, "Close"))));
+      /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:onClaimAllOverflow }, "นำทั้งหมดที่ใส่ได้"),
+      /*#__PURE__*/React.createElement("button", { onClick:onClose }, "ปิด"))));
 }
 
 function ItemStats({ item }) {
@@ -5947,7 +5947,9 @@ function InventoryOverlayV2({
     /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
       /*#__PURE__*/React.createElement(InventoryHeader, { characterName, onClose }),
       /*#__PURE__*/React.createElement(EquipmentStage, { equipped, previewEquipped, characterName, onOpenDetail:setDetail }),
-      overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner md-inventory-art", style: iconButtonStyle("overflow"), onClick: () => setOverflowOpen(true) }, `⚠ Overflow ${overflow.length}`),
+      overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner", onClick: () => setOverflowOpen(true), "aria-label": `ไอเทมที่ล้น ${overflow.length}` },
+        /*#__PURE__*/React.createElement("span", { className: `md-inv2-overflow-icon md-inventory-art ${inventoryUiUrl("icons.overflow") ? "has-art" : ""}`, style: iconButtonStyle("overflow"), "aria-hidden":"true" }, inventoryUiUrl("icons.overflow") ? null : "📦"),
+        /*#__PURE__*/React.createElement("span", { className:"md-inv2-overflow-label" }, `ไอเทมที่ล้น ${overflow.length}`)),
       /*#__PURE__*/React.createElement(InventoryToolbar, { inventoryCount:inventory.length, onFilter:() => setFilterOpen(true), onSort }),
       /*#__PURE__*/React.createElement(InventoryGrid, { items:filtered, expanded, onOpenDetail:setDetail }),
       (filtered.length > 10 || expanded) && /*#__PURE__*/React.createElement("button", { className: "md-inventory-toggle md-inventory-art", style: iconButtonStyle("expand"), onClick: () => setExpanded(value => !value) }, expanded ? "▲ Collapse" : `▼ View All (${filtered.length})`),

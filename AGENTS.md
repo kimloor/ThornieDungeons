@@ -26,9 +26,10 @@ This file defines the default operating rules for all contributors and AI agents
 
 ## 4. Risk, release, merge, and deploy
 - Assess every task as LOW, MEDIUM, HIGH, or VERY HIGH before implementation.
-- LOW and MEDIUM risk changes may be committed/published directly to `main` after the required checks pass, unless the task explicitly requires another branch.
-- HIGH and VERY HIGH risk changes require explicit user/Project Lead approval of the publish destination before any remote write. Ask whether the completed change should go to `main` or a feature branch; do not choose the destination autonomously.
-- Destination approval does not waive testing, QA, migration, or deploy gates that apply to the task.
+- LOW, MEDIUM, and ordinary HIGH risk changes that do **not** modify the production API/Worker, database/schema/migrations, or authoritative/player data may be committed/published directly to `main` after the required checks pass, unless the task explicitly requires a branch.
+- HIGH risk changes that modify the production API/Worker, database/schema/migrations, or authoritative/player data must use a feature/hotfix branch and the applicable QA/release gate before merge/deploy.
+- VERY HIGH risk changes must use a feature/hotfix branch and QA/release gate. If they also touch API/DB/data, apply the stricter backend/data checks as well.
+- Branch routing does not waive testing, QA, migration, or deploy gates that apply to the task.
 - If the requirement is unclear or confirmation is needed, stop and ask before making the uncertain change.
 - After assessing and fixing the task, merge/deploy when appropriate and verify the result; then report a short, clear summary.
 - Always ask before changes that can permanently delete player data, perform irreversible migrations, or make major economy-wide changes.
@@ -91,6 +92,7 @@ This file defines the default operating rules for all contributors and AI agents
 - Connector-created commit SHAs may differ from a local sandbox commit SHA. When the intended contents are identical, verify file contents/tree state instead of requiring identical commit object SHAs.
 - If shell `git push` fails but an authorized connector exists, switch to the connector immediately; do not repeatedly retry HTTPS/SSH.
 - If no authorized publish path is available, return `PUSH_BLOCKED` with local HEAD, changed files, test status, and the exact remaining publish action. A patch/file handoff is a fallback only when no direct authorized GitHub write path is available.
+- After a feature/hotfix branch has been merged into `main` and the applicable release/Production verification has passed, clean up the merged remote branch. Prefer the repo-native `.github/workflows/cleanup-branches.yml`: run it in dry-run mode first, verify that only intended merged/inactive branches are candidates, then run the real deletion and verify the branch is gone. Never delete `main`, protected branches, branches with open PRs, or active work. If the current tool cannot dispatch the workflow directly, use an available Work/Cloud Browser or repository-capable tool; otherwise report `BRANCH_CLEANUP_PENDING` rather than claiming deletion.
 
 ## 12. Task prompts, handoff, and reporting
 - Project Lead task prompts must be short, direct, token-efficient, and still include every required action, constraint, environment, risk, and completion condition needed to execute safely.
@@ -111,3 +113,4 @@ A task is complete when the relevant steps are satisfied:
 7. Live result verified when deployment is available.
 8. Relevant docs/comments updated.
 9. Short copy-ready handoff provided.
+10. For branch-based work, merged remote branches are cleaned up after release verification, or explicitly reported as `BRANCH_CLEANUP_PENDING` when the available tools cannot safely perform the cleanup.

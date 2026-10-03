@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Preview version badge: bump patch version on every user-visible preview fix. */
 body::after {
-  content: "Ver 1.0.34";
+  content: "Ver 1.0.35";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1856,7 +1856,10 @@ body::after {
 .md-inv2-slot-icon { height:32px; display:flex; align-items:center; justify-content:center; font-size:22px; }
 .md-inv2-slot-label { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft); font-size:8px; font-weight:800; }
 .md-inv2-badge { position:absolute; z-index:2; right:5px; top:3px; color:#71e8ff; font:900 12px/1 'Baloo 2'; text-shadow:0 1px 3px #000; }
-.md-inv2-overflow-banner { width:100%; min-height:38px; margin:0 0 8px; border:1px solid #ef8b62; border-radius:12px; background-color:rgba(112,31,26,.72); color:#ffe2d2; font-weight:900; cursor:pointer; }
+.md-inv2-overflow-banner { width:100%; min-height:42px; margin:0 0 8px; padding:6px 12px; display:flex; align-items:center; justify-content:flex-start; gap:9px; border:1px solid #ef8b62; border-radius:12px; background-color:rgba(112,31,26,.72); color:#ffe2d2; font-weight:900; cursor:pointer; }
+.md-inv2-overflow-icon { width:28px; height:28px; flex:0 0 28px; display:inline-flex; align-items:center; justify-content:center; border-radius:7px; background-size:contain; background-position:center; background-repeat:no-repeat; font-size:20px; }
+.md-inv2-overflow-icon.has-art { font-size:0; }
+.md-inv2-overflow-label { min-width:0; text-align:left; }
 .md-inv2-tools { margin-top:4px; }
 .md-inv2-tool-buttons { display:flex; gap:6px; }
 .md-inv2-icon-btn { width:44px; height:44px; padding:3px; border:1px solid rgba(255,209,102,.42); border-radius:11px; background-color:rgba(15,9,31,.82); background-size:contain; color:var(--ink); font-size:22px; font-weight:800; cursor:pointer; }

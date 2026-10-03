@@ -50,7 +50,7 @@ async function handleClaimMail(db, id, session, characterId, mailId) {
   if (!replayed) {
     const claimedAt = `${nowIso()}#${crypto.randomUUID()}`;
     const statements = [db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND character_id = ? AND claimed = 0`).bind(claimedAt, mailId, characterId)];
-    statements.push(...await buildRewardStatements(db, id, characterId, mail, claimedAt, Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0));
+    statements.push(...await buildRewardStatements(db, id, characterId, mail, claimedAt, 0, null, {}));
     const results = await db.batch(statements);
     replayed = !(Number(results?.[0]?.meta?.changes) > 0);
     const latest = await db.prepare(`SELECT claimed FROM mailbox WHERE mail_id = ? AND character_id = ?`).bind(mailId, characterId).first();
@@ -68,7 +68,7 @@ async function handleClaimAllMail(db, id, session, characterId, requestId = "") 
   void requestId;
 
   const rows = (await db.prepare(`SELECT * FROM mailbox WHERE character_id = ? AND claimed = 0 ORDER BY created_at ASC, mail_id ASC`).bind(characterId).all()).results || [];
-  let inventoryOffset = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
+  const settlementState = {};
   const statements = [];
   const claimIndices = [];
   const mailIds = [];
@@ -76,13 +76,8 @@ async function handleClaimAllMail(db, id, session, characterId, requestId = "") 
     const claimedAt = `${nowIso()}#${crypto.randomUUID()}`;
     claimIndices.push(statements.length);
     statements.push(db.prepare(`UPDATE mailbox SET claimed = 1, claimed_at = ? WHERE mail_id = ? AND character_id = ? AND claimed = 0`).bind(claimedAt, mail.mail_id, characterId));
-    statements.push(...await buildRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset));
+    statements.push(...await buildRewardStatements(db, id, characterId, mail, claimedAt, 0, null, settlementState));
     mailIds.push(mail.mail_id);
-    const junkIds = new Set((Array.isArray(parseJsonColumn(mail.junk_json, [])) ? parseJsonColumn(mail.junk_json, []) : [])
-      .filter(item => item?.junkId && Number(item.quantity) > 0).map(item => String(item.junkId)));
-    const equipmentCount = (Array.isArray(parseJsonColumn(mail.items_json, [])) ? parseJsonColumn(mail.items_json, []) : [])
-      .filter(item => ["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(String(item?.type || ""))).length;
-    inventoryOffset += junkIds.size + equipmentCount;
   }
   const results = statements.length ? await db.batch(statements) : [];
   const claimedAny = claimIndices.some(index => Number(results?.[index]?.meta?.changes) > 0);

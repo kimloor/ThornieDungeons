@@ -334,8 +334,8 @@ function cloudClaimRaidMilestones(url, characterId) {
     characterId
   });
 }
-// Phase 3.1 — Mailbox (reward delivery queue; client applies gold/diamonds/junk locally
-// after claiming, then the normal autosave persists it — see worker comment for why).
+// Phase 3.1 — Mailbox. The Worker commits the claim and returns the authoritative
+// post-claim character/item snapshot; the client must hydrate that snapshot as-is.
 function cloudGetMailbox(url, characterId) {
   return cloudAuthGet(url, {
     action: "getMailbox",

@@ -1825,7 +1825,167 @@ async function ensureItemAuthorityTables(db) {
 // Mail claim credits are derived only from the persisted mailbox row. The claim token
 // gates each credit statement, and callers include these statements in the same D1
 // batch as the claimed marker so disconnects and concurrent retries cannot split them.
-async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset = 0, claimGate = null) {
+const MAIL_INVENTORY_CAPACITY = 30;
+const MAIL_STACK_MAX = 99;
+
+function mailStackKey(slotType, extra) {
+  if (slotType === "junk" && extra?.junkId) return `junk:${String(extra.junkId)}`;
+  if (slotType === "potion" && extra?.potionId) return `potion:${String(extra.potionId)}`;
+  return "";
+}
+
+function mailQuantity(entry) {
+  const quantity = Number(entry?.extra?.quantity);
+  return Number.isFinite(quantity) && quantity > 0 ? Math.trunc(quantity) : 1;
+}
+
+function mailEntryIsEquipped(entry) {
+  return Number(entry?.raw?.equipped) === 1 || entry?.raw?.equipped === true;
+}
+
+function mailEntryIsOverflow(entry) {
+  return entry?.extra?.overflow === true || entry?.extra?.overflow === 1 || entry?.extra?.overflow === "1";
+}
+
+function mailPlanLists(plan) {
+  const active = plan.entries.filter(entry => !entry.deleted);
+  plan.carried = active.filter(entry => !mailEntryIsEquipped(entry) && !mailEntryIsOverflow(entry));
+  plan.overflow = active.filter(entry => !mailEntryIsEquipped(entry) && mailEntryIsOverflow(entry));
+  plan.equipped = active.filter(mailEntryIsEquipped);
+}
+
+function mailMergeInto(entries, key, quantity) {
+  let remaining = Math.max(0, Math.trunc(Number(quantity) || 0));
+  if (!key || !remaining) return remaining;
+  for (const entry of entries) {
+    if (remaining <= 0 || mailStackKey(entry.raw.slot_type, entry.extra) !== key) continue;
+    const current = mailQuantity(entry);
+    const add = Math.min(Math.max(0, MAIL_STACK_MAX - current), remaining);
+    if (add <= 0) continue;
+    entry.extra.quantity = current + add;
+    entry.changed = true;
+    remaining -= add;
+  }
+  return remaining;
+}
+
+function mailNewEntry(item, itemId, overflow, quantity, extra, origin) {
+  const slotType = String(item?.type || "junk");
+  return {
+    raw: {
+      item_id: itemId, slot_type: slotType, equipped: 0, inventory_slot: "", item_template_id: "",
+      rarity: slotType === "junk" || slotType === "potion" ? "common" : String(item?.rarity || "common").slice(0, 40),
+      name: String(item?.name || item?.junkId || item?.potionId || slotType).slice(0, 160),
+      item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
+      atk: Number(item?.atk) || 0, def: Number(item?.def) || 0, hp: Number(item?.hp) || 0, mp: Number(item?.mp) || 0
+    },
+    extra: { ...(extra || {}), quantity: Math.max(1, Math.trunc(Number(quantity) || 1)), overflow: !!overflow },
+    new: true, changed: true, origin
+  };
+}
+
+function mailAddReward(plan, item, itemId, extra, origin) {
+  if (!item || typeof item !== "object") return;
+  const slotType = String(item.type || "");
+  const stackExtra = { ...(extra || {}), junkId: item.junkId, potionId: item.potionId };
+  const key = mailStackKey(slotType, stackExtra);
+  if (key) {
+    let remaining = mailMergeInto(plan.carried, key, Math.max(1, Math.trunc(Number(item.quantity) || 1)));
+    if (remaining > 0 && plan.carried.length < MAIL_INVENTORY_CAPACITY) {
+      const chunk = Math.min(MAIL_STACK_MAX, remaining);
+      plan.entries.push(mailNewEntry(item, itemId, false, chunk, stackExtra, origin));
+      remaining -= chunk;
+      mailPlanLists(plan);
+    }
+    if (remaining > 0) remaining = mailMergeInto(plan.overflow, key, remaining);
+    let part = 1;
+    while (remaining > 0) {
+      const chunk = Math.min(MAIL_STACK_MAX, remaining);
+      plan.entries.push(mailNewEntry(item, `${itemId}-part-${part++}`, true, chunk, stackExtra, origin));
+      remaining -= chunk;
+      mailPlanLists(plan);
+    }
+    return;
+  }
+
+  plan.entries.push(mailNewEntry(item, itemId, plan.carried.length >= MAIL_INVENTORY_CAPACITY, 1, extra, origin));
+  mailPlanLists(plan);
+}
+
+function reconcileMailOverflow(plan) {
+  mailPlanLists(plan);
+  for (const entry of plan.overflow.slice()) {
+    if (entry.deleted) continue;
+    const key = mailStackKey(entry.raw.slot_type, entry.extra);
+    if (key) {
+      const before = mailQuantity(entry);
+      const remaining = mailMergeInto(plan.carried, key, before);
+      if (remaining !== before) {
+        if (remaining > 0) entry.extra.quantity = remaining;
+        else entry.deleted = true;
+        entry.changed = true;
+      }
+      if (!entry.deleted && remaining > 0 && plan.carried.length < MAIL_INVENTORY_CAPACITY) {
+        entry.extra.overflow = false;
+        entry.extra.quantity = remaining;
+        entry.changed = true;
+      }
+    } else if (plan.carried.length < MAIL_INVENTORY_CAPACITY) {
+      entry.extra.overflow = false;
+      entry.changed = true;
+    }
+    mailPlanLists(plan);
+  }
+}
+
+async function loadMailSettlementState(db, id, characterId, holder) {
+  if (holder?.plan) return holder.plan;
+  const rows = (await db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`)
+    .bind(id, characterId).all()).results || [];
+  const plan = {
+    entries: rows.map(raw => {
+      const parsed = parseJsonColumn(raw.extra_json, {});
+      const extra = parsed && typeof parsed === "object" ? { ...parsed } : {};
+      return { raw, extra, new: false, changed: false, deleted: false };
+    }), carried: [], overflow: [], equipped: []
+  };
+  reconcileMailOverflow(plan);
+  if (holder) holder.plan = plan;
+  return plan;
+}
+
+function mailPlanPersistenceStatements(db, plan, id, characterId, timestamp, gate, gateBinds) {
+  const statements = [];
+  for (const entry of plan.entries) {
+    if (entry.new) {
+      const row = entry.raw;
+      statements.push(db.prepare(
+        `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
+         SELECT ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ${gate}
+         ON CONFLICT(item_id) DO UPDATE SET quantity = excluded.quantity, extra_json = excluded.extra_json, updated_at = excluded.updated_at
+         WHERE items.player_id = excluded.player_id AND items.character_id = excluded.character_id`
+      ).bind(row.item_id, id, characterId, row.slot_type, row.inventory_slot || "", row.item_template_id || "", row.rarity || "common", row.name || row.slot_type,
+        Number(row.item_level) || 0, Number(row.enhance_level) || 0, Number(row.bound) || 0, Number(row.quantity) || 1,
+        Number(row.atk) || 0, Number(row.def) || 0, Number(row.hp) || 0, Number(row.mp) || 0, JSON.stringify(entry.extra), timestamp, timestamp, ...gateBinds));
+      if (entry.origin) {
+        statements.push(itemProvenanceStatement(db, row.item_id, id, characterId, entry.origin.originType, entry.origin.sourceId, entry.origin.context, timestamp, gate, gateBinds));
+        statements.push(itemOwnershipAcquireStatement(db, row.item_id, id, characterId, entry.origin.originType, entry.origin.context, timestamp, gate, gateBinds));
+      }
+      continue;
+    }
+    if (!entry.changed) continue;
+    if (entry.deleted) {
+      statements.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND ${gate}`)
+        .bind(entry.raw.item_id, id, characterId, ...gateBinds));
+    } else {
+      statements.push(db.prepare(`UPDATE items SET quantity = ?, extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND ${gate}`)
+        .bind(Number(entry.raw.quantity) || 1, JSON.stringify(entry.extra), timestamp, entry.raw.item_id, id, characterId, ...gateBinds));
+    }
+  }
+  return statements;
+}
+
+async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset = 0, claimGate = null, settlementHolder = null) {
   await ensureItemAuthorityTables(db);
   const mailId = String(mail.mail_id || "");
   const timestamp = String(claimedAt).split("#", 1)[0];
@@ -1839,25 +1999,25 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
   statements.push(db.prepare(`UPDATE players SET diamonds = diamonds + ? WHERE id = ? AND ${gate}`)
     .bind(diamonds, id, ...gateBinds));
 
-  const junkTotals = new Map();
+  const plan = await loadMailSettlementState(db, id, characterId, settlementHolder || {});
+
+  const resourceTotals = new Map();
   const junkRows = parseJsonColumn(mail.junk_json, []);
   for (const value of Array.isArray(junkRows) ? junkRows : []) {
+    const potionId = String(value?.potionId || "").slice(0, 80);
     const junkId = String(value?.junkId || "").slice(0, 80);
     const quantity = Math.max(0, Math.trunc(Number(value?.quantity) || 0));
-    if (junkId && quantity) junkTotals.set(junkId, (junkTotals.get(junkId) || 0) + quantity);
+    const key = potionId ? `potion:${potionId}` : junkId ? `junk:${junkId}` : "";
+    if (key && quantity) resourceTotals.set(key, (resourceTotals.get(key) || 0) + quantity);
   }
-  let newItemOffset = inventoryOffset;
-  for (const [junkId, quantity] of junkTotals) {
-    const itemId = `mail-junk-${dungeonV2ServerHash(`${mailId}:${junkId}`)}`;
-    const extra = JSON.stringify({ junkId, quantity, overflow: newItemOffset >= 30 });
-    statements.push(db.prepare(
-      `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
-       SELECT ?, ?, ?, 'junk', 0, '', '', 'common', ?, 0, 0, 0, 1, 0, 0, 0, 0, ?, ?, ? WHERE ${gate}
-       ON CONFLICT(item_id) DO NOTHING`
-    ).bind(itemId, id, characterId, junkId, extra, timestamp, timestamp, ...gateBinds));
-    statements.push(itemProvenanceStatement(db, itemId, id, characterId, "mail_reward", mailId, { mailId, junkId }, timestamp, gate, gateBinds));
-    statements.push(itemOwnershipAcquireStatement(db, itemId, id, characterId, "mail_reward", { mailId, junkId }, timestamp, gate, gateBinds));
-    newItemOffset += 1;
+  for (const [resourceKey, quantity] of resourceTotals) {
+    const [resourceType, resourceId] = resourceKey.split(":", 2);
+    const item = resourceType === "potion"
+      ? { type: "potion", potionId: resourceId, name: resourceId, quantity }
+      : { type: "junk", junkId: resourceId, name: resourceId, quantity };
+    const itemId = `mail-${resourceType}-${dungeonV2ServerHash(`${mailId}:${resourceType}:${resourceId}`)}`;
+    mailAddReward(plan, item, itemId, resourceType === "potion" ? { potionId: resourceId } : { junkId: resourceId },
+      { originType: "mail_reward", sourceId: mailId, context: { mailId, [resourceType === "potion" ? "potionId" : "junkId"]: resourceId } });
   }
 
   const itemRows = parseJsonColumn(mail.items_json, []);
@@ -1871,7 +2031,6 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
         ? globalThis.ENHANCEMENT_V2.fillEmpowerSlots(slot, String(item.rarity || "rare").toLowerCase(), secureRandomUnit)
         : Array(Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCount || item.empowerSlotCapacity) || 1)))).fill(null)),
       empowerSlotCapacity: Math.max(0, Math.min(6, Math.trunc(Number(item.empowerSlotCapacity || item.empowerSlotCount) || 1))),
-      overflow: newItemOffset >= 30,
       ...(Number(item.rewardVersion) === 2 || Number(item.itemModelVersion) === 2 ? {
         rewardVersion: 2, itemModelVersion: 2,
         ...(slot === "wings" ? {} : { gearTier: Math.max(1, Math.min(5, Number(item.gearTier) || 1)) }),
@@ -1892,19 +2051,11 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
       ...(item.signatureId ? { signatureId: String(item.signatureId).slice(0, 80) } : {}),
       ...(item.sourceBossId ? { sourceBossId: String(item.sourceBossId).slice(0, 80) } : {})
     };
-    statements.push(db.prepare(
-      `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
-       SELECT ?, ?, ?, ?, 0, '', '', ?, ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ? WHERE ${gate}
-       ON CONFLICT(item_id) DO NOTHING`
-    ).bind(itemId, id, characterId, slot, String(item.rarity || "common").slice(0, 40), String(item.name || slot).slice(0, 160),
-      Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0,
-      JSON.stringify(extra), timestamp, timestamp, ...gateBinds));
-    statements.push(itemProvenanceStatement(db, itemId, id, characterId, item.sourceType || "mail_reward", item.sourceIdentity || mailId,
-      { mailId, sourceFloor: item.sourceFloor || null }, timestamp, gate, gateBinds));
-    statements.push(itemOwnershipAcquireStatement(db, itemId, id, characterId, item.sourceType || "mail_reward",
-      { mailId, sourceFloor: item.sourceFloor || null }, timestamp, gate, gateBinds));
-    newItemOffset += 1;
+    mailAddReward(plan, item, itemId, extra,
+      { originType: item.sourceType || "mail_reward", sourceId: item.sourceIdentity || mailId,
+        context: { mailId, sourceFloor: item.sourceFloor || null } });
   });
+  statements.push(...mailPlanPersistenceStatements(db, plan, id, characterId, timestamp, gate, gateBinds));
   return statements;
 }
 
@@ -2433,7 +2584,6 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
     sql: `EXISTS (SELECT 1 FROM daily_login_claim_receipts WHERE character_id = ? AND claim_date = ? AND claim_token = ?)`,
     binds: [characterId, today, claimToken]
   };
-  const inventoryCount = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
   const rewardRow = {
     mail_id: `daily-login:${characterId}:${today}`,
     gold: reward.gold, diamonds: reward.diamonds,
@@ -2452,7 +2602,7 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
      WHERE daily_login_claims.last_claim_date <> excluded.last_claim_date
        AND EXISTS (SELECT 1 FROM daily_login_claim_receipts WHERE character_id = ? AND claim_date = ? AND claim_token = ?)`
   ).bind(characterId, streak, today, totalClaims, now, characterId, today, claimToken, characterId, today, claimToken));
-  statements.push(...await mailboxRewardStatements(db, id, characterId, rewardRow, now, inventoryCount, gate));
+  statements.push(...await mailboxRewardStatements(db, id, characterId, rewardRow, now, 0, gate));
   const batchResults = await db.batch(statements);
 
   const canonical = await db.prepare(`SELECT reward_json FROM daily_login_claim_receipts WHERE character_id = ? AND claim_date = ?`).bind(characterId, today).first();
