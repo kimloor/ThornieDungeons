@@ -750,12 +750,10 @@ QA gate:
 - Arena/Raid regression;
 - build/generated-output checks.
 
-Release rule:
-- WAVE 1 is QA-approved but intentionally held from Production.
-- WAVE 1.5 continues on the same WAVE 1 feature branch / PR #40 after syncing the latest main documentation commit.
-- Final QA must cover the combined WAVE 1 + WAVE 1.5 head.
-- Merge/deploy WAVE 1 and WAVE 1.5 together only after combined QA approval.
-- Verify both frontend Production and API Worker Production if the final combined diff still changes the Worker/shared Battle Core.
+Release result:
+- combined WAVE 1 + WAVE 1.5 QA passed;
+- the combined Dungeon V2 encounter/stat/monster-skill foundation is merged and Production verified;
+- frontend/API verification for the released combined scope is complete.
 
 Exit condition:
 - Dungeon V2 encounter/stat/skill combat foundation is authoritative and Production-ready before Reward V2 begins.
