@@ -25,16 +25,20 @@ jobs:
           node-version: "22"
       - name: Worker syntax
         run: node --check workers/thornie-dungeons-api.js
-      - name: Focused checkpoint regression
-        run: >-
-          node --test --test-concurrency=1
-          tests/battle-persistence.test.js
-          tests/save-reliability.test.js
-          tests/dungeon-v2-foundation.test.js
-          tests/dungeon-v2-skills.test.js
-          tests/battle-core-parity.test.js
-          tests/battle-core.test.js
-          tests/arena-v2-w9-battle-core.test.js
+      - name: Battle persistence regression
+        run: node --test --test-concurrency=1 tests/battle-persistence.test.js
+      - name: Save reliability regression
+        run: node --test --test-concurrency=1 tests/save-reliability.test.js
+      - name: Dungeon V2 foundation regression
+        run: node --test --test-concurrency=1 tests/dungeon-v2-foundation.test.js
+      - name: Dungeon V2 skills regression
+        run: node --test --test-concurrency=1 tests/dungeon-v2-skills.test.js
+      - name: Battle Core parity regression
+        run: node --test --test-concurrency=1 tests/battle-core-parity.test.js
+      - name: Battle Core regression
+        run: node --test --test-concurrency=1 tests/battle-core.test.js
+      - name: Arena shared Battle Core regression
+        run: node --test --test-concurrency=1 tests/arena-v2-w9-battle-core.test.js
       - name: Full test suite
         run: node --test --test-concurrency=1 tests/*.test.js
       - name: Build and generated-index equality
