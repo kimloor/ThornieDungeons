@@ -1,0 +1,24 @@
+name: Temporary W6 closeout docs QA
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diff check
+        run: git diff --check
+      - name: Verify W6 closeout states
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'COMPLETE / PRODUCTION VERIFIED — 2026-10-03' docs/ACTIVE-DEVELOPMENT-ROADMAP-V1.md
+          grep -Fq 'WAVE 6 V2 Production Cutover + Legacy Special-Item Cleanup: COMPLETE / PRODUCTION VERIFIED' docs/PROJECT-INDEX.md
+          grep -Fq '0029_w6_legacy_special_item_cleanup.sql' docs/DUNGEON-REWARD-PROGRESSION-V2.md
