@@ -309,7 +309,7 @@ Before WAVE 5 Raid/Wings V2 begins, QA and the release owner must verify the fea
 
 This is a trust-boundary migration, not a destructive player-data cleanup. Existing player data must not be silently deleted or normalized; destructive legacy special-item cleanup remains WAVE 6.
 
-Current status: implemented on the WAVE 4.5 feature branch, QA required. This status does not mean merged, deployed, or Production-verified.
+Current status: **COMPLETE / PRODUCTION VERIFIED — 2026-10-02.** The server-authority trust-boundary migration is released; destructive legacy special-item cleanup remains a separate WAVE 6 decision.
 
 ---
 

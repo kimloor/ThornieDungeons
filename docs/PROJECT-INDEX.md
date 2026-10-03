@@ -38,8 +38,8 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`DUNGEON-REWARD-PROGRESSION-V2.md`](DUNGEON-REWARD-PROGRESSION-V2.md) | **ACTIVE-DESIGN / USER-APPROVED** Dungeon Reward V2: Tier/Rarity, Normal/Elite/Boss rewards, First-Clear Accessory, Boss materials/Mythic crafting, EXP/Gold/material economy, salvage, and Shop/Crafting reward roles. |
 | [`SOCIAL-SYSTEM-V1.md`](SOCIAL-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** shared character-scoped Social foundation: identity, presence, block, unread, lifecycle, security, and shared errors. Live; consumed by Friend V1. |
 | [`FRIEND-SYSTEM-V1.md`](FRIEND-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** Friend search/requests, 50-friend cap, remove/block, presence, profile, and DM eligibility. |
-| [`CHAT-SYSTEM-V1.md`](CHAT-SYSTEM-V1.md) | **ACTIVE-PRODUCTION for Global + Direct** — polling, retention, unread, rate limits, Sticker placeholder. Guild Chat not implemented. |
-| [`GUILD-SYSTEM-V1.md`](GUILD-SYSTEM-V1.md) | **ACTIVE-PRODUCTION for Core** — lifecycle, Leader/Member roles, applications, level/capacity, succession. Donation and Guild Chat not implemented. |
+| [`CHAT-SYSTEM-V1.md`](CHAT-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** — Global, Direct, and Guild Chat; polling, retention, unread, rate limits, and Sticker placeholder. |
+| [`GUILD-SYSTEM-V1.md`](GUILD-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** — lifecycle, Leader/Member roles, applications, level/capacity, succession, W2 Donation, and W3 Guild Chat integration. |
 | [`HERO-OVERLAY-V4.md`](HERO-OVERLAY-V4.md) | Current Hero overlay composition, equipment mapping, combat presentation, anchors, asset loading, and R2 paths. |
 | [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md) | Hero skill branches, ranks, statuses, prerequisites, UI contract, and combat checks. |
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked Hero V5 **modular layered, frame-based sprite** architecture; no skeletal/bone/Spine runtime is required, and the document does not itself authorize replacing the current production Hero. |
@@ -49,9 +49,9 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
 | [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |
 | [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) | **ACTIVE-DESIGN** shared Phaser presentation architecture for Combat/Arena/preview surfaces; W9 Arena gameplay changes are governed by `ARENA-V2-W9.md`. |
-| [`ARENA-V2-W9.md`](ARENA-V2-W9.md) | **ACTIVE-DESIGN / USER-APPROVED** W9 Arena V2 gameplay, season, rating, Ticket/Coin, rewards, setup, matchmaking, history, Profile Frame, mobile UX, Phaser battlefield, rollout and cleanup contract. |
+| [`ARENA-V2-W9.md`](ARENA-V2-W9.md) | **ACTIVE-PRODUCTION / W9 CLOSED** Arena V2 gameplay, season, rating, Ticket/Coin, rewards, setup, matchmaking, history, Profile Frame, mobile UX, Phaser battlefield, rollout and cleanup contract. |
 | [`PIXELLAB-WORKFLOW.md`](PIXELLAB-WORKFLOW.md) | **ACTIVE-TOOLING** reusable PixelLab GitHub Actions workflow, inputs, image/animation generation flow, GIF preview, review rules, and R2 handoff guardrails. |
-| [`RAID-SYSTEM-V1.md`](RAID-SYSTEM-V1.md) | Raid boss roster/rotation, HP scaling, Raid asset contract, persistence boundaries, auth/backend safety, and Raid verification. |
+| [`RAID-SYSTEM-V1.md`](RAID-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** Raid boss roster/rotation, HP scaling, W5 Raid/Wings V2, Raid asset contract, persistence boundaries, auth/backend safety, and Raid verification. |
 | [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) | Ordered persistence, retries, save state, session ownership, battle checkpoints, and transaction safety. |
 | [`TOWN-HUB.md`](TOWN-HUB.md) | Stable Town/Main Hub artwork separation, navigation consistency, mobile UI, and build rules. |
 
@@ -65,7 +65,11 @@ Repository-wide references:
 | Status | Document | Use |
 | --- | --- | --- |
 | **SUPPORTING** | [`BATTLE-V1-IMPLEMENTATION-NOTES.md`](BATTLE-V1-IMPLEMENTATION-NOTES.md) | Battle V1 implementation and rollout context. It does not override the active Battle contract. |
-| **SUPPORTING / PREPARATION** | [`W2-GUILD-DONATION-V1-PREP.md`](W2-GUILD-DONATION-V1-PREP.md) | Frozen implementation preparation for W2 Guild Donation V1: approved balance/whitelist, migration shape, API/error/transaction contract, and QA gate. |
+| **SUPPORTING / RELEASE RECORD** | [`ARENA-V2-HUB-CORE-R1-PUBLICATION.md`](ARENA-V2-HUB-CORE-R1-PUBLICATION.md) | Published Arena Hub Core R1 asset paths, dimensions, manifest keys, and nine-slice contract. |
+| **SUPPORTING / GRAPHICS CONTRACT** | [`ARENA-V2-TIER-BADGES-BRIEF.md`](ARENA-V2-TIER-BADGES-BRIEF.md) | Approved/published Bronze, Silver, Gold, and Diamond Arena tier badge contract. |
+| **SUPPORTING / GRAPHICS TRACKING** | [`ARENA-V2-GRAPHICS-ASSET-CHECKLIST.md`](ARENA-V2-GRAPHICS-ASSET-CHECKLIST.md) | Arena V2 graphics publication/verification checklist and production release records. |
+| **SUPPORTING / SCHEMA CONTRACT** | [`ARENA-V2-W9-SCHEMA-CONTRACT.md`](ARENA-V2-W9-SCHEMA-CONTRACT.md) | Implemented Arena V2 W9 additive schema contract and integration constraints. |
+| **SUPPORTING / IMPLEMENTATION RECORD** | [`ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md`](ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md) | Closed W9 implementation/release record. Retain while it remains a path trigger in Battle Core parity CI. |
 
 ## 5. Read-by-task map
 
@@ -256,6 +260,6 @@ When an approved production contract changes:
 - WAVES 1-3: COMPLETE / PRODUCTION VERIFIED.
 - WAVE 4 Mythic Boss Weapons + Mythic Set System: COMPLETE / PRODUCTION VERIFIED.
 - WAVE 4.5 Server Authority / Economy Security: COMPLETE / PRODUCTION VERIFIED.
-- WAVE 5 Raid / Wings V2: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED.
+- WAVE 5 Raid / Wings V2: COMPLETE / PRODUCTION VERIFIED.
 - WAVE 5.5 Security Hardening: mandatory before WAVE 6.
 - Post-WAVE 6: Full Project Gap Audit + Security Re-Audit before WAVE 7 closeout.

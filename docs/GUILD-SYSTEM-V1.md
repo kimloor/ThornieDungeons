@@ -1,6 +1,6 @@
 # Guild System V1
 
-Status: **ACTIVE-PRODUCTION for Core and W2 Donation; W3 Guild Chat + Social Integration is implemented on `feat/w3-guild-chat-social-integration` and ready for QA.**
+Status: **ACTIVE-PRODUCTION — Core, W2 Donation, and W3 Guild Chat + Social Integration are released and Production verified.**
 
 Depends on `SOCIAL-SYSTEM-V1.md`. Guild membership is character-scoped.
 
@@ -173,7 +173,30 @@ Eligibility is server-configured by explicit `junkId`; `slot_type='junk'` alone 
 
 ## 9. Donation transaction
 
-W2 implementation candidate details, API shape, migration, and QA checks are tracked in `W2-GUILD-DONATION-V1-PREP.md`.
+The released W2 Donation contract is part of this document and no longer depends on a separate PREP file.
+
+Canonical implementation boundary:
+- migration: `migrations/auto/0019_guild_donation_v1.sql` (forward-only; historical migrations are not edited or replayed);
+- authoritative Guild progression remains `guilds.level` / `guilds.exp`, and personal contribution remains `guild_members.contribution`;
+- donation receipt/history rows are immutable audit/idempotency records, not a second mutable source of Guild EXP or contribution;
+- Donate API: `POST action=donateGuildItem` with `characterId`, explicit-whitelist `junkId`, integer `quantity` 1–999, and client-generated `donationId`;
+- the server consumes matching eligible stacks by `junkId`; clients do not choose one authoritative stack row;
+- History API: authenticated `GET action=getGuildDonationHistory` scoped to the current Guild/member;
+- stable donation errors: `missing_fields`, `invalid_quantity`, `not_guild_member`, `donation_item_not_allowed`, `insufficient_donation_items`, `donation_item_locked`, `donation_item_equipped`, and `donation_conflict`; existing auth/ownership errors remain unchanged.
+
+Atomic transaction order:
+1. verify authenticated owned character;
+2. verify current Guild membership;
+3. replay an already committed `donationId` instead of mutating again;
+4. validate explicit whitelist and quantity;
+5. read authoritative eligible junk stacks;
+6. consume exactly the requested amount from authoritative stack quantity;
+7. apply Guild EXP up to the Level 10 / 15,300 cumulative cap and derive the resulting Guild Level;
+8. increment personal contribution 1:1 with donated quantity;
+9. write the immutable donation receipt/audit row;
+10. return committed Guild/member/inventory values.
+
+The entire mutation is all-or-nothing. Network retries or double-taps using the same `donationId` must replay the original committed result, never consume or grant twice. Frontend donation UI does not optimistically consume inventory and refreshes authoritative Guild/inventory state after success.
 
 Donation is a high-impact inventory transaction and must be atomic/idempotency-safe.
 
