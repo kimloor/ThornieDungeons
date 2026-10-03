@@ -6205,7 +6205,9 @@ function BlacksmithOverlay({
   const [selectedId, setSelectedId] = useState(null);
   const [selectedEquippedSlot, setSelectedEquippedSlot] = useState(null);
   const [actionMsg, setActionMsg] = useState("");
-  const [animState, setAnimState] = useState(null); // 'success' | 'fail' | null
+  const [animState, setAnimState] = useState(null); // DOM fallback: 'success' | 'fail' | null
+  const [enhancePresentation, setEnhancePresentation] = useState({ token: 0, result: null });
+  const [enhancePhaserStatus, setEnhancePhaserStatus] = useState("loading");
   const [useProtectionStone, setUseProtectionStone] = useState(false);
   const animTimerRef = useRef(null);
   const [gridExpanded, setGridExpanded] = useState(false);
@@ -6242,6 +6244,9 @@ function BlacksmithOverlay({
     if (!detailTarget) return;
     const res = await Promise.resolve(onEnhance(detailTarget.id, useProtectionStone));
     setActionMsg(res.message);
+    if (res?.result) {
+      setEnhancePresentation(current => ({ token: current.token + 1, result: res.result }));
+    }
     playAnim(res.ok);
   };
   const doEmpower = async () => {
@@ -6322,7 +6327,13 @@ function BlacksmithOverlay({
       onClick: onOpenInventory
     }, "🎒 ไปที่กระเป๋าไอเทม"),
     /*#__PURE__*/React.createElement("div", { className: `md-item-detail ${anvilClass}` }, detailTarget ? /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️"),
+      /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-presentation" },
+        /*#__PURE__*/React.createElement(PhaserEnhanceResult, {
+          presentation: enhancePresentation,
+          onStatus: status => setEnhancePhaserStatus(status)
+        }),
+        enhancePhaserStatus !== "ready" && /*#__PURE__*/React.createElement("div", { className: "md-blacksmith-icon" }, animState === "success" ? "✨⚒️✨" : animState === "fail" ? "💥⚒️" : "⚒️")
+      ),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-name" }, /*#__PURE__*/React.createElement(GameIcon, { item: detailTarget, fallback: SLOT_ICON[detailTarget.type] || "📦", className: "md-game-icon md-detail-item-icon", alt: itemDisplayName(detailTarget) }), " ", itemDisplayName(detailTarget)),
       /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub" }, RARITY_LABEL[detailTarget.rarity] || detailTarget.rarity, selectedEquipped ? " · สวมใส่อยู่" : "", " · ", itemStatText(detailTarget) || "ไม่มีค่าสเตตัส"),
       MYTHIC_V2.signatureText(detailTarget) && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { color: "var(--gold)", fontWeight: 800 } }, `✦ ${MYTHIC_V2.signatureText(detailTarget)}`),
