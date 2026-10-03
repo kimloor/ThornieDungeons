@@ -1,6 +1,7 @@
 name: Cleanup merged branches
 
-# Manual only. Deletes remote branches that are already fully merged into the default branch.
+# Automatic after the current main SHA passes API deploy, Frontend deploy, and Battle Core parity.
+# Manual workflow_dispatch is retained for dry-run / maintenance.
 # Safe by default: dry_run=true only reports what WOULD be deleted.
 #
 # A branch is deleted only if ALL of these are true:
@@ -15,6 +16,13 @@ name: Cleanup merged branches
 #   git push origin <sha>:refs/heads/<branch-name>
 
 on:
+  workflow_run:
+    workflows:
+      - "Deploy ThornieDungeons API"
+      - "Deploy ThornieDungeons Frontend"
+      - "Battle Core parity"
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -40,14 +48,29 @@ concurrency:
 
 jobs:
   cleanup:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
-      DRY_RUN: ${{ inputs.dry_run }}
-      MIN_AGE_DAYS: ${{ inputs.min_age_days }}
-      KEEP: ${{ inputs.keep }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+      MIN_AGE_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.min_age_days || 0 }}
+      KEEP: ${{ github.event_name == 'workflow_dispatch' && inputs.keep || '' }}
     steps:
+      - name: Verify automatic release gates
+        if: ${{ github.event_name == 'workflow_run' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.workflow_run.head_sha }}"
+          current_main="$(gh api "repos/$REPO/branches/main" --jq .commit.sha)"
+          [ "$sha" = "$current_main" ] || { echo "Triggered SHA is no longer current main; skip cleanup."; exit 1; }
+          for workflow in "Deploy ThornieDungeons API" "Deploy ThornieDungeons Frontend" "Battle Core parity"; do
+            ok="$(gh run list --repo "$REPO" --commit "$sha" --workflow "$workflow" --limit 20 --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')"
+            [ "$ok" -gt 0 ] || { echo "Release gate not yet successful: $workflow"; exit 1; }
+          done
+          echo "All release gates passed for $sha."
+
       - name: Find and delete merged branches
         shell: bash
         run: |
