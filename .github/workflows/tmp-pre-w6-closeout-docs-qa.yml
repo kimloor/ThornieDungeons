@@ -1,0 +1,24 @@
+name: Temporary pre-W6 closeout docs QA
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diff check
+        run: git diff --check
+      - name: Verify closeout states
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'COMPLETE / PRE-W6 GATE PASSED' docs/PRE-W6-READINESS-AUDIT-2026-10-03.md
+          grep -Fq 'READY FOR SEPARATE PROJECT LEAD APPROVAL — NOT STARTED' docs/ACTIVE-DEVELOPMENT-ROADMAP-V1.md
+          grep -Fq 'Pre-WAVE 6 Readiness Audit: COMPLETE / GATE PASSED' docs/PROJECT-INDEX.md
