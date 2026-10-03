@@ -236,7 +236,7 @@ test("Dungeon battle start is the trust root for floor eligibility and old-floor
 
 test("Dungeon checkpoint validator accepts canonical runtime identity without optional definition aliases", async () => {
   const api = worker(), db = database();
-  const registration = await post(api, db, "", { action: "register", id: "Checkpoint_Runtime_QA", password: "pass", confirmPassword: "pass" });
+  const registration = await post(api, db, "", { action: "register", id: "ChkRuntimeQA", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Checkpoint Runtime" });
   const characterId = created.body.character.character_id;
@@ -310,7 +310,7 @@ test("Dungeon checkpoint validator accepts canonical runtime identity without op
 
 test("Dungeon checkpoint validator accepts server-issued modifier encounters without trusting client modifier identity", async () => {
   const api = worker(), db = database();
-  const registration = await post(api, db, "", { action: "register", id: "Checkpoint_Modifier_QA", password: "pass", confirmPassword: "pass" });
+  const registration = await post(api, db, "", { action: "register", id: "ChkModifierQA", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Checkpoint Modifier" });
   const characterId = created.body.character.character_id;
