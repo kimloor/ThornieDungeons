@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — WAVES 1-5.1 complete in Production; WAVE 5.5 Security Hardening is the next execution gate**
+Status: **ACTIVE-EXECUTION — WAVES 1-5.5 complete / Production verified; next gate requires Project Lead approval before WAVE 6 cutover**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -1022,7 +1022,7 @@ QA / release result:
 ---
 
 ## WAVE 5.5 — Security Hardening
-**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED**
+**Status: COMPLETE / PRODUCTION VERIFIED — 2026-10-03**
 **Risk: HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory**
@@ -1044,6 +1044,12 @@ Process/security:
 
 Exit condition:
 - focused security regression, build and deployment validation pass before destructive W6 cutover.
+
+Release result:
+- PR #48 merged to `main` as `96ba68a5e79112f1cf5343e6eb19696c73b30e2b`;
+- post-merge API deployment, Frontend production deployment, and Battle Core parity all completed successfully on that merge SHA;
+- current-main closeout rerun passed focused W5.5 security regression (40/40), full suite (521/521), build/generated-index checks, `git diff --check`, and Worker syntax;
+- no W6 destructive behavior was started as part of this closeout.
 
 ---
 
