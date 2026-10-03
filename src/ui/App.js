@@ -2150,14 +2150,14 @@ function ThornieDungeons() {
     hydrateAuthoritativeBlacksmithSnapshot(res);
     const result = res.mutation || {};
     if (mutation.type === "enhance") {
-      if (result.success) return { ok: true, message: `✨ ตีบวกสำเร็จ! +${result.levelAfter}` };
-      if (result.protectionConsumed) return { ok: false, message: `🛡️ ตีบวกล้มเหลว แต่ Protection Stone ป้องกันการลดระดับไว้ (+${result.levelAfter})` };
-      if (result.downgraded) return { ok: false, message: `💥 ตีบวกล้มเหลว ลดเหลือ +${result.levelAfter}` };
-      return { ok: false, message: `💢 ตีบวกล้มเหลว ระดับคงเดิม +${result.levelAfter}` };
+      if (result.success) return { ok: true, result, message: `✨ ตีบวกสำเร็จ! +${result.levelAfter}` };
+      if (result.protectionConsumed) return { ok: false, result, message: `🛡️ ตีบวกล้มเหลว แต่ Protection Stone ป้องกันการลดระดับไว้ (+${result.levelAfter})` };
+      if (result.downgraded) return { ok: false, result, message: `💥 ตีบวกล้มเหลว ลดเหลือ +${result.levelAfter}` };
+      return { ok: false, result, message: `💢 ตีบวกล้มเหลว ระดับคงเดิม +${result.levelAfter}` };
     }
-    if (mutation.type === "empower_open") return { ok: true, message: `🔮 เสริมพลังสำเร็จ! ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` };
-    if (mutation.type === "empower_lock") return { ok: true, message: result.locked ? "🔒 ล็อกออฟชั่นแล้ว" : "🔓 ปลดล็อกออฟชั่นแล้ว" };
-    return { ok: true, message: `🔄 รีโรลออฟชั่นสำเร็จ! (ใช้ Mana Ore ×1 และ Gold ${result.cost?.gold || 0})` };
+    if (mutation.type === "empower_open") return { ok: true, result, message: `🔮 เสริมพลังสำเร็จ! ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` };
+    if (mutation.type === "empower_lock") return { ok: true, result, message: result.locked ? "🔒 ล็อกออฟชั่นแล้ว" : "🔓 ปลดล็อกออฟชั่นแล้ว" };
+    return { ok: true, result, message: `🔄 รีโรลออฟชั่นสำเร็จ! (ใช้ Mana Ore ×1 และ Gold ${result.cost?.gold || 0})` };
   }
   function toggleItemFavorite(itemId) {
     const found = findItemAndLocation(itemId);
@@ -2190,6 +2190,7 @@ function ThornieDungeons() {
     const wantsStone = useProtectionStone === true || (level >= ENHANCE_DOWNGRADE_LEVEL && (save.protectionStones || 0) > 0);
     return mutateLegacyBlacksmith(itemId, { type: "enhance", useProtectionStone: wantsStone }).then(({ ok, result }) => ({
       ok: !!ok && !!result.success,
+      result,
       message: !ok ? "ทำรายการ Blacksmith ไม่สำเร็จ" : result.success ? `✨ ตีบวกสำเร็จ! ${it.name} +${result.levelAfter}` : result.protectionConsumed ? `🛡️ ตีบวกล้มเหลว แต่หินป้องกันช่วยไว้! ${it.name} ยังคง +${result.levelAfter}` : result.levelAfter < level ? `💥 ตีบวกล้มเหลว! ${it.name} ร่วงเหลือ +${result.levelAfter}` : `💢 ตีบวกล้มเหลว... (${it.name} ยังคง +${result.levelAfter})`
     }));
   }
