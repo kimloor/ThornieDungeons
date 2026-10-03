@@ -5,10 +5,15 @@ Scope: PNG icon-type assets under `r2-upload/ui/**`; decorative panels, buttons,
 large hub emblem, backgrounds, VFX, Hero frames and sprites are excluded.
 The CSV companion contains every audited path, manifest key, dimensions, bytes,
 alpha/padding, PASS/REVIEW/FAIL, reason, recommendation and final action.
+The six optimized keys use a `?v=g10_5_r1` manifest URL revision to bypass
+the R2 Worker's one-day browser cache; underlying keys and paths remain unchanged.
 
 - Audited: 74; PASS 64; REVIEW 3; FAIL 7.
 - Audited total: 18,514,997 → 11,307,111 bytes (7,207,886 bytes saved).
 - Optimized candidates: 6; same PNG path and manifest key.
+- Published in `33510ed345af2ef0b6d64fa3b34bf4f9f2061d40`; R2 upload workflow downloaded and SHA-256 verified all six.
+- Production direct image URLs decoded at expected 256/512 px; authenticated mobile
+  gameplay surfaces remain unverified and are not claimed as PASS.
 
 ## Optimization candidates
 

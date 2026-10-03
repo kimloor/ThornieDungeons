@@ -13,6 +13,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 UI = ROOT / "r2-upload/ui"
 BASELINE = "aef8a1af548310770cfc9ad3d4acdedd012a8061"
+PUBLISHED_COMMIT = "33510ed345af2ef0b6d64fa3b34bf4f9f2061d40"
 REPORT = ROOT / "docs/G10-5-ICON-ASSET-AUDIT.md"
 CSV = ROOT / "docs/G10-5-ICON-ASSET-AUDIT.csv"
 OPTIMIZED = {
@@ -118,7 +119,7 @@ def inspect(path, refs):
         action = "Retain"
         reason = "Within shared production budget; full decode succeeds"
     if path in OPTIMIZED:
-        action = "Optimized same-path PNG; visual and remote QA pending" if size != original else "Optimization planned"
+        action = "Maintain same-path production PNG and versioned manifest URL" if size != original else "Optimization planned"
     return {
         "asset_path": "r2-upload/" + path,
         "manifest_key": "; ".join(refs.get(path, [])) or "No manifest key (inspect runtime reference)",
@@ -132,7 +133,7 @@ def inspect(path, refs):
         "classification": status,
         "issue_reason": reason,
         "recommended_action": action,
-        "final_action": "Same-path optimized candidate" if path in OPTIMIZED and size != original else "Retained; replacement blocked pending intact master" if error else "Retained",
+        "final_action": f"Published {PUBLISHED_COMMIT[:7]}; R2 SHA-256 verified" if path in OPTIMIZED and size != original else "Retained; replacement blocked pending intact master" if error else "Retained",
         "exception_reason": "None; review only" if status == "REVIEW" else "None",
     }
 
@@ -143,7 +144,7 @@ def main():
     rows = [inspect(p, refs) for p in paths if in_scope(p)]
     counts = Counter(row["classification"] for row in rows)
     with CSV.open("w", newline="") as out:
-        writer = csv.DictWriter(out, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(out, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     before = sum(row["before_bytes"] for row in rows)
@@ -159,10 +160,15 @@ def main():
         "large hub emblem, backgrounds, VFX, Hero frames and sprites are excluded.",
         "The CSV companion contains every audited path, manifest key, dimensions, bytes,",
         "alpha/padding, PASS/REVIEW/FAIL, reason, recommendation and final action.",
+        "The six optimized keys use a `?v=g10_5_r1` manifest URL revision to bypass",
+        "the R2 Worker's one-day browser cache; underlying keys and paths remain unchanged.",
         "",
         f"- Audited: {len(rows)}; PASS {counts['PASS']}; REVIEW {counts['REVIEW']}; FAIL {counts['FAIL']}.",
         f"- Audited total: {before:,} → {after:,} bytes ({before-after:,} bytes saved).",
         f"- Optimized candidates: {len(optimized)}; same PNG path and manifest key.",
+        f"- Published in `{PUBLISHED_COMMIT}`; R2 upload workflow downloaded and SHA-256 verified all six.",
+        "- Production direct image URLs decoded at expected 256/512 px; authenticated mobile",
+        "  gameplay surfaces remain unverified and are not claimed as PASS.",
         "",
         "## Optimization candidates",
         "",
