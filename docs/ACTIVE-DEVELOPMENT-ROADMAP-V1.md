@@ -1266,7 +1266,7 @@ QA gate:
 
 ---
 
-## G4-G10 — Graphics support lane
+## G4-G11 — Graphics support lane
 **Risk: LOW to MEDIUM depending on runtime binding**
 
 Completed graphics support:
@@ -1288,6 +1288,7 @@ Next graphics batch:
 - Elite uses the same Monster base icon with a runtime Elite accent/frame/glow; do not create a second species-specific icon set.
 - Boss uses the dedicated Boss icon and does not use the normal Monster numbering rule unless a future encounter contract explicitly permits multiple bosses.
 - ATB icons are presentation only and must not alter turn order, targeting or actor identity authority.
+- G10 production exports must pass the shared icon asset budget in `r2-upload/README.md` before publication.
 
 - **G11 — Robot + Skeleton Set Item Icons — QUEUED / LOW (Graphics), MEDIUM when runtime-bound:** create the missing inventory/equipment item icons for Robot and Skeleton after G10.
   - Robot: weapon / helmet / chest / gloves / boots / accessory.
@@ -1295,6 +1296,7 @@ Next graphics batch:
   - Reuse the approved Hero V5 Robot/Skeleton visual identity; do not redesign either set.
   - Preserve the existing Azure item-icon set unchanged.
   - After asset publication, runtime item-icon resolution must support `setId = azure | robot | skeleton`; the current Azure-only branch is incomplete for G11.
+  - G11 production exports must pass the shared icon asset budget in `r2-upload/README.md` before publication.
 
 Graphics must not redesign mechanics or publish guessed asset paths.
 

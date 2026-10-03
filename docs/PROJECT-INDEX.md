@@ -218,7 +218,9 @@ Until a dedicated contract exists, inspect latest `main`, the latest approved ta
 ### Graphics
 
 - Read the relevant visual contract, current execution wave, and R2 rules.
+- All new/replaced production icons must pass the shared **Production icon asset budget** in `r2-upload/README.md` before publication; keep large editable masters separate from runtime exports.
 - Current Graphics entry point is **G10 Shared ATB Actor Icon Pack**: Hero, Pet, Normal Monster/Elite, and Boss. Arena-only Hero/Pet fallback ATB icons are cancelled. Multi-enemy Monster entries are distinguished by runtime spawn-slot marker 1/2/3; Elite uses a runtime accent on the shared Monster icon.
+- **G11 Robot + Skeleton Set Item Icons** is queued after G10 and uses the same shared icon budget.
 - Do not infer asset names, manifest keys, or paths.
 
 ### QA
