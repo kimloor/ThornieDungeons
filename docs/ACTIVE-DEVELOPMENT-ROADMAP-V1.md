@@ -1266,17 +1266,28 @@ QA gate:
 
 ---
 
-## G4-G9 — Graphics support lane
+## G4-G10 — Graphics support lane
 **Risk: LOW to MEDIUM depending on runtime binding**
 
-Graphics runs only where a wave has a real asset dependency:
+Completed graphics support:
+- **G4 — Reward V2 icons — COMPLETE / PRODUCTION:** Reward V2 material/item icons required by the released wave are complete.
+- **G5 — Boss Weapon assets — COMPLETE / PRODUCTION:** Spirit Greatsword / Lavalon Sword / Icicle Longsword item icons and synchronized Hero V5 weapon layers are complete.
+- **G6 — Mythic Set binding/finish — COMPLETE / PRODUCTION:** approved Azure/Robot/Skeleton assets and required runtime bindings are complete.
+- **G7 — Wings V2 audit/assets — COMPLETE / PRODUCTION:** Azure/Robot/Skeleton Wing visuals/icons and required runtime support are complete.
+- **G8 — W10 presentation assets — COMPLETE / PRODUCTION:** Victory/Defeat, Boss/Enrage and Raid presentation assets required by W7A are complete.
+- **G9 — W11 presentation assets — COMPLETE / PRODUCTION:** Enhance/Craft presentation assets required by W7B are complete. Summoning remains separately deferred behind its future gameplay contract and is not unfinished G9 work.
 
-- **G4 — Reward V2 icons — LOW:** Earth/Fire/Water Stone and other confirmed missing icons.
-- **G5 — Boss Weapon assets — MEDIUM:** Spirit Greatsword / Lavalon Sword / Icicle Longsword icons and synchronized Hero V5 weapon layers.
-- **G6 — Mythic Set binding/finish — MEDIUM:** reuse approved Azure/Robot/Skeleton assets; fill missing icons/bindings only.
-- **G7 — Wings V2 audit/assets — MEDIUM:** verify family Wing runtime layers/icons and fill real gaps.
-- **G8 — W10 presentation assets — MEDIUM:** Victory/Boss/Raid VFX/presentation.
-- **G9 — W11 presentation assets — MEDIUM:** Enhance/Craft/Summon VFX.
+Next graphics batch:
+- **G10 — Shared ATB Actor Icon Pack — NEXT / LOW (Graphics), MEDIUM when runtime-bound:** create one coherent small-icon family for:
+  1. Hero
+  2. Pet
+  3. Normal Monster / Elite
+  4. Boss
+- Use the shared Battle ATB/turn-order visual family; do not create Arena-only fallback Hero/Pet icons.
+- Monster identity rule for multi-enemy encounters: reuse the same Monster icon family and distinguish simultaneous enemies by runtime spawn-slot marker **1 / 2 / 3**. Numbers are runtime overlays, never baked into the asset.
+- Elite uses the same Monster base icon with a runtime Elite accent/frame/glow; do not create a second species-specific icon set.
+- Boss uses the dedicated Boss icon and does not use the normal Monster numbering rule unless a future encounter contract explicitly permits multiple bosses.
+- ATB icons are presentation only and must not alter turn order, targeting or actor identity authority.
 
 Graphics must not redesign mechanics or publish guessed asset paths.
 

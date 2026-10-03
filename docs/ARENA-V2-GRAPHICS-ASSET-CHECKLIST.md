@@ -579,20 +579,40 @@ Most Arena Battle UI should reuse the existing shared Battle pack.
     - runtime supplies text/countdown
   - Must work with the 10-second Surrender cooldown presentation.
 
-## 19. Optional fallback actor icons
+## 19. Shared ATB actor icon pack — NEXT
 
-These are **optional** and should be created only if runtime presentation needs them.
+The previous optional Arena-only Hero/Pet fallback icons are **CANCELLED**. Do not create `icon_hero_fallback.png` or `icon_pet_fallback.png`.
 
-- [ ] **Hero fallback ATB icon — OPTIONAL / DEFERRED (not required by current runtime)**
-  - Proposed path: `r2-upload/ui/arena/battle/icon_hero_fallback.png`
-  - Use only when a real Hero portrait/head asset cannot be resolved.
-  - Generic silhouette only.
-  - Never replace the real actor portrait when available.
+Create a shared Battle ATB actor icon family instead:
 
-- [ ] **Pet fallback ATB icon — OPTIONAL / DEFERRED (not required by current runtime)**
-  - Proposed path: `r2-upload/ui/arena/battle/icon_pet_fallback.png`
-  - Use only when real Pet icon/presentation cannot be resolved.
-  - Never bake a specific Pet into the fallback.
+- [ ] **Hero ATB icon**
+  - Shared Battle presentation asset.
+  - Readable as the player Hero at small ATB/turn-order size.
+
+- [ ] **Pet ATB icon**
+  - Shared Battle presentation asset.
+  - Must read as a companion/pet, distinct from Hero and Monster.
+
+- [ ] **Normal Monster / Elite ATB icon**
+  - One shared Monster base icon family; do not create one icon per monster species.
+  - Normal uses the base presentation.
+  - Elite uses the same base icon with runtime Elite accent/frame/glow.
+  - When multiple enemies are present, runtime overlays spawn-slot marker **1 / 2 / 3** so each ATB entry maps to the correct actor.
+  - Spawn-slot markers are dynamic UI/presentation overlays and must not be baked into the artwork.
+
+- [ ] **Boss ATB icon**
+  - Dedicated Boss identity, visually heavier than Normal/Elite.
+  - Boss does not use the normal Monster numbering rule unless a future approved encounter contract supports multiple simultaneous bosses.
+
+Asset location:
+- use the existing shared Battle asset family under `r2-upload/ui/battle/`;
+- inspect current comparable assets and manifest before locking final filenames, dimensions or keys;
+- do not publish guessed manifest paths.
+
+Runtime contract:
+- icons are presentation-only;
+- actor ID / turn order / target legality remain authoritative runtime data;
+- icon choice must never determine gameplay identity.
 
 ---
 
@@ -770,8 +790,17 @@ Recommended order:
 ### Graphics Batch D — Arena Battle additions
 
 - [x] Surrender button
-- [ ] Hero fallback ATB icon — only if runtime needs it
-- [ ] Pet fallback ATB icon — only if runtime needs it
+- [x] Arena-only Hero fallback ATB icon — CANCELLED by Project Lead; replaced by shared G10 ATB Actor Icon Pack
+- [x] Arena-only Pet fallback ATB icon — CANCELLED by Project Lead; replaced by shared G10 ATB Actor Icon Pack
+
+### Graphics Batch E — Shared ATB Actor Icon Pack — NEXT
+
+- [ ] Hero ATB icon
+- [ ] Pet ATB icon
+- [ ] Normal Monster / Elite ATB icon
+- [ ] Boss ATB icon
+
+**Multi-monster rule:** runtime spawn-slot marker 1/2/3 distinguishes simultaneous Monster actors; Elite uses runtime accent/frame/glow on the shared Monster icon.
 
 ---
 
@@ -891,7 +920,7 @@ Runtime scope:
 - Result chooses emblem from authoritative settlement outcome (`win/victory`, `loss/defeat`, `draw`);
 - rating, Arena Coin, reward/milestone and resolution values remain authoritative server data;
 - Battle Core, resolver, API and shared Phaser battlefield are unchanged;
-- optional Hero/Pet fallback ATB art remains deferred.
+- Arena-only Hero/Pet fallback ATB art is cancelled; the next graphics work is the shared G10 ATB Actor Icon Pack.
 
 Manifest and final asset metadata are recorded in `r2-upload/ui/arena/GRAPHICS_CONTRACT.json` → `battleResultR1`.
 

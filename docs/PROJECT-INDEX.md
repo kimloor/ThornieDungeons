@@ -218,7 +218,7 @@ Until a dedicated contract exists, inspect latest `main`, the latest approved ta
 ### Graphics
 
 - Read the relevant visual contract, current execution wave, and R2 rules.
-- Current post-W9R graphics entry point is G4 Reward V2 icons unless a newer explicit task overrides it.
+- Current Graphics entry point is **G10 Shared ATB Actor Icon Pack**: Hero, Pet, Normal Monster/Elite, and Boss. Arena-only Hero/Pet fallback ATB icons are cancelled. Multi-enemy Monster entries are distinguished by runtime spawn-slot marker 1/2/3; Elite uses a runtime accent on the shared Monster icon.
 - Do not infer asset names, manifest keys, or paths.
 
 ### QA
