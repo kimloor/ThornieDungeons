@@ -1068,13 +1068,14 @@ This pre-W6 audit does not replace the mandatory post-W6 Full Project Gap Audit 
 ---
 
 ## WAVE 6 — V2 Production Cutover + Legacy Special-Item Cleanup
-**Status: READY FOR SEPARATE PROJECT LEAD APPROVAL — NOT STARTED**
+**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED — PRODUCTION DESTRUCTIVE CUTOVER NOT YET APPROVED**
 **Risk: VERY HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory; Project Lead release approval mandatory**
 
 Scope:
-- migrate temporary Azure QA/Test stock to the V2 item model;
+- remove temporary Azure QA/Test legacy stock/generator from the client source;
+- migrate Daily Login Day 7 Azure reward to the canonical Mythic V2 item model;
 - remove obsolete legacy special-equipment behavior;
 - delete owned legacy Raid Wings ★1-★5;
 - delete owned legacy Azure/crafted Set equipment using the old stat/rarity model;
