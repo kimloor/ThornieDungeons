@@ -3657,7 +3657,9 @@ function ArenaV2Screen({
     kind: item.kind === "pet" ? "pet" : item.kind === "hero" ? "player" : "monster",
     name: item.name || item.id,
     icon: arenaTurnOrderIcon(item, match?.snapshot),
-    speed: item.speed || "—"
+    speed: item.speed || "—",
+    isBoss: false,
+    isElite: false
   }));
   const arenaPet = playerUnits.find(unit => unit.kind === "pet") || null;
   const arenaEnemyUnits = enemyUnits.map(unit => ({ ...unit, uid: unit.id }));
@@ -4967,6 +4969,26 @@ function turnOrderUnitAlive(item, unitsById, monsters, petCombat) {
   return true;
 }
 
+function TurnOrderActorIcon({ item, monsterSlot = null }) {
+  const role = item.isBoss ? "boss" : item.kind;
+  const src = typeof battleActorIconUrl === "function" ? battleActorIconUrl(role) : "";
+  const [failedSrc, setFailedSrc] = useState("");
+  const fallback = item.icon || (role === "player" ? "🧙" : role === "pet" ? "🐾" : role === "boss" ? "👑" : "👹");
+  const showAsset = Boolean(src && failedSrc !== src);
+  return /*#__PURE__*/React.createElement("span", {
+    className: `md-turn-queue-icon ${item.isElite && !item.isBoss ? "elite" : ""}`
+  }, showAsset ? /*#__PURE__*/React.createElement("img", {
+    src,
+    alt: "",
+    "aria-hidden": "true",
+    draggable: false,
+    onError: () => setFailedSrc(src)
+  }) : fallback, monsterSlot != null && !item.isBoss && /*#__PURE__*/React.createElement("b", {
+    className: "md-turn-queue-spawn-slot",
+    "aria-label": `Enemy ${monsterSlot}`
+  }, monsterSlot));
+}
+
 function TurnOrderBar({ queue, activeKey, round, monsters = [], petCombat, heroName, unitsById = null }) {
   const seenKeys = new Set();
   const visible = (Array.isArray(queue) ? queue : []).filter(item => {
@@ -4979,6 +5001,7 @@ function TurnOrderBar({ queue, activeKey, round, monsters = [], petCombat, heroN
   const ordered = visible.slice(activeIndex);
   const overflow = Math.max(0, ordered.length - 4);
   const slots = Array.from({ length: 4 }, (_, index) => ordered[index] || null);
+  const numberedMonsterUids = (monsters || []).filter(monster => !monster.isBoss).map(monster => monster.uid);
   const snapshotKey = `${Number(round) || 0}:${activeKey || "idle"}:${slots.map(item => item?.key || "empty").join("|")}`;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-turn-queue"
@@ -4997,9 +5020,10 @@ function TurnOrderBar({ queue, activeKey, round, monsters = [], petCombat, heroN
       className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} md-battle-art`,
       style: battleUiStyle("turnOrderSlot"),
       title: `${item.kind === "player" ? heroName : item.name} · Speed ${item.speed}`
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "md-turn-queue-icon"
-    }, item.icon), i === 3 && overflow > 0 && /*#__PURE__*/React.createElement("i", {
+    }, /*#__PURE__*/React.createElement(TurnOrderActorIcon, {
+      item,
+      monsterSlot: item.kind === "monster" && !item.isBoss && numberedMonsterUids.length > 1 ? numberedMonsterUids.indexOf(item.uid) + 1 || null : null
+    }), i === 3 && overflow > 0 && /*#__PURE__*/React.createElement("i", {
       className: "md-turn-queue-more"
     }, "+", overflow));
   }));

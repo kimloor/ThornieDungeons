@@ -951,7 +951,17 @@ function ThornieDungeons() {
   function battleQueueForUi(state) {
     return BATTLE_CORE_V1.upcomingActions(state, 4).map(id => {
       const unit = state.units[id];
-      return { key: unit.kind === "hero" ? "player" : id, kind: unit.kind === "hero" ? "player" : unit.kind === "pet" ? "pet" : "monster", uid: unit.side === "enemy" ? id : undefined, name: unit.name, icon: unit.kind === "hero" ? "🧙" : unit.kind === "pet" ? (unit.icon || "🐾") : "👹", speed: unit.speed };
+      const sourceMonster = unit.side === "enemy" ? monstersRef.current.find(monster => monster.uid === id) : null;
+      return {
+        key: unit.kind === "hero" ? "player" : id,
+        kind: unit.kind === "hero" ? "player" : unit.kind === "pet" ? "pet" : "monster",
+        uid: unit.side === "enemy" ? id : undefined,
+        name: unit.name,
+        icon: unit.kind === "hero" ? "🧙" : unit.kind === "pet" ? (unit.icon || "🐾") : "👹",
+        speed: unit.speed,
+        isBoss: unit.kind === "boss" || !!sourceMonster?.isBoss,
+        isElite: !!(unit.isElite || sourceMonster?.isElite || sourceMonster?.isEliteBoss)
+      };
     });
   }
   function applyCoreBattleState(next, persistCheckpoint = true) {
@@ -1308,13 +1318,7 @@ function ThornieDungeons() {
       },
       enemies: spawned.map((monster, index) => DUNGEON_V2.toDungeonV2BattleEnemy(monster, index))
     });
-    if (battleAuthorization) {
-      initialBattle.serverContext = battleAuthorization.context;
-      // Keep the server-authorized encounter role on the real Battle Core
-      // checkpoint.  This is a derived identity field, not client authority;
-      // the Worker still replaces it with the stored context on save.
-      initialBattle.encounterType = battleAuthorization.context.role;
-    }
+    if (battleAuthorization) initialBattle.serverContext = battleAuthorization.context;
     // Apply the Dungeon V2 enrage boundary before the first resumed checkpoint;
     // the serialized unit flag makes this exact-once across save/reload/resume.
     DUNGEON_V2.applyDungeonV2BossEnrage(initialBattle);

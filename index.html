@@ -182,7 +182,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.37";
+  content: "Ver 1.0.38";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1370,7 +1370,14 @@ body::after {
    dynamic icon accents shared by its four snapshot cells. */
 .md-turn-queue-icon {
   width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,209,102,0.35);
+  position: relative; font-size: 11px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,209,102,0.35);
+}
+.md-turn-queue-icon > img { width: 100%; height: 100%; object-fit: contain; }
+.md-turn-queue-icon.elite { border-color: var(--elite); box-shadow: 0 0 6px rgba(255,184,77,.78); }
+.md-turn-queue-spawn-slot {
+  position: absolute; right: -4px; bottom: -4px; min-width: 12px; height: 12px; padding: 0 2px;
+  border: 1px solid #f5d795; border-radius: 999px; background: #7b2737; color: #fff;
+  font: 900 8px/10px 'Baloo 2'; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.7);
 }
 .md-turn-queue-item.player .md-turn-queue-icon { border-color: var(--gold); }
 .md-turn-queue-item.pet .md-turn-queue-icon { border-color: var(--violet-deep); }
@@ -3059,6 +3066,15 @@ function battleUiStyle(key) {
   return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
 }
 
+// Shared by Dungeon Battle and Arena turn-order presentation.
+function battleActorIconUrl(kind) {
+  const normalized = kind === "player" || kind === "hero" ? "hero"
+    : kind === "pet" ? "pet"
+    : kind === "boss" ? "boss"
+    : "monster";
+  return optionalAsset(`battleUi.actorIcons.${normalized}`);
+}
+
 function battleVfxFrames(key) {
   const frames = String(key || "").split(".").reduce((obj, part) => obj?.[part], ASSETS?.battleVfx);
   return Array.isArray(frames) ? frames.filter(path => typeof path === "string" && path).map(assetUrl) : [];
@@ -3117,7 +3133,8 @@ function battleUiAssetUrls() {
   return [
     "background", "topBar", "turnOrderSlot", "quickSlotFrame", "hpStatusFrame",
     "targetSelectedMarker", "buttons.auto", "buttons.flee", "buttons.settings",
-    "buttons.attack", "buttons.skip", "buttons.speedX1", "buttons.speedX2"
+    "buttons.attack", "buttons.skip", "buttons.speedX1", "buttons.speedX2",
+    "actorIcons.hero", "actorIcons.pet", "actorIcons.monster", "actorIcons.boss"
   ]
     .map(key => optionalAsset(`battleUi.${key}`)).filter(Boolean);
 }
@@ -14354,7 +14371,17 @@ function ThornieDungeons() {
   function battleQueueForUi(state) {
     return BATTLE_CORE_V1.upcomingActions(state, 4).map(id => {
       const unit = state.units[id];
-      return { key: unit.kind === "hero" ? "player" : id, kind: unit.kind === "hero" ? "player" : unit.kind === "pet" ? "pet" : "monster", uid: unit.side === "enemy" ? id : undefined, name: unit.name, icon: unit.kind === "hero" ? "🧙" : unit.kind === "pet" ? (unit.icon || "🐾") : "👹", speed: unit.speed };
+      const sourceMonster = unit.side === "enemy" ? monstersRef.current.find(monster => monster.uid === id) : null;
+      return {
+        key: unit.kind === "hero" ? "player" : id,
+        kind: unit.kind === "hero" ? "player" : unit.kind === "pet" ? "pet" : "monster",
+        uid: unit.side === "enemy" ? id : undefined,
+        name: unit.name,
+        icon: unit.kind === "hero" ? "🧙" : unit.kind === "pet" ? (unit.icon || "🐾") : "👹",
+        speed: unit.speed,
+        isBoss: unit.kind === "boss" || !!sourceMonster?.isBoss,
+        isElite: !!(unit.isElite || sourceMonster?.isElite || sourceMonster?.isEliteBoss)
+      };
     });
   }
   function battleLogForUi(entry, state) {
@@ -14723,13 +14750,7 @@ function ThornieDungeons() {
       },
       enemies: spawned.map((monster, index) => DUNGEON_V2.toDungeonV2BattleEnemy(monster, index))
     });
-    if (battleAuthorization) {
-      initialBattle.serverContext = battleAuthorization.context;
-      // Keep the server-authorized encounter role on the real Battle Core
-      // checkpoint.  This is a derived identity field, not client authority;
-      // the Worker still replaces it with the stored context on save.
-      initialBattle.encounterType = battleAuthorization.context.role;
-    }
+    if (battleAuthorization) initialBattle.serverContext = battleAuthorization.context;
     // Apply the Dungeon V2 enrage boundary before the first resumed checkpoint;
     // the serialized unit flag makes this exact-once across save/reload/resume.
     DUNGEON_V2.applyDungeonV2BossEnrage(initialBattle);
@@ -20046,7 +20067,9 @@ function ArenaV2Screen({
     kind: item.kind === "pet" ? "pet" : item.kind === "hero" ? "player" : "monster",
     name: item.name || item.id,
     icon: arenaTurnOrderIcon(item, match?.snapshot),
-    speed: item.speed || "—"
+    speed: item.speed || "—",
+    isBoss: false,
+    isElite: false
   }));
   const arenaPet = playerUnits.find(unit => unit.kind === "pet") || null;
   const arenaEnemyUnits = enemyUnits.map(unit => ({ ...unit, uid: unit.id }));
@@ -21356,6 +21379,26 @@ function turnOrderUnitAlive(item, unitsById, monsters, petCombat) {
   return true;
 }
 
+function TurnOrderActorIcon({ item, monsterSlot = null }) {
+  const role = item.isBoss ? "boss" : item.kind;
+  const src = typeof battleActorIconUrl === "function" ? battleActorIconUrl(role) : "";
+  const [failedSrc, setFailedSrc] = useState("");
+  const fallback = item.icon || (role === "player" ? "🧙" : role === "pet" ? "🐾" : role === "boss" ? "👑" : "👹");
+  const showAsset = Boolean(src && failedSrc !== src);
+  return /*#__PURE__*/React.createElement("span", {
+    className: `md-turn-queue-icon ${item.isElite && !item.isBoss ? "elite" : ""}`
+  }, showAsset ? /*#__PURE__*/React.createElement("img", {
+    src,
+    alt: "",
+    "aria-hidden": "true",
+    draggable: false,
+    onError: () => setFailedSrc(src)
+  }) : fallback, monsterSlot != null && !item.isBoss && /*#__PURE__*/React.createElement("b", {
+    className: "md-turn-queue-spawn-slot",
+    "aria-label": `Enemy ${monsterSlot}`
+  }, monsterSlot));
+}
+
 function TurnOrderBar({ queue, activeKey, round, monsters = [], petCombat, heroName, unitsById = null }) {
   const seenKeys = new Set();
   const visible = (Array.isArray(queue) ? queue : []).filter(item => {
@@ -21368,6 +21411,7 @@ function TurnOrderBar({ queue, activeKey, round, monsters = [], petCombat, heroN
   const ordered = visible.slice(activeIndex);
   const overflow = Math.max(0, ordered.length - 4);
   const slots = Array.from({ length: 4 }, (_, index) => ordered[index] || null);
+  const numberedMonsterUids = (monsters || []).filter(monster => !monster.isBoss).map(monster => monster.uid);
   const snapshotKey = `${Number(round) || 0}:${activeKey || "idle"}:${slots.map(item => item?.key || "empty").join("|")}`;
   return /*#__PURE__*/React.createElement("div", {
     className: "md-turn-queue"
@@ -21386,9 +21430,10 @@ function TurnOrderBar({ queue, activeKey, round, monsters = [], petCombat, heroN
       className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} md-battle-art`,
       style: battleUiStyle("turnOrderSlot"),
       title: `${item.kind === "player" ? heroName : item.name} · Speed ${item.speed}`
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "md-turn-queue-icon"
-    }, item.icon), i === 3 && overflow > 0 && /*#__PURE__*/React.createElement("i", {
+    }, /*#__PURE__*/React.createElement(TurnOrderActorIcon, {
+      item,
+      monsterSlot: item.kind === "monster" && !item.isBoss && numberedMonsterUids.length > 1 ? numberedMonsterUids.indexOf(item.uid) + 1 || null : null
+    }), i === 3 && overflow > 0 && /*#__PURE__*/React.createElement("i", {
       className: "md-turn-queue-more"
     }, "+", overflow));
   }));

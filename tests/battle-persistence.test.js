@@ -367,14 +367,14 @@ test("real App encounter and Battle Core checkpoint matches Worker authorization
       enemies
     });
     state.serverContext = context;
-    // This is the App boundary added after createDungeonBattle: the role is
-    // copied from the Worker authorization into the live state before the
-    // first persistence enqueue.
-    state.encounterType = context.role;
     // App persists this exact boundary: battleCheckpointWithoutLog() makes a
     // shallow snapshot and the persistence queue/cloudSaveSnapshot forwards it
     // without going through Battle Core's optional JSON serializer.
     const payload = { ...state, log: [] };
+    // Deliberately do not inject a top-level encounterType. The Worker contract
+    // treats that presentation alias as optional; this proves its absence is
+    // not the source of invalid_dungeon_checkpoint.
+    assert.equal(payload.encounterType, undefined, `${scenario.label}: no synthetic encounterType`);
     const serverEnemies = context.enemies.map(enemy => ({
       id: enemy.id,
       instanceId: enemy.instanceId,
@@ -383,7 +383,6 @@ test("real App encounter and Battle Core checkpoint matches Worker authorization
     const firstMismatch = [
       ["mode", payload.mode, "dungeon"],
       ["floor", payload.floor, context.floor],
-      ["encounterType", payload.encounterType, context.role],
       ["serverContext", JSON.stringify(payload.serverContext), JSON.stringify(context)],
       ["serverContext.enemies", JSON.stringify(serverEnemies), JSON.stringify(context.enemies.map(enemy => ({ id: enemy.id, instanceId: enemy.instanceId, modifierId: enemy.modifierId })))],
       ["serverContext.packCount", payload.serverContext?.packCount, context.packCount],

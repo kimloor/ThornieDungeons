@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.37";
+  content: "Ver 1.0.38";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1252,7 +1252,14 @@ body::after {
    dynamic icon accents shared by its four snapshot cells. */
 .md-turn-queue-icon {
   width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,209,102,0.35);
+  position: relative; font-size: 11px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,209,102,0.35);
+}
+.md-turn-queue-icon > img { width: 100%; height: 100%; object-fit: contain; }
+.md-turn-queue-icon.elite { border-color: var(--elite); box-shadow: 0 0 6px rgba(255,184,77,.78); }
+.md-turn-queue-spawn-slot {
+  position: absolute; right: -4px; bottom: -4px; min-width: 12px; height: 12px; padding: 0 2px;
+  border: 1px solid #f5d795; border-radius: 999px; background: #7b2737; color: #fff;
+  font: 900 8px/10px 'Baloo 2'; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.7);
 }
 .md-turn-queue-item.player .md-turn-queue-icon { border-color: var(--gold); }
 .md-turn-queue-item.pet .md-turn-queue-icon { border-color: var(--violet-deep); }

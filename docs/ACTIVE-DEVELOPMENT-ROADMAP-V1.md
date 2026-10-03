@@ -1277,19 +1277,14 @@ Completed graphics support:
 - **G8 — W10 presentation assets — COMPLETE / PRODUCTION:** Victory/Defeat, Boss/Enrage and Raid presentation assets required by W7A are complete.
 - **G9 — W11 presentation assets — COMPLETE / PRODUCTION:** Enhance/Craft presentation assets required by W7B are complete. Summoning remains separately deferred behind its future gameplay contract and is not unfinished G9 work.
 
-Next graphics batch:
-- **G10 — Shared ATB Actor Icon Pack — NEXT / LOW (Graphics), MEDIUM when runtime-bound:** create one coherent small-icon family for:
-  1. Hero
-  2. Pet
-  3. Normal Monster / Elite
-  4. Boss
-- Use the shared Battle ATB/turn-order visual family; do not create Arena-only fallback Hero/Pet icons.
-- Monster identity rule for multi-enemy encounters: reuse the same Monster icon family and distinguish simultaneous enemies by runtime spawn-slot marker **1 / 2 / 3**. Numbers are runtime overlays, never baked into the asset.
-- Elite uses the same Monster base icon with a runtime Elite accent/frame/glow; do not create a second species-specific icon set.
-- Boss uses the dedicated Boss icon and does not use the normal Monster numbering rule unless a future encounter contract explicitly permits multiple bosses.
-- ATB icons are presentation only and must not alter turn order, targeting or actor identity authority.
-- G10 production exports must pass the shared icon asset budget in `r2-upload/README.md` before publication.
+- **G10 — Shared ATB Actor Icon Pack — COMPLETE / APPROVED / INTEGRATED:** Hero, Pet, shared Normal Monster/Elite and dedicated Boss icons are published through `assets.battleUi.actorIcons` and consumed by the shared TurnOrderBar in Dungeon Battle and Arena.
+  - 256×256 transparent PNG production exports pass the shared 40–120 KB small-icon target.
+  - Multi-enemy Monster entries use runtime spawn-slot markers 1/2/3; numbers are not baked into art.
+  - Elite uses the shared Monster icon with runtime accent/glow; Boss uses its dedicated icon without normal Monster numbering.
+  - Presentation-only integration preserves actor ID, turn order, targeting and gameplay authority.
+  - Contract: `r2-upload/ui/battle/G10_ATB_ACTOR_ICON_CONTRACT.json`.
 
+Next graphics batch:
 - **G11 — Robot + Skeleton Set Item Icons — QUEUED / LOW (Graphics), MEDIUM when runtime-bound:** create the missing inventory/equipment item icons for Robot and Skeleton after G10.
   - Robot: weapon / helmet / chest / gloves / boots / accessory.
   - Skeleton: weapon / helmet / chest / gloves / boots / accessory.
