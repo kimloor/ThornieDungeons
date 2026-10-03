@@ -138,8 +138,10 @@ test("current-battle log expands without persisting readable history to D1", () 
 });
 
 test("normal background persistence is silent while failures remain visible", () => {
-  assert.match(app, /persistenceStatus === "failed" &&/);
   assert.doesNotMatch(app, /persistenceStatus !== "saved" &&/);
+  assert.doesNotMatch(app, /persistenceStatus === "failed" &&/);
+  assert.match(app, /persistenceDiagnostic &&/);
+  assert.match(app, /React\.createElement\(PersistenceDiagnosticOverlay/);
 });
 
 test("selected target marker and Battle background use manifest art without changing hitboxes", () => {

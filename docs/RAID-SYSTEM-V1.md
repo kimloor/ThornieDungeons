@@ -1,6 +1,6 @@
 # ThornieDungeons Raid System V1
 
-Status: **ACTIVE — W5 Raid / Wings V2 implemented on feature branch; QA required**
+Status: **ACTIVE-PRODUCTION — W5 Raid / Wings V2 complete / Production verified**
 
 ## 1. Purpose
 
