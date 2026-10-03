@@ -1376,21 +1376,38 @@ function dungeonV2ServerCheckpointIdentityMatches(payload, context) {
   if (!payload || !context || payload.mode !== "dungeon") return false;
   if (Math.floor(Number(payload.floor) || 0) !== context.floor) return false;
   if (payload.encounterType && String(payload.encounterType) !== context.role) return false;
+
   const units = payload.units && typeof payload.units === "object" ? payload.units : {};
   const enemyIds = Array.isArray(payload.enemyIds) ? payload.enemyIds.map(String).filter(Boolean) : [];
-  const entries = enemyIds.length
-    ? enemyIds.map(id => ({ ...(units[id] || {}), id }))
-    : Object.values(units).filter(unit => unit && (unit.side === "enemy" || unit.kind === "monster" || unit.kind === "boss"));
-  if (entries.length !== context.packCount) return false;
-  const byInstanceId = new Map(entries.map(unit => [String(unit.id || ""), unit]));
+  const expectedInstanceIds = context.enemies.map(enemy => enemy.instanceId);
+  const expectedInstanceSet = new Set(expectedInstanceIds);
+
+  // Battle Core guarantees server-issued enemy instance IDs. Definition aliases
+  // are validation hints, not mandatory persistence fields on every checkpoint.
+  if (enemyIds.length !== context.packCount || new Set(enemyIds).size !== enemyIds.length) return false;
+  if (enemyIds.some(id => !expectedInstanceSet.has(id))) return false;
+  if (expectedInstanceIds.some(id => !enemyIds.includes(id))) return false;
+
+  const enemyLikeUnits = Object.values(units).filter(unit =>
+    unit && (unit.side === "enemy" || unit.kind === "monster" || unit.kind === "boss")
+  );
+  if (enemyLikeUnits.length !== context.packCount) return false;
+  if (enemyLikeUnits.some(unit => !expectedInstanceSet.has(String(unit.id || "")))) return false;
+
   return context.enemies.every(expected => {
-    const unit = byInstanceId.get(expected.instanceId);
-    if (!unit) return false;
-    const canonicalId = String(unit.monsterDefId || unit.dungeonV2ProfileId || "");
-    if (canonicalId !== expected.id) return false;
+    const unit = units[expected.instanceId];
+    if (!unit || String(unit.id || "") !== expected.instanceId) return false;
+
+    const definitionAlias = unit.monsterDefId ?? unit.dungeonV2ProfileId;
+    if (definitionAlias != null && String(definitionAlias) !== expected.id) return false;
     if (unit.encounterType && String(unit.encounterType) !== context.role) return false;
-    const bossLike = unit.kind === "boss" || unit.isBoss === true;
-    return context.role === "chapter_boss" ? bossLike : !bossLike;
+
+    const hasBossMarker = unit.kind != null || unit.isBoss != null;
+    if (hasBossMarker) {
+      const bossLike = unit.kind === "boss" || unit.isBoss === true;
+      if (context.role === "chapter_boss" ? !bossLike : bossLike) return false;
+    }
+    return true;
   });
 }
 function dungeonV2ServerContextFromClientCheckpoint(payload) {
