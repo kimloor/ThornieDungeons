@@ -2076,6 +2076,15 @@ function mailPlanPersistenceStatements(db, plan, id, characterId, timestamp, gat
   return statements;
 }
 
+function isW6RetiredLegacySpecialItem(item) {
+  const slot = String(item?.type || item?.slot_type || "").toLowerCase();
+  const rarity = String(item?.rarity || "").toLowerCase();
+  const isV2 = Number(item?.itemModelVersion) === 2 || Number(item?.rewardVersion) === 2;
+  if (isV2) return false;
+  if (slot === "wings" && rarity === "raid") return true;
+  return ["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(slot) && rarity === "azure";
+}
+
 async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset = 0, claimGate = null, settlementHolder = null) {
   await ensureItemAuthorityTables(db);
   const mailId = String(mail.mail_id || "");
@@ -2114,6 +2123,7 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
   const itemRows = parseJsonColumn(mail.items_json, []);
   const items = Array.isArray(itemRows) ? itemRows : [];
   items.forEach((item, index) => {
+    if (isW6RetiredLegacySpecialItem(item)) return;
     const slot = String(item?.type || "");
     if (!["weapon", "helmet", "chest", "gloves", "boots", "accessory", "wings"].includes(slot)) return;
     const itemId = `mail-item-${dungeonV2ServerHash(`${mailId}:${index}`)}`;
