@@ -4,7 +4,8 @@ name: Cleanup merged branches
 # Safe by default: dry_run=true only reports what WOULD be deleted.
 #
 # A branch is deleted only if ALL of these are true:
-#   - it is not the default branch, not a protected branch, and not in `keep`
+#   - it is not the default branch, not the permanent `ops/branch-cleanup` branch,
+#     not a protected branch, and not in `keep`
 #   - it has no open pull request
 #   - its tip is older than `min_age_days`
 #   - it is fully merged: either 0 commits ahead of the default branch,
@@ -76,6 +77,7 @@ jobs:
             [ -n "$name" ] || continue
 
             if [ "$name" = "$default_branch" ]; then continue; fi
+            if [ "$name" = "ops/branch-cleanup" ]; then row "$name" "$sha" "skip: permanent cleanup ops branch"; skipped=$((skipped+1)); continue; fi
             if [ "$protected" = "true" ]; then row "$name" "$sha" "skip: protected"; skipped=$((skipped+1)); continue; fi
             if printf '%s\n' "$keep_list" | grep -Fxq -- "$name"; then row "$name" "$sha" "skip: in keep list"; skipped=$((skipped+1)); continue; fi
 
