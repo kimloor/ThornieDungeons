@@ -45,7 +45,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked Hero V5 **modular layered, frame-based sprite** architecture; no skeletal/bone/Spine runtime is required, and the document does not itself authorize replacing the current production Hero. |
 | [`INVENTORY-UI-V2.md`](INVENTORY-UI-V2.md) | Inventory/equipment layout, item popup, compare rules, rarity presentation, capacity, overflow, and responsive behavior. |
 | [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) | Login/Auth V2 account, session, password, recovery, migration, frontend, and backend security contract. |
-| [`ADMIN-V2.md`](ADMIN-V2.md) | **ACTIVE-PRODUCTION** Admin V2 security/auth foundation: dedicated Admin identity/session, bootstrap/recovery key role, audit baseline, migration and QA contract. |
+| [`ADMIN-V2.md`](ADMIN-V2.md) | **ACTIVE-PRODUCTION** Admin V2 auth/session foundation plus Phase 1 Dashboard, server-side Player Search, sanitized read-only Player Viewer/Items, and audit-safe read paths. |
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
 | [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |
 | [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) | **ACTIVE-DESIGN** shared Phaser presentation architecture for Combat/Arena/preview surfaces; W9 Arena gameplay changes are governed by `ARENA-V2-W9.md`. |
@@ -268,3 +268,4 @@ When an approved production contract changes:
 - WAVE 6 V2 Production Cutover + Legacy Special-Item Cleanup: COMPLETE / PRODUCTION VERIFIED; PR #60 / merge `9c8f716c6cff1acc38593acf42fafab7d6c11312`.
 - Post-WAVE 6 Full Project Gap Audit + Security Re-Audit: COMPLETE / GATE PASSED; inventory read-isolation blocker resolved and Production verified by PR #63.
 - WAVE 7 Presentation Expansion: COMPLETE / PRODUCTION VERIFIED; W7A Terminal/Boss/Enrage/Raid + W7B Enhance/Craft presentation shipped. Summoning remains separately deferred.
+- Admin V2 Phase 1: COMPLETE / PRODUCTION VERIFIED; Dashboard + server-side Player Search + sanitized read-only Player Viewer/Items shipped in PR #71.
