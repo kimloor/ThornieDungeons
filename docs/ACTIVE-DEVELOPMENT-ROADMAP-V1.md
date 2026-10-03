@@ -1147,12 +1147,27 @@ Exit condition:
 ---
 
 ## WAVE 7 — Presentation Expansion
-**Status: READY FOR PROJECT LEAD SCOPE APPROVAL — NOT STARTED**
+**Status: ACTIVE — W7A1 TERMINAL PRESENTATION IMPLEMENTED / QA PASSED**
 **Risk: MEDIUM**
 **Lead: DEV + Graphics**
 **Collaboration: QA**
 
-### W10 reference — Victory / Boss / Raid Presentation
+Scope lock:
+- **W7A** — Victory/Defeat + Boss/Enrage + Raid presentation on the shared Phaser architecture.
+- **W7B** — Enhance/Craft presentation after W7A.
+- **Summoning presentation is deferred** until a canonical Summoning gameplay contract is approved; do not invent Summoning mechanics inside presentation work.
+- W7 presentation must not change Battle/Reward/Raid/Enhance/Craft authority.
+
+### W7A / W10 reference — Victory / Boss / Raid Presentation
+Current sequence:
+1. **A1 Terminal presentation foundation — IMPLEMENTED / QA PASSED**
+   - authoritative `completeBattle` first;
+   - shared Phaser queue terminal Victory/Defeat transition second;
+   - bounded timeout fallback;
+   - Result/Defeat navigation only after presentation drain/fallback.
+2. **A2 Boss entrance + Enrage presentation — NEXT**
+3. **A3 Raid presentation using shared actors/VFX/queue — AFTER A2**
+
 May begin after the corresponding mechanics are stable:
 - Victory / Defeat pose and transition;
 - approved wing animation;
@@ -1166,18 +1181,14 @@ Dependencies:
 - Boss/Enrage presentation depends on WAVE 1;
 - Raid presentation depends on WAVE 5.
 
-### W11 reference — Enhance / Craft / Summoning Presentation
+### W7B / W11 reference — Enhance / Craft Presentation
 Enhance/Craft presentation depends on authoritative mechanics:
 - forge/fire/spark;
 - Enhance success/fail/downgrade result presentation;
 - Craft reveal;
 - Mythic/Boss Weapon reveal.
 
-Summoning presentation is independent of Dungeon V2 mechanics and may be scheduled separately:
-- portal;
-- rarity glow;
-- reveal;
-- particles/camera presentation.
+Summoning presentation is deferred from W7B until its own gameplay contract is approved. Future visual direction may include portal / rarity glow / reveal / particles-camera presentation, but W7 must not define or implement Summoning economy/mechanics.
 
 Presentation hard rules:
 - React/DOM/API owns item/recipe/cost/mutation/economy state;
