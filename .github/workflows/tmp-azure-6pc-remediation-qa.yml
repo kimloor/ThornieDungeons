@@ -1,0 +1,48 @@
+name: Temporary Azure 6pc remediation QA
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Focused Mythic Battle Raid Arena Reward regression
+        run: >-
+          node --test --test-concurrency=1
+          tests/mythic-v2.test.js
+          tests/battle-core.test.js
+          tests/battle-core-parity.test.js
+          tests/raid-wings-v2.test.js
+          tests/arena-v2-w9-battle-core.test.js
+          tests/reward-v2.test.js
+          tests/enhancement-v2.test.js
+          tests/enhancement-v2-api.test.js
+      - name: Full suite
+        run: node --test --test-concurrency=2 tests/*.test.js
+      - name: Build
+        run: node build.js
+      - name: Generated index clean
+        run: git diff --exit-code -- index.html
+      - name: Diff check
+        run: git diff --check
+      - name: Worker syntax
+        run: node --check workers/thornie-dungeons-api.js
+      - name: Confirm retired Azure proc is gone
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n --exclude-dir=.git --exclude='PRE-W6-READINESS-AUDIT-2026-10-03.md' --exclude='tmp-azure-6pc-remediation-qa.yml' 'azureControlProc' src workers tests docs; then
+            echo "Retired Azure 6pc proc remains"
+            exit 1
+          fi
+          echo "Retired Azure 6pc proc absent from runtime/tests/contracts"
