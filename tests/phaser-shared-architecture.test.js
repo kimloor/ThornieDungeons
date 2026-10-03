@@ -319,11 +319,19 @@ test("W6.4 VfxManager is a shared renderer for already-resolved effect events", 
   assert.doesNotMatch(managerSource, /battleStep|simulateBattle|damage\s*=|cooldown|proc|reward|checkpoint/);
 });
 
-test("W6.4 BattleScene owns one shared VfxManager without resolving gameplay", () => {
+test("W6.4 each shared Phaser scene owns one VfxManager without resolving gameplay", () => {
   const scene = source("src/phaser/scenes/BattleScene.js");
-  assert.match(scene, /this\.vfxManager = createVfxManager\(this/);
-  assert.match(scene, /this\.vfxManager\?\.destroy\(\)/);
-  assert.equal((scene.match(/createVfxManager\(/g) || []).length, 1);
+  const raidStart = scene.indexOf("function createRaidBossScene");
+  const battleScene = raidStart >= 0 ? scene.slice(0, raidStart) : scene;
+  const raidScene = raidStart >= 0 ? scene.slice(raidStart) : "";
+  assert.match(battleScene, /this\.vfxManager = createVfxManager\(this/);
+  assert.match(battleScene, /this\.vfxManager\?\.destroy\(\)/);
+  assert.equal((battleScene.match(/createVfxManager\(/g) || []).length, 1);
+  if (raidScene) {
+    assert.match(raidScene, /this\.vfxManager = createVfxManager\(this/);
+    assert.match(raidScene, /this\.vfxManager\?\.destroy\(\)/);
+    assert.equal((raidScene.match(/createVfxManager\(/g) || []).length, 1);
+  }
   assert.doesNotMatch(scene, /BATTLE_VFX_PRESENTATION|resolvedEvents\(/);
 });
 
