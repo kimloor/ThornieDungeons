@@ -149,6 +149,26 @@ test("inventory slot writes validate bounds and preserve two-account ownership i
   assert.equal(Number(db.raw.prepare("SELECT inventory_slot FROM items WHERE item_id='item-a'").get().inventory_slot), 4);
 });
 
+test("inventory reads preserve two-account ownership isolation", async () => {
+  const api = worker(), db = database();
+  const tokenA = await register(api, db, "Read_A");
+  const charA = await createCharacter(api, db, tokenA, 0);
+  db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, extra_json, created_at, updated_at) VALUES (?, ?, ?, 'weapon', 0, '', '{}', 'now', 'now')`).run("private-item", "Read_A", charA);
+
+  const tokenB = await register(api, db, "Read_B");
+  await createCharacter(api, db, tokenB, 0);
+
+  const denied = await get(api, db, { action: "getInventory", characterId: charA, page: 1, pageSize: 100 }, { Authorization: `Bearer ${tokenB}` });
+  assert.equal(denied.status, 403);
+  assert.equal(denied.body.error, "forbidden");
+  assert.equal(Object.hasOwn(denied.body, "items"), false);
+
+  const allowed = await get(api, db, { action: "getInventory", characterId: charA, page: 1, pageSize: 100 }, { Authorization: `Bearer ${tokenA}` });
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.body.ok, true);
+  assert.deepEqual(allowed.body.items.map(item => item.item_id), ["private-item"]);
+});
+
 test("run-state save cannot forge progression, currency, or consumables", async () => {
   const api = worker(), db = database();
   const token = await register(api, db, "Run_State_QA");
