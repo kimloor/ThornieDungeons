@@ -52,6 +52,21 @@
   .envBadge { display:inline-block; margin-top:6px; padding:3px 8px; border-radius:999px; background:#6b2424; color:#ffdada; font-size:11px; font-weight:700; letter-spacing:.5px; }
   .adminSessionInfo { margin-left:auto; display:flex; align-items:center; gap:10px; font-size:12px; color:#bbb; }
   #adminLogoutBtn { padding:6px 10px; border-radius:6px; }
+  .dashboardGrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
+  .statCard { background:#11141b; border:1px solid #303541; border-radius:10px; padding:12px; min-height:86px; }
+  .statCard .label { color:#8e95a6; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+  .statCard .value { margin-top:8px; font-size:24px; font-weight:800; color:#fff; }
+  .playerSearchRow { display:flex; gap:8px; align-items:center; }
+  .playerSearchRow input { flex:1; min-width:0; background:#0f1116; border:1px solid #333; color:#eee; padding:8px 10px; border-radius:6px; }
+  .playerSearchRow button { white-space:nowrap; }
+  .viewerMeta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .viewerMeta span { background:#252a35; border-radius:999px; padding:4px 9px; font-size:12px; }
+  .scrollTable { overflow:auto; max-width:100%; }
+  .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; }
+  @media (max-width:720px) {
+    .dashboardGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .playerSearchRow { align-items:stretch; flex-direction:column; }
+  }
 </style>
 </head>
 <body>
@@ -86,21 +101,78 @@
 </header>
 
 <div class="tabs">
-  <div class="tab active" data-tab="recipes">Recipes</div>
+  <div class="tab active" data-tab="dashboard">Dashboard</div>
+  <div class="tab" data-tab="players">Players</div>
+  <div class="tab" data-tab="recipes">Recipes</div>
   <div class="tab" data-tab="monsters">Monster Drops</div>
   <div class="tab" data-tab="junk">Junk Info</div>
 </div>
 
 <main>
+  <!-- ===================== DASHBOARD TAB ===================== -->
+  <section id="tab-dashboard" class="active">
+    <div class="card">
+      <h2>Admin Dashboard</h2>
+      <div class="dashboardGrid">
+        <div class="statCard"><div class="label">Players</div><div class="value" id="statPlayers">—</div></div>
+        <div class="statCard"><div class="label">Characters</div><div class="value" id="statCharacters">—</div></div>
+        <div class="statCard"><div class="label">Items</div><div class="value" id="statItems">—</div></div>
+        <div class="statCard"><div class="label">Active Runs</div><div class="value" id="statActiveRuns">—</div></div>
+        <div class="statCard"><div class="label">Avg Level</div><div class="value" id="statAvgLevel">—</div></div>
+        <div class="statCard"><div class="label">Max Floor</div><div class="value" id="statMaxFloor">—</div></div>
+      </div>
+      <button class="btn-add" id="reloadDashboardBtn">รีเฟรช Dashboard</button>
+      <div class="msg" id="dashboardMsg"></div>
+    </div>
+  </section>
+
+  <!-- ===================== PLAYERS TAB ===================== -->
+  <section id="tab-players">
+    <div class="card">
+      <h2>Player Search <span class="pill">read-only</span></h2>
+      <div class="playerSearchRow">
+        <input id="playerSearchInput" placeholder="ค้นหา Player ID หรือชื่อตัวละคร" autocomplete="off">
+        <button class="btn-primary" id="playerSearchBtn" type="button" style="margin-top:0;">ค้นหา</button>
+      </div>
+      <div class="msg" id="playerSearchMsg"></div>
+      <div class="scrollTable">
+        <table id="playerSearchTable">
+          <thead><tr><th>Player ID</th><th>Characters</th><th>Max Lv</th><th>Max Floor</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="playerViewerCard" style="display:none;">
+      <h2>Player Viewer <span class="pill">read-only</span></h2>
+      <div id="playerViewerMeta" class="viewerMeta"></div>
+      <h3 style="font-size:13px;color:#9db4ff;">Characters</h3>
+      <div class="scrollTable">
+        <table id="playerCharacterTable">
+          <thead><tr><th>ID</th><th>Name</th><th>Lv</th><th>Floor</th><th>Gold</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <h3 style="font-size:13px;color:#9db4ff;">Items</h3>
+      <div class="scrollTable">
+        <table id="playerItemTable">
+          <thead><tr><th>Item ID</th><th>Name</th><th>Type</th><th>Rarity</th><th>+Lv</th><th>State</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="muted">Phase 1 viewer is read-only. No player/economy mutation controls are available here.</div>
+    </div>
+  </section>
+
   <!-- ===================== RECIPES TAB ===================== -->
-  <section id="tab-recipes" class="active">
+  <section id="tab-recipes">
     <div class="card">
       <h2>Recipe ทั้งหมด</h2>
       <table id="recipeTable">
         <thead><tr><th>ID</th><th>Type</th><th>ชื่อ</th><th>setId</th><th>วัตถุดิบ</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
-      <div class="muted" id="recipeEmptyMsg">ยังไม่มีข้อมูล — ใส่ admin key แล้วกด "โหลดข้อมูล"</div>
+      <div class="muted" id="recipeEmptyMsg">ยังไม่มีข้อมูล — กด "โหลดข้อมูล"</div>
       <button class="btn-add" id="reloadRecipesBtn">โหลดข้อมูล</button>
     </div>
 
@@ -206,7 +278,7 @@
         <thead><tr><th>junkId</th><th>ชื่อ</th><th>icon</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
-      <div class="muted" id="junkInfoEmptyMsg">ยังไม่มีข้อมูล — ใส่ admin key แล้วกด "โหลดข้อมูล"</div>
+      <div class="muted" id="junkInfoEmptyMsg">ยังไม่มีข้อมูล — กด "โหลดข้อมูล"</div>
       <button class="btn-add" id="reloadJunkInfoBtn">โหลดข้อมูล</button>
     </div>
 
@@ -337,7 +409,7 @@ document.getElementById("adminLoginForm").onsubmit = async (event) => {
     sessionStorage.setItem(ADMIN_SESSION_STORAGE, res.adminSessionToken);
     msg.textContent = "";
     setAdminUi(res);
-    await loadRecipes();
+    await loadDashboard();
   } catch (error) {
     passwordInput.value = "";
     msg.textContent = "เชื่อมต่อ Admin API ไม่สำเร็จ";
@@ -362,6 +434,7 @@ async function restoreAdminSession() {
       return;
     }
     setAdminUi(res);
+    await loadDashboard();
   } catch (error) {
     // Network failure is not proof that the Admin session is invalid.
     // Keep the session token so a transient outage does not force re-login.
@@ -379,8 +452,144 @@ document.querySelectorAll(".tab").forEach(t => {
     document.querySelectorAll("main > section").forEach(x => x.classList.remove("active"));
     t.classList.add("active");
     document.getElementById("tab-" + t.dataset.tab).classList.add("active");
+    if (t.dataset.tab === "dashboard") void loadDashboard();
+    if (t.dataset.tab === "players") setTimeout(() => document.getElementById("playerSearchInput")?.focus(), 0);
   };
 });
+
+// ==================================================================
+// DASHBOARD + PLAYER VIEWER — ADMIN V2 PHASE 1 (READ ONLY)
+// ==================================================================
+async function loadDashboard() {
+  const msg = document.getElementById("dashboardMsg");
+  msg.textContent = "กำลังโหลด...";
+  msg.className = "msg";
+  const res = await apiGet({ action: "getGameStats" });
+  if (res.error) {
+    msg.textContent = "โหลด Dashboard ไม่สำเร็จ: " + res.error;
+    msg.className = "msg err";
+    return;
+  }
+  const stats = res.stats || {};
+  document.getElementById("statPlayers").textContent = Number(stats.players || 0).toLocaleString();
+  document.getElementById("statCharacters").textContent = Number(stats.characters || 0).toLocaleString();
+  document.getElementById("statItems").textContent = Number(stats.items || 0).toLocaleString();
+  document.getElementById("statActiveRuns").textContent = Number(stats.activeRuns || 0).toLocaleString();
+  document.getElementById("statAvgLevel").textContent = Number(stats.avgLevel || 0).toLocaleString();
+  document.getElementById("statMaxFloor").textContent = Number(stats.maxFloor || 0).toLocaleString();
+  msg.textContent = "อัปเดตแล้ว";
+  msg.className = "msg ok";
+}
+document.getElementById("reloadDashboardBtn").onclick = () => void loadDashboard();
+
+function renderPlayerSearchResults(rows) {
+  const tbody = document.querySelector("#playerSearchTable tbody");
+  tbody.innerHTML = "";
+  rows.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td class="mono">${escapeHtml(row.playerId)}</td>` +
+      `<td>${escapeHtml(row.characterNames || "—")} <span class="pill">${escapeHtml(row.characterCount || 0)}</span></td>` +
+      `<td>${escapeHtml(row.maxLevel || 0)}</td>` +
+      `<td>${escapeHtml(row.maxFloor || 0)}</td>` +
+      `<td><button class="viewPlayerBtn">ดู</button></td>`;
+    tr.querySelector(".viewPlayerBtn").onclick = () => void openPlayerViewer(row.playerId);
+    tbody.appendChild(tr);
+  });
+}
+
+async function searchAdminPlayers() {
+  const input = document.getElementById("playerSearchInput");
+  const msg = document.getElementById("playerSearchMsg");
+  const query = input.value.trim();
+  if (!query) {
+    msg.textContent = "กรอก Player ID หรือชื่อตัวละคร";
+    msg.className = "msg err";
+    renderPlayerSearchResults([]);
+    return;
+  }
+  msg.textContent = "กำลังค้นหา...";
+  msg.className = "msg";
+  const res = await apiGet({ action: "adminSearchPlayers", query, limit: 50 });
+  if (res.error) {
+    msg.textContent = "ค้นหาไม่สำเร็จ: " + res.error;
+    msg.className = "msg err";
+    renderPlayerSearchResults([]);
+    return;
+  }
+  const rows = Array.isArray(res.results) ? res.results : [];
+  renderPlayerSearchResults(rows);
+  msg.textContent = rows.length ? `พบ ${rows.length} บัญชี` : "ไม่พบผู้เล่น";
+  msg.className = rows.length ? "msg ok" : "msg";
+}
+document.getElementById("playerSearchBtn").onclick = () => void searchAdminPlayers();
+document.getElementById("playerSearchInput").addEventListener("keydown", event => {
+  if (event.key === "Enter") { event.preventDefault(); void searchAdminPlayers(); }
+});
+
+function renderPlayerViewer(res) {
+  const card = document.getElementById("playerViewerCard");
+  const player = res.player || {};
+  const characters = Array.isArray(res.characters) ? res.characters : [];
+  const items = Array.isArray(res.items) ? res.items : [];
+  card.style.display = "block";
+
+  const meta = document.getElementById("playerViewerMeta");
+  meta.innerHTML = "";
+  [
+    `Player: ${player.id || "—"}`,
+    `Diamonds: ${Number(player.diamonds) || 0}`,
+    `Characters: ${characters.length}`,
+    `Items: ${items.length}`
+  ].forEach(text => {
+    const span = document.createElement("span");
+    span.textContent = text;
+    meta.appendChild(span);
+  });
+
+  const charBody = document.querySelector("#playerCharacterTable tbody");
+  charBody.innerHTML = "";
+  characters.forEach(ch => {
+    const tr = document.createElement("tr");
+    [ch.character_id, ch.name || "—", Number(ch.level) || 1, Number(ch.unlocked_floor) || 1, Number(ch.gold) || 0].forEach((value, index) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      if (index === 0) td.className = "mono";
+      tr.appendChild(td);
+    });
+    charBody.appendChild(tr);
+  });
+
+  const itemBody = document.querySelector("#playerItemTable tbody");
+  itemBody.innerHTML = "";
+  items.forEach(item => {
+    const tr = document.createElement("tr");
+    const state = Number(item.equipped) === 1 ? "Equipped" : String(item.inventory_slot || "Inventory");
+    [item.item_id, item.name || "—", item.slot_type || "—", item.rarity || "—", Number(item.enhance_level) || 0, state].forEach((value, index) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      if (index === 0) td.className = "mono";
+      tr.appendChild(td);
+    });
+    itemBody.appendChild(tr);
+  });
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function openPlayerViewer(playerId) {
+  const msg = document.getElementById("playerSearchMsg");
+  msg.textContent = "กำลังโหลด Player Viewer...";
+  msg.className = "msg";
+  const res = await apiGet({ action: "getPlayer", id: playerId });
+  if (res.error) {
+    msg.textContent = "โหลด Player Viewer ไม่สำเร็จ: " + res.error;
+    msg.className = "msg err";
+    return;
+  }
+  renderPlayerViewer(res);
+  msg.textContent = "โหลด Player Viewer แล้ว";
+  msg.className = "msg ok";
+}
 
 // ==================================================================
 // RECIPES TAB
