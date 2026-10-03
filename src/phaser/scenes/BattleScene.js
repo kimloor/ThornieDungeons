@@ -413,3 +413,76 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
     }
   };
 }
+
+
+function createRaidBossScene(Phaser, { initialSnapshot, onReady, onError, onHurtComplete } = {}) {
+  return class RaidBossScene extends Phaser.Scene {
+    constructor() {
+      super({ key: "RaidBossScene" });
+      this.snapshot = initialSnapshot || null;
+      this.actor = null;
+      this.textureRegistry = createPhaserTextureRegistry({ resolver: SHARED_PHASER_ASSET_RESOLVER });
+      this.presentationQueue = createPresentationQueue({ onError });
+      this.vfxManager = createVfxManager(this, { assetResolver: SHARED_PHASER_ASSET_RESOLVER, textureRegistry: this.textureRegistry });
+      this.lastHurtToken = Math.max(0, Number(initialSnapshot?.hurtToken) || 0);
+      this.handleResize = this.handleResize.bind(this);
+    }
+
+    preload() {
+      const frames = this.snapshot?.boss?.frames || {};
+      this.textureRegistry.queue(this, SHARED_PHASER_ASSET_RESOLVER.resolveAll([
+        ...(frames.idle || []), ...(frames.hurt || [])
+      ]));
+      this.load.on("loaderror", file => { if (file?.key) this.textureRegistry.forget(file.key); });
+    }
+
+    create() {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+      this.scale.on("resize", this.handleResize, this);
+      try {
+        this.actor = new RaidBossActor(this, this.snapshot?.boss || {});
+        this.layout();
+        void this.actor.playVisualState("idle", 1);
+        onReady?.({ scene: this });
+      } catch (error) { onError?.(error); }
+    }
+
+    layout() {
+      if (!this.actor) return;
+      const width = Math.max(1, this.scale.width || this.game.config.width || 1);
+      const height = Math.max(1, this.scale.height || this.game.config.height || 1);
+      this.presentationScale = Math.max(0.9, Math.min(1.2, width / 420));
+      this.actor.refresh(this.actor.data, { animate: false });
+      this.actor.reposition({ x: width * 0.5, y: height * 0.92 });
+    }
+
+    sync(snapshot) {
+      if (!snapshot) return;
+      this.snapshot = snapshot;
+      this.actor?.refresh(snapshot.boss || {}, { animate: false });
+      this.layout();
+      const token = Math.max(0, Number(snapshot.hurtToken) || 0);
+      if (token <= this.lastHurtToken) return;
+      this.lastHurtToken = token;
+      void this.presentationQueue.enqueue({
+        run: async speed => {
+          const duration = Math.max(90, Math.round(160 / Math.max(1, Number(speed) || 1)));
+          this.cameras?.main?.shake?.(duration, 0.004);
+          await this.actor?.playVisualState("hurt", speed, { force: true });
+          onHurtComplete?.(token);
+        }
+      });
+    }
+
+    handleResize() { this.layout(); }
+
+    shutdown() {
+      this.scale.off("resize", this.handleResize, this);
+      this.presentationQueue?.clear();
+      this.vfxManager?.destroy();
+      this.actor?.destroy();
+      this.actor = null;
+      onReady?.({ scene: null, destroyed: true });
+    }
+  };
+}

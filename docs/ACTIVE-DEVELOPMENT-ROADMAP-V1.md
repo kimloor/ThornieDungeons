@@ -1147,7 +1147,7 @@ Exit condition:
 ---
 
 ## WAVE 7 — Presentation Expansion
-**Status: ACTIVE — W7A1 TERMINAL PRESENTATION IMPLEMENTED / QA PASSED**
+**Status: ACTIVE — W7A COMPLETE / QA PASSED; W7B NEXT**
 **Risk: MEDIUM**
 **Lead: DEV + Graphics**
 **Collaboration: QA**
@@ -1169,7 +1169,10 @@ Current sequence:
    - fresh Chapter Boss encounter entrance only;
    - authoritative Dungeon V2 Enrage false→true cue only;
    - resume baselines existing Enrage state and does not replay the transition.
-3. **A3 Raid presentation using shared actors/VFX/queue — NEXT**
+3. **A3 Raid presentation using shared actors/VFX/queue — IMPLEMENTED / QA PASSED**
+   - Raid boss idle/hurt stage uses shared Phaser actor/queue/VFX/asset infrastructure;
+   - React/server retain HP, stamina, attack, contribution, milestones, Diamonds and settlement authority;
+   - existing DOM sprite remains fallback until Phaser is ready or on presentation error.
 
 May begin after the corresponding mechanics are stable:
 - Victory / Defeat pose and transition;

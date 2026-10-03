@@ -4,6 +4,7 @@ function presentationAnimationConfig(config) {
   return {
     idle: urls("idle"),
     attack: urls("attack"),
+    hurt: urls("hurt"),
     death: urls("death")
   };
 }
@@ -364,5 +365,25 @@ function buildArenaBattlefieldSnapshot({
     teams: [attacker, defender],
     animationCues: arenaPresentationAnimationCues(state),
     backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("arenaUi.background")
+  });
+}
+
+
+function buildRaidBossPresentationSnapshot({ boss = {}, config = null, hurtToken = 0 } = {}) {
+  return Object.freeze({
+    mode: "raid",
+    raidBossId: String(boss.defId || boss.id || "raid-boss"),
+    hurtToken: Math.max(0, Number(hurtToken) || 0),
+    boss: {
+      id: String(boss.defId || boss.id || "raid-boss"),
+      kind: "raid_boss",
+      name: String(boss.name || "Raid Boss"),
+      hp: Math.max(0, Number(boss.hpCurrent) || 0),
+      maxHp: Math.max(1, Number(boss.hpMax) || 1),
+      alive: Number(boss.hpCurrent) > 0,
+      facing: "left",
+      sizeClass: "elite",
+      frames: presentationAnimationConfig(config)
+    }
   });
 }

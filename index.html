@@ -10777,6 +10777,7 @@ function presentationAnimationConfig(config) {
   return {
     idle: urls("idle"),
     attack: urls("attack"),
+    hurt: urls("hurt"),
     death: urls("death")
   };
 }
@@ -11137,6 +11138,26 @@ function buildArenaBattlefieldSnapshot({
     teams: [attacker, defender],
     animationCues: arenaPresentationAnimationCues(state),
     backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("arenaUi.background")
+  });
+}
+
+
+function buildRaidBossPresentationSnapshot({ boss = {}, config = null, hurtToken = 0 } = {}) {
+  return Object.freeze({
+    mode: "raid",
+    raidBossId: String(boss.defId || boss.id || "raid-boss"),
+    hurtToken: Math.max(0, Number(hurtToken) || 0),
+    boss: {
+      id: String(boss.defId || boss.id || "raid-boss"),
+      kind: "raid_boss",
+      name: String(boss.name || "Raid Boss"),
+      hp: Math.max(0, Number(boss.hpCurrent) || 0),
+      maxHp: Math.max(1, Number(boss.hpMax) || 1),
+      alive: Number(boss.hpCurrent) > 0,
+      facing: "left",
+      sizeClass: "elite",
+      frames: presentationAnimationConfig(config)
+    }
   });
 }
 
@@ -11692,6 +11713,33 @@ class MonsterActor extends PhaserBattleActor {
   applyFacing() {
     if (!this.visualRoot) return;
     this.visualRoot.setScale(this.facing() === "left" ? 1 : -1, 1);
+  }
+}
+
+
+class RaidBossActor extends MonsterActor {
+  hurtVisualState() {
+    return this.data?.frames?.hurt?.length ? "hurt" : "idle";
+  }
+
+  frameUrlsForState(state) {
+    if (state === "hurt" && this.data?.frames?.hurt?.length) return this.data.frames.hurt;
+    return super.frameUrlsForState(state);
+  }
+
+  async playVisualState(state, speed = 1) {
+    if (state !== "hurt" || !this.data?.frames?.hurt?.length) return super.playVisualState(state, speed, arguments[2]);
+    this.stopAnimationPlayback();
+    this.visualState = "hurt";
+    const frameCount = this.visualFrameCount("hurt");
+    const delay = Math.max(60, Math.round(105 / Math.max(1, Number(speed) || 1)));
+    for (let index = 0; index < frameCount; index += 1) {
+      this.applyVisualFrame("hurt", index);
+      if (index < frameCount - 1) {
+        await new Promise(resolve => this.scene.time.delayedCall(delay, resolve));
+      }
+    }
+    return super.playVisualState("idle", speed, { force: true });
   }
 }
 
@@ -12285,6 +12333,79 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
   };
 }
 
+
+function createRaidBossScene(Phaser, { initialSnapshot, onReady, onError, onHurtComplete } = {}) {
+  return class RaidBossScene extends Phaser.Scene {
+    constructor() {
+      super({ key: "RaidBossScene" });
+      this.snapshot = initialSnapshot || null;
+      this.actor = null;
+      this.textureRegistry = createPhaserTextureRegistry({ resolver: SHARED_PHASER_ASSET_RESOLVER });
+      this.presentationQueue = createPresentationQueue({ onError });
+      this.vfxManager = createVfxManager(this, { assetResolver: SHARED_PHASER_ASSET_RESOLVER, textureRegistry: this.textureRegistry });
+      this.lastHurtToken = Math.max(0, Number(initialSnapshot?.hurtToken) || 0);
+      this.handleResize = this.handleResize.bind(this);
+    }
+
+    preload() {
+      const frames = this.snapshot?.boss?.frames || {};
+      this.textureRegistry.queue(this, SHARED_PHASER_ASSET_RESOLVER.resolveAll([
+        ...(frames.idle || []), ...(frames.hurt || [])
+      ]));
+      this.load.on("loaderror", file => { if (file?.key) this.textureRegistry.forget(file.key); });
+    }
+
+    create() {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+      this.scale.on("resize", this.handleResize, this);
+      try {
+        this.actor = new RaidBossActor(this, this.snapshot?.boss || {});
+        this.layout();
+        void this.actor.playVisualState("idle", 1);
+        onReady?.({ scene: this });
+      } catch (error) { onError?.(error); }
+    }
+
+    layout() {
+      if (!this.actor) return;
+      const width = Math.max(1, this.scale.width || this.game.config.width || 1);
+      const height = Math.max(1, this.scale.height || this.game.config.height || 1);
+      this.presentationScale = Math.max(0.9, Math.min(1.2, width / 420));
+      this.actor.refresh(this.actor.data, { animate: false });
+      this.actor.reposition({ x: width * 0.5, y: height * 0.92 });
+    }
+
+    sync(snapshot) {
+      if (!snapshot) return;
+      this.snapshot = snapshot;
+      this.actor?.refresh(snapshot.boss || {}, { animate: false });
+      this.layout();
+      const token = Math.max(0, Number(snapshot.hurtToken) || 0);
+      if (token <= this.lastHurtToken) return;
+      this.lastHurtToken = token;
+      void this.presentationQueue.enqueue({
+        run: async speed => {
+          const duration = Math.max(90, Math.round(160 / Math.max(1, Number(speed) || 1)));
+          this.cameras?.main?.shake?.(duration, 0.004);
+          await this.actor?.playVisualState("hurt", speed, { force: true });
+          onHurtComplete?.(token);
+        }
+      });
+    }
+
+    handleResize() { this.layout(); }
+
+    shutdown() {
+      this.scale.off("resize", this.handleResize, this);
+      this.presentationQueue?.clear();
+      this.vfxManager?.destroy();
+      this.actor?.destroy();
+      this.actor = null;
+      onReady?.({ scene: null, destroyed: true });
+    }
+  };
+}
+
 // ===== phaser/scenes/HeroPreviewScene.js =====
 // ---------- W8 Shared Hero Preview Scene ----------
 function heroPreviewFallbackLayerNames(name) {
@@ -12639,6 +12760,66 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
   return Object.freeze({ mount, sync, presentTerminal, whenPresentationDrained, destroy, getGame: () => game, getScene: () => scene });
 }
 
+
+function createRaidBossHost({ mountNode, snapshot, onReady, onError, onDestroyed, onHurtComplete } = {}) {
+  let game = null;
+  let scene = null;
+  let destroyed = false;
+  let resizeObserver = null;
+  let currentSnapshot = snapshot || null;
+
+  function size() {
+    return { width: Math.max(1, Math.round(mountNode?.clientWidth || 1)), height: Math.max(1, Math.round(mountNode?.clientHeight || 1)) };
+  }
+  function resize() {
+    if (destroyed || !game) return;
+    const next = size();
+    game.scale.resize(next.width, next.height);
+  }
+  async function mount() {
+    try {
+      const Phaser = await THORNIE_PHASER_RUNTIME.load();
+      if (destroyed) return;
+      const initial = size();
+      const SceneClass = createRaidBossScene(Phaser, {
+        initialSnapshot: currentSnapshot,
+        onReady: payload => {
+          scene = payload?.scene || null;
+          if (scene) scene.sync(currentSnapshot);
+          if (payload?.destroyed) { scene = null; return; }
+          onReady?.({ game, scene, version: THORNIE_PHASER_RUNTIME.version });
+        },
+        onError,
+        onHurtComplete
+      });
+      game = new Phaser.Game({
+        type: Phaser.AUTO, parent: mountNode, width: initial.width, height: initial.height,
+        transparent: true, backgroundColor: "rgba(0,0,0,0)", banner: false, audio: { noAudio: true },
+        scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+        render: { antialias: true, pixelArt: false, roundPixels: false }, scene: SceneClass
+      });
+      if (typeof ResizeObserver === "function") {
+        resizeObserver = new ResizeObserver(resize);
+        resizeObserver.observe(mountNode);
+      }
+    } catch (error) { if (!destroyed) onError?.(error); }
+  }
+  function sync(nextSnapshot) {
+    currentSnapshot = nextSnapshot || currentSnapshot;
+    scene?.sync(currentSnapshot);
+  }
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    const target = game; game = null; scene = null;
+    try { target?.destroy(true); } catch (error) { console.warn("Phaser Raid teardown failed", error); }
+    onDestroyed?.();
+  }
+  return Object.freeze({ mount, sync, destroy, getScene: () => scene });
+}
+
 // ===== phaser/runtime/HeroPreviewHost.js =====
 // ---------- W8 Shared Hero Preview Host ----------
 function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, onError, onDestroyed } = {}) {
@@ -12814,6 +12995,44 @@ function PhaserBattlefield(props) {
     ref: hostRef,
     className: `md-phaser-battlefield status-${status}`,
     "data-phaser-status": status,
+    "aria-hidden": "true"
+  });
+}
+
+
+function PhaserRaidBoss({ boss, config, hurtToken = 0, onHurtComplete, onStatus } = {}) {
+  const hostRef = React.useRef(null);
+  const handleRef = React.useRef(null);
+  const snapshot = React.useMemo(
+    () => buildRaidBossPresentationSnapshot({ boss, config, hurtToken }),
+    [boss?.id, boss?.defId, boss?.name, boss?.hpCurrent, boss?.hpMax, config, hurtToken]
+  );
+
+  React.useEffect(() => {
+    if (!hostRef.current) return undefined;
+    let disposed = false;
+    const handle = createRaidBossHost({
+      mountNode: hostRef.current,
+      snapshot,
+      onReady: () => { if (!disposed) onStatus?.("ready"); },
+      onError: error => { if (!disposed) onStatus?.("error", error); },
+      onDestroyed: () => { if (!disposed) onStatus?.("destroyed"); },
+      onHurtComplete
+    });
+    handleRef.current = handle;
+    onStatus?.("loading");
+    void handle.mount();
+    return () => {
+      disposed = true;
+      handle.destroy();
+      handleRef.current = null;
+    };
+  }, []);
+
+  React.useEffect(() => { handleRef.current?.sync(snapshot); }, [snapshot]);
+  return React.createElement("div", {
+    ref: hostRef,
+    className: "md-raid-boss-sprite md-phaser-raid-boss",
     "aria-hidden": "true"
   });
 }
@@ -18542,6 +18761,7 @@ function RaidBossCard({
   onHurtComplete,
   isDead
 }) {
+  const [phaserStatus, setPhaserStatus] = useState("loading");
   return /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, textAlign: "center" } },
     /*#__PURE__*/React.createElement("p", { className: "md-title" }, boss.name || "Raid Boss"),
     /*#__PURE__*/React.createElement("div", { className: "md-bar-track" },
@@ -18550,7 +18770,14 @@ function RaidBossCard({
         style: { width: `${hpPct}%`, background: "linear-gradient(90deg,#FFD166,#FF6B6B)" }
       })),
     /*#__PURE__*/React.createElement("div", { className: "md-bar-label" }, formatNumber(hpCurrent), " / ", formatNumber(hpMax)),
-    /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
+    bossSpriteConfig && /*#__PURE__*/React.createElement(PhaserRaidBoss, {
+      boss,
+      config: bossSpriteConfig,
+      hurtToken,
+      onHurtComplete,
+      onStatus: status => setPhaserStatus(status)
+    }),
+    (!bossSpriteConfig || phaserStatus !== "ready") && /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
       config: bossSpriteConfig,
       hurtToken,
       className: "md-raid-boss-sprite",

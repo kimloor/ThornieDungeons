@@ -94,3 +94,23 @@ For Raid changes, verify the relevant subset of:
 ## 9. Maintenance
 
 Update this document when an approved Raid production contract changes. Production code describes current implementation, but a code/spec mismatch must be investigated rather than silently redefining the intended Raid rules.
+
+
+## 10. W7A Raid presentation — 2026-10-03
+
+Status: **PRODUCTION CANDIDATE / QA PASSED**
+
+W7A A3 moves the Raid boss visual stage onto the shared Phaser presentation foundation without moving Raid gameplay authority:
+
+- current Raid boss `idle` and `hurt` manifest frames are consumed by a shared RaidBossActor;
+- Raid presentation reuses AssetResolver, TextureRegistry, PresentationQueue and VfxManager;
+- a successful server-side Raid attack remains the only source of the hurt token;
+- Phaser does not calculate damage, HP, stamina, contribution, milestones, Diamond spending or settlement;
+- no Raid boss attack/death animation is invented because the current visual contract defines only idle/hurt;
+- the existing DOM RaidBossFrameSprite remains the fallback while Phaser is loading or if presentation initialization fails;
+- presentation teardown/error must not block Raid API or reward behavior.
+
+QA baseline:
+- focused W7A/Raid/Phaser/Auth regression: 82/82 PASS;
+- full suite: 536/536 PASS;
+- source-first build/generated index/diff checks: PASS.
