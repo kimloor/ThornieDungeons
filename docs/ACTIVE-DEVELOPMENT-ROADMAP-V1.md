@@ -1068,7 +1068,7 @@ This pre-W6 audit does not replace the mandatory post-W6 Full Project Gap Audit 
 ---
 
 ## WAVE 6 — V2 Production Cutover + Legacy Special-Item Cleanup
-**Status: IMPLEMENTED ON FEATURE BRANCH / QA REQUIRED — PRODUCTION DESTRUCTIVE CUTOVER NOT YET APPROVED**
+**Status: COMPLETE / PRODUCTION VERIFIED — 2026-10-03**
 **Risk: VERY HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory; Project Lead release approval mandatory**
@@ -1100,6 +1100,15 @@ QA gate:
 
 Exit condition:
 - V2 is authoritative in Production and legacy special gear can no longer re-enter through old generation paths.
+
+Release result:
+- PR #60 merged to `main` as `9c8f716c6cff1acc38593acf42fafab7d6c11312`;
+- migration `0029_w6_legacy_special_item_cleanup.sql` applied successfully to Production D1;
+- API deployment, Frontend production deployment/live verification, and Battle Core parity all completed successfully on the merge SHA;
+- W6 focused regression 50/50 PASS and full suite 523/523 PASS before release;
+- legacy Azure acquisition identifiers were absent after the cutover implementation;
+- current Raid V2 rewards, valid Recipes, currencies/materials, ordinary equipment, and V2 items remain outside the destructive target matrix;
+- Admin item-deletion tooling remains deferred to a later dedicated Admin phase.
 
 ### Post-WAVE 6 — Full Project Gap Audit + Security Re-Audit (mandatory gate before final WAVE 7 closeout)
 
