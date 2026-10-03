@@ -1147,7 +1147,7 @@ Exit condition:
 ---
 
 ## WAVE 7 — Presentation Expansion
-**Status: ACTIVE — W7A COMPLETE / QA PASSED; W7B NEXT**
+**Status: ACTIVE — W7A COMPLETE / QA PASSED; W7B IMPLEMENTED / QA PASSED — RELEASE PENDING**
 **Risk: MEDIUM**
 **Lead: DEV + Graphics**
 **Collaboration: QA**
@@ -1188,6 +1188,17 @@ Dependencies:
 - Raid presentation depends on WAVE 5.
 
 ### W7B / W11 reference — Enhance / Craft Presentation
+**Status: IMPLEMENTED / QA PASSED — RELEASE PENDING**
+
+Implemented scope:
+- one shared Phaser ForgePresentation scene/host/UI bridge;
+- Enhance success/fail/downgrade/protection choreography driven only by resolved authoritative mutation output;
+- Craft reveal driven only after successful server Craft + authoritative client hydration;
+- Mythic/Set/Boss Weapon outputs use the special reveal state;
+- presentation failure remains non-authoritative and cannot alter item/economy state;
+- shared PresentationQueue + VfxManager architecture reused;
+- no Summoning mechanics/presentation added.
+
 Enhance/Craft presentation depends on authoritative mechanics:
 - forge/fire/spark;
 - Enhance success/fail/downgrade result presentation;
