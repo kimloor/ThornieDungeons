@@ -353,13 +353,6 @@ function getPetDef(defId) {
 function starterPetDef() {
   return PET_POOL.find(p => p.isStarter);
 }
-function rollGachaPet() {
-  const roll = Math.random();
-  let rarity = "r";
-  if (roll < GACHA_RATES.ssr) rarity = "ssr";else if (roll < GACHA_RATES.ssr + GACHA_RATES.sr) rarity = "sr";
-  const pool = PET_POOL.filter(p => p.rarity === rarity);
-  return pool[Math.floor(Math.random() * pool.length)];
-}
 let ENEMY_POOL = [{
   id: "jelly_slime",
   name: "Jelly Slime",

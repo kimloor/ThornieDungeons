@@ -33,46 +33,6 @@ function makePotionItem(potionId, quantity) {
 function potionTotal(inventory, potionId) {
   return inventory.reduce((sum, it) => it.type === "potion" && it.potionId === potionId ? sum + (it.quantity || 0) : sum, 0);
 }
-// Adds `amount` of a potion type into existing (non-full) stacks first, then creates new
-// 99-cap stacks for any remainder — identical shape to addJunkToInventory().
-function addPotionToInventory(inventory, potionId, amount) {
-  if (!amount || amount <= 0) return inventory;
-  let remaining = amount;
-  const next = inventory.map(it => {
-    if (remaining > 0 && it.type === "potion" && it.potionId === potionId && it.quantity < POTION_STACK_MAX) {
-      const space = POTION_STACK_MAX - it.quantity;
-      const add = Math.min(space, remaining);
-      remaining -= add;
-      return { ...it, quantity: it.quantity + add };
-    }
-    return it;
-  });
-  while (remaining > 0) {
-    const chunk = Math.min(POTION_STACK_MAX, remaining);
-    next.push(makePotionItem(potionId, chunk));
-    remaining -= chunk;
-  }
-  return next;
-}
-// Removes `amount` of a potion type, draining partially-filled/emptied stacks first.
-// Returns null if the player doesn't have enough (no partial spend).
-function removePotionFromInventory(inventory, potionId, amount) {
-  if (!amount || amount <= 0) return inventory;
-  if (potionTotal(inventory, potionId) < amount) return null;
-  let remaining = amount;
-  const next = [];
-  inventory.forEach(it => {
-    if (remaining > 0 && it.type === "potion" && it.potionId === potionId) {
-      const take = Math.min(it.quantity, remaining);
-      remaining -= take;
-      const leftover = it.quantity - take;
-      if (leftover > 0) next.push({ ...it, quantity: leftover });
-    } else {
-      next.push(it);
-    }
-  });
-  return next;
-}
 // Every distinct potion type currently owned (qty > 0), one entry each, for list UIs.
 function ownedPotionStacks(inventory) {
   const seen = {};

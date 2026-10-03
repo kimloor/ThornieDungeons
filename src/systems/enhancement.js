@@ -106,28 +106,6 @@ function addJunkToInventory(inventory, junkId, amount) {
   }
   return next;
 }
-// Removes `amount` of a junk type, draining partially-filled/emptied stacks first.
-// Returns null if the player doesn't have enough (no partial spend).
-function removeJunkFromInventory(inventory, junkId, amount) {
-  if (!amount || amount <= 0) return inventory;
-  if (junkTotal(inventory, junkId) < amount) return null;
-  let remaining = amount;
-  const next = [];
-  inventory.forEach(it => {
-    if (remaining > 0 && it.type === "junk" && it.junkId === junkId) {
-      const take = Math.min(it.quantity, remaining);
-      remaining -= take;
-      const leftover = it.quantity - take;
-      if (leftover > 0) next.push({
-        ...it,
-        quantity: leftover
-      });
-    } else {
-      next.push(it);
-    }
-  });
-  return next;
-}
 // Regular (non-boss) monsters drop one stack of a random junk material.
 function rollJunkDrop(floor, modifier) {
   const keys = Object.keys(JUNK_INFO);

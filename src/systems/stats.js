@@ -258,16 +258,6 @@ function makeEncounter(floor, options = {}) {
   for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count }));
   return monsters;
 }
-// Builds the round's initiative queue: every living unit on the field
-// ([Player, Active Pet, ...Monsters]) sorted by Speed (AGI-derived), highest first.
-// Ties are broken randomly so repeated equal-speed matchups don't always favor the same side.
-// Callers are expected to only pass units that are already alive.
-function buildTurnQueue(units) {
-  return units
-    .filter(Boolean)
-    .map(u => ({ ...u, _r: Math.random() }))
-    .sort((a, b) => (b.speed - a.speed) || (b._r - a._r));
-}
 function xpToNext(level) {
   return level * 22 + 18;
 }
@@ -308,38 +298,6 @@ function generateDrop(floor, options = {}) {
   it.enhanceLevel = 0;
   it.empowerSlots = Array(RARITY_STARS[it.rarity] || 1).fill(null);
   return it;
-}
-// Per-monster loot table aware wrapper (design: admin-backend-design.md). If `monsterId`
-// has configured gear rows, weighted-picks type+rarity from THAT list only (rarity left
-// null on a row falls back to whatever the caller's own fallbackOptions specify, e.g. the
-// existing chest-pity rarity) — otherwise behaves exactly like plain generateDrop(), so a
-// monster with no rows configured is completely unaffected.
-function generateDropForMonster(floor, monsterId, fallbackOptions = {}) {
-  if (typeof DUNGEON_REWARD_V2 !== "undefined") {
-    return DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
-      floor,
-      type: fallbackOptions.forceType,
-      rarity: fallbackOptions.forceRarity,
-      sourceType: fallbackOptions.sourceType || "dungeon_normal",
-      specialSource: fallbackOptions.specialSource,
-      sourceIdentity: fallbackOptions.sourceIdentity || monsterId,
-      lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monsterId) : null,
-      allowMythic: fallbackOptions.allowMythic === true,
-      rng: fallbackOptions.rng || Math.random
-    });
-  }
-  const table = monsterLootFor(monsterId);
-  if (table && table.gear && table.gear.length) {
-    const picked = pickWeightedGear(table.gear);
-    if (picked) {
-      return generateDrop(floor, {
-        ...fallbackOptions,
-        forceType: picked.itemType,
-        forceRarity: picked.rarity || fallbackOptions.forceRarity
-      });
-    }
-  }
-  return generateDrop(floor, fallbackOptions);
 }
 function buildDropItem(floor, options = {}) {
   const roll = Math.random();

@@ -74,7 +74,3 @@ function responsiveArenaBattlefieldLayout(width, height) {
   };
 }
 
-function responsiveMonsterVfxAnchor(slot, monsterCount, width, height) {
-  const base = monsterAnchorsForCount(monsterCount)[Math.max(0, Math.min(2, Number(slot) || 0))] || RESPONSIVE_ANCHORS.MONSTER_SINGLE;
-  return responsiveAnchorPixels({ x: base.x - 0.04, y: base.y - 0.12 }, width, height);
-}

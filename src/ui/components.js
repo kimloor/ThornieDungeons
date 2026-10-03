@@ -4693,41 +4693,6 @@ function GachaScreen({
     onClick: onClearGachaResult
   }, "OK"))));
 }
-function FloatingQuickActions({
-  onShop,
-  onCharacter,
-  onBag,
-  onBlacksmith,
-  activePhase
-}) {
-  return /*#__PURE__*/React.createElement("div", {
-    className: "md-fab-stack"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "md-fab",
-    onClick: onShop,
-    title: "Shop"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-fab-icon"
-  }, "🛒")), /*#__PURE__*/React.createElement("button", {
-    className: "md-fab",
-    onClick: onBlacksmith,
-    title: "Blacksmith"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-fab-icon"
-  }, "⚒️")), /*#__PURE__*/React.createElement("button", {
-    className: `md-fab ${activePhase === "town" ? "active" : ""}`,
-    onClick: onCharacter,
-    title: "Character"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-fab-icon"
-  }, "🧙")), /*#__PURE__*/React.createElement("button", {
-    className: "md-fab",
-    onClick: onBag,
-    title: "Equipment"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "md-fab-icon"
-  }, "🎒")));
-}
 function HeroSprite({
   anim,
   equipped = {},
