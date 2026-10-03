@@ -1770,11 +1770,15 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   if (rows.length !== serverReward.items.length) return { error: "invalid_reward_plan" };
   if (rows.length) await ensureItemAuthorityTables(db);
   const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
-  rows.forEach(row => inventoryPlanAddRow(inventoryPlan, row, {
-    originType: row.slot_type === "junk" ? "dungeon_junk" : "dungeon_reward",
-    sourceId: battleId,
-    context: { battleId, sourceFloor: context.floor }
-  }));
+  rows.forEach(row => {
+    const rewardMeta = parseJsonColumn(row.extra_json, {});
+    const isJunk = row.slot_type === "junk";
+    inventoryPlanAddRow(inventoryPlan, row, {
+      originType: isJunk ? "dungeon_junk" : (rewardMeta.sourceType || "dungeon_reward"),
+      sourceId: isJunk ? battleId : (rewardMeta.sourceIdentity || battleId),
+      context: { battleId, sourceFloor: context.floor }
+    });
+  });
   reconcileMailOverflow(inventoryPlan);
   const completionStmt = db.prepare(
     `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
