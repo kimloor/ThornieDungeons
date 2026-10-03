@@ -62,7 +62,7 @@ const STYLE = `
   flex-direction: column;
 }
 .md-root * { box-sizing: border-box; }
-/* Visible build badge: bump patch version on every user-visible runtime fix. */
+/* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
   content: "Ver 1.0.36";
   position: fixed;
