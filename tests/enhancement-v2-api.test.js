@@ -634,6 +634,45 @@ test("Shop stock and gear purchase are server-generated, offer-bound and exact-o
   assert.equal(context.db.raw.prepare("SELECT gold FROM characters WHERE character_id = ?").get(context.characterId).gold, 100000 - selected.price);
 });
 
+test("Shop resource allocation merges at full carried capacity and ignores equipped/Overflow rows", async () => {
+  const context = await setup();
+  for (let index = 0; index < 29; index++) {
+    context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+      VALUES (?, ?, ?, 'weapon', 'rare', 'Filler', '{}')`).run(`shop-capacity-${index}`, context.playerId, context.characterId);
+  }
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+    VALUES ('shop-iron-stack', ?, ?, 'junk', 'common', 'Iron', ?)`).run(context.playerId, context.characterId, JSON.stringify({ junkId: "iron", quantity: 50 }));
+  const bought = await post(context.api, context.db, context.token, {
+    action: "purchaseCharacterResource", characterId: context.characterId,
+    resource: { kind: "material", id: "iron" }, requestId: "shop-capacity-merge-01"
+  });
+  assert.equal(bought.body.ok, true);
+  const stack = context.db.raw.prepare("SELECT extra_json FROM items WHERE item_id = 'shop-iron-stack'").get();
+  assert.equal(JSON.parse(stack.extra_json).quantity, 51);
+  assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND json_extract(extra_json, '$.overflow') = 1").get(context.characterId).c, 0);
+});
+
+test("Shop equipment uses carried capacity instead of total item rows", async () => {
+  const context = await setup();
+  for (let index = 0; index < 29; index++) {
+    context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+      VALUES (?, ?, ?, 'weapon', 'rare', 'Filler', '{}')`).run(`shop-gear-capacity-${index}`, context.playerId, context.characterId);
+  }
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, equipped, extra_json)
+    VALUES ('shop-equipped-row', ?, ?, 'weapon', 'rare', 'Equipped', 1, '{}')`).run(context.playerId, context.characterId);
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+    VALUES ('shop-overflow-row', ?, ?, 'weapon', 'rare', 'Overflow', ?)`).run(context.playerId, context.characterId, JSON.stringify({ overflow: true }));
+  const stock = await post(context.api, context.db, context.token, { action: "getCharacterShopStock", characterId: context.characterId, requestId: "shop-capacity-stock-01" });
+  const selected = stock.body.result.items[0];
+  const purchased = await post(context.api, context.db, context.token, {
+    action: "purchaseShopEquipment", characterId: context.characterId, offerId: selected.offerId, requestId: "shop-capacity-equipment-01"
+  });
+  assert.equal(purchased.body.ok, true);
+  const created = context.db.raw.prepare("SELECT extra_json FROM items WHERE item_id = ?").get(purchased.body.result.itemId);
+  assert.equal(JSON.parse(created.extra_json).overflow, false);
+  assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND equipped = 0 AND COALESCE(json_extract(extra_json, '$.overflow'), 0) != 1").get(context.characterId).c, 30);
+});
+
 test("Mythic set salvage refunds server-recorded Horn/Hide exactly once; Boss Weapon returns no Stone", async () => {
   const context = await setup();
   const setExtra = { rewardVersion: 2, itemModelVersion: 2, setId: "robot", craftRecipeId: "robot_weapon", sourceFloor: 31,
@@ -673,6 +712,26 @@ test("V2 Rare/Unique/Elite equipment uses the Reward V2 salvage table", async ()
     assert.equal(response.body.ok, true, rarity);
     assert.deepEqual(response.body.salvage.materials, expected, rarity);
   }
+});
+
+test("Salvage releases its carried slot before allocating material output", async () => {
+  const context = await setup();
+  for (let index = 0; index < 29; index++) {
+    context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+      VALUES (?, ?, ?, 'weapon', 'rare', 'Filler', '{}')`).run(`salvage-capacity-${index}`, context.playerId, context.characterId);
+  }
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+    VALUES ('salvage-source-capacity', ?, ?, 'weapon', 'rare', 'Salvage Source', ?)`).run(
+      context.playerId, context.characterId, JSON.stringify({ rewardVersion: 2, itemModelVersion: 2, sourceType: "dungeon_normal" }));
+  const request = { action: "salvageItem", characterId: context.characterId, itemId: "salvage-source-capacity", requestId: "salvage-capacity-01" };
+  const result = await post(context.api, context.db, context.token, request);
+  assert.equal(result.body.ok, true);
+  const output = context.db.raw.prepare("SELECT extra_json FROM items WHERE character_id = ? AND json_extract(extra_json, '$.junkId') = 'iron'").get(context.characterId);
+  assert.ok(output);
+  assert.equal(JSON.parse(output.extra_json).overflow, false);
+  const retry = await post(context.api, context.db, context.token, request);
+  assert.equal(retry.body.replayed, true);
+  assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE item_id = 'salvage-source-capacity'").get().c, 0);
 });
 
 test("server item sale consumes the owned row and credits authoritative Gold exactly once", async () => {
@@ -756,6 +815,28 @@ test("W4 crafting marks the server-created result as Overflow when inventory is 
   assert.equal(result.body.ok, true);
   const stored = context.db.raw.prepare("SELECT extra_json FROM items WHERE item_id = ?").get(result.body.item.id);
   assert.equal(JSON.parse(stored.extra_json).overflow, true);
+});
+
+test("Mythic craft uses the slot freed by consuming a full carried material stack", async () => {
+  const context = await setup();
+  for (let index = 0; index < 29; index++) {
+    context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+      VALUES (?, ?, ?, 'weapon', 'rare', 'Filler', '{}')`).run(`craft-capacity-${index}`, context.playerId, context.characterId);
+  }
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+    VALUES ('craft-fire-stack', ?, ?, 'junk', 'common', 'Fire Stone', ?)`).run(context.playerId, context.characterId, JSON.stringify({ junkId: "fireStone", quantity: 5 }));
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, equipped, extra_json)
+    VALUES ('craft-equipped-row', ?, ?, 'weapon', 'rare', 'Equipped', 1, '{}')`).run(context.playerId, context.characterId);
+  context.db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json)
+    VALUES ('craft-overflow-row', ?, ?, 'weapon', 'rare', 'Overflow', ?)`).run(context.playerId, context.characterId, JSON.stringify({ overflow: true }));
+  const request = { action: "craftItem", characterId: context.characterId, recipeId: "boss_weapon_lavalon_sword", requestId: "craft-capacity-01" };
+  const result = await post(context.api, context.db, context.token, request);
+  assert.equal(result.body.ok, true);
+  const crafted = context.db.raw.prepare("SELECT extra_json FROM items WHERE item_id = ?").get(result.body.item.id);
+  assert.ok(crafted);
+  assert.equal(JSON.parse(crafted.extra_json).overflow, false);
+  const retry = await post(context.api, context.db, context.token, request);
+  assert.equal(retry.body.replayed, true);
 });
 
 test("concurrent duplicate W4 crafting spends materials and Gold exactly once", async () => {

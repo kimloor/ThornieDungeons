@@ -867,9 +867,22 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
     : `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ?)`;
   const guardBinds = definition.currency === "diamonds" ? [id, definition.cost] : [characterId, id, definition.cost];
   const tokenItemId = `shop-${randomToken(18)}`;
-  const overflow = (Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0) >= 30;
   const result = kind === "protection_stone" ? { resource: kind, amount: 1, cost: definition.cost }
     : { resource: resourceId, amount: 1, itemId: tokenItemId, cost: definition.cost };
+  const inventoryPlan = kind === "protection_stone" ? null : await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
+  if (inventoryPlan) {
+    await ensureItemAuthorityTables(db);
+    const potion = kind === "potion";
+    const slotType = potion ? "potion" : "junk";
+    const itemName = potion ? definition.name : resourceId === "iron" ? "Iron" : "Mana Ore";
+    inventoryPlanAddRow(inventoryPlan, {
+      item_id: tokenItemId, slot_type: slotType, equipped: 0, inventory_slot: "", item_template_id: "",
+      rarity: "common", name: itemName, item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
+      atk: 0, def: 0, hp: 0, mp: 0,
+      extra_json: JSON.stringify(potion ? { potionId: resourceId, quantity: 1 } : { junkId: resourceId, quantity: 1 })
+    }, { originType: "shop_purchase", sourceId: actionId, context: { resource: resourceId } });
+    reconcileMailOverflow(inventoryPlan);
+  }
   return runCharacterReceiptMutation(db, {
     id, characterId, operation, requestId: key, payloadJson,
     guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?) AND ${balanceSql}`,
@@ -879,17 +892,10 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
         db.prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(definition.cost, id, definition.cost, token),
         db.prepare(`UPDATE characters SET protection_stones = protection_stones + 1, updated_at = ? WHERE character_id = ? AND player_id = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(nowIso(), characterId, id, token)
       ];
-      const potion = kind === "potion";
-      const extra = JSON.stringify(potion ? { potionId: resourceId, quantity: 1, overflow } : { junkId: resourceId, quantity: 1, overflow });
-      const slotType = potion ? "potion" : "junk";
-      const itemName = potion ? definition.name : resourceId === "iron" ? "Iron" : "Mana Ore";
       return [
         db.prepare(`UPDATE characters SET gold = gold - ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND gold >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(definition.cost, nowIso(), characterId, id, definition.cost, token),
-        db.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
-          SELECT ?, ?, ?, ?, 0, '', '', 'common', ?, 0, 0, 0, 1, 0, 0, 0, 0, ?, ?, ?
-          WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
-          ON CONFLICT(item_id) DO NOTHING`)
-          .bind(tokenItemId, id, characterId, slotType, itemName, extra, nowIso(), nowIso(), token)
+        ...mailPlanPersistenceStatements(db, inventoryPlan, id, characterId, nowIso(),
+          `EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`, [token])
       ];
     },
     result
@@ -963,10 +969,12 @@ async function handlePurchaseShopEquipment(db, id, session, characterId, offerId
   if (!price) return json({ error: "shop_offer_invalid" }, 409);
   if (Number(owned.row.gold) < price) return json({ error: "insufficient_gold", need: price, have: Number(owned.row.gold) || 0 }, 409);
   const nextOffers = offers.filter(row => row?.offerId !== keyOffer);
-  const inventoryCount = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
   const itemId = String(offer.item.id || `shop-item-${randomToken(14)}`);
-  const itemRow = dungeonV2ServerRewardItem({ ...offer.item, id: itemId }, 0, inventoryCount >= 30);
+  const itemRow = dungeonV2ServerRewardItem({ ...offer.item, id: itemId }, 0, false);
   if (!itemRow) return json({ error: "shop_offer_invalid" }, 409);
+  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
+  inventoryPlanAddRow(inventoryPlan, itemRow, { originType: "shop_purchase", sourceId: keyOffer, context: { offerId: keyOffer, floor: shop.floor } });
+  reconcileMailOverflow(inventoryPlan);
   await ensureItemAuthorityTables(db);
   const now = nowIso();
   const result = { offerId: keyOffer, itemId, price };
@@ -979,14 +987,7 @@ async function handlePurchaseShopEquipment(db, id, session, characterId, offerId
     mutationStatements: token => [
       db.prepare(`UPDATE characters SET gold = gold - ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND gold >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
         .bind(price, now, characterId, id, price, token),
-      db.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
-        SELECT ?, ?, ?, ?, 0, '', '', ?, ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ?
-        WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
-        ON CONFLICT(item_id) DO NOTHING`)
-        .bind(itemRow.item_id, id, characterId, itemRow.slot_type, itemRow.rarity, itemRow.name, itemRow.atk, itemRow.def, itemRow.hp, itemRow.mp, itemRow.extra_json, now, now, token),
-      itemProvenanceStatement(db, itemRow.item_id, id, characterId, "shop_purchase", keyOffer, { offerId: keyOffer, floor: shop.floor }, now,
-        `EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`, [token]),
-      itemOwnershipAcquireStatement(db, itemRow.item_id, id, characterId, "shop_purchase", { offerId: keyOffer, floor: shop.floor }, now,
+      ...mailPlanPersistenceStatements(db, inventoryPlan, id, characterId, now,
         `EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`, [token]),
       db.prepare(`UPDATE character_shop_offers SET offers_json = ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND offers_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
         .bind(JSON.stringify(nextOffers), now, characterId, id, shop.offers_json, token)
@@ -1099,6 +1100,27 @@ async function handleSalvageItem(db, id, session, characterId, itemId, requestId
   const operationToken = crypto.randomUUID();
   const now = nowIso();
   const salvage = { itemId: targetId, kind: salvageKind, materials };
+  await ensureItemAuthorityTables(db);
+  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
+  inventoryPlanRemoveItem(inventoryPlan, targetId);
+  // The source row is deleted by the guarded salvage statement below. Keep it
+  // out of the planner persistence list so that deletion releases its slot
+  // without consuming the planner's changes() gate.
+  inventoryPlan.entries = inventoryPlan.entries.filter(entry => String(entry.raw.item_id) !== targetId);
+  inventoryPlanLists(inventoryPlan);
+  materials.forEach(material => {
+    const junkId = String(material.junkId).slice(0, 80);
+    const quantity = Math.max(1, Math.floor(Number(material.quantity) || 1));
+    const outId = `salvage-${dungeonV2ServerHash(`${characterId}:${key}:${junkId}`)}`;
+    const meta = DUNGEON_V2_REWARD_JUNK_META[junkId] || [junkId, "📦"];
+    inventoryPlanAddRow(inventoryPlan, {
+      item_id: outId, slot_type: "junk", equipped: 0, inventory_slot: "", item_template_id: "",
+      rarity: "common", name: meta[0], item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
+      atk: 0, def: 0, hp: 0, mp: 0,
+      extra_json: JSON.stringify({ junkId, quantity, icon: meta[1] })
+    }, { originType: "salvage", sourceId: targetId, context: { itemId: targetId, salvageKind } });
+  });
+  reconcileMailOverflow(inventoryPlan);
   const statements = [db.prepare(
     `INSERT INTO character_operation_receipts (character_id, operation, request_id, operation_token, payload_json, result_json, created_at)
      SELECT ?, ?, ?, ?, ?, 'pending', ? WHERE EXISTS (SELECT 1 FROM items WHERE item_id = ? AND character_id = ? AND player_id = ? AND equipped = 0 AND COALESCE(extra_json, '') = ? AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1)
@@ -1109,20 +1131,8 @@ async function handleSalvageItem(db, id, session, characterId, itemId, requestId
        AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1
        AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`
   ).bind(targetId, characterId, id, row.extra_json || "", operationToken));
-  const count = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
-  materials.forEach((material, index) => {
-    const junkId = String(material.junkId).slice(0, 80);
-    const quantity = Math.max(1, Math.floor(Number(material.quantity) || 1));
-    const outId = `salvage-${dungeonV2ServerHash(`${characterId}:${key}:${junkId}`)}`;
-    const meta = DUNGEON_V2_REWARD_JUNK_META[junkId] || [junkId, "📦"];
-    const itemExtra = JSON.stringify({ junkId, quantity, icon: meta[1], overflow: count + index >= 30 });
-    statements.push(db.prepare(
-      `INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
-       SELECT ?, ?, ?, 'junk', 0, '', '', 'common', ?, 0, 0, 0, 1, 0, 0, 0, 0, ?, ?, ?
-       WHERE changes() = 1 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
-       ON CONFLICT(item_id) DO NOTHING`
-    ).bind(outId, id, characterId, meta[0], itemExtra, now, now, operationToken));
-  });
+  statements.push(...mailPlanPersistenceStatements(db, inventoryPlan, id, characterId, now,
+    `changes() > 0 AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`, [operationToken]));
   statements.push(db.prepare(`UPDATE character_operation_receipts SET result_json = ? WHERE operation_token = ? AND result_json = 'pending' AND changes() = 1`)
     .bind(JSON.stringify(salvage), operationToken));
   statements.push(db.prepare(`DELETE FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending'`).bind(operationToken));
@@ -1756,17 +1766,16 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   const normalizedReward = { ...serverReward, battleId, starterPetGrant: starterGrant || null, petProgress: petXp.progress };
   const encoded = JSON.stringify({ ...resultPayload, floor: context.floor, reward: normalizedReward });
   if (encoded.length > 512000) return { error: "battle_result_too_large" };
-  const countRow = await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first();
-  const currentCount = Number(countRow?.c) || 0;
-  const rows = serverReward.items.map((item, index) => dungeonV2ServerRewardItem(item, index, currentCount + index >= 30)).filter(Boolean);
+  const rows = serverReward.items.map((item, index) => dungeonV2ServerRewardItem(item, index, false)).filter(Boolean);
   if (rows.length !== serverReward.items.length) return { error: "invalid_reward_plan" };
   if (rows.length) await ensureItemAuthorityTables(db);
-  const cols = TABLES.items.cols.filter(c => c !== "player_id" && c !== "character_id" && c !== "created_at" && c !== "updated_at");
-  const itemStmt = rows.length ? db.prepare(
-    `INSERT INTO items (item_id, player_id, character_id, ${cols.filter(c => c !== "item_id").join(",")}, created_at, updated_at)
-     ${rows.map(() => `SELECT ?, ?, ?, ${cols.filter(c => c !== "item_id").map(() => "?").join(",")}, ?, ? WHERE changes() > 0`).join(" UNION ALL ")}
-     ON CONFLICT(item_id) DO NOTHING`
-  ).bind(...rows.flatMap(row => [row.item_id, id, characterId, ...cols.filter(c => c !== "item_id").map(c => row[c]), now, now])) : null;
+  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
+  rows.forEach(row => inventoryPlanAddRow(inventoryPlan, row, {
+    originType: row.slot_type === "junk" ? "dungeon_junk" : "dungeon_reward",
+    sourceId: battleId,
+    context: { battleId, sourceFloor: context.floor }
+  }));
+  reconcileMailOverflow(inventoryPlan);
   const completionStmt = db.prepare(
     `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
   ).bind(String(battleId), characterId, encoded, now);
@@ -1776,13 +1785,8 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   // Dungeon V2 currently has no approved Diamond reward source. The server plan is
   // deliberately zero and never reads reward.diamonds from the client.
   const playerStmt = db.prepare(`UPDATE players SET diamonds = diamonds + 0 WHERE id = ? AND changes() > 0`).bind(id);
-  const provenance = rows.length ? [
-    ...rows.map(row => itemProvenanceStatement(db, row.item_id, id, characterId, row.slot_type === "junk" ? "dungeon_junk" : (row.sourceType || "dungeon_reward"), row.sourceIdentity || battleId,
-      { battleId, sourceFloor: context.floor }, now))
-    , ...rows.map(row => itemOwnershipAcquireStatement(db, row.item_id, id, characterId, row.slot_type === "junk" ? "dungeon_junk" : "dungeon_reward",
-      { battleId, sourceFloor: context.floor }, now))
-  ] : [];
-  const batchResult = await db.batch([completionStmt, characterStmt, playerStmt, ...(itemStmt ? [itemStmt] : []), ...provenance]);
+  const itemStatements = mailPlanPersistenceStatements(db, inventoryPlan, id, characterId, now, "changes() > 0", []);
+  const batchResult = await db.batch([completionStmt, characterStmt, playerStmt, ...itemStatements]);
   const committed = Number(batchResult?.[0]?.meta?.changes) > 0;
   return { completionEncoded: encoded, reward: committed ? normalizedReward : null, committed };
 }
@@ -1884,6 +1888,88 @@ function mailNewEntry(item, itemId, overflow, quantity, extra, origin) {
   };
 }
 
+// Canonical server-side Inventory V2 capacity planner.  Mail introduced this
+// planner first; all authoritative acquisition paths use the same row-based
+// planner so capacity is derived from authenticated persisted state rather
+// than raw item-row counts or client presentation data.
+function inventoryPlanEntryFromRow(row, overflow, origin) {
+  const parsed = parseJsonColumn(row?.extra_json, {});
+  const extra = parsed && typeof parsed === "object" ? { ...parsed } : {};
+  extra.quantity = Math.max(1, Math.trunc(Number(extra.quantity) || Number(row?.quantity) || 1));
+  extra.overflow = !!overflow;
+  return {
+    raw: { ...row, equipped: 0, quantity: Number(row?.quantity) || 1 },
+    extra,
+    new: true,
+    changed: true,
+    deleted: false,
+    origin
+  };
+}
+
+function inventoryPlanLists(plan) {
+  mailPlanLists(plan);
+  return plan;
+}
+
+function inventoryPlanAddRow(plan, row, origin) {
+  if (!row || typeof row !== "object") return;
+  const parsed = parseJsonColumn(row.extra_json, {});
+  const extra = parsed && typeof parsed === "object" ? { ...parsed } : {};
+  const quantity = Math.max(1, Math.trunc(Number(extra.quantity) || Number(row.quantity) || 1));
+  const key = mailStackKey(String(row.slot_type || ""), extra);
+  if (key) {
+    let remaining = mailMergeInto(plan.carried, key, quantity);
+    if (remaining > 0 && plan.carried.length < MAIL_INVENTORY_CAPACITY) {
+      const chunk = Math.min(MAIL_STACK_MAX, remaining);
+      plan.entries.push(inventoryPlanEntryFromRow({ ...row, quantity: 1, extra_json: JSON.stringify(extra) }, false, origin));
+      const entry = plan.entries[plan.entries.length - 1];
+      entry.extra.quantity = chunk;
+      remaining -= chunk;
+      inventoryPlanLists(plan);
+    }
+    if (remaining > 0) remaining = mailMergeInto(plan.overflow, key, remaining);
+    let part = 1;
+    while (remaining > 0) {
+      const chunk = Math.min(MAIL_STACK_MAX, remaining);
+      const partRow = { ...row, item_id: `${row.item_id}-part-${part++}`, quantity: 1, extra_json: JSON.stringify(extra) };
+      const entry = inventoryPlanEntryFromRow(partRow, true, origin);
+      entry.extra.quantity = chunk;
+      plan.entries.push(entry);
+      remaining -= chunk;
+      inventoryPlanLists(plan);
+    }
+    return;
+  }
+  plan.entries.push(inventoryPlanEntryFromRow(row, plan.carried.length >= MAIL_INVENTORY_CAPACITY, origin));
+  inventoryPlanLists(plan);
+}
+
+function inventoryPlanRemoveItem(plan, itemId) {
+  const entry = plan.entries.find(candidate => !candidate.deleted && String(candidate.raw.item_id) === String(itemId));
+  if (!entry) return false;
+  entry.deleted = true;
+  entry.changed = true;
+  inventoryPlanLists(plan);
+  return true;
+}
+
+function inventoryPlanConsume(plan, predicate, quantity) {
+  let remaining = Math.max(0, Math.trunc(Number(quantity) || 0));
+  for (const entry of plan.entries) {
+    if (!remaining || entry.deleted || !predicate(entry)) continue;
+    const current = mailQuantity(entry);
+    const take = Math.min(current, remaining);
+    remaining -= take;
+    const next = current - take;
+    if (next > 0) entry.extra.quantity = next;
+    else entry.deleted = true;
+    entry.changed = true;
+    inventoryPlanLists(plan);
+  }
+  return remaining;
+}
+
 function mailAddReward(plan, item, itemId, extra, origin) {
   if (!item || typeof item !== "object") return;
   const slotType = String(item.type || "");
@@ -1938,7 +2024,7 @@ function reconcileMailOverflow(plan) {
   }
 }
 
-async function loadMailSettlementState(db, id, characterId, holder) {
+async function loadMailSettlementState(db, id, characterId, holder, options = {}) {
   if (holder?.plan) return holder.plan;
   const rows = (await db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`)
     .bind(id, characterId).all()).results || [];
@@ -1949,7 +2035,8 @@ async function loadMailSettlementState(db, id, characterId, holder) {
       return { raw, extra, new: false, changed: false, deleted: false };
     }), carried: [], overflow: [], equipped: []
   };
-  reconcileMailOverflow(plan);
+  mailPlanLists(plan);
+  if (options.reconcile !== false) reconcileMailOverflow(plan);
   if (holder) holder.plan = plan;
   return plan;
 }
@@ -2658,8 +2745,8 @@ async function handleCraftItem(db, id, session, characterId, recipeId, requestId
   // matter how large a stack actually is — that's what caused "have 1/6" even when a
   // player had a real stack of e.g. 17.
   const junkRowsRes = await db
-    .prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND slot_type = 'junk'`)
-    .bind(characterId)
+    .prepare(`SELECT item_id, extra_json FROM items WHERE player_id = ? AND character_id = ? AND slot_type = 'junk'`)
+    .bind(id, characterId)
     .all();
   const junkRows = (junkRowsRes.results || []).map((r) => {
     let extra = {};
@@ -2673,7 +2760,6 @@ async function handleCraftItem(db, id, session, characterId, recipeId, requestId
   }
 
   const now = nowIso();
-  const inventoryCount = Number((await db.prepare(`SELECT COUNT(*) AS c FROM items WHERE character_id = ?`).bind(characterId).first())?.c) || 0;
   const operationToken = crypto.randomUUID();
   let seed = 2166136261;
   for (const ch of operationToken) { seed ^= ch.charCodeAt(0); seed = Math.imul(seed, 16777619); }
@@ -2690,45 +2776,44 @@ async function handleCraftItem(db, id, session, characterId, recipeId, requestId
     dodgeChance: item.dodgeChance, critChance: item.critChance, critDamage: item.critDamage,
     setId: item.setId, craftRecipeId: recipeId, bossWeaponId: item.bossWeaponId,
     signatureId: item.signatureId, sourceBossId: item.sourceBossId, craftRequestId: operationId,
-    craftConsumed: junkNeeds, craftGoldSpent: goldCost, craftPendingToken: operationToken,
-    overflow: inventoryCount >= 30
+    craftConsumed: junkNeeds, craftGoldSpent: goldCost, craftPendingToken: operationToken
   };
-  const resourceConditions = junkNeeds.map(() => `(SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) FROM items WHERE character_id = ? AND slot_type = 'junk' AND json_extract(extra_json, '$.junkId') = ?) >= ?`);
-  const resourceBinds = junkNeeds.flatMap(need => [characterId, need.junkId, need.qty]);
+  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
+  for (const need of junkNeeds) {
+    const left = inventoryPlanConsume(inventoryPlan,
+      entry => String(entry.raw.slot_type || "") === "junk" && String(entry.extra?.junkId || "") === String(need.junkId),
+      need.qty);
+    if (left > 0) return json({ error: "insufficient_materials", junkId: need.junkId, need: need.qty, have: need.qty - left });
+  }
+  const craftRow = {
+    item_id: newItemId, slot_type: item.type, equipped: 0, inventory_slot: "", item_template_id: recipeId,
+    rarity: "mythic", name: item.name, item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
+    atk: Number(item.atk) || 0, def: Number(item.def) || 0, hp: Number(item.hp) || 0, mp: Number(item.mp) || 0,
+    extra_json: JSON.stringify(extra)
+  };
+  inventoryPlanAddRow(inventoryPlan, craftRow, { originType: "craft", sourceId: recipeId, context: { recipeId, floor } });
+  const craftEntry = inventoryPlan.entries.find(entry => entry.new && String(entry.raw.item_id) === newItemId);
+  if (!craftEntry) return json({ error: "craft_capacity_conflict", retry: true }, 409);
+  reconcileMailOverflow(inventoryPlan);
+  const resourceConditions = junkNeeds.map(() => `(SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) FROM items WHERE player_id = ? AND character_id = ? AND slot_type = 'junk' AND json_extract(extra_json, '$.junkId') = ?) >= ?`);
+  const resourceBinds = junkNeeds.flatMap(need => [id, characterId, need.junkId, need.qty]);
   const insertWhere = [`EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ?)`].concat(resourceConditions).join(" AND ");
   await ensureItemAuthorityTables(db);
   const stmts = [db.prepare(
     `INSERT OR IGNORE INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
      SELECT ?, ?, ?, ?, 0, '', ?, 'mythic', ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ? WHERE ${insertWhere}`
-  ).bind(newItemId, id, characterId, item.type, recipeId, item.name, Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0, JSON.stringify(extra), now, now, characterId, id, goldCost, ...resourceBinds)];
+  ).bind(newItemId, id, characterId, item.type, recipeId, item.name, Number(item.atk) || 0, Number(item.def) || 0, Number(item.hp) || 0, Number(item.mp) || 0, JSON.stringify(craftEntry.extra), now, now, characterId, id, goldCost, ...resourceBinds)];
   const craftLogGate = `EXISTS (SELECT 1 FROM items marker WHERE marker.item_id = ? AND marker.character_id = ? AND json_extract(marker.extra_json, '$.craftPendingToken') = ?)`;
   const craftLogBinds = [newItemId, characterId, operationToken];
   stmts.push(itemProvenanceStatement(db, newItemId, id, characterId, "craft", recipeId, { recipeId, floor }, now, craftLogGate, craftLogBinds));
   stmts.push(itemOwnershipAcquireStatement(db, newItemId, id, characterId, "craft", { recipeId, floor }, now, craftLogGate, craftLogBinds));
-  junkNeeds.forEach((need) => {
-    let remaining = need.qty;
-    for (const row of junkRows.filter((r) => r.junkId === need.junkId)) {
-      if (remaining <= 0) break;
-      const take = Math.min(row.quantity, remaining);
-      remaining -= take;
-      const leftover = row.quantity - take;
-      if (leftover > 0) {
-        // Write the decremented amount back into extra_json.quantity (preserving every
-        // other extra field — icon, empowerSlots, etc.), NOT the top-level column.
-        const nextExtra = JSON.stringify({ ...row.extra, quantity: leftover });
-        stmts.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items marker WHERE marker.item_id = ? AND json_extract(marker.extra_json, '$.craftPendingToken') = ?)`)
-          .bind(nextExtra, now, row.item_id, characterId, row.rawExtra, newItemId, operationToken));
-      } else {
-        stmts.push(db.prepare(`DELETE FROM items WHERE item_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM items marker WHERE marker.item_id = ? AND json_extract(marker.extra_json, '$.craftPendingToken') = ?)`)
-          .bind(row.item_id, characterId, row.rawExtra, newItemId, operationToken));
-      }
-    }
-  });
+  const planWithoutCraft = { ...inventoryPlan, entries: inventoryPlan.entries.filter(entry => entry !== craftEntry) };
+  stmts.push(...mailPlanPersistenceStatements(db, planWithoutCraft, id, characterId, now, craftLogGate, craftLogBinds));
   if (goldCost > 0) {
     stmts.push(db.prepare(`UPDATE characters SET gold = gold - ?, updated_at = ? WHERE character_id = ? AND gold >= ? AND EXISTS (SELECT 1 FROM items marker WHERE marker.item_id = ? AND json_extract(marker.extra_json, '$.craftPendingToken') = ?)`)
       .bind(goldCost, now, characterId, goldCost, newItemId, operationToken));
   }
-  const finalizedExtra = { ...extra }; delete finalizedExtra.craftPendingToken;
+  const finalizedExtra = { ...craftEntry.extra }; delete finalizedExtra.craftPendingToken;
   stmts.push(db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND character_id = ? AND json_extract(extra_json, '$.craftPendingToken') = ?`)
     .bind(JSON.stringify(finalizedExtra), now, newItemId, characterId, operationToken));
   const batch = await db.batch(stmts);

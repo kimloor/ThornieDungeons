@@ -314,7 +314,7 @@ Reward settlement must derive capacity from the authenticated character's persis
 3. create carried items only while fewer than 30 logical carried slots are occupied; and
 4. place only the genuine remainder in persistent Overflow.
 
-Mail Claim returns the resulting authoritative snapshot after the same atomic claim transaction. Existing Overflow rows may be reconciled back into carried Inventory when space is available, preserving their item identity and metadata. A client-provided free-slot count is never authoritative.
+The Worker uses one shared capacity/allocation planner for Mail, Daily Login, Shop resources/equipment, Salvage, Dungeon rewards, and Mythic Craft. Each participating settlement reads only the authenticated account/character rows, applies stack merge and any same-transaction item consumption before allocating, then persists the resulting Inventory/Overflow state atomically. Mail Claim returns the resulting authoritative snapshot after the same atomic claim transaction. Existing Overflow rows may be reconciled back into carried Inventory when space is available, preserving their item identity and metadata. A client-provided free-slot count is never authoritative.
 
 ## 14. Future Storage/Warehouse
 

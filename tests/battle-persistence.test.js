@@ -377,6 +377,35 @@ test("atomic Dungeon V2 item commit preserves overflow when the carried inventor
   assert.notEqual(storedExtra.critDamage, 999999);
 });
 
+test("Dungeon reward capacity excludes equipped and existing Overflow rows", async () => {
+  const api = worker(), db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Reward_QA_CAP", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Capacity QA" });
+  const characterId = created.body.character.character_id;
+  for (let i = 0; i < 29; i++) {
+    db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, name, rarity, quantity, extra_json) VALUES (?, ?, ?, 'weapon', 'Filler', 'rare', 1, '{}')")
+      .run(`capacity-carried-${i}`, "Reward_QA_CAP", characterId);
+  }
+  db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, name, rarity, equipped, extra_json) VALUES ('capacity-equipped', ?, ?, 'weapon', 'Equipped', 'rare', 1, '{}')")
+    .run("Reward_QA_CAP", characterId);
+  db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, name, rarity, extra_json) VALUES ('capacity-overflow', ?, ?, 'weapon', 'Overflow', 'rare', ?)")
+    .run("Reward_QA_CAP", characterId, JSON.stringify({ overflow: true }));
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 10 WHERE character_id = ?").run(characterId);
+  const started = await startDungeon(api, db, token, characterId, 10);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpointForStart(started) })).body.accepted, true);
+  const result = await post(api, db, token, { action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", safeActionSeq: 2, floor: 10, reward: { ...rewardForContext(started.body.context), unlockedNext: true, firstClear: true, items: [
+      { id: "capacity-reward", type: "accessory", rarity: "rare", name: "Capacity Reward", rewardVersion: 2, itemModelVersion: 2 },
+      { type: "junk", junkId: "forged-capacity", quantity: 1 }
+    ] } } });
+  assert.equal(result.body.ok, true);
+  const carried = db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND equipped = 0 AND COALESCE(json_extract(extra_json, '$.overflow'), 0) != 1").get(characterId).c;
+  assert.equal(carried, 30);
+  const newRewards = db.raw.prepare("SELECT extra_json FROM items WHERE character_id = ? AND item_id NOT LIKE 'capacity-%'").all(characterId);
+  assert.ok(newRewards.some(row => JSON.parse(row.extra_json).overflow === false));
+});
+
 test("Dungeon V2 reward authority rejects forged floor, role, and pack context", async () => {
   const api = worker(), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_CTX", password: "pass", confirmPassword: "pass" });
