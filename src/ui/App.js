@@ -1308,7 +1308,13 @@ function ThornieDungeons() {
       },
       enemies: spawned.map((monster, index) => DUNGEON_V2.toDungeonV2BattleEnemy(monster, index))
     });
-    if (battleAuthorization) initialBattle.serverContext = battleAuthorization.context;
+    if (battleAuthorization) {
+      initialBattle.serverContext = battleAuthorization.context;
+      // Keep the server-authorized encounter role on the real Battle Core
+      // checkpoint.  This is a derived identity field, not client authority;
+      // the Worker still replaces it with the stored context on save.
+      initialBattle.encounterType = battleAuthorization.context.role;
+    }
     // Apply the Dungeon V2 enrage boundary before the first resumed checkpoint;
     // the serialized unit flag makes this exact-once across save/reload/resume.
     DUNGEON_V2.applyDungeonV2BossEnrage(initialBattle);
