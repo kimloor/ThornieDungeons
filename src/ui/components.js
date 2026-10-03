@@ -2546,7 +2546,7 @@ function RaidBossCard({
       onHurtComplete,
       onStatus: status => setPhaserStatus(status)
     }),
-    (!bossSpriteConfig || phaserStatus === "error") && /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
+    (!bossSpriteConfig || phaserStatus !== "ready") && /*#__PURE__*/React.createElement(RaidBossFrameSprite, {
       config: bossSpriteConfig,
       hurtToken,
       className: "md-raid-boss-sprite",
