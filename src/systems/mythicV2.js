@@ -47,7 +47,6 @@
       critDamage: counts.skeleton >= 4 ? 30 : 0,
       activeSkillMpMultiplier: counts.azure >= 4 ? 0.5 : 1,
       ccResist: counts.robot >= 4 ? 10 : 0,
-      azureControlProc: counts.azure >= 6,
       skeletonCritArmorBreak: counts.skeleton >= 6,
       robotThresholdDefUp: counts.robot >= 6
     });
@@ -71,7 +70,6 @@
     return Object.freeze({
       activeSkillMpMultiplier: sets.activeSkillMpMultiplier,
       ccResist: sets.ccResist,
-      azureControlProc: sets.azureControlProc,
       skeletonCritArmorBreak: sets.skeletonCritArmorBreak,
       robotThresholdDefUp: sets.robotThresholdDefUp,
       bossWeaponSignature: weapon?.signatureId || null
