@@ -17,7 +17,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -n --exclude-dir=.git 'W2-GUILD-DONATION-V1-PREP.md' .; then
+          if grep -R -n --exclude-dir=.git --exclude='tmp-w2-prep-delete-qa.yml' 'W2-GUILD-DONATION-V1-PREP.md' .; then
             echo "Stale W2 PREP reference remains"
             exit 1
           fi
