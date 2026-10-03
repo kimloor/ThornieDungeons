@@ -1289,6 +1289,13 @@ Next graphics batch:
 - Boss uses the dedicated Boss icon and does not use the normal Monster numbering rule unless a future encounter contract explicitly permits multiple bosses.
 - ATB icons are presentation only and must not alter turn order, targeting or actor identity authority.
 
+- **G11 — Robot + Skeleton Set Item Icons — QUEUED / LOW (Graphics), MEDIUM when runtime-bound:** create the missing inventory/equipment item icons for Robot and Skeleton after G10.
+  - Robot: weapon / helmet / chest / gloves / boots / accessory.
+  - Skeleton: weapon / helmet / chest / gloves / boots / accessory.
+  - Reuse the approved Hero V5 Robot/Skeleton visual identity; do not redesign either set.
+  - Preserve the existing Azure item-icon set unchanged.
+  - After asset publication, runtime item-icon resolution must support `setId = azure | robot | skeleton`; the current Azure-only branch is incomplete for G11.
+
 Graphics must not redesign mechanics or publish guessed asset paths.
 
 ---
