@@ -2585,7 +2585,11 @@ async function handleMutateLegacyBlacksmith(db, id, session, characterId, itemId
 
 async function handleGetInventory(db, id, session, characterId, page, pageSize) {
   const auth = await verifyPlayer(db, id, session);
-  if (auth.error) return json({ error: auth.error });
+  if (auth.error) return json({ error: auth.error }, 401);
+  if (characterId) {
+    const owned = await verifyOwnedCharacter(db, id, characterId);
+    if (owned.error) return json({ error: owned.error }, 403);
+  }
 
   const p = Math.max(1, Number(page) || 1);
   const size = Math.min(200, Math.max(1, Number(pageSize) || 100));
