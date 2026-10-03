@@ -1,6 +1,6 @@
 # ThornieDungeons — Pre-W6 Readiness Audit — 2026-10-03
 
-Status: **ACTIVE GATE — remediation required before WAVE 6 destructive cutover**
+Status: **COMPLETE / PRE-W6 GATE PASSED — WAVE 6 ready for separate owner approval**
 
 Baseline main at audit start:
 `aa9ccdae8e2d46e68d96d257f83cf3e075e71048`
@@ -23,14 +23,17 @@ Purpose:
 - Admin V2 account-backed session path is merged and Production deployed.
 - Arena W9/W9R, Dungeon V2, Reward V2, Enhance/Empower V2, Mythic content, Raid/Wings V2, Social/Guild work and W5.5 hardening are present in the current production line.
 
-### GAP — RELEASE BLOCKER BEFORE W6
-1. **Azure Mythic Set 6-piece contract/runtime drift — HIGH**
-   - Latest approved rule: Azure has 2pc +AGI 5 and 4pc Active Skill MP cost ×0.50; no Azure 6pc effect.
-   - Current runtime still emits and consumes `azureControlProc` at 6 pieces.
-   - Current Battle Core and Worker actively execute the proc.
-   - `tests/mythic-v2.test.js` still asserts the old Azure 6pc behavior.
-   - `DUNGEON-REWARD-PROGRESSION-V2.md` still documents a 6pc Azure signature.
-   - Required action: separate HIGH-risk remediation branch, remove the Azure 6pc effect from shared contract/runtime/tests/docs, run Battle Core parity + Mythic/Arena/Raid/reward regressions, then Production verify.
+### RESOLVED RELEASE BLOCKER
+1. **Azure Mythic Set 6-piece contract/runtime drift — RESOLVED / PRODUCTION VERIFIED**
+   - Latest approved rule remains: Azure has 2pc +AGI 5 and 4pc Active Skill MP cost ×0.50; no Azure 6pc effect.
+   - PR #58 removed the retired Azure 6pc control proc from shared Mythic contract, Battle Core, Worker, tests and Reward V2 documentation.
+   - Merge SHA: `2e6b2d2a774bee2d975d26e03fd5911a6113f3f0`.
+   - Focused Mythic/Battle/Raid/Arena/Reward regression: 126/126 PASS.
+   - Full suite: 521/521 PASS.
+   - Battle Core parity: SUCCESS.
+   - API production deploy: SUCCESS.
+   - Frontend production deploy + live verification: SUCCESS.
+   - Retired Azure control-proc identifier is absent from runtime/tests/contracts.
 
 ### EXPECTED W6 TARGETS — NOT PRE-W6 BUGS
 1. **Temporary Azure QA/Test Shop stock**
@@ -60,10 +63,10 @@ Purpose:
 
 ## Pre-W6 release gate
 
-WAVE 6 may start only after:
-1. Azure 6pc remediation is merged and Production verified;
-2. focused Mythic/Battle Core/reward regressions are green;
-3. W6 implementation uses an exact deletion-target matrix and representative existing-player fixtures;
-4. destructive cleanup remains separately owner-approved for Production release.
+WAVE 6 readiness result:
+1. Azure 6pc remediation is merged and Production verified — PASS.
+2. focused Mythic/Battle Core/reward regressions are green — PASS.
+3. W6 implementation must still use an exact deletion-target matrix and representative existing-player fixtures.
+4. destructive cleanup still requires separate owner approval for implementation/release.
 
-No destructive W6 cleanup is authorized by this audit document itself.
+This audit is complete. It does not itself authorize destructive W6 cleanup.

@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V2
 
-Status: **ACTIVE-EXECUTION — WAVES 1-5.5 complete / Production verified; PRE-W6 READINESS AUDIT ACTIVE; WAVE 6 blocked pending audit remediation**
+Status: **ACTIVE-EXECUTION — WAVES 1-5.5 complete / Production verified; PRE-W6 READINESS AUDIT PASSED; WAVE 6 ready for separate Project Lead approval**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -1054,20 +1054,21 @@ Release result:
 ---
 
 ## PRE-W6 READINESS AUDIT — 2026-10-03
-**Status: ACTIVE GATE — RELEASE-BLOCKING GAP FOUND**
+**Status: COMPLETE / GATE PASSED**
 **Risk: HIGH**
 
 Canonical audit record: `PRE-W6-READINESS-AUDIT-2026-10-03.md`.
 
-Current blocker:
-- Azure Mythic Set still has an active 6pc control proc in shared Battle Core/Worker/tests/docs, but the latest approved contract removes the Azure 6pc effect. Resolve and Production-verify this drift before destructive W6 work.
+Resolved blocker:
+- Azure Mythic Set 6pc control proc drift was removed by PR #58 and Production verified on merge SHA `2e6b2d2a774bee2d975d26e03fd5911a6113f3f0`.
+- Focused regression 126/126, full suite 521/521, Battle Core parity, API deploy, and Frontend deploy/live verification all passed.
 
 This pre-W6 audit does not replace the mandatory post-W6 Full Project Gap Audit + Security Re-Audit.
 
 ---
 
 ## WAVE 6 — V2 Production Cutover + Legacy Special-Item Cleanup
-**Status: BLOCKED UNTIL PRE-W6 AUDIT REMEDIATION PASSES**
+**Status: READY FOR SEPARATE PROJECT LEAD APPROVAL — NOT STARTED**
 **Risk: VERY HIGH**
 **Lead: DEV**
 **Collaboration: QA mandatory; Project Lead release approval mandatory**
@@ -1280,9 +1281,9 @@ WAVE 5 Raid / Wings V2        ✅ COMPLETE / PRODUCTION
  ↓
 WAVE 5.5 Security Hardening   ✅ COMPLETE / PRODUCTION
  ↓
-PRE-W6 Readiness Audit        🔴 ACTIVE — REMEDIATION REQUIRED
+PRE-W6 Readiness Audit        ✅ COMPLETE / GATE PASSED
  ↓
-WAVE 6 V2 Cutover/Cleanup     🟣 VERY HIGH — BLOCKED
+WAVE 6 V2 Cutover/Cleanup     🟣 VERY HIGH — READY FOR OWNER APPROVAL
  ↓
 WAVE 7 Presentation Expansion 🟠 MEDIUM
 ```
