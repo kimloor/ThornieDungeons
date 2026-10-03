@@ -1,0 +1,38 @@
+name: Temporary Checkpoint Context QA
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Focused Battle persistence regression
+        run: >-
+          node --test --test-concurrency=1
+          tests/w5-5-security-hardening.test.js
+          tests/save-reliability.test.js
+          tests/dungeon-v2-foundation.test.js
+          tests/dungeon-v2-skills.test.js
+          tests/battle-core.test.js
+          tests/battle-core-parity.test.js
+          tests/reward-v2.test.js
+      - name: Full suite
+        run: node --test --test-concurrency=2 tests/*.test.js
+      - name: Build
+        run: node build.js
+      - name: Generated index clean
+        run: git diff --exit-code -- index.html
+      - name: Worker syntax
+        run: node --check workers/thornie-dungeons-api.js
+      - name: Diff check
+        run: git diff --check
