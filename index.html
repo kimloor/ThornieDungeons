@@ -11895,6 +11895,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.presentationScale = 1;
       this.lastArenaCueSeq = -1;
       this.lastArenaBattleId = null;
+      this.lastTerminalPresentationKey = "";
       this.handleResize = this.handleResize.bind(this);
     }
 
@@ -12098,6 +12099,23 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         run: speed => Promise.all(animationJobs.map(([actor, state]) =>
           actor.playVisualState(state, speed)
         ))
+      });
+    }
+
+    presentTerminal(result) {
+      if (isArenaPresentationSnapshot(this.snapshot)) return Promise.resolve();
+      const normalized = String(result || "");
+      if (!["victory", "defeat"].includes(normalized)) return this.presentationQueue.whenDrained();
+      const key = `${String(this.snapshot?.battleId || "")}:${normalized}`;
+      if (this.lastTerminalPresentationKey === key) return this.presentationQueue.whenDrained();
+      this.lastTerminalPresentationKey = key;
+      return this.presentationQueue.enqueue({
+        run: speed => new Promise(resolve => {
+          const duration = Math.max(120, Math.round(240 / Math.max(1, Number(speed) || 1)));
+          if (normalized === "victory") this.cameras?.main?.flash?.(duration);
+          else this.cameras?.main?.fade?.(duration);
+          this.time.delayedCall(duration, resolve);
+        })
       });
     }
 
@@ -12492,6 +12510,26 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     if (scene) bridge.sync(currentSnapshot);
   }
 
+  function presentTerminal(result) {
+    if (destroyed || !scene?.presentTerminal) return Promise.resolve();
+    try {
+      return Promise.resolve(scene.presentTerminal(result));
+    } catch (error) {
+      onError?.(error);
+      return Promise.resolve();
+    }
+  }
+
+  function whenPresentationDrained() {
+    if (destroyed || !scene?.presentationQueue?.whenDrained) return Promise.resolve();
+    try {
+      return Promise.resolve(scene.presentationQueue.whenDrained());
+    } catch (error) {
+      onError?.(error);
+      return Promise.resolve();
+    }
+  }
+
   function destroy() {
     if (destroyed) return;
     destroyed = true;
@@ -12513,7 +12551,7 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     onDestroyed?.();
   }
 
-  return Object.freeze({ mount, sync, destroy, getGame: () => game, getScene: () => scene });
+  return Object.freeze({ mount, sync, presentTerminal, whenPresentationDrained, destroy, getGame: () => game, getScene: () => scene });
 }
 
 // ===== phaser/runtime/HeroPreviewHost.js =====
@@ -12673,11 +12711,13 @@ function PhaserBattlefield(props) {
       onTargetSelected: id => props.onTargetSelected?.(id)
     });
     handleRef.current = handle;
+    props.onPresentationController?.(handle);
     setStatus("loading");
     props.onStatus?.("loading");
     void handle.mount();
     return () => {
       disposed = true;
+      props.onPresentationController?.(null);
       handle.destroy();
       handleRef.current = null;
     };
@@ -13019,6 +13059,7 @@ function ThornieDungeons() {
   const [resumeBattle, setResumeBattle] = useState(null); // Battle V1 safe Action-boundary checkpoint
   const [battleState, setBattleState] = useState(null);
   const battleStateRef = useRef(null);
+  const battlePresentationRef = useRef(null);
   const lastSafeBattleCheckpointRef = useRef(null);
   const confirmedBattleCheckpointRef = useRef({ battleId: null, safeActionSeq: -1 });
   const finishingBattleIdRef = useRef(null);
@@ -13914,6 +13955,21 @@ function ThornieDungeons() {
     if (messages.length) setLogState(messages);
     if (persistCheckpoint && !next.result) pushBattleCheckpoint(next);
   }
+  async function playTerminalBattlePresentation(result) {
+    const controller = battlePresentationRef.current;
+    if (!controller) return;
+    const fallbackMs = Math.max(500, Math.round(1400 / Math.max(1, Number(combatSpeed) || 1)));
+    try {
+      await Promise.race([
+        Promise.resolve(controller.presentTerminal?.(result))
+          .then(() => controller.whenPresentationDrained?.()),
+        new Promise(resolve => setTimeout(resolve, fallbackMs))
+      ]);
+    } catch (_) {
+      // Presentation is non-authoritative. Result/reward navigation must continue.
+    }
+  }
+
   async function finishCoreBattle(next) {
     if (!next?.battleId || finishingBattleIdRef.current === next.battleId) return;
     finishingBattleIdRef.current = next.battleId;
@@ -13972,6 +14028,7 @@ function ThornieDungeons() {
       completionReceipt = receipt;
     }
     setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
+    await playTerminalBattlePresentation(next.result);
     if (next.result === "victory") {
       if (completionReceipt && completionReceipt.firstCompletion === false) {
         // The server already applied this battle. Hydrate its authoritative snapshot rather
@@ -15735,7 +15792,8 @@ function ThornieDungeons() {
     combatSpeed: combatSpeed,
     battleVfx: battleVfx,
     combatTurnCount: combatTurnCount,
-    onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1)
+    onCycleCombatSpeed: () => setCombatSpeed(speed => speed === 1 ? 2 : 1),
+    onPresentationController: controller => { battlePresentationRef.current = controller; }
   }), phase === "result" && /*#__PURE__*/React.createElement(ResultScreen, {
     floor: selectedFloor,
     rewards: lastRewards,
@@ -20951,7 +21009,8 @@ function CombatScreen({
   combatSpeed,
   battleVfx = [],
   combatTurnCount,
-  onCycleCombatSpeed
+  onCycleCombatSpeed,
+  onPresentationController
 }) {
   const [editSlots, setEditSlots] = useState(false);
   const [assignSlotIndex, setAssignSlotIndex] = useState(null);
@@ -21160,6 +21219,7 @@ function CombatScreen({
     petAnim: petAnim,
     enemyAnims: enemyAnims,
     combatSpeed: combatSpeed,
+    onPresentationController: onPresentationController,
     onStatus: status => setPhaserStatus(status),
     onTargetSelected: onSelectTarget
   })), /*#__PURE__*/React.createElement("div", {

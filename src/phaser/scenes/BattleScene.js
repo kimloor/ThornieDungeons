@@ -25,6 +25,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.presentationScale = 1;
       this.lastArenaCueSeq = -1;
       this.lastArenaBattleId = null;
+      this.lastTerminalPresentationKey = "";
       this.handleResize = this.handleResize.bind(this);
     }
 
@@ -228,6 +229,23 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         run: speed => Promise.all(animationJobs.map(([actor, state]) =>
           actor.playVisualState(state, speed)
         ))
+      });
+    }
+
+    presentTerminal(result) {
+      if (isArenaPresentationSnapshot(this.snapshot)) return Promise.resolve();
+      const normalized = String(result || "");
+      if (!["victory", "defeat"].includes(normalized)) return this.presentationQueue.whenDrained();
+      const key = `${String(this.snapshot?.battleId || "")}:${normalized}`;
+      if (this.lastTerminalPresentationKey === key) return this.presentationQueue.whenDrained();
+      this.lastTerminalPresentationKey = key;
+      return this.presentationQueue.enqueue({
+        run: speed => new Promise(resolve => {
+          const duration = Math.max(120, Math.round(240 / Math.max(1, Number(speed) || 1)));
+          if (normalized === "victory") this.cameras?.main?.flash?.(duration);
+          else this.cameras?.main?.fade?.(duration);
+          this.time.delayedCall(duration, resolve);
+        })
       });
     }
 

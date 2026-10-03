@@ -84,6 +84,26 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     if (scene) bridge.sync(currentSnapshot);
   }
 
+  function presentTerminal(result) {
+    if (destroyed || !scene?.presentTerminal) return Promise.resolve();
+    try {
+      return Promise.resolve(scene.presentTerminal(result));
+    } catch (error) {
+      onError?.(error);
+      return Promise.resolve();
+    }
+  }
+
+  function whenPresentationDrained() {
+    if (destroyed || !scene?.presentationQueue?.whenDrained) return Promise.resolve();
+    try {
+      return Promise.resolve(scene.presentationQueue.whenDrained());
+    } catch (error) {
+      onError?.(error);
+      return Promise.resolve();
+    }
+  }
+
   function destroy() {
     if (destroyed) return;
     destroyed = true;
@@ -105,5 +125,5 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     onDestroyed?.();
   }
 
-  return Object.freeze({ mount, sync, destroy, getGame: () => game, getScene: () => scene });
+  return Object.freeze({ mount, sync, presentTerminal, whenPresentationDrained, destroy, getGame: () => game, getScene: () => scene });
 }

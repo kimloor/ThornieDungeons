@@ -659,3 +659,18 @@ latest main
 ~~~
 
 Keep fallbacks until the replacement surface is verified.
+
+
+## 15.6 W7A terminal presentation — 2026-10-03
+
+W7A A1 extends the shared presentation boundary without changing Battle authority:
+
+- the server-authoritative battle completion/receipt succeeds before terminal presentation is requested;
+- Dungeon Victory/Defeat uses the existing shared `PresentationQueue`;
+- Victory currently uses a short camera flash after queued terminal actor animation;
+- Defeat uses a short camera fade after queued terminal actor animation;
+- Result/Defeat navigation waits for presentation drain with a bounded timeout fallback;
+- Phaser/presentation errors are non-authoritative and must never prevent an already-confirmed result from continuing;
+- Arena behavior is unchanged by this Dungeon terminal step.
+
+A dedicated authored Hero Victory frame is not introduced by A1. Hero V5 remains frame-authored Idle/Attack/Death; future Victory artwork requires separate Graphics approval rather than synthesizing a new pose at runtime.
