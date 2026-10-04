@@ -171,8 +171,9 @@ function resolveItemIconPath(item) {
   const bossWeaponId = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
   const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
   if (bossWeaponIcons[bossWeaponId]) return icons.bossWeapons?.[bossWeaponIcons[bossWeaponId]] || "";
-  if (item.setId === "azure" && item.type) {
-    return icons.azure?.[item.type] || "";
+  const setFamily = String(item.setId || "").trim().toLowerCase();
+  if (["azure", "robot", "skeleton"].includes(setFamily) && item.type) {
+    return icons[setFamily]?.[item.type] || "";
   }
 
   return "";

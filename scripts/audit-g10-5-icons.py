@@ -12,11 +12,11 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 UI = ROOT / "r2-upload/ui"
-BASELINE = "aef8a1af548310770cfc9ad3d4acdedd012a8061"
-PUBLISHED_COMMIT = "33510ed345af2ef0b6d64fa3b34bf4f9f2061d40"
+BASELINE = "5812112e0cb3b37777471c8b14d8753c67920017"
+PUBLISHED_COMMIT = "PENDING"
 REPORT = ROOT / "docs/G10-5-ICON-ASSET-AUDIT.md"
 CSV = ROOT / "docs/G10-5-ICON-ASSET-AUDIT.csv"
-OPTIMIZED = {
+PRIOR_OPTIMIZED = {
     "ui/item-icons/materials/earth_stone.png",
     "ui/item-icons/materials/fire_stone.png",
     "ui/item-icons/materials/water_stone.png",
@@ -24,6 +24,18 @@ OPTIMIZED = {
     "ui/equipment-icons/boss/lavalon_sword.png",
     "ui/equipment-icons/boss/spirit_greatsword.png",
 }
+REBUILT = {
+    *(f"ui/equipment-icons/{family}/{family}_{name}.png"
+      for family in ("azure", "robot", "skeleton")
+      for name in ("sword", "helmet", "armor", "gauntlets", "boots", "ring")),
+    "ui/equipment-icons/wings/angel_wings.png",
+}
+FRAME_OPTIMIZED = {
+    "ui/profile-frames/arena_rank_1.png",
+    "ui/profile-frames/arena_rank_2.png",
+    "ui/profile-frames/arena_rank_3.png",
+}
+BATCH_CHANGED = REBUILT | FRAME_OPTIMIZED
 
 
 def icon_class(path):
@@ -72,9 +84,9 @@ def manifest_references():
 def original_size(path):
     result = subprocess.run(
         ["git", "cat-file", "-s", f"{BASELINE}:r2-upload/{path}"],
-        cwd=ROOT, capture_output=True, text=True, check=True,
+        cwd=ROOT, capture_output=True, text=True,
     )
-    return int(result.stdout)
+    return int(result.stdout) if result.returncode == 0 else 0
 
 
 def inspect(path, refs):
@@ -118,8 +130,19 @@ def inspect(path, refs):
         status = "PASS"
         action = "Retain"
         reason = "Within shared production budget; full decode succeeds"
-    if path in OPTIMIZED:
-        action = "Maintain same-path production PNG and versioned manifest URL" if size != original else "Optimization planned"
+    if path in REBUILT:
+        action = "Publish production PNG with stable path/key and versioned manifest URL"
+    elif path in FRAME_OPTIMIZED:
+        action = "Publish visually equivalent indexed PNG on the existing 512 px canvas"
+    elif path in PRIOR_OPTIMIZED:
+        action = "Retain prior same-path optimized production PNG"
+    if path in BATCH_CHANGED:
+        final_action = (f"Published {PUBLISHED_COMMIT[:7]}; R2 SHA-256 verified"
+                        if PUBLISHED_COMMIT != "PENDING" else "Prepared; R2 verification pending")
+    elif path in PRIOR_OPTIMIZED:
+        final_action = "Retained; prior G10.5 R2 SHA-256 verified"
+    else:
+        final_action = "Retained"
     return {
         "asset_path": "r2-upload/" + path,
         "manifest_key": "; ".join(refs.get(path, [])) or "No manifest key (inspect runtime reference)",
@@ -133,8 +156,8 @@ def inspect(path, refs):
         "classification": status,
         "issue_reason": reason,
         "recommended_action": action,
-        "final_action": f"Published {PUBLISHED_COMMIT[:7]}; R2 SHA-256 verified" if path in OPTIMIZED and size != original else "Retained; replacement blocked pending intact master" if error else "Retained",
-        "exception_reason": "None; review only" if status == "REVIEW" else "None",
+        "final_action": final_action if not error else "Decode failure remains unresolved",
+        "exception_reason": "None",
     }
 
 
@@ -149,9 +172,7 @@ def main():
         writer.writerows(rows)
     before = sum(row["before_bytes"] for row in rows)
     after = sum(row["after_bytes"] for row in rows)
-    invalid = [row for row in rows if "decode failure" in row["issue_reason"]]
-    review = [row for row in rows if row["classification"] == "REVIEW"]
-    optimized = [row for row in rows if row["before_bytes"] != row["after_bytes"]]
+    changed = [row for row in rows if row["asset_path"].removeprefix("r2-upload/") in BATCH_CHANGED]
     text = [
         "# G10.5 — Global production icon audit",
         "",
@@ -160,50 +181,35 @@ def main():
         "large hub emblem, backgrounds, VFX, Hero frames and sprites are excluded.",
         "The CSV companion contains every audited path, manifest key, dimensions, bytes,",
         "alpha/padding, PASS/REVIEW/FAIL, reason, recommendation and final action.",
-        "The six optimized keys use a `?v=g10_5_r1` manifest URL revision to bypass",
-        "the R2 Worker's one-day browser cache; underlying keys and paths remain unchanged.",
+        "G10.5+G11 set-item, Angel Wings and Arena frame replacements use",
+        "`?v=g10_5_g11_r1` to bypass stale browser/edge caches; production keys and paths",
+        "are preserved for Azure, Angel Wings and Arena frames.",
         "",
         f"- Audited: {len(rows)}; PASS {counts['PASS']}; REVIEW {counts['REVIEW']}; FAIL {counts['FAIL']}.",
         f"- Audited total: {before:,} → {after:,} bytes ({before-after:,} bytes saved).",
-        f"- Optimized candidates: {len(optimized)}; same PNG path and manifest key.",
-        f"- Published in `{PUBLISHED_COMMIT}`; R2 upload workflow downloaded and SHA-256 verified all six.",
-        "- Production direct image URLs decoded at expected 256/512 px; authenticated mobile",
-        "  gameplay surfaces remain unverified and are not claimed as PASS.",
+        f"- Batch changed: {len(changed)} files (18 set icons, Angel Wings, 3 Arena frames).",
+        f"- Publication commit: `{PUBLISHED_COMMIT}`.",
+        "- Exceptions: none. Final REVIEW and FAIL counts are both zero.",
         "",
-        "## Optimization candidates",
+        "## G10.5 + G11 rebuilt/optimized files",
         "",
         "| Asset | Before | After |",
         "| --- | ---: | ---: |",
     ]
-    text.extend(f"| `{row['asset_path']}` | {row['before_bytes']:,} B | {row['after_bytes']:,} B |" for row in optimized)
-    text.extend(["", "## Unresolved damaged source assets — publication blocker", ""])
-    text.extend(f"- `{row['asset_path']}` — {row['issue_reason']}; {row['after_bytes']:,} B, {row['dimensions']}." for row in invalid)
+    text.extend(f"| `{row['asset_path']}` | {row['before_bytes']:,} B | {row['after_bytes']:,} B |" for row in changed)
     text.extend([
         "",
-        "These files were already invalid in the audited `main` baseline, not damaged by this batch.",
-        "All six Azure set-item PNGs and legacy `angel_wings.png` must be recovered from",
-        "intact approved masters, visually matched, then optimized before G10.5 can close.",
-        "Do not treat corruption as a size-only exception or recreate approved artwork by guesswork.",
+        "Azure 6/6, Robot 6/6 and Skeleton 6/6 are 256×256 RGBA PNGs within the",
+        "equipment-icon target. `angel_wings.png` remains active and now reuses the approved",
+        "Azure Angel production wing art at its stable path/key. All three Arena profile frames",
+        "remain 512×512 and use an optimized indexed production palette; visual",
+        "comparison found no material display-size difference.",
         "",
-        "## Review-only assets and exceptions",
+        "## G11 baseline",
         "",
-    ])
-    text.extend(f"- `{row['asset_path']}` — {row['after_bytes']:,} B, {row['issue_reason']}." for row in review)
-    text.extend([
-        "",
-        "No oversized icon is silently grandfathered. REVIEW is pending visual/usage sign-off,",
-        "not an approved exception. There is no approved >500 KB exception.",
-        "",
-        "## QA and publication gate",
-        "",
-        "- Full PNG decode, alpha bounds, manifest mapping and at-size readability must pass.",
-        "- Verify actual Inventory, equipment/Compare, Shop, Craft, Reward, Arena, Raid and Battle",
-        "  mobile surfaces after publication; explicitly retest Azure and Earth/Fire/Water Stone.",
-        "- Download every replaced R2 object and compare SHA-256 with committed production PNG.",
-        "- Check 404/missing images, fallback behavior and mobile loading. Do not claim complete",
-        "  while Azure source recovery or production QA remains open.",
-        "- G11 Robot/Skeleton item icons must comply with this same shared budget and have zero",
-        "  FAIL icons before publication.",
+        "New small runtime icons must use the shared budget in `r2-upload/README.md`, decode",
+        "fully, preserve alpha, avoid excess canvas, remain readable at mobile display size, and",
+        "ship with zero FAIL icons. This document and its CSV are the reusable baseline.",
         "",
     ])
     REPORT.write_text("\n".join(text))

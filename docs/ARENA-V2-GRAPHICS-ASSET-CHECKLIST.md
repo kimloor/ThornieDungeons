@@ -946,7 +946,7 @@ Runtime scope:
 - failed optional icon loads fall back to the previous emoji presentation;
 - Battle Core, Arena resolver/API, actor identity, turn order and targeting authority are unchanged.
 
-Visible version: `1.0.37`. Integration commit and production workflow evidence are recorded in the final Project Lead handoff.
+Visible version: `1.0.38`. G10.5+G11 icon integration and production workflow evidence are recorded in the final Graphics handoff.
 
 # PART O — HANDOFF TEMPLATE
 
