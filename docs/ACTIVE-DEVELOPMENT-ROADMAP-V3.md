@@ -71,18 +71,57 @@ Implement the shared App-level loading manager/overlay:
 
 Graphics dependency: G14 Global Loading Presentation Pack may provide the shared Dungeon Gate/rune visual identity, with a functional lightweight fallback.
 
-### WAVE 2+ — DESIGN GATE
+### WAVE 2 — Admin V2 Expansion
+**Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
+
+Expand Admin V2 as the operations/audit foundation needed before the next economy-heavy systems. Detailed permissions, mutation tools and destructive-operation contracts will be approved separately. Admin Delete Item remains a candidate for this Wave; do not implement it from this roadmap heading alone.
+
+### WAVE 3 — Blacksmith + Crafting Redesign
+**Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
+
+Redesign the Blacksmith/Crafting experience around the existing authoritative Enhance, Empower, Salvage, Craft, Recipe and Protection Stone systems. Detailed UX/mechanics changes remain subject to a separate scope contract.
+
+### WAVE 4 — Main Shop + Diamond Economy Design
+**Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
+
+Design the main Shop and future real-money Diamond Pack catalog. This Wave may define pack structure, proposed pricing/value, Diamond purchasing power and economy-safety targets.
+
+**Real-money purchase/checkout is explicitly disabled and out of implementation scope for this roadmap stage.** No client test-purchase/free-Diamond path may grant currency. External payment, receipt verification, refunds and live monetization require a future separately approved contract.
+
+### WAVE 5 — Pet Gacha Redesign
+**Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
+
+Redesign the existing Pet Gacha after the Diamond economy contract is defined. Current pull cost/rates/duplicate behavior are not automatically locked by this heading; detailed Gacha mechanics and presentation require Project Lead approval. Reuse the shared G13 Pet Avatar family when available.
+
+### ECONOMY AUDIT GATE — PRE-MARKET
+**Status: REQUIRED / SCOPE DESIGN PENDING**
+
+Before opening a player marketplace, audit the combined economy created by:
+- item/drop acquisition rates;
+- Blacksmith/Crafting resource sinks;
+- Shop prices and Diamond purchasing power;
+- Pet Gacha consumption;
+- currency/material generation and existing progression loops.
+
+Resolve economy-breaking findings before Market release rather than relying on Market fees to repair an unstable economy.
+
+### WAVE 6 — Trading Market / Central Listing Marketplace
+**Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
+
+Build a centralized player listing market, not direct player-to-player trade. Intended direction:
+- seller lists eligible items into the Market;
+- central browse/search/filter/sort experience;
+- another player purchases the listing;
+- server-authoritative settlement transfers item/proceeds;
+- Market collects an approved fee;
+- listing ownership/escrow, concurrency, exact-once purchase, cancellation/expiry and trade eligibility require dedicated contracts before implementation.
+
+Do not implement Market economy rules from this heading alone.
+
+### WAVE 7+ — FUTURE DESIGN GATE
 **Status: NOT YET LOCKED**
 
-Do not invent mechanics or assign final Wave numbers before Project Lead approval.
-
-Candidate future systems already identified for design review include:
-- canonical Summoning gameplay/economy contract (presentation remains deferred until mechanics exist);
-- Shop/Crafting expansion;
-- Dungeon/content/progression expansion and longer-term endgame loop;
-- later Admin V2 mutation/destructive tools under a dedicated high-risk contract.
-
-Before locking WAVE 2+, perform a gameplay-loop design review focused on what players do after Dungeon progression, Mythic equipment, Raid and Arena, and how future systems create meaningful medium/long-term goals rather than isolated feature accumulation.
+Future systems such as Dungeon/content/progression expansion, longer-term endgame loops, live real-money Diamond purchasing, or other new gameplay systems require separate Project Lead design approval before receiving final Wave numbers.
 
 ## 4. GRAPHICS PARALLEL LANE
 
@@ -108,9 +147,19 @@ Visible game version                             Ver 1.1.0
                      ↓
 NEW WAVE 1 — Global Loading System V1
                      ↓
-Gameplay-loop Design Gate
+WAVE 2 — Admin V2 Expansion
                      ↓
-NEW WAVE 2+ — Project Lead approval required
+WAVE 3 — Blacksmith + Crafting Redesign
+                     ↓
+WAVE 4 — Main Shop + Diamond Economy Design
+                     ↓
+WAVE 5 — Pet Gacha Redesign
+                     ↓
+Economy Audit Gate
+                     ↓
+WAVE 6 — Trading Market / Central Listing
+                     ↓
+WAVE 7+ — Future design approval required
 ```
 
 Parallel Graphics lane:
