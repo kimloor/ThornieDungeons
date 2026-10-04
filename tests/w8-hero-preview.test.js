@@ -200,7 +200,7 @@ test("W8 Inventory uses the final 55.8% horizontal Hero anchor without changing 
 
 test("Arena Hub R1 integration bumps the production preview version badge", () => {
   const styles = source("src/data/styles.js");
-  assert.match(styles, /content: "Ver 1\.0\.38"/);
+  assert.match(styles, /content: "Ver 1\.0\.39"/);
 });
 
 test("W8 Inventory Hero preview is production-default with an explicit opt-out", () => {

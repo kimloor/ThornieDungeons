@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.38";
+  content: "Ver 1.0.39";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -444,7 +444,8 @@ body::after {
 .md-skill-list { padding:7px; display:flex; flex-direction:column; gap:5px; }
 .md-skill-upgrade { min-height:67px; padding:7px; display:grid; grid-template-columns:43px minmax(0,1fr) auto; align-items:center; gap:7px; border:1px solid rgba(99,160,218,.28); border-radius:11px; background:rgba(255,255,255,.025); }
 .md-skill-upgrade.locked { opacity:.5; }
-.md-skill-upgrade-icon { width:42px; height:42px; display:grid; place-items:center; border:1px solid #d6a73e; border-radius:10px; background:radial-gradient(circle,rgba(31,133,223,.3),rgba(2,12,34,.92)); font-size:24px; }
+.md-skill-upgrade-icon { width:42px; height:42px; padding:2px; display:grid; place-items:center; border:1px solid #d6a73e; border-radius:10px; background:radial-gradient(circle,rgba(31,133,223,.3),rgba(2,12,34,.92)); font-size:24px; overflow:hidden; }
+.md-skill-upgrade-icon .md-hero-skill-icon { width:100%; height:100%; }
 .md-skill-upgrade-copy { min-width:0; display:flex; flex-direction:column; }
 .md-skill-upgrade-copy strong { color:#ffe19a; font-family:'Baloo 2'; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .md-skill-upgrade-copy small { color:#c1d7ef; font-size:8.5px; font-weight:800; line-height:1.25; }
@@ -1472,6 +1473,11 @@ body::after {
 .md-quickslot-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .md-quickslot-btn.editing { border-color: #E14F4F; }
 .md-quickslot-icon { pointer-events: none; }
+.md-hero-skill-icon { display:inline-block; width:32px; height:32px; object-fit:contain; object-position:center; flex:0 0 auto; vertical-align:middle; }
+.md-hero-skill-icon.fallback { display:inline-grid; place-items:center; border:1px solid rgba(255,209,102,.55); border-radius:50%; background:radial-gradient(circle,rgba(38,89,139,.62),rgba(3,14,34,.94)); color:#ffe39a; font:800 17px/1 'Baloo 2'; }
+.md-quickslot-skill-icon { width:30px; height:30px; }
+.md-skill-option-main { min-width:0; display:inline-flex; align-items:center; gap:7px; text-align:left; }
+.md-skill-option-icon { width:28px; height:28px; }
 .md-quickslot-edit {
   width: 30px; height: 30px; border-radius: 50%; padding: 0; cursor: pointer; flex-shrink: 0;
   border: 2px solid var(--violet-deep); background: rgba(20,12,30,0.92); color: #fff; font-size: 13px;
@@ -2482,6 +2488,17 @@ body::after {
 .md-arena-info-button { align-self:flex-start; min-width:138px; }
 .md-arena-refresh-button { min-width:132px; }
 .md-arena-player-card-btn { min-width:126px; }
+.md-arena-skill-setup-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:9px 0; }
+.md-arena-skill-setup-slot { position:relative; min-width:0; min-height:54px; padding:5px 6px 5px 47px; display:flex; align-items:center; border:1px solid rgba(255,209,102,.36); border-radius:11px; background:rgba(3,13,34,.72); }
+.md-arena-skill-setup-slot.empty { border-style:dashed; opacity:.74; }
+.md-arena-skill-slot-number { position:absolute; left:3px; top:3px; z-index:2; min-width:15px; height:15px; display:grid; place-items:center; border-radius:50%; background:#071126; color:#ffe39a; font-size:8px; font-weight:900; }
+.md-arena-setup-skill-icon { position:absolute; left:7px; top:50%; width:36px; height:36px; transform:translateY(-50%); }
+.md-arena-skill-setup-slot select { width:100%; min-width:0; min-height:40px; padding:4px 3px; border:0; background:transparent; color:#eef7ff; font-size:10px; font-weight:800; }
+.md-arena-action-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.md-arena-action-controls > .md-arena-surrender-btn { grid-column:1 / -1; }
+.md-arena-skill-control { min-width:0; display:flex; align-items:center; justify-content:flex-start; gap:7px; padding:5px 8px; text-align:left; }
+.md-arena-skill-control > span:last-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.md-arena-battle-skill-icon { width:36px; height:36px; }
 .md-arena-summary { flex-wrap:nowrap; gap:10px; margin:2px 0 8px; }
 .md-arena-tier-badge { width:58px; height:58px; flex:0 0 58px; object-fit:contain; filter:drop-shadow(0 2px 5px rgba(0,0,0,.45)); }
 .md-arena-summary-details { min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; }
@@ -2576,6 +2593,7 @@ body::after {
   .md-player-card-actions { width:78%; gap:3.5%; margin-top:1%; }
 }
 @media (max-width:360px), (max-height:620px) {
+  .md-arena-skill-setup-grid { grid-template-columns:1fr; }
   .md-arena-tab-row { gap:2px; }
   .md-arena-tab-row .md-arena-tab { min-height:62px; border-width:8px; border-image-width:8px; }
   .md-arena-tab-icon { width:24px; height:24px; flex-basis:24px; }
