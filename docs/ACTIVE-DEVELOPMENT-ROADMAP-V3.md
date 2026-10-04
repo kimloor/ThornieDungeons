@@ -181,6 +181,30 @@ Build a centralized player listing market, not direct player-to-player trade. In
 
 Do not implement Market economy rules from this heading alone.
 
+### FUTURE SYSTEM — Dungeon Auto Progress V2
+**Status: DESIGN LOCKED / ROADMAP PLACEMENT PENDING**
+**Risk: HIGH — Dungeon combat/reward progression and settlement integration; implementation contract + QA required**
+
+Approved design boundary:
+- Dungeon Hub will allow the player to choose an eligible previously cleared Starting Floor for Auto Progress; exact Floor-select UI/eligibility must be verified against the current Production Dungeon state during implementation.
+- Auto Progress starts at the selected Floor and continues sequentially upward one Floor at a time until the player is defeated or a requested stop completes.
+- There is no fixed 20-Floor run cap. Existing equipment Tier bands are the natural farming incentive; lower Floors continue to generate their own lower-Tier rewards.
+- Auto Progress uses the real Battle scene and the shared authoritative Battle Core rather than a separate simulated/Skip combat resolver.
+- While Auto Progress is active, Battle speed is forced to **x2**.
+- **Skip is unavailable** during Auto Progress.
+- The legacy/current Battle **Auto** control is hidden/disabled during Auto Progress so only one auto-action owner exists.
+- Auto attack mode is intentionally simple: player selects **Basic Attack** or **Use Skills**.
+- In Use Skills mode, each Hero decision checks equipped Skill Slots in fixed priority **1 → 2 → 3 → 4**, restarting from Slot 1 on every decision. If a skill cannot currently be used under normal Battle rules, continue to the next slot; if none can be used, fall back to Basic Attack.
+- Auto Potion supports player-configured **HP%** and **SP%** thresholds. Potion availability, consumption, cooldown/turn behavior and all other restrictions remain the same as Manual Battle; Auto must not gain extra potion authority.
+- A player pressing **Stop Progress** does **not** interrupt the current Battle. Mark the run to stop after that Battle resolves normally.
+- If the current Battle wins after Stop Progress was requested, commit that Battle's normal authoritative reward/settlement, do not start the next Floor, then show the run summary.
+- If the current Battle is lost, Auto Progress stops because of defeat and shows the run summary.
+- Every completed Battle keeps the existing authoritative settlement/idempotency/First-Clear/reward rules. The final Auto Progress Summary is presentation/aggregation only and must not become a client-owned deferred reward commit.
+- Summary must distinguish at minimum a normal player-requested stop from defeat and aggregate the completed run's Floors/results/rewards.
+- Do not add per-skill HP/MP conditions, target-rule editors, custom rotations, offline combat simulation, or other rule-engine complexity to this approved Auto Progress scope.
+
+**Explicitly not locked here:** Offline/AFK Loot design and rates. That system is still under separate Project Lead design discussion and must not be inferred from this Auto Progress contract.
+
 ### WAVE 7+ — FUTURE DESIGN GATE
 **Status: NOT YET LOCKED**
 
