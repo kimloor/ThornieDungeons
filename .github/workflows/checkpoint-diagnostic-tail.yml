@@ -1,0 +1,46 @@
+name: Capture checkpoint diagnostic log
+
+on:
+  push:
+    branches:
+      - ops/checkpoint-diagnostic-tail
+    paths:
+      - ".github/workflows/checkpoint-diagnostic-tail.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  tail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      WORKER_NAME: thornie-dungeons-api
+    steps:
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          wrangler whoami >/dev/null
+
+      - name: Capture sanitized checkpoint rejection
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=INT 180s wrangler tail "$WORKER_NAME" \
+            --format json \
+            --search "battle-checkpoint-invalid" \
+            2>&1 | tee /tmp/checkpoint-tail.log
+          tail_status="${PIPESTATUS[0]}"
+          set -e
+
+          if grep -q "battle-checkpoint-invalid" /tmp/checkpoint-tail.log; then
+            echo "CHECKPOINT_DIAGNOSTIC_CAPTURED"
+          else
+            echo "CHECKPOINT_DIAGNOSTIC_NOT_CAPTURED (tail status: $tail_status)"
+          fi
