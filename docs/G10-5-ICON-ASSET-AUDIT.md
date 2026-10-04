@@ -5,12 +5,13 @@ Scope: PNG icon-type assets under `r2-upload/ui/**`; decorative panels, buttons,
 large hub emblem, backgrounds, VFX, Hero frames and sprites are excluded.
 The CSV companion contains every audited path, manifest key, dimensions, bytes,
 alpha/padding, PASS/REVIEW/FAIL, reason, recommendation and final action.
-G10.5+G11 set-item, Angel Wings and Arena frame replacements use
-`?v=g10_5_g11_r1` to bypass stale browser/edge caches; production keys and paths
-are preserved for Azure, Angel Wings and Arena frames.
+G10.5+G11 set-item, Angel Wings and Arena frame replacements use versioned URLs
+to bypass stale browser/edge caches. The Azure sword composition revision uses
+`?v=g10_5_g11_r2`; all other batch assets remain on `?v=g10_5_g11_r1`.
+Production keys and paths are preserved for Azure, Angel Wings and Arena frames.
 
 - Audited: 86; PASS 86; REVIEW 0; FAIL 0.
-- Audited total: 11,307,111 → 6,711,039 bytes (4,596,072 bytes saved).
+- Audited total: 11,307,111 → 6,703,654 bytes (4,603,457 bytes saved).
 - Batch changed: 22 files (18 set icons, Angel Wings, 3 Arena frames).
 - Publication commit: `0116225f3911e5cc81071060b21138933d4a93bf`.
 - Exceptions: none. Final REVIEW and FAIL counts are both zero.
@@ -24,7 +25,7 @@ are preserved for Azure, Angel Wings and Arena frames.
 | `r2-upload/ui/equipment-icons/azure/azure_gauntlets.png` | 786,444 B | 76,029 B |
 | `r2-upload/ui/equipment-icons/azure/azure_helmet.png` | 786,444 B | 91,401 B |
 | `r2-upload/ui/equipment-icons/azure/azure_ring.png` | 786,444 B | 80,258 B |
-| `r2-upload/ui/equipment-icons/azure/azure_sword.png` | 786,444 B | 27,776 B |
+| `r2-upload/ui/equipment-icons/azure/azure_sword.png` | 786,444 B | 20,391 B |
 | `r2-upload/ui/equipment-icons/robot/robot_armor.png` | 0 B | 100,089 B |
 | `r2-upload/ui/equipment-icons/robot/robot_boots.png` | 0 B | 75,112 B |
 | `r2-upload/ui/equipment-icons/robot/robot_gauntlets.png` | 0 B | 84,707 B |

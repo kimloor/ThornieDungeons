@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 UI = ROOT / "r2-upload/ui"
 BASELINE = "5812112e0cb3b37777471c8b14d8753c67920017"
 PUBLISHED_COMMIT = "0116225f3911e5cc81071060b21138933d4a93bf"
+AZURE_SWORD_REPOSITION_COMMIT = "639f62136b767e5ea8695579e2f70b3c635468ec"
 REPORT = ROOT / "docs/G10-5-ICON-ASSET-AUDIT.md"
 CSV = ROOT / "docs/G10-5-ICON-ASSET-AUDIT.csv"
 PRIOR_OPTIMIZED = {
@@ -136,7 +137,9 @@ def inspect(path, refs):
         action = "Publish visually equivalent indexed PNG on the existing 512 px canvas"
     elif path in PRIOR_OPTIMIZED:
         action = "Retain prior same-path optimized production PNG"
-    if path in BATCH_CHANGED:
+    if path == "ui/equipment-icons/azure/azure_sword.png" and AZURE_SWORD_REPOSITION_COMMIT != "PENDING":
+        final_action = f"Repositioned {AZURE_SWORD_REPOSITION_COMMIT[:7]}; R2 SHA-256 verified"
+    elif path in BATCH_CHANGED:
         final_action = (f"Published {PUBLISHED_COMMIT[:7]}; R2 SHA-256 verified"
                         if PUBLISHED_COMMIT != "PENDING" else "Prepared; R2 verification pending")
     elif path in PRIOR_OPTIMIZED:
@@ -181,9 +184,10 @@ def main():
         "large hub emblem, backgrounds, VFX, Hero frames and sprites are excluded.",
         "The CSV companion contains every audited path, manifest key, dimensions, bytes,",
         "alpha/padding, PASS/REVIEW/FAIL, reason, recommendation and final action.",
-        "G10.5+G11 set-item, Angel Wings and Arena frame replacements use",
-        "`?v=g10_5_g11_r1` to bypass stale browser/edge caches; production keys and paths",
-        "are preserved for Azure, Angel Wings and Arena frames.",
+        "G10.5+G11 set-item, Angel Wings and Arena frame replacements use versioned URLs",
+        "to bypass stale browser/edge caches. The Azure sword composition revision uses",
+        "`?v=g10_5_g11_r2`; all other batch assets remain on `?v=g10_5_g11_r1`.",
+        "Production keys and paths are preserved for Azure, Angel Wings and Arena frames.",
         "",
         f"- Audited: {len(rows)}; PASS {counts['PASS']}; REVIEW {counts['REVIEW']}; FAIL {counts['FAIL']}.",
         f"- Audited total: {before:,} → {after:,} bytes ({before-after:,} bytes saved).",
