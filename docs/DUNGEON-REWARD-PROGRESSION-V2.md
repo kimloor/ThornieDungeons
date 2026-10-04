@@ -1431,3 +1431,11 @@ ENHANCE
 ~~~
 
 This loop is the locked V2 baseline. Future balance changes should be handled as an explicit V3 design pass rather than silently changing these values.
+
+## Accessory V2 completion override — Pre-V1.1.0
+
+The generic Dungeon Accessory rules in this historical Reward V2 document are superseded by the approved **Accessory V2 Completion** contract in `ACCESSORY-V2-COMPLETION.md` for generic Dungeon Accessories.
+
+Key override: generic Accessory now uses **flat HP** as its base stat, supports **Refine**, and moves Crit/Dodge/Crit Damage into the **Enchant** pool. Normal monsters do not drop Accessory; Elite/Boss acquisition and guaranteed Boss First-Clear rewards follow the dedicated contract. Old generic placeholder Accessory names and utility-base-stat generation must not be treated as authoritative after Gate B.5 implementation.
+
+The dedicated contract does not silently replace source-specific Mythic Set Accessory or Raid rules unless it explicitly says so.
