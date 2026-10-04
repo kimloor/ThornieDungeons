@@ -40,6 +40,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`FRIEND-SYSTEM-V1.md`](FRIEND-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** Friend search/requests, 50-friend cap, remove/block, presence, profile, and DM eligibility. |
 | [`CHAT-SYSTEM-V1.md`](CHAT-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** — Global, Direct, and Guild Chat; polling, retention, unread, rate limits, and Sticker placeholder. |
 | [`GUILD-SYSTEM-V1.md`](GUILD-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** — lifecycle, Leader/Member roles, applications, level/capacity, succession, W2 Donation, and W3 Guild Chat integration. |
+| [`GLOBAL-LOADING-SYSTEM-V1.md`](GLOBAL-LOADING-SYSTEM-V1.md) | **ACTIVE-DESIGN** — shared App-level loading manager/overlay, real progress rules, error handoff, integration targets, and G14 loading presentation contract. |
 | [`HERO-OVERLAY-V4.md`](HERO-OVERLAY-V4.md) | Current Hero overlay composition, equipment mapping, combat presentation, anchors, asset loading, and R2 paths. |
 | [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md) | Hero skill branches, ranks, statuses, prerequisites, UI contract, and combat checks. |
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked Hero V5 **modular layered, frame-based sprite** architecture; no skeletal/bone/Spine runtime is required, and the document does not itself authorize replacing the current production Hero. |
@@ -220,7 +221,7 @@ Until a dedicated contract exists, inspect latest `main`, the latest approved ta
 - Read the relevant visual contract, current execution wave, and R2 rules.
 - All new/replaced production icons must pass the shared **Production icon asset budget** in `r2-upload/README.md` before publication; keep large editable masters separate from runtime exports.
 - **G10 Shared ATB Actor Icon Pack** is COMPLETE / integrated in shared Dungeon Battle and Arena TurnOrderBar presentation.
-- **G10 Shared ATB Actor Icons: COMPLETE. G10.5 Global Icon Audit/Optimization: COMPLETE. G11 Azure/Robot/Skeleton production icon families: COMPLETE. G12 Hero Skill Icon Pack: COMPLETE / Production Ver 1.0.39 (36/36).**\n- Current Graphics entry point is **G13 Pet Avatar Pack + Shared Pet Selector Presentation**. Audit baseline: 8 authoritative Pets, 8/8 battle sprite families present, 0/8 dedicated portrait/avatar assets.
+- **G10 Shared ATB Actor Icons: COMPLETE. G10.5 Global Icon Audit/Optimization: COMPLETE. G11 Azure/Robot/Skeleton production icon families: COMPLETE. G12 Hero Skill Icon Pack: COMPLETE / Production Ver 1.0.39 (36/36).**\n- Current Graphics entry point is **G13 Pet Avatar Pack + Shared Pet Selector Presentation**. Audit baseline: 8 authoritative Pets, 8/8 battle sprite families present, 0/8 dedicated portrait/avatar assets.\n- **G14 Global Loading Presentation Pack: APPROVED / QUEUED AFTER G13**. Shared Dungeon Gate/rune loading identity; runtime architecture is governed by `GLOBAL-LOADING-SYSTEM-V1.md`.
 - Do not infer asset names, manifest keys, or paths.
 
 ### QA
