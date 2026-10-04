@@ -203,6 +203,18 @@ Useful fields include:
 
 Do not dump full saves by default.
 
+### Client runtime popup
+
+The shared client popup may show only a bounded, sanitized subset of the diagnostic envelope:
+stable `event` / `reason`, safe code and HTTP status, subsystem/domain, current action/phase,
+non-secret operation reference, sequence number, and a bounded message or stack excerpt. URL
+query values and authorization/session/password/cookie/token material must be redacted.
+
+The popup must never retain or render raw request/response bodies, full save, inventory or
+checkpoint objects, account identifiers, credentials, or authorization headers. Arena
+presentation recovery and Cloud persistence failures use this same presentation path; detailed
+unsafe evidence remains server-side and successful flows stay quiet.
+
 ## 9. Temporary diagnostic investigations
 
 A temporary Production diagnostic is allowed when a Production-only issue cannot be reproduced safely elsewhere, provided that:

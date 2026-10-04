@@ -486,14 +486,36 @@ function DailyLoginToast({
 }
 function GlobalCurrencyBar({ save, arena = null, className = "" }) {
   const e = React.createElement;
-  return e("div", {
-    className: `md-hub-resources${arena ? " with-arena" : ""}${className ? ` ${className}` : ""}`
-  },
-    e("span", null, e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "Gold" }), " ", e("b", null, formatNumber(save.gold))),
-    e("span", null, e(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-resource-icon", alt: "Diamond" }), " ", e("b", null, formatNumber(save.diamonds || 0))),
-    e("span", null, e(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-resource-icon", alt: "Protection Stone" }), " ", e("b", null, formatNumber(save.protectionStones || 0))),
-    arena && e("span", { className: "md-arena-global-resource" }, e(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "Arena Coin" }), " ", e("b", null, formatNumber(arena.arenaCoin || 0))),
-    arena && e("span", { className: "md-arena-global-resource" }, e(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-resource-icon", alt: "Arena Ticket" }), " ", e("b", null, `${Number(arena.tickets) || 0}/${Number(arena.ticketsMax) || 10}`))
+  const [selected, setSelected] = React.useState(null);
+  const currencies = [
+    { key: "gold", name: "Gold", value: formatNumber(save.gold), icon: e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "" }), detail: "สกุลเงินหลักสำหรับร้านค้า การตีบวก และระบบที่ระบุราคาเป็น Gold" },
+    { key: "diamond", name: "Diamonds", value: formatNumber(save.diamonds || 0), icon: e(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-resource-icon", alt: "" }), detail: "สกุลเงินพรีเมียม ใช้เฉพาะเมื่อหน้าจอยืนยันราคาและการทำรายการอย่างชัดเจน" },
+    { key: "protectionStone", name: "Protection Stones", value: formatNumber(save.protectionStones || 0), icon: e(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-resource-icon", alt: "" }), detail: "วัตถุดิบป้องกันความเสียหายตามกติกาของระบบ Enhancement" },
+    ...(arena ? [
+      { key: "arenaCoin", name: "Arena Coin", value: formatNumber(arena.arenaCoin || 0), icon: e(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "" }), detail: "รางวัล Arena ที่คำนวณและยืนยันโดยเซิร์ฟเวอร์" },
+      { key: "arenaTicket", name: "Arena Tickets", value: `${Number(arena.tickets) || 0}/${Number(arena.ticketsMax) || 10}`, icon: e(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-resource-icon", alt: "" }), detail: "ใช้เมื่อ Arena match ผ่านการเตรียม presentation และถูก activate โดยเซิร์ฟเวอร์แล้ว" }
+    ] : [])
+  ];
+  const popup = selected && e("div", { className: "md-currency-overlay", role: "presentation", onClick: () => setSelected(null) },
+    e("section", { className: "md-currency-card", role: "dialog", "aria-modal": "true", "aria-labelledby": "md-currency-title", onClick: event => event.stopPropagation() },
+      e("button", { type: "button", className: "md-currency-close", onClick: () => setSelected(null), "aria-label": "ปิดรายละเอียดสกุลเงิน" }, "×"),
+      e("div", { className: "md-currency-detail-icon" }, selected.icon),
+      e("h2", { id: "md-currency-title" }, selected.name),
+      e("strong", null, selected.value),
+      e("p", null, selected.detail),
+      e("small", null, "ยอดที่แสดงมาจากสถานะเกมปัจจุบัน ระบบนี้ไม่แก้ไขยอดหรือสิทธิ์การให้รางวัล")));
+  return e(React.Fragment, null,
+    e("div", {
+      className: `md-hub-resources${arena ? " with-arena" : ""}${className ? ` ${className}` : ""}`,
+      "aria-label": "สกุลเงินของผู้เล่น"
+    }, currencies.map(currency => e("button", {
+      type: "button",
+      key: currency.key,
+      className: currency.key.startsWith("arena") ? "md-arena-global-resource" : "",
+      onClick: () => setSelected(currency),
+      "aria-label": `${currency.name} ${currency.value} — ดูรายละเอียด`
+    }, currency.icon, " ", e("b", null, currency.value)))),
+    popup && ReactDOM.createPortal(popup, document.body)
   );
 }
 
@@ -1162,6 +1184,7 @@ function SkillScreen({
 function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
+  const [skillsBusy, setSkillsBusy] = useState(false);
   const levels = save.character.skillLevels || {};
   const spent = heroSkillSpentPoints(levels);
   const total = heroSkillPointBudget(save.character.level);
@@ -1170,6 +1193,15 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
   const reasonText = reason => ({ level_gate: "Level ยังไม่ถึง", branch_points: "แต้มในสายยังไม่ถึง", prerequisite: "ยังขาดสกิล prerequisite", keystone_points: "ต้องใช้แต้มในสาย 40", keystone_t4: "ต้องมี T4 อย่างน้อย 1 Rank", not_enough_sp: "Skill Point ไม่พอ", max_rank: "เต็มแล้ว" }[reason] || "");
   const visible = HERO_SKILLS_V1.filter(skill => skill.branch === branch);
   const groups = [1, 2, 3, 4, 5];
+  const doPaidReset = async () => {
+    if (skillsBusy) return;
+    setSkillsBusy(true);
+    try {
+      if (await onResetSkills()) setConfirmReset(false);
+    } finally {
+      setSkillsBusy(false);
+    }
+  };
   return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
     /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
     /*#__PURE__*/React.createElement(CharacterTabs, { active: "skills", onStatus: onBack, onSkills: () => {} }),
@@ -3002,6 +3034,26 @@ function ArenaHubMilestoneRow({ label, progress, iconSrc }) {
       /*#__PURE__*/React.createElement("b", null, rewardText)));
 }
 
+function arenaHistoryPresentation(kind, row = {}) {
+  const attackerResult = String(row.result || "unknown").toLowerCase();
+  const result = kind === "defense"
+    ? ({ win: "LOSS", loss: "WIN", draw: "DRAW" }[attackerResult] || attackerResult.toUpperCase())
+    : attackerResult.toUpperCase();
+  const opponent = String((kind === "attack" ? row.defenderName : row.attackerName) || "Unknown opponent");
+  const ratingChange = Number(kind === "attack" ? row.attackerRatingChange : row.defenderRatingChange) || 0;
+  return Object.freeze({
+    result,
+    opponent,
+    direction: kind === "attack" ? `You attacked ${opponent}` : `${opponent} attacked you`,
+    ratingChange,
+    coin: kind === "attack" ? Number(row.arenaCoinEarned) || 0 : null
+  });
+}
+
+function arenaSetupPetIcon(pet) {
+  return PET_POOL.find(definition => definition.id === pet?.defId)?.icon || "🐾";
+}
+
 function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
   const e = React.createElement;
   if (!card) return null;
@@ -3122,23 +3174,6 @@ function arenaFatalDiagnostic(error, context = {}, event = {}) {
   });
 }
 
-function arenaFatalDiagnosticText(diagnostic = {}) {
-  const location = diagnostic.source
-    ? `${diagnostic.source}:${diagnostic.line || "?"}:${diagnostic.column || "?"}`
-    : "unknown source";
-  return [
-    `Arena ${diagnostic.kind || "runtime"}`,
-    `Message: ${diagnostic.message || "Unknown Arena runtime error"}`,
-    `Source: ${location}`,
-    `Match: ${diagnostic.matchId || "—"}`,
-    `Action Seq: ${Number(diagnostic.actionSeq) || 0}`,
-    `Phaser: ${diagnostic.phaserStatus || "unknown"}`,
-    `Phase: ${diagnostic.arenaPhase || "unknown"}`,
-    `Action: ${diagnostic.currentAction || "unknown"}`,
-    diagnostic.stack ? `\n${diagnostic.stack}` : ""
-  ].filter(Boolean).join("\n");
-}
-
 const ArenaV2ErrorBoundary = typeof React === "undefined" ? class {
   constructor(props) { this.props = props; this.state = { failed: false }; }
 } : class extends React.Component {
@@ -3161,76 +3196,94 @@ const ArenaV2ErrorBoundary = typeof React === "undefined" ? class {
   }
 };
 
-function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
-  if (!diagnostic) return null;
-  const e = React.createElement;
-  return ReactDOM.createPortal(
-    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-arena-fatal-title" },
-      e("section", { className: "md-arena-fatal-card" },
-        e("div", { className: "md-arena-fatal-head" },
-          e("strong", { id: "md-arena-fatal-title" }, "⚠ Arena presentation error"),
-          e("button", { type: "button", className: "md-arena-fatal-close", onClick: onClose, "aria-label": "ปิดรายละเอียด" }, "×")
-        ),
-        e("p", { className: "md-arena-fatal-copy" }, "Battle ถูกปิดอย่างปลอดภัยแล้ว ข้อมูล match หลักยังอยู่บนเซิร์ฟเวอร์และสามารถ Resume ได้ โดยไม่ใช้ Ticket เพิ่ม"),
-        e("pre", { className: "md-arena-fatal-detail" }, arenaFatalDiagnosticText(diagnostic)),
-        e("div", { className: "md-arena-fatal-actions" },
-          e("button", { type: "button", className: "md-btn primary small", onClick: onResume }, "RESUME ARENA"),
-          e("button", { type: "button", className: "md-btn small", onClick: onClose }, "CLOSE")
-        )
-      )
-    ),
-    document.body
-  );
+function sanitizedRuntimeDetail(value, fallback = "unknown") {
+  let text = String(value ?? "").trim();
+  if (!text) return fallback;
+  text = text
+    .replace(/([?&](?:token|session|password|key|auth|code)=)[^&#\s]+/gi, "$1[redacted]")
+    .replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, "[redacted authorization]")
+    .replace(/\b(?:token|password|credential|authorization|cookie|session)\s*[:=]\s*[^\s,;]+/gi, "$1=[redacted]");
+  return text.slice(0, 800);
 }
 
-
-function persistenceDiagnosticSafeJson(value) {
-  if (!value || typeof value !== "object") return "";
-  try {
-    return JSON.stringify(value, (key, item) => (
-      /token|password|credential|authorization|session/i.test(String(key)) ? "[redacted]" : item
-    ), 2);
-  } catch (error) {
-    return String(value);
+function runtimeDiagnosticText(diagnostic = {}) {
+  const fields = [
+    ["Event", diagnostic.event || diagnostic.kind || "client_runtime_error"],
+    ["Reason", diagnostic.reason || diagnostic.code || diagnostic.kind || "unknown_error"],
+    ["Code", diagnostic.code],
+    ["HTTP", diagnostic.status],
+    ["Domain", diagnostic.domain],
+    ["Action", diagnostic.action || diagnostic.currentAction],
+    ["Reference", diagnostic.matchId],
+    ["Action Seq", diagnostic.actionSeq],
+    ["Phase", diagnostic.arenaPhase],
+    ["Presentation", diagnostic.phaserStatus],
+    ["Message", diagnostic.message]
+  ];
+  if (diagnostic.source) {
+    const source = sanitizedRuntimeDetail(diagnostic.source).split(/[?#]/)[0];
+    fields.push(["Source", `${source}:${diagnostic.line || "?"}:${diagnostic.column || "?"}`]);
   }
+  if (diagnostic.stack) {
+    const stack = sanitizedRuntimeDetail(String(diagnostic.stack).split("\n").slice(0, 8).join("\n"), "");
+    if (stack) fields.push(["Stack", stack]);
+  }
+  return fields
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([label, value]) => `${label}: ${sanitizedRuntimeDetail(value)}`)
+    .join("\n");
 }
 
-function persistenceDiagnosticText(diagnostic = {}) {
-  const responseText = persistenceDiagnosticSafeJson(diagnostic.response);
-  return [
-    "Cloud persistence failure",
-    `Code: ${diagnostic.code || "unknown_error"}`,
-    `HTTP: ${diagnostic.status || "unknown"}`,
-    `Domain: ${diagnostic.domain || "unknown"}`,
-    `Character: ${diagnostic.characterId || "unknown"}`,
-    diagnostic.itemId ? `Item: ${diagnostic.itemId}` : "",
-    diagnostic.action ? `Action: ${diagnostic.action}` : "",
-    `Transient: ${diagnostic.transient ? "yes" : "no"}`,
-    `Message: ${diagnostic.message || diagnostic.code || "Unknown persistence error"}`,
-    responseText ? `Response:\n${responseText}` : "",
-    diagnostic.stack ? `Stack:\n${diagnostic.stack}` : ""
-  ].filter(Boolean).join("\n");
-}
-
-function PersistenceDiagnosticOverlay({ diagnostic, onClose }) {
+function RuntimeDiagnosticOverlay({ diagnostic, title = "Runtime error", summary, primaryLabel, onPrimary, onClose }) {
   if (!diagnostic) return null;
   const e = React.createElement;
   return ReactDOM.createPortal(
-    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-persistence-error-title" },
+    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-runtime-error-title" },
       e("section", { className: "md-arena-fatal-card" },
         e("div", { className: "md-arena-fatal-head" },
-          e("strong", { id: "md-persistence-error-title" }, "⚠ Cloud save error"),
+          e("strong", { id: "md-runtime-error-title" }, `⚠ ${title}`),
           e("button", { type: "button", className: "md-arena-fatal-close", onClick: onClose, "aria-label": "ปิดรายละเอียด" }, "×")
         ),
-        e("p", { className: "md-arena-fatal-copy" }, "การบันทึก Cloud ไม่สำเร็จ รายละเอียดด้านล่างใช้ตรวจสอบ state/API ที่ผิดพลาด โดยข้อมูลลับจะถูกปิดบัง"),
-        e("pre", { className: "md-arena-fatal-detail" }, persistenceDiagnosticText(diagnostic)),
+        e("p", { className: "md-arena-fatal-copy" }, summary || "เกิดข้อผิดพลาดใน runtime รายละเอียดที่แสดงถูกจำกัดและปิดบังข้อมูลลับแล้ว"),
+        e("pre", { className: "md-arena-fatal-detail" }, runtimeDiagnosticText(diagnostic)),
         e("div", { className: "md-arena-fatal-actions" },
+          onPrimary && e("button", { type: "button", className: "md-btn primary small", onClick: onPrimary }, primaryLabel || "RETRY"),
           e("button", { type: "button", className: "md-btn primary small", onClick: onClose }, "CLOSE")
         )
       )
     ),
     document.body
   );
+}
+
+function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
+  return /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+    diagnostic: { ...diagnostic, event: "arena_presentation_failure", reason: diagnostic?.kind || "arena_runtime" },
+    title: "Arena presentation error",
+    summary: "Battle ถูกปิดอย่างปลอดภัยแล้ว ข้อมูล match หลักยังอยู่บนเซิร์ฟเวอร์และสามารถ Resume ได้โดยไม่ใช้ Ticket เพิ่ม",
+    primaryLabel: "RESUME ARENA",
+    onPrimary: onResume,
+    onClose
+  });
+}
+
+function PersistenceDiagnosticOverlay({ diagnostic, onClose }) {
+  const response = diagnostic?.response && typeof diagnostic.response === "object" ? diagnostic.response : {};
+  const safeDiagnostic = diagnostic ? {
+    event: "cloud_persistence_failure",
+    reason: diagnostic.code || response.reason || response.error || "unknown_error",
+    code: diagnostic.code || response.error,
+    status: diagnostic.status,
+    domain: diagnostic.domain,
+    action: diagnostic.action || response.action,
+    message: diagnostic.message || response.message,
+  } : null;
+  return /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+    diagnostic: safeDiagnostic,
+    title: "Cloud save error",
+    summary: "การบันทึก Cloud ไม่สำเร็จ กรุณาตรวจสอบรายละเอียดที่ผ่านการคัดกรองแล้วก่อนลองใหม่ ข้อมูล save, inventory และ checkpoint จะไม่ถูกแสดงในหน้าต่างนี้",
+    onClose
+  });
 }
 
 function arenaTurnOrderIcon(unit, preparedSnapshot) {
@@ -3277,7 +3330,6 @@ function ArenaV2Screen({
   const [playerCard, setPlayerCard] = React.useState(null);
   const [playerCardSource, setPlayerCardSource] = React.useState("matchmaking");
   const [showFullLog, setShowFullLog] = React.useState(false);
-  const [currencyInfo, setCurrencyInfo] = React.useState(false);
   const [combatSpeed, setCombatSpeed] = React.useState(1);
   const [refreshAvailableAt, setRefreshAvailableAt] = React.useState("");
   const [unlockBusy, setUnlockBusy] = React.useState(false);
@@ -3686,7 +3738,7 @@ function ArenaV2Screen({
     /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save, arena: arenaCurrency, className: "md-arena-global-currency" }),
     /*#__PURE__*/React.createElement("div", { className: "md-arena-scroll" },
       /*#__PURE__*/React.createElement("div", { className: !match ? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card" },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Arena V2"),
+      match && /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Arena Battle"),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-summary" },
         !match && currentTierBadge && /*#__PURE__*/React.createElement("img", { className: "md-arena-tier-badge", src: currentTierBadge, alt: "", "aria-hidden": "true" }),
         /*#__PURE__*/React.createElement("div", { className: "md-arena-summary-details" },
@@ -3694,17 +3746,26 @@ function ArenaV2Screen({
             !match && arenaHubAssets.icons.season && /*#__PURE__*/React.createElement("img", { className: "md-arena-inline-icon", src: arenaHubAssets.icons.season, alt: "", "aria-hidden": "true" }),
             "ซีซันเหลือ ", seasonCountdownText),
           /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "Rating ", status.player.rating, " · ", status.player.tier, status.player.rank ? ` · #${status.player.rank}` : ""))),
-      /*#__PURE__*/React.createElement("button", { className: !match ? "md-btn small md-arena-art-btn secondary md-arena-info-button" : "md-btn small", onClick: () => setCurrencyInfo(!currencyInfo) },
-        !match && arenaHubAssets.icons.info && /*#__PURE__*/React.createElement("img", { className: "md-arena-action-icon", src: arenaHubAssets.icons.info, alt: "", "aria-hidden": "true" }),
-        /*#__PURE__*/React.createElement("span", null, "CURRENCY INFO")),
-      currencyInfo && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Arena Coin ใช้ตามผลและ opponent slot ที่ server ล็อกไว้ · Ticket ใช้เมื่อเตรียมและ preload สำเร็จเท่านั้น.")),
+      !match && /*#__PURE__*/React.createElement("p", { className: "md-arena-summary-hint" }, "แตะสกุลเงินด้านบนเพื่อดูรายละเอียด")),
     !match && /*#__PURE__*/React.createElement("div", { className: "md-tab-row md-arena-tab-row" }, ["battle", "setup", "ranking", "history"].map(key => /*#__PURE__*/React.createElement("button", {
       key, type: "button", className: `md-btn small md-arena-tab ${tab === key ? "active" : "inactive"}`, onClick: () => loadTab(key), "aria-pressed": tab === key
     },
       arenaHubAssets.icons[key] && /*#__PURE__*/React.createElement("img", { className: "md-arena-tab-icon", src: arenaHubAssets.icons[key], alt: "", "aria-hidden": "true" }),
       /*#__PURE__*/React.createElement("span", { className: "md-arena-tab-label" }, key.toUpperCase())
     ))),
-    error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "#FF6B6B" } }, error),
+    error && /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+      diagnostic: {
+        event: "arena_ui_failure",
+        reason: /^[a-z0-9_]+$/i.test(String(error)) ? String(error) : "arena_request_failed",
+        code: /^[a-z0-9_]+$/i.test(String(error)) ? String(error) : undefined,
+        action: currentActionRef.current,
+        arenaPhase: tab,
+        message: error
+      },
+      title: "Arena error",
+      summary: "Arena ไม่สามารถทำรายการนี้ได้ รายละเอียดด้านล่างถูกคัดกรองแล้วและไม่เปลี่ยนสถานะ match, Ticket, Rating หรือรางวัล",
+      onClose: () => setError("")
+    }),
     !match && tab === "battle" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel md-arena-battle-panel" },
       opponents.map(opp => /*#__PURE__*/React.createElement("div", { className: "md-shop-row md-arena-hub-row", key: opp.opponentKey },
         /*#__PURE__*/React.createElement("span", null, opp.name, " · Lv", opp.level, " · ", opp.rating),
@@ -3732,7 +3793,6 @@ function ArenaV2Screen({
       },
         arenaHubAssets.icons.refresh && /*#__PURE__*/React.createElement("img", { className: "md-arena-action-icon", src: arenaHubAssets.icons.refresh, alt: "", "aria-hidden": "true" }),
         /*#__PURE__*/React.createElement("span", null, refreshSeconds > 0 ? `REFRESH · ${refreshSeconds}s` : "REFRESH")),
-      refreshSeconds > 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub md-arena-refresh-cooldown" }, "รีเฟรชได้อีกครั้งใน ", refreshSeconds, " วินาที"),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-milestone-panel", "aria-label": "Arena seasonal milestone progress" },
         /*#__PURE__*/React.createElement(ArenaHubMilestoneRow, { label: "PLAY", progress: arenaPlayProgress, iconSrc: arenaHubAssets.icons.playMilestone }),
         /*#__PURE__*/React.createElement(ArenaHubMilestoneRow, { label: "WIN", progress: arenaWinProgress, iconSrc: arenaHubAssets.icons.winMilestone }))),
@@ -3744,18 +3804,42 @@ function ArenaV2Screen({
     }),
     !match && tab === "setup" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "SETUP · Pet + 4 Skills"),
-      /*#__PURE__*/React.createElement("select", { value: setup.petInstId || "", onChange: e => setSetup({ ...setup, petInstId: e.target.value }) }, /*#__PURE__*/React.createElement("option", { value: "" }, "No Pet"), (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("option", { key: p.instId, value: p.instId }, p.name, " Lv", p.level))),
+      /*#__PURE__*/React.createElement("details", { className: "md-arena-setup-picker md-arena-pet-picker" },
+        /*#__PURE__*/React.createElement("summary", null,
+          /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, setup.petInstId ? arenaSetupPetIcon((status.availablePets || []).find(p => p.instId === setup.petInstId)) : "🐾"),
+          /*#__PURE__*/React.createElement("span", null, "PET", /*#__PURE__*/React.createElement("b", null, (status.availablePets || []).find(p => p.instId === setup.petInstId)?.name || "No Pet")),
+          /*#__PURE__*/React.createElement("i", null, "CHANGE")),
+        /*#__PURE__*/React.createElement("div", { className: "md-arena-setup-options", role: "listbox", "aria-label": "Arena Pet" },
+          /*#__PURE__*/React.createElement("button", { type: "button", className: !setup.petInstId ? "selected" : "", onClick: () => setSetup({ ...setup, petInstId: "" }), "aria-selected": !setup.petInstId }, /*#__PURE__*/React.createElement("span", null, "🐾"), /*#__PURE__*/React.createElement("b", null, "No Pet")),
+          (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("button", { type: "button", key: p.instId, className: setup.petInstId === p.instId ? "selected" : "", onClick: () => setSetup({ ...setup, petInstId: p.instId }), "aria-selected": setup.petInstId === p.instId },
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, arenaSetupPetIcon(p)),
+            /*#__PURE__*/React.createElement("b", null, p.name),
+            /*#__PURE__*/React.createElement("small", null, "Lv", p.level, " · ★", p.star))))),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-skill-setup-grid" }, [0, 1, 2, 3].map(i => {
         const selectedSkillId = setup.skillSlots?.[i] || "";
         const selectedSkill = (status.availableSkills || []).find(skill => skill.key === selectedSkillId);
-        return /*#__PURE__*/React.createElement("label", { className: `md-arena-skill-setup-slot${selectedSkillId ? " filled" : " empty"}`, key: i },
-          /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-slot-number" }, i + 1),
-          /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkillId, className: "md-hero-skill-icon md-arena-setup-skill-icon", alt: selectedSkill?.name || (selectedSkillId ? heroSkillDisplayName(selectedSkillId) : "Empty skill slot") }),
-          /*#__PURE__*/React.createElement("select", { value: selectedSkillId, "aria-label": `Arena skill slot ${i + 1}`, onChange: e => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = e.target.value || null; setSetup({ ...setup, skillSlots: slots }); } },
-            /*#__PURE__*/React.createElement("option", { value: "" }, `Skill ${i + 1} · Empty`),
-            (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("option", { key: s.key, value: s.key }, s.name || heroSkillDisplayName(s.key))))
+        return /*#__PURE__*/React.createElement("details", { className: `md-arena-skill-setup-slot md-arena-setup-picker${selectedSkillId ? " filled" : " empty"}`, key: i },
+          /*#__PURE__*/React.createElement("summary", { "aria-label": `Arena skill slot ${i + 1}` },
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-slot-number" }, i + 1),
+            /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkillId, className: "md-hero-skill-icon md-arena-setup-skill-icon", alt: selectedSkill?.name || (selectedSkillId ? heroSkillDisplayName(selectedSkillId) : "Empty skill slot") }),
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-name" }, selectedSkill?.name || `Skill ${i + 1} · Empty`),
+            /*#__PURE__*/React.createElement("i", null, "CHANGE")),
+          /*#__PURE__*/React.createElement("div", { className: "md-arena-setup-options", role: "listbox", "aria-label": `Arena skill slot ${i + 1}` },
+            /*#__PURE__*/React.createElement("button", { type: "button", className: !selectedSkillId ? "selected" : "", onClick: () => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = null; setSetup({ ...setup, skillSlots: slots }); }, "aria-selected": !selectedSkillId }, /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"), /*#__PURE__*/React.createElement("b", null, "Empty")),
+            (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("button", { type: "button", key: s.key, className: selectedSkillId === s.key ? "selected" : "", onClick: () => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = s.key; setSetup({ ...setup, skillSlots: slots }); }, "aria-selected": selectedSkillId === s.key },
+              /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: s.key, className: "md-hero-skill-icon", alt: "" }),
+              /*#__PURE__*/React.createElement("b", null, s.name || heroSkillDisplayName(s.key)))))
         );
       })),
+      /*#__PURE__*/React.createElement("div", { className: "md-arena-loadout", "aria-label": "Arena equipment loadout" },
+        /*#__PURE__*/React.createElement("strong", null, "EQUIPMENT"),
+        /*#__PURE__*/React.createElement("div", null, (status.equipment || []).map((item, index) => {
+          const slot = String(item.slotType || item.type || "");
+          const label = `${item.name || SLOT_LABEL[slot] || slot || "Equipment"}${Number(item.enhanceLevel) > 0 ? ` +${item.enhanceLevel}` : ""}`;
+          return /*#__PURE__*/React.createElement("span", { key: item.itemId || `${slot}-${index}`, title: label, "aria-label": label },
+            /*#__PURE__*/React.createElement(GameIcon, { item: { ...item, type: slot }, fallback: SLOT_ICON[slot] || "◆", className: "md-game-icon", alt: "" }),
+            Number(item.enhanceLevel) > 0 && /*#__PURE__*/React.createElement("i", null, `+${item.enhanceLevel}`));
+        }), !(status.equipment || []).length && /*#__PURE__*/React.createElement("small", null, "No equipment"))),
       /*#__PURE__*/React.createElement("button", { className: "md-btn primary small md-arena-art-btn primary", disabled: busy, onClick: async () => { setBusy(true); try { const r = await cloudSaveArenaV2Setup(url, characterId, setup.petInstId, setup.skillSlots); if (r?.error) throw new Error(r.error); setSetup(r.setup); } catch (e) { setError(e.message); } finally { setBusy(false); } } }, "SAVE SETUP")),
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" }, ranking.map(row => {
       const rowTierName = arenaHubTierNameFromRating(row.rating);
@@ -3770,10 +3854,15 @@ function ArenaV2Screen({
       return /*#__PURE__*/React.createElement("div", { key: kind, className: "md-arena-history-group" },
         /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-history-heading" },
           historyIcon && /*#__PURE__*/React.createElement("img", { className: "md-arena-history-icon", src: historyIcon, alt: "", "aria-hidden": "true" }),
-          kind.toUpperCase()),
-        (history[kind] || []).map(row => /*#__PURE__*/React.createElement("div", { className: "md-sub md-arena-hub-row md-arena-history-row", key: `${kind}-${row.matchId}` },
-          /*#__PURE__*/React.createElement("span", { className: "md-arena-history-result" }, row.result, " · ", row.resolution, " · ", row.arenaCoinEarned, " Coin"),
-          kind === "attack" && row.defenderCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-art-btn secondary", disabled: busy, onClick: () => openPlayerCard(`history:${row.matchId}`, "revenge") }, "REVENGE"))));
+          kind === "attack" ? "YOUR ATTACKS" : "INCOMING DEFENSES"),
+        (history[kind] || []).map(row => {
+          const view = arenaHistoryPresentation(kind, row);
+          return /*#__PURE__*/React.createElement("div", { className: "md-sub md-arena-hub-row md-arena-history-row", key: `${kind}-${row.matchId}` },
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-history-result" },
+              /*#__PURE__*/React.createElement("b", null, view.direction),
+              /*#__PURE__*/React.createElement("small", null, view.result, " · ", row.resolution || "resolved", " · Rating ", view.ratingChange >= 0 ? "+" : "", view.ratingChange, view.coin === null ? "" : ` · ${view.coin} Coin`)),
+            kind === "defense" && row.attackerCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-art-btn secondary", disabled: busy, onClick: () => openPlayerCard(`history:${row.matchId}`, "revenge") }, "REVENGE"));
+        }));
     })),
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · ", matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`), matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Presentation พร้อมก่อนใช้ Ticket; controls จะเปิดหลัง activation สำเร็จ"), !matchIsPrepared && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-speed-toggle", type: "button", onClick: () => setCombatSpeed(value => value === 1 ? 2 : 1), "aria-label": `Arena presentation speed x${combatSpeed}` }, `×${combatSpeed}`), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || (matchIsPrepared ? "waiting for activation" : "—")), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },

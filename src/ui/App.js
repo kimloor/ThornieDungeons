@@ -91,16 +91,14 @@ function ThornieDungeons() {
           const response = error?.response && typeof error.response === "object" ? error.response : null;
           setPersistenceMessage(`บันทึก Cloud ไม่สำเร็จ (${error?.code || "unknown_error"})`);
           setPersistenceDiagnostic({
+            event: "cloud_persistence_failure",
+            reason: error?.code || response?.reason || response?.error || "unknown_error",
             code: error?.code || "unknown_error",
             status: error?.status || response?.status || null,
             domain: detail?.domain || "unknown",
-            characterId: detail?.context?.characterId || "",
-            itemId: response?.itemId || "",
             action: response?.action || "",
             transient: !!error?.transient,
-            message: error?.message || error?.code || "Cloud persistence failure",
-            response,
-            stack: String(error?.stack || error?.cause?.stack || "")
+            message: error?.message || error?.code || "Cloud persistence failure"
           });
         } else {
           setPersistenceMessage("");

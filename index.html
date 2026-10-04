@@ -182,7 +182,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.40";
+  content: "Ver 1.0.41";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -457,10 +457,19 @@ body::after {
 .md-hub-icon-btn i { position:absolute; top:4px; right:4px; width:9px; height:9px; border-radius:50%; background:#ff5566; border:2px solid #09152f; box-shadow:0 0 9px #ff5566; animation:md-hub-alert 1.15s ease-in-out infinite; }
 .md-hub-resources { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
 .md-hub-resources.with-arena { grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; }
-.md-hub-resources span { min-width:0; padding:5px 6px; text-align:center; border-radius:10px; border:1px solid rgba(99,177,232,.25); background:rgba(4,13,35,.65); color:var(--ink-soft); font-size:9px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; backdrop-filter:blur(6px); }
-.md-hub-resources.with-arena span { padding:5px 3px; font-size:8.5px; }
+.md-hub-resources button { min-width:0; min-height:34px; padding:5px 6px; display:inline-flex; align-items:center; justify-content:center; gap:3px; text-align:center; border-radius:10px; border:1px solid rgba(99,177,232,.25); background:rgba(4,13,35,.65); color:var(--ink-soft); font:inherit; font-size:9px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; backdrop-filter:blur(6px); cursor:pointer; touch-action:manipulation; }
+.md-hub-resources.with-arena button { padding:5px 3px; font-size:8.5px; }
 .md-hub-resources.with-arena .md-resource-icon { width:17px; height:17px; }
 .md-hub-resources b { color:var(--ink); }
+.md-currency-overlay { position:fixed; inset:0; z-index:210; display:grid; place-items:center; padding:max(18px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px)); background:rgba(2,5,16,.76); backdrop-filter:blur(5px); }
+.md-currency-card { position:relative; width:min(92vw,390px); padding:22px 20px 18px; border:1px solid rgba(255,209,102,.64); border-radius:18px; background:linear-gradient(180deg,rgba(18,30,67,.99),rgba(6,13,34,.99)); box-shadow:0 18px 55px rgba(0,0,0,.68); text-align:center; }
+.md-currency-close { position:absolute; top:9px; right:9px; width:44px; height:44px; border:0; border-radius:11px; background:rgba(255,255,255,.08); color:#fff; font-size:24px; cursor:pointer; }
+.md-currency-detail-icon { width:64px; height:64px; margin:0 auto 7px; display:grid; place-items:center; border:1px solid rgba(255,209,102,.34); border-radius:18px; background:rgba(3,11,30,.7); }
+.md-currency-detail-icon .md-resource-icon { width:44px; height:44px; }
+.md-currency-card h2 { margin:0; color:#ffe49a; font-family:'Baloo 2'; font-size:22px; }
+.md-currency-card > strong { display:block; margin:3px 0 8px; color:#fff; font-family:'Baloo 2'; font-size:25px; }
+.md-currency-card p { margin:0 0 9px; color:#d8e8fb; font-size:12px; line-height:1.5; }
+.md-currency-card small { display:block; color:#99aec8; font-size:10px; line-height:1.4; }
 .md-arena-global-resource { border-color:rgba(99,177,232,.25) !important; background:rgba(4,13,35,.65) !important; }
 .md-hub-world { flex:1; min-height:365px; position:relative; overflow:hidden; border:1px solid rgba(255,209,102,.26); border-radius:22px; background:radial-gradient(circle at 50% 39%,rgba(0,170,255,.12),transparent 28%),linear-gradient(180deg,rgba(2,9,27,.10),rgba(2,9,27,.02) 45%,rgba(2,8,24,.48)); box-shadow:inset 0 0 45px rgba(0,0,0,.2),0 10px 28px rgba(0,0,0,.25); }
 .md-hub-world::before { content:""; position:absolute; left:50%; top:27%; width:130px; height:180px; transform:translateX(-50%); border-radius:50%; background:radial-gradient(ellipse,rgba(42,198,255,.18),rgba(31,116,255,.06) 48%,transparent 72%); filter:blur(7px); animation:md-hub-gate-glow 3.5s ease-in-out infinite; pointer-events:none; }
@@ -484,7 +493,7 @@ body::after {
 .md-hub-enter-btn:active,.md-hub-town-btn:active { transform:translateY(4px); }
 .md-hub-enter-btn:active { box-shadow:0 3px 0 #9c6315,0 0 18px rgba(255,209,102,.25); }
 .md-hub-town-btn:active { box-shadow:0 3px 0 #041329; }
-.md-hub-dock { min-height:var(--md-dock-height); padding:6px; display:grid; grid-template-columns:repeat(4,1fr); gap:var(--md-dock-gap); border:1px solid rgba(255,209,102,.34); border-radius:18px; background:linear-gradient(180deg,rgba(11,27,58,.94),rgba(4,12,31,.96)); box-shadow:0 -6px 22px rgba(0,0,0,.26); backdrop-filter:blur(10px); }
+.md-hub-dock { position:sticky; bottom:max(var(--md-page-pad),var(--safe-bottom)); z-index:20; flex:0 0 auto; min-height:calc(var(--md-dock-height) + var(--safe-bottom)); padding:6px 6px max(6px,var(--safe-bottom)); display:grid; grid-template-columns:repeat(4,1fr); gap:var(--md-dock-gap); border:1px solid rgba(255,209,102,.34); border-radius:18px; background:linear-gradient(180deg,rgba(11,27,58,.94),rgba(4,12,31,.96)); box-shadow:0 -6px 22px rgba(0,0,0,.26); backdrop-filter:blur(10px); }
 .md-hub-dock button { min-width:0; min-height:var(--md-dock-hit); padding:4px 2px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:1px solid transparent; border-radius:12px; background:transparent; color:var(--ink-soft); font-size:var(--md-common-icon); cursor:pointer; touch-action:manipulation; }
 .md-hub-dock button > img { width:var(--md-dock-icon); height:var(--md-dock-icon); object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
 .md-hub-dock button span { font-family:'Baloo 2'; font-size:var(--md-dock-label); font-weight:800; }
@@ -2081,7 +2090,7 @@ body::after {
   .md-hub-profile-copy > strong { font-size:23px; }
   .md-hub-character-meta b,.md-hub-character-meta span { font-size:11px; }
   .md-hub-icon-btn { width:52px; height:52px; font-size:25px; }
-  .md-hub-resources span { min-height:34px; padding:7px 9px; font-size:11px; }
+  .md-hub-resources button { min-height:44px; padding:7px 9px; font-size:11px; }
   .md-hub-world { min-height:430px; border-radius:26px; }
   .md-hub-gate-focus strong { font-size:72px; }
   .md-hub-town-btn,.md-hub-enter-btn { min-height:78px; }
@@ -2223,7 +2232,7 @@ body::after {
   .md-hub-profile-copy > strong { font-size:27px; }
   .md-hub-character-meta b,.md-hub-character-meta span { font-size:12px; }
   .md-hub-icon-btn { width:58px; height:58px; font-size:28px; }
-  .md-hub-resources span { min-height:38px; padding:8px 11px; font-size:12px; }
+  .md-hub-resources button { min-height:46px; padding:8px 11px; font-size:12px; }
   .md-hub-world { min-height:480px; border-radius:28px; }
   .md-hub-gate-focus strong { font-size:82px; }
   .md-hub-world-actions { left:18px; right:18px; bottom:18px; gap:14px; }
@@ -2418,7 +2427,7 @@ body::after {
 .md-floor-reward-icon { width:28px; height:28px; vertical-align:middle; }
 .md-mail-reward-icons { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
 .md-mail-reward-icons > span { display:inline-flex; align-items:center; gap:3px; }
-.md-equip-stat-chip, .md-hub-resources > span, .md-status-chip, .md-shop-lv { display:inline-flex; align-items:center; gap:3px; }
+.md-equip-stat-chip, .md-hub-resources > button, .md-status-chip, .md-shop-lv { display:inline-flex; align-items:center; gap:3px; }
 .md-inventory-cell-icon { display:flex; align-items:center; justify-content:center; }
 @media (max-width:380px) {
   .md-resource-icon { width:16px; height:16px; }
@@ -2571,7 +2580,6 @@ body::after {
 .md-arena-equipment-icon { position:relative; flex:1 1 26px; min-width:0; max-width:26px; width:auto; height:auto; aspect-ratio:1; display:grid; place-items:center; border:1px solid rgba(255,209,102,.35); border-radius:8px; background:rgba(4,13,35,.72); }
 .md-arena-equipment-item-icon { width:82%; height:82%; max-width:25px; max-height:25px; object-fit:contain; }
 .md-arena-equipment-icon i { position:absolute; right:-2px; bottom:-3px; min-width:15px; padding:0 2px; border-radius:6px; background:#071126; color:#ffe49a; font-size:8px; font-style:normal; font-weight:900; line-height:13px; }
-.md-arena-refresh-cooldown { margin:8px 0 0; text-align:center; color:#FFE49A; font-weight:800; }
 .md-arena-page-header { flex:0 0 auto; gap:8px; min-height:54px; }
 .md-arena-page-header h1 { margin-right:auto; }
 .md-arena-brand-emblem { width:42px; height:42px; flex:0 0 42px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.42)); }
@@ -2606,12 +2614,35 @@ body::after {
 .md-arena-info-button { align-self:flex-start; min-width:138px; }
 .md-arena-refresh-button { min-width:132px; }
 .md-arena-player-card-btn { min-width:126px; }
+.md-arena-summary-hint { margin:0; color:#9fb0c8; font-size:9px; font-weight:800; }
 .md-arena-skill-setup-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:9px 0; }
-.md-arena-skill-setup-slot { position:relative; min-width:0; min-height:54px; padding:5px 6px 5px 47px; display:flex; align-items:center; border:1px solid rgba(255,209,102,.36); border-radius:11px; background:rgba(3,13,34,.72); }
+.md-arena-setup-picker { position:relative; min-width:0; border:1px solid rgba(255,209,102,.36); border-radius:11px; background:rgba(3,13,34,.86); }
+.md-arena-setup-picker > summary { min-width:0; min-height:48px; display:flex; align-items:center; gap:8px; padding:6px 9px; list-style:none; color:#eef7ff; cursor:pointer; touch-action:manipulation; }
+.md-arena-setup-picker > summary::-webkit-details-marker { display:none; }
+.md-arena-pet-picker > summary > span:not(.md-arena-pet-avatar) { min-width:0; flex:1; display:flex; flex-direction:column; color:#aebed4; font-size:8px; font-weight:900; }
+.md-arena-setup-picker > summary b { overflow:hidden; color:#eef7ff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.md-arena-setup-picker > summary i { color:#ffe39a; font-size:8px; font-style:normal; font-weight:900; }
+.md-arena-pet-picker { margin:8px 0; }
+.md-arena-pet-avatar { width:36px; height:36px; flex:0 0 36px; display:grid; place-items:center; border:1px solid rgba(100,196,255,.32); border-radius:50%; background:radial-gradient(circle,rgba(79,168,224,.22),rgba(3,13,34,.9)); font-size:21px; }
+.md-arena-setup-options { position:absolute; z-index:35; top:calc(100% + 4px); left:0; right:0; max-height:min(42dvh,310px); padding:6px; display:grid; gap:5px; overflow-y:auto; border:1px solid rgba(255,209,102,.5); border-radius:11px; background:rgba(5,13,34,.99); box-shadow:0 12px 28px rgba(0,0,0,.58); }
+.md-arena-setup-options button { min-width:0; min-height:48px; padding:5px 8px; display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:7px; border:1px solid rgba(111,177,226,.23); border-radius:9px; background:rgba(255,255,255,.035); color:#eaf4ff; text-align:left; cursor:pointer; }
+.md-arena-setup-options button.selected { border-color:#ffe39a; background:rgba(255,209,102,.11); }
+.md-arena-setup-options button b { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.md-arena-setup-options button small { color:#aebed4; white-space:nowrap; }
+.md-arena-skill-setup-slot { position:relative; min-width:0; min-height:56px; padding-left:47px; display:block; }
 .md-arena-skill-setup-slot.empty { border-style:dashed; opacity:.74; }
 .md-arena-skill-slot-number { position:absolute; left:3px; top:3px; z-index:2; min-width:15px; height:15px; display:grid; place-items:center; border-radius:50%; background:#071126; color:#ffe39a; font-size:8px; font-weight:900; }
 .md-arena-setup-skill-icon { position:absolute; left:7px; top:50%; width:36px; height:36px; transform:translateY(-50%); }
-.md-arena-skill-setup-slot select { width:100%; min-width:0; min-height:40px; padding:4px 3px; border:0; background:transparent; color:#eef7ff; font-size:10px; font-weight:800; }
+.md-arena-skill-setup-slot > summary { min-height:54px; padding-left:3px; }
+.md-arena-skill-name { min-width:0; flex:1; overflow:hidden; color:#eef7ff; font-size:10px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
+.md-arena-skill-setup-slot > .md-arena-setup-options { left:-47px; }
+.md-arena-loadout { margin:8px 0 10px; padding:9px; display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:8px; border:1px solid rgba(100,174,226,.22); border-radius:11px; background:rgba(3,13,34,.68); }
+.md-arena-loadout > strong { color:#aebed4; font-size:9px; }
+.md-arena-loadout > div { min-width:0; display:flex; justify-content:flex-end; gap:5px; overflow-x:auto; }
+.md-arena-loadout > div > span { position:relative; width:42px; height:42px; flex:0 0 42px; display:grid; place-items:center; border:1px solid rgba(255,209,102,.3); border-radius:9px; background:rgba(4,12,30,.82); }
+.md-arena-loadout .md-game-icon { width:32px; height:32px; }
+.md-arena-loadout i { position:absolute; right:-2px; bottom:-2px; padding:1px 3px; border-radius:5px; background:#06122d; color:#ffe39a; font-size:7px; font-style:normal; font-weight:900; }
+.md-arena-loadout small { color:#9fb0c8; }
 .md-arena-action-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
 .md-arena-action-controls > .md-arena-surrender-btn { grid-column:1 / -1; }
 .md-arena-skill-control { min-width:0; display:flex; align-items:center; justify-content:flex-start; gap:7px; padding:5px 8px; text-align:left; }
@@ -2640,7 +2671,9 @@ body::after {
 .md-arena-history-heading { display:flex; align-items:center; gap:7px; margin:2px 0 5px; font-size:13px; }
 .md-arena-history-icon { width:28px; height:28px; object-fit:contain; }
 .md-arena-history-row { justify-content:space-between; gap:8px; }
-.md-arena-history-result { min-width:0; overflow-wrap:anywhere; }
+.md-arena-history-result { min-width:0; display:flex; flex-direction:column; overflow-wrap:anywhere; }
+.md-arena-history-result b { color:#eef4ff; font-size:11px; }
+.md-arena-history-result small { color:#aebbd0; font-size:9px; }
 .md-arena-surrender-btn { min-height:44px; padding:6px 18px; border:10px solid transparent !important; border-image-source:var(--arena-surrender-button) !important; border-image-slice:32 fill !important; border-image-width:10px !important; border-image-repeat:stretch !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; color:#ffe6e9 !important; text-shadow:0 1px 2px rgba(0,0,0,.82); }
 .md-arena-surrender-btn:disabled { opacity:.56; filter:saturate(.72); }
 .md-arena-result-card { display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center; }
@@ -2653,7 +2686,7 @@ body::after {
 .md-arena-phaser-error { position:absolute; inset:auto 10px 10px; z-index:5; padding:7px 9px; border:1px solid rgba(255,107,123,.55); border-radius:9px; background:rgba(45,10,24,.88); color:#ffc2c9; font-size:10px; font-weight:800; text-align:center; }
 .md-arena-turn-order { margin:4px 0 7px; min-height:38px; border:1px solid rgba(255,209,102,.18); border-radius:10px; background:rgba(3,9,24,.32); overflow:hidden; }
 .md-arena-speed-toggle { margin:0 0 6px; min-width:58px; color:var(--gold); border-color:rgba(255,209,102,.45); }
-.md-arena-fatal-overlay { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:max(18px,var(--safe-top)) max(14px,var(--safe-right)) max(18px,var(--safe-bottom)) max(14px); background:rgba(2,5,16,.76); backdrop-filter:blur(4px); }
+.md-arena-fatal-overlay { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:max(18px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px)); background:rgba(2,5,16,.76); backdrop-filter:blur(4px); }
 .md-arena-fatal-card { width:min(92vw,520px); max-height:min(82dvh,680px); display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,139,139,.72); border-radius:16px; background:rgba(24,14,35,.98); box-shadow:0 18px 55px rgba(0,0,0,.68); color:#FFD6D6; }
 .md-arena-fatal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border-bottom:1px solid rgba(255,139,139,.35); color:#FF9E9E; }
 .md-arena-fatal-close { width:36px; height:36px; flex:0 0 36px; border:0; border-radius:10px; background:rgba(255,255,255,.08); color:#fff; font-size:23px; line-height:1; cursor:pointer; }
@@ -2703,7 +2736,7 @@ body::after {
   .md-arena-player-card-overlay .md-player-card-details { padding:5% 3.5%; }
   .md-arena-equipment-icon { flex-basis:24px; max-width:24px; }
   .md-arena-equipment-item-icon { width:82%; height:82%; max-width:22px; max-height:22px; }
-  .md-hub-resources.with-arena span { font-size:8px; }
+  .md-hub-resources.with-arena button { min-height:40px; font-size:8px; }
   .md-player-card { width:min(96vw,720px); padding:8% 4.5% 4%; }
   .md-player-card-main { grid-template-columns:35% 1fr; gap:3.5%; }
   .md-player-card-avatar { width:88%; margin-bottom:8%; }
@@ -13577,16 +13610,14 @@ function ThornieDungeons() {
           const response = error?.response && typeof error.response === "object" ? error.response : null;
           setPersistenceMessage(`บันทึก Cloud ไม่สำเร็จ (${error?.code || "unknown_error"})`);
           setPersistenceDiagnostic({
+            event: "cloud_persistence_failure",
+            reason: error?.code || response?.reason || response?.error || "unknown_error",
             code: error?.code || "unknown_error",
             status: error?.status || response?.status || null,
             domain: detail?.domain || "unknown",
-            characterId: detail?.context?.characterId || "",
-            itemId: response?.itemId || "",
             action: response?.action || "",
             transient: !!error?.transient,
-            message: error?.message || error?.code || "Cloud persistence failure",
-            response,
-            stack: String(error?.stack || error?.cause?.stack || "")
+            message: error?.message || error?.code || "Cloud persistence failure"
           });
         } else {
           setPersistenceMessage("");
@@ -16965,14 +16996,36 @@ function DailyLoginToast({
 }
 function GlobalCurrencyBar({ save, arena = null, className = "" }) {
   const e = React.createElement;
-  return e("div", {
-    className: `md-hub-resources${arena ? " with-arena" : ""}${className ? ` ${className}` : ""}`
-  },
-    e("span", null, e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "Gold" }), " ", e("b", null, formatNumber(save.gold))),
-    e("span", null, e(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-resource-icon", alt: "Diamond" }), " ", e("b", null, formatNumber(save.diamonds || 0))),
-    e("span", null, e(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-resource-icon", alt: "Protection Stone" }), " ", e("b", null, formatNumber(save.protectionStones || 0))),
-    arena && e("span", { className: "md-arena-global-resource" }, e(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "Arena Coin" }), " ", e("b", null, formatNumber(arena.arenaCoin || 0))),
-    arena && e("span", { className: "md-arena-global-resource" }, e(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-resource-icon", alt: "Arena Ticket" }), " ", e("b", null, `${Number(arena.tickets) || 0}/${Number(arena.ticketsMax) || 10}`))
+  const [selected, setSelected] = React.useState(null);
+  const currencies = [
+    { key: "gold", name: "Gold", value: formatNumber(save.gold), icon: e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "" }), detail: "สกุลเงินหลักสำหรับร้านค้า การตีบวก และระบบที่ระบุราคาเป็น Gold" },
+    { key: "diamond", name: "Diamonds", value: formatNumber(save.diamonds || 0), icon: e(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-resource-icon", alt: "" }), detail: "สกุลเงินพรีเมียม ใช้เฉพาะเมื่อหน้าจอยืนยันราคาและการทำรายการอย่างชัดเจน" },
+    { key: "protectionStone", name: "Protection Stones", value: formatNumber(save.protectionStones || 0), icon: e(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-resource-icon", alt: "" }), detail: "วัตถุดิบป้องกันความเสียหายตามกติกาของระบบ Enhancement" },
+    ...(arena ? [
+      { key: "arenaCoin", name: "Arena Coin", value: formatNumber(arena.arenaCoin || 0), icon: e(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "🪙", className: "md-game-icon md-resource-icon", alt: "" }), detail: "รางวัล Arena ที่คำนวณและยืนยันโดยเซิร์ฟเวอร์" },
+      { key: "arenaTicket", name: "Arena Tickets", value: `${Number(arena.tickets) || 0}/${Number(arena.ticketsMax) || 10}`, icon: e(GameIcon, { category: "currency", iconKey: "arenaTicket", fallback: "🎟️", className: "md-game-icon md-resource-icon", alt: "" }), detail: "ใช้เมื่อ Arena match ผ่านการเตรียม presentation และถูก activate โดยเซิร์ฟเวอร์แล้ว" }
+    ] : [])
+  ];
+  const popup = selected && e("div", { className: "md-currency-overlay", role: "presentation", onClick: () => setSelected(null) },
+    e("section", { className: "md-currency-card", role: "dialog", "aria-modal": "true", "aria-labelledby": "md-currency-title", onClick: event => event.stopPropagation() },
+      e("button", { type: "button", className: "md-currency-close", onClick: () => setSelected(null), "aria-label": "ปิดรายละเอียดสกุลเงิน" }, "×"),
+      e("div", { className: "md-currency-detail-icon" }, selected.icon),
+      e("h2", { id: "md-currency-title" }, selected.name),
+      e("strong", null, selected.value),
+      e("p", null, selected.detail),
+      e("small", null, "ยอดที่แสดงมาจากสถานะเกมปัจจุบัน ระบบนี้ไม่แก้ไขยอดหรือสิทธิ์การให้รางวัล")));
+  return e(React.Fragment, null,
+    e("div", {
+      className: `md-hub-resources${arena ? " with-arena" : ""}${className ? ` ${className}` : ""}`,
+      "aria-label": "สกุลเงินของผู้เล่น"
+    }, currencies.map(currency => e("button", {
+      type: "button",
+      key: currency.key,
+      className: currency.key.startsWith("arena") ? "md-arena-global-resource" : "",
+      onClick: () => setSelected(currency),
+      "aria-label": `${currency.name} ${currency.value} — ดูรายละเอียด`
+    }, currency.icon, " ", e("b", null, currency.value)))),
+    popup && ReactDOM.createPortal(popup, document.body)
   );
 }
 
@@ -17641,6 +17694,7 @@ function SkillScreen({
 function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub, onBack }) {
   const [branch, setBranch] = useState("assault");
   const [confirmReset, setConfirmReset] = useState(false);
+  const [skillsBusy, setSkillsBusy] = useState(false);
   const levels = save.character.skillLevels || {};
   const spent = heroSkillSpentPoints(levels);
   const total = heroSkillPointBudget(save.character.level);
@@ -17649,6 +17703,15 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
   const reasonText = reason => ({ level_gate: "Level ยังไม่ถึง", branch_points: "แต้มในสายยังไม่ถึง", prerequisite: "ยังขาดสกิล prerequisite", keystone_points: "ต้องใช้แต้มในสาย 40", keystone_t4: "ต้องมี T4 อย่างน้อย 1 Rank", not_enough_sp: "Skill Point ไม่พอ", max_rank: "เต็มแล้ว" }[reason] || "");
   const visible = HERO_SKILLS_V1.filter(skill => skill.branch === branch);
   const groups = [1, 2, 3, 4, 5];
+  const doPaidReset = async () => {
+    if (skillsBusy) return;
+    setSkillsBusy(true);
+    try {
+      if (await onResetSkills()) setConfirmReset(false);
+    } finally {
+      setSkillsBusy(false);
+    }
+  };
   return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
     /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
     /*#__PURE__*/React.createElement(CharacterTabs, { active: "skills", onStatus: onBack, onSkills: () => {} }),
@@ -19481,6 +19544,26 @@ function ArenaHubMilestoneRow({ label, progress, iconSrc }) {
       /*#__PURE__*/React.createElement("b", null, rewardText)));
 }
 
+function arenaHistoryPresentation(kind, row = {}) {
+  const attackerResult = String(row.result || "unknown").toLowerCase();
+  const result = kind === "defense"
+    ? ({ win: "LOSS", loss: "WIN", draw: "DRAW" }[attackerResult] || attackerResult.toUpperCase())
+    : attackerResult.toUpperCase();
+  const opponent = String((kind === "attack" ? row.defenderName : row.attackerName) || "Unknown opponent");
+  const ratingChange = Number(kind === "attack" ? row.attackerRatingChange : row.defenderRatingChange) || 0;
+  return Object.freeze({
+    result,
+    opponent,
+    direction: kind === "attack" ? `You attacked ${opponent}` : `${opponent} attacked you`,
+    ratingChange,
+    coin: kind === "attack" ? Number(row.arenaCoinEarned) || 0 : null
+  });
+}
+
+function arenaSetupPetIcon(pet) {
+  return PET_POOL.find(definition => definition.id === pet?.defId)?.icon || "🐾";
+}
+
 function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
   const e = React.createElement;
   if (!card) return null;
@@ -19601,23 +19684,6 @@ function arenaFatalDiagnostic(error, context = {}, event = {}) {
   });
 }
 
-function arenaFatalDiagnosticText(diagnostic = {}) {
-  const location = diagnostic.source
-    ? `${diagnostic.source}:${diagnostic.line || "?"}:${diagnostic.column || "?"}`
-    : "unknown source";
-  return [
-    `Arena ${diagnostic.kind || "runtime"}`,
-    `Message: ${diagnostic.message || "Unknown Arena runtime error"}`,
-    `Source: ${location}`,
-    `Match: ${diagnostic.matchId || "—"}`,
-    `Action Seq: ${Number(diagnostic.actionSeq) || 0}`,
-    `Phaser: ${diagnostic.phaserStatus || "unknown"}`,
-    `Phase: ${diagnostic.arenaPhase || "unknown"}`,
-    `Action: ${diagnostic.currentAction || "unknown"}`,
-    diagnostic.stack ? `\n${diagnostic.stack}` : ""
-  ].filter(Boolean).join("\n");
-}
-
 const ArenaV2ErrorBoundary = typeof React === "undefined" ? class {
   constructor(props) { this.props = props; this.state = { failed: false }; }
 } : class extends React.Component {
@@ -19640,76 +19706,94 @@ const ArenaV2ErrorBoundary = typeof React === "undefined" ? class {
   }
 };
 
-function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
-  if (!diagnostic) return null;
-  const e = React.createElement;
-  return ReactDOM.createPortal(
-    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-arena-fatal-title" },
-      e("section", { className: "md-arena-fatal-card" },
-        e("div", { className: "md-arena-fatal-head" },
-          e("strong", { id: "md-arena-fatal-title" }, "⚠ Arena presentation error"),
-          e("button", { type: "button", className: "md-arena-fatal-close", onClick: onClose, "aria-label": "ปิดรายละเอียด" }, "×")
-        ),
-        e("p", { className: "md-arena-fatal-copy" }, "Battle ถูกปิดอย่างปลอดภัยแล้ว ข้อมูล match หลักยังอยู่บนเซิร์ฟเวอร์และสามารถ Resume ได้ โดยไม่ใช้ Ticket เพิ่ม"),
-        e("pre", { className: "md-arena-fatal-detail" }, arenaFatalDiagnosticText(diagnostic)),
-        e("div", { className: "md-arena-fatal-actions" },
-          e("button", { type: "button", className: "md-btn primary small", onClick: onResume }, "RESUME ARENA"),
-          e("button", { type: "button", className: "md-btn small", onClick: onClose }, "CLOSE")
-        )
-      )
-    ),
-    document.body
-  );
+function sanitizedRuntimeDetail(value, fallback = "unknown") {
+  let text = String(value ?? "").trim();
+  if (!text) return fallback;
+  text = text
+    .replace(/([?&](?:token|session|password|key|auth|code)=)[^&#\s]+/gi, "$1[redacted]")
+    .replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, "[redacted authorization]")
+    .replace(/\b(?:token|password|credential|authorization|cookie|session)\s*[:=]\s*[^\s,;]+/gi, "$1=[redacted]");
+  return text.slice(0, 800);
 }
 
-
-function persistenceDiagnosticSafeJson(value) {
-  if (!value || typeof value !== "object") return "";
-  try {
-    return JSON.stringify(value, (key, item) => (
-      /token|password|credential|authorization|session/i.test(String(key)) ? "[redacted]" : item
-    ), 2);
-  } catch (error) {
-    return String(value);
+function runtimeDiagnosticText(diagnostic = {}) {
+  const fields = [
+    ["Event", diagnostic.event || diagnostic.kind || "client_runtime_error"],
+    ["Reason", diagnostic.reason || diagnostic.code || diagnostic.kind || "unknown_error"],
+    ["Code", diagnostic.code],
+    ["HTTP", diagnostic.status],
+    ["Domain", diagnostic.domain],
+    ["Action", diagnostic.action || diagnostic.currentAction],
+    ["Reference", diagnostic.matchId],
+    ["Action Seq", diagnostic.actionSeq],
+    ["Phase", diagnostic.arenaPhase],
+    ["Presentation", diagnostic.phaserStatus],
+    ["Message", diagnostic.message]
+  ];
+  if (diagnostic.source) {
+    const source = sanitizedRuntimeDetail(diagnostic.source).split(/[?#]/)[0];
+    fields.push(["Source", `${source}:${diagnostic.line || "?"}:${diagnostic.column || "?"}`]);
   }
+  if (diagnostic.stack) {
+    const stack = sanitizedRuntimeDetail(String(diagnostic.stack).split("\n").slice(0, 8).join("\n"), "");
+    if (stack) fields.push(["Stack", stack]);
+  }
+  return fields
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([label, value]) => `${label}: ${sanitizedRuntimeDetail(value)}`)
+    .join("\n");
 }
 
-function persistenceDiagnosticText(diagnostic = {}) {
-  const responseText = persistenceDiagnosticSafeJson(diagnostic.response);
-  return [
-    "Cloud persistence failure",
-    `Code: ${diagnostic.code || "unknown_error"}`,
-    `HTTP: ${diagnostic.status || "unknown"}`,
-    `Domain: ${diagnostic.domain || "unknown"}`,
-    `Character: ${diagnostic.characterId || "unknown"}`,
-    diagnostic.itemId ? `Item: ${diagnostic.itemId}` : "",
-    diagnostic.action ? `Action: ${diagnostic.action}` : "",
-    `Transient: ${diagnostic.transient ? "yes" : "no"}`,
-    `Message: ${diagnostic.message || diagnostic.code || "Unknown persistence error"}`,
-    responseText ? `Response:\n${responseText}` : "",
-    diagnostic.stack ? `Stack:\n${diagnostic.stack}` : ""
-  ].filter(Boolean).join("\n");
-}
-
-function PersistenceDiagnosticOverlay({ diagnostic, onClose }) {
+function RuntimeDiagnosticOverlay({ diagnostic, title = "Runtime error", summary, primaryLabel, onPrimary, onClose }) {
   if (!diagnostic) return null;
   const e = React.createElement;
   return ReactDOM.createPortal(
-    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-persistence-error-title" },
+    e("div", { className: "md-arena-fatal-overlay", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "md-runtime-error-title" },
       e("section", { className: "md-arena-fatal-card" },
         e("div", { className: "md-arena-fatal-head" },
-          e("strong", { id: "md-persistence-error-title" }, "⚠ Cloud save error"),
+          e("strong", { id: "md-runtime-error-title" }, `⚠ ${title}`),
           e("button", { type: "button", className: "md-arena-fatal-close", onClick: onClose, "aria-label": "ปิดรายละเอียด" }, "×")
         ),
-        e("p", { className: "md-arena-fatal-copy" }, "การบันทึก Cloud ไม่สำเร็จ รายละเอียดด้านล่างใช้ตรวจสอบ state/API ที่ผิดพลาด โดยข้อมูลลับจะถูกปิดบัง"),
-        e("pre", { className: "md-arena-fatal-detail" }, persistenceDiagnosticText(diagnostic)),
+        e("p", { className: "md-arena-fatal-copy" }, summary || "เกิดข้อผิดพลาดใน runtime รายละเอียดที่แสดงถูกจำกัดและปิดบังข้อมูลลับแล้ว"),
+        e("pre", { className: "md-arena-fatal-detail" }, runtimeDiagnosticText(diagnostic)),
         e("div", { className: "md-arena-fatal-actions" },
+          onPrimary && e("button", { type: "button", className: "md-btn primary small", onClick: onPrimary }, primaryLabel || "RETRY"),
           e("button", { type: "button", className: "md-btn primary small", onClick: onClose }, "CLOSE")
         )
       )
     ),
     document.body
   );
+}
+
+function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
+  return /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+    diagnostic: { ...diagnostic, event: "arena_presentation_failure", reason: diagnostic?.kind || "arena_runtime" },
+    title: "Arena presentation error",
+    summary: "Battle ถูกปิดอย่างปลอดภัยแล้ว ข้อมูล match หลักยังอยู่บนเซิร์ฟเวอร์และสามารถ Resume ได้โดยไม่ใช้ Ticket เพิ่ม",
+    primaryLabel: "RESUME ARENA",
+    onPrimary: onResume,
+    onClose
+  });
+}
+
+function PersistenceDiagnosticOverlay({ diagnostic, onClose }) {
+  const response = diagnostic?.response && typeof diagnostic.response === "object" ? diagnostic.response : {};
+  const safeDiagnostic = diagnostic ? {
+    event: "cloud_persistence_failure",
+    reason: diagnostic.code || response.reason || response.error || "unknown_error",
+    code: diagnostic.code || response.error,
+    status: diagnostic.status,
+    domain: diagnostic.domain,
+    action: diagnostic.action || response.action,
+    message: diagnostic.message || response.message,
+  } : null;
+  return /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+    diagnostic: safeDiagnostic,
+    title: "Cloud save error",
+    summary: "การบันทึก Cloud ไม่สำเร็จ กรุณาตรวจสอบรายละเอียดที่ผ่านการคัดกรองแล้วก่อนลองใหม่ ข้อมูล save, inventory และ checkpoint จะไม่ถูกแสดงในหน้าต่างนี้",
+    onClose
+  });
 }
 
 function arenaTurnOrderIcon(unit, preparedSnapshot) {
@@ -19756,7 +19840,6 @@ function ArenaV2Screen({
   const [playerCard, setPlayerCard] = React.useState(null);
   const [playerCardSource, setPlayerCardSource] = React.useState("matchmaking");
   const [showFullLog, setShowFullLog] = React.useState(false);
-  const [currencyInfo, setCurrencyInfo] = React.useState(false);
   const [combatSpeed, setCombatSpeed] = React.useState(1);
   const [refreshAvailableAt, setRefreshAvailableAt] = React.useState("");
   const [unlockBusy, setUnlockBusy] = React.useState(false);
@@ -20165,7 +20248,7 @@ function ArenaV2Screen({
     /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save, arena: arenaCurrency, className: "md-arena-global-currency" }),
     /*#__PURE__*/React.createElement("div", { className: "md-arena-scroll" },
       /*#__PURE__*/React.createElement("div", { className: !match ? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card" },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Arena V2"),
+      match && /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Arena Battle"),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-summary" },
         !match && currentTierBadge && /*#__PURE__*/React.createElement("img", { className: "md-arena-tier-badge", src: currentTierBadge, alt: "", "aria-hidden": "true" }),
         /*#__PURE__*/React.createElement("div", { className: "md-arena-summary-details" },
@@ -20173,17 +20256,26 @@ function ArenaV2Screen({
             !match && arenaHubAssets.icons.season && /*#__PURE__*/React.createElement("img", { className: "md-arena-inline-icon", src: arenaHubAssets.icons.season, alt: "", "aria-hidden": "true" }),
             "ซีซันเหลือ ", seasonCountdownText),
           /*#__PURE__*/React.createElement("span", { className: "md-arena-summary-text" }, "Rating ", status.player.rating, " · ", status.player.tier, status.player.rank ? ` · #${status.player.rank}` : ""))),
-      /*#__PURE__*/React.createElement("button", { className: !match ? "md-btn small md-arena-art-btn secondary md-arena-info-button" : "md-btn small", onClick: () => setCurrencyInfo(!currencyInfo) },
-        !match && arenaHubAssets.icons.info && /*#__PURE__*/React.createElement("img", { className: "md-arena-action-icon", src: arenaHubAssets.icons.info, alt: "", "aria-hidden": "true" }),
-        /*#__PURE__*/React.createElement("span", null, "CURRENCY INFO")),
-      currencyInfo && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Arena Coin ใช้ตามผลและ opponent slot ที่ server ล็อกไว้ · Ticket ใช้เมื่อเตรียมและ preload สำเร็จเท่านั้น.")),
+      !match && /*#__PURE__*/React.createElement("p", { className: "md-arena-summary-hint" }, "แตะสกุลเงินด้านบนเพื่อดูรายละเอียด")),
     !match && /*#__PURE__*/React.createElement("div", { className: "md-tab-row md-arena-tab-row" }, ["battle", "setup", "ranking", "history"].map(key => /*#__PURE__*/React.createElement("button", {
       key, type: "button", className: `md-btn small md-arena-tab ${tab === key ? "active" : "inactive"}`, onClick: () => loadTab(key), "aria-pressed": tab === key
     },
       arenaHubAssets.icons[key] && /*#__PURE__*/React.createElement("img", { className: "md-arena-tab-icon", src: arenaHubAssets.icons[key], alt: "", "aria-hidden": "true" }),
       /*#__PURE__*/React.createElement("span", { className: "md-arena-tab-label" }, key.toUpperCase())
     ))),
-    error && /*#__PURE__*/React.createElement("p", { className: "md-sub", style: { color: "#FF6B6B" } }, error),
+    error && /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+      diagnostic: {
+        event: "arena_ui_failure",
+        reason: /^[a-z0-9_]+$/i.test(String(error)) ? String(error) : "arena_request_failed",
+        code: /^[a-z0-9_]+$/i.test(String(error)) ? String(error) : undefined,
+        action: currentActionRef.current,
+        arenaPhase: tab,
+        message: error
+      },
+      title: "Arena error",
+      summary: "Arena ไม่สามารถทำรายการนี้ได้ รายละเอียดด้านล่างถูกคัดกรองแล้วและไม่เปลี่ยนสถานะ match, Ticket, Rating หรือรางวัล",
+      onClose: () => setError("")
+    }),
     !match && tab === "battle" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel md-arena-battle-panel" },
       opponents.map(opp => /*#__PURE__*/React.createElement("div", { className: "md-shop-row md-arena-hub-row", key: opp.opponentKey },
         /*#__PURE__*/React.createElement("span", null, opp.name, " · Lv", opp.level, " · ", opp.rating),
@@ -20211,7 +20303,6 @@ function ArenaV2Screen({
       },
         arenaHubAssets.icons.refresh && /*#__PURE__*/React.createElement("img", { className: "md-arena-action-icon", src: arenaHubAssets.icons.refresh, alt: "", "aria-hidden": "true" }),
         /*#__PURE__*/React.createElement("span", null, refreshSeconds > 0 ? `REFRESH · ${refreshSeconds}s` : "REFRESH")),
-      refreshSeconds > 0 && /*#__PURE__*/React.createElement("p", { className: "md-sub md-arena-refresh-cooldown" }, "รีเฟรชได้อีกครั้งใน ", refreshSeconds, " วินาที"),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-milestone-panel", "aria-label": "Arena seasonal milestone progress" },
         /*#__PURE__*/React.createElement(ArenaHubMilestoneRow, { label: "PLAY", progress: arenaPlayProgress, iconSrc: arenaHubAssets.icons.playMilestone }),
         /*#__PURE__*/React.createElement(ArenaHubMilestoneRow, { label: "WIN", progress: arenaWinProgress, iconSrc: arenaHubAssets.icons.winMilestone }))),
@@ -20223,18 +20314,42 @@ function ArenaV2Screen({
     }),
     !match && tab === "setup" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "SETUP · Pet + 4 Skills"),
-      /*#__PURE__*/React.createElement("select", { value: setup.petInstId || "", onChange: e => setSetup({ ...setup, petInstId: e.target.value }) }, /*#__PURE__*/React.createElement("option", { value: "" }, "No Pet"), (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("option", { key: p.instId, value: p.instId }, p.name, " Lv", p.level))),
+      /*#__PURE__*/React.createElement("details", { className: "md-arena-setup-picker md-arena-pet-picker" },
+        /*#__PURE__*/React.createElement("summary", null,
+          /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, setup.petInstId ? arenaSetupPetIcon((status.availablePets || []).find(p => p.instId === setup.petInstId)) : "🐾"),
+          /*#__PURE__*/React.createElement("span", null, "PET", /*#__PURE__*/React.createElement("b", null, (status.availablePets || []).find(p => p.instId === setup.petInstId)?.name || "No Pet")),
+          /*#__PURE__*/React.createElement("i", null, "CHANGE")),
+        /*#__PURE__*/React.createElement("div", { className: "md-arena-setup-options", role: "listbox", "aria-label": "Arena Pet" },
+          /*#__PURE__*/React.createElement("button", { type: "button", className: !setup.petInstId ? "selected" : "", onClick: () => setSetup({ ...setup, petInstId: "" }), "aria-selected": !setup.petInstId }, /*#__PURE__*/React.createElement("span", null, "🐾"), /*#__PURE__*/React.createElement("b", null, "No Pet")),
+          (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("button", { type: "button", key: p.instId, className: setup.petInstId === p.instId ? "selected" : "", onClick: () => setSetup({ ...setup, petInstId: p.instId }), "aria-selected": setup.petInstId === p.instId },
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, arenaSetupPetIcon(p)),
+            /*#__PURE__*/React.createElement("b", null, p.name),
+            /*#__PURE__*/React.createElement("small", null, "Lv", p.level, " · ★", p.star))))),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-skill-setup-grid" }, [0, 1, 2, 3].map(i => {
         const selectedSkillId = setup.skillSlots?.[i] || "";
         const selectedSkill = (status.availableSkills || []).find(skill => skill.key === selectedSkillId);
-        return /*#__PURE__*/React.createElement("label", { className: `md-arena-skill-setup-slot${selectedSkillId ? " filled" : " empty"}`, key: i },
-          /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-slot-number" }, i + 1),
-          /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkillId, className: "md-hero-skill-icon md-arena-setup-skill-icon", alt: selectedSkill?.name || (selectedSkillId ? heroSkillDisplayName(selectedSkillId) : "Empty skill slot") }),
-          /*#__PURE__*/React.createElement("select", { value: selectedSkillId, "aria-label": `Arena skill slot ${i + 1}`, onChange: e => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = e.target.value || null; setSetup({ ...setup, skillSlots: slots }); } },
-            /*#__PURE__*/React.createElement("option", { value: "" }, `Skill ${i + 1} · Empty`),
-            (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("option", { key: s.key, value: s.key }, s.name || heroSkillDisplayName(s.key))))
+        return /*#__PURE__*/React.createElement("details", { className: `md-arena-skill-setup-slot md-arena-setup-picker${selectedSkillId ? " filled" : " empty"}`, key: i },
+          /*#__PURE__*/React.createElement("summary", { "aria-label": `Arena skill slot ${i + 1}` },
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-slot-number" }, i + 1),
+            /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkillId, className: "md-hero-skill-icon md-arena-setup-skill-icon", alt: selectedSkill?.name || (selectedSkillId ? heroSkillDisplayName(selectedSkillId) : "Empty skill slot") }),
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-name" }, selectedSkill?.name || `Skill ${i + 1} · Empty`),
+            /*#__PURE__*/React.createElement("i", null, "CHANGE")),
+          /*#__PURE__*/React.createElement("div", { className: "md-arena-setup-options", role: "listbox", "aria-label": `Arena skill slot ${i + 1}` },
+            /*#__PURE__*/React.createElement("button", { type: "button", className: !selectedSkillId ? "selected" : "", onClick: () => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = null; setSetup({ ...setup, skillSlots: slots }); }, "aria-selected": !selectedSkillId }, /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"), /*#__PURE__*/React.createElement("b", null, "Empty")),
+            (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("button", { type: "button", key: s.key, className: selectedSkillId === s.key ? "selected" : "", onClick: () => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = s.key; setSetup({ ...setup, skillSlots: slots }); }, "aria-selected": selectedSkillId === s.key },
+              /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: s.key, className: "md-hero-skill-icon", alt: "" }),
+              /*#__PURE__*/React.createElement("b", null, s.name || heroSkillDisplayName(s.key)))))
         );
       })),
+      /*#__PURE__*/React.createElement("div", { className: "md-arena-loadout", "aria-label": "Arena equipment loadout" },
+        /*#__PURE__*/React.createElement("strong", null, "EQUIPMENT"),
+        /*#__PURE__*/React.createElement("div", null, (status.equipment || []).map((item, index) => {
+          const slot = String(item.slotType || item.type || "");
+          const label = `${item.name || SLOT_LABEL[slot] || slot || "Equipment"}${Number(item.enhanceLevel) > 0 ? ` +${item.enhanceLevel}` : ""}`;
+          return /*#__PURE__*/React.createElement("span", { key: item.itemId || `${slot}-${index}`, title: label, "aria-label": label },
+            /*#__PURE__*/React.createElement(GameIcon, { item: { ...item, type: slot }, fallback: SLOT_ICON[slot] || "◆", className: "md-game-icon", alt: "" }),
+            Number(item.enhanceLevel) > 0 && /*#__PURE__*/React.createElement("i", null, `+${item.enhanceLevel}`));
+        }), !(status.equipment || []).length && /*#__PURE__*/React.createElement("small", null, "No equipment"))),
       /*#__PURE__*/React.createElement("button", { className: "md-btn primary small md-arena-art-btn primary", disabled: busy, onClick: async () => { setBusy(true); try { const r = await cloudSaveArenaV2Setup(url, characterId, setup.petInstId, setup.skillSlots); if (r?.error) throw new Error(r.error); setSetup(r.setup); } catch (e) { setError(e.message); } finally { setBusy(false); } } }, "SAVE SETUP")),
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" }, ranking.map(row => {
       const rowTierName = arenaHubTierNameFromRating(row.rating);
@@ -20249,10 +20364,15 @@ function ArenaV2Screen({
       return /*#__PURE__*/React.createElement("div", { key: kind, className: "md-arena-history-group" },
         /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-history-heading" },
           historyIcon && /*#__PURE__*/React.createElement("img", { className: "md-arena-history-icon", src: historyIcon, alt: "", "aria-hidden": "true" }),
-          kind.toUpperCase()),
-        (history[kind] || []).map(row => /*#__PURE__*/React.createElement("div", { className: "md-sub md-arena-hub-row md-arena-history-row", key: `${kind}-${row.matchId}` },
-          /*#__PURE__*/React.createElement("span", { className: "md-arena-history-result" }, row.result, " · ", row.resolution, " · ", row.arenaCoinEarned, " Coin"),
-          kind === "attack" && row.defenderCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-art-btn secondary", disabled: busy, onClick: () => openPlayerCard(`history:${row.matchId}`, "revenge") }, "REVENGE"))));
+          kind === "attack" ? "YOUR ATTACKS" : "INCOMING DEFENSES"),
+        (history[kind] || []).map(row => {
+          const view = arenaHistoryPresentation(kind, row);
+          return /*#__PURE__*/React.createElement("div", { className: "md-sub md-arena-hub-row md-arena-history-row", key: `${kind}-${row.matchId}` },
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-history-result" },
+              /*#__PURE__*/React.createElement("b", null, view.direction),
+              /*#__PURE__*/React.createElement("small", null, view.result, " · ", row.resolution || "resolved", " · Rating ", view.ratingChange >= 0 ? "+" : "", view.ratingChange, view.coin === null ? "" : ` · ${view.coin} Coin`)),
+            kind === "defense" && row.attackerCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-art-btn secondary", disabled: busy, onClick: () => openPlayerCard(`history:${row.matchId}`, "revenge") }, "REVENGE"));
+        }));
     })),
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · ", matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`), matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Presentation พร้อมก่อนใช้ Ticket; controls จะเปิดหลัง activation สำเร็จ"), !matchIsPrepared && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-speed-toggle", type: "button", onClick: () => setCombatSpeed(value => value === 1 ? 2 : 1), "aria-label": `Arena presentation speed x${combatSpeed}` }, `×${combatSpeed}`), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || (matchIsPrepared ? "waiting for activation" : "—")), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },

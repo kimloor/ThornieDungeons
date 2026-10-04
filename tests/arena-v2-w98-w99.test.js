@@ -335,12 +335,12 @@ test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Resu
   assert.match(arenaUi, /className: !match \? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card"/);
   assert.match(arenaUi, /!match && currentTierBadge/);
   assert.match(arenaUi, /!match && arenaHubAssets\.icons\.season/);
-  assert.match(arenaUi, /className: !match \? "md-btn small md-arena-art-btn secondary md-arena-info-button" : "md-btn small"/);
-  assert.match(arenaUi, /!match && arenaHubAssets\.icons\.info/);
+  assert.match(arenaUi, /md-arena-summary-hint/);
+  assert.doesNotMatch(arenaUi, /CURRENCY INFO/);
   assert.match(styles, /border-image-slice:32 fill/);
   assert.match(styles, /border-image-slice:16 fill/);
   assert.match(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
-  assert.match(styles, /content: "Ver 1\.0\.40"/);
+  assert.match(styles, /content: "Ver 1\.0\.41"/);
   const battleStart = arenaUi.indexOf('    match && /*#__PURE__*/React.createElement(React.Fragment');
   const dockStart = arenaUi.indexOf('    !match && /*#__PURE__*/React.createElement(GameDock', battleStart);
   const battleSurface = arenaUi.slice(battleStart, dockStart);
@@ -365,7 +365,7 @@ test('Arena Battle + Result Graphics R1 binds approved art without changing auth
   assert.match(arenaUi, /arenaResultGraphicKey\(resultView\.outcome\)/);
   assert.match(styles, /border-image-source:var\(--arena-surrender-button\)/);
   assert.match(styles, /\.md-arena-result-emblem/);
-  assert.match(styles, /content: "Ver 1\.0\.40"/);
+  assert.match(styles, /content: "Ver 1\.0\.41"/);
 });
 
 // W9 browser QA Batch 5 low/medium UI shell fixes only; final parity retrigger after generated frontend sync.

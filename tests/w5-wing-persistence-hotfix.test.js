@@ -31,14 +31,15 @@ test("Cloud persistence diagnostics preserve response status and stale item iden
   assert.equal(error.response.itemId, "stale-item-123");
 });
 
-test("Cloud persistence failures render diagnostic popup instead of top save-state banner", () => {
+test("Cloud persistence failures render the shared sanitized popup instead of top save-state banner", () => {
   const app = source("src/ui/App.js");
   const components = source("src/ui/components.js");
   assert.match(app, /PersistenceDiagnosticOverlay/);
   assert.match(app, /setPersistenceDiagnostic\(\{/);
   assert.doesNotMatch(app, /className: `md-save-state md-save-state-\$\{persistenceStatus\}`/);
   assert.match(components, /function PersistenceDiagnosticOverlay/);
-  assert.match(components, /Code: \$\{diagnostic\.code/);
-  assert.match(components, /Item: \$\{diagnostic\.itemId/);
+  assert.match(components, /function RuntimeDiagnosticOverlay/);
+  assert.match(components, /\["Code", diagnostic\.code\]/);
+  assert.doesNotMatch(components, /Item: \$\{diagnostic\.itemId/);
   assert.match(components, /\[redacted\]/);
 });

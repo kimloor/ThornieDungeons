@@ -25,7 +25,7 @@ This gate is not numbered as a new gameplay Wave.
 - Reusable Production-tail lessons promoted into `PRODUCTION-DIAGNOSTIC-LOGGING-V1.md`.
 
 ### Gate B — Current UI Fix Batch
-**Status: QUEUED / BLOCKING FOR V1.1.0**
+**Status: IMPLEMENTED / QA + PRODUCTION VERIFICATION IN PROGRESS**
 
 Complete the already-approved UI debt batch:
 - shared Global Currency Bar and detailed currency view;
@@ -39,6 +39,11 @@ Complete the already-approved UI debt batch:
 - unified detailed sanitized runtime error popup.
 
 Do not silently expand this batch into unrelated gameplay redesign.
+
+Implementation note (`Ver 1.0.41`): the batch remains frontend/runtime-only. G13 Pet Avatar
+assets were not available (0/8), so Arena Setup intentionally uses the existing catalog emoji
+fallback; Battle, reward/economy, API/Worker, database and authoritative player-data contracts
+remain unchanged.
 
 ### Gate B.5 — Accessory V2 Completion
 **Status: APPROVED / QUEUED / BLOCKING FOR V1.1.0**
