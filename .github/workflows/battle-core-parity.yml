@@ -96,6 +96,9 @@ jobs:
           tests/phaser-shared-architecture.test.js
           tests/run-state-schema.test.js
 
+      - name: Run W5.5 security hardening regression suite
+        run: node --test --test-concurrency=1 tests/w5-5-security-hardening.test.js
+
       - name: Run W9.8/W9.9 executable Arena suite
         run: node --test --test-concurrency=1 tests/arena-v2-w98-w99.test.js
 
