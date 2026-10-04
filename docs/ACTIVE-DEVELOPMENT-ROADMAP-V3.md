@@ -100,6 +100,29 @@ Implement the shared App-level loading manager/overlay:
 
 Graphics dependency: G14 Global Loading Presentation Pack may provide the shared Dungeon Gate/rune visual identity, with a functional lightweight fallback.
 
+### WAVE 1.5 — Player Information Center
+**Status: APPROVED / QUEUED AFTER WAVE 1**
+**Risk: MEDIUM — player-facing information/UI; no gameplay authority change intended**
+
+Add a shared player-facing information center under Settings after Ver 1.1.0 and Global Loading V1:
+- **Announcements** — latest update, curated Ver 1.0.x/1.1.0+ version history, and a public roadmap with Completed / In Development / Planned states;
+- **Game Guide / Help** — player-readable rules and authoritative gameplay information such as drop rates, Refine success, Enchant rolls, stats/caps, CC/Boss behavior, Set bonuses, Dungeon/Arena/Raid/Pet rules and other decision-relevant mechanics;
+- **Terms of Service**, **Privacy Policy**, **Fair Play / Community Rules**, and **Purchase & Refund Policy** content routes/structure;
+- **Account & Data**, **Support / Contact**, and **Credits / Licenses** information;
+- version / effective date / last-updated metadata for policy/content documents;
+- section/deep-link support so future context-help actions can open the relevant Guide topic directly.
+
+Content rules:
+- Game Guide values must be audited from the current Production implementation plus current authoritative contracts when W1.5 is implemented; do not populate balance numbers from memory or stale historical docs.
+- Public roadmap/announcements are curated for players. Do not expose internal security, anti-cheat, migration, server-validation, QA-gate or exploit-sensitive implementation details.
+- Announcement history for Ver 1.0.x must be reconstructed from Git/release/docs evidence rather than guessed.
+- Keep information data-driven and separate from presentation so balance/release content can be updated without redesigning the UI.
+- A gameplay/balance release that changes player-relevant documented behavior must review/update Help and Announcement content in the same release.
+- Legal/policy drafts must describe the services/data/providers actually in use at implementation time. Live real-money monetization remains blocked until a separately approved Legal & Policy review gate; final legal text for commercial launch should receive appropriate legal review.
+- W1.5 prepares Purchase/Refund UI/content structure only; it does not enable real-money checkout.
+
+Graphics dependency: **G15 Player Information Center UI Pack** provides the shared visual identity/icons/status presentation. Cards, tabs/accordion, typography, scrolling and responsive layout remain reusable runtime UI rather than image-baked layouts.
+
 ### WAVE 2 — Admin V2 Expansion
 **Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
 
@@ -109,6 +132,17 @@ Expand Admin V2 as the operations/audit foundation needed before the next econom
 **Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
 
 Redesign the Blacksmith/Crafting experience around the existing authoritative Enhance, Empower, Salvage, Craft, Recipe and Protection Stone systems. Detailed UX/mechanics changes remain subject to a separate scope contract.
+
+### LEGAL & POLICY GATE — PRE-LIVE-MONETIZATION
+**Status: REQUIRED BEFORE REAL-MONEY PURCHASES**
+
+Before any real-money Diamond checkout or other live monetization is enabled:
+- audit the current Terms, Privacy, Fair Play and Purchase/Refund policies against the actual Production account/data/payment design;
+- confirm required player disclosures, consent/age handling, support/refund process and applicable market requirements;
+- identify third-party processors/providers and required privacy disclosures;
+- obtain appropriate final legal review for the intended launch markets.
+
+This gate does not block WAVE 4 economy/catalog design while real-money checkout remains disabled.
 
 ### WAVE 4 — Main Shop + Diamond Economy Design
 **Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
@@ -159,7 +193,8 @@ Graphics work is tracked separately from gameplay Wave numbering.
 - G10-G12: COMPLETE / Production.
 - G13 Pet Avatar Pack + Shared Pet Selector Presentation: READY_FOR_GRAPHICS.
 - G14 Global Loading Presentation Pack: APPROVED / QUEUED AFTER G13.
-- Generic equipment production art follows one Tier set at a time after the current queue; each Tier set includes its matching Accessory item icon. Accessory requires icon-only presentation, not a Hero wearable layer.
+- G15 Player Information Center UI Pack: APPROVED / QUEUED AFTER G14. Scope: production icons/visual identity for Announcements, Guide, Terms, Privacy, Fair Play and Purchase Policy plus NEW/public-roadmap status presentation. Layout/cards/accordion/text remain runtime UI.
+- G16-G20: generic equipment production art, one Tier set at a time after G15 — G16 T1 Beginner/Leather, G17 T2 Bronze, G18 T3 Steel/Chain, G19 T4 Platinum, G20 T5 Dragon Slayer. Each Tier includes its matching Accessory item icon; Accessory remains icon-only with no Hero wearable layer.
 - Graphics may run in parallel only where asset/runtime ownership does not conflict with the blocking release gate.
 
 ## 5. EXECUTION ORDER
@@ -179,9 +214,13 @@ Visible game version                             Ver 1.1.0
                      ↓
 NEW WAVE 1 — Global Loading System V1
                      ↓
+WAVE 1.5 — Player Information Center
+                     ↓
 WAVE 2 — Admin V2 Expansion
                      ↓
 WAVE 3 — Blacksmith + Crafting Redesign
+                     ↓
+LEGAL & POLICY GATE — required before live monetization
                      ↓
 WAVE 4 — Main Shop + Diamond Economy Design
                      ↓
@@ -196,7 +235,7 @@ WAVE 7+ — Future design approval required
 
 Parallel Graphics lane:
 ```text
-G13 Pet Avatar → G14 Global Loading Presentation
+G13 Pet Avatar → G14 Global Loading Presentation → G15 Player Information Center → G16 T1 → G17 T2 → G18 T3 → G19 T4 → G20 T5
 ```
 
 ## 6. Scope-control rule
