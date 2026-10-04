@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.42";
+  content: "Ver 1.0.43";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2469,8 +2469,8 @@ body::after {
 .md-arena-v2 { flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; padding-bottom:max(8px,var(--safe-bottom)); position:relative; }
 .md-arena-global-currency { flex:0 0 auto; }
 .md-arena-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px; padding-bottom:calc(var(--md-dock-height) + var(--safe-bottom) + 18px); }
-.md-arena-v2 > .md-hub-dock { position:absolute; left:14px; right:14px; bottom:0; width:auto; transform:none; z-index:90; margin:0; }
-.md-arena-v2 > .md-hub-more-panel { position:absolute; left:14px; right:14px; bottom:calc(var(--md-dock-height) + max(8px,var(--safe-bottom)) + 14px); width:auto; transform:none; z-index:91; margin:0; }
+.md-arena-v2 > .md-hub-dock { position:fixed; left:50%; right:auto; bottom:0; width:min(calc(100vw - 28px),402px); max-width:calc(100vw - 28px); transform:translateX(-50%); z-index:90; margin:0; }
+.md-arena-v2 > .md-hub-more-panel { position:fixed; left:50%; right:auto; bottom:calc(var(--md-dock-height) + var(--safe-bottom) + 14px); width:min(calc(100vw - 28px),402px); max-width:calc(100vw - 28px); transform:translateX(-50%); z-index:91; margin:0; }
 .md-arena-hub-panel,.md-arena-hub-row { position:relative; isolation:isolate; border:0 !important; background:transparent !important; box-shadow:none !important; }
 .md-arena-hub-panel::before,.md-arena-hub-row::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:rgba(5,15,36,.9); }
 .md-arena-hub-panel::before { border:20px solid transparent; border-image-source:var(--arena-panel-frame); border-image-slice:64 fill; border-image-width:20px; border-image-repeat:stretch; }
@@ -2518,7 +2518,8 @@ body::after {
 .md-arena-setup-skill-icon { position:absolute; left:7px; top:50%; width:36px; height:36px; transform:translateY(-50%); }
 .md-arena-skill-setup-slot > summary { min-height:54px; padding-left:3px; }
 .md-arena-skill-name { min-width:0; flex:1; overflow:hidden; color:#eef7ff; font-size:10px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
-.md-arena-skill-setup-slot > .md-arena-setup-options { left:-47px; }
+.md-arena-skill-setup-slot > .md-arena-setup-options { left:0; right:auto; width:min(78vw,290px); max-width:calc(100vw - 28px); }
+.md-arena-skill-setup-grid > .md-arena-skill-setup-slot:nth-child(even) > .md-arena-setup-options { left:auto; right:0; }
 .md-arena-loadout { margin:8px 0 10px; padding:9px; display:grid; grid-template-columns:68px minmax(0,1fr); align-items:center; gap:8px; border:1px solid rgba(100,174,226,.22); border-radius:11px; background:rgba(3,13,34,.68); }
 .md-arena-loadout > strong { color:#aebed4; font-size:9px; }
 .md-arena-loadout-slots { min-width:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }

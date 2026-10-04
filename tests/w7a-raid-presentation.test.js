@@ -18,6 +18,8 @@ test("W7A Raid presentation reuses shared actor, queue, VFX and resolver infrast
   assert.match(scene, /createVfxManager/);
   assert.match(scene, /createPhaserTextureRegistry/);
   assert.match(scene, /SHARED_PHASER_ASSET_RESOLVER/);
+  assert.match(scene, /assetKey\(reference\)/);
+  assert.match(scene, /return this\.textureRegistry\.keyFor\(reference\)/);
 });
 
 test("W7A Raid presentation supports only approved idle and hurt animation contract", () => {
