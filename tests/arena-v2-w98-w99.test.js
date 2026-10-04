@@ -339,7 +339,7 @@ test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Resu
   assert.doesNotMatch(arenaUi, /CURRENCY INFO/);
   assert.match(styles, /border-image-slice:32 fill/);
   assert.match(styles, /border-image-slice:16 fill/);
-  assert.match(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
+  assert.match(styles, /\.md-arena-progress-fill \{[^}]*width:0;[^}]*background-color:#2f8dff/);\n  assert.doesNotMatch(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
   assert.match(styles, /content: "Ver 1\.0\.42"/);
   const battleStart = arenaUi.indexOf('    match && /*#__PURE__*/React.createElement(React.Fragment');
   const dockStart = arenaUi.indexOf('    !match && /*#__PURE__*/React.createElement(GameDock', battleStart);
