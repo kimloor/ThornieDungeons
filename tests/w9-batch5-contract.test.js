@@ -91,6 +91,10 @@ test("G10.5 + G11 manifest publishes all 18 set-slot icons within the equipment 
       assert.ok(fs.statSync(file).size <= 250000, `${family}/${slot} remains within the 250 KB hard limit`);
     }
   }
+  assert.match(manifest.assets.itemIcons.wings.angel, /^ui\/equipment-icons\/wings\/angel_wings\.png\?v=g10_5_g11_r1$/);
+  for (const key of ["arenaRank1", "arenaRank2", "arenaRank3"]) {
+    assert.match(manifest.assets.profileFrames[key], /^ui\/profile-frames\/arena_rank_[123]\.png\?v=g10_5_g11_r1$/);
+  }
 });
 
 function loadTurnOrderAlive() {
