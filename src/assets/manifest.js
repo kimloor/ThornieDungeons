@@ -225,6 +225,56 @@ function GameIcon({
   });
 }
 
+function heroSkillDisplayName(skillId) {
+  return String(skillId || "")
+    .split("_")
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+// G12: all Hero Skill surfaces resolve through this manifest-backed contract.
+// Missing optional artwork stays presentation-only and cannot affect actions.
+function resolveHeroSkillIconPath(skillId) {
+  const path = ASSETS?.heroSkillIcons?.[String(skillId || "")];
+  return typeof path === "string" && path ? path : "";
+}
+
+function resolveHeroSkillIconUrl(skillId) {
+  const path = resolveHeroSkillIconPath(skillId);
+  return path ? assetUrl(path) : "";
+}
+
+function HeroSkillIcon({
+  skillId,
+  className = "md-hero-skill-icon",
+  alt = "",
+  title = "",
+  loading = "lazy"
+}) {
+  const [failedSrc, setFailedSrc] = React.useState("");
+  const src = resolveHeroSkillIconUrl(skillId);
+  if (!src || failedSrc === src) {
+    return /*#__PURE__*/React.createElement("span", {
+      className: `${className} fallback`,
+      title,
+      role: alt ? "img" : undefined,
+      "aria-label": alt || undefined,
+      "aria-hidden": alt ? undefined : "true"
+    }, "✦");
+  }
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src,
+    alt,
+    title,
+    draggable: false,
+    loading,
+    decoding: "async",
+    onError: () => setFailedSrc(src)
+  });
+}
+
 function listAssets(obj = ASSETS, prefix = "") {
   const result = {};
   for (const [key, value] of Object.entries(obj || {})) {

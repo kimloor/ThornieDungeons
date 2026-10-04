@@ -19,10 +19,10 @@ class D1 {
   async batch(statements) { const out = []; for (const statement of statements) out.push(await statement.run()); return out; }
 }
 
-function worker() {
+function worker(runtimeConsole = console) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
-  const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
+  const sandbox = { console: runtimeConsole, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(sandbox); vm.runInContext(source, sandbox); return sandbox.__worker;
 }
 
@@ -38,9 +38,36 @@ function productionDungeonRuntime() {
     "src/systems/battleCore.js"
   ]) {
     const source = fs.readFileSync(path.resolve(__dirname, "..", file), "utf8");
-    vm.runInContext(file.endsWith("stats.js") ? `${source}\nglobalThis.__makeEncounter = makeEncounter;` : source, sandbox, { filename: file });
+    vm.runInContext(source, sandbox, { filename: file });
   }
+  // The production build installs this presentation patch after App.js. Its
+  // makeEncounter wrapper must preserve the serverContext options used by a
+  // fresh authoritative Dungeon battle.
+  vm.runInContext(`
+    async function cloudGetBattleState() { return { ok: true, checkpoint: null }; }
+    async function cloudCompleteBattle() { return { ok: true }; }
+    async function cloudClearBattleCheckpoint() { return { ok: true }; }
+  `, sandbox);
+  vm.runInContext(
+    fs.readFileSync(path.resolve(__dirname, "..", "src/ui/resumePreviewPatch.js"), "utf8"),
+    sandbox,
+    { filename: "src/ui/resumePreviewPatch.js" }
+  );
+  vm.runInContext("globalThis.__makeEncounter = makeEncounter;", sandbox);
   return vm.runInContext(`({ makeEncounter: __makeEncounter, dungeon: DUNGEON_V2, battle: BATTLE_CORE_V1 })`, sandbox);
+}
+
+function assertAuthoritativeEnemyIdentity(checkpoint, context, label) {
+  const expected = context.enemies.map(enemy => String(enemy.instanceId));
+  assert.deepEqual(Array.from(checkpoint.enemyIds, String), expected, `${label}: checkpoint enemyIds`);
+  for (const instanceId of expected) {
+    assert.ok(checkpoint.units[instanceId], `${label}: unit map contains ${instanceId}`);
+    assert.equal(String(checkpoint.units[instanceId].id), instanceId, `${label}: unit.id preserves instanceId`);
+  }
+  const enemyUnitKeys = Object.keys(checkpoint.units)
+    .filter(id => checkpoint.units[id]?.side === "enemy")
+    .sort();
+  assert.deepEqual(enemyUnitKeys, [...expected].sort(), `${label}: enemy unit keys`);
 }
 
 function database() {
@@ -254,7 +281,9 @@ test("Dungeon battle start is the trust root for floor eligibility and old-floor
 });
 
 test("Dungeon checkpoint validator accepts canonical runtime identity without optional definition aliases", async () => {
-  const api = worker(), db = database();
+  const warnings = [];
+  const runtimeConsole = { ...console, warn: (...args) => warnings.push(args) };
+  const api = worker(runtimeConsole), db = database();
   const registration = await post(api, db, "", { action: "register", id: "ChkRuntimeQA", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Checkpoint Runtime" });
@@ -315,13 +344,20 @@ test("Dungeon checkpoint validator accepts canonical runtime identity without op
     const forgedInstance = {
       ...resumed,
       safeActionSeq: 3,
-      enemyIds: resumed.enemyIds.map((id, index) => index === 0 ? id + "-forged" : id)
+      // Reproduce the Production identity class exactly: a definition/client ID
+      // occupies enemyIds where only the server-issued instanceId is authorized.
+      enemyIds: resumed.enemyIds.map((id, index) => index === 0 ? expectedEnemy.id : id)
     };
     const rejectedInstance = await post(api, db, token, {
       action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 3, payload: forgedInstance
     });
     assert.equal(rejectedInstance.status, 400, scenario.label);
     assert.equal(rejectedInstance.body.error, "invalid_dungeon_checkpoint", scenario.label);
+    const diagnostic = warnings
+      .filter(args => args[0] === "[battle-checkpoint-invalid]")
+      .map(args => JSON.parse(args[1]))
+      .at(-1);
+    assert.equal(diagnostic?.reason, "enemy_id_not_authorized", scenario.label);
 
     await post(api, db, token, { action: "clearBattleCheckpoint", characterId, battleId: started.body.battleId });
   }
@@ -371,6 +407,7 @@ test("real App encounter and Battle Core checkpoint matches Worker authorization
     // shallow snapshot and the persistence queue/cloudSaveSnapshot forwards it
     // without going through Battle Core's optional JSON serializer.
     const payload = { ...state, log: [] };
+    assertAuthoritativeEnemyIdentity(payload, context, `${scenario.label} fresh`);
     // Deliberately do not inject a top-level encounterType. The Worker contract
     // treats that presentation alias as optional; this proves its absence is
     // not the source of invalid_dungeon_checkpoint.
@@ -405,6 +442,7 @@ test("real App encounter and Battle Core checkpoint matches Worker authorization
       targetId: state.enemyIds[0]
     });
     const laterPayload = { ...action.state, log: [] };
+    assertAuthoritativeEnemyIdentity(laterPayload, context, `${scenario.label} after action`);
     const laterSaved = await post(api, db, token, {
       action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId,
       checkpointSeq: laterPayload.safeActionSeq, payload: laterPayload
@@ -414,6 +452,7 @@ test("real App encounter and Battle Core checkpoint matches Worker authorization
     const restored = await get(api, db, token, { action: "getBattleState", characterId });
     const resumed = runtime.battle.restoreCheckpoint(restored.body.checkpoint.payload);
     const resumedPayload = { ...resumed, log: [] };
+    assertAuthoritativeEnemyIdentity(resumedPayload, context, `${scenario.label} restored`);
     const resumedSaved = await post(api, db, token, {
       action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId,
       checkpointSeq: resumedPayload.safeActionSeq + 1,

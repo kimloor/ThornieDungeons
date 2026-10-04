@@ -1188,7 +1188,7 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
             const check = canSpendHeroSkillPoint(save.character.level, levels, skill.id);
             const rankLabel = skill.kind === "passive" ? "Lv" : "R";
             return /*#__PURE__*/React.createElement("article", { className: `md-skill-upgrade${check.ok || current ? "" : " locked"}`, key: skill.id },
-              /*#__PURE__*/React.createElement("span", { className: "md-skill-upgrade-icon" }, skill.kind === "active" ? "⚔️" : skill.kind === "keystone" ? "🔶" : "✦"),
+              /*#__PURE__*/React.createElement("span", { className: "md-skill-upgrade-icon" }, /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: skill.id, alt: title(skill.id), title: title(skill.id) })),
               /*#__PURE__*/React.createElement("div", { className: "md-skill-upgrade-copy" },
                 /*#__PURE__*/React.createElement("strong", null, title(skill.id)),
                 /*#__PURE__*/React.createElement("small", null, skill.kind, " · ", rankLabel, current, "/", skill.maxRank, check.ok ? ` · ${check.cost} SP` : current >= skill.maxRank ? " · MAX" : ` · ${reasonText(check.reason)}`)
@@ -3742,7 +3742,21 @@ function ArenaV2Screen({
       onBattle: () => start(playerCard.opponentKey || playerCard.characterId, playerCardSource),
       onClose: () => { setPlayerCard(null); setPlayerCardSource("matchmaking"); }
     }),
-    !match && tab === "setup" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "SETUP · Pet + 4 Skills"), /*#__PURE__*/React.createElement("select", { value: setup.petInstId || "", onChange: e => setSetup({ ...setup, petInstId: e.target.value }) }, /*#__PURE__*/React.createElement("option", { value: "" }, "No Pet"), (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("option", { key: p.instId, value: p.instId }, p.name, " Lv", p.level))), [0, 1, 2, 3].map(i => /*#__PURE__*/React.createElement("select", { key: i, value: setup.skillSlots?.[i] || "", onChange: e => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = e.target.value || null; setSetup({ ...setup, skillSlots: slots }); } }, /*#__PURE__*/React.createElement("option", { value: "" }, `Skill ${i + 1}`), (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("option", { key: s.key, value: s.key }, s.icon, " ", s.name)))), /*#__PURE__*/React.createElement("button", { className: "md-btn primary small md-arena-art-btn primary", disabled: busy, onClick: async () => { setBusy(true); try { const r = await cloudSaveArenaV2Setup(url, characterId, setup.petInstId, setup.skillSlots); if (r?.error) throw new Error(r.error); setSetup(r.setup); } catch (e) { setError(e.message); } finally { setBusy(false); } } }, "SAVE SETUP")),
+    !match && tab === "setup" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" },
+      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "SETUP · Pet + 4 Skills"),
+      /*#__PURE__*/React.createElement("select", { value: setup.petInstId || "", onChange: e => setSetup({ ...setup, petInstId: e.target.value }) }, /*#__PURE__*/React.createElement("option", { value: "" }, "No Pet"), (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("option", { key: p.instId, value: p.instId }, p.name, " Lv", p.level))),
+      /*#__PURE__*/React.createElement("div", { className: "md-arena-skill-setup-grid" }, [0, 1, 2, 3].map(i => {
+        const selectedSkillId = setup.skillSlots?.[i] || "";
+        const selectedSkill = (status.availableSkills || []).find(skill => skill.key === selectedSkillId);
+        return /*#__PURE__*/React.createElement("label", { className: `md-arena-skill-setup-slot${selectedSkillId ? " filled" : " empty"}`, key: i },
+          /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-slot-number" }, i + 1),
+          /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkillId, className: "md-hero-skill-icon md-arena-setup-skill-icon", alt: selectedSkill?.name || (selectedSkillId ? heroSkillDisplayName(selectedSkillId) : "Empty skill slot") }),
+          /*#__PURE__*/React.createElement("select", { value: selectedSkillId, "aria-label": `Arena skill slot ${i + 1}`, onChange: e => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = e.target.value || null; setSetup({ ...setup, skillSlots: slots }); } },
+            /*#__PURE__*/React.createElement("option", { value: "" }, `Skill ${i + 1} · Empty`),
+            (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("option", { key: s.key, value: s.key }, s.name || heroSkillDisplayName(s.key))))
+        );
+      })),
+      /*#__PURE__*/React.createElement("button", { className: "md-btn primary small md-arena-art-btn primary", disabled: busy, onClick: async () => { setBusy(true); try { const r = await cloudSaveArenaV2Setup(url, characterId, setup.petInstId, setup.skillSlots); if (r?.error) throw new Error(r.error); setSetup(r.setup); } catch (e) { setError(e.message); } finally { setBusy(false); } } }, "SAVE SETUP")),
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" }, ranking.map(row => {
       const rowTierName = arenaHubTierNameFromRating(row.rating);
       const rowTierBadge = arenaHubAssets.tiers[rowTierName.toLowerCase()] || "";
@@ -3778,7 +3792,12 @@ function ArenaV2Screen({
         /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-result-title" }, "RESULT · ", resultView.outcome),
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Combat: ", resultView.combatResult, " · Rating change: ", resultView.ratingChange ?? "—", " · Arena Coin: ", resultView.arenaCoinEarned ?? "—"),
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Reward: ", resultView.rewardSlot, " · Resolution: ", resultView.resolution),
-        /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee md-arena-surrender-btn", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map(skill => /*#__PURE__*/React.createElement("button", { key: skill || "empty", className: "md-btn small", disabled: busy || !skill, onClick: () => action("active", skill, selected) }, skill || "—"))) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
+        /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-action-controls" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee md-arena-surrender-btn", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map((skill, index) => {
+          const definition = (status.availableSkills || []).find(candidate => candidate.key === skill);
+          return /*#__PURE__*/React.createElement("button", { key: `${index}-${skill || "empty"}`, className: "md-btn small md-arena-skill-control", disabled: busy || !skill, onClick: () => action("active", skill, selected) },
+            skill ? /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: skill, className: "md-hero-skill-icon md-arena-battle-skill-icon", alt: definition?.name || heroSkillDisplayName(skill), loading: "eager" }) : /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"),
+            /*#__PURE__*/React.createElement("span", null, skill ? definition?.name || heroSkillDisplayName(skill) : `Skill ${index + 1}`));
+        })) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
     ),
     !match && /*#__PURE__*/React.createElement(GameDock, {
       onCharacter,
@@ -5215,7 +5234,7 @@ function CombatScreen({
       const cooldown = Number(player.cooldowns && player.cooldowns[sk.key]) || 0;
       const cost = skillCost(sk);
       const silenced = !!player.battleStatuses?.silence;
-      return { icon: sk.icon, disabled: busy || silenced || player.mp < cost || cooldown > 0, badge: cooldown > 0 ? `CD${cooldown}` : cost, title: `${sk.name} (${cost} SP${cooldown ? `, CD ${cooldown}` : ""}${silenced ? ", Silenced" : ""}) — ${sk.desc}` };
+      return { icon: "✦", skillId: sk.key, disabled: busy || silenced || player.mp < cost || cooldown > 0, badge: cooldown > 0 ? `CD${cooldown}` : cost, title: `${sk.name} (${cost} SP${cooldown ? `, CD ${cooldown}` : ""}${silenced ? ", Silenced" : ""}) — ${sk.desc}` };
     }
     const def = getPotionDef(entry.potionId);
     const qty = potionTotal(inventory || [], entry.potionId);
@@ -5416,7 +5435,7 @@ function CombatScreen({
       fallback: v.icon,
       className: "md-game-icon md-quickslot-item-icon",
       alt: v.title || "Potion"
-    }) : v.icon), v.badge != null && /*#__PURE__*/React.createElement("i", {
+    }) : v.skillId ? /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: v.skillId, className: "md-hero-skill-icon md-quickslot-skill-icon", alt: v.title || heroSkillDisplayName(v.skillId), loading: "eager" }) : v.icon), v.badge != null && /*#__PURE__*/React.createElement("i", {
       className: "md-rail-badge"
     }, v.badge));
   })), assignSlotIndex !== null && /*#__PURE__*/React.createElement("div", {
@@ -5427,7 +5446,7 @@ function CombatScreen({
     key: `sk-${s.key}`,
     className: "md-quickslot-popover-item",
     onClick: () => assignTo(assignSlotIndex, { kind: "skill", key: s.key })
-  }, /*#__PURE__*/React.createElement("span", null, s.icon, " ", s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "SP ", skillCost(s)))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("span", { className: "md-skill-option-main" }, /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: s.key, className: "md-hero-skill-icon md-skill-option-icon", alt: s.name }), s.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, "SP ", skillCost(s)))), potionStacks.map(p => /*#__PURE__*/React.createElement("button", {
     key: `pt-${p.id}`,
     className: "md-quickslot-popover-item",
     onClick: () => assignTo(assignSlotIndex, { kind: "potion", potionId: p.id })
@@ -6083,14 +6102,14 @@ function InventoryOverlay({
   };
 
   const quickAssignOptions = [
-    ...(unlockedSkillList || []).map(s => ({ kind: "skill", key: s.key, potionId: null, icon: s.icon, name: s.name, sub: `MP ${s.mp}` })),
+    ...(unlockedSkillList || []).map(s => ({ kind: "skill", key: s.key, potionId: null, name: s.name, sub: `MP ${s.mp}` })),
     ...ownedPotionStacks(inventory).map(p => ({ kind: "potion", key: null, potionId: p.id, icon: p.icon, name: p.name, sub: `x${p.quantity}` }))
   ];
   const quickSlotVisual = entry => {
     if (!entry) return { icon: "➕", name: "ว่าง" };
     if (entry.kind === "skill") {
       const sk = (unlockedSkillList || []).find(s => s.key === entry.key);
-      return sk ? { icon: sk.icon, name: sk.name } : { icon: "❓", name: "ล็อกอยู่" };
+      return sk ? { icon: "✦", skillId: sk.key, name: sk.name } : { icon: "?", name: "ล็อกอยู่" };
     }
     const def = getPotionDef(entry.potionId);
     return def ? { icon: def.icon, name: def.name } : { icon: "🧪", name: "Potion" };
@@ -6116,7 +6135,7 @@ function InventoryOverlay({
             className: `md-quickslot-btn ${entry ? "filled" : "empty"}`,
             title: v.name,
             onClick: () => setAssignSlotIndex(i)
-          }, /*#__PURE__*/React.createElement("span", { className: "md-quickslot-icon" }, entry?.kind === "potion" ? /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: entry.potionId }, fallback: v.icon, className: "md-game-icon md-quickslot-item-icon", alt: v.name }) : v.icon),
+          }, /*#__PURE__*/React.createElement("span", { className: "md-quickslot-icon" }, entry?.kind === "potion" ? /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: entry.potionId }, fallback: v.icon, className: "md-game-icon md-quickslot-item-icon", alt: v.name }) : v.skillId ? /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: v.skillId, className: "md-hero-skill-icon md-quickslot-skill-icon", alt: v.name }) : v.icon),
              entry && /*#__PURE__*/React.createElement("span", {
                className: "md-quickslot-clear",
                onClick: e => { e.stopPropagation(); onClearQuickSlot(i); }
@@ -6135,7 +6154,7 @@ function InventoryOverlay({
               onAssignQuickSlot(assignSlotIndex, opt.kind === "skill" ? { kind: "skill", key: opt.key } : { kind: "potion", potionId: opt.potionId });
               setAssignSlotIndex(null);
             }
-          }, /*#__PURE__*/React.createElement("span", null, opt.kind === "potion" ? /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: opt.potionId }, fallback: opt.icon, className: "md-game-icon md-inline-item-icon", alt: opt.name }) : opt.icon, " ", opt.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, opt.sub)))
+          }, /*#__PURE__*/React.createElement("span", { className: "md-skill-option-main" }, opt.kind === "potion" ? /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: opt.potionId }, fallback: opt.icon, className: "md-game-icon md-inline-item-icon", alt: opt.name }) : /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: opt.key, className: "md-hero-skill-icon md-skill-option-icon", alt: opt.name }), opt.name), /*#__PURE__*/React.createElement("span", { className: "md-quickslot-popover-sub" }, opt.sub)))
         ),
         /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: () => setAssignSlotIndex(null), style: { boxShadow: "none", marginTop: 6 } }, "ปิด")
       )
