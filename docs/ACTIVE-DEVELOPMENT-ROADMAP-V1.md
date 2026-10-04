@@ -1409,3 +1409,4 @@ The active roadmap is complete when:
 - Combined focused QA: PASS.
 - Full suite reported before merge: 404/404 PASS.
 - Supported deploy pipelines verified; the separate Cloudflare GitHub App failure remains a known unrelated infrastructure signal.
+\n\n## Graphics closeout / next entry — 2026-10-04\n- G12 Hero Skill Icon Pack: COMPLETE / Production Ver 1.0.39 (36/36).\n- G13 Pet Avatar Pack + Shared Pet Selector Presentation: READY_FOR_GRAPHICS. See `PET-AVATAR-CONTRACT-G13.md`.\n
