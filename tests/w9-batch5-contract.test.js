@@ -85,7 +85,8 @@ test("G10.5 + G11 manifest publishes all 18 set-slot icons within the equipment 
   for (const family of ["azure", "robot", "skeleton"]) {
     for (const slot of slots) {
       const value = manifest.assets.itemIcons[family][slot];
-      assert.match(value, new RegExp(`^ui/equipment-icons/${family}/.+\\.png\\?v=g10_5_g11_r1$`));
+      const revision = family === "azure" && slot === "weapon" ? "r2" : "r1";
+      assert.match(value, new RegExp(`^ui/equipment-icons/${family}/.+\\.png\\?v=g10_5_g11_${revision}$`));
       const file = path.join(ROOT, "r2-upload", value.split("?", 1)[0]);
       assert.ok(fs.existsSync(file), `${family}/${slot} production PNG exists`);
       assert.ok(fs.statSync(file).size <= 250000, `${family}/${slot} remains within the 250 KB hard limit`);
