@@ -3207,6 +3207,7 @@ function resolveItemIconPath(item) {
   const bossWeaponId = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
   const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
   if (bossWeaponIcons[bossWeaponId]) return icons.bossWeapons?.[bossWeaponIcons[bossWeaponId]] || "";
+  // G11 set families share one slot contract; never infer a path outside the manifest.
   const setFamily = String(item.setId || "").trim().toLowerCase();
   if (["azure", "robot", "skeleton"].includes(setFamily) && item.type) {
     return icons[setFamily]?.[item.type] || "";
