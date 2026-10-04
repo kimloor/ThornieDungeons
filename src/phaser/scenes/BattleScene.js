@@ -428,6 +428,12 @@ function createRaidBossScene(Phaser, { initialSnapshot, onReady, onError, onHurt
       this.handleResize = this.handleResize.bind(this);
     }
 
+    assetKey(reference) {
+      // Raid reuses PhaserBattleActor, which resolves sprite frames through the
+      // same scene compatibility surface as the shared BattleScene.
+      return this.textureRegistry.keyFor(reference);
+    }
+
     preload() {
       const frames = this.snapshot?.boss?.frames || {};
       this.textureRegistry.queue(this, SHARED_PHASER_ASSET_RESOLVER.resolveAll([
