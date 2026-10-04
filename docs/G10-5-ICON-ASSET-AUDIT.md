@@ -12,7 +12,7 @@ are preserved for Azure, Angel Wings and Arena frames.
 - Audited: 86; PASS 86; REVIEW 0; FAIL 0.
 - Audited total: 11,307,111 → 6,711,039 bytes (4,596,072 bytes saved).
 - Batch changed: 22 files (18 set icons, Angel Wings, 3 Arena frames).
-- Publication commit: `PENDING`.
+- Publication commit: `0116225f3911e5cc81071060b21138933d4a93bf`.
 - Exceptions: none. Final REVIEW and FAIL counts are both zero.
 
 ## G10.5 + G11 rebuilt/optimized files
