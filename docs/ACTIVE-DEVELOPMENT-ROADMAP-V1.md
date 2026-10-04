@@ -1,6 +1,6 @@
-# ThornieDungeons — Active Development Roadmap V2
+# ThornieDungeons — Historical Development Roadmap V2 — COMPLETE
 
-Status: **ACTIVE-EXECUTION — WAVES 1-6 complete / Production verified; POST-W6 FULL GAP + SECURITY RE-AUDIT PASSED; WAVE 7 ready for Project Lead scope approval**
+Status: **HISTORICAL / COMPLETE — W0-W9R and Gameplay WAVE 1-7 delivered; retained as the completed pre-Ver-1.1.0 roadmap record.**
 
 This roadmap preserves completed W0-W9 history and defines the active execution plan from W9R forward, including Dungeon V2, Reward Progression V2, Admin V2, Graphics collaboration and QA gates.
 
@@ -1410,3 +1410,7 @@ The active roadmap is complete when:
 - Full suite reported before merge: 404/404 PASS.
 - Supported deploy pipelines verified; the separate Cloudflare GitHub App failure remains a known unrelated infrastructure signal.
 \n\n## Graphics closeout / next entry — 2026-10-04\n- G12 Hero Skill Icon Pack: COMPLETE / Production Ver 1.0.39 (36/36).\n- G13 Pet Avatar Pack + Shared Pet Selector Presentation: READY_FOR_GRAPHICS. See `PET-AVATAR-CONTRACT-G13.md`.\n
+
+---
+## Historical closeout note — 2026-10-04
+This document is frozen as the completed roadmap record. New work must be planned in `ACTIVE-DEVELOPMENT-ROADMAP-V3.md`. The successor roadmap begins only after the Cloud Sync/UI Fix release gate and uses fresh Wave numbering. Historical W0-W9R and WAVE 1-7 identifiers must not be reused for new work.
