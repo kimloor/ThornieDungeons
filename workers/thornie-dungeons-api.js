@@ -2291,7 +2291,8 @@ async function handleSyncItems(db, id, session, characterId, items) {
     if (!Number.isInteger(value) || value < 0 || value >= 5000) return null;
     return value;
   };
-  for (const incoming of items) {
+  for (let snapshotIndex = 0; snapshotIndex < items.length; snapshotIndex += 1) {
+    const incoming = items[snapshotIndex];
     const itemId = String(incoming?.itemId || "");
     if (!itemId || seen.has(itemId)) return json({ error: "invalid_item_reference" }, 400);
     seen.add(itemId);
@@ -2301,7 +2302,18 @@ async function handleSyncItems(db, id, session, characterId, items) {
     const incomingV2 = ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: incomingExtra.rewardVersion, itemModelVersion: incomingExtra.itemModelVersion });
     const existingV2 = !!existing && ENHANCEMENT_V2_RULES?.isV2Item({ rewardVersion: storedExtra.rewardVersion, itemModelVersion: storedExtra.itemModelVersion });
     if (incomingV2 && !existingV2) return json({ error: "untrusted_v2_item" }, 403);
-    if (!existing) return json({ error: "item_not_owned", action: "syncItems", itemId }, 403);
+    if (!existing) {
+      console.warn("[production-diagnostic]", JSON.stringify({
+        event: "inventory_sync_rejected",
+        system: "inventory",
+        reason: "item_not_owned",
+        action: "syncItems",
+        itemRef: itemId,
+        snapshotIndex,
+        snapshotCount: items.length,
+      }));
+      return json({ error: "item_not_owned", action: "syncItems", itemId }, 403);
+    }
     if (!allowedItemTypes.has(String(existing.slot_type || ""))) return json({ error: "invalid_item_slot_type" }, 400);
 
     if (typeof incoming.equipped !== "boolean") return json({ error: "invalid_presentation_state" }, 400);
