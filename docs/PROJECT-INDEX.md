@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **ACTIVE-EXECUTION** master roadmap. WAVES 1-7 are COMPLETE / Production verified; W7 presentation expansion is closed and Summoning remains separately deferred behind its own future gameplay contract. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V3.md`](ACTIVE-DEVELOPMENT-ROADMAP-V3.md) | **ACTIVE-PLANNING** — successor roadmap: Cloud Sync + UI Fix pre-Ver-1.1.0 gate, then fresh WAVE 1 Global Loading and future design gate. |\n| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **HISTORICAL / COMPLETE** — completed W0-W9R and Gameplay WAVE 1-7 roadmap; retained as release history and no longer used for new numbering. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
