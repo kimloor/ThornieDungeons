@@ -40,8 +40,30 @@ Complete the already-approved UI debt batch:
 
 Do not silently expand this batch into unrelated gameplay redesign.
 
+### Gate B.5 — Accessory V2 Completion
+**Status: APPROVED / QUEUED / BLOCKING FOR V1.1.0**
+**Risk: HIGH — reward/inventory authority; branch + QA required**
+**Contract:** `ACCESSORY-V2-COMPLETION.md`
+
+Complete and replace the unfinished generic Accessory path before Ver 1.1.0:
+- five Tier identities: Adventurer Charm / Bronze Amulet / Enchanted Amulet / Platinum Talisman / Dragonheart Amulet;
+- Accessory base stat is flat HP; no Crit/Dodge/Crit Damage base roll;
+- base Rare HP by Tier: T1 40 / T2 52 / T3 68 / T4 88 / T5 114; existing rarity multipliers apply;
+- Refine +0..+10 increases flat HP using the existing +6% per level equipment rule and existing success/economy/protection rules;
+- player-facing terminology: legacy Enhance → **Refine**, legacy Empower → **Enchant**; internal compatibility fields may remain unchanged for this gate;
+- Enchant pool: HP%, MP%, Crit Chance, Crit Damage, Dodge, STR, VIT, AGI, DEX, LUK; duplicate option types remain allowed;
+- Elite-floor Accessory roll 2%; Chapter Boss Accessory roll 3%; these are separate from generic equipment rolls; Normal monsters do not drop Accessory;
+- every Chapter Boss First Clear awards one Elite Accessory at the floor's Tier, with a newly generated independent Enchant roll; repeated Tier rewards are intentional;
+- no random Mythic Accessory and no normal Main Shop Accessory sale in this gate;
+- normal V2 Salvage applies; Refine/Enchant costs are not refunded;
+- no Production-owned Accessory migration/audit is required for this cutover by Project Lead decision; replace the unfinished old placeholder path directly;
+- Inventory/Compare/Blacksmith must present HP/Refine separately from Enchant options;
+- production icons are required for all five Tier identities; no wearable Hero accessory sprite is required.
+
+Do not weaken server reward/inventory authority or silently redesign unrelated Reward V2 economy.
+
 ### Gate C — Release acceptance
-After Gate A and Gate B are complete:
+After Gate A, Gate B, and Gate B.5 are complete:
 - focused QA/regression for changed systems;
 - mobile/iPhone safe-area and interaction verification;
 - Production smoke verification;
@@ -130,6 +152,7 @@ Graphics work is tracked separately from gameplay Wave numbering.
 - G10-G12: COMPLETE / Production.
 - G13 Pet Avatar Pack + Shared Pet Selector Presentation: READY_FOR_GRAPHICS.
 - G14 Global Loading Presentation Pack: APPROVED / QUEUED AFTER G13.
+- Generic equipment production art follows one Tier set at a time after the current queue; each Tier set includes its matching Accessory item icon. Accessory requires icon-only presentation, not a Hero wearable layer.
 - Graphics may run in parallel only where asset/runtime ownership does not conflict with the blocking release gate.
 
 ## 5. EXECUTION ORDER
@@ -140,6 +163,8 @@ Historical Roadmap W0-W9R + Gameplay WAVE 1-7   ✅ COMPLETE
 Dungeon Cloud Sync Gate                          ✅ COMPLETE
                      ↓
 Current UI Fix Batch                             🟡 QUEUED
+                     ↓
+Accessory V2 Completion                          🟡 QUEUED
                      ↓
 QA + Production acceptance
                      ↓
