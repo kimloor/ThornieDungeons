@@ -25,7 +25,7 @@ This gate is not numbered as a new gameplay Wave.
 - Reusable Production-tail lessons promoted into `PRODUCTION-DIAGNOSTIC-LOGGING-V1.md`.
 
 ### Gate B — Current UI Fix Batch
-**Status: IMPLEMENTED / QA + PRODUCTION VERIFICATION IN PROGRESS**
+**Status: COMPLETE / PRODUCTION VERIFIED**
 
 Complete the already-approved UI debt batch:
 - shared Global Currency Bar and detailed currency view;
@@ -43,7 +43,9 @@ Do not silently expand this batch into unrelated gameplay redesign.
 Implementation note (`Ver 1.0.41`): the batch remains frontend/runtime-only. G13 Pet Avatar
 assets were not available (0/8), so Arena Setup intentionally uses the existing catalog emoji
 fallback; Battle, reward/economy, API/Worker, database and authoritative player-data contracts
-remain unchanged.
+remain unchanged. Source commit `1f177f8f5ffa2dbc9b9709173149a3c84390a7e1` deployed through
+Frontend Production workflow run `37203018480`; focused regression (67/67), full Node regression
+(557/557), build/syntax/diff checks and anonymous Production shell/asset/console smoke all passed.
 
 ### Gate B.5 — Accessory V2 Completion
 **Status: APPROVED / QUEUED / BLOCKING FOR V1.1.0**
@@ -167,7 +169,7 @@ Historical Roadmap W0-W9R + Gameplay WAVE 1-7   ✅ COMPLETE
                      ↓
 Dungeon Cloud Sync Gate                          ✅ COMPLETE
                      ↓
-Current UI Fix Batch                             🟡 QUEUED
+Current UI Fix Batch                             ✅ COMPLETE
                      ↓
 Accessory V2 Completion                          🟡 QUEUED
                      ↓
