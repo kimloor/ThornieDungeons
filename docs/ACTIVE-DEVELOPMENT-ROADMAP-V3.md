@@ -16,13 +16,13 @@ This is the successor roadmap after the completed historical W0-W9R and Gameplay
 This gate is not numbered as a new gameplay Wave.
 
 ### Gate A — Dungeon Cloud Sync checkpoint hotfix
-**Status: IN PROGRESS / BLOCKING**
+**Status: COMPLETE / PRODUCTION VERIFIED**
 
-- PR #75 / Dungeon checkpoint persistence issue.
-- Production diagnostic root cause: `enemy_id_not_authorized`.
-- Fix the producer/state identity mismatch; do not weaken the server validator.
-- Server-issued enemy `instanceId` remains authoritative.
-- Complete focused regression, QA retest, merge, Production verification and branch cleanup.
+- PR #75 merged to Production at `26ea4e4a5eb5491de1e37ae28d5e0a3c713ffc88`.
+- Production root cause confirmed as client producer/state identity drift causing `enemy_id_not_authorized`.
+- Server-issued enemy `instanceId` remains authoritative; Worker validation was not weakened.
+- Focused/full regression, Battle Core parity, API/Frontend deploy, Production smoke test, and branch cleanup passed.
+- Reusable Production-tail lessons promoted into `PRODUCTION-DIAGNOSTIC-LOGGING-V1.md`.
 
 ### Gate B — Current UI Fix Batch
 **Status: QUEUED / BLOCKING FOR V1.1.0**
