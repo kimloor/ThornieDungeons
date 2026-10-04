@@ -137,7 +137,7 @@ Graphics work is tracked separately from gameplay Wave numbering.
 ```text
 Historical Roadmap W0-W9R + Gameplay WAVE 1-7   ✅ COMPLETE
                      ↓
-Dungeon Cloud Sync Gate                          🔴 IN PROGRESS
+Dungeon Cloud Sync Gate                          ✅ COMPLETE
                      ↓
 Current UI Fix Batch                             🟡 QUEUED
                      ↓
