@@ -83,8 +83,14 @@ test("Arena setup, cooldown, milestones, currencies, and dock use the shared mob
   assert.doesNotMatch(arena, /md-arena-refresh-cooldown/);
   assert.match(components, /`\$\{progress\.count\}\/\$\{progress\.next\.threshold\}`/);
   assert.match(components, /function GlobalCurrencyBar[\s\S]{0,5000}md-currency-overlay/);
-  assert.match(styles, /\.md-hub-dock \{ position:sticky; bottom:max\(var\(--md-page-pad\),var\(--safe-bottom\)\)/);
-  assert.match(styles, /min-height:calc\(var\(--md-dock-height\) \+ var\(--safe-bottom\)\)/);
+  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:absolute; left:14px; right:14px; bottom:0;/);
+  assert.match(styles, /\.md-currency-card \{ box-sizing:border-box;/);
+  assert.match(styles, /\.md-arena-page-header \{[^}]*grid-template-columns:44px 42px minmax\(0,1fr\)/);
+  assert.match(styles, /\.md-arena-progress-fill \{[^}]*width:0;[^}]*background-color:#2f8dff/);
+  assert.doesNotMatch(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
+  assert.match(arena, /ARENA_SETUP_EQUIPMENT_SLOT_ORDER/);
+  assert.match(arena, /arenaSetupEquipmentSlots\(status\.equipment\)/);
+  assert.match(styles, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(components, /CURRENCY INFO/);
 });
 

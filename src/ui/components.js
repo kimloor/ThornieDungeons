@@ -3027,8 +3027,8 @@ function ArenaHubMilestoneRow({ label, progress, iconSrc }) {
       /*#__PURE__*/React.createElement("div", { className: "md-arena-milestone-copy" },
         /*#__PURE__*/React.createElement("strong", null, label),
         /*#__PURE__*/React.createElement("span", null, progress.next ? `${progress.count}/${progress.next.threshold}` : `${progress.count} · COMPLETE`)),
-      /*#__PURE__*/React.createElement("div", { className: "md-arena-progress-shell", style: { "--arena-progress": `${progress.percent}%` }, role: "progressbar", "aria-valuemin": 0, "aria-valuemax": progress.next?.threshold || progress.count || 1, "aria-valuenow": progress.count },
-        /*#__PURE__*/React.createElement("span", { className: "md-arena-progress-fill" }))),
+      /*#__PURE__*/React.createElement("div", { className: "md-arena-progress-shell", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": progress.next?.threshold || progress.count || 1, "aria-valuenow": progress.count },
+        /*#__PURE__*/React.createElement("span", { className: "md-arena-progress-fill", style: { width: `${progress.percent}%` } }))),
     /*#__PURE__*/React.createElement("div", { className: "md-arena-reward-slot" },
       progress.next && /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "arenaCoin", fallback: "◈", className: "md-game-icon md-arena-reward-coin", alt: "" }),
       /*#__PURE__*/React.createElement("b", null, rewardText)));
@@ -3052,6 +3052,20 @@ function arenaHistoryPresentation(kind, row = {}) {
 
 function arenaSetupPetIcon(pet) {
   return PET_POOL.find(definition => definition.id === pet?.defId)?.icon || "🐾";
+}
+
+const ARENA_SETUP_EQUIPMENT_SLOT_ORDER = Object.freeze(["weapon", "helmet", "chest", "gloves", "boots", "wings", "accessory"]);
+function arenaSetupEquipmentSlotKey(item) {
+  const raw = String(item?.slotType || item?.type || "").toLowerCase();
+  return ({ helm: "helmet", armor: "chest", glove: "gloves", wing: "wings" })[raw] || raw;
+}
+function arenaSetupEquipmentSlots(equipment) {
+  const bySlot = new Map();
+  (Array.isArray(equipment) ? equipment : []).forEach(item => {
+    const slot = arenaSetupEquipmentSlotKey(item);
+    if (ARENA_SETUP_EQUIPMENT_SLOT_ORDER.includes(slot) && !bySlot.has(slot)) bySlot.set(slot, item);
+  });
+  return ARENA_SETUP_EQUIPMENT_SLOT_ORDER.map(slot => ({ slot, item: bySlot.get(slot) || null }));
 }
 
 function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
@@ -3833,13 +3847,13 @@ function ArenaV2Screen({
       })),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-loadout", "aria-label": "Arena equipment loadout" },
         /*#__PURE__*/React.createElement("strong", null, "EQUIPMENT"),
-        /*#__PURE__*/React.createElement("div", null, (status.equipment || []).map((item, index) => {
-          const slot = String(item.slotType || item.type || "");
-          const label = `${item.name || SLOT_LABEL[slot] || slot || "Equipment"}${Number(item.enhanceLevel) > 0 ? ` +${item.enhanceLevel}` : ""}`;
-          return /*#__PURE__*/React.createElement("span", { key: item.itemId || `${slot}-${index}`, title: label, "aria-label": label },
-            /*#__PURE__*/React.createElement(GameIcon, { item: { ...item, type: slot }, fallback: SLOT_ICON[slot] || "◆", className: "md-game-icon", alt: "" }),
-            Number(item.enhanceLevel) > 0 && /*#__PURE__*/React.createElement("i", null, `+${item.enhanceLevel}`));
-        }), !(status.equipment || []).length && /*#__PURE__*/React.createElement("small", null, "No equipment"))),
+        /*#__PURE__*/React.createElement("div", { className: "md-arena-loadout-slots" }, arenaSetupEquipmentSlots(status.equipment).map(({ slot, item }) => {
+          const slotName = SLOT_LABEL[slot] || slot;
+          const label = item ? `${item.name || slotName}${Number(item.enhanceLevel) > 0 ? ` +${item.enhanceLevel}` : ""}` : `${slotName} · Empty`;
+          return /*#__PURE__*/React.createElement("span", { key: slot, className: `md-arena-loadout-slot ${item ? "filled" : "empty"}`, title: label, "aria-label": label },
+            item ? /*#__PURE__*/React.createElement(GameIcon, { item: { ...item, type: slot }, fallback: SLOT_ICON[slot] || "◆", className: "md-game-icon", alt: "" }) : /*#__PURE__*/React.createElement("span", { className: "md-arena-loadout-placeholder", "aria-hidden": "true" }, SLOT_ICON[slot] || "◇"),
+            item && Number(item.enhanceLevel) > 0 && /*#__PURE__*/React.createElement("i", null, `+${item.enhanceLevel}`));
+        }))),
       /*#__PURE__*/React.createElement("button", { className: "md-btn primary small md-arena-art-btn primary", disabled: busy, onClick: async () => { setBusy(true); try { const r = await cloudSaveArenaV2Setup(url, characterId, setup.petInstId, setup.skillSlots); if (r?.error) throw new Error(r.error); setSetup(r.setup); } catch (e) { setError(e.message); } finally { setBusy(false); } } }, "SAVE SETUP")),
     !match && tab === "ranking" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" }, ranking.map(row => {
       const rowTierName = arenaHubTierNameFromRating(row.rating);
