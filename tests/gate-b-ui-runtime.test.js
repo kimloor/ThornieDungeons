@@ -88,7 +88,7 @@ test("Arena setup, cooldown, milestones, currencies, and dock use the shared mob
   assert.match(styles, /\.md-arena-page-header \{[^}]*grid-template-columns:44px 42px minmax\(0,1fr\)/);
   assert.match(styles, /\.md-arena-progress-fill \{[^}]*width:0;[^}]*background-color:#2f8dff/);
   assert.doesNotMatch(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
-  assert.match(arena, /ARENA_SETUP_EQUIPMENT_SLOT_ORDER/);
+  assert.match(components, /ARENA_SETUP_EQUIPMENT_SLOT_ORDER/);
   assert.match(arena, /arenaSetupEquipmentSlots\(status\.equipment\)/);
   assert.match(styles, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(components, /CURRENCY INFO/);
