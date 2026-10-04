@@ -5,58 +5,51 @@ Scope: PNG icon-type assets under `r2-upload/ui/**`; decorative panels, buttons,
 large hub emblem, backgrounds, VFX, Hero frames and sprites are excluded.
 The CSV companion contains every audited path, manifest key, dimensions, bytes,
 alpha/padding, PASS/REVIEW/FAIL, reason, recommendation and final action.
-The six optimized keys use a `?v=g10_5_r1` manifest URL revision to bypass
-the R2 Worker's one-day browser cache; underlying keys and paths remain unchanged.
+G10.5+G11 set-item, Angel Wings and Arena frame replacements use
+`?v=g10_5_g11_r1` to bypass stale browser/edge caches; production keys and paths
+are preserved for Azure, Angel Wings and Arena frames.
 
-- Audited: 74; PASS 64; REVIEW 3; FAIL 7.
-- Audited total: 18,514,997 → 11,307,111 bytes (7,207,886 bytes saved).
-- Optimized candidates: 6; same PNG path and manifest key.
-- Published in `33510ed345af2ef0b6d64fa3b34bf4f9f2061d40`; R2 upload workflow downloaded and SHA-256 verified all six.
-- Production direct image URLs decoded at expected 256/512 px; authenticated mobile
-  gameplay surfaces remain unverified and are not claimed as PASS.
+- Audited: 86; PASS 86; REVIEW 0; FAIL 0.
+- Audited total: 11,307,111 → 6,711,039 bytes (4,596,072 bytes saved).
+- Batch changed: 22 files (18 set icons, Angel Wings, 3 Arena frames).
+- Publication commit: `0116225f3911e5cc81071060b21138933d4a93bf`.
+- Exceptions: none. Final REVIEW and FAIL counts are both zero.
 
-## Optimization candidates
+## G10.5 + G11 rebuilt/optimized files
 
 | Asset | Before | After |
 | --- | ---: | ---: |
-| `r2-upload/ui/equipment-icons/boss/icicle_longsword.png` | 646,583 B | 123,759 B |
-| `r2-upload/ui/equipment-icons/boss/lavalon_sword.png` | 872,110 B | 163,790 B |
-| `r2-upload/ui/equipment-icons/boss/spirit_greatsword.png` | 946,284 B | 170,952 B |
-| `r2-upload/ui/item-icons/materials/earth_stone.png` | 1,911,982 B | 102,585 B |
-| `r2-upload/ui/item-icons/materials/fire_stone.png` | 1,742,180 B | 86,834 B |
-| `r2-upload/ui/item-icons/materials/water_stone.png` | 1,829,306 B | 92,639 B |
+| `r2-upload/ui/equipment-icons/azure/azure_armor.png` | 786,446 B | 106,904 B |
+| `r2-upload/ui/equipment-icons/azure/azure_boots.png` | 786,444 B | 72,586 B |
+| `r2-upload/ui/equipment-icons/azure/azure_gauntlets.png` | 786,444 B | 76,029 B |
+| `r2-upload/ui/equipment-icons/azure/azure_helmet.png` | 786,444 B | 91,401 B |
+| `r2-upload/ui/equipment-icons/azure/azure_ring.png` | 786,444 B | 80,258 B |
+| `r2-upload/ui/equipment-icons/azure/azure_sword.png` | 786,444 B | 27,776 B |
+| `r2-upload/ui/equipment-icons/robot/robot_armor.png` | 0 B | 100,089 B |
+| `r2-upload/ui/equipment-icons/robot/robot_boots.png` | 0 B | 75,112 B |
+| `r2-upload/ui/equipment-icons/robot/robot_gauntlets.png` | 0 B | 84,707 B |
+| `r2-upload/ui/equipment-icons/robot/robot_helmet.png` | 0 B | 86,511 B |
+| `r2-upload/ui/equipment-icons/robot/robot_ring.png` | 0 B | 63,922 B |
+| `r2-upload/ui/equipment-icons/robot/robot_sword.png` | 0 B | 57,856 B |
+| `r2-upload/ui/equipment-icons/skeleton/skeleton_armor.png` | 0 B | 96,316 B |
+| `r2-upload/ui/equipment-icons/skeleton/skeleton_boots.png` | 0 B | 72,958 B |
+| `r2-upload/ui/equipment-icons/skeleton/skeleton_gauntlets.png` | 0 B | 88,948 B |
+| `r2-upload/ui/equipment-icons/skeleton/skeleton_helmet.png` | 0 B | 95,335 B |
+| `r2-upload/ui/equipment-icons/skeleton/skeleton_ring.png` | 0 B | 68,087 B |
+| `r2-upload/ui/equipment-icons/skeleton/skeleton_sword.png` | 0 B | 63,537 B |
+| `r2-upload/ui/equipment-icons/wings/angel_wings.png` | 786,444 B | 45,935 B |
+| `r2-upload/ui/profile-frames/arena_rank_1.png` | 278,770 B | 89,674 B |
+| `r2-upload/ui/profile-frames/arena_rank_2.png` | 271,796 B | 86,197 B |
+| `r2-upload/ui/profile-frames/arena_rank_3.png` | 252,645 B | 82,111 B |
 
-## Unresolved damaged source assets — publication blocker
+Azure 6/6, Robot 6/6 and Skeleton 6/6 are 256×256 RGBA PNGs within the
+equipment-icon target. `angel_wings.png` remains active and now reuses the approved
+Azure Angel production wing art at its stable path/key. All three Arena profile frames
+remain 512×512 and use an optimized indexed production palette; visual
+comparison found no material display-size difference.
 
-- `r2-upload/ui/equipment-icons/azure/azure_armor.png` — PNG decode failure: OSError; 786,446 B, 1254×1254 (header only).
-- `r2-upload/ui/equipment-icons/azure/azure_boots.png` — PNG decode failure: OSError; 786,444 B, 1254×1254 (header only).
-- `r2-upload/ui/equipment-icons/azure/azure_gauntlets.png` — PNG decode failure: OSError; 786,444 B, 1254×1254 (header only).
-- `r2-upload/ui/equipment-icons/azure/azure_helmet.png` — PNG decode failure: OSError; 786,444 B, 1254×1254 (header only).
-- `r2-upload/ui/equipment-icons/azure/azure_ring.png` — PNG decode failure: OSError; 786,444 B, 1254×1254 (header only).
-- `r2-upload/ui/equipment-icons/azure/azure_sword.png` — PNG decode failure: OSError; 786,444 B, 1254×1254 (header only).
-- `r2-upload/ui/equipment-icons/wings/angel_wings.png` — PNG decode failure: OSError; 786,444 B, 1254×1254 (header only).
+## G11 baseline
 
-These files were already invalid in the audited `main` baseline, not damaged by this batch.
-All six Azure set-item PNGs and legacy `angel_wings.png` must be recovered from
-intact approved masters, visually matched, then optimized before G10.5 can close.
-Do not treat corruption as a size-only exception or recreate approved artwork by guesswork.
-
-## Review-only assets and exceptions
-
-- `r2-upload/ui/profile-frames/arena_rank_1.png` — 278,770 B, Above 250,000 B target; below 300,000 B hard limit.
-- `r2-upload/ui/profile-frames/arena_rank_2.png` — 271,796 B, Above 250,000 B target; below 300,000 B hard limit.
-- `r2-upload/ui/profile-frames/arena_rank_3.png` — 252,645 B, Above 250,000 B target; below 300,000 B hard limit.
-
-No oversized icon is silently grandfathered. REVIEW is pending visual/usage sign-off,
-not an approved exception. There is no approved >500 KB exception.
-
-## QA and publication gate
-
-- Full PNG decode, alpha bounds, manifest mapping and at-size readability must pass.
-- Verify actual Inventory, equipment/Compare, Shop, Craft, Reward, Arena, Raid and Battle
-  mobile surfaces after publication; explicitly retest Azure and Earth/Fire/Water Stone.
-- Download every replaced R2 object and compare SHA-256 with committed production PNG.
-- Check 404/missing images, fallback behavior and mobile loading. Do not claim complete
-  while Azure source recovery or production QA remains open.
-- G11 Robot/Skeleton item icons must comply with this same shared budget and have zero
-  FAIL icons before publication.
+New small runtime icons must use the shared budget in `r2-upload/README.md`, decode
+fully, preserve alpha, avoid excess canvas, remain readable at mobile display size, and
+ship with zero FAIL icons. This document and its CSV are the reusable baseline.

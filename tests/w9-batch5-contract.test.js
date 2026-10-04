@@ -29,6 +29,30 @@ function loadItemIconResolver() {
       azure: "wings/azure_wings.png",
       robot: "wings/robot_wings.png",
       skeleton: "wings/skeleton_wings.png"
+    },
+    azure: {
+      weapon: "equipment/azure_sword.png",
+      helmet: "equipment/azure_helmet.png",
+      chest: "equipment/azure_armor.png",
+      gloves: "equipment/azure_gauntlets.png",
+      boots: "equipment/azure_boots.png",
+      accessory: "equipment/azure_ring.png"
+    },
+    robot: {
+      weapon: "equipment/robot_sword.png",
+      helmet: "equipment/robot_helmet.png",
+      chest: "equipment/robot_armor.png",
+      gloves: "equipment/robot_gauntlets.png",
+      boots: "equipment/robot_boots.png",
+      accessory: "equipment/robot_ring.png"
+    },
+    skeleton: {
+      weapon: "equipment/skeleton_sword.png",
+      helmet: "equipment/skeleton_helmet.png",
+      chest: "equipment/skeleton_armor.png",
+      gloves: "equipment/skeleton_gauntlets.png",
+      boots: "equipment/skeleton_boots.png",
+      accessory: "equipment/skeleton_ring.png"
     }
   }};\n${source.slice(start, end)}\nglobalThis.resolve = resolveItemIconPath;`, context);
   return context.resolve;
@@ -45,8 +69,33 @@ test("Batch 5 item icon resolver maps published materials, recipe families and e
   assert.equal(resolve({ type: "wings", setId: "azure", star: 5 }), "wings/azure_wings.png");
   assert.equal(resolve({ type: "wings", wingId: "robot", star: 3 }), "wings/robot_wings.png");
   assert.equal(resolve({ type: "wings", wingsId: "skeleton", star: 2 }), "wings/skeleton_wings.png");
+  const expectedNames = { weapon: "sword", helmet: "helmet", chest: "armor", gloves: "gauntlets", boots: "boots", accessory: "ring" };
+  for (const family of ["azure", "robot", "skeleton"]) {
+    for (const [slot, name] of Object.entries(expectedNames)) {
+      assert.equal(resolve({ type: slot, setId: family.toUpperCase() }), `equipment/${family}_${name}.png`);
+    }
+  }
   assert.equal(resolve({ type: "wings", star: 5 }), "");
   assert.equal(resolve({ type: "junk", junkId: "recipe_unknown_helmet" }), "");
+});
+
+test("G10.5 + G11 manifest publishes all 18 set-slot icons within the equipment budget", () => {
+  const manifest = JSON.parse(read("r2-upload/manifest.json"));
+  const slots = ["weapon", "helmet", "chest", "gloves", "boots", "accessory"];
+  for (const family of ["azure", "robot", "skeleton"]) {
+    for (const slot of slots) {
+      const value = manifest.assets.itemIcons[family][slot];
+      const revision = family === "azure" && slot === "weapon" ? "r2" : "r1";
+      assert.match(value, new RegExp(`^ui/equipment-icons/${family}/.+\\.png\\?v=g10_5_g11_${revision}$`));
+      const file = path.join(ROOT, "r2-upload", value.split("?", 1)[0]);
+      assert.ok(fs.existsSync(file), `${family}/${slot} production PNG exists`);
+      assert.ok(fs.statSync(file).size <= 250000, `${family}/${slot} remains within the 250 KB hard limit`);
+    }
+  }
+  assert.match(manifest.assets.itemIcons.wings.angel, /^ui\/equipment-icons\/wings\/angel_wings\.png\?v=g10_5_g11_r1$/);
+  for (const key of ["arenaRank1", "arenaRank2", "arenaRank3"]) {
+    assert.match(manifest.assets.profileFrames[key], /^ui\/profile-frames\/arena_rank_[123]\.png\?v=g10_5_g11_r1$/);
+  }
 });
 
 function loadTurnOrderAlive() {

@@ -1215,7 +1215,32 @@ async function handleSaveBattleCheckpoint(db, id, session, characterId, battleId
       // Keep the player-facing error intentionally generic; the structural
       // reason is safe for server logs and makes a future runtime-shape drift
       // diagnosable without exposing authorization context to clients.
-      console.warn("[battle-checkpoint-invalid]", JSON.stringify({ reason: checkpointValidationReason }));
+      console.warn("[battle-checkpoint-invalid]", JSON.stringify({
+        reason: checkpointValidationReason,
+        checkpoint: {
+          phaseType: typeof payload.phase,
+          phase: ["prepared", "active", "complete"].includes(payload.phase) ? payload.phase : null,
+          floorType: typeof payload.floor,
+          floorInRange: Number.isInteger(Number(payload.floor)) && Number(payload.floor) >= 1 && Number(payload.floor) <= 10000,
+          encounterTypePresent: payload.encounterType != null,
+          encounterTypeMatchesExpected: payload.encounterType == null ? null : String(payload.encounterType) === priorContext.role,
+          contextPresent: payload.serverContext != null,
+          contextType: Array.isArray(payload.serverContext) ? "array" : typeof payload.serverContext,
+          contextModeMatches: payload.serverContext?.mode === "dungeon",
+          contextFloorMatches: Number(payload.serverContext?.floor) === priorContext.floor,
+          contextRoleMatches: payload.serverContext?.role === priorContext.role,
+          contextEnemyCount: Array.isArray(payload.serverContext?.enemies) ? payload.serverContext.enemies.length : null,
+          expectedEnemyCount: priorContext.packCount,
+          enemyIdsMatchExpected: Array.isArray(payload.enemyIds)
+            ? payload.enemyIds.length === priorContext.packCount
+              && payload.enemyIds.every(id => priorContext.enemies.some(enemy => enemy.instanceId === String(id)))
+            : null,
+          enemyIdsType: Array.isArray(payload.enemyIds) ? "array" : typeof payload.enemyIds,
+          enemyIdsCount: Array.isArray(payload.enemyIds) ? payload.enemyIds.length : null,
+          unitsType: Array.isArray(payload.units) ? "array" : typeof payload.units,
+          unitCount: payload.units && typeof payload.units === "object" ? Object.keys(payload.units).length : null
+        }
+      }));
       return json({ error: "invalid_dungeon_checkpoint" }, 400);
     }
     if (!dungeonV2ServerContextsMatch(priorContext, incomingContext)) return json({ error: "checkpoint_context_conflict" }, 409);
