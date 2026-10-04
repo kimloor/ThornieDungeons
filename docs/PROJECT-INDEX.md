@@ -47,7 +47,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) | Login/Auth V2 account, session, password, recovery, migration, frontend, and backend security contract. |
 | [`ADMIN-V2.md`](ADMIN-V2.md) | **ACTIVE-PRODUCTION** Admin V2 auth/session foundation plus Phase 1 Dashboard, server-side Player Search, sanitized read-only Player Viewer/Items, and audit-safe read paths. |
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
-| [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |
+| [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |\n| [`PET-AVATAR-CONTRACT-G13.md`](PET-AVATAR-CONTRACT-G13.md) | **ACTIVE-DESIGN / G13 READY_FOR_GRAPHICS** — eight-Pet portrait/avatar family, shared resolver, asset budget, and custom Pet selector presentation contract. |\n| [`HERO-SKILL-ICON-CONTRACT-G12.md`](HERO-SKILL-ICON-CONTRACT-G12.md) | **ACTIVE-PRODUCTION / G12 COMPLETE** — 36 Hero skill icons, shared resolver, four runtime consumers, production asset budget and fallback contract. |
 | [`PHASER-COMBAT-ARENA-V1.md`](PHASER-COMBAT-ARENA-V1.md) | **ACTIVE-DESIGN** shared Phaser presentation architecture for Combat/Arena/preview surfaces; W9 Arena gameplay changes are governed by `ARENA-V2-W9.md`. |
 | [`ARENA-V2-W9.md`](ARENA-V2-W9.md) | **ACTIVE-PRODUCTION / W9 CLOSED** Arena V2 gameplay, season, rating, Ticket/Coin, rewards, setup, matchmaking, history, Profile Frame, mobile UX, Phaser battlefield, rollout and cleanup contract. |
 | [`PIXELLAB-WORKFLOW.md`](PIXELLAB-WORKFLOW.md) | **ACTIVE-TOOLING** reusable PixelLab GitHub Actions workflow, inputs, image/animation generation flow, GIF preview, review rules, and R2 handoff guardrails. |
@@ -220,7 +220,7 @@ Until a dedicated contract exists, inspect latest `main`, the latest approved ta
 - Read the relevant visual contract, current execution wave, and R2 rules.
 - All new/replaced production icons must pass the shared **Production icon asset budget** in `r2-upload/README.md` before publication; keep large editable masters separate from runtime exports.
 - **G10 Shared ATB Actor Icon Pack** is COMPLETE / integrated in shared Dungeon Battle and Arena TurnOrderBar presentation.
-- Current Graphics entry point is **G10.5 Global Icon Asset Audit + Optimization**; its reusable inventory is `docs/G10-5-ICON-ASSET-AUDIT.md` and `.csv`. G11 Robot + Skeleton icons remain gated until the outstanding Azure/Angel source recovery and mobile QA close.
+- **G10 Shared ATB Actor Icons: COMPLETE. G10.5 Global Icon Audit/Optimization: COMPLETE. G11 Azure/Robot/Skeleton production icon families: COMPLETE. G12 Hero Skill Icon Pack: COMPLETE / Production Ver 1.0.39 (36/36).**\n- Current Graphics entry point is **G13 Pet Avatar Pack + Shared Pet Selector Presentation**. Audit baseline: 8 authoritative Pets, 8/8 battle sprite families present, 0/8 dedicated portrait/avatar assets.
 - Do not infer asset names, manifest keys, or paths.
 
 ### QA
