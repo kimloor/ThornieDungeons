@@ -36,5 +36,5 @@ test('G10 shared ATB icon manifest, export budget and runtime binding', () => {
   assert.match(ui, /md-turn-queue-spawn-slot/);
   assert.match(ui, /item\.isElite && !item\.isBoss/);
   assert.match(css, /\.md-turn-queue-icon\.elite/);
-  assert.match(css, /Ver 1\.0\.39/);
+  assert.match(css, /Ver 1\.0\.40/);
 });

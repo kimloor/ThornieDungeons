@@ -182,7 +182,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.39";
+  content: "Ver 1.0.40";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -23184,11 +23184,13 @@ function CraftingOverlay({
   };
 
   const originalMakeEncounter = makeEncounter;
-  makeEncounter = function patchedMakeEncounter(floor) {
+  makeEncounter = function patchedMakeEncounter(floor, ...args) {
     if (activeResume && Number(floor) === activeResume.floor) {
       return activeResume.encounter.map(monster => ({ ...monster }));
     }
-    return originalMakeEncounter(floor);
+    // Fresh Dungeon battles pass the Worker-issued serverContext here. Dropping
+    // it regenerates client enemy UIDs and corrupts the checkpoint identity.
+    return originalMakeEncounter(floor, ...args);
   };
 
   if (typeof cloudCompleteBattle === "function") {

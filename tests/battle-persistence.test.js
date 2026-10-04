@@ -19,11 +19,55 @@ class D1 {
   async batch(statements) { const out = []; for (const statement of statements) out.push(await statement.run()); return out; }
 }
 
-function worker() {
+function worker(runtimeConsole = console) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
-  const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
+  const sandbox = { console: runtimeConsole, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(sandbox); vm.runInContext(source, sandbox); return sandbox.__worker;
+}
+
+function productionDungeonRuntime() {
+  const sandbox = { console, Math, Date, crypto, setTimeout, clearTimeout };
+  vm.createContext(sandbox);
+  for (const file of [
+    "src/data/constants.js",
+    "src/systems/pets.js",
+    "src/systems/floorModifier.js",
+    "src/systems/dungeonV2.js",
+    "src/systems/stats.js",
+    "src/systems/battleCore.js"
+  ]) {
+    const source = fs.readFileSync(path.resolve(__dirname, "..", file), "utf8");
+    vm.runInContext(source, sandbox, { filename: file });
+  }
+  // The production build installs this presentation patch after App.js. Its
+  // makeEncounter wrapper must preserve the serverContext options used by a
+  // fresh authoritative Dungeon battle.
+  vm.runInContext(`
+    async function cloudGetBattleState() { return { ok: true, checkpoint: null }; }
+    async function cloudCompleteBattle() { return { ok: true }; }
+    async function cloudClearBattleCheckpoint() { return { ok: true }; }
+  `, sandbox);
+  vm.runInContext(
+    fs.readFileSync(path.resolve(__dirname, "..", "src/ui/resumePreviewPatch.js"), "utf8"),
+    sandbox,
+    { filename: "src/ui/resumePreviewPatch.js" }
+  );
+  vm.runInContext("globalThis.__makeEncounter = makeEncounter;", sandbox);
+  return vm.runInContext(`({ makeEncounter: __makeEncounter, dungeon: DUNGEON_V2, battle: BATTLE_CORE_V1 })`, sandbox);
+}
+
+function assertAuthoritativeEnemyIdentity(checkpoint, context, label) {
+  const expected = context.enemies.map(enemy => String(enemy.instanceId));
+  assert.deepEqual(Array.from(checkpoint.enemyIds, String), expected, `${label}: checkpoint enemyIds`);
+  for (const instanceId of expected) {
+    assert.ok(checkpoint.units[instanceId], `${label}: unit map contains ${instanceId}`);
+    assert.equal(String(checkpoint.units[instanceId].id), instanceId, `${label}: unit.id preserves instanceId`);
+  }
+  const enemyUnitKeys = Object.keys(checkpoint.units)
+    .filter(id => checkpoint.units[id]?.side === "enemy")
+    .sort();
+  assert.deepEqual(enemyUnitKeys, [...expected].sort(), `${label}: enemy unit keys`);
 }
 
 function database() {
@@ -237,7 +281,9 @@ test("Dungeon battle start is the trust root for floor eligibility and old-floor
 });
 
 test("Dungeon checkpoint validator accepts canonical runtime identity without optional definition aliases", async () => {
-  const api = worker(), db = database();
+  const warnings = [];
+  const runtimeConsole = { ...console, warn: (...args) => warnings.push(args) };
+  const api = worker(runtimeConsole), db = database();
   const registration = await post(api, db, "", { action: "register", id: "ChkRuntimeQA", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Checkpoint Runtime" });
@@ -298,14 +344,121 @@ test("Dungeon checkpoint validator accepts canonical runtime identity without op
     const forgedInstance = {
       ...resumed,
       safeActionSeq: 3,
-      enemyIds: resumed.enemyIds.map((id, index) => index === 0 ? id + "-forged" : id)
+      // Reproduce the Production identity class exactly: a definition/client ID
+      // occupies enemyIds where only the server-issued instanceId is authorized.
+      enemyIds: resumed.enemyIds.map((id, index) => index === 0 ? expectedEnemy.id : id)
     };
     const rejectedInstance = await post(api, db, token, {
       action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 3, payload: forgedInstance
     });
     assert.equal(rejectedInstance.status, 400, scenario.label);
     assert.equal(rejectedInstance.body.error, "invalid_dungeon_checkpoint", scenario.label);
+    const diagnostic = warnings
+      .filter(args => args[0] === "[battle-checkpoint-invalid]")
+      .map(args => JSON.parse(args[1]))
+      .at(-1);
+    assert.equal(diagnostic?.reason, "enemy_id_not_authorized", scenario.label);
 
+    await post(api, db, token, { action: "clearBattleCheckpoint", characterId, battleId: started.body.battleId });
+  }
+});
+
+test("real App encounter and Battle Core checkpoint matches Worker authorization", async () => {
+  const api = worker(), db = database();
+  const runtime = productionDungeonRuntime();
+  const registration = await post(api, db, "", { action: "register", id: "ChkRuntimeQA", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Runtime QA" });
+  const characterId = created.body.character.character_id;
+  db.raw.prepare("UPDATE characters SET unlocked_floor = 110 WHERE character_id = ?").run(characterId);
+
+  const scenarios = [1, 5, 10].map(floor => ({ floor, label: `floor ${floor}` }));
+  let multi = null;
+  let modifier = null;
+  for (let floor = 6; floor <= 109 && (!multi || !modifier); floor += 1) {
+    if (floor % 5 === 0) continue;
+    const candidate = await startDungeon(api, db, token, characterId, floor);
+    const context = candidate.body.context;
+    if (!multi && context.role === "normal" && context.packCount > 1) multi = { floor, label: "normal multi" };
+    if (!modifier && context.enemies.some(enemy => enemy.modifierId)) modifier = { floor, label: "modifier" };
+    await post(api, db, token, { action: "clearBattleCheckpoint", characterId, battleId: candidate.body.battleId });
+  }
+  assert.ok(multi, "expected a real normal multi-enemy encounter");
+  assert.ok(modifier, "expected a real modifier encounter");
+  scenarios.push(multi, modifier);
+
+  for (const scenario of scenarios) {
+    const floor = scenario.floor;
+    const started = await startDungeon(api, db, token, characterId, floor);
+    assert.equal(started.body.ok, true, `start ${scenario.label}`);
+    const context = started.body.context;
+    const spawned = runtime.makeEncounter(floor, { serverContext: context });
+    const enemies = spawned.map((monster, index) => runtime.dungeon.toDungeonV2BattleEnemy(monster, index));
+    const state = runtime.battle.createDungeonBattle({
+      battleId: started.body.battleId,
+      floor,
+      mode: "dungeon",
+      seed: context.encounterSeed,
+      hero: { id: "hero", kind: "hero", side: "ally", hp: 100, maxHp: 100, sp: 20, maxSp: 20, atk: 10, def: 5, speed: 10 },
+      enemies
+    });
+    state.serverContext = context;
+    // App persists this exact boundary: battleCheckpointWithoutLog() makes a
+    // shallow snapshot and the persistence queue/cloudSaveSnapshot forwards it
+    // without going through Battle Core's optional JSON serializer.
+    const payload = { ...state, log: [] };
+    assertAuthoritativeEnemyIdentity(payload, context, `${scenario.label} fresh`);
+    // Deliberately do not inject a top-level encounterType. The Worker contract
+    // treats that presentation alias as optional; this proves its absence is
+    // not the source of invalid_dungeon_checkpoint.
+    assert.equal(payload.encounterType, undefined, `${scenario.label}: no synthetic encounterType`);
+    const serverEnemies = context.enemies.map(enemy => ({
+      id: enemy.id,
+      instanceId: enemy.instanceId,
+      modifierId: enemy.modifierId
+    }));
+    const firstMismatch = [
+      ["mode", payload.mode, "dungeon"],
+      ["floor", payload.floor, context.floor],
+      ["serverContext", JSON.stringify(payload.serverContext), JSON.stringify(context)],
+      ["serverContext.enemies", JSON.stringify(serverEnemies), JSON.stringify(context.enemies.map(enemy => ({ id: enemy.id, instanceId: enemy.instanceId, modifierId: enemy.modifierId })))],
+      ["serverContext.packCount", payload.serverContext?.packCount, context.packCount],
+      ["enemyIds", JSON.stringify(payload.enemyIds), JSON.stringify(context.enemies.map(enemy => enemy.instanceId))],
+      ["unitKeys", JSON.stringify(Object.keys(payload.units).filter(id => payload.units[id].side === "enemy").sort()), JSON.stringify(context.enemies.map(enemy => enemy.instanceId).sort())],
+      ...context.enemies.map(enemy => {
+        const unit = payload.units[enemy.instanceId];
+        return [`enemy:${enemy.instanceId}`, unit && JSON.stringify({ id: unit.id, kind: unit.kind, side: unit.side, isBoss: unit.isBoss, monsterDefId: unit.monsterDefId, dungeonV2ProfileId: unit.dungeonV2ProfileId }), JSON.stringify({ id: enemy.instanceId, kind: enemy.kind, side: "enemy", isBoss: enemy.isBoss, monsterDefId: enemy.id, dungeonV2ProfileId: enemy.id })];
+      })
+    ].find(([, actual, expected]) => actual !== expected);
+    assert.equal(firstMismatch, undefined, `first runtime mismatch ${scenario.label}: ${JSON.stringify(firstMismatch)}`);
+    const saved = await post(api, db, token, {
+      action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId,
+      checkpointSeq: payload.safeActionSeq, payload
+    });
+    assert.equal(saved.body.accepted, true, `real runtime checkpoint ${scenario.label}: ${JSON.stringify({ payload, context, response: saved.body })}`);
+
+    const action = runtime.battle.battleStep(state, {
+      type: "basic",
+      targetId: state.enemyIds[0]
+    });
+    const laterPayload = { ...action.state, log: [] };
+    assertAuthoritativeEnemyIdentity(laterPayload, context, `${scenario.label} after action`);
+    const laterSaved = await post(api, db, token, {
+      action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId,
+      checkpointSeq: laterPayload.safeActionSeq, payload: laterPayload
+    });
+    assert.equal(laterSaved.body.accepted, true, `later real runtime checkpoint ${scenario.label}`);
+
+    const restored = await get(api, db, token, { action: "getBattleState", characterId });
+    const resumed = runtime.battle.restoreCheckpoint(restored.body.checkpoint.payload);
+    const resumedPayload = { ...resumed, log: [] };
+    assertAuthoritativeEnemyIdentity(resumedPayload, context, `${scenario.label} restored`);
+    const resumedSaved = await post(api, db, token, {
+      action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId,
+      checkpointSeq: resumedPayload.safeActionSeq + 1,
+      payload: { ...resumedPayload, safeActionSeq: resumedPayload.safeActionSeq + 1 }
+    });
+    assert.equal(resumedSaved.body.accepted, true, `resume real runtime checkpoint ${scenario.label}`);
     await post(api, db, token, { action: "clearBattleCheckpoint", characterId, battleId: started.body.battleId });
   }
 });

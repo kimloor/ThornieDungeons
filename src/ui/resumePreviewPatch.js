@@ -47,11 +47,13 @@
   };
 
   const originalMakeEncounter = makeEncounter;
-  makeEncounter = function patchedMakeEncounter(floor) {
+  makeEncounter = function patchedMakeEncounter(floor, ...args) {
     if (activeResume && Number(floor) === activeResume.floor) {
       return activeResume.encounter.map(monster => ({ ...monster }));
     }
-    return originalMakeEncounter(floor);
+    // Fresh Dungeon battles pass the Worker-issued serverContext here. Dropping
+    // it regenerates client enemy UIDs and corrupts the checkpoint identity.
+    return originalMakeEncounter(floor, ...args);
   };
 
   if (typeof cloudCompleteBattle === "function") {
