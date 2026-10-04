@@ -30,11 +30,11 @@ class D1 {
   }
 }
 
-function worker() {
+function worker(consoleImpl = console) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {");
   source += "\nglobalThis.__worker = workerDefault;";
-  const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
+  const sandbox = { console: consoleImpl, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox);
   return sandbox.__worker;
@@ -147,6 +147,33 @@ test("inventory slot writes validate bounds and preserve two-account ownership i
   assert.equal(deniedSync.status, 403);
   assert.equal(deniedSync.body.error, "forbidden");
   assert.equal(Number(db.raw.prepare("SELECT inventory_slot FROM items WHERE item_id='item-a'").get().inventory_slot), 4);
+});
+
+test("syncItems emits bounded diagnostics for unknown owned-scope item while preserving rejection", async () => {
+  const warnings = [];
+  const api = worker({ ...console, warn: (...args) => warnings.push(args.join(" ")) });
+  const db = database();
+  const token = await register(api, db, "SyncDiag_QA");
+  const characterId = await createCharacter(api, db, token);
+
+  const rejected = await call(api, db, {
+    action: "syncItems", characterId,
+    items: [{ itemId: "unknown-item-diag", equipped: false, inventorySlot: 3, password: "must-not-log" }]
+  }, token);
+  assert.equal(rejected.status, 403);
+  assert.equal(rejected.body.error, "item_not_owned");
+  assert.equal(rejected.body.action, "syncItems");
+  assert.equal(rejected.body.itemId, "unknown-item-diag");
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /inventory_sync_rejected/);
+  assert.match(warnings[0], /"snapshotIndex":0/);
+  assert.match(warnings[0], /"snapshotCount":1/);
+  assert.doesNotMatch(warnings[0], /must-not-log|pass|Authorization|sessionToken/);
+
+  db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, extra_json, created_at, updated_at) VALUES (?, ?, ?, 'weapon', 0, '', '{}', 'now', 'now')`).run("valid-sync-item", "SyncDiag_QA", characterId);
+  const accepted = await call(api, db, { action: "syncItems", characterId, items: [{ itemId: "valid-sync-item", equipped: false, inventorySlot: 3 }] }, token);
+  assert.equal(accepted.status, 200);
+  assert.equal(accepted.body.ok, true);
 });
 
 test("inventory reads preserve two-account ownership isolation", async () => {
