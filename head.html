@@ -30,12 +30,6 @@ Run `node build.js` after source changes. index.html is the single generated app
   #root { width: 100%; display: flex; justify-content: center; }
   * { -webkit-tap-highlight-color: transparent; }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
-  #boot-error { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:max(18px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); background:rgba(5,7,18,.58); backdrop-filter:blur(2px); box-sizing:border-box; }
-  #boot-error-card { width:min(92vw,430px); max-height:min(72dvh,560px); display:flex; flex-direction:column; overflow:hidden; border:1px solid #FF8B8B; border-radius:16px; background:rgba(24,14,35,.98); box-shadow:0 18px 55px rgba(0,0,0,.68); color:#FFD6D6; font-family:monospace; }
-  #boot-error-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border-bottom:1px solid rgba(255,139,139,.35); color:#FF9E9E; }
-  #boot-error-close { width:36px; height:36px; flex:0 0 36px; border:0; border-radius:10px; background:rgba(255,255,255,.08); color:#fff; font-size:23px; line-height:1; cursor:pointer; }
-  #boot-error-text { margin:0; padding:13px 14px 16px; max-height:52dvh; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; color:#FFD6D6; font:12px/1.45 monospace; text-align:left; white-space:pre-wrap; word-break:break-word; }
-
   .md-enemy-img { object-fit: contain; max-width: none; }
   .md-enemy-img.md-pet-img { width: 64px !important; height: 64px !important; }
   .md-monster-board { max-width: none !important; }
@@ -83,8 +77,8 @@ Run `node build.js` after source changes. index.html is the single generated app
   }, 6000);
 </script>
 
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" onerror="showBootError('Failed to load React script tag (unpkg.com blocked?)')"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" onerror="showBootError('Failed to load ReactDOM script tag (unpkg.com blocked?)')"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
 <script>
 try {
