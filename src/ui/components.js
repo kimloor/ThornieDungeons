@@ -4295,6 +4295,7 @@ function FloorMonsterPreview({ monster }) {
 
 function MapScreen({
   save,
+  serverUrl,
   arenaHud,
   unlockedFloor,
   onSelectFloor,
@@ -4326,17 +4327,32 @@ function MapScreen({
   const encounterCache = useRef(new Map());
   const [detail, setDetail] = useState(null);
 
-  const encounterFor = floor => {
-    if (!encounterCache.current.has(floor)) encounterCache.current.set(floor, makeEncounter(floor));
-    return encounterCache.current.get(floor);
-  };
-  const openFloor = floor => {
+  const openFloor = async floor => {
     if (floor > unlockedFloor) return;
-    setDetail({ floor, monsters: encounterFor(floor) });
+    const cached = encounterCache.current.get(floor);
+    if (cached) {
+      setDetail({ floor, monsters: cached.monsters, previewContext: cached.previewContext, loading: false });
+      return;
+    }
+    setDetail({ floor, monsters: [], previewContext: null, loading: true });
+    const preview = await cloudGetDungeonEncounterPreview(serverUrl, save.characterId, floor);
+    if (!preview?.ok || !preview?.context) {
+      setDetail({
+        floor,
+        monsters: [],
+        previewContext: null,
+        loading: false,
+        error: preview?.error || "dungeon_preview_failed"
+      });
+      return;
+    }
+    const monsters = makeEncounter(floor, { serverContext: preview.context });
+    encounterCache.current.set(floor, { monsters, previewContext: preview.context });
+    setDetail({ floor, monsters, previewContext: preview.context, loading: false });
   };
   const enterSelectedFloor = () => {
-    if (!detail || detail.floor > unlockedFloor) return;
-    onSelectFloor(detail.floor, detail.monsters);
+    if (!detail || detail.loading || detail.error || detail.floor > unlockedFloor) return;
+    onSelectFloor(detail.floor, detail.monsters, detail.previewContext);
   };
   return e("main", { className: `md-dungeon-map-page${detail ? " detail-open" : ""}` },
     e(GlobalCurrencyBar, { save, arena: arenaHud, className: "md-dungeon-resources" }),
@@ -4410,17 +4426,21 @@ function MapScreen({
             e("small", null, DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS ? "CHAPTER BOSS" : DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.ELITE ? "ELITE ENCOUNTER" : "DUNGEON FLOOR"),
             e("h2", { id: "md-floor-detail-title" }, "ชั้น ", detail.floor)
           ),
-          e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, formatNumber(recommendedFloorCp(detail.monsters))))
+          e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, detail.loading || detail.error ? "—" : formatNumber(recommendedFloorCp(detail.monsters))))
         ),
-        e("div", { className: "md-floor-monster-stage", "aria-label": "มอนสเตอร์ประจำชั้น" },
-          detail.monsters.map(monster => e("div", { className: "md-floor-monster", key: monster.uid },
-            e(FloorMonsterPreview, { monster }),
-            e("span", null, monster.name.replace(/\s*\((?:Elite\s+)?Boss\)\s*/gi, ""))
-          ))
-        ),
+        detail.loading
+          ? e("div", { className: "md-floor-preview-loading", role: "status" }, "กำลังโหลดข้อมูล encounter จากเซิร์ฟเวอร์…")
+          : detail.error
+            ? e("div", { className: "md-floor-preview-error", role: "alert" }, "โหลดข้อมูลมอนไม่สำเร็จ: ", detail.error)
+            : e("div", { className: "md-floor-monster-stage", "aria-label": "มอนสเตอร์ประจำชั้น" },
+              detail.monsters.map(monster => e("div", { className: "md-floor-monster", key: monster.uid },
+                e(FloorMonsterPreview, { monster }),
+                e("span", null, monster.name.replace(/\s*\((?:Elite\s+)?Boss\)\s*/gi, ""))
+              ))
+            ),
         e("h3", null, "อีเวนต์ชั้นนี้"),
         e("div", { className: "md-floor-events" },
-          floorEventPreview(detail.monsters).map(event => e("div", {
+          (detail.monsters || []).length ? floorEventPreview(detail.monsters).map(event => e("div", {
             key: event.id,
             className: "md-floor-event",
             style: { "--md-event-color": event.color }
@@ -4435,7 +4455,7 @@ function MapScreen({
         ),
         e("h3", null, "รางวัลที่อาจได้รับ"),
         e("div", { className: "md-floor-rewards" },
-          floorRewardPreview(detail.floor, detail.monsters).map(reward => e("div", { key: reward.hint },
+          floorRewardPreview(detail.floor, detail.monsters || []).map(reward => e("div", { key: reward.hint },
             e("span", null, reward.category ? e(GameIcon, { category: reward.category, iconKey: reward.iconKey, fallback: reward.icon, className: "md-game-icon md-floor-reward-icon", alt: reward.hint }) : reward.icon), e("b", null, reward.label), e("small", null, reward.hint)
           ))
         ),
