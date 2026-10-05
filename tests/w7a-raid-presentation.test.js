@@ -10,6 +10,7 @@ const scene = fs.readFileSync(path.join(root, "src/phaser/scenes/BattleScene.js"
 const host = fs.readFileSync(path.join(root, "src/phaser/runtime/BattlefieldHost.js"), "utf8");
 const ui = fs.readFileSync(path.join(root, "src/phaser/ui/PhaserBattlefield.js"), "utf8");
 const components = fs.readFileSync(path.join(root, "src/ui/components.js"), "utf8");
+const styles = fs.readFileSync(path.join(root, "src/data/styles.js"), "utf8");
 
 test("Raid Boss card uses the approved frame sprite only, without Phaser stage or standalone HP bar", () => {
   const start = components.indexOf("function RaidBossCard");
@@ -64,16 +65,29 @@ test("Raid Boss card stays frame-only while shared Phaser infrastructure remains
   assert.doesNotMatch(card, /phaserStatus|onStatus/);
 });
 
-test("Arena setup skill dropdowns form a single-open group and close after selection", () => {
-  assert.match(components, /name: "arena-skill-slots"/);
-  assert.match(components, /querySelectorAll\('details\[name="arena-skill-slots"\]'\)/);
-  assert.match(components, /closest\("details"\)\?\.removeAttribute\("open"\)/);
-  assert.match(styles, /\.md-arena-skill-setup-slot\[open\] \{ z-index:100; opacity:1; \}/);
+test("Arena skill dropdowns use a document portal and block duplicate skills", () => {
+  assert.match(components, /function ArenaSkillDropdown/);
+  assert.match(components, /ReactDOM\.createPortal/);
+  assert.match(components, /document\.body/);
+  assert.match(components, /usedByOtherSlots/);
+  assert.match(components, /aria-disabled: duplicate/);
+  assert.match(styles, /\.md-arena-setup-options-portal \{ position:fixed !important; z-index:2147483647 !important;/);
 });
 
-test("Arena dock is part of the Arena layout flow instead of a fixed overlay", () => {
+test("Arena dock follows the same flow-footer pattern as Inventory", () => {
   assert.match(styles, /\.md-arena-v2 \{ display:flex; flex-direction:column;/);
-  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:static;/);
-  assert.doesNotMatch(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:fixed;/);
-  assert.match(styles, /content: "Ver 1\.0\.46";/);
+  assert.match(styles, /\.md-arena-scroll \{ flex:1 1 auto;/);
+  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:static; flex:0 0 auto;/);
+  assert.match(styles, /margin:0 max\(var\(--md-page-pad\),var\(--safe-right\)\) max\(var\(--md-page-pad\),var\(--safe-bottom\)/);
+  assert.match(styles, /\.md-inv2-overlay > \.md-hub-dock \{ flex:0 0 auto;/);
+  assert.match(styles, /content: "Ver 1\.0\.47";/);
+});
+
+test("Arena server setup rejects duplicate skill slots and Dungeon reward persists level progression", () => {
+  const worker = fs.readFileSync(path.join(root, "workers/thornie-dungeons-api.js"), "utf8");
+  assert.match(worker, /const seenSkills = new Set\(\);/);
+  assert.match(worker, /if \(typeof key !== "string" \|\| !learned\.has\(key\) \|\| seenSkills\.has\(key\)\) return null;/);
+  assert.match(worker, /function dungeonV2CharacterXpToNext\(level\)/);
+  assert.match(worker, /while \(nextLevel < DUNGEON_CHARACTER_MAX_LEVEL && nextXp >= dungeonV2CharacterXpToNext\(nextLevel\)/);
+  assert.match(worker, /level = \?, xp = \?, stat_points = \?/);
 });
