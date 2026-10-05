@@ -1174,7 +1174,8 @@ function ThornieDungeons() {
           const currentPending = pendingPotionRef.current;
           if (!currentPending || currentPending.requestId !== pendingPotion.requestId) return;
           pendingPotionRef.current = null;
-          if (result?.ok) {
+          potionRequestIdsRef.current.delete(`${pendingPotion.battleId}:${pendingPotion.preState.safeActionSeq}:${pendingPotion.potionId || ""}`);
+          if (result?.ok && activeCharacterIdRef.current === save.characterId) {
             hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
             driveCoreBattle(next);
             return;
@@ -1218,6 +1219,7 @@ function ThornieDungeons() {
       battleId: state.battleId,
       nextActionSeq: state.safeActionSeq + 1,
       requestId,
+      potionId,
       preState: state,
       promise
     };
