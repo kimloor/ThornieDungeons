@@ -107,7 +107,7 @@ test('W9.8/W9.9 uses deterministic frame assets, rank history and V2 routes', ()
 function loadPreloadGate() {
   const start = arenaUi.indexOf('function createArenaV2PreloadGate');
   const end = arenaUi.indexOf('\n\n// W9.8/W9.9 authoritative Arena V2 surface', start);
-  const sandbox = { Promise, setTimeout, clearTimeout };
+  const sandbox = { Promise, setTimeout, clearTimeout, React: { createElement: () => null, Component: class {} } };
   vm.createContext(sandbox);
   vm.runInContext(`${arenaUi.slice(start, end)}\nglobalThis.createArenaV2PreloadGate = createArenaV2PreloadGate;`, sandbox);
   return sandbox.createArenaV2PreloadGate;
@@ -165,7 +165,7 @@ function loadPreparedPresentationHelpers() {
   const start = fs.readFileSync(path.join(ROOT, 'src/phaser/presentation/EventBridge.js'), 'utf8').indexOf('function arenaPreparedEquipmentMap');
   const sourceFile = fs.readFileSync(path.join(ROOT, 'src/phaser/presentation/EventBridge.js'), 'utf8');
   const end = sourceFile.indexOf('\nfunction arenaPresentationUnit', start);
-  const sandbox = {};
+  const sandbox = { React: { createElement: () => null, Component: class {} } };
   vm.createContext(sandbox);
   vm.runInContext(`${sourceFile.slice(start, end)}
 globalThis.__prepared = { arenaPreparedEquipmentMap, arenaPreparedPresentationContext };`, sandbox);
@@ -259,8 +259,10 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
 
 test('Arena HIGH blocker recovery is scoped, diagnostic-rich and preserves resume', () => {
   const head = fs.readFileSync(path.join(ROOT, 'head.html'), 'utf8');
-  assert.match(head, /window\.__thornieArenaRuntimeError/);
-  assert.match(head, /window\.__thornieArenaUnhandledRejection/);
+  assert.doesNotMatch(head, /window\.__thornieArenaRuntimeError/);
+  assert.doesNotMatch(head, /window\.__thornieArenaUnhandledRejection/);
+  assert.match(head, /window\.__thornieCaptureRuntimeError/);
+  assert.match(head, /window\.__thornieReportRuntimeError/);
   assert.match(arenaUi, /ArenaV2ErrorBoundary[\s\S]*React\.Component/);
   assert.match(arenaUi, /function arenaFatalDiagnostic\(/);
   assert.match(arenaUi, /matchId: String\(context\.matchId/);
@@ -341,7 +343,7 @@ test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Resu
   assert.match(styles, /border-image-slice:16 fill/);
   assert.match(styles, /\.md-arena-progress-fill \{[^}]*width:0;[^}]*background-color:#2f8dff/);
   assert.doesNotMatch(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
-  assert.match(styles, /content: "Ver 1\.0\.43"/);
+  assert.match(styles, /content: "Ver 1.0.45"/);
   const battleStart = arenaUi.indexOf('    match && /*#__PURE__*/React.createElement(React.Fragment');
   const dockStart = arenaUi.indexOf('    !match && /*#__PURE__*/React.createElement(GameDock', battleStart);
   const battleSurface = arenaUi.slice(battleStart, dockStart);
@@ -366,7 +368,7 @@ test('Arena Battle + Result Graphics R1 binds approved art without changing auth
   assert.match(arenaUi, /arenaResultGraphicKey\(resultView\.outcome\)/);
   assert.match(styles, /border-image-source:var\(--arena-surrender-button\)/);
   assert.match(styles, /\.md-arena-result-emblem/);
-  assert.match(styles, /content: "Ver 1\.0\.43"/);
+  assert.match(styles, /content: "Ver 1.0.45"/);
 });
 
 // W9 browser QA Batch 5 low/medium UI shell fixes only; final parity retrigger after generated frontend sync.
