@@ -117,6 +117,10 @@ function ThornieDungeons() {
   const confirmedBattleCheckpointRef = useRef({ battleId: null, safeActionSeq: -1 });
   const finishingBattleIdRef = useRef(null);
   const potionRequestIdsRef = useRef(new Map());
+  // Potion consumption is server-authoritative, but the battle Action itself can resolve
+  // immediately. While the authenticated consume request is pending, pause the next queue
+  // step; a rejected consume rolls the exact Action back to its pre-potion checkpoint.
+  const pendingPotionRef = useRef(null);
   const [battleFinishing, setBattleFinishing] = useState(false);
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
@@ -1162,28 +1166,64 @@ function ThornieDungeons() {
       setBattleVfx([]);
       setHeroAnim(""); setPetAnim("");
       setEnemyAnims(current => Object.fromEntries(Object.keys(current).map(id => [id, next.units[id]?.dead ? "death" : ""])));
+      const pendingPotion = pendingPotionRef.current;
+      if (heroCommand?.type === "potion" && pendingPotion
+          && pendingPotion.battleId === next.battleId
+          && pendingPotion.nextActionSeq === next.safeActionSeq) {
+        pendingPotion.promise.then(result => {
+          const currentPending = pendingPotionRef.current;
+          if (!currentPending || currentPending.requestId !== pendingPotion.requestId) return;
+          pendingPotionRef.current = null;
+          if (result?.ok) {
+            hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
+            driveCoreBattle(next);
+            return;
+          }
+          // Server rejected the inventory mutation, so the local Potion Action must not survive.
+          // Restore the exact pre-action state before allowing another Hero Action.
+          applyCoreBattleState(pendingPotion.preState, false);
+          setBattleVfx([]);
+          setHeroAnim(""); setPetAnim("");
+          setBusy(false);
+          setLog(result?.error === "potion_not_owned"
+            ? "Potion no longer available."
+            : "Potion sync failed — the Potion Action was cancelled.");
+        }).catch(() => {
+          const currentPending = pendingPotionRef.current;
+          if (!currentPending || currentPending.requestId !== pendingPotion.requestId) return;
+          pendingPotionRef.current = null;
+          applyCoreBattleState(pendingPotion.preState, false);
+          setBattleVfx([]);
+          setHeroAnim(""); setPetAnim("");
+          setBusy(false);
+          setLog("Potion sync failed — the Potion Action was cancelled.");
+        });
+        return;
+      }
       driveCoreBattle(next);
     }, delay);
   }
-  async function consumeBattlePotion(state, potionId) {
+  function consumeBattlePotion(state, potionId) {
     const def = getPotionDef(potionId);
-    if (!def || !state?.battleId || busy) return;
-    const operationKey = `${state.battleId}:${state.safeActionSeq}:${potionId}`;
+    if (!def || !state?.battleId || busy || pendingPotionRef.current) return;
+    const operationKey = \`\${state.battleId}:\${state.safeActionSeq}:\${potionId}\`;
     const requestId = potionRequestIdsRef.current.get(operationKey)
-      || (globalThis.crypto?.randomUUID?.() || `potion-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      || (globalThis.crypto?.randomUUID?.() || \`potion-\${Date.now()}-\${Math.random().toString(36).slice(2)}\`);
     potionRequestIdsRef.current.set(operationKey, requestId);
-    setBusy(true);
-    const result = await cloudConsumePotion(cred.url, save.characterId, potionId, requestId);
-    if (!result?.ok || activeCharacterIdRef.current !== save.characterId) {
-      if (result?.error && !["network_error", "server_error", "timeout"].includes(result.error)) potionRequestIdsRef.current.delete(operationKey);
-      setBusy(false);
-      return;
-    }
-    potionRequestIdsRef.current.delete(operationKey);
-    hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     const heroUnit = state.units[state.heroId];
     const heal = def.kind === "hp" ? heroUnit.maxHp * def.healPct : 0;
     const restoreSp = def.kind !== "hp" ? heroUnit.maxSp * def.healPct : 0;
+    const promise = cloudConsumePotion(cred.url, save.characterId, potionId, requestId);
+    pendingPotionRef.current = {
+      battleId: state.battleId,
+      nextActionSeq: state.safeActionSeq + 1,
+      requestId,
+      preState: state,
+      promise
+    };
+    setBusy(true);
+    // Resolve the full Potion Action immediately; only the following queue step waits
+    // for the authoritative inventory consume to settle.
     driveCoreBattle(state, { type: "potion", count: 1, heal, restoreSp });
   }
   function playerTurn(action, value) {
@@ -2315,6 +2355,28 @@ function ThornieDungeons() {
       next[index] = entry;
       if (save && save.characterId) saveQuickSlotsLocal(cred.id, save.characterId, next);
       if (save && save.characterId) pushQuickSlots(next);
+      // Quick-slot edits made during Battle must update the live Battle Core Hero
+      // immediately; the next Hero turn should see the new Active Skill without
+      // requiring a floor transition.
+      const battle = battleStateRef.current;
+      if (battle && !battle.result && battle.heroId && save?.characterId) {
+        const learned = heroActiveSkillList(save.character.skillLevels).map(skill => skill.key);
+        const activeSkills = next
+          .filter(slot => slot?.kind === "skill" && learned.includes(slot.key))
+          .map(slot => slot.key);
+        const hero = battle.units[battle.heroId];
+        if (hero) {
+          const liveBattle = {
+            ...battle,
+            units: {
+              ...battle.units,
+              [battle.heroId]: { ...hero, activeSkills }
+            }
+          };
+          applyCoreBattleState(liveBattle, false);
+          pushBattleCheckpoint(liveBattle);
+        }
+      }
       return next;
     });
   }
