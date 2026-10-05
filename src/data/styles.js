@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.46";
+  content: "Ver 1.0.47";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2476,10 +2476,11 @@ body::after {
 .md-arena-brand-emblem { grid-column:2; width:42px; height:42px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.42)); }
 .md-arena-page-header h1 { grid-column:3; justify-self:start; margin:0; padding:3px 0 3px 2px; }
 /* Arena uses a real flow footer so the dock reserves layout space instead of covering the scroll surface. */
+/* Arena follows Inventory V2's flow-footer shell: scrollable content flexes, GameDock reserves its own space. */
 .md-arena-v2 { display:flex; flex-direction:column; flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; padding-bottom:max(8px,var(--safe-bottom)); position:relative; }
 .md-arena-global-currency { flex:0 0 auto; }
-.md-arena-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px; padding-bottom:max(12px,var(--safe-bottom)); }
-.md-arena-v2 > .md-hub-dock { position:static; left:auto; right:auto; bottom:auto; width:auto; max-width:none; transform:none; z-index:20; flex:0 0 auto; margin:0 max(var(--md-page-pad),var(--safe-right)) 0 max(var(--md-page-pad),var(--safe-left)); }
+.md-arena-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px; padding:0 max(var(--md-page-pad),var(--safe-right)) 10px max(var(--md-page-pad),var(--safe-left)); }
+.md-arena-v2 > .md-hub-dock { position:static; flex:0 0 auto; min-height:var(--md-dock-height); width:auto; max-width:none; margin:0 max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); z-index:20; transform:none; }
 .md-arena-v2 > .md-hub-more-panel { position:absolute; left:var(--md-page-pad); right:var(--md-page-pad); bottom:calc(var(--md-dock-height) + var(--safe-bottom) + 14px); width:auto; max-width:none; transform:none; z-index:91; margin:0; }
 .md-arena-hub-panel,.md-arena-hub-row { position:relative; isolation:isolate; border:0 !important; background:transparent !important; box-shadow:none !important; }
 .md-arena-hub-panel::before,.md-arena-hub-row::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:rgba(5,15,36,.9); }
@@ -2519,19 +2520,19 @@ body::after {
 .md-arena-pet-avatar { width:36px; height:36px; flex:0 0 36px; display:grid; place-items:center; border:1px solid rgba(100,196,255,.32); border-radius:50%; background:radial-gradient(circle,rgba(79,168,224,.22),rgba(3,13,34,.9)); font-size:21px; }
 .md-arena-setup-options { position:absolute; z-index:35; top:calc(100% + 4px); left:0; right:0; max-height:min(42dvh,310px); padding:6px; display:grid; gap:5px; overflow-y:auto; border:1px solid rgba(255,209,102,.5); border-radius:11px; background:rgba(5,13,34,.99); box-shadow:0 12px 28px rgba(0,0,0,.58); }
 .md-arena-setup-options button { min-width:0; min-height:48px; padding:5px 8px; display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:7px; border:1px solid rgba(111,177,226,.23); border-radius:9px; background:rgba(255,255,255,.035); color:#eaf4ff; text-align:left; cursor:pointer; }
-.md-arena-setup-options button.selected { border-color:#ffe39a; background:rgba(255,209,102,.11); }
+.md-arena-setup-options button.selected { border-color:#ffe39a; background:rgba(255,209,102,.11); }\n.md-arena-setup-options button:disabled { opacity:.38; cursor:not-allowed; filter:saturate(.65); }
 .md-arena-setup-options button b { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .md-arena-setup-options button small { color:#aebed4; white-space:nowrap; }
-.md-arena-skill-setup-slot { position:relative; min-width:0; min-height:56px; padding-left:47px; display:block; }
+.md-arena-skill-setup-slot { position:relative; min-width:0; min-height:56px; padding:6px 9px 6px 50px; display:flex; align-items:center; gap:8px; border:1px solid rgba(255,209,102,.36); border-radius:11px; background:rgba(3,13,34,.86); color:#eef7ff; text-align:left; cursor:pointer; touch-action:manipulation; font:inherit; }
 .md-arena-skill-setup-slot.empty { border-style:dashed; opacity:.74; }
-.md-arena-skill-setup-slot[open] { z-index:100; opacity:1; }
-.md-arena-skill-setup-slot.empty[open] { opacity:1; }
+.md-arena-skill-setup-slot:hover,.md-arena-skill-setup-slot[aria-expanded="true"] { opacity:1; border-color:rgba(255,209,102,.7); }
+.md-arena-setup-options-portal { position:fixed !important; z-index:2147483647 !important; top:auto; left:auto; right:auto; width:auto; max-width:calc(100vw - 28px); }
 .md-arena-skill-slot-number { position:absolute; left:3px; top:3px; z-index:2; min-width:15px; height:15px; display:grid; place-items:center; border-radius:50%; background:#071126; color:#ffe39a; font-size:8px; font-weight:900; }
 .md-arena-setup-skill-icon { position:absolute; left:7px; top:50%; width:36px; height:36px; transform:translateY(-50%); }
-.md-arena-skill-setup-slot > summary { min-height:54px; padding-left:3px; }
+
 .md-arena-skill-name { min-width:0; flex:1; overflow:hidden; color:#eef7ff; font-size:10px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
-.md-arena-skill-setup-slot > .md-arena-setup-options { left:0; right:auto; width:min(78vw,290px); max-width:calc(100vw - 28px); }
-.md-arena-skill-setup-grid > .md-arena-skill-setup-slot:nth-child(even) > .md-arena-setup-options { left:auto; right:0; }
+
+
 .md-arena-loadout { margin:8px 0 10px; padding:9px; display:grid; grid-template-columns:68px minmax(0,1fr); align-items:center; gap:8px; border:1px solid rgba(100,174,226,.22); border-radius:11px; background:rgba(3,13,34,.68); }
 .md-arena-loadout > strong { color:#aebed4; font-size:9px; }
 .md-arena-loadout-slots { min-width:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }

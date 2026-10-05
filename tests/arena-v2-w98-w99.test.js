@@ -245,9 +245,9 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
   assert.match(arenaUi, /md-tab-row md-arena-tab-row/);
   assert.match(arenaUi, /React\.createElement\(GameDock/);
   assert.match(styles, /\.md-hub-resources\.with-arena \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
-  assert.match(styles, /\.md-arena-v2 \{ flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden/);
-  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:fixed; left:50%; right:auto; bottom:0/);
-  assert.match(styles, /\.md-arena-scroll \{ flex:1; min-height:0; overflow-y:auto/);
+  assert.match(styles, /\.md-arena-v2 \{ display:flex; flex-direction:column; flex:1 1 auto; height:100dvh/);
+  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:static; flex:0 0 auto; min-height:var\(--md-dock-height\)/);
+  assert.match(styles, /\.md-arena-scroll \{ flex:1 1 auto; min-height:0; overflow-y:auto/);
   assert.match(styles, /\.md-arena-tab-row \{ display:grid; grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(styles, /\.md-arena-phaser-stage \{ position:relative;[^}]*min-height:clamp\(300px,48dvh,430px\)/);
   assert.match(appUi, /arena: arenaHud/);
@@ -255,6 +255,19 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
   assert.match(appUi, /phase !== "arena" && .*StatusBar/);
   assert.match(appUi, /cloudGetArenaV2Status\(cred\.url, characterId\)/);
   assert.doesNotMatch(arenaUi, /onHudChange\?\.\(null\)/);
+});
+
+test('Arena setup uses a top-level skill portal, blocks duplicate skills, and keeps XP progression authoritative', () => {
+  const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
+  const worker = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8');
+  assert.match(arenaUi, /function ArenaSkillDropdown/);
+  assert.match(arenaUi, /ReactDOM\.createPortal/);
+  assert.match(arenaUi, /usedByOtherSlots/);
+  assert.match(styles, /\.md-arena-setup-options-portal \{ position:fixed !important; z-index:2147483647 !important;/);
+  assert.match(worker, /const seenSkills = new Set\(\);/);
+  assert.match(worker, /function dungeonV2CharacterXpToNext\(level\)/);
+  assert.match(worker, /while \(nextLevel < DUNGEON_CHARACTER_MAX_LEVEL && nextXp >= dungeonV2CharacterXpToNext\(nextLevel\)/);
+  assert.match(worker, /level = \?, xp = \?, stat_points = \?/);
 });
 
 test('Arena HIGH blocker recovery is scoped, diagnostic-rich and preserves resume', () => {
@@ -343,7 +356,7 @@ test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Resu
   assert.match(styles, /border-image-slice:16 fill/);
   assert.match(styles, /\.md-arena-progress-fill \{[^}]*width:0;[^}]*background-color:#2f8dff/);
   assert.doesNotMatch(styles, /clip-path:inset\(0 calc\(100% - var\(--arena-progress\)\)/);
-  assert.match(styles, /content: "Ver 1.0.45"/);
+  assert.match(styles, /content: "Ver 1.0.47"/);
   const battleStart = arenaUi.indexOf('    match && /*#__PURE__*/React.createElement(React.Fragment');
   const dockStart = arenaUi.indexOf('    !match && /*#__PURE__*/React.createElement(GameDock', battleStart);
   const battleSurface = arenaUi.slice(battleStart, dockStart);
@@ -368,7 +381,7 @@ test('Arena Battle + Result Graphics R1 binds approved art without changing auth
   assert.match(arenaUi, /arenaResultGraphicKey\(resultView\.outcome\)/);
   assert.match(styles, /border-image-source:var\(--arena-surrender-button\)/);
   assert.match(styles, /\.md-arena-result-emblem/);
-  assert.match(styles, /content: "Ver 1.0.45"/);
+  assert.match(styles, /content: "Ver 1.0.47"/);
 });
 
 // W9 browser QA Batch 5 low/medium UI shell fixes only; final parity retrigger after generated frontend sync.

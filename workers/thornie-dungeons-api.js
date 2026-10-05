@@ -1807,6 +1807,31 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
     extra_json: JSON.stringify(extra)
   };
 }
+// Character XP is persisted authoritatively here so reward snapshots cannot roll level back.
+const DUNGEON_CHARACTER_MAX_LEVEL = 99;
+function dungeonV2CharacterXpToNext(level) {
+  return Math.max(1, Math.floor(Number(level) || 1)) * 22 + 18;
+}
+function dungeonV2ApplyCharacterXp(level, xp, statPoints, gained) {
+  let nextLevel = Math.max(1, Math.min(DUNGEON_CHARACTER_MAX_LEVEL, Math.floor(Number(level) || 1)));
+  let nextXp = Math.max(0, Number(xp) || 0) + Math.max(0, Number(gained) || 0);
+  let nextStatPoints = Math.max(0, Number(statPoints) || 0);
+  const levelBefore = nextLevel;
+  while (nextLevel < DUNGEON_CHARACTER_MAX_LEVEL && nextXp >= dungeonV2CharacterXpToNext(nextLevel)) {
+    nextXp -= dungeonV2CharacterXpToNext(nextLevel);
+    nextLevel += 1;
+    nextStatPoints += 5;
+  }
+  if (nextLevel >= DUNGEON_CHARACTER_MAX_LEVEL) nextXp = 0;
+  return {
+    level: nextLevel,
+    xp: Math.max(0, nextXp),
+    statPoints: nextStatPoints,
+    levelBefore,
+    levelAfter: nextLevel,
+    leveledUp: nextLevel > levelBefore,
+  };
+}
 function dungeonV2PetXpToNext(level) {
   const lv = Math.max(1, Math.min(49, Math.floor(Number(level) || 1)));
   return Math.round(34 + 6 * lv + 0.32 * lv * lv);
@@ -1848,7 +1873,21 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   envelope.firstClearAccessoryClaims = nextClaims;
   envelope.battleRewardReceipts = battleReceipts;
   envelope.rewardReceipts = battleReceipts;
-  const normalizedReward = { ...serverReward, battleId, starterPetGrant: starterGrant || null, petProgress: petXp.progress };
+  const characterProgress = dungeonV2ApplyCharacterXp(
+    ownedRow.level,
+    ownedRow.xp,
+    ownedRow.stat_points,
+    serverReward.xp
+  );
+  const normalizedReward = {
+    ...serverReward,
+    battleId,
+    starterPetGrant: starterGrant || null,
+    petProgress: petXp.progress,
+    levelBefore: characterProgress.levelBefore,
+    levelAfter: characterProgress.levelAfter,
+    leveledUp: characterProgress.leveledUp,
+  };
   const encoded = JSON.stringify({ ...resultPayload, floor: context.floor, reward: normalizedReward });
   if (encoded.length > 512000) return { error: "battle_result_too_large" };
   const rows = serverReward.items.map((item, index) => dungeonV2ServerRewardItem(item, index, false)).filter(Boolean);
@@ -1869,8 +1908,17 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
     `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
   ).bind(String(battleId), characterId, encoded, now);
   const characterStmt = db.prepare(
-    `UPDATE characters SET gold = gold + ?, xp = xp + ?, unlocked_floor = CASE WHEN ? THEN unlocked_floor + 1 ELSE unlocked_floor END, pets_json = ?, updated_at = ? WHERE character_id = ? AND changes() > 0`
-  ).bind(Number(normalizedReward.gold), Number(normalizedReward.xp), normalizedReward.unlockedNext ? 1 : 0, JSON.stringify(envelope), now, characterId);
+    `UPDATE characters SET gold = gold + ?, level = ?, xp = ?, stat_points = ?, unlocked_floor = CASE WHEN ? THEN unlocked_floor + 1 ELSE unlocked_floor END, pets_json = ?, updated_at = ? WHERE character_id = ? AND changes() > 0`
+  ).bind(
+    Number(normalizedReward.gold),
+    characterProgress.level,
+    characterProgress.xp,
+    characterProgress.statPoints,
+    normalizedReward.unlockedNext ? 1 : 0,
+    JSON.stringify(envelope),
+    now,
+    characterId
+  );
   // Dungeon V2 currently has no approved Diamond reward source. The server plan is
   // deliberately zero and never reads reward.diamonds from the client.
   const playerStmt = db.prepare(`UPDATE players SET diamonds = diamonds + 0 WHERE id = ? AND changes() > 0`).bind(id);
@@ -5066,9 +5114,12 @@ async function sanitizeArenaSetup(db, character, now = Date.now()) {
   const { skillLevels } = parsePetsJson(character);
   const learned = new Set(heroActiveSkillList(skillLevels || {}).map((skill) => skill.key));
   const stored = parseJsonColumn(row.skill_slots_json, [null, null, null, null]);
+  const seenSkills = new Set();
   const skillSlots = Array.from({ length: 4 }, (_, index) => {
     const key = stored[index];
-    return typeof key === "string" && learned.has(key) ? key : null;
+    if (typeof key !== "string" || !learned.has(key) || seenSkills.has(key)) return null;
+    seenSkills.add(key);
+    return key;
   });
   const pet = arenaPetFromCharacter(character, row.pet_inst_id);
   const petInstId = pet ? pet.instId : "";
@@ -5335,7 +5386,12 @@ async function handleSaveArenaV2Setup(db, id, session, characterId, petInstId, s
   if (!Array.isArray(skillSlots) || skillSlots.length !== 4) return json({ error: "invalid_arena_setup" }, 400);
   const { skillLevels } = parsePetsJson(context.character);
   const learned = new Set(heroActiveSkillList(skillLevels || {}).map((skill) => skill.key));
-  const normalizedSkills = skillSlots.map((key) => typeof key === "string" && learned.has(key) ? key : null);
+  const seenSkills = new Set();
+  const normalizedSkills = skillSlots.map((key) => {
+    if (typeof key !== "string" || !learned.has(key) || seenSkills.has(key)) return null;
+    seenSkills.add(key);
+    return key;
+  });
   const pet = arenaPetFromCharacter(context.character, petInstId || "");
   const at = nowIso();
   await db.prepare(`
