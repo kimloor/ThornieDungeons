@@ -306,7 +306,7 @@ const MONSTER_ASSET_ALIASES = {
 function normalizeAssetLookupKey(value) {
   return String(value || "")
     .toLowerCase()
-    .replace(/\s*\((?:elite\s+)?boss\)\s*/g, "")
+    .replace(/\s*\((?:(?:elite\s+)?boss|elite)\)\s*/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 }
