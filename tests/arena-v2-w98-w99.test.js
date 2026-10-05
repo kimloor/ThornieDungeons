@@ -245,9 +245,9 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
   assert.match(arenaUi, /md-tab-row md-arena-tab-row/);
   assert.match(arenaUi, /React\.createElement\(GameDock/);
   assert.match(styles, /\.md-hub-resources\.with-arena \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
-  assert.match(styles, /\.md-arena-v2 \{ flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden/);
-  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:fixed; left:50%; right:auto; bottom:0/);
-  assert.match(styles, /\.md-arena-scroll \{ flex:1; min-height:0; overflow-y:auto/);
+  assert.match(styles, /\.md-arena-v2 \{ display:flex; flex-direction:column; flex:1 1 auto; height:100dvh/);
+  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:static; flex:0 0 auto; min-height:var\(--md-dock-height\)/);
+  assert.match(styles, /\.md-arena-scroll \{ flex:1 1 auto; min-height:0; overflow-y:auto/);
   assert.match(styles, /\.md-arena-tab-row \{ display:grid; grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(styles, /\.md-arena-phaser-stage \{ position:relative;[^}]*min-height:clamp\(300px,48dvh,430px\)/);
   assert.match(appUi, /arena: arenaHud/);
