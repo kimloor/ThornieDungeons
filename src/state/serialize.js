@@ -49,59 +49,71 @@ function normalizeEquipmentNameForLoad(type, name, gearTier) {
 // identity, quantities, stats and ownership; the authenticated character scope comes separately.
 function itemsToServerList(inventory, equipped, overflow = []) {
   const list = [];
-  const pack = (it, equippedFlag) => ({
-    itemId: it.id,
-    slotType: it.type,
-    equipped: equippedFlag,
-    rarity: it.rarity,
-    name: it.name,
-    atk: it.atk,
-    def: it.def,
-    hp: it.hp,
-    mp: it.mp,
-    itemLevel: it.level || it.itemLevel || 0,
-    enhanceLevel: it.enhanceLevel || 0,
-    // dodgeChance/critChance/critDamage (accessory base rolls) and junk/potion stack data
-    // (junkId/potionId/quantity/icon) don't have their own server columns, so they ride along
-    // inside the extra JSON blob instead (this part is unaffected by the schema-v2 change — the
-    // items table's extra_json column was always real, unlike progress.materials_json).
-    extra: {
-      empowerSlots: it.empowerSlots || [],
-      dodgeChance: it.dodgeChance || undefined,
-      critChance: it.critChance || undefined,
-      critDamage: it.critDamage || undefined,
-      junkId: it.junkId || undefined,
-      potionId: it.potionId || undefined,
-      quantity: it.quantity || undefined,
-      icon: it.icon || undefined,
-      setId: it.setId || undefined,
-      star: it.star || undefined,
-      craftRecipeId: it.craftRecipeId || undefined,
-      favorite: it.favorite === true,
-      overflow: it.overflow === true,
-      gearTier: it.gearTier || undefined,
-      rewardVersion: it.rewardVersion || undefined,
-      itemModelVersion: it.itemModelVersion || undefined,
-      sourceType: it.sourceType || undefined,
-      sourceFloor: it.sourceFloor || undefined,
-      specialSource: it.specialSource || undefined,
-      sourceIdentity: it.sourceIdentity || undefined,
-      empowerSlotCapacity: it.empowerSlotCapacity || undefined,
-      utilityStat: it.utilityStat || undefined,
-      wingFamily: it.wingFamily || undefined,
-      blacksmithVersion: it.blacksmithVersion || undefined,
-      blacksmithReceipts: Array.isArray(it.blacksmithReceipts) ? it.blacksmithReceipts.slice(-32) : undefined,
-      blacksmithLastResult: it.blacksmithLastResult || undefined,
-      bossWeaponId: it.bossWeaponId || undefined,
-      signatureId: it.signatureId || undefined,
-      sourceBossId: it.sourceBossId || undefined
-    }
-  });
+  const seenItemIds = new Set();
+  const pack = (it, equippedFlag) => {
+    // Only send rows hydrated from the server. Stack normalization can create client-side
+    // runtime ids, but syncItems is presentation-only and cannot create owned rows.
+    const itemId = String(it?.serverItemId || "");
+    if (!itemId || seenItemIds.has(itemId)) return null;
+    seenItemIds.add(itemId);
+    return {
+      itemId,
+      slotType: it.type,
+      equipped: equippedFlag,
+      rarity: it.rarity,
+      name: it.name,
+      atk: it.atk,
+      def: it.def,
+      hp: it.hp,
+      mp: it.mp,
+      itemLevel: it.level || it.itemLevel || 0,
+      enhanceLevel: it.enhanceLevel || 0,
+      // dodgeChance/critChance/critDamage (accessory base rolls) and junk/potion stack data
+      // (junkId/potionId/quantity/icon) don't have their own server columns, so they ride along
+      // inside the extra JSON blob instead (this part is unaffected by the schema-v2 change — the
+      // items table's extra_json column was always real, unlike progress.materials_json).
+      extra: {
+        empowerSlots: it.empowerSlots || [],
+        dodgeChance: it.dodgeChance || undefined,
+        critChance: it.critChance || undefined,
+        critDamage: it.critDamage || undefined,
+        junkId: it.junkId || undefined,
+        potionId: it.potionId || undefined,
+        quantity: it.quantity || undefined,
+        icon: it.icon || undefined,
+        setId: it.setId || undefined,
+        star: it.star || undefined,
+        craftRecipeId: it.craftRecipeId || undefined,
+        favorite: it.favorite === true,
+        overflow: it.overflow === true,
+        gearTier: it.gearTier || undefined,
+        rewardVersion: it.rewardVersion || undefined,
+        itemModelVersion: it.itemModelVersion || undefined,
+        sourceType: it.sourceType || undefined,
+        sourceFloor: it.sourceFloor || undefined,
+        specialSource: it.specialSource || undefined,
+        sourceIdentity: it.sourceIdentity || undefined,
+        empowerSlotCapacity: it.empowerSlotCapacity || undefined,
+        utilityStat: it.utilityStat || undefined,
+        wingFamily: it.wingFamily || undefined,
+        blacksmithVersion: it.blacksmithVersion || undefined,
+        blacksmithReceipts: Array.isArray(it.blacksmithReceipts) ? it.blacksmithReceipts.slice(-32) : undefined,
+        blacksmithLastResult: it.blacksmithLastResult || undefined,
+        bossWeaponId: it.bossWeaponId || undefined,
+        signatureId: it.signatureId || undefined,
+        sourceBossId: it.sourceBossId || undefined
+      }
+    };
+  };
+  const append = (it, equippedFlag) => {
+    const packed = pack(it, equippedFlag);
+    if (packed) list.push(packed);
+  };
   Object.values(equipped).forEach(it => {
-    if (it) list.push(pack(it, true));
+    if (it) append(it, true);
   });
-  inventory.forEach(it => list.push(pack(it, false)));
-  overflow.forEach(it => list.push(pack({ ...it, overflow: true }, false)));
+  inventory.forEach(it => append(it, false));
+  overflow.forEach(it => append({ ...it, overflow: true }, false));
   return list;
 }
 function itemsFromServerList(rows) {
@@ -123,6 +135,7 @@ function itemsFromServerList(rows) {
       if (r.slot_type === "junk") {
         (extra.overflow ? overflow : inventory).push({
           id: r.item_id,
+          serverItemId: String(r.item_id || ""),
           type: "junk",
           junkId: extra.junkId,
           name: r.name,
@@ -140,6 +153,7 @@ function itemsFromServerList(rows) {
         const def = getPotionDef(extra.potionId);
         (extra.overflow ? overflow : inventory).push({
           id: r.item_id,
+          serverItemId: String(r.item_id || ""),
           type: "potion",
           potionId: extra.potionId,
           name: r.name || (def && def.name) || "Potion",
@@ -154,6 +168,7 @@ function itemsFromServerList(rows) {
       if (normalizedEquipment.migrated) legacyEquipmentMigrated = true;
       const it = {
         id: r.item_id,
+          serverItemId: String(r.item_id || ""),
         type: r.slot_type,
         rarity: r.rarity,
         name: normalizedEquipment.name,
