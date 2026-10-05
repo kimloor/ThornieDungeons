@@ -3302,6 +3302,8 @@ function arenaTurnOrderIcon(unit, preparedSnapshot) {
 
 // W9.8/W9.9 authoritative Arena V2 surface. The server owns match state; this
 // component only renders snapshots and sends idempotent action keys.
+// Arena setup selectors render their option layer through document.body so parent clipping
+// and transformed Arena containers cannot constrain the mobile dropdown viewport.
 function ArenaSetupDropdown({ className = "", summary, options, optionsLabel, align = "left" }) {
   const triggerRef = React.useRef(null);
   const [open, setOpen] = React.useState(false);
