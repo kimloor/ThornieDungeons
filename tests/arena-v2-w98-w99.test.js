@@ -257,6 +257,18 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
   assert.doesNotMatch(arenaUi, /onHudChange\?\.\(null\)/);
 });
 
+test('Arena setup uses a top-level skill portal, blocks duplicate skills, and keeps XP progression authoritative', () => {
+  const worker = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8');
+  assert.match(arenaUi, /function ArenaSkillDropdown/);
+  assert.match(arenaUi, /ReactDOM\.createPortal/);
+  assert.match(arenaUi, /usedByOtherSlots/);
+  assert.match(styles, /\.md-arena-setup-options-portal \{ position:fixed !important; z-index:2147483647 !important;/);
+  assert.match(worker, /const seenSkills = new Set\(\);/);
+  assert.match(worker, /function dungeonV2CharacterXpToNext\(level\)/);
+  assert.match(worker, /while \(nextLevel < DUNGEON_CHARACTER_MAX_LEVEL && nextXp >= dungeonV2CharacterXpToNext\(nextLevel\)/);
+  assert.match(worker, /level = \?, xp = \?, stat_points = \?/);
+});
+
 test('Arena HIGH blocker recovery is scoped, diagnostic-rich and preserves resume', () => {
   const head = fs.readFileSync(path.join(ROOT, 'head.html'), 'utf8');
   assert.doesNotMatch(head, /window\.__thornieArenaRuntimeError/);
