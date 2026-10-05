@@ -19833,6 +19833,8 @@ function arenaTurnOrderIcon(unit, preparedSnapshot) {
 
 // W9.8/W9.9 authoritative Arena V2 surface. The server owns match state; this
 // component only renders snapshots and sends idempotent action keys.
+// Arena setup selectors render their option layer through document.body so parent clipping
+// and transformed Arena containers cannot constrain the mobile dropdown viewport.
 function ArenaSetupDropdown({ className = "", summary, options, optionsLabel, align = "left" }) {
   const triggerRef = React.useRef(null);
   const [open, setOpen] = React.useState(false);
@@ -20397,18 +20399,21 @@ function ArenaV2Screen({
       /*#__PURE__*/React.createElement("div", { className: "md-arena-skill-setup-grid" }, [0, 1, 2, 3].map(i => {
         const selectedSkillId = setup.skillSlots?.[i] || "";
         const selectedSkill = (status.availableSkills || []).find(skill => skill.key === selectedSkillId);
-        return /*#__PURE__*/React.createElement("details", { className: `md-arena-skill-setup-slot md-arena-setup-picker${selectedSkillId ? " filled" : " empty"}`, key: i, onToggle: event => { if (!event.currentTarget.open) return; const rect = event.currentTarget.getBoundingClientRect(); const width = Math.min(290, Math.max(0, window.innerWidth - 28)); const left = Math.max(14, Math.min(i % 2 === 0 ? rect.left : rect.right - width, window.innerWidth - width - 14)); event.currentTarget.style.setProperty("--arena-dd-top", `${Math.round(rect.bottom + 4)}px`); event.currentTarget.style.setProperty("--arena-dd-left", `${Math.round(left)}px`); } },
-          /*#__PURE__*/React.createElement("summary", { "aria-label": `Arena skill slot ${i + 1}` },
+        return /*#__PURE__*/React.createElement(ArenaSetupDropdown, {
+          className: `md-arena-skill-setup-slot${selectedSkillId ? " filled" : " empty"}`,
+          align: i % 2 === 0 ? "left" : "right",
+          optionsLabel: `Arena skill slot ${i + 1}`,
+          summary: /*#__PURE__*/React.createElement(React.Fragment, null,
             /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-slot-number" }, i + 1),
             /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkillId, className: "md-hero-skill-icon md-arena-setup-skill-icon", alt: selectedSkill?.name || (selectedSkillId ? heroSkillDisplayName(selectedSkillId) : "Empty skill slot") }),
             /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-name" }, selectedSkill?.name || `Skill ${i + 1} · Empty`),
             /*#__PURE__*/React.createElement("i", null, "CHANGE")),
-          /*#__PURE__*/React.createElement("div", { className: "md-arena-setup-options", role: "listbox", "aria-label": `Arena skill slot ${i + 1}` },
+          options: /*#__PURE__*/React.createElement(React.Fragment, null,
             /*#__PURE__*/React.createElement("button", { type: "button", className: !selectedSkillId ? "selected" : "", onClick: () => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = null; setSetup({ ...setup, skillSlots: slots }); }, "aria-selected": !selectedSkillId }, /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"), /*#__PURE__*/React.createElement("b", null, "Empty")),
             (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("button", { type: "button", key: s.key, className: selectedSkillId === s.key ? "selected" : "", onClick: () => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = s.key; setSetup({ ...setup, skillSlots: slots }); }, "aria-selected": selectedSkillId === s.key },
               /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: s.key, className: "md-hero-skill-icon", alt: "" }),
               /*#__PURE__*/React.createElement("b", null, s.name || heroSkillDisplayName(s.key)))))
-        );
+        });
       })),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-loadout", "aria-label": "Arena equipment loadout" },
         /*#__PURE__*/React.createElement("strong", null, "EQUIPMENT"),
