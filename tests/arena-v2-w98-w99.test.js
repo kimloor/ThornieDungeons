@@ -200,7 +200,7 @@ test('prepared Arena snapshot produces real Hero equipment and Pet presentation 
 function loadArenaCardHelpers() {
   const start = arenaUi.indexOf('function arenaPlayerCardEquipmentLabels');
   const end = arenaUi.indexOf('\n// W9.8/W9.9 authoritative Arena V2 surface', start);
-  const sandbox = {};
+  const sandbox = { React: { createElement: () => null, Component: class {} } };
   vm.createContext(sandbox);
   vm.runInContext(`${arenaUi.slice(start, end)}
 globalThis.__card = { arenaPlayerCardEquipmentLabels, arenaPlayerCardPetLabel };`, sandbox);
