@@ -322,7 +322,11 @@ function getMonsterSpriteConfig(enemy) {
   const idKey = normalizeAssetLookupKey(enemy.id);
   const nameKey = normalizeAssetLookupKey(enemy.name);
 
+  const defIdKey = normalizeAssetLookupKey(enemy.defId || enemy.monsterDefId || enemy.dungeonV2ProfileId);
+
   const candidates = [
+    MONSTER_ASSET_ALIASES[defIdKey],
+    defIdKey,
     MONSTER_ASSET_ALIASES[idKey],
     idKey,
     MONSTER_ASSET_ALIASES[nameKey],
