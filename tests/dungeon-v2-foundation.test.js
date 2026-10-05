@@ -28,6 +28,16 @@ test("Dungeon preview and battle entry share the authoritative server encounter 
   assert.match(appSource, /started\?\.error === "dungeon_preview_stale"/);
 });
 
+test("Dungeon preview remains readable while a real battle checkpoint is active", () => {
+  const start = workerSource.indexOf("async function handleGetDungeonEncounterPreview");
+  const end = workerSource.indexOf("async function handleStartDungeonBattle", start);
+  assert.ok(start >= 0 && end > start);
+  const previewHandler = workerSource.slice(start, end);
+  assert.doesNotMatch(previewHandler, /active_battle_conflict/);
+  assert.match(previewHandler, /dungeonV2ServerContextFromStoredCheckpoint/);
+  assert.match(previewHandler, /dungeonV2ServerEncounterContext\(characterId, floor, ordinal\)/);
+});
+
 test("Dungeon preview never falls back to the legacy random encounter path", () => {
   const mapStart = componentsSource.indexOf("function MapScreen");
   const mapEnd = componentsSource.indexOf("function ShopOverlay", mapStart);

@@ -1508,9 +1508,10 @@ async function handleGetDungeonEncounterPreview(db, id, session, characterId, re
     if (payload?.authorizationOnly && context && context.floor === floor) {
       return json({ ok: true, context });
     }
-    if (!payload?.authorizationOnly) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+    // Preview is read-only: an in-progress battle must not make the floor preview
+    // unreadable. The actual start endpoint remains responsible for rejecting a
+    // second live battle with the existing active-battle guard.
   }
-
   const completed = await db.prepare(
     `SELECT COUNT(*) AS c FROM battle_completions WHERE character_id = ?`
   ).bind(characterId).first();
@@ -6014,6 +6015,7 @@ function arenaReceiptExistsSql(receiptKey, operationToken) {
 
 async function arenaSettleV2Match(db, match, state, requestedResolution = "normal", options = {}) {
   const matchId = String(match?.match_id || "");
+  const settlementNowMs = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
   if (!matchId) throw new Error("arena_match_id_missing");
   const settlementReceiptKey = `arena:settlement:${matchId}`;
   const existingReceipt = await db.prepare(`SELECT payload_json FROM arena_idempotency_receipts WHERE receipt_key = ?`).bind(settlementReceiptKey).first();
@@ -6030,7 +6032,7 @@ async function arenaSettleV2Match(db, match, state, requestedResolution = "norma
     if (!freshMatch) throw new Error("arena_match_not_found");
     const storedResult = parseJsonColumn(freshMatch.result_json, null);
     if (storedResult?.settlementVersion === 1) return { match: freshMatch, result: storedResult, replayed: true };
-    const plan = await arenaBuildSettlementPlan(db, freshMatch, state, requestedResolution, Date.now());
+    const plan = await arenaBuildSettlementPlan(db, freshMatch, state, requestedResolution, settlementNowMs);
     const operationToken = randomToken(16);
     const receiptPayload = JSON.stringify({ operationToken, result: plan.result });
     const attackerGuard = arenaPlayerGuard(plan.attacker);
@@ -6203,7 +6205,27 @@ async function arenaSettleStoredTerminalMatch(db, match, state = null, nowMs = D
   const season = await db.prepare(`SELECT ends_at FROM arena_seasons WHERE season_id = ?`).bind(match.season_id).first();
   const seasonEndMs = Date.parse(season?.ends_at || "");
   const seasonEnded = Number.isFinite(seasonEndMs) && seasonEndMs <= nowMs;
-  const completedMs = Date.parse(match.completed_at || "");
+  let completedMs = Date.parse(match.completed_at || "");
+
+  // A terminal combat commit can be persisted in the action ledger before the
+  // final match row update. If a crash leaves completed_at blank, recover the
+  // action's server timestamp so season cutoff handling uses the real completion time.
+  if (terminalState.result && !Number.isFinite(completedMs)) {
+    const terminalAction = await db.prepare(
+      `SELECT created_at, response_json
+       FROM arena_match_actions
+       WHERE match_id = ?
+       ORDER BY action_seq DESC
+       LIMIT 1`
+    ).bind(match.match_id).first();
+    const actionResponse = parseJsonColumn(terminalAction?.response_json, null);
+    const actionResult = actionResponse?.result;
+    const matchesTerminal = actionResult
+      && actionResult.result === terminalState.result
+      && String(actionResult.winnerSide || "") === String(terminalState.winnerSide || "");
+    if (matchesTerminal) completedMs = Date.parse(terminalAction.created_at || "");
+  }
+
   if (!terminalState.result && !seasonEnded) return null;
   let resolution;
   if (terminalState.result && Number.isFinite(completedMs) && Number.isFinite(seasonEndMs)) {
@@ -6211,8 +6233,9 @@ async function arenaSettleStoredTerminalMatch(db, match, state = null, nowMs = D
   } else {
     resolution = seasonEnded ? "cutoff" : arenaResolutionForState(terminalState);
   }
-  return arenaSettleV2Match(db, match, terminalState, resolution);
+  return arenaSettleV2Match(db, match, terminalState, resolution, { nowMs });
 }
+
 
 async function arenaSettleExpiredActiveMatches(db, seasonId, nowMs = Date.now()) {
   const rows = await db.prepare(`SELECT * FROM arena_matches WHERE season_id = ? AND status IN ('active', 'done') ORDER BY created_at ASC, match_id ASC`).bind(seasonId).all();

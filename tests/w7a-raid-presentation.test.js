@@ -11,6 +11,16 @@ const host = fs.readFileSync(path.join(root, "src/phaser/runtime/BattlefieldHost
 const ui = fs.readFileSync(path.join(root, "src/phaser/ui/PhaserBattlefield.js"), "utf8");
 const components = fs.readFileSync(path.join(root, "src/ui/components.js"), "utf8");
 
+test("Raid Boss card uses the approved frame sprite only, without Phaser stage or standalone HP bar", () => {
+  const start = components.indexOf("function RaidBossCard");
+  const end = components.indexOf("function RaidAttackActions", start);
+  assert.ok(start >= 0 && end > start);
+  const card = components.slice(start, end);
+  assert.doesNotMatch(card, /PhaserRaidBoss/);
+  assert.doesNotMatch(card, /md-bar-track/);
+  assert.match(card, /RaidBossFrameSprite/);
+});
+
 test("W7A Raid presentation reuses shared actor, queue, VFX and resolver infrastructure", () => {
   assert.match(actor, /class RaidBossActor extends MonsterActor/);
   assert.match(scene, /new RaidBossActor/);
