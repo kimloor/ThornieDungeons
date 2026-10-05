@@ -163,7 +163,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.43";
+  content: "Ver 1.0.44";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -731,6 +731,13 @@ body::after {
 .md-floor-cp { flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-end; }
 .md-floor-cp span { color:#bfd4ec; font-size:7.5px; font-weight:800; line-height:1.15; white-space:nowrap; }
 .md-floor-cp strong { color:#ffcf65; font-family:'Baloo 2'; font-size:18px; line-height:1.05; }
+.md-floor-preview-loading,
+.md-floor-preview-error {
+  min-height: 72px; display: flex; align-items: center; justify-content: center;
+  padding: 12px; border: 1px dashed rgba(255,209,102,.35); border-radius: 12px;
+  background: rgba(8,11,28,.62); color: var(--ink-soft); text-align: center; font-size: 11px; font-weight: 800;
+}
+.md-floor-preview-error { color: #FF9B9B; border-color: rgba(255,135,135,.45); }
 .md-floor-monster-stage { min-height:116px; padding:10px 6px 4px; display:flex; align-items:flex-end; justify-content:center; gap:2px; overflow:hidden; border-bottom:1px solid rgba(83,161,225,.22); background:radial-gradient(ellipse at 50% 84%,rgba(23,132,218,.25),transparent 55%); }
 .md-floor-monster { min-width:0; flex:0 1 94px; display:flex; flex-direction:column; align-items:center; color:#bfd6ed; font-size:7.5px; font-weight:800; text-align:center; }
 .md-floor-monster-sprite { width:76px; height:76px; object-fit:contain; filter:drop-shadow(0 6px 5px rgba(0,0,0,.75)); }
@@ -1474,6 +1481,7 @@ body::after {
   .md-pet-slot { left:clamp(112px,17%,142px); transform:translate(-50%,-50%) scale(.96); max-width:38%; }
 }
 
+/* Runtime/status + Dungeon preview QA gate: presentation changes remain UI-only; combat authority stays in Battle Core/Worker. */
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
 .md-battle-top {
   position: relative; z-index: 6; display: flex; align-items: center; gap: 10px;
@@ -1720,6 +1728,7 @@ body::after {
 .md-unit-status .ready { color: #8ee0a8; border-color: rgba(142,224,168,.45); }
 .md-unit-status .cooldown { color: var(--ink-soft); }
 .md-unit-status .elite { color: var(--gold); border-color: rgba(255,209,102,.62); background: rgba(55,32,8,.86); }
+.md-unit-status .def-up { color: #9ED8FF; border-color: rgba(158,216,255,.5); background: rgba(10,35,62,.82); }
 .md-unit-status.hero { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); z-index: 5; }
 
 .md-battle-dock {
@@ -14768,7 +14777,10 @@ function ThornieDungeons() {
         if (!cleared?.ok) throw new Error("checkpoint_reset_failed");
         setResumeBattle(null);
       }
-      const started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum);
+      let started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null);
+      if (!started?.ok && started?.error === "dungeon_preview_stale" && started?.context) {
+        started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, started.context);
+      }
       if (!started?.ok || !started?.battleId || !started?.context) throw new Error(started?.error || "dungeon_start_failed");
       battleAuthorization = started;
     }
@@ -16162,6 +16174,7 @@ function ThornieDungeons() {
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     save: save,
+    serverUrl: cred.url,
     arenaHud: arenaHud,
     unlockedFloor: save.unlockedFloor,
     onCharacter: () => {
@@ -16177,10 +16190,10 @@ function ThornieDungeons() {
     // sitting in state (from the last stage you fought, incl. a flee), carry its
     // real current HP/MP into the newly-selected stage instead of full-healing —
     // Stage Select should only ever full-heal when there's truly no run to continue.
-    onSelectFloor: (floorNum, encounter) => enterStage(
+    onSelectFloor: (floorNum, encounter, previewContext) => enterStage(
       floorNum,
       player && player.hp > 0 ? player : null,
-      { encounter }
+      { encounter, previewContext }
     ),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
@@ -20818,6 +20831,7 @@ function FloorMonsterPreview({ monster }) {
 
 function MapScreen({
   save,
+  serverUrl,
   arenaHud,
   unlockedFloor,
   onSelectFloor,
@@ -20849,17 +20863,32 @@ function MapScreen({
   const encounterCache = useRef(new Map());
   const [detail, setDetail] = useState(null);
 
-  const encounterFor = floor => {
-    if (!encounterCache.current.has(floor)) encounterCache.current.set(floor, makeEncounter(floor));
-    return encounterCache.current.get(floor);
-  };
-  const openFloor = floor => {
+  const openFloor = async floor => {
     if (floor > unlockedFloor) return;
-    setDetail({ floor, monsters: encounterFor(floor) });
+    const cached = encounterCache.current.get(floor);
+    if (cached) {
+      setDetail({ floor, monsters: cached.monsters, previewContext: cached.previewContext, loading: false });
+      return;
+    }
+    setDetail({ floor, monsters: [], previewContext: null, loading: true });
+    const preview = await cloudGetDungeonEncounterPreview(serverUrl, save.characterId, floor);
+    if (!preview?.ok || !preview?.context) {
+      setDetail({
+        floor,
+        monsters: [],
+        previewContext: null,
+        loading: false,
+        error: preview?.error || "dungeon_preview_failed"
+      });
+      return;
+    }
+    const monsters = makeEncounter(floor, { serverContext: preview.context });
+    encounterCache.current.set(floor, { monsters, previewContext: preview.context });
+    setDetail({ floor, monsters, previewContext: preview.context, loading: false });
   };
   const enterSelectedFloor = () => {
-    if (!detail || detail.floor > unlockedFloor) return;
-    onSelectFloor(detail.floor, detail.monsters);
+    if (!detail || detail.loading || detail.error || detail.floor > unlockedFloor) return;
+    onSelectFloor(detail.floor, detail.monsters, detail.previewContext);
   };
   return e("main", { className: `md-dungeon-map-page${detail ? " detail-open" : ""}` },
     e(GlobalCurrencyBar, { save, arena: arenaHud, className: "md-dungeon-resources" }),
@@ -20933,17 +20962,21 @@ function MapScreen({
             e("small", null, DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS ? "CHAPTER BOSS" : DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.ELITE ? "ELITE ENCOUNTER" : "DUNGEON FLOOR"),
             e("h2", { id: "md-floor-detail-title" }, "ชั้น ", detail.floor)
           ),
-          e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, formatNumber(recommendedFloorCp(detail.monsters))))
+          e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, detail.loading || detail.error ? "—" : formatNumber(recommendedFloorCp(detail.monsters))))
         ),
-        e("div", { className: "md-floor-monster-stage", "aria-label": "มอนสเตอร์ประจำชั้น" },
-          detail.monsters.map(monster => e("div", { className: "md-floor-monster", key: monster.uid },
-            e(FloorMonsterPreview, { monster }),
-            e("span", null, monster.name.replace(/\s*\((?:Elite\s+)?Boss\)\s*/gi, ""))
-          ))
-        ),
+        detail.loading
+          ? e("div", { className: "md-floor-preview-loading", role: "status" }, "กำลังโหลดข้อมูล encounter จากเซิร์ฟเวอร์…")
+          : detail.error
+            ? e("div", { className: "md-floor-preview-error", role: "alert" }, "โหลดข้อมูลมอนไม่สำเร็จ: ", detail.error)
+            : e("div", { className: "md-floor-monster-stage", "aria-label": "มอนสเตอร์ประจำชั้น" },
+              detail.monsters.map(monster => e("div", { className: "md-floor-monster", key: monster.uid },
+                e(FloorMonsterPreview, { monster }),
+                e("span", null, monster.name.replace(/\s*\((?:Elite\s+)?Boss\)\s*/gi, ""))
+              ))
+            ),
         e("h3", null, "อีเวนต์ชั้นนี้"),
         e("div", { className: "md-floor-events" },
-          floorEventPreview(detail.monsters).map(event => e("div", {
+          (detail.monsters || []).length ? floorEventPreview(detail.monsters).map(event => e("div", {
             key: event.id,
             className: "md-floor-event",
             style: { "--md-event-color": event.color }
@@ -20954,11 +20987,11 @@ function MapScreen({
               e("p", null, event.desc),
               event.effects.length > 0 && e("small", null, event.effects.join(" · "))
             )
-          ))
+          )) : []
         ),
         e("h3", null, "รางวัลที่อาจได้รับ"),
         e("div", { className: "md-floor-rewards" },
-          floorRewardPreview(detail.floor, detail.monsters).map(reward => e("div", { key: reward.hint },
+          floorRewardPreview(detail.floor, detail.monsters || []).map(reward => e("div", { key: reward.hint },
             e("span", null, reward.category ? e(GameIcon, { category: reward.category, iconKey: reward.iconKey, fallback: reward.icon, className: "md-game-icon md-floor-reward-icon", alt: reward.hint }) : reward.icon), e("b", null, reward.label), e("small", null, reward.hint)
           ))
         ),
@@ -21550,23 +21583,24 @@ function EnemySprite({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), /*#__PURE__*/React.createElement("div", {
+  }, enemy.hp, "/", enemy.maxHp)), statusVisible &&/*#__PURE__*/React.createElement("div", {
     className: "md-unit-status",
     "aria-label": "Enemy status effects"
   }, (enemy.isElite || enemy.isEliteBoss) && /*#__PURE__*/React.createElement("span", {
     className: "elite",
-    title: "Elite Boss"
-  }, "👑 ELITE"), enemy.frozenTurns > 0 && /*#__PURE__*/React.createElement("span", {
-    title: `Stun · ${enemy.frozenTurns} turn(s)`
-  }, "💫", enemy.frozenTurns), enemy.poisonTurns > 0 && /*#__PURE__*/React.createElement("span", {
-    title: `Poison · ${enemy.poisonTurns} turn(s)`
-  }, "☠️", enemy.poisonTurns), enemy.battleStatuses?.armor_break && /*#__PURE__*/React.createElement("span", {
-    title: `Armor Break · ${enemy.battleStatuses.armor_break.duration} turn(s)`
-  }, "🛡️↓", enemy.battleStatuses.armor_break.duration), enemy.battleStatuses?.silence && /*#__PURE__*/React.createElement("span", {
-    title: `Silence · ${enemy.battleStatuses.silence.duration} turn(s)`
-  }, "🤫", enemy.battleStatuses.silence.duration), enemy.battleStatuses?.def_up && /*#__PURE__*/React.createElement("span", {
-    title: `DEF Up · ${enemy.battleStatuses.def_up.duration} turn(s)`
-  }, "🛡️", enemy.battleStatuses.def_up.duration)), selected && !dead && /*#__PURE__*/React.createElement("span", {
+    title: "Elite"
+  }, "👑 ELITE"), statusSource.stun && /*#__PURE__*/React.createElement("span", {
+    title: `Stun · ${statusSource.stun.duration} turn(s)`
+  }, "💫", statusSource.stun.duration), statusSource.poison && /*#__PURE__*/React.createElement("span", {
+    title: `Poison · ${statusSource.poison.duration} turn(s)`
+  }, "☠️", statusSource.poison.duration), statusSource.armor_break && /*#__PURE__*/React.createElement("span", {
+    title: `Armor Break · ${statusSource.armor_break.duration} turn(s)`
+  }, "🛡️↓", statusSource.armor_break.duration), statusSource.silence && /*#__PURE__*/React.createElement("span", {
+    title: `Silence · ${statusSource.silence.duration} turn(s)`
+  }, "🤫", statusSource.silence.duration), statusSource.def_up && /*#__PURE__*/React.createElement("span", {
+    className: "def-up",
+    title: `DEF Up · ${statusSource.def_up.duration} turn(s)`
+  }, "🛡️↑", statusSource.def_up.duration)), selected && !dead && /*#__PURE__*/React.createElement("span", {
     className: "md-target-selected-marker md-battle-art",
     style: battleUiStyle("targetSelectedMarker"),
     "aria-hidden": "true"
