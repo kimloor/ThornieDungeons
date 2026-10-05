@@ -4451,7 +4451,7 @@ function MapScreen({
               e("p", null, event.desc),
               event.effects.length > 0 && e("small", null, event.effects.join(" · "))
             )
-          ))
+          )) : []
         ),
         e("h3", null, "รางวัลที่อาจได้รับ"),
         e("div", { className: "md-floor-rewards" },
