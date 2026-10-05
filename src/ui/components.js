@@ -5047,7 +5047,7 @@ function EnemySprite({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), /*#__PURE__*/React.createElement("div", {
+  }, enemy.hp, "/", enemy.maxHp)), statusVisible &&/*#__PURE__*/React.createElement("div", {
     className: "md-unit-status",
     "aria-label": "Enemy status effects"
   }, (enemy.isElite || enemy.isEliteBoss) && /*#__PURE__*/React.createElement("span", {
