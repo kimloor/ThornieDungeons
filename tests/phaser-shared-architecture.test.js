@@ -940,6 +940,7 @@ test("W7.3 Ver 1.0.14 runtime errors use the game-wide diagnostic boundary", () 
   assert.match(head, /__thornieReportRuntimeError/);
   assert.match(components, /GlobalGameErrorBoundary/);
   assert.match(components, /RuntimeDiagnosticOverlay/);
+  assert.match(components, /Game Runtime Error/);
   assert.match(components, /stack/);
 });
 
