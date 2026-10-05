@@ -58,6 +58,9 @@ test("Arena setup dropdown is viewport anchored and dock uses the Arena bottom a
   assert.match(styles, /\.md-arena-setup-options \{ position:fixed; z-index:10000;/);
   assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:absolute; left:0; right:0; bottom:0;/);
   assert.match(components, /align: i % 2 === 0 \? "left" : "right"/);
+  assert.match(components, /const viewportHeight = Math\.max/);
+  assert.match(components, /spaceBelow >= maxHeight/);
+  assert.match(components, /rect\.top - maxHeight - 4/);
   assert.doesNotMatch(components, /--arena-dd-top|--arena-dd-left/);
 });
 
