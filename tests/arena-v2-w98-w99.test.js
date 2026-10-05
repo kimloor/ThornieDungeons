@@ -258,6 +258,7 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
 });
 
 test('Arena setup uses a top-level skill portal, blocks duplicate skills, and keeps XP progression authoritative', () => {
+  const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
   const worker = fs.readFileSync(path.join(ROOT, 'workers/thornie-dungeons-api.js'), 'utf8');
   assert.match(arenaUi, /function ArenaSkillDropdown/);
   assert.match(arenaUi, /ReactDOM\.createPortal/);
