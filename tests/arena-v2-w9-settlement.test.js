@@ -220,6 +220,7 @@ test('terminal combat commit is recovered into settlement on replay', async () =
   const recovered = await arena.arenaSettleStoredTerminalMatch(db, match, terminalState, Date.parse('2026-09-28T12:00:00.000Z'));
   assert.equal(recovered.result.settlementVersion, 1);
   assert.equal(recovered.result.result, 'win');
+  assert.equal(recovered.result.resolution, 'normal');
   assert.equal(db.raw.prepare("SELECT attack_wins FROM arena_season_players WHERE character_id = 'char-10'").get().attack_wins, 1);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_match_history WHERE match_id = 'm-crash-recovery'").get().c, 1);
   assert.notEqual(db.raw.prepare("SELECT completed_at FROM arena_matches WHERE match_id = 'm-crash-recovery'").get().completed_at, '');

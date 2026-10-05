@@ -931,14 +931,17 @@ test("W7.3 Ver 1.0.14 Phaser CDN enables CORS so runtime stacks are observable",
   assert.ok(runtime.indexOf('script.crossOrigin = "anonymous"') < runtime.indexOf("script.src = THORNIE_PHASER_URL"));
 });
 
-test("W7.3 Ver 1.0.14 runtime errors use a centered scrollable popup with stack details", () => {
+test("W7.3 Ver 1.0.14 runtime errors use the game-wide diagnostic boundary", () => {
   const head = source("head.html");
-  assert.match(head, /#boot-error \{ position:fixed; inset:0; z-index:10000/);
-  assert.match(head, /#boot-error-text \{[^}]*overflow:auto/);
-  assert.match(head, /function runtimeErrorDetail/);
-  assert.match(head, /error && error\.stack/);
-  assert.match(head, /detail\.length > 6000/);
-  assert.match(head, /onclick="hideBootError\(\)"/);
+  const components = source("src/ui/components.js");
+  assert.doesNotMatch(head, /#boot-error/);
+  assert.doesNotMatch(head, /hideBootError/);
+  assert.match(head, /__thornieCaptureRuntimeError/);
+  assert.match(head, /__thornieReportRuntimeError/);
+  assert.match(components, /GlobalGameErrorBoundary/);
+  assert.match(components, /RuntimeDiagnosticOverlay/);
+  assert.match(components, /Game Runtime Error/);
+  assert.match(components, /stack/);
 });
 
 test("W7.3 Ver 1.0.15 Idle Azure sword follows the approved grip-alignment reference", () => {
