@@ -2475,6 +2475,7 @@ body::after {
 .md-arena-page-header > button { grid-column:1; }
 .md-arena-brand-emblem { grid-column:2; width:42px; height:42px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.42)); }
 .md-arena-page-header h1 { grid-column:3; justify-self:start; margin:0; padding:3px 0 3px 2px; }
+/* Arena uses a real flow footer so the dock reserves layout space instead of covering the scroll surface. */
 .md-arena-v2 { display:flex; flex-direction:column; flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; padding-bottom:max(8px,var(--safe-bottom)); position:relative; }
 .md-arena-global-currency { flex:0 0 auto; }
 .md-arena-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px; padding-bottom:max(12px,var(--safe-bottom)); }
