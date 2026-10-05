@@ -4973,11 +4973,21 @@ function getMonsterPresentation(enemy) {
 }
 function EnemySprite({
   enemy,
+  battleUnit = null,
   anim,
   selected,
   onClick,
   combatSpeed = 1
 }) {
+  const statusSource = battleUnit?.statuses || enemy.battleStatuses || {};
+  const statusVisible = Boolean(
+    enemy.isElite || enemy.isEliteBoss ||
+    statusSource.poison ||
+    statusSource.stun ||
+    statusSource.silence ||
+    statusSource.armor_break ||
+    statusSource.def_up
+  );
   const spriteConfig = getMonsterSpriteConfig(enemy);
   const presentation = getMonsterPresentation(enemy);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
@@ -5592,6 +5602,7 @@ function CombatScreen({
     className: `md-monster-slot md-monster-slot-${slotIndex} ${(m.isElite || m.isEliteBoss) ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
+    battleUnit: battleState?.units?.[m.uid],
     anim: enemyAnims[m.uid],
     selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
     onClick: onSelectTarget,
