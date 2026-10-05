@@ -2350,35 +2350,33 @@ function ThornieDungeons() {
   }
   // ---------- quick slots ----------
   function assignQuickSlot(index, entry) {
-    setQuickSlots(qs => {
-      const next = qs.slice();
-      next[index] = entry;
-      if (save && save.characterId) saveQuickSlotsLocal(cred.id, save.characterId, next);
-      if (save && save.characterId) pushQuickSlots(next);
-      // Quick-slot edits made during Battle must update the live Battle Core Hero
-      // immediately; the next Hero turn should see the new Active Skill without
-      // requiring a floor transition.
-      const battle = battleStateRef.current;
-      if (battle && !battle.result && battle.heroId && save?.characterId) {
-        const learned = heroActiveSkillList(save.character.skillLevels).map(skill => skill.key);
-        const activeSkills = next
-          .filter(slot => slot?.kind === "skill" && learned.includes(slot.key))
-          .map(slot => slot.key);
-        const hero = battle.units[battle.heroId];
-        if (hero) {
-          const liveBattle = {
-            ...battle,
-            units: {
-              ...battle.units,
-              [battle.heroId]: { ...hero, activeSkills }
-            }
-          };
-          applyCoreBattleState(liveBattle, false);
-          pushBattleCheckpoint(liveBattle);
-        }
+    const next = quickSlots.slice();
+    next[index] = entry;
+    setQuickSlots(next);
+    if (save && save.characterId) saveQuickSlotsLocal(cred.id, save.characterId, next);
+    if (save && save.characterId) pushQuickSlots(next);
+    // Quick-slot edits made during Battle must update the live Battle Core Hero
+    // immediately; the next Hero turn should see the new Active Skill without
+    // requiring a floor transition.
+    const battle = battleStateRef.current;
+    if (battle && !battle.result && battle.heroId && save?.characterId) {
+      const learned = heroActiveSkillList(save.character.skillLevels).map(skill => skill.key);
+      const activeSkills = next
+        .filter(slot => slot?.kind === "skill" && learned.includes(slot.key))
+        .map(slot => slot.key);
+      const hero = battle.units[battle.heroId];
+      if (hero) {
+        const liveBattle = {
+          ...battle,
+          units: {
+            ...battle.units,
+            [battle.heroId]: { ...hero, activeSkills }
+          }
+        };
+        applyCoreBattleState(liveBattle, false);
+        pushBattleCheckpoint(liveBattle);
       }
-      return next;
-    });
+    }
   }
   function clearQuickSlot(index) {
     assignQuickSlot(index, null);
