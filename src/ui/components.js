@@ -3848,17 +3848,21 @@ function ArenaV2Screen({
     }),
     !match && tab === "setup" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" },
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "SETUP · Pet + 4 Skills"),
-      /*#__PURE__*/React.createElement("details", { className: "md-arena-setup-picker md-arena-pet-picker" },
-        /*#__PURE__*/React.createElement("summary", null,
+      /*#__PURE__*/React.createElement(ArenaSetupDropdown, {
+        className: "md-arena-pet-picker",
+        align: "pet",
+        optionsLabel: "Arena Pet",
+        summary: /*#__PURE__*/React.createElement(React.Fragment, null,
           /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, setup.petInstId ? arenaSetupPetIcon((status.availablePets || []).find(p => p.instId === setup.petInstId)) : "🐾"),
           /*#__PURE__*/React.createElement("span", null, "PET", /*#__PURE__*/React.createElement("b", null, (status.availablePets || []).find(p => p.instId === setup.petInstId)?.name || "No Pet")),
           /*#__PURE__*/React.createElement("i", null, "CHANGE")),
-        /*#__PURE__*/React.createElement("div", { className: "md-arena-setup-options", role: "listbox", "aria-label": "Arena Pet" },
+        options: /*#__PURE__*/React.createElement(React.Fragment, null,
           /*#__PURE__*/React.createElement("button", { type: "button", className: !setup.petInstId ? "selected" : "", onClick: () => setSetup({ ...setup, petInstId: "" }), "aria-selected": !setup.petInstId }, /*#__PURE__*/React.createElement("span", null, "🐾"), /*#__PURE__*/React.createElement("b", null, "No Pet")),
           (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("button", { type: "button", key: p.instId, className: setup.petInstId === p.instId ? "selected" : "", onClick: () => setSetup({ ...setup, petInstId: p.instId }), "aria-selected": setup.petInstId === p.instId },
             /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, arenaSetupPetIcon(p)),
             /*#__PURE__*/React.createElement("b", null, p.name),
-            /*#__PURE__*/React.createElement("small", null, "Lv", p.level, " · ★", p.star))))),
+            /*#__PURE__*/React.createElement("small", null, "Lv", p.level, " · ★", p.star))))
+      }),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-skill-setup-grid" }, [0, 1, 2, 3].map(i => {
         const selectedSkillId = setup.skillSlots?.[i] || "";
         const selectedSkill = (status.availableSkills || []).find(skill => skill.key === selectedSkillId);
