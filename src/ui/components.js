@@ -3270,6 +3270,92 @@ function RuntimeDiagnosticOverlay({ diagnostic, title = "Runtime error", summary
   );
 }
 
+class GlobalGameErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { diagnostic: null };
+    this.lastFingerprint = "";
+    this.reportRuntimeError = this.reportRuntimeError.bind(this);
+  }
+
+  componentDidMount() {
+    globalThis.__thornieReportRuntimeError = this.reportRuntimeError;
+    const queued = Array.isArray(globalThis.__thornieRuntimeQueue)
+      ? globalThis.__thornieRuntimeQueue.slice()
+      : [];
+    globalThis.__thornieRuntimeQueue = [];
+    queued.forEach(this.reportRuntimeError);
+  }
+
+  componentWillUnmount() {
+    if (globalThis.__thornieReportRuntimeError === this.reportRuntimeError) {
+      delete globalThis.__thornieReportRuntimeError;
+    }
+  }
+
+  componentDidCatch(error, info) {
+    this.reportRuntimeError({
+      event: "react_render_error",
+      message: error?.message || String(error),
+      stack: [error?.stack || "", info?.componentStack || ""].filter(Boolean).join("\n")
+    });
+  }
+
+  reportRuntimeError(raw) {
+    const diagnostic = raw && typeof raw === "object"
+      ? {
+          event: String(raw.event || raw.kind || "client_runtime_error"),
+          reason: String(raw.reason || raw.code || raw.message || "unknown_error"),
+          message: String(raw.message || raw.reason || "Unknown runtime error"),
+          source: String(raw.source || ""),
+          line: Number(raw.line) || 0,
+          column: Number(raw.column) || 0,
+          stack: String(raw.stack || ""),
+          time: String(raw.time || new Date().toISOString())
+        }
+      : {
+          event: "client_runtime_error",
+          reason: String(raw || "unknown_error"),
+          message: String(raw || "Unknown runtime error"),
+          source: "",
+          line: 0,
+          column: 0,
+          stack: "",
+          time: new Date().toISOString()
+        };
+    const fingerprint = [
+      diagnostic.event,
+      diagnostic.message,
+      diagnostic.source,
+      diagnostic.line,
+      diagnostic.column
+    ].join("|");
+    if (fingerprint === this.lastFingerprint) return;
+    this.lastFingerprint = fingerprint;
+    this.setState({ diagnostic });
+  }
+
+  render() {
+    const diagnostic = this.state.diagnostic;
+    return /*#__PURE__*/React.createElement(React.Fragment, null,
+      this.props.children,
+      diagnostic && /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+        diagnostic: {
+          ...diagnostic,
+          event: "game_runtime_error",
+          reason: diagnostic.reason || "client_runtime_error"
+        },
+        title: "Game Runtime Error",
+        summary: "เกมพบข้อผิดพลาดระหว่างทำงาน ระบบจับ error กลางของเกมแล้ว รายละเอียดด้านล่างคือข้อมูลที่ผ่านการคัดกรองแล้ว",
+        onClose: () => {
+          this.lastFingerprint = "";
+          this.setState({ diagnostic: null });
+        }
+      })
+    );
+  }
+}
+
 function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
   return /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
     diagnostic: { ...diagnostic, event: "arena_presentation_failure", reason: diagnostic?.kind || "arena_runtime" },
