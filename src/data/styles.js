@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.48";
+  content: "Ver 1.0.49";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -461,6 +461,22 @@ body::after {
 .md-skill-level-control { display:grid; grid-template-columns:32px minmax(61px,auto) 32px; align-items:center; gap:4px; }
 .md-skill-level-control > span { text-align:center; color:#dcecff; font-size:9px; font-weight:900; white-space:nowrap; }
 .md-skill-empty { padding:30px 12px; text-align:center; color:#adc5e1; font-size:11px; font-weight:800; }
+.md-skill-upgrade { width:100%; text-align:left; cursor:pointer; }
+.md-skill-upgrade:active { transform:translateY(1px); }
+.md-skill-detail-chevron { color:#8edfff; font-size:24px; font-weight:900; line-height:1; }
+.md-skill-detail-sheet { max-height:min(86dvh,760px); }
+.md-skill-detail-icon { width:44px; height:44px; object-fit:contain; margin-right:8px; }
+.md-skill-detail-desc { margin:4px 0 10px; color:#c8ddf4; font-size:11px; font-weight:700; line-height:1.45; }
+.md-skill-detail-ranks { display:flex; flex-direction:column; gap:5px; }
+.md-skill-detail-rank { display:grid; grid-template-columns:42px minmax(0,1fr); gap:7px; align-items:start; padding:7px 8px; border:1px solid rgba(99,160,218,.22); border-radius:9px; background:rgba(255,255,255,.025); }
+.md-skill-detail-rank.preview { border-color:#49dfff; background:rgba(17,115,191,.18); }
+.md-skill-detail-rank strong { color:#ffe19a; font-size:10px; }
+.md-skill-detail-rank span { color:#c8ddf4; font-size:9px; line-height:1.35; font-weight:700; }
+.md-skill-detail-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.md-skill-detail-meta span { padding:5px 7px; border:1px solid rgba(255,209,102,.2); border-radius:8px; color:#ffe19a; background:rgba(255,255,255,.025); font-size:9px; font-weight:800; }
+.md-skill-detail-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:12px; }
+.md-skill-detail-actions .md-btn { min-height:42px; }
+.md-skill-draft-badge { margin-left:auto; color:#72e5ff; font-size:10px; font-weight:900; }
 
 @media (max-width:380px) {
   .md-character-page { padding-left:6px; padding-right:6px; }

@@ -1183,30 +1183,163 @@ function SkillScreen({
 }
 function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub, onBack }) {
   const [branch, setBranch] = useState("assault");
+  const [draft, setDraft] = useState({});
+  const [selectedSkill, setSelectedSkill] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [skillsBusy, setSkillsBusy] = useState(false);
   const levels = save.character.skillLevels || {};
   const spent = heroSkillSpentPoints(levels);
   const total = heroSkillPointBudget(save.character.level);
+  const used = Object.entries(draft).reduce((sum, [id, value]) => {
+    const skill = HERO_SKILLS_V1_BY_ID[id];
+    return sum + (skill?.kind === "keystone" ? Number(value || 0) * 2 : Number(value || 0));
+  }, 0);
   const available = Math.max(0, total - spent);
+  const pointsLeft = Math.max(0, available - used);
   const title = id => id.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
   const reasonText = reason => ({ level_gate: "Level ยังไม่ถึง", branch_points: "แต้มในสายยังไม่ถึง", prerequisite: "ยังขาดสกิล prerequisite", keystone_points: "ต้องใช้แต้มในสาย 40", keystone_t4: "ต้องมี T4 อย่างน้อย 1 Rank", not_enough_sp: "Skill Point ไม่พอ", max_rank: "เต็มแล้ว" }[reason] || "");
+  const previewLevels = id => ({ ...levels, [id]: heroSkillRank(levels, id) + (draft[id] || 0) });
+  const allPreviewLevels = () => ({
+    ...levels,
+    ...Object.fromEntries(Object.entries(draft).map(([id, value]) => [id, heroSkillRank(levels, id) + value]))
+  });
+  const checkSkill = skill => canSpendHeroSkillPoint(save.character.level, allPreviewLevels(), skill.id);
   const visible = HERO_SKILLS_V1.filter(skill => skill.branch === branch);
   const groups = [1, 2, 3, 4, 5];
-  const doPaidReset = async () => {
-    if (skillsBusy) return;
+
+  const description = skill => ({
+    power_strike: "โจมตีเป้าหมายเดี่ยวด้วยพลังโจมตีสูง",
+    weapon_mastery: "เพิ่มความเสียหายจากการโจมตีของ Hero",
+    killer_instinct: "เพิ่ม Crit เมื่อศัตรูมี HP ต่ำ",
+    heavy_blow: "โจมตีหนักและมีโอกาส Armor Break",
+    bloodlust: "เพิ่มความเสียหายเมื่อ HP ของ Hero ต่ำ",
+    armor_break_mastery: "เพิ่มโอกาสทำให้ศัตรูติด Armor Break",
+    blade_storm: "โจมตีหลายครั้ง กระจายใส่ศัตรูที่ยังมีชีวิต",
+    life_drain: "ดูดเลือดจาก Basic Attack เพื่อฟื้น HP",
+    finishing_blow: "เพิ่มความเสียหายต่อศัตรูที่ใกล้ตาย",
+    rampage: "เพิ่มความเสียหายชั่วคราว พร้อมแลกด้วยความเสี่ยงที่ Rank ต่ำ",
+    critical_mastery: "เพิ่มความแรงของ Critical Hit",
+    relentless_fury: "Keystone ที่สะสม Fury จากการโจมตี",
+    guard: "โจมตีพร้อมเสริม DEF Up",
+    toughness: "เพิ่ม Max HP",
+    iron_body: "เพิ่ม DEF",
+    shield_wall: "เพิ่มการป้องกันพร้อมลดความเสียหายที่ทำได้ชั่วคราว",
+    recovery: "เพิ่มการฟื้น HP/SP ที่ได้รับ",
+    last_stand: "เมื่อ HP ต่ำ มีโอกาสได้รับ DEF Up",
+    counter: "เข้าสู่สถานะ Counter เพื่อสวนกลับ",
+    battle_hardened: "เพิ่ม Status Resist",
+    second_wind: "ฟื้น HP ครั้งแรกที่ HP ลดถึงเกณฑ์",
+    fortress: "เพิ่ม DEF ชั่วคราว พร้อมลดความเสียหายที่ทำได้ใน Rank ต่ำ",
+    survival_instinct: "ลดความเสียหายส่วนเกินจากการโจมตีหนักและสะท้อนกลับ",
+    thorned_aegis: "Keystone ที่สะสม Aegis และปลด Counter ตามเงื่อนไข",
+    toxic_strike: "โจมตีพร้อมโอกาสทำให้ติด Poison",
+    exploit_weakness: "เพิ่มความเสียหายต่อเป้าหมายที่มี Debuff",
+    debilitating_edge: "เพิ่มโอกาสทำ Debuff",
+    stunning_blow: "โจมตีพร้อมโอกาส Stun",
+    spirit_drain: "Basic Attack ฟื้น SP เพิ่มเติม",
+    toxic_mastery: "เพิ่มความเสียหาย Poison และเพิ่มระยะเวลาใน Rank สูงสุด",
+    silent_edge: "โจมตีพร้อมโอกาส Silence",
+    quick_recovery: "มีโอกาสลด Cooldown เมื่อโจมตีเป้าหมายที่ติด Debuff",
+    skill_efficiency: "ลดค่า SP ของ Active Skill",
+    disruption: "สุ่มใช้ Debuff หลายชนิดใน Action เดียว",
+    master_tactician: "มีโอกาสเพิ่มระยะเวลา Debuff",
+    usurper: "Keystone ที่สะสม Scheme และเพิ่มความสามารถด้าน Debuff"
+  }[skill.id] || "Hero Skill V1");
+
+  const effectParts = data => {
+    if (!data) return [];
+    const parts = [];
+    if (data.mult != null) parts.push(`${Math.round(Number(data.mult) * 100)}% ATK`);
+    if (data.damagePct != null) parts.push(`Damage +${data.damagePct}%`);
+    if (data.damagePenaltyPct != null) parts.push(`Damage -${data.damagePenaltyPct}%`);
+    if (data.defPct != null) parts.push(`DEF +${data.defPct}%`);
+    if (data.maxHpPct != null) parts.push(`Max HP +${data.maxHpPct}%`);
+    if (data.critPct != null) parts.push(`Crit +${data.critPct}%`);
+    if (data.critDamagePct != null) parts.push(`Crit DMG +${data.critDamagePct}%`);
+    if (data.critDamageBonus != null) parts.push(`Crit DMG +${data.critDamageBonus}%`);
+    if (data.armorBreakChance != null) parts.push(`Armor Break ${data.armorBreakChance}%`);
+    if (data.poisonChance != null) parts.push(`Poison ${data.poisonChance}%`);
+    if (data.silenceChance != null) parts.push(`Silence ${data.silenceChance}%`);
+    if (data.stunChance != null) parts.push(`Stun ${data.stunChance}%`);
+    if (data.stunChancePerHit != null) parts.push(`Stun/Hit ${data.stunChancePerHit}%`);
+    if (data.procBonus != null) parts.push(`Proc +${data.procBonus} pp`);
+    if (data.statusResist != null) parts.push(`Status Resist +${data.statusResist}%`);
+    if (data.receivedPct != null) parts.push(`HP/SP received +${data.receivedPct}%`);
+    if (data.healMaxHpPct != null) parts.push(`Heal ${data.healMaxHpPct}% Max HP`);
+    if (data.drainPct != null) parts.push(`Heal ${data.drainPct}% damage`);
+    if (data.spRestore != null) parts.push(`SP +${data.spRestore}`);
+    if (data.spReductionPct != null) parts.push(`SP cost -${data.spReductionPct}%`);
+    if (data.poisonDamagePct != null) parts.push(`Poison damage +${data.poisonDamagePct}%`);
+    if (data.durationBonus != null) parts.push(`Poison duration +${data.durationBonus}`);
+    if (data.duration != null) parts.push(`Duration ${data.duration}T`);
+    if (data.hits != null) parts.push(`${data.hits} hits`);
+    if (data.count != null) parts.push(`${data.count} debuffs`);
+    if (data.procChance != null) parts.push(`Proc ${data.procChance}%`);
+    if (data.chance != null && data.procChance == null && data.poisonChance == null && data.stunChance == null) parts.push(`Chance ${data.chance}%`);
+    if (data.targetBelowPct != null) parts.push(`Target <${data.targetBelowPct}% HP`);
+    if (data.targetAtMostPct != null) parts.push(`Target ≤${data.targetAtMostPct}% HP`);
+    if (data.hpAtMostPct != null) parts.push(`Hero HP ≤${data.hpAtMostPct}%`);
+    if (data.excessReductionPct != null) parts.push(`Excess damage -${data.excessReductionPct}%`);
+    if (data.reflectPct != null) parts.push(`Reflect ${data.reflectPct}%`);
+    if (data.chance == null && data.rank != null) parts.push(`Rank ${data.rank}`);
+    return parts;
+  };
+  const rankRows = skill => skill.ranks.map((data, index) => {
+    const rank = index + 1;
+    const label = skill.kind === "passive" ? `Lv${rank}` : `R${rank}`;
+    const battle = [];
+    if (data.sp != null) battle.push(`SP ${data.sp}`);
+    if (data.cooldown != null) battle.push(`CD ${data.cooldown}T`);
+    const effects = effectParts(data);
+    return { label, text: [...effects, ...battle].join(" · ") || "รายละเอียดตาม Rank" };
+  });
+  const changeDraft = (skill, delta) => setDraft(current => {
+    const now = heroSkillRank(levels, skill.id) + (current[skill.id] || 0);
+    if (delta > 0) {
+      if (pointsLeft < (skill.kind === "keystone" ? 2 : 1) || now >= skill.maxRank) return current;
+      const preview = { ...levels, ...Object.fromEntries(Object.entries(current).map(([id, value]) => [id, heroSkillRank(levels, id) + value])) };
+      const gate = canSpendHeroSkillPoint(save.character.level, preview, skill.id);
+      if (!gate.ok) return current;
+    }
+    const next = Math.max(0, (current[skill.id] || 0) + delta);
+    if (next === 0) {
+      const copy = { ...current };
+      delete copy[skill.id];
+      return copy;
+    }
+    return { ...current, [skill.id]: next };
+  });
+  const commit = async () => {
+    if (skillsBusy || !Object.keys(draft).length) return;
     setSkillsBusy(true);
     try {
-      if (await onResetSkills()) setConfirmReset(false);
+      if (await onLearnSkill(draft)) {
+        setDraft({});
+        setSelectedSkill(null);
+      }
     } finally {
       setSkillsBusy(false);
     }
   };
+  const doPaidReset = async () => {
+    if (skillsBusy) return;
+    setSkillsBusy(true);
+    try {
+      if (await onResetSkills()) {
+        setDraft({});
+        setSelectedSkill(null);
+        setConfirmReset(false);
+      }
+    } finally {
+      setSkillsBusy(false);
+    }
+  };
+
   return /*#__PURE__*/React.createElement("main", { className: "md-character-page" },
     /*#__PURE__*/React.createElement(CharacterPageHeader, { save, cp, onBack }),
     /*#__PURE__*/React.createElement(CharacterTabs, { active: "skills", onStatus: onBack, onSkills: () => {} }),
     /*#__PURE__*/React.createElement("section", { className: "md-character-scroll" },
-      /*#__PURE__*/React.createElement("div", { className: "md-skill-toolbar" }, /*#__PURE__*/React.createElement("strong", null, "✦ Skill Points ", available, "/", total)),
+      /*#__PURE__*/React.createElement("div", { className: "md-skill-toolbar" }, /*#__PURE__*/React.createElement("strong", null, "✦ Skill Points ", pointsLeft, "/", available), used > 0 && /*#__PURE__*/React.createElement("span", { className: "md-skill-draft-badge" }, `ทดลองอัป ${used} SP`)),
       /*#__PURE__*/React.createElement("nav", { className: "md-skill-filters", "aria-label": "Hero skill branch" },
         [["assault", "Assault"], ["guard", "Guard"], ["tactic", "Tactic"]].map(item => /*#__PURE__*/React.createElement("button", { type: "button", key: item[0], className: branch === item[0] ? "active" : "", onClick: () => setBranch(item[0]) }, item[1]))
       ),
@@ -1217,27 +1350,59 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
           /*#__PURE__*/React.createElement("h3", { className: "md-section-title" }, tier === 5 ? "Keystone" : `T${tier}`),
           rows.map(skill => {
             const current = heroSkillRank(levels, skill.id);
-            const check = canSpendHeroSkillPoint(save.character.level, levels, skill.id);
+            const added = draft[skill.id] || 0;
+            const after = current + added;
+            const check = checkSkill(skill);
             const rankLabel = skill.kind === "passive" ? "Lv" : "R";
-            return /*#__PURE__*/React.createElement("article", { className: `md-skill-upgrade${check.ok || current ? "" : " locked"}`, key: skill.id },
+            return /*#__PURE__*/React.createElement("button", {
+              type: "button",
+              className: `md-skill-upgrade${check.ok || current ? "" : " locked"}`,
+              key: skill.id,
+              onClick: () => setSelectedSkill(skill),
+              "aria-label": `ดูรายละเอียด ${title(skill.id)}`
+            },
               /*#__PURE__*/React.createElement("span", { className: "md-skill-upgrade-icon" }, /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: skill.id, alt: title(skill.id), title: title(skill.id) })),
               /*#__PURE__*/React.createElement("div", { className: "md-skill-upgrade-copy" },
                 /*#__PURE__*/React.createElement("strong", null, title(skill.id)),
-                /*#__PURE__*/React.createElement("small", null, skill.kind, " · ", rankLabel, current, "/", skill.maxRank, check.ok ? ` · ${check.cost} SP` : current >= skill.maxRank ? " · MAX" : ` · ${reasonText(check.reason)}`)
+                /*#__PURE__*/React.createElement("small", null, skill.kind, " · ", rankLabel, current, "/", skill.maxRank, added > 0 ? ` · ทดลอง +${added}` : check.ok ? " · อัปได้" : current >= skill.maxRank ? " · MAX" : ` · ${reasonText(check.reason)}`)
               ),
-              /*#__PURE__*/React.createElement("div", { className: "md-skill-level-control" },
-                /*#__PURE__*/React.createElement("span", null, rankLabel, ". ", current),
-                /*#__PURE__*/React.createElement("button", { type: "button", disabled: !check.ok || skillsBusy, onClick: async () => { setSkillsBusy(true); try { await onLearnSkill(skill.id); } finally { setSkillsBusy(false); } }, "aria-label": `Learn ${title(skill.id)}` }, "+")
-              )
+              /*#__PURE__*/React.createElement("span", { className: "md-skill-detail-chevron" }, "›")
             );
           })
         );
       }),
       /*#__PURE__*/React.createElement("div", { className: "md-character-actions" },
-        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent || skillsBusy, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100"))
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "reset", disabled: !spent || skillsBusy, onClick: () => setConfirmReset(true) }, "↻ รีสกิล ", /*#__PURE__*/React.createElement("span", null, "💎 100")),
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "apply", disabled: !used || skillsBusy, onClick: commit }, skillsBusy ? "กำลังบันทึก…" : "ยืนยันการอัปสกิล")
       )
     ),
     /*#__PURE__*/React.createElement(CharacterPageDock, { onCharacter: onBack, onOpenInv, onOpenPets, onSettings, onSave, onFriend, onChat, onGuild, onMainHub }),
+    selectedSkill && /*#__PURE__*/React.createElement("div", { className: "md-floor-detail-backdrop", onClick: () => setSelectedSkill(null) },
+      /*#__PURE__*/React.createElement("section", { className: "md-floor-detail-sheet md-skill-detail-sheet", role: "dialog", "aria-modal": "true", "aria-labelledby": "md-skill-detail-title", onClick: event => event.stopPropagation() },
+        /*#__PURE__*/React.createElement("button", { type: "button", className: "md-floor-detail-x", onClick: () => setSelectedSkill(null), "aria-label": "ปิด" }, "✕"),
+        /*#__PURE__*/React.createElement("div", { className: "md-floor-detail-heading", },
+          /*#__PURE__*/React.createElement("div", { className: "md-floor-title" },
+            /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkill.id, className: "md-skill-detail-icon", alt: title(selectedSkill.id) }),
+            /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("small", null, selectedSkill.branch, " · ", selectedSkill.kind), /*#__PURE__*/React.createElement("h2", { id: "md-skill-detail-title" }, title(selectedSkill.id)))
+          )
+        ),
+        /*#__PURE__*/React.createElement("p", { className: "md-skill-detail-desc" }, description(selectedSkill)),
+        /*#__PURE__*/React.createElement("h3", null, "Rank / Level"),
+        /*#__PURE__*/React.createElement("div", { className: "md-skill-detail-ranks" }, rankRows(selectedSkill).map(row => /*#__PURE__*/React.createElement("div", { key: row.label, className: `md-skill-detail-rank ${row.label === ((selectedSkill.kind === "passive" ? "Lv" : "R") + (heroSkillRank(levels, selectedSkill.id) + (draft[selectedSkill.id] || 0))) ? "preview" : ""}` },
+          /*#__PURE__*/React.createElement("strong", null, row.label),
+          /*#__PURE__*/React.createElement("span", null, row.text)
+        ))),
+        /*#__PURE__*/React.createElement("div", { className: "md-skill-detail-meta" },
+          selectedSkill.ranks[0]?.sp != null && /*#__PURE__*/React.createElement("span", null, "Battle SP: ", selectedSkill.ranks[0].sp),
+          selectedSkill.ranks[0]?.cooldown != null && /*#__PURE__*/React.createElement("span", null, "Cooldown: ", selectedSkill.ranks[0].cooldown, " Turn"),
+          selectedSkill.prerequisites && /*#__PURE__*/React.createElement("span", null, "Prerequisite: ", Object.entries(selectedSkill.prerequisites).map(([id, rank]) => `${title(id)} R${rank}`).join(" + "))
+        ),
+        /*#__PURE__*/React.createElement("div", { className: "md-skill-detail-actions" },
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "md-btn info", onClick: () => setSelectedSkill(null) }, "ปิด"),
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "md-btn primary", disabled: !checkSkill(selectedSkill).ok || pointsLeft < (selectedSkill.kind === "keystone" ? 2 : 1), onClick: () => changeDraft(selectedSkill, 1) }, "＋ ทดลองอัป")
+        )
+      )
+    ),
     confirmReset && /*#__PURE__*/React.createElement(PaidResetConfirm, { type: "skills", diamonds: save.diamonds, onCancel: () => setConfirmReset(false), onConfirm: doPaidReset })
   );
 }
