@@ -3374,6 +3374,100 @@ function arenaTurnOrderIcon(unit, preparedSnapshot) {
 
 // W9.8/W9.9 authoritative Arena V2 surface. The server owns match state; this
 // component only renders snapshots and sends idempotent action keys.
+function ArenaSkillDropdown({ index, selectedSkillId, selectedSkill, availableSkills, setup, setSetup }) {
+  const triggerRef = React.useRef(null);
+  const [open, setOpen] = React.useState(false);
+  const [position, setPosition] = React.useState(null);
+
+  const syncPosition = React.useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect?.();
+    if (!rect) return;
+    const viewportWidth = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+    const viewportHeight = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    const width = Math.min(290, Math.max(0, viewportWidth - 28));
+    const maxHeight = Math.min(viewportHeight * 0.42, 310);
+    const preferredLeft = index % 2 === 0 ? rect.left : rect.right - width;
+    const left = Math.max(14, Math.min(preferredLeft, viewportWidth - width - 14));
+    const spaceBelow = viewportHeight - rect.bottom - 14;
+    const top = spaceBelow >= maxHeight || rect.top < maxHeight + 14
+      ? rect.bottom + 4
+      : Math.max(14, rect.top - maxHeight - 4);
+    setPosition({ top: Math.round(top), left: Math.round(left), width: Math.round(width), maxHeight: Math.round(maxHeight) });
+  }, [index]);
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+    syncPosition();
+    const onViewportChange = () => syncPosition();
+    const onKeyDown = event => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("scroll", onViewportChange, true);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("scroll", onViewportChange, true);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, syncPosition]);
+
+  const chooseSkill = skillId => {
+    const slots = [...(setup.skillSlots || [null, null, null, null])];
+    slots[index] = skillId || null;
+    setSetup({ ...setup, skillSlots: slots });
+    setOpen(false);
+  };
+  const usedByOtherSlots = new Set((setup.skillSlots || []).filter((key, slotIndex) => slotIndex !== index && key));
+  const options = [
+    /*#__PURE__*/React.createElement("button", {
+      key: "empty",
+      type: "button",
+      className: !selectedSkillId ? "selected" : "",
+      onClick: () => chooseSkill(null),
+      "aria-selected": !selectedSkillId
+    }, /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"), /*#__PURE__*/React.createElement("b", null, "Empty")),
+    ...(availableSkills || []).map(skill => {
+      const duplicate = usedByOtherSlots.has(skill.key);
+      return /*#__PURE__*/React.createElement("button", {
+        key: skill.key,
+        type: "button",
+        className: selectedSkillId === skill.key ? "selected" : "",
+        disabled: duplicate,
+        onClick: () => !duplicate && chooseSkill(skill.key),
+        "aria-selected": selectedSkillId === skill.key,
+        "aria-disabled": duplicate
+      }, /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: skill.key, className: "md-hero-skill-icon", alt: "" }),
+      /*#__PURE__*/React.createElement("b", null, skill.name || heroSkillDisplayName(skill.key)),
+      duplicate && /*#__PURE__*/React.createElement("small", null, "USED"));
+    })
+  ];
+
+  return /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("button", {
+      ref: triggerRef,
+      type: "button",
+      className: `md-arena-skill-setup-slot md-arena-setup-picker${selectedSkillId ? " filled" : " empty"}`,
+      onClick: () => setOpen(value => !value),
+      "aria-expanded": open,
+      "aria-haspopup": "listbox"
+    },
+      /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-slot-number" }, index + 1),
+      /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkillId, className: "md-hero-skill-icon md-arena-setup-skill-icon", alt: selectedSkill?.name || (selectedSkillId ? heroSkillDisplayName(selectedSkillId) : "Empty skill slot") }),
+      /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-name" }, selectedSkill?.name || `Skill ${index + 1} · Empty`),
+      /*#__PURE__*/React.createElement("i", null, "CHANGE")
+    ),
+    open && position && ReactDOM.createPortal(
+      /*#__PURE__*/React.createElement("div", {
+        className: "md-arena-setup-options md-arena-setup-options-portal",
+        role: "listbox",
+        "aria-label": `Arena skill slot ${index + 1}`,
+        style: { top: `${position.top}px`, left: `${position.left}px`, width: `${position.width}px`, maxHeight: `${position.maxHeight}px` },
+        onClick: event => event.stopPropagation()
+      }, options),
+      document.body
+    )
+  );
+}
+
 function ArenaV2Screen({
   serverUrl,
   characterId,
@@ -3896,18 +3990,15 @@ function ArenaV2Screen({
       /*#__PURE__*/React.createElement("div", { className: "md-arena-skill-setup-grid" }, [0, 1, 2, 3].map(i => {
         const selectedSkillId = setup.skillSlots?.[i] || "";
         const selectedSkill = (status.availableSkills || []).find(skill => skill.key === selectedSkillId);
-        return /*#__PURE__*/React.createElement("details", { className: `md-arena-skill-setup-slot md-arena-setup-picker${selectedSkillId ? " filled" : " empty"}`, name: "arena-skill-slots", key: i, onToggle: event => { if (event.currentTarget.open) { document.querySelectorAll('details[name="arena-skill-slots"]').forEach(other => { if (other !== event.currentTarget) other.removeAttribute("open"); }); } } },
-          /*#__PURE__*/React.createElement("summary", { "aria-label": `Arena skill slot ${i + 1}` },
-            /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-slot-number" }, i + 1),
-            /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: selectedSkillId, className: "md-hero-skill-icon md-arena-setup-skill-icon", alt: selectedSkill?.name || (selectedSkillId ? heroSkillDisplayName(selectedSkillId) : "Empty skill slot") }),
-            /*#__PURE__*/React.createElement("span", { className: "md-arena-skill-name" }, selectedSkill?.name || `Skill ${i + 1} · Empty`),
-            /*#__PURE__*/React.createElement("i", null, "CHANGE")),
-          /*#__PURE__*/React.createElement("div", { className: "md-arena-setup-options", role: "listbox", "aria-label": `Arena skill slot ${i + 1}` },
-            /*#__PURE__*/React.createElement("button", { type: "button", className: !selectedSkillId ? "selected" : "", onClick: event => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = null; setSetup({ ...setup, skillSlots: slots }); event.currentTarget.closest("details")?.removeAttribute("open"); }, "aria-selected": !selectedSkillId }, /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"), /*#__PURE__*/React.createElement("b", null, "Empty")),
-            (status.availableSkills || []).map(s => /*#__PURE__*/React.createElement("button", { type: "button", key: s.key, className: selectedSkillId === s.key ? "selected" : "", onClick: event => { const slots = [...(setup.skillSlots || [null, null, null, null])]; slots[i] = s.key; setSetup({ ...setup, skillSlots: slots }); event.currentTarget.closest("details")?.removeAttribute("open"); }, "aria-selected": selectedSkillId === s.key },
-              /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: s.key, className: "md-hero-skill-icon", alt: "" }),
-              /*#__PURE__*/React.createElement("b", null, s.name || heroSkillDisplayName(s.key)))))
-        );
+        return /*#__PURE__*/React.createElement(ArenaSkillDropdown, {
+          key: i,
+          index: i,
+          selectedSkillId,
+          selectedSkill,
+          availableSkills: status.availableSkills || [],
+          setup,
+          setSetup
+        });
       })),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-loadout", "aria-label": "Arena equipment loadout" },
         /*#__PURE__*/React.createElement("strong", null, "EQUIPMENT"),
