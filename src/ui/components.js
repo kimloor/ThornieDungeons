@@ -1199,7 +1199,11 @@ function HeroSkillV1Screen({ save, cp, onLearnSkill, onResetSkills, onOpenInv, o
   const title = id => id.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
   const reasonText = reason => ({ level_gate: "Level ยังไม่ถึง", branch_points: "แต้มในสายยังไม่ถึง", prerequisite: "ยังขาดสกิล prerequisite", keystone_points: "ต้องใช้แต้มในสาย 40", keystone_t4: "ต้องมี T4 อย่างน้อย 1 Rank", not_enough_sp: "Skill Point ไม่พอ", max_rank: "เต็มแล้ว" }[reason] || "");
   const previewLevels = id => ({ ...levels, [id]: heroSkillRank(levels, id) + (draft[id] || 0) });
-  const checkSkill = skill => canSpendHeroSkillPoint(save.character.level, previewLevels(skill.id), skill.id);
+  const allPreviewLevels = () => ({
+    ...levels,
+    ...Object.fromEntries(Object.entries(draft).map(([id, value]) => [id, heroSkillRank(levels, id) + value]))
+  });
+  const checkSkill = skill => canSpendHeroSkillPoint(save.character.level, allPreviewLevels(), skill.id);
   const visible = HERO_SKILLS_V1.filter(skill => skill.branch === branch);
   const groups = [1, 2, 3, 4, 5];
 
