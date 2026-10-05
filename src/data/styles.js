@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.45";
+  content: "Ver 1.0.46";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2475,11 +2475,11 @@ body::after {
 .md-arena-page-header > button { grid-column:1; }
 .md-arena-brand-emblem { grid-column:2; width:42px; height:42px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.42)); }
 .md-arena-page-header h1 { grid-column:3; justify-self:start; margin:0; padding:3px 0 3px 2px; }
-.md-arena-v2 { flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; padding-bottom:max(8px,var(--safe-bottom)); position:relative; }
+.md-arena-v2 { display:flex; flex-direction:column; flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; padding-bottom:max(8px,var(--safe-bottom)); position:relative; }
 .md-arena-global-currency { flex:0 0 auto; }
-.md-arena-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px; padding-bottom:calc(var(--md-dock-height) + var(--safe-bottom) + 18px); }
-.md-arena-v2 > .md-hub-dock { position:fixed; left:50%; right:auto; bottom:0; width:min(calc(100vw - 28px),402px); max-width:calc(100vw - 28px); transform:translateX(-50%); z-index:90; margin:0; }
-.md-arena-v2 > .md-hub-more-panel { position:fixed; left:50%; right:auto; bottom:calc(var(--md-dock-height) + var(--safe-bottom) + 14px); width:min(calc(100vw - 28px),402px); max-width:calc(100vw - 28px); transform:translateX(-50%); z-index:91; margin:0; }
+.md-arena-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px; padding-bottom:max(12px,var(--safe-bottom)); }
+.md-arena-v2 > .md-hub-dock { position:static; left:auto; right:auto; bottom:auto; width:auto; max-width:none; transform:none; z-index:20; flex:0 0 auto; margin:0 max(var(--md-page-pad),var(--safe-right)) 0 max(var(--md-page-pad),var(--safe-left)); }
+.md-arena-v2 > .md-hub-more-panel { position:absolute; left:var(--md-page-pad); right:var(--md-page-pad); bottom:calc(var(--md-dock-height) + var(--safe-bottom) + 14px); width:auto; max-width:none; transform:none; z-index:91; margin:0; }
 .md-arena-hub-panel,.md-arena-hub-row { position:relative; isolation:isolate; border:0 !important; background:transparent !important; box-shadow:none !important; }
 .md-arena-hub-panel::before,.md-arena-hub-row::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:rgba(5,15,36,.9); }
 .md-arena-hub-panel::before { border:20px solid transparent; border-image-source:var(--arena-panel-frame); border-image-slice:64 fill; border-image-width:20px; border-image-repeat:stretch; }
@@ -2523,6 +2523,8 @@ body::after {
 .md-arena-setup-options button small { color:#aebed4; white-space:nowrap; }
 .md-arena-skill-setup-slot { position:relative; min-width:0; min-height:56px; padding-left:47px; display:block; }
 .md-arena-skill-setup-slot.empty { border-style:dashed; opacity:.74; }
+.md-arena-skill-setup-slot[open] { z-index:100; opacity:1; }
+.md-arena-skill-setup-slot.empty[open] { opacity:1; }
 .md-arena-skill-slot-number { position:absolute; left:3px; top:3px; z-index:2; min-width:15px; height:15px; display:grid; place-items:center; border-radius:50%; background:#071126; color:#ffe39a; font-size:8px; font-weight:900; }
 .md-arena-setup-skill-icon { position:absolute; left:7px; top:50%; width:36px; height:36px; transform:translateY(-50%); }
 .md-arena-skill-setup-slot > summary { min-height:54px; padding-left:3px; }
