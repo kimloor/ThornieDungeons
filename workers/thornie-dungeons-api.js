@@ -1807,6 +1807,7 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
     extra_json: JSON.stringify(extra)
   };
 }
+// Character XP is persisted authoritatively here so reward snapshots cannot roll level back.
 const DUNGEON_CHARACTER_MAX_LEVEL = 99;
 function dungeonV2CharacterXpToNext(level) {
   return Math.max(1, Math.floor(Number(level) || 1)) * 22 + 18;
