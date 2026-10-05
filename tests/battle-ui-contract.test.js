@@ -32,7 +32,8 @@ test("game-wide runtime errors use one central diagnostic boundary", () => {
   assert.match(components, /__thornieReportRuntimeError/);
   assert.match(components, /title: "Game Runtime Error"/);
   assert.match(components, /document\.body/);
-  assert.match(app, /React\.createElement\(GlobalGameErrorBoundary/);
+  const tail = read("tail.html");
+  assert.match(tail, /React\.createElement\(GlobalGameErrorBoundary/);
   assert.match(build, /root\.render\(React\.createElement\(GlobalGameErrorBoundary/);
   assert.doesNotMatch(build, /showBootError\(/);
 });
