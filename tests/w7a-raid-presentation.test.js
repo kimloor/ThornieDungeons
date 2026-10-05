@@ -54,9 +54,26 @@ test("Raid mechanics and settlement remain outside Phaser", () => {
   assert.match(components, /cloudClaimRaidMilestones/);
 });
 
-test("Raid Phaser stage keeps the existing sprite fallback until ready or on error", () => {
+test("Raid Boss card stays frame-only while shared Phaser infrastructure remains available", () => {
+  const start = components.indexOf("function RaidBossCard");
+  const end = components.indexOf("function RaidAttackActions", start);
+  const card = components.slice(start, end);
   assert.match(ui, /function PhaserRaidBoss/);
-  assert.match(components, /phaserStatus !== "ready"/);
-  assert.match(components, /RaidBossFrameSprite/);
-  assert.match(components, /onStatus: status => setPhaserStatus\(status\)/);
+  assert.doesNotMatch(card, /PhaserRaidBoss/);
+  assert.match(card, /RaidBossFrameSprite/);
+  assert.doesNotMatch(card, /phaserStatus|onStatus/);
+});
+
+test("Arena setup skill dropdowns form a single-open group and close after selection", () => {
+  assert.match(components, /name: "arena-skill-slots"/);
+  assert.match(components, /querySelectorAll\('details\[name="arena-skill-slots"\]'\)/);
+  assert.match(components, /closest\("details"\)\?\.removeAttribute\("open"\)/);
+  assert.match(styles, /\.md-arena-skill-setup-slot\[open\] \{ z-index:100; opacity:1; \}/);
+});
+
+test("Arena dock is part of the Arena layout flow instead of a fixed overlay", () => {
+  assert.match(styles, /\.md-arena-v2 \{ display:flex; flex-direction:column;/);
+  assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:static;/);
+  assert.doesNotMatch(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:fixed;/);
+  assert.match(styles, /content: "Ver 1\.0\.46";/);
 });
