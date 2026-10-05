@@ -1,9 +1,13 @@
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(ThornieDungeons));
+root.render(React.createElement(GlobalGameErrorBoundary, null, React.createElement(ThornieDungeons)));
 clearTimeout(window.__thornieBootTimer);
 } catch (err) {
   clearTimeout(window.__thornieBootTimer);
-  showBootError('Render Error: ' + (err && err.message ? err.message : String(err)) + (err && err.stack ? '\n' + err.stack : ''));
+  if (typeof window.__thornieCaptureRuntimeError === 'function') {
+    window.__thornieCaptureRuntimeError('bootstrap_failure', err && err.message ? err.message : String(err), err);
+  } else {
+    throw err;
+  }
 }
 </script>
 </body>

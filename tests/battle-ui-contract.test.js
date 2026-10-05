@@ -26,6 +26,26 @@ test("Battle UI keeps four quick slots and replaces speed with Skip after five t
   assert.match(components, /setAutoRun\(a => !a\)/);
 });
 
+test("game-wide runtime errors use one central diagnostic boundary", () => {
+  assert.match(components, /class GlobalGameErrorBoundary extends React\.Component/);
+  assert.match(components, /componentDidCatch\(error, info\)/);
+  assert.match(components, /__thornieReportRuntimeError/);
+  assert.match(components, /title: "Game Runtime Error"/);
+  assert.match(components, /document\.body/);
+  const tail = read("tail.html");
+  assert.match(tail, /React\.createElement\(GlobalGameErrorBoundary/);
+  assert.match(tail, /root\.render\(React\.createElement\(GlobalGameErrorBoundary/);
+  assert.doesNotMatch(build, /showBootError\(/);
+});
+
+test("monster status presentation reads authoritative Battle Core unit state", () => {
+  assert.match(components, /const statusSource = battleUnit\?\.statuses \|\| enemy\.battleStatuses \|\| \{\}/);
+  assert.match(components, /battleUnit: battleState\?\.units\?\.\[m\.uid\]/);
+  assert.match(components, /statusSource\.def_up/);
+  assert.match(components, /className: "def-up"/);
+  assert.match(styles, /\.md-unit-status \.def-up/);
+});
+
 test("Battlefield uses stable presentation classes and mobile safe-area/control separation", () => {
   for (const size of ["small", "medium", "large", "elite"]) {
     assert.match(components, new RegExp(`${size}: \\{ height:`));

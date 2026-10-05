@@ -186,8 +186,16 @@ function cloudMutateLegacyBlacksmith(url, characterId, itemId, mutation, request
 function cloudGetBattleState(url, characterId) {
   return cloudAuthGet(url, { action: "getBattleState", characterId });
 }
-function cloudStartDungeonBattle(url, characterId, floor) {
-  return cloudAuthPost(url, { action: "startDungeonBattle", characterId, floor });
+function cloudGetDungeonEncounterPreview(url, characterId, floor) {
+  return cloudAuthGet(url, { action: "getDungeonEncounterPreview", characterId, floor });
+}
+function cloudStartDungeonBattle(url, characterId, floor, previewContext = null) {
+  return cloudAuthPost(url, {
+    action: "startDungeonBattle",
+    characterId,
+    floor,
+    previewContext: previewContext || undefined
+  });
 }
 function cloudSaveBattleCheckpoint(url, characterId, battleId, checkpointSeq, payload) {
   return cloudAuthPost(url, { action: "saveBattleCheckpoint", characterId, battleId, checkpointSeq, payload });

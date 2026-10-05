@@ -7,6 +7,38 @@ const vm = require("node:vm");
 const dungeon = require("../src/systems/dungeonV2.js");
 const battle = require("../src/systems/battleCore.js");
 
+const appSource = fs.readFileSync(path.join(__dirname, "../src/ui/App.js"), "utf8");
+const componentsSource = fs.readFileSync(path.join(__dirname, "../src/ui/components.js"), "utf8");
+const apiSource = fs.readFileSync(path.join(__dirname, "../src/state/api.js"), "utf8");
+const workerSource = fs.readFileSync(path.join(__dirname, "../workers/thornie-dungeons-api.js"), "utf8");
+
+test("Dungeon preview and battle entry share the authoritative server encounter context", () => {
+  assert.match(apiSource, /function cloudGetDungeonEncounterPreview/);
+  assert.match(apiSource, /action: "getDungeonEncounterPreview"/);
+  assert.match(apiSource, /previewContext: previewContext \|\| undefined/);
+  assert.match(workerSource, /async function handleGetDungeonEncounterPreview/);
+  assert.match(workerSource, /dungeonV2ServerEncounterContext\(characterId, floor, ordinal\)/);
+  assert.match(workerSource, /dungeon_preview_stale/);
+  assert.match(workerSource, /dungeonV2ServerContextsMatch\(suppliedContext, context\)/);
+  assert.match(componentsSource, /cloudGetDungeonEncounterPreview\(serverUrl, save\.characterId, floor\)/);
+  assert.match(componentsSource, /makeEncounter\(floor, \{ serverContext: preview\.context \}\)/);
+  assert.match(componentsSource, /onSelectFloor\(detail\.floor, detail\.monsters, detail\.previewContext\)/);
+  assert.doesNotMatch(componentsSource, /encounterCache\.current\.set\(floor, makeEncounter\(floor\)\)/);
+  assert.match(appSource, /cloudStartDungeonBattle\(cred\.url, save\.characterId, floorNum, options\.previewContext \|\| null\)/);
+  assert.match(appSource, /started\?\.error === "dungeon_preview_stale"/);
+});
+
+test("Dungeon preview never falls back to the legacy random encounter path", () => {
+  const mapStart = componentsSource.indexOf("function MapScreen");
+  const mapEnd = componentsSource.indexOf("function ShopOverlay", mapStart);
+  assert.ok(mapStart >= 0 && mapEnd > mapStart);
+  const map = componentsSource.slice(mapStart, mapEnd);
+  assert.doesNotMatch(map, /makeEncounter\(floor\)/);
+  assert.match(map, /serverUrl/);
+  assert.match(map, /previewContext/);
+});
+
+
 test("Dungeon V2 encounter classification uses midpoint Elite and chapter Boss boundaries", () => {
   assert.equal(dungeon.classifyDungeonEncounter(1), "normal");
   assert.equal(dungeon.classifyDungeonEncounter(4), "normal");

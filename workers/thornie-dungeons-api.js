@@ -1490,7 +1490,38 @@ function dungeonV2ServerEncounterContext(characterId, floor, ordinal) {
   });
   return { version: 1, mode: "dungeon", floor, role, packCount, enemies, encounterSeed, rewardSeed };
 }
-async function handleStartDungeonBattle(db, id, session, characterId, requestedFloor) {
+async function handleGetDungeonEncounterPreview(db, id, session, characterId, requestedFloor) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error });
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error });
+  const floor = Math.floor(Number(requestedFloor) || 0);
+  const unlockedFloor = Math.max(1, Math.floor(Number(owned.row.unlocked_floor) || 1));
+  if (floor < 1 || floor > unlockedFloor) return json({ error: "dungeon_floor_locked" }, 403);
+
+  const existing = await db.prepare(
+    `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
+  ).bind(characterId).first();
+  if (existing) {
+    const payload = parseJsonColumn(existing.payload_json, null);
+    const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
+    if (payload?.authorizationOnly && context && context.floor === floor) {
+      return json({ ok: true, context });
+    }
+    if (!payload?.authorizationOnly) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+  }
+
+  const completed = await db.prepare(
+    `SELECT COUNT(*) AS c FROM battle_completions WHERE character_id = ?`
+  ).bind(characterId).first();
+  const ordinal = Math.max(1, (Number(completed?.c) || 0) + 1);
+  return json({
+    ok: true,
+    context: dungeonV2ServerEncounterContext(characterId, floor, ordinal)
+  });
+}
+
+async function handleStartDungeonBattle(db, id, session, characterId, requestedFloor, previewContext = null) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
@@ -1516,6 +1547,12 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
   const completed = await db.prepare(`SELECT COUNT(*) AS c FROM battle_completions WHERE character_id = ?`).bind(characterId).first();
   const ordinal = Math.max(1, (Number(completed?.c) || 0) + 1);
   const context = dungeonV2ServerEncounterContext(characterId, floor, ordinal);
+  if (previewContext != null) {
+    const suppliedContext = dungeonV2ServerNormalizeContext(previewContext);
+    if (!suppliedContext || !dungeonV2ServerContextsMatch(suppliedContext, context)) {
+      return json({ error: "dungeon_preview_stale", context }, 409);
+    }
+  }
   const battleId = `dungeon-${randomToken(16)}`;
   const now = nowIso();
   const authorization = JSON.stringify({
@@ -6805,6 +6842,7 @@ async function apiFetch(request, env) {
         if (action === "getArenaV2PlayerCard") return await handleGetArenaV2PlayerCard(db, id, auth, p.get("characterId"), p.get("opponentKey"));
         if (action === "getArenaV2Match") return await handleGetArenaV2Match(db, id, auth, p.get("characterId"), p.get("matchId"));
         if (action === "getBattleState") return await handleGetBattleState(db, id, auth, p.get("characterId"));
+        if (action === "getDungeonEncounterPreview") return await handleGetDungeonEncounterPreview(db, id, auth, p.get("characterId"), p.get("floor"));
         // Friend System V1 (Phase 2) — read actions
         if (action === "searchCharacters") return await handleSearchCharacters(db, id, auth, p.get("characterId"), p.get("query"));
         if (action === "getPublicProfile") return await handleGetPublicProfile(db, id, auth, p.get("characterId"), p.get("targetCharacterId"));
@@ -6902,7 +6940,7 @@ async function apiFetch(request, env) {
           case "saveRunState":
             return await handleSaveRunState(db, id, auth, body.characterId, body.runState);
           case "startDungeonBattle":
-            return await handleStartDungeonBattle(db, id, auth, body.characterId, body.floor);
+            return await handleStartDungeonBattle(db, id, auth, body.characterId, body.floor, body.previewContext || null);
           case "saveBattleCheckpoint":
             return await handleSaveBattleCheckpoint(db, id, auth, body.characterId, body.battleId, body.checkpointSeq, body.payload);
           case "clearBattleCheckpoint":

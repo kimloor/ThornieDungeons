@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.43";
+  content: "Ver 1.0.44";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -632,6 +632,13 @@ body::after {
 .md-floor-cp { flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-end; }
 .md-floor-cp span { color:#bfd4ec; font-size:7.5px; font-weight:800; line-height:1.15; white-space:nowrap; }
 .md-floor-cp strong { color:#ffcf65; font-family:'Baloo 2'; font-size:18px; line-height:1.05; }
+.md-floor-preview-loading,
+.md-floor-preview-error {
+  min-height: 72px; display: flex; align-items: center; justify-content: center;
+  padding: 12px; border: 1px dashed rgba(255,209,102,.35); border-radius: 12px;
+  background: rgba(8,11,28,.62); color: var(--ink-soft); text-align: center; font-size: 11px; font-weight: 800;
+}
+.md-floor-preview-error { color: #FF9B9B; border-color: rgba(255,135,135,.45); }
 .md-floor-monster-stage { min-height:116px; padding:10px 6px 4px; display:flex; align-items:flex-end; justify-content:center; gap:2px; overflow:hidden; border-bottom:1px solid rgba(83,161,225,.22); background:radial-gradient(ellipse at 50% 84%,rgba(23,132,218,.25),transparent 55%); }
 .md-floor-monster { min-width:0; flex:0 1 94px; display:flex; flex-direction:column; align-items:center; color:#bfd6ed; font-size:7.5px; font-weight:800; text-align:center; }
 .md-floor-monster-sprite { width:76px; height:76px; object-fit:contain; filter:drop-shadow(0 6px 5px rgba(0,0,0,.75)); }
@@ -1375,6 +1382,7 @@ body::after {
   .md-pet-slot { left:clamp(112px,17%,142px); transform:translate(-50%,-50%) scale(.96); max-width:38%; }
 }
 
+/* Runtime/status + Dungeon preview QA gate: presentation changes remain UI-only; combat authority stays in Battle Core/Worker. */
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
 .md-battle-top {
   position: relative; z-index: 6; display: flex; align-items: center; gap: 10px;
@@ -1621,6 +1629,7 @@ body::after {
 .md-unit-status .ready { color: #8ee0a8; border-color: rgba(142,224,168,.45); }
 .md-unit-status .cooldown { color: var(--ink-soft); }
 .md-unit-status .elite { color: var(--gold); border-color: rgba(255,209,102,.62); background: rgba(55,32,8,.86); }
+.md-unit-status .def-up { color: #9ED8FF; border-color: rgba(158,216,255,.5); background: rgba(10,35,62,.82); }
 .md-unit-status.hero { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); z-index: 5; }
 
 .md-battle-dock {

@@ -3270,6 +3270,92 @@ function RuntimeDiagnosticOverlay({ diagnostic, title = "Runtime error", summary
   );
 }
 
+class GlobalGameErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { diagnostic: null };
+    this.lastFingerprint = "";
+    this.reportRuntimeError = this.reportRuntimeError.bind(this);
+  }
+
+  componentDidMount() {
+    globalThis.__thornieReportRuntimeError = this.reportRuntimeError;
+    const queued = Array.isArray(globalThis.__thornieRuntimeQueue)
+      ? globalThis.__thornieRuntimeQueue.slice()
+      : [];
+    globalThis.__thornieRuntimeQueue = [];
+    queued.forEach(this.reportRuntimeError);
+  }
+
+  componentWillUnmount() {
+    if (globalThis.__thornieReportRuntimeError === this.reportRuntimeError) {
+      delete globalThis.__thornieReportRuntimeError;
+    }
+  }
+
+  componentDidCatch(error, info) {
+    this.reportRuntimeError({
+      event: "react_render_error",
+      message: error?.message || String(error),
+      stack: [error?.stack || "", info?.componentStack || ""].filter(Boolean).join("\n")
+    });
+  }
+
+  reportRuntimeError(raw) {
+    const diagnostic = raw && typeof raw === "object"
+      ? {
+          event: String(raw.event || raw.kind || "client_runtime_error"),
+          reason: String(raw.reason || raw.code || raw.message || "unknown_error"),
+          message: String(raw.message || raw.reason || "Unknown runtime error"),
+          source: String(raw.source || ""),
+          line: Number(raw.line) || 0,
+          column: Number(raw.column) || 0,
+          stack: String(raw.stack || ""),
+          time: String(raw.time || new Date().toISOString())
+        }
+      : {
+          event: "client_runtime_error",
+          reason: String(raw || "unknown_error"),
+          message: String(raw || "Unknown runtime error"),
+          source: "",
+          line: 0,
+          column: 0,
+          stack: "",
+          time: new Date().toISOString()
+        };
+    const fingerprint = [
+      diagnostic.event,
+      diagnostic.message,
+      diagnostic.source,
+      diagnostic.line,
+      diagnostic.column
+    ].join("|");
+    if (fingerprint === this.lastFingerprint) return;
+    this.lastFingerprint = fingerprint;
+    this.setState({ diagnostic });
+  }
+
+  render() {
+    const diagnostic = this.state.diagnostic;
+    return /*#__PURE__*/React.createElement(React.Fragment, null,
+      this.props.children,
+      diagnostic && /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+        diagnostic: {
+          ...diagnostic,
+          event: "game_runtime_error",
+          reason: diagnostic.reason || "client_runtime_error"
+        },
+        title: "Game Runtime Error",
+        summary: "เกมพบข้อผิดพลาดระหว่างทำงาน ระบบจับ error กลางของเกมแล้ว รายละเอียดด้านล่างคือข้อมูลที่ผ่านการคัดกรองแล้ว",
+        onClose: () => {
+          this.lastFingerprint = "";
+          this.setState({ diagnostic: null });
+        }
+      })
+    );
+  }
+}
+
 function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
   return /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
     diagnostic: { ...diagnostic, event: "arena_presentation_failure", reason: diagnostic?.kind || "arena_runtime" },
@@ -4209,6 +4295,7 @@ function FloorMonsterPreview({ monster }) {
 
 function MapScreen({
   save,
+  serverUrl,
   arenaHud,
   unlockedFloor,
   onSelectFloor,
@@ -4240,17 +4327,32 @@ function MapScreen({
   const encounterCache = useRef(new Map());
   const [detail, setDetail] = useState(null);
 
-  const encounterFor = floor => {
-    if (!encounterCache.current.has(floor)) encounterCache.current.set(floor, makeEncounter(floor));
-    return encounterCache.current.get(floor);
-  };
-  const openFloor = floor => {
+  const openFloor = async floor => {
     if (floor > unlockedFloor) return;
-    setDetail({ floor, monsters: encounterFor(floor) });
+    const cached = encounterCache.current.get(floor);
+    if (cached) {
+      setDetail({ floor, monsters: cached.monsters, previewContext: cached.previewContext, loading: false });
+      return;
+    }
+    setDetail({ floor, monsters: [], previewContext: null, loading: true });
+    const preview = await cloudGetDungeonEncounterPreview(serverUrl, save.characterId, floor);
+    if (!preview?.ok || !preview?.context) {
+      setDetail({
+        floor,
+        monsters: [],
+        previewContext: null,
+        loading: false,
+        error: preview?.error || "dungeon_preview_failed"
+      });
+      return;
+    }
+    const monsters = makeEncounter(floor, { serverContext: preview.context });
+    encounterCache.current.set(floor, { monsters, previewContext: preview.context });
+    setDetail({ floor, monsters, previewContext: preview.context, loading: false });
   };
   const enterSelectedFloor = () => {
-    if (!detail || detail.floor > unlockedFloor) return;
-    onSelectFloor(detail.floor, detail.monsters);
+    if (!detail || detail.loading || detail.error || detail.floor > unlockedFloor) return;
+    onSelectFloor(detail.floor, detail.monsters, detail.previewContext);
   };
   return e("main", { className: `md-dungeon-map-page${detail ? " detail-open" : ""}` },
     e(GlobalCurrencyBar, { save, arena: arenaHud, className: "md-dungeon-resources" }),
@@ -4324,17 +4426,21 @@ function MapScreen({
             e("small", null, DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS ? "CHAPTER BOSS" : DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.ELITE ? "ELITE ENCOUNTER" : "DUNGEON FLOOR"),
             e("h2", { id: "md-floor-detail-title" }, "ชั้น ", detail.floor)
           ),
-          e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, formatNumber(recommendedFloorCp(detail.monsters))))
+          e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, detail.loading || detail.error ? "—" : formatNumber(recommendedFloorCp(detail.monsters))))
         ),
-        e("div", { className: "md-floor-monster-stage", "aria-label": "มอนสเตอร์ประจำชั้น" },
-          detail.monsters.map(monster => e("div", { className: "md-floor-monster", key: monster.uid },
-            e(FloorMonsterPreview, { monster }),
-            e("span", null, monster.name.replace(/\s*\((?:Elite\s+)?Boss\)\s*/gi, ""))
-          ))
-        ),
+        detail.loading
+          ? e("div", { className: "md-floor-preview-loading", role: "status" }, "กำลังโหลดข้อมูล encounter จากเซิร์ฟเวอร์…")
+          : detail.error
+            ? e("div", { className: "md-floor-preview-error", role: "alert" }, "โหลดข้อมูลมอนไม่สำเร็จ: ", detail.error)
+            : e("div", { className: "md-floor-monster-stage", "aria-label": "มอนสเตอร์ประจำชั้น" },
+              detail.monsters.map(monster => e("div", { className: "md-floor-monster", key: monster.uid },
+                e(FloorMonsterPreview, { monster }),
+                e("span", null, monster.name.replace(/\s*\((?:Elite\s+)?Boss\)\s*/gi, ""))
+              ))
+            ),
         e("h3", null, "อีเวนต์ชั้นนี้"),
         e("div", { className: "md-floor-events" },
-          floorEventPreview(detail.monsters).map(event => e("div", {
+          (detail.monsters || []).length ? floorEventPreview(detail.monsters).map(event => e("div", {
             key: event.id,
             className: "md-floor-event",
             style: { "--md-event-color": event.color }
@@ -4345,11 +4451,11 @@ function MapScreen({
               e("p", null, event.desc),
               event.effects.length > 0 && e("small", null, event.effects.join(" · "))
             )
-          ))
+          )) : []
         ),
         e("h3", null, "รางวัลที่อาจได้รับ"),
         e("div", { className: "md-floor-rewards" },
-          floorRewardPreview(detail.floor, detail.monsters).map(reward => e("div", { key: reward.hint },
+          floorRewardPreview(detail.floor, detail.monsters || []).map(reward => e("div", { key: reward.hint },
             e("span", null, reward.category ? e(GameIcon, { category: reward.category, iconKey: reward.iconKey, fallback: reward.icon, className: "md-game-icon md-floor-reward-icon", alt: reward.hint }) : reward.icon), e("b", null, reward.label), e("small", null, reward.hint)
           ))
         ),
@@ -4887,11 +4993,21 @@ function getMonsterPresentation(enemy) {
 }
 function EnemySprite({
   enemy,
+  battleUnit = null,
   anim,
   selected,
   onClick,
   combatSpeed = 1
 }) {
+  const statusSource = battleUnit?.statuses || enemy.battleStatuses || {};
+  const statusVisible = Boolean(
+    enemy.isElite || enemy.isEliteBoss ||
+    statusSource.poison ||
+    statusSource.stun ||
+    statusSource.silence ||
+    statusSource.armor_break ||
+    statusSource.def_up
+  );
   const spriteConfig = getMonsterSpriteConfig(enemy);
   const presentation = getMonsterPresentation(enemy);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
@@ -4931,23 +5047,24 @@ function EnemySprite({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, enemy.hp, "/", enemy.maxHp)), /*#__PURE__*/React.createElement("div", {
+  }, enemy.hp, "/", enemy.maxHp)), statusVisible &&/*#__PURE__*/React.createElement("div", {
     className: "md-unit-status",
     "aria-label": "Enemy status effects"
   }, (enemy.isElite || enemy.isEliteBoss) && /*#__PURE__*/React.createElement("span", {
     className: "elite",
-    title: "Elite Boss"
-  }, "👑 ELITE"), enemy.frozenTurns > 0 && /*#__PURE__*/React.createElement("span", {
-    title: `Stun · ${enemy.frozenTurns} turn(s)`
-  }, "💫", enemy.frozenTurns), enemy.poisonTurns > 0 && /*#__PURE__*/React.createElement("span", {
-    title: `Poison · ${enemy.poisonTurns} turn(s)`
-  }, "☠️", enemy.poisonTurns), enemy.battleStatuses?.armor_break && /*#__PURE__*/React.createElement("span", {
-    title: `Armor Break · ${enemy.battleStatuses.armor_break.duration} turn(s)`
-  }, "🛡️↓", enemy.battleStatuses.armor_break.duration), enemy.battleStatuses?.silence && /*#__PURE__*/React.createElement("span", {
-    title: `Silence · ${enemy.battleStatuses.silence.duration} turn(s)`
-  }, "🤫", enemy.battleStatuses.silence.duration), enemy.battleStatuses?.def_up && /*#__PURE__*/React.createElement("span", {
-    title: `DEF Up · ${enemy.battleStatuses.def_up.duration} turn(s)`
-  }, "🛡️", enemy.battleStatuses.def_up.duration)), selected && !dead && /*#__PURE__*/React.createElement("span", {
+    title: "Elite"
+  }, "👑 ELITE"), statusSource.stun && /*#__PURE__*/React.createElement("span", {
+    title: `Stun · ${statusSource.stun.duration} turn(s)`
+  }, "💫", statusSource.stun.duration), statusSource.poison && /*#__PURE__*/React.createElement("span", {
+    title: `Poison · ${statusSource.poison.duration} turn(s)`
+  }, "☠️", statusSource.poison.duration), statusSource.armor_break && /*#__PURE__*/React.createElement("span", {
+    title: `Armor Break · ${statusSource.armor_break.duration} turn(s)`
+  }, "🛡️↓", statusSource.armor_break.duration), statusSource.silence && /*#__PURE__*/React.createElement("span", {
+    title: `Silence · ${statusSource.silence.duration} turn(s)`
+  }, "🤫", statusSource.silence.duration), statusSource.def_up && /*#__PURE__*/React.createElement("span", {
+    className: "def-up",
+    title: `DEF Up · ${statusSource.def_up.duration} turn(s)`
+  }, "🛡️↑", statusSource.def_up.duration)), selected && !dead && /*#__PURE__*/React.createElement("span", {
     className: "md-target-selected-marker md-battle-art",
     style: battleUiStyle("targetSelectedMarker"),
     "aria-hidden": "true"
@@ -5506,6 +5623,7 @@ function CombatScreen({
     className: `md-monster-slot md-monster-slot-${slotIndex} ${(m.isElite || m.isEliteBoss) ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
+    battleUnit: battleState?.units?.[m.uid],
     anim: enemyAnims[m.uid],
     selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
     onClick: onSelectTarget,
