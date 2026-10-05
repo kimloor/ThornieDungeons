@@ -216,3 +216,29 @@ test("Dungeon battle entry obtains server authorization before creating or check
   assert.match(entry, /battleId: battleAuthorization\.battleId/);
   assert.match(entry, /seed: battleAuthorization\.context\.encounterSeed/);
 });
+
+test("Quick-slot skill changes update the live Battle Core Hero immediately", () => {
+  assert.match(app, /Quick-slot edits made during Battle must update the live Battle Core Hero/);
+  assert.match(app, /activeSkills = next[\s\S]{0,300}slot\?\.kind === "skill"/);
+  assert.match(app, /applyCoreBattleState\(liveBattle, false\)/);
+  assert.match(app, /pushBattleCheckpoint\(liveBattle\)/);
+});
+
+test("Hero Skill V1 rows open full detail sheets and upgrades use a confirmation-style draft", () => {
+  assert.match(components, /md-floor-detail-sheet md-skill-detail-sheet/);
+  assert.match(components, /full rank progression|Rank \/ Level/);
+  assert.match(components, /Prerequisite:/);
+  assert.match(components, /＋ ทดลองอัป/);
+  assert.match(components, /ยืนยันการอัปสกิล/);
+  assert.match(components, /const \[draft, setDraft\] = useState\(\{\}\)/);
+  assert.match(components, /onLearnSkill\(draft\)/);
+});
+
+test("Battle Potion starts the local Hero Action immediately while server consumption stays authoritative", () => {
+  assert.match(app, /const pendingPotionRef = useRef\(null\)/);
+  assert.match(app, /const promise = cloudConsumePotion\(/);
+  assert.match(app, /Resolve the full Potion Action immediately/);
+  assert.match(app, /driveCoreBattle\(state, \{ type: "potion"/);
+  assert.match(app, /Server rejected the inventory mutation/);
+  assert.match(app, /applyCoreBattleState\(pendingPotion\.preState, false\)/);
+});
