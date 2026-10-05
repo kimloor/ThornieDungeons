@@ -3310,6 +3310,44 @@ function arenaTurnOrderIcon(unit, preparedSnapshot) {
 
 // W9.8/W9.9 authoritative Arena V2 surface. The server owns match state; this
 // component only renders snapshots and sends idempotent action keys.
+function ArenaSetupDropdown({ className = "", summary, options, optionsLabel, align = "left" }) {
+  const triggerRef = React.useRef(null);
+  const [open, setOpen] = React.useState(false);
+  const [position, setPosition] = React.useState(null);
+  const syncPosition = React.useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect?.();
+    if (!rect) return;
+    const viewportWidth = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+    const width = align === "pet" ? rect.width : Math.min(290, Math.max(0, viewportWidth - 28));
+    const preferredLeft = align === "right" ? rect.right - width : rect.left;
+    const left = Math.max(14, Math.min(preferredLeft, viewportWidth - width - 14));
+    setPosition({ top: Math.round(rect.bottom + 4), left: Math.round(left), width: Math.round(width) });
+  }, [align]);
+  React.useEffect(() => {
+    if (!open) { setPosition(null); return undefined; }
+    syncPosition();
+    const onViewport = () => syncPosition();
+    window.addEventListener("resize", onViewport, { passive: true });
+    window.addEventListener("scroll", onViewport, true);
+    const onKeyDown = event => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("resize", onViewport);
+      window.removeEventListener("scroll", onViewport, true);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, syncPosition]);
+  return React.createElement(React.Fragment, null,
+    React.createElement("div", { className: ("md-arena-setup-picker " + className).trim(), ref: triggerRef },
+      React.createElement("button", { type: "button", className: "md-arena-setup-trigger", "aria-expanded": open, "aria-haspopup": "listbox", onClick: () => setOpen(value => !value) }, summary)
+    ),
+    open && position && ReactDOM.createPortal(
+      React.createElement("div", { className: "md-arena-setup-options md-arena-setup-options-portal", role: "listbox", "aria-label": optionsLabel, style: { top: position.top + "px", left: position.left + "px", width: position.width + "px" }, onClick: () => setOpen(false) }, options),
+      document.body
+    )
+  );
+}
+
 function ArenaV2Screen({
   serverUrl,
   characterId,
