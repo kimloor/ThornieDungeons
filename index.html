@@ -157,7 +157,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.47";
+  content: "Ver 1.0.48";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -3384,7 +3384,7 @@ const MONSTER_ASSET_ALIASES = {
 function normalizeAssetLookupKey(value) {
   return String(value || "")
     .toLowerCase()
-    .replace(/\s*\((?:elite\s+)?boss\)\s*/g, "")
+    .replace(/\s*\((?:(?:elite\s+)?boss|elite)\)\s*/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 }
@@ -12978,6 +12978,9 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     game = null;
     scene = null;
     try {
+      // Phaser.Game.destroy() is asynchronous. Stop the RAF loop first so React can
+      // remove the host DOM node without one more render touching a detached canvas.
+      gameToDestroy?.loop?.stop?.();
       gameToDestroy?.destroy(true);
     } catch (error) {
       // Phaser is presentation-only. A teardown failure must never bubble into
