@@ -116,6 +116,9 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
     game = null;
     scene = null;
     try {
+      // Phaser.Game.destroy() is asynchronous. Stop the RAF loop first so React can
+      // remove the host DOM node without one more render touching a detached canvas. This also keeps teardown deterministic on mobile Safari.
+      gameToDestroy?.loop?.stop?.();
       gameToDestroy?.destroy(true);
     } catch (error) {
       // Phaser is presentation-only. A teardown failure must never bubble into

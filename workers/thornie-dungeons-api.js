@@ -1808,6 +1808,7 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
   };
 }
 // Character XP is persisted authoritatively here so reward snapshots cannot roll level back.
+  // The first server-granted starter pet is also auto-equipped here so the active slot survives reload.
 const DUNGEON_CHARACTER_MAX_LEVEL = 99;
 function dungeonV2CharacterXpToNext(level) {
   return Math.max(1, Math.floor(Number(level) || 1)) * 22 + 18;
@@ -1908,7 +1909,7 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
     `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
   ).bind(String(battleId), characterId, encoded, now);
   const characterStmt = db.prepare(
-    `UPDATE characters SET gold = gold + ?, level = ?, xp = ?, stat_points = ?, unlocked_floor = CASE WHEN ? THEN unlocked_floor + 1 ELSE unlocked_floor END, pets_json = ?, updated_at = ? WHERE character_id = ? AND changes() > 0`
+    `UPDATE characters SET gold = gold + ?, level = ?, xp = ?, stat_points = ?, unlocked_floor = CASE WHEN ? THEN unlocked_floor + 1 ELSE unlocked_floor END, pets_json = ?, active_pet_id = CASE WHEN (active_pet_id IS NULL OR active_pet_id = '') AND ? != '' THEN ? ELSE active_pet_id END, updated_at = ? WHERE character_id = ? AND changes() > 0`
   ).bind(
     Number(normalizedReward.gold),
     characterProgress.level,
@@ -1916,6 +1917,8 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
     characterProgress.statPoints,
     normalizedReward.unlockedNext ? 1 : 0,
     JSON.stringify(envelope),
+    starterGrant?.instance?.instId || "",
+    starterGrant?.instance?.instId || "",
     now,
     characterId
   );

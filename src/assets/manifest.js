@@ -306,7 +306,7 @@ const MONSTER_ASSET_ALIASES = {
 function normalizeAssetLookupKey(value) {
   return String(value || "")
     .toLowerCase()
-    .replace(/\s*\((?:elite\s+)?boss\)\s*/g, "")
+    .replace(/\s*\((?:(?:elite\s+)?boss|elite)\)\s*/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 }
@@ -322,7 +322,11 @@ function getMonsterSpriteConfig(enemy) {
   const idKey = normalizeAssetLookupKey(enemy.id);
   const nameKey = normalizeAssetLookupKey(enemy.name);
 
+  const defIdKey = normalizeAssetLookupKey(enemy.defId || enemy.monsterDefId || enemy.dungeonV2ProfileId);
+
   const candidates = [
+    MONSTER_ASSET_ALIASES[defIdKey],
+    defIdKey,
     MONSTER_ASSET_ALIASES[idKey],
     idKey,
     MONSTER_ASSET_ALIASES[nameKey],

@@ -200,7 +200,7 @@ test("Ver 1.0.21 keeps authored monster facing and hardens Phaser result teardow
   assert.match(monster, /this\.visualRoot\.setScale\(this\.facing\(\) === "left" \? 1 : -1, 1\)/);
   assert.match(scene, /this\.events\.once\(Phaser\.Scenes\.Events\.SHUTDOWN, this\.shutdown, this\)/);
   assert.match(host, /const gameToDestroy = game/);
-  assert.match(host, /try \{\s*gameToDestroy\?\.destroy\(true\)/);
+  assert.match(host, /const gameToDestroy = game[\s\S]*gameToDestroy\?\.destroy\(true\)/);
   assert.match(host, /Phaser battlefield teardown failed/);
 });
 
