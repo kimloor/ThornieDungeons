@@ -1221,7 +1221,10 @@ function ThornieDungeons() {
         if (!cleared?.ok) throw new Error("checkpoint_reset_failed");
         setResumeBattle(null);
       }
-      const started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum);
+      let started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null);
+      if (!started?.ok && started?.error === "dungeon_preview_stale" && started?.context) {
+        started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, started.context);
+      }
       if (!started?.ok || !started?.battleId || !started?.context) throw new Error(started?.error || "dungeon_start_failed");
       battleAuthorization = started;
     }
@@ -2614,6 +2617,7 @@ function ThornieDungeons() {
     onBack: () => setPhase("character")
   }), phase === "map" && /*#__PURE__*/React.createElement(MapScreen, {
     save: save,
+    serverUrl: cred.url,
     arenaHud: arenaHud,
     unlockedFloor: save.unlockedFloor,
     onCharacter: () => {
@@ -2629,10 +2633,10 @@ function ThornieDungeons() {
     // sitting in state (from the last stage you fought, incl. a flee), carry its
     // real current HP/MP into the newly-selected stage instead of full-healing —
     // Stage Select should only ever full-heal when there's truly no run to continue.
-    onSelectFloor: (floorNum, encounter) => enterStage(
+    onSelectFloor: (floorNum, encounter, previewContext) => enterStage(
       floorNum,
       player && player.hp > 0 ? player : null,
-      { encounter }
+      { encounter, previewContext }
     ),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
