@@ -190,9 +190,9 @@ test("existing character and inventory shapes remain compatible without a generi
   assert.equal(flat.character.level, 9);
   assert.deepEqual(Array.from(flat.pets, pet => pet.instId), ["pet-old"]);
 
-  const equipped = { weapon: { id: "w1", type: "weapon", rarity: "common", name: "Sword", atk: 3 }, armor: null };
-  const inventory = [{ id: "j1", type: "junk", junkId: "iron", rarity: "common", name: "Iron", quantity: 4 }];
-  const overflow = [{ id: "o1", type: "weapon", rarity: "rare", name: "Overflow Sword", atk: 9, favorite: true }];
+  const equipped = { weapon: { id: "w1", serverItemId: "w1", type: "weapon", rarity: "common", name: "Sword", atk: 3 }, armor: null };
+  const inventory = [{ id: "j1", serverItemId: "j1", type: "junk", junkId: "iron", rarity: "common", name: "Iron", quantity: 4 }];
+  const overflow = [{ id: "o1", serverItemId: "o1", type: "weapon", rarity: "rare", name: "Overflow Sword", atk: 9, favorite: true }];
   const list = sandbox.itemsToServerList(inventory, equipped, overflow);
   const rows = list.map(item => ({
     item_id: item.itemId, slot_type: item.slotType, equipped: item.equipped ? 1 : 0,
