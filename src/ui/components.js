@@ -5052,18 +5052,19 @@ function EnemySprite({
     "aria-label": "Enemy status effects"
   }, (enemy.isElite || enemy.isEliteBoss) && /*#__PURE__*/React.createElement("span", {
     className: "elite",
-    title: "Elite Boss"
-  }, "👑 ELITE"), enemy.frozenTurns > 0 && /*#__PURE__*/React.createElement("span", {
-    title: `Stun · ${enemy.frozenTurns} turn(s)`
-  }, "💫", enemy.frozenTurns), enemy.poisonTurns > 0 && /*#__PURE__*/React.createElement("span", {
-    title: `Poison · ${enemy.poisonTurns} turn(s)`
-  }, "☠️", enemy.poisonTurns), enemy.battleStatuses?.armor_break && /*#__PURE__*/React.createElement("span", {
-    title: `Armor Break · ${enemy.battleStatuses.armor_break.duration} turn(s)`
-  }, "🛡️↓", enemy.battleStatuses.armor_break.duration), enemy.battleStatuses?.silence && /*#__PURE__*/React.createElement("span", {
-    title: `Silence · ${enemy.battleStatuses.silence.duration} turn(s)`
-  }, "🤫", enemy.battleStatuses.silence.duration), enemy.battleStatuses?.def_up && /*#__PURE__*/React.createElement("span", {
-    title: `DEF Up · ${enemy.battleStatuses.def_up.duration} turn(s)`
-  }, "🛡️", enemy.battleStatuses.def_up.duration)), selected && !dead && /*#__PURE__*/React.createElement("span", {
+    title: "Elite"
+  }, "👑 ELITE"), statusSource.stun && /*#__PURE__*/React.createElement("span", {
+    title: `Stun · ${statusSource.stun.duration} turn(s)`
+  }, "💫", statusSource.stun.duration), statusSource.poison && /*#__PURE__*/React.createElement("span", {
+    title: `Poison · ${statusSource.poison.duration} turn(s)`
+  }, "☠️", statusSource.poison.duration), statusSource.armor_break && /*#__PURE__*/React.createElement("span", {
+    title: `Armor Break · ${statusSource.armor_break.duration} turn(s)`
+  }, "🛡️↓", statusSource.armor_break.duration), statusSource.silence && /*#__PURE__*/React.createElement("span", {
+    title: `Silence · ${statusSource.silence.duration} turn(s)`
+  }, "🤫", statusSource.silence.duration), statusSource.def_up && /*#__PURE__*/React.createElement("span", {
+    className: "def-up",
+    title: `DEF Up · ${statusSource.def_up.duration} turn(s)`
+  }, "🛡️↑", statusSource.def_up.duration)), selected && !dead && /*#__PURE__*/React.createElement("span", {
     className: "md-target-selected-marker md-battle-art",
     style: battleUiStyle("targetSelectedMarker"),
     "aria-hidden": "true"
