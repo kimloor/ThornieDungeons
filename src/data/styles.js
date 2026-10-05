@@ -1382,6 +1382,7 @@ body::after {
   .md-pet-slot { left:clamp(112px,17%,142px); transform:translate(-50%,-50%) scale(.96); max-width:38%; }
 }
 
+/* Runtime/status + Dungeon preview QA gate: presentation changes remain UI-only; combat authority stays in Battle Core/Worker. */
 /* ---- battle top status bar: level + hp/mp/xp, no longer floats over the arena ---- */
 .md-battle-top {
   position: relative; z-index: 6; display: flex; align-items: center; gap: 10px;
