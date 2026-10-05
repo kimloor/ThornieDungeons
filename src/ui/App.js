@@ -1206,9 +1206,9 @@ function ThornieDungeons() {
   function consumeBattlePotion(state, potionId) {
     const def = getPotionDef(potionId);
     if (!def || !state?.battleId || busy || pendingPotionRef.current) return;
-    const operationKey = \`\${state.battleId}:\${state.safeActionSeq}:\${potionId}\`;
+    const operationKey = `${state.battleId}:${state.safeActionSeq}:${potionId}`;
     const requestId = potionRequestIdsRef.current.get(operationKey)
-      || (globalThis.crypto?.randomUUID?.() || \`potion-\${Date.now()}-\${Math.random().toString(36).slice(2)}\`);
+      || (globalThis.crypto?.randomUUID?.() || `potion-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     potionRequestIdsRef.current.set(operationKey, requestId);
     const heroUnit = state.units[state.heroId];
     const heal = def.kind === "hp" ? heroUnit.maxHp * def.healPct : 0;
