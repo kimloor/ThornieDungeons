@@ -43,62 +43,43 @@ Run `node build.js` after source changes. index.html is the single generated app
 </head>
 <body>
 <div id="root"><div id="boot-status">Loading ThornieDungeons&hellip;</div></div>
-<div id="boot-error" role="dialog" aria-modal="true" aria-labelledby="boot-error-title">
-  <div id="boot-error-card">
-    <div id="boot-error-head">
-      <strong id="boot-error-title">⚠ Runtime Error</strong>
-      <button id="boot-error-close" type="button" aria-label="Close error" onclick="hideBootError()">×</button>
-    </div>
-    <pre id="boot-error-text"></pre>
-  </div>
-</div>
 
 <script>
-  function hideBootError() {
-    var el = document.getElementById('boot-error');
-    if (el) el.style.display = 'none';
-  }
-  function runtimeErrorDetail(kind, message, error, source, line, column) {
-    var primary = error && error.message ? error.message : (message || 'Unknown error');
-    var detail = kind + ': ' + primary;
-    if (source || line || column) detail += '\nSource: ' + (source || 'unknown') + ':' + (line || '?') + ':' + (column || '?');
-    if (error && error.stack) detail += '\n\n' + error.stack;
-    return detail;
-  }
-  function showBootError(msg) {
-    var overlay = document.getElementById('boot-error');
-    var text = document.getElementById('boot-error-text');
-    var detail = String(msg || 'Unknown error');
-    if (detail.length > 6000) detail = detail.slice(0, 6000) + '\n… (truncated)';
-    if (overlay) overlay.style.display = 'flex';
-    if (text) {
-      text.textContent += (text.textContent ? '\n\n──────────\n\n' : '') + detail;
-      text.scrollTop = text.scrollHeight;
+  // Runtime errors are queued until React mounts the central game error boundary.
+  // This replaces the retired boot-error popup so gameplay errors are reported by one
+  // game-wide diagnostic surface instead of an early boot-only handler.
+  window.__thornieRuntimeQueue = window.__thornieRuntimeQueue || [];
+  window.__thornieCaptureRuntimeError = function(kind, message, error, source, line, column) {
+    var detail = {
+      event: String(kind || 'runtime_error'),
+      message: String(error && error.message || message || 'Unknown runtime error'),
+      source: String(source || ''),
+      line: Number(line) || 0,
+      column: Number(column) || 0,
+      stack: String(error && error.stack || ''),
+      time: new Date().toISOString()
+    };
+    window.__thornieRuntimeQueue.push(detail);
+    if (window.__thornieRuntimeQueue.length > 8) window.__thornieRuntimeQueue.shift();
+    if (typeof window.__thornieReportRuntimeError === 'function') {
+      window.__thornieReportRuntimeError(detail);
     }
-    var status = document.getElementById('boot-status');
-    if (status) status.textContent = 'Something went wrong loading the game \u2014 see error popup.';
-  }
-  window.addEventListener('error', function (e) {
-    if (typeof window.__thornieArenaRuntimeError === 'function') {
-      window.__thornieArenaRuntimeError(e);
-      e.preventDefault();
-      return;
-    }
-    showBootError(runtimeErrorDetail('JS Error', e.message, e.error, e.filename, e.lineno, e.colno));
+  };
+  window.addEventListener('error', function(e) {
+    window.__thornieCaptureRuntimeError('window_error', e && e.message, e && e.error, e && e.filename, e && e.lineno, e && e.colno);
   });
-  window.addEventListener('unhandledrejection', function (e) {
-    if (typeof window.__thornieArenaUnhandledRejection === 'function') {
-      window.__thornieArenaUnhandledRejection(e);
-      e.preventDefault();
-      return;
-    }
-    var reason = e.reason;
-    showBootError(runtimeErrorDetail('Unhandled Promise Rejection', reason && reason.message ? reason.message : String(reason), reason instanceof Error ? reason : null));
+  window.addEventListener('unhandledrejection', function(e) {
+    var reason = e && e.reason;
+    window.__thornieCaptureRuntimeError('unhandled_rejection', reason && reason.message ? reason.message : String(reason || 'Unknown rejection'), reason instanceof Error ? reason : null);
   });
-  window.__thornieBootTimer = setTimeout(function () {
-    if (typeof React === 'undefined') showBootError('React failed to load from CDN (unpkg.com). Network may be blocking it.');
-    else if (typeof ReactDOM === 'undefined') showBootError('ReactDOM failed to load from CDN (unpkg.com).');
-    else showBootError('Scripts loaded but the game never rendered. Check for a JS error above.');
+  window.__thornieBootTimer = setTimeout(function() {
+    if (typeof React === 'undefined') {
+      window.__thornieCaptureRuntimeError('boot_failure', 'React failed to load from CDN (unpkg.com).');
+    } else if (typeof ReactDOM === 'undefined') {
+      window.__thornieCaptureRuntimeError('boot_failure', 'ReactDOM failed to load from CDN (unpkg.com).');
+    } else {
+      window.__thornieCaptureRuntimeError('boot_timeout', 'Scripts loaded but the game never rendered.');
+    }
   }, 6000);
 </script>
 
@@ -4844,8 +4825,16 @@ function cloudMutateLegacyBlacksmith(url, characterId, itemId, mutation, request
 function cloudGetBattleState(url, characterId) {
   return cloudAuthGet(url, { action: "getBattleState", characterId });
 }
-function cloudStartDungeonBattle(url, characterId, floor) {
-  return cloudAuthPost(url, { action: "startDungeonBattle", characterId, floor });
+function cloudGetDungeonEncounterPreview(url, characterId, floor) {
+  return cloudAuthGet(url, { action: "getDungeonEncounterPreview", characterId, floor });
+}
+function cloudStartDungeonBattle(url, characterId, floor, previewContext = null) {
+  return cloudAuthPost(url, {
+    action: "startDungeonBattle",
+    characterId,
+    floor,
+    previewContext: previewContext || undefined
+  });
 }
 function cloudSaveBattleCheckpoint(url, characterId, battleId, checkpointSeq, payload) {
   return cloudAuthPost(url, { action: "saveBattleCheckpoint", characterId, battleId, checkpointSeq, payload });
@@ -19804,6 +19793,92 @@ function RuntimeDiagnosticOverlay({ diagnostic, title = "Runtime error", summary
   );
 }
 
+class GlobalGameErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { diagnostic: null };
+    this.lastFingerprint = "";
+    this.reportRuntimeError = this.reportRuntimeError.bind(this);
+  }
+
+  componentDidMount() {
+    globalThis.__thornieReportRuntimeError = this.reportRuntimeError;
+    const queued = Array.isArray(globalThis.__thornieRuntimeQueue)
+      ? globalThis.__thornieRuntimeQueue.slice()
+      : [];
+    globalThis.__thornieRuntimeQueue = [];
+    queued.forEach(this.reportRuntimeError);
+  }
+
+  componentWillUnmount() {
+    if (globalThis.__thornieReportRuntimeError === this.reportRuntimeError) {
+      delete globalThis.__thornieReportRuntimeError;
+    }
+  }
+
+  componentDidCatch(error, info) {
+    this.reportRuntimeError({
+      event: "react_render_error",
+      message: error?.message || String(error),
+      stack: [error?.stack || "", info?.componentStack || ""].filter(Boolean).join("\n")
+    });
+  }
+
+  reportRuntimeError(raw) {
+    const diagnostic = raw && typeof raw === "object"
+      ? {
+          event: String(raw.event || raw.kind || "client_runtime_error"),
+          reason: String(raw.reason || raw.code || raw.message || "unknown_error"),
+          message: String(raw.message || raw.reason || "Unknown runtime error"),
+          source: String(raw.source || ""),
+          line: Number(raw.line) || 0,
+          column: Number(raw.column) || 0,
+          stack: String(raw.stack || ""),
+          time: String(raw.time || new Date().toISOString())
+        }
+      : {
+          event: "client_runtime_error",
+          reason: String(raw || "unknown_error"),
+          message: String(raw || "Unknown runtime error"),
+          source: "",
+          line: 0,
+          column: 0,
+          stack: "",
+          time: new Date().toISOString()
+        };
+    const fingerprint = [
+      diagnostic.event,
+      diagnostic.message,
+      diagnostic.source,
+      diagnostic.line,
+      diagnostic.column
+    ].join("|");
+    if (fingerprint === this.lastFingerprint) return;
+    this.lastFingerprint = fingerprint;
+    this.setState({ diagnostic });
+  }
+
+  render() {
+    const diagnostic = this.state.diagnostic;
+    return /*#__PURE__*/React.createElement(React.Fragment, null,
+      this.props.children,
+      diagnostic && /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
+        diagnostic: {
+          ...diagnostic,
+          event: "game_runtime_error",
+          reason: diagnostic.reason || "client_runtime_error"
+        },
+        title: "Game Runtime Error",
+        summary: "เกมพบข้อผิดพลาดระหว่างทำงาน ระบบจับ error กลางของเกมแล้ว รายละเอียดด้านล่างคือข้อมูลที่ผ่านการคัดกรองแล้ว",
+        onClose: () => {
+          this.lastFingerprint = "";
+          this.setState({ diagnostic: null });
+        }
+      })
+    );
+  }
+}
+
 function ArenaFatalDiagnosticOverlay({ diagnostic, onResume, onClose }) {
   return /*#__PURE__*/React.createElement(RuntimeDiagnosticOverlay, {
     diagnostic: { ...diagnostic, event: "arena_presentation_failure", reason: diagnostic?.kind || "arena_runtime" },
@@ -21421,11 +21496,21 @@ function getMonsterPresentation(enemy) {
 }
 function EnemySprite({
   enemy,
+  battleUnit = null,
   anim,
   selected,
   onClick,
   combatSpeed = 1
 }) {
+  const statusSource = battleUnit?.statuses || enemy.battleStatuses || {};
+  const statusVisible = Boolean(
+    enemy.isElite || enemy.isEliteBoss ||
+    statusSource.poison ||
+    statusSource.stun ||
+    statusSource.silence ||
+    statusSource.armor_break ||
+    statusSource.def_up
+  );
   const spriteConfig = getMonsterSpriteConfig(enemy);
   const presentation = getMonsterPresentation(enemy);
   const hpPct = Math.max(0, Math.min(100, enemy.hp / enemy.maxHp * 100));
@@ -22040,6 +22125,7 @@ function CombatScreen({
     className: `md-monster-slot md-monster-slot-${slotIndex} ${(m.isElite || m.isEliteBoss) ? "elite" : ""} ${getMonsterPresentation(m).anchorType === "flying" ? "flying" : "grounded"}`
   }, /*#__PURE__*/React.createElement(EnemySprite, {
     enemy: m,
+    battleUnit: battleState?.units?.[m.uid],
     anim: enemyAnims[m.uid],
     selected: monsters.filter(mm => mm.hp > 0).length > 1 && m.uid === (primaryEnemy && primaryEnemy.uid),
     onClick: onSelectTarget,
@@ -23375,11 +23461,15 @@ function CraftingOverlay({
 })(typeof globalThis !== "undefined" ? globalThis : this);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(ThornieDungeons));
+root.render(React.createElement(GlobalGameErrorBoundary, null, React.createElement(ThornieDungeons)));
 clearTimeout(window.__thornieBootTimer);
 } catch (err) {
   clearTimeout(window.__thornieBootTimer);
-  showBootError('Render Error: ' + (err && err.message ? err.message : String(err)) + (err && err.stack ? '\n' + err.stack : ''));
+  if (typeof window.__thornieCaptureRuntimeError === 'function') {
+    window.__thornieCaptureRuntimeError('bootstrap_failure', err && err.message ? err.message : String(err), err);
+  } else {
+    throw err;
+  }
 }
 </script>
 </body>
