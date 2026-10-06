@@ -26,7 +26,7 @@ test("Phase 3 client/server potion sell prices stay in parity", () => {
 test("Phase 3 client/server junk sell prices stay in parity", () => {
   for (const [id, price] of Object.entries(JUNK_SELL)) {
     assert.match(worker, new RegExp(id + ": " + price + "\\b"));
-    assert.match(shop, new RegExp(id + ": " + price + "\\b"));
+    assert.match(enhancement, new RegExp(id + ": " + price + "\\b"));
   }
 });
 
