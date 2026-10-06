@@ -10,6 +10,13 @@ on:
       - "tests/shop-v1-phase1.test.js"
       - "tests/shop-v1-phase3.test.js"
       - "tests/shop-v1-phase4.test.js"
+      - "tests/shop-v1-phase5.test.js"
+      - "tests/shop-v1-phase6.test.js"
+      - "tests/shop-v1-phase7.test.js"
+      - "src/ui/components.js"
+      - "src/ui/App.js"
+      - "src/state/api.js"
+      - "src/data/styles.js"
       - "docs/ADMIN-V2.md"
       - ".github/workflows/admin-v2-branch-qa.yml"
   workflow_dispatch:
@@ -39,6 +46,12 @@ jobs:
         run: node --test tests/shop-v1-phase3.test.js
       - name: SHOP-AND-SELL Phase 4 contract tests
         run: node --test tests/shop-v1-phase4.test.js
+      - name: SHOP-AND-SELL Phase 5 contract tests
+        run: node --test tests/shop-v1-phase5.test.js
+      - name: SHOP-AND-SELL Phase 6 contract tests
+        run: node --test tests/shop-v1-phase6.test.js
+      - name: SHOP-AND-SELL Phase 7 integration contract tests
+        run: node --test tests/shop-v1-phase7.test.js
       - name: Auth V2 regression
         run: |
           # Skip only the pre-existing timing-sensitive retryAfter > 30 assertion in this CI workspace.
