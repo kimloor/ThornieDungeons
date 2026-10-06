@@ -1,7 +1,51 @@
-# D1 Latency Budget V1\n\n## Purpose\nKeep player-facing mutation paths bounded for D1 Primary in US East. The Worker exposes a lightweight per-request Server-Timing header with D1 round-trip count and total application duration.\n\n## Budgets\n| Action | Normal max sequential D1 round trips | Replay max |\n| --- | ---: | ---: |\n| purchaseCharacterResource | 4 | 2 |\n| sellCharacterItem | 4 | 2 |\n| completeBattle | 4 | 2 |\n\nMeasured source-level call budget on the current implementation (before → after):
-- purchaseCharacterResource: **12 → 3** normal
-- sellCharacterItem: **11 → 3** normal
-- completeBattle: **10 → 4** normal
-- completeBattle replay: **7 → 2**
+# D1 Latency Budget V1
 
-The target architecture is:\n- hot mutations use the shared character authentication boundary;\n- receipt replay is checked once by the shared receipt helper;\n- receipt readback and authoritative character/inventory/diamond snapshot reads share the final D1 batch;\n- battle completion pre-reads are grouped, then reward settlement and final completion/checkpoint/snapshot writes are bounded.\n\n## Measurement\n`Server-Timing: d1;desc="<N> calls", app;dur=<ms>` reports D1 terminal calls/batches and total Worker application duration for the request.\nBrowsers may read Server-Timing because the header is exposed only for origins accepted by the existing CORS allowlist.\nNo player payloads or player data are included in the timing header.\n\n## Development rule\nNew player-facing mutation endpoints must use the shared character authentication and receipt/transaction helpers rather than introducing independent replay, ownership, or snapshot round trips.\n\n## QA\nUse the request's Server-Timing header to compare D1 calls before/after a change. For Asia-side measurements, compare the same action and equivalent request shape across repeated runs; use D1 calls as the stable budget metric and app duration as the latency observation.\nThe budget does not authorize weakening authentication, ownership, receipt, checkpoint, reward-plan equality, or idempotency guards.\n
+## Purpose
+
+Reduce sequential Cloudflare D1 round trips on latency-sensitive gameplay mutations without changing reward authority, guards, receipt/idempotency semantics, or error codes.
+
+The API entrypoint emits a Server-Timing header per request:
+
+`Server-Timing: d1;desc="<N> calls", app;dur=<ms>`
+
+- **d1** = counted D1 terminal statement calls plus each `db.batch()` as one round trip.
+- **app** = total API handler wall time in milliseconds.
+- No payloads or player data are included.
+- Browsers expose `Server-Timing` only for the existing CORS allowlist.
+
+## Budgets
+
+| Action | Before | After | Budget |
+|---|---:|---:|---:|
+| purchaseCharacterResource | 4 | 3 | <= 4 |
+| sellCharacterItem | 4 | 3 | <= 4 |
+| completeBattle normal | 7 | 4 | <= 4 |
+| completeBattle replay | 2 | 2 | <= 2 |
+
+The before counts include the old separate session/ownership path and, for battle completion, the two sequential reward-plan reads. The after counts use the shared character authentication query and one reward-read batch.
+
+## Implementation rules
+
+- New character mutations should use the shared `authenticateCharacter()` boundary where applicable.
+- Do not add per-request authority-table DDL to gameplay hot paths. Migration 0028 provides the required item authority tables.
+- Keep one receipt replay/idempotency check per mutation.
+- Keep payload conflict, pending-receipt, stale-state, identity, checkpoint, and reward-plan guards unchanged.
+- Prefer D1 batches when multiple reads have no dependency on each other.
+
+## Reading production measurements
+
+1. Open the browser's Network panel.
+2. Select the gameplay API request.
+3. Read the `Server-Timing` response header.
+4. Record **d1 calls** and **app ms** for repeated purchase, sell, and complete-battle actions.
+5. Compare Asia-side client measurements before/after any placement change. Do not treat a single request as a meaningful Smart Placement result.
+
+## Smart Placement measurement
+
+PR-3 is intentionally config-only and must not be merged without owner approval. After PR-1 is deployed, establish a baseline for the three actions above, then measure again only after Cloudflare Smart Placement has had time to analyze traffic.
+
+Rollback: remove only the `placement.mode = "smart"` key from `wrangler.api.template.jsonc`, then redeploy the API Worker through the normal workflow.
+
+## QA
+
+The PR test suite includes a test-side D1 counting fake and architecture budget assertions. Full CI remains the authority for syntax, regression, and generated-build checks.
