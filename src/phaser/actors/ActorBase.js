@@ -289,9 +289,14 @@ class PhaserBattleActor {
     this.statusText.setVisible(false);
     this.statusIcons.removeAll(true);
     const statusIconMap = {
+      atk_up: "ui/skill-icons/hero/power_strike.png",
       def_up: "ui/skill-icons/hero/guard.png",
       armor_break: "ui/skill-icons/hero/armor_break_mastery.png",
-      pet_regrowth: "ui/skill-icons/hero/recovery.png"
+      pet_regrowth: "ui/skill-icons/hero/recovery.png",
+      regen: "ui/skill-icons/hero/recovery.png",
+      poison: "ui/skill-icons/hero/toxic_strike.png",
+      stun: "ui/skill-icons/hero/stunning_blow.png",
+      silence: "ui/skill-icons/hero/silent_edge.png"
     };
     const visibleStatuses = (this.data.statuses || [])
       .filter(status => statusIconMap[status?.key] && Number(status?.duration) > 0);
