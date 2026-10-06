@@ -172,6 +172,43 @@ async function verifyOwnedCharacter(db, playerId, characterId) {
   return { ok: true, row };
 }
 
+async function authenticateCharacter(db, token, characterId) {
+  if (!characterId) return { error: "missing_fields" };
+  if (!token) return { error: "invalid_session" };
+  const tokenHash = await sha256(token);
+  const row = await db.prepare(`
+    SELECT s.session_id AS __session_id, s.expires_at AS __session_expires_at,
+           s.revoked_at AS __session_revoked_at, s.revoke_reason AS __session_revoke_reason,
+           s.remember_login AS __session_remember_login,
+           p.id AS __player_id,
+           c.*
+    FROM auth_sessions s
+    JOIN players p ON p.id = s.player_id
+    LEFT JOIN characters c ON c.character_id = ?
+    WHERE s.token_hash = ?
+    LIMIT 1
+  `).bind(characterId, tokenHash).first();
+  if (!row) return { error: "invalid_session" };
+  if (row.__session_revoked_at) return { error: row.__session_revoke_reason === "replaced" ? "session_replaced" : "session_revoked" };
+  if (Date.parse(row.__session_expires_at) <= Date.now()) return { error: "session_expired" };
+  if (!row.__player_id) return { error: "invalid_session" };
+  const auth = {
+    ok: true,
+    row: { id: row.__player_id },
+    session: {
+      session_id: row.__session_id,
+      expires_at: row.__session_expires_at,
+      revoked_at: row.__session_revoked_at,
+      revoke_reason: row.__session_revoke_reason,
+      remember_login: !!row.__session_remember_login
+    }
+  };
+  if (!row.character_id) return { error: "character_not_found" };
+  if (String(row.player_id) !== String(row.__player_id)) return { error: "forbidden" };
+  const owned = { ok: true, row };
+  return { ok: true, auth, owned };
+}
+
 function verifyAdminKey(env, adminKey) {
   const configured = env.ADMIN_API_KEY;
   if (!configured) return { error: "admin_key_not_configured" };
@@ -398,6 +435,7 @@ async function verifyAdminAccess(db, env, request, legacyAdminKey) {
     verifySession,
     verifyPlayer,
     verifyOwnedCharacter,
+    authenticateCharacter,
     verifyAdminKey,
     ADMIN_SESSION_MS,
     ADMIN_LOGIN_WINDOW_MS,
