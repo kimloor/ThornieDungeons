@@ -4745,7 +4745,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
         resourceRow("iron",MATERIAL_SHOP_PRICE.iron),resourceRow("manaOre",MATERIAL_SHOP_PRICE.manaOre)
       )
     )
-  ), document.body);
+  )), document.body);
 }
 function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect }) {
   return /*#__PURE__*/React.createElement("div", {
