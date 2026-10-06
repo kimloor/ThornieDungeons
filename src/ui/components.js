@@ -4815,7 +4815,7 @@ function ShopOverlay({
     role: "status",
     "aria-live": "polite"
   }, status || "ร้านค้าพร้อมซื้อ")
-  ), /*#__PURE__*/React.createElement("div", {
+  )), /*#__PURE__*/React.createElement("div", {
     ref: bodyRef,
     className: "md-shop-body"
   }, tab === "equipment" && /*#__PURE__*/React.createElement(React.Fragment, null,
@@ -4854,7 +4854,7 @@ function ShopOverlay({
     ),
     resourceRow("iron", MATERIAL_SHOP_PRICE.iron),
     resourceRow("manaOre", MATERIAL_SHOP_PRICE.manaOre)
-  ));
+  )));
 }
 function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect }) {
   return /*#__PURE__*/React.createElement("div", {
