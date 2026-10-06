@@ -8,6 +8,7 @@ on:
       - "migrations/auto/*admin_v2*.sql"
       - "tests/admin-v2-auth.test.js"
       - "tests/shop-v1-phase1.test.js"
+      - "tests/shop-v1-phase3.test.js"
       - "docs/ADMIN-V2.md"
       - ".github/workflows/admin-v2-branch-qa.yml"
   workflow_dispatch:
@@ -29,6 +30,8 @@ jobs:
         run: node --test tests/admin-v2-auth.test.js
       - name: SHOP-AND-SELL Phase 1 contract tests
         run: node --test tests/shop-v1-phase1.test.js
+      - name: SHOP-AND-SELL Phase 3 contract tests
+        run: node --test tests/shop-v1-phase3.test.js
       - name: Auth V2 regression
         run: |
           # Skip only the pre-existing timing-sensitive retryAfter > 30 assertion in this CI workspace.
