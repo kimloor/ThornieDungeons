@@ -865,6 +865,11 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
       || (kind === "material" && !["iron", "manaOre"].includes(resourceId))
       || (kind === "potion" && !/^(hp|mp)_(small|medium|high|full)$/.test(resourceId))) return json({ error: "invalid_shop_resource" }, 400);
   if (kind === "protection_stone" && normalizedQuantity !== 1) return json({ error: "invalid_shop_quantity" }, 400);
+  if (kind !== "protection_stone") {
+    const overflowPending = await db.prepare(`SELECT 1 FROM items WHERE player_id = ? AND character_id = ? AND json_extract(extra_json, '$.overflow') = 1 LIMIT 1`)
+      .bind(id, characterId).first();
+    if (overflowPending) return json({ error: "inventory_overflow_pending" }, 409);
+  }
   const actionId = kind === "protection_stone" ? "protection_stone" : `${kind}:${resourceId}`;
   const payloadJson = JSON.stringify({ kind: actionId, quantity: normalizedQuantity });
   const operation = `purchase:${actionId}`;
