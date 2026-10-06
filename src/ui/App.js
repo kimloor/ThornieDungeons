@@ -1049,40 +1049,72 @@ function ThornieDungeons() {
     setBattleFinishStatus("");
   }
 
+  const BATTLE_SESSION_ERRORS = new Set(["invalid_session", "session_expired", "session_revoked", "session_replaced"]);
+  const BATTLE_NON_RETRYABLE_ERRORS = new Set(["invalid_reward_plan", "battle_not_authorized"]);
+
+  function classifyBattleCompletionError(error) {
+    const code = typeof error === "string" ? error : (error?.error || error?.code || "");
+    if (BATTLE_SESSION_ERRORS.has(code)) return { code, kind: "session", retryable: false };
+    if (BATTLE_NON_RETRYABLE_ERRORS.has(code)) return { code, kind: "non_retryable", retryable: false };
+    return { code: code || "unknown_error", kind: "retryable", retryable: true };
+  }
+
   async function commitBattleCompletionWithRetry(next) {
-    if (!save?.characterId) return { ok: true, completionReceipt: null };
-    const safeCheckpoint = lastSafeBattleCheckpointRef.current;
-    const confirmed = confirmedBattleCheckpointRef.current;
-    const rewardPlan = next.result === "victory" ? buildDungeonRewardPlan(next.battleId) : null;
-    let lastReceipt = null;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      if (attempt > 0) {
-        const retryDelayMs = 300 * (2 ** (attempt - 1));
-        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+    try {
+      if (!save?.characterId) return { ok: true, completionReceipt: null };
+      const safeCheckpoint = lastSafeBattleCheckpointRef.current;
+      const confirmed = confirmedBattleCheckpointRef.current;
+      const rewardPlan = next.result === "victory" ? buildDungeonRewardPlan(next.battleId) : null;
+      let lastReceipt = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (attempt > 0) {
+          const retryDelayMs = 300 * (2 ** (attempt - 1));
+          await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+        }
+        if (safeCheckpoint?.battleId === next.battleId
+            && safeCheckpoint.safeActionSeq < next.safeActionSeq
+            && (confirmed.battleId !== next.battleId || confirmed.safeActionSeq < safeCheckpoint.safeActionSeq)) {
+          const checkpointReceipt = await cloudSaveBattleCheckpoint(
+            cred.url, save.characterId, safeCheckpoint.battleId, safeCheckpoint.safeActionSeq,
+            battleCheckpointWithoutLog(safeCheckpoint)
+          );
+          if (!checkpointReceipt?.ok) {
+            const classification = classifyBattleCompletionError(checkpointReceipt);
+            lastReceipt = checkpointReceipt;
+            if (!classification.retryable) {
+              return { ok: false, completionReceipt: lastReceipt, errorCode: classification.code, errorKind: classification.kind };
+            }
+            continue;
+          }
+          confirmedBattleCheckpointRef.current = {
+            battleId: safeCheckpoint.battleId,
+            safeActionSeq: safeCheckpoint.safeActionSeq
+          };
+        }
+        const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, {
+          result: next.result,
+          safeActionSeq: next.safeActionSeq,
+          floor: next.floor,
+          reward: rewardPlan
+        });
+        if (receipt?.ok) return { ok: true, completionReceipt: receipt };
+        const classification = classifyBattleCompletionError(receipt);
+        lastReceipt = receipt;
+        if (!classification.retryable) {
+          return { ok: false, completionReceipt: lastReceipt, errorCode: classification.code, errorKind: classification.kind };
+        }
       }
-      if (safeCheckpoint?.battleId === next.battleId
-          && safeCheckpoint.safeActionSeq < next.safeActionSeq
-          && (confirmed.battleId !== next.battleId || confirmed.safeActionSeq < safeCheckpoint.safeActionSeq)) {
-        const checkpointReceipt = await cloudSaveBattleCheckpoint(
-          cred.url, save.characterId, safeCheckpoint.battleId, safeCheckpoint.safeActionSeq,
-          battleCheckpointWithoutLog(safeCheckpoint)
-        ).catch(() => null);
-        if (!checkpointReceipt?.ok) continue;
-        confirmedBattleCheckpointRef.current = {
-          battleId: safeCheckpoint.battleId,
-          safeActionSeq: safeCheckpoint.safeActionSeq
-        };
-      }
-      const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, {
-        result: next.result,
-        safeActionSeq: next.safeActionSeq,
-        floor: next.floor,
-        reward: rewardPlan
-      }).catch(() => null);
-      if (receipt?.ok) return { ok: true, completionReceipt: receipt };
-      lastReceipt = receipt;
+      const classification = classifyBattleCompletionError(lastReceipt);
+      return { ok: false, completionReceipt: lastReceipt, errorCode: classification.code, errorKind: classification.kind };
+    } catch (error) {
+      const classification = classifyBattleCompletionError(error);
+      return {
+        ok: false,
+        completionReceipt: null,
+        errorCode: classification.code,
+        errorKind: classification.kind === "retryable" ? "non_retryable" : classification.kind
+      };
     }
-    return { ok: false, completionReceipt: lastReceipt };
   }
 
   async function finalizeTerminalOutcome(next, completionReceipt) {
@@ -1168,7 +1200,15 @@ function ThornieDungeons() {
       setBusy(false);
       setBattleFinishing(true);
       setBattleFinishStatus("error");
-      setLog("ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย");
+      const completionError = classifyBattleCompletionError(completionOutcome.errorCode || completionOutcome.completionReceipt);
+      if (completionError.kind === "session") {
+        AUTH_SESSION.handleApiResult({ error: completionError.code });
+        setLog("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+      } else if (completionError.kind === "non_retryable") {
+        setLog("ยืนยันผลการต่อสู้ไม่ได้ เนื่องจากข้อมูลการต่อสู้ไม่ตรงกับ Server");
+      } else {
+        setLog("ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย");
+      }
       return;
     }
     await finalizeTerminalOutcome(next, completionOutcome.completionReceipt);
