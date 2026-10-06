@@ -593,15 +593,17 @@ async function characterOperationReplay(db, id, characterId, operation, requestI
 }
 
 async function runCharacterReceiptMutation(db, { id, characterId, operation, requestId, payloadJson, guardSql, guardBinds, mutationStatements, result }) {
-  const replay = await characterOperationReplay(db, id, characterId, operation, requestId, payloadJson);
-  if (replay) return replay;
   const token = crypto.randomUUID();
   const now = nowIso();
-  const statements = [db.prepare(
-    `INSERT INTO character_operation_receipts (character_id, operation, request_id, operation_token, payload_json, result_json, created_at)
-     SELECT ?, ?, ?, ?, ?, 'pending', ? WHERE ${guardSql}
-     ON CONFLICT(character_id, operation, request_id) DO NOTHING`
-  ).bind(characterId, operation, requestId, token, payloadJson, now, ...guardBinds)];
+  const statements = [
+    db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+      .bind(characterId, operation, requestId),
+    db.prepare(
+      `INSERT INTO character_operation_receipts (character_id, operation, request_id, operation_token, payload_json, result_json, created_at)
+       SELECT ?, ?, ?, ?, ?, 'pending', ? WHERE ${guardSql}
+       ON CONFLICT(character_id, operation, request_id) DO NOTHING`
+    ).bind(characterId, operation, requestId, token, payloadJson, now, ...guardBinds)
+  ];
   statements.push(...mutationStatements(token, now));
   statements.push(db.prepare(
     `UPDATE character_operation_receipts SET result_json = ? WHERE operation_token = ? AND result_json = 'pending' AND changes() = 1`
@@ -610,13 +612,20 @@ async function runCharacterReceiptMutation(db, { id, characterId, operation, req
   const receiptReadIndex = statements.length;
   statements.push(db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
     .bind(characterId, operation, requestId));
+  const snapshotIndex = statements.length;
   statements.push(...battleCompletionSnapshotStatements(db, id, characterId));
   const batch = await db.batch(statements);
+  const prior = batch?.[0]?.results?.[0] || null;
+  if (prior) {
+    if (prior.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
+    if (prior.result_json === "pending") return json({ error: "operation_in_progress", retry: true }, 409);
+    return json({ ok: true, replayed: true, result: parseJsonColumn(prior.result_json, {}), ...battleCompletionSnapshotFromBatch(batch, snapshotIndex) });
+  }
   const receipt = batch?.[receiptReadIndex]?.results?.[0] || null;
   if (!receipt) return json({ error: "operation_conflict", retry: true }, 409);
   if (receipt.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
-  const committed = Number(batch?.[0]?.meta?.changes) > 0;
-  return json({ ok: true, replayed: !committed, result: parseJsonColumn(receipt.result_json, result), ...battleCompletionSnapshotFromBatch(batch, receiptReadIndex + 1) });
+  const committed = Number(batch?.[1]?.meta?.changes) > 0;
+  return json({ ok: true, replayed: !committed, result: parseJsonColumn(receipt.result_json, result), ...battleCompletionSnapshotFromBatch(batch, snapshotIndex) });
 }
 
 async function handleAllocateHeroSkills(db, id, session, characterId, allocations, requestId) {
