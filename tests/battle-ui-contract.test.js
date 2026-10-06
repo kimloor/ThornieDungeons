@@ -252,6 +252,30 @@ test("battle completion classifies session and non-retryable errors without leav
   assert.match(app, /ยืนยันผลการต่อสู้ไม่ได้ เนื่องจากข้อมูลการต่อสู้ไม่ตรงกับ Server/);
 });
  
+test("battle completion error matrix keeps retry, session, non-retryable, and terminal unlock contracts", () => {
+  const start = app.indexOf("async function commitBattleCompletionWithRetry(next)");
+  const end = app.indexOf("async function finalizeTerminalOutcome", start);
+  const completion = app.slice(start, end);
+  assert.match(completion, /const rewardPlan = next\.result === "victory" \? buildDungeonRewardPlan\(next\.battleId\) : null/);
+  assert.match(completion, /for \(let attempt = 0; attempt < 3; attempt \+= 1\)/);
+  assert.match(completion, /if \(!classification\.retryable\)[\s\S]*return \{ ok: false/);
+  assert.match(completion, /catch \(error\)/);
+  for (const code of ["invalid_session", "session_expired", "session_revoked", "session_replaced"]) {
+    assert.match(app, new RegExp(`"${code}"`));
+  }
+  for (const code of ["invalid_reward_plan", "battle_not_authorized"]) {
+    assert.match(app, new RegExp(`"${code}"`));
+  }
+  assert.match(app, /AUTH_SESSION\.handleApiResult\(\{ error: completionError\.code \}\)/);
+  assert.match(app, /ยืนยันผลการต่อสู้ไม่ได้ เนื่องจากข้อมูลการต่อสู้ไม่ตรงกับ Server/);
+  assert.match(app, /ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย/);
+  const finishStart = app.indexOf("async function finishCoreBattle(next, options = {})");
+  const finishEnd = app.indexOf("function driveCoreBattle", finishStart);
+  const finish = app.slice(finishStart, finishEnd);
+  assert.match(finish, /completionOutcome = await completionPromise/);
+  assert.match(finish, /if \(!completionOutcome\.ok\)[\s\S]*setBusy\(false\)[\s\S]*setBattleFinishing\(true\)/);
+});
+
 test("Battle Potion starts the local Hero Action immediately while server consumption stays authoritative", () => {
   assert.match(app, /const pendingPotionRef = useRef\(null\)/);
   assert.match(app, /const promise = cloudConsumePotion\(/);
