@@ -169,3 +169,5 @@ export default {
     if (typeof worker.scheduled === "function") return worker.scheduled(event, env, ctx);
   },
 };
+
+export { createD1CountingBinding };
