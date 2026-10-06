@@ -19,7 +19,7 @@ test("Phase 5 Shop purchase sends quantity, optimistic pending state, rollback, 
 
 test("Phase 5 Shop quantity UI keeps server cap at 99 and exposes x5/x10/Max", () => {
   assert.match(components, /Math\.min\(99/);
-  assert.match(components, /"x5"/);
-  assert.match(components, /"x10"/);
+  assert.equal(components.includes("[5,10]"), true);
+  assert.match(components, /`x\$\{n\}`/);
   assert.match(components, /Max/);
 });
