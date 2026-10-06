@@ -235,6 +235,19 @@ test("Hero Skill V1 rows open full detail sheets and upgrades use a confirmation
   assert.match(components, /onLearnSkill\(draft\)/);
 });
 
+test("battle completion classifies session and non-retryable errors without leaving the terminal lock path", () => {
+  assert.match(app, /const BATTLE_SESSION_ERRORS = new Set\(\["invalid_session", "session_expired", "session_revoked", "session_replaced"\]\)/);
+  assert.match(app, /const BATTLE_NON_RETRYABLE_ERRORS = new Set\(\["invalid_reward_plan", "battle_not_authorized"\]\)/);
+  const start = app.indexOf("async function commitBattleCompletionWithRetry(next)");
+  const end = app.indexOf("async function finalizeTerminalOutcome", start);
+  const completion = app.slice(start, end);
+  assert.match(completion, /^\s*async function commitBattleCompletionWithRetry\(next\) \{\n\s*try \{/);
+  assert.match(completion, /return \{ ok: false, completionReceipt: lastReceipt, errorCode: classification\.code, errorKind: classification\.kind \}/);
+  assert.match(completion, /catch \(error\)/);
+  assert.match(app, /AUTH_SESSION\.handleApiResult\(\{ error: completionError\.code \}\)/);
+  assert.match(app, /ยืนยันผลการต่อสู้ไม่ได้ เนื่องจากข้อมูลการต่อสู้ไม่ตรงกับ Server/);
+});
+ 
 test("Battle Potion starts the local Hero Action immediately while server consumption stays authoritative", () => {
   assert.match(app, /const pendingPotionRef = useRef\(null\)/);
   assert.match(app, /const promise = cloudConsumePotion\(/);
