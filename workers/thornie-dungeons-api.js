@@ -873,8 +873,6 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
   const actionId = kind === "protection_stone" ? "protection_stone" : `${kind}:${resourceId}`;
   const payloadJson = JSON.stringify({ kind: actionId, quantity: normalizedQuantity });
   const operation = `purchase:${actionId}`;
-  const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
-  if (replay) return replay;
   const totalCost = definition.cost * normalizedQuantity;
   const balanceSql = definition.currency === "diamonds"
     ? `EXISTS (SELECT 1 FROM players WHERE id = ? AND diamonds >= ?)`
@@ -1061,8 +1059,6 @@ async function handleSellCharacterItem(db, id, session, characterId, itemId, qua
   if (!unitPrice) return json({ error: "invalid_sell_item" }, 409);
   const totalGold = unitPrice * sellQuantity;
   const payloadJson = JSON.stringify({ itemId: idKey, quantity: sellQuantity });
-  const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
-  if (replay) return replay;
   const result = { itemId: idKey, quantity: sellQuantity, unitPrice, goldGained: totalGold, remaining: storedQuantity - sellQuantity };
   const rowExtra = row.extra_json || "";
   const guard = `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0
