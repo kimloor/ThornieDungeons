@@ -1036,9 +1036,9 @@ function sellUnitPrice(row, extra) {
 }
 
 async function handleSellCharacterItem(db, id, session, characterId, itemId, quantity, requestId) {
-  const auth = characterAuth?.auth || await verifyPlayer(db, id, session);
+  const auth = session?.__characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
-  const owned = characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
+  const owned = session?.__characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error }, 403);
   const key = String(requestId || "");
   const idKey = String(itemId || "");
