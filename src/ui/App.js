@@ -2154,7 +2154,7 @@ function ThornieDungeons() {
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
   }
-  function learnHeroSkill(id) { return commitSkillDraft({ [id]: 1 }); }
+  function learnHeroSkill(draft) { return commitSkillDraft(draft); }
   async function resetAllSkills() {
     if (!heroSkillSpentPoints(save.character.skillLevels) || save.diamonds < SKILL_RESET_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
     const requestId = globalThis.crypto?.randomUUID?.() || `skill-reset-${Date.now()}-${Math.random().toString(36).slice(2)}`;

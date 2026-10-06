@@ -569,6 +569,25 @@ body::after {
 .md-inv-list { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; }
 .md-shop-list { display: flex; flex-direction: column; gap: 6px; }
 .md-shop-sheet-backdrop {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --bg-top: #1B1233;
+  --bg-mid: #2C1E4A;
+  --bg-bot: #402C63;
+  --ink: #F3EEFF;
+  --ink-soft: #B9AEDD;
+  --gold: #FFD166;
+  --gold-deep: #C9932A;
+  --gold-glow: rgba(255,209,102,0.35);
+  --coral: #FF6B6B;
+  --violet: #8B6AE8;
+  --violet-deep: #6C4AB6;
+  --leaf: #4CAF7D;
+  --panel: rgba(18,12,34,0.82);
+  font-family:'Nunito',sans-serif;
+  color:var(--ink);
   position:fixed; inset:0; z-index:260; background:rgba(0,0,0,.6);
   display:flex; align-items:flex-end; justify-content:center;
   padding:max(8px,var(--safe-top)) max(0px,var(--safe-right)) max(0px,var(--safe-bottom)) max(0px);
