@@ -15,12 +15,12 @@ test("W7A terminal presentation stays downstream of authoritative battle complet
   assert.ok(finishStart >= 0);
   const finishBody = app.slice(finishStart, app.indexOf("function driveCoreBattle", finishStart));
 
-  const completeIndex = finishBody.indexOf("cloudCompleteBattle(");
-  const presentIndex = finishBody.indexOf("await playTerminalBattlePresentation(next.result)");
+  const completionStart = finishBody.indexOf("const completionPromise = commitBattleCompletionWithRetry(next)");
+  const presentIndex = finishBody.indexOf("playTerminalBattlePresentation(next.result)");
   const resultIndex = finishBody.indexOf('setPhase("result")');
 
-  assert.ok(completeIndex >= 0);
-  assert.ok(presentIndex > completeIndex);
+  assert.ok(completionStart >= 0);
+  assert.ok(presentIndex > completionStart);
   assert.ok(resultIndex > presentIndex);
   assert.match(finishBody, /if \(!receipt\?\.ok\)[\s\S]*return;/);
 });
@@ -42,7 +42,7 @@ test("shared Phaser host exposes terminal queue and drain without gameplay autho
   assert.match(scene, /presentTerminal\(result\)/);
   assert.match(scene, /this\.presentationQueue\.enqueue/);
   assert.match(scene, /\["victory", "defeat"\]/);
-  assert.match(scene, /cameras\?\.main\?\.flash/);
+  assert.doesNotMatch(scene, /if \(normalized === "victory"\) this\.cameras\?\.main\?\.flash/);
   assert.match(scene, /cameras\?\.main\?\.fade/);
 
   assert.match(ui, /props\.onPresentationController\?\.\(handle\)/);
@@ -70,7 +70,8 @@ test("W7A confirmation pill is hidden during presentation and retry reuses the s
   assert.doesNotMatch(components, /battleFinishing && /*#__PURE__\*\/React\.createElement\("div", \{\n    className: "md-battle-finishing"/);
   assert.match(app, /finishCoreBattle\(next, \{ retry: true \}\)/);
   assert.match(app, /terminalFinishRef\.current\?\.next\?\.battleId !== next\.battleId/);
-  assert.match(app, /ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย/);
+  assert.match(app, /const completionError = classifyBattleCompletionError/);
+  assert.match(app, /ยืนยันผลการต่อสู้ไม่ได้/);
 });
 
 test("W7A replay result preserves stored gold/xp and labels it as already applied", () => {
