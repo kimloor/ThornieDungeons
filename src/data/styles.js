@@ -1745,11 +1745,18 @@ body::after {
 .md-battle-dock .md-dock-attack { width: 100px; height: 100px; justify-self: end; transform: none; }
 .md-battle-dock .md-dock-attack:active { transform: translateY(2px); }
 .md-battle-finishing {
-  position: absolute; left: 50%; top: 48%; z-index: 8; transform: translate(-50%, -50%);
-  padding: 5px 11px; border-radius: 999px; background: rgba(3,8,22,.82);
+  position: absolute; right: 8px; top: 8px; z-index: 12;
+  padding: 5px 10px; border-radius: 999px; background: rgba(3,8,22,.82);
   color: var(--gold); font: 800 10px/1.2 'Baloo 2'; white-space: nowrap;
   pointer-events: none; text-shadow: 0 1px 2px #000;
 }
+.md-battle-finish-error {
+  display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap;
+  padding: 5px 8px; margin: 3px 6px 0; border-radius: 8px;
+  background: rgba(64,18,18,.88); border: 1px solid rgba(225,79,79,.7);
+  color: #ffd7d7; font-size: 10px; line-height: 1.25; text-align: center;
+}
+.md-battle-finish-error .md-btn { min-height: 34px; margin: 0; }
 .md-battle-intro {
   position:absolute; left:50%; top:46%; z-index:9; transform:translate(-50%,-50%) scale(.82);
   color:#fff1ad; font:800 clamp(32px,10vw,48px)/1 'Baloo 2'; letter-spacing:.08em;
