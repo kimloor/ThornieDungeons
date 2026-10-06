@@ -7,6 +7,7 @@ on:
       - "workers/thornie-dungeons-api.js"
       - "workers/thornie-dungeons-api-entry.js"
       - "workers/modules/auth.js"
+      - "workers/modules/mailbox.js"
       - "migrations/auto/*admin_v2*.sql"
       - "tests/admin-v2-auth.test.js"
       - "tests/shop-v1-phase1.test.js"
