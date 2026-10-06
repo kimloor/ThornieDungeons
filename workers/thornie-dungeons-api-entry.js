@@ -3,6 +3,59 @@ import worker from "./thornie-dungeons-api.js";
 const COMPLETE_BATTLE_RETRY_DELAYS_MS = [80, 180, 360];
 const MAX_REQUEST_BODY_BYTES = 512 * 1024;
 
+function createD1CountingBinding(db) {
+  let calls = 0;
+  const wrapStatement = statement => new Proxy(statement, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (["first", "run", "all"].includes(property) && typeof value === "function") {
+        return (...args) => {
+          calls += 1;
+          return value.apply(target, args);
+        };
+      }
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
+  const binding = new Proxy(db, {
+    get(target, property, receiver) {
+      if (property === "__d1RoundTrips") return () => calls;
+      if (property === "prepare") return (...args) => wrapStatement(target.prepare(...args));
+      if (property === "batch") return async (...args) => {
+        calls += 1;
+        return target.batch(...args);
+      };
+      const value = Reflect.get(target, property, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
+  return { binding, getCount: () => calls };
+}
+
+function corsOriginAllowed(request, env) {
+  const defaults = [
+    "https://thorniedungeons.ekqtjl.workers.dev",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+  ];
+  const configured = String(env?.CORS_ALLOWED_ORIGINS || "").split(",").map(v => v.trim()).filter(Boolean);
+  const origin = request.headers.get("Origin");
+  return !origin || new Set([...defaults, ...configured]).has(origin);
+}
+
+async function withD1Timing(request, env, ctx, handler) {
+  const startedAt = Date.now();
+  const { binding, getCount } = createD1CountingBinding(env.DB);
+  const wrappedEnv = { ...env, DB: binding };
+  const response = await handler(request, wrappedEnv, ctx);
+  const headers = new Headers(response.headers);
+  headers.set("Server-Timing", `d1;desc="${getCount()} calls", app;dur=${Math.max(0, Date.now() - startedAt)}`);
+  if (corsOriginAllowed(request, env)) headers.set("Access-Control-Expose-Headers", "Server-Timing");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -106,7 +159,9 @@ async function fetchWithBattleCompletionRaceGuard(request, env, ctx) {
 }
 
 export default {
-  fetch: fetchWithBattleCompletionRaceGuard,
+  async fetch(request, env, ctx) {
+    return withD1Timing(request, env, ctx, fetchWithBattleCompletionRaceGuard);
+  },
   scheduled(event, env, ctx) {
     if (typeof worker.scheduled === "function") return worker.scheduled(event, env, ctx);
   },
