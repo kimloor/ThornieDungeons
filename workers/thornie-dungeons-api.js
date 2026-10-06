@@ -2540,9 +2540,10 @@ async function v2BlacksmithSnapshot(db, id, characterId) {
   return { character, items, diamonds: Number(player?.diamonds) || 0 };
 }
 async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mutation, requestId) {
-  const [auth, owned] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId)]);
+  const auth = session?.__characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
-  if (owned.error) return json({ error: owned.error });
+  const owned = session?.__characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
   const key = String(requestId || "").trim();
   if (!key || key.length > 128) return json({ error: "missing_request_id" }, 400);
   const action = String(mutation?.type || "");
@@ -2686,8 +2687,9 @@ async function handleMutateV2Blacksmith(db, id, session, characterId, itemId, mu
 }
 
 async function handleMutateLegacyBlacksmith(db, id, session, characterId, itemId, mutation, requestId) {
-  const [auth, owned] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId)]);
+  const auth = session?.__characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
+  const owned = session?.__characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error }, 403);
   const key = String(requestId || "");
   const action = String(mutation?.type || "");
@@ -2953,8 +2955,9 @@ async function handleClaimDailyLogin(db, id, session, characterId) {
 // Accessory utility. The request id is only an idempotency key; it is not an RNG seed.
 // One D1 batch conditionally inserts the result and then spends the matching resources.
 async function handleCraftItem(db, id, session, characterId, recipeId, requestId) {
-  const [auth, owned] = await Promise.all([verifyPlayer(db, id, session), verifyOwnedCharacter(db, id, characterId)]);
+  const auth = session?.__characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
+  const owned = session?.__characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
   const character = owned.row;
   const floor = Math.max(1, Number(character.unlocked_floor) || 1);
@@ -7040,7 +7043,7 @@ async function apiFetch(request, env) {
           }
         }
         const token = bearerToken(request);
-        const characterAuthActions = new Set(["purchaseCharacterResource", "sellCharacterItem", "completeBattle"]);
+        const characterAuthActions = new Set(["purchaseCharacterResource", "sellCharacterItem", "completeBattle", "craftItem", "mutateV2Blacksmith", "mutateLegacyBlacksmith", "claimMail", "claimAllMail"]);
         let auth;
         let characterAuth = null;
         if (characterAuthActions.has(body.action) && body.characterId) {
