@@ -12,7 +12,7 @@ class Statement {
   bind(...values) { return new Statement(this.raw, this.sql, values); }
   async first() { return this.raw.prepare(this.sql).get(...this.values) || null; }
   async all() { return { results: this.raw.prepare(this.sql).all(...this.values) }; }
-  async run() { const result = this.raw.prepare(this.sql).run(...this.values); return { meta: { changes: Number(result.changes) } }; }
+  async run() {\n    const normalized = this.sql.trim().toUpperCase();\n    if (/^(SELECT|WITH|PRAGMA)\\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };\n    const result = this.raw.prepare(this.sql).run(...this.values);\n    return { meta: { changes: Number(result.changes) } };\n  }
 }
 class D1 {
   constructor() { this.raw = new DatabaseSync(":memory:"); }
