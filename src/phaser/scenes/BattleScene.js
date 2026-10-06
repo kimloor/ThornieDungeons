@@ -70,9 +70,13 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         });
       }
       [
+        "ui/skill-icons/hero/power_strike.png",
         "ui/skill-icons/hero/guard.png",
         "ui/skill-icons/hero/armor_break_mastery.png",
-        "ui/skill-icons/hero/recovery.png"
+        "ui/skill-icons/hero/recovery.png",
+        "ui/skill-icons/hero/toxic_strike.png",
+        "ui/skill-icons/hero/stunning_blow.png",
+        "ui/skill-icons/hero/silent_edge.png"
       ].forEach(reference => assets.push(reference));
       return this.assetResolver.resolveAll(assets);
     }
