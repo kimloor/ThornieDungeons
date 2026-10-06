@@ -76,7 +76,8 @@ test("Arena setup, cooldown, milestones, currencies, and dock use the shared mob
   const setup = between(arena, 'tab === "setup"', 'tab === "ranking"');
   assert.doesNotMatch(setup, /React\.createElement\("select"/);
   assert.match(setup, /md-arena-setup-picker/);
-  assert.match(arena, /function ArenaSkillDropdown/);
+  const skillDropdown = between(components, "function ArenaSkillDropdown", "function ArenaV2Screen");
+  assert.match(skillDropdown, /ReactDOM\.createPortal/);
   assert.match(arena, /HeroSkillIcon/);
   assert.match(setup, /arenaSetupPetIcon/);
   assert.match(setup, /md-arena-loadout/);
