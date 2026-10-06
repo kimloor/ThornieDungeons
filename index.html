@@ -13650,6 +13650,7 @@ const BATTLE_VFX_PRESENTATION = (() => {
 if (typeof module !== "undefined" && module.exports) module.exports = BATTLE_VFX_PRESENTATION;
 
 // ===== ui/App.js =====
+
 function planTerminalFlow({ retry = false, skip = false, actorKind = "hero", combatSpeed = 1 } = {}) {
   const speed = Math.max(1, Number(combatSpeed) || 1);
   const actionHoldMs = Math.min(1800, Math.round((actorKind === "hero" ? 420 : 520) / speed));
@@ -16810,6 +16811,7 @@ function ThornieDungeons() {
     onClose: () => setArenaFatal(null)
   }));
 }
+
 
 // ===== ui/components.js =====
 function Starfield() {
