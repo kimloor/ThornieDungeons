@@ -14,6 +14,9 @@ function createD1CountingBinding(db) {
           return value.apply(target, args);
         };
       }
+      if (property === "bind" && typeof value === "function") {
+        return (...args) => wrapStatement(value.apply(target, args));
+      }
       return typeof value === "function" ? value.bind(target) : value;
     }
   });
