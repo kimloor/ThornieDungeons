@@ -10,6 +10,10 @@ on:
       - "worker.js"
       - "wrangler.jsonc"
       - ".github/workflows/deploy-frontend-production.yml"
+      - "build.js"
+      - "head.html"
+      - "tail.html"
+      - "src/**"
   workflow_dispatch:
 
 permissions:
@@ -49,6 +53,12 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing GitHub secret CF_API_TOKEN"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing GitHub secret CF_ACCOUNT_ID"; exit 1; }
           wrangler whoami >/dev/null
+
+      - name: Build generated frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          node build.js
 
       - name: Verify generated frontend
         shell: bash
