@@ -54,7 +54,7 @@ test("completeBattle reward pre-reads are folded into one batch and final writes
   const fn = api.slice(api.indexOf("async function handleCompleteBattle"), api.indexOf("async function handleSaveQuickSlots"));
   assert.match(fn, /const preRead = await db\.batch\(\[/);
   assert.match(fn, /const finalBatch = await db\.batch\(finalStatements\)/);
-  assert.match(api, /const rewardReadBatch = await db\.batch\(\[/);
+  assert.match(api, /rewardReadBatch = await db\.batch\(\[/);
   for (const token of ["battle_identity_conflict", "battle_checkpoint_missing", "battle_result_not_after_checkpoint", "invalid_battle_context", "commitDungeonRewardInBattleTransaction"]) {
     assert.match(fn, new RegExp(token));
   }
