@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.49";
+  content: "Ver 1.0.51";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -569,11 +569,13 @@ body::after {
 .md-inv-list { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; }
 .md-shop-list { display: flex; flex-direction: column; gap: 6px; }
 .md-shop-sheet-backdrop {
-  position:absolute; inset:0; z-index:20; background:rgba(0,0,0,.6);
-  display:flex; align-items:flex-end;
+  position:fixed; inset:0; z-index:260; background:rgba(0,0,0,.6);
+  display:flex; align-items:flex-end; justify-content:center;
+  padding:max(8px,var(--safe-top)) max(0px,var(--safe-right)) max(0px,var(--safe-bottom)) max(0px);
 }
 .md-shop-sheet {
-  width:100%; max-height:88%; display:flex; flex-direction:column; min-height:0;
+  width:min(430px,100vw); max-height:calc(100dvh - var(--safe-top) - 8px);
+  display:flex; flex-direction:column; min-height:0;
   overflow:hidden; background:linear-gradient(180deg,#2C1E4A,#1B1233);
   border:1.5px solid var(--gold-deep); border-bottom:none;
   border-radius:20px 20px 0 0; padding:14px 16px 0; position:relative;
