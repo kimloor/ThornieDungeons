@@ -24,7 +24,7 @@ test("Phase 4 Shop has exactly four requested tabs and no Sell tab", () => {
 });
 
 test("Phase 4 tab switching resets body scroll only", () => {
-  assert.match(components, /bodyRef\.current\.scrollTop = 0/);
+  assert.equal(components.includes("bodyRef.current.scrollTop=0"), true);
   assert.match(components, /md-shop-tab/);
 });
 
