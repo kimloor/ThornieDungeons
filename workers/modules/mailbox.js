@@ -38,9 +38,9 @@ async function handleGetMailbox(db, id, session, characterId) {
   return json({ ok: true, mails });
 }
 async function handleClaimMail(db, id, session, characterId, mailId) {
-  const auth = await verifyPlayer(db, id, session);
+  const auth = session?.__characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
-  const owned = await verifyOwnedCharacter(db, id, characterId);
+  const owned = session?.__characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
   if (!mailId) return json({ error: "missing_fields" });
 
@@ -59,9 +59,9 @@ async function handleClaimMail(db, id, session, characterId, mailId) {
   return json({ ok: true, mailId, replayed, ...(await getSnapshot(db, id, characterId)) });
 }
 async function handleClaimAllMail(db, id, session, characterId, requestId = "") {
-  const auth = await verifyPlayer(db, id, session);
+  const auth = session?.__characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
-  const owned = await verifyOwnedCharacter(db, id, characterId);
+  const owned = session?.__characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
   // Keep the requestId argument for client compatibility. Exact-once is enforced per
   // mail row by claimed=0 plus a unique claim token gating every credit statement.
