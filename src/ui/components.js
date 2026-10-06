@@ -4854,7 +4854,7 @@ function ShopOverlay({
     ),
     resourceRow("iron", MATERIAL_SHOP_PRICE.iron),
     resourceRow("manaOre", MATERIAL_SHOP_PRICE.manaOre)
-  )));
+  ));
 }
 function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect }) {
   return /*#__PURE__*/React.createElement("div", {
