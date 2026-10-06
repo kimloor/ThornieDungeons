@@ -5689,11 +5689,11 @@ function CombatScreen({
     className: "md-battle-intro",
     role: "status",
     "aria-live": "polite"
-  }, "BEGIN!"), battleFinishing && /*#__PURE__*/React.createElement("div", {
+  }, "BEGIN!"), battleFinishing && battleFinishStatus === "confirming" && /*#__PURE__*/React.createElement("div", {
     className: "md-battle-finishing",
     role: "status",
     "aria-live": "polite"
-  }, "Confirming result…"), /*#__PURE__*/React.createElement("div", {
+  }, "ยืนยันผลการต่อสู้…"), /*#__PURE__*/React.createElement("div", {
     className: "md-phaser-layer"
   }, /*#__PURE__*/React.createElement(PhaserBattlefield, {
     battleState: battleState,
