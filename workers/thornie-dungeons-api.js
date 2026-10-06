@@ -81,7 +81,7 @@ const {
   bytesToBase64Url, base64UrlToBytes, randomToken, sha256, hashPassword, verifyPasswordHash,
   validPlayerId, validPassword, passwordValidationError, normalizeRecoveryCode, createRecoveryCode,
   recoveryCodeHash, requestIp, rateKey, checkRateLimit, recordRateAttempt, playerByLoginId,
-  verifyPasswordCredentials, issueSession, bearerToken, verifySession, verifyPlayer, verifyOwnedCharacter,
+  verifyPasswordCredentials, issueSession, bearerToken, verifySession, verifyPlayer, verifyOwnedCharacter, authenticateCharacter,
   verifyAdminKey, ADMIN_SESSION_MS, ADMIN_LOGIN_WINDOW_MS, adminAuditStatement, writeAdminAudit,
   issueAdminSession, verifyAdminSession, handleAdminLogin, handleAdminValidateSession, handleAdminLogout,
   commitCredentialChange, verifyAdminAccess,
@@ -843,10 +843,10 @@ function normalizeShopQuantity(rawQuantity) {
   return Number.isInteger(rawQuantity) && rawQuantity >= 1 && rawQuantity <= 99 ? rawQuantity : null;
 }
 
-async function handlePurchaseCharacterResource(db, id, session, characterId, resource, quantity, requestId) {
-  const auth = await verifyPlayer(db, id, session);
+async function handlePurchaseCharacterResource(db, id, session, characterId, resource, quantity, requestId, characterAuth = null) {
+  const auth = characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
-  const owned = await verifyOwnedCharacter(db, id, characterId);
+  const owned = characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error }, 403);
   const key = String(requestId || "");
   const kind = String(resource?.kind || "");
@@ -1035,10 +1035,10 @@ function sellUnitPrice(row, extra) {
   return Math.max(3, Math.round(value * rarityMult * .9));
 }
 
-async function handleSellCharacterItem(db, id, session, characterId, itemId, quantity, requestId) {
-  const auth = await verifyPlayer(db, id, session);
+async function handleSellCharacterItem(db, id, session, characterId, itemId, quantity, requestId, characterAuth = null) {
+  const auth = characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
-  const owned = await verifyOwnedCharacter(db, id, characterId);
+  const owned = characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error }, 403);
   const key = String(requestId || "");
   const idKey = String(itemId || "");
@@ -2354,11 +2354,10 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
   return statements;
 }
 
-async function handleCompleteBattle(db, id, session, characterId, battleId, resultPayload) {
-  const auth = await verifyPlayer(db, id, session);
+async function handleCompleteBattle(db, id, session, characterId, battleId, resultPayload, characterAuth = null) {
+  const auth = characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
-  const owned = await verifyOwnedCharacter(db, id, characterId);
-  if (owned.error) return json({ error: owned.error });
+  const owned = characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
   const resultName = resultPayload && resultPayload.result;
   if (!battleId || !["victory", "defeat", "fled"].includes(resultName)) return json({ error: "invalid_battle_result" }, 400);
   const battleKey = String(battleId);
@@ -7031,8 +7030,18 @@ async function apiFetch(request, env) {
             case "adminDeleteJunkInfo": return await handleAdminDeleteJunkInfo(db, adminAuth, body.junkId);
           }
         }
-        const auth = await verifySession(db, bearerToken(request));
-        if (auth.error) return json({ error: auth.error }, 401);
+        const token = bearerToken(request);
+        const characterAuthActions = new Set(["purchaseCharacterResource", "sellCharacterItem", "completeBattle"]);
+        let auth;
+        let characterAuth = null;
+        if (characterAuthActions.has(body.action) && body.characterId) {
+          characterAuth = await authenticateCharacter(db, token, body.characterId);
+          if (characterAuth.error) return json({ error: characterAuth.error }, 401);
+          auth = characterAuth.auth;
+        } else {
+          auth = await verifySession(db, token);
+          if (auth.error) return json({ error: auth.error }, 401);
+        }
         const id = auth.row.id;
         switch (body.action) {
           case "logout":
@@ -7062,13 +7071,13 @@ async function apiFetch(request, env) {
           case "consumePotion":
             return await handleConsumePotion(db, id, auth, body.characterId, body.potionId, body.requestId);
           case "purchaseCharacterResource":
-            return await handlePurchaseCharacterResource(db, id, auth, body.characterId, body.resource, body.quantity, body.requestId);
+            return await handlePurchaseCharacterResource(db, id, auth, body.characterId, body.resource, body.quantity, body.requestId, characterAuth);
           case "getCharacterShopStock":
             return await handleGetCharacterShopStock(db, id, auth, body.characterId, body.requestId);
           case "purchaseShopEquipment":
             return await handlePurchaseShopEquipment(db, id, auth, body.characterId, body.offerId, body.requestId);
           case "sellCharacterItem":
-            return await handleSellCharacterItem(db, id, auth, body.characterId, body.itemId, body.quantity, body.requestId);
+            return await handleSellCharacterItem(db, id, auth, body.characterId, body.itemId, body.quantity, body.requestId, characterAuth);
           case "salvageItem":
             return await handleSalvageItem(db, id, auth, body.characterId, body.itemId, body.requestId);
           case "saveRunState":
@@ -7080,7 +7089,7 @@ async function apiFetch(request, env) {
           case "clearBattleCheckpoint":
             return await handleClearBattleCheckpoint(db, id, auth, body.characterId, body.battleId);
           case "completeBattle":
-            return await handleCompleteBattle(db, id, auth, body.characterId, body.battleId, body.result);
+            return await handleCompleteBattle(db, id, auth, body.characterId, body.battleId, body.result, characterAuth);
           case "saveQuickSlots":
             return await handleSaveQuickSlots(db, id, auth, body.characterId, body.quickSlots);
           case "syncItems":
