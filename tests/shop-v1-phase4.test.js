@@ -9,8 +9,8 @@ const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
 test("Phase 4 Shop uses pinned header and scrollable body", () => {
   assert.match(components, /className: "md-shop-header"/);
   assert.match(components, /className: "md-shop-body"/);
-  assert.match(styles, /\\.md-shop-sheet\\s*\\{[^}]*display:flex; flex-direction:column; min-height:0/);
-  assert.match(styles, /\\.md-shop-body\\s*\\{[^}]*overflow-y:auto/);
+  assert.match(styles, /\.md-shop-sheet\\s*\{[^}]*display:flex; flex-direction:column; min-height:0/);
+  assert.match(styles, /\.md-shop-body\\s*\{[^}]*overflow-y:auto/);
   assert.match(styles, /overscroll-behavior:contain/);
   assert.match(styles, /-webkit-overflow-scrolling:touch/);
 });
@@ -24,14 +24,14 @@ test("Phase 4 Shop has exactly four requested tabs and no Sell tab", () => {
 });
 
 test("Phase 4 tab switching resets body scroll only", () => {
-  assert.match(components, /bodyRef\\.current\\.scrollTop = 0/);
+  assert.match(components, /bodyRef\.current\.scrollTop = 0/);
   assert.match(components, /md-shop-tab/);
 });
 
 test("Phase 4 preserves existing Shop callbacks and resource groups", () => {
   for (const token of ["onBuyItem", "onBuyPotionTier", "onBuyProtectionStone", "onBuyMaterial"]) assert.match(components, new RegExp(token));
-  assert.match(components, /hpPotions = potions\\.filter/);
-  assert.match(components, /spPotions = potions\\.filter/);
+  assert.match(components, /hpPotions = potions\.filter/);
+  assert.match(components, /spPotions = potions\.filter/);
   assert.match(components, /resourceRow\\("iron"/);
   assert.match(components, /resourceRow\\("manaOre"/);
 });
