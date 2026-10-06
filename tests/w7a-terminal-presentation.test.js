@@ -61,10 +61,10 @@ test("W7A terminal action does not clear presentation synchronously and reset oc
   const terminalCall = driveBody.indexOf('if (next.result) { finishCoreBattle(next, { actorKind: actor.kind }); return; }');
   assert.ok(terminalCall >= 0);
   const terminalBranch = driveBody.slice(terminalCall, terminalCall + 180);
-  assert.doesNotMatch(terminalBranch, /setHeroAnim\("")/);
-  assert.doesNotMatch(terminalBranch, /setPetAnim\("")/);
-  assert.doesNotMatch(terminalBranch, /setEnemyAnims\(\{\}\)/);
-  assert.doesNotMatch(terminalBranch, /setBattleVfx\(\[\]\)/);
+  assert.equal(terminalBranch.includes('setHeroAnim("");'), false);
+  assert.equal(terminalBranch.includes('setPetAnim("");'), false);
+  assert.equal(terminalBranch.includes("setEnemyAnims({});"), false);
+  assert.equal(terminalBranch.includes("setBattleVfx([]);"), false);
   const finalize = app.slice(app.indexOf("async function finalizeTerminalOutcome"), app.indexOf("async function finishCoreBattle"));
   assert.ok(finalize.indexOf("resetTerminalPresentation();") >= 0);
 });
