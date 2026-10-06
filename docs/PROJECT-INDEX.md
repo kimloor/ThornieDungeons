@@ -45,6 +45,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md) | Hero skill branches, ranks, statuses, prerequisites, UI contract, and combat checks. |
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked Hero V5 **modular layered, frame-based sprite** architecture; no skeletal/bone/Spine runtime is required, and the document does not itself authorize replacing the current production Hero. |
 | [`INVENTORY-UI-V2.md`](INVENTORY-UI-V2.md) | Inventory/equipment layout, item popup, compare rules, rarity presentation, capacity, overflow, and responsive behavior. |
+| [`SHOP-AND-SELL-V1.md`](SHOP-AND-SELL-V1.md) | **ACTIVE-PRODUCTION / V1** — Shop bulk purchase, stack selling, server-authoritative prices, optimistic purchase UX, overflow/pending guards, and QA contract. |
 | [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) | Login/Auth V2 account, session, password, recovery, migration, frontend, and backend security contract. |
 | [`ADMIN-V2.md`](ADMIN-V2.md) | **ACTIVE-PRODUCTION** Admin V2 auth/session foundation plus Phase 1 Dashboard, server-side Player Search, sanitized read-only Player Viewer/Items, and audit-safe read paths. |
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
