@@ -53,7 +53,7 @@ function database() {
     CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL);
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
-  applyRequiredAutoMigrations(db, ROOT);
+  applyRequiredAutoMigrations(db, path.resolve(__dirname, ".."));
   return db;
 }
 
