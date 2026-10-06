@@ -2074,16 +2074,24 @@ function ThornieDungeons() {
     };
     insertCarriedItems([item], inventoryRef.current, newEq);
   }
-  async function sellItem(item) {
+  async function sellItem(item, quantity = undefined) {
     if (item?.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนขาย" };
     const found = findItemAndLocation(item?.id);
     if (!found || found.location === "equipped") return { ok: false, message: "ถอดอุปกรณ์ก่อนขาย" };
+    const stackable = item?.type === "junk" || item?.type === "potion";
+    const storedQuantity = Math.max(1, Number(item?.quantity) || 1);
+    const sellQuantity = quantity === undefined ? (stackable ? storedQuantity : 1) : Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1)));
+    if (stackable && sellQuantity > storedQuantity) return { ok: false, message: "จำนวนขายมากกว่าจำนวนที่มี" };
+    if (!stackable && sellQuantity !== 1) return { ok: false, message: "ไอเท็มนี้ขายได้ครั้งละ 1 ชิ้น" };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, message: "บันทึกสถานะก่อนขายไม่สำเร็จ กรุณาลองใหม่" };
     const requestId = globalThis.crypto?.randomUUID?.() || `sell-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudSellCharacterItem(cred.url, save.characterId, item.id, requestId);
-    if (!result?.ok) return { ok: false, message: result?.error === "item_favorited" ? "ปลด Favorite/Lock ก่อนขาย" : "ขายไอเท็มไม่สำเร็จ กรุณาลองใหม่" };
+    const result = await cloudSellCharacterItem(cred.url, save.characterId, item.id, requestId, sellQuantity);
+    if (!result?.ok) {
+      const messages = { item_favorited: "ปลด Favorite/Lock ก่อนขาย", invalid_sell_quantity: "จำนวนขายไม่ถูกต้อง", stack_changed: "จำนวนไอเท็มเปลี่ยนแล้ว กรุณาเปิดรายละเอียดใหม่" };
+      return { ok: false, message: messages[result?.error] || "ขายไอเท็มไม่สำเร็จ กรุณาลองใหม่" };
+    }
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
-    return { ok: true, message: `ขายสำเร็จ ได้รับ 🪙${result.result?.goldGained || 0}` };
+    return { ok: true, message: `ขายสำเร็จ ${sellQuantity} ชิ้น · ได้รับ 🪙${result.result?.goldGained || 0}`, result: result.result };
   }
   function findItemAndLocation(itemId) {
     for (const slot of SLOT_ORDER) {
