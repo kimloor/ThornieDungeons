@@ -156,8 +156,8 @@ function cloudPetEconomyAction(url, characterId, petAction, petInstId, requestId
 function cloudConsumePotion(url, characterId, potionId, requestId) {
   return cloudAuthPost(url, { action: "consumePotion", characterId, potionId, requestId });
 }
-function cloudPurchaseCharacterResource(url, characterId, resource, requestId) {
-  return cloudAuthPost(url, { action: "purchaseCharacterResource", characterId, resource, requestId });
+function cloudPurchaseCharacterResource(url, characterId, resource, requestId, quantity = undefined) {
+  return cloudAuthPost(url, { action: "purchaseCharacterResource", characterId, resource, quantity, requestId });
 }
 function cloudGetCharacterShopStock(url, characterId, requestId) {
   return cloudAuthPost(url, { action: "getCharacterShopStock", characterId, requestId });
@@ -165,8 +165,8 @@ function cloudGetCharacterShopStock(url, characterId, requestId) {
 function cloudPurchaseShopEquipment(url, characterId, offerId, requestId) {
   return cloudAuthPost(url, { action: "purchaseShopEquipment", characterId, offerId, requestId });
 }
-function cloudSellCharacterItem(url, characterId, itemId, requestId) {
-  return cloudAuthPost(url, { action: "sellCharacterItem", characterId, itemId, requestId });
+function cloudSellCharacterItem(url, characterId, itemId, requestId, quantity = undefined) {
+  return cloudAuthPost(url, { action: "sellCharacterItem", characterId, itemId, quantity, requestId });
 }
 function cloudSalvageItem(url, characterId, itemId, requestId) {
   return cloudAuthPost(url, { action: "salvageItem", characterId, itemId, requestId });
