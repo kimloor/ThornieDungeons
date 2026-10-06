@@ -4,6 +4,7 @@ import fs from "node:fs";
 
 const entry = fs.readFileSync("workers/thornie-dungeons-api-entry.js", "utf8");
 const api = fs.readFileSync("workers/thornie-dungeons-api.js", "utf8");
+const mailbox = fs.readFileSync("workers/modules/mailbox.js", "utf8");
 
 function createCountingFake() {
   let calls = 0;
@@ -72,4 +73,23 @@ test("D1 sequential round-trip budgets are enforced by architecture", () => {
   assert.ok(after.completeBattle <= 4);
   assert.ok(after.completeBattleReplay <= 2);
   assert.ok(before.completeBattle > after.completeBattle);
+});
+
+
+test("shared character auth is reused by craft, blacksmith, and mail claim hot paths", () => {
+  for (const name of ["handleCraftItem", "handleMutateV2Blacksmith", "handleMutateLegacyBlacksmith"]) {
+    const start = api.indexOf("async function " + name);
+    const end = api.indexOf("\nasync function ", start + 10);
+    const fn = api.slice(start, end > 0 ? end : api.length);
+    assert.match(fn, /session\?\.__characterAuth\?\.auth/);
+    assert.match(fn, /session\?\.__characterAuth\?\.owned/);
+  }
+  for (const name of ["handleClaimMail", "handleClaimAllMail"]) {
+    const start = mailbox.indexOf("async function " + name);
+    const end = mailbox.indexOf("\nasync function ", start + 10);
+    const fn = mailbox.slice(start, end > 0 ? end : mailbox.length);
+    assert.match(fn, /session\?\.__characterAuth\?\.auth/);
+    assert.match(fn, /session\?\.__characterAuth\?\.owned/);
+  }
+  assert.match(api, /const characterAuthActions = new Set\(\["purchaseCharacterResource", "sellCharacterItem", "completeBattle", "craftItem", "mutateV2Blacksmith", "mutateLegacyBlacksmith", "claimMail", "claimAllMail"\]\)/);
 });
