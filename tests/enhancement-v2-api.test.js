@@ -258,6 +258,7 @@ test("W4 Boss Weapon crafting is server-derived, exact-once, and W3-compatible",
     .run(context.playerId, context.characterId, JSON.stringify({ junkId: "iron", quantity: 10 }));
   const body = { action: "craftItem", characterId: context.characterId, recipeId: "boss_weapon_spirit_greatsword", requestId: "w4-spirit-once" };
   const first = await post(context.api, context.db, context.token, body);
+  console.error("DEBUG_W4", first.body);
   assert.equal(first.body.ok, true);
   assert.equal(first.body.character.gold, 97500);
   assert.equal(first.body.items.some(row => row.item_id === first.body.item.id), true);
