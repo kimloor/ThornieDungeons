@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { DatabaseSync } = require("node:sqlite");
-const { loadWorkerSource } = require("./helpers/worker-source");
+const { loadWorkerSource } = require("./helpers/worker-source");\nconst { applyRequiredAutoMigrations } = require("./helpers/auto-migrations");
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -13,7 +13,12 @@ class Statement {
   bind(...values) { return new Statement(this.raw, this.sql, values); }
   async first() { return this.raw.prepare(this.sql).get(...this.values) || null; }
   async all() { return { results: this.raw.prepare(this.sql).all(...this.values) }; }
-  async run() { const result = this.raw.prepare(this.sql).run(...this.values); return { meta: { changes: Number(result.changes) } }; }
+  async run() {
+    const normalized = this.sql.trim().toUpperCase();
+    if (/^(SELECT|WITH|PRAGMA)\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };
+    const result = this.raw.prepare(this.sql).run(...this.values);
+    return { meta: { changes: Number(result.changes) } };
+  }
 }
 class D1 {
   constructor() { this.raw = new DatabaseSync(":memory:"); }
@@ -47,6 +52,7 @@ function database() {
     CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL);
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
+  applyRequiredAutoMigrations(db, ROOT);
   return db;
 }
 
