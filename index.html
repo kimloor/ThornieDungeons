@@ -710,6 +710,13 @@ body::after {
 .md-shop-resource-row > div:first-child { min-width:0; flex:1; }
 .md-shop-empty { margin:8px 0; text-align:center; }
 .md-shop-resource-copy { min-width:0; flex:1; }
+.md-sell-quantity-overlay { position:fixed; inset:0; z-index:260; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(3,5,16,.72); backdrop-filter:blur(3px); }
+.md-sell-quantity-dialog { width:min(92vw,380px); padding:18px; text-align:center; }
+.md-sell-quantity-stepper { display:grid; grid-template-columns:48px 1fr 48px; gap:8px; align-items:center; margin:14px 0 8px; }
+.md-sell-quantity-stepper button { min-height:44px; border:1px solid rgba(255,209,102,.3); border-radius:10px; background:rgba(255,255,255,.05); color:var(--ink); font-size:20px; font-weight:900; }
+.md-sell-quantity-stepper strong { font-size:22px; color:var(--gold); }
+.md-sell-all-btn { min-height:36px; width:100%; border:1px solid rgba(255,209,102,.25); border-radius:9px; background:rgba(255,209,102,.08); color:var(--gold); font-weight:900; }
+.md-sell-summary { margin:10px 0 14px; color:var(--ink); font-weight:900; }
 .md-shop-quantity-wrap { min-width:148px; max-width:210px; display:grid; gap:4px; }
 .md-shop-quantity-row { display:grid; grid-template-columns:40px 1fr 40px auto; gap:4px; align-items:center; }
 .md-shop-qty-btn,.md-shop-qty-max,.md-shop-qty-chips button { min-width:36px; min-height:36px; border:1px solid rgba(255,209,102,.28); border-radius:8px; background:rgba(255,255,255,.045); color:var(--ink); font-weight:900; }
@@ -23011,6 +23018,8 @@ function InventoryOverlayV2({
   const [filterOpen, setFilterOpen] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [sellDialog, setSellDialog] = useState(null);
+  const [sellQuantity, setSellQuantity] = useState(1);
   const [filters, setFilters] = useState({ category: "all", type: "all", rarity: "all", enhanced: "all", enchanted: "all" });
   const updateFilter = (key, value) => setFilters(current => ({ ...current, [key]: value }));
   const resetFilters = () => setFilters({ category:"all", type:"all", rarity:"all", enhanced:"all", enchanted:"all" });
@@ -23041,8 +23050,18 @@ function InventoryOverlayV2({
   };
   const runSell = () => {
     if (!currentDetail || inventoryItemLocked(currentDetail) || !destructiveConfirm(currentDetail, "ขาย")) return;
+    const stackable = currentDetail.type === "junk" || currentDetail.type === "potion";
+    const max = Math.max(1, Number(currentDetail.quantity) || 1);
+    if (stackable && max > 1) { setSellQuantity(max); setSellDialog({ item: currentDetail, max }); return; }
     const result = onSell(currentDetail);
     if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้"); else closeDetail();
+  };
+  const confirmStackSell = () => {
+    if (!sellDialog?.item || busy) return;
+    const qty = Math.max(1, Math.min(sellDialog.max, Number(sellQuantity) || 1));
+    const result = onSell(sellDialog.item, qty);
+    if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้");
+    else { setSellDialog(null); closeDetail(); }
   };
   const runSalvage = async () => {
     if (!currentDetail || inventoryItemLocked(currentDetail) || !salvagePreview || busy) return;
@@ -23066,6 +23085,23 @@ function InventoryOverlayV2({
       (filtered.length > 10 || expanded) && /*#__PURE__*/React.createElement("button", { className: "md-inventory-toggle md-inventory-art", style: iconButtonStyle("expand"), onClick: () => setExpanded(value => !value) }, expanded ? "▲ Collapse" : `▼ View All (${filtered.length})`),
       filterOpen && /*#__PURE__*/React.createElement(InventoryFilterModal, { filters, onUpdate:updateFilter, onReset:resetFilters, onClose:() => setFilterOpen(false) }),
       overflowOpen && /*#__PURE__*/React.createElement(OverflowModal, { overflow, busy, onClaimOverflow, onClaimAllOverflow, onClose:() => setOverflowOpen(false) }),
+      sellDialog && /*#__PURE__*/React.createElement("div", { className:"md-sell-quantity-overlay" },
+        /*#__PURE__*/React.createElement("section", { className:"md-card md-sell-quantity-dialog", role:"dialog", "aria-modal":"true" },
+          /*#__PURE__*/React.createElement("h3", { className:"md-title" }, "ขาย ", itemDisplayName(sellDialog.item)),
+          /*#__PURE__*/React.createElement("p", { className:"md-sub" }, "ราคา ", sellUnitPrice(sellDialog.item), " ทอง/ชิ้น · ทั้งหมด ", sellDialog.max, " ชิ้น"),
+          /*#__PURE__*/React.createElement("div", { className:"md-sell-quantity-stepper" },
+            /*#__PURE__*/React.createElement("button", { type:"button", disabled:sellQuantity<=1, onClick:()=>setSellQuantity(q=>Math.max(1,q-1)) }, "−"),
+            /*#__PURE__*/React.createElement("strong", null, sellQuantity),
+            /*#__PURE__*/React.createElement("button", { type:"button", disabled:sellQuantity>=sellDialog.max, onClick:()=>setSellQuantity(q=>Math.min(sellDialog.max,q+1)) }, "+")
+          ),
+          /*#__PURE__*/React.createElement("button", { type:"button", className:"md-sell-all-btn", onClick:()=>setSellQuantity(sellDialog.max) }, `ทั้งหมด (${sellDialog.max})`),
+          /*#__PURE__*/React.createElement("p", { className:"md-sub md-sell-summary" }, sellUnitPrice(sellDialog.item), " × ", sellQuantity, " = ", sellUnitPrice(sellDialog.item) * sellQuantity, " ทอง"),
+          /*#__PURE__*/React.createElement("div", { className:"md-btn-row" },
+            /*#__PURE__*/React.createElement("button", { type:"button", className:"md-btn flee", disabled:busy, onClick:()=>setSellDialog(null) }, "ยกเลิก"),
+            /*#__PURE__*/React.createElement("button", { type:"button", className:"md-btn primary", disabled:busy, onClick:confirmStackSell }, `ขาย ${sellQuantity} ชิ้น · ${sellUnitPrice(sellDialog.item) * sellQuantity} ทอง`)
+          )
+        )
+      ),
       currentDetail && /*#__PURE__*/React.createElement(ItemDetailModal, {
         detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy,
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
