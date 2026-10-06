@@ -41,6 +41,9 @@ class PhaserBattleActor {
       color: "#fff1ad", fontFamily: "Arial", fontSize: "10px", fontStyle: "bold",
       stroke: "#071126", strokeThickness: 2, align: "center"
     }).setOrigin(0.5, 0).setDepth((options.depth || 5) + 3).setResolution(textResolution);
+    this.statusText.setVisible(false);
+    this.statusIcons = scene.add.container(0, 0).setDepth((options.depth || 5) + 3);
+    this.container.add(this.statusIcons);
     this.container.add(this.statusText);
     this.container.add(this.nameText);
     this.targetRing = null;
@@ -283,9 +286,39 @@ class PhaserBattleActor {
     const size = this.displaySize();
     const alive = this.data.alive !== false && Number(this.data.hp) > 0;
     this.nameText.setText(String(this.data.name || this.data.id || "Unit")).setVisible(true);
-    this.statusText
-      .setText((this.data.statuses || []).map(status => `${status.key}:${status.duration}`).join("  "))
-      .setVisible(Boolean(this.data.statuses?.length));
+    this.statusText.setVisible(false);
+    this.statusIcons.removeAll(true);
+    const statusIconMap = {
+      atk_up: "ui/skill-icons/hero/power_strike.png",
+      def_up: "ui/skill-icons/hero/guard.png",
+      armor_break: "ui/skill-icons/hero/armor_break_mastery.png",
+      pet_regrowth: "ui/skill-icons/hero/recovery.png",
+      regen: "ui/skill-icons/hero/recovery.png",
+      poison: "ui/skill-icons/hero/toxic_strike.png",
+      stun: "ui/skill-icons/hero/stunning_blow.png",
+      silence: "ui/skill-icons/hero/silent_edge.png"
+    };
+    const visibleStatuses = (this.data.statuses || [])
+      .filter(status => statusIconMap[status?.key] && Number(status?.duration) > 0);
+    visibleStatuses.forEach((status, index) => {
+      const iconKey = this.scene.assetKey(statusIconMap[status.key]);
+      const item = this.scene.add.container(0, 0);
+      if (iconKey && this.scene.textures.exists(iconKey)) {
+        item.add(this.scene.add.image(0, 0, iconKey).setDisplaySize(22, 22).setOrigin(0.5));
+      } else {
+        const fallback = this.scene.add.graphics();
+        fallback.fillStyle(status.key === "armor_break" ? 0xc76a6a : status.key === "pet_regrowth" ? 0x55d68b : 0x6fb9ff, 1);
+        fallback.fillCircle(0, 0, 9);
+        item.add(fallback);
+      }
+      const duration = this.scene.add.text(8, 8, String(Math.max(0, Number(status.duration) || 0)), {
+        color: "#ffffff", fontFamily: "Arial", fontSize: "8px", fontStyle: "bold",
+        stroke: "#071126", strokeThickness: 2, align: "center"
+      }).setOrigin(0.5).setResolution(phaserTextResolution());
+      item.add(duration);
+      item.x = (index - (visibleStatuses.length - 1) / 2) * 26;
+      this.statusIcons.add(item);
+    });
 
     this.hpBar.clear();
     const maxHp = Math.max(1, Number(this.data.maxHp) || 1);
@@ -298,7 +331,7 @@ class PhaserBattleActor {
       .fillRoundedRect(-barWidth / 2 + 1, barY + 1, Math.max(0, (barWidth - 2) * hpPct), 6, 3);
     this.hpBar.lineStyle(1, 0xffffff, 0.35).strokeRoundedRect(-barWidth / 2, barY, barWidth, 8, 4);
 
-    this.statusText.setPosition(0, -Math.round(size * 0.72) - 4);
+    this.statusIcons.setPosition(0, -Math.round(size * 0.72) - 4);
     this.hpTextOffsetY = barY + 10;
     this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
     const nameY = this.data.kind === "pet" ? 22 : 34;
@@ -347,6 +380,7 @@ class PhaserBattleActor {
     this.sprite = null;
     this.hpBar = null;
     this.statusText = null;
+    this.statusIcons = null;
     this.nameText = null;
     this.hpText = null;
     this.targetRing = null;
