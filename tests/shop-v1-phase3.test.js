@@ -6,6 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const worker = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8");
 const shop = fs.readFileSync(path.join(ROOT, "src/systems/shop.js"), "utf8");
+const enhancement = fs.readFileSync(path.join(ROOT, "src/systems/enhancement.js"), "utf8");
 
 const POTION_SELL = {
   hp_small: 4, mp_small: 4,
@@ -18,7 +19,7 @@ const JUNK_SELL = { stone: 1, grass: 1, wood: 2, iron: 4, manaOre: 6 };
 test("Phase 3 client/server potion sell prices stay in parity", () => {
   for (const [id, price] of Object.entries(POTION_SELL)) {
     assert.match(worker, new RegExp(id + ": " + price + "\\b"));
-    assert.match(shop, new RegExp(id + ": " + price + "\\b"));
+    assert.match(enhancement, new RegExp(id + ": " + price + "\\b"));
   }
 });
 
