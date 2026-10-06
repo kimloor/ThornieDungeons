@@ -633,6 +633,7 @@ body::after {
 .md-shop-qty-btn:disabled,.md-shop-qty-max:disabled,.md-shop-qty-chips button:disabled { opacity:.4; }
 .md-shop-total-btn { width:100%; min-height:40px; font-size:10px; }
 .md-shop-pending-badge { color:var(--gold); font-size:9px; font-weight:900; text-align:right; }
+.md-shop-shortfall { color:#ff9a9a; font-size:9px; font-weight:900; text-align:right; }
 @media (max-width:430px) {
   .md-shop-resource-row { align-items:stretch; }
   .md-shop-quantity-wrap { min-width:132px; max-width:150px; }
