@@ -2364,16 +2364,17 @@ async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inv
 }
 
 async function handleCompleteBattle(db, id, session, characterId, battleId, resultPayload) {
-  const auth = characterAuth?.auth || await verifyPlayer(db, id, session);
+  const auth = session?.__characterAuth?.auth || await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
-  const owned = characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
+  const owned = session?.__characterAuth?.owned || await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
   const resultName = resultPayload && resultPayload.result;
   if (!battleId || !["victory", "defeat", "fled"].includes(resultName)) return json({ error: "invalid_battle_result" }, 400);
   const battleKey = String(battleId);
   const preRead = await db.batch([
     db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey),
     db.prepare(`SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`).bind(battleKey, characterId),
-    db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND EXISTS (SELECT 1 FROM battle_completions WHERE battle_id = ?)`).bind(nowIso(), battleKey, characterId, battleKey),
+    db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND EXISTS (SELECT 1 FROM battle_completions WHERE battle_id = ? AND character_id = ?)`).bind(nowIso(), battleKey, characterId, battleKey, characterId),
     ...battleCompletionSnapshotStatements(db, id, characterId)
   ]);
   const prior = preRead?.[0]?.results?.[0] || null;
@@ -4511,6 +4512,7 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     actor.dungeonV2CycleIndex = (index + 1) % actor.dungeonV2SkillCycle.length;
     return actor.dungeonV2SkillCycle[index];
   }
+
   function materializeEnemyStatuses(actor, statuses) {
     return (statuses || []).map(statusSpec => ({
       ...statusSpec,
@@ -7050,9 +7052,7 @@ async function apiFetch(request, env) {
           characterAuth = await authenticateCharacter(db, token, body.characterId);
           if (characterAuth.error) {
             const sessionErrors = new Set(["invalid_session", "session_expired", "session_revoked", "session_replaced"]);
-            const status = sessionErrors.has(characterAuth.error) ? 401
-              : body.action === "completeBattle" ? 200
-              : 403;
+            const status = sessionErrors.has(characterAuth.error) ? 401 : 403;
             return json({ error: characterAuth.error }, status);
           }
           auth = characterAuth.auth;

@@ -54,6 +54,9 @@ test("purchase and sell hot paths have no per-request authority DDL or handler r
 test("completeBattle reward pre-reads are folded into one batch and final writes/readback stay batched", () => {
   const fn = api.slice(api.indexOf("async function handleCompleteBattle"), api.indexOf("async function handleSaveQuickSlots"));
   assert.match(fn, /const preRead = await db\.batch\(\[/);
+  assert.match(fn, /session\?\.__characterAuth\?\.auth/);
+  assert.match(fn, /session\?\.__characterAuth\?\.owned/);
+  assert.doesNotMatch(fn, /characterAuth\?\./);
   assert.match(fn, /const finalBatch = await db\.batch\(finalStatements\)/);
   assert.match(api, /rewardReadBatch = await db\.batch\(\[/);
   for (const token of ["battle_identity_conflict", "battle_checkpoint_missing", "battle_result_not_after_checkpoint", "invalid_battle_context", "commitDungeonRewardInBattleTransaction"]) {
@@ -92,4 +95,6 @@ test("shared character auth is reused by craft, blacksmith, and mail claim hot p
     assert.match(fn, /session\?\.__characterAuth\?\.owned/);
   }
   assert.match(api, /const characterAuthActions = new Set\(\["purchaseCharacterResource", "sellCharacterItem", "completeBattle", "craftItem", "mutateV2Blacksmith", "mutateLegacyBlacksmith", "claimMail", "claimAllMail"\]\)/);
+  assert.doesNotMatch(api, /body\.action === "completeBattle" \? 200/);
+  assert.match(api, /sessionErrors\.has\(characterAuth\.error\) \? 401 : 403/);
 });
