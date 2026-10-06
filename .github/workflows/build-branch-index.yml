@@ -28,3 +28,5 @@ jobs:
           git add index.html
           git commit -m "build: regenerate index.html from source"
           git push origin HEAD:$GITHUB_REF_NAME
+
+# trigger source build
