@@ -49,3 +49,33 @@ test("shared Phaser host exposes terminal queue and drain without gameplay autho
   assert.match(ui, /props\.onPresentationController\?\.\(null\)/);
   assert.match(components, /onPresentationController: onPresentationController/);
 });
+
+
+test("W7A terminal action does not clear presentation synchronously and reset occurs only on exit", () => {
+  const driveStart = app.indexOf("function driveCoreBattle");
+  const driveBody = app.slice(driveStart, app.indexOf("function consumeBattlePotion", driveStart));
+  const terminalCall = driveBody.indexOf('if (next.result) { finishCoreBattle(next, { actorKind: actor.kind }); return; }');
+  assert.ok(terminalCall >= 0);
+  const afterTerminal = driveBody.slice(terminalCall);
+  assert.equal(afterTerminal.indexOf('setHeroAnim("");'), -1);
+  assert.equal(afterTerminal.indexOf('setPetAnim("");'), -1);
+  assert.equal(afterTerminal.indexOf('setEnemyAnims({});'), -1);
+  assert.equal(afterTerminal.indexOf('setBattleVfx([]);'), -1);
+  const finalize = app.slice(app.indexOf("async function finalizeTerminalOutcome"), app.indexOf("async function finishCoreBattle"));
+  assert.ok(finalize.indexOf("resetTerminalPresentation();") >= 0);
+});
+
+test("W7A confirmation pill is hidden during presentation and retry reuses the same battleId", () => {
+  assert.match(components, /battleFinishing && battleFinishStatus === "confirming"/);
+  assert.doesNotMatch(components, /battleFinishing && /*#__PURE__\*\/React\.createElement\("div", \{\n    className: "md-battle-finishing"/);
+  assert.match(app, /finishCoreBattle\(next, \{ retry: true \}\)/);
+  assert.match(app, /terminalFinishRef\.current\?\.next\?\.battleId !== next\.battleId/);
+  assert.match(app, /ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย/);
+});
+
+test("W7A replay result preserves stored gold/xp and labels it as already applied", () => {
+  assert.match(app, /firstCompletion === false/);
+  assert.match(app, /storedReward && Number\.isFinite\(Number\(storedReward\.gold\)\)/);
+  assert.match(app, /alreadyApplied: true/);
+  assert.match(components, /บันทึกไว้แล้ว/);
+});

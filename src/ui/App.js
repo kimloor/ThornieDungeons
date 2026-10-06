@@ -1,3 +1,18 @@
+function planTerminalFlow({ retry = false, skip = false, actorKind = "hero", combatSpeed = 1 } = {}) {
+  const speed = Math.max(1, Number(combatSpeed) || 1);
+  const actionHoldMs = Math.min(1800, Math.round((actorKind === "hero" ? 420 : 520) / speed));
+  return {
+    retry,
+    skip,
+    runPresentation: !retry && !skip,
+    startCompletionBeforePresentation: true,
+    actionHoldMs,
+    totalHoldCapMs: Math.max(500, Math.round(1800 / speed)),
+    resetBeforeExit: true,
+    reuseBattleIdOnRetry: true
+  };
+}
+
 // Battle logs are session-only UI data. Checkpoints keep the deterministic combat state and
 // log sequence, but never copy the readable log history into D1.
 function battleCheckpointWithoutLog(checkpoint) {
@@ -122,6 +137,8 @@ function ThornieDungeons() {
   // step; a rejected consume rolls the exact Action back to its pre-potion checkpoint.
   const pendingPotionRef = useRef(null);
   const [battleFinishing, setBattleFinishing] = useState(false);
+  const [battleFinishStatus, setBattleFinishStatus] = useState("");
+  const terminalFinishRef = useRef(null);
   const [equipped, setEquipped] = useState(emptyEquipped());
   const [inventory, setInventory] = useState([]);
   const [inventoryOverflow, setInventoryOverflow] = useState([]);
@@ -1023,102 +1040,154 @@ function ThornieDungeons() {
     }
   }
 
-  async function finishCoreBattle(next) {
-    if (!next?.battleId || finishingBattleIdRef.current === next.battleId) return;
-    finishingBattleIdRef.current = next.battleId;
-    // Battle resolution owns gameplay state; presentation must be reset before
-    // leaving the scene so a terminal attack frame cannot leak into the next fight.
+  function resetTerminalPresentation() {
     setHeroAnim("");
     setPetAnim("");
     setEnemyAnims({});
     setBattleVfx([]);
-    setBattleFinishing(true);
-    setBusy(true);
-    setLog("Confirming battle result…");
-    let completionReceipt = null;
-    if (save?.characterId) {
-      // Completion requires a previously persisted safe Action boundary. If the
-      // persistence queue has not confirmed it yet, write that idempotent snapshot
-      // directly; cloud request de-duplication piggybacks an identical in-flight write.
-      const safeCheckpoint = lastSafeBattleCheckpointRef.current;
-      const confirmed = confirmedBattleCheckpointRef.current;
+    setBattleFinishing(false);
+    setBattleFinishStatus("");
+  }
+
+  async function commitBattleCompletionWithRetry(next) {
+    if (!save?.characterId) return { ok: true, completionReceipt: null };
+    const safeCheckpoint = lastSafeBattleCheckpointRef.current;
+    const confirmed = confirmedBattleCheckpointRef.current;
+    const rewardPlan = next.result === "victory" ? buildDungeonRewardPlan(next.battleId) : null;
+    let lastReceipt = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (attempt > 0) {
+        const retryDelayMs = 300 * (2 ** (attempt - 1));
+        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+      }
       if (safeCheckpoint?.battleId === next.battleId
           && safeCheckpoint.safeActionSeq < next.safeActionSeq
           && (confirmed.battleId !== next.battleId || confirmed.safeActionSeq < safeCheckpoint.safeActionSeq)) {
         const checkpointReceipt = await cloudSaveBattleCheckpoint(
-          cred.url,
-          save.characterId,
-          safeCheckpoint.battleId,
-          safeCheckpoint.safeActionSeq,
+          cred.url, save.characterId, safeCheckpoint.battleId, safeCheckpoint.safeActionSeq,
           battleCheckpointWithoutLog(safeCheckpoint)
-        );
-        if (!checkpointReceipt?.ok) {
-          finishingBattleIdRef.current = null;
-          setBattleFinishing(false);
-          setBusy(false);
-          setLog("Battle checkpoint sync failed — tap Attack to retry safely.");
-          return;
-        }
+        ).catch(() => null);
+        if (!checkpointReceipt?.ok) continue;
         confirmedBattleCheckpointRef.current = {
           battleId: safeCheckpoint.battleId,
           safeActionSeq: safeCheckpoint.safeActionSeq
         };
       }
-      const rewardPlan = next.result === "victory" ? buildDungeonRewardPlan(next.battleId) : null;
       const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, {
         result: next.result,
         safeActionSeq: next.safeActionSeq,
         floor: next.floor,
         reward: rewardPlan
-      });
-      if (!receipt?.ok) {
-        finishingBattleIdRef.current = null;
-        setBattleFinishing(false);
-        setBusy(false);
-        setLog("Battle result sync failed — tap Attack to retry safely.");
-        return;
-      }
-      completionReceipt = receipt;
+      }).catch(() => null);
+      if (receipt?.ok) return { ok: true, completionReceipt: receipt };
+      lastReceipt = receipt;
     }
-    setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
-    await playTerminalBattlePresentation(next.result);
+    return { ok: false, completionReceipt: lastReceipt };
+  }
+
+  async function finalizeTerminalOutcome(next, completionReceipt) {
+    resetTerminalPresentation();
+    finishingBattleIdRef.current = null;
+    setBusy(false);
+    terminalFinishRef.current = null;
     if (next.result === "victory") {
       if (completionReceipt && completionReceipt.firstCompletion === false) {
-        // The server already applied this battle. Hydrate its authoritative snapshot rather
-        // than replaying Gold/EXP/items locally, including after a crash before the first
-        // client mirror completed.
         hydrateCommittedBattleSnapshot(completionReceipt);
         combatOutcomeRef.current = "victory";
         setDropItem(completionReceipt.result?.reward?.drop || null);
+        const storedReward = completionReceipt.result?.reward || null;
+        const hasGold = storedReward && Number.isFinite(Number(storedReward.gold));
+        const hasXp = storedReward && Number.isFinite(Number(storedReward.xp));
         setLastRewards({
-          gold: 0,
-          xp: 0,
+          gold: hasGold ? Number(storedReward.gold) : null,
+          xp: hasXp ? Number(storedReward.xp) : null,
           leveledUp: false,
           unlockedNext: false,
           newSkill: null,
           newPet: null,
           alreadyApplied: true,
-          encounterType: completionReceipt.result?.reward?.encounterType,
-          rewardRole: completionReceipt.result?.reward?.rewardRole,
-          equipmentDrop: completionReceipt.result?.reward?.drop || null,
+          encounterType: storedReward?.encounterType,
+          rewardRole: storedReward?.rewardRole,
+          equipmentDrop: storedReward?.drop || null,
           firstClearAccessory: false,
-          junkDrop: completionReceipt.result?.reward?.junkDrop || null
+          junkDrop: storedReward?.junkDrop || null
         });
-        setBattleFinishing(false);
-        setBusy(false);
         setPhase("result");
       } else {
         endCombatWin(next.battleId, completionReceipt?.result?.reward
           ? { ...completionReceipt.result.reward, authoritativeSnapshot: completionReceipt }
           : null);
       }
+    } else if (next.result === "defeat") {
+      playerLost();
+    } else if (next.result === "fled") {
+      backToMap();
     }
-    else if (next.result === "defeat") playerLost();
-    else if (next.result === "fled") backToMap();
+  }
+
+  async function finishCoreBattle(next, options = {}) {
+    if (!next?.battleId) return;
+    const plan = planTerminalFlow({
+      retry: !!options.retry,
+      skip: !!options.skip,
+      actorKind: options.actorKind || "hero",
+      combatSpeed
+    });
+    if (!plan.retry && finishingBattleIdRef.current === next.battleId) return;
+    if (plan.retry && terminalFinishRef.current?.next?.battleId !== next.battleId) return;
+    if (plan.retry) {
+      setBattleFinishing(true);
+      setBattleFinishStatus("confirming");
+      setBusy(true);
+    } else {
+      finishingBattleIdRef.current = next.battleId;
+      terminalFinishRef.current = { next };
+      setBattleFinishing(true);
+      setBattleFinishStatus("");
+      setBusy(true);
+    }
+
+    const completionPromise = commitBattleCompletionWithRetry(next);
+    let completionSettled = false;
+    completionPromise.finally(() => { completionSettled = true; });
+    let completionOutcome;
+    if (plan.runPresentation) {
+      setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
+      await Promise.race([
+        Promise.all([
+          new Promise(resolve => setTimeout(resolve, plan.actionHoldMs)),
+          playTerminalBattlePresentation(next.result)
+        ]),
+        new Promise(resolve => setTimeout(resolve, plan.totalHoldCapMs))
+      ]);
+      if (!completionSettled) setBattleFinishStatus("confirming");
+    }
+    completionOutcome = await completionPromise;
+    if (!completionOutcome.ok) {
+      finishingBattleIdRef.current = null;
+      setBusy(false);
+      setBattleFinishing(true);
+      setBattleFinishStatus("error");
+      setLog("ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย");
+      return;
+    }
+    await finalizeTerminalOutcome(next, completionOutcome.completionReceipt);
+  }
+
+  function retryTerminalBattle() {
+    const next = terminalFinishRef.current?.next;
+    if (!next?.battleId || battleFinishStatus !== "error") return;
+    finishCoreBattle(next, { retry: true }).catch(() => {
+      finishingBattleIdRef.current = null;
+      setBusy(false);
+      setBattleFinishing(true);
+      setBattleFinishStatus("error");
+      setLog("ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย");
+    });
   }
   function driveCoreBattle(inputState, heroCommand = null, immediate = false) {
     const state = inputState || battleStateRef.current;
-    if (!state || state.result) { if (state?.result) finishCoreBattle(state); return; }
+    if (!state || state.result) { if (state?.result && battleFinishStatus !== "error") finishCoreBattle(state); return; }
     const actor = BATTLE_CORE_V1.currentUnit(state);
     if (!actor) return;
     if (actor.kind === "hero" && !heroCommand && !state.flags.auto && !state.flags.skipResolving) {
@@ -1128,7 +1197,7 @@ function ThornieDungeons() {
     if (heroCommand?.type === "skip_battle") {
       setBattleVfx([]);
       const resolved = DUNGEON_V2.simulateDungeonV2Battle(state, BATTLE_CORE_V1);
-      applyCoreBattleState(resolved, false); finishCoreBattle(resolved); return;
+      applyCoreBattleState(resolved, false); finishCoreBattle(resolved, { skip: true }); return;
     }
     if (actor.kind === "hero" && ["basic", "active"].includes(heroCommand?.type)) setHeroAnim("attack");
     else if (actor.kind === "pet") setPetAnim("attack");
@@ -1161,7 +1230,7 @@ function ThornieDungeons() {
       }
     }
     applyCoreBattleState(next, result.completedAction);
-    if (next.result) { finishCoreBattle(next); return; }
+    if (next.result) { finishCoreBattle(next, { actorKind: actor.kind }); return; }
     const delay = immediate ? 0 : combatDelay(actor.kind === "hero" ? 420 : 520);
     setTimeout(() => {
       setBattleVfx([]);
@@ -2937,6 +3006,8 @@ function ThornieDungeons() {
     activeTurnKey: activeTurnKey,
     battleRound: battleState?.round,
     battleFinishing: battleFinishing,
+    battleFinishStatus: battleFinishStatus,
+    onRetryBattle: retryTerminalBattle,
     combatSpeed: combatSpeed,
     battleVfx: battleVfx,
     combatTurnCount: combatTurnCount,
