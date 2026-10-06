@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { DatabaseSync } = require("node:sqlite");
 const { loadWorkerSource } = require("./helpers/worker-source");
+const { applyRequiredAutoMigrations } = require("./helpers/auto-migrations");
 
 class Statement {
   constructor(raw, sql, values = []) { this.raw = raw; this.sql = sql; this.values = values; }
@@ -83,6 +84,7 @@ function database() {
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
   db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0012_battle_persistence_v1.sql"), "utf8"));
   db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0013_pet_run_state_v1.sql"), "utf8"));
+  applyRequiredAutoMigrations(db, path.resolve(__dirname, ".."));
   return db;
 }
 
