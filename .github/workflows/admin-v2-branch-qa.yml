@@ -52,6 +52,8 @@ jobs:
         run: node --test tests/shop-v1-phase6.test.js
       - name: SHOP-AND-SELL Phase 7 integration contract tests
         run: node --test tests/shop-v1-phase7.test.js
+      - name: Battle end flow contract tests
+        run: node --test tests/battle-end-flow-v1.test.js
       - name: Auth V2 regression
         run: |
           # Skip only the pre-existing timing-sensitive retryAfter > 30 assertion in this CI workspace.
