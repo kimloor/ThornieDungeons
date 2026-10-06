@@ -617,6 +617,13 @@ body::after {
 .md-shop-resource-row > div:first-child { min-width:0; flex:1; }
 .md-shop-empty { margin:8px 0; text-align:center; }
 .md-shop-resource-copy { min-width:0; flex:1; }
+.md-sell-quantity-overlay { position:fixed; inset:0; z-index:260; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(3,5,16,.72); backdrop-filter:blur(3px); }
+.md-sell-quantity-dialog { width:min(92vw,380px); padding:18px; text-align:center; }
+.md-sell-quantity-stepper { display:grid; grid-template-columns:48px 1fr 48px; gap:8px; align-items:center; margin:14px 0 8px; }
+.md-sell-quantity-stepper button { min-height:44px; border:1px solid rgba(255,209,102,.3); border-radius:10px; background:rgba(255,255,255,.05); color:var(--ink); font-size:20px; font-weight:900; }
+.md-sell-quantity-stepper strong { font-size:22px; color:var(--gold); }
+.md-sell-all-btn { min-height:36px; width:100%; border:1px solid rgba(255,209,102,.25); border-radius:9px; background:rgba(255,209,102,.08); color:var(--gold); font-weight:900; }
+.md-sell-summary { margin:10px 0 14px; color:var(--ink); font-weight:900; }
 .md-shop-quantity-wrap { min-width:148px; max-width:210px; display:grid; gap:4px; }
 .md-shop-quantity-row { display:grid; grid-template-columns:40px 1fr 40px auto; gap:4px; align-items:center; }
 .md-shop-qty-btn,.md-shop-qty-max,.md-shop-qty-chips button { min-width:36px; min-height:36px; border:1px solid rgba(255,209,102,.28); border-radius:8px; background:rgba(255,255,255,.045); color:var(--ink); font-weight:900; }
