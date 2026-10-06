@@ -16,10 +16,10 @@ test("Phase 4 Shop uses pinned header and scrollable body", () => {
 });
 
 test("Phase 4 Shop has exactly four requested tabs and no Sell tab", () => {
-  assert.match(components, /\\["equipment", "อุปกรณ์"\\]/);
-  assert.match(components, /\\["hp", "ยา HP"\\]/);
-  assert.match(components, /\\["sp", "ยา SP"\\]/);
-  assert.match(components, /\\["other", "อื่นๆ"\\]/);
+  assert.match(components, /\["equipment", "อุปกรณ์"\]/);
+  assert.match(components, /\["hp", "ยา HP"\]/);
+  assert.match(components, /\["sp", "ยา SP"\]/);
+  assert.match(components, /\["other", "อื่นๆ"\]/);
   assert.equal(components.includes('["sell",'), false);
 });
 
