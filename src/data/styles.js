@@ -616,6 +616,22 @@ body::after {
 }
 .md-shop-resource-row > div:first-child { min-width:0; flex:1; }
 .md-shop-empty { margin:8px 0; text-align:center; }
+.md-shop-resource-copy { min-width:0; flex:1; }
+.md-shop-quantity-wrap { min-width:148px; max-width:210px; display:grid; gap:4px; }
+.md-shop-quantity-row { display:grid; grid-template-columns:40px 1fr 40px auto; gap:4px; align-items:center; }
+.md-shop-qty-btn,.md-shop-qty-max,.md-shop-qty-chips button { min-width:36px; min-height:36px; border:1px solid rgba(255,209,102,.28); border-radius:8px; background:rgba(255,255,255,.045); color:var(--ink); font-weight:900; }
+.md-shop-qty-value { min-width:36px; text-align:center; font-weight:900; color:var(--gold); }
+.md-shop-qty-chips { display:flex; gap:4px; }
+.md-shop-qty-chips button { min-height:30px; min-width:42px; font-size:9px; }
+.md-shop-qty-btn:disabled,.md-shop-qty-max:disabled,.md-shop-qty-chips button:disabled { opacity:.4; }
+.md-shop-total-btn { width:100%; min-height:40px; font-size:10px; }
+.md-shop-pending-badge { color:var(--gold); font-size:9px; font-weight:900; text-align:right; }
+@media (max-width:430px) {
+  .md-shop-resource-row { align-items:stretch; }
+  .md-shop-quantity-wrap { min-width:132px; max-width:150px; }
+  .md-shop-quantity-row { grid-template-columns:34px 1fr 34px; }
+  .md-shop-qty-max { grid-column:1 / -1; min-height:32px; }
+}
 
 .md-inv-item { display: flex; align-items: center; justify-content: space-between; background: var(--panel); border-radius: 10px; padding: 7px 10px; border-left: 4px solid var(--rare); }
 .md-inv-item.unique { border-left-color: var(--unique); }
