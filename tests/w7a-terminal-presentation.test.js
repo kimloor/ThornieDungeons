@@ -42,7 +42,7 @@ test("shared Phaser host exposes terminal queue and drain without gameplay autho
   assert.match(scene, /presentTerminal\(result\)/);
   assert.match(scene, /this\.presentationQueue\.enqueue/);
   assert.match(scene, /\["victory", "defeat"\]/);
-  assert.doesNotMatch(scene, /if \(normalized === "victory"\) this\.cameras\?\.main\?\.flash/);
+  assert.match(scene, /cameras\?\.main\?\.flash/);
   assert.match(scene, /cameras\?\.main\?\.fade/);
 
   assert.match(ui, /props\.onPresentationController\?\.\(handle\)/);
