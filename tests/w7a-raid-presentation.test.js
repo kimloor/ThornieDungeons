@@ -70,7 +70,7 @@ test("Arena skill dropdowns use a document portal and block duplicate skills", (
   assert.match(components, /ReactDOM\.createPortal/);
   assert.match(components, /document\.body/);
   assert.match(components, /usedByOtherSlots/);
-  assert.match(components, /aria-disabled: duplicate/);
+  assert.match(components, /"aria-disabled": duplicate/);
   assert.match(styles, /\.md-arena-setup-options-portal \{ position:fixed !important; z-index:2147483647 !important;/);
 });
 
@@ -80,7 +80,7 @@ test("Arena dock follows the same flow-footer pattern as Inventory", () => {
   assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:static; flex:0 0 auto;/);
   assert.match(styles, /margin:0 max\(var\(--md-page-pad\),var\(--safe-right\)\) max\(var\(--md-page-pad\),var\(--safe-bottom\)/);
   assert.match(styles, /\.md-inv2-overlay > \.md-hub-dock \{ flex:0 0 auto;/);
-  assert.match(styles, /content: "Ver 1\.0\.47";/);
+  assert.match(styles, /content: "Ver 1\.0\.49";/);
 });
 
 test("Arena server setup rejects duplicate skill slots and Dungeon reward persists level progression", () => {
