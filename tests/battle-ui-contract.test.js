@@ -207,9 +207,9 @@ test("battle presentation resets Hero to idle at completion and before stage ent
   const finishBody = app.slice(finishStart, finishEnd);
   const finalizeStart = app.indexOf("async function finalizeTerminalOutcome");
   const finalizeEnd = app.indexOf("async function finishCoreBattle", finalizeStart);
-  assert.doesNotMatch(finishBody, /setHeroAnim\("")/);
+  assert.equal(finishBody.includes('setHeroAnim("");'), false);
   assert.match(app.slice(finalizeStart, finalizeEnd), /resetTerminalPresentation\(\)/);
-  assert.match(app.slice(enterStart, enterEnd), /setHeroAnim\("")/);
+  assert.equal(app.slice(enterStart, enterEnd).includes('setHeroAnim("");'), true);
 });
 
 test("Dungeon battle entry obtains server authorization before creating or checkpointing combat", () => {
