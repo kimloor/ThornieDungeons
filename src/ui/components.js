@@ -5781,7 +5781,7 @@ function CombatScreen({
     style: {
       color: f.color
     }
-  }, f.text)))), battleFinishStatus === "error" && /*#__PURE__*/React.createElement("div", {
+  }, f.text)))))), battleFinishStatus === "error" && /*#__PURE__*/React.createElement("div", {
     className: "md-battle-finish-error",
     role: "alert",
     "aria-live": "assertive"
