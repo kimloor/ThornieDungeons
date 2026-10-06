@@ -20,7 +20,7 @@ test("Shop overlay uses a document portal and mobile-safe fixed sheet", () => {
   const shopBody = components.slice(shopStart, components.indexOf("function PetRoster", shopStart));
   assert.match(shopBody, /ReactDOM\.createPortal/);
   assert.match(shopBody, /document\.body/);
-  assert.match(styles, /\.md-shop-sheet-backdrop \{[\s\S]*position:fixed; inset:0; z-index:260;/);
+  assert.match(styles, /\.md-shop-sheet-backdrop \{[\s\S]*--ink: #F3EEFF;[\s\S]*font-family:'Nunito',sans-serif;[\s\S]*position:fixed; inset:0; z-index:260;/);
   assert.match(styles, /\.md-shop-sheet \{[\s\S]*width:min\(430px,100vw\);/);
   assert.match(styles, /\.md-shop-body \{[\s\S]*overflow-y:auto;/);
 });
