@@ -7036,7 +7036,13 @@ async function apiFetch(request, env) {
         let characterAuth = null;
         if (characterAuthActions.has(body.action) && body.characterId) {
           characterAuth = await authenticateCharacter(db, token, body.characterId);
-          if (characterAuth.error) return json({ error: characterAuth.error }, 401);
+          if (characterAuth.error) {
+            const sessionErrors = new Set(["invalid_session", "session_expired", "session_revoked", "session_replaced"]);
+            const status = sessionErrors.has(characterAuth.error) ? 401
+              : body.action === "completeBattle" ? 200
+              : 403;
+            return json({ error: characterAuth.error }, status);
+          }
           auth = characterAuth.auth;
         } else {
           auth = await verifySession(db, token);
