@@ -17,7 +17,24 @@ class Statement {
     if (/^(SELECT|PRAGMA)\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };
     const result = this.raw.prepare(this.sql).run(...this.values);
     return { meta: { changes: Number(result.changes) } };
-  }}
+  }
+}
+class D1 {
+  constructor() { this.raw = new DatabaseSync(":memory:"); }
+  prepare(sql) { return new Statement(this.raw, sql); }
+  async batch(statements) {
+    const result = [];
+    this.raw.exec("BEGIN");
+    try {
+      for (const statement of statements) result.push(await statement.run());
+      this.raw.exec("COMMIT");
+      return result;
+    } catch (error) {
+      this.raw.exec("ROLLBACK");
+      throw error;
+    }
+  }
+}
 
 function worker(consoleImpl = console) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
