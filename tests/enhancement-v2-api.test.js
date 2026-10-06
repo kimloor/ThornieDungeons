@@ -12,81 +12,12 @@ class Statement {
   bind(...values) { return new Statement(this.raw, this.sql, values); }
   async first() { return this.raw.prepare(this.sql).get(...this.values) || null; }
   async all() { return { results: this.raw.prepare(this.sql).all(...this.values) }; }
-  async run() {\n    const normalized = this.sql.trim().toUpperCase();\n    if (/^(SELECT|WITH|PRAGMA)\\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };\n    const result = this.raw.prepare(this.sql).run(...this.values);\n    return { meta: { changes: Number(result.changes) } };\n  }
-}
-class D1 {
-  constructor() { this.raw = new DatabaseSync(":memory:"); }
-  prepare(sql) { return new Statement(this.raw, sql); }
-  async batch(statements) { const out = []; for (const statement of statements) out.push(await statement.run()); return out; }
-}
-
-function workerHarness() {
-  let rolls = [];
-  const cryptoFacade = {
-    subtle: crypto.subtle,
-    randomUUID: () => crypto.randomUUID(),
-    getRandomValues(array) {
-      if (array instanceof Uint32Array && rolls.length) {
-        array[0] = Math.floor(Math.max(0, Math.min(.999999999999, rolls.shift())) * 0x100000000);
-        return array;
-      }
-      return crypto.getRandomValues(array);
-    }
-  };
-  let source = loadWorkerSource(path.resolve(__dirname, ".."));
-  source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
-  const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, Uint32Array, crypto: cryptoFacade, atob, btoa, setTimeout, clearTimeout };
-  vm.createContext(sandbox);
-  vm.runInContext(source, sandbox);
-  return { api: sandbox.__worker, setRolls(next) { rolls = [...next]; } };
-}
-
-function database() {
-  const db = new D1();
-  db.raw.exec(`
-    PRAGMA foreign_keys=ON;
-    CREATE TABLE players (id TEXT PRIMARY KEY, password TEXT NOT NULL, diamonds INTEGER DEFAULT 0, active_slot INTEGER, created_at TEXT NOT NULL);
-    CREATE TABLE characters (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, slot_index INTEGER NOT NULL, name TEXT DEFAULT '', level INTEGER DEFAULT 1, xp INTEGER DEFAULT 0, stat_points INTEGER DEFAULT 0, str INTEGER DEFAULT 0, vit INTEGER DEFAULT 0, agi INTEGER DEFAULT 0, dex INTEGER DEFAULT 0, luk INTEGER DEFAULT 0, gold INTEGER DEFAULT 0, unlocked_floor INTEGER DEFAULT 1, potions INTEGER DEFAULT 2, protection_stones INTEGER DEFAULT 0, chest_pity INTEGER DEFAULT 0, pets_json TEXT DEFAULT '[]', active_pet_id TEXT DEFAULT '', created_at TEXT, updated_at TEXT, last_active_at TEXT NOT NULL DEFAULT '');
-    CREATE TABLE items (item_id TEXT PRIMARY KEY, player_id TEXT, character_id TEXT, slot_type TEXT, equipped INTEGER DEFAULT 0, inventory_slot TEXT, item_template_id TEXT, rarity TEXT, name TEXT, item_level INTEGER DEFAULT 0, enhance_level INTEGER DEFAULT 0, bound INTEGER DEFAULT 0, quantity INTEGER DEFAULT 1, atk INTEGER DEFAULT 0, def INTEGER DEFAULT 0, hp INTEGER DEFAULT 0, mp INTEGER DEFAULT 0, extra_json TEXT, created_at TEXT, updated_at TEXT);
-    CREATE TABLE run_state (player_id TEXT PRIMARY KEY, floor INTEGER, level INTEGER, xp INTEGER, hp INTEGER, mp INTEGER, base_atk INTEGER, base_def INTEGER, base_max_hp INTEGER, base_max_mp INTEGER, run_gold INTEGER, potions INTEGER, updated_at TEXT, character_id TEXT);
-    CREATE TABLE progress (player_id TEXT PRIMARY KEY, bank_gold INTEGER, diamonds INTEGER, best_floor INTEGER, potions INTEGER, char_level INTEGER, char_xp INTEGER, char_points INTEGER, char_str INTEGER, char_vit INTEGER, char_dex INTEGER, char_luk INTEGER, pets_json TEXT, active_pet_id TEXT, updated_at TEXT);
-    CREATE TABLE mailbox (mail_id TEXT PRIMARY KEY, character_id TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', body TEXT NOT NULL DEFAULT '', gold INTEGER NOT NULL DEFAULT 0, diamonds INTEGER NOT NULL DEFAULT 0, junk_json TEXT NOT NULL DEFAULT '', items_json TEXT NOT NULL DEFAULT '', claimed INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, claimed_at TEXT NOT NULL DEFAULT '');
-    CREATE TABLE daily_login_claims (character_id TEXT PRIMARY KEY, login_streak INTEGER NOT NULL DEFAULT 0, last_claim_date TEXT NOT NULL DEFAULT '', total_claims INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT '');
-    CREATE TABLE daily_login_claim_receipts (character_id TEXT NOT NULL, claim_date TEXT NOT NULL, claim_token TEXT NOT NULL UNIQUE, reward_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(character_id, claim_date));
-    CREATE TABLE character_operation_receipts (character_id TEXT NOT NULL, operation TEXT NOT NULL, request_id TEXT NOT NULL, operation_token TEXT NOT NULL UNIQUE, payload_json TEXT NOT NULL, result_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(character_id, operation, request_id));
-    CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL);
-  `);
-  db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
-  applyRequiredAutoMigrations(db, path.resolve(__dirname, ".."));
-  return db;
-}
-async function post(api, db, token, body) {
-  const response = await api.fetch(new Request("https://api.test", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) }), { DB: db });
-  return { status: response.status, body: await response.json() };
-}
-async function setup() {
-  const harness = workerHarness(), db = database();
-  const registration = await post(harness.api, db, "", { action: "register", id: `W3_${Math.random().toString(36).slice(2, 9)}`, password: "pass", confirmPassword: "pass" });
-  const token = registration.body.sessionToken;
-  const created = await post(harness.api, db, token, { action: "createCharacter", slotIndex: 0, name: "W3 QA" });
-  const characterId = created.body.character.character_id;
-  db.raw.prepare("UPDATE characters SET gold = 100000, protection_stones = 5 WHERE character_id = ?").run(characterId);
-  return { ...harness, db, token, characterId, playerId: registration.body.playerId };
-}
-function seedV2(db, playerId, characterId, overrides = {}) {
-  const capacity = overrides.capacity || 4;
-  const extra = {
-    rewardVersion: 2, itemModelVersion: 2, gearTier: overrides.gearTier || 1,
-    empowerSlotCapacity: capacity, empowerSlots: overrides.empowerSlots || Array(capacity).fill(null),
-    ...(overrides.extra || {})
-  };
-  db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, enhance_level, atk, def, extra_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(overrides.itemId || "v2-item", playerId, characterId, overrides.type || "weapon", overrides.rarity || "mythic", overrides.name || "V2 Item", overrides.enhanceLevel || 0, overrides.atk ?? 100, overrides.def ?? 0, JSON.stringify(extra));
-  for (const [junkId, quantity] of Object.entries({ iron: 50, manaOre: 50, ...(overrides.materials || {}) })) {
-    db.raw.prepare(`INSERT INTO items (item_id, player_id, character_id, slot_type, rarity, name, extra_json) VALUES (?, ?, ?, 'junk', 'common', ?, ?)`)
-      .run(`junk-${junkId}`, playerId, characterId, junkId, JSON.stringify({ junkId, quantity }));
-  }
-}
+  async run() {
+    const normalized = this.sql.trim().toUpperCase();
+    if (/^(SELECT|WITH|PRAGMA)\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };
+    const result = this.raw.prepare(this.sql).run(...this.values);
+    return { meta: { changes: Number(result.changes) } };
+  }}
 function mutate(context, requestId, mutation, itemId = "v2-item") {
   const row = context.db.raw.prepare("SELECT extra_json FROM items WHERE item_id = ?").get(itemId);
   const extra = row ? JSON.parse(row.extra_json || "{}") : {};
