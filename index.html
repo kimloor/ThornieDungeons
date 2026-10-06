@@ -2869,6 +2869,7 @@ body::after {
   }
 }
 `;
+
 // ===== state/save.js =====
 // ---------- cloud persistence (Cloudflare D1 via Worker API) ----------
 const CONFIG_CACHE_KEY = "thornie-dungeons-cloud-config-v1"; // caches {url,id} only — never the password
@@ -16809,6 +16810,7 @@ function ThornieDungeons() {
     onClose: () => setArenaFatal(null)
   }));
 }
+
 // ===== ui/components.js =====
 function Starfield() {
   const dots = [{
@@ -23773,6 +23775,7 @@ function CraftingOverlay({
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านประดิษฐ์")
   ));
 }
+
 // ===== ui/combatPresentationFix.js =====
 // Presentation-only combat stability overrides.
 // Keeps the battle log from changing outer layout height on first multi-enemy action,
