@@ -188,7 +188,7 @@ test("Flee and Settings retain manifest artwork after legacy button CSS", () => 
 });
 
 test("battle completion confirms the last safe checkpoint before the receipt", () => {
-  const start = app.indexOf("async function finishCoreBattle(next)");
+  const start = app.indexOf("async function finishCoreBattle(next, options = {})");
   const end = app.indexOf("function driveCoreBattle", start);
   const completion = app.slice(start, end);
   assert.ok(start >= 0 && end > start);
@@ -200,7 +200,7 @@ test("battle completion confirms the last safe checkpoint before the receipt", (
 });
 
 test("battle presentation resets Hero to idle at completion and before stage entry", () => {
-  const finishStart = app.indexOf("async function finishCoreBattle(next)");
+  const finishStart = app.indexOf("async function finishCoreBattle(next, options = {})");
   const finishEnd = app.indexOf("function driveCoreBattle", finishStart);
   const enterStart = app.indexOf("function enterStage(");
   const enterEnd = app.indexOf("function buildPetCombatUnit", enterStart);
