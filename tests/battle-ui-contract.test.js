@@ -192,7 +192,8 @@ test("battle completion confirms the last safe checkpoint before the receipt", (
   const end = app.indexOf("function driveCoreBattle", start);
   const completion = app.slice(start, end);
   assert.ok(start >= 0 && end > start);
-  assert.ok(completion.indexOf("cloudSaveBattleCheckpoint(") < completion.indexOf("cloudCompleteBattle("));
+  assert.match(completion, /const completionPromise = commitBattleCompletionWithRetry\(next\)/);
+  assert.ok(completion.indexOf("const completionPromise = commitBattleCompletionWithRetry(next)") < completion.indexOf("playTerminalBattlePresentation(next.result)"));
   assert.match(completion, /setBattleFinishing\(true\)/);
   assert.match(completion, /setBusy\(true\)/);
   assert.match(components, /className: "md-battle-finishing"/);
