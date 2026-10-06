@@ -580,12 +580,16 @@ function characterPetEnvelope(row) {
 }
 
 async function characterOperationReplay(db, id, characterId, operation, requestId, payloadJson) {
-  const prior = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
-    .bind(characterId, operation, requestId).first();
+  const batch = await db.batch([
+    db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+      .bind(characterId, operation, requestId),
+    ...battleCompletionSnapshotStatements(db, id, characterId)
+  ]);
+  const prior = batch?.[0]?.results?.[0] || null;
   if (!prior) return null;
   if (prior.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
   if (prior.result_json === "pending") return json({ error: "operation_in_progress", retry: true }, 409);
-  return json({ ok: true, replayed: true, result: parseJsonColumn(prior.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
+  return json({ ok: true, replayed: true, result: parseJsonColumn(prior.result_json, {}), ...battleCompletionSnapshotFromBatch(batch, 1) });
 }
 
 async function runCharacterReceiptMutation(db, { id, characterId, operation, requestId, payloadJson, guardSql, guardBinds, mutationStatements, result }) {
@@ -603,13 +607,16 @@ async function runCharacterReceiptMutation(db, { id, characterId, operation, req
     `UPDATE character_operation_receipts SET result_json = ? WHERE operation_token = ? AND result_json = 'pending' AND changes() = 1`
   ).bind(JSON.stringify(result), token));
   statements.push(db.prepare(`DELETE FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending'`).bind(token));
+  const receiptReadIndex = statements.length;
+  statements.push(db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+    .bind(characterId, operation, requestId));
+  statements.push(...battleCompletionSnapshotStatements(db, id, characterId));
   const batch = await db.batch(statements);
-  const receipt = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
-    .bind(characterId, operation, requestId).first();
+  const receipt = batch?.[receiptReadIndex]?.results?.[0] || null;
   if (!receipt) return json({ error: "operation_conflict", retry: true }, 409);
   if (receipt.payload_json !== payloadJson) return json({ error: "operation_request_conflict" }, 409);
   const committed = Number(batch?.[0]?.meta?.changes) > 0;
-  return json({ ok: true, replayed: !committed, result: parseJsonColumn(receipt.result_json, result), ...(await battleCompletionSnapshot(db, id, characterId)) });
+  return json({ ok: true, replayed: !committed, result: parseJsonColumn(receipt.result_json, result), ...battleCompletionSnapshotFromBatch(batch, receiptReadIndex + 1) });
 }
 
 async function handleAllocateHeroSkills(db, id, session, characterId, allocations, requestId) {
@@ -865,11 +872,6 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
       || (kind === "material" && !["iron", "manaOre"].includes(resourceId))
       || (kind === "potion" && !/^(hp|mp)_(small|medium|high|full)$/.test(resourceId))) return json({ error: "invalid_shop_resource" }, 400);
   if (kind === "protection_stone" && normalizedQuantity !== 1) return json({ error: "invalid_shop_quantity" }, 400);
-  if (kind !== "protection_stone") {
-    const overflowPending = await db.prepare(`SELECT 1 FROM items WHERE player_id = ? AND character_id = ? AND json_extract(extra_json, '$.overflow') = 1 LIMIT 1`)
-      .bind(id, characterId).first();
-    if (overflowPending) return json({ error: "inventory_overflow_pending" }, 409);
-  }
   const actionId = kind === "protection_stone" ? "protection_stone" : `${kind}:${resourceId}`;
   const payloadJson = JSON.stringify({ kind: actionId, quantity: normalizedQuantity });
   const operation = `purchase:${actionId}`;
@@ -891,14 +893,13 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
     ? { resource: kind, amount: 1, quantity: 1, unitPrice: definition.cost, cost: totalCost }
     : { resource: resourceId, amount: normalizedQuantity, quantity: normalizedQuantity, itemId: tokenItemId, unitPrice: definition.cost, cost: totalCost };
   const inventoryPlan = kind === "protection_stone" ? null : await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
+  if (kind !== "protection_stone" && inventoryPlan?.overflow?.some(entry => !entry.deleted)) return json({ error: "inventory_overflow_pending" }, 409);
   if (inventoryPlan) {
-    await ensureItemAuthorityTables(db);
-    const potion = kind === "potion";
+      const potion = kind === "potion";
     const slotType = potion ? "potion" : "junk";
     const itemName = potion ? definition.name : resourceId === "iron" ? "Iron" : "Mana Ore";
     inventoryPlanAddRow(inventoryPlan, {
-      item_id: tokenItemId, slot_type: slotType, equipped: 0, inventory_slot: "", item_template_id: "",
-      rarity: "common", name: itemName, item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
+      item_id: tokenItemId, slot_type: slotType, equipped: 0, inventory_slot: "", item_template_id: "",      rarity: "common", name: itemName, item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
       atk: 0, def: 0, hp: 0, mp: 0,
       extra_json: JSON.stringify(potion ? { potionId: resourceId, quantity: normalizedQuantity } : { junkId: resourceId, quantity: normalizedQuantity })
     }, { originType: "shop_purchase", sourceId: actionId, context: { resource: resourceId, quantity: normalizedQuantity } });
@@ -995,7 +996,6 @@ async function handlePurchaseShopEquipment(db, id, session, characterId, offerId
   const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
   inventoryPlanAddRow(inventoryPlan, itemRow, { originType: "shop_purchase", sourceId: keyOffer, context: { offerId: keyOffer, floor: shop.floor } });
   reconcileMailOverflow(inventoryPlan);
-  await ensureItemAuthorityTables(db);
   const now = nowIso();
   const result = { offerId: keyOffer, itemId, price };
   return runCharacterReceiptMutation(db, {
@@ -1152,7 +1152,6 @@ async function handleSalvageItem(db, id, session, characterId, itemId, requestId
   const operationToken = crypto.randomUUID();
   const now = nowIso();
   const salvage = { itemId: targetId, kind: salvageKind, materials };
-  await ensureItemAuthorityTables(db);
   const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
   inventoryPlanRemoveItem(inventoryPlan, targetId);
   // The source row is deleted by the guarded salvage statement below. Keep it
@@ -1797,8 +1796,7 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const starterPetGrant = starterEligible ? {
     defId: "sprout",
     instance: {
-      instId: `pet-${dungeonV2ServerHash(`${battleId}:sprout`)}`,
-      defId: "sprout", level: 1, xp: 0, star: 1,
+      instId: `pet-${dungeonV2ServerHash(`${battleId}:sprout`)}`,      defId: "sprout", level: 1, xp: 0, star: 1,
       stats: { str: 3, vit: 5, agi: 4, dex: 4, luk: 4 }
     }
   } : null;
@@ -1982,13 +1980,22 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   const committed = Number(batchResult?.[0]?.meta?.changes) > 0;
   return { completionEncoded: encoded, reward: committed ? normalizedReward : null, committed };
 }
-async function battleCompletionSnapshot(db, id, characterId) {
-  const [character, items, player] = await Promise.all([
-    getRow(db, "characters", "character_id", characterId),
-    getRows(db, "items", "character_id", characterId),
-    getRow(db, "players", "id", id),
-  ]);
+function battleCompletionSnapshotStatements(db, id, characterId) {
+  return [
+    db.prepare(`SELECT * FROM characters WHERE character_id = ?`).bind(characterId),
+    db.prepare(`SELECT * FROM items WHERE character_id = ?`).bind(characterId),
+    db.prepare(`SELECT diamonds FROM players WHERE id = ?`).bind(id)
+  ];
+}
+function battleCompletionSnapshotFromBatch(batch, offset = 0) {
+  const character = batch?.[offset]?.results?.[0] || null;
+  const items = batch?.[offset + 1]?.results || [];
+  const player = batch?.[offset + 2]?.results?.[0] || null;
   return { character, items, diamonds: Number(player?.diamonds) || 0 };
+}
+async function battleCompletionSnapshot(db, id, characterId) {
+  const batch = await db.batch(battleCompletionSnapshotStatements(db, id, characterId));
+  return battleCompletionSnapshotFromBatch(batch);
 }
 function itemProvenanceStatement(db, itemId, playerId, characterId, originType, originSourceId, context, timestamp, gateSql = null, gateBinds = []) {
   const gate = gateSql ? ` WHERE ${gateSql}` : "";
@@ -2274,7 +2281,6 @@ function isW6RetiredLegacySpecialItem(item) {
 }
 
 async function mailboxRewardStatements(db, id, characterId, mail, claimedAt, inventoryOffset = 0, claimGate = null, settlementHolder = null) {
-  await ensureItemAuthorityTables(db);
   const mailId = String(mail.mail_id || "");
   const timestamp = String(claimedAt).split("#", 1)[0];
   const gate = claimGate?.sql || `EXISTS (SELECT 1 FROM mailbox WHERE mail_id = ? AND character_id = ? AND claimed = 1 AND claimed_at = ?)`;
@@ -2355,25 +2361,24 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
   if (owned.error) return json({ error: owned.error });
   const resultName = resultPayload && resultPayload.result;
   if (!battleId || !["victory", "defeat", "fled"].includes(resultName)) return json({ error: "invalid_battle_result" }, 400);
-  const prior = await db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(String(battleId)).first();
+  const battleKey = String(battleId);
+  const preRead = await db.batch([
+    db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey),
+    db.prepare(`SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`).bind(battleKey, characterId),
+    db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND EXISTS (SELECT 1 FROM battle_completions WHERE battle_id = ?)`).bind(nowIso(), battleKey, characterId, battleKey),
+    ...battleCompletionSnapshotStatements(db, id, characterId)
+  ]);
+  const prior = preRead?.[0]?.results?.[0] || null;
   if (prior) {
     if (prior.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
-    await db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`)
-      .bind(nowIso(), String(battleId), characterId).run();
-    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at, ...(await battleCompletionSnapshot(db, id, characterId)) });
+    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at, ...battleCompletionSnapshotFromBatch(preRead, 3) });
   }
-  const checkpoint = await db.prepare(
-    `SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`
-  ).bind(String(battleId), characterId).first();
+  const checkpoint = preRead?.[1]?.results?.[0] || null;
   if (!checkpoint) return json({ error: "battle_checkpoint_missing" }, 409);
-  if (Math.floor(Number(resultPayload.safeActionSeq) || 0) <= (Number(checkpoint.checkpoint_seq) || 0)) {
-    return json({ error: "battle_result_not_after_checkpoint" }, 409);
-  }
+  if (Math.floor(Number(resultPayload.safeActionSeq) || 0) <= (Number(checkpoint.checkpoint_seq) || 0)) return json({ error: "battle_result_not_after_checkpoint" }, 409);
   const checkpointPayload = parseJsonColumn(checkpoint.payload_json, null);
   if (checkpointPayload?.authorizationOnly) return json({ error: "battle_checkpoint_missing" }, 409);
-  const battleContext = resultName === "victory" && resultPayload?.reward
-    ? dungeonV2ServerContextFromStoredCheckpoint(checkpointPayload)
-    : null;
+  const battleContext = resultName === "victory" && resultPayload?.reward ? dungeonV2ServerContextFromStoredCheckpoint(checkpointPayload) : null;
   if (resultName === "victory" && resultPayload?.reward && !battleContext) return json({ error: "invalid_battle_context" }, 400);
   const encoded = JSON.stringify(resultPayload);
   if (encoded.length > 512000) return json({ error: "battle_result_too_large" }, 413);
@@ -2382,19 +2387,20 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
     ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, checkpointPayload, battleContext, now)
     : { reward: null, committed: false };
   if (rewardCommit.error) return json({ error: rewardCommit.error }, 400);
-  let insert = { meta: { changes: 0 } };
+  const finalStatements = [];
   if (!resultPayload?.reward || resultName !== "victory") {
-    insert = await db.prepare(
-      `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at)
-       VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
-    ).bind(String(battleId), characterId, encoded, now).run();
+    finalStatements.push(db.prepare(`INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`).bind(battleKey, characterId, encoded, now));
   }
-  const row = await db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(String(battleId)).first();
+  const rowReadIndex = finalStatements.length;
+  finalStatements.push(db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey));
+  finalStatements.push(db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`).bind(now, battleKey, characterId));
+  const snapshotIndex = finalStatements.length;
+  finalStatements.push(...battleCompletionSnapshotStatements(db, id, characterId));
+  const finalBatch = await db.batch(finalStatements);
+  const row = finalBatch?.[rowReadIndex]?.results?.[0] || null;
   if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
-  await db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`)
-    .bind(now, String(battleId), characterId).run();
-  const storedResult = parseJsonColumn(row.result_json, null);
-  return json({ ok: true, firstCompletion: !!(insert.meta && insert.meta.changes) || !!rewardCommit.committed, result: storedResult, completedAt: row.completed_at, ...(await battleCompletionSnapshot(db, id, characterId)) });
+  const firstCompletion = resultPayload?.reward && resultName === "victory" ? !!rewardCommit.committed : !!(finalBatch?.[0]?.meta?.changes);
+  return json({ ok: true, firstCompletion, result: parseJsonColumn(row.result_json, null), completedAt: row.completed_at, ...battleCompletionSnapshotFromBatch(finalBatch, snapshotIndex) });
 }
 
 async function handleSaveQuickSlots(db, id, session, characterId, quickSlots) {
@@ -2697,8 +2703,7 @@ async function handleMutateLegacyBlacksmith(db, id, session, characterId, itemId
   let protectionCost = 0;
   const rarityMultiplier = { rare: 1, unique: 1.9, elite: 3.2, mythic: 5.4, azure: 5.4 }[String(row.rarity || "").toLowerCase()] || 1;
   const outcome = { type: action };
-  if (action === "enhance") {
-    if (level >= 10) return json({ error: "enhance_max" }, 409);
+  if (action === "enhance") {    if (level >= 10) return json({ error: "enhance_max" }, 409);
     goldCost = 25 + level * 35;
     materialId = "iron";
     const rates = [95, 90, 82, 72, 60, 48, 36, 25, 16, 10];
@@ -3031,7 +3036,6 @@ async function handleCraftItem(db, id, session, characterId, recipeId, requestId
   const resourceConditions = junkNeeds.map(() => `(SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) FROM items WHERE player_id = ? AND character_id = ? AND slot_type = 'junk' AND json_extract(extra_json, '$.junkId') = ?) >= ?`);
   const resourceBinds = junkNeeds.flatMap(need => [id, characterId, need.junkId, need.qty]);
   const insertWhere = [`EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ?)`].concat(resourceConditions).join(" AND ");
-  await ensureItemAuthorityTables(db);
   const stmts = [db.prepare(
     `INSERT OR IGNORE INTO items (item_id, player_id, character_id, slot_type, equipped, inventory_slot, item_template_id, rarity, name, item_level, enhance_level, bound, quantity, atk, def, hp, mp, extra_json, created_at, updated_at)
      SELECT ?, ?, ?, ?, 0, '', ?, 'mythic', ?, 0, 0, 0, 1, ?, ?, ?, ?, ?, ?, ? WHERE ${insertWhere}`
@@ -3597,8 +3601,7 @@ const HERO_SKILL_V1_PLAYTEST = Object.freeze({
 });
 
 function heroSkill(id, branch, tier, kind, ranks, extra = {}) {
-  return Object.freeze({ id, branch, tier, kind, maxRank: kind === "passive" ? 5 : kind === "keystone" ? 5 : 3, ranks, ...extra });
-}
+  return Object.freeze({ id, branch, tier, kind, maxRank: kind === "passive" ? 5 : kind === "keystone" ? 5 : 3, ranks, ...extra });}
 
 const HERO_SKILLS_V1 = Object.freeze([
   heroSkill("power_strike", "assault", 1, "active", [
@@ -4497,7 +4500,6 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     actor.dungeonV2CycleIndex = (index + 1) % actor.dungeonV2SkillCycle.length;
     return actor.dungeonV2SkillCycle[index];
   }
-
   function materializeEnemyStatuses(actor, statuses) {
     return (statuses || []).map(statusSpec => ({
       ...statusSpec,
@@ -5397,8 +5399,7 @@ async function handleRefreshArenaV2Opponents(db, id, session, characterId) {
   const current = await getArenaV2OpponentRows(db, context, nowMs);
   const availableAt = Date.parse(current.state?.refresh_available_at || "");
   if (Number.isFinite(availableAt) && availableAt > nowMs) {
-    return json({ error: "arena_refresh_cooldown", retryAfter: Math.ceil((availableAt - nowMs) / 1000), refreshAvailableAt: new Date(availableAt).toISOString() }, 429);
-  }
+    return json({ error: "arena_refresh_cooldown", retryAfter: Math.ceil((availableAt - nowMs) / 1000), refreshAvailableAt: new Date(availableAt).toISOString() }, 429);  }
   // Acquire the cooldown with a single conditional UPDATE.  The read above is
   // advisory only; this CAS is the authoritative gate for concurrent refreshes.
   const refreshAvailableAt = new Date(nowMs + ARENA_REFRESH_COOLDOWN_MS).toISOString();
@@ -6297,8 +6298,7 @@ async function arenaSettleV2Match(db, match, state, requestedResolution = "norma
     const batch = await db.batch(statements);
     if (Number(batch?.[0]?.meta?.changes) === 1) {
       const stored = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ?`).bind(matchId).first();
-      return { match: stored, result: plan.result, replayed: false };
-    }
+      return { match: stored, result: plan.result, replayed: false };    }
     const replay = await db.prepare(`SELECT payload_json FROM arena_idempotency_receipts WHERE receipt_key = ?`).bind(settlementReceiptKey).first();
     if (replay) {
       const stored = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ?`).bind(matchId).first();
@@ -7198,7 +7198,6 @@ export default {
   async fetch(request, env) {
     return withCorsHeaders(await apiFetch(request, env), request, env);
   },
-
   // Cron Trigger entry point (set up in Cloudflare Dashboard -> this worker -> Trigger
   // Events, since there's no wrangler.toml here to declare it in). Not testable locally
   // via bash (api.cloudflare.com isn't allowlisted) — use the runLeaderboardSnapshot
