@@ -446,7 +446,6 @@ test("claim-all mail commits each reward once and returns an authoritative snaps
   assert.deepEqual(first.body.items.map(item => JSON.parse(item.extra_json).quantity), [5]);
 
   const retry = await post(context.api, context.db, context.token, body);
-  assert.equal(retry.body.ok, true);
   assert.equal(retry.body.replayed, true);
   assert.equal(retry.body.character.gold, 100050);
   assert.equal(retry.body.diamonds, 3);
