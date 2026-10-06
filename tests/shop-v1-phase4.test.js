@@ -9,8 +9,8 @@ const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
 test("Phase 4 Shop uses pinned header and scrollable body", () => {
   assert.match(components, /className: "md-shop-header"/);
   assert.match(components, /className: "md-shop-body"/);
-  assert.match(styles, /\.md-shop-sheet\\s*\{[^}]*display:flex; flex-direction:column; min-height:0/);
-  assert.match(styles, /\.md-shop-body\\s*\{[^}]*overflow-y:auto/);
+  assert.match(styles, /\.md-shop-sheet\s*\{[^}]*display:flex; flex-direction:column; min-height:0/);
+  assert.match(styles, /\.md-shop-body\s*\{[^}]*overflow-y:auto/);
   assert.match(styles, /overscroll-behavior:contain/);
   assert.match(styles, /-webkit-overflow-scrolling:touch/);
 });
