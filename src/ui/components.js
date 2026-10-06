@@ -4728,7 +4728,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   const resourceRow=(type,price)=>{const info=JUNK_INFO[type],key=`material:${type}`;return /*#__PURE__*/React.createElement("div",{key,type,className:"md-shop-resource-row"},
     /*#__PURE__*/React.createElement("div",{className:"md-shop-resource-copy"},/*#__PURE__*/React.createElement("div",{className:"md-inv-name"},/*#__PURE__*/React.createElement(GameIcon,{item:{type:"junk",junkId:type},fallback:info.icon,className:"md-game-icon md-shop-item-icon",alt:info.name})," ",info.name),/*#__PURE__*/React.createElement("div",{className:"md-inv-stat"},"มีอยู่ ",ownedCounts[type]||0," · ",price," ทอง")),
     quantityControl(key,price,"gold",qty=>onBuyMaterial(type,qty),info.name));};
-  return /*#__PURE__*/React.createElement("div",{className:"md-shop-sheet-backdrop"},/*#__PURE__*/React.createElement("div",{className:"md-shop-sheet",role:"dialog","aria-modal":"true","aria-label":"Shop"},
+  return ReactDOM.createPortal( /*#__PURE__*/React.createElement("div",{className:"md-shop-sheet-backdrop"},/*#__PURE__*/React.createElement("div",{className:"md-shop-sheet",role:"dialog","aria-modal":"true","aria-label":"Shop"},
     /*#__PURE__*/React.createElement("div",{className:"md-shop-header"},/*#__PURE__*/React.createElement("div",{className:"md-shop-title-row"},/*#__PURE__*/React.createElement("p",{className:"md-title",style:{margin:0}},"🛒 Shop"),/*#__PURE__*/React.createElement("button",{className:"md-btn flee small md-shop-close",onClick:onClose,"aria-label":"ปิดร้าน"},"ปิด")),
       /*#__PURE__*/React.createElement("div",{className:"md-shop-currencies","aria-label":"Shop currencies"},[["gold","gold","🪙",gold||0],["diamond","diamond","💎",diamonds||0],["stone","protectionStone","🛡️",protectionStones||0]].map(([key,iconKey,fallback,value])=>/*#__PURE__*/React.createElement("span",{key,className:"md-shop-currency-pill"},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey,fallback,className:"md-game-icon md-inline-item-icon",alt:key}),value))),
       /*#__PURE__*/React.createElement("div",{className:"md-shop-tabs",role:"tablist","aria-label":"Shop categories"},tabs.map(([key,label])=>/*#__PURE__*/React.createElement("button",{key,type:"button",role:"tab","aria-selected":tab===key,className:`md-shop-tab ${tab===key?"active":""}`,onClick:()=>selectTab(key)},label))),
@@ -4745,7 +4745,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
         resourceRow("iron",MATERIAL_SHOP_PRICE.iron),resourceRow("manaOre",MATERIAL_SHOP_PRICE.manaOre)
       )
     )
-  ));
+  )), document.body);
 }
 function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect }) {
   return /*#__PURE__*/React.createElement("div", {
