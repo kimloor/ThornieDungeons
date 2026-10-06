@@ -72,6 +72,8 @@ test("Sell backend receipt payload includes quantity and stale-row guard", () =>
   assert.match(worker, /JSON\.stringify\(\{ itemId: idKey, quantity: sellQuantity \}\)/);
   assert.match(worker, /COALESCE\(extra_json, ''\) = \?/);
   assert.match(worker, /COALESCE\(json_extract\(extra_json, '\$\.quantity'\), 1\) = \?/);
+  assert.match(worker, /COALESCE\(atk, 0\) = \? AND COALESCE\(def, 0\) = \? AND COALESCE\(hp, 0\) = \? AND COALESCE\(mp, 0\) = \?/);
+  assert.match(worker, /COALESCE\(enhance_level, 0\) = \? AND COALESCE\(rarity, ''\) = \?/);
   assert.match(worker, /characterOperationReplay\(db, id, characterId, operation, key, payloadJson\)/);
 });
 
