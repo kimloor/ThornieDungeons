@@ -3,6 +3,9 @@
   "name": "thornie-dungeons-api",
   "main": "workers/thornie-dungeons-api-entry.js",
   "compatibility_date": "2026-08-25",
+  "placement": {
+    "mode": "smart"
+  },
   "d1_databases": [
     {
       "binding": "DB",
