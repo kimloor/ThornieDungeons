@@ -1067,10 +1067,14 @@ async function handleSellCharacterItem(db, id, session, characterId, itemId, qua
   const rowExtra = row.extra_json || "";
   const guard = `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0
     AND COALESCE(extra_json, '') = ? AND COALESCE(json_extract(extra_json, '$.favorite'), 0) != 1
-    AND COALESCE(json_extract(extra_json, '$.quantity'), 1) = ?)`;
+    AND COALESCE(json_extract(extra_json, '$.quantity'), 1) = ?
+    AND COALESCE(atk, 0) = ? AND COALESCE(def, 0) = ? AND COALESCE(hp, 0) = ? AND COALESCE(mp, 0) = ?
+    AND COALESCE(enhance_level, 0) = ? AND COALESCE(rarity, '') = ?)`;
   return runCharacterReceiptMutation(db, {
     id, characterId, operation, requestId: key, payloadJson,
-    guardSql: guard, guardBinds: [idKey, id, characterId, rowExtra, storedQuantity],
+    guardSql: guard, guardBinds: [idKey, id, characterId, rowExtra, storedQuantity,
+      Number(row.atk) || 0, Number(row.def) || 0, Number(row.hp) || 0, Number(row.mp) || 0,
+      Number(row.enhance_level) || 0, String(row.rarity || "")],
     mutationStatements: token => {
       const statements = [];
       if (sellQuantity === storedQuantity) {
