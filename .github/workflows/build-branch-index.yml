@@ -1,0 +1,30 @@
+name: Temporary branch build index
+
+on:
+  push:
+    paths:
+      - ".github/workflows/build-branch-index.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node build.js
+      - run: git diff --exit-code -- index.html || true
+      - name: Commit generated index
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- index.html; then exit 0; fi
+          git add index.html
+          git commit -m "build: regenerate index.html from source"
+          git push origin HEAD:$GITHUB_REF_NAME
