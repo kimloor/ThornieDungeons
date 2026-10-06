@@ -62,3 +62,9 @@ test("x2 speed uses scaled action hold and cap", () => {
   assert.match(app, /const speed = Math\.max\(1, Number\(combatSpeed\) \|\| 1\)/);
   assert.match(app, /\/ speed/);
 });
+
+
+test("completion auto-retry uses 300ms then 600ms backoff without changing battle identity", () => {
+  assert.match(app, /const retryDelayMs = 300 \* \(2 \*\* \(attempt - 1\)\)/);
+  assert.match(app, /cloudCompleteBattle\(cred\.url, save\.characterId, next\.battleId/);
+});

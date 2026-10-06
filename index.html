@@ -14723,7 +14723,10 @@ function ThornieDungeons() {
     const rewardPlan = next.result === "victory" ? buildDungeonRewardPlan(next.battleId) : null;
     let lastReceipt = null;
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 300));
+      if (attempt > 0) {
+        const retryDelayMs = 300 * (2 ** (attempt - 1));
+        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+      }
       if (safeCheckpoint?.battleId === next.battleId
           && safeCheckpoint.safeActionSeq < next.safeActionSeq
           && (confirmed.battleId !== next.battleId || confirmed.safeActionSeq < safeCheckpoint.safeActionSeq)) {
