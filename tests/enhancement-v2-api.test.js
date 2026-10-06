@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { DatabaseSync } = require("node:sqlite");
 const { loadWorkerSource } = require("./helpers/worker-source");
+const { applyRequiredAutoMigrations } = require("./helpers/auto-migrations");
 
 class Statement {
   constructor(raw, sql, values = []) { this.raw = raw; this.sql = sql; this.values = values; }
@@ -56,6 +57,7 @@ function database() {
     CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL);
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
+  applyRequiredAutoMigrations(db, path.resolve(__dirname, ".."));
   return db;
 }
 async function post(api, db, token, body) {
