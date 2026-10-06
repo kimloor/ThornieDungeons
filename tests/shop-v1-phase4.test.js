@@ -32,6 +32,6 @@ test("Phase 4 preserves existing Shop callbacks and resource groups", () => {
   for (const token of ["onBuyItem", "onBuyPotionTier", "onBuyProtectionStone", "onBuyMaterial"]) assert.match(components, new RegExp(token));
   assert.match(components, /hpPotions = potions\.filter/);
   assert.match(components, /spPotions = potions\.filter/);
-  assert.match(components, /resourceRow\\("iron"/);
-  assert.match(components, /resourceRow\\("manaOre"/);
+  assert.equal(components.includes('resourceRow("iron"'), true);
+  assert.equal(components.includes('resourceRow("manaOre"'), true);
 });
