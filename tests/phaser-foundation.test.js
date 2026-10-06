@@ -181,7 +181,7 @@ test("Ver 1.0.8 Phaser HUD text uses capped device-pixel resolution", () => {
 
 test("Phaser HUD stroke and label layout stay inside the battlefield", () => {
   const actor = fs.readFileSync(path.join(ROOT, "src/phaser/actors/ActorBase.js"), "utf8");
-  assert.equal((actor.match(/strokeThickness: 2/g) || []).length, 3);
+  assert.equal((actor.match(/strokeThickness: 2/g) || []).length, 4);
   assert.match(actor, /const barY = this\.data\.kind === "pet" \? 2 : 14/);
   assert.doesNotMatch(actor, /const nameX = this\.data\.kind === "hero"/);
   assert.match(actor, /const nameY = this\.data\.kind === "pet" \? 22 : 34/);
