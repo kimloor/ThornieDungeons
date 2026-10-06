@@ -24,7 +24,7 @@ test("terminal action keeps animation/VFX state until finalization", () => {
 });
 
 test("terminal flow starts server confirmation in parallel and caps presentation hold", () => {
-  assert.match(app, /actionHoldMs: Math\.min\(1800, Math\.round\(\(actorKind === "hero" \? 420 : 520\) \/ speed\)\)/);
+  assert.match(app, /const actionHoldMs = Math\.min\(1800, Math\.round\(\(actorKind === "hero" \? 420 : 520\) \/ speed\)\)/);
   assert.match(app, /totalHoldCapMs: Math\.max\(500, Math\.round\(1800 \/ speed\)\)/);
   assert.match(app, /Promise\.all\(\[\s*new Promise\(resolve => setTimeout\(resolve, plan\.actionHoldMs\)\),\s*playTerminalBattlePresentation/);
 });
