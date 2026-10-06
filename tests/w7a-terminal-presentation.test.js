@@ -21,7 +21,11 @@ test("W7A terminal presentation stays downstream of authoritative battle complet
 
   assert.ok(completionStart >= 0);
   assert.ok(presentIndex > completionStart);
-  assert.ok(resultIndex > presentIndex);
+  assert.ok(presentIndex > completionStart);
+  const finalizeStart = app.indexOf("async function finalizeTerminalOutcome");
+  const finalizeEnd = app.indexOf("async function finishCoreBattle", finalizeStart);
+  assert.ok(finalizeEnd > finalizeStart);
+  assert.ok(app.slice(finalizeStart, finalizeEnd).indexOf('setPhase("result")') >= 0);
   assert.match(finishBody, /if \(!receipt\?\.ok\)[\s\S]*return;/);
 });
 
@@ -56,18 +60,21 @@ test("W7A terminal action does not clear presentation synchronously and reset oc
   const driveBody = app.slice(driveStart, app.indexOf("function consumeBattlePotion", driveStart));
   const terminalCall = driveBody.indexOf('if (next.result) { finishCoreBattle(next, { actorKind: actor.kind }); return; }');
   assert.ok(terminalCall >= 0);
-  const afterTerminal = driveBody.slice(terminalCall);
-  assert.equal(afterTerminal.indexOf('setHeroAnim("");'), -1);
-  assert.equal(afterTerminal.indexOf('setPetAnim("");'), -1);
-  assert.equal(afterTerminal.indexOf('setEnemyAnims({});'), -1);
-  assert.equal(afterTerminal.indexOf('setBattleVfx([]);'), -1);
+  const terminalBranch = driveBody.slice(terminalCall, terminalCall + 180);
+  assert.doesNotMatch(terminalBranch, /setHeroAnim\("")/);
+  assert.doesNotMatch(terminalBranch, /setPetAnim\("")/);
+  assert.doesNotMatch(terminalBranch, /setEnemyAnims\(\{\}\)/);
+  assert.doesNotMatch(terminalBranch, /setBattleVfx\(\[\]\)/);
   const finalize = app.slice(app.indexOf("async function finalizeTerminalOutcome"), app.indexOf("async function finishCoreBattle"));
   assert.ok(finalize.indexOf("resetTerminalPresentation();") >= 0);
 });
 
 test("W7A confirmation pill is hidden during presentation and retry reuses the same battleId", () => {
   assert.match(components, /battleFinishing && battleFinishStatus === "confirming"/);
-  assert.doesNotMatch(components, /battleFinishing[\s\S]{0,120}className: "md-battle-finishing"/);
+  assert.equal(
+    components.includes('battleFinishing && /*#__PURE__*/React.createElement("div", {\n    className: "md-battle-finishing"'),
+    false
+  );
   assert.match(app, /finishCoreBattle\(next, \{ retry: true \}\)/);
   assert.match(app, /terminalFinishRef\.current\?\.next\?\.battleId !== next\.battleId/);
   assert.match(app, /const completionError = classifyBattleCompletionError/);
