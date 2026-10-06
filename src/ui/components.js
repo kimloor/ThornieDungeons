@@ -6280,6 +6280,8 @@ function InventoryOverlayV2({
   const [filterOpen, setFilterOpen] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [sellDialog, setSellDialog] = useState(null);
+  const [sellQuantity, setSellQuantity] = useState(1);
   const [filters, setFilters] = useState({ category: "all", type: "all", rarity: "all", enhanced: "all", enchanted: "all" });
   const updateFilter = (key, value) => setFilters(current => ({ ...current, [key]: value }));
   const resetFilters = () => setFilters({ category:"all", type:"all", rarity:"all", enhanced:"all", enchanted:"all" });
@@ -6310,8 +6312,18 @@ function InventoryOverlayV2({
   };
   const runSell = () => {
     if (!currentDetail || inventoryItemLocked(currentDetail) || !destructiveConfirm(currentDetail, "ขาย")) return;
+    const stackable = currentDetail.type === "junk" || currentDetail.type === "potion";
+    const max = Math.max(1, Number(currentDetail.quantity) || 1);
+    if (stackable && max > 1) { setSellQuantity(max); setSellDialog({ item: currentDetail, max }); return; }
     const result = onSell(currentDetail);
     if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้"); else closeDetail();
+  };
+  const confirmStackSell = () => {
+    if (!sellDialog?.item || busy) return;
+    const qty = Math.max(1, Math.min(sellDialog.max, Number(sellQuantity) || 1));
+    const result = onSell(sellDialog.item, qty);
+    if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้");
+    else { setSellDialog(null); closeDetail(); }
   };
   const runSalvage = async () => {
     if (!currentDetail || inventoryItemLocked(currentDetail) || !salvagePreview || busy) return;
@@ -6335,6 +6347,23 @@ function InventoryOverlayV2({
       (filtered.length > 10 || expanded) && /*#__PURE__*/React.createElement("button", { className: "md-inventory-toggle md-inventory-art", style: iconButtonStyle("expand"), onClick: () => setExpanded(value => !value) }, expanded ? "▲ Collapse" : `▼ View All (${filtered.length})`),
       filterOpen && /*#__PURE__*/React.createElement(InventoryFilterModal, { filters, onUpdate:updateFilter, onReset:resetFilters, onClose:() => setFilterOpen(false) }),
       overflowOpen && /*#__PURE__*/React.createElement(OverflowModal, { overflow, busy, onClaimOverflow, onClaimAllOverflow, onClose:() => setOverflowOpen(false) }),
+      sellDialog && /*#__PURE__*/React.createElement("div", { className:"md-sell-quantity-overlay" },
+        /*#__PURE__*/React.createElement("section", { className:"md-card md-sell-quantity-dialog", role:"dialog", "aria-modal":"true" },
+          /*#__PURE__*/React.createElement("h3", { className:"md-title" }, "ขาย ", itemDisplayName(sellDialog.item)),
+          /*#__PURE__*/React.createElement("p", { className:"md-sub" }, "ราคา ", sellUnitPrice(sellDialog.item), " ทอง/ชิ้น · ทั้งหมด ", sellDialog.max, " ชิ้น"),
+          /*#__PURE__*/React.createElement("div", { className:"md-sell-quantity-stepper" },
+            /*#__PURE__*/React.createElement("button", { type:"button", disabled:sellQuantity<=1, onClick:()=>setSellQuantity(q=>Math.max(1,q-1)) }, "−"),
+            /*#__PURE__*/React.createElement("strong", null, sellQuantity),
+            /*#__PURE__*/React.createElement("button", { type:"button", disabled:sellQuantity>=sellDialog.max, onClick:()=>setSellQuantity(q=>Math.min(sellDialog.max,q+1)) }, "+")
+          ),
+          /*#__PURE__*/React.createElement("button", { type:"button", className:"md-sell-all-btn", onClick:()=>setSellQuantity(sellDialog.max) }, `ทั้งหมด (${sellDialog.max})`),
+          /*#__PURE__*/React.createElement("p", { className:"md-sub md-sell-summary" }, sellUnitPrice(sellDialog.item), " × ", sellQuantity, " = ", sellUnitPrice(sellDialog.item) * sellQuantity, " ทอง"),
+          /*#__PURE__*/React.createElement("div", { className:"md-btn-row" },
+            /*#__PURE__*/React.createElement("button", { type:"button", className:"md-btn flee", disabled:busy, onClick:()=>setSellDialog(null) }, "ยกเลิก"),
+            /*#__PURE__*/React.createElement("button", { type:"button", className:"md-btn primary", disabled:busy, onClick:confirmStackSell }, `ขาย ${sellQuantity} ชิ้น · ${sellUnitPrice(sellDialog.item) * sellQuantity} ทอง`)
+          )
+        )
+      ),
       currentDetail && /*#__PURE__*/React.createElement(ItemDetailModal, {
         detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy,
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
