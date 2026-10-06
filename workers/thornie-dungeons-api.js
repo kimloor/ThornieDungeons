@@ -831,7 +831,12 @@ async function handleConsumePotion(db, id, session, characterId, potionId, reque
   });
 }
 
-async function handlePurchaseCharacterResource(db, id, session, characterId, resource, requestId) {
+function normalizeShopQuantity(rawQuantity) {
+  if (rawQuantity === undefined) return 1;
+  return Number.isInteger(rawQuantity) && rawQuantity >= 1 && rawQuantity <= 99 ? rawQuantity : null;
+}
+
+async function handlePurchaseCharacterResource(db, id, session, characterId, resource, quantity, requestId) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
   const owned = await verifyOwnedCharacter(db, id, characterId);
@@ -839,6 +844,8 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
   const key = String(requestId || "");
   const kind = String(resource?.kind || "");
   const resourceId = String(resource?.id || "");
+  const normalizedQuantity = normalizeShopQuantity(quantity);
+  if (normalizedQuantity === null) return json({ error: "invalid_shop_quantity" }, 400);
   if (!/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_request_id" }, 400);
   const definitions = {
     protection_stone: { currency: "diamonds", cost: 30 },
@@ -857,18 +864,29 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
   if (!definition || !["protection_stone", "material", "potion"].includes(kind)
       || (kind === "material" && !["iron", "manaOre"].includes(resourceId))
       || (kind === "potion" && !/^(hp|mp)_(small|medium|high|full)$/.test(resourceId))) return json({ error: "invalid_shop_resource" }, 400);
+  if (kind === "protection_stone" && normalizedQuantity !== 1) return json({ error: "invalid_shop_quantity" }, 400);
   const actionId = kind === "protection_stone" ? "protection_stone" : `${kind}:${resourceId}`;
-  const payloadJson = JSON.stringify({ kind: actionId });
+  const payloadJson = JSON.stringify({ kind: actionId, quantity: normalizedQuantity });
   const operation = `purchase:${actionId}`;
   const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
   if (replay) return replay;
+  const totalCost = definition.cost * normalizedQuantity;
   const balanceSql = definition.currency === "diamonds"
     ? `EXISTS (SELECT 1 FROM players WHERE id = ? AND diamonds >= ?)`
     : `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND gold >= ?)`;
-  const guardBinds = definition.currency === "diamonds" ? [id, definition.cost] : [characterId, id, definition.cost];
+  const guardBinds = definition.currency === "diamonds" ? [id, totalCost] : [characterId, id, totalCost];
+  const overflowGuardSql = kind === "protection_stone"
+    ? ""
+    : ` AND NOT EXISTS (
+        SELECT 1 FROM items
+        WHERE player_id = ? AND character_id = ?
+          AND json_extract(extra_json, '$.overflow') = 1
+      )`;
+  const overflowGuardBinds = kind === "protection_stone" ? [] : [id, characterId];
   const tokenItemId = `shop-${randomToken(18)}`;
-  const result = kind === "protection_stone" ? { resource: kind, amount: 1, cost: definition.cost }
-    : { resource: resourceId, amount: 1, itemId: tokenItemId, cost: definition.cost };
+  const result = kind === "protection_stone"
+    ? { resource: kind, amount: 1, quantity: 1, unitPrice: definition.cost, cost: totalCost }
+    : { resource: resourceId, amount: normalizedQuantity, quantity: normalizedQuantity, itemId: tokenItemId, unitPrice: definition.cost, cost: totalCost };
   const inventoryPlan = kind === "protection_stone" ? null : await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
   if (inventoryPlan) {
     await ensureItemAuthorityTables(db);
@@ -879,21 +897,21 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
       item_id: tokenItemId, slot_type: slotType, equipped: 0, inventory_slot: "", item_template_id: "",
       rarity: "common", name: itemName, item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
       atk: 0, def: 0, hp: 0, mp: 0,
-      extra_json: JSON.stringify(potion ? { potionId: resourceId, quantity: 1 } : { junkId: resourceId, quantity: 1 })
-    }, { originType: "shop_purchase", sourceId: actionId, context: { resource: resourceId } });
+      extra_json: JSON.stringify(potion ? { potionId: resourceId, quantity: normalizedQuantity } : { junkId: resourceId, quantity: normalizedQuantity })
+    }, { originType: "shop_purchase", sourceId: actionId, context: { resource: resourceId, quantity: normalizedQuantity } });
     reconcileMailOverflow(inventoryPlan);
   }
   return runCharacterReceiptMutation(db, {
     id, characterId, operation, requestId: key, payloadJson,
-    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?) AND ${balanceSql}`,
-    guardBinds: [characterId, id, ...guardBinds],
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?) AND ${balanceSql}${overflowGuardSql}`,
+    guardBinds: [characterId, id, ...guardBinds, ...overflowGuardBinds],
     mutationStatements: token => {
       if (kind === "protection_stone") return [
-        db.prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(definition.cost, id, definition.cost, token),
+        db.prepare(`UPDATE players SET diamonds = diamonds - ? WHERE id = ? AND diamonds >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(totalCost, id, totalCost, token),
         db.prepare(`UPDATE characters SET protection_stones = protection_stones + 1, updated_at = ? WHERE character_id = ? AND player_id = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(nowIso(), characterId, id, token)
       ];
       return [
-        db.prepare(`UPDATE characters SET gold = gold - ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND gold >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(definition.cost, nowIso(), characterId, id, definition.cost, token),
+        db.prepare(`UPDATE characters SET gold = gold - ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND gold >= ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`).bind(totalCost, nowIso(), characterId, id, totalCost, token),
         ...mailPlanPersistenceStatements(db, inventoryPlan, id, characterId, nowIso(),
           `EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`, [token])
       ];
@@ -901,7 +919,6 @@ async function handlePurchaseCharacterResource(db, id, session, characterId, res
     result
   });
 }
-
 const W45_SHOP_PRICES = Object.freeze({
   1: Object.freeze({ rare: 800, unique: 1300, elite: 2300 }),
   2: Object.freeze({ rare: 1900, unique: 3200, elite: 5500 }),
@@ -7010,7 +7027,7 @@ async function apiFetch(request, env) {
           case "consumePotion":
             return await handleConsumePotion(db, id, auth, body.characterId, body.potionId, body.requestId);
           case "purchaseCharacterResource":
-            return await handlePurchaseCharacterResource(db, id, auth, body.characterId, body.resource, body.requestId);
+            return await handlePurchaseCharacterResource(db, id, auth, body.characterId, body.resource, body.quantity, body.requestId);
           case "getCharacterShopStock":
             return await handleGetCharacterShopStock(db, id, auth, body.characterId, body.requestId);
           case "purchaseShopEquipment":
