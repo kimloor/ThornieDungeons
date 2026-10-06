@@ -5,13 +5,19 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { DatabaseSync } = require("node:sqlite");
 const { loadWorkerSource } = require("./helpers/worker-source");
+const { applyRequiredAutoMigrations } = require("./helpers/auto-migrations");
 
 class Statement {
   constructor(raw, sql, values = []) { this.raw = raw; this.sql = sql; this.values = values; }
   bind(...values) { return new Statement(this.raw, this.sql, values); }
   async first() { return this.raw.prepare(this.sql).get(...this.values) || null; }
   async all() { return { results: this.raw.prepare(this.sql).all(...this.values) }; }
-  async run() { const result = this.raw.prepare(this.sql).run(...this.values); return { meta: { changes: Number(result.changes) } }; }
+  async run() {
+    const normalized = this.sql.trim().toUpperCase();
+    if (/^(SELECT|PRAGMA)\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };
+    const result = this.raw.prepare(this.sql).run(...this.values);
+    return { meta: { changes: Number(result.changes) } };
+  }
 }
 class D1 {
   constructor() { this.raw = new DatabaseSync(":memory:"); }
@@ -56,6 +62,7 @@ function database() {
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
   db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0012_battle_persistence_v1.sql"), "utf8"));
   db.raw.exec(fs.readFileSync(path.join(__dirname, "../migrations/auto/0013_pet_run_state_v1.sql"), "utf8"));
+  applyRequiredAutoMigrations(db, path.resolve(__dirname, ".."));
   return db;
 }
 

@@ -157,7 +157,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.49";
+  content: "Ver 1.0.51";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -662,11 +662,13 @@ body::after {
 .md-inv-list { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; }
 .md-shop-list { display: flex; flex-direction: column; gap: 6px; }
 .md-shop-sheet-backdrop {
-  position:absolute; inset:0; z-index:20; background:rgba(0,0,0,.6);
-  display:flex; align-items:flex-end;
+  position:fixed; inset:0; z-index:260; background:rgba(0,0,0,.6);
+  display:flex; align-items:flex-end; justify-content:center;
+  padding:max(8px,var(--safe-top)) max(0px,var(--safe-right)) max(0px,var(--safe-bottom)) max(0px);
 }
 .md-shop-sheet {
-  width:100%; max-height:88%; display:flex; flex-direction:column; min-height:0;
+  width:min(430px,100vw); max-height:calc(100dvh - var(--safe-top) - 8px);
+  display:flex; flex-direction:column; min-height:0;
   overflow:hidden; background:linear-gradient(180deg,#2C1E4A,#1B1233);
   border:1.5px solid var(--gold-deep); border-bottom:none;
   border-radius:20px 20px 0 0; padding:14px 16px 0; position:relative;
@@ -11448,6 +11450,9 @@ class PhaserBattleActor {
       color: "#fff1ad", fontFamily: "Arial", fontSize: "10px", fontStyle: "bold",
       stroke: "#071126", strokeThickness: 2, align: "center"
     }).setOrigin(0.5, 0).setDepth((options.depth || 5) + 3).setResolution(textResolution);
+    this.statusText.setVisible(false);
+    this.statusIcons = scene.add.container(0, 0).setDepth((options.depth || 5) + 3);
+    this.container.add(this.statusIcons);
     this.container.add(this.statusText);
     this.container.add(this.nameText);
     this.targetRing = null;
@@ -11690,9 +11695,39 @@ class PhaserBattleActor {
     const size = this.displaySize();
     const alive = this.data.alive !== false && Number(this.data.hp) > 0;
     this.nameText.setText(String(this.data.name || this.data.id || "Unit")).setVisible(true);
-    this.statusText
-      .setText((this.data.statuses || []).map(status => `${status.key}:${status.duration}`).join("  "))
-      .setVisible(Boolean(this.data.statuses?.length));
+    this.statusText.setVisible(false);
+    this.statusIcons.removeAll(true);
+    const statusIconMap = {
+      atk_up: "/assets/ui/skill-icons/hero/power_strike.png",
+      def_up: "/assets/ui/skill-icons/hero/guard.png",
+      armor_break: "/assets/ui/skill-icons/hero/armor_break_mastery.png",
+      pet_regrowth: "/assets/ui/skill-icons/hero/recovery.png",
+      regen: "/assets/ui/skill-icons/hero/recovery.png",
+      poison: "/assets/ui/skill-icons/hero/toxic_strike.png",
+      stun: "/assets/ui/skill-icons/hero/stunning_blow.png",
+      silence: "/assets/ui/skill-icons/hero/silent_edge.png"
+    };
+    const visibleStatuses = (this.data.statuses || [])
+      .filter(status => statusIconMap[status?.key] && Number(status?.duration) > 0);
+    visibleStatuses.forEach((status, index) => {
+      const iconKey = this.scene.assetKey(statusIconMap[status.key]);
+      const item = this.scene.add.container(0, 0);
+      if (iconKey && this.scene.textures.exists(iconKey)) {
+        item.add(this.scene.add.image(0, 0, iconKey).setDisplaySize(22, 22).setOrigin(0.5));
+      } else {
+        const fallback = this.scene.add.graphics();
+        fallback.fillStyle(status.key === "armor_break" ? 0xc76a6a : status.key === "pet_regrowth" ? 0x55d68b : 0x6fb9ff, 1);
+        fallback.fillCircle(0, 0, 9);
+        item.add(fallback);
+      }
+      const duration = this.scene.add.text(8, 8, String(Math.max(0, Number(status.duration) || 0)), {
+        color: "#ffffff", fontFamily: "Arial", fontSize: "8px", fontStyle: "bold",
+        stroke: "#071126", strokeThickness: 2, align: "center"
+      }).setOrigin(0.5).setResolution(phaserTextResolution());
+      item.add(duration);
+      item.x = (index - (visibleStatuses.length - 1) / 2) * 26;
+      this.statusIcons.add(item);
+    });
 
     this.hpBar.clear();
     const maxHp = Math.max(1, Number(this.data.maxHp) || 1);
@@ -11705,7 +11740,7 @@ class PhaserBattleActor {
       .fillRoundedRect(-barWidth / 2 + 1, barY + 1, Math.max(0, (barWidth - 2) * hpPct), 6, 3);
     this.hpBar.lineStyle(1, 0xffffff, 0.35).strokeRoundedRect(-barWidth / 2, barY, barWidth, 8, 4);
 
-    this.statusText.setPosition(0, -Math.round(size * 0.72) - 4);
+    this.statusIcons.setPosition(0, -Math.round(size * 0.72) - 4);
     this.hpTextOffsetY = barY + 10;
     this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
     const nameY = this.data.kind === "pet" ? 22 : 34;
@@ -11754,6 +11789,7 @@ class PhaserBattleActor {
     this.sprite = null;
     this.hpBar = null;
     this.statusText = null;
+    this.statusIcons = null;
     this.nameText = null;
     this.hpText = null;
     this.targetRing = null;
@@ -12231,6 +12267,15 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
           this.collectUnitAssets(unit, assets);
         });
       }
+      [
+        "/assets/ui/skill-icons/hero/power_strike.png",
+        "/assets/ui/skill-icons/hero/guard.png",
+        "/assets/ui/skill-icons/hero/armor_break_mastery.png",
+        "/assets/ui/skill-icons/hero/recovery.png",
+        "/assets/ui/skill-icons/hero/toxic_strike.png",
+        "/assets/ui/skill-icons/hero/stunning_blow.png",
+        "/assets/ui/skill-icons/hero/silent_edge.png"
+      ].forEach(reference => assets.push(reference));
       return this.assetResolver.resolveAll(assets);
     }
 
@@ -12486,8 +12531,9 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       return this.presentationQueue.enqueue({
         run: speed => new Promise(resolve => {
           const duration = Math.max(120, Math.round(240 / Math.max(1, Number(speed) || 1)));
-          if (normalized === "victory") this.cameras?.main?.flash?.(duration);
-          else this.cameras?.main?.fade?.(duration);
+          // Victory already has the actor/VFX terminal presentation. A full-camera white
+          // flash here obscures the final frame immediately before the result confirmation UI.
+          if (normalized === "defeat") this.cameras?.main?.fade?.(duration);
           this.time.delayedCall(duration, resolve);
         })
       });
@@ -14716,40 +14762,72 @@ function ThornieDungeons() {
     setBattleFinishStatus("");
   }
 
+  const BATTLE_SESSION_ERRORS = new Set(["invalid_session", "session_expired", "session_revoked", "session_replaced"]);
+  const BATTLE_NON_RETRYABLE_ERRORS = new Set(["invalid_reward_plan", "battle_not_authorized"]);
+
+  function classifyBattleCompletionError(error) {
+    const code = typeof error === "string" ? error : (error?.error || error?.code || "");
+    if (BATTLE_SESSION_ERRORS.has(code)) return { code, kind: "session", retryable: false };
+    if (BATTLE_NON_RETRYABLE_ERRORS.has(code)) return { code, kind: "non_retryable", retryable: false };
+    return { code: code || "unknown_error", kind: "retryable", retryable: true };
+  }
+
   async function commitBattleCompletionWithRetry(next) {
-    if (!save?.characterId) return { ok: true, completionReceipt: null };
-    const safeCheckpoint = lastSafeBattleCheckpointRef.current;
-    const confirmed = confirmedBattleCheckpointRef.current;
-    const rewardPlan = next.result === "victory" ? buildDungeonRewardPlan(next.battleId) : null;
-    let lastReceipt = null;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      if (attempt > 0) {
-        const retryDelayMs = 300 * (2 ** (attempt - 1));
-        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+    try {
+      if (!save?.characterId) return { ok: true, completionReceipt: null };
+      const safeCheckpoint = lastSafeBattleCheckpointRef.current;
+      const confirmed = confirmedBattleCheckpointRef.current;
+      const rewardPlan = next.result === "victory" ? buildDungeonRewardPlan(next.battleId) : null;
+      let lastReceipt = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (attempt > 0) {
+          const retryDelayMs = 300 * (2 ** (attempt - 1));
+          await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+        }
+        if (safeCheckpoint?.battleId === next.battleId
+            && safeCheckpoint.safeActionSeq < next.safeActionSeq
+            && (confirmed.battleId !== next.battleId || confirmed.safeActionSeq < safeCheckpoint.safeActionSeq)) {
+          const checkpointReceipt = await cloudSaveBattleCheckpoint(
+            cred.url, save.characterId, safeCheckpoint.battleId, safeCheckpoint.safeActionSeq,
+            battleCheckpointWithoutLog(safeCheckpoint)
+          );
+          if (!checkpointReceipt?.ok) {
+            const classification = classifyBattleCompletionError(checkpointReceipt);
+            lastReceipt = checkpointReceipt;
+            if (!classification.retryable) {
+              return { ok: false, completionReceipt: lastReceipt, errorCode: classification.code, errorKind: classification.kind };
+            }
+            continue;
+          }
+          confirmedBattleCheckpointRef.current = {
+            battleId: safeCheckpoint.battleId,
+            safeActionSeq: safeCheckpoint.safeActionSeq
+          };
+        }
+        const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, {
+          result: next.result,
+          safeActionSeq: next.safeActionSeq,
+          floor: next.floor,
+          reward: rewardPlan
+        });
+        if (receipt?.ok) return { ok: true, completionReceipt: receipt };
+        const classification = classifyBattleCompletionError(receipt);
+        lastReceipt = receipt;
+        if (!classification.retryable) {
+          return { ok: false, completionReceipt: lastReceipt, errorCode: classification.code, errorKind: classification.kind };
+        }
       }
-      if (safeCheckpoint?.battleId === next.battleId
-          && safeCheckpoint.safeActionSeq < next.safeActionSeq
-          && (confirmed.battleId !== next.battleId || confirmed.safeActionSeq < safeCheckpoint.safeActionSeq)) {
-        const checkpointReceipt = await cloudSaveBattleCheckpoint(
-          cred.url, save.characterId, safeCheckpoint.battleId, safeCheckpoint.safeActionSeq,
-          battleCheckpointWithoutLog(safeCheckpoint)
-        ).catch(() => null);
-        if (!checkpointReceipt?.ok) continue;
-        confirmedBattleCheckpointRef.current = {
-          battleId: safeCheckpoint.battleId,
-          safeActionSeq: safeCheckpoint.safeActionSeq
-        };
-      }
-      const receipt = await cloudCompleteBattle(cred.url, save.characterId, next.battleId, {
-        result: next.result,
-        safeActionSeq: next.safeActionSeq,
-        floor: next.floor,
-        reward: rewardPlan
-      }).catch(() => null);
-      if (receipt?.ok) return { ok: true, completionReceipt: receipt };
-      lastReceipt = receipt;
+      const classification = classifyBattleCompletionError(lastReceipt);
+      return { ok: false, completionReceipt: lastReceipt, errorCode: classification.code, errorKind: classification.kind };
+    } catch (error) {
+      const classification = classifyBattleCompletionError(error);
+      return {
+        ok: false,
+        completionReceipt: null,
+        errorCode: classification.code,
+        errorKind: classification.kind === "retryable" ? "non_retryable" : classification.kind
+      };
     }
-    return { ok: false, completionReceipt: lastReceipt };
   }
 
   async function finalizeTerminalOutcome(next, completionReceipt) {
@@ -14835,7 +14913,15 @@ function ThornieDungeons() {
       setBusy(false);
       setBattleFinishing(true);
       setBattleFinishStatus("error");
-      setLog("ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย");
+      const completionError = classifyBattleCompletionError(completionOutcome.errorCode || completionOutcome.completionReceipt);
+      if (completionError.kind === "session") {
+        AUTH_SESSION.handleApiResult({ error: completionError.code });
+        setLog("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+      } else if (completionError.kind === "non_retryable") {
+        setLog("ยืนยันผลการต่อสู้ไม่ได้ เนื่องจากข้อมูลการต่อสู้ไม่ตรงกับ Server");
+      } else {
+        setLog("ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย");
+      }
       return;
     }
     await finalizeTerminalOutcome(next, completionOutcome.completionReceipt);
@@ -21545,7 +21631,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   const resourceRow=(type,price)=>{const info=JUNK_INFO[type],key=`material:${type}`;return /*#__PURE__*/React.createElement("div",{key,type,className:"md-shop-resource-row"},
     /*#__PURE__*/React.createElement("div",{className:"md-shop-resource-copy"},/*#__PURE__*/React.createElement("div",{className:"md-inv-name"},/*#__PURE__*/React.createElement(GameIcon,{item:{type:"junk",junkId:type},fallback:info.icon,className:"md-game-icon md-shop-item-icon",alt:info.name})," ",info.name),/*#__PURE__*/React.createElement("div",{className:"md-inv-stat"},"มีอยู่ ",ownedCounts[type]||0," · ",price," ทอง")),
     quantityControl(key,price,"gold",qty=>onBuyMaterial(type,qty),info.name));};
-  return /*#__PURE__*/React.createElement("div",{className:"md-shop-sheet-backdrop"},/*#__PURE__*/React.createElement("div",{className:"md-shop-sheet",role:"dialog","aria-modal":"true","aria-label":"Shop"},
+  return ReactDOM.createPortal( /*#__PURE__*/React.createElement("div",{className:"md-shop-sheet-backdrop"},/*#__PURE__*/React.createElement("div",{className:"md-shop-sheet",role:"dialog","aria-modal":"true","aria-label":"Shop"},
     /*#__PURE__*/React.createElement("div",{className:"md-shop-header"},/*#__PURE__*/React.createElement("div",{className:"md-shop-title-row"},/*#__PURE__*/React.createElement("p",{className:"md-title",style:{margin:0}},"🛒 Shop"),/*#__PURE__*/React.createElement("button",{className:"md-btn flee small md-shop-close",onClick:onClose,"aria-label":"ปิดร้าน"},"ปิด")),
       /*#__PURE__*/React.createElement("div",{className:"md-shop-currencies","aria-label":"Shop currencies"},[["gold","gold","🪙",gold||0],["diamond","diamond","💎",diamonds||0],["stone","protectionStone","🛡️",protectionStones||0]].map(([key,iconKey,fallback,value])=>/*#__PURE__*/React.createElement("span",{key,className:"md-shop-currency-pill"},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey,fallback,className:"md-game-icon md-inline-item-icon",alt:key}),value))),
       /*#__PURE__*/React.createElement("div",{className:"md-shop-tabs",role:"tablist","aria-label":"Shop categories"},tabs.map(([key,label])=>/*#__PURE__*/React.createElement("button",{key,type:"button",role:"tab","aria-selected":tab===key,className:`md-shop-tab ${tab===key?"active":""}`,onClick:()=>selectTab(key)},label))),
@@ -21562,7 +21648,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
         resourceRow("iron",MATERIAL_SHOP_PRICE.iron),resourceRow("manaOre",MATERIAL_SHOP_PRICE.manaOre)
       )
     )
-  ));
+  )), document.body);
 }
 function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect }) {
   return /*#__PURE__*/React.createElement("div", {

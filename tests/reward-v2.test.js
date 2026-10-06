@@ -153,7 +153,7 @@ test("existing item persistence remains additive and round-trips V2 metadata", (
   };
   vm.createContext(sandbox);
   vm.runInContext(`${source}\nthis.itemsToServerList = itemsToServerList; this.itemsFromServerList = itemsFromServerList;`, sandbox);
-  const item = reward.dungeonV2EquipmentItem({ floor: 31, type: "weapon", rarity: "unique", sourceType: "dungeon_normal", sourceIdentity: "jelly_slime" });
+  const item = { ...reward.dungeonV2EquipmentItem({ floor: 31, type: "weapon", rarity: "unique", sourceType: "dungeon_normal", sourceIdentity: "jelly_slime" }), serverItemId: "persist-v2-item" };
   const rows = sandbox.itemsToServerList([item], sandbox.emptyEquipped(), []);
   const loaded = sandbox.itemsFromServerList(rows.map(row => ({
     item_id: row.itemId, slot_type: row.slotType, equipped: row.equipped ? 1 : 0,

@@ -28,6 +28,7 @@ The before counts include the old separate session/ownership path and, for battl
 
 - New character mutations should use the shared `authenticateCharacter()` boundary where applicable.
 - Do not add per-request authority-table DDL to gameplay hot paths. Migration 0028 provides the required item authority tables.
+- Test harnesses must apply the real `migrations/auto/*.sql` needed by the schema under test (including migration 0028 for item provenance/ownership events); production hot paths rely on deployed migrations, not lazy DDL.
 - Keep one receipt replay/idempotency check per mutation.
 - Keep payload conflict, pending-receipt, stale-state, identity, checkpoint, and reward-plan guards unchanged.
 - Prefer D1 batches when multiple reads have no dependency on each other.

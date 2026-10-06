@@ -1053,6 +1053,16 @@ async function handleSellCharacterItem(db, id, session, characterId, itemId, qua
   const idKey = String(itemId || "");
   if (!/^[A-Za-z0-9_-]{8,120}$/.test(key) || !idKey) return json({ error: "invalid_sell_request" }, 400);
   const operation = "sell_item";
+  const prior = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+    .bind(characterId, operation, key).first();
+  if (prior) {
+    const priorPayload = parseJsonColumn(prior.payload_json, {});
+    if (String(priorPayload.itemId || "") !== idKey || (quantity !== undefined && Number(priorPayload.quantity) !== Number(quantity))) {
+      return json({ error: "operation_request_conflict" }, 409);
+    }
+    if (prior.result_json === "pending") return json({ error: "operation_in_progress", retry: true }, 409);
+    return json({ ok: true, replayed: true, result: parseJsonColumn(prior.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
+  }
   const row = await db.prepare(`SELECT * FROM items WHERE item_id = ? AND player_id = ? AND character_id = ?`).bind(idKey, id, characterId).first();
   if (!row) return json({ error: "item_not_owned" }, 403);
   const extra = parseJsonColumn(row.extra_json, {});

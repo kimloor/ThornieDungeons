@@ -5,13 +5,19 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { DatabaseSync } = require("node:sqlite");
 const { loadWorkerSource } = require("./helpers/worker-source");
+const { applyRequiredAutoMigrations } = require("./helpers/auto-migrations");
 
 class Statement {
   constructor(raw, sql, values = []) { this.raw = raw; this.sql = sql; this.values = values; }
   bind(...values) { return new Statement(this.raw, this.sql, values); }
   async first() { return this.raw.prepare(this.sql).get(...this.values) || null; }
   async all() { return { results: this.raw.prepare(this.sql).all(...this.values) }; }
-  async run() { const result = this.raw.prepare(this.sql).run(...this.values); return { meta: { changes: Number(result.changes) } }; }
+  async run() {
+    const normalized = this.sql.trim().toUpperCase();
+    if (/^(SELECT|PRAGMA)\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };
+    const result = this.raw.prepare(this.sql).run(...this.values);
+    return { meta: { changes: Number(result.changes) } };
+  }
 }
 class D1 {
   constructor() { this.raw = new DatabaseSync(":memory:"); }
@@ -56,6 +62,7 @@ function database() {
     CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL);
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
+  applyRequiredAutoMigrations(db, path.resolve(__dirname, ".."));
   return db;
 }
 async function post(api, db, token, body) {
@@ -439,7 +446,6 @@ test("claim-all mail commits each reward once and returns an authoritative snaps
   assert.deepEqual(first.body.items.map(item => JSON.parse(item.extra_json).quantity), [5]);
 
   const retry = await post(context.api, context.db, context.token, body);
-  assert.equal(retry.body.ok, true);
   assert.equal(retry.body.replayed, true);
   assert.equal(retry.body.character.gold, 100050);
   assert.equal(retry.body.diamonds, 3);

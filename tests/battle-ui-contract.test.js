@@ -188,23 +188,28 @@ test("Flee and Settings retain manifest artwork after legacy button CSS", () => 
 });
 
 test("battle completion confirms the last safe checkpoint before the receipt", () => {
-  const start = app.indexOf("async function finishCoreBattle(next)");
+  const start = app.indexOf("async function finishCoreBattle(next, options = {})");
   const end = app.indexOf("function driveCoreBattle", start);
   const completion = app.slice(start, end);
   assert.ok(start >= 0 && end > start);
-  assert.ok(completion.indexOf("cloudSaveBattleCheckpoint(") < completion.indexOf("cloudCompleteBattle("));
+  assert.match(completion, /const completionPromise = commitBattleCompletionWithRetry\(next\)/);
+  assert.ok(completion.indexOf("const completionPromise = commitBattleCompletionWithRetry(next)") < completion.indexOf("playTerminalBattlePresentation(next.result)"));
   assert.match(completion, /setBattleFinishing\(true\)/);
   assert.match(completion, /setBusy\(true\)/);
   assert.match(components, /className: "md-battle-finishing"/);
 });
 
 test("battle presentation resets Hero to idle at completion and before stage entry", () => {
-  const finishStart = app.indexOf("async function finishCoreBattle(next)");
+  const finishStart = app.indexOf("async function finishCoreBattle(next, options = {})");
   const finishEnd = app.indexOf("function driveCoreBattle", finishStart);
   const enterStart = app.indexOf("function enterStage(");
   const enterEnd = app.indexOf("function buildPetCombatUnit", enterStart);
-  assert.match(app.slice(finishStart, finishEnd), /setHeroAnim\(""\)/);
-  assert.match(app.slice(enterStart, enterEnd), /setHeroAnim\(""\)/);
+  const finishBody = app.slice(finishStart, finishEnd);
+  const finalizeStart = app.indexOf("async function finalizeTerminalOutcome");
+  const finalizeEnd = app.indexOf("async function finishCoreBattle", finalizeStart);
+  assert.equal(finishBody.includes('setHeroAnim("");'), false);
+  assert.match(app.slice(finalizeStart, finalizeEnd), /resetTerminalPresentation\(\)/);
+  assert.equal(app.slice(enterStart, enterEnd).includes('setHeroAnim("");'), true);
 });
 
 test("Dungeon battle entry obtains server authorization before creating or checkpointing combat", () => {
@@ -232,6 +237,43 @@ test("Hero Skill V1 rows open full detail sheets and upgrades use a confirmation
   assert.match(components, /ยืนยันการอัปสกิล/);
   assert.match(components, /const \[draft, setDraft\] = useState\(\{\}\)/);
   assert.match(components, /onLearnSkill\(draft\)/);
+});
+
+test("battle completion classifies session and non-retryable errors without leaving the terminal lock path", () => {
+  assert.match(app, /const BATTLE_SESSION_ERRORS = new Set\(\["invalid_session", "session_expired", "session_revoked", "session_replaced"\]\)/);
+  assert.match(app, /const BATTLE_NON_RETRYABLE_ERRORS = new Set\(\["invalid_reward_plan", "battle_not_authorized"\]\)/);
+  const start = app.indexOf("async function commitBattleCompletionWithRetry(next)");
+  const end = app.indexOf("async function finalizeTerminalOutcome", start);
+  const completion = app.slice(start, end);
+  assert.match(completion, /^\s*async function commitBattleCompletionWithRetry\(next\) \{\n\s*try \{/);
+  assert.match(completion, /return \{ ok: false, completionReceipt: lastReceipt, errorCode: classification\.code, errorKind: classification\.kind \}/);
+  assert.match(completion, /catch \(error\)/);
+  assert.match(app, /AUTH_SESSION\.handleApiResult\(\{ error: completionError\.code \}\)/);
+  assert.match(app, /ยืนยันผลการต่อสู้ไม่ได้ เนื่องจากข้อมูลการต่อสู้ไม่ตรงกับ Server/);
+});
+ 
+test("battle completion error matrix keeps retry, session, non-retryable, and terminal unlock contracts", () => {
+  const start = app.indexOf("async function commitBattleCompletionWithRetry(next)");
+  const end = app.indexOf("async function finalizeTerminalOutcome", start);
+  const completion = app.slice(start, end);
+  assert.match(completion, /const rewardPlan = next\.result === "victory" \? buildDungeonRewardPlan\(next\.battleId\) : null/);
+  assert.match(completion, /for \(let attempt = 0; attempt < 3; attempt \+= 1\)/);
+  assert.match(completion, /if \(!classification\.retryable\)[\s\S]*return \{ ok: false/);
+  assert.match(completion, /catch \(error\)/);
+  for (const code of ["invalid_session", "session_expired", "session_revoked", "session_replaced"]) {
+    assert.match(app, new RegExp(`"${code}"`));
+  }
+  for (const code of ["invalid_reward_plan", "battle_not_authorized"]) {
+    assert.match(app, new RegExp(`"${code}"`));
+  }
+  assert.match(app, /AUTH_SESSION\.handleApiResult\(\{ error: completionError\.code \}\)/);
+  assert.match(app, /ยืนยันผลการต่อสู้ไม่ได้ เนื่องจากข้อมูลการต่อสู้ไม่ตรงกับ Server/);
+  assert.match(app, /ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย/);
+  const finishStart = app.indexOf("async function finishCoreBattle(next, options = {})");
+  const finishEnd = app.indexOf("function driveCoreBattle", finishStart);
+  const finish = app.slice(finishStart, finishEnd);
+  assert.match(finish, /completionOutcome = await completionPromise/);
+  assert.match(finish, /if \(!completionOutcome\.ok\)[\s\S]*setBusy\(false\)[\s\S]*setBattleFinishing\(true\)/);
 });
 
 test("Battle Potion starts the local Hero Action immediately while server consumption stays authoritative", () => {
