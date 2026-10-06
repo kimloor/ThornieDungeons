@@ -27,6 +27,10 @@ jobs:
           node-version: "22"
       - name: Worker syntax
         run: node --check workers/thornie-dungeons-api.js
+      - name: Frontend source syntax
+        run: |
+          node --check src/ui/components.js
+          node --check src/data/styles.js
       - name: Admin V2 auth tests
         run: node --test tests/admin-v2-auth.test.js
       - name: SHOP-AND-SELL Phase 1 contract tests
