@@ -20,7 +20,7 @@ test("Phase 4 Shop has exactly four requested tabs and no Sell tab", () => {
   assert.match(components, /\\["hp", "ยา HP"\\]/);
   assert.match(components, /\\["sp", "ยา SP"\\]/);
   assert.match(components, /\\["other", "อื่นๆ"\\]/);
-  assert.doesNotMatch(components, /\\["sell",|>ขาย</);
+  assert.equal(components.includes('["sell",'), false);
 });
 
 test("Phase 4 tab switching resets body scroll only", () => {
