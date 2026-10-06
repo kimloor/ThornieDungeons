@@ -27,7 +27,7 @@ test("W7A terminal presentation stays downstream of authoritative battle complet
   assert.ok(finalizeEnd > finalizeStart);
   assert.ok(app.slice(finalizeStart, finalizeEnd).indexOf('setPhase("result")') >= 0);
   assert.match(finishBody, /completionOutcome = await completionPromise/);
-  assert.match(finishBody, /if (!completionOutcome\.ok)[\s\S]*return;/);
+  assert.match(finishBody, /if \(!completionOutcome\.ok\)[\s\S]*return;/);
 });
 
 test("W7A terminal presentation has a non-authoritative timeout fallback", () => {
