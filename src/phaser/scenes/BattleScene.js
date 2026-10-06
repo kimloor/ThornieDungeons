@@ -69,6 +69,15 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
           this.collectUnitAssets(unit, assets);
         });
       }
+      [
+        "ui/skill-icons/hero/power_strike.png",
+        "ui/skill-icons/hero/guard.png",
+        "ui/skill-icons/hero/armor_break_mastery.png",
+        "ui/skill-icons/hero/recovery.png",
+        "ui/skill-icons/hero/toxic_strike.png",
+        "ui/skill-icons/hero/stunning_blow.png",
+        "ui/skill-icons/hero/silent_edge.png"
+      ].forEach(reference => assets.push(reference));
       return this.assetResolver.resolveAll(assets);
     }
 
@@ -324,8 +333,9 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       return this.presentationQueue.enqueue({
         run: speed => new Promise(resolve => {
           const duration = Math.max(120, Math.round(240 / Math.max(1, Number(speed) || 1)));
-          if (normalized === "victory") this.cameras?.main?.flash?.(duration);
-          else this.cameras?.main?.fade?.(duration);
+          // Victory already has the actor/VFX terminal presentation. A full-camera white
+          // flash here obscures the final frame immediately before the result confirmation UI.
+          if (normalized === "defeat") this.cameras?.main?.fade?.(duration);
           this.time.delayedCall(duration, resolve);
         })
       });
