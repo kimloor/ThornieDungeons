@@ -11,7 +11,7 @@ const ui = fs.readFileSync(path.join(root, "src/phaser/ui/PhaserBattlefield.js")
 const components = fs.readFileSync(path.join(root, "src/ui/components.js"), "utf8");
 
 test("W7A terminal presentation stays downstream of authoritative battle completion", () => {
-  const finishStart = app.indexOf("async function finishCoreBattle(next)");
+  const finishStart = app.indexOf("async function finishCoreBattle(next, options = {})");
   assert.ok(finishStart >= 0);
   const finishBody = app.slice(finishStart, app.indexOf("function driveCoreBattle", finishStart));
 
@@ -67,7 +67,7 @@ test("W7A terminal action does not clear presentation synchronously and reset oc
 
 test("W7A confirmation pill is hidden during presentation and retry reuses the same battleId", () => {
   assert.match(components, /battleFinishing && battleFinishStatus === "confirming"/);
-  assert.doesNotMatch(components, /battleFinishing && /*#__PURE__\*\/React\.createElement\("div", \{\n    className: "md-battle-finishing"/);
+  assert.doesNotMatch(components, /battleFinishing[\s\S]{0,120}className: "md-battle-finishing"/);
   assert.match(app, /finishCoreBattle\(next, \{ retry: true \}\)/);
   assert.match(app, /terminalFinishRef\.current\?\.next\?\.battleId !== next\.battleId/);
   assert.match(app, /const completionError = classifyBattleCompletionError/);
