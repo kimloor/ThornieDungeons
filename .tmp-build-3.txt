@@ -1,0 +1,1811 @@
+// ===== phaser/runtime/PhaserRuntime.js =====
+// ---------- W5 Phaser Runtime ----------
+// Phaser is an optional presentation dependency. It is loaded only when the
+// controlled renderer flag is enabled and is never allowed to block Battle Core.
+const THORNIE_PHASER_VERSION = "3.90.0";
+const THORNIE_PHASER_URL = `https://cdn.jsdelivr.net/npm/phaser@${THORNIE_PHASER_VERSION}/dist/phaser.min.js`;
+
+const THORNIE_PHASER_RUNTIME = (() => {
+  let promise = null;
+  let state = { status: "idle", version: THORNIE_PHASER_VERSION, error: null };
+
+  function currentPhaser() {
+    const runtime = typeof globalThis !== "undefined" ? globalThis.Phaser : null;
+    return runtime && typeof runtime.Game === "function" ? runtime : null;
+  }
+
+  function load() {
+    const existing = currentPhaser();
+    if (existing) {
+      state = { status: "ready", version: THORNIE_PHASER_VERSION, error: null };
+      return Promise.resolve(existing);
+    }
+    if (promise) return promise;
+    if (typeof document === "undefined") {
+      const error = new Error("Phaser runtime requires a browser document");
+      state = { status: "error", version: THORNIE_PHASER_VERSION, error };
+      promise = Promise.reject(error);
+      promise.catch(() => {});
+      return promise;
+    }
+
+    state = { status: "loading", version: THORNIE_PHASER_VERSION, error: null };
+    promise = new Promise((resolve, reject) => {
+      let script = document.querySelector(`script[data-thornie-phaser-runtime="${THORNIE_PHASER_VERSION}"]`);
+      const fail = error => {
+        const nextError = error instanceof Error ? error : new Error("Phaser runtime failed to load");
+        state = { status: "error", version: THORNIE_PHASER_VERSION, error: nextError };
+        reject(nextError);
+      };
+      const ready = () => {
+        const runtime = currentPhaser();
+        if (!runtime) return fail(new Error("Phaser runtime loaded without Phaser.Game"));
+        const actualVersion = String(runtime.VERSION || runtime.VERSION_STRING || "");
+        if (actualVersion && actualVersion !== THORNIE_PHASER_VERSION) {
+          return fail(new Error(`Phaser version mismatch: expected ${THORNIE_PHASER_VERSION}, got ${actualVersion}`));
+        }
+        state = { status: "ready", version: THORNIE_PHASER_VERSION, error: null };
+        resolve(runtime);
+      };
+      if (!script) {
+        script = document.createElement("script");
+        script.crossOrigin = "anonymous";
+        script.src = THORNIE_PHASER_URL;
+        script.async = true;
+        script.dataset.thorniePhaserRuntime = THORNIE_PHASER_VERSION;
+        script.addEventListener("load", ready, { once: true });
+        script.addEventListener("error", () => fail(new Error(`Unable to load Phaser ${THORNIE_PHASER_VERSION}`)), { once: true });
+        (document.head || document.documentElement).appendChild(script);
+      } else {
+        script.addEventListener("load", ready, { once: true });
+        script.addEventListener("error", () => fail(new Error(`Unable to load Phaser ${THORNIE_PHASER_VERSION}`)), { once: true });
+        if (currentPhaser()) ready();
+      }
+    });
+    promise.catch(() => {});
+    return promise;
+  }
+
+  return Object.freeze({
+    version: THORNIE_PHASER_VERSION,
+    url: THORNIE_PHASER_URL,
+    load,
+    getState: () => ({ ...state })
+  });
+})();
+
+// ===== phaser/assets/AssetResolver.js =====
+// ---------- W6 Shared Phaser Asset Resolver ----------
+// Presentation code resolves manifest-relative paths here so scenes/renderers never
+// construct R2 URLs independently. Existing resolved URLs are preserved verbatim.
+const PHASER_ASSET_ROOT = "/assets/";
+
+function isResolvedPhaserAssetUrl(value) {
+  const source = String(value || "").trim();
+  return /^(?:https?:)?\/\//i.test(source)
+    || /^(?:data:|blob:)/i.test(source)
+    || source.startsWith("/");
+}
+
+function resolvePhaserAsset(reference) {
+  const raw = reference && typeof reference === "object"
+    ? (reference.url || reference.path || "")
+    : reference;
+  const source = String(raw || "").trim();
+  if (!source) return "";
+  if (isResolvedPhaserAssetUrl(source)) return source;
+  if (typeof assetUrl === "function") return assetUrl(source);
+  return PHASER_ASSET_ROOT + source.replace(/^\/+/, "");
+}
+
+function resolvePhaserAssets(references) {
+  return [...new Set((references || []).map(resolvePhaserAsset).filter(Boolean))];
+}
+
+function resolvePhaserManifestAsset(key) {
+  if (!key) return "";
+  if (typeof optionalAsset === "function") return resolvePhaserAsset(optionalAsset(key));
+  const root = typeof ASSETS === "object" && ASSETS ? ASSETS : {};
+  const path = String(key).split(".").reduce((obj, part) => obj?.[part], root);
+  return resolvePhaserAsset(path);
+}
+
+const SHARED_PHASER_ASSET_RESOLVER = Object.freeze({
+  resolve: resolvePhaserAsset,
+  resolveAll: resolvePhaserAssets,
+  manifest: resolvePhaserManifestAsset
+});
+
+// ===== phaser/assets/TextureRegistry.js =====
+// ---------- W6 Shared Phaser Texture Registry ----------
+function phaserTextureKeyForUrl(url) {
+  return `thornie-${String(url || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(-150)}`;
+}
+
+function createPhaserTextureRegistry({ resolver = SHARED_PHASER_ASSET_RESOLVER } = {}) {
+  const keyToUrl = new Map();
+  const urlToKey = new Map();
+
+  function keyFor(reference) {
+    const url = resolver.resolve(reference);
+    if (!url) return "";
+    if (urlToKey.has(url)) return urlToKey.get(url);
+    const key = phaserTextureKeyForUrl(url);
+    urlToKey.set(url, key);
+    keyToUrl.set(key, url);
+    return key;
+  }
+
+  function urlFor(key) {
+    return keyToUrl.get(String(key || "")) || "";
+  }
+
+  function forget(key) {
+    const normalizedKey = String(key || "");
+    const url = keyToUrl.get(normalizedKey);
+    if (url) urlToKey.delete(url);
+    keyToUrl.delete(normalizedKey);
+  }
+
+  function queue(scene, references) {
+    if (!scene?.load || !scene?.textures) return [];
+    return resolver.resolveAll(references).map(url => {
+      const key = keyFor(url);
+      const exists = key && scene.textures.exists(key);
+      if (key && !exists) scene.load.image(key, url);
+      return { key, url, queued: !!(key && !exists) };
+    }).filter(entry => entry.key);
+  }
+
+  return Object.freeze({
+    keyFor,
+    urlFor,
+    forget,
+    queue,
+    entries() { return [...keyToUrl.entries()]; }
+  });
+}
+
+// ===== phaser/layout/ResponsiveSceneLayout.js =====
+// ---------- W6 Shared Responsive Scene Layout ----------
+const RESPONSIVE_SCENE_LAYOUT_DEFAULTS = Object.freeze({
+  referenceWidth: 390,
+  referenceHeight: 520,
+  minScale: 0.82,
+  maxScale: 1.15
+});
+
+function responsiveSceneScale(width, height, options = {}) {
+  const safeWidth = Math.max(1, Number(width) || 1);
+  const safeHeight = Math.max(1, Number(height) || 1);
+  const referenceWidth = Math.max(1, Number(options.referenceWidth) || RESPONSIVE_SCENE_LAYOUT_DEFAULTS.referenceWidth);
+  const referenceHeight = Math.max(1, Number(options.referenceHeight) || RESPONSIVE_SCENE_LAYOUT_DEFAULTS.referenceHeight);
+  const minScale = Number.isFinite(Number(options.minScale)) ? Number(options.minScale) : RESPONSIVE_SCENE_LAYOUT_DEFAULTS.minScale;
+  const maxScale = Number.isFinite(Number(options.maxScale)) ? Number(options.maxScale) : RESPONSIVE_SCENE_LAYOUT_DEFAULTS.maxScale;
+  const widthScale = safeWidth / referenceWidth;
+  const heightScale = safeHeight / referenceHeight;
+  return Math.max(minScale, Math.min(maxScale, Math.min(widthScale, heightScale)));
+}
+
+function responsiveScenePoint(anchor, width, height) {
+  const safeWidth = Math.max(1, Number(width) || 1);
+  const safeHeight = Math.max(1, Number(height) || 1);
+  return {
+    x: Math.round(Number(anchor?.x || 0) * safeWidth),
+    y: Math.round(Number(anchor?.y || 0) * safeHeight)
+  };
+}
+
+function responsiveScenePixels(value, width, height) {
+  if (Array.isArray(value)) return value.map(entry => responsiveScenePixels(entry, width, height));
+  if (!value || typeof value !== "object") return value;
+  if (Object.prototype.hasOwnProperty.call(value, "x") && Object.prototype.hasOwnProperty.call(value, "y")) {
+    return responsiveScenePoint(value, width, height);
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, responsiveScenePixels(entry, width, height)])
+  );
+}
+
+function createResponsiveSceneLayout({ width, height, anchors = {}, scale = {} } = {}) {
+  const safeWidth = Math.max(1, Number(width) || 1);
+  const safeHeight = Math.max(1, Number(height) || 1);
+  return {
+    width: safeWidth,
+    height: safeHeight,
+    scale: responsiveSceneScale(safeWidth, safeHeight, scale),
+    normalized: anchors,
+    pixels: responsiveScenePixels(anchors, safeWidth, safeHeight)
+  };
+}
+
+// ===== phaser/layout/ResponsiveAnchors.js =====
+// ---------- W6 Locked Combat Anchors ----------
+const RESPONSIVE_ANCHORS = Object.freeze({
+  HERO: Object.freeze({ x: 0.20, y: 0.50 }),
+  PET: Object.freeze({ x: 0.22, y: 0.84 }),
+  MONSTER_SINGLE: Object.freeze({ x: 0.80, y: 0.61 }),
+  MONSTER_TWO: Object.freeze([{ x: 0.74, y: 0.38 }, { x: 0.85, y: 0.80 }]),
+  MONSTER_THREE: Object.freeze([{ x: 0.71, y: 0.29 }, { x: 0.80, y: 0.58 }, { x: 0.87, y: 0.87 }]),
+  VFX_HERO: Object.freeze({ x: 0.32, y: 0.60 }),
+  VFX_PET: Object.freeze({ x: 0.42, y: 0.66 }),
+  ARENA_ATTACKER_HERO: Object.freeze({ x: 0.20, y: 0.50 }),
+  ARENA_ATTACKER_PET: Object.freeze({ x: 0.22, y: 0.84 }),
+  ARENA_DEFENDER_HERO: Object.freeze({ x: 0.80, y: 0.50 }),
+  ARENA_DEFENDER_PET: Object.freeze({ x: 0.78, y: 0.84 })
+});
+
+function monsterAnchorsForCount(count) {
+  const safeCount = Math.max(1, Math.min(3, Number(count) || 1));
+  if (safeCount === 1) return [RESPONSIVE_ANCHORS.MONSTER_SINGLE];
+  if (safeCount === 2) return RESPONSIVE_ANCHORS.MONSTER_TWO;
+  return RESPONSIVE_ANCHORS.MONSTER_THREE;
+}
+
+function responsiveActorScale(width, height) {
+  return responsiveSceneScale(width, height, {
+    referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15
+  });
+}
+
+function responsiveAnchorPixels(anchor, width, height) {
+  return responsiveScenePoint(anchor, width, height);
+}
+
+function responsiveBattlefieldLayout(width, height, monsterCount = 1) {
+  const monsterAnchors = monsterAnchorsForCount(monsterCount);
+  const shared = createResponsiveSceneLayout({
+    width,
+    height,
+    anchors: {
+      hero: RESPONSIVE_ANCHORS.HERO,
+      pet: RESPONSIVE_ANCHORS.PET,
+      monsters: monsterAnchors,
+      vfxHero: RESPONSIVE_ANCHORS.VFX_HERO,
+      vfxPet: RESPONSIVE_ANCHORS.VFX_PET
+    },
+    scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
+  });
+  return {
+    width: shared.width,
+    height: shared.height,
+    actorScale: shared.scale,
+    normalized: shared.normalized,
+    pixels: shared.pixels
+  };
+}
+
+function responsiveArenaBattlefieldLayout(width, height) {
+  const shared = createResponsiveSceneLayout({
+    width,
+    height,
+    anchors: {
+      attackerHero: RESPONSIVE_ANCHORS.ARENA_ATTACKER_HERO,
+      attackerPet: RESPONSIVE_ANCHORS.ARENA_ATTACKER_PET,
+      defenderHero: RESPONSIVE_ANCHORS.ARENA_DEFENDER_HERO,
+      defenderPet: RESPONSIVE_ANCHORS.ARENA_DEFENDER_PET
+    },
+    scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
+  });
+  return {
+    width: shared.width,
+    height: shared.height,
+    actorScale: shared.scale,
+    normalized: shared.normalized,
+    pixels: shared.pixels
+  };
+}
+
+
+// ===== phaser/presentation/ActorPresentationModel.js =====
+// ---------- W6 Shared Actor Presentation Model ----------
+const ACTOR_PRESENTATION_MODEL_VERSION = 2;
+
+function actorPresentationStatusData(unit) {
+  return Object.entries(unit?.statuses || {}).map(([key, value]) => ({
+    key,
+    duration: Math.max(0, Number(value?.duration) || 0)
+  })).filter(status => status.duration > 0);
+}
+
+function normalizeActorPresentationAnim(value, alive = true) {
+  if (!alive) return "death";
+  if (value === "attack") return "attack";
+  if (value === "hurt") return "hurt";
+  if (value === "death") return "death";
+  return "idle";
+}
+
+function normalizeActorPresentationFacing(value, kind = "monster") {
+  if (value === "left" || value === "right") return value;
+  return ["monster", "boss", "raid_boss"].includes(String(kind || "")) ? "left" : "right";
+}
+
+function createActorPresentationModel(raw, fallback = {}) {
+  const unit = { ...(fallback || {}), ...(raw || {}) };
+  const kind = String(unit.kind || fallback.kind || "monster");
+  return {
+    id: String(unit.id || fallback.id || "unit"),
+    name: String(unit.name || unit.id || fallback.name || "Unit"),
+    kind,
+    hp: Math.max(0, Number(unit.hp) || 0),
+    maxHp: Math.max(1, Number(unit.maxHp) || Number(unit.hp) || 1),
+    alive: Number(unit.hp) > 0 && !unit.dead,
+    statuses: actorPresentationStatusData(unit),
+    defId: unit.defId || fallback.defId || unit.monsterDefId || unit.id,
+    isBoss: !!(unit.isBoss || fallback.isBoss || kind === "boss"),
+    isEliteBoss: !!(unit.isEliteBoss || fallback.isEliteBoss),
+    enraged: !!(unit.flags?.dungeonV2Enraged || fallback.flags?.dungeonV2Enraged || unit.dungeonV2Phase === "enraged" || fallback.dungeonV2Phase === "enraged"),
+    sizeClass: unit.sizeClass || fallback.sizeClass || "medium",
+    anchorType: unit.anchorType || fallback.anchorType || "ground",
+    facing: normalizeActorPresentationFacing(unit.facing || fallback.facing, kind),
+    icon: unit.icon || fallback.icon || "◆"
+  };
+}
+
+const ACTOR_PRESENTATION_MODEL = Object.freeze({
+  version: ACTOR_PRESENTATION_MODEL_VERSION,
+  create: createActorPresentationModel,
+  statuses: actorPresentationStatusData,
+  normalizeAnim: normalizeActorPresentationAnim,
+  normalizeFacing: normalizeActorPresentationFacing
+});
+
+// ===== phaser/presentation/EquipmentVisualResolver.js =====
+// ---------- W7 Equipment Visual Resolver Boundary ----------
+const EQUIPMENT_VISUAL_RESOLVER_CONTRACT = Object.freeze({
+  version: 5,
+  currentHeroMode: "v3",
+  v5OptIn: true
+});
+
+function isAzureVisualItem(item) {
+  return !!item && (
+    item.setId === "azure"
+    || String(item.name || "").toLowerCase().includes("azure")
+  );
+}
+
+function heroV5SetFamily(item) {
+  const setId = String(item?.setId || "").trim().toLowerCase();
+  return ["azure", "robot", "skeleton"].includes(setId) ? setId : null;
+}
+
+function heroV5BossWeaponVisualId(item) {
+  if (!item) return null;
+  const id = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
+  const map = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  return map[id] || null;
+}
+
+function heroV5WingVisualId(item) {
+  if (!item) return null;
+  const identities = [
+    item.id,
+    item.itemId,
+    item.wingFamily,
+    item.wingId,
+    item.wingsId,
+    item.visualId,
+    item.setId
+  ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean);
+  if (identities.some(value => ["angel", "wing01", "angel_wings", "angel-wings"].includes(value))) return "angel";
+  if (identities.includes("azure")) return "azure";
+  if (identities.includes("robot")) return "robot";
+  if (identities.includes("skeleton")) return "skeleton";
+  if (String(item.name || "").toLowerCase().includes("angel")) return "angel";
+  return null;
+}
+
+function resolveHeroV5EquipmentSelection(equipped = {}, legacySelection = {}) {
+  const slots = ["helmet", "chest", "gloves", "boots", "weapon"];
+  const equipment = Object.fromEntries(slots.map(slot => [slot, heroV5SetFamily(equipped?.[slot])]));
+  const bossWeapon = heroV5BossWeaponVisualId(equipped?.weapon);
+  const authoritativeWing = heroV5WingVisualId(equipped?.wings);
+  return {
+    // W5+ Wing family metadata is authoritative. Legacy Angel selection is fallback only.
+    wings: authoritativeWing || (legacySelection?.wings === "angel" ? "angel" : null),
+    equipment,
+    bossWeapon,
+    azure: {
+      helmet: isAzureVisualItem(equipped?.helmet),
+      chest: isAzureVisualItem(equipped?.chest),
+      gloves: isAzureVisualItem(equipped?.gloves),
+      boots: isAzureVisualItem(equipped?.boots),
+      weapon: isAzureVisualItem(equipped?.weapon)
+    }
+  };
+}
+
+function createEquipmentVisualResolver({ legacyHeroSelectionResolver = null } = {}) {
+  const resolveLegacySelection = legacyHeroSelectionResolver || (
+    typeof heroVisualSelectionFromEquipment === "function" ? heroVisualSelectionFromEquipment : null
+  );
+  return Object.freeze({
+    contract: EQUIPMENT_VISUAL_RESOLVER_CONTRACT,
+    resolveHeroSelection(equipped = {}) {
+      const selection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
+      return { ...(selection || {}) };
+    },
+    resolveHeroV5Selection(equipped = {}) {
+      const legacySelection = resolveLegacySelection ? resolveLegacySelection(equipped || {}) : {};
+      const selection = resolveHeroV5EquipmentSelection(equipped || {}, legacySelection);
+      const extended = selection.bossWeapon || Object.values(selection.equipment).some(family => family && family !== "azure");
+      if (!extended) return { wings: selection.wings, azure: { ...selection.azure } };
+      return {
+        wings: selection.wings,
+        equipment: { ...selection.equipment },
+        bossWeapon: selection.bossWeapon,
+        azure: { ...selection.azure }
+      };
+    }
+  });
+}
+
+const SHARED_EQUIPMENT_VISUAL_RESOLVER = createEquipmentVisualResolver();
+
+// ===== phaser/presentation/HeroV5RuntimeContract.js =====
+// ---------- W8 Hero V5 G2 Runtime Contract ----------
+const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
+  version: 3,
+  characterId: "hero001",
+  variant: "g2",
+  canvas: Object.freeze({ width: 768, height: 768 }),
+  runtimeOffsetY: 84,
+  animationFrames: Object.freeze({
+    idle: Object.freeze(["idle_01", "idle_02", "idle_03"]),
+    attack: Object.freeze(["attack_01", "attack_02", "attack_03"]),
+    death: Object.freeze(["death_01", "death_02"])
+  }),
+  layerOrder: Object.freeze(["wing_far", "base", "wing_near"]),
+  azureLayerOrder: Object.freeze([
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front"
+  ])
+});
+
+const HERO_V5_AZURE_SLOT_LAYERS = Object.freeze({
+  helmet: Object.freeze(["helmet"]),
+  chest: Object.freeze(["torso_armor"]),
+  gloves: Object.freeze(["arm_rear", "arm_front"]),
+  boots: Object.freeze(["legs_boots"]),
+  weapon: Object.freeze(["sword"])
+});
+const HERO_V5_SET_FAMILIES = Object.freeze(["azure", "robot", "skeleton"]);
+
+function isHeroV5RuntimeEnabled() {
+  if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
+  if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === false) return false;
+  try {
+    const value = new URLSearchParams(globalThis.location?.search || "").get("heroV5");
+    return value !== "0";
+  } catch (_) {
+    return true;
+  }
+}
+
+function getHeroV5RuntimeConfig(characterId = HERO_V5_RUNTIME_CONTRACT.characterId) {
+  const config = typeof ASSETS === "object" && ASSETS
+    ? ASSETS?.[characterId]?.v5?.[HERO_V5_RUNTIME_CONTRACT.variant]
+    : null;
+  if (!config || config.approval !== "approved" || config.base?.approval !== "approved") return null;
+  const canvasWidth = Number(config.canvas?.width) || 0;
+  const canvasHeight = Number(config.canvas?.height) || 0;
+  if (canvasWidth !== HERO_V5_RUNTIME_CONTRACT.canvas.width || canvasHeight !== HERO_V5_RUNTIME_CONTRACT.canvas.height) return null;
+  return config;
+}
+
+function heroV5AllFrameIds() {
+  return Object.values(HERO_V5_RUNTIME_CONTRACT.animationFrames).flat();
+}
+
+function heroV5BaseBundleComplete(config) {
+  return heroV5AllFrameIds().every(frameId => !!config?.base?.frames?.[frameId]);
+}
+
+function heroV5HairBundleComplete(config) {
+  const hairId = config?.defaultHair || "topknot";
+  const hairConfig = config?.hair?.[hairId];
+  if (!hairConfig || hairConfig.approval !== "approved") return false;
+  return heroV5AllFrameIds().every(frameId => {
+    const frame = hairConfig.frames?.[frameId];
+    return !!(frame?.hair_back && frame?.hair_front);
+  });
+}
+
+function heroV5WingBundleComplete(config, family = "azure") {
+  const wingConfig = family === "azure" ? { frames: config?.wingTemplate?.frames, approval: "approved" } : config?.wings?.[family];
+  if (wingConfig?.approval && wingConfig.approval !== "approved") return false;
+  return heroV5AllFrameIds().every(frameId => {
+    const frame = wingConfig?.frames?.[frameId];
+    return !!(frame?.wing_far && frame?.wing_near);
+  });
+}
+
+function heroV5EquipmentSlotBundleComplete(config, family, slot) {
+  const equipmentConfig = config?.equipment?.[family];
+  const layers = HERO_V5_AZURE_SLOT_LAYERS[slot] || [];
+  if (!HERO_V5_SET_FAMILIES.includes(family) || !layers.length || equipmentConfig?.approval !== "approved") return false;
+  return heroV5AllFrameIds().every(frameId => {
+    const frame = equipmentConfig.frames?.[frameId];
+    return layers.every(layer => !!frame?.[layer]);
+  });
+}
+
+function heroV5BossWeaponBundleComplete(config, visualId) {
+  const weapon = config?.equipment?.[visualId];
+  return !!weapon && weapon.approval === "approved" && heroV5AllFrameIds().every(frameId => !!weapon.frames?.[frameId]?.sword);
+}
+
+function heroV5SanitizeEquipmentSelection(config, selection = {}) {
+  const requestedEquipment = selection?.equipment || Object.fromEntries(Object.entries(selection?.azure || {}).map(([slot, enabled]) => [slot, enabled ? "azure" : null]));
+  const equipment = {};
+  const azure = {};
+  const fallbackSlots = [];
+  Object.keys(HERO_V5_AZURE_SLOT_LAYERS).forEach(slot => {
+    const requested = requestedEquipment[slot];
+    const supported = requested && heroV5EquipmentSlotBundleComplete(config, requested, slot) ? requested : null;
+    equipment[slot] = supported;
+    azure[slot] = supported === "azure";
+    if (requested && !supported) fallbackSlots.push(slot);
+  });
+  const requestedBossWeapon = selection?.bossWeapon || null;
+  const bossWeapon = requestedBossWeapon && heroV5BossWeaponBundleComplete(config, requestedBossWeapon) ? requestedBossWeapon : null;
+  if (requestedBossWeapon && !bossWeapon && !fallbackSlots.includes("weapon")) fallbackSlots.push("weapon");
+  const requestedWings = ["angel", "azure", "robot", "skeleton"].includes(selection?.wings) ? selection.wings : null;
+  const wings = requestedWings && heroV5WingBundleComplete(config, requestedWings === "angel" ? "azure" : requestedWings) ? requestedWings : null;
+  if (requestedWings && !wings) fallbackSlots.push("wings");
+  return {
+    wings,
+    equipment,
+    bossWeapon,
+    azure,
+    fallbackSlots
+  };
+}
+
+function heroV5EquipmentLayersForSelection(selection = {}) {
+  const equipment = selection?.equipment || Object.fromEntries(Object.entries(selection?.azure || {}).map(([slot, enabled]) => [slot, enabled ? "azure" : null]));
+  const requested = [];
+  // The underlay is a whole-body seam closer. Only use it when the three
+  // body-coverage slots are present; otherwise the neutral Base must remain
+  // visible in unequipped areas.
+  if (equipment.chest && equipment.chest === equipment.gloves && equipment.chest === equipment.boots) requested.push("coverage_underlay");
+  if (equipment.chest) requested.push("torso_armor");
+  if (equipment.boots) requested.push("legs_boots");
+  if (equipment.gloves) requested.push("arm_rear");
+  if (equipment.helmet) requested.push("helmet");
+  if (selection.bossWeapon || equipment.weapon) requested.push("sword");
+  if (equipment.gloves) requested.push("arm_front");
+  return HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
+}
+
+function heroV5AzureLayersForSelection(selection = {}) { return heroV5EquipmentLayersForSelection(selection); }
+
+function heroV5FrameLayer(name, path) {
+  return {
+    name,
+    path,
+    x: 0,
+    y: HERO_V5_RUNTIME_CONTRACT.runtimeOffsetY,
+    scale: 1,
+    rotation: 0
+  };
+}
+
+function heroV5HairLayers(config, frameId, includeHair = true) {
+  if (!includeHair) return [];
+  const hairId = config?.defaultHair || "topknot";
+  const hairConfig = config?.hair?.[hairId];
+  const frame = hairConfig?.frames?.[frameId];
+  if (!frame?.hair_back || !frame?.hair_front) return [];
+  return [
+    heroV5FrameLayer("hair_back", frame.hair_back),
+    heroV5FrameLayer("hair_front", frame.hair_front)
+  ];
+}
+
+function heroV5FrameLayers(config, frameId, {
+  includeWings = false,
+  includeHair = true,
+  equipmentSelection = {}
+} = {}) {
+  const basePath = config?.base?.frames?.[frameId];
+  if (!basePath) return null;
+
+  const wingFamily = equipmentSelection?.wings === "robot" || equipmentSelection?.wings === "skeleton" ? equipmentSelection.wings : "azure";
+  const wingConfig = wingFamily === "azure" ? config?.wingTemplate : config?.wings?.[wingFamily];
+  const wingFrame = includeWings ? wingConfig?.frames?.[frameId] : null;
+  const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection);
+
+  const layers = [];
+  if (includeWings && wingFrame?.wing_far) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
+  layers.push(heroV5FrameLayer("base", basePath));
+  // Suppress hair only when a complete full-face helmet is actually selected.
+  const helmetFamily = equipmentSelection?.equipment?.helmet;
+  const helmetFrame = helmetFamily ? config?.equipment?.[helmetFamily]?.frames?.[frameId] : null;
+  const fullFaceHelmet = equipmentLayerNames.includes("helmet") && !!helmetFrame?.helmet
+    && config?.equipment?.[helmetFamily]?.fullFaceHelmet === true;
+  layers.push(...heroV5HairLayers(config, frameId, includeHair && !fullFaceHelmet));
+  equipmentLayerNames.forEach(name => {
+    const slot = name === "torso_armor" || name === "coverage_underlay" ? "chest" : name === "legs_boots" ? "boots" : name === "arm_rear" || name === "arm_front" ? "gloves" : name === "helmet" ? "helmet" : "weapon";
+    const family = slot === "weapon" && equipmentSelection?.bossWeapon ? equipmentSelection.bossWeapon : equipmentSelection?.equipment?.[slot];
+    const path = family ? config?.equipment?.[family]?.frames?.[frameId]?.[name] : null;
+    if (path) layers.push(heroV5FrameLayer(name, path));
+  });
+  if (includeWings && wingFrame?.wing_near) layers.push(heroV5FrameLayer("wing_near", wingFrame.wing_near));
+  return layers;
+}
+
+function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings = false, equipmentSelection = {} } = {}) {
+  const config = getHeroV5RuntimeConfig(characterId);
+  if (!config || !heroV5BaseBundleComplete(config)) return null;
+
+  const requestedSelection = {
+    ...(equipmentSelection || {}),
+    wings: equipmentSelection?.wings || (includeWings ? "angel" : null)
+  };
+  const sanitizedSelection = heroV5SanitizeEquipmentSelection(config, requestedSelection);
+  const requestedWings = !!sanitizedSelection.wings;
+  const renderWings = requestedWings;
+  const includeHair = heroV5HairBundleComplete(config);
+  const fallbackSlots = [...sanitizedSelection.fallbackSlots];
+  if (requestedWings && !renderWings && !fallbackSlots.includes("wings")) fallbackSlots.push("wings");
+
+  const resolved = {};
+  for (const [state, frameIds] of Object.entries(HERO_V5_RUNTIME_CONTRACT.animationFrames)) {
+    const frames = frameIds.map(frameId => heroV5FrameLayers(config, frameId, {
+      includeWings: renderWings,
+      includeHair,
+      equipmentSelection: sanitizedSelection
+    }));
+    if (frames.some(frame => !Array.isArray(frame) || !frame.length)) return null;
+    resolved[state] = frames;
+  }
+
+  const hasEquipment = heroV5EquipmentLayersForSelection(sanitizedSelection).length > 0;
+  const families = Object.values(sanitizedSelection.equipment || {}).filter(Boolean);
+  const familyMode = sanitizedSelection.bossWeapon || (families.length && families.every(value => value === families[0]) ? families[0] : "mixed");
+  return Object.freeze({
+    mode: hasEquipment ? `v5-g2-${familyMode || "equipment"}` : "v5-g2",
+    canvas: {
+      width: HERO_V5_RUNTIME_CONTRACT.canvas.width,
+      height: HERO_V5_RUNTIME_CONTRACT.canvas.height
+    },
+    idle: resolved.idle,
+    attack: resolved.attack,
+    death: resolved.death,
+    visualFallbacks: Object.freeze(fallbackSlots),
+    frameMs: {
+      idle: 440,
+      attack: 300,
+      death: 360
+    }
+  });
+}
+
+// ===== phaser/presentation/PresentationEventBridge.js =====
+// ---------- W6 Shared Presentation Event Bridge ----------
+const PRESENTATION_EVENT_BRIDGE_CONTRACT = Object.freeze({
+  version: 1,
+  defaultSyncType: "PRESENTATION_SYNC",
+  defaultStreamKey: "presentationId",
+  targetSelectedType: "TARGET_SELECTED"
+});
+
+function createPresentationEventBridge({
+  onEvent,
+  onStatus,
+  syncType = PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultSyncType,
+  streamKey = PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultStreamKey,
+  allowStaleSync = true
+} = {}) {
+  const resolvedSyncType = String(syncType || PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultSyncType);
+  const resolvedStreamKey = String(streamKey || PRESENTATION_EVENT_BRIDGE_CONTRACT.defaultStreamKey);
+  let currentStreamId = null;
+  let latestSeq = -1;
+
+  const emit = (event, allowStale = false) => {
+    if (!event) return false;
+    const rawStreamId = event?.[resolvedStreamKey];
+    const eventStreamId = rawStreamId == null || rawStreamId === "" ? null : String(rawStreamId);
+    if (!allowStale && currentStreamId && eventStreamId && eventStreamId !== currentStreamId) return false;
+    if (!allowStale && Number.isFinite(Number(event.seq)) && Number(event.seq) < latestSeq) return false;
+    if (eventStreamId) currentStreamId = eventStreamId;
+    if (Number.isFinite(Number(event.seq))) latestSeq = Math.max(latestSeq, Number(event.seq));
+    onEvent?.(Object.freeze({
+      ...event,
+      [resolvedStreamKey]: currentStreamId,
+      seq: latestSeq
+    }));
+    return true;
+  };
+
+  return Object.freeze({
+    contract: PRESENTATION_EVENT_BRIDGE_CONTRACT,
+    emit(event, options = {}) {
+      return emit(event, !!options.allowStale);
+    },
+    sync(snapshot) {
+      const event = {
+        type: resolvedSyncType,
+        [resolvedStreamKey]: snapshot?.[resolvedStreamKey],
+        seq: snapshot?.seq,
+        snapshot
+      };
+      return emit(event, !!allowStaleSync);
+    },
+    targetSelected(targetId) {
+      return onEvent?.({
+        type: PRESENTATION_EVENT_BRIDGE_CONTRACT.targetSelectedType,
+        [resolvedStreamKey]: currentStreamId,
+        targetId
+      });
+    },
+    status(statusValue, detail) {
+      onStatus?.(statusValue, detail);
+    },
+    reset() {
+      currentStreamId = null;
+      latestSeq = -1;
+    },
+    getState() {
+      return Object.freeze({
+        streamKey: resolvedStreamKey,
+        streamId: currentStreamId,
+        latestSeq
+      });
+    }
+  });
+}
+
+// ===== phaser/presentation/EventBridge.js =====
+// ---------- W6 Battle-to-Presentation Snapshot Adapter ----------
+function presentationAnimationConfig(config) {
+  const urls = name => SHARED_PHASER_ASSET_RESOLVER.resolveAll(config?.animations?.[name] || []);
+  return {
+    idle: urls("idle"),
+    attack: urls("attack"),
+    hurt: urls("hurt"),
+    death: urls("death")
+  };
+}
+
+function heroV3PresentationLayerFrames(selection = {}) {
+  const config = typeof getHeroV3Config === "function" ? getHeroV3Config("hero001") : null;
+  const normalize = layers => (layers || []).map(layer => ({
+    name: layer.name,
+    url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
+    x: Number(layer.x) || 0,
+    y: Number(layer.y) || 0,
+    scale: Number(layer.scale ?? 1),
+    rotation: Number(layer.rotation) || 0
+  })).filter(layer => layer.url);
+  const idle = normalize(typeof resolveHeroV3Layers === "function"
+    ? resolveHeroV3Layers("hero001", selection, "idle", 0)
+    : []);
+  const attackCount = Array.isArray(config?.base?.attack) ? config.base.attack.length : 0;
+  const attack = Array.from({ length: attackCount }, (_, index) =>
+    normalize(resolveHeroV3Layers("hero001", selection, "attack", index) || idle)
+  );
+  return {
+    mode: "v3",
+    canvas: {
+      width: Math.max(1, Number(config?.canvas?.width) || 1254),
+      height: Math.max(1, Number(config?.canvas?.height) || 1254)
+    },
+    idle: [idle],
+    attack: attack.length ? attack : [idle],
+    death: [idle],
+    frameMs: {
+      idle: 220,
+      attack: Math.max(80, Number(config?.attackFrameMs) || 140),
+      death: 180
+    }
+  };
+}
+
+function heroPresentationLayerFrames(selection = {}, { preferV5 = false, v5Selection = {} } = {}) {
+  if (preferV5 && typeof resolveHeroV5BaseWingContract === "function") {
+    const v5 = resolveHeroV5BaseWingContract({
+      characterId: "hero001",
+      includeWings: v5Selection?.wings === "angel",
+      equipmentSelection: v5Selection
+    });
+    if (v5) {
+      const normalize = layers => (layers || []).map(layer => ({
+        name: layer.name,
+        url: SHARED_PHASER_ASSET_RESOLVER.resolve(layer.url || layer.path),
+        x: Number(layer.x) || 0,
+        y: Number(layer.y) || 0,
+        scale: Number(layer.scale ?? 1),
+        rotation: Number(layer.rotation) || 0
+      })).filter(layer => layer.url);
+      return {
+        ...v5,
+        idle: v5.idle.map(normalize),
+        attack: v5.attack.map(normalize),
+        death: v5.death.map(normalize)
+      };
+    }
+  }
+  return heroV3PresentationLayerFrames(selection);
+}
+
+function buildHeroPreviewSnapshot({ heroName = "Hero", equipped = {}, heroV5 = true } = {}) {
+  const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
+  const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
+  const heroFrames = heroPresentationLayerFrames(heroSelection, {
+    preferV5: heroV5 === true,
+    v5Selection: heroV5Selection
+  });
+  return Object.freeze({
+    previewId: "hero-preview",
+    hero: {
+      id: "hero-preview",
+      kind: "hero",
+      name: String(heroName || "Hero"),
+      hp: 1,
+      maxHp: 1,
+      alive: true,
+      statuses: [],
+      anim: "idle",
+      facing: "right",
+      visualMode: heroFrames.mode || "v3",
+      layers: heroFrames.idle?.[0] || [],
+      layerFrames: heroFrames
+    }
+  });
+}
+
+function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {}, petCombat = null, monsters = [], targetUid = null, heroAnim = "", petAnim = "", enemyAnims = {}, combatSpeed = 1, heroV5 = undefined } = {}) {
+  const state = battleState || {};
+  const units = state.units || {};
+  const hero = createActorPresentationModel(units[state.heroId], {
+    id: state.heroId || "hero",
+    kind: "hero",
+    name: heroName,
+    hp: 0,
+    maxHp: 1,
+    facing: "right"
+  });
+  const pet = state.petId && units[state.petId]
+    ? createActorPresentationModel(units[state.petId], { ...(petCombat || {}), facing: "right" })
+    : petCombat ? createActorPresentationModel(petCombat, { id: petCombat.instId || "pet", kind: "pet", facing: "right" }) : null;
+  const enemyIds = Array.isArray(state.enemyIds) && state.enemyIds.length ? state.enemyIds : monsters.map(monster => monster.uid || monster.id);
+  const enemyById = new Map((monsters || []).map(monster => [String(monster.uid || monster.id), monster]));
+  const enemyList = enemyIds.map(id => createActorPresentationModel(units[id], { ...(enemyById.get(String(id)) || { id, kind: "monster" }), facing: "left" }));
+  const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
+  const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
+  const preferHeroV5 = heroV5 === undefined
+    ? (typeof isHeroV5RuntimeEnabled === "function" && isHeroV5RuntimeEnabled())
+    : heroV5 === true;
+  const heroFrames = heroPresentationLayerFrames(heroSelection, {
+    preferV5: preferHeroV5,
+    v5Selection: heroV5Selection
+  });
+  const heroLayers = heroFrames.idle[0] || [];
+  const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
+  const monsterConfigs = enemyList.map(enemy => typeof getMonsterSpriteConfig === "function" ? getMonsterSpriteConfig(enemy) : null);
+  return Object.freeze({
+    battleId: String(state.battleId || "battle-preview"),
+    seq: Number(state.safeActionSeq || state.logSeq || 0),
+    selectedTargetId: String(targetUid || state.selectedTargetId || enemyList.find(enemy => enemy.alive)?.id || ""),
+    combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
+    hero: {
+      ...hero,
+      facing: "right",
+      anim: normalizeActorPresentationAnim(heroAnim, hero.alive),
+      combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
+      visualMode: heroFrames.mode || "v3",
+      layers: heroLayers,
+      layerFrames: heroFrames
+    },
+    pet: pet ? {
+      ...pet,
+      facing: "right",
+      anim: normalizeActorPresentationAnim(petAnim, pet.alive),
+      combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
+      frames: presentationAnimationConfig(petConfig)
+    } : null,
+    monsters: enemyList.map((enemy, index) => ({
+      ...enemy,
+      facing: "left",
+      slotIndex: index,
+      anim: normalizeActorPresentationAnim(enemyAnims?.[enemy.id], enemy.alive),
+      combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
+      frames: presentationAnimationConfig(monsterConfigs[index])
+    })),
+    backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("battleUi.background")
+  });
+}
+
+function arenaPresentationTeamConfig(configBySide, side, role) {
+  return configBySide?.[side] || configBySide?.[role] || {};
+}
+
+function arenaPreparedEquipmentMap(equipment) {
+  const mapped = {};
+  (Array.isArray(equipment) ? equipment : []).forEach(item => {
+    if (!item || typeof item !== "object") return;
+    const slot = String(item.slotType || item.type || "").trim().toLowerCase();
+    if (!slot) return;
+    mapped[slot] = {
+      ...item,
+      id: item.itemId || item.id || item.itemTemplateId || "",
+      type: slot
+    };
+  });
+  return mapped;
+}
+
+function arenaPreparedPresentationContext(preparedSnapshot) {
+  const attacker = preparedSnapshot?.attacker;
+  const defender = preparedSnapshot?.defender;
+  if (!attacker || !defender) return null;
+
+  const makeTeam = (member, side, role) => {
+    const heroMaxHp = Math.max(1, Number(member?.stats?.maxHp) || 1);
+    const hero = {
+      id: `${side}_hero`,
+      side,
+      kind: "hero",
+      name: String(member?.name || (role === "attacker" ? "Hero" : "Opponent")),
+      icon: role === "attacker" ? "⚔️" : "🛡️",
+      hp: heroMaxHp,
+      maxHp: heroMaxHp,
+      dead: false,
+      statuses: {}
+    };
+    const petSource = member?.pet && typeof member.pet === "object" ? member.pet : null;
+    const petMaxHp = Math.max(1, Number(petSource?.maxHp || petSource?.hp) || 1);
+    const pet = petSource ? {
+      ...petSource,
+      id: `${side}_pet`,
+      side,
+      kind: "pet",
+      name: String(petSource.name || petSource.defId || "Pet"),
+      defId: petSource.defId || petSource.id || "",
+      icon: String(petSource.icon || "🐾"),
+      hp: petMaxHp,
+      maxHp: petMaxHp,
+      dead: false,
+      statuses: {}
+    } : null;
+    return {
+      unitIds: [hero.id, pet?.id].filter(Boolean),
+      units: [hero, pet].filter(Boolean),
+      config: {
+        heroName: hero.name,
+        equipped: arenaPreparedEquipmentMap(member?.equipment),
+        petCombat: petSource
+      }
+    };
+  };
+
+  const teamA = makeTeam(attacker, "team_a", "attacker");
+  const teamB = makeTeam(defender, "team_b", "defender");
+  const units = {};
+  [...teamA.units, ...teamB.units].forEach(unit => { units[unit.id] = unit; });
+  return {
+    state: {
+      mode: "arena",
+      battleId: `arena-preload-${preparedSnapshot.seed || preparedSnapshot.preparedAt || "prepared"}`,
+      controlledSide: "team_a",
+      teamIds: ["team_a", "team_b"],
+      teams: {
+        team_a: { unitIds: teamA.unitIds },
+        team_b: { unitIds: teamB.unitIds }
+      },
+      units
+    },
+    teams: {
+      team_a: teamA.config,
+      attacker: teamA.config,
+      team_b: teamB.config,
+      defender: teamB.config
+    }
+  };
+}
+
+function arenaPresentationAnimationCues(state) {
+  const attackTypes = new Set(["damage", "miss", "pet_active", "counter"]);
+  return (Array.isArray(state?.log) ? state.log : [])
+    .filter(entry => entry && entry.actorId && attackTypes.has(String(entry.type || "")))
+    .map(entry => ({
+      key: `arena-cue-${Number(entry.seq) || 0}-${String(entry.actorId)}`,
+      seq: Number(entry.seq) || 0,
+      actorId: String(entry.actorId),
+      animation: "attack"
+    }));
+}
+
+function arenaPresentationUnit(state, side, kind) {
+  const rawUnits = state?.units || {};
+  const unitList = Array.isArray(rawUnits) ? rawUnits : Object.values(rawUnits);
+  const unitsById = new Map(unitList.filter(Boolean).map(unit => [String(unit.id), unit]));
+  const declared = state?.teams?.[side]?.unitIds;
+  const ids = Array.isArray(declared)
+    ? declared
+    : unitList.filter(unit => unit?.side === side).map(unit => unit.id);
+  return ids.map(id => unitsById.get(String(id))).find(unit => unit?.kind === kind) || null;
+}
+
+function buildArenaBattlefieldSnapshot({
+  battleState,
+  preparedSnapshot = null,
+  teams = {},
+  targetUid = null,
+  combatSpeed = 1,
+  heroV5 = undefined
+} = {}) {
+  const prepared = arenaPreparedPresentationContext(preparedSnapshot);
+  const hasBattleUnits = Object.values(battleState?.units || {}).length > 0;
+  const state = hasBattleUnits ? battleState : (prepared?.state || battleState || {});
+  const presentationTeams = { ...(prepared?.teams || {}), ...(teams || {}) };
+  const units = state.units || {};
+  const stateSides = Array.isArray(state.teamIds) && state.teamIds.length
+    ? state.teamIds.map(String)
+    : Array.from(new Set(Object.values(units).map(unit => String(unit?.side || "")).filter(Boolean)));
+  const attackerSide = String(state.controlledSide || stateSides[0] || "team_a");
+  const defenderSide = String(stateSides.find(side => side !== attackerSide) || "team_b");
+  const speed = Math.max(1, Math.min(2, Number(combatSpeed) || 1));
+
+  const buildTeam = (side, role, facing) => {
+    const config = arenaPresentationTeamConfig(presentationTeams, side, role);
+    const rawHero = arenaPresentationUnit(state, side, "hero");
+    const rawPet = arenaPresentationUnit(state, side, "pet");
+    const hero = rawHero ? createActorPresentationModel(rawHero, {
+      id: rawHero.id,
+      kind: "hero",
+      name: config.heroName || rawHero.name || "Hero",
+      icon: config.heroIcon || (side === "team_b" ? "🛡️" : "⚔️"),
+      facing
+    }) : null;
+    const pet = rawPet ? createActorPresentationModel(rawPet, {
+      ...(config.petCombat || {}),
+      id: rawPet.id,
+      kind: "pet",
+      icon: config.petCombat?.icon || "🐾",
+      facing
+    }) : null;
+
+    const equipped = config.equipped || {};
+    const heroSelection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroSelection(equipped);
+    const heroV5Selection = SHARED_EQUIPMENT_VISUAL_RESOLVER.resolveHeroV5Selection(equipped);
+    const preferHeroV5 = config.heroV5 === undefined
+      ? (heroV5 === undefined
+          ? (typeof isHeroV5RuntimeEnabled === "function" && isHeroV5RuntimeEnabled())
+          : heroV5 === true)
+      : config.heroV5 === true;
+    const heroFrames = heroPresentationLayerFrames(heroSelection, {
+      preferV5: preferHeroV5,
+      v5Selection: heroV5Selection
+    });
+    const petConfig = pet && typeof getPetSpriteConfig === "function" ? getPetSpriteConfig(pet.defId) : null;
+
+    return {
+      side,
+      role,
+      facing,
+      hero: hero ? {
+        ...hero,
+        facing,
+        anim: normalizeActorPresentationAnim(config.heroAnim, hero.alive),
+        combatSpeed: speed,
+        visualMode: heroFrames.mode || "v3",
+        layers: heroFrames.idle?.[0] || [],
+        layerFrames: heroFrames
+      } : null,
+      pet: pet ? {
+        ...pet,
+        facing,
+        anim: normalizeActorPresentationAnim(config.petAnim, pet.alive),
+        combatSpeed: speed,
+        frames: presentationAnimationConfig(petConfig)
+      } : null
+    };
+  };
+
+  const attacker = buildTeam(attackerSide, "attacker", "right");
+  const defender = buildTeam(defenderSide, "defender", "left");
+  const selectedTargetId = String(
+    targetUid
+    || state.selectedTargetIds?.[attackerSide]
+    || state.selectedTargetId
+    || (defender.hero?.alive ? defender.hero.id : "")
+    || (defender.pet?.alive ? defender.pet.id : "")
+    || ""
+  );
+
+  return Object.freeze({
+    mode: "arena",
+    battleId: String(state.battleId || "arena-preview"),
+    seq: Number(state.safeActionSeq ?? state.actionSeq ?? state.logSeq ?? 0),
+    selectedTargetId,
+    combatSpeed: speed,
+    teams: [attacker, defender],
+    animationCues: arenaPresentationAnimationCues(state),
+    backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("arenaUi.background")
+  });
+}
+
+
+function buildRaidBossPresentationSnapshot({ boss = {}, config = null, hurtToken = 0 } = {}) {
+  return Object.freeze({
+    mode: "raid",
+    raidBossId: String(boss.defId || boss.id || "raid-boss"),
+    hurtToken: Math.max(0, Number(hurtToken) || 0),
+    boss: {
+      id: String(boss.defId || boss.id || "raid-boss"),
+      kind: "raid_boss",
+      name: String(boss.name || "Raid Boss"),
+      hp: Math.max(0, Number(boss.hpCurrent) || 0),
+      maxHp: Math.max(1, Number(boss.hpMax) || 1),
+      alive: Number(boss.hpCurrent) > 0,
+      facing: "left",
+      sizeClass: "elite",
+      frames: presentationAnimationConfig(config)
+    }
+  });
+}
+
+// ===== phaser/actors/ActorBase.js =====
+// ---------- W5 Phaser Actor Helpers ----------
+function phaserActorSizeClass(sizeClass) {
+  return { small: 0.82, medium: 1, large: 1.18, elite: 1.38 }[sizeClass] || 1;
+}
+
+function phaserTextResolution() {
+  const ratio = typeof globalThis !== "undefined"
+    ? Number(globalThis.devicePixelRatio) || 1
+    : 1;
+  return Math.max(1, Math.min(3, ratio));
+}
+
+function phaserActorFacing(data = {}) {
+  if (data.facing === "left" || data.facing === "right") return data.facing;
+  return ["monster", "boss", "raid_boss"].includes(String(data.kind || "")) ? "left" : "right";
+}
+
+class PhaserBattleActor {
+  constructor(scene, data, options = {}) {
+    this.scene = scene;
+    this.data = data || {};
+    this.options = options;
+    this.container = scene.add.container(0, 0);
+    this.container.setDepth(options.depth || 5);
+    this.visualRoot = scene.add.container(0, 0);
+    this.container.add(this.visualRoot);
+    this.sprite = null;
+    this.hpBar = scene.add.graphics().setDepth(2);
+    const textResolution = phaserTextResolution();
+    this.statusText = scene.add.text(0, 0, "", {
+      color: "#ffffff", fontFamily: "Arial", fontSize: "10px", fontStyle: "bold",
+      stroke: "#071126", strokeThickness: 2, align: "center"
+    }).setOrigin(0.5, 1).setDepth((options.depth || 5) + 3).setResolution(textResolution);
+    // HP is intentionally behind every actor sprite. The label stays readable when
+    // no sprite occupies the same ground lane but never paints over a character.
+    this.hpText = scene.add.text(0, 0, "", {
+      color: "#ffffff", fontFamily: "Arial", fontSize: "9px", fontStyle: "bold",
+      stroke: "#071126", strokeThickness: 2, align: "center"
+    }).setOrigin(0.5, 0).setDepth(3).setResolution(textResolution);
+    this.nameText = scene.add.text(0, 0, String(this.data.name || "Unit"), {
+      color: "#fff1ad", fontFamily: "Arial", fontSize: "10px", fontStyle: "bold",
+      stroke: "#071126", strokeThickness: 2, align: "center"
+    }).setOrigin(0.5, 0).setDepth((options.depth || 5) + 3).setResolution(textResolution);
+    this.container.add(this.statusText);
+    this.container.add(this.nameText);
+    this.targetRing = null;
+    this.hitArea = null;
+    this.selected = false;
+    this.visualState = "";
+    this.frameIndex = 0;
+    this.frameTimer = null;
+    this.motionTween = null;
+    this.idleTween = null;
+    this.destroyed = false;
+    this.createTargetingPresentation();
+    this.applyFacing();
+    this.handleSceneShutdown = () => this.destroy();
+    scene.events.once("shutdown", this.handleSceneShutdown);
+  }
+
+  displaySize() {
+    const sizeClassScale = phaserActorSizeClass(this.data.sizeClass);
+    const responsiveScale = Math.max(0.82, Math.min(1.15, Number(this.scene?.presentationScale) || 1));
+    const base = this.options.baseSize || 128;
+    return Math.round(base * sizeClassScale * responsiveScale);
+  }
+
+  facing() {
+    return phaserActorFacing(this.data);
+  }
+
+  facingSign() {
+    return this.facing() === "left" ? -1 : 1;
+  }
+
+  applyFacing() {
+    if (!this.visualRoot) return;
+    this.visualRoot.setScale(this.facingSign(), 1);
+  }
+
+  createTargetingPresentation() {
+    if (typeof this.options.onSelect !== "function") return;
+    const depth = Number(this.options.depth) || 5;
+    this.targetRing = this.scene.add.ellipse(0, 0, 84, 28, 0x8ee0ff, 0.08)
+      .setStrokeStyle(2, 0xffd166, 0.95)
+      .setDepth(Math.max(0, depth - 1))
+      .setVisible(false);
+    this.hitArea = this.scene.add.zone(0, 0, 1, 1)
+      .setOrigin(0.5, 1)
+      .setDepth(depth + 4)
+      .setInteractive({ useHandCursor: true });
+    this.hitArea.on("pointerup", () => {
+      if (this.data?.alive !== false && Number(this.data?.hp) > 0) this.options.onSelect(this.data.id);
+    });
+  }
+
+  refreshTargetingPresentation() {
+    if (!this.targetRing && !this.hitArea) return;
+    const size = this.displaySize();
+    const alive = this.data.alive !== false && Number(this.data.hp) > 0;
+    const responsiveScale = Math.max(0.82, Math.min(1.15, Number(this.scene?.presentationScale) || 1));
+    const ringWidth = (Number(this.options.targetRingWidth) || Math.max(72, Math.min(112, size * 0.64))) * responsiveScale;
+    const ringHeight = (Number(this.options.targetRingHeight) || 28) * responsiveScale;
+    const x = this.position?.x || 0;
+    const y = this.position?.y || 0;
+    this.targetRing
+      ?.setDisplaySize(ringWidth, ringHeight)
+      .setPosition(x, y + 4)
+      .setVisible(Boolean(this.selected && alive));
+    this.hitArea
+      ?.setPosition(x, y)
+      .setSize(Math.max(54, size * 0.78), Math.max(64, size * 0.96))
+      .setVisible(alive);
+  }
+
+  setSelected(selected) {
+    this.selected = !!selected;
+    this.refreshTargetingPresentation();
+  }
+
+  desiredVisualState(data = this.data) {
+    const alive = data?.alive !== false && Number(data?.hp) > 0;
+    if (!alive || data?.anim === "death") return "death";
+    if (data?.anim === "attack") return "attack";
+    if (data?.anim === "hurt") return "hurt";
+    return "idle";
+  }
+
+  hurtVisualState() {
+    return "idle";
+  }
+
+  frameDelayForState(state) {
+    if (state === "idle") return 220;
+    if (state === "attack") return 150;
+    return 180;
+  }
+
+  frameUrlsForState(state) {
+    if (state === "death" && this.data.frames?.death?.length) return this.data.frames.death;
+    if (state === "attack" && this.data.frames?.attack?.length) return this.data.frames.attack;
+    return this.data.frames?.idle || [];
+  }
+
+  visualFrameCount(state) {
+    return Math.max(1, this.frameUrlsForState(state).length || 1);
+  }
+
+  applyVisualFrame(state, index = 0) {
+    const frames = this.frameUrlsForState(state);
+    const url = frames[Math.min(Math.max(0, index), Math.max(0, frames.length - 1))] || frames[0] || "";
+    const key = url ? this.scene.assetKey(url) : "";
+    if (!key || !this.scene.textures.exists(key)) return;
+    const size = this.displaySize();
+    if (!this.sprite) {
+      this.sprite = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
+      this.visualRoot.add(this.sprite);
+    } else if (this.sprite.texture.key !== key) {
+      this.sprite.setTexture(key);
+    }
+    this.sprite.setDisplaySize(size, size);
+  }
+
+  setVisualAlpha(value) {
+    this.visualRoot?.setAlpha(value);
+  }
+
+  stopAnimationPlayback() {
+    this.frameTimer?.remove(false);
+    this.frameTimer = null;
+    this.motionTween?.stop();
+    this.motionTween = null;
+    this.idleTween?.stop();
+    this.idleTween = null;
+    if (this.visualRoot) {
+      this.visualRoot.x = 0;
+      this.visualRoot.y = 0;
+      this.visualRoot.setAlpha(1);
+      this.applyFacing();
+    }
+  }
+
+  startIdleFallback(speed = 1) {
+    if (!this.visualRoot || this.visualFrameCount("idle") > 1) return;
+    this.idleTween = this.scene.tweens.add({
+      targets: this.visualRoot,
+      y: -3,
+      duration: Math.max(280, Math.round(700 / Math.max(1, speed))),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+  }
+
+  playVisualState(state, speed = 1) {
+    const force = arguments[2]?.force === true;
+    const nextState = state || "idle";
+    if (!force && nextState === this.visualState) {
+      if (nextState === "idle" && !this.frameTimer && !this.idleTween) this.startIdleFallback(speed);
+      return Promise.resolve();
+    }
+
+    this.stopAnimationPlayback();
+    this.visualState = nextState;
+    this.frameIndex = 0;
+    const effectiveFrameState = nextState === "hurt" ? this.hurtVisualState() : nextState;
+    const frameCount = this.visualFrameCount(effectiveFrameState);
+    this.applyVisualFrame(effectiveFrameState, 0);
+
+    if (nextState === "hurt") {
+      const duration = Math.max(55, Math.round(90 / Math.max(1, speed)));
+      return new Promise(resolve => {
+        this.setVisualAlpha(0.62);
+        this.motionTween = this.scene.tweens.add({
+          targets: this.visualRoot,
+          x: -this.facingSign() * 6,
+          duration,
+          yoyo: true,
+          repeat: 1,
+          ease: "Sine.easeInOut",
+          onComplete: () => {
+            this.visualRoot.x = 0;
+            this.setVisualAlpha(1);
+            resolve();
+          }
+        });
+      });
+    }
+
+    if (nextState === "idle") {
+      if (frameCount > 1) {
+        const delay = Math.max(80, Math.round(this.frameDelayForState("idle") / Math.max(1, speed)));
+        this.frameTimer = this.scene.time.addEvent({
+          delay,
+          loop: true,
+          callback: () => {
+            this.frameIndex = (this.frameIndex + 1) % frameCount;
+            this.applyVisualFrame("idle", this.frameIndex);
+          }
+        });
+      } else {
+        this.startIdleFallback(speed);
+      }
+      return Promise.resolve();
+    }
+
+    const frameDelay = Math.max(
+      70,
+      Math.round(this.frameDelayForState(nextState) / Math.max(1, speed))
+    );
+
+    if (nextState === "attack") {
+      this.motionTween = this.scene.tweens.add({
+        targets: this.visualRoot,
+        x: this.facingSign() * 10,
+        duration: Math.max(55, Math.round(95 / Math.max(1, speed))),
+        yoyo: true,
+        ease: "Quad.easeOut"
+      });
+    }
+
+    if (nextState === "death") this.setVisualAlpha(0.72);
+    if (frameCount <= 1) return Promise.resolve();
+
+    return new Promise(resolve => {
+      let completed = false;
+      this.frameTimer = this.scene.time.addEvent({
+        delay: frameDelay,
+        repeat: frameCount - 2,
+        callback: () => {
+          this.frameIndex = Math.min(frameCount - 1, this.frameIndex + 1);
+          this.applyVisualFrame(effectiveFrameState, this.frameIndex);
+          if (this.frameIndex >= frameCount - 1 && !completed) {
+            completed = true;
+            resolve();
+          }
+        }
+      });
+    });
+  }
+
+  refreshHud() {
+    const size = this.displaySize();
+    const alive = this.data.alive !== false && Number(this.data.hp) > 0;
+    this.nameText.setText(String(this.data.name || this.data.id || "Unit")).setVisible(true);
+    this.statusText
+      .setText((this.data.statuses || []).map(status => `${status.key}:${status.duration}`).join("  "))
+      .setVisible(Boolean(this.data.statuses?.length));
+
+    this.hpBar.clear();
+    const maxHp = Math.max(1, Number(this.data.maxHp) || 1);
+    const hp = Math.max(0, Math.min(maxHp, Number(this.data.hp) || 0));
+    const hpPct = hp / maxHp;
+    const barWidth = Math.max(54, Math.min(112, size * 0.78));
+    const barY = this.data.kind === "pet" ? 2 : 14;
+    this.hpBar.fillStyle(0x071126, 0.82).fillRoundedRect(-barWidth / 2, barY, barWidth, 8, 4);
+    this.hpBar.fillStyle(alive ? 0x55d68b : 0x8c93a3, 1)
+      .fillRoundedRect(-barWidth / 2 + 1, barY + 1, Math.max(0, (barWidth - 2) * hpPct), 6, 3);
+    this.hpBar.lineStyle(1, 0xffffff, 0.35).strokeRoundedRect(-barWidth / 2, barY, barWidth, 8, 4);
+
+    this.statusText.setPosition(0, -Math.round(size * 0.72) - 4);
+    this.hpTextOffsetY = barY + 10;
+    this.hpText.setText(`${hp}/${maxHp}`).setVisible(true);
+    const nameY = this.data.kind === "pet" ? 22 : 34;
+    this.nameText.setPosition(0, nameY);
+    this.refreshTargetingPresentation();
+  }
+
+  refresh(data, { animate = true } = {}) {
+    this.data = { ...this.data, ...(data || {}) };
+    this.applyFacing();
+    const state = this.desiredVisualState();
+    const displayedState = animate || !this.visualState ? state : this.visualState;
+    this.applyVisualFrame(displayedState === "hurt" ? "idle" : displayedState, this.frameIndex);
+    this.setVisualAlpha(displayedState === "death" ? 0.72 : 1);
+    this.refreshHud();
+    this.reposition(this.position || { x: 0, y: 0 });
+    if (animate) return this.playVisualState(state, this.data.combatSpeed || 1);
+    return Promise.resolve();
+  }
+
+  reposition(position) {
+    this.position = position || this.position || { x: 0, y: 0 };
+    this.container.setPosition(this.position.x, this.position.y);
+    this.hpBar.setPosition(this.position.x, this.position.y);
+    this.hpText?.setPosition(this.position.x, this.position.y + (this.hpTextOffsetY || 0));
+    this.refreshTargetingPresentation();
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.stopAnimationPlayback();
+    this.scene?.events?.off("shutdown", this.handleSceneShutdown);
+
+    // statusText/nameText/visualRoot/sprite are children of container and are
+    // destroyed by container.destroy(true). Destroying them again can throw
+    // inside Phaser during scene teardown.
+    const container = this.container;
+    const hpBar = this.hpBar;
+    const hpText = this.hpText;
+    const targetRing = this.targetRing;
+    const hitArea = this.hitArea;
+
+    this.container = null;
+    this.visualRoot = null;
+    this.sprite = null;
+    this.hpBar = null;
+    this.statusText = null;
+    this.nameText = null;
+    this.hpText = null;
+    this.targetRing = null;
+    this.hitArea = null;
+    this.handleSceneShutdown = null;
+
+    container?.destroy(true);
+    hpBar?.destroy();
+    hpText?.destroy();
+    targetRing?.destroy();
+    hitArea?.destroy();
+    this.scene = null;
+  }
+}
+
+// ===== phaser/renderers/HeroRenderer.js =====
+// ---------- W7 Shared Hero Renderer ----------
+// Renders normalized layered Hero presentation models from both the production
+// V3 fallback contract and the production-default V5 G2 contract. Asset/equipment resolution remains
+// outside this renderer so Combat, Arena and future previews share one renderer.
+class HeroRenderer {
+  constructor(scene, {
+    root = null,
+    data = {},
+    displaySize = 150,
+    textureKey = null
+  } = {}) {
+    this.scene = scene;
+    this.root = root || scene.add.container(0, 0);
+    this.ownsRoot = !root;
+    this.data = data || {};
+    this.displaySizeSource = displaySize;
+    this.textureKeySource = textureKey;
+    this.layerImages = [];
+    this.destroyed = false;
+  }
+
+  setData(data) {
+    this.data = data || {};
+    return this;
+  }
+
+  displaySize() {
+    const value = typeof this.displaySizeSource === "function"
+      ? this.displaySizeSource()
+      : this.displaySizeSource;
+    return Math.max(1, Number(value) || 1);
+  }
+
+  textureKey(reference) {
+    if (typeof this.textureKeySource === "function") return this.textureKeySource(reference);
+    if (typeof this.scene?.assetKey === "function") return this.scene.assetKey(reference);
+    if (typeof this.scene?.textureRegistry?.keyFor === "function") return this.scene.textureRegistry.keyFor(reference);
+    return "";
+  }
+
+  layerSetForState(state) {
+    const sets = this.data.layerFrames || {};
+    if (state === "attack" && Array.isArray(sets.attack) && sets.attack.length) return sets.attack;
+    if (state === "death" && Array.isArray(sets.death) && sets.death.length) return sets.death;
+    return Array.isArray(sets.idle) && sets.idle.length ? sets.idle : [this.data.layers || []];
+  }
+
+  visualFrameCount(state) {
+    return Math.max(1, this.layerSetForState(state).length || 1);
+  }
+
+  ensureLayerImages(layers) {
+    const size = this.displaySize();
+    (layers || []).forEach((layer, index) => {
+      let entry = this.layerImages.find(item => item.name === layer.name);
+      if (!entry) {
+        const key = this.textureKey(layer.url);
+        if (!key || !this.scene?.textures?.exists(key)) return;
+        const image = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
+        // Presentation models already arrive in authored bottom-to-top order.
+        this.root.addAt(image, Math.min(index, this.root.list?.length || 0));
+        entry = { name: layer.name, image };
+        this.layerImages.push(entry);
+      }
+      entry.image.setDisplaySize(size, size);
+    });
+  }
+
+  applyVisualFrame(state, index = 0) {
+    const frames = this.layerSetForState(state);
+    const layers = frames[Math.min(Math.max(0, index), Math.max(0, frames.length - 1))] || this.data.layers || [];
+    this.ensureLayerImages(layers);
+    const size = this.displaySize();
+    const canvasWidth = Math.max(1, Number(this.data.layerFrames?.canvas?.width) || 1254);
+    const canvasHeight = Math.max(1, Number(this.data.layerFrames?.canvas?.height) || 1254);
+
+    this.layerImages.forEach(entry => {
+      const layer = layers.find(candidate => candidate.name === entry.name);
+      if (!layer) {
+        entry.image.setVisible(false);
+        return;
+      }
+      const key = this.textureKey(layer.url);
+      if (key && this.scene?.textures?.exists(key) && entry.image.texture.key !== key) entry.image.setTexture(key);
+      const scale = Number(layer.scale ?? 1);
+      entry.image
+        .setVisible(true)
+        .setDisplaySize(size * scale, size * scale)
+        .setPosition(
+          (Number(layer.x) || 0) * size / canvasWidth,
+          (Number(layer.y) || 0) * size / canvasHeight
+        )
+        .setAngle(Number(layer.rotation) || 0);
+    });
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.layerImages.forEach(entry => entry.image?.destroy());
+    this.layerImages = [];
+    if (this.ownsRoot) this.root?.destroy(true);
+    this.root = null;
+    this.scene = null;
+  }
+}
+
+// ===== phaser/actors/HeroActor.js =====
+// ---------- W6 Combat Hero Actor Wrapper ----------
+class HeroActor extends PhaserBattleActor {
+  constructor(scene, data, options = {}) {
+    super(scene, data, { baseSize: 150, depth: 7, ...options });
+    this.heroRenderer = new HeroRenderer(scene, {
+      root: this.visualRoot,
+      data: this.data,
+      displaySize: () => this.displaySize(),
+      textureKey: reference => this.scene.assetKey(reference)
+    });
+  }
+
+  isV5Presentation() {
+    return String(this.data?.visualMode || "").startsWith("v5-g2");
+  }
+
+  displaySize() {
+    const base = super.displaySize();
+    return this.isV5Presentation() ? Math.round(base * 1.30) : base;
+  }
+
+  hurtVisualState() {
+    return this.isV5Presentation() ? "death" : super.hurtVisualState();
+  }
+
+  frameDelayForState(state) {
+    if (this.isV5Presentation()) {
+      const configured = Number(this.data?.layerFrames?.frameMs?.[state]);
+      if (Number.isFinite(configured) && configured > 0) return configured;
+    }
+    return super.frameDelayForState(state);
+  }
+
+  visualFrameCount(state) {
+    return this.heroRenderer
+      ? this.heroRenderer.setData(this.data).visualFrameCount(state)
+      : 1;
+  }
+
+  applyVisualFrame(state, index = 0) {
+    this.heroRenderer?.setData(this.data).applyVisualFrame(state, index);
+  }
+
+  destroy() {
+    this.heroRenderer?.destroy();
+    this.heroRenderer = null;
+    super.destroy();
+  }
+}
+
+// ===== phaser/actors/PetActor.js =====
+// ---------- W5 Pet Actor ----------
+class PetActor extends PhaserBattleActor {
+  constructor(scene, data, options = {}) {
+    // Pet stands in the foreground lane. Keep its sprite above the Hero HUD when
+    // narrow screens make the two lanes overlap visually.
+    super(scene, data, { baseSize: 118, depth: 8, ...options });
+  }
+}
+
+// ===== phaser/actors/MonsterActor.js =====
+// ---------- W5 Monster Actor ----------
+class MonsterActor extends PhaserBattleActor {
+  constructor(scene, data, onSelect) {
+    super(scene, data, {
+      baseSize: 106,
+      depth: 5,
+      onSelect,
+      targetRingWidth: 84,
+      targetRingHeight: 28
+    });
+  }
+
+  // Production monster artwork is authored facing left. Keep logical facing
+  // for attack/recoil motion, but invert only the visual mirror baseline.
+  applyFacing() {
+    if (!this.visualRoot) return;
+    this.visualRoot.setScale(this.facing() === "left" ? 1 : -1, 1);
+  }
+}
+
+
+class RaidBossActor extends MonsterActor {
+  hurtVisualState() {
+    return this.data?.frames?.hurt?.length ? "hurt" : "idle";
+  }
+
+  frameUrlsForState(state) {
+    if (state === "hurt" && this.data?.frames?.hurt?.length) return this.data.frames.hurt;
+    return super.frameUrlsForState(state);
+  }
+
+  async playVisualState(state, speed = 1) {
+    if (state !== "hurt" || !this.data?.frames?.hurt?.length) return super.playVisualState(state, speed, arguments[2]);
+    this.stopAnimationPlayback();
+    this.visualState = "hurt";
+    const frameCount = this.visualFrameCount("hurt");
+    const delay = Math.max(60, Math.round(105 / Math.max(1, Number(speed) || 1)));
+    for (let index = 0; index < frameCount; index += 1) {
+      this.applyVisualFrame("hurt", index);
+      if (index < frameCount - 1) {
+        await new Promise(resolve => this.scene.time.delayedCall(delay, resolve));
+      }
+    }
+    return super.playVisualState("idle", speed, { force: true });
+  }
+}
+
+// ===== phaser/presentation/PresentationQueue.js =====
+// ---------- W6 Shared Presentation Queue ----------
+const PRESENTATION_QUEUE_CONTRACT = Object.freeze({
+  version: 1,
+  minSpeed: 1,
+  maxSpeed: 2
+});
+
+function normalizePresentationTask(entry) {
+  if (typeof entry === "function") return Object.freeze({ run: entry });
+  if (entry && typeof entry.run === "function") return entry;
+  return null;
+}
+
+// This queue is intentionally presentation-only. It serializes already-resolved
+// visual callbacks and has no access to gameplay, rewards, persistence or saves.
+function createPresentationQueue({ onDrained, onError } = {}) {
+  const entries = [];
+  let running = false;
+  let speed = 1;
+  let drainPromise = Promise.resolve();
+  let resolveDrain = null;
+
+  function notifyDrained() {
+    if (!running && entries.length === 0) {
+      onDrained?.();
+      resolveDrain?.();
+      resolveDrain = null;
+      drainPromise = Promise.resolve();
+    }
+  }
+
+  async function run() {
+    if (running) return;
+    running = true;
+    while (entries.length) {
+      const task = entries.shift();
+      try {
+        await task.run(speed);
+      } catch (error) {
+        onError?.(error);
+      }
+    }
+    running = false;
+    notifyDrained();
+  }
+
+  function enqueue(entry) {
+    const task = normalizePresentationTask(entry);
+    if (task) entries.push(task);
+    if (!running && entries.length) void run();
+    if (running || entries.length) {
+      drainPromise = new Promise(resolve => { resolveDrain = resolve; });
+    }
+    return drainPromise;
+  }
+
+  return Object.freeze({
+    contract: PRESENTATION_QUEUE_CONTRACT,
+    enqueue,
+    clear() { entries.splice(0, entries.length); },
+    setSpeed(value) {
+      speed = Math.max(
+        PRESENTATION_QUEUE_CONTRACT.minSpeed,
+        Math.min(PRESENTATION_QUEUE_CONTRACT.maxSpeed, Number(value) || 1)
+      );
+    },
+    getSpeed: () => speed,
+    isBusy: () => running || entries.length > 0,
+    whenDrained: () => drainPromise
+  });
+}
