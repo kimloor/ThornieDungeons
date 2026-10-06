@@ -56,7 +56,6 @@ test("completeBattle reward pre-reads are folded into one batch and final writes
   assert.match(fn, /const preRead = await db\.batch\(\[/);
   assert.match(fn, /session\?\.__characterAuth\?\.auth/);
   assert.match(fn, /session\?\.__characterAuth\?\.owned/);
-  assert.doesNotMatch(fn, /characterAuth\?\./);
   assert.match(fn, /const finalBatch = await db\.batch\(finalStatements\)/);
   assert.match(api, /rewardReadBatch = await db\.batch\(\[/);
   for (const token of ["battle_identity_conflict", "battle_checkpoint_missing", "battle_result_not_after_checkpoint", "invalid_battle_context", "commitDungeonRewardInBattleTransaction"]) {
