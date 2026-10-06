@@ -14,7 +14,7 @@ class Statement {
   async all() { return { results: this.raw.prepare(this.sql).all(...this.values) }; }
   async run() {
     const normalized = this.sql.trim().toUpperCase();
-    if (/^(SELECT|WITH|PRAGMA)\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };
+    if (/^(SELECT|PRAGMA)\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };
     const result = this.raw.prepare(this.sql).run(...this.values);
     return { meta: { changes: Number(result.changes) } };
   }  // The production build installs this presentation patch after App.js. Its
