@@ -1737,9 +1737,23 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   // derived from a client-selected battle id or mutable checkpoint fields.
   const seed = context.rewardSeed;
   const rng = dungeonV2ServerRng(seed);
-  const equipped = await db.prepare(`SELECT extra_json FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId).all().catch(() => ({ results: [] }));
-  const dropBonus = dungeonV2ServerDropBonus(ownedRow, equipped.results || []);
-  const lootRows = await dungeonV2ServerLootRows(db, context.enemies.map(enemy => enemy.id));
+  const lootIds = [...new Set((context.enemies || []).map(enemy => String(enemy.id || "")).filter(Boolean))];
+  const lootPlaceholders = lootIds.length ? lootIds.map(() => "?").join(",") : "NULL";
+  let rewardReadBatch;
+  try {
+    rewardReadBatch = await db.batch([
+      db.prepare(`SELECT extra_json FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId),
+      db.prepare(
+        `SELECT monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance
+         FROM monster_loot WHERE monster_id IN (${lootPlaceholders})`
+      ).bind(...lootIds)
+    ]);
+  } catch (_) {
+    rewardReadBatch = [rewardReadBatch?.[0] || { results: [] }, { results: [] }];
+  }
+  const equippedRows = rewardReadBatch?.[0]?.results || [];
+  const dropBonus = dungeonV2ServerDropBonus(ownedRow, equippedRows);
+  const lootRows = rewardReadBatch?.[1]?.results || [];
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
@@ -1952,7 +1966,6 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   if (encoded.length > 512000) return { error: "battle_result_too_large" };
   const rows = serverReward.items.map((item, index) => dungeonV2ServerRewardItem(item, index, false)).filter(Boolean);
   if (rows.length !== serverReward.items.length) return { error: "invalid_reward_plan" };
-  if (rows.length) await ensureItemAuthorityTables(db);
   const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
   rows.forEach(row => {
     const rewardMeta = parseJsonColumn(row.extra_json, {});
@@ -2021,19 +2034,6 @@ function itemOwnershipAcquireStatement(db, itemId, playerId, characterId, origin
     SELECT ?, ?, NULL, NULL, ?, ?, 'acquire', ?, ?${gate}`)
     .bind(`acquire-${String(itemId).slice(0, 180)}`, itemId, playerId, characterId, JSON.stringify({ originType, ...(context || {}) }), timestamp, ...gateBinds);
 }
-async function ensureItemAuthorityTables(db) {
-  await db.prepare(`CREATE TABLE IF NOT EXISTS item_provenance (
-    item_id TEXT PRIMARY KEY, original_player_id TEXT, original_character_id TEXT,
-    origin_type TEXT NOT NULL DEFAULT 'unknown', origin_source_id TEXT,
-    origin_context_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
-    acquired_at TEXT NOT NULL, tradeable INTEGER NOT NULL DEFAULT 0, bound INTEGER NOT NULL DEFAULT 0
-  )`).run();
-  await db.prepare(`CREATE TABLE IF NOT EXISTS item_ownership_events (
-    event_id TEXT PRIMARY KEY, item_id TEXT NOT NULL, from_player_id TEXT, from_character_id TEXT,
-    to_player_id TEXT, to_character_id TEXT, event_type TEXT NOT NULL, context_json TEXT NOT NULL DEFAULT '{}', occurred_at TEXT NOT NULL
-  )`).run();
-}
-
 // Mail claim credits are derived only from the persisted mailbox row. The claim token
 // gates each credit statement, and callers include these statements in the same D1
 // batch as the claimed marker so disconnects and concurrent retries cannot split them.
