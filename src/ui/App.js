@@ -162,6 +162,7 @@ function ThornieDungeons() {
   const itemActionLockRef = useRef(false);
   const blacksmithRequestRef = useRef(new Map());
   const [itemActionBusy, setItemActionBusy] = useState(false);
+  const [shopPending, setShopPending] = useState({});
   function guardItemAction(fn) {
     return (...args) => {
       if (itemActionLockRef.current) {
@@ -2073,16 +2074,24 @@ function ThornieDungeons() {
     };
     insertCarriedItems([item], inventoryRef.current, newEq);
   }
-  async function sellItem(item) {
+  async function sellItem(item, quantity = undefined) {
     if (item?.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนขาย" };
     const found = findItemAndLocation(item?.id);
     if (!found || found.location === "equipped") return { ok: false, message: "ถอดอุปกรณ์ก่อนขาย" };
+    const stackable = item?.type === "junk" || item?.type === "potion";
+    const storedQuantity = Math.max(1, Number(item?.quantity) || 1);
+    const sellQuantity = quantity === undefined ? (stackable ? storedQuantity : 1) : Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1)));
+    if (stackable && sellQuantity > storedQuantity) return { ok: false, message: "จำนวนขายมากกว่าจำนวนที่มี" };
+    if (!stackable && sellQuantity !== 1) return { ok: false, message: "ไอเท็มนี้ขายได้ครั้งละ 1 ชิ้น" };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, message: "บันทึกสถานะก่อนขายไม่สำเร็จ กรุณาลองใหม่" };
     const requestId = globalThis.crypto?.randomUUID?.() || `sell-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudSellCharacterItem(cred.url, save.characterId, item.id, requestId);
-    if (!result?.ok) return { ok: false, message: result?.error === "item_favorited" ? "ปลด Favorite/Lock ก่อนขาย" : "ขายไอเท็มไม่สำเร็จ กรุณาลองใหม่" };
+    const result = await cloudSellCharacterItem(cred.url, save.characterId, item.id, requestId, sellQuantity);
+    if (!result?.ok) {
+      const messages = { item_favorited: "ปลด Favorite/Lock ก่อนขาย", invalid_sell_quantity: "จำนวนขายไม่ถูกต้อง", stack_changed: "จำนวนไอเท็มเปลี่ยนแล้ว กรุณาเปิดรายละเอียดใหม่" };
+      return { ok: false, message: messages[result?.error] || "ขายไอเท็มไม่สำเร็จ กรุณาลองใหม่" };
+    }
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
-    return { ok: true, message: `ขายสำเร็จ ได้รับ 🪙${result.result?.goldGained || 0}` };
+    return { ok: true, message: `ขายสำเร็จ ${sellQuantity} ชิ้น · ได้รับ 🪙${result.result?.goldGained || 0}`, result: result.result };
   }
   function findItemAndLocation(itemId) {
     for (const slot of SLOT_ORDER) {
@@ -2295,22 +2304,40 @@ function ThornieDungeons() {
     const returned = (result.salvage?.materials || []).map(item => `${JUNK_INFO[item.junkId]?.icon || "📦"}${item.quantity} ${JUNK_INFO[item.junkId]?.name || item.junkId}`);
     return { ok: true, message: returned.length ? `♻️ แยกชิ้นส่วนได้ ${returned.join(" + ")}` : "♻️ แยกชิ้นส่วนแล้ว ไม่มีวัตถุดิบคืน" };
   }
-  async function buyCharacterResource(kind, id = "") {
-    if (!await flushRewardClaimBarrier(save.characterId)) return false;
+  async function buyCharacterResource(kind, id = "", quantity = 1) {
+    if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false };
+    const normalizedQuantity = Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1)));
     const requestId = globalThis.crypto?.randomUUID?.() || `purchase-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudPurchaseCharacterResource(cred.url, save.characterId, { kind, id }, requestId);
-    if (!result?.ok) return false;
+    const pendingKey = `${kind}:${id || ""}`;
+    const previousSave = save;
+    const unitPrice = kind === "potion" ? Number(getPotionDef(id)?.price || 0) : kind === "material" ? Number(MATERIAL_SHOP_PRICE[id] || 0) : kind === "protection_stone" ? Number(PROTECTION_STONE_PRICE || 0) : 0;
+    const total = unitPrice * normalizedQuantity;
+    if (!unitPrice || (kind === "protection_stone" ? previousSave.diamonds < total : previousSave.gold < total)) return { ok: false, error: "insufficient_funds" };
+    setShopPending(current => ({ ...current, [pendingKey]: (current[pendingKey] || 0) + normalizedQuantity }));
+    setSave(current => kind === "protection_stone" ? { ...current, diamonds: Math.max(0, Number(current.diamonds || 0) - total) } : { ...current, gold: Math.max(0, Number(current.gold || 0) - total) });
+    let result = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      result = await cloudPurchaseCharacterResource(cred.url, save.characterId, { kind, id }, requestId, normalizedQuantity);
+      if (result?.ok || !["network_error", "server_error"].includes(result?.error)) break;
+      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)));
+    }
+    setShopPending(current => {
+      const next = { ...current, [pendingKey]: Math.max(0, (current[pendingKey] || 0) - normalizedQuantity) };
+      if (!next[pendingKey]) delete next[pendingKey];
+      return next;
+    });
+    if (!result?.ok) {
+      setSave(previousSave);
+      return result || { ok: false, error: "network_error" };
+    }
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
-    return true;
+    return result;
   }
-  function buyProtectionStone() {
-    if (save.diamonds < PROTECTION_STONE_PRICE) return false;
-    return buyCharacterResource("protection_stone");
+  async function buyProtectionStone() {
+    return buyCharacterResource("protection_stone", "", 1);
   }
-  function buyMaterial(type) {
-    const price = MATERIAL_SHOP_PRICE[type];
-    if (!price || save.gold < price) return false;
-    return buyCharacterResource("material", type);
+  async function buyMaterial(type, quantity = 1) {
+    return buyCharacterResource("material", type, quantity);
   }
   function empowerItem(itemId) {
     const found = findItemAndLocation(itemId);
@@ -2337,18 +2364,25 @@ function ThornieDungeons() {
     return true;
   }
   async function buyShopItem(item) {
-    if (!item?.offerId || save.gold < Number(item.price) || !await flushRewardClaimBarrier(save.characterId)) return false;
+    if (!item?.offerId || save.gold < Number(item.price) || !await flushRewardClaimBarrier(save.characterId)) return { ok: false };
     const requestId = globalThis.crypto?.randomUUID?.() || `shop-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudPurchaseShopEquipment(cred.url, save.characterId, item.offerId, requestId);
-    if (!result?.ok) return false;
+    const previousSave = save;
+    setShopPending(current => ({ ...current, [`equipment:${item.offerId}`]: 1 }));
+    setSave(current => ({ ...current, gold: Math.max(0, Number(current.gold || 0) - Number(item.price)) }));
+    let result = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      result = await cloudPurchaseShopEquipment(cred.url, save.characterId, item.offerId, requestId);
+      if (result?.ok || !["network_error", "server_error"].includes(result?.error)) break;
+      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)));
+    }
+    setShopPending(current => { const next = { ...current }; delete next[`equipment:${item.offerId}`]; return next; });
+    if (!result?.ok) { setSave(previousSave); return result || { ok: false, error: "network_error" }; }
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setShopStock(stock => ({ ...stock, items: (stock?.items || []).filter(entry => entry.offerId !== item.offerId) }));
-    return true;
+    return result;
   }
-  function buyShopPotionTier(potionId) {
-    const def = getPotionDef(potionId);
-    if (!def || save.gold < def.price) return false;
-    return buyCharacterResource("potion", potionId);
+  function buyShopPotionTier(potionId, quantity = 1) {
+    return buyCharacterResource("potion", potionId, quantity);
   }
   // ---------- quick slots ----------
   function assignQuickSlot(index, entry) {
@@ -3007,6 +3041,9 @@ function ThornieDungeons() {
     diamonds: save.diamonds,
     protectionStones: save.protectionStones || 0,
     stock: shopStock,
+    pendingPurchases: shopPending,
+    disabled: itemActionBusy,
+    ownedCounts: inventory.reduce((acc, it) => { const key = it.type === "potion" ? it.potionId : it.type === "junk" ? it.junkId : ""; if (key) acc[key] = (acc[key] || 0) + (Number(it.quantity) || 1); return acc; }, {}),
     onBuyItem: guardItemAction(buyShopItem),
     onBuyPotionTier: guardItemAction(buyShopPotionTier),
     onBuyProtectionStone: guardItemAction(buyProtectionStone),

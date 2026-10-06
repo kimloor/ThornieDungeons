@@ -4701,144 +4701,51 @@ function MapScreen({
     )
   );
 }
-function ShopOverlay({
-  gold,
-  diamonds,
-  protectionStones,
-  stock,
-  onBuyItem,
-  onBuyPotionTier,
-  onBuyProtectionStone,
-  onBuyMaterial,
-  onClose
-}) {
-  const [toast, setToast] = useState("");
-  const toastRef = useRef(null);
-  const showToast = msg => {
-    setToast(msg);
-    if (toastRef.current) clearTimeout(toastRef.current);
-    toastRef.current = setTimeout(() => setToast(""), 1000);
-  };
-  const guardBuy = (canAfford, action) => {
-    if (!canAfford) {
-      showToast("เงินไม่พอซื้อ");
-      return;
-    }
-    action();
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      inset: 0,
-      zIndex: 20,
-      background: "rgba(0,0,0,0.6)",
-      display: "flex",
-      alignItems: "flex-end"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "linear-gradient(180deg, #2C1E4A, #1B1233)",
-      width: "100%",
-      borderRadius: "20px 20px 0 0",
-      padding: 16,
-      maxHeight: "88%",
-      overflowY: "auto",
-      border: "1.5px solid var(--gold-deep)",
-      borderBottom: "none",
-      position: "relative"
-    }
-  }, toast && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      top: 10,
-      left: "50%",
-      transform: "translateX(-50%)",
-      background: "rgba(0,0,0,0.85)",
-      color: "#fff",
-      padding: "8px 16px",
-      borderRadius: 20,
-      fontSize: 12,
-      zIndex: 30,
-      whiteSpace: "nowrap",
-      boxShadow: "0 2px 10px rgba(0,0,0,0.4)"
-    }
-  }, "💸 ", toast), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title",
-    style: {
-      margin: 0
-    }
-  }, "🛒 Shop ", /*#__PURE__*/React.createElement("span", {
-    className: "md-shop-lv"
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), gold, " · ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), diamonds || 0)), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee small",
-    onClick: onClose,
-    style: {
-      boxShadow: "none",
-      padding: "6px 12px"
-    }
-  }, "Close")), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, "รายการสุ่มใหม่ทุกครั้งที่เปิดร้าน"), /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-list"
-  }, stock.items.length === 0 && /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "ของหมดแล้ว — ปิดแล้วเปิดใหม่เพื่อสุ่มร้านใหม่"), stock.items.map(it => /*#__PURE__*/React.createElement("div", {
-    key: it.id,
-    className: `md-inv-item ${it.rarity}`
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, /*#__PURE__*/React.createElement(GameIcon, { item: it, fallback: SLOT_ICON[it.type], className: "md-game-icon md-shop-item-icon", alt: it.name }), " ", it.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement(StarRating, {
-    rarity: it.rarity
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "md-inv-stat"
-  }, itemStatText(it)))), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => guardBuy(gold >= it.price, () => onBuyItem(it))
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), /*#__PURE__*/React.createElement("span", { className: gold < it.price ? "md-cost-insufficient" : "" }, it.price)))), (stock.potions || []).map(p => /*#__PURE__*/React.createElement("div", {
-    key: p.id,
-    className: "md-inv-item"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: p.id }, fallback: p.icon, className: "md-game-icon md-shop-item-icon", alt: p.name }), " ", p.name), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-stat"
-  }, p.desc)), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => guardBuy(gold >= p.price, () => onBuyPotionTier(p.id))
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), /*#__PURE__*/React.createElement("span", { className: gold < p.price ? "md-cost-insufficient" : "" }, p.price)))), /*#__PURE__*/React.createElement("div", {
-    key: "protectionStone",
-    className: "md-inv-item"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-shop-item-icon", alt: "Protection Stone" }), " หินป้องกัน (มีอยู่ ", protectionStones || 0, ")"), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-stat"
-  }, "ป้องกันไม่ให้เลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => guardBuy((diamonds || 0) >= PROTECTION_STONE_PRICE, onBuyProtectionStone)
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), /*#__PURE__*/React.createElement("span", { className: (diamonds || 0) < PROTECTION_STONE_PRICE ? "md-cost-insufficient" : "" }, PROTECTION_STONE_PRICE))), ["iron", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
-    key: type,
-    className: "md-inv-item"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: type }, fallback: JUNK_INFO[type].icon, className: "md-game-icon md-shop-item-icon", alt: JUNK_INFO[type].name }), " ", JUNK_INFO[type].name)), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => guardBuy(gold >= MATERIAL_SHOP_PRICE[type], () => onBuyMaterial(type))
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), /*#__PURE__*/React.createElement("span", { className: gold < MATERIAL_SHOP_PRICE[type] ? "md-cost-insufficient" : "" }, MATERIAL_SHOP_PRICE[type])))))));
+function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},ownedCounts={},disabled=false,onBuyItem,onBuyPotionTier,onBuyProtectionStone,onBuyMaterial,onClose}) {
+  const [tab,setTab]=useState("equipment"); const [status,setStatus]=useState(""); const [quantities,setQuantities]=useState({}); const bodyRef=useRef(null);
+  const tabs=[["equipment", "อุปกรณ์"], ["hp", "ยา HP"], ["sp", "ยา SP"], ["other", "อื่นๆ"]];
+  const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};
+  const selectTab=next=>{setTab(next);if(bodyRef.current) bodyRef.current.scrollTop=0;};
+  const getQty=key=>Math.max(1,Math.min(99,Number(quantities[key])||1));
+  const maxQty=(price,currency="gold")=>Math.max(1,Math.min(99,Math.floor((currency==="diamond"?Number(diamonds||0):Number(gold||0))/Math.max(1,Number(price)||1))));
+  const setQty=(key,value,price,currency="gold")=>setQuantities(current=>({...current,[key]:Math.max(1,Math.min(maxQty(price,currency),Math.floor(Number(value)||1)))}));
+  const guardBuy=(canAfford,action)=>{if(disabled)return;if(!canAfford)return showStatus("เงินไม่พอซื้อ");action();};
+  const quantityControl=(key,price,currency,onBuy,label)=>{const qty=getQty(key),max=maxQty(price,currency),pending=Number(pendingPurchases[key]||0),total=Number(price)*qty,balance=currency==="diamond"?Number(diamonds||0):Number(gold||0),shortfall=Math.max(0,total-balance);return /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-wrap"},
+    /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-row"},
+      /*#__PURE__*/React.createElement("button",{type:"button",className:"md-shop-qty-btn",disabled:disabled||qty<=1,onClick:()=>setQty(key,qty-1,price,currency), "aria-label":`ลดจำนวน ${label}`},"−"),
+      /*#__PURE__*/React.createElement("span",{className:"md-shop-qty-value"},qty),
+      /*#__PURE__*/React.createElement("button",{type:"button",className:"md-shop-qty-btn",disabled:disabled||qty>=max,onClick:()=>setQty(key,qty+1,price,currency),"aria-label":`เพิ่มจำนวน ${label}`},"+"),
+      /*#__PURE__*/React.createElement("button",{type:"button",className:"md-shop-qty-max",disabled:disabled||qty>=max,onClick:()=>setQty(key,max,price,currency)},`Max ${max}`)
+    ),
+    /*#__PURE__*/React.createElement("div",{className:"md-shop-qty-chips"},[5,10].map(n=>/*#__PURE__*/React.createElement("button",{key:n,type:"button",disabled:disabled||max<n,onClick:()=>setQty(key,n,price,currency)},`x${n}`))),
+    /*#__PURE__*/React.createElement("button",{type:"button",className:"md-buy-btn md-shop-buy-action md-shop-total-btn",disabled:disabled||pending>0,onClick:()=>guardBuy(currency==="diamond"?diamonds>=total:gold>=total,()=>onBuy(qty))},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:currency==="diamond"?"diamond":"gold",fallback:currency==="diamond"?"💎":"🪙",className:"md-game-icon md-inline-item-icon",alt:currency}),`ซื้อ ${qty} ชิ้น · ${total} ${currency==="diamond"?"เพชร":"ทอง"}`),
+    pending>0&&/*#__PURE__*/React.createElement("span",{className:"md-shop-pending-badge"},`กำลังยืนยัน +${pending}`), shortfall>0&&/*#__PURE__*/React.createElement("span",{className:"md-shop-shortfall"},`ขาดอีก ${shortfall} ${currency==="diamond"?"เพชร":"ทอง"}`)
+  );};
+  const potions=stock?.potions||[],hpPotions=potions.filter(p=>String(p.id||"").startsWith("hp_")),spPotions=potions.filter(p=>String(p.id||"").startsWith("mp_"));
+  const potionRow=p=>{const key=`potion:${p.id}`;return /*#__PURE__*/React.createElement("div",{key:p.id,className:"md-shop-resource-row"},
+    /*#__PURE__*/React.createElement("div",{className:"md-shop-resource-copy"}, /*#__PURE__*/React.createElement("div",{className:"md-inv-name"},/*#__PURE__*/React.createElement(GameIcon,{item:{type:"potion",potionId:p.id},fallback:p.icon,className:"md-game-icon md-shop-item-icon",alt:p.name})," ",p.name),/*#__PURE__*/React.createElement("div",{className:"md-inv-stat"},p.desc," · มีอยู่ ",ownedCounts[p.id]||0," · ",p.price," ทอง")),
+    quantityControl(key,p.price,"gold",qty=>onBuyPotionTier(p.id,qty),p.name));};
+  const resourceRow=(type,price)=>{const info=JUNK_INFO[type],key=`material:${type}`;return /*#__PURE__*/React.createElement("div",{key,type,className:"md-shop-resource-row"},
+    /*#__PURE__*/React.createElement("div",{className:"md-shop-resource-copy"},/*#__PURE__*/React.createElement("div",{className:"md-inv-name"},/*#__PURE__*/React.createElement(GameIcon,{item:{type:"junk",junkId:type},fallback:info.icon,className:"md-game-icon md-shop-item-icon",alt:info.name})," ",info.name),/*#__PURE__*/React.createElement("div",{className:"md-inv-stat"},"มีอยู่ ",ownedCounts[type]||0," · ",price," ทอง")),
+    quantityControl(key,price,"gold",qty=>onBuyMaterial(type,qty),info.name));};
+  return /*#__PURE__*/React.createElement("div",{className:"md-shop-sheet-backdrop"},/*#__PURE__*/React.createElement("div",{className:"md-shop-sheet",role:"dialog","aria-modal":"true","aria-label":"Shop"},
+    /*#__PURE__*/React.createElement("div",{className:"md-shop-header"},/*#__PURE__*/React.createElement("div",{className:"md-shop-title-row"},/*#__PURE__*/React.createElement("p",{className:"md-title",style:{margin:0}},"🛒 Shop"),/*#__PURE__*/React.createElement("button",{className:"md-btn flee small md-shop-close",onClick:onClose,"aria-label":"ปิดร้าน"},"ปิด")),
+      /*#__PURE__*/React.createElement("div",{className:"md-shop-currencies","aria-label":"Shop currencies"},[["gold","gold","🪙",gold||0],["diamond","diamond","💎",diamonds||0],["stone","protectionStone","🛡️",protectionStones||0]].map(([key,iconKey,fallback,value])=>/*#__PURE__*/React.createElement("span",{key,className:"md-shop-currency-pill"},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey,fallback,className:"md-game-icon md-inline-item-icon",alt:key}),value))),
+      /*#__PURE__*/React.createElement("div",{className:"md-shop-tabs",role:"tablist","aria-label":"Shop categories"},tabs.map(([key,label])=>/*#__PURE__*/React.createElement("button",{key,type:"button",role:"tab","aria-selected":tab===key,className:`md-shop-tab ${tab===key?"active":""}`,onClick:()=>selectTab(key)},label))),
+      /*#__PURE__*/React.createElement("div",{className:`md-shop-status ${status?"visible":""}`,role:"status","aria-live":"polite"},status||(disabled?"กำลังยืนยัน…":"ร้านค้าพร้อมซื้อ"))),
+    /*#__PURE__*/React.createElement("div",{ref:bodyRef,className:"md-shop-body"},
+      tab==="equipment"&&/*#__PURE__*/React.createElement(React.Fragment,null,stock?.items?.length?stock.items.map(it=>/*#__PURE__*/React.createElement("div",{key:it.id,className:`md-inv-item md-shop-equipment-card ${it.rarity}`},
+        /*#__PURE__*/React.createElement("div",{className:"md-shop-item-copy"},/*#__PURE__*/React.createElement("div",{className:"md-inv-name"},/*#__PURE__*/React.createElement(GameIcon,{item:it,fallback:SLOT_ICON[it.type],className:"md-game-icon md-shop-item-icon",alt:it.name})," ",it.name),/*#__PURE__*/React.createElement("div",{className:"md-shop-item-meta"},/*#__PURE__*/React.createElement(StarRating,{rarity:it.rarity}),/*#__PURE__*/React.createElement("span",{className:"md-inv-stat"},itemStatText(it)))),
+        /*#__PURE__*/React.createElement("button",{className:"md-buy-btn md-shop-buy-action",disabled:disabled||Number(pendingPurchases[`equipment:${it.offerId}`]||0)>0,onClick:()=>guardBuy(gold>=Number(it.price),()=>onBuyItem(it))},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:"gold",fallback:"🪙",className:"md-game-icon md-inline-item-icon",alt:"Gold"}),Number(it.price))
+      )):/*#__PURE__*/React.createElement("p",{className:"md-sub md-shop-empty"},"อุปกรณ์หมดแล้ว — ปิดแล้วเปิดใหม่เพื่อสุ่มร้านใหม่")),
+      tab==="hp"&&hpPotions.map(potionRow),tab==="sp"&&spPotions.map(potionRow),
+      tab==="other"&&/*#__PURE__*/React.createElement(React.Fragment,null,
+        /*#__PURE__*/React.createElement("div",{className:"md-shop-resource-row"},/*#__PURE__*/React.createElement("div",{className:"md-shop-resource-copy"},/*#__PURE__*/React.createElement("div",{className:"md-inv-name"},/*#__PURE__*/React.createElement(GameIcon,{item:{type:"junk",junkId:"protectionStone"},fallback:"🛡️",className:"md-game-icon md-shop-item-icon",alt:"Protection Stone"})," หินป้องกัน"),/*#__PURE__*/React.createElement("div",{className:"md-inv-stat"},"มีอยู่ ",protectionStones||0," · ป้องกันเลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")),
+          /*#__PURE__*/React.createElement("button",{className:"md-buy-btn md-shop-buy-action",disabled:disabled||Number(pendingPurchases["protection_stone:"]||0)>0,onClick:()=>guardBuy(diamonds>=PROTECTION_STONE_PRICE,onBuyProtectionStone)},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:"diamond",iconKey:"diamond",fallback:"💎",className:"md-game-icon md-inline-item-icon",alt:"Diamond"}),PROTECTION_STONE_PRICE)),
+        resourceRow("iron",MATERIAL_SHOP_PRICE.iron),resourceRow("manaOre",MATERIAL_SHOP_PRICE.manaOre)
+      )
+    )
+  ));
 }
 function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect }) {
   return /*#__PURE__*/React.createElement("div", {
@@ -6373,6 +6280,8 @@ function InventoryOverlayV2({
   const [filterOpen, setFilterOpen] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [sellDialog, setSellDialog] = useState(null);
+  const [sellQuantity, setSellQuantity] = useState(1);
   const [filters, setFilters] = useState({ category: "all", type: "all", rarity: "all", enhanced: "all", enchanted: "all" });
   const updateFilter = (key, value) => setFilters(current => ({ ...current, [key]: value }));
   const resetFilters = () => setFilters({ category:"all", type:"all", rarity:"all", enhanced:"all", enchanted:"all" });
@@ -6403,8 +6312,18 @@ function InventoryOverlayV2({
   };
   const runSell = () => {
     if (!currentDetail || inventoryItemLocked(currentDetail) || !destructiveConfirm(currentDetail, "ขาย")) return;
+    const stackable = currentDetail.type === "junk" || currentDetail.type === "potion";
+    const max = Math.max(1, Number(currentDetail.quantity) || 1);
+    if (stackable && max > 1) { setSellQuantity(max); setSellDialog({ item: currentDetail, max }); return; }
     const result = onSell(currentDetail);
     if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้"); else closeDetail();
+  };
+  const confirmStackSell = () => {
+    if (!sellDialog?.item || busy) return;
+    const qty = Math.max(1, Math.min(sellDialog.max, Number(sellQuantity) || 1));
+    const result = onSell(sellDialog.item, qty);
+    if (result?.ok === false) setMessage(result.message || "ไม่สามารถขายได้");
+    else { setSellDialog(null); closeDetail(); }
   };
   const runSalvage = async () => {
     if (!currentDetail || inventoryItemLocked(currentDetail) || !salvagePreview || busy) return;
@@ -6428,6 +6347,23 @@ function InventoryOverlayV2({
       (filtered.length > 10 || expanded) && /*#__PURE__*/React.createElement("button", { className: "md-inventory-toggle md-inventory-art", style: iconButtonStyle("expand"), onClick: () => setExpanded(value => !value) }, expanded ? "▲ Collapse" : `▼ View All (${filtered.length})`),
       filterOpen && /*#__PURE__*/React.createElement(InventoryFilterModal, { filters, onUpdate:updateFilter, onReset:resetFilters, onClose:() => setFilterOpen(false) }),
       overflowOpen && /*#__PURE__*/React.createElement(OverflowModal, { overflow, busy, onClaimOverflow, onClaimAllOverflow, onClose:() => setOverflowOpen(false) }),
+      sellDialog && /*#__PURE__*/React.createElement("div", { className:"md-sell-quantity-overlay" },
+        /*#__PURE__*/React.createElement("section", { className:"md-card md-sell-quantity-dialog", role:"dialog", "aria-modal":"true" },
+          /*#__PURE__*/React.createElement("h3", { className:"md-title" }, "ขาย ", itemDisplayName(sellDialog.item)),
+          /*#__PURE__*/React.createElement("p", { className:"md-sub" }, "ราคา ", sellUnitPrice(sellDialog.item), " ทอง/ชิ้น · ทั้งหมด ", sellDialog.max, " ชิ้น"),
+          /*#__PURE__*/React.createElement("div", { className:"md-sell-quantity-stepper" },
+            /*#__PURE__*/React.createElement("button", { type:"button", disabled:sellQuantity<=1, onClick:()=>setSellQuantity(q=>Math.max(1,q-1)) }, "−"),
+            /*#__PURE__*/React.createElement("strong", null, sellQuantity),
+            /*#__PURE__*/React.createElement("button", { type:"button", disabled:sellQuantity>=sellDialog.max, onClick:()=>setSellQuantity(q=>Math.min(sellDialog.max,q+1)) }, "+")
+          ),
+          /*#__PURE__*/React.createElement("button", { type:"button", className:"md-sell-all-btn", onClick:()=>setSellQuantity(sellDialog.max) }, `ทั้งหมด (${sellDialog.max})`),
+          /*#__PURE__*/React.createElement("p", { className:"md-sub md-sell-summary" }, sellUnitPrice(sellDialog.item), " × ", sellQuantity, " = ", sellUnitPrice(sellDialog.item) * sellQuantity, " ทอง"),
+          /*#__PURE__*/React.createElement("div", { className:"md-btn-row" },
+            /*#__PURE__*/React.createElement("button", { type:"button", className:"md-btn flee", disabled:busy, onClick:()=>setSellDialog(null) }, "ยกเลิก"),
+            /*#__PURE__*/React.createElement("button", { type:"button", className:"md-btn primary", disabled:busy, onClick:confirmStackSell }, `ขาย ${sellQuantity} ชิ้น · ${sellUnitPrice(sellDialog.item) * sellQuantity} ทอง`)
+          )
+        )
+      ),
       currentDetail && /*#__PURE__*/React.createElement(ItemDetailModal, {
         detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy,
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
