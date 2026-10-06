@@ -4710,7 +4710,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   const maxQty=(price,currency="gold")=>Math.max(1,Math.min(99,Math.floor((currency==="diamond"?Number(diamonds||0):Number(gold||0))/Math.max(1,Number(price)||1))));
   const setQty=(key,value,price,currency="gold")=>setQuantities(current=>({...current,[key]:Math.max(1,Math.min(maxQty(price,currency),Math.floor(Number(value)||1)))}));
   const guardBuy=(canAfford,action)=>{if(disabled)return;if(!canAfford)return showStatus("เงินไม่พอซื้อ");action();};
-  const quantityControl=(key,price,currency,onBuy,label)=>{const qty=getQty(key),max=maxQty(price,currency),pending=Number(pendingPurchases[key]||0),total=Number(price)*qty;return /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-wrap"},
+  const quantityControl=(key,price,currency,onBuy,label)=>{const qty=getQty(key),max=maxQty(price,currency),pending=Number(pendingPurchases[key]||0),total=Number(price)*qty,balance=currency==="diamond"?Number(diamonds||0):Number(gold||0),shortfall=Math.max(0,total-balance);return /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-wrap"},
     /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-row"},
       /*#__PURE__*/React.createElement("button",{type:"button",className:"md-shop-qty-btn",disabled:disabled||qty<=1,onClick:()=>setQty(key,qty-1,price,currency), "aria-label":`ลดจำนวน ${label}`},"−"),
       /*#__PURE__*/React.createElement("span",{className:"md-shop-qty-value"},qty),
@@ -4719,7 +4719,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
     ),
     /*#__PURE__*/React.createElement("div",{className:"md-shop-qty-chips"},[5,10].map(n=>/*#__PURE__*/React.createElement("button",{key:n,type:"button",disabled:disabled||max<n,onClick:()=>setQty(key,n,price,currency)},`x${n}`))),
     /*#__PURE__*/React.createElement("button",{type:"button",className:"md-buy-btn md-shop-buy-action md-shop-total-btn",disabled:disabled||pending>0,onClick:()=>guardBuy(currency==="diamond"?diamonds>=total:gold>=total,()=>onBuy(qty))},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:currency==="diamond"?"diamond":"gold",fallback:currency==="diamond"?"💎":"🪙",className:"md-game-icon md-inline-item-icon",alt:currency}),`ซื้อ ${qty} ชิ้น · ${total} ${currency==="diamond"?"เพชร":"ทอง"}`),
-    pending>0&&/*#__PURE__*/React.createElement("span",{className:"md-shop-pending-badge"},`กำลังยืนยัน +${pending}`)
+    pending>0&&/*#__PURE__*/React.createElement("span",{className:"md-shop-pending-badge"},`กำลังยืนยัน +${pending}`), shortfall>0&&/*#__PURE__*/React.createElement("span",{className:"md-shop-shortfall"},`ขาดอีก ${shortfall} ${currency==="diamond"?"เพชร":"ทอง"}`)
   );};
   const potions=stock?.potions||[],hpPotions=potions.filter(p=>String(p.id||"").startsWith("hp_")),spPotions=potions.filter(p=>String(p.id||"").startsWith("mp_"));
   const potionRow=p=>{const key=`potion:${p.id}`;return /*#__PURE__*/React.createElement("div",{key:p.id,className:"md-shop-resource-row"},
