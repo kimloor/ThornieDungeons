@@ -21441,7 +21441,7 @@ function MapScreen({
 }
 function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},ownedCounts={},disabled=false,onBuyItem,onBuyPotionTier,onBuyProtectionStone,onBuyMaterial,onClose}) {
   const [tab,setTab]=useState("equipment"); const [status,setStatus]=useState(""); const [quantities,setQuantities]=useState({}); const bodyRef=useRef(null);
-  const tabs=[["equipment","อุปกรณ์"],["hp","ยา HP"],["sp","ยา SP"],["other","อื่นๆ"]];
+  const tabs=[["equipment", "อุปกรณ์"], ["hp", "ยา HP"], ["sp", "ยา SP"], ["other", "อื่นๆ"]];
   const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};
   const selectTab=next=>{setTab(next);if(bodyRef.current) bodyRef.current.scrollTop=0;};
   const getQty=key=>Math.max(1,Math.min(99,Number(quantities[key])||1));
