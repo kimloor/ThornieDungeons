@@ -17,8 +17,8 @@ test("terminal action keeps animation/VFX state until finalization", () => {
   assert.match(fn, /const completionPromise = commitBattleCompletionWithRetry\(next\)/);
   assert.ok(fn.indexOf("const completionPromise = commitBattleCompletionWithRetry(next)") < fn.indexOf("playTerminalBattlePresentation(next.result)"));
   const beforeFinalize = fn.slice(0, fn.indexOf("async function finalizeTerminalOutcome"));
-  assert.doesNotMatch(beforeFinalize, /setHeroAnim\("")/);
-  assert.doesNotMatch(beforeFinalize, /setPetAnim\("")/);
+  assert.doesNotMatch(beforeFinalize, /setHeroAnim\(""\)/);
+  assert.doesNotMatch(beforeFinalize, /setPetAnim\(""\)/);
   assert.doesNotMatch(beforeFinalize, /setEnemyAnims\(\{\}\)/);
   assert.doesNotMatch(beforeFinalize, /setBattleVfx\(\[\]\)/);
 });
