@@ -4712,133 +4712,149 @@ function ShopOverlay({
   onBuyMaterial,
   onClose
 }) {
-  const [toast, setToast] = useState("");
-  const toastRef = useRef(null);
-  const showToast = msg => {
-    setToast(msg);
-    if (toastRef.current) clearTimeout(toastRef.current);
-    toastRef.current = setTimeout(() => setToast(""), 1000);
+  const [tab, setTab] = useState("equipment");
+  const [status, setStatus] = useState("");
+  const bodyRef = useRef(null);
+  const tabs = [
+    ["equipment", "อุปกรณ์"],
+    ["hp", "ยา HP"],
+    ["sp", "ยา SP"],
+    ["other", "อื่นๆ"]
+  ];
+  const showStatus = msg => {
+    setStatus(msg);
+    window.setTimeout(() => setStatus(current => current === msg ? "" : current), 1400);
   };
   const guardBuy = (canAfford, action) => {
     if (!canAfford) {
-      showToast("เงินไม่พอซื้อ");
+      showStatus("เงินไม่พอซื้อ");
       return;
     }
     action();
   };
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      inset: 0,
-      zIndex: 20,
-      background: "rgba(0,0,0,0.6)",
-      display: "flex",
-      alignItems: "flex-end"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "linear-gradient(180deg, #2C1E4A, #1B1233)",
-      width: "100%",
-      borderRadius: "20px 20px 0 0",
-      padding: 16,
-      maxHeight: "88%",
-      overflowY: "auto",
-      border: "1.5px solid var(--gold-deep)",
-      borderBottom: "none",
-      position: "relative"
-    }
-  }, toast && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      top: 10,
-      left: "50%",
-      transform: "translateX(-50%)",
-      background: "rgba(0,0,0,0.85)",
-      color: "#fff",
-      padding: "8px 16px",
-      borderRadius: 20,
-      fontSize: 12,
-      zIndex: 30,
-      whiteSpace: "nowrap",
-      boxShadow: "0 2px 10px rgba(0,0,0,0.4)"
-    }
-  }, "💸 ", toast), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "md-title",
-    style: {
-      margin: 0
-    }
-  }, "🛒 Shop ", /*#__PURE__*/React.createElement("span", {
-    className: "md-shop-lv"
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), gold, " · ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), diamonds || 0)), /*#__PURE__*/React.createElement("button", {
-    className: "md-btn flee small",
-    onClick: onClose,
-    style: {
-      boxShadow: "none",
-      padding: "6px 12px"
-    }
-  }, "Close")), /*#__PURE__*/React.createElement("p", {
-    className: "md-sub"
-  }, "รายการสุ่มใหม่ทุกครั้งที่เปิดร้าน"), /*#__PURE__*/React.createElement("div", {
-    className: "md-shop-list"
-  }, stock.items.length === 0 && /*#__PURE__*/React.createElement("p", {
-    className: "md-sub",
-    style: {
-      margin: 0
-    }
-  }, "ของหมดแล้ว — ปิดแล้วเปิดใหม่เพื่อสุ่มร้านใหม่"), stock.items.map(it => /*#__PURE__*/React.createElement("div", {
-    key: it.id,
-    className: `md-inv-item ${it.rarity}`
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, /*#__PURE__*/React.createElement(GameIcon, { item: it, fallback: SLOT_ICON[it.type], className: "md-game-icon md-shop-item-icon", alt: it.name }), " ", it.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement(StarRating, {
-    rarity: it.rarity
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "md-inv-stat"
-  }, itemStatText(it)))), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => guardBuy(gold >= it.price, () => onBuyItem(it))
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), /*#__PURE__*/React.createElement("span", { className: gold < it.price ? "md-cost-insufficient" : "" }, it.price)))), (stock.potions || []).map(p => /*#__PURE__*/React.createElement("div", {
+  const selectTab = next => {
+    setTab(next);
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  };
+  const potions = stock?.potions || [];
+  const hpPotions = potions.filter(p => String(p.id || "").startsWith("hp_"));
+  const spPotions = potions.filter(p => String(p.id || "").startsWith("mp_"));
+  const resourceRow = (type, price) => {
+    const info = JUNK_INFO[type];
+    return /*#__PURE__*/React.createElement("div", {
+      key: type,
+      className: "md-shop-resource-row"
+    }, /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("div", { className: "md-inv-name" },
+        /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: type }, fallback: info.icon, className: "md-game-icon md-shop-item-icon", alt: info.name }),
+        " ", info.name
+      ),
+      /*#__PURE__*/React.createElement("div", { className: "md-inv-stat" }, "ราคา ", price, " ทอง")
+    ), /*#__PURE__*/React.createElement("button", {
+      className: "md-buy-btn md-shop-buy-action",
+      onClick: () => guardBuy(gold >= price, () => onBuyMaterial(type)),
+      "aria-label": `ซื้อ ${info.name}`
+    }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), price));
+  };
+  const potionRow = p => /*#__PURE__*/React.createElement("div", {
     key: p.id,
-    className: "md-inv-item"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: p.id }, fallback: p.icon, className: "md-game-icon md-shop-item-icon", alt: p.name }), " ", p.name), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-stat"
-  }, p.desc)), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => guardBuy(gold >= p.price, () => onBuyPotionTier(p.id))
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), /*#__PURE__*/React.createElement("span", { className: gold < p.price ? "md-cost-insufficient" : "" }, p.price)))), /*#__PURE__*/React.createElement("div", {
-    key: "protectionStone",
-    className: "md-inv-item"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-shop-item-icon", alt: "Protection Stone" }), " หินป้องกัน (มีอยู่ ", protectionStones || 0, ")"), /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-stat"
-  }, "ป้องกันไม่ให้เลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => guardBuy((diamonds || 0) >= PROTECTION_STONE_PRICE, onBuyProtectionStone)
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), /*#__PURE__*/React.createElement("span", { className: (diamonds || 0) < PROTECTION_STONE_PRICE ? "md-cost-insufficient" : "" }, PROTECTION_STONE_PRICE))), ["iron", "manaOre"].map(type => /*#__PURE__*/React.createElement("div", {
-    key: type,
-    className: "md-inv-item"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "md-inv-name"
-  }, /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: type }, fallback: JUNK_INFO[type].icon, className: "md-game-icon md-shop-item-icon", alt: JUNK_INFO[type].name }), " ", JUNK_INFO[type].name)), /*#__PURE__*/React.createElement("button", {
-    className: "md-buy-btn",
-    onClick: () => guardBuy(gold >= MATERIAL_SHOP_PRICE[type], () => onBuyMaterial(type))
-  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), /*#__PURE__*/React.createElement("span", { className: gold < MATERIAL_SHOP_PRICE[type] ? "md-cost-insufficient" : "" }, MATERIAL_SHOP_PRICE[type])))))));
+    className: "md-shop-resource-row"
+  }, /*#__PURE__*/React.createElement("div", null,
+    /*#__PURE__*/React.createElement("div", { className: "md-inv-name" },
+      /*#__PURE__*/React.createElement(GameIcon, { item: { type: "potion", potionId: p.id }, fallback: p.icon, className: "md-game-icon md-shop-item-icon", alt: p.name }),
+      " ", p.name
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "md-inv-stat" }, p.desc, " · ", p.price, " ทอง")
+  ), /*#__PURE__*/React.createElement("button", {
+    className: "md-buy-btn md-shop-buy-action",
+    onClick: () => guardBuy(gold >= p.price, () => onBuyPotionTier(p.id)),
+    "aria-label": `ซื้อ ${p.name}`
+  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), p.price));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-sheet-backdrop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-sheet",
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-label": "Shop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-header"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-title-row"
+  }, /*#__PURE__*/React.createElement("p", { className: "md-title", style: { margin: 0 } }, "🛒 Shop"),
+    /*#__PURE__*/React.createElement("button", {
+      className: "md-btn flee small md-shop-close",
+      onClick: onClose,
+      "aria-label": "ปิดร้าน"
+    }, "ปิด")
+  ), /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-currencies",
+    "aria-label": "Shop currencies"
+  }, [
+    ["gold", "gold", "🪙", gold || 0],
+    ["diamond", "diamond", "💎", diamonds || 0],
+    ["stone", "protectionStone", "🛡️", protectionStones || 0]
+  ].map(([key, iconKey, fallback, value]) => /*#__PURE__*/React.createElement("span", {
+    key,
+    className: "md-shop-currency-pill"
+  }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey, fallback, className: "md-game-icon md-inline-item-icon", alt: key }), value))),
+  /*#__PURE__*/React.createElement("div", {
+    className: "md-shop-tabs",
+    role: "tablist",
+    "aria-label": "Shop categories"
+  }, tabs.map(([key, label]) => /*#__PURE__*/React.createElement("button", {
+    key,
+    type: "button",
+    role: "tab",
+    "aria-selected": tab === key,
+    className: `md-shop-tab ${tab === key ? "active" : ""}`,
+    onClick: () => selectTab(key)
+  }, label))),
+  /*#__PURE__*/React.createElement("div", {
+    className: `md-shop-status ${status ? "visible" : ""}`,
+    role: "status",
+    "aria-live": "polite"
+  }, status || "ร้านค้าพร้อมซื้อ")
+  ), /*#__PURE__*/React.createElement("div", {
+    ref: bodyRef,
+    className: "md-shop-body"
+  }, tab === "equipment" && /*#__PURE__*/React.createElement(React.Fragment, null,
+    stock.items.length === 0 ? /*#__PURE__*/React.createElement("p", { className: "md-sub md-shop-empty" }, "อุปกรณ์หมดแล้ว — ปิดแล้วเปิดใหม่เพื่อสุ่มร้านใหม่") :
+    stock.items.map(it => /*#__PURE__*/React.createElement("div", {
+      key: it.id,
+      className: `md-inv-item md-shop-equipment-card ${it.rarity}`
+    }, /*#__PURE__*/React.createElement("div", { className: "md-shop-item-copy" },
+      /*#__PURE__*/React.createElement("div", { className: "md-inv-name" },
+        /*#__PURE__*/React.createElement(GameIcon, { item: it, fallback: SLOT_ICON[it.type], className: "md-game-icon md-shop-item-icon", alt: it.name }), " ", it.name
+      ),
+      /*#__PURE__*/React.createElement("div", { className: "md-shop-item-meta" },
+        /*#__PURE__*/React.createElement(StarRating, { rarity: it.rarity }),
+        /*#__PURE__*/React.createElement("span", { className: "md-inv-stat" }, itemStatText(it))
+      )
+    ), /*#__PURE__*/React.createElement("button", {
+      className: "md-buy-btn md-shop-buy-action",
+      onClick: () => guardBuy(gold >= it.price, () => onBuyItem(it))
+    }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }),
+      /*#__PURE__*/React.createElement("span", { className: gold < it.price ? "md-cost-insufficient" : "" }, it.price)
+    )))
+  ), tab === "hp" && hpPotions.map(potionRow),
+  tab === "sp" && spPotions.map(potionRow),
+  tab === "other" && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("div", { className: "md-shop-resource-row" },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("div", { className: "md-inv-name" },
+          /*#__PURE__*/React.createElement(GameIcon, { item: { type: "junk", junkId: "protectionStone" }, fallback: "🛡️", className: "md-game-icon md-shop-item-icon", alt: "Protection Stone" }), " หินป้องกัน"
+        ),
+        /*#__PURE__*/React.createElement("div", { className: "md-inv-stat" }, "มีอยู่ ", protectionStones || 0, " · ป้องกันเลเวลตีบวกร่วงเมื่อล้มเหลว (+7 ขึ้นไป)")
+      ),
+      /*#__PURE__*/React.createElement("button", {
+        className: "md-buy-btn md-shop-buy-action",
+        onClick: () => guardBuy((diamonds || 0) >= PROTECTION_STONE_PRICE, onBuyProtectionStone)
+      }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" }), PROTECTION_STONE_PRICE)
+    ),
+    resourceRow("iron", MATERIAL_SHOP_PRICE.iron),
+    resourceRow("manaOre", MATERIAL_SHOP_PRICE.manaOre)
+  )));
 }
 function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect }) {
   return /*#__PURE__*/React.createElement("div", {
