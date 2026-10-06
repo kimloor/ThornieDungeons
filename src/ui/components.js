@@ -5491,6 +5491,8 @@ function CombatScreen({
   activeTurnKey,
   battleRound,
   battleFinishing,
+  battleFinishStatus,
+  onRetryBattle,
   combatSpeed,
   battleVfx = [],
   combatTurnCount,
@@ -5779,7 +5781,16 @@ function CombatScreen({
     style: {
       color: f.color
     }
-  }, f.text)))))), /*#__PURE__*/React.createElement("div", {
+  }, f.text)))), battleFinishStatus === "error" && /*#__PURE__*/React.createElement("div", {
+    className: "md-battle-finish-error",
+    role: "alert",
+    "aria-live": "assertive"
+  }, /*#__PURE__*/React.createElement("span", null, "ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "md-btn primary small",
+    disabled: busy,
+    onClick: onRetryBattle
+  }, "ลองใหม่")), /*#__PURE__*/React.createElement("div", {
     className: "md-battle-dock"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-quickslot-bar battle"
@@ -5895,9 +5906,12 @@ function ResultScreen({
     }
   }, /*#__PURE__*/React.createElement("p", {
     className: "md-title"
-  }, "🎉 Stage ", floor, " Cleared!"), /*#__PURE__*/React.createElement("p", {
+  }, "🎉 Stage ", floor, " Cleared!"), rewards.alreadyApplied && /*#__PURE__*/React.createElement("p", {
+    className: "md-drop-banner",
+    style: { margin: "6px 0", background: "rgba(142,224,168,.12)" }
+  }, "บันทึกไว้แล้ว"), /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
-  }, "+", rewards.gold, " ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " gold · +", rewards.xp, " XP", rewards.diamonds ? /*#__PURE__*/React.createElement(React.Fragment, null, " · +", rewards.diamonds, " ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" })) : "", rewards.leveledUp ? " · Level up!" : "", rewards.unlockedNext ? " · Next stage unlocked!" : ""), rewards.isEliteBoss && /*#__PURE__*/React.createElement("div", {
+  }, rewards.alreadyApplied && rewards.gold == null && rewards.xp == null ? "รางวัลเดิมถูกบันทึกไว้แล้ว" : "", !rewards.alreadyApplied || rewards.gold != null ? ["+", rewards.gold, " ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " gold · "] : "", !rewards.alreadyApplied || rewards.xp != null ? ["+", rewards.xp, " XP"] : "", rewards.diamonds ? /*#__PURE__*/React.createElement(React.Fragment, null, " · +", rewards.diamonds, " ", /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "diamond", fallback: "💎", className: "md-game-icon md-inline-item-icon", alt: "Diamond" })) : "", rewards.leveledUp ? " · Level up!" : "", rewards.unlockedNext ? " · Next stage unlocked!" : ""), rewards.isEliteBoss && /*#__PURE__*/React.createElement("div", {
     className: "md-drop-banner",
     style: {
       background: "rgba(255,209,102,0.22)"
