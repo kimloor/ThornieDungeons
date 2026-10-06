@@ -12,36 +12,12 @@ class Statement {
   bind(...values) { return new Statement(this.raw, this.sql, values); }
   async first() { return this.raw.prepare(this.sql).get(...this.values) || null; }
   async all() { return { results: this.raw.prepare(this.sql).all(...this.values) }; }
-  async run() {\n    const normalized = this.sql.trim().toUpperCase();\n    if (/^(SELECT|WITH|PRAGMA)\\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };\n    const result = this.raw.prepare(this.sql).run(...this.values);\n    return { meta: { changes: Number(result.changes) } };\n  }
-}
-class D1 {
-  constructor() { this.raw = new DatabaseSync(":memory:"); }
-  prepare(sql) { return new Statement(this.raw, sql); }
-  async batch(statements) { const out = []; for (const statement of statements) out.push(await statement.run()); return out; }
-}
-
-function worker(runtimeConsole = console) {
-  let source = loadWorkerSource(path.resolve(__dirname, ".."));
-  source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
-  const sandbox = { console: runtimeConsole, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
-  vm.createContext(sandbox); vm.runInContext(source, sandbox); return sandbox.__worker;
-}
-
-function productionDungeonRuntime() {
-  const sandbox = { console, Math, Date, crypto, setTimeout, clearTimeout };
-  vm.createContext(sandbox);
-  for (const file of [
-    "src/data/constants.js",
-    "src/systems/pets.js",
-    "src/systems/floorModifier.js",
-    "src/systems/dungeonV2.js",
-    "src/systems/stats.js",
-    "src/systems/battleCore.js"
-  ]) {
-    const source = fs.readFileSync(path.resolve(__dirname, "..", file), "utf8");
-    vm.runInContext(source, sandbox, { filename: file });
-  }
-  // The production build installs this presentation patch after App.js. Its
+  async run() {
+    const normalized = this.sql.trim().toUpperCase();
+    if (/^(SELECT|WITH|PRAGMA)\b/.test(normalized)) return { results: this.raw.prepare(this.sql).all(...this.values) };
+    const result = this.raw.prepare(this.sql).run(...this.values);
+    return { meta: { changes: Number(result.changes) } };
+  }  // The production build installs this presentation patch after App.js. Its
   // makeEncounter wrapper must preserve the serverContext options used by a
   // fresh authoritative Dungeon battle.
   vm.runInContext(`
