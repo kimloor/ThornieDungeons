@@ -11,7 +11,7 @@ test("Dungeon end fixes: Elite sprite lookup resolves by defId/profile and strip
   assert.match(manifest, /defIdKey = normalizeAssetLookupKey/);
   assert.match(manifest, /enemy\.defId \|\| enemy\.monsterDefId \|\| enemy\.dungeonV2ProfileId/);
   assert.match(manifest, /MONSTER_ASSET_ALIASES\[defIdKey\]/);
-  assert.match(manifest, /elite\\s\+\\)\?boss\|elite/);
+  assert.ok(manifest.includes('.replace(/\\s*\\((?:(?:elite\\s+)?boss|elite)\\)\\s*/g, "")'));
 });
 
 test("Dungeon end fixes: Phaser host stops its loop before async Game.destroy", () => {
