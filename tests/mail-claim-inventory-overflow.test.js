@@ -4,7 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { DatabaseSync } = require("node:sqlite");
-const { loadWorkerSource } = require("./helpers/worker-source");\nconst { applyRequiredAutoMigrations } = require("./helpers/auto-migrations");
+const { loadWorkerSource } = require("./helpers/worker-source");
+const { applyRequiredAutoMigrations } = require("./helpers/auto-migrations");
 
 const ROOT = path.resolve(__dirname, "..");
 
