@@ -115,6 +115,7 @@ function createSqliteD1() {
     );
   `);
   let calls = 0;
+  let inBatch = false;
   const wrap = (statement, boundArgs = null, sql = "") => {
     const args = Array.isArray(boundArgs) ? boundArgs : [];
     const upperSql = String(sql).trimStart().toUpperCase();
@@ -122,10 +123,10 @@ function createSqliteD1() {
     return {
       __sql: sql,
       bind(...nextArgs) { return wrap(statement, nextArgs, sql); },
-      first: async () => { calls += 1; return statement.get(...args) || null; },
-      all: async () => { calls += 1; return { results: statement.all(...args) }; },
+      first: async () => { if (!inBatch) calls += 1; return statement.get(...args) || null; },
+      all: async () => { if (!inBatch) calls += 1; return { results: statement.all(...args) }; },
       run: async () => {
-        calls += 1;
+        if (!inBatch) calls += 1;
         if (isQuery) return { results: statement.all(...args) };
         const result = statement.run(...args);
         return { meta: { changes: Number(result.changes || 0), last_row_id: Number(result.lastInsertRowid || 0) } };
@@ -136,6 +137,7 @@ function createSqliteD1() {
     prepare(sql) { return wrap(sqlite.prepare(sql), null, sql); },
     async batch(statements) {
       calls += 1;
+      inBatch = true;
       sqlite.exec("BEGIN");
       try {
         const results = [];
@@ -145,9 +147,11 @@ function createSqliteD1() {
           results.push(result);
         }
         sqlite.exec("COMMIT");
+        inBatch = false;
         return results;
       } catch (error) {
         sqlite.exec("ROLLBACK");
+        inBatch = false;
         throw error;
       }
     },
