@@ -116,7 +116,7 @@ test("measured D1 budgets use the real Worker + sqlite harness", async () => {
       quantity: 1,
       requestId
     });
-    assert.equal(res.body.ok, true);
+    assert.equal(res.body.resource, "iron");
     results.purchaseCharacterResource = db.count();
   }
 
