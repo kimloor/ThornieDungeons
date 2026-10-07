@@ -4253,7 +4253,9 @@ function materializeMailItem(desc) {
     critChance: desc.critChance || 0,
     critDamage: desc.critDamage || 0,
     enhanceLevel: 0,
-    empowerSlots: Array(Math.max(1, desc.empowerSlotCount || desc.empowerSlotCapacity || 1)).fill(null),
+    empowerSlots: Array.isArray(desc.empowerSlots)
+      ? desc.empowerSlots.map(option => option ? { ...option } : null)
+      : Array(Math.max(1, desc.empowerSlotCount || desc.empowerSlotCapacity || 1)).fill(null),
     ...(desc.empowerSlotCapacity ? { empowerSlotCapacity: Number(desc.empowerSlotCapacity) || 0 } : {}),
     ...(desc.gearTier ? { gearTier: Number(desc.gearTier) || 0 } : {}),
     ...(desc.rewardVersion ? { rewardVersion: Number(desc.rewardVersion) || 0 } : {}),
@@ -6036,30 +6038,97 @@ function DefeatScreen({
     onClick: onMap
   }, "🗺️ Back to Map")));
 }
+const INVENTORY_STAT_LABELS = Object.freeze({
+  hp: "HP", mp: "SP", hpPct: "HP%", mpPct: "MP%", atk: "ATK", def: "DEF",
+  str: "STR", vit: "VIT", agi: "AGI", dex: "DEX", luk: "LUK",
+  accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit",
+  critDamage: "Crit DMG", dropBonus: "Drop"
+});
+const INVENTORY_STAT_KEYS = Object.freeze(Object.keys(INVENTORY_STAT_LABELS));
+
+function inventoryRawBaseStats(item) {
+  if (!item) return {};
+  return INVENTORY_STAT_KEYS.reduce((out, key) => {
+    const value = Number(item[key]) || 0;
+    if (value) out[key] = Math.round(value * 10) / 10;
+    return out;
+  }, {});
+}
+
+function inventoryRefineStats(item) {
+  if (!item) return {};
+  const level = Math.max(0, Number(item.enhanceLevel) || 0);
+  if (!level) return {};
+  const result = {};
+  const isV2 = typeof ENHANCEMENT_V2 !== "undefined" && ENHANCEMENT_V2.isV2Item(item);
+  const isWing = isV2 && String(item.type || "").toLowerCase() === "wings";
+  if (isWing) {
+    const family = ENHANCEMENT_V2.wingFamily(item);
+    const primary = family ? ENHANCEMENT_V2.WING_PRIMARY_STAT[family] : null;
+    if (primary) result[primary] = level;
+    return result;
+  }
+  INVENTORY_STAT_KEYS.forEach(key => {
+    const base = Number(item[key]) || 0;
+    const value = base * level * 0.06;
+    if (value) result[key] = Math.round(value * 10) / 10;
+  });
+  return result;
+}
+
+function inventoryEnchantStats(item) {
+  if (!item) return {};
+  const result = {};
+  (Array.isArray(item.empowerSlots) ? item.empowerSlots : []).forEach(option => {
+    if (!option) return;
+    const key = String(option.key || "");
+    const value = Number(option.value) || 0;
+    if (!key || !value) return;
+    result[key] = (result[key] || 0) + value;
+  });
+  return result;
+}
+
 function inventoryStatRows(item) {
-  const labels = { hp: "HP", mp: "SP", hpPct: "HP%", mpPct: "MP%", atk: "ATK", def: "DEF", str: "STR", vit: "VIT", agi: "AGI", dex: "DEX", luk: "LUK", accuracy: "Accuracy", dodgeChance: "Dodge", critChance: "Crit", critDamage: "Crit DMG", dropBonus: "Drop" };
-  const finalStats = itemBonus(item) || {};
-  return Object.keys(labels).filter(key => Number(finalStats[key])).map(key => ({ key, label: labels[key], value: Math.round(Number(finalStats[key]) * 10) / 10 }));
+  const base = inventoryRawBaseStats(item);
+  const refine = inventoryRefineStats(item);
+  const enchant = inventoryEnchantStats(item);
+  return [
+    ...Object.keys(base).map(key => ({ key: 'base:' + key, group: 'base', label: INVENTORY_STAT_LABELS[key], value: base[key] })),
+    ...Object.keys(refine).map(key => ({ key: 'refine:' + key, group: 'refine', label: INVENTORY_STAT_LABELS[key], value: refine[key] })),
+    ...Object.keys(enchant).map(key => ({ key: 'enchant:' + key, group: 'enchant', label: INVENTORY_STAT_LABELS[key] || key, value: enchant[key] }))
+  ];
 }
 
 function inventoryComparisonRows(currentItem, nextItem) {
   if (!nextItem || !SLOT_ORDER.includes(nextItem.type)) return [];
-  const currentStats = itemBonus(currentItem) || {};
-  const nextStats = itemBonus(nextItem) || {};
-  const definitions = [
-    ["hp", "HP"], ["mp", "SP"], ["hpPct", "HP%"], ["mpPct", "MP%"], ["atk", "ATK"], ["def", "DEF"],
-    ["str", "STR"], ["vit", "VIT"], ["agi", "AGI"], ["dex", "DEX"], ["luk", "LUK"],
-    ["accuracy", "Accuracy"], ["dodgeChance", "Dodge"], ["critChance", "Crit"],
-    ["critDamage", "Crit DMG"], ["dropBonus", "Drop"]
-  ];
-  return definitions
-    .map(([key, label]) => ({
-      key,
-      label,
-      current: Math.round((Number(currentStats[key]) || 0) * 10) / 10,
-      next: Math.round((Number(nextStats[key]) || 0) * 10) / 10
-    }))
-    .filter(row => Math.abs(row.current) > 0.0001 || Math.abs(row.next) > 0.0001);
+  const build = item => ({
+    base: inventoryRawBaseStats(item),
+    refine: inventoryRefineStats(item),
+    enchant: inventoryEnchantStats(item)
+  });
+  const current = build(currentItem);
+  const next = build(nextItem);
+  const rows = [];
+  const pushGroup = (group, labelSuffix) => {
+    const keys = new Set([...Object.keys(current[group]), ...Object.keys(next[group])]);
+    for (const key of keys) {
+      const currentValue = Math.round((Number(current[group][key]) || 0) * 10) / 10;
+      const nextValue = Math.round((Number(next[group][key]) || 0) * 10) / 10;
+      if (Math.abs(currentValue) <= 0.0001 && Math.abs(nextValue) <= 0.0001) continue;
+      rows.push({
+        key: group + ':' + key,
+        label: (INVENTORY_STAT_LABELS[key] || key) + ' ' + labelSuffix,
+        current: currentValue,
+        next: nextValue,
+        group
+      });
+    }
+  };
+  pushGroup("base", "(Base)");
+  pushGroup("refine", "(Refine)");
+  pushGroup("enchant", "(Enchant)");
+  return rows;
 }
 
 function InventoryHeader({ characterName, onClose }) {
@@ -6174,9 +6243,22 @@ function OverflowModal({ overflow, busy, onClaimOverflow, onClaimAllOverflow, on
 }
 
 function ItemStats({ item }) {
-  return /*#__PURE__*/React.createElement("div", { className:"md-inv2-stat-list" }, inventoryStatRows(item).map(row => /*#__PURE__*/React.createElement("div", { key:row.key },
-    /*#__PURE__*/React.createElement("span", null, row.label),
-    /*#__PURE__*/React.createElement("b", { className:row.value >= 0 ? "positive" : "negative" }, `${row.value >= 0 ? "+" : ""}${row.value}`))));
+  const rows = inventoryStatRows(item);
+  const sections = [
+    ["base", "BASE STATS"],
+    ["refine", "REFINE"],
+    ["enchant", "ENCHANT"]
+  ];
+  return /*#__PURE__*/React.createElement("div", { className:"md-inv2-stat-sections" }, sections.map(([group, title]) => {
+    const groupRows = rows.filter(row => row.group === group);
+    if (!groupRows.length) return null;
+    return /*#__PURE__*/React.createElement("section", { className:`md-inv2-stat-section md-inv2-stat-section-${group}`, key:group },
+      /*#__PURE__*/React.createElement("h4", null, title),
+      /*#__PURE__*/React.createElement("div", { className:"md-inv2-stat-list" }, groupRows.map(row => /*#__PURE__*/React.createElement("div", { key:row.key },
+        /*#__PURE__*/React.createElement("span", null, row.label),
+        /*#__PURE__*/React.createElement("b", { className:row.value >= 0 ? "positive" : "negative" }, `${row.value >= 0 ? "+" : ""}${row.value}`))))
+    );
+  }));
 }
 
 function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
@@ -6221,7 +6303,7 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
           row.next,
           delta !== 0 && /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta" }, ` (${delta > 0 ? "+" : ""}${delta})`)));
     }),
-    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Final values include Refine + Enchant stats; no comparison data is synthesized."));
+    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Base, Refine and Enchant are shown separately; no final values are combined."));
 }
 
 function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }) {
@@ -6267,6 +6349,7 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
         /*#__PURE__*/React.createElement("h3", null, itemDisplayName(currentDetail)),
         /*#__PURE__*/React.createElement("p", null, `${rarityLabel(currentDetail)} • ${SLOT_LABEL[itemType] || itemType} • Lv.${currentDetail.level || 1}`))),
     !compareRows.length && /*#__PURE__*/React.createElement(ItemStats, { item:currentDetail }),
+    !compareRows.length && MYTHIC_V2.signatureText(currentDetail) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-signature" }, `✦ ${MYTHIC_V2.signatureText(currentDetail)}`),
     !compareRows.length && Array.isArray(currentDetail.empowerSlots) && currentDetail.empowerSlots.some(Boolean) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-enchants" },
       /*#__PURE__*/React.createElement("h4", null, "ENCHANT OPTIONS"),
       currentDetail.empowerSlots.filter(Boolean).map((option,index) => /*#__PURE__*/React.createElement("div", { key:index }, `${option.icon || "✦"} ${option.label || option.stat || "Option"} +${option.value || 0}`))),
@@ -6681,7 +6764,7 @@ function BlacksmithOverlay({
   const selectedItem = selectedId ? inventory.find(i => i.id === selectedId) : null;
   const selectedEquipped = selectedEquippedSlot ? equipped[selectedEquippedSlot] : null;
   const detailTarget = selectedItem || selectedEquipped;
-  // Junk (stone/wood/iron/mana stone etc.) can't be enhanced or empowered, so the
+  // Junk (stone/wood/iron/mana stone etc.) can't be refined or enchanted, so the
   // Blacksmith's item grid only shows actual gear — junk totals still show via junkTotal().
   const gearInventory = inventory.filter(i => i.type !== "junk");
 
@@ -6708,7 +6791,9 @@ function BlacksmithOverlay({
     if (!detailTarget) return;
     const res = await Promise.resolve(onEnhance(detailTarget.id, useProtectionStone));
     setActionMsg(res.message);
-    playAnim(res.ok);
+    // Resource validation errors are not Refine outcomes: do not play the failure animation
+    // when Gold/materials are insufficient and the server returns no mutation result.
+    playAnim(res.ok && !!res?.result);
     if (res?.result && Number.isFinite(Number(res.result.levelAfter))) {
       const result = res.result;
       setForgePresentation({
@@ -6781,7 +6866,7 @@ function BlacksmithOverlay({
     /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "⚒️ Blacksmith"),
-        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "เลือกอุปกรณ์เพื่อ ตีบวก / เสริมพลัง / รีรอล")
+        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "เลือกอุปกรณ์เพื่อ Refine / Enchant / รีรอล")
       ),
       /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
     ),
@@ -6819,11 +6904,11 @@ function BlacksmithOverlay({
           style: { flex: 1, minHeight: 38, fontSize: 10 },
           disabled: (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX || busy,
           onClick: doEnhance
-        }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 ตีบวกสูงสุดแล้ว" : (() => {
+        }, (detailTarget.enhanceLevel || 0) >= ENHANCE_MAX ? "🔨 Refine สูงสุดแล้ว" : (() => {
           const isV2 = ENHANCEMENT_V2.isV2Item(detailTarget);
           const c = isV2 ? ENHANCEMENT_V2.enhanceCost(detailTarget) : enhanceCost(detailTarget.enhanceLevel || 0);
           const haveIron = junkTotal(inventory, "iron");
-          return [`🔨 ตีบวก +${(detailTarget.enhanceLevel || 0) + 1} (${isV2 ? ENHANCEMENT_V2.enhanceSuccessRate(detailTarget.enhanceLevel || 0) : enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · `,
+          return [`🔨 Refine +${(detailTarget.enhanceLevel || 0) + 1} (${isV2 ? ENHANCEMENT_V2.enhanceSuccessRate(detailTarget.enhanceLevel || 0) : enhanceSuccessRate(detailTarget.enhanceLevel || 0)}% · `,
             /*#__PURE__*/React.createElement(GameIcon, { key: "iron-icon", item: { type: "junk", junkId: "iron" }, fallback: JUNK_INFO.iron.icon, className: "md-game-icon md-inline-item-icon", alt: JUNK_INFO.iron.name }),
             /*#__PURE__*/React.createElement("span", { key: "iron", className: haveIron < c.iron ? "md-cost-insufficient" : "" }, c.iron),
             " ",
