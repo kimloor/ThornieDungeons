@@ -6232,8 +6232,9 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
   const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
   const itemType = inventoryItemType(currentDetail);
-  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer md-inv2-detail-layer" }, /*#__PURE__*/React.createElement("div", {
-    className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art`,
+  const compareMode = compareRows.length > 0;
+  return /*#__PURE__*/React.createElement("div", { className: `md-inv2-modal-layer md-inv2-detail-layer ${compareMode ? "compare-mode" : ""}` }, /*#__PURE__*/React.createElement("div", {
+    className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art ${compareMode ? "compare-mode" : ""}`,
     style: inventoryRarityKey(currentDetail) === "mythic" ? inventoryUiStyle("mythicFrame") || inventoryUiStyle("popupFrame") : inventoryUiStyle("popupFrame")
   },
     /*#__PURE__*/React.createElement("button", { className:"md-inv2-popup-close", onClick:onClose }, "✕"),
