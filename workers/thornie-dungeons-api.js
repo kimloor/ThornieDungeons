@@ -1812,16 +1812,6 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     const bossId = context.enemies[0]?.id;
     const stone = globalThis.MYTHIC_V2.bossStoneForEnemy(bossId);
     if (stone) items.push(dungeonV2ServerJunkItem(battleId, stone.junkId, 1 + (rng() < 0.25 ? 1 : 0), items.length, "chapter_boss_stone", context.floor, bossId));
-    if (rng() < 0.03) {
-      const accessory = dungeonV2ServerCanonicalEquipment({
-        battleId: `${battleId}:boss-accessory`, floor: context.floor, type: "accessory",
-        rarity: dungeonV2ServerRollRarity(context.floor, rng),
-        sourceType: "dungeon_boss_accessory", sourceFloor: context.floor,
-        sourceIdentity: bossId, rng
-      });
-      items.push(accessory);
-      drop = accessory;
-    }
   }
   if (drop) { items.push(drop); }
   for (const enemy of context.enemies) {
