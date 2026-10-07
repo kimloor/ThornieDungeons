@@ -154,12 +154,7 @@ function validateInlineJavaScript(html) {
     try {
       new vm.Script(source, { filename: `index.inline-${inlineScriptCount}.js` });
     } catch (error) {
-      const match = String(error?.stack || "").match(/index\.inline-(\d+)\.js:(\d+):(\d+)/);
-      const line = Number(match?.[2] || 0);
-      const column = Number(match?.[3] || 0);
-      const lines = source.split("\n");
-      const excerpt = line ? lines.slice(Math.max(0, line - 3), Math.min(lines.length, line + 2)).join("\n") : source.slice(0, 2000);
-      throw new Error(`Generated JavaScript syntax validation failed: ${error.message} at ${line}:${column}\n${excerpt}`);
+      throw new Error(`Generated JavaScript syntax validation failed: ${error.message}`);
     }
   }
   if (!inlineScriptCount) throw new Error("Generated JavaScript syntax validation failed: no inline scripts found");
