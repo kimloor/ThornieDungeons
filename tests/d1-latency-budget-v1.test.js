@@ -115,21 +115,23 @@ function createSqliteD1() {
     );
   `);
   let calls = 0;
-  const wrap = (statement, boundArgs = null) => {
+  const wrap = (statement, boundArgs = null, sql = "") => {
     const args = Array.isArray(boundArgs) ? boundArgs : [];
+    const isQuery = /^\\s*(SELECT|WITH)\\b/i.test(sql);
     return {
-      bind(...nextArgs) { return wrap(statement, nextArgs); },
+      bind(...nextArgs) { return wrap(statement, nextArgs, sql); },
       first: async () => { calls += 1; return statement.get(...args) || null; },
       all: async () => { calls += 1; return { results: statement.all(...args) }; },
       run: async () => {
         calls += 1;
+        if (isQuery) return { results: statement.all(...args) };
         const result = statement.run(...args);
         return { meta: { changes: Number(result.changes || 0), last_row_id: Number(result.lastInsertRowid || 0) } };
       }
     };
   };
   return {
-    prepare(sql) { return wrap(sqlite.prepare(sql)); },
+    prepare(sql) { return wrap(sqlite.prepare(sql), null, sql); },
     async batch(statements) {
       calls += 1;
       sqlite.exec("BEGIN");
