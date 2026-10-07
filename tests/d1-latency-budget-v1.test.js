@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createDatabase, createWorker, post, setupCharacter } from "./helpers/sqlite-worker-harness.js";
 
 const entry = fs.readFileSync("workers/thornie-dungeons-api-entry.js", "utf8");
 const api = fs.readFileSync("workers/thornie-dungeons-api.js", "utf8");
@@ -101,7 +102,6 @@ test("shared character auth is reused by craft, blacksmith, and mail claim hot p
 });
 
 test("measured D1 budgets use the real Worker + sqlite harness", async () => {
-  const { createDatabase, createWorker, post, setupCharacter } = require("./helpers/sqlite-worker-harness");
   const results = {};
 
   {
