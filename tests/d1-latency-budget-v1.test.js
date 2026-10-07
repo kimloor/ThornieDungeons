@@ -153,7 +153,7 @@ async function sha256ForLatency(text) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(text)));
   let binary = "";
   new Uint8Array(digest).forEach(byte => { binary += String.fromCharCode(byte); });
-  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
 }
 
 async function latencyHarnessRequest(db, token, body) {
