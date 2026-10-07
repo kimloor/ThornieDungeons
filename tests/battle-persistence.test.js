@@ -873,7 +873,7 @@ test("Dungeon V2 reward authority rebuilds forged diamonds, equipment, utility, 
   assert.equal(extra.sourceType, "dungeon_boss_first_clear");
   assert.equal(extra.specialSource, "first_clear_accessory");
   assert.equal(["critChance", "dodgeChance", "critDamage"].filter(key => Number(extra[key]) > 0).length, 0);
-  assert.equal(Number(extra.hp || 0) > 0, true);
+  assert.equal(Number(item.hp || 0) > 0, true);
   const bossStoneId = bossStoneIdForContext(started.body.context);
   const stone = db.raw.prepare("SELECT extra_json FROM items WHERE character_id = ? AND json_extract(extra_json, '$.junkId') = ?").get(characterId, bossStoneId);
   assert.ok(stone);
