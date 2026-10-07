@@ -29,17 +29,22 @@ test("fixed Rare equipment budgets match every locked Tier and slot", () => {
   assert.equal(reward.dungeonV2EquipmentItem({ floor: 1, type: "weapon", rarity: "mythic" }).atk, 21);
 });
 
-test("accessory utility selects exactly one approved stat with Tier/Rarity multipliers", () => {
-  const accessory = reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "unique", utilityKey: "critChance" });
-  assert.deepEqual(Object.keys(accessory).filter(key => ["critChance", "dodgeChance", "critDamage"].includes(key)), ["critChance"]);
-  assert.equal(accessory.utilityStat, "critChance");
-  assert.equal(accessory.critChance, 3.7);
-  assert.equal(accessory.empowerSlots.length, 2);
-  for (const utilityKey of Object.keys(reward.ACCESSORY_BASE)) {
-    const selected = reward.dungeonV2EquipmentItem({ floor: 1, type: "accessory", rarity: "rare", utilityKey });
-    assert.equal(Object.keys(selected).filter(key => Object.hasOwn(reward.ACCESSORY_BASE, key)).length, 1);
-    assert.equal(selected.utilityStat, utilityKey);
-  }
+test("accessory base stat is flat HP only and Crit/Dodge stay out of direct rolls", () => {
+  const expectedHp = [40, 52, 68, 88, 114];
+  const floors = [1, 31, 51, 71, 91];
+  floors.forEach((floor, index) => {
+    const item = reward.dungeonV2EquipmentItem({ floor, type: "accessory", rarity: "rare", utilityKey: "critChance" });
+    assert.equal(item.hp, expectedHp[index], `T${index + 1} Rare HP`);
+    assert.equal(item.utilityStat, undefined);
+    assert.equal(item.critChance, undefined);
+    assert.equal(item.critDamage, undefined);
+    assert.equal(item.dodgeChance, undefined);
+  });
+  const unique = reward.dungeonV2EquipmentItem({ floor: 1, type: "accessory", rarity: "unique" });
+  const elite = reward.dungeonV2EquipmentItem({ floor: 1, type: "accessory", rarity: "elite" });
+  assert.equal(unique.hp, 46);
+  assert.equal(elite.hp, 52);
+  assert.deepEqual(reward.ACCESSORY_BASE.hp, expectedHp);
 });
 
 test("normal drop chance is multiplicative, capped per encounter, and generic-only", () => {
