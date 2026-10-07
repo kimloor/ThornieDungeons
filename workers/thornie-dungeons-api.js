@@ -1743,7 +1743,7 @@ function dungeonV2ServerGenericJunk(rng, floor) {
   const quantity = 1 + Math.floor(floor / 12) + (rng() < 0.25 ? 1 : 0);
   return { junkId, quantity };
 }
-async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload) {
+async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload, prefetchedInventoryRows = null) {
   // The reward seed is issued and persisted by startDungeonBattle. It is not
   // derived from a client-selected battle id or mutable checkpoint fields.
   const seed = context.rewardSeed;
@@ -1755,51 +1755,16 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     rewardReadBatch = await db.batch([
       db.prepare(`SELECT extra_json FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId),
       db.prepare(
-        `SELECT 'loot' AS row_kind, monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance, NULL AS inventory_json
-         FROM monster_loot WHERE monster_id IN (${lootPlaceholders})
-         UNION ALL
-         SELECT 'inventory' AS row_kind, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                json_group_array(json_object(
-                  'item_id', item_id,
-                  'player_id', player_id,
-                  'character_id', character_id,
-                  'slot_type', slot_type,
-                  'equipped', equipped,
-                  'inventory_slot', inventory_slot,
-                  'item_template_id', item_template_id,
-                  'rarity', rarity,
-                  'name', name,
-                  'item_level', item_level,
-                  'enhance_level', enhance_level,
-                  'bound', bound,
-                  'quantity', quantity,
-                  'atk', atk,
-                  'def', def,
-                  'hp', hp,
-                  'mp', mp,
-                  'extra_json', extra_json,
-                  'created_at', created_at,
-                  'updated_at', updated_at
-                )) AS inventory_json
-         FROM items
-         WHERE player_id = ? AND character_id = ?`
-      ).bind(...lootIds, id, characterId)
+        `SELECT monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance
+         FROM monster_loot WHERE monster_id IN (${lootPlaceholders})`
+      ).bind(...lootIds)
     ]);
-  } catch (error) {
-    console.log("DUNGEON_REWARD_READ_BATCH_ERROR", String(error?.message || error));
+  } catch (_) {
     rewardReadBatch = [rewardReadBatch?.[0] || { results: [] }, { results: [] }];
   }
   const equippedRows = rewardReadBatch?.[0]?.results || [];
   const dropBonus = dungeonV2ServerDropBonus(ownedRow, equippedRows);
-  const combinedRewardRows = rewardReadBatch?.[1]?.results || [];
-  console.log("DUNGEON_COMBINED_REWARD_ROWS", JSON.stringify(combinedRewardRows.slice(0, 2)));
-  const lootRows = combinedRewardRows.filter(row => row.row_kind === "loot");
-  const inventoryPayload = combinedRewardRows.find(row => row.row_kind === "inventory")?.inventory_json;
-  const prefetchedRows = parseJsonColumn(inventoryPayload, []);
-  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, {
-    reconcile: false,
-    prefetchedRows
-  });
+  const lootRows = rewardReadBatch?.[1]?.results || [];
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
@@ -1872,7 +1837,7 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const junkSummary = {};
   items.filter(item => item.type === "junk").forEach(item => { junkSummary[item.junkId] = (junkSummary[item.junkId] || 0) + item.quantity; });
   const [junkType, junkAmount] = Object.entries(junkSummary)[0] || [];
-  const result = {
+  return {
     floor: context.floor, encounterType: context.role, rewardRole: context.role, packCount: context.packCount,
     gold: dungeonV2ServerGold(context.floor, context.role, context.packCount),
     xp: dungeonV2ServerExp(context.floor, context.role, context.packCount),
@@ -1880,8 +1845,6 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     drop, junkDrop: junkType ? { type: junkType, amount: junkAmount } : null,
     sourceIdentity: context.enemies[0]?.id || null, rewardSeed: seed
   };
-  Object.defineProperty(result, "__inventoryPlan", { value: inventoryPlan, enumerable: false });
-  return result;
 }
 function dungeonV2ServerClaims(petsRaw) {
   const object = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw === "object" ? petsRaw : {});
@@ -1969,7 +1932,7 @@ function dungeonV2GrantActivePetXp(list, activePetId, battleXp) {
   const next = (list || []).map(pet => pet?.instId === activePetId ? { ...pet, level, xp } : pet);
   return { list: next, progress: { instId: activePetId, defId: active.defId, xpGained: gained, levelBefore: before.level, levelAfter: level, xpBefore: before.xp, xpAfter: xp } };
 }
-async function commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, ownedRow, checkpointPayload, context, now) {
+async function commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, ownedRow, checkpointPayload, context, now, prefetchedInventoryRows = null) {
   const reward = resultPayload?.reward;
   if (!reward || resultPayload.result !== "victory") return { reward: null, committed: false };
   if (!context || Number(resultPayload.floor) !== context.floor) return { error: "invalid_battle_context" };
@@ -1977,7 +1940,7 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
       || String(reward.encounterType || context.role) !== context.role || Number(reward.packCount) !== context.packCount) {
     return { error: "invalid_reward_context" };
   }
-  const rewardPlan = await dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload);
+  const rewardPlan = await dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload, prefetchedInventoryRows);
   const inventoryPlan = rewardPlan?.__inventoryPlan;
   const serverReward = rewardPlan;
   if (!inventoryPlan || Number(reward.gold) !== serverReward.gold || Number(reward.xp) !== serverReward.xp) return { error: "invalid_reward_plan" };
@@ -2440,11 +2403,14 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
   const resultName = resultPayload && resultPayload.result;
   if (!battleId || !["victory", "defeat", "fled"].includes(resultName)) return json({ error: "invalid_battle_result" }, 400);
   const battleKey = String(battleId);
+  const snapshotStatements = battleCompletionSnapshotStatements(db, id, characterId);
+  const inventoryReadIndex = 3 + snapshotStatements.length;
   const preRead = await db.batch([
     db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey),
     db.prepare(`SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`).bind(battleKey, characterId),
     db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND EXISTS (SELECT 1 FROM battle_completions WHERE battle_id = ? AND character_id = ?)`).bind(nowIso(), battleKey, characterId, battleKey, characterId),
-    ...battleCompletionSnapshotStatements(db, id, characterId)
+    ...snapshotStatements,
+    db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`).bind(id, characterId)
   ]);
   const prior = preRead?.[0]?.results?.[0] || null;
   if (prior) {
@@ -2462,7 +2428,7 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
   if (encoded.length > 512000) return json({ error: "battle_result_too_large" }, 413);
   const now = nowIso();
   const rewardCommit = resultPayload?.reward && resultName === "victory"
-    ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, checkpointPayload, battleContext, now)
+    ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, checkpointPayload, battleContext, now, preRead?.[inventoryReadIndex]?.results || [])
     : { reward: null, committed: false };
   if (rewardCommit.error) return json({ error: rewardCommit.error }, 400);
   if (resultPayload?.reward && resultName === "victory") {
