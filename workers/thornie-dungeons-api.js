@@ -1837,7 +1837,7 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const junkSummary = {};
   items.filter(item => item.type === "junk").forEach(item => { junkSummary[item.junkId] = (junkSummary[item.junkId] || 0) + item.quantity; });
   const [junkType, junkAmount] = Object.entries(junkSummary)[0] || [];
-  return {
+  const result = {
     floor: context.floor, encounterType: context.role, rewardRole: context.role, packCount: context.packCount,
     gold: dungeonV2ServerGold(context.floor, context.role, context.packCount),
     xp: dungeonV2ServerExp(context.floor, context.role, context.packCount),
@@ -1845,6 +1845,8 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     drop, junkDrop: junkType ? { type: junkType, amount: junkAmount } : null,
     sourceIdentity: context.enemies[0]?.id || null, rewardSeed: seed
   };
+  Object.defineProperty(result, "__inventoryPlan", { value: inventoryPlan, enumerable: false });
+  return result;
 }
 function dungeonV2ServerClaims(petsRaw) {
   const object = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw === "object" ? petsRaw : {});
