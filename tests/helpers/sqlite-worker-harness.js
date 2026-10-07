@@ -45,6 +45,7 @@ function createDatabase() {
   db.raw.exec(fs.readFileSync(path.join(__dirname, "..", "fixtures/auth-v2-schema.sql"), "utf8"));
   db.raw.exec(fs.readFileSync(path.join(__dirname, "..", "..", "migrations/auto/0012_battle_persistence_v1.sql"), "utf8"));
   db.raw.exec(fs.readFileSync(path.join(__dirname, "..", "..", "migrations/auto/0013_pet_run_state_v1.sql"), "utf8"));
+  db.raw.exec(fs.readFileSync(path.join(__dirname, "..", "..", "migrations/auto/0026_w45_authority_receipts.sql"), "utf8"));
   applyRequiredAutoMigrations(db, path.resolve(__dirname, "..", ".."));
   return db;
 }
