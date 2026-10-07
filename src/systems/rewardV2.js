@@ -189,6 +189,7 @@
         ? root.ENHANCEMENT_V2.fillEmpowerSlots(resolvedType, resolvedRarity, rng)
         : Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
     };
+    // Accessory base stat contract: HP flat only; Crit/Dodge/Crit Damage come from enhancement systems.
     if (resolvedType === "accessory") {
       item.name = TYPE_NAMES.accessory[gearTier - 1];
       item.hp = roundStat(ACCESSORY_BASE_HP[gearTier - 1] * multiplier);
