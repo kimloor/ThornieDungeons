@@ -150,8 +150,10 @@ function createSqliteD1() {
 }
 
 async function sha256ForLatency(text) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(text)));
+  let binary = "";
+  new Uint8Array(digest).forEach(byte => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
 }
 
 async function latencyHarnessRequest(db, token, body) {
