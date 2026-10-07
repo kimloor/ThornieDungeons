@@ -2041,7 +2041,7 @@ body::after {
 .md-inv2-detail.elite .md-inv2-detail-head h3 { color:#ffad5c; }
 .md-inv2-detail.mythic .md-inv2-detail-head h3 { color:#ffe28a; }
 .md-inv2-detail-icon { width:62px; height:62px; }
-.md-inv2-stat-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:14px; }
+.md-inv2-stat-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:14px; } .md-inv2-stat-sections { margin-top:14px; } .md-inv2-stat-section { margin-top:10px; } .md-inv2-stat-section:first-child { margin-top:0; } .md-inv2-stat-section h4 { margin:0 0 5px; color:#91a9c3; font-size:8px; letter-spacing:.08em; } .md-inv2-stat-section-refine h4 { color:#ffd166; } .md-inv2-stat-section-enchant h4 { color:#b893ff; } .md-inv2-signature { margin-top:9px; padding:7px 9px; border:1px solid rgba(255,209,102,.38); border-radius:9px; background:rgba(255,209,102,.08); color:#ffe28a; font-size:10px; line-height:1.25; overflow-wrap:anywhere; }
 .md-inv2-stat-list > div,.md-inv2-compare-row { display:flex; justify-content:space-between; gap:8px; padding:7px 9px; border-radius:9px; background:rgba(255,255,255,.055); font-size:11px; }
 .positive { color:#49e3ff !important; } .negative { color:#ff6b6b !important; }
 .md-inv2-enchants { margin-top:12px; padding:10px; border:1px solid rgba(166,108,255,.38); border-radius:11px; }
@@ -2509,7 +2509,7 @@ body::after {
 }
 .md-anvil-result-success { animation: anvil-success-flash 0.6s ease-out; }
 .md-anvil-result-fail { animation: anvil-fail-shake 0.4s ease-in-out; border-color: #ff5566 !important; }
-.md-blacksmith-icon { font-size: 40px; text-align: center; margin: 6px 0; transition: transform 0.15s ease; }
+.md-blacksmith-icon { font-size: 40px; text-align: center; margin: 6px 0; transition: transform 0.15s ease; }\n.md-forge-phaser-presentation canvas { display:block; width:100% !important; height:100% !important; }
 .md-friend-player-cell { display:flex; align-items:center; gap:6px; min-width:0; }
 .md-friend-online-dot { flex:0 0 auto; }
 .md-player-card-trigger { display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:3px 6px; border:0; border-radius:10px; background:transparent; color:var(--ink-soft); font:inherit; font-weight:800; text-align:left; cursor:pointer; }
