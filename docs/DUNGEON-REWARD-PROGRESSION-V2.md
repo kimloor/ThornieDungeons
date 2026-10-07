@@ -135,21 +135,25 @@ Slot-role target:
 
 Apply the approved Rarity multiplier after the Tier/base-slot value.
 
-### 4.3 Accessory utility budget
+### 4.3 Accessory base-stat budget
 
 Accessory is a utility slot rather than part of the normal ATK/DEF full-set budget.
 
-T1 Rare utility baselines:
+Approved base stat:
 
-| Utility stat | T1 Rare baseline |
-| --- | ---: |
-| Crit Chance | +2.5% |
-| Dodge | +2.0% |
-| Crit Damage | +8% |
+| Tier | T1 | T2 | T3 | T4 | T5 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Rare base HP | +40 | +52 | +68 | +88 | +114 |
 
-Apply the approved Tier multiplier and Rarity multiplier to the appropriate utility baseline.
+Rarity multiplier is applied after the Tier base value:
 
-Boss First-Clear Accessory rewards should eventually have intentional Boss/source identity rather than forcing the one-time reward through uncontrolled random utility selection.
+- Rare ×1.00
+- Unique ×1.15
+- Elite ×1.30
+
+Accessories do **not** roll Crit Chance, Crit Damage, or Dodge as direct base stats. Those combat-utility effects belong to the Enchant (legacy implementation name: Empower) option system.
+
+Boss First-Clear Accessory rewards keep their locked Tier/Rarity table and receive a fresh Enchant roll per reward.
 
 Wings remain outside the normal ATK/DEF equipment budget and should be balanced with their own special-source contract.
 
