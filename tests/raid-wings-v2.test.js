@@ -28,6 +28,16 @@ test("W5 wings remain tierless and rarity controls Empower capacity only", () =>
   assert.match(worker, /type: "wings", rarity: r, name:/);
   assert.match(worker, /rewardVersion: 2, itemModelVersion: 2/);
   assert.match(worker, /wingFamily: f/);
+  assert.match(worker, /empowerSlots: globalThis\.ENHANCEMENT_V2_RULES\?\.fillEmpowerSlots/);
+});
+
+test("Raid Wing mail rewards preserve server-generated Enchant options when claimed", () => {
+  const worker = read("workers/thornie-dungeons-api.js");
+  const components = read("src/ui/components.js");
+  assert.match(worker, /empowerSlots: globalThis\.ENHANCEMENT_V2_RULES\?\.fillEmpowerSlots/);
+  assert.match(components, /Array\.isArray\(desc\.empowerSlots\)/);
+  assert.match(components, /desc\.empowerSlots\.map\(option => option \? \{ \.\.\.option \} : null\)/);
+  assert.doesNotMatch(components.slice(components.indexOf("function materializeMailItem"), components.indexOf("function formatMailDate")), /empowerSlots: Array\(.*\)\.fill\(null\)/);
 });
 
 test("W5 visual resolver binds all approved Wing families without weakening V4 authority", () => {
