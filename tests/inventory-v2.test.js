@@ -149,3 +149,4 @@ test("Inventory compare modal avoids nested scrolling and uses compact mobile la
   assert.doesNotMatch(styles, /\.md-inv2-detail-layer \{ align-items:flex-end/);
 });
 
+
