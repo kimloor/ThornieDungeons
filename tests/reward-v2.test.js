@@ -239,3 +239,4 @@ test("legacy item fallback slots and sell values remain unchanged", () => {
   assert.equal(shopSandbox.sellPrice({ type: "weapon", rarity: "unique", atk: 10 }), 51);
   assert.equal(shopSandbox.sellPrice({ type: "weapon", rarity: "mythic", atk: 10 }), 146);
 });
+
