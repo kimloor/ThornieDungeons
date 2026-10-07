@@ -20,7 +20,7 @@ function createForgePresentationScene(Phaser, { initialEvent, onReady, onError }
         const height = Math.max(1, this.scale.height || 1);
         this.stage = this.add.container(width / 2, height / 2);
         this.hammer = this.add.text(0, -8, "⚒️", { fontSize: "38px" }).setOrigin(0.5);
-        this.title = this.add.text(0, 28, "", { fontFamily: "system-ui, sans-serif", fontSize: "16px", fontStyle: "bold", color: "#ffffff", align: "center" }).setOrigin(0.5);
+        this.title = this.add.text(0, 28, "", { fontFamily: "system-ui, sans-serif", fontSize: "13px", fontStyle: "bold", color: "#ffffff", align: "center", wordWrap: { width: Math.max(140, width - 20), useAdvancedWrap: true }, maxLines: 2 }).setOrigin(0.5);
         this.detail = this.add.text(0, 50, "", { fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#ffffff", align: "center" }).setOrigin(0.5);
         this.stage.add([this.hammer, this.title, this.detail]);
         this.scale.on("resize", this.handleResize, this);
@@ -48,7 +48,7 @@ function createForgePresentationScene(Phaser, { initialEvent, onReady, onError }
       const outcome = String(event.outcome || "");
       const duration = Math.max(180, Math.round(520 / Math.max(1, Number(speed) || 1)));
       const isCraft = kind === "craft";
-      const title = isCraft ? (event.special ? "MYTHIC REVEAL" : "CRAFT COMPLETE") : outcome === "success" ? "ENHANCE SUCCESS" : outcome === "protected" ? "PROTECTED" : outcome === "downgrade" ? "DOWNGRADE" : "ENHANCE FAILED";
+      const title = isCraft ? (event.special ? "MYTHIC REVEAL" : "CRAFT COMPLETE") : outcome === "success" ? "REFINE SUCCESS" : outcome === "protected" ? "PROTECTED" : outcome === "downgrade" ? "DOWNGRADE" : "REFINE FAILED";
       const detail = isCraft ? String(event.itemName || "Crafted item") : String(Number(event.levelBefore) || 0) + " → " + String(Number(event.levelAfter) || 0);
 
       this.title?.setText(title);

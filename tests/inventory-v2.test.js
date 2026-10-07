@@ -85,17 +85,31 @@ test("Inventory V2 uses the standard authenticated shell and icon-only tools", (
   assert.match(inventory, /md-inv2-favorite-toggle/);
 });
 
-test("Inventory compare uses enhanced item bonuses and exposes stat delta in the one-screen grid", () => {
+test("Inventory compare separates Base, Refine and Enchant rows in the one-screen grid", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const compareFn = components.slice(components.indexOf("function inventoryComparisonRows"), components.indexOf("function InventoryOverlayV2"));
-  assert.match(compareFn, /itemBonus\(currentItem\)/);
-  assert.match(compareFn, /itemBonus\(nextItem\)/);
+  assert.match(compareFn, /inventoryRawBaseStats\(item\)/);
+  assert.match(compareFn, /inventoryRefineStats\(item\)/);
+  assert.match(compareFn, /inventoryEnchantStats\(item\)/);
+  assert.doesNotMatch(compareFn, /itemBonus\(currentItem\)|itemBonus\(nextItem\)/);
   assert.doesNotMatch(compareFn, /getStats|combatPower|freshPlayerFromSave/);
+  assert.match(compareFn, /\(Base\)/);
+  assert.match(compareFn, /\(Refine\)/);
+  assert.match(compareFn, /\(Enchant\)/);
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
   assert.match(compare, /md-inv2-compare-one-screen/);
   assert.match(compare, /md-inv2-compare-delta/);
   assert.match(compare, /deltaClass/);
-  assert.match(compare, /Final values include Refine \+ Enchant stats/);
+  assert.match(compare, /Base, Refine and Enchant are shown separately/);
+});
+
+test("Inventory detail shows Mythic boss-weapon signature and separated stat sections", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const detail = components.slice(components.indexOf("function ItemDetailModal"), components.indexOf("function InventoryOverlayV2"));
+  assert.match(detail, /MYTHIC_V2\.signatureText\(currentDetail\)/);
+  assert.match(components, /\["base", "BASE STATS"\]/);
+  assert.match(components, /\["refine", "REFINE"\]/);
+  assert.match(components, /ENCHANT OPTIONS/);
 });
 
 test("Inventory detail keeps corner controls separate and previews salvage yield from the shared table", () => {
