@@ -2430,19 +2430,30 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
     ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, checkpointPayload, battleContext, now)
     : { reward: null, committed: false };
   if (rewardCommit.error) return json({ error: rewardCommit.error }, 400);
-  const finalStatements = [];
-  if (!resultPayload?.reward || resultName !== "victory") {
-    finalStatements.push(db.prepare(`INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`).bind(battleKey, characterId, encoded, now));
+  if (resultPayload?.reward && resultName === "victory") {
+    const row = rewardCommit.completionRow;
+    if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
+    return json({
+      ok: true,
+      firstCompletion: !!rewardCommit.committed,
+      result: parseJsonColumn(row.result_json, null),
+      completedAt: row.completed_at,
+      ...(rewardCommit.snapshot || {})
+    });
   }
-  const rowReadIndex = finalStatements.length;
-  finalStatements.push(db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey));
-  finalStatements.push(db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`).bind(now, battleKey, characterId));
-  const snapshotIndex = finalStatements.length;
-  finalStatements.push(...battleCompletionSnapshotStatements(db, id, characterId));
+  const finalStatements = [
+    db.prepare(`INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`).bind(battleKey, characterId, encoded, now),
+    db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`),
+    db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`).bind(now, battleKey, characterId),
+    ...battleCompletionSnapshotStatements(db, id, characterId)
+  ];
+  finalStatements[1] = db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey);
   const finalBatch = await db.batch(finalStatements);
+  const rowReadIndex = 1;
+  const snapshotIndex = 3;
   const row = finalBatch?.[rowReadIndex]?.results?.[0] || null;
   if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
-  const firstCompletion = resultPayload?.reward && resultName === "victory" ? !!rewardCommit.committed : !!(finalBatch?.[0]?.meta?.changes);
+  const firstCompletion = !!(finalBatch?.[0]?.meta?.changes);
   return json({ ok: true, firstCompletion, result: parseJsonColumn(row.result_json, null), completedAt: row.completed_at, ...battleCompletionSnapshotFromBatch(finalBatch, snapshotIndex) });
 }
 
