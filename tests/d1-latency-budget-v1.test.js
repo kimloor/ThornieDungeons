@@ -115,32 +115,17 @@ function createSqliteD1() {
     );
   `);
   let calls = 0;
-  const wrap = statement => {
-    const terminal = {
-      first: async () => { calls += 1; return statement.get() || null; },
-      all: async () => { calls += 1; return { results: statement.all() }; },
+  const wrap = (statement, boundArgs = null) => {
+    const args = Array.isArray(boundArgs) ? boundArgs : [];
+    return {
+      bind(...nextArgs) { return wrap(statement, nextArgs); },
+      first: async () => { calls += 1; return statement.get(...args) || null; },
+      all: async () => { calls += 1; return { results: statement.all(...args) }; },
       run: async () => {
         calls += 1;
-        const result = statement.run();
+        const result = statement.run(...args);
         return { meta: { changes: Number(result.changes || 0), last_row_id: Number(result.lastInsertRowid || 0) } };
       }
-    };
-    return {
-      bind(...args) {
-        const bound = statement.bind(...args);
-        return {
-          first: async () => { calls += 1; return bound.get() || null; },
-          all: async () => { calls += 1; return { results: bound.all() }; },
-          run: async () => {
-            calls += 1;
-            const result = bound.run();
-            return { meta: { changes: Number(result.changes || 0), last_row_id: Number(result.lastInsertRowid || 0) } };
-          }
-        };
-      },
-      first: terminal.first,
-      all: terminal.all,
-      run: terminal.run
     };
   };
   return {
