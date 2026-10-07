@@ -6181,31 +6181,47 @@ function ItemStats({ item }) {
 
 function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
   if (!compareRows.length) return null;
-  return /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare" },
+  const rarityLabel = item => ({ common:"Common", junk:"Junk", rare:"Rare", unique:"Unique", elite:"Elite", mythic:"Mythic" })[inventoryRarityKey(item)] || "Common";
+  const meta = (item, equipped) => {
+    const type = inventoryItemType(item);
+    const options = Array.isArray(item?.empowerSlots) ? item.empowerSlots.filter(Boolean) : [];
+    const refine = Math.max(0, Number(item?.enhanceLevel) || 0);
+    return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-card" },
+      /*#__PURE__*/React.createElement(GameIcon, {
+        item: item || {},
+        fallback: item ? (item.icon || SLOT_ICON[type] || "📦") : "📦",
+        className:"md-game-icon md-inv2-compare-icon",
+        alt: item ? itemDisplayName(item) : "Empty Slot"
+      }),
+      /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-copy" },
+        /*#__PURE__*/React.createElement("strong", null, item ? itemDisplayName(item) : "Empty Slot"),
+        /*#__PURE__*/React.createElement("small", null, item
+          ? `${rarityLabel(item)} • ${SLOT_LABEL[type] || type} • Lv.${item.level || 1}`
+          : "Current Slot • Empty"),
+        /*#__PURE__*/React.createElement("small", null, item
+          ? `Refine +${refine} • ${options.length ? `Enchant ${options.length}` : "No Enchant"} • ${equipped ? "Equipped" : "Candidate"}`
+          : "No equipped item")));
+  };
+  return /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare md-inv2-compare-one-screen" },
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" },
-      /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" },
-        currentEquipped && /*#__PURE__*/React.createElement(GameIcon, { item:currentEquipped, fallback:currentEquipped.icon || SLOT_ICON[inventoryItemType(currentEquipped)] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentEquipped) }),
-        /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" },
-          /*#__PURE__*/React.createElement("strong", null, currentEquipped ? itemDisplayName(currentEquipped) : "Empty Slot"),
-          /*#__PURE__*/React.createElement("small", null, currentEquipped ? `Lv.${currentEquipped.level || 1} • ${isItemEnchanted(currentEquipped) ? "Enchanted" : "No Enchant"}` : "Current"))),
-      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-arrow" }, ">"),
-      /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-item" },
-        /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[inventoryItemType(currentDetail)] || "📦", className:"md-game-icon md-inv2-compare-icon", alt:itemDisplayName(currentDetail) }),
-        /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-copy" },
-          /*#__PURE__*/React.createElement("strong", null, itemDisplayName(currentDetail)),
-          /*#__PURE__*/React.createElement("small", null, `Lv.${currentDetail.level || 1} • ${isItemEnchanted(currentDetail) ? "Enchanted" : "No Enchant"}`)))),
+      meta(currentEquipped, true),
+      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-arrow", "aria-hidden":"true" }, "→"),
+      meta(currentDetail, false)),
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" },
       /*#__PURE__*/React.createElement("span", null, "STAT"),
-      /*#__PURE__*/React.createElement("span", null, "CURRENT ITEM"),
-      /*#__PURE__*/React.createElement("span", null, "NEW ITEM")),
+      /*#__PURE__*/React.createElement("span", null, "CURRENT"),
+      /*#__PURE__*/React.createElement("span", null, "NEW")),
     compareRows.map(row => {
-      const currentClass = row.current > row.next ? "positive" : row.current < row.next ? "negative" : "";
-      const nextClass = row.next > row.current ? "positive" : row.next < row.current ? "negative" : "";
+      const delta = Math.round(((Number(row.next) || 0) - (Number(row.current) || 0)) * 10) / 10;
+      const deltaClass = delta > 0 ? "positive" : delta < 0 ? "negative" : "";
       return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key },
         /*#__PURE__*/React.createElement("span", null, row.label),
-        /*#__PURE__*/React.createElement("b", { className:currentClass }, row.current),
-        /*#__PURE__*/React.createElement("b", { className:nextClass }, row.next));
-    }));
+        /*#__PURE__*/React.createElement("b", null, row.current),
+        /*#__PURE__*/React.createElement("b", { className:deltaClass },
+          row.next,
+          delta !== 0 && /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta" }, ` (${delta > 0 ? "+" : ""}${delta})`)));
+    }),
+    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Final values include Refine + Enchant stats; no comparison data is synthesized."));
 }
 
 function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }) {
@@ -6245,13 +6261,13 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
       "aria-pressed":inventoryItemLocked(currentDetail),
       title:"Favorite / Lock"
     }, iconButtonFallback("favorite", inventoryItemLocked(currentDetail) ? "★" : "☆")),
-    /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-head" },
+    !compareRows.length && /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-head" },
       /*#__PURE__*/React.createElement(GameIcon, { item:currentDetail, fallback:currentDetail.icon || SLOT_ICON[itemType] || "📦", className:"md-game-icon md-inv2-detail-icon" }),
       /*#__PURE__*/React.createElement("div", null,
         /*#__PURE__*/React.createElement("h3", null, itemDisplayName(currentDetail)),
         /*#__PURE__*/React.createElement("p", null, `${rarityLabel(currentDetail)} • ${SLOT_LABEL[itemType] || itemType} • Lv.${currentDetail.level || 1}`))),
-    /*#__PURE__*/React.createElement(ItemStats, { item:currentDetail }),
-    Array.isArray(currentDetail.empowerSlots) && currentDetail.empowerSlots.some(Boolean) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-enchants" },
+    !compareRows.length && /*#__PURE__*/React.createElement(ItemStats, { item:currentDetail }),
+    !compareRows.length && Array.isArray(currentDetail.empowerSlots) && currentDetail.empowerSlots.some(Boolean) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-enchants" },
       /*#__PURE__*/React.createElement("h4", null, "ENCHANT OPTIONS"),
       currentDetail.empowerSlots.filter(Boolean).map((option,index) => /*#__PURE__*/React.createElement("div", { key:index }, `${option.icon || "✦"} ${option.label || option.stat || "Option"} +${option.value || 0}`))),
     /*#__PURE__*/React.createElement(ItemComparison, { currentEquipped, currentDetail, compareRows }),

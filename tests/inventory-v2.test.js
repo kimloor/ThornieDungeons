@@ -55,13 +55,19 @@ test("Inventory V2 wiring removes duplicate inventory chrome and prewires option
   assert.match(styles, /@media \(min-width:431px\) and \(max-width:700px\)/);
 });
 
-test("Equipment comparison renders GameIcon on current and new sides", () => {
+test("Equipment comparison renders real current/candidate data with compact metadata", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
-  assert.match(compare, /item:currentEquipped/);
-  assert.match(compare, /item:currentDetail/);
-  assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 2);
-  assert.match(compare, /currentEquipped \? itemDisplayName\(currentEquipped\) : "Empty Slot"/);
+  assert.match(compare, /item: item \|\| \{\}/);
+  assert.match(compare, /currentEquipped/);
+  assert.match(compare, /currentDetail/);
+  assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 1);
+  assert.match(compare, /rarityLabel\(item\)/);
+  assert.match(compare, /SLOT_LABEL\[type\]/);
+  assert.match(compare, /Refine/);
+  assert.match(compare, /Enchant/);
+  assert.match(compare, /Equipped/);
+  assert.match(compare, /Candidate/);
 });
 
 test("Inventory V2 uses the standard authenticated shell and icon-only tools", () => {
@@ -79,17 +85,17 @@ test("Inventory V2 uses the standard authenticated shell and icon-only tools", (
   assert.match(inventory, /md-inv2-favorite-toggle/);
 });
 
-test("Inventory compare uses enhanced item bonuses rather than total character stats", () => {
+test("Inventory compare uses enhanced item bonuses and exposes stat delta in the one-screen grid", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const compareFn = components.slice(components.indexOf("function inventoryComparisonRows"), components.indexOf("function InventoryOverlayV2"));
   assert.match(compareFn, /itemBonus\(currentItem\)/);
   assert.match(compareFn, /itemBonus\(nextItem\)/);
   assert.doesNotMatch(compareFn, /getStats|combatPower|freshPlayerFromSave/);
-  const inventory = components.slice(components.indexOf("function InventoryHeader"), components.indexOf("function InventoryOverlay({"));
-  assert.match(inventory, /className:"md-inv2-compare-columns"/);
-  assert.match(inventory, /row\.current > row\.next \? "positive"/);
-  assert.match(inventory, /row\.next > row\.current \? "positive"/);
-  assert.doesNotMatch(inventory, /const delta = row\.next - row\.current/);
+  const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
+  assert.match(compare, /md-inv2-compare-one-screen/);
+  assert.match(compare, /md-inv2-compare-delta/);
+  assert.match(compare, /deltaClass/);
+  assert.match(compare, /Final values include Refine \+ Enchant stats/);
 });
 
 test("Inventory detail keeps corner controls separate and previews salvage yield from the shared table", () => {
@@ -127,3 +133,20 @@ test("Inventory W1 decomposes InventoryOverlayV2 and exposes read-only item help
   assert.equal(inventorySystem.inventoryItemJunkId({ type:"junk", junkId:"iron" }), "iron");
   assert.equal(inventorySystem.inventoryItemPotionId({ type:"potion", potionId:"small_hp" }), "small_hp");
 });
+
+test("Inventory compare modal avoids nested scrolling and uses compact mobile layout", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
+  const detailStart = components.indexOf("function ItemDetailModal");
+  const detailEnd = components.indexOf("function InventoryOverlayV2", detailStart);
+  const detail = components.slice(detailStart, detailEnd);
+  assert.match(detail, /!compareRows\.length && .*md-inv2-detail-head/);
+  assert.match(detail, /!compareRows\.length && .*ItemStats/);
+  assert.match(styles, /\.md-inv2-detail \{[^}]*overflow:hidden/);
+  assert.match(styles, /\.md-inv2-detail-layer \{ align-items:center/);
+  assert.match(styles, /\.md-inv2-compare-one-screen/);
+  assert.match(styles, /@media \(max-width:430px\)/);
+  assert.doesNotMatch(styles, /\.md-inv2-detail-layer \{ align-items:flex-end/);
+});
+
+
