@@ -1770,6 +1770,12 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     reconcile: false,
     prefetchedRows: rewardReadBatch?.[2]?.results || []
   });
+  console.log("DUNGEON_REWARD_INVENTORY_PLAN", JSON.stringify({
+    prefetched: rewardReadBatch?.[2]?.results?.length || 0,
+    carried: inventoryPlan.carried.length,
+    overflow: inventoryPlan.overflow.length,
+    equipped: inventoryPlan.equipped.length
+  }));
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
