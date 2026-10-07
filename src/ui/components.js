@@ -6177,6 +6177,7 @@ function ItemStats({ item }) {
     /*#__PURE__*/React.createElement("b", { className:row.value >= 0 ? "positive" : "negative" }, `${row.value >= 0 ? "+" : ""}${row.value}`))));
 }
 
+// Compare mode is intentionally dense so the complete calculated stat set stays visible in one mobile view.
 function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
   if (!compareRows.length) return null;
   return /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare" },
