@@ -1755,27 +1755,49 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     rewardReadBatch = await db.batch([
       db.prepare(`SELECT extra_json FROM items WHERE character_id = ? AND equipped = 1`).bind(characterId),
       db.prepare(
-        `SELECT monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance
-         FROM monster_loot WHERE monster_id IN (${lootPlaceholders})`
-      ).bind(...lootIds),
-      db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`).bind(id, characterId)
+        `SELECT 'loot' AS row_kind, monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance, NULL AS inventory_json
+         FROM monster_loot WHERE monster_id IN (${lootPlaceholders})
+         UNION ALL
+         SELECT 'inventory' AS row_kind, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                json_group_array(json_object(
+                  'item_id', item_id,
+                  'player_id', player_id,
+                  'character_id', character_id,
+                  'slot_type', slot_type,
+                  'equipped', equipped,
+                  'inventory_slot', inventory_slot,
+                  'item_template_id', item_template_id,
+                  'rarity', rarity,
+                  'name', name,
+                  'item_level', item_level,
+                  'enhance_level', enhance_level,
+                  'bound', bound,
+                  'quantity', quantity,
+                  'atk', atk,
+                  'def', def,
+                  'hp', hp,
+                  'mp', mp,
+                  'extra_json', extra_json,
+                  'created_at', created_at,
+                  'updated_at', updated_at
+                )) AS inventory_json
+         FROM items
+         WHERE player_id = ? AND character_id = ?`
+      ).bind(...lootIds, id, characterId)
     ]);
   } catch (_) {
-    rewardReadBatch = [rewardReadBatch?.[0] || { results: [] }, { results: [] }, { results: [] }];
+    rewardReadBatch = [rewardReadBatch?.[0] || { results: [] }, { results: [] }];
   }
   const equippedRows = rewardReadBatch?.[0]?.results || [];
   const dropBonus = dungeonV2ServerDropBonus(ownedRow, equippedRows);
-  const lootRows = rewardReadBatch?.[1]?.results || [];
+  const combinedRewardRows = rewardReadBatch?.[1]?.results || [];
+  const lootRows = combinedRewardRows.filter(row => row.row_kind === "loot");
+  const inventoryPayload = combinedRewardRows.find(row => row.row_kind === "inventory")?.inventory_json;
+  const prefetchedRows = parseJsonColumn(inventoryPayload, []);
   const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, {
     reconcile: false,
-    prefetchedRows: rewardReadBatch?.[2]?.results || []
+    prefetchedRows
   });
-  console.log("DUNGEON_REWARD_INVENTORY_PLAN", JSON.stringify({
-    prefetched: rewardReadBatch?.[2]?.results?.length || 0,
-    carried: inventoryPlan.carried.length,
-    overflow: inventoryPlan.overflow.length,
-    equipped: inventoryPlan.equipped.length
-  }));
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
