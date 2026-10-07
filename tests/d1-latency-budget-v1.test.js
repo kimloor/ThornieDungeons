@@ -99,3 +99,116 @@ test("shared character auth is reused by craft, blacksmith, and mail claim hot p
   assert.doesNotMatch(api, /body\.action === "completeBattle" \? 200/);
   assert.match(api, /sessionErrors\.has\(characterAuth\.error\) \? 401 : 403/);
 });
+
+test("measured D1 budgets use the real Worker + sqlite harness", async () => {
+  const { createDatabase, createWorker, post, setupCharacter } = require("./helpers/sqlite-worker-harness");
+  const results = {};
+
+  {
+    const db = createDatabase();
+    const api = createWorker();
+    const { token, characterId } = await setupCharacter(api, db, "Latency_Purchase", { gold: 1000 });
+    const requestId = "purchase-latency-01";
+    const res = await post(api, db, token, {
+      action: "purchaseCharacterResource",
+      characterId,
+      resource: { kind: "material", id: "iron" },
+      quantity: 1,
+      requestId
+    });
+    assert.equal(res.body.ok, true);
+    results.purchaseCharacterResource = db.count();
+  }
+
+  {
+    const db = createDatabase();
+    const api = createWorker();
+    const { token, characterId } = await setupCharacter(api, db, "Latency_Sell", { gold: 0 });
+    db.raw.prepare(`
+      INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, rarity, name, quantity, atk, def, hp, mp, extra_json)
+      VALUES (?, ?, ?, 'junk', 0, 'common', 'Iron', 1, 0, 0, 0, 0, ?)
+    `).run("latency-sell-item", "Latency_Sell", characterId, JSON.stringify({ junkId: "iron", quantity: 1 }));
+    db.resetCount();
+    const res = await post(api, db, token, {
+      action: "sellCharacterItem",
+      characterId,
+      itemId: "latency-sell-item",
+      quantity: 1,
+      requestId: "sell-latency-01"
+    });
+    assert.equal(res.body.ok, true);
+    results.sellCharacterItem = db.count();
+  }
+
+  {
+    const db = createDatabase();
+    const api = createWorker();
+    const { token, characterId } = await setupCharacter(api, db, "Latency_Battle", { gold: 0, unlockedFloor: 1 });
+    const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+    assert.equal(started.body.ok, true);
+    const context = started.body.context;
+    const checkpoint = {
+      version: 1,
+      battleId: started.body.battleId,
+      mode: "dungeon",
+      floor: context.floor,
+      encounterType: context.role,
+      safeActionSeq: 1,
+      serverContext: context,
+      enemyIds: context.enemies.map(enemy => enemy.instanceId),
+      units: Object.fromEntries(context.enemies.map(enemy => [enemy.instanceId, {
+        id: enemy.instanceId,
+        kind: enemy.kind,
+        side: "enemy",
+        isBoss: enemy.isBoss,
+        monsterDefId: enemy.id,
+        encounterType: context.role,
+        hp: 100,
+        maxHp: 100,
+        atk: 8,
+        def: 3,
+        speed: 5,
+        statuses: {},
+        cooldowns: {},
+        skills: {},
+        flags: {}
+      }]))
+    };
+    checkpoint.units.hero = {
+      id: "hero", kind: "hero", side: "ally", hp: 100, maxHp: 100,
+      sp: 20, maxSp: 20, atk: 10, def: 5, speed: 10, statuses: {}, cooldowns: {}, skills: {}, flags: {}
+    };
+    const saved = await post(api, db, token, {
+      action: "saveBattleCheckpoint",
+      characterId,
+      battleId: started.body.battleId,
+      checkpointSeq: 1,
+      payload: checkpoint
+    });
+    assert.equal(saved.body.accepted, true);
+    db.resetCount();
+    const completion = await post(api, db, token, {
+      action: "completeBattle",
+      characterId,
+      battleId: started.body.battleId,
+      result: { result: "victory", safeActionSeq: 2, floor: 1, reward: { floor: 1, encounterType: context.role, rewardRole: context.role, packCount: context.packCount, gold: 23, xp: 8, diamonds: 0, items: [] } }
+    });
+    assert.equal(completion.body.ok, true);
+    results.completeBattle = db.count();
+    db.resetCount();
+    const replay = await post(api, db, token, {
+      action: "completeBattle",
+      characterId,
+      battleId: started.body.battleId,
+      result: { result: "victory", safeActionSeq: 2, floor: 1, reward: { floor: 1, encounterType: context.role, rewardRole: context.role, packCount: context.packCount, gold: 23, xp: 8, diamonds: 0, items: [] } }
+    });
+    assert.equal(replay.body.firstCompletion, false);
+    results.completeBattleReplay = db.count();
+  }
+
+  console.log("[D1 measured] " + JSON.stringify(results));
+  assert.ok(results.purchaseCharacterResource <= 4);
+  assert.ok(results.sellCharacterItem <= 4);
+  assert.ok(results.completeBattle <= 4);
+  assert.ok(results.completeBattleReplay <= 2);
+});
