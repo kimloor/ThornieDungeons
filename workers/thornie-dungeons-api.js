@@ -1791,6 +1791,7 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const equippedRows = rewardReadBatch?.[0]?.results || [];
   const dropBonus = dungeonV2ServerDropBonus(ownedRow, equippedRows);
   const combinedRewardRows = rewardReadBatch?.[1]?.results || [];
+  console.log("DUNGEON_COMBINED_REWARD_ROWS", JSON.stringify(combinedRewardRows.slice(0, 2)));
   const lootRows = combinedRewardRows.filter(row => row.row_kind === "loot");
   const inventoryPayload = combinedRewardRows.find(row => row.row_kind === "inventory")?.inventory_json;
   const prefetchedRows = parseJsonColumn(inventoryPayload, []);
