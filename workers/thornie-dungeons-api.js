@@ -1398,7 +1398,6 @@ const DUNGEON_V2_REWARD_JUNK_META = Object.freeze({
   iron: ["Iron", "🔩"], manaOre: ["Mana Ore", "🔮"], stone: ["Stone", "🪨"], grass: ["Grass", "🌿"], wood: ["Wood", "🪵"],
   earthStone: ["Earth Stone", "🟢"], fireStone: ["Fire Stone", "🔴"], waterStone: ["Water Stone", "🔵"]
 });
-const DUNGEON_V2_ACCESSORY_BASE_HP = Object.freeze([40, 52, 68, 88, 114]);
 const DUNGEON_V2_MONSTER_ID_LIST = Object.freeze(["jelly_slime", "spore_cap", "tusky_boar", "bramble_bat", "bone_rattler", "sandy_crab"]);
 const DUNGEON_V2_BOSS_ID_LIST = Object.freeze(["moss_king", "ember_drake", "frost_warden"]);
 const DUNGEON_V2_MODIFIER_ID_LIST = Object.freeze(["elite_pack", "golden", "arcane", "treasure", "cursed"]);
