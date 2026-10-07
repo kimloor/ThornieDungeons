@@ -47,9 +47,6 @@ jobs:
           node --test tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js
           node --check workers/thornie-dungeons-api.js
 
-      - name: Full suite (temporary QA)
-        run: node --test --test-concurrency=2 tests/*.test.js
-
       - name: Build generated frontend
         shell: bash
         run: |
