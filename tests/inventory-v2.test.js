@@ -109,7 +109,7 @@ test("Inventory detail shows Mythic boss-weapon signature and separated stat sec
   assert.match(detail, /MYTHIC_V2\.signatureText\(currentDetail\)/);
   assert.match(components, /\["base", "BASE STATS"\]/);
   assert.match(components, /\["refine", "REFINE"\]/);
-  assert.match(components, /\["enchant", "ENCHANT"\]/);
+  assert.match(components, /ENCHANT OPTIONS/);
 });
 
 test("Inventory detail keeps corner controls separate and previews salvage yield from the shared table", () => {
