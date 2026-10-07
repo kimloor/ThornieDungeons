@@ -76,8 +76,9 @@ async function setupCharacter(api, db, prefix, { gold = 0, unlockedFloor = 1 } =
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: prefix });
   const characterId = created.body.character.character_id;
   db.raw.prepare("UPDATE characters SET gold = ?, unlocked_floor = ? WHERE character_id = ?").run(gold, unlockedFloor, characterId);
+  const playerId = db.raw.prepare("SELECT player_id FROM characters WHERE character_id = ?").get(characterId).player_id;
   db.resetCount();
-  return { token, characterId };
+  return { token, characterId, playerId };
 }
 
 module.exports = { createDatabase, createWorker, post, setupCharacter };
