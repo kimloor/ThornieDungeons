@@ -1,4 +1,5 @@
 // Baseline harness: application source remains at PR100 pre-fix commit.
+// Baseline rerun marker.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
