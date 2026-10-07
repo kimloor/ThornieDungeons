@@ -119,6 +119,7 @@ function createSqliteD1() {
     const args = Array.isArray(boundArgs) ? boundArgs : [];
     const isQuery = /^\\s*(SELECT|WITH)\\b/i.test(sql);
     return {
+      __sql: sql,
       bind(...nextArgs) { return wrap(statement, nextArgs, sql); },
       first: async () => { calls += 1; return statement.get(...args) || null; },
       all: async () => { calls += 1; return { results: statement.all(...args) }; },
@@ -137,7 +138,11 @@ function createSqliteD1() {
       sqlite.exec("BEGIN");
       try {
         const results = [];
-        for (const statement of statements) results.push(await statement.run());
+        for (const statement of statements) {
+          const result = await statement.run();
+          if (/^\s*SELECT\b/i.test(statement.__sql || "") && !(result.results || []).length) console.log("D1 empty SELECT in batch:", statement.__sql);
+          results.push(result);
+        }
         sqlite.exec("COMMIT");
         return results;
       } catch (error) {
