@@ -117,7 +117,8 @@ function createSqliteD1() {
   let calls = 0;
   const wrap = (statement, boundArgs = null, sql = "") => {
     const args = Array.isArray(boundArgs) ? boundArgs : [];
-    const isQuery = /^(SELECT|WITH)\\b/i.test(String(sql).trimStart());
+    const upperSql = String(sql).trimStart().toUpperCase();
+    const isQuery = upperSql.startsWith("SELECT") || upperSql.startsWith("WITH");
     return {
       __sql: sql,
       bind(...nextArgs) { return wrap(statement, nextArgs, sql); },
