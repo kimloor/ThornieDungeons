@@ -381,6 +381,7 @@ function buildDropItem(floor, options = {}) {
     name: pickName(ACCESSORY_NAMES, floor),
     hp
   };
+}
 
 function itemDisplayName(it) {
   if (!it) return "";
