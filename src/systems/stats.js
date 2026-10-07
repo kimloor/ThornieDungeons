@@ -50,8 +50,8 @@ function formatNumber(n) {
   return sign + text + NUMBER_FORMAT_UNITS[unitIndex].suffix;
 }
 
-// Accessories no longer roll HP/MP — they roll one of these % utility stats instead.
-const ACCESSORY_STAT_POOL = ["dodgeChance", "critChance", "critDamage"];
+// Accessory base stat is flat HP only. Crit / Dodge / Crit Damage come from Enchant options.
+const ACCESSORY_BASE_HP_BY_TIER = [40, 52, 68, 88, 114];
 // Wings are the evasion-themed 7th slot: always roll dodgeChance as a slightly stronger
 // version of the accessory roll (higher flat/perFloor), reusing the same stat key so
 // itemBonus()/getEquipBonus()/getStats() need no changes.
@@ -372,18 +372,17 @@ function buildDropItem(floor, options = {}) {
       dodgeChance: val
     };
   }
-  // Accessories are pure utility pieces: dodge / crit chance / crit damage as % values, never HP or MP.
-  const statKey = ACCESSORY_STAT_POOL[Math.floor(Math.random() * ACCESSORY_STAT_POOL.length)];
-  const base = ACCESSORY_STAT_BASE[statKey];
-  const val = roundTo((base.flat + floor * base.perFloor) * mult, 1);
+  const tier = gearTierForFloor(floor);
+  const hp = roundInt(ACCESSORY_BASE_HP_BY_TIER[tier - 1] * mult);
   return {
     id,
     type,
     rarity,
     name: pickName(ACCESSORY_NAMES, floor),
-    [statKey]: val
+    hp
   };
 }
+
 function itemDisplayName(it) {
   if (!it) return "";
   return it.enhanceLevel ? `${it.name} +${it.enhanceLevel}` : it.name;

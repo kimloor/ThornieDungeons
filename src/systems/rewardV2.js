@@ -22,7 +22,7 @@
     helmet: Object.freeze([6, 8, 10, 13, 17]),
     boots: Object.freeze([5, 6, 9, 11, 14])
   });
-  const ACCESSORY_BASE = Object.freeze({ critChance: 2.5, dodgeChance: 2, critDamage: 8 });
+  const ACCESSORY_BASE_HP = Object.freeze([40, 52, 68, 88, 114]);
   const GENERIC_SLOTS = Object.freeze(["weapon", "helmet", "chest", "gloves", "boots"]);
   const RARITY_BANDS = Object.freeze([
     Object.freeze({ minFloor: 1, maxFloor: 10, weights: Object.freeze({ rare: 82.5, unique: 15, elite: 2.5 }) }),
@@ -34,16 +34,16 @@
     Object.freeze({ minFloor: 91, maxFloor: Infinity, weights: Object.freeze({ rare: 55, unique: 33, elite: 12 }) })
   ]);
   const FIRST_CLEAR_ACCESSORIES = Object.freeze({
-    10: Object.freeze({ gearTier: 1, rarity: "rare" }),
-    20: Object.freeze({ gearTier: 1, rarity: "unique" }),
+    10: Object.freeze({ gearTier: 1, rarity: "elite" }),
+    20: Object.freeze({ gearTier: 1, rarity: "elite" }),
     30: Object.freeze({ gearTier: 1, rarity: "elite" }),
-    40: Object.freeze({ gearTier: 2, rarity: "unique" }),
+    40: Object.freeze({ gearTier: 2, rarity: "elite" }),
     50: Object.freeze({ gearTier: 2, rarity: "elite" }),
-    60: Object.freeze({ gearTier: 3, rarity: "unique" }),
+    60: Object.freeze({ gearTier: 3, rarity: "elite" }),
     70: Object.freeze({ gearTier: 3, rarity: "elite" }),
-    80: Object.freeze({ gearTier: 4, rarity: "unique" }),
+    80: Object.freeze({ gearTier: 4, rarity: "elite" }),
     90: Object.freeze({ gearTier: 4, rarity: "elite" }),
-    100: Object.freeze({ gearTier: 5, rarity: "unique" }),
+    100: Object.freeze({ gearTier: 5, rarity: "elite" }),
     110: Object.freeze({ gearTier: 5, rarity: "elite" })
   });
   const PACK_REWARD_MULTIPLIERS = Object.freeze({ 1: 1, 2: 1.35, 3: 1.65 });
@@ -60,7 +60,7 @@
     chest: Object.freeze(["Leather Vest", "Bronze Armor", "Chain Armor", "Platinum Plate Armor", "Dragon Scale Armor"]),
     gloves: Object.freeze(["Leather Gloves", "Bronze Gauntlets", "Chain Gloves", "Platinum Gauntlets", "Dragonhide Gloves"]),
     boots: Object.freeze(["Leather Boots", "Bronze Greaves", "Chain Boots", "Platinum Sabatons", "Dragonhide Boots"]),
-    accessory: Object.freeze(["Lucky Charm", "Vitality Pendant", "Mana Ring", "Swift Anklet", "Phoenix Feather"])
+    accessory: Object.freeze(["Adventurer Charm", "Bronze Amulet", "Enchanted Amulet", "Platinum Talisman", "Dragonheart Amulet"])
   });
   const VALID_GENERIC_RARITIES = Object.freeze(["rare", "unique", "elite"]);
   const VALID_GENERIC_TYPES = new Set(GENERIC_SLOTS);
@@ -107,6 +107,10 @@
     const encounter = encounterType === "chapter_boss" ? 2 : encounterType === "elite" ? 1.5 : 1;
     const pack = encounterType === "normal" ? dungeonV2PackMultiplier(packCount) : 1;
     return Math.round(base * encounter * pack);
+  }
+  function dungeonV2AccessoryDropChance(encounterType = "normal") {
+    if (encounterType === "elite") return 0.02;
+    return 0;
   }
   function dungeonV2GenericEquipmentChance(encounterType = "normal", dropBonus = 0) {
     if (encounterType === "chapter_boss") return 0;
@@ -185,13 +189,10 @@
         ? root.ENHANCEMENT_V2.fillEmpowerSlots(resolvedType, resolvedRarity, rng)
         : Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
     };
+    // Accessory base stat contract: HP flat only; Crit/Dodge/Crit Damage come from enhancement systems.
     if (resolvedType === "accessory") {
-      const utilityKeys = Object.keys(ACCESSORY_BASE);
-      const selectedKey = utilityKeys.includes(utilityKey)
-        ? utilityKey
-        : utilityKeys[Math.floor(Math.max(0, Math.min(0.999999, Number(rng()) || 0)) * utilityKeys.length)];
-      item.utilityStat = selectedKey;
-      item[selectedKey] = roundUtility(ACCESSORY_BASE[selectedKey] * dungeonV2TierMultiplier(gearTier) * multiplier);
+      item.name = TYPE_NAMES.accessory[gearTier - 1];
+      item.hp = roundStat(ACCESSORY_BASE_HP[gearTier - 1] * multiplier);
     } else {
       const base = BASE_STATS[resolvedType][gearTier - 1];
       item[resolvedType === "weapon" || resolvedType === "gloves" ? "atk" : "def"] = roundStat(base * multiplier);
@@ -213,10 +214,10 @@
   }
 
   const api = {
-    TIERS, RARITIES, BASE_STATS, ACCESSORY_BASE, GENERIC_SLOTS, RARITY_BANDS, FIRST_CLEAR_ACCESSORIES, PACK_REWARD_MULTIPLIERS, SHOP_PRICES,
+    TIERS, RARITIES, BASE_STATS, ACCESSORY_BASE_HP, GENERIC_SLOTS, RARITY_BANDS, FIRST_CLEAR_ACCESSORIES, PACK_REWARD_MULTIPLIERS, SHOP_PRICES,
     dungeonV2GearTierForFloor, dungeonV2TierMultiplier, dungeonV2RarityMultiplier, dungeonV2EmpowerSlots,
     dungeonV2RarityWeights, dungeonV2RollRarity, dungeonV2RewardRole, dungeonV2PackMultiplier, dungeonV2RewardExp,
-    dungeonV2RewardGold, dungeonV2GenericEquipmentChance, dungeonV2FirstClearAccessory, dungeonV2ShopTier,
+    dungeonV2RewardGold, dungeonV2AccessoryDropChance, dungeonV2GenericEquipmentChance, dungeonV2FirstClearAccessory, dungeonV2ShopTier,
     dungeonV2ShopPrice, dungeonV2SalvageYield, dungeonV2RewardReceiptKey, dungeonV2FirstClearReceiptKey,
     dungeonV2HasReceipt, dungeonV2IsV2Item, dungeonV2FirstClearClaimsFromReceipts, dungeonV2HasFirstClearClaim,
     dungeonV2ClaimFirstClear, dungeonV2AppendReceipts, dungeonV2CustomLootChoice, dungeonV2EquipmentItem,

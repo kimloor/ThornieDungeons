@@ -1399,17 +1399,16 @@ const DUNGEON_V2_REWARD_JUNK_META = Object.freeze({
   iron: ["Iron", "🔩"], manaOre: ["Mana Ore", "🔮"], stone: ["Stone", "🪨"], grass: ["Grass", "🌿"], wood: ["Wood", "🪵"],
   earthStone: ["Earth Stone", "🟢"], fireStone: ["Fire Stone", "🔴"], waterStone: ["Water Stone", "🔵"]
 });
-const DUNGEON_V2_ACCESSORY_BASE = Object.freeze({ critChance: 2.5, dodgeChance: 2, critDamage: 8 });
 const DUNGEON_V2_MONSTER_ID_LIST = Object.freeze(["jelly_slime", "spore_cap", "tusky_boar", "bramble_bat", "bone_rattler", "sandy_crab"]);
 const DUNGEON_V2_BOSS_ID_LIST = Object.freeze(["moss_king", "ember_drake", "frost_warden"]);
 const DUNGEON_V2_MODIFIER_ID_LIST = Object.freeze(["elite_pack", "golden", "arcane", "treasure", "cursed"]);
 const DUNGEON_V2_MONSTER_IDS = new Set(DUNGEON_V2_MONSTER_ID_LIST);
 const DUNGEON_V2_BOSS_IDS = new Set(DUNGEON_V2_BOSS_ID_LIST);
 const DUNGEON_V2_FIRST_CLEAR_ACCESSORIES = {
-  10: { gearTier: 1, rarity: "rare" }, 20: { gearTier: 1, rarity: "unique" }, 30: { gearTier: 1, rarity: "elite" },
-  40: { gearTier: 2, rarity: "unique" }, 50: { gearTier: 2, rarity: "elite" }, 60: { gearTier: 3, rarity: "unique" },
-  70: { gearTier: 3, rarity: "elite" }, 80: { gearTier: 4, rarity: "unique" }, 90: { gearTier: 4, rarity: "elite" },
-  100: { gearTier: 5, rarity: "unique" }, 110: { gearTier: 5, rarity: "elite" },
+  10: { gearTier: 1, rarity: "elite" }, 20: { gearTier: 1, rarity: "elite" }, 30: { gearTier: 1, rarity: "elite" },
+  40: { gearTier: 2, rarity: "elite" }, 50: { gearTier: 2, rarity: "elite" }, 60: { gearTier: 3, rarity: "elite" },
+  70: { gearTier: 3, rarity: "elite" }, 80: { gearTier: 4, rarity: "elite" }, 90: { gearTier: 4, rarity: "elite" },
+  100: { gearTier: 5, rarity: "elite" }, 110: { gearTier: 5, rarity: "elite" },
 };
 function dungeonV2ServerPackMultiplier(pack) { return ({ 1: 1, 2: 1.35, 3: 1.65 })[Math.max(1, Math.min(3, Number(pack) || 1))] || 1; }
 function dungeonV2ServerExp(floor, role, pack) {
@@ -1711,11 +1710,15 @@ function dungeonV2ServerCanonicalEquipment({ battleId, floor, type, rarity, sour
     sourceIdentity: sourceIdentity || undefined
   };
   if (type === "accessory") {
-    const keys = ["critChance", "dodgeChance", "critDamage"];
-    const key = keys.includes(utilityKey) ? utilityKey : keys[Math.floor(rng() * keys.length)];
-    item.utilityStat = key;
-    item[key] = Math.round(DUNGEON_V2_ACCESSORY_BASE[key] * DUNGEON_V2_REWARD_TIER_MULT[tier - 1] * multiplier * 10) / 10;
-    return item;
+    return DUNGEON_REWARD_V2.dungeonV2EquipmentItem({
+      floor,
+      type: "accessory",
+      rarity,
+      sourceType,
+      specialSource,
+      sourceIdentity,
+      rng
+    });
   }
   const stat = Math.max(1, Math.round(DUNGEON_V2_REWARD_BASE_STATS[type][tier - 1] * DUNGEON_V2_REWARD_TIER_MULT[tier - 1] * multiplier));
   if (type === "weapon" || type === "gloves") item.atk = stat;
@@ -1794,6 +1797,16 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     }
   } else if (context.role === "elite") {
     drop = rollEquipment(context.enemies[0].id, items.length);
+    if (rng() < 0.02) {
+      const accessory = dungeonV2ServerCanonicalEquipment({
+        battleId: `${battleId}:elite-accessory`, floor: context.floor, type: "accessory",
+        rarity: dungeonV2ServerRollRarity(context.floor, rng),
+        sourceType: "dungeon_elite_accessory", sourceFloor: context.floor,
+        sourceIdentity: context.enemies[0].id, rng
+      });
+      items.push(accessory);
+      drop = accessory;
+    }
     if (rng() < 0.45) {
       const generic = dungeonV2ServerGenericJunk(rng, context.floor);
       generic.quantity = Math.max(1, Math.round(generic.quantity * 2));

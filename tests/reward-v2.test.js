@@ -29,17 +29,41 @@ test("fixed Rare equipment budgets match every locked Tier and slot", () => {
   assert.equal(reward.dungeonV2EquipmentItem({ floor: 1, type: "weapon", rarity: "mythic" }).atk, 21);
 });
 
-test("accessory utility selects exactly one approved stat with Tier/Rarity multipliers", () => {
-  const accessory = reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "unique", utilityKey: "critChance" });
-  assert.deepEqual(Object.keys(accessory).filter(key => ["critChance", "dodgeChance", "critDamage"].includes(key)), ["critChance"]);
-  assert.equal(accessory.utilityStat, "critChance");
-  assert.equal(accessory.critChance, 3.7);
-  assert.equal(accessory.empowerSlots.length, 2);
-  for (const utilityKey of Object.keys(reward.ACCESSORY_BASE)) {
-    const selected = reward.dungeonV2EquipmentItem({ floor: 1, type: "accessory", rarity: "rare", utilityKey });
-    assert.equal(Object.keys(selected).filter(key => Object.hasOwn(reward.ACCESSORY_BASE, key)).length, 1);
-    assert.equal(selected.utilityStat, utilityKey);
-  }
+test("accessory base stat is flat HP only across T1-T5 and rarity scales it", () => {
+  const floors = [1, 31, 51, 71, 91];
+  const baseHp = [40, 52, 68, 88, 114];
+  floors.forEach((floor, index) => {
+    const accessory = reward.dungeonV2EquipmentItem({ floor, type: "accessory", rarity: "rare" });
+    assert.equal(accessory.name, ["Adventurer Charm", "Bronze Amulet", "Enchanted Amulet", "Platinum Talisman", "Dragonheart Amulet"][index]);
+    assert.equal(accessory.gearTier, index + 1);
+    assert.equal(accessory.hp, baseHp[index]);
+    assert.equal(Object.hasOwn(accessory, "critChance"), false);
+    assert.equal(Object.hasOwn(accessory, "critDamage"), false);
+    assert.equal(Object.hasOwn(accessory, "dodgeChance"), false);
+    assert.equal(Object.hasOwn(accessory, "utilityStat"), false);
+  });
+  assert.equal(
+    reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "unique" }).hp,
+    Math.round(52 * 1.15)
+  );
+  assert.equal(
+    reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "elite" }).hp,
+    Math.round(52 * 1.3)
+  );
+  assert.equal(reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "rare" }).empowerSlots.length, 1);
+  assert.equal(reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "unique" }).empowerSlots.length, 2);
+  assert.equal(reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "elite" }).empowerSlots.length, 3);
+});
+
+test("server reward path has no regular chapter-boss accessory drop", () => {
+  const workerSource = fs.readFileSync(path.join(__dirname, "..", "workers/thornie-dungeons-api.js"), "utf8");
+  assert.doesNotMatch(workerSource, /sourceType:\s*"dungeon_boss_accessory"/);
+});
+
+test("regular accessory drops are 0% Normal, 2% Elite and 0% Chapter Boss", () => {
+  assert.equal(reward.dungeonV2AccessoryDropChance("normal"), 0);
+  assert.equal(reward.dungeonV2AccessoryDropChance("elite"), 0.02);
+  assert.equal(reward.dungeonV2AccessoryDropChance("chapter_boss"), 0);
 });
 
 test("normal drop chance is multiplicative, capped per encounter, and generic-only", () => {
@@ -83,9 +107,12 @@ test("EXP and Gold references and normal pack multipliers match the contract", (
   assert.equal(reward.dungeonV2RewardGold(30, "normal", 3), 182);
 });
 
-test("First-Clear Accessory table, metadata, and exact-once receipts are deterministic", () => {
-  assert.deepEqual(reward.dungeonV2FirstClearAccessory(10), { gearTier: 1, rarity: "rare" });
-  assert.deepEqual(reward.dungeonV2FirstClearAccessory(110), { gearTier: 5, rarity: "elite" });
+test("First-Clear Accessory table is Elite and tier-locked on every Chapter Boss", () => {
+  const bossFloors = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110];
+  const expectedTiers = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+  bossFloors.forEach((floor, index) => {
+    assert.deepEqual(reward.dungeonV2FirstClearAccessory(floor), { gearTier: expectedTiers[index], rarity: "elite" });
+  });
   assert.equal(reward.dungeonV2FirstClearAccessory(11), null);
   assert.equal(reward.dungeonV2FirstClearEligible({ floor: 10, encounterType: "chapter_boss", unlockedNext: true, receipts: [] }), true);
   assert.equal(reward.dungeonV2FirstClearEligible({ floor: 10, encounterType: "chapter_boss", unlockedNext: false, receipts: [] }), false);
@@ -93,9 +120,9 @@ test("First-Clear Accessory table, metadata, and exact-once receipts are determi
   assert.equal(reward.dungeonV2FirstClearEligible({ floor: 10, encounterType: "chapter_boss", unlockedNext: true, receipts: [key] }), false);
   assert.equal(reward.dungeonV2FirstClearEligible({ floor: 10, encounterType: "chapter_boss", unlockedNext: true, firstClearAccessoryClaims: { 10: true } }), false);
   assert.deepEqual(reward.dungeonV2ClaimFirstClear({}, 10), { 10: true });
-  const item = reward.dungeonV2EquipmentItem({ floor: 10, type: "accessory", rarity: "rare", sourceType: "dungeon_boss_first_clear", specialSource: "first_clear_accessory", sourceIdentity: "moss_king" });
+  const item = reward.dungeonV2EquipmentItem({ floor: 10, type: "accessory", rarity: "elite", sourceType: "dungeon_boss_first_clear", specialSource: "first_clear_accessory", sourceIdentity: "moss_king" });
   assert.deepEqual({ sourceType: item.sourceType, sourceFloor: item.sourceFloor, gearTier: item.gearTier, rarity: item.rarity, type: item.type, specialSource: item.specialSource }, {
-    sourceType: "dungeon_boss_first_clear", sourceFloor: 10, gearTier: 1, rarity: "rare", type: "accessory", specialSource: "first_clear_accessory"
+    sourceType: "dungeon_boss_first_clear", sourceFloor: 10, gearTier: 1, rarity: "elite", type: "accessory", specialSource: "first_clear_accessory"
   });
   assert.deepEqual(reward.dungeonV2AppendReceipts(["old"], ["old", key]), ["old", key]);
 });
@@ -222,3 +249,5 @@ test("legacy item fallback slots and sell values remain unchanged", () => {
   assert.equal(shopSandbox.sellPrice({ type: "weapon", rarity: "unique", atk: 10 }), 51);
   assert.equal(shopSandbox.sellPrice({ type: "weapon", rarity: "mythic", atk: 10 }), 146);
 });
+
+
