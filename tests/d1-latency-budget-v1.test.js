@@ -43,12 +43,14 @@ test("runCharacterReceiptMutation keeps one replay check and folds receipt/snaps
   assert.match(fn, /const batch = await db\.batch\(statements\)/);
 });
 
-test("purchase and sell hot paths have no per-request authority DDL or handler replay read", () => {
+test("purchase and sell hot paths have no per-request authority DDL; sell replay lookup is missing-item only", () => {
   const purchase = api.slice(api.indexOf("async function handlePurchaseCharacterResource"), api.indexOf("const W45_SHOP_PRICES"));
   const sell = api.slice(api.indexOf("async function handleSellCharacterItem"), api.indexOf("async function handleSalvageItem"));
   assert.equal((api.match(/ensureItemAuthorityTables\(/g) || []).length, 0);
   assert.equal((purchase.match(/characterOperationReplay\(/g) || []).length, 0);
   assert.equal((sell.match(/characterOperationReplay\(/g) || []).length, 0);
+  assert.match(sell, /const row = await db\.prepare\([\s\S]*?SELECT \* FROM items/);
+  assert.match(sell, /if \(!row\) \{[\s\S]*?SELECT payload_json, result_json FROM character_operation_receipts/);
 });
 
 test("completeBattle reward pre-reads are folded into one batch and final writes/readback stay batched", () => {
