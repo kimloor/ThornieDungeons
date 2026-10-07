@@ -177,11 +177,14 @@ async function post(entry, db, token, body) {
     }),
     { DB: db }
   );
+  const serverTiming = response.headers.get("Server-Timing") || "";
+  const d1Match = serverTiming.match(/(?:^|,)\\s*d1;[^,]*desc="(\\d+) calls"/i);
   return {
     response,
     status: response.status,
     body: await response.json(),
-    d1Calls: Number(response.headers.get("Server-Timing")?.match(/desc="(\\d+) calls"/)?.[1] || -1),
+    serverTiming,
+    d1Calls: d1Match ? Number(d1Match[1]) : -1,
   };
 }
 
@@ -239,7 +242,7 @@ async function measureLatencyScenario() {
     requestId: "latency-purchase-01",
   });
   assert.equal(purchase.status, 200, JSON.stringify(purchase.body));
-  assert.ok(purchase.d1Calls >= 0);
+  assert.ok(purchase.d1Calls >= 0, `purchase Server-Timing: ${purchase.serverTiming}`);
 
   const purchased = db.raw.prepare(
     "SELECT item_id FROM items WHERE character_id = ? ORDER BY rowid DESC LIMIT 1"
@@ -254,7 +257,7 @@ async function measureLatencyScenario() {
     requestId: "latency-sell-01",
   });
   assert.equal(sell.status, 200, JSON.stringify(sell.body));
-  assert.ok(sell.d1Calls >= 0);
+  assert.ok(sell.d1Calls >= 0, `sell Server-Timing: ${sell.serverTiming}`);
 
   const started = await post(entry, db, token, {
     action: "startDungeonBattle",
