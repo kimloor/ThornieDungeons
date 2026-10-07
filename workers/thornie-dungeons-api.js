@@ -1765,6 +1765,10 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const equippedRows = rewardReadBatch?.[0]?.results || [];
   const dropBonus = dungeonV2ServerDropBonus(ownedRow, equippedRows);
   const lootRows = rewardReadBatch?.[1]?.results || [];
+  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, {
+    reconcile: false,
+    prefetchedRows: Array.isArray(prefetchedInventoryRows) ? prefetchedInventoryRows : null
+  });
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
