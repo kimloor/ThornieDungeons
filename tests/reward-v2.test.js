@@ -55,10 +55,10 @@ test("accessory base stat is flat HP only across T1-T5 and rarity scales it", ()
   assert.equal(reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "elite" }).empowerSlots.length, 3);
 });
 
-test("accessory drop chances are 0% Normal, 2% Elite and 3% Chapter Boss", () => {
+test("regular accessory drops are 0% Normal, 2% Elite and 0% Chapter Boss", () => {
   assert.equal(reward.dungeonV2AccessoryDropChance("normal"), 0);
   assert.equal(reward.dungeonV2AccessoryDropChance("elite"), 0.02);
-  assert.equal(reward.dungeonV2AccessoryDropChance("chapter_boss"), 0.03);
+  assert.equal(reward.dungeonV2AccessoryDropChance("chapter_boss"), 0);
 });
 
 test("normal drop chance is multiplicative, capped per encounter, and generic-only", () => {
