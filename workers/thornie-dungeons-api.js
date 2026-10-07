@@ -1766,7 +1766,10 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const equippedRows = rewardReadBatch?.[0]?.results || [];
   const dropBonus = dungeonV2ServerDropBonus(ownedRow, equippedRows);
   const lootRows = rewardReadBatch?.[1]?.results || [];
-  const inventoryPlan = inventoryPlanFromRows(rewardReadBatch?.[2]?.results || [], { reconcile: false });
+  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, {
+    reconcile: false,
+    prefetchedRows: rewardReadBatch?.[2]?.results || []
+  });
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
@@ -2276,8 +2279,10 @@ function inventoryPlanFromRows(rows, options = {}) {
 }
 async function loadMailSettlementState(db, id, characterId, holder, options = {}) {
   if (holder?.plan) return holder.plan;
-  const rows = (await db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`)
-    .bind(id, characterId).all()).results || [];
+  const rows = Array.isArray(options.prefetchedRows)
+    ? options.prefetchedRows
+    : (await db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`)
+      .bind(id, characterId).all()).results || [];
   const plan = inventoryPlanFromRows(rows, options);
   if (holder) holder.plan = plan;
   return plan;
