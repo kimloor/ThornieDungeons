@@ -194,11 +194,6 @@ async function measureD1Budgets() {
     action: "purchaseCharacterResource", characterId,
     resource: { kind: "material", id: "iron" }, quantity: 1, requestId: "purchase-latency-01"
   });
-  if (purchase.status !== 200) {
-    console.log("purchase debug receipts:", JSON.stringify(db.raw.prepare("SELECT * FROM character_operation_receipts").all()));
-    console.log("purchase debug character:", JSON.stringify(db.raw.prepare("SELECT * FROM characters").all()));
-    console.log("purchase debug items:", JSON.stringify(db.raw.prepare("SELECT * FROM items").all()));
-  }
   assert.equal(purchase.status, 200, `purchase failed: ${JSON.stringify(await purchase.clone().json())}`);
   const purchaseCharacterResource = db.count();
 
