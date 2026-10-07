@@ -124,11 +124,11 @@ test("measured D1 budgets use the real Worker + sqlite harness", async () => {
   {
     const db = createDatabase();
     const api = createWorker();
-    const { token, characterId } = await setupCharacter(api, db, "Latency_Sell", { gold: 0 });
+    const { token, characterId, playerId } = await setupCharacter(api, db, "Latency_Sell", { gold: 0 });
     db.raw.prepare(`
       INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, rarity, name, quantity, atk, def, hp, mp, extra_json)
       VALUES (?, ?, ?, 'junk', 0, 'common', 'Iron', 1, 0, 0, 0, 0, ?)
-    `).run("latency-sell-item", "Latency_Sell", characterId, JSON.stringify({ junkId: "iron", quantity: 1 }));
+    `).run("latency-sell-item", playerId, characterId, JSON.stringify({ junkId: "iron", quantity: 1 }));
     db.resetCount();
     const res = await post(api, db, token, {
       action: "sellCharacterItem",
