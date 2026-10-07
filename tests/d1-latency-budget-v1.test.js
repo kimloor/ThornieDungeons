@@ -38,6 +38,8 @@ function createWorkerEntrypoint() {
     "utf8"
   )
     .replace('import worker from "./thornie-dungeons-api.js";', "const worker = workerDefault;")
+    .replace("const MAX_REQUEST_BODY_BYTES = 512 * 1024;", "const ENTRY_MAX_REQUEST_BODY_BYTES = 512 * 1024;")
+    .replace(/MAX_REQUEST_BODY_BYTES/g, "ENTRY_MAX_REQUEST_BODY_BYTES")
     .replace("export default {", "const entryDefault = {")
     .replace("export { createD1CountingBinding };", "");
   const source = `${workerSource}\n${entrySource}\nglobalThis.__entry = entryDefault;`;
