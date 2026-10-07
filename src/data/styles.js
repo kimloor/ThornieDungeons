@@ -2023,6 +2023,28 @@ body::after {
 .md-inv2-modal-layer { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left)); background:rgba(2,1,9,.76); }
 .md-inv2-detail-layer { align-items:flex-end; padding-top:max(42dvh,calc(14px + var(--safe-top))); background:linear-gradient(180deg,rgba(2,1,9,.05) 0 36%,rgba(2,1,9,.34) 54%,rgba(2,1,9,.78) 100%); }
 .md-inv2-detail-layer .md-inv2-detail { max-height:min(54dvh,540px); border-radius:20px 20px 12px 12px; box-shadow:0 -12px 38px rgba(0,0,0,.48); }
+.md-inv2-detail-layer.compare-mode { align-items:center; padding-top:calc(10px + var(--safe-top)); padding-bottom:calc(10px + var(--safe-bottom)); }
+.md-inv2-detail-layer .md-inv2-detail.compare-mode {
+  width:min(100%,430px); height:min(88dvh,760px); max-height:none; overflow:hidden;
+  padding:14px 14px 12px; border-radius:18px;
+}
+.md-inv2-detail.compare-mode .md-inv2-detail-head { gap:8px; margin-top:18px; }
+.md-inv2-detail.compare-mode .md-inv2-detail-icon { width:48px; height:48px; }
+.md-inv2-detail.compare-mode .md-inv2-detail-head h3 { font-size:16px; margin-bottom:2px; }
+.md-inv2-detail.compare-mode .md-inv2-detail-head p { font-size:9px; }
+.md-inv2-detail.compare-mode .md-inv2-stat-list { gap:3px; margin-top:8px; }
+.md-inv2-detail.compare-mode .md-inv2-stat-list > div { padding:4px 6px; font-size:9px; }
+.md-inv2-detail.compare-mode .md-inv2-enchants { margin-top:7px; padding:6px 8px; }
+.md-inv2-detail.compare-mode .md-inv2-enchants h4 { margin-bottom:3px; font-size:8px; }
+.md-inv2-detail.compare-mode .md-inv2-enchants > div { padding:1px 0; font-size:8.5px; }
+.md-inv2-detail.compare-mode .md-inv2-compare { margin-top:7px; padding-top:6px; }
+.md-inv2-detail.compare-mode .md-inv2-compare-head { gap:4px; margin-bottom:4px; font-size:9px; }
+.md-inv2-detail.compare-mode .md-inv2-compare-icon { width:28px; height:28px; flex-basis:28px; }
+.md-inv2-detail.compare-mode .md-inv2-compare-head small { font-size:7px; }
+.md-inv2-detail.compare-mode .md-inv2-compare-columns { padding:2px 5px; font-size:7px; }
+.md-inv2-detail.compare-mode .md-inv2-compare-row { min-height:22px; padding:3px 5px; font-size:9px; }
+.md-inv2-detail.compare-mode .md-inv2-detail-actions { gap:5px; margin-top:7px; }
+.md-inv2-detail.compare-mode .md-inv2-detail-actions button { min-height:34px; font-size:10px; }
 .md-inv2-popup { position:relative; width:min(100%,420px); max-height:calc(100dvh - 28px - var(--safe-top) - var(--safe-bottom)); overflow-y:auto; overscroll-behavior:contain; padding:18px; border:1.5px solid var(--gold-deep); border-radius:20px; background-color:#18102d; color:var(--ink); box-shadow:0 16px 45px rgba(0,0,0,.55); }
 .md-inv2-popup h3 { margin:0 0 10px; color:var(--gold); font:800 19px 'Baloo 2'; }
 .md-inv2-popup-close { position:absolute !important; right:10px; top:10px; width:32px; height:32px; z-index:4 !important; }
