@@ -32,13 +32,14 @@ class D1Harness {
 
 function createWorkerEntrypoint() {
   let workerSource = loadWorkerSource(path.resolve(__dirname, ".."));
+  workerSource = workerSource.replace(/MAX_REQUEST_BODY_BYTES/g, "D1_WORKER_MAX_REQUEST_BODY_BYTES");
   workerSource = workerSource.replace("export default {", "const workerDefault = {");
   const entrySource = fs.readFileSync(
     path.resolve(__dirname, "../workers/thornie-dungeons-api-entry.js"),
     "utf8"
   )
     .replace('import worker from "./thornie-dungeons-api.js";', "const worker = workerDefault;")
-    .replace(/MAX_REQUEST_BODY_BYTES/g, "ENTRY_MAX_REQUEST_BODY_BYTES")
+    .replace(/MAX_REQUEST_BODY_BYTES/g, "D1_ENTRY_MAX_REQUEST_BODY_BYTES")
     .replace("export default {", "const entryDefault = {")
     .replace("export { createD1CountingBinding };", "");
   const source = `${workerSource}\n${entrySource}\nglobalThis.__entry = entryDefault;`;
