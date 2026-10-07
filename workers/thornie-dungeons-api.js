@@ -1785,7 +1785,8 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
          WHERE player_id = ? AND character_id = ?`
       ).bind(...lootIds, id, characterId)
     ]);
-  } catch (_) {
+  } catch (error) {
+    console.log("DUNGEON_REWARD_READ_BATCH_ERROR", String(error?.message || error));
     rewardReadBatch = [rewardReadBatch?.[0] || { results: [] }, { results: [] }];
   }
   const equippedRows = rewardReadBatch?.[0]?.results || [];
