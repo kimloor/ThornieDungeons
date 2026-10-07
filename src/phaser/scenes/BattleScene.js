@@ -292,7 +292,6 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         run: speed => Promise.all(newlyEnraged.map(actor => new Promise(resolve => {
           const duration = Math.max(160, Math.round(360 / Math.max(1, Number(speed) || 1)));
           this.cameras?.main?.shake?.(duration, 0.004);
-          this.cameras?.main?.flash?.(Math.max(90, Math.round(duration * 0.45)));
           if (!this.tweens?.add || !actor.visualRoot) {
             actor.setVisualAlpha?.(1);
             resolve();

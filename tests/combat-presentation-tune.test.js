@@ -22,6 +22,19 @@ test("Hero uses the real idle overlay and an explicit visible idle loop", () => 
   assert.match(app, /setHeroAnim\(""\); setPetAnim\(""\)/);
 });
 
+test("Boss Enrage presentation uses a shake/pulse without camera flash, while terminal defeat remains fade-only", () => {
+  const scene = fs.readFileSync(path.join(root, "src/phaser/scenes/BattleScene.js"), "utf8");
+  const transitionStart = scene.indexOf("const newlyEnraged = []");
+  const transitionEnd = scene.indexOf("enqueueAnimations(animationJobs)", transitionStart);
+  const transition = scene.slice(transitionStart, transitionEnd > transitionStart ? transitionEnd : undefined);
+  assert.match(transition, /newlyEnraged/);
+  assert.match(transition, /cameras\?\.main\?\.shake/);
+  assert.doesNotMatch(transition, /cameras\?\.main\?\.flash/);
+  assert.match(scene, /normalized === "defeat"\) this\.cameras\?\.main\?\.fade/);
+  assert.doesNotMatch(scene, /normalized === "victory"\)[\s\S]{0,120}flash/);
+});
+
+
 test("combat pacing and frame playback are presentation-only and slightly slower", () => {
   assert.match(app, /combatDelay\(actor\.kind === "hero" \? 420 : 520\)/);
   assert.match(components, /attackFrameMs: 150 \/ combatSpeed/g);
