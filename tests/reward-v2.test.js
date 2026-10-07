@@ -188,7 +188,12 @@ test("permanent first-clear claims are not stored in the rolling battle receipt"
   assert.match(saveSource, /battleRewardReceipts/);
   assert.match(workerSource, /envelope\.firstClearAccessoryClaims = nextClaims/);
   assert.match(workerSource, /battleReceipts = \[\.\.\.new Set/);
-  assert.match(workerSource, /db\.batch\(\[completionStmt, characterStmt, playerStmt/);
+  assert.match(workerSource, /const finalStatements = \[/);
+  assert.match(workerSource, /completionStmt,/);
+  assert.match(workerSource, /characterStmt,/);
+  assert.match(workerSource, /playerStmt,/);
+  assert.match(workerSource, /\.\.\.itemStatements/);
+  assert.match(workerSource, /SELECT character_id, result_json, completed_at FROM battle_completions/);
   assert.match(workerSource, /AND changes\(\) > 0/);
 });
 

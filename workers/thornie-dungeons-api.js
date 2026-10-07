@@ -1053,19 +1053,20 @@ async function handleSellCharacterItem(db, id, session, characterId, itemId, qua
   const idKey = String(itemId || "");
   if (!/^[A-Za-z0-9_-]{8,120}$/.test(key) || !idKey) return json({ error: "invalid_sell_request" }, 400);
   const operation = "sell_item";
-  const prior = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
-    .bind(characterId, operation, key).first();
-  if (prior) {
-    const priorPayload = parseJsonColumn(prior.payload_json, {});
-    if (String(priorPayload.itemId || "") !== idKey || (quantity !== undefined && Number(priorPayload.quantity) !== Number(quantity))) {
-      return json({ error: "operation_request_conflict" }, 409);
-    }
-    if (prior.result_json === "pending") return json({ error: "operation_in_progress", retry: true }, 409);
-    return json({ ok: true, replayed: true, result: parseJsonColumn(prior.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
-  }
   const row = await db.prepare(`SELECT * FROM items WHERE item_id = ? AND player_id = ? AND character_id = ?`).bind(idKey, id, characterId).first();
-  if (!row) return json({ error: "item_not_owned" }, 403);
-  const extra = parseJsonColumn(row.extra_json, {});
+  if (!row) {
+    const prior = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = ? AND request_id = ?`)
+      .bind(characterId, operation, key).first();
+    if (prior) {
+      const priorPayload = parseJsonColumn(prior.payload_json, {});
+      if (String(priorPayload.itemId || "") !== idKey || (quantity !== undefined && Number(priorPayload.quantity) !== Number(quantity))) {
+        return json({ error: "operation_request_conflict" }, 409);
+      }
+      if (prior.result_json === "pending") return json({ error: "operation_in_progress", retry: true }, 409);
+      return json({ ok: true, replayed: true, result: parseJsonColumn(prior.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
+    }
+    return json({ error: "item_not_owned" }, 403);
+  }  const extra = parseJsonColumn(row.extra_json, {});
   if (Number(row.equipped) === 1) return json({ error: "item_equipped" }, 409);
   if (extra.favorite) return json({ error: "item_favorited" }, 409);
   const stackable = row.slot_type === "junk" || row.slot_type === "potion";
@@ -1742,7 +1743,7 @@ function dungeonV2ServerGenericJunk(rng, floor) {
   const quantity = 1 + Math.floor(floor / 12) + (rng() < 0.25 ? 1 : 0);
   return { junkId, quantity };
 }
-async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload) {
+async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload, prefetchedInventoryRows = null) {
   // The reward seed is issued and persisted by startDungeonBattle. It is not
   // derived from a client-selected battle id or mutable checkpoint fields.
   const seed = context.rewardSeed;
@@ -1764,6 +1765,10 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const equippedRows = rewardReadBatch?.[0]?.results || [];
   const dropBonus = dungeonV2ServerDropBonus(ownedRow, equippedRows);
   const lootRows = rewardReadBatch?.[1]?.results || [];
+  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, {
+    reconcile: false,
+    prefetchedRows: Array.isArray(prefetchedInventoryRows) ? prefetchedInventoryRows : null
+  });
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
@@ -1836,7 +1841,7 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const junkSummary = {};
   items.filter(item => item.type === "junk").forEach(item => { junkSummary[item.junkId] = (junkSummary[item.junkId] || 0) + item.quantity; });
   const [junkType, junkAmount] = Object.entries(junkSummary)[0] || [];
-  return {
+  const result = {
     floor: context.floor, encounterType: context.role, rewardRole: context.role, packCount: context.packCount,
     gold: dungeonV2ServerGold(context.floor, context.role, context.packCount),
     xp: dungeonV2ServerExp(context.floor, context.role, context.packCount),
@@ -1844,6 +1849,8 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     drop, junkDrop: junkType ? { type: junkType, amount: junkAmount } : null,
     sourceIdentity: context.enemies[0]?.id || null, rewardSeed: seed
   };
+  Object.defineProperty(result, "__inventoryPlan", { value: inventoryPlan, enumerable: false });
+  return result;
 }
 function dungeonV2ServerClaims(petsRaw) {
   const object = Array.isArray(petsRaw) ? {} : (petsRaw && typeof petsRaw === "object" ? petsRaw : {});
@@ -1931,7 +1938,7 @@ function dungeonV2GrantActivePetXp(list, activePetId, battleXp) {
   const next = (list || []).map(pet => pet?.instId === activePetId ? { ...pet, level, xp } : pet);
   return { list: next, progress: { instId: activePetId, defId: active.defId, xpGained: gained, levelBefore: before.level, levelAfter: level, xpBefore: before.xp, xpAfter: xp } };
 }
-async function commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, ownedRow, checkpointPayload, context, now) {
+async function commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, ownedRow, checkpointPayload, context, now, prefetchedInventoryRows = null) {
   const reward = resultPayload?.reward;
   if (!reward || resultPayload.result !== "victory") return { reward: null, committed: false };
   if (!context || Number(resultPayload.floor) !== context.floor) return { error: "invalid_battle_context" };
@@ -1939,8 +1946,10 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
       || String(reward.encounterType || context.role) !== context.role || Number(reward.packCount) !== context.packCount) {
     return { error: "invalid_reward_context" };
   }
-  const serverReward = await dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload);
-  if (Number(reward.gold) !== serverReward.gold || Number(reward.xp) !== serverReward.xp) return { error: "invalid_reward_plan" };
+  const rewardPlan = await dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload, prefetchedInventoryRows);
+  const inventoryPlan = rewardPlan?.__inventoryPlan;
+  const serverReward = rewardPlan;
+  if (!inventoryPlan || Number(reward.gold) !== serverReward.gold || Number(reward.xp) !== serverReward.xp) return { error: "invalid_reward_plan" };
   const petsRaw = parseJsonColumn(ownedRow.pets_json, []);
   const envelope = Array.isArray(petsRaw) ? { list: petsRaw } : { ...petsRaw };
   if (!Array.isArray(envelope.list)) envelope.list = [];
@@ -1976,7 +1985,6 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   if (encoded.length > 512000) return { error: "battle_result_too_large" };
   const rows = serverReward.items.map((item, index) => dungeonV2ServerRewardItem(item, index, false)).filter(Boolean);
   if (rows.length !== serverReward.items.length) return { error: "invalid_reward_plan" };
-  const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, { reconcile: false });
   rows.forEach(row => {
     const rewardMeta = parseJsonColumn(row.extra_json, {});
     const isJunk = row.slot_type === "junk";
@@ -2008,9 +2016,22 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   // deliberately zero and never reads reward.diamonds from the client.
   const playerStmt = db.prepare(`UPDATE players SET diamonds = diamonds + 0 WHERE id = ? AND changes() > 0`).bind(id);
   const itemStatements = mailPlanPersistenceStatements(db, inventoryPlan, id, characterId, now, "changes() > 0", []);
-  const batchResult = await db.batch([completionStmt, characterStmt, playerStmt, ...itemStatements]);
+  const completionReadIndex = 3 + itemStatements.length;
+  const snapshotIndex = completionReadIndex + 1;
+  const finalStatements = [
+    completionStmt,
+    characterStmt,
+    playerStmt,
+    ...itemStatements,
+    db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(String(battleId)),
+    db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`).bind(now, String(battleId), characterId),
+    ...battleCompletionSnapshotStatements(db, id, characterId)
+  ];
+  const batchResult = await db.batch(finalStatements);
   const committed = Number(batchResult?.[0]?.meta?.changes) > 0;
-  return { completionEncoded: encoded, reward: committed ? normalizedReward : null, committed };
+  const completionRow = batchResult?.[completionReadIndex]?.results?.[0] || null;
+  const snapshot = battleCompletionSnapshotFromBatch(batchResult, snapshotIndex);
+  return { completionEncoded: encoded, reward: committed ? normalizedReward : null, committed, completionRow, snapshot };
 }
 function battleCompletionSnapshotStatements(db, id, characterId) {
   return [
@@ -2242,19 +2263,26 @@ function reconcileMailOverflow(plan) {
   }
 }
 
-async function loadMailSettlementState(db, id, characterId, holder, options = {}) {
-  if (holder?.plan) return holder.plan;
-  const rows = (await db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`)
-    .bind(id, characterId).all()).results || [];
+function inventoryPlanFromRows(rows, options = {}) {
   const plan = {
-    entries: rows.map(raw => {
+    entries: (Array.isArray(rows) ? rows : []).map(raw => {
       const parsed = parseJsonColumn(raw.extra_json, {});
       const extra = parsed && typeof parsed === "object" ? { ...parsed } : {};
       return { raw, extra, new: false, changed: false, deleted: false };
-    }), carried: [], overflow: [], equipped: []
+    }),
+    carried: [], overflow: [], equipped: []
   };
   mailPlanLists(plan);
   if (options.reconcile !== false) reconcileMailOverflow(plan);
+  return plan;
+}
+async function loadMailSettlementState(db, id, characterId, holder, options = {}) {
+  if (holder?.plan) return holder.plan;
+  const rows = Array.isArray(options.prefetchedRows)
+    ? options.prefetchedRows
+    : (await db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`)
+      .bind(id, characterId).all()).results || [];
+  const plan = inventoryPlanFromRows(rows, options);
   if (holder) holder.plan = plan;
   return plan;
 }
@@ -2381,11 +2409,14 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
   const resultName = resultPayload && resultPayload.result;
   if (!battleId || !["victory", "defeat", "fled"].includes(resultName)) return json({ error: "invalid_battle_result" }, 400);
   const battleKey = String(battleId);
+  const snapshotStatements = battleCompletionSnapshotStatements(db, id, characterId);
+  const inventoryReadIndex = 3 + snapshotStatements.length;
   const preRead = await db.batch([
     db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey),
     db.prepare(`SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`).bind(battleKey, characterId),
     db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND EXISTS (SELECT 1 FROM battle_completions WHERE battle_id = ? AND character_id = ?)`).bind(nowIso(), battleKey, characterId, battleKey, characterId),
-    ...battleCompletionSnapshotStatements(db, id, characterId)
+    ...snapshotStatements,
+    db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`).bind(id, characterId)
   ]);
   const prior = preRead?.[0]?.results?.[0] || null;
   if (prior) {
@@ -2403,22 +2434,33 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
   if (encoded.length > 512000) return json({ error: "battle_result_too_large" }, 413);
   const now = nowIso();
   const rewardCommit = resultPayload?.reward && resultName === "victory"
-    ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, checkpointPayload, battleContext, now)
+    ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, checkpointPayload, battleContext, now, preRead?.[inventoryReadIndex]?.results || [])
     : { reward: null, committed: false };
   if (rewardCommit.error) return json({ error: rewardCommit.error }, 400);
-  const finalStatements = [];
-  if (!resultPayload?.reward || resultName !== "victory") {
-    finalStatements.push(db.prepare(`INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`).bind(battleKey, characterId, encoded, now));
+  if (resultPayload?.reward && resultName === "victory") {
+    const row = rewardCommit.completionRow;
+    if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
+    return json({
+      ok: true,
+      firstCompletion: !!rewardCommit.committed,
+      result: parseJsonColumn(row.result_json, null),
+      completedAt: row.completed_at,
+      ...(rewardCommit.snapshot || {})
+    });
   }
-  const rowReadIndex = finalStatements.length;
-  finalStatements.push(db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey));
-  finalStatements.push(db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`).bind(now, battleKey, characterId));
-  const snapshotIndex = finalStatements.length;
-  finalStatements.push(...battleCompletionSnapshotStatements(db, id, characterId));
+  const finalStatements = [
+    db.prepare(`INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`).bind(battleKey, characterId, encoded, now),
+    db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`),
+    db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`).bind(now, battleKey, characterId),
+    ...battleCompletionSnapshotStatements(db, id, characterId)
+  ];
+  finalStatements[1] = db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey);
   const finalBatch = await db.batch(finalStatements);
+  const rowReadIndex = 1;
+  const snapshotIndex = 3;
   const row = finalBatch?.[rowReadIndex]?.results?.[0] || null;
   if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
-  const firstCompletion = resultPayload?.reward && resultName === "victory" ? !!rewardCommit.committed : !!(finalBatch?.[0]?.meta?.changes);
+  const firstCompletion = !!(finalBatch?.[0]?.meta?.changes);
   return json({ ok: true, firstCompletion, result: parseJsonColumn(row.result_json, null), completedAt: row.completed_at, ...battleCompletionSnapshotFromBatch(finalBatch, snapshotIndex) });
 }
 
