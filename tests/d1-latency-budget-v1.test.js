@@ -178,7 +178,7 @@ async function post(entry, db, token, body) {
     { DB: db }
   );
   const serverTiming = response.headers.get("Server-Timing") || "";
-  const d1Match = serverTiming.match(/(?:^|,)\\s*d1;[^,]*desc="(\\d+) calls"/i);
+  const d1Match = serverTiming.match(/(?:^|,)\s*d1;[^,]*desc="(\d+) calls"/i);
   return {
     response,
     status: response.status,
