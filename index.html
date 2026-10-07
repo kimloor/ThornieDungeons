@@ -16031,7 +16031,7 @@ function ThornieDungeons() {
     if (!res?.ok) {
       if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
       if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
-      return { ok: false, message: res?.error === "insufficient_gold" ? "ทองไม่พอ" : res?.error === "insufficient_materials" ? "วัตถุดิบไม่พอ" : "ทำรายการ Blacksmith ไม่สำเร็จ" };
+      return { ok: false, message: res?.error === "insufficient_gold" ? "Gold ไม่พอ" : res?.error === "insufficient_materials" ? "วัตถุดิบไม่พอ" : "ทำรายการ Blacksmith ไม่สำเร็จ" };
     }
     blacksmithRequestRef.current.delete(requestKey);
     hydrateAuthoritativeBlacksmithSnapshot(res);
@@ -16054,9 +16054,9 @@ function ThornieDungeons() {
       if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
       if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
       const messages = {
-        enhance_max: "ตีบวกถึงระดับสูงสุดแล้ว (+10)",
-        insufficient_gold: "ทองไม่พอ",
-        insufficient_materials: res?.junkId === "iron" ? "เหล็กไม่พอ" : "Mana Ore ไม่พอ",
+        enhance_max: "Refine ถึงระดับสูงสุดแล้ว (+10)",
+        insufficient_gold: "Gold ไม่พอ",
+        insufficient_materials: res?.junkId === "iron" ? "Iron ไม่พอ" : "Mana Ore ไม่พอ",
         insufficient_protection_stones: "Protection Stone ไม่พอ",
         protection_not_eligible: "ใช้ Protection Stone ได้ตั้งแต่การตี +6 → +7",
         empower_slots_full: "เสริมพลังครบทุกช่องแล้ว",
