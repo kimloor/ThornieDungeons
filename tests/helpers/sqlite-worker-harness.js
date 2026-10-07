@@ -27,7 +27,7 @@ class CountingD1 {
     const out = [];
     for (const statement of statements) {
       const normalized = statement.sql.trim().toUpperCase();
-      if (/^(SELECT|PRAGMA)\\b/.test(normalized)) {
+      if (/^(SELECT|PRAGMA)\b/.test(normalized)) {
         out.push({ results: this.raw.prepare(statement.sql).all(...statement.values) });
       } else {
         const result = this.raw.prepare(statement.sql).run(...statement.values);
