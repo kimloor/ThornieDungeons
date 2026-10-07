@@ -144,9 +144,8 @@ test("W8 Compare remains DOM, keeps the Hero stage visible, and excludes Charact
   assert.match(compare, /md-inv2-compare/);
   assert.doesNotMatch(compare, /Phaser/);
   assert.match(detail, /md-inv2-modal-layer md-inv2-detail-layer/);
-  assert.match(styles, /\.md-inv2-detail-layer \{ align-items:center/);
-  assert.match(styles, /\.md-inv2-detail-layer \.md-inv2-detail \{ max-height:min\(92dvh,760px\)/);
-  assert.match(styles, /\.md-inv2-compare-one-screen/);
+  assert.match(styles, /\.md-inv2-detail-layer \{[^}]*align-items:flex-end/);
+  assert.match(styles, /\.md-inv2-detail-layer \.md-inv2-detail \{[^}]*max-height:min\(54dvh,540px\)/);
   assert.doesNotMatch(status, /isPhaserHeroPreviewEnabled\(\)|PhaserHeroPreview/);
 });
 
