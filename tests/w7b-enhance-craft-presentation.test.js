@@ -59,3 +59,11 @@ test("Forge presentation uses Refine labels and mobile-safe outcome text", () =>
   assert.doesNotMatch(scene, /ENHANCE SUCCESS|ENHANCE FAILED/);
   assert.match(scene, /wordWrap: \{ width: Math\.max\(140, width - 20\)/);
 });
+
+test("Insufficient Gold/materials stay resource errors and do not become Refine failure presentation", () => {
+  const app = read("src/ui/App.js");
+  const components = read("src/ui/components.js");
+  assert.match(app, /insufficient_gold: "Gold ไม่พอ"/);
+  assert.match(app, /insufficient_materials: res\?\.junkId === "iron" \? "Iron ไม่พอ" : "Mana Ore ไม่พอ"/);
+  assert.match(components, /playAnim\(res\.ok && !!res\?\.result\)/);
+});
