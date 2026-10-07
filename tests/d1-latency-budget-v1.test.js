@@ -182,7 +182,7 @@ async function measureD1Budgets() {
     action: "purchaseCharacterResource", characterId,
     resource: { kind: "material", id: "iron" }, quantity: 1, requestId: "purchase-latency-01"
   });
-  assert.equal(purchase.status, 200);
+  assert.equal(purchase.status, 200, `purchase failed: ${JSON.stringify(await purchase.clone().json())}`);
   const purchaseCharacterResource = db.count();
 
   db.raw.prepare(`INSERT INTO items
@@ -195,7 +195,7 @@ async function measureD1Budgets() {
   const sell = await latencyHarnessRequest(db, token, {
     action: "sellCharacterItem", characterId, itemId: "sell-latency-item", requestId: "sell-latency-01"
   });
-  assert.equal(sell.status, 200);
+  assert.equal(sell.status, 200, `sell failed: ${JSON.stringify(await sell.clone().json())}`);
   const sellCharacterItem = db.count();
 
   db.raw.prepare(`INSERT INTO battle_checkpoints
@@ -208,7 +208,7 @@ async function measureD1Budgets() {
     action: "completeBattle", characterId, battleId: "battle-latency-01",
     result: { result: "defeat", safeActionSeq: 2 }
   });
-  assert.equal(complete.status, 200);
+  assert.equal(complete.status, 200, `complete failed: ${JSON.stringify(await complete.clone().json())}`);
   const completeBattle = db.count();
 
   db.resetCount();
@@ -216,7 +216,7 @@ async function measureD1Budgets() {
     action: "completeBattle", characterId, battleId: "battle-latency-01",
     result: { result: "defeat", safeActionSeq: 2 }
   });
-  assert.equal(replay.status, 200);
+  assert.equal(replay.status, 200, `replay failed: ${JSON.stringify(await replay.clone().json())}`);
   const completeBattleReplay = db.count();
 
   const counts = { purchaseCharacterResource, sellCharacterItem, completeBattle, completeBattleReplay };
