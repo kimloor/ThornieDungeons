@@ -110,7 +110,6 @@
   }
   function dungeonV2AccessoryDropChance(encounterType = "normal") {
     if (encounterType === "elite") return 0.02;
-    if (encounterType === "chapter_boss") return 0.03;
     return 0;
   }
   function dungeonV2GenericEquipmentChance(encounterType = "normal", dropBonus = 0) {
