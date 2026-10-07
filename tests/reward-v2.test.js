@@ -56,7 +56,7 @@ test("accessory base stat is flat HP only across T1-T5 and rarity scales it", ()
 });
 
 test("server reward path has no regular chapter-boss accessory drop", () => {
-  const workerSource = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8");
+  const workerSource = fs.readFileSync(path.join(__dirname, "..", "workers/thornie-dungeons-api.js"), "utf8");
   assert.doesNotMatch(workerSource, /sourceType:\s*"dungeon_boss_accessory"/);
 });
 
