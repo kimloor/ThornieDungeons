@@ -6052,14 +6052,12 @@ function inventoryComparisonRows(currentItem, nextItem) {
     ["accuracy", "Accuracy"], ["dodgeChance", "Dodge"], ["critChance", "Crit"],
     ["critDamage", "Crit DMG"], ["dropBonus", "Drop"]
   ];
-  return definitions
-    .map(([key, label]) => ({
-      key,
-      label,
-      current: Math.round((Number(currentStats[key]) || 0) * 10) / 10,
-      next: Math.round((Number(nextStats[key]) || 0) * 10) / 10
-    }))
-    .filter(row => Math.abs(row.current) > 0.0001 || Math.abs(row.next) > 0.0001);
+  return definitions.map(([key, label]) => ({
+    key,
+    label,
+    current: Math.round((Number(currentStats[key]) || 0) * 10) / 10,
+    next: Math.round((Number(nextStats[key]) || 0) * 10) / 10
+  }));
 }
 
 function InventoryHeader({ characterName, onClose }) {
