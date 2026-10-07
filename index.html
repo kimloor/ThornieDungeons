@@ -23186,8 +23186,7 @@ function ItemStats({ item }) {
   const rows = inventoryStatRows(item);
   const sections = [
     ["base", "BASE STATS"],
-    ["refine", "REFINE"],
-    ["enchant", "ENCHANT"]
+    ["refine", "REFINE"]
   ];
   return /*#__PURE__*/React.createElement("div", { className:"md-inv2-stat-sections" }, sections.map(([group, title]) => {
     const groupRows = rows.filter(row => row.group === group);
