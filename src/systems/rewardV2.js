@@ -22,7 +22,9 @@
     helmet: Object.freeze([6, 8, 10, 13, 17]),
     boots: Object.freeze([5, 6, 9, 11, 14])
   });
-  const ACCESSORY_BASE = Object.freeze({ critChance: 2.5, dodgeChance: 2, critDamage: 8 });
+  // Accessory base stats are flat HP only. Crit Chance, Crit Damage, and Dodge
+  // are rolled through the Enchant/Empower option system, never as direct base stats.
+  const ACCESSORY_BASE = Object.freeze({ hp: Object.freeze([40, 52, 68, 88, 114]) });
   const GENERIC_SLOTS = Object.freeze(["weapon", "helmet", "chest", "gloves", "boots"]);
   const RARITY_BANDS = Object.freeze([
     Object.freeze({ minFloor: 1, maxFloor: 10, weights: Object.freeze({ rare: 82.5, unique: 15, elite: 2.5 }) }),
@@ -186,12 +188,8 @@
         : Array(dungeonV2EmpowerSlots(resolvedRarity)).fill(null)
     };
     if (resolvedType === "accessory") {
-      const utilityKeys = Object.keys(ACCESSORY_BASE);
-      const selectedKey = utilityKeys.includes(utilityKey)
-        ? utilityKey
-        : utilityKeys[Math.floor(Math.max(0, Math.min(0.999999, Number(rng()) || 0)) * utilityKeys.length)];
-      item.utilityStat = selectedKey;
-      item[selectedKey] = roundUtility(ACCESSORY_BASE[selectedKey] * dungeonV2TierMultiplier(gearTier) * multiplier);
+      const baseHp = ACCESSORY_BASE.hp[gearTier - 1];
+      item.hp = roundStat(baseHp * multiplier);
     } else {
       const base = BASE_STATS[resolvedType][gearTier - 1];
       item[resolvedType === "weapon" || resolvedType === "gloves" ? "atk" : "def"] = roundStat(base * multiplier);
