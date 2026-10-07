@@ -23,7 +23,7 @@ test("Forge presentation scene is presentation-only and reuses shared queue/VFX"
   for (const forbidden of ["cloudCraftItem", "cloudMutate", "fetch(", "mutationStatements", "rewardReceipts"]) assert.equal(scene.includes(forbidden), false);
 });
 
-test("Enhance presentation is triggered only from resolved authoritative mutation output", () => {
+test("Refine presentation is triggered only from resolved authoritative mutation output", () => {
   const app = read("src/ui/App.js");
   const components = read("src/ui/components.js");
   assert.equal(app.includes("const result = res.mutation || {};"), true);
@@ -33,6 +33,7 @@ test("Enhance presentation is triggered only from resolved authoritative mutatio
   const presentation = components.indexOf("setForgePresentation({", enhanceCall);
   assert.ok(enhanceCall >= 0 && presentation > enhanceCall);
   assert.equal(components.includes("outcome: result.success ? \"success\" : result.protectionConsumed ? \"protected\" : result.downgraded ? \"downgrade\" : \"fail\""), true);
+  assert.equal(components.includes("playAnim(res.ok && !!res?.result)"), true);
 });
 
 test("Craft reveal starts only after successful server craft and authoritative hydration", () => {
@@ -49,4 +50,12 @@ test("Craft reveal starts only after successful server craft and authoritative h
 test("Summoning remains outside W7B presentation implementation", () => {
   const source = read("src/phaser/scenes/ForgePresentationScene.js") + read("src/phaser/runtime/ForgePresentationHost.js");
   assert.equal(/summon|gacha|portal/i.test(source), false);
+});
+
+test("Forge presentation uses Refine labels and mobile-safe outcome text", () => {
+  const scene = read("src/phaser/scenes/ForgePresentationScene.js");
+  assert.match(scene, /REFINE SUCCESS/);
+  assert.match(scene, /REFINE FAILED/);
+  assert.doesNotMatch(scene, /ENHANCE SUCCESS|ENHANCE FAILED/);
+  assert.match(scene, /wordWrap: \{ width: Math\.max\(140, width - 20\)/);
 });
