@@ -41,6 +41,9 @@ function createWorkerEntrypoint() {
   )
     .replace('import worker from "./thornie-dungeons-api.js";', "const worker = workerDefault;")
     .replace(/MAX_REQUEST_BODY_BYTES/g, "D1_ENTRY_MAX_REQUEST_BODY_BYTES")
+    .replace('if (property === "bind" && typeof value === "function") {', 'if (property === "__rawD1Statement") return target;\n      if (property === "bind" && typeof value === "function") {')
+    .replace(`      if (property === "batch") return async (...args) => {\n        calls += 1;\n        return target.batch(...args);\n      };`,
+`      if (property === "batch") return async (...args) => {\n        calls += 1;\n        const statements = Array.isArray(args[0]) ? args[0].map(statement => statement?.__rawD1Statement || statement) : args[0];\n        return target.batch(statements);\n      };`)
     .replace("export default {", "const entryDefault = {")
     .replace("export { createD1CountingBinding };", "");
   const source = `${workerSource}\n${entrySource}\nglobalThis.__entry = entryDefault;`;
