@@ -133,7 +133,7 @@ Popup contents may include:
 - stat/effect details;
 - context-appropriate actions.
 
-The popup must be mobile-safe. If content is taller than the viewport, scroll the popup content while keeping important actions accessible.
+The popup must be mobile-safe. Normal Item Detail may scroll when content is taller than the viewport. Compatible Equipment Compare uses a dedicated compact full-height mobile sheet: all item details and the complete calculated stat comparison must fit in one view without vertical page scrolling, while actions remain visible.
 
 ## 7. Favorite / Lock
 
