@@ -6224,6 +6224,25 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Final values include Refine + Enchant stats; no comparison data is synthesized."));
 }
 
+function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }) {
+  return /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" },
+    detail.location === "inventory" && SLOT_ORDER.includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); onClose(); } }, "Equip"),
+    detail.location === "equipped" && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onUnequip(detail.slot); onClose(); } }, "Unequip"),
+    detail.location === "inventory" && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSell }, "Sell"),
+    detail.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) && inventorySalvagePreview(currentDetail) && /*#__PURE__*/React.createElement("button", { disabled:busy || inventoryItemLocked(currentDetail), onClick:onSalvage }, "Salvage"));
+}
+
+function inventorySalvagePreview(item) {
+  if (!item) return null;
+  if (globalThis.MYTHIC_V2?.validSetItem(item)) {
+    return { kind: "mythic_set", materials: globalThis.MYTHIC_V2.setSalvage(item) || [] };
+  }
+  if (globalThis.MYTHIC_V2?.bossWeapon(item)) return { kind: "mythic_boss_weapon", materials: [] };
+  const yieldPlan = salvageYield(item.rarity, item);
+  if (!yieldPlan) return null;
+  return { kind: "normal", materials: Object.entries(yieldPlan).filter(([, quantity]) => Number(quantity) > 0).map(([junkId, quantity]) => ({ junkId, quantity })) };
+}
+
 function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy, onToggleFavorite, onEquip, onUnequip, onSell, onSalvage, onClose }) {
   const rarityLabel = item => ({ common: "Common", junk: "Junk", rare: "Rare", unique: "Unique", elite: "Elite", mythic: "Mythic" })[inventoryRarityKey(item)] || "Common";
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
