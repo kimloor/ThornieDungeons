@@ -55,6 +55,11 @@ test("accessory base stat is flat HP only across T1-T5 and rarity scales it", ()
   assert.equal(reward.dungeonV2EquipmentItem({ floor: 31, type: "accessory", rarity: "elite" }).empowerSlots.length, 3);
 });
 
+test("server reward path has no regular chapter-boss accessory drop", () => {
+  const workerSource = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8");
+  assert.doesNotMatch(workerSource, /sourceType:\s*"dungeon_boss_accessory"/);
+});
+
 test("regular accessory drops are 0% Normal, 2% Elite and 0% Chapter Boss", () => {
   assert.equal(reward.dungeonV2AccessoryDropChance("normal"), 0);
   assert.equal(reward.dungeonV2AccessoryDropChance("elite"), 0.02);
