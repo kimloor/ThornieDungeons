@@ -254,6 +254,46 @@ async function measureLatencyScenario() {
   assert.equal(sell.status, 200, JSON.stringify(sell.body));
   assert.ok(sell.d1Calls >= 0);
 
+  const replaySell = await post(entry, db, token, {
+    action: "sellCharacterItem",
+    characterId,
+    itemId: purchased.item_id,
+    quantity: 1,
+    requestId: "latency-sell-01",
+  });
+  assert.equal(replaySell.status, 200, JSON.stringify(replaySell.body));
+  assert.equal(replaySell.body.replayed, true);
+
+  const conflictSell = await post(entry, db, token, {
+    action: "sellCharacterItem",
+    characterId,
+    itemId: purchased.item_id,
+    quantity: 2,
+    requestId: "latency-sell-01",
+  });
+  assert.equal(conflictSell.status, 409, JSON.stringify(conflictSell.body));
+  assert.equal(conflictSell.body.error, "operation_request_conflict");
+
+  db.raw.prepare(`INSERT INTO character_operation_receipts
+    (character_id, operation, request_id, operation_token, payload_json, result_json, created_at)
+    VALUES (?, 'sell_item', ?, ?, ?, 'pending', ?)`).run(
+    characterId,
+    "latency-sell-pending",
+    "pending-token-01",
+    JSON.stringify({ itemId: "missing-sell-item", quantity: 1 }),
+    new Date().toISOString()
+  );
+
+  const pendingSell = await post(entry, db, token, {
+    action: "sellCharacterItem",
+    characterId,
+    itemId: "missing-sell-item",
+    quantity: 1,
+    requestId: "latency-sell-pending",
+  });
+  assert.equal(pendingSell.status, 409, JSON.stringify(pendingSell.body));
+  assert.equal(pendingSell.body.error, "operation_in_progress");
+
   const started = await post(entry, db, token, {
     action: "startDungeonBattle",
     characterId,
