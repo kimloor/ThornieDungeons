@@ -1,5 +1,6 @@
 // ---------- Dungeon V2 Event modifiers ----------
 // Locked contract: Normal-only Event roll, 25% chance, exactly seven uniform Event IDs.
+// Event selection is injectable for deterministic QA and uniform 1/7 coverage.
 // Boss/Elite floors must never consume an Event roll.
 const FLOOR_EVENT_CHANCE = 0.25;
 const FLOOR_MODIFIERS = Object.freeze([
