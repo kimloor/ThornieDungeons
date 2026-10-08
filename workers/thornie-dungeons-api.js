@@ -1402,6 +1402,7 @@ const DUNGEON_V2_REWARD_JUNK_META = Object.freeze({
 const DUNGEON_V2_MONSTER_ID_LIST = Object.freeze(["jelly_slime", "spore_cap", "tusky_boar", "bramble_bat", "bone_rattler", "sandy_crab"]);
 const DUNGEON_V2_BOSS_ID_LIST = Object.freeze(["moss_king", "ember_drake", "frost_warden"]);
 const DUNGEON_V2_EVENT_CHANCE = 0.25;
+// Server authority: Event selection is resolved once per Normal encounter and shared by the whole pack.
 const DUNGEON_V2_MODIFIER_ID_LIST = Object.freeze(["golden","arcane","treasure","rage","rush","oasis","toxic"]);
 const DUNGEON_V2_EVENT_EFFECTS = Object.freeze({
   golden: Object.freeze({ goldMult: 2.2 }),
