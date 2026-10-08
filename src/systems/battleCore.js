@@ -148,6 +148,7 @@
       battleId: String(options.battleId || `battle-${Date.now()}`),
       mode: options.mode || "dungeon",
       floor: Math.max(1, Math.floor(Number(options.floor) || 1)),
+      dungeonEventId: String(options.dungeonEventId || "") || null,
       round: 0, queue: [], queueIndex: 0, speedSnapshot: {},
       teamIds,
       teams: Object.fromEntries(teamIds.map(side => [side, { id: side, unitIds: input.filter(unit => unit.side === side).map(unit => unit.id) }])),
@@ -167,6 +168,7 @@
         ...(options.rules || {})
       }
     };
+    applyDungeonEventStart(state);
     rebuildQueue(state);
     log(state, "battle_start", "Battle started");
     checkBattleEnd(state);
@@ -819,7 +821,35 @@
     for (let hit = 0; hit < hits && living(target); hit++) attackHit(state, actor, target, { mult: Number(actor.ai.mult) || 1, actionType: "enemy", statuses: actor.ai.statuses || [] }, context);
   }
 
+  function dungeonEventModifierForState(state) {
+    const contextEvent = Array.isArray(state?.serverContext?.enemies)
+      ? state.serverContext.enemies.map(entry => entry?.modifierId).find(Boolean)
+      : null;
+    const eventId = state?.dungeonEventId || contextEvent;
+    return typeof floorModifierById === "function" ? floorModifierById(eventId) : null;
+  }
+  function applyDungeonEventStart(state) {
+    const modifier = dungeonEventModifierForState(state);
+    if (!modifier || modifier.id !== "toxic") return;
+    const hero = heroForSide(state, state.controlledSide);
+    if (!living(hero)) return;
+    const source = { id: "dungeon-event-toxic", kind: "system", side: "event" };
+    applyStatus(state, source, hero, "poison", {
+      chance: 100,
+      duration: Number(modifier.poisonDuration) || 3,
+      damage: Math.max(1, Math.round(hero.maxHp * (Number(modifier.poisonDamagePct) || 0.05)))
+    }, { appliedStatuses: new Set(), bypassStatusResist: true, fixed: true });
+  }
+  function applyDungeonEventTurnEffects(state) {
+    const modifier = dungeonEventModifierForState(state);
+    if (!modifier || modifier.id !== "oasis") return;
+    const source = { id: "dungeon-event-oasis", kind: "system", side: "event" };
+    for (const unit of Object.values(state.units || {})) {
+      if (living(unit)) heal(state, unit, unit.maxHp * (Number(modifier.turnHealPct) || 0.05), source, "Oasis");
+    }
+  }
   function startEffects(state, actor, context) {
+    applyDungeonEventTurnEffects(state);
     const poison = status(actor, "poison");
     if (poison) {
       const source = state.units[poison.sourceId] || { id: poison.sourceId || "poison", side: state.teamIds.find(side => side !== actor.side) };
@@ -1002,6 +1032,10 @@
   function restoreCheckpoint(raw) {
     const state = typeof raw === "string" ? JSON.parse(raw) : copy(raw);
     if (!state || state.version !== 1 || !state.battleId || !state.units || (!state.heroId && !Array.isArray(state.teamIds)) || !Array.isArray(state.queue)) throw new Error("corrupt_checkpoint");
+    state.dungeonEventId = state.dungeonEventId
+      || (Array.isArray(state.serverContext?.enemies)
+        ? state.serverContext.enemies.map(entry => entry?.modifierId).find(Boolean) || null
+        : null);
     ensureTeamModel(state);
     state.flags = { ...(state.flags || {}), auto: false, skipResolving: false };
     return state;

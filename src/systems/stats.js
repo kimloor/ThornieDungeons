@@ -161,7 +161,7 @@ function makeEnemy(floor, options = {}) {
   const isElite = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.ELITE;
   const modifier = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL
     ? (options.modifierId !== undefined
-      ? FLOOR_MODIFIERS.find(entry => entry.id === options.modifierId) || null
+      ? floorModifierById(options.modifierId)
       : (options.modifier === undefined ? rollFloorModifier() : options.modifier))
     : null;
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
@@ -220,7 +220,7 @@ function makeEnemy(floor, options = {}) {
     anchorType: t.anchorType === "flying" ? "flying" : "ground",
     modifier,
     agi,
-    speed: speedFromAgi(agi) + speedAdjustment,
+    speed: floorModifierSpeed(speedFromAgi(agi) + speedAdjustment, modifier),
     evasion: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
     dodge: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
     hitRate: hitRateFromDex(t.dex || (isBoss ? 6 : 2)),
@@ -249,13 +249,17 @@ function makeEncounter(floor, options = {}) {
       modifierId: enemy.modifierId
     }));
   }
+  const event = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL
+    ? rollFloorModifier(options.rng || Math.random)
+    : null;
+  const modifierId = event?.id || null;
   if (encounterType !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL || Number(floor) < 5) {
-    return [makeEnemy(floor, { encounterType, packCount: 1 })];
+    return [makeEnemy(floor, { encounterType, packCount: 1, modifierId })];
   }
   const roll = Math.random();
   const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
   const monsters = [];
-  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count }));
+  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count, modifierId }));
   return monsters;
 }
 function xpToNext(level) {
@@ -291,6 +295,7 @@ function generateDrop(floor, options = {}) {
       specialSource: options.specialSource,
       sourceIdentity: options.sourceIdentity,
       allowMythic: options.allowMythic === true,
+      rarityBoost: options.rarityBoost === true,
       rng: options.rng || Math.random
     });
   }

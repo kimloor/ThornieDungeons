@@ -1401,7 +1401,32 @@ const DUNGEON_V2_REWARD_JUNK_META = Object.freeze({
 });
 const DUNGEON_V2_MONSTER_ID_LIST = Object.freeze(["jelly_slime", "spore_cap", "tusky_boar", "bramble_bat", "bone_rattler", "sandy_crab"]);
 const DUNGEON_V2_BOSS_ID_LIST = Object.freeze(["moss_king", "ember_drake", "frost_warden"]);
-const DUNGEON_V2_MODIFIER_ID_LIST = Object.freeze(["elite_pack", "golden", "arcane", "treasure", "cursed"]);
+const DUNGEON_V2_EVENT_CHANCE = 0.25;
+const DUNGEON_V2_MODIFIER_ID_LIST = Object.freeze(["golden","arcane","treasure","rage","rush","oasis","toxic"]);
+const DUNGEON_V2_EVENT_EFFECTS = Object.freeze({
+  golden: Object.freeze({ goldMult: 2.2 }),
+  arcane: Object.freeze({ xpMult: 2 }),
+  treasure: Object.freeze({ dropBonusFlat: 35, rarityBoost: true }),
+  rage: Object.freeze({ atkMult: 1.55, hpMult: 0.8, goldMult: 1.35 }),
+  rush: Object.freeze({ speedMult: 2 }),
+  oasis: Object.freeze({ turnHealPct: 0.05 }),
+  toxic: Object.freeze({ poisonDamagePct: 0.05, poisonDuration: 3 })
+});
+function dungeonV2ServerEventModifier(id) {
+  const key = String(id || "");
+  const effects = DUNGEON_V2_EVENT_EFFECTS[key];
+  return effects ? { id: key, ...effects } : null;
+}
+function dungeonV2ServerRollEventId(rng = Math.random) {
+  const chanceRoll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
+  if (chanceRoll >= DUNGEON_V2_EVENT_CHANCE) return null;
+  const pickRoll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
+  return DUNGEON_V2_MODIFIER_ID_LIST[Math.min(DUNGEON_V2_MODIFIER_ID_LIST.length - 1, Math.floor(pickRoll * DUNGEON_V2_MODIFIER_ID_LIST.length))] || null;
+}
+function dungeonV2ServerApplyEventMultiplier(value, modifier, key) {
+  const mult = Number(modifier?.[key]);
+  return Math.round((Number(value) || 0) * (Number.isFinite(mult) && mult > 0 ? mult : 1));
+}
 const DUNGEON_V2_MONSTER_IDS = new Set(DUNGEON_V2_MONSTER_ID_LIST);
 const DUNGEON_V2_BOSS_IDS = new Set(DUNGEON_V2_BOSS_ID_LIST);
 const DUNGEON_V2_FIRST_CLEAR_ACCESSORIES = {
@@ -1466,6 +1491,8 @@ function dungeonV2ServerNormalizeContext(value) {
   }));
   if (enemies.some(enemy => !allowedIds.has(enemy.id) || !enemy.instanceId)) return null;
   if (enemies.some(enemy => enemy.modifierId !== null && (role !== "normal" || !DUNGEON_V2_MODIFIER_ID_LIST.includes(enemy.modifierId)))) return null;
+  const eventIds = [...new Set(enemies.map(enemy => enemy.modifierId).filter(Boolean))];
+  if (eventIds.length > 1) return null;
   const encounterSeed = Number(value.encounterSeed) >>> 0;
   const rewardSeed = Number(value.rewardSeed) >>> 0;
   if (!encounterSeed || !rewardSeed) return null;
@@ -1545,11 +1572,10 @@ function dungeonV2ServerEncounterContext(characterId, floor, ordinal) {
     return roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
   })();
   const pool = role === "chapter_boss" ? DUNGEON_V2_BOSS_ID_LIST : DUNGEON_V2_MONSTER_ID_LIST;
+  const eventId = role === "normal" ? dungeonV2ServerRollEventId(rng) : null;
   const enemies = Array.from({ length: packCount }, (_, index) => {
     const id = pool[Math.floor(rng() * pool.length)] || pool[0];
-    const modifierId = role === "normal" && rng() < 0.4
-      ? DUNGEON_V2_MODIFIER_ID_LIST[Math.floor(rng() * DUNGEON_V2_MODIFIER_ID_LIST.length)]
-      : null;
+    const modifierId = eventId;
     return {
       id,
       instanceId: `dungeon-enemy-${index + 1}-${dungeonV2ServerHash(`${encounterSeed}:${id}:${index}`)}`,
@@ -1654,11 +1680,13 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
   }
   return json({ ok: true, battleId, context });
 }
-function dungeonV2ServerRollRarity(floor, rng) {
+function dungeonV2ServerRollRarity(floor, rng, rarityBoost = false) {
+  const roll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
+  if (rarityBoost) return roll < 0.5 ? "unique" : "rare";
   const band = DUNGEON_V2_REWARD_RARITY_BANDS.find(item => floor >= item.min && floor <= item.max) || DUNGEON_V2_REWARD_RARITY_BANDS.at(-1);
-  const roll = rng() * 100;
-  if (roll < band.weights.rare) return "rare";
-  if (roll < band.weights.rare + band.weights.unique) return "unique";
+  const percentile = roll * 100;
+  if (percentile < band.weights.rare) return "rare";
+  if (percentile < band.weights.rare + band.weights.unique) return "unique";
   return "elite";
 }
 function dungeonV2ServerDropBonus(ownedRow, equippedRows) {
@@ -1767,6 +1795,8 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   }
   const equippedRows = rewardReadBatch?.[0]?.results || [];
   const dropBonus = dungeonV2ServerDropBonus(ownedRow, equippedRows);
+  const eventId = context.role === "normal" ? (context.enemies || []).map(enemy => enemy.modifierId).find(Boolean) : null;
+  const modifier = dungeonV2ServerEventModifier(eventId);
   const lootRows = rewardReadBatch?.[1]?.results || [];
   const inventoryPlan = await loadMailSettlementState(db, id, characterId, null, {
     reconcile: false,
@@ -1780,7 +1810,7 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     if (rng() >= Math.min(1, chance)) return null;
     const custom = dungeonV2ServerPickWeighted((rowsByMonster[sourceIdentity] || []).filter(row => row.kind === "gear"), rng);
     const type = custom?.item_type || DUNGEON_V2_REWARD_SLOTS.values().next().value;
-    const rarity = dungeonV2ServerRollRarity(context.floor, rng);
+    const rarity = dungeonV2ServerRollRarity(context.floor, rng, !!modifier?.rarityBoost);
     return dungeonV2ServerCanonicalEquipment({
       battleId: `${battleId}:${rollIndex}`, floor: context.floor, type, rarity,
       sourceType: context.role === "elite" ? "dungeon_elite" : "dungeon_normal",
@@ -1790,7 +1820,8 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   if (context.role === "normal") {
     for (const enemy of context.enemies) {
       if (!drop) drop = rollEquipment(enemy.id, items.length);
-      if (rng() < 0.45) {
+      const genericJunkChance = Math.min(1, 0.45 + (Number(modifier?.dropBonusFlat) || 0) / 100);
+      if (rng() < genericJunkChance) {
         const generic = dungeonV2ServerGenericJunk(rng, context.floor);
         items.push(dungeonV2ServerJunkItem(battleId, generic.junkId, generic.quantity, items.length));
       }
@@ -1856,8 +1887,8 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
   const [junkType, junkAmount] = Object.entries(junkSummary)[0] || [];
   const result = {
     floor: context.floor, encounterType: context.role, rewardRole: context.role, packCount: context.packCount,
-    gold: dungeonV2ServerGold(context.floor, context.role, context.packCount),
-    xp: dungeonV2ServerExp(context.floor, context.role, context.packCount),
+    gold: dungeonV2ServerApplyEventMultiplier(dungeonV2ServerGold(context.floor, context.role, context.packCount), modifier, "goldMult"),
+    xp: dungeonV2ServerApplyEventMultiplier(dungeonV2ServerExp(context.floor, context.role, context.packCount), modifier, "xpMult"),
     diamonds: 0, unlockedNext, firstClear, starterPetGrant, items,
     drop, junkDrop: junkType ? { type: junkType, amount: junkAmount } : null,
     sourceIdentity: context.enemies[0]?.id || null, rewardSeed: seed
