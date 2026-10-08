@@ -48,7 +48,10 @@ Frontend Production workflow run `37203018480`; focused regression (67/67), full
 (557/557), build/syntax/diff checks and anonymous Production shell/asset/console smoke all passed.
 
 ### Gate B.5 — Accessory V2 Completion
-**Status: APPROVED / QUEUED / BLOCKING FOR V1.1.0**
+**Status: COMPLETE / PRODUCTION VERIFIED**
+**Risk: HIGH — reward/inventory authority; branch + QA completed**
+**Contract:** `ACCESSORY-V2-COMPLETION.md`
+**Implementation:** PR #102 merged `7adff7428761b4ce90cc798518a64c33d26d3d7b`; documentation reconciliation PR #105 merged `230d6b5fd3a1af255344abc2e962ff40b35f3213`.
 **Risk: HIGH — reward/inventory authority; branch + QA required**
 **Contract:** `ACCESSORY-V2-COMPLETION.md`
 
@@ -69,15 +72,60 @@ Complete and replace the unfinished generic Accessory path before Ver 1.1.0:
 
 Do not weaken server reward/inventory authority or silently redesign unrelated Reward V2 economy.
 
-### Gate C — Release acceptance
-After Gate A, Gate B, and Gate B.5 are complete:
-- focused QA/regression for changed systems;
-- mobile/iPhone safe-area and interaction verification;
-- Production smoke verification;
-- confirm no critical known regression introduced by the gate;
-- bump the visible game version to **Ver 1.1.0** as the release milestone.
+### Gate C — Ver 1.1.0 Release Acceptance
+**Status: READY / NEXT**
+**Risk: RELEASE GATE — no new gameplay authority intended**
 
-**Version rule:** do not claim Ver 1.1.0 complete merely because the label was changed. The bump represents successful completion and Production verification of the pre-V1.1.0 release gate.
+Gate C is the final acceptance gate before declaring the pre-V1.1.0 release complete. It verifies the current Production state as a whole, with special attention to the systems changed during Gates A/B/B.5 and the approved Dungeon V2 Skill/Event work.
+
+#### C1 — Release baseline / source integrity
+- Verify latest remote `main` SHA before testing.
+- Verify working tree is clean and no unapproved work is mixed into the release.
+- Confirm Gate A, Gate B, Gate B.5 and approved Dungeon V2 Skill/Event work are present on `main`.
+- Confirm no unresolved P0/P1 blocker or critical regression is known.
+
+#### C2 — Build / generated frontend integrity
+- Run `node build.js`.
+- Verify generated `index.html` is deterministic/current.
+- Run `git diff --exit-code -- index.html`.
+- Run `git diff --check`.
+- Verify frontend syntax/build output and required production assets.
+
+#### C3 — Automated regression gate
+Run focused regression for Battle Core / Battle Result / checkpoint, Dungeon Floor / Monster Skills / Boss Phase + Enrage, Dungeon Event Floor, Accessory V2, Inventory/Equipment/Compare/Shop/Sell, Arena/shared navigation/runtime errors, and relevant Admin/Auth/Security suites. Run the broader Node regression suite where practical and record exact pass/fail counts; never claim full-suite green unless the complete suite passes.
+
+#### C4 — Dungeon Production acceptance
+- Verify Normal / Elite / Boss encounter selection.
+- Verify Monster/Boss skill name, effect and damage.
+- Verify Poison / Stun / Armor Break / DEF Up.
+- Verify Boss Phase / Enrage.
+- Verify Event Floor display and active Event behavior.
+- Verify Manual result plus Skip/checkpoint parity and existing Auto paths.
+- Verify Event does not create an extra battle or convert Normal to Elite.
+
+#### C5 — Accessory / Inventory Production acceptance
+- Verify all five Accessory identities.
+- Verify flat HP is separate from Enchant options.
+- Verify Refine / Enchant terminology and item detail/compare mobile layout.
+- Verify acquisition/drop presentation and no regression to capacity, salvage, Shop/Sell.
+
+#### C6 — Shared mobile/UI acceptance
+Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area, Arena header/setup/history, Character Skills, Dungeon Floor/Battle, Inventory/Equipment/Compare, runtime error popup, and iPhone/mobile scrolling, overlays, selectors and touch targets.
+
+#### C7 — Production smoke / deployment evidence
+- Verify deployed frontend/API versions and workflow success.
+- Run anonymous/normal-user Production smoke checks.
+- Verify critical R2 assets and generated frontend.
+- Verify no console/runtime error in the smoke path.
+- Record deployment workflow/run IDs and final Production SHA.
+
+#### C8 — Release decision
+Gate C passes only when mandatory focused tests, build/generated-file/diff checks and Production smoke pass; no P0/P1 blocker or critical regression remains; non-blocking known issues are recorded; and Owner approves the release/version bump.
+
+Only after C8 approval: bump visible version to **Ver 1.1.0**, build again, deploy Production, perform final post-deploy smoke, clean merged work branches, and mark Gate C + pre-V1.1.0 **COMPLETE / PRODUCTION VERIFIED**.
+
+**Out of scope for Gate C:** new gameplay design, Global Loading, Player Information Center, Admin V2 expansion, Shop/Diamond monetization, Pet Gacha redesign, Market, and Offline/AFK Loot.
+
 
 ## 3. NEW ROADMAP — FRESH NUMBERING
 
@@ -230,9 +278,11 @@ Dungeon Cloud Sync Gate                          ✅ COMPLETE
                      ↓
 Current UI Fix Batch                             ✅ COMPLETE
                      ↓
-Accessory V2 Completion                          🟡 QUEUED
+Accessory V2 Completion                          ✅ COMPLETE
                      ↓
-QA + Production acceptance
+Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
+                     ↓
+Gate C — Ver 1.1.0 Release Acceptance            🟡 READY / NEXT
                      ↓
 Visible game version                             Ver 1.1.0
                      ↓
