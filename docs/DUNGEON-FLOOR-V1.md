@@ -41,19 +41,44 @@ Text and preview content must not overlap on supported mobile layouts.
 
 ## 4. Floor modifiers / events
 
-Normal floors may have a modifier/event. Current runtime modifier families are:
+### Dungeon V2 Event Floor contract
 
-| ID | Name | Current effect summary |
+Dungeon V2 supersedes the old generic floor-modifier selection rules for new Dungeon Event behavior.
+
+Encounter priority is:
+
+**Boss → Elite → Event → Normal**
+
+Rules:
+
+- Event is rolled independently on **Normal Floors only**.
+- Event does **not** occur on Boss Floors.
+- Event does **not** replace or override the dedicated Elite Floor encounter.
+- When an Event is rolled, it **replaces the Normal Encounter** on that floor; it does not create an additional battle.
+- Event chance is **25%** on an eligible Normal Floor.
+- When an Event occurs, all seven Event types have **equal probability**: **1/7 each (~14.29%)**.
+- Event floors are not fixed to predetermined floor numbers; eligible floors are determined by the random roll.
+- Normal/Elite/Boss encounter generation and the Event roll must preserve the existing Dungeon V2 encounter classification rules.
+
+The approved V2 Event types are:
+
+| ID | Name | Effect |
 | --- | --- | --- |
-| `elite_pack` | Elite Monster | stronger enemies with increased rewards/drop chance |
-| `golden` | Golden Floor | increased gold |
-| `arcane` | Arcane Surge | increased EXP |
-| `treasure` | Treasure Trove | increased drop chance and rarity boost |
-| `cursed` | Cursed Mist | higher enemy attack, lower enemy HP, improved gold |
+| `golden` | Golden Floor | Existing Golden Floor effect: **Gold ×2.2**. |
+| `arcane` | Arcane Surge | Existing Arcane Surge effect: **EXP ×2**. |
+| `treasure` | Treasure Trove | Existing Treasure Trove effect: **Drop +35 percentage points** and **Rare Drop Up**. |
+| `rage` | Rage | Replaces Cursed Mist and keeps its existing effect: **Monster ATK ×1.55, Monster HP ×0.80, Gold ×1.35**. |
+| `rush` | Rush | **Monster Speed ×2**. Hero/Pet Speed is unchanged. |
+| `oasis` | Oasis | **Hero + Pet + Monster recover 5% of Max HP every Turn**, capped at Max HP. |
+| `toxic` | Toxic | Hero is affected by the existing **Poison** status, using the same status mechanics as Skill-applied Poison. Toxic does not create a second Poison stack when Poison is already active. |
 
-Current runtime leaves 60% of normal floors without a modifier and rolls a modifier for the remaining 40%.
+The legacy `elite_pack` event is **removed** from Dungeon V2 because Elite Floors already provide the dedicated Elite encounter system.
 
-These values are gameplay/economy rules. Do not rebalance percentages or multipliers during a UI-only task.
+For Golden, Arcane, Treasure, and Rage, the existing approved runtime effect values remain unchanged unless a later balance decision explicitly overrides them.
+
+Event effects must be resolved by the shared Battle Core/status systems where applicable. Do not create a parallel Poison/status implementation for Toxic.
+
+These values are gameplay rules. Do not rebalance Event chance, Event weighting, or Event effects during a UI-only task.
 
 ## 5. Event display contract
 
