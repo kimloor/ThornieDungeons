@@ -82,11 +82,13 @@
     const f = floorNumber(floor);
     return (RARITY_BANDS.find(band => f >= band.minFloor && f <= band.maxFloor) || RARITY_BANDS.at(-1)).weights;
   }
-  function dungeonV2RollRarity(floor, rng = Math.random) {
+  function dungeonV2RollRarity(floor, rng = Math.random, rarityBoost = false) {
+    const roll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
+    if (rarityBoost) return roll < 0.5 ? "unique" : "rare";
     const weights = dungeonV2RarityWeights(floor);
-    const roll = Math.max(0, Math.min(99.999999, Number(rng()) * 100));
-    if (roll < weights.rare) return "rare";
-    if (roll < weights.rare + weights.unique) return "unique";
+    const percentile = roll * 100;
+    if (percentile < weights.rare) return "rare";
+    if (percentile < weights.rare + weights.unique) return "unique";
     return "elite";
   }
   function dungeonV2RewardRole(encounterType) {
@@ -199,9 +201,9 @@
     }
     return item;
   }
-  function dungeonV2GenerateEquipment({ floor, type, rarity, sourceType, specialSource, sourceIdentity, lootTable, allowMythic = false, rng = Math.random } = {}) {
+  function dungeonV2GenerateEquipment({ floor, type, rarity, sourceType, specialSource, sourceIdentity, lootTable, allowMythic = false, rarityBoost = false, rng = Math.random } = {}) {
     const custom = dungeonV2CustomLootChoice(lootTable, rng);
-    const requestedRarity = custom?.rarity || rarity || dungeonV2RollRarity(floor, rng);
+    const requestedRarity = custom?.rarity || rarity || dungeonV2RollRarity(floor, rng, rarityBoost);
     return dungeonV2EquipmentItem({
       floor, type: custom?.itemType || type,
       rarity: requestedRarity === "mythic" && !allowMythic ? "elite" : requestedRarity,

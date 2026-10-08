@@ -1453,6 +1453,7 @@ function ThornieDungeons() {
       floor: floorNum,
       mode: "dungeon",
       seed: battleAuthorization.context.encounterSeed,
+      dungeonEventId: battleAuthorization.context.enemies?.map(entry => entry?.modifierId).find(Boolean) || null,
       hero: {
         id: "hero", kind: "hero", side: "ally", name: save.characterName || "Hero", hp: heroStartHp, maxHp: stats.maxHp,
         sp: nextPlayer.mp, maxSp: stats.maxMp, atk: stats.atk, def: stats.def, speed: stats.speed,
@@ -1571,8 +1572,9 @@ function ThornieDungeons() {
       || DUNGEON_V2.classifyDungeonEncounter(selectedFloor);
     const rewardRole = DUNGEON_REWARD_V2.dungeonV2RewardRole(encounterType);
     const packCount = currentMonsters.length;
-    const gained = DUNGEON_REWARD_V2.dungeonV2RewardGold(selectedFloor, encounterType, packCount);
-    const xpGained = DUNGEON_REWARD_V2.dungeonV2RewardExp(selectedFloor, encounterType, packCount);
+    const modifier = currentMonsters.map(m => m.modifier).find(Boolean) || null;
+    const gained = applyFloorModifierMultiplier(DUNGEON_REWARD_V2.dungeonV2RewardGold(selectedFloor, encounterType, packCount), modifier, "goldMult");
+    const xpGained = applyFloorModifierMultiplier(DUNGEON_REWARD_V2.dungeonV2RewardExp(selectedFloor, encounterType, packCount), modifier, "xpMult");
     const bossMonster = currentMonsters.find(m => m.isBoss) || null;
     const currentReceipts = Array.isArray(save?.battleRewardReceipts) ? save.battleRewardReceipts : (Array.isArray(save?.rewardReceipts) ? save.rewardReceipts : []);
     const firstClearClaims = save?.firstClearAccessoryClaims || {};
@@ -1616,7 +1618,8 @@ function ThornieDungeons() {
             floor: selectedFloor,
             sourceType: "dungeon_normal",
             sourceIdentity: monster.id,
-            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null
+            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null,
+            rarityBoost: !!modifier?.rarityBoost
           });
           incomingItems.push(drop);
           break;
@@ -1917,7 +1920,8 @@ function ThornieDungeons() {
             floor: selectedFloor,
             sourceType: "dungeon_normal",
             sourceIdentity: monster.id,
-            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null
+            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null,
+            rarityBoost: !!modifier?.rarityBoost
           });
           incomingItems.push(drop);
           break;
