@@ -7245,6 +7245,7 @@ if (typeof module !== "undefined") module.exports = {
       battleId: String(options.battleId || `battle-${Date.now()}`),
       mode: options.mode || "dungeon",
       floor: Math.max(1, Math.floor(Number(options.floor) || 1)),
+      dungeonEventId: String(options.dungeonEventId || "") || null,
       round: 0, queue: [], queueIndex: 0, speedSnapshot: {},
       teamIds,
       teams: Object.fromEntries(teamIds.map(side => [side, { id: side, unitIds: input.filter(unit => unit.side === side).map(unit => unit.id) }])),
@@ -7264,6 +7265,7 @@ if (typeof module !== "undefined") module.exports = {
         ...(options.rules || {})
       }
     };
+    applyDungeonEventStart(state);
     rebuildQueue(state);
     log(state, "battle_start", "Battle started");
     checkBattleEnd(state);
@@ -7916,7 +7918,35 @@ if (typeof module !== "undefined") module.exports = {
     for (let hit = 0; hit < hits && living(target); hit++) attackHit(state, actor, target, { mult: Number(actor.ai.mult) || 1, actionType: "enemy", statuses: actor.ai.statuses || [] }, context);
   }
 
+  function dungeonEventModifierForState(state) {
+    const contextEvent = Array.isArray(state?.serverContext?.enemies)
+      ? state.serverContext.enemies.map(entry => entry?.modifierId).find(Boolean)
+      : null;
+    const eventId = state?.dungeonEventId || contextEvent;
+    return typeof floorModifierById === "function" ? floorModifierById(eventId) : null;
+  }
+  function applyDungeonEventStart(state) {
+    const modifier = dungeonEventModifierForState(state);
+    if (!modifier || modifier.id !== "toxic") return;
+    const hero = heroForSide(state, state.controlledSide);
+    if (!living(hero)) return;
+    const source = { id: "dungeon-event-toxic", kind: "system", side: "event" };
+    applyStatus(state, source, hero, "poison", {
+      chance: 100,
+      duration: Number(modifier.poisonDuration) || 3,
+      damage: Math.max(1, Math.round(hero.maxHp * (Number(modifier.poisonDamagePct) || 0.05)))
+    }, { appliedStatuses: new Set(), bypassStatusResist: true, fixed: true });
+  }
+  function applyDungeonEventTurnEffects(state) {
+    const modifier = dungeonEventModifierForState(state);
+    if (!modifier || modifier.id !== "oasis") return;
+    const source = { id: "dungeon-event-oasis", kind: "system", side: "event" };
+    for (const unit of Object.values(state.units || {})) {
+      if (living(unit)) heal(state, unit, unit.maxHp * (Number(modifier.turnHealPct) || 0.05), source, "Oasis");
+    }
+  }
   function startEffects(state, actor, context) {
+    applyDungeonEventTurnEffects(state);
     const poison = status(actor, "poison");
     if (poison) {
       const source = state.units[poison.sourceId] || { id: poison.sourceId || "poison", side: state.teamIds.find(side => side !== actor.side) };
@@ -8099,6 +8129,10 @@ if (typeof module !== "undefined") module.exports = {
   function restoreCheckpoint(raw) {
     const state = typeof raw === "string" ? JSON.parse(raw) : copy(raw);
     if (!state || state.version !== 1 || !state.battleId || !state.units || (!state.heroId && !Array.isArray(state.teamIds)) || !Array.isArray(state.queue)) throw new Error("corrupt_checkpoint");
+    state.dungeonEventId = state.dungeonEventId
+      || (Array.isArray(state.serverContext?.enemies)
+        ? state.serverContext.enemies.map(entry => entry?.modifierId).find(Boolean) || null
+        : null);
     ensureTeamModel(state);
     state.flags = { ...(state.flags || {}), auto: false, skipResolving: false };
     return state;
@@ -8419,11 +8453,13 @@ function rollChestRarity(isEliteBoss, pity = 0) {
     const f = floorNumber(floor);
     return (RARITY_BANDS.find(band => f >= band.minFloor && f <= band.maxFloor) || RARITY_BANDS.at(-1)).weights;
   }
-  function dungeonV2RollRarity(floor, rng = Math.random) {
+  function dungeonV2RollRarity(floor, rng = Math.random, rarityBoost = false) {
+    const roll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
+    if (rarityBoost) return roll < 0.5 ? "unique" : "rare";
     const weights = dungeonV2RarityWeights(floor);
-    const roll = Math.max(0, Math.min(99.999999, Number(rng()) * 100));
-    if (roll < weights.rare) return "rare";
-    if (roll < weights.rare + weights.unique) return "unique";
+    const percentile = roll * 100;
+    if (percentile < weights.rare) return "rare";
+    if (percentile < weights.rare + weights.unique) return "unique";
     return "elite";
   }
   function dungeonV2RewardRole(encounterType) {
@@ -8536,9 +8572,9 @@ function rollChestRarity(isEliteBoss, pity = 0) {
     }
     return item;
   }
-  function dungeonV2GenerateEquipment({ floor, type, rarity, sourceType, specialSource, sourceIdentity, lootTable, allowMythic = false, rng = Math.random } = {}) {
+  function dungeonV2GenerateEquipment({ floor, type, rarity, sourceType, specialSource, sourceIdentity, lootTable, allowMythic = false, rarityBoost = false, rng = Math.random } = {}) {
     const custom = dungeonV2CustomLootChoice(lootTable, rng);
-    const requestedRarity = custom?.rarity || rarity || dungeonV2RollRarity(floor, rng);
+    const requestedRarity = custom?.rarity || rarity || dungeonV2RollRarity(floor, rng, rarityBoost);
     return dungeonV2EquipmentItem({
       floor, type: custom?.itemType || type,
       rarity: requestedRarity === "mythic" && !allowMythic ? "elite" : requestedRarity,
@@ -9230,53 +9266,32 @@ const CHEST_PITY_UNIQUE = 5;
 const CHEST_PITY_ELITE = 10;
 
 // ===== systems/floorModifier.js =====
-// ---------- floor modifiers & elite boss ----------
-const FLOOR_MODIFIERS = [{
-  id: "elite_pack",
-  name: "Elite Monster",
-  icon: "💀",
-  color: "#ff5566",
-  hpMult: 1.6,
-  atkMult: 1.35,
-  goldMult: 1.5,
-  xpMult: 1.5,
-  dropBonusFlat: 15,
-  desc: "ศัตรูแข็งแกร่งขึ้นมาก แต่รางวัลคุ้มกว่าเดิม"
-}, {
-  id: "golden",
-  name: "Golden Floor",
-  icon: "💰",
-  color: "#ffd166",
-  goldMult: 2.2,
-  desc: "ชั้นนี้ทองหล่นเยอะเป็นพิเศษ"
-}, {
-  id: "arcane",
-  name: "Arcane Surge",
-  icon: "✨",
-  color: "#8b6ae8",
-  xpMult: 2,
-  desc: "ได้รับ EXP เพิ่มขึ้นเป็นพิเศษ"
-}, {
-  id: "treasure",
-  name: "Treasure Trove",
-  icon: "🎁",
-  color: "#4ecb71",
-  dropBonusFlat: 35,
-  rarityBoost: true,
-  desc: "โอกาสดรอปไอเทมสูงขึ้น และมีโอกาสได้ของหายาก"
-}, {
-  id: "cursed",
-  name: "Cursed Mist",
-  icon: "☠️",
-  color: "#9c9ca8",
-  atkMult: 1.55,
-  hpMult: 0.8,
-  goldMult: 1.35,
-  desc: "ศัตรูดุร้ายขึ้นมาก เลือดน้อยลง แต่ให้รางวัลดีขึ้น"
-}];
-function rollFloorModifier() {
-  if (Math.random() >= 0.4) return null; // 60% of normal floors stay plain
-  return FLOOR_MODIFIERS[Math.floor(Math.random() * FLOOR_MODIFIERS.length)];
+// ---------- Dungeon V2 Event modifiers ----------
+const FLOOR_EVENT_CHANCE = 0.25;
+const FLOOR_MODIFIERS = Object.freeze([
+  { id: "golden", name: "Golden Floor", icon: "💰", color: "#ffd166", goldMult: 2.2, desc: "ชั้นนี้ทองหล่นเยอะเป็นพิเศษ" },
+  { id: "arcane", name: "Arcane Surge", icon: "✨", color: "#8b6ae8", xpMult: 2, desc: "ได้รับ EXP เพิ่มขึ้นเป็นพิเศษ" },
+  { id: "treasure", name: "Treasure Trove", icon: "🎁", color: "#4ecb71", dropBonusFlat: 35, rarityBoost: true, desc: "โอกาสดรอปไอเทมสูงขึ้น และมีโอกาสได้ของหายาก" },
+  { id: "rage", name: "Rage", icon: "☠️", color: "#9c9ca8", atkMult: 1.55, hpMult: 0.8, goldMult: 1.35, desc: "ศัตรูโจมตีแรงขึ้น แต่มีพลังชีวิตลดลงและให้ทองเพิ่ม" },
+  { id: "rush", name: "Rush", icon: "💨", color: "#5bb7ff", speedMult: 2, desc: "Monster Speed ×2" },
+  { id: "oasis", name: "Oasis", icon: "💧", color: "#3fd0c9", turnHealPct: 0.05, desc: "ทุก Turn ฟื้น HP 5% ของ Max HP" },
+  { id: "toxic", name: "Toxic", icon: "☣️", color: "#8fd14f", poisonDamagePct: 0.05, poisonDuration: 3, desc: "Hero ติด Poison 5% Max HP ต่อ Tick" }
+]);
+const FLOOR_EVENT_IDS = Object.freeze(FLOOR_MODIFIERS.map(entry => entry.id));
+function floorModifierById(id) { return FLOOR_MODIFIERS.find(entry => entry.id === String(id || "")) || null; }
+function floorModifierSpeed(baseSpeed, modifier) {
+  const mult = Number(modifier?.speedMult);
+  return Math.max(0, Number(baseSpeed) || 0) * (Number.isFinite(mult) && mult > 0 ? mult : 1);
+}
+function applyFloorModifierMultiplier(value, modifier, key) {
+  const mult = Number(modifier?.[key]);
+  return Math.round((Number(value) || 0) * (Number.isFinite(mult) && mult > 0 ? mult : 1));
+}
+function rollFloorModifier(rng = Math.random) {
+  const chanceRoll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
+  if (chanceRoll >= FLOOR_EVENT_CHANCE) return null;
+  const pickRoll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
+  return FLOOR_MODIFIERS[Math.min(FLOOR_MODIFIERS.length - 1, Math.floor(pickRoll * FLOOR_MODIFIERS.length))] || null;
 }
 const SLOT_ICON = {
   weapon: "⚔️",
@@ -9854,7 +9869,7 @@ function makeEnemy(floor, options = {}) {
   const isElite = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.ELITE;
   const modifier = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL
     ? (options.modifierId !== undefined
-      ? FLOOR_MODIFIERS.find(entry => entry.id === options.modifierId) || null
+      ? floorModifierById(options.modifierId)
       : (options.modifier === undefined ? rollFloorModifier() : options.modifier))
     : null;
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
@@ -9913,7 +9928,7 @@ function makeEnemy(floor, options = {}) {
     anchorType: t.anchorType === "flying" ? "flying" : "ground",
     modifier,
     agi,
-    speed: speedFromAgi(agi) + speedAdjustment,
+    speed: floorModifierSpeed(speedFromAgi(agi) + speedAdjustment, modifier),
     evasion: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
     dodge: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
     hitRate: hitRateFromDex(t.dex || (isBoss ? 6 : 2)),
@@ -9942,13 +9957,17 @@ function makeEncounter(floor, options = {}) {
       modifierId: enemy.modifierId
     }));
   }
+  const event = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL
+    ? rollFloorModifier(options.rng || Math.random)
+    : null;
+  const modifierId = event?.id || null;
   if (encounterType !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL || Number(floor) < 5) {
-    return [makeEnemy(floor, { encounterType, packCount: 1 })];
+    return [makeEnemy(floor, { encounterType, packCount: 1, modifierId })];
   }
   const roll = Math.random();
   const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
   const monsters = [];
-  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count }));
+  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count, modifierId }));
   return monsters;
 }
 function xpToNext(level) {
@@ -9984,6 +10003,7 @@ function generateDrop(floor, options = {}) {
       specialSource: options.specialSource,
       sourceIdentity: options.sourceIdentity,
       allowMythic: options.allowMythic === true,
+      rarityBoost: options.rarityBoost === true,
       rng: options.rng || Math.random
     });
   }
@@ -15204,6 +15224,7 @@ function ThornieDungeons() {
       floor: floorNum,
       mode: "dungeon",
       seed: battleAuthorization.context.encounterSeed,
+      dungeonEventId: battleAuthorization.context.enemies?.map(entry => entry?.modifierId).find(Boolean) || null,
       hero: {
         id: "hero", kind: "hero", side: "ally", name: save.characterName || "Hero", hp: heroStartHp, maxHp: stats.maxHp,
         sp: nextPlayer.mp, maxSp: stats.maxMp, atk: stats.atk, def: stats.def, speed: stats.speed,
@@ -15323,8 +15344,9 @@ function ThornieDungeons() {
       || DUNGEON_V2.classifyDungeonEncounter(selectedFloor);
     const rewardRole = DUNGEON_REWARD_V2.dungeonV2RewardRole(encounterType);
     const packCount = currentMonsters.length;
-    const gained = DUNGEON_REWARD_V2.dungeonV2RewardGold(selectedFloor, encounterType, packCount);
-    const xpGained = DUNGEON_REWARD_V2.dungeonV2RewardExp(selectedFloor, encounterType, packCount);
+    const modifier = currentMonsters.map(m => m.modifier).find(Boolean) || null;
+    const gained = applyFloorModifierMultiplier(DUNGEON_REWARD_V2.dungeonV2RewardGold(selectedFloor, encounterType, packCount), modifier, "goldMult");
+    const xpGained = applyFloorModifierMultiplier(DUNGEON_REWARD_V2.dungeonV2RewardExp(selectedFloor, encounterType, packCount), modifier, "xpMult");
     const bossMonster = currentMonsters.find(m => m.isBoss) || null;
     const currentReceipts = Array.isArray(save?.battleRewardReceipts) ? save.battleRewardReceipts : (Array.isArray(save?.rewardReceipts) ? save.rewardReceipts : []);
     const firstClearClaims = save?.firstClearAccessoryClaims || {};
@@ -15368,7 +15390,8 @@ function ThornieDungeons() {
             floor: selectedFloor,
             sourceType: "dungeon_normal",
             sourceIdentity: monster.id,
-            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null
+            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null,
+            rarityBoost: !!modifier?.rarityBoost
           });
           incomingItems.push(drop);
           break;
@@ -15669,7 +15692,8 @@ function ThornieDungeons() {
             floor: selectedFloor,
             sourceType: "dungeon_normal",
             sourceIdentity: monster.id,
-            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null
+            lootTable: typeof monsterLootFor === "function" ? monsterLootFor(monster.id) : null,
+            rarityBoost: !!modifier?.rarityBoost
           });
           incomingItems.push(drop);
           break;
