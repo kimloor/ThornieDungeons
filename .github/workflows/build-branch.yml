@@ -13,6 +13,7 @@ on:
       - "tail.html"
       - "build.js"
       - "wrangler.jsonc"
+      - "tests/dungeon-v2-event-floor.test.js"
       - ".github/workflows/build-branch.yml"
   workflow_dispatch:
 
@@ -46,6 +47,12 @@ jobs:
           set -euo pipefail
           node --test tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js
           node --check workers/thornie-dungeons-api.js
+
+      - name: Verify formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
 
       - name: Build generated frontend
         shell: bash
