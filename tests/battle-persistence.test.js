@@ -28,8 +28,12 @@ class D1 {
 function worker(runtimeConsole = console, options = {}) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
-  if (typeof options.eventId === "string") {
-    source = source.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(options.eventId)}; }`);
+  if (Object.prototype.hasOwnProperty.call(options, "eventId")) {
+    if (options.eventId === null) {
+      source = source.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, "function dungeonV2ServerRollEventId(rng = Math.random) { return null; }");
+    } else if (typeof options.eventId === "string") {
+      source = source.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(options.eventId)}; }`);
+    }
   }
   const math = Object.create(Math);
   if (typeof options.random === "function") math.random = options.random;
@@ -264,7 +268,7 @@ test("saveRunState, Battle checkpoint, quick slots and completion are character-
 });
 
 test("Dungeon battle start is the trust root for floor eligibility and old-floor replay", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { eventId: null }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Start_Trust_QA", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Start Trust" });
@@ -631,7 +635,7 @@ test("server-authorized encounter generation covers normal packs, Elite, Boss, a
 });
 
 test("Dungeon authorization survives checkpoint reload and completes without reroll", async () => {
-  const api = worker(console, { random: () => 0.99 }), db = database();
+  const api = worker(console, { eventId: null, random: () => 0.99 }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Resume_Trust_QA", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Resume Trust" });
@@ -660,7 +664,7 @@ test("Dungeon authorization survives checkpoint reload and completes without rer
 });
 
 test("Dungeon V2 reward commit keeps permanent claims and replay idempotency beyond 128 battles", async () => {
-  const api = worker(console, { random: () => 0.99 }), db = database();
+  const api = worker(console, { eventId: null, random: () => 0.99 }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_1", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Reward QA" });
@@ -730,7 +734,7 @@ test("Dungeon V2 reward commit keeps permanent claims and replay idempotency bey
 });
 
 test("F5 starter Pet remains an exact-once entitlement in the atomic reward boundary", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { eventId: null }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_F5", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "F5 QA" });
@@ -766,7 +770,7 @@ test("F5 starter Pet remains an exact-once entitlement in the atomic reward boun
 });
 
 test("atomic Dungeon V2 item commit preserves overflow when the carried inventory is full", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { eventId: null }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_OV", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Overflow QA" });
@@ -800,7 +804,7 @@ test("atomic Dungeon V2 item commit preserves overflow when the carried inventor
 });
 
 test("Dungeon reward capacity excludes equipped and existing Overflow rows", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { eventId: null }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_CAP", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Capacity QA" });
@@ -829,7 +833,7 @@ test("Dungeon reward capacity excludes equipped and existing Overflow rows", asy
 });
 
 test("Dungeon V2 reward authority rejects forged floor, role, and pack context", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { eventId: null }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_CTX", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Context QA" });
@@ -849,7 +853,7 @@ test("Dungeon V2 reward authority rejects forged floor, role, and pack context",
 });
 
 test("Dungeon V2 reward authority rebuilds forged diamonds, equipment, utility, and junk", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { eventId: null }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_AUTH", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Authority QA" });
@@ -950,7 +954,7 @@ test("Dungeon V2 Event Floor reward multipliers are authoritative and missing mu
 });
 
 test("concurrent duplicate Dungeon V2 completions share one atomic reward commit", async () => {
-  const api = worker(console, { random: () => 0.99 }), db = database();
+  const api = worker(console, { eventId: null, random: () => 0.99 }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_CONCURRENT", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Concurrent QA" });
