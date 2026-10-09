@@ -30,9 +30,9 @@ function worker(runtimeConsole = console, options = {}) {
   source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
   const eventId = options.eventId ?? null;
   if (eventId === null) {
-    source = source.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, "function dungeonV2ServerRollEventId(rng = Math.random) { return null; }");
+    source = source.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, "function dungeonV2ServerRollEventId(rng = Math.random) { return null; }");
   } else if (typeof eventId === "string") {
-    source = source.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(eventId)}; }`);
+    source = source.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(eventId)}; }`);
   }
   const math = Object.create(Math);
   if (typeof options.random === "function") math.random = options.random;
