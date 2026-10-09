@@ -36,9 +36,9 @@ function createWorkerEntrypoint(options = {}) {
   workerSource = workerSource.replace("export default {", "const workerDefault = {");
   const eventId = options.eventId ?? null;
   if (eventId === null) {
-    workerSource = workerSource.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, "function dungeonV2ServerRollEventId(rng = Math.random) { return null; }");
+    workerSource = workerSource.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, "function dungeonV2ServerRollEventId(rng = Math.random) { return null; }");
   } else if (typeof eventId === "string") {
-    workerSource = workerSource.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(eventId)}; }`);
+    workerSource = workerSource.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(eventId)}; }`);
   }
   const entrySource = fs.readFileSync(
     path.resolve(__dirname, "../workers/thornie-dungeons-api-entry.js"),
