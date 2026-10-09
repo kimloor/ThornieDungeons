@@ -126,14 +126,16 @@ async function claimMailAndVerifyWing(context, mail, expectedItem) {
 test("W5 Raid family mapping and reward matrix are server-owned", () => {
   const worker = read("workers/thornie-dungeons-api.js");
   for (const [boss, family] of [["azure_angel", "azure"], ["robo_phoenix", "robot"], ["dark_dragonlord", "skeleton"]]) {
-    assert.match(worker, new RegExp("id: \\\"" + boss + "\\\"[^}]*family: \\\"" + family + "\\\""));
+    const bossStart = worker.indexOf('id: "' + boss + '"');
+    assert.ok(bossStart >= 0, "missing Raid boss " + boss);
+    assert.ok(worker.slice(bossStart, bossStart + 160).includes('family: "' + family + '"'), "wrong Raid family for " + boss);
   }
   assert.match(worker, /wingRarity: "mythic"/);
   assert.match(worker, /wingRarity: "elite"/);
   assert.match(worker, /wingRarity: "unique"/);
-  assert.match(worker, /randomSetRecipeJunkId\\(family\\)/);
-  assert.match(worker, /raidAccessoryRewardDesc\\(floor, Math\\.random\\(\\) < 0\\.8 \\? "unique" : "elite"\\)/);
-  assert.match(worker, /raidSetItemRewardDesc\\(family, Number\\(character\\.unlocked_floor\\)/);
+  assert.ok(worker.includes("randomSetRecipeJunkId(family)"));
+  assert.ok(worker.includes('raidAccessoryRewardDesc(floor, Math.random() < 0.8 ? "unique" : "elite")'));
+  assert.ok(worker.includes("raidSetItemRewardDesc(family, Number(character.unlocked_floor)"));
   assert.match(worker, /raid_milestone_snapshots/);
 });
 
@@ -142,7 +144,7 @@ test("W5 wings remain tierless and rarity controls Empower capacity", () => {
     Object.fromEntries(["rare", "unique", "elite", "mythic"].map(rarity => [rarity, enhancement.EMPOWER_CAPACITY[rarity]])),
     capacityByRarity
   );
-  assert.match(read("src/systems/enhancementV2.js"), /WING_PRIMARY_STAT = Object\\.freeze\\(\\{ azure: "agi", robot: "vit", skeleton: "str" \\}\\)/);
+  assert.ok(read("src/systems/enhancementV2.js").includes('WING_PRIMARY_STAT = Object.freeze({ azure: "agi", robot: "vit", skeleton: "str" })'));
 });
 
 test("Raid milestone sends pre-rolled rare Wing options and claimed inventory preserves them", async () => {
@@ -189,9 +191,9 @@ test("Raid rank mails pre-roll unique, elite, and mythic Wing options", async ()
 
 test("W5 visual resolver binds all approved Wing families without weakening V4 authority", () => {
   const resolver = read("src/phaser/presentation/EquipmentVisualResolver.js");
-  assert.match(resolver, /identities\\.includes\\("azure"\\)/);
-  assert.match(resolver, /identities\\.includes\\("robot"\\)/);
-  assert.match(resolver, /identities\\.includes\\("skeleton"\\)/);
+  assert.ok(resolver.includes('identities.includes("azure")'));
+  assert.ok(resolver.includes('identities.includes("robot")'));
+  assert.ok(resolver.includes('identities.includes("skeleton")'));
   assert.match(read("workers/thornie-dungeons-api.js"), /character_operation_receipts/);
   assert.match(read("workers/thornie-dungeons-api.js"), /saveCharacterProgress/);
   assert.match(read("workers/thornie-dungeons-api.js"), /character_progress_requires_authoritative_operation/);
