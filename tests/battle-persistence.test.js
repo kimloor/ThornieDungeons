@@ -28,6 +28,9 @@ class D1 {
 function worker(runtimeConsole = console, options = {}) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
+  if (typeof options.eventId === "string") {
+    source = source.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(options.eventId)}; }`);
+  }
   const math = Object.create(Math);
   if (typeof options.random === "function") math.random = options.random;
   const sandbox = { console: runtimeConsole, Math: math, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
@@ -899,8 +902,7 @@ test("Dungeon V2 Event Floor reward multipliers are authoritative and missing mu
     { id: "rage", roll: 0.50, goldMult: 1.35 }
   ];
   for (const eventCase of eventCases) {
-    const randomValues = [0, eventCase.roll];
-    const api = worker(console, { random: () => randomValues.length ? randomValues.shift() : 0.99 });
+    const api = worker(console, { eventId: eventCase.id, random: () => 0.99 });
     const db = database();
     const registration = await post(api, db, "", { action: "register", id: `Event_Reward_${eventCase.id}`, password: "pass", confirmPassword: "pass" });
     const token = registration.body.sessionToken;
@@ -928,8 +930,7 @@ test("Dungeon V2 Event Floor reward multipliers are authoritative and missing mu
     db.raw.close();
   }
 
-  const randomValues = [0, 0.01];
-  const api = worker(console, { random: () => randomValues.length ? randomValues.shift() : 0.99 });
+  const api = worker(console, { eventId: "golden", random: () => 0.99 });
   const db = database();
   const registration = await post(api, db, "", { action: "register", id: "Event_Reward_Missing", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
