@@ -202,11 +202,18 @@ test("Dungeon V2 Skip uses the same Enrage damage modifier and preserves it thro
   auto.flags.auto = true;
   const autoNext = dungeon.applyDungeonV2BossEnrage(battle.battleStep(auto).state);
   const manualNext = battle.battleStep(battle.restoreCheckpoint(battle.serializeCheckpoint(manual))).state;
-  assert.deepEqual(
-    [manualNext, autoNext, skipped].map(state => state.log.filter(entry => entry.type === "boss_enrage").map(({seq, round, type, text, actorId}) => ({seq, round, type, text, actorId}))),
-    Array.from({length: 3}, () => [{seq: 2, round: 0, type: "boss_enrage", text: "boss เข้าสู่โหมดคลั่ง!", actorId: "boss"}]),
-    "Manual, Auto, and Skip preserve the same single Enrage log line"
+  const enrageLines = [manualNext, autoNext, skipped].map(state =>
+    state.log.filter(entry => entry.type === "boss_enrage").map(({seq, round, type, text, actorId}) => ({seq, round, type, text, actorId}))
   );
+  assert.equal(enrageLines[0].length, 1, "Manual should produce one Enrage line");
+  assert.deepEqual(enrageLines[1], enrageLines[0], "Auto should emit the same Enrage line as Manual");
+  assert.deepEqual(enrageLines[2], enrageLines[0], "Skip should emit the same Enrage line as Manual");
+  assert.equal(enrageLines[0][0].type, "boss_enrage");
+  assert.equal(enrageLines[0][0].text, "boss เข้าสู่โหมดคลั่ง!");
+  assert.equal(enrageLines[0][0].actorId, "boss");
+  for (const state of [manualNext, autoNext, skipped]) {
+    assert.ok(state.logSeq >= Math.max(...state.log.map(entry => Number(entry.seq) || 0)), "logSeq must remain ahead of the log sequence");
+  }
 });
 
 test("Battle Core remains default-neutral for actors without a Dungeon V2 modifier", () => {

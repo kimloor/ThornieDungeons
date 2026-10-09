@@ -143,7 +143,7 @@ test("new v2 validation is floor-aware while old stored contexts are never regen
 });
 
 test("loot, Boss Stone, and first-clear accessory consumers remain keyed to canonical enemy IDs", () => {
-  const worker = read("workers/thornie-dungeons-api.js");
+  const worker = fs.readFileSync(path.join(__dirname, "../workers/thornie-dungeons-api.js"), "utf8");
   assert.ok(worker.includes("rowsByMonster[sourceIdentity]"), "loot rows remain selected by canonical monster id");
   assert.ok(worker.includes("globalThis.MYTHIC_V2.bossStoneForEnemy(bossId)"), "Boss Stone mapping remains keyed by the chosen Boss ID");
   assert.ok(worker.includes("sourceIdentity: boss.id"), "first-clear accessory provenance remains keyed by Boss ID");
