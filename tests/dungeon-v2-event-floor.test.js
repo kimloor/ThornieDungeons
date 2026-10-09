@@ -8,7 +8,7 @@ global.PET_COMBAT_SKILLS_V2=require("../src/systems/pets.js").PET_COMBAT_SKILLS_
 const loadFloor=()=>{const s=fs.readFileSync(path.join(__dirname,"../src/systems/floorModifier.js"),"utf8")+"\nthis.api={FLOOR_EVENT_CHANCE,FLOOR_EVENT_IDS,floorModifierById,floorModifierSpeed,applyFloorModifierMultiplier,rollFloorModifier};";const c={};vm.createContext(c);vm.runInContext(s,c);return c.api};
 const floorApi=loadFloor();global.floorModifierById=floorApi.floorModifierById;
 const battle=require("../src/systems/battleCore.js"),dungeon=require("../src/systems/dungeonV2.js"),rewards=require("../src/systems/rewardV2.js");
-let workerCache;function workerApi(){if(workerCache)return workerCache;const {loadWorkerSource}=require("./helpers/worker-source");let s=loadWorkerSource(path.resolve(__dirname,"..")).replace("export default {","const workerDefault = {");s+="\nglobalThis.__eventApi={dungeonV2ServerEventModifier,dungeonV2ServerRollEventId,dungeonV2ServerApplyEventMultiplier,dungeonV2ServerNormalizeContext,dungeonV2ServerExpectedRole,dungeonV2ServerEncounterContext};";const c={console,Response,Headers,Request,URL,TextEncoder,Uint8Array,crypto,atob,btoa,setTimeout,clearTimeout};vm.createContext(c);vm.runInContext(s,c);return workerCache=c.__eventApi}
+let workerCache;function workerApi(){if(workerCache)return workerCache;const {loadWorkerSource}=require("./helpers/worker-source");let s=loadWorkerSource(path.resolve(__dirname,"..")).replace("export default {","const workerDefault = {");s+="\nglobalThis.__eventApi={dungeonV2ServerEventModifier,dungeonV2ServerRollEventId,dungeonV2ServerApplyEventMultiplier,dungeonV2ServerNormalizeContext,dungeonV2ServerExpectedRole,dungeonV2ServerEncounterContext,dungeonV2ServerContextFromStoredCheckpoint,dungeonV2ServerContextsMatch};";const c={console,Response,Headers,Request,URL,TextEncoder,Uint8Array,crypto,atob,btoa,setTimeout,clearTimeout};vm.createContext(c);vm.runInContext(s,c);return workerCache=c.__eventApi}
 const hero=(x={})=>({id:"hero",kind:"hero",side:"ally",name:"Hero",hp:200,maxHp:200,sp:100,maxSp:100,atk:1,def:8,speed:120,accuracy:99,dodge:0,crit:0,agi:20,activeSkills:[],skills:{},...x});
 const pet=(x={})=>({id:"pet",kind:"pet",side:"ally",name:"Pet",hp:80,maxHp:80,atk:1,def:4,speed:90,accuracy:99,dodge:0,crit:0,...x});
 const enemy=(id,x={})=>({id,kind:"monster",side:"enemy",name:id,hp:100,maxHp:100,atk:1,def:0,speed:60,accuracy:99,dodge:0,crit:0,...x});
@@ -25,3 +25,126 @@ test("Worker selects seven Event IDs uniformly and thresholds at 25%",()=>{const
 test("Worker applies one Event to the whole Normal pack without extra battle",()=>{const a=workerApi();let c=null;for(let i=0;i<100&&!c;i++){const x=a.dungeonV2ServerEncounterContext("event-pack-"+i,6,0);if(x.enemies.some(e=>e.modifierId))c=x;}assert.ok(c);assert.equal(new Set(c.enemies.map(e=>e.modifierId)).size,1);assert.equal(c.role,"normal");assert.ok(c.enemies.length>=1&&c.enemies.length<=3);});
 test("Worker reward arithmetic is authoritative",()=>{const a=workerApi();assert.equal(a.dungeonV2ServerApplyEventMultiplier(100,a.dungeonV2ServerEventModifier("golden"),"goldMult"),220);assert.equal(a.dungeonV2ServerApplyEventMultiplier(100,a.dungeonV2ServerEventModifier("arcane"),"xpMult"),200);assert.equal(a.dungeonV2ServerApplyEventMultiplier(100,a.dungeonV2ServerEventModifier("rage"),"goldMult"),135);});
 test("No legacy IDs or old 40% event roll remain in Event sources",()=>{const f=fs.readFileSync(path.join(__dirname,"../src/systems/floorModifier.js"),"utf8"),w=fs.readFileSync(path.join(__dirname,"../workers/thornie-dungeons-api.js"),"utf8");assert.doesNotMatch(f,/elite_pack|cursed/);assert.doesNotMatch(w,/elite_pack|cursed/);assert.doesNotMatch(w,/role === "normal"\s*&&\s*rng\(\)\s*<\s*0\.4/);});
+
+
+const FLOOR_POOLS = [
+  { min: 1, max: 5, ids: ["jelly_slime"] },
+  { min: 6, max: 15, ids: ["jelly_slime", "spore_cap"] },
+  { min: 16, max: 25, ids: ["jelly_slime", "spore_cap", "tusky_boar"] },
+  { min: 26, max: 35, ids: ["jelly_slime", "spore_cap", "tusky_boar", "sandy_crab"] },
+  { min: 36, max: 45, ids: ["jelly_slime", "spore_cap", "tusky_boar", "sandy_crab", "bramble_bat"] },
+  { min: 46, max: Infinity, ids: ["jelly_slime", "spore_cap", "tusky_boar", "sandy_crab", "bramble_bat", "bone_rattler"] }
+];
+function expectedPool(floor) {
+  return FLOOR_POOLS.find(band => floor >= band.min && floor <= band.max).ids;
+}
+function expectedBoss(floor) {
+  return ["moss_king", "ember_drake", "frost_warden"][(floor / 10 - 1) % 3];
+}
+function generated(characterId, floor, ordinal = 1) {
+  return workerApi().dungeonV2ServerEncounterContext(characterId, floor, ordinal);
+}
+
+test("new Worker encounters obey the approved cumulative pool at every band edge", () => {
+  for (const floor of [1, 5, 6, 15, 16, 25, 26, 35, 36, 45, 46, 100]) {
+    const context = generated("pool-edge-check", floor);
+    assert.equal(context.version, 2, "new contexts must carry the floor-aware version");
+    if (floor % 10 === 0) {
+      assert.equal(context.enemies.length, 1);
+      assert.equal(context.enemies[0].id, expectedBoss(floor), "Boss floors are not members of the Normal/Elite pool");
+      assert.equal(context.enemies[0].modifierId, null);
+      continue;
+    }
+    const pool = expectedPool(floor);
+    assert.ok(context.enemies.length >= 1 && context.enemies.length <= 3);
+    for (const enemy of context.enemies) assert.ok(pool.includes(enemy.id), "F" + floor + " emitted out-of-band monster " + enemy.id);
+  }
+});
+
+test("every Normal/Elite pool member is reachable over many server-issued character encounters", () => {
+  for (const floor of [1, 5, 6, 15, 16, 25, 26, 35, 36, 45, 46]) {
+    const pool = expectedPool(floor);
+    const seen = new Set();
+    for (let i = 0; i < 600; i++) {
+      const context = generated("pool-sampling-character-" + i, floor, 1 + (i % 7));
+      assert.equal(context.role, floor % 10 === 5 ? "elite" : "normal");
+      assert.equal(context.version, 2);
+      for (const enemy of context.enemies) {
+        assert.ok(pool.includes(enemy.id), "F" + floor + " emitted out-of-pool " + enemy.id);
+        seen.add(enemy.id);
+      }
+    }
+    assert.deepEqual([...seen].sort(), [...pool].sort(), "all F" + floor + " pool members should appear across characters");
+  }
+});
+
+test("Boss floors F10 through F120 use the fixed repeating three-Boss cycle", () => {
+  for (let floor = 10; floor <= 120; floor += 10) {
+    const context = generated("fixed-boss-character-" + floor, floor);
+    assert.equal(context.role, "chapter_boss");
+    assert.equal(context.version, 2);
+    assert.equal(context.enemies.length, 1);
+    assert.equal(context.enemies[0].id, expectedBoss(floor), "wrong fixed Boss at F" + floor);
+    assert.equal(context.enemies[0].kind, "boss");
+    assert.equal(context.enemies[0].isBoss, true);
+    assert.equal(context.enemies[0].modifierId, null);
+  }
+});
+
+test("legacy v1 checkpoints keep already-issued out-of-pool monsters and random Boss IDs", () => {
+  const api = workerApi();
+  const oldMonsterContext = {
+    version: 1, mode: "dungeon", floor: 24, role: "normal", packCount: 1,
+    enemies: [{ id: "bone_rattler", instanceId: "issued-bone-24", modifierId: null }],
+    encounterSeed: 12345, rewardSeed: 67890
+  };
+  const normalizedMonster = api.dungeonV2ServerNormalizeContext(oldMonsterContext);
+  assert.ok(normalizedMonster, "old-style checkpoint must still validate");
+  assert.equal(normalizedMonster.enemies[0].id, "bone_rattler");
+  assert.equal(api.dungeonV2ServerContextFromStoredCheckpoint({ serverContext: oldMonsterContext }).enemies[0].id, "bone_rattler");
+  assert.equal(api.dungeonV2ServerContextFromStoredCheckpoint({ serverContext: oldMonsterContext }).encounterSeed, 12345);
+
+  const oldBossContext = {
+    version: 1, mode: "dungeon", floor: 20, role: "chapter_boss", packCount: 1,
+    enemies: [{ id: "moss_king", instanceId: "issued-random-boss-20", modifierId: null }],
+    encounterSeed: 24680, rewardSeed: 13579
+  };
+  assert.ok(api.dungeonV2ServerNormalizeContext(oldBossContext), "old random Boss should remain resumable");
+  assert.equal(api.dungeonV2ServerContextFromStoredCheckpoint({ serverContext: oldBossContext }).enemies[0].id, "moss_king");
+  assert.equal(api.dungeonV2ServerContextFromStoredCheckpoint({ serverContext: oldBossContext }).enemies[0].instanceId, "issued-random-boss-20");
+});
+
+test("new v2 validation is floor-aware while old stored contexts are never regenerated", () => {
+  const api = workerApi();
+  const current = generated("new-start-v2", 24);
+  assert.ok(api.dungeonV2ServerNormalizeContext(current));
+  const invalidMonster = {
+    ...current,
+    enemies: current.enemies.map((enemy, index) => ({ ...enemy, id: "bone_rattler", instanceId: "invalid-bone-" + index }))
+  };
+  assert.equal(api.dungeonV2ServerNormalizeContext(invalidMonster), null, "new F24 context cannot contain F46+ Bone Rattler");
+  const newBoss = generated("new-start-boss", 20);
+  assert.equal(newBoss.enemies[0].id, "ember_drake");
+  assert.equal(api.dungeonV2ServerNormalizeContext({ ...newBoss, enemies: [{ ...newBoss.enemies[0], id: "moss_king" }] }), null,
+    "new F20 context cannot contain a random-cycle mismatch");
+  const issued = {
+    version: 1, mode: "dungeon", floor: 24, role: "normal", packCount: 1,
+    enemies: [{ id: "bone_rattler", instanceId: "persisted-id-stays", modifierId: null }],
+    encounterSeed: 987654, rewardSeed: 123456
+  };
+  const before = JSON.stringify(issued);
+  const resumed = api.dungeonV2ServerContextFromStoredCheckpoint({ serverContext: issued });
+  assert.ok(resumed);
+  assert.equal(resumed.enemies[0].id, "bone_rattler");
+  assert.equal(resumed.enemies[0].instanceId, "persisted-id-stays");
+  assert.equal(resumed.encounterSeed, 987654);
+  assert.equal(JSON.stringify(issued), before, "validation reads stored context; it does not rewrite/re-roll it");
+  assert.equal(api.dungeonV2ServerContextsMatch(resumed, current), false, "legacy preview identity must not be silently treated as a different new encounter");
+});
+
+test("loot, Boss Stone, and first-clear accessory consumers remain keyed to canonical enemy IDs", () => {
+  const worker = read("workers/thornie-dungeons-api.js");
+  assert.ok(worker.includes("rowsByMonster[sourceIdentity]"), "loot rows remain selected by canonical monster id");
+  assert.ok(worker.includes("globalThis.MYTHIC_V2.bossStoneForEnemy(bossId)"), "Boss Stone mapping remains keyed by the chosen Boss ID");
+  assert.ok(worker.includes("sourceIdentity: boss.id"), "first-clear accessory provenance remains keyed by Boss ID");
+});
