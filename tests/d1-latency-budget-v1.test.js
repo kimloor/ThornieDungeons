@@ -30,10 +30,16 @@ class D1Harness {
   }
 }
 
-function createWorkerEntrypoint() {
+function createWorkerEntrypoint(options = {}) {
   let workerSource = loadWorkerSource(path.resolve(__dirname, ".."));
   workerSource = workerSource.replace(/MAX_REQUEST_BODY_BYTES/g, "D1_WORKER_MAX_REQUEST_BODY_BYTES");
   workerSource = workerSource.replace("export default {", "const workerDefault = {");
+  const eventId = options.eventId ?? null;
+  if (eventId === null) {
+    workerSource = workerSource.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, "function dungeonV2ServerRollEventId(rng = Math.random) { return null; }");
+  } else if (typeof eventId === "string") {
+    workerSource = workerSource.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(eventId)}; }`);
+  }
   const entrySource = fs.readFileSync(
     path.resolve(__dirname, "../workers/thornie-dungeons-api-entry.js"),
     "utf8"
