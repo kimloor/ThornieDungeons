@@ -29,7 +29,7 @@ function worker(runtimeConsole = console, options = {}) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
   if (typeof options.eventId === "string") {
-    source = source.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(options.eventId)}; }`);
+    source = source.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(options.eventId)}; }`);
   }
   const math = Object.create(Math);
   if (typeof options.random === "function") math.random = options.random;
@@ -897,9 +897,9 @@ test("Dungeon V2 reward authority rebuilds forged diamonds, equipment, utility, 
 
 test("Dungeon V2 Event Floor reward multipliers are authoritative and missing multipliers are rejected", async () => {
   const eventCases = [
-    { id: "golden", roll: 0.01, goldMult: 2.2 },
-    { id: "arcane", roll: 0.20, xpMult: 2 },
-    { id: "rage", roll: 0.50, goldMult: 1.35 }
+    { id: "golden", goldMult: 2.2 },
+    { id: "arcane", xpMult: 2 },
+    { id: "rage", goldMult: 1.35 }
   ];
   for (const eventCase of eventCases) {
     const api = worker(console, { eventId: eventCase.id, random: () => 0.99 });
