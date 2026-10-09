@@ -28,8 +28,11 @@ class D1 {
 function worker(runtimeConsole = console, options = {}) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
-  if (typeof options.eventId === "string") {
-    source = source.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(options.eventId)}; }`);
+  const eventId = options.eventId ?? null;
+  if (eventId === null) {
+    source = source.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, "function dungeonV2ServerRollEventId(rng = Math.random) { return null; }");
+  } else if (typeof eventId === "string") {
+    source = source.replace(/function dungeonV2ServerRollEventId\\(rng = Math\\.random\\) \\{[\\s\\S]*?\\n\\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(eventId)}; }`);
   }
   const math = Object.create(Math);
   if (typeof options.random === "function") math.random = options.random;
