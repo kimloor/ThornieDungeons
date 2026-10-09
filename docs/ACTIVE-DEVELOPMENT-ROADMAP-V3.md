@@ -83,6 +83,8 @@ Gate C is the final acceptance gate before declaring the pre-V1.1.0 release comp
 - Verify working tree is clean and no unapproved work is mixed into the release.
 - Confirm Gate A, Gate B, Gate B.5 and approved Dungeon V2 Skill/Event work are present on `main`.
 - Confirm no unresolved P0/P1 blocker or critical regression is known.
+- Reconcile roadmap / `PROJECT-INDEX.md` statuses and consolidate scattered Arena V2 docs (doc-only).
+- Owner confirms repository/credential hygiene (access tokens, repo visibility) before release.
 
 #### C2 — Build / generated frontend integrity
 - Run `node build.js`.
@@ -92,7 +94,7 @@ Gate C is the final acceptance gate before declaring the pre-V1.1.0 release comp
 - Verify frontend syntax/build output and required production assets.
 
 #### C3 — Automated regression gate
-Run focused regression for Battle Core / Battle Result / checkpoint, Dungeon Floor / Monster Skills / Boss Phase + Enrage, Dungeon Event Floor, Accessory V2, Inventory/Equipment/Compare/Shop/Sell, Arena/shared navigation/runtime errors, and relevant Admin/Auth/Security suites. Run the broader Node regression suite where practical and record exact pass/fail counts; never claim full-suite green unless the complete suite passes.
+Run focused regression for Battle Core / Battle Result / checkpoint, Dungeon Floor / Monster Skills / Boss Phase + Enrage, Dungeon Event Floor, Accessory V2, Inventory/Equipment/Compare/Shop/Sell, Arena/shared navigation/runtime errors, and relevant Admin/Auth/Security suites. Run the broader Node regression suite where practical and record exact pass/fail counts; never claim full-suite green unless the complete suite passes. Known baseline to resolve first: the full suite failed on `main` `c41fb15` (test database lacked `item_provenance` / `item_ownership_events` after per-request DDL removal, plus stale source-regex tests for the old battle-end flow); fix/confirm before counting C3 as passed. Also verify Production D1 contains both tables.
 
 #### C4 — Dungeon Production acceptance
 - Verify Normal / Elite / Boss encounter selection.
@@ -110,7 +112,7 @@ Run focused regression for Battle Core / Battle Result / checkpoint, Dungeon Flo
 - Verify acquisition/drop presentation and no regression to capacity, salvage, Shop/Sell.
 
 #### C6 — Shared mobile/UI acceptance
-Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area, Arena header/setup/history, Character Skills, Dungeon Floor/Battle, Inventory/Equipment/Compare, runtime error popup, and iPhone/mobile scrolling, overlays, selectors and touch targets.
+Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area, Arena header/setup/history, Character Skills, Dungeon Floor/Battle, Inventory/Equipment/Compare, runtime error popup, and iPhone/mobile scrolling, overlays, selectors and touch targets. Include a read-only audit of other overlays whose header scrolls away (fix only if broken; full overlay migration belongs to Client Systems PR-D).
 
 #### C7 — Production smoke / deployment evidence
 - Verify deployed frontend/API versions and workflow success.
@@ -118,11 +120,13 @@ Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area
 - Verify critical R2 assets and generated frontend.
 - Verify no console/runtime error in the smoke path.
 - Record deployment workflow/run IDs and final Production SHA.
+- Record the missing W5.5 Security Hardening post-merge Production verification.
+- Review open security follow-ups in the Owner's confidential plan; each is either fixed, or explicitly accepted as a known issue by the Owner at C8.
 
 #### C8 — Release decision
 Gate C passes only when mandatory focused tests, build/generated-file/diff checks and Production smoke pass; no P0/P1 blocker or critical regression remains; non-blocking known issues are recorded; and Owner approves the release/version bump.
 
-Only after C8 approval: bump visible version to **Ver 1.1.0**, build again, deploy Production, perform final post-deploy smoke, clean merged work branches, and mark Gate C + pre-V1.1.0 **COMPLETE / PRODUCTION VERIFIED**.
+Only after C8 approval: bump visible version to **Ver 1.1.0**, build again, deploy Production, perform final post-deploy smoke, clean merged work branches, remove dead shop code (`generateShopStock` / `shopBuyPrice` if unused), review `docs/hero-v5-*` review-image folders and one-off workflows (delete only after confirmation), and mark Gate C + pre-V1.1.0 **COMPLETE / PRODUCTION VERIFIED**.
 
 **Out of scope for Gate C:** new gameplay design, Global Loading, Player Information Center, Admin V2 expansion, Shop/Diamond monetization, Pet Gacha redesign, Market, and Offline/AFK Loot.
 
@@ -130,6 +134,12 @@ Only after C8 approval: bump visible version to **Ver 1.1.0**, build again, depl
 ## 3. NEW ROADMAP — FRESH NUMBERING
 
 The successor roadmap starts here, after Ver 1.1.0 gate acceptance.
+
+### WAVE 1 PREP — Client Systems V1
+**Status: PROPOSED / QUEUED AFTER Ver 1.1.0**
+**Risk: MEDIUM-HIGH — touches many client flows; no server contract or economy change**
+
+One PR per component, in order, each stopping for Owner approval: PR-C Error catalog (code → Thai message) → PR-B API client policy table (timeout/retry/dedupe/session handling) → PR-A Server Operation Manager (requestId reuse on retry, optimistic/rollback, per-character queue, lock registry) → PR-D Overlay shell (migrate Inventory/Craft/Mail/Guild one per commit). Boundary with WAVE 1: Global Loading = full-screen blocking only; Server Operation Manager = inline pending; never both for one action. Contract doc: `CLIENT-SYSTEMS-V1.md` (to be written).
 
 ### WAVE 1 — Global Loading System V1
 **Status: APPROVED / QUEUED**
@@ -144,7 +154,8 @@ Implement the shared App-level loading manager/overlay:
 - major bootstrap/Dungeon/Arena/Phaser preload/restore transitions;
 - background autosave must not become an unnecessary full-screen blocker;
 - loading failure releases ownership before detailed error UI;
-- no gameplay/save/API authority changes.
+- no gameplay/save/API authority changes;
+- includes Client Systems PR-E (loading task registry: register/complete/fail for assets/manifest, login, hydrate, scene change).
 
 Graphics dependency: G14 Global Loading Presentation Pack may provide the shared Dungeon Gate/rune visual identity, with a functional lightweight fallback.
 
@@ -174,7 +185,7 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 ### WAVE 2 — Admin V2 Expansion
 **Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
 
-Expand Admin V2 as the operations/audit foundation needed before the next economy-heavy systems. Detailed permissions, mutation tools and destructive-operation contracts will be approved separately. Admin Delete Item remains a candidate for this Wave; do not implement it from this roadmap heading alone.
+Expand Admin V2 as the operations/audit foundation needed before the next economy-heavy systems. Detailed permissions, mutation tools and destructive-operation contracts will be approved separately. Admin surface hardening (escaping/rendering review of `admin.html`) is included in this Wave. Admin Delete Item remains a candidate for this Wave; do not implement it from this roadmap heading alone.
 
 ### WAVE 3 — Blacksmith + Crafting Redesign
 **Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
@@ -194,6 +205,8 @@ This gate does not block WAVE 4 economy/catalog design while real-money checkout
 
 ### WAVE 4 — Main Shop + Diamond Economy Design
 **Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
+
+Shop follow-ups parked from Shop-and-Sell V1 to decide here: multi-row/multi-select selling (reserved sell tab), equipment reroll cost/cooldown, server-sent sell prices instead of a duplicated client formula.
 
 Design the main Shop and future real-money Diamond Pack catalog. This Wave may define pack structure, proposed pricing/value, Diamond purchasing power and economy-safety targets.
 
