@@ -25,10 +25,15 @@ class D1 {
   async batch(statements) { const out = []; for (const statement of statements) out.push(await statement.run()); return out; }
 }
 
-function worker(runtimeConsole = console) {
+function worker(runtimeConsole = console, options = {}) {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {") + "\nglobalThis.__worker = workerDefault;";
-  const sandbox = { console: runtimeConsole, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
+  if (typeof options.eventId === "string") {
+    source = source.replace(/function dungeonV2ServerRollEventId\(rng = Math\.random\) \{[\s\S]*?\n\}/, `function dungeonV2ServerRollEventId(rng = Math.random) { return ${JSON.stringify(options.eventId)}; }`);
+  }
+  const math = Object.create(Math);
+  if (typeof options.random === "function") math.random = options.random;
+  const sandbox = { console: runtimeConsole, Math: math, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(sandbox); vm.runInContext(source, sandbox); return sandbox.__worker;
 }
 
@@ -189,19 +194,24 @@ function battleCoreLikeCheckpointForStart(started, safeActionSeq = 0, options = 
   };
 }
 
-function rewardForContext(context) {
+function rewardForContext(context, options = {}) {
   const floor = context.floor;
   const baseXp = Math.round(6 + floor * 2.4);
   const baseGold = floor <= 30 ? 20 + 3 * floor : floor <= 50 ? 120 + 4 * (floor - 31) : floor <= 70 ? 210 + 5 * (floor - 51) : floor <= 90 ? 320 + 7 * (floor - 71) : 480 + 10 * (floor - 91);
   const roleMultiplier = context.role === "chapter_boss" ? 2 : context.role === "elite" ? 1.5 : 1;
   const packMultiplier = context.role === "normal" ? ({ 1: 1, 2: 1.35, 3: 1.65 })[context.packCount] : 1;
+  const modifierId = (context.enemies || []).map(enemy => enemy.modifierId).find(Boolean);
+  const baseRewardGold = Math.round(baseGold * roleMultiplier * packMultiplier);
+  const baseRewardXp = Math.round(baseXp * roleMultiplier * packMultiplier);
+  const eventGoldMultiplier = options.applyEvent === false ? 1 : ({ golden: 2.2, rage: 1.35 })[modifierId] || 1;
+  const eventXpMultiplier = options.applyEvent === false ? 1 : ({ arcane: 2 })[modifierId] || 1;
   return {
     floor,
     encounterType: context.role,
     rewardRole: context.role,
     packCount: context.packCount,
-    gold: Math.round(baseGold * roleMultiplier * packMultiplier),
-    xp: Math.round(baseXp * roleMultiplier * packMultiplier),
+    gold: Math.round(baseRewardGold * eventGoldMultiplier),
+    xp: Math.round(baseRewardXp * eventXpMultiplier),
     diamonds: 0,
     items: []
   };
@@ -621,7 +631,7 @@ test("server-authorized encounter generation covers normal packs, Elite, Boss, a
 });
 
 test("Dungeon authorization survives checkpoint reload and completes without reroll", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { random: () => 0.99 }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Resume_Trust_QA", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Resume Trust" });
@@ -650,7 +660,7 @@ test("Dungeon authorization survives checkpoint reload and completes without rer
 });
 
 test("Dungeon V2 reward commit keeps permanent claims and replay idempotency beyond 128 battles", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { random: () => 0.99 }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_1", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Reward QA" });
@@ -885,8 +895,62 @@ test("Dungeon V2 reward authority rebuilds forged diamonds, equipment, utility, 
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND extra_json LIKE '%forged%'").get(characterId).c, 0);
 });
 
+test("Dungeon V2 Event Floor reward multipliers are authoritative and missing multipliers are rejected", async () => {
+  const eventCases = [
+    { id: "golden", goldMult: 2.2 },
+    { id: "arcane", xpMult: 2 },
+    { id: "rage", goldMult: 1.35 }
+  ];
+  for (const eventCase of eventCases) {
+    const api = worker(console, { eventId: eventCase.id, random: () => 0.99 });
+    const db = database();
+    const registration = await post(api, db, "", { action: "register", id: `Event_Reward_${eventCase.id}`, password: "pass", confirmPassword: "pass" });
+    const token = registration.body.sessionToken;
+    const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Event Reward" });
+    const characterId = created.body.character.character_id;
+    const started = await startDungeon(api, db, token, characterId, 1);
+    assert.equal(started.body.context.enemies[0].modifierId, eventCase.id);
+    const checkpoint = checkpointForStart(started);
+    assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpoint })).body.accepted, true);
+    const correctReward = rewardForContext(started.body.context);
+    const accepted = await post(api, db, token, {
+      action: "completeBattle", characterId, battleId: started.body.battleId,
+      result: { result: "victory", safeActionSeq: 2, floor: 1, reward: correctReward }
+    });
+    assert.equal(accepted.body.ok, true, `${eventCase.id} reward should be accepted`);
+    assert.equal(accepted.body.firstCompletion, true);
+    if (eventCase.goldMult) {
+      const unmodified = rewardForContext(started.body.context, { applyEvent: false }).gold;
+      assert.equal(correctReward.gold, Math.round(unmodified * eventCase.goldMult));
+    }
+    if (eventCase.xpMult) {
+      const unmodified = rewardForContext(started.body.context, { applyEvent: false }).xp;
+      assert.equal(correctReward.xp, Math.round(unmodified * eventCase.xpMult));
+    }
+    db.raw.close();
+  }
+
+  const api = worker(console, { eventId: "golden", random: () => 0.99 });
+  const db = database();
+  const registration = await post(api, db, "", { action: "register", id: "Event_Reward_Missing", password: "pass", confirmPassword: "pass" });
+  const token = registration.body.sessionToken;
+  const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Missing Multiplier" });
+  const characterId = created.body.character.character_id;
+  const started = await startDungeon(api, db, token, characterId, 1);
+  assert.equal(started.body.context.enemies[0].modifierId, "golden");
+  const checkpoint = checkpointForStart(started);
+  assert.equal((await post(api, db, token, { action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId, checkpointSeq: 1, payload: checkpoint })).body.accepted, true);
+  const rejected = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", safeActionSeq: 2, floor: 1, reward: rewardForContext(started.body.context, { applyEvent: false }) }
+  });
+  assert.equal(rejected.status, 400);
+  assert.equal(rejected.body.error, "invalid_reward_plan");
+  db.raw.close();
+});
+
 test("concurrent duplicate Dungeon V2 completions share one atomic reward commit", async () => {
-  const api = worker(), db = database();
+  const api = worker(console, { random: () => 0.99 }), db = database();
   const registration = await post(api, db, "", { action: "register", id: "Reward_QA_CONCURRENT", password: "pass", confirmPassword: "pass" });
   const token = registration.body.sessionToken;
   const created = await post(api, db, token, { action: "createCharacter", slotIndex: 0, name: "Concurrent QA" });
