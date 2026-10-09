@@ -143,6 +143,8 @@ All Chapter Bosses also use the locked global Enrage rule:
 
 - trigger strictly below **50% HP**;
 - trigger once per battle;
+- on the transition, append exactly one `boss_enrage` battle-log entry with the normal Battle Core `seq`/`round` fields (for example, `Moss King เข้าสู่โหมดคลั่ง!`);
+- keep that entry in the checkpointed Battle log; resuming must not emit it again, and Manual, Auto, and Skip must produce the same single entry;
 - resolved **direct damage +20%** for the remainder of battle;
 - no reset/retrigger after checkpoint/reload/resume;
 - no multiplier stacking from crossing the threshold multiple times.

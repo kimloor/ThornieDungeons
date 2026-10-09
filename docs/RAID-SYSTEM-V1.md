@@ -114,3 +114,7 @@ QA baseline:
 - focused W7A/Raid/Phaser/Auth regression: 82/82 PASS;
 - full suite: 536/536 PASS;
 - source-first build/generated index/diff checks: PASS.
+
+## 11. Raid Wing Enchant option issuance
+
+Raid Wing rewards issued by the Worker include server-pre-rolled Enchant/Empower option objects in `empowerSlots`. Claiming the mail preserves those exact option objects; it must not replace them with null slots or roll new options on the client. Slot count is determined by rarity: **rare = 1, unique = 2, elite = 3, mythic = 4**.

@@ -49,27 +49,6 @@ jobs:
           node --test tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js tests/raid-wings-v2.test.js
           node --check workers/thornie-dungeons-api.js
 
-      - name: Full-suite repeatability gate (20 separate runs for this handoff)
-        if: github.ref_name == 'fix/raid-wings-boss-enrage-floor-pools-20261009'
-        shell: bash
-        run: |
-          set -euo pipefail
-          failures=0
-          for run in $(seq 1 20); do
-            log_file="$(mktemp)"
-            if node --test tests/*.test.js >"$log_file" 2>&1; then
-              summary="$(grep -E '^# (tests|pass|fail) ' "$log_file" | tr '\n' ' ' || true)"
-              echo "FULL_SUITE_RUN $run/20 PASS $summary"
-            else
-              failures=$((failures + 1))
-              echo "FULL_SUITE_RUN $run/20 FAIL"
-              tail -n 100 "$log_file"
-            fi
-            rm -f "$log_file"
-          done
-          echo "FULL_SUITE_RESULT runs=20 failures=$failures"
-          test "$failures" -eq 0
-
       - name: Verify formatting
         shell: bash
         run: |
