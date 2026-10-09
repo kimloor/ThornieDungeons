@@ -3230,8 +3230,8 @@ function raidWingItemDesc(family, rarity) {
   return {
     type: "wings", rarity: r, name: `${RAID_FAMILIES[f].name} Wings`, wingFamily: f,
     rewardVersion: 2, itemModelVersion: 2, empowerSlotCapacity: capacity, empowerSlotCount: capacity,
-    empowerSlots: globalThis.ENHANCEMENT_V2_RULES?.fillEmpowerSlots
-      ? globalThis.ENHANCEMENT_V2_RULES.fillEmpowerSlots("wings", r, secureRandomUnit)
+    empowerSlots: ENHANCEMENT_V2_RULES?.fillEmpowerSlots
+      ? ENHANCEMENT_V2_RULES.fillEmpowerSlots("wings", r, secureRandomUnit)
       : Array(capacity).fill(null), sourceType: "raid", sourceIdentity: `raid_wing:${f}`
   };
 }
