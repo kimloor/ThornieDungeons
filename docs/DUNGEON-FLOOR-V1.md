@@ -96,11 +96,58 @@ Use idle animation for preview where supported. Missing optional art must follow
 
 Do not change monster combat stats, encounter generation, or battle behavior merely to make the preview look correct.
 
+Which monsters can appear on a floor is defined by the Monster Pool and Boss assignment contracts in section 7.
+
 ## 7. Boss floors
 
 Boss floors must remain visually distinguishable in Floor Select and route into the existing battle/boss flow.
 
 A visual change to boss doors does not authorize changes to boss stats, rewards, encounter logic, or Battle rules.
+
+### Dungeon V2 Boss assignment contract
+
+Status: **OWNER-APPROVED 2026-10-09 (gameplay rule).** Boss floors use a fixed assignment; they are not drawn at random and never mix with the Normal/Elite monster pool.
+
+Boss floors are every floor where `floor % 10 == 0`. The boss is fixed by position in a repeating three-boss cycle, so the pattern repeats every 30 floors:
+
+| Floor | Boss |
+| --- | --- |
+| F10 | Moss King (`moss_king`) |
+| F20 | Ember Drake (`ember_drake`) |
+| F30 | Frost Warden (`frost_warden`) |
+| F40 | Moss King |
+| F50 | Ember Drake |
+| F60 | Frost Warden |
+| ... | repeats every 30 floors |
+
+Rule: `bossId = [moss_king, ember_drake, frost_warden][(floor / 10 - 1) % 3]`.
+
+### Dungeon V2 Monster Pool by floor contract
+
+Status: **OWNER-APPROVED 2026-10-09 (gameplay rule).** The Normal/Elite monster pool grows with the floor and is cumulative: each band keeps every earlier monster and adds one new type.
+
+| Floor | Normal / Elite Monster Pool | Runtime ids |
+| --- | --- | --- |
+| F1-F5 | Slime | `jelly_slime` |
+| F6-F15 | Slime + Spore | + `spore_cap` |
+| F16-F25 | Slime + Spore + Tusky Boar | + `tusky_boar` |
+| F26-F35 | Slime + Spore + Tusky Boar + Crab | + `sandy_crab` |
+| F36-F45 | Slime + Spore + Tusky Boar + Crab + Bat | + `bramble_bat` |
+| F46+ | Slime + Spore + Tusky Boar + Crab + Bat + Rat | + `bone_rattler` |
+
+Encounter priority for monster selection:
+
+- **Boss Floor** -> the fixed boss from the Boss assignment contract above.
+- **Elite Floor** (`floor % 10 == 5`) -> a random Elite drawn from that floor's Monster Pool.
+- **Normal Floor** -> random Normal monsters drawn from that floor's Monster Pool (Event rules in section 4 are unchanged and still replace the Normal encounter when rolled).
+- Boss is never mixed into the Normal/Elite pool, and Normal/Elite monsters never appear on a Boss Floor.
+- Normal/Elite selection does not de-duplicate: a pack may contain the same monster more than once.
+
+Implementation notes:
+
+- The Worker is authoritative for encounter selection; the client must not decide pool membership.
+- Encounters and active checkpoints issued before this rule is deployed keep their issued monsters; the new pool applies only to newly issued encounters, and resuming a battle must never re-roll or strand the player.
+- This rule does not change monster stats, skills, rewards, drop tables, Event chance/effects, or Boss mechanics.
 
 ## 8. Navigation and responsive behavior
 
