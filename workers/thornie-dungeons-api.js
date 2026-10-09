@@ -1456,6 +1456,23 @@ function dungeonV2ServerExpectedRole(floor) {
   const f = Math.max(1, Math.floor(Number(floor) || 1));
   return f % 10 === 0 ? "chapter_boss" : f % 10 === 5 ? "elite" : "normal";
 }
+// The Worker alone decides pool membership. This order matches the approved cumulative
+// floor bands; never sort, mix Boss IDs into this pool, or deduplicate a generated pack.
+function dungeonV2ServerMonsterPoolForFloor(floor) {
+  const f = Math.max(1, Math.floor(Number(floor) || 1));
+  const pool = ["jelly_slime"];
+  if (f >= 6) pool.push("spore_cap");
+  if (f >= 16) pool.push("tusky_boar");
+  if (f >= 26) pool.push("sandy_crab");
+  if (f >= 36) pool.push("bramble_bat");
+  if (f >= 46) pool.push("bone_rattler");
+  return pool;
+}
+function dungeonV2ServerBossForFloor(floor) {
+  const f = Math.floor(Number(floor) || 0);
+  if (f < 10 || f % 10 !== 0) return null;
+  return DUNGEON_V2_BOSS_ID_LIST[(f / 10 - 1) % DUNGEON_V2_BOSS_ID_LIST.length];
+}
 function dungeonV2ServerHash(value) {
   let hash = 2166136261;
   for (const char of String(value || "")) {
@@ -1477,12 +1494,19 @@ function dungeonV2ServerNormalizeContext(value) {
   if (!value || value.mode !== "dungeon") return null;
   const floor = Math.floor(Number(value.floor) || 0);
   if (floor < 1) return null;
+  // Version 1 is the legacy-issued contract: permit any formerly valid definition ID so
+  // active checkpoints/previews survive deployment. New server contexts are version 2 and
+  // are strictly checked against the approved floor pool/fixed Boss assignment.
+  const contextVersion = value.version == null ? 1 : Number(value.version);
+  if (contextVersion !== 1 && contextVersion !== 2) return null;
   const role = dungeonV2ServerExpectedRole(floor);
   if (String(value.role || "") !== role) return null;
   const entries = Array.isArray(value.enemies) ? value.enemies : [];
   if (entries.length < 1 || entries.length > 3 || Number(value.packCount) !== entries.length) return null;
   if (role === "chapter_boss" && entries.length !== 1) return null;
-  const allowedIds = role === "chapter_boss" ? DUNGEON_V2_BOSS_IDS : DUNGEON_V2_MONSTER_IDS;
+  const allowedIds = contextVersion === 1
+    ? (role === "chapter_boss" ? DUNGEON_V2_BOSS_IDS : DUNGEON_V2_MONSTER_IDS)
+    : new Set(role === "chapter_boss" ? [dungeonV2ServerBossForFloor(floor)] : dungeonV2ServerMonsterPoolForFloor(floor));
   const enemies = entries.map((enemy, index) => ({
     id: String(enemy?.id || ""),
     instanceId: String(enemy?.instanceId || ""),
@@ -1497,7 +1521,7 @@ function dungeonV2ServerNormalizeContext(value) {
   const encounterSeed = Number(value.encounterSeed) >>> 0;
   const rewardSeed = Number(value.rewardSeed) >>> 0;
   if (!encounterSeed || !rewardSeed) return null;
-  return { version: 1, mode: "dungeon", floor, role, packCount: enemies.length, enemies, encounterSeed, rewardSeed };
+  return { version: contextVersion, mode: "dungeon", floor, role, packCount: enemies.length, enemies, encounterSeed, rewardSeed };
 }
 function dungeonV2ServerContextFromStoredCheckpoint(payload) {
   return dungeonV2ServerNormalizeContext(payload?.serverContext);
@@ -1572,10 +1596,14 @@ function dungeonV2ServerEncounterContext(characterId, floor, ordinal) {
     const roll = rng();
     return roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
   })();
-  const pool = role === "chapter_boss" ? DUNGEON_V2_BOSS_ID_LIST : DUNGEON_V2_MONSTER_ID_LIST;
+  const pool = role === "chapter_boss"
+    ? [dungeonV2ServerBossForFloor(floor)]
+    : dungeonV2ServerMonsterPoolForFloor(floor);
   const eventId = role === "normal" ? dungeonV2ServerRollEventId(rng) : null;
   const enemies = Array.from({ length: packCount }, (_, index) => {
-    const id = pool[Math.floor(rng() * pool.length)] || pool[0];
+    // Fixed Boss assignments consume no random pick; all Normal/Elite IDs are drawn only
+    // from their cumulative floor band. Duplicates remain allowed.
+    const id = role === "chapter_boss" ? pool[0] : pool[Math.floor(rng() * pool.length)] || pool[0];
     const modifierId = eventId;
     return {
       id,
@@ -1585,7 +1613,7 @@ function dungeonV2ServerEncounterContext(characterId, floor, ordinal) {
       isBoss: role === "chapter_boss"
     };
   });
-  return { version: 1, mode: "dungeon", floor, role, packCount, enemies, encounterSeed, rewardSeed };
+  return { version: 2, mode: "dungeon", floor, role, packCount, enemies, encounterSeed, rewardSeed };
 }
 async function handleGetDungeonEncounterPreview(db, id, session, characterId, requestedFloor) {
   const auth = await verifyPlayer(db, id, session);
@@ -3230,8 +3258,8 @@ function raidWingItemDesc(family, rarity) {
   return {
     type: "wings", rarity: r, name: `${RAID_FAMILIES[f].name} Wings`, wingFamily: f,
     rewardVersion: 2, itemModelVersion: 2, empowerSlotCapacity: capacity, empowerSlotCount: capacity,
-    empowerSlots: globalThis.ENHANCEMENT_V2_RULES?.fillEmpowerSlots
-      ? globalThis.ENHANCEMENT_V2_RULES.fillEmpowerSlots("wings", r, secureRandomUnit)
+    empowerSlots: ENHANCEMENT_V2_RULES?.fillEmpowerSlots
+      ? ENHANCEMENT_V2_RULES.fillEmpowerSlots("wings", r, secureRandomUnit)
       : Array(capacity).fill(null), sourceType: "raid", sourceIdentity: `raid_wing:${f}`
   };
 }
