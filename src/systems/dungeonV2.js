@@ -309,6 +309,22 @@
       && monsters.some(monster => monster && monster.encounterType === ENCOUNTER_TYPES.ELITE);
   }
 
+  // Match Battle Core's log shape without changing its resolver, RNG, or parity copy.
+  // A persisted Enrage flag makes this edge-triggered, including resume/Skip/Auto.
+  function appendDungeonV2BossEnrageLog(state, unit) {
+    state.log = Array.isArray(state.log) ? state.log : [];
+    const lastSeq = state.log.reduce((max, entry) => Math.max(max, Math.floor(Number(entry?.seq) || 0)), 0);
+    state.logSeq = Math.max(Math.floor(Number(state.logSeq) || 0), lastSeq) + 1;
+    state.log.push({
+      seq: state.logSeq,
+      round: Math.max(0, Math.floor(Number(state.round) || 0)),
+      type: "boss_enrage",
+      text: `${String(unit.name || unit.id || "บอส")} เข้าสู่โหมดคลั่ง!`,
+      actorId: String(unit.id || "")
+    });
+    if (state.log.length > 120) state.log.splice(0, state.log.length - 120);
+  }
+
   // Dungeon V2 owns the threshold and one-time state. Battle Core owns the
   // damage calculation and applies this generic outgoing multiplier per hit.
   function applyDungeonV2BossEnrage(state) {
@@ -318,6 +334,7 @@
       if (!unit || unit.kind !== "boss" || unit.hp <= 0 || unit.dead || unit.hp >= unit.maxHp * BOSS_ENRAGE_THRESHOLD || isDungeonV2BossEnraged(unit)) return;
       unit.flags = unit.flags || {};
       unit.flags.dungeonV2Enraged = true;
+      appendDungeonV2BossEnrageLog(state, unit);
       unit.flags.dungeonV2EnrageDamageMultiplier = BOSS_ENRAGE_DAMAGE_MULTIPLIER;
       unit.damageMultiplier = BOSS_ENRAGE_DAMAGE_MULTIPLIER;
       unit.dungeonV2Phase = "enraged";

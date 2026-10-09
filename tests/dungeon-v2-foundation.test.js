@@ -135,9 +135,16 @@ test("Boss Enrage triggers strictly below 50 percent and only once", () => {
   assert.equal(state.units.boss.atk, 100, "Enrage does not reinterpret damage as ATK");
   assert.equal(state.units.boss.damageMultiplier, 1.2);
   assert.equal(state.units.boss.flags.dungeonV2Enraged, true);
+  assert.equal(state.log.length, 1);
+  assert.deepEqual(state.log[0], {
+    seq: 1, round: 0, type: "boss_enrage", text: "boss เข้าสู่โหมดคลั่ง!", actorId: "boss"
+  });
+  assert.equal(state.logSeq, 1);
   state.units.boss.hp = 100;
   dungeon.applyDungeonV2BossEnrage(state);
   assert.equal(state.units.boss.damageMultiplier, 1.2, "threshold crossing cannot stack the multiplier");
+  assert.equal(state.log.filter(entry => entry.type === "boss_enrage").length, 1, "a boss emits the Enrage log once");
+  assert.equal(state.logSeq, 1);
 });
 
 test("Boss Enrage flag and damage multiplier survive checkpoint serialization/reload", () => {
@@ -180,10 +187,26 @@ test("Dungeon V2 Skip uses the same Enrage damage modifier and preserves it thro
   const resumed = battle.restoreCheckpoint(battle.serializeCheckpoint(initial));
   dungeon.applyDungeonV2BossEnrage(resumed);
   assert.equal(resumed.units.boss.damageMultiplier, 1.2);
+  assert.equal(resumed.log.filter(entry => entry.type === "boss_enrage").length, 1, "restoring a checkpoint retains the historical log");
+  dungeon.applyDungeonV2BossEnrage(resumed);
+  assert.equal(resumed.log.filter(entry => entry.type === "boss_enrage").length, 1, "resume must not emit a duplicate Enrage line");
   const skipped = dungeon.simulateDungeonV2Battle(resumed, battle, 1);
   assert.equal(skipped.units.hero.hp, 904);
   assert.equal(skipped.units.boss.damageMultiplier, 1.2);
   assert.equal(skipped.units.boss.flags.dungeonV2Enraged, true);
+  assert.equal(skipped.log.filter(entry => entry.type === "boss_enrage").length, 1);
+  const manual = makeEnrageBattle();
+  manual.units.boss.hp = 499;
+  dungeon.applyDungeonV2BossEnrage(manual);
+  const auto = battle.restoreCheckpoint(battle.serializeCheckpoint(manual));
+  auto.flags.auto = true;
+  const autoNext = dungeon.applyDungeonV2BossEnrage(battle.battleStep(auto).state);
+  const manualNext = battle.battleStep(battle.restoreCheckpoint(battle.serializeCheckpoint(manual))).state;
+  assert.deepEqual(
+    [manualNext, autoNext, skipped].map(state => state.log.filter(entry => entry.type === "boss_enrage").map(({seq, round, type, text, actorId}) => ({seq, round, type, text, actorId}))),
+    Array.from({length: 3}, () => [{seq: 2, round: 0, type: "boss_enrage", text: "boss เข้าสู่โหมดคลั่ง!", actorId: "boss"}]),
+    "Manual, Auto, and Skip preserve the same single Enrage log line"
+  );
 });
 
 test("Battle Core remains default-neutral for actors without a Dungeon V2 modifier", () => {
