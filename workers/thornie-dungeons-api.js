@@ -4272,7 +4272,16 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
       const text = context.direct
         ? `${unitName(actor)} ${context.actionName === "basic attack" || context.actionName === "counter attack" ? context.actionName : `use ${context.actionName || "skill"}`} to ${unitName(target)} damage ${dealt}.`
         : `${unitName(target)} took ${dealt}.`;
-      log(state, "damage", text, { actorId: actor.id, targetId: target.id, amount: dealt, crit: !!context.crit, actionName: context.actionName || null });
+      // Keep actual HP lost as the combat-log amount, but preserve the full resolved
+      // hit for presentation when the target had less HP remaining (overkill).
+      log(state, "damage", text, {
+        actorId: actor.id,
+        targetId: target.id,
+        amount: dealt,
+        ...(amount > dealt ? { displayAmount: amount } : {}),
+        crit: !!context.crit,
+        actionName: context.actionName || null
+      });
     }
     if (directHit && target.kind === "hero" && actor.side !== target.side && before > target.hp && !context.indirect) {
       const survival = skillData(target, "survival_instinct");
