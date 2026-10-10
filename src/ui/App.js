@@ -1183,8 +1183,9 @@ function ThornieDungeons() {
     let completionSettled = false;
     completionPromise.finally(() => { completionSettled = true; });
     let completionOutcome;
+    // Keep the full battle log for the terminal screen (Victory and Defeat), including Skip.
+    setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
     if (plan.runPresentation) {
-      setFinishedBattleLog(next.log.slice().reverse().map(entry => entry.text));
       await Promise.race([
         Promise.all([
           new Promise(resolve => setTimeout(resolve, plan.actionHoldMs)),
@@ -3068,6 +3069,7 @@ function ThornieDungeons() {
     onOpenInv: () => setInvOpen(true)
   }), phase === "defeat" && /*#__PURE__*/React.createElement(DefeatScreen, {
     floor: selectedFloor,
+    battleLog: finishedBattleLog,
     onRetry: retryStage,
     onMap: backToMap
   }), accountSettingsOpen && /*#__PURE__*/React.createElement(AccountSettingsOverlay, {
