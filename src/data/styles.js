@@ -2816,4 +2816,67 @@ body::after {
     font-size:10px;
   }
 }
+
+/* Arena Replay: mobile-first, bounded layout; keep battle stage and controls separate. */
+.md-arena-replay-overlay {
+  box-sizing: border-box;
+  align-items: center;
+  overflow: hidden !important;
+}
+.md-arena-replay-overlay > .md-card {
+  box-sizing: border-box;
+  width: min(100%, 760px);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  padding: 12px;
+}
+.md-arena-replay-overlay > .md-card > .md-title,
+.md-arena-replay-overlay > .md-card > .md-sub {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] {
+  max-height: clamp(56px, 11dvh, 100px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(0,0,0,.24);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] p {
+  margin: 2px 0;
+}
+.md-arena-replay-overlay .md-arena-action-controls {
+  flex: 0 0 auto;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px !important;
+  padding-top: 4px;
+}
+.md-arena-replay-overlay .md-arena-action-controls .md-btn {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 4px;
+  white-space: normal;
+  font-size: clamp(9px, 2.6vw, 12px);
+  line-height: 1.1;
+}
+@media (max-width: 480px) {
+  .md-arena-replay-overlay { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important; }
+  .md-arena-replay-overlay > .md-card { padding: 10px 8px; gap: 6px; border-radius: 16px; }
+  .md-arena-replay-overlay .md-arena-action-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-height: 620px) {
+  .md-arena-replay-overlay > .md-card { gap: 4px; padding: 8px; }
+  .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { max-height: 48px; }
+}
+
 `;
