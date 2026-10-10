@@ -6007,6 +6007,7 @@ function ResultScreen({
 }
 function DefeatScreen({
   floor,
+  battleLog,
   onRetry,
   onMap
 }) {
@@ -6025,7 +6026,10 @@ function DefeatScreen({
     className: "md-title"
   }, "💀 Defeated on Stage ", floor), /*#__PURE__*/React.createElement("p", {
     className: "md-sub"
-  }, "No penalty — your gold, level, and gear are all safe. Gear up in Town and try again.")), /*#__PURE__*/React.createElement("div", {
+  }, "No penalty — your gold, level, and gear are all safe. Gear up in Town and try again.")), /*#__PURE__*/React.createElement(BattleLogPanel, {
+    entries: battleLog,
+    result: true
+  }), /*#__PURE__*/React.createElement("div", {
     className: "md-btn-row",
     style: {
       marginTop: 10
