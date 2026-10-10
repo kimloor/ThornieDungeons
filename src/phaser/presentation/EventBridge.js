@@ -129,6 +129,7 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     battleId: String(state.battleId || "battle-preview"),
     seq: Number(state.safeActionSeq || state.logSeq || 0),
     selectedTargetId: String(targetUid || state.selectedTargetId || enemyList.find(enemy => enemy.alive)?.id || ""),
+    damageFeedbackEvents: battleDamageFeedbackEvents(state),
     combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
     hero: {
       ...hero,
@@ -244,6 +245,23 @@ function arenaPreparedPresentationContext(preparedSnapshot) {
       defender: teamB.config
     }
   };
+}
+
+function battleDamageFeedbackEvents(state) {
+  return (Array.isArray(state?.log) ? state.log : [])
+    .filter(entry => entry && Number.isFinite(Number(entry.seq))
+      && ["damage", "heal", "miss", "block"].includes(String(entry.type || "")))
+    .map(entry => ({
+      seq: Number(entry.seq),
+      type: String(entry.type),
+      actorId: String(entry.actorId || ""),
+      targetId: String(entry.targetId || ""),
+      amount: Math.max(0, Number(entry.amount) || 0),
+      crit: entry.type === "damage" && entry.crit === true
+    }))
+    .filter(entry => entry.targetId && (
+      (entry.type === "damage" || entry.type === "heal") ? entry.amount > 0 : true
+    ));
 }
 
 function arenaPresentationAnimationCues(state) {
@@ -364,6 +382,8 @@ function buildArenaBattlefieldSnapshot({
     combatSpeed: speed,
     teams: [attacker, defender],
     animationCues: arenaPresentationAnimationCues(state),
+    damageFeedbackEvents: battleDamageFeedbackEvents(state),
+    suppressDamageFeedback: state.presentationSkip === true,
     backgroundUrl: SHARED_PHASER_ASSET_RESOLVER.manifest("arenaUi.background")
   });
 }
@@ -387,3 +407,5 @@ function buildRaidBossPresentationSnapshot({ boss = {}, config = null, hurtToken
     }
   });
 }
+
+if (typeof module !== "undefined" && module.exports) module.exports = { battleDamageFeedbackEvents };

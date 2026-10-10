@@ -231,3 +231,40 @@ test("real Battle Core outcomes drive Toxic success/fail and Silence boss conver
   assert.equal(silentBoss.events.some(event => event.effectKey === "slash_status.silence"), true);
   assert.equal(silentBoss.events.some(event => event.effectKey === "silence_hit"), false);
 });
+
+
+test("Phaser damage feedback maps resolved logs only and preserves Critical metadata", () => {
+  const { battleDamageFeedbackEvents } = require("../src/phaser/presentation/EventBridge.js");
+  const events = battleDamageFeedbackEvents({
+    log: [
+      { seq: 1, type: "damage", actorId: "hero", targetId: "m1", amount: 2450, crit: true },
+      { seq: 2, type: "damage", actorId: "pet", targetId: "m2", amount: 1280, crit: false },
+      { seq: 3, type: "heal", actorId: "pet", targetId: "hero", amount: 250 },
+      { seq: 4, type: "miss", actorId: "m1", targetId: "hero" },
+      { seq: 5, type: "block", actorId: "hero", targetId: "m2" },
+      { seq: 6, type: "status", actorId: "hero", targetId: "m1", status: "poison" },
+      { seq: 7, type: "damage", actorId: "hero", targetId: "m1", amount: 0, crit: true },
+      { seq: 8, type: "damage", actorId: "hero", amount: 20, crit: true }
+    ]
+  });
+  assert.deepEqual(events, [
+    { seq: 1, type: "damage", actorId: "hero", targetId: "m1", amount: 2450, crit: true },
+    { seq: 2, type: "damage", actorId: "pet", targetId: "m2", amount: 1280, crit: false },
+    { seq: 3, type: "heal", actorId: "pet", targetId: "hero", amount: 250, crit: false },
+    { seq: 4, type: "miss", actorId: "m1", targetId: "hero", amount: 0, crit: false },
+    { seq: 5, type: "block", actorId: "hero", targetId: "m2", amount: 0, crit: false }
+  ]);
+});
+
+test("Phaser renders red Critical burst without text and deduplicates replayed log sequences", () => {
+  const scene = read("src/phaser/scenes/BattleScene.js");
+  const bridge = read("src/phaser/presentation/EventBridge.js");
+  assert.match(bridge, /damageFeedbackEvents: battleDamageFeedbackEvents\(state\)/);
+  assert.match(scene, /event\.crit === true/);
+  assert.match(scene, /this\.add\.star\(0, 0, 8,[\s\S]*0xff283b/);
+  assert.match(scene, /critical \? "#ff3548"/);
+  assert.match(scene, /critical \? 1\.12 : 1\.04/);
+  assert.match(scene, /Number\(event\.seq\) > this\.last(?:Arena|Dungeon)DamageFeedbackSeq/);
+  assert.doesNotMatch(scene, /CRITICAL!/);
+  assert.doesNotMatch(read("src/systems/battleCore.js"), /damageFeedbackEvents|showDamagePopup/);
+});

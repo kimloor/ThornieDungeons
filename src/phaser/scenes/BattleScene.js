@@ -24,8 +24,11 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       });
       this.presentationScale = 1;
       this.lastArenaCueSeq = -1;
+      this.lastArenaDamageFeedbackSeq = -1;
       this.lastArenaBattleId = null;
       this.lastDungeonBattleId = null;
+      this.lastDungeonDamageFeedbackSeq = -1;
+      this.activeDamagePopups = new Set();
       this.lastDungeonEnrageByActor = new Map();
       this.lastTerminalPresentationKey = "";
       this.handleResize = this.handleResize.bind(this);
@@ -188,6 +191,19 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         this.lastArenaCueSeq = allCues.reduce((max, cue) => Math.max(max, Number(cue.seq)), -1);
       }
       if (cues.length) this.lastArenaCueSeq = Math.max(...cues.map(cue => Number(cue.seq) || 0));
+      const feedback = (Array.isArray(snapshot.damageFeedbackEvents) ? snapshot.damageFeedbackEvents : [])
+        .filter(event => Number.isFinite(Number(event?.seq)));
+      let damageFeedbackEvents = [];
+      if (isFirstSnapshot) {
+        this.lastArenaDamageFeedbackSeq = feedback.reduce((max, event) => Math.max(max, Number(event.seq)), -1);
+      } else {
+        damageFeedbackEvents = feedback
+          .filter(event => Number(event.seq) > this.lastArenaDamageFeedbackSeq)
+          .sort((a, b) => Number(a.seq) - Number(b.seq));
+        if (damageFeedbackEvents.length) {
+          this.lastArenaDamageFeedbackSeq = Math.max(...damageFeedbackEvents.map(event => Number(event.seq)));
+        }
+      }
       const attacker = this.arenaTeam("attacker");
       const defender = this.arenaTeam("defender");
       this.syncArenaActor("attacker", "hero", attacker?.hero, animationJobs);
@@ -196,6 +212,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.syncArenaActor("defender", "pet", defender?.pet, animationJobs);
       this.layoutArenaActors();
       this.enqueueArenaAnimations(animationJobs, cues);
+      this.enqueueDamageFeedbackEvents(damageFeedbackEvents);
     }
 
     sync(snapshot) {
@@ -214,6 +231,20 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       if (isFirstDungeonSnapshot) {
         this.lastDungeonBattleId = snapshot.battleId;
         this.lastDungeonEnrageByActor.clear();
+      }
+
+      const feedback = (Array.isArray(snapshot.damageFeedbackEvents) ? snapshot.damageFeedbackEvents : [])
+        .filter(event => Number.isFinite(Number(event?.seq)));
+      let damageFeedbackEvents = [];
+      if (isFirstDungeonSnapshot) {
+        this.lastDungeonDamageFeedbackSeq = feedback.reduce((max, event) => Math.max(max, Number(event.seq)), -1);
+      } else {
+        damageFeedbackEvents = feedback
+          .filter(event => Number(event.seq) > this.lastDungeonDamageFeedbackSeq)
+          .sort((a, b) => Number(a.seq) - Number(b.seq));
+        if (damageFeedbackEvents.length) {
+          this.lastDungeonDamageFeedbackSeq = Math.max(...damageFeedbackEvents.map(event => Number(event.seq)));
+        }
       }
 
       const animationJobs = [];
@@ -239,6 +270,78 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       this.layoutActors(monsterCount);
       this.enqueueDungeonPresentationCues(snapshot, isFirstDungeonSnapshot);
       this.enqueueAnimations(animationJobs);
+      this.enqueueDamageFeedbackEvents(damageFeedbackEvents);
+    }
+
+    actorById(actorId) {
+      const key = String(actorId || "");
+      const actors = isArenaPresentationSnapshot(this.snapshot)
+        ? Object.values(this.arenaActors).flatMap(team => Object.values(team))
+        : [this.actors.hero, this.actors.pet, ...(this.actors.monsters || [])];
+      return actors.find(actor => String(actor?.data?.id || "") === key) || null;
+    }
+
+    showDamagePopup(event, speed, offsetIndex = 0) {
+      const actor = this.actorById(event?.targetId);
+      if (!actor || !this.add?.container || !this.add?.text) return Promise.resolve(false);
+      const type = String(event.type || "");
+      const critical = type === "damage" && event.crit === true;
+      const isHeal = type === "heal";
+      const isMiss = type === "miss";
+      const isBlock = type === "block";
+      const amount = Math.max(0, Math.round(Number(event.amount) || 0));
+      const label = isMiss ? "MISS" : isBlock ? "BLOCK" : (isHeal ? "+" : "") + amount.toLocaleString("en-US");
+      const size = Math.max(18, Math.min(34, (critical ? 29 : 23) * (this.presentationScale || 1)));
+      const position = actor.position || { x: 0, y: 0 };
+      const actorSize = typeof actor.displaySize === "function" ? actor.displaySize() : 100;
+      const x = Number(position.x) + ((offsetIndex % 3) - 1) * 19;
+      const y = Number(position.y) - actorSize * 0.72 - Math.floor(offsetIndex / 3) * 12;
+      const popup = this.add.container(x, y).setDepth(7);
+      if (critical) {
+        const burst = this.add.star(0, 0, 8, size * 0.76, size * 1.28, 0xff283b, 0.3)
+          .setStrokeStyle(2, 0xff283b, 1);
+        popup.add(burst);
+      }
+      const color = critical ? "#ff3548" : isHeal ? "#55f09a" : isMiss ? "#d4d8e2" : isBlock ? "#71d7ff" : "#ffffff";
+      const stroke = critical ? "#650813" : "#071126";
+      const text = this.add.text(0, 0, label, {
+        color, fontFamily: "Arial", fontSize: String(Math.round(size)) + "px", fontStyle: "bold",
+        stroke, strokeThickness: critical ? 5 : 4, align: "center"
+      }).setOrigin(0.5).setResolution(phaserTextResolution());
+      popup.add(text);
+      if (critical) popup.setScale(0.78);
+      this.activeDamagePopups.add(popup);
+      const duration = Math.max(350, Math.round(820 / Math.max(1, Number(speed) || 1)));
+      return new Promise(resolve => {
+        if (!this.tweens?.add) {
+          popup.destroy(true);
+          this.activeDamagePopups.delete(popup);
+          resolve(true);
+          return;
+        }
+        this.tweens.add({
+          targets: popup,
+          y: y - Math.max(28, actorSize * 0.22),
+          alpha: 0,
+          scale: critical ? 1.12 : 1.04,
+          duration,
+          ease: "Cubic.easeOut",
+          onComplete: () => {
+            this.activeDamagePopups.delete(popup);
+            popup.destroy(true);
+            resolve(true);
+          }
+        });
+      });
+    }
+
+    enqueueDamageFeedbackEvents(events) {
+      if (!Array.isArray(events) || !events.length) return;
+      // Feedback runs alongside the action animation; it must never occupy the
+      // authoritative presentation queue or delay the next resolved turn.
+      const speed = this.presentationQueue.getSpeed();
+      void Promise.all(events.map((event, index) => this.showDamagePopup(event, speed, index)))
+        .catch(error => onError?.(error));
     }
 
     enqueueDungeonPresentationCues(snapshot, isFirstDungeonSnapshot) {
@@ -417,7 +520,11 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         defender: { hero: null, pet: null }
       };
       this.lastDungeonBattleId = null;
+      this.lastDungeonDamageFeedbackSeq = -1;
+      this.lastArenaDamageFeedbackSeq = -1;
       this.lastDungeonEnrageByActor.clear();
+      this.activeDamagePopups.forEach(popup => popup?.destroy?.(true));
+      this.activeDamagePopups.clear();
       if (this.readyNotified) onReady?.({ scene: null, destroyed: true });
     }
   };
