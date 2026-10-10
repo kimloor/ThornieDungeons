@@ -1238,6 +1238,8 @@ function ThornieDungeons() {
     if (heroCommand?.type === "skip_battle") {
       setBattleVfx([]);
       const resolved = DUNGEON_V2.simulateDungeonV2Battle(state, BATTLE_CORE_V1);
+      // Ephemeral UI marker only: suppress accumulated floating feedback for Skip.
+      resolved.presentationSkip = true;
       applyCoreBattleState(resolved, false); finishCoreBattle(resolved, { skip: true }); return;
     }
     if (actor.kind === "hero" && ["basic", "active"].includes(heroCommand?.type)) setHeroAnim("attack");
