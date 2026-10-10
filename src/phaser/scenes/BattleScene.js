@@ -194,7 +194,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       const feedback = (Array.isArray(snapshot.damageFeedbackEvents) ? snapshot.damageFeedbackEvents : [])
         .filter(event => Number.isFinite(Number(event?.seq)));
       let damageFeedbackEvents = [];
-      if (isFirstSnapshot) {
+      if (isFirstSnapshot || snapshot.suppressDamageFeedback === true) {
         this.lastArenaDamageFeedbackSeq = feedback.reduce((max, event) => Math.max(max, Number(event.seq)), -1);
       } else {
         damageFeedbackEvents = feedback
@@ -236,7 +236,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       const feedback = (Array.isArray(snapshot.damageFeedbackEvents) ? snapshot.damageFeedbackEvents : [])
         .filter(event => Number.isFinite(Number(event?.seq)));
       let damageFeedbackEvents = [];
-      if (isFirstDungeonSnapshot) {
+      if (isFirstDungeonSnapshot || snapshot.suppressDamageFeedback === true) {
         this.lastDungeonDamageFeedbackSeq = feedback.reduce((max, event) => Math.max(max, Number(event.seq)), -1);
       } else {
         damageFeedbackEvents = feedback
