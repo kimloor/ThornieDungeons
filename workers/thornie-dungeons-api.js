@@ -5559,7 +5559,8 @@ async function handleGetArenaV2History(db, id, session, characterId) {
   const selectHistory = `SELECT h.*,
       (SELECT COUNT(*) FROM arena_match_actions a WHERE a.match_id = h.match_id) AS replay_action_count,
       (SELECT MIN(a.action_seq) FROM arena_match_actions a WHERE a.match_id = h.match_id) AS replay_first_seq,
-      (SELECT MAX(a.action_seq) FROM arena_match_actions a WHERE a.match_id = h.match_id) AS replay_last_seq
+      (SELECT MAX(a.action_seq) FROM arena_match_actions a WHERE a.match_id = h.match_id) AS replay_last_seq,
+      (SELECT 1 FROM arena_matches m WHERE m.match_id = h.match_id AND m.status = 'done' AND m.activated_at <> '' AND m.activated_at = m.completed_at AND COALESCE(json_extract(m.state_json, '$.arenaActionSeq'), 0) = 0) AS replay_finished_at_activation
     FROM ${historyTable} h WHERE h.season_id = ? AND __CHARACTER_FILTER__
     ORDER BY h.completed_at DESC, h.match_id DESC LIMIT 5`;
   const [attack, defense] = await Promise.all([
@@ -5568,7 +5569,10 @@ async function handleGetArenaV2History(db, id, session, characterId) {
   ]);
   const map = row => {
     const count = Number(row.replay_action_count) || 0;
-    const replayAvailable = count > 0 && count <= 40 && Number(row.replay_first_seq) === 1 && Number(row.replay_last_seq) === count;
+    // Matches that ended while Activation resolved the opening turns never store action rows; the replay endpoint
+    // re-simulates them from the snapshot and stays the final authority (it can still answer N/A).
+    const replayAvailable = (count > 0 && count <= 40 && Number(row.replay_first_seq) === 1 && Number(row.replay_last_seq) === count)
+      || (count === 0 && Number(row.replay_finished_at_activation) === 1);
     return { matchId: row.match_id, completedAt: row.completed_at, result: row.attacker_result, resolution: row.resolution, attackerCharacterId: row.attacker_character_id, defenderCharacterId: row.defender_character_id || null, defenderType: row.defender_type, arenaCoinEarned: Number(row.arena_coin_earned) || 0, attackerRatingChange: Number(row.attacker_rating_change) || 0, defenderRatingChange: Number(row.defender_rating_change) || 0, attackerName: row.attacker_name, defenderName: row.defender_name, replayAvailable };
   };
   return json({ ok: true, attack: (attack.results || []).map(map), defense: (defense.results || []).map(map) });
@@ -6176,6 +6180,25 @@ function arenaCombatResult(state) {
   return state.result ? { result: state.result, winnerSide: state.winnerSide || null } : null;
 }
 
+// A match whose combat ended while Activation resolved the opening defender/Pet turns has no action rows.
+// Replay it read-only from the snapshot, and only when the re-simulation agrees with the stored outcome.
+function arenaReplayFinishedAtActivation(key, match, history) {
+  const unavailable = () => json({ ok: true, replayAvailable: false });
+  if (!match.activated_at || match.activated_at !== match.completed_at || Number(match.stored_action_seq) !== 0) return unavailable();
+  const snapshot = parseJsonColumn(match.snapshot_json, null);
+  if (!snapshot?.attacker || !snapshot?.defender) return unavailable();
+  try {
+    const initialState = arenaCombatPublicState(arenaCombatAdvance(arenaCombatState(snapshot, key)));
+    const simulated = initialState?.result;
+    const stored = parseJsonColumn(match.result_json, null);
+    const storedCombat = stored?.combatResult ?? stored?.result;
+    if (!simulated?.result || !simulated.winnerSide) return unavailable();
+    if (!stored || storedCombat !== simulated.result || (stored.winnerSide || null) !== simulated.winnerSide) return unavailable();
+    return json({ ok: true, replayAvailable: true, replay: { version: 1, matchId: key, completedAt: history.completed_at, snapshot, initialState, frames: [], result: stored } });
+  } catch {
+    return unavailable();
+  }
+}
 async function handleGetArenaV2Replay(db, id, session, characterId, matchId) {
   const context = await arenaV2Context(db, id, session, characterId);
   if (context.error) return json({ error: context.error });
@@ -6188,7 +6211,8 @@ async function handleGetArenaV2Replay(db, id, session, characterId, matchId) {
   `).bind(context.season.season_id, key, characterId, characterId).first();
   if (!history) return json({ error: "arena_replay_not_found" }, 404);
   const match = await db.prepare(`
-    SELECT match_id, season_id, status, snapshot_json, result_json
+    SELECT match_id, season_id, status, snapshot_json, result_json, activated_at, completed_at,
+      COALESCE(json_extract(state_json, '$.arenaActionSeq'), 0) AS stored_action_seq
     FROM arena_matches WHERE match_id = ? AND season_id = ?
   `).bind(key, context.season.season_id).first();
   if (!match || match.status !== "done") return json({ ok: true, replayAvailable: false });
@@ -6197,7 +6221,8 @@ async function handleGetArenaV2Replay(db, id, session, characterId, matchId) {
     WHERE match_id = ? ORDER BY action_seq ASC LIMIT 41
   `).bind(key).all();
   const actions = actionResult.results || [];
-  if (!actions.length || actions.length > 40) return json({ ok: true, replayAvailable: false });
+  if (actions.length > 40) return json({ ok: true, replayAvailable: false });
+  if (!actions.length) return arenaReplayFinishedAtActivation(key, match, history);
   const frames = [];
   for (let index = 0; index < actions.length; index++) {
     const action = actions[index];

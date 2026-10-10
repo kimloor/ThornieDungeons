@@ -3644,12 +3644,12 @@ function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
   },
     e("div", { className: "md-card" },
       e("p", { className: "md-title" }, "ARENA REPLAY"),
-      e("p", { className: "md-sub" }, `Action ${index} / ${replay.frames.length}`, last ? " · Match complete" : " · Recorded battle"),
+      e("p", { className: "md-sub" }, replay.frames.length === 0 ? "Match ended during the opening turns" : `Action ${index} / ${replay.frames.length}`, last ? " · Match complete" : " · Recorded battle"),
       e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: state, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} }),
-      e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(-6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
+      e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(replay.frames.length === 0 ? -40 : -6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
       e("div", { className: "md-arena-action-controls", style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
         e("button", { className: "md-btn small", disabled: index <= 0, onClick: () => onSeek(index - 1) }, "‹ PREVIOUS"),
-        e("button", { className: "md-btn primary", onClick: onPlayPause }, replay.playing ? "PAUSE" : last ? "REPLAY AGAIN" : "PLAY"),
+        e("button", { className: "md-btn primary", disabled: replay.frames.length === 0, onClick: onPlayPause }, replay.playing ? "PAUSE" : last ? "REPLAY AGAIN" : "PLAY"),
         e("button", { className: "md-btn small", disabled: last, onClick: () => onSeek(index + 1) }, "NEXT ›"),
         e("button", { className: "md-btn small secondary", onClick: onClose }, "CLOSE")
       )
@@ -3899,11 +3899,11 @@ function ArenaV2Screen({
     setReplayError("");
     try {
       const res = await cloudGetArenaV2Replay(url, characterId, matchId);
-      if (res?.error || !res?.replayAvailable || !res?.replay?.frames?.length) {
+      if (res?.error || !res?.replayAvailable || !Array.isArray(res?.replay?.frames) || !res?.replay?.initialState) {
         setReplayError("Replay ของแมตช์นี้ไม่พร้อมใช้งาน");
         return;
       }
-      setReplay({ ...res.replay, index: 0, playing: true });
+      setReplay({ ...res.replay, index: 0, playing: res.replay.frames.length > 0 });
     } catch (error) {
       setReplayError(error?.message || "โหลด Replay ไม่สำเร็จ");
     } finally {

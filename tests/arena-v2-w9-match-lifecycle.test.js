@@ -335,3 +335,75 @@ test('Arena History Replay rejects incomplete action sequences instead of fabric
   assert.equal(replay.replayAvailable, false);
   db.close();
 });
+
+// A strong, faster defender ends the match while Activation resolves the opening turns: status 'done',
+// activated_at === completed_at, arenaActionSeq 0 and no arena_match_actions rows (production "REPLAY N/A").
+async function finishedAtActivationMatch(db) {
+  const { opponents } = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const snap = JSON.parse(JSON.stringify(prepared.match.snapshot));
+  snap.attacker.stats.maxHp = 1; snap.attacker.stats.def = 0; snap.attacker.stats.dodgeChance = 0; snap.attacker.stats.agi = 0; snap.attacker.pet = null;
+  Object.assign(snap.defender.stats, { atk: 999999, accuracy: 9999, maxHp: 1000000, agi: 9999 });
+  db.raw.prepare('UPDATE arena_matches SET snapshot_json = ? WHERE match_id = ?').run(JSON.stringify(snap), prepared.match.matchId);
+  await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  return prepared.match.matchId;
+}
+function replayCounts(db, matchId) {
+  const count = sql => db.raw.prepare(sql).get(matchId).c;
+  return {
+    matches: count('SELECT COUNT(*) AS c FROM arena_matches WHERE match_id = ?'),
+    actions: count('SELECT COUNT(*) AS c FROM arena_match_actions WHERE match_id = ?'),
+    history: count('SELECT COUNT(*) AS c FROM arena_match_history WHERE match_id = ?'),
+    receipts: count('SELECT COUNT(*) AS c FROM arena_idempotency_receipts WHERE match_id = ?'),
+    tickets: db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets,
+    row: JSON.stringify(db.raw.prepare('SELECT * FROM arena_matches WHERE match_id = ?').get(matchId)),
+  };
+}
+
+test('Arena History Replay replays a match that finished during Activation with zero recorded actions', async () => {
+  const db = createDb();
+  const matchId = await finishedAtActivationMatch(db);
+  const row = db.raw.prepare('SELECT status, activated_at, completed_at FROM arena_matches WHERE match_id = ?').get(matchId);
+  assert.equal(row.status, 'done');
+  assert.equal(row.activated_at, row.completed_at);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS c FROM arena_match_actions WHERE match_id = ?').get(matchId).c, 0);
+  const history = await body(await arena.handleGetArenaV2History(db, 'p1', session('p1'), 'char-10'));
+  assert.equal(history.attack.find(item => item.matchId === matchId).replayAvailable, true);
+  const before = replayCounts(db, matchId);
+  const replay = await body(await arena.handleGetArenaV2Replay(db, 'p1', session('p1'), 'char-10', matchId));
+  assert.equal(replay.replayAvailable, true);
+  assert.deepEqual(replay.replay.frames, []);
+  assert.equal(replay.replay.initialState.mode, 'arena');
+  assert.equal(replay.replay.initialState.result.result, 'defeat');
+  assert.equal(replay.replay.initialState.result.winnerSide, 'team_b');
+  assert.ok(Array.isArray(replay.replay.initialState.log));
+  assert.equal(replay.replay.snapshot.attacker.name, 'Attacker');
+  const unauthorized = await body(await arena.handleGetArenaV2Replay(db, 'p2', session('p2'), 'char-11', matchId));
+  assert.equal(unauthorized.error, 'arena_replay_not_found');
+  assert.deepEqual(replayCounts(db, matchId), before);
+  db.close();
+});
+
+test('Arena History Replay stays N/A when the re-simulation disagrees with the stored outcome or the match is not an activation finish', async () => {
+  const db = createDb();
+  const matchId = await finishedAtActivationMatch(db);
+  const original = db.raw.prepare('SELECT result_json, completed_at FROM arena_matches WHERE match_id = ?').get(matchId);
+  const tampered = JSON.parse(original.result_json);
+  tampered.combatResult = 'victory'; tampered.winnerSide = 'team_a';
+  db.raw.prepare('UPDATE arena_matches SET result_json = ? WHERE match_id = ?').run(JSON.stringify(tampered), matchId);
+  assert.equal((await body(await arena.handleGetArenaV2Replay(db, 'p1', session('p1'), 'char-10', matchId))).replayAvailable, false);
+  db.raw.prepare('UPDATE arena_matches SET result_json = ? WHERE match_id = ?').run('', matchId);
+  assert.equal((await body(await arena.handleGetArenaV2Replay(db, 'p1', session('p1'), 'char-10', matchId))).replayAvailable, false);
+  db.raw.prepare('UPDATE arena_matches SET result_json = ?, completed_at = ? WHERE match_id = ?').run(original.result_json, new Date(Date.parse(original.completed_at) + 5000).toISOString(), matchId);
+  assert.equal((await body(await arena.handleGetArenaV2Replay(db, 'p1', session('p1'), 'char-10', matchId))).replayAvailable, false);
+  db.close();
+});
+
+test('Arena replay client supports zero-frame replays and keeps the N/A fallback', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'components.js'), 'utf8');
+  assert.match(ui, /!Array\.isArray\(res\?\.replay\?\.frames\) \|\| !res\?\.replay\?\.initialState/);
+  assert.match(ui, /playing: res\.replay\.frames\.length > 0/);
+  assert.match(ui, /replay\.frames\.length === 0 \? "Match ended during the opening turns"/);
+  assert.match(ui, /disabled: replay\.frames\.length === 0, onClick: onPlayPause/);
+  assert.match(ui, /setReplayError\(/);
+});

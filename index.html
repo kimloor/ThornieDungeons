@@ -157,7 +157,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.52";
+  content: "Ver 1.0.53";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2909,6 +2909,69 @@ body::after {
     font-size:10px;
   }
 }
+
+/* Arena Replay: mobile-first, bounded layout; keep battle stage and controls separate. */
+.md-arena-replay-overlay {
+  box-sizing: border-box;
+  align-items: center;
+  overflow: hidden !important;
+}
+.md-arena-replay-overlay > .md-card {
+  box-sizing: border-box;
+  width: min(100%, 760px);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  padding: 12px;
+}
+.md-arena-replay-overlay > .md-card > .md-title,
+.md-arena-replay-overlay > .md-card > .md-sub {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] {
+  max-height: clamp(56px, 11dvh, 100px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(0,0,0,.24);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] p {
+  margin: 2px 0;
+}
+.md-arena-replay-overlay .md-arena-action-controls {
+  flex: 0 0 auto;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px !important;
+  padding-top: 4px;
+}
+.md-arena-replay-overlay .md-arena-action-controls .md-btn {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 4px;
+  white-space: normal;
+  font-size: clamp(9px, 2.6vw, 12px);
+  line-height: 1.1;
+}
+@media (max-width: 480px) {
+  .md-arena-replay-overlay { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important; }
+  .md-arena-replay-overlay > .md-card { padding: 10px 8px; gap: 6px; border-radius: 16px; }
+  .md-arena-replay-overlay .md-arena-action-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-height: 620px) {
+  .md-arena-replay-overlay > .md-card { gap: 4px; padding: 8px; }
+  .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { max-height: 48px; }
+}
+
 `;
 
 // ===== state/save.js =====
@@ -20776,12 +20839,12 @@ function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
   },
     e("div", { className: "md-card" },
       e("p", { className: "md-title" }, "ARENA REPLAY"),
-      e("p", { className: "md-sub" }, `Action ${index} / ${replay.frames.length}`, last ? " · Match complete" : " · Recorded battle"),
+      e("p", { className: "md-sub" }, replay.frames.length === 0 ? "Match ended during the opening turns" : `Action ${index} / ${replay.frames.length}`, last ? " · Match complete" : " · Recorded battle"),
       e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: state, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} }),
-      e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(-6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
+      e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(replay.frames.length === 0 ? -40 : -6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
       e("div", { className: "md-arena-action-controls", style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
         e("button", { className: "md-btn small", disabled: index <= 0, onClick: () => onSeek(index - 1) }, "‹ PREVIOUS"),
-        e("button", { className: "md-btn primary", onClick: onPlayPause }, replay.playing ? "PAUSE" : last ? "REPLAY AGAIN" : "PLAY"),
+        e("button", { className: "md-btn primary", disabled: replay.frames.length === 0, onClick: onPlayPause }, replay.playing ? "PAUSE" : last ? "REPLAY AGAIN" : "PLAY"),
         e("button", { className: "md-btn small", disabled: last, onClick: () => onSeek(index + 1) }, "NEXT ›"),
         e("button", { className: "md-btn small secondary", onClick: onClose }, "CLOSE")
       )
@@ -21031,11 +21094,11 @@ function ArenaV2Screen({
     setReplayError("");
     try {
       const res = await cloudGetArenaV2Replay(url, characterId, matchId);
-      if (res?.error || !res?.replayAvailable || !res?.replay?.frames?.length) {
+      if (res?.error || !res?.replayAvailable || !Array.isArray(res?.replay?.frames) || !res?.replay?.initialState) {
         setReplayError("Replay ของแมตช์นี้ไม่พร้อมใช้งาน");
         return;
       }
-      setReplay({ ...res.replay, index: 0, playing: true });
+      setReplay({ ...res.replay, index: 0, playing: res.replay.frames.length > 0 });
     } catch (error) {
       setReplayError(error?.message || "โหลด Replay ไม่สำเร็จ");
     } finally {
