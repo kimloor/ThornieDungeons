@@ -130,7 +130,6 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     seq: Number(state.safeActionSeq || state.logSeq || 0),
     selectedTargetId: String(targetUid || state.selectedTargetId || enemyList.find(enemy => enemy.alive)?.id || ""),
     damageFeedbackEvents: battleDamageFeedbackEvents(state),
-    suppressDamageFeedback: state.presentationSkip === true,
     combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
     hero: {
       ...hero,
