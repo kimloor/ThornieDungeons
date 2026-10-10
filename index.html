@@ -157,7 +157,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.51";
+  content: "Ver 1.0.52";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -5171,6 +5171,9 @@ function cloudGetArenaV2PlayerCard(url, characterId, opponentKey) {
 }
 function cloudGetArenaV2History(url, characterId) {
   return cloudAuthGet(url, { action: "getArenaV2History", characterId });
+}
+function cloudGetArenaV2Replay(url, characterId, matchId) {
+  return cloudAuthGet(url, { action: "getArenaV2Replay", characterId, matchId });
 }
 function cloudGetArenaV2Ranking(url, characterId) {
   return cloudAuthGet(url, { action: "getArenaV2Ranking", characterId });
@@ -20762,6 +20765,30 @@ function ArenaSkillDropdown({ index, selectedSkillId, selectedSkill, availableSk
   );
 }
 
+function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
+  const e = React.createElement;
+  const index = Math.max(0, Math.min(replay.frames.length, Number(replay.index) || 0));
+  const state = index === 0 ? replay.initialState : replay.frames[index - 1]?.state || replay.initialState;
+  const last = index >= replay.frames.length;
+  return e("div", {
+    className: "md-arena-replay-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Arena battle replay",
+    style: { position: "fixed", inset: 0, zIndex: 2000, overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", padding: "max(16px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom))", background: "rgba(8, 10, 18, 0.96)" }
+  },
+    e("div", { className: "md-card" },
+      e("p", { className: "md-title" }, "ARENA REPLAY"),
+      e("p", { className: "md-sub" }, `Action ${index} / ${replay.frames.length}`, last ? " · Match complete" : " · Recorded battle"),
+      e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: state, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} }),
+      e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(-6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
+      e("div", { className: "md-arena-action-controls", style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
+        e("button", { className: "md-btn small", disabled: index <= 0, onClick: () => onSeek(index - 1) }, "‹ PREVIOUS"),
+        e("button", { className: "md-btn primary", onClick: onPlayPause }, replay.playing ? "PAUSE" : last ? "REPLAY AGAIN" : "PLAY"),
+        e("button", { className: "md-btn small", disabled: last, onClick: () => onSeek(index + 1) }, "NEXT ›"),
+        e("button", { className: "md-btn small secondary", onClick: onClose }, "CLOSE")
+      )
+    )
+  );
+}
+
 function ArenaV2Screen({
   serverUrl,
   characterId,
@@ -20785,6 +20812,9 @@ function ArenaV2Screen({
   const [status, setStatus] = React.useState(null);
   const [opponents, setOpponents] = React.useState([]);
   const [history, setHistory] = React.useState({ attack: [], defense: [] });
+  const [replay, setReplay] = React.useState(null);
+  const [replayError, setReplayError] = React.useState("");
+  const [replayBusyId, setReplayBusyId] = React.useState("");
   const [ranking, setRanking] = React.useState([]);
   const [match, setMatch] = React.useState(null);
   const [setup, setSetup] = React.useState({ petInstId: "", skillSlots: [null, null, null, null] });
@@ -20973,6 +21003,15 @@ function ArenaV2Screen({
   React.useEffect(() => { refresh().catch(() => setError("โหลด Arena ไม่สำเร็จ")); }, [refresh]);
   React.useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   React.useEffect(() => {
+    if (!replay?.playing) return undefined;
+    const timer = setInterval(() => setReplay(current => {
+      if (!current || !current.playing) return current;
+      const nextIndex = current.index + 1;
+      return nextIndex >= current.frames.length ? { ...current, index: current.frames.length, playing: false } : { ...current, index: nextIndex };
+    }), 1200);
+    return () => clearInterval(timer);
+  }, [replay?.playing, replay?.frames?.length]);
+  React.useEffect(() => {
     const end = Date.parse(status?.season?.seasonEndsAt || status?.seasonEndsAt || "");
     if (!Number.isFinite(end)) return;
     if (now >= end && !rolloverRefreshRef.current) {
@@ -20985,6 +21024,23 @@ function ArenaV2Screen({
     setTab(next); setError("");
     if (next === "history") setHistory(await cloudGetArenaV2History(url, characterId));
     if (next === "ranking") setRanking((await cloudGetArenaV2Ranking(url, characterId))?.rows || []);
+  };
+  const openReplay = async matchId => {
+    if (!matchId || replayBusyId) return;
+    setReplayBusyId(matchId);
+    setReplayError("");
+    try {
+      const res = await cloudGetArenaV2Replay(url, characterId, matchId);
+      if (res?.error || !res?.replayAvailable || !res?.replay?.frames?.length) {
+        setReplayError("Replay ของแมตช์นี้ไม่พร้อมใช้งาน");
+        return;
+      }
+      setReplay({ ...res.replay, index: 0, playing: true });
+    } catch (error) {
+      setReplayError(error?.message || "โหลด Replay ไม่สำเร็จ");
+    } finally {
+      setReplayBusyId("");
+    }
   };
   const acknowledgeUnlock = async () => {
     if (unlockBusy) return;
@@ -21312,7 +21368,9 @@ function ArenaV2Screen({
         /*#__PURE__*/React.createElement("span", { className: "md-arena-ranking-main" }, "#", row.rank, " ", row.name),
         /*#__PURE__*/React.createElement("span", { className: "md-arena-ranking-meta" }, row.rating, " · ", rowTierName, " · ", row.rewardBucket));
     })),
-    !match && tab === "history" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" }, ["attack", "defense"].map(kind => {
+    !match && tab === "history" && /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-hub-panel" },
+      replayError && /*#__PURE__*/React.createElement("p", { className: "md-sub", role: "status" }, replayError),
+      ["attack", "defense"].map(kind => {
       const historyIcon = kind === "attack" ? arenaHubAssets.icons.attackHistory : arenaHubAssets.icons.defenseHistory;
       return /*#__PURE__*/React.createElement("div", { key: kind, className: "md-arena-history-group" },
         /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-history-heading" },
@@ -21324,6 +21382,7 @@ function ArenaV2Screen({
             /*#__PURE__*/React.createElement("span", { className: "md-arena-history-result" },
               /*#__PURE__*/React.createElement("b", null, view.direction),
               /*#__PURE__*/React.createElement("small", null, view.result, " · ", row.resolution || "resolved", " · Rating ", view.ratingChange >= 0 ? "+" : "", view.ratingChange, view.coin === null ? "" : ` · ${view.coin} Coin`)),
+            /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-art-btn secondary", disabled: busy || !!replayBusyId || !row.replayAvailable, onClick: () => openReplay(row.matchId), title: row.replayAvailable ? "Play recorded Arena battle" : "Replay unavailable for this match" }, replayBusyId === row.matchId ? "LOADING…" : row.replayAvailable ? "REPLAY" : "REPLAY N/A"),
             kind === "defense" && row.attackerCharacterId && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-art-btn secondary", disabled: busy, onClick: () => openPlayerCard(`history:${row.matchId}`, "revenge") }, "REVENGE"));
         }));
     })),
@@ -21351,6 +21410,12 @@ function ArenaV2Screen({
             /*#__PURE__*/React.createElement("span", null, skill ? definition?.name || heroSkillDisplayName(skill) : `Skill ${index + 1}`));
         })) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
     ),
+    replay && /*#__PURE__*/React.createElement(ArenaReplayOverlay, {
+      replay,
+      onClose: () => setReplay(null),
+      onPlayPause: () => setReplay(current => current ? { ...current, index: current.index >= current.frames.length ? 0 : current.index, playing: current.index >= current.frames.length ? true : !current.playing } : current),
+      onSeek: index => setReplay(current => current ? { ...current, index: Math.max(0, Math.min(current.frames.length, index)), playing: false } : current)
+    }),
     !match && /*#__PURE__*/React.createElement(GameDock, {
       onCharacter,
       onOpenInv,
