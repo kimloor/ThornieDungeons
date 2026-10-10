@@ -1,7 +1,7 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-09-27T01:30:37Z",
-  "count": 424,
+  "generatedAt": "2026-10-10T00:28:12Z",
+  "count": 726,
   "objects": [
     {
       "key": "audio/bgm/main_theme.mp3",
@@ -126,9 +126,20 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/AZURE_FRAME_CONTRACT.json",
-      "etag": "8ac6ee4cfa308ce4361b559064b9634e",
-      "last_modified": "2026-09-26T14:57:17.766Z",
-      "size": 10043,
+      "etag": "ecd2252065eb67312e8f110a646d9003",
+      "last_modified": "2026-09-29T11:06:46.548Z",
+      "size": 10384,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/azure/HELMET_VALIDATION.json",
+      "etag": "1a788c7e1a69e89121f302997977e60a",
+      "last_modified": "2026-09-29T15:52:25.464Z",
+      "size": 8961,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -137,9 +148,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/IDLE_SWORD_RUNTIME_PATCH.json",
-      "etag": "19e2b17d5ec597f534636cba200d7096",
-      "last_modified": "2026-09-26T15:56:47.648Z",
-      "size": 779,
+      "etag": "4501ca55a783e0eeb0dc9136a71aa3db",
+      "last_modified": "2026-09-27T05:01:48.847Z",
+      "size": 1007,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -148,9 +159,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/PUBLICATION.json",
-      "etag": "ae1ea981de108c9ac7de3ba19756878f",
-      "last_modified": "2026-09-26T15:56:50.423Z",
-      "size": 1367,
+      "etag": "92b84e178652a5f5a9d0e16da952bcf9",
+      "last_modified": "2026-09-29T15:52:29.140Z",
+      "size": 2346,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -162,6 +173,17 @@
       "etag": "3f396a7a4e8321077b289418ef3ebd93",
       "last_modified": "2026-09-26T14:57:23.111Z",
       "size": 25580,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/azure/SWORD_REPLACEMENT.json",
+      "etag": "a04288c4883862e36e1c8ecd0a10a8da",
+      "last_modified": "2026-09-27T07:33:28.304Z",
+      "size": 2759,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -203,9 +225,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/attack_01/helmet.png",
-      "etag": "8e7a87cfd6210fd7494e7ba3a48d3f34",
-      "last_modified": "2026-09-26T14:57:33.756Z",
-      "size": 24363,
+      "etag": "10ebae3db9edb8e25c2090a718049956",
+      "last_modified": "2026-09-29T11:06:57.235Z",
+      "size": 157975,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -225,9 +247,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/attack_01/sword.png",
-      "etag": "86b6575c939a5727d273308a94606263",
-      "last_modified": "2026-09-26T14:57:40.375Z",
-      "size": 53597,
+      "etag": "b53e730f0e9944cd75cb7045adadde39",
+      "last_modified": "2026-09-27T07:33:31.173Z",
+      "size": 56186,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -280,9 +302,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/attack_02/helmet.png",
-      "etag": "5b4059fdf71dcb5c5f49ecf40b122265",
-      "last_modified": "2026-09-26T14:57:53.671Z",
-      "size": 36045,
+      "etag": "89882f5bbf506d7e3003d5c86241558f",
+      "last_modified": "2026-09-29T11:07:00.734Z",
+      "size": 141622,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -302,9 +324,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/attack_02/sword.png",
-      "etag": "fb4597709fbe18d9d8ad6b2633a34c71",
-      "last_modified": "2026-09-26T14:57:58.924Z",
-      "size": 64435,
+      "etag": "f772e2a86cb13d075a0f9b505cea8c85",
+      "last_modified": "2026-09-27T07:33:34.127Z",
+      "size": 74915,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -357,9 +379,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/attack_03/helmet.png",
-      "etag": "f1a54178234e93671a6d7dcff02a3395",
-      "last_modified": "2026-09-26T14:58:12.939Z",
-      "size": 33966,
+      "etag": "73ba87a75f4ba0497ab9c60c01596699",
+      "last_modified": "2026-09-29T11:07:04.318Z",
+      "size": 156018,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -379,9 +401,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/attack_03/sword.png",
-      "etag": "c7141a87a99bf85a6116a55971b38ad6",
-      "last_modified": "2026-09-26T14:58:18.360Z",
-      "size": 63333,
+      "etag": "6c08c7f660cf3cda29e40fb6ac5ee09d",
+      "last_modified": "2026-09-27T07:33:36.953Z",
+      "size": 73316,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -434,9 +456,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/death_01/helmet.png",
-      "etag": "db4cfa4b531c401f1661d6a1c3774b1b",
-      "last_modified": "2026-09-26T14:58:32.257Z",
-      "size": 32070,
+      "etag": "a6c5e71ab5611e69d01041a58962a1b7",
+      "last_modified": "2026-09-29T15:52:32.866Z",
+      "size": 123027,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -511,9 +533,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/death_02/helmet.png",
-      "etag": "290fdc47a2f2dd7675ffe7ade47d2a3d",
-      "last_modified": "2026-09-26T14:58:53.098Z",
-      "size": 35170,
+      "etag": "d829997e4405c94bc5be70783394da58",
+      "last_modified": "2026-09-29T11:07:11.608Z",
+      "size": 157657,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -588,9 +610,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/idle_01/helmet.png",
-      "etag": "f87930f869deaaa6dd3136f379d532f8",
-      "last_modified": "2026-09-26T14:59:12.130Z",
-      "size": 34791,
+      "etag": "9bc55d1837ec3d3dc5583247201950ea",
+      "last_modified": "2026-09-29T15:27:46.574Z",
+      "size": 151273,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -610,9 +632,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/idle_01/sword.png",
-      "etag": "ddda2d73ef7326b9fdc152c246794f46",
-      "last_modified": "2026-09-26T15:56:53.162Z",
-      "size": 48274,
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-27T05:00:11.404Z",
+      "size": 2367,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -624,6 +646,17 @@
       "etag": "ddda2d73ef7326b9fdc152c246794f46",
       "last_modified": "2026-09-27T01:30:34.261Z",
       "size": 48274,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/azure/idle_01/sword_w7_idle_v3.png",
+      "etag": "802f69fad095ec2ce2999b31616fd158",
+      "last_modified": "2026-09-27T07:33:39.737Z",
+      "size": 57482,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -676,9 +709,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/idle_02/helmet.png",
-      "etag": "ecbfbf682a71417d7733ca26d90fb77c",
-      "last_modified": "2026-09-26T14:59:31.295Z",
-      "size": 34767,
+      "etag": "c7eabe759d9f9ce81d9624e265879ba1",
+      "last_modified": "2026-09-29T15:27:49.900Z",
+      "size": 151224,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -698,9 +731,31 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/idle_02/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-27T05:00:14.838Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/azure/idle_02/sword_w7_idle_v2.png",
       "etag": "edc6b8ed4ca251ec8f66bae8e8f03f03",
-      "last_modified": "2026-09-26T15:56:56.221Z",
+      "last_modified": "2026-09-27T01:30:37.406Z",
       "size": 48322,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/azure/idle_02/sword_w7_idle_v3.png",
+      "etag": "ba01cea258a434716752a709e7ee049c",
+      "last_modified": "2026-09-27T07:33:42.529Z",
+      "size": 57505,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -753,9 +808,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/idle_03/helmet.png",
-      "etag": "d913b0497eb003ac7ef8ed5a3eaaa2ed",
-      "last_modified": "2026-09-26T14:59:50.643Z",
-      "size": 34781,
+      "etag": "ca2586a1faa5b4986f48ac442992f890",
+      "last_modified": "2026-09-29T15:27:53.029Z",
+      "size": 151253,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -775,9 +830,31 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/idle_03/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-27T05:00:18.783Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/azure/idle_03/sword_w7_idle_v2.png",
       "etag": "f85bb322f58696ca5edff3cda3627be3",
-      "last_modified": "2026-09-26T15:57:00.469Z",
+      "last_modified": "2026-09-27T01:30:40.880Z",
       "size": 48286,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/azure/idle_03/sword_w7_idle_v3.png",
+      "etag": "77f783b13da2691a75e6712f9009f4a3",
+      "last_modified": "2026-09-27T07:33:45.288Z",
+      "size": 57493,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -797,9 +874,1329 @@
     },
     {
       "key": "hero/v5/g2/equipment/azure/masters/AZURE_SWORD_UPRIGHT.png",
-      "etag": "39ad187a10cbe2d1ea35811aabee5ab4",
-      "last_modified": "2026-09-26T15:57:03.476Z",
-      "size": 113774,
+      "etag": "4a39fd9a5dc8a018b8963edffb0358e5",
+      "last_modified": "2026-09-27T07:33:47.919Z",
+      "size": 157099,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/FRAME_CONTRACT.json",
+      "etag": "2f022e3346867f322cacbf0c59d8eef9",
+      "last_modified": "2026-09-29T01:47:24.978Z",
+      "size": 1577,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/PUBLICATION.json",
+      "etag": "2133b4ef61ba5ae709e125472d180d2b",
+      "last_modified": "2026-09-29T01:47:28.287Z",
+      "size": 219,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/SOURCE_VALIDATION.json",
+      "etag": "569233896ade2eb33eb37ab20c024305",
+      "last_modified": "2026-09-29T01:47:31.867Z",
+      "size": 7347,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_01/arm_front.png",
+      "etag": "f5a2bbeec1f02dbb83a6304054038943",
+      "last_modified": "2026-09-29T01:47:35.135Z",
+      "size": 40488,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_01/arm_rear.png",
+      "etag": "942f1c80a65f05c2ac3cbf5d43ff6111",
+      "last_modified": "2026-09-29T01:47:38.553Z",
+      "size": 32410,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_01/coverage_underlay.png",
+      "etag": "2916c401f4cc5bd5d3f56bef985dbbb7",
+      "last_modified": "2026-09-29T01:47:41.953Z",
+      "size": 24991,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_01/helmet.png",
+      "etag": "5df2e8cba8828e07068fc9e55623f7f5",
+      "last_modified": "2026-09-29T01:47:45.401Z",
+      "size": 136404,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_01/legs_boots.png",
+      "etag": "03ba8f33b0cd157f83d0704f8263d8db",
+      "last_modified": "2026-09-29T01:47:48.891Z",
+      "size": 61334,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_01/sword.png",
+      "etag": "d88e1eadf5534612bb0e3228f9f9f4ff",
+      "last_modified": "2026-09-29T01:47:52.427Z",
+      "size": 84613,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_01/torso_armor.png",
+      "etag": "3cd179b79d5d877548b3c193bc60d1b7",
+      "last_modified": "2026-09-29T01:47:55.860Z",
+      "size": 35794,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_02/arm_front.png",
+      "etag": "1ea0bfd533959f0b0d855b545531e031",
+      "last_modified": "2026-09-29T01:47:59.685Z",
+      "size": 29320,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_02/arm_rear.png",
+      "etag": "46622e2efb43d46219b8e2813de41f15",
+      "last_modified": "2026-09-29T01:48:03.169Z",
+      "size": 25541,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_02/coverage_underlay.png",
+      "etag": "f2a91067ab273c967037459cc14c5d52",
+      "last_modified": "2026-09-29T01:48:06.383Z",
+      "size": 24591,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_02/helmet.png",
+      "etag": "d8132cb418872b1fe3eb51ead85f8cd0",
+      "last_modified": "2026-09-29T01:48:09.744Z",
+      "size": 144838,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_02/legs_boots.png",
+      "etag": "bad05ed82f6aa965b2157c6839849d31",
+      "last_modified": "2026-09-29T01:48:13.141Z",
+      "size": 66333,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_02/sword.png",
+      "etag": "60716ecbeb56b1744bcabd44bc3d41e1",
+      "last_modified": "2026-09-29T01:48:16.413Z",
+      "size": 85509,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_02/torso_armor.png",
+      "etag": "ea1526b590be06350e5a648b31660b65",
+      "last_modified": "2026-09-29T01:48:19.672Z",
+      "size": 42123,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_03/arm_front.png",
+      "etag": "c3dc40261e1cf1a9035d535aadf154f1",
+      "last_modified": "2026-09-29T01:48:23.013Z",
+      "size": 39626,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_03/arm_rear.png",
+      "etag": "4117ca7cc4a35a051ba545192cee3068",
+      "last_modified": "2026-09-29T01:48:26.992Z",
+      "size": 41412,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_03/coverage_underlay.png",
+      "etag": "24b05387f9a0b5e2a87960bc6aab6be4",
+      "last_modified": "2026-09-29T01:48:30.235Z",
+      "size": 24137,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_03/helmet.png",
+      "etag": "50cc17409bb66471f699b1e3010c0313",
+      "last_modified": "2026-09-29T01:48:33.807Z",
+      "size": 147832,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_03/legs_boots.png",
+      "etag": "41bb42eda1474c1234dedc2dadd802bf",
+      "last_modified": "2026-09-29T01:48:37.527Z",
+      "size": 66119,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_03/sword.png",
+      "etag": "a46c233d5d803c6d757bcbe4128425d7",
+      "last_modified": "2026-09-29T01:48:41.047Z",
+      "size": 84608,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/attack_03/torso_armor.png",
+      "etag": "144a2528c6132de39379ae40325bc48c",
+      "last_modified": "2026-09-29T01:48:44.257Z",
+      "size": 30235,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_01/arm_front.png",
+      "etag": "973b619213ef1b554e88f5e997948500",
+      "last_modified": "2026-09-29T01:48:47.561Z",
+      "size": 26914,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_01/arm_rear.png",
+      "etag": "d47c89aec9f17f2623f6902943a3e0c4",
+      "last_modified": "2026-09-29T01:48:50.930Z",
+      "size": 15325,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_01/coverage_underlay.png",
+      "etag": "f18a1ddbbd8b5432f41670490fca4861",
+      "last_modified": "2026-09-29T01:48:54.288Z",
+      "size": 28022,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_01/helmet.png",
+      "etag": "c3a638582cefbe531d1f95bd31b45ccf",
+      "last_modified": "2026-09-29T01:48:58.231Z",
+      "size": 153670,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_01/legs_boots.png",
+      "etag": "83d9d67183f20a69665a1d8dc936c061",
+      "last_modified": "2026-09-29T01:49:01.687Z",
+      "size": 60111,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_01/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T01:49:05.238Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_01/torso_armor.png",
+      "etag": "dc514757925da3aa4dc6fc102ce6240d",
+      "last_modified": "2026-09-29T01:49:08.377Z",
+      "size": 36418,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_02/arm_front.png",
+      "etag": "3a69b8eefcd06088a1d4c11bccb9607c",
+      "last_modified": "2026-09-29T01:49:11.641Z",
+      "size": 46153,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_02/arm_rear.png",
+      "etag": "5ac573f24cb0ffe1e40acf1f9668cfb2",
+      "last_modified": "2026-09-29T01:49:14.993Z",
+      "size": 31051,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_02/coverage_underlay.png",
+      "etag": "08a9f8200afe259b4c4a1105dd5be21b",
+      "last_modified": "2026-09-29T01:49:18.220Z",
+      "size": 22573,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_02/helmet.png",
+      "etag": "927b886ee65e57a95a973414ef4767d3",
+      "last_modified": "2026-09-29T01:49:21.609Z",
+      "size": 147668,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_02/legs_boots.png",
+      "etag": "6c931d5ebc0abec3ce29923b588a4f64",
+      "last_modified": "2026-09-29T01:49:24.938Z",
+      "size": 37374,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_02/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T01:49:28.396Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/death_02/torso_armor.png",
+      "etag": "439142d90b708668f5e6ec90f4f17406",
+      "last_modified": "2026-09-29T01:49:31.786Z",
+      "size": 16195,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_01/arm_front.png",
+      "etag": "5b7f9310a242a3b6ef7fa29f8f7c0469",
+      "last_modified": "2026-09-29T01:49:35.123Z",
+      "size": 35715,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_01/arm_rear.png",
+      "etag": "f6c6eaea7f97f08b399c20d2d6957460",
+      "last_modified": "2026-09-29T01:49:38.480Z",
+      "size": 31494,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_01/coverage_underlay.png",
+      "etag": "0b68b83c6ba68bc225ce9413c981b785",
+      "last_modified": "2026-09-29T01:49:41.916Z",
+      "size": 26688,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_01/helmet.png",
+      "etag": "5664394a0ae252950b12064c82867b83",
+      "last_modified": "2026-09-29T01:49:45.687Z",
+      "size": 159817,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_01/legs_boots.png",
+      "etag": "04abaf6431e252365a18fd32dcf9cffc",
+      "last_modified": "2026-09-29T01:49:49.329Z",
+      "size": 57052,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_01/sword.png",
+      "etag": "a08b87e205decf9b3023991a3a2a956a",
+      "last_modified": "2026-09-29T01:49:52.644Z",
+      "size": 85663,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_01/torso_armor.png",
+      "etag": "5493dccb56e24d80ec6fbddff7c948fa",
+      "last_modified": "2026-09-29T01:49:56.096Z",
+      "size": 27113,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_02/arm_front.png",
+      "etag": "c3e91b41231b559b7a3c99697446d14b",
+      "last_modified": "2026-09-29T01:49:59.677Z",
+      "size": 35696,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_02/arm_rear.png",
+      "etag": "0be3074226edba911045e0820aa99b43",
+      "last_modified": "2026-09-29T01:50:03.626Z",
+      "size": 31477,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_02/coverage_underlay.png",
+      "etag": "1161307a5a5485f4d45db15d32b8b1d4",
+      "last_modified": "2026-09-29T01:50:07.191Z",
+      "size": 26688,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_02/helmet.png",
+      "etag": "74e4cfb89f93373977929745c0019132",
+      "last_modified": "2026-09-29T01:50:10.689Z",
+      "size": 159801,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_02/legs_boots.png",
+      "etag": "c680f34c347560d3ccaf850771d9cf78",
+      "last_modified": "2026-09-29T01:50:14.409Z",
+      "size": 57052,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_02/sword.png",
+      "etag": "441375f4bd0d0ff99b11853f3c3eecab",
+      "last_modified": "2026-09-29T01:50:17.959Z",
+      "size": 85688,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_02/torso_armor.png",
+      "etag": "9e249cd1780b6004de41683c59d2b4e4",
+      "last_modified": "2026-09-29T01:50:21.280Z",
+      "size": 27057,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_03/arm_front.png",
+      "etag": "a85dec7b866eb6ced641a1d72f1aaa7e",
+      "last_modified": "2026-09-29T01:50:24.530Z",
+      "size": 35711,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_03/arm_rear.png",
+      "etag": "89ecc6f5e12d08922dba52da2bfa7f40",
+      "last_modified": "2026-09-29T01:50:27.996Z",
+      "size": 31493,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_03/coverage_underlay.png",
+      "etag": "38d8b337af1f0e2ac9927e1687389366",
+      "last_modified": "2026-09-29T01:50:31.375Z",
+      "size": 26687,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_03/helmet.png",
+      "etag": "1c884e309ac32adae870bf5c60f15df3",
+      "last_modified": "2026-09-29T01:50:34.644Z",
+      "size": 159814,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_03/legs_boots.png",
+      "etag": "fa6ce54a5dbaf1c7a5304af2280adf66",
+      "last_modified": "2026-09-29T01:50:37.928Z",
+      "size": 57052,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_03/sword.png",
+      "etag": "2e7b6a42e3e4718511673fe9a6074f46",
+      "last_modified": "2026-09-29T01:50:41.268Z",
+      "size": 85670,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/idle_03/torso_armor.png",
+      "etag": "570df80fa72d81454307c8ddce5042af",
+      "last_modified": "2026-09-29T01:50:44.643Z",
+      "size": 27091,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/robot/masters/ROBOT_SWORD_UPRIGHT.png",
+      "etag": "a6f92b3dd2f96578f83b0df16abe1a4c",
+      "last_modified": "2026-09-29T01:50:48.604Z",
+      "size": 199505,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/FRAME_CONTRACT.json",
+      "etag": "23c9433d277d6251e5c99cd05269e15c",
+      "last_modified": "2026-09-29T01:50:51.953Z",
+      "size": 1577,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/PUBLICATION.json",
+      "etag": "2133b4ef61ba5ae709e125472d180d2b",
+      "last_modified": "2026-09-29T01:50:55.397Z",
+      "size": 219,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/SOURCE_VALIDATION.json",
+      "etag": "233636284df39ee2de6125e08feb38aa",
+      "last_modified": "2026-09-29T01:50:58.766Z",
+      "size": 7521,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_01/arm_front.png",
+      "etag": "b1a98e95258559c683476c35cfbd6788",
+      "last_modified": "2026-09-29T01:51:02.771Z",
+      "size": 49056,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_01/arm_rear.png",
+      "etag": "09401f55ad5db69a9aa6cb8f3c597ec4",
+      "last_modified": "2026-09-29T01:51:06.148Z",
+      "size": 32031,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_01/coverage_underlay.png",
+      "etag": "1d6a94aff86371e2ea7f19d91e649585",
+      "last_modified": "2026-09-29T01:51:10.001Z",
+      "size": 24979,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_01/helmet.png",
+      "etag": "791d38f4d4d2298f823062d9971dccdb",
+      "last_modified": "2026-09-29T01:51:13.441Z",
+      "size": 149265,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_01/legs_boots.png",
+      "etag": "f41608b32c98aa5c8e7f39eb4201d823",
+      "last_modified": "2026-09-29T01:51:16.805Z",
+      "size": 58422,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_01/sword.png",
+      "etag": "1bc270045fa272aeacfb38f91b2a1853",
+      "last_modified": "2026-09-29T01:51:20.134Z",
+      "size": 90801,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_01/torso_armor.png",
+      "etag": "60c8bd90383e01029c54605f239dcd38",
+      "last_modified": "2026-09-29T01:51:23.915Z",
+      "size": 32318,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_02/arm_front.png",
+      "etag": "b3498d4c524e930158040700be255523",
+      "last_modified": "2026-09-29T01:51:27.234Z",
+      "size": 27533,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_02/arm_rear.png",
+      "etag": "2b8c9fb80202704eb595a19531fe887f",
+      "last_modified": "2026-09-29T01:51:30.704Z",
+      "size": 27311,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_02/coverage_underlay.png",
+      "etag": "8b7c71241bf11f1cf3f3aba42e58a00b",
+      "last_modified": "2026-09-29T01:51:34.166Z",
+      "size": 24605,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_02/helmet.png",
+      "etag": "2356324790d60192fe721f1203410aa4",
+      "last_modified": "2026-09-29T01:51:37.396Z",
+      "size": 158737,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_02/legs_boots.png",
+      "etag": "6495f665ff463d6961a6048c42d72d28",
+      "last_modified": "2026-09-29T01:51:40.740Z",
+      "size": 69895,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_02/sword.png",
+      "etag": "1cec34eee127bac0dcd2d5a9f897b02a",
+      "last_modified": "2026-09-29T01:51:44.145Z",
+      "size": 90675,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_02/torso_armor.png",
+      "etag": "1e5257d5052ac30df349644526d3b228",
+      "last_modified": "2026-09-29T01:51:47.501Z",
+      "size": 41036,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_03/arm_front.png",
+      "etag": "334586f94dea31a6c4103d2418a0572d",
+      "last_modified": "2026-09-29T01:51:50.824Z",
+      "size": 40350,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_03/arm_rear.png",
+      "etag": "713ee9e4c3332e3ac330d4d42af7adee",
+      "last_modified": "2026-09-29T01:51:54.378Z",
+      "size": 29753,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_03/coverage_underlay.png",
+      "etag": "5f950d4a8585fb606927b5a9b9b94378",
+      "last_modified": "2026-09-29T01:51:57.588Z",
+      "size": 24123,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_03/helmet.png",
+      "etag": "6e7ba27f91eed1a60f72a586940d08ac",
+      "last_modified": "2026-09-29T01:52:01.032Z",
+      "size": 161915,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_03/legs_boots.png",
+      "etag": "e1f1f07665d820feca645b3ec2896d8b",
+      "last_modified": "2026-09-29T01:52:04.404Z",
+      "size": 60772,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_03/sword.png",
+      "etag": "73b972794d5b7fb54b6b584d6260a8de",
+      "last_modified": "2026-09-29T01:52:07.987Z",
+      "size": 89432,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/attack_03/torso_armor.png",
+      "etag": "8b5a5bc70da4933e6c71eae0b96ddf65",
+      "last_modified": "2026-09-29T01:52:11.421Z",
+      "size": 16445,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_01/arm_front.png",
+      "etag": "729ba9ee0fadd7ccd6c9d0eb331e5249",
+      "last_modified": "2026-09-29T01:52:14.766Z",
+      "size": 23138,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_01/arm_rear.png",
+      "etag": "ecf1227c81ba350fd42d5e6a03edcab1",
+      "last_modified": "2026-09-29T01:52:18.295Z",
+      "size": 16846,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_01/coverage_underlay.png",
+      "etag": "95911e549be2ae8e655cfa29d1edb579",
+      "last_modified": "2026-09-29T01:52:21.519Z",
+      "size": 28016,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_01/helmet.png",
+      "etag": "5d8e9dce0db2ab63f01c8750508dc795",
+      "last_modified": "2026-09-29T01:52:25.615Z",
+      "size": 177910,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_01/legs_boots.png",
+      "etag": "2a4f5bd0f517e524168017c2a10a4afe",
+      "last_modified": "2026-09-29T01:52:28.976Z",
+      "size": 60741,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_01/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T01:52:32.226Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_01/torso_armor.png",
+      "etag": "88a68e0f970bbe3dbf7aa79295f60ff4",
+      "last_modified": "2026-09-29T01:52:35.514Z",
+      "size": 24355,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_02/arm_front.png",
+      "etag": "8df580a6bc7c79e2bfeadb4c5ff03b87",
+      "last_modified": "2026-09-29T01:52:38.782Z",
+      "size": 51852,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_02/arm_rear.png",
+      "etag": "711e4c251e1638d29e815e225a22a9fd",
+      "last_modified": "2026-09-29T01:52:42.655Z",
+      "size": 37718,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_02/coverage_underlay.png",
+      "etag": "b25778faac622eecabbefaf97b320fde",
+      "last_modified": "2026-09-29T01:52:46.720Z",
+      "size": 22552,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_02/helmet.png",
+      "etag": "22f02229119cb3797e987671b8886b0a",
+      "last_modified": "2026-09-29T01:52:50.273Z",
+      "size": 150655,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_02/legs_boots.png",
+      "etag": "34ad200c6006a7af1ac150eb28b7f1d9",
+      "last_modified": "2026-09-29T01:52:53.635Z",
+      "size": 35602,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_02/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T01:52:56.993Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/death_02/torso_armor.png",
+      "etag": "cc8a24f5cdbdc30e53c52631d2395f56",
+      "last_modified": "2026-09-29T01:53:00.438Z",
+      "size": 14407,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_01/arm_front.png",
+      "etag": "32d1ba09492d72dedad46c9d0a4fb652",
+      "last_modified": "2026-09-29T01:53:04.144Z",
+      "size": 38813,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_01/arm_rear.png",
+      "etag": "d5e83eb816246dbb37d6ef5200d7bf4b",
+      "last_modified": "2026-09-29T01:53:07.785Z",
+      "size": 28130,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_01/coverage_underlay.png",
+      "etag": "0b17f7ebcb48b33fbe332d32417cfc2d",
+      "last_modified": "2026-09-29T01:53:11.003Z",
+      "size": 26705,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_01/helmet.png",
+      "etag": "74866199136ab672aa5dda06117f07fd",
+      "last_modified": "2026-09-29T01:53:14.442Z",
+      "size": 175640,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_01/legs_boots.png",
+      "etag": "9fbc92499f1e46ef7c51e1f8d488e20c",
+      "last_modified": "2026-09-29T01:53:17.736Z",
+      "size": 54496,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_01/sword.png",
+      "etag": "3883daf05c221100c35ba8c41aec6b09",
+      "last_modified": "2026-09-29T01:53:21.008Z",
+      "size": 91433,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_01/torso_armor.png",
+      "etag": "12f55751bab22ec9d7cada888954de9c",
+      "last_modified": "2026-09-29T01:53:24.307Z",
+      "size": 25714,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_02/arm_front.png",
+      "etag": "7361266147af63d4b3e68b72c66c3857",
+      "last_modified": "2026-09-29T01:53:27.768Z",
+      "size": 38794,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_02/arm_rear.png",
+      "etag": "c86273a3adfbdef944213483c1659e80",
+      "last_modified": "2026-09-29T01:53:31.091Z",
+      "size": 28101,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_02/coverage_underlay.png",
+      "etag": "e8144bf376c86d934d07565d73b9a7f8",
+      "last_modified": "2026-09-29T01:53:35.265Z",
+      "size": 26705,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_02/helmet.png",
+      "etag": "dbadaea871888f422f44a69ee0c7467e",
+      "last_modified": "2026-09-29T01:53:39.212Z",
+      "size": 175622,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_02/legs_boots.png",
+      "etag": "b7c29ebfeed7e34b29be4545e0ee4ca8",
+      "last_modified": "2026-09-29T01:53:42.686Z",
+      "size": 54495,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_02/sword.png",
+      "etag": "41f7cdd79de32b7db289fdf1e987c0aa",
+      "last_modified": "2026-09-29T01:53:46.088Z",
+      "size": 91476,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_02/torso_armor.png",
+      "etag": "cab2b0ec8451b7861f98ae15a34112e8",
+      "last_modified": "2026-09-29T01:53:49.456Z",
+      "size": 25712,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_03/arm_front.png",
+      "etag": "e83aea930e4390890ceb21779873b57d",
+      "last_modified": "2026-09-29T01:53:52.818Z",
+      "size": 38806,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_03/arm_rear.png",
+      "etag": "60d3eff8f2bdacbb32f289e70ddaf62a",
+      "last_modified": "2026-09-29T01:53:55.949Z",
+      "size": 28119,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_03/coverage_underlay.png",
+      "etag": "77acdd7627e0c5da33ee90391f7070d8",
+      "last_modified": "2026-09-29T01:53:59.326Z",
+      "size": 26704,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_03/helmet.png",
+      "etag": "25f1c12843ecfd17ce6b4d82249958e5",
+      "last_modified": "2026-09-29T01:54:02.767Z",
+      "size": 175630,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_03/legs_boots.png",
+      "etag": "d0b114cd660befeddde0acd43356c434",
+      "last_modified": "2026-09-29T01:54:06.274Z",
+      "size": 54495,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_03/sword.png",
+      "etag": "7f36427b361cf116939b5bc44b5cefd9",
+      "last_modified": "2026-09-29T01:54:09.531Z",
+      "size": 91444,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/idle_03/torso_armor.png",
+      "etag": "f5195f75189ce515371b99ef3015c43a",
+      "last_modified": "2026-09-29T01:54:13.082Z",
+      "size": 25714,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/equipment/skeleton/masters/SKELETON_SWORD_UPRIGHT.png",
+      "etag": "e84a567a6c6047e51726886fc6343df4",
+      "last_modified": "2026-09-29T01:54:16.625Z",
+      "size": 212189,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -809,7 +2206,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/attack_01/hair_back.png",
       "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
-      "last_modified": "2026-09-26T15:57:06.113Z",
+      "last_modified": "2026-09-27T05:02:10.051Z",
       "size": 2367,
       "http_metadata": {
         "contentType": "image/png"
@@ -820,7 +2217,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/attack_01/hair_front.png",
       "etag": "a1c4f015309d5579dae442903be72290",
-      "last_modified": "2026-09-26T15:57:08.986Z",
+      "last_modified": "2026-09-27T05:02:13.406Z",
       "size": 53604,
       "http_metadata": {
         "contentType": "image/png"
@@ -831,7 +2228,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/attack_02/hair_back.png",
       "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
-      "last_modified": "2026-09-26T15:57:11.706Z",
+      "last_modified": "2026-09-27T05:02:16.747Z",
       "size": 2367,
       "http_metadata": {
         "contentType": "image/png"
@@ -842,7 +2239,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/attack_02/hair_front.png",
       "etag": "58318d9643ed3330b027312faf92d22f",
-      "last_modified": "2026-09-26T15:57:14.514Z",
+      "last_modified": "2026-09-27T05:02:20.073Z",
       "size": 58838,
       "http_metadata": {
         "contentType": "image/png"
@@ -853,7 +2250,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/attack_03/hair_back.png",
       "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
-      "last_modified": "2026-09-26T15:57:18.000Z",
+      "last_modified": "2026-09-27T05:02:23.521Z",
       "size": 2367,
       "http_metadata": {
         "contentType": "image/png"
@@ -864,7 +2261,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/attack_03/hair_front.png",
       "etag": "8fa70ade0d4a17c7ef854aa00944a2ca",
-      "last_modified": "2026-09-26T15:57:20.799Z",
+      "last_modified": "2026-09-27T05:02:26.864Z",
       "size": 59018,
       "http_metadata": {
         "contentType": "image/png"
@@ -875,7 +2272,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/death_01/hair_back.png",
       "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
-      "last_modified": "2026-09-26T15:57:24.587Z",
+      "last_modified": "2026-09-27T05:02:30.237Z",
       "size": 2367,
       "http_metadata": {
         "contentType": "image/png"
@@ -886,7 +2283,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/death_01/hair_front.png",
       "etag": "5841a1187e1953856ac1c17e69b5a0dd",
-      "last_modified": "2026-09-26T15:57:27.317Z",
+      "last_modified": "2026-09-27T05:02:33.676Z",
       "size": 58633,
       "http_metadata": {
         "contentType": "image/png"
@@ -897,7 +2294,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/death_02/hair_back.png",
       "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
-      "last_modified": "2026-09-26T15:57:30.380Z",
+      "last_modified": "2026-09-27T05:02:36.947Z",
       "size": 2367,
       "http_metadata": {
         "contentType": "image/png"
@@ -908,7 +2305,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/death_02/hair_front.png",
       "etag": "b342b41bde9aa646a665db595ced4a1a",
-      "last_modified": "2026-09-26T15:57:33.589Z",
+      "last_modified": "2026-09-27T05:02:40.202Z",
       "size": 63507,
       "http_metadata": {
         "contentType": "image/png"
@@ -919,7 +2316,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/idle_01/hair_back.png",
       "etag": "013f07c3b8034b35d344f121608ac083",
-      "last_modified": "2026-09-26T15:57:36.405Z",
+      "last_modified": "2026-09-27T05:02:43.317Z",
       "size": 4377,
       "http_metadata": {
         "contentType": "image/png"
@@ -930,7 +2327,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/idle_01/hair_front.png",
       "etag": "3820f1f3af3429f117b238213d772def",
-      "last_modified": "2026-09-26T15:57:39.044Z",
+      "last_modified": "2026-09-27T05:02:46.615Z",
       "size": 59156,
       "http_metadata": {
         "contentType": "image/png"
@@ -941,7 +2338,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/idle_02/hair_back.png",
       "etag": "ddfc55623e697477d384320b1f280b9d",
-      "last_modified": "2026-09-26T15:57:41.985Z",
+      "last_modified": "2026-09-27T05:02:50.187Z",
       "size": 4377,
       "http_metadata": {
         "contentType": "image/png"
@@ -952,7 +2349,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/idle_02/hair_front.png",
       "etag": "d3096f99e410e9beba63b97f8621ccb7",
-      "last_modified": "2026-09-26T15:57:44.823Z",
+      "last_modified": "2026-09-27T05:02:54.260Z",
       "size": 59091,
       "http_metadata": {
         "contentType": "image/png"
@@ -963,7 +2360,7 @@
     {
       "key": "hero/v5/g2/hair/topknot/idle_03/hair_back.png",
       "etag": "275a6a41c6fb5b43ff0b4503b05e8a61",
-      "last_modified": "2026-09-26T15:57:47.450Z",
+      "last_modified": "2026-09-27T05:02:57.581Z",
       "size": 4377,
       "http_metadata": {
         "contentType": "image/png"
@@ -974,8 +2371,360 @@
     {
       "key": "hero/v5/g2/hair/topknot/idle_03/hair_front.png",
       "etag": "aca09c01b85d76cd56097ad79e405729",
-      "last_modified": "2026-09-26T15:57:50.667Z",
+      "last_modified": "2026-09-27T05:03:01.033Z",
       "size": 59133,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/BOSS_WEAPONS_VALIDATION.json",
+      "etag": "83f38bdef1f11b812ca3574295f54214",
+      "last_modified": "2026-10-01T15:06:45.802Z",
+      "size": 10120,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/FRAME_CONTRACT.json",
+      "etag": "52512e3068a017a46748248bbef5aeb5",
+      "last_modified": "2026-10-01T15:06:48.731Z",
+      "size": 3673,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/attack_01/sword.png",
+      "etag": "8f73c9750551f8d16e8c0c907dcf6c35",
+      "last_modified": "2026-10-01T15:06:51.446Z",
+      "size": 45722,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/attack_02/sword.png",
+      "etag": "6ca02f42f8ba6088b1a7afd34e12159a",
+      "last_modified": "2026-10-01T15:06:54.209Z",
+      "size": 46383,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/attack_03/sword.png",
+      "etag": "3a7f93615cac3f6b32054df4a74eb0a9",
+      "last_modified": "2026-10-01T15:06:57.032Z",
+      "size": 44380,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/death_01/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-10-01T15:07:00.174Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/death_02/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-10-01T15:07:02.821Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/idle_01/sword.png",
+      "etag": "73137f826458e75257ee671992079888",
+      "last_modified": "2026-10-01T15:07:05.482Z",
+      "size": 45958,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/idle_02/sword.png",
+      "etag": "4cbaa44b98a261c252967d700e3e8305",
+      "last_modified": "2026-10-01T15:07:08.073Z",
+      "size": 45993,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/idle_03/sword.png",
+      "etag": "96e64c72b7fc9c17a0d009566e2dfc7e",
+      "last_modified": "2026-10-01T15:07:11.112Z",
+      "size": 45971,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/icicle_longsword/masters/ICICLE_LONGSWORD_UPRIGHT.png",
+      "etag": "c92a62bcf0f2886514b4dc41bcdd9035",
+      "last_modified": "2026-10-01T15:07:15.057Z",
+      "size": 601425,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/FRAME_CONTRACT.json",
+      "etag": "243154cfde4c04bece359d7608c00662",
+      "last_modified": "2026-10-01T15:07:18.301Z",
+      "size": 3649,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/attack_01/sword.png",
+      "etag": "c57dbd68a52942ef53ce8a90f3cc0c7c",
+      "last_modified": "2026-10-01T15:07:21.034Z",
+      "size": 56300,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/attack_02/sword.png",
+      "etag": "5d78a8b52ff2189a2b6f86b2812eb9de",
+      "last_modified": "2026-10-01T15:07:23.776Z",
+      "size": 57035,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/attack_03/sword.png",
+      "etag": "ff8a1e338aa80a54af7a0d364b66a671",
+      "last_modified": "2026-10-01T15:07:26.318Z",
+      "size": 56606,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/death_01/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-10-01T15:07:29.041Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/death_02/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-10-01T15:07:32.056Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/idle_01/sword.png",
+      "etag": "dca43b9cb5066bdeff82037db2694fc4",
+      "last_modified": "2026-10-01T15:07:35.017Z",
+      "size": 57681,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/idle_02/sword.png",
+      "etag": "339c4479b9e2b7faf4230929af5795bb",
+      "last_modified": "2026-10-01T15:07:37.603Z",
+      "size": 57707,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/idle_03/sword.png",
+      "etag": "8fa0e0da1351d24dffed7b7722119a5f",
+      "last_modified": "2026-10-01T15:07:40.357Z",
+      "size": 57689,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/lavalon_sword/masters/LAVALON_SWORD_UPRIGHT.png",
+      "etag": "ed4866ea323ea5134a78914c4712d320",
+      "last_modified": "2026-10-01T15:07:43.072Z",
+      "size": 887979,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/shared/attack_01/right_arm.png",
+      "etag": "309185622ea201ec1b36c3db17faeaf4",
+      "last_modified": "2026-10-01T15:07:45.789Z",
+      "size": 25767,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/FRAME_CONTRACT.json",
+      "etag": "d213f190fa577412120cb67df20f4898",
+      "last_modified": "2026-10-01T15:07:48.239Z",
+      "size": 3683,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/attack_01/sword.png",
+      "etag": "d63d77d3323ca61c0ede4d0b883265c0",
+      "last_modified": "2026-10-01T15:07:50.907Z",
+      "size": 56609,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/attack_02/sword.png",
+      "etag": "c5904e9e91239de9d5aad41a6305d3bc",
+      "last_modified": "2026-10-01T15:07:53.475Z",
+      "size": 57842,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/attack_03/sword.png",
+      "etag": "85f40dfc5a842b93ca97d04ecb09bc38",
+      "last_modified": "2026-10-01T15:07:56.610Z",
+      "size": 56476,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/death_01/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-10-01T15:07:59.277Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/death_02/sword.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-10-01T15:08:01.660Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/idle_01/sword.png",
+      "etag": "c8ee09c039939e29256dc0efa05bb69c",
+      "last_modified": "2026-10-01T15:08:04.215Z",
+      "size": 58078,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/idle_02/sword.png",
+      "etag": "bb102e17469fb27614055b1ff3fd1f27",
+      "last_modified": "2026-10-01T15:08:06.735Z",
+      "size": 58094,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/idle_03/sword.png",
+      "etag": "0cc41b2f8d80b724edbf332190b4db0b",
+      "last_modified": "2026-10-01T15:08:09.407Z",
+      "size": 58082,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/spirit_greatsword/masters/SPIRIT_GREATSWORD_UPRIGHT.png",
+      "etag": "0ce0b6a6e7ad620e2aeebc2818857734",
+      "last_modified": "2026-10-01T15:08:11.936Z",
+      "size": 844480,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -1181,10 +2930,406 @@
       "storage_class": "Standard"
     },
     {
+      "key": "hero/v5/g2/wings/robot/VALIDATION.json",
+      "etag": "3fc9e7f0d1a748ef2157f9a03950dddf",
+      "last_modified": "2026-09-29T07:16:57.380Z",
+      "size": 2116,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/WING_FRAME_CONTRACT.json",
+      "etag": "b865b48dcff5a1741c17d54be83f827a",
+      "last_modified": "2026-09-29T07:17:00.551Z",
+      "size": 3165,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/attack_01/wing_far.png",
+      "etag": "4b71865ec69e5fa4c210a8b272dd09df",
+      "last_modified": "2026-09-29T07:17:03.830Z",
+      "size": 104445,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/attack_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T07:17:06.817Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/attack_02/wing_far.png",
+      "etag": "4f3f746d91c8ff170e42c86e764155ae",
+      "last_modified": "2026-09-29T07:17:09.639Z",
+      "size": 62604,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/attack_02/wing_near.png",
+      "etag": "2102d2da0f4fd4c76cd5b2fa75ecb99e",
+      "last_modified": "2026-09-29T07:17:12.434Z",
+      "size": 105328,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/attack_03/wing_far.png",
+      "etag": "3f7b25954eda802d075432574c4e2d65",
+      "last_modified": "2026-09-29T07:17:15.589Z",
+      "size": 63573,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/attack_03/wing_near.png",
+      "etag": "727d5181d1e433aebba0fff95bab5286",
+      "last_modified": "2026-09-29T07:17:18.344Z",
+      "size": 90413,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/death_01/wing_far.png",
+      "etag": "31154081dd958da9a6338b92cc7f4c1c",
+      "last_modified": "2026-09-29T07:17:21.175Z",
+      "size": 85822,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/death_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T07:17:24.032Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/death_02/wing_far.png",
+      "etag": "cde1d21ff19c8ee79e28d15dc99b3f38",
+      "last_modified": "2026-09-29T07:17:27.222Z",
+      "size": 50360,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/death_02/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T07:17:29.948Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/idle_01/wing_far.png",
+      "etag": "8e0804dd63c5331b64060ccc1fb748b2",
+      "last_modified": "2026-09-29T07:17:32.721Z",
+      "size": 107507,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/idle_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T07:17:35.541Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/idle_02/wing_far.png",
+      "etag": "29ba68ee34cfa1d1f6ae07b39a0287d9",
+      "last_modified": "2026-09-29T07:17:39.375Z",
+      "size": 108182,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/idle_02/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T07:17:42.705Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/idle_03/wing_far.png",
+      "etag": "2517adb8cfc1303a21ff07d84b02c97a",
+      "last_modified": "2026-09-29T07:17:45.547Z",
+      "size": 107696,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/robot/idle_03/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T07:17:48.292Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/VALIDATION.json",
+      "etag": "8345f1a6e08014c97f57849183a3cd45",
+      "last_modified": "2026-09-29T09:59:50.415Z",
+      "size": 2201,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/WING_FRAME_CONTRACT.json",
+      "etag": "c8bd55001658bfb56d3b788d50e101a4",
+      "last_modified": "2026-09-29T09:59:53.565Z",
+      "size": 2901,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/attack_01/wing_far.png",
+      "etag": "b7c46c6df3e40586c6160cc83cdb8f94",
+      "last_modified": "2026-09-29T09:59:56.846Z",
+      "size": 110558,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/attack_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T09:59:59.921Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/attack_02/wing_far.png",
+      "etag": "dc5bdad07d614b0b5c27f80b0d9e2656",
+      "last_modified": "2026-09-29T10:00:05.562Z",
+      "size": 68126,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/attack_02/wing_near.png",
+      "etag": "367e6a23c7a560312c87055682292cc7",
+      "last_modified": "2026-09-29T10:00:08.838Z",
+      "size": 84306,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/attack_03/wing_far.png",
+      "etag": "fe2887bb9447d641cce077d6ca6f6b81",
+      "last_modified": "2026-09-29T10:00:12.571Z",
+      "size": 50714,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/attack_03/wing_near.png",
+      "etag": "c5818b3fad48f69bc2a4b2682018b338",
+      "last_modified": "2026-09-29T10:00:16.061Z",
+      "size": 66724,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/death_01/wing_far.png",
+      "etag": "bbbc83a0622446902e5fbc089b96c866",
+      "last_modified": "2026-09-29T10:00:19.337Z",
+      "size": 118922,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/death_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T10:00:22.611Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/death_02/wing_far.png",
+      "etag": "a4553b7731d11d4894473813419e22af",
+      "last_modified": "2026-09-29T10:00:25.972Z",
+      "size": 65824,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/death_02/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T10:00:29.254Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/idle_01/wing_far.png",
+      "etag": "04bdd43d79d35e0499d7c93729efaaa3",
+      "last_modified": "2026-09-29T10:00:33.085Z",
+      "size": 132999,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/idle_01/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T10:00:36.606Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/idle_02/wing_far.png",
+      "etag": "1ce8baaffd75e79a52542e305035cade",
+      "last_modified": "2026-09-29T10:00:39.959Z",
+      "size": 132994,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/idle_02/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T10:00:43.256Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/idle_03/wing_far.png",
+      "etag": "687736225d2880933241231b21740d62",
+      "last_modified": "2026-09-29T10:00:46.397Z",
+      "size": 132998,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/wings/skeleton/idle_03/wing_near.png",
+      "etag": "ea23a9baa30e3c64f5c0cab1ea65b532",
+      "last_modified": "2026-09-29T10:00:49.780Z",
+      "size": 2367,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "manifest.json",
-      "etag": "c1e8be3bd14ed09c4d93487da8f6b208",
-      "last_modified": "2026-09-26T15:57:53.281Z",
-      "size": 35605,
+      "etag": "031baf2560af11287a42ffc12d974626",
+      "last_modified": "2026-10-04T06:02:35.879Z",
+      "size": 59669,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -3524,6 +5669,424 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/arena/GRAPHICS_CONTRACT.json",
+      "etag": "ef826c982a3f032098f312394de816d9",
+      "last_modified": "2026-10-01T03:16:02.338Z",
+      "size": 12265,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/arena_background.webp",
+      "etag": "ada98ec054933c680b7ae07f948fd614",
+      "last_modified": "2026-09-28T04:40:35.102Z",
+      "size": 279934,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/battle/button_surrender.png",
+      "etag": "efe06f41db34c5c23a2d6ad8610722a9",
+      "last_modified": "2026-10-01T03:16:05.893Z",
+      "size": 52284,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/buttons/button_danger.png",
+      "etag": "0401d112c300e316b6ba58d54e83b06a",
+      "last_modified": "2026-10-01T01:25:58.123Z",
+      "size": 70162,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/buttons/button_primary.png",
+      "etag": "6e4a70bf592ab0b6d7ae08c7bccfbdad",
+      "last_modified": "2026-10-01T01:26:00.941Z",
+      "size": 59025,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/buttons/button_secondary.png",
+      "etag": "3d007940a4148fc29e86f17c720cb03c",
+      "last_modified": "2026-10-01T01:26:03.635Z",
+      "size": 52939,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/hub/arena_emblem.png",
+      "etag": "edd99ba83644b52221d6784052c639aa",
+      "last_modified": "2026-09-30T15:11:19.523Z",
+      "size": 300126,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/hub/panel_frame.png",
+      "etag": "c6f315f9ea06b27d99f5d61f0677684b",
+      "last_modified": "2026-09-30T15:11:23.220Z",
+      "size": 322252,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/hub/row_frame.png",
+      "etag": "df41fd6bf5fda43ac80d1f72d522d5bb",
+      "last_modified": "2026-09-30T15:11:26.927Z",
+      "size": 101094,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_attack_history.png",
+      "etag": "c783b24325b960becf656e8d82343412",
+      "last_modified": "2026-10-01T01:26:06.641Z",
+      "size": 49150,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_battle.png",
+      "etag": "30f290c5d17937dec71778b94da8e458",
+      "last_modified": "2026-09-30T15:11:30.422Z",
+      "size": 67429,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_defense_history.png",
+      "etag": "e27c8b4a60546bc6d9688ead200622b6",
+      "last_modified": "2026-10-01T01:26:09.412Z",
+      "size": 67405,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_history.png",
+      "etag": "4a1808266a919dde830744809200a3f8",
+      "last_modified": "2026-09-30T15:11:33.651Z",
+      "size": 86407,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_info.png",
+      "etag": "732c9682fde51947405e6af23f61b3e3",
+      "last_modified": "2026-10-01T01:26:11.879Z",
+      "size": 81125,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_play_milestone.png",
+      "etag": "cb680e1a061a412a78b8f6b8683b1467",
+      "last_modified": "2026-10-01T01:26:14.288Z",
+      "size": 97548,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_player_card.png",
+      "etag": "1888a22d2f0c7c7356f46b5b66470bfd",
+      "last_modified": "2026-10-01T01:26:16.742Z",
+      "size": 53639,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_ranking.png",
+      "etag": "247c8c2dfdefb8f7aff5e6a68937125d",
+      "last_modified": "2026-09-30T15:11:36.837Z",
+      "size": 58515,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_refresh.png",
+      "etag": "36a18752b15e1861f5e171921c13eca9",
+      "last_modified": "2026-10-01T01:26:19.147Z",
+      "size": 62543,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_season.png",
+      "etag": "f95c5ed4f3b520f32d711db678ab1cf7",
+      "last_modified": "2026-10-01T01:26:21.801Z",
+      "size": 73310,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_setup.png",
+      "etag": "39a8b6cb5742db34ecea5430fbc2c379",
+      "last_modified": "2026-09-30T15:11:40.047Z",
+      "size": 78765,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/icons/icon_win_milestone.png",
+      "etag": "b7b9ecbe9cc0e06efd957285df2742bf",
+      "last_modified": "2026-10-01T01:26:24.245Z",
+      "size": 73314,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/progress/progress_fill.png",
+      "etag": "65129fc38886d2f580fbf667b06a3769",
+      "last_modified": "2026-10-01T01:26:26.708Z",
+      "size": 19726,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/progress/progress_frame.png",
+      "etag": "1240a56774fb0231fc3a5aa7af263719",
+      "last_modified": "2026-10-01T01:26:29.344Z",
+      "size": 14332,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/progress/reward_slot.png",
+      "etag": "a19b4bf4af356bfe695db4c07746a485",
+      "last_modified": "2026-10-01T01:26:31.888Z",
+      "size": 62622,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/results/result_draw.png",
+      "etag": "6e665da61342eb6b21426e6de03c3862",
+      "last_modified": "2026-10-01T03:16:09.170Z",
+      "size": 133899,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/results/result_loss.png",
+      "etag": "a8f448916e1fc70547feaf1da2b89f74",
+      "last_modified": "2026-10-01T03:16:12.482Z",
+      "size": 106217,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/results/result_win.png",
+      "etag": "86e1b5057fa98895fc8234c32d296880",
+      "last_modified": "2026-10-01T03:16:15.679Z",
+      "size": 127725,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/tabs/tab_active.png",
+      "etag": "381e5fc4d9455dc808ff2a83f55cfb39",
+      "last_modified": "2026-09-30T15:11:43.537Z",
+      "size": 24283,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/tabs/tab_inactive.png",
+      "etag": "8608421d5b43417479a41406f832f553",
+      "last_modified": "2026-09-30T15:11:46.844Z",
+      "size": 22815,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/tiers/tier_bronze.png",
+      "etag": "cc3d77bae57c304e46a2174ff4966ba9",
+      "last_modified": "2026-10-01T01:26:34.328Z",
+      "size": 71891,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/tiers/tier_diamond.png",
+      "etag": "828bfb7ec2ba21e69b09c1e5810994b5",
+      "last_modified": "2026-10-01T01:26:36.823Z",
+      "size": 76254,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/tiers/tier_gold.png",
+      "etag": "fe65bd6d07115114e4bac79b98027541",
+      "last_modified": "2026-10-01T01:26:39.427Z",
+      "size": 88885,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/arena/tiers/tier_silver.png",
+      "etag": "02221898eb41dcceff7ab158215ae591",
+      "last_modified": "2026-10-01T01:26:42.648Z",
+      "size": 77837,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/G10_ATB_ACTOR_ICON_CONTRACT.json",
+      "etag": "93bb9f5af373ab9506dd9b8463899f67",
+      "last_modified": "2026-10-03T13:57:53.930Z",
+      "size": 685,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/atb/boss.png",
+      "etag": "8c41cec4c747d2eb3cd1ac521c724641",
+      "last_modified": "2026-10-03T13:57:57.091Z",
+      "size": 72352,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/atb/hero.png",
+      "etag": "7e12957c4e7cf31e202135689e3dadb7",
+      "last_modified": "2026-10-03T13:58:00.077Z",
+      "size": 55911,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/atb/monster.png",
+      "etag": "f46cc14453e2d835f59cf2dc4db85d5e",
+      "last_modified": "2026-10-03T13:58:03.273Z",
+      "size": 66620,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/battle/atb/pet.png",
+      "etag": "7b2e3820f720c27775a660713f79d602",
+      "last_modified": "2026-10-03T13:58:06.289Z",
+      "size": 60042,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/battle/battle_background.webp",
       "etag": "d5a2a8aeff97a803c86a89ce9801d6e0",
       "last_modified": "2026-09-26T15:02:01.595Z",
@@ -3712,9 +6275,9 @@
     },
     {
       "key": "ui/equipment-icons/azure/azure_armor.png",
-      "etag": "52962c4d1cc648924a9559fff9b8060f",
-      "last_modified": "2026-09-09T09:23:04.537Z",
-      "size": 786446,
+      "etag": "a5c269faa59f545b287cb21e532e53c0",
+      "last_modified": "2026-10-04T00:09:54.464Z",
+      "size": 106904,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3723,9 +6286,9 @@
     },
     {
       "key": "ui/equipment-icons/azure/azure_boots.png",
-      "etag": "9c9924660c9c46feb8214a273fc7d3df",
-      "last_modified": "2026-09-09T09:23:07.874Z",
-      "size": 786444,
+      "etag": "87f10d0f28adf04cc759133247165208",
+      "last_modified": "2026-10-04T00:09:58.033Z",
+      "size": 72586,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3734,9 +6297,9 @@
     },
     {
       "key": "ui/equipment-icons/azure/azure_gauntlets.png",
-      "etag": "f4c554fa7709073fa9ce50f0a438d097",
-      "last_modified": "2026-09-09T09:23:11.460Z",
-      "size": 786444,
+      "etag": "d75dff92da8119de06e8d0957dd28c00",
+      "last_modified": "2026-10-04T00:10:00.936Z",
+      "size": 76029,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3745,9 +6308,9 @@
     },
     {
       "key": "ui/equipment-icons/azure/azure_helmet.png",
-      "etag": "d5eb477795018a1894a547ab90a71d50",
-      "last_modified": "2026-09-09T09:23:14.847Z",
-      "size": 786444,
+      "etag": "d3c7ad08f9351d773275ac6aff28bf03",
+      "last_modified": "2026-10-04T00:10:05.578Z",
+      "size": 91401,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3756,9 +6319,9 @@
     },
     {
       "key": "ui/equipment-icons/azure/azure_ring.png",
-      "etag": "441bf58231ada98b6d3619e87694942a",
-      "last_modified": "2026-09-09T09:23:17.943Z",
-      "size": 786444,
+      "etag": "7037411cd9b6344614766dbedbffc0a5",
+      "last_modified": "2026-10-04T00:10:08.410Z",
+      "size": 80258,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3767,9 +6330,174 @@
     },
     {
       "key": "ui/equipment-icons/azure/azure_sword.png",
-      "etag": "9e4b03e989964e199df6a5b92318753c",
-      "last_modified": "2026-09-09T09:23:21.712Z",
-      "size": 786444,
+      "etag": "45312f528b3c71843c71ceb58c24286c",
+      "last_modified": "2026-10-04T00:48:46.480Z",
+      "size": 20391,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/boss/icicle_longsword.png",
+      "etag": "3aab311efa5000cd8811f8e2fc04ceff",
+      "last_modified": "2026-10-03T14:22:18.289Z",
+      "size": 123759,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/boss/lavalon_sword.png",
+      "etag": "0cf381d1ad861dd2e146bb660481c16e",
+      "last_modified": "2026-10-03T14:22:22.009Z",
+      "size": 163790,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/boss/spirit_greatsword.png",
+      "etag": "a166a9e82d3d16a01f28130a44802307",
+      "last_modified": "2026-10-03T14:22:25.928Z",
+      "size": 170952,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/robot/robot_armor.png",
+      "etag": "ad2e48f7ab711e10207909399134af02",
+      "last_modified": "2026-10-04T00:10:15.448Z",
+      "size": 100089,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/robot/robot_boots.png",
+      "etag": "308059f09641c8ea2bac3ce6ececb133",
+      "last_modified": "2026-10-04T00:10:18.232Z",
+      "size": 75112,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/robot/robot_gauntlets.png",
+      "etag": "d40d58297617e2207e4feb4ce736a65d",
+      "last_modified": "2026-10-04T00:10:20.916Z",
+      "size": 84707,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/robot/robot_helmet.png",
+      "etag": "07ce9de08e29fe39be756aaaa223d218",
+      "last_modified": "2026-10-04T00:10:23.971Z",
+      "size": 86511,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/robot/robot_ring.png",
+      "etag": "d14e9796d8ddaf87942498930b052184",
+      "last_modified": "2026-10-04T00:10:26.917Z",
+      "size": 63922,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/robot/robot_sword.png",
+      "etag": "d5bad074b4092ec7e48f3204be262cdf",
+      "last_modified": "2026-10-04T00:10:29.857Z",
+      "size": 57856,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/skeleton/skeleton_armor.png",
+      "etag": "84c94316eccd23734210478c6baa882c",
+      "last_modified": "2026-10-04T00:10:32.510Z",
+      "size": 96316,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/skeleton/skeleton_boots.png",
+      "etag": "cdc543eeca27e2588af3495a425102ae",
+      "last_modified": "2026-10-04T00:10:35.394Z",
+      "size": 72958,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/skeleton/skeleton_gauntlets.png",
+      "etag": "0b7e2d223d2783c675e6fb92dbdecf43",
+      "last_modified": "2026-10-04T00:10:38.099Z",
+      "size": 88948,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/skeleton/skeleton_helmet.png",
+      "etag": "b99d472272b0aa77db20a5bb67a4b804",
+      "last_modified": "2026-10-04T00:10:40.625Z",
+      "size": 95335,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/skeleton/skeleton_ring.png",
+      "etag": "17f14579a43e9548a8e5029f785f6223",
+      "last_modified": "2026-10-04T00:10:43.346Z",
+      "size": 68087,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/skeleton/skeleton_sword.png",
+      "etag": "140cfcb1e1301f7e60ed038ec5401a92",
+      "last_modified": "2026-10-04T00:10:45.978Z",
+      "size": 63537,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3778,9 +6506,42 @@
     },
     {
       "key": "ui/equipment-icons/wings/angel_wings.png",
-      "etag": "f72e69677c29b7d35a4ee376301955fe",
-      "last_modified": "2026-09-09T09:23:24.973Z",
-      "size": 786444,
+      "etag": "2c4a89a98cba42adc9131f47bcac599c",
+      "last_modified": "2026-10-04T00:10:48.909Z",
+      "size": 45935,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/wings/azure_wings.png",
+      "etag": "2c4a89a98cba42adc9131f47bcac599c",
+      "last_modified": "2026-09-30T02:48:32.867Z",
+      "size": 45935,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/wings/robot_wings.png",
+      "etag": "14818d87ba005eff22824e55c062cdac",
+      "last_modified": "2026-09-30T02:48:36.184Z",
+      "size": 69742,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/wings/skeleton_wings.png",
+      "etag": "8c50738a9902d6a0252e997c90351638",
+      "last_modified": "2026-09-30T02:48:39.438Z",
+      "size": 54815,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3931,10 +6692,43 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/item-icons/BOSS_G4_G5_VALIDATION.json",
+      "etag": "384598ee773580933b725849ec719fca",
+      "last_modified": "2026-10-01T13:55:55.203Z",
+      "size": 1920,
+      "http_metadata": {
+        "contentType": "application/json"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/item-icons/chests/equipment_chest.png",
       "etag": "49fa99ded3672930200a620cedab555a",
       "last_modified": "2026-09-09T09:50:18.605Z",
       "size": 95452,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/currency/arena_coin.png",
+      "etag": "84de0248e7490aff3452220ea0bdbda1",
+      "last_modified": "2026-09-28T04:40:38.597Z",
+      "size": 110155,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/currency/arena_ticket.png",
+      "etag": "3e125fafb224b0cc6e3560db20484a47",
+      "last_modified": "2026-09-28T04:40:42.187Z",
+      "size": 64065,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3957,6 +6751,50 @@
       "etag": "0ec1c00070785ef0251a77d51eff4a14",
       "last_modified": "2026-09-09T09:50:24.826Z",
       "size": 116270,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/boss_hide.png",
+      "etag": "7bc6aa1d148b9472a588dac256972bb5",
+      "last_modified": "2026-09-30T02:48:42.798Z",
+      "size": 87675,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/boss_horn.png",
+      "etag": "2dc9e83170f95510e04a766cced7a519",
+      "last_modified": "2026-09-30T02:48:45.972Z",
+      "size": 58991,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/earth_stone.png",
+      "etag": "9685db7626b113b22aad88eaa8ff65c6",
+      "last_modified": "2026-10-03T14:22:29.343Z",
+      "size": 102585,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/fire_stone.png",
+      "etag": "26f17733c91c229bb4cd468a112b1817",
+      "last_modified": "2026-10-03T14:22:32.641Z",
+      "size": 86834,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3997,10 +6835,32 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/item-icons/materials/protection_stone.png",
+      "etag": "cbd137483742721b0d3735e27c2043f0",
+      "last_modified": "2026-09-30T02:48:49.410Z",
+      "size": 110358,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/item-icons/materials/stone.png",
       "etag": "5ce0348bd1cf554d5cc2360afc1d1a6d",
       "last_modified": "2026-09-09T09:50:37.257Z",
       "size": 85618,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/materials/water_stone.png",
+      "etag": "0edad388f256ebe78bc794861c6f68cf",
+      "last_modified": "2026-10-03T14:22:36.043Z",
+      "size": 92639,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -4100,6 +6960,39 @@
       "etag": "21017cb4fb767db4af8f517da7230d98",
       "last_modified": "2026-09-09T09:51:05.985Z",
       "size": 51652,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/recipes/recipe_azure.png",
+      "etag": "3a9dbc43c701bc8af98fe715022890e6",
+      "last_modified": "2026-09-30T02:48:52.469Z",
+      "size": 100045,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/recipes/recipe_robot.png",
+      "etag": "31110b7177551d0f586827e2f6eb8b5b",
+      "last_modified": "2026-09-30T02:48:56.986Z",
+      "size": 91598,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/item-icons/recipes/recipe_skeleton.png",
+      "etag": "f1d42a16fc995e567a14d9a991f267be",
+      "last_modified": "2026-09-30T02:49:00.207Z",
+      "size": 95479,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -4254,6 +7147,435 @@
       "etag": "65fe476842cda1721fa39046de35fbdd",
       "last_modified": "2026-09-14T04:35:14.466Z",
       "size": 37465,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/profile-frames/arena_rank_1.png",
+      "etag": "35cfb2565cc54e2a2a30977e62a5edea",
+      "last_modified": "2026-10-04T00:10:51.475Z",
+      "size": 89674,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/profile-frames/arena_rank_2.png",
+      "etag": "f12af53e98422aa991559f079dfce744",
+      "last_modified": "2026-10-04T00:10:54.046Z",
+      "size": 86197,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/profile-frames/arena_rank_3.png",
+      "etag": "5423543ed7989658b46731283f422350",
+      "last_modified": "2026-10-04T00:10:56.662Z",
+      "size": 82111,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/armor_break_mastery.png",
+      "etag": "6295af158d125b62d1971a19d8da64f0",
+      "last_modified": "2026-10-04T06:02:39.418Z",
+      "size": 38177,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/battle_hardened.png",
+      "etag": "cf792ccec98a957fc2cdb9273b039113",
+      "last_modified": "2026-10-04T06:02:42.662Z",
+      "size": 37842,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/blade_storm.png",
+      "etag": "872c0bae268c52babaf7b7e5d17e9de4",
+      "last_modified": "2026-10-04T06:02:45.844Z",
+      "size": 37760,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/bloodlust.png",
+      "etag": "0313ef883d744187e87463ef14346660",
+      "last_modified": "2026-10-04T06:02:49.595Z",
+      "size": 37664,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/counter.png",
+      "etag": "64f33aa04f108644a64f9bfc29efad0c",
+      "last_modified": "2026-10-04T06:02:53.078Z",
+      "size": 36742,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/critical_mastery.png",
+      "etag": "5350855447c4c609d8d8199f84f330a2",
+      "last_modified": "2026-10-04T06:02:56.189Z",
+      "size": 37107,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/debilitating_edge.png",
+      "etag": "7d1cacc8f462eb911ee06a6aeca82904",
+      "last_modified": "2026-10-04T06:02:59.194Z",
+      "size": 37385,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/disruption.png",
+      "etag": "0ac4c37c27dd3d3ebc79a73fbeeb0a23",
+      "last_modified": "2026-10-04T06:03:02.326Z",
+      "size": 41233,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/exploit_weakness.png",
+      "etag": "0c6f7884ae6051c0900761ba41c1394b",
+      "last_modified": "2026-10-04T06:03:05.888Z",
+      "size": 42321,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/finishing_blow.png",
+      "etag": "f96203768edc45280a4fd03b1334a073",
+      "last_modified": "2026-10-04T06:03:08.932Z",
+      "size": 37145,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/fortress.png",
+      "etag": "2ce5a44fbd1ef9ed408b5328da62ba0f",
+      "last_modified": "2026-10-04T06:03:12.133Z",
+      "size": 41626,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/guard.png",
+      "etag": "5ef78d7020f46e8c0dea7e91203130e9",
+      "last_modified": "2026-10-04T06:03:15.299Z",
+      "size": 38406,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/heavy_blow.png",
+      "etag": "430ac7cb39c84cb1c6c58f2352a0decd",
+      "last_modified": "2026-10-04T06:03:18.698Z",
+      "size": 39022,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/iron_body.png",
+      "etag": "735b8a41dfc2030748d09e04557832ea",
+      "last_modified": "2026-10-04T06:03:21.797Z",
+      "size": 38447,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/killer_instinct.png",
+      "etag": "9a9b1734a8aa40af1ca7d4dd4178f903",
+      "last_modified": "2026-10-04T06:03:24.814Z",
+      "size": 36293,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/last_stand.png",
+      "etag": "8aab9139e9d8c4f7b09b9e027a50f7b2",
+      "last_modified": "2026-10-04T06:03:27.985Z",
+      "size": 38081,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/life_drain.png",
+      "etag": "b26237be1e372e813d855b0e5c9199df",
+      "last_modified": "2026-10-04T06:03:31.269Z",
+      "size": 38080,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/master_tactician.png",
+      "etag": "cf62687773b5fba3b21b06e43df44e0f",
+      "last_modified": "2026-10-04T06:03:34.942Z",
+      "size": 42095,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/power_strike.png",
+      "etag": "2df3185d22fa13bcfa01d4d2619d66b2",
+      "last_modified": "2026-10-04T06:03:37.946Z",
+      "size": 36524,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/quick_recovery.png",
+      "etag": "f228aedeb16179b36d85a1188fd4ff3b",
+      "last_modified": "2026-10-04T06:03:40.930Z",
+      "size": 38132,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/rampage.png",
+      "etag": "5277cbad2b4bac97279c9ada22f0cd74",
+      "last_modified": "2026-10-04T06:03:43.917Z",
+      "size": 38899,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/recovery.png",
+      "etag": "c42d021ae28ede53464d49a55809db89",
+      "last_modified": "2026-10-04T06:03:46.942Z",
+      "size": 38123,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/relentless_fury.png",
+      "etag": "1381e34216e0398f116da9b7444bf9d6",
+      "last_modified": "2026-10-04T06:03:50.162Z",
+      "size": 38818,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/second_wind.png",
+      "etag": "ecfb04772bea74cf4f20f8ff1c4abb31",
+      "last_modified": "2026-10-04T06:03:53.259Z",
+      "size": 39156,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/shield_wall.png",
+      "etag": "40cce8bcd3cc18663386b80cd66b5b5c",
+      "last_modified": "2026-10-04T06:03:56.349Z",
+      "size": 38187,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/silent_edge.png",
+      "etag": "5caa5dda6d444d869c57f121de3724d9",
+      "last_modified": "2026-10-04T06:03:59.911Z",
+      "size": 39430,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/skill_efficiency.png",
+      "etag": "7df6d4cd67a1099e9c39a65e59a07461",
+      "last_modified": "2026-10-04T06:04:02.991Z",
+      "size": 36594,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/spirit_drain.png",
+      "etag": "5d7c562843b886f6544952c27d12f7e9",
+      "last_modified": "2026-10-04T06:04:06.334Z",
+      "size": 38700,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/stunning_blow.png",
+      "etag": "0fd91360c862ec43aae9e475e3cf911d",
+      "last_modified": "2026-10-04T06:04:09.420Z",
+      "size": 40595,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/survival_instinct.png",
+      "etag": "167faf3b60083baf8e79a6e2496292e8",
+      "last_modified": "2026-10-04T06:04:12.581Z",
+      "size": 37489,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/thorned_aegis.png",
+      "etag": "479f3bf257c7d8f20e340e9dcc047dc6",
+      "last_modified": "2026-10-04T06:04:15.659Z",
+      "size": 40537,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/toughness.png",
+      "etag": "d4b2ee86d6a4f021cca96fb8ebbcf806",
+      "last_modified": "2026-10-04T06:04:18.748Z",
+      "size": 36905,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/toxic_mastery.png",
+      "etag": "eb670073c99129d3f16f24da33fb65f3",
+      "last_modified": "2026-10-04T06:04:21.859Z",
+      "size": 41194,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/toxic_strike.png",
+      "etag": "3aff0bb14838d71e2c0953ec3d3f0857",
+      "last_modified": "2026-10-04T06:04:24.970Z",
+      "size": 38145,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/usurper.png",
+      "etag": "053a22764fb6aa0774fcb7e12d0267c0",
+      "last_modified": "2026-10-04T06:04:28.107Z",
+      "size": 38554,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/skill-icons/hero/weapon_mastery.png",
+      "etag": "f30d6356b704e5a696ab7e027a1920a5",
+      "last_modified": "2026-10-04T06:04:31.245Z",
+      "size": 37079,
       "http_metadata": {
         "contentType": "image/png"
       },
