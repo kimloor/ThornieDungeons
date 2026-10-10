@@ -337,9 +337,11 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
 
     enqueueDamageFeedbackEvents(events) {
       if (!Array.isArray(events) || !events.length) return;
-      void this.presentationQueue.enqueue({
-        run: speed => Promise.all(events.map((event, index) => this.showDamagePopup(event, speed, index)))
-      });
+      // Feedback runs alongside the action animation; it must never occupy the
+      // authoritative presentation queue or delay the next resolved turn.
+      const speed = this.presentationQueue.getSpeed();
+      void Promise.all(events.map((event, index) => this.showDamagePopup(event, speed, index)))
+        .catch(error => onError?.(error));
     }
 
     enqueueDungeonPresentationCues(snapshot, isFirstDungeonSnapshot) {
