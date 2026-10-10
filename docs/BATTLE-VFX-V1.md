@@ -374,7 +374,7 @@ Approved visual contract:
 - Feedback is placed near the resolved target, above the battlefield sprite layer and below actor name/status UI, and never captures pointer input.
 - Dungeon and Arena use the same shared Phaser presentation behavior.
 - Use log sequence IDs to avoid replaying already-presented events after repeated snapshots or resume. A new battle establishes a history baseline rather than replaying old numbers.
-- Skip suppresses accumulated feedback for the fast-resolved battle; missing or failed presentation must not delay or alter combat resolution.
+- Feedback runs outside the authoritative action queue, so Skip and missing/failed presentation never delay or alter combat resolution.
 
 Only resolved `damage`, `heal`, `miss`, and `block` log entries with valid target IDs may create feedback. A critical style is allowed only when the resolved damage log explicitly marks `crit: true`.
 
