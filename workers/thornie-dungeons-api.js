@@ -5556,12 +5556,64 @@ async function handleGetArenaV2History(db, id, session, characterId) {
   const context = await arenaV2Context(db, id, session, characterId);
   if (context.error) return json({ error: context.error });
   const historyTable = "arena_" + "match_history";
+  const selectHistory = `SELECT h.*,
+      (SELECT COUNT(*) FROM arena_match_actions a WHERE a.match_id = h.match_id) AS replay_action_count,
+      (SELECT MIN(a.action_seq) FROM arena_match_actions a WHERE a.match_id = h.match_id) AS replay_first_seq,
+      (SELECT MAX(a.action_seq) FROM arena_match_actions a WHERE a.match_id = h.match_id) AS replay_last_seq
+    FROM ${historyTable} h WHERE h.season_id = ? AND __CHARACTER_FILTER__
+    ORDER BY h.completed_at DESC, h.match_id DESC LIMIT 5`;
   const [attack, defense] = await Promise.all([
-    db.prepare(`SELECT * FROM ${historyTable} WHERE season_id = ? AND attacker_character_id = ? ORDER BY completed_at DESC, match_id DESC LIMIT 5`).bind(context.season.season_id, characterId).all(),
-    db.prepare(`SELECT * FROM ${historyTable} WHERE season_id = ? AND defender_character_id = ? ORDER BY completed_at DESC, match_id DESC LIMIT 5`).bind(context.season.season_id, characterId).all(),
+    db.prepare(selectHistory.replace("__CHARACTER_FILTER__", "h.attacker_character_id = ?")).bind(context.season.season_id, characterId).all(),
+    db.prepare(selectHistory.replace("__CHARACTER_FILTER__", "h.defender_character_id = ?")).bind(context.season.season_id, characterId).all(),
   ]);
-  const map = row => ({ matchId: row.match_id, completedAt: row.completed_at, result: row.attacker_result, resolution: row.resolution, attackerCharacterId: row.attacker_character_id, defenderCharacterId: row.defender_character_id || null, defenderType: row.defender_type, arenaCoinEarned: Number(row.arena_coin_earned) || 0, attackerRatingChange: Number(row.attacker_rating_change) || 0, defenderRatingChange: Number(row.defender_rating_change) || 0, attackerName: row.attacker_name, defenderName: row.defender_name });
+  const map = row => {
+    const count = Number(row.replay_action_count) || 0;
+    const replayAvailable = count > 0 && count <= 40 && Number(row.replay_first_seq) === 1 && Number(row.replay_last_seq) === count;
+    return { matchId: row.match_id, completedAt: row.completed_at, result: row.attacker_result, resolution: row.resolution, attackerCharacterId: row.attacker_character_id, defenderCharacterId: row.defender_character_id || null, defenderType: row.defender_type, arenaCoinEarned: Number(row.arena_coin_earned) || 0, attackerRatingChange: Number(row.attacker_rating_change) || 0, defenderRatingChange: Number(row.defender_rating_change) || 0, attackerName: row.attacker_name, defenderName: row.defender_name, replayAvailable };
+  };
   return json({ ok: true, attack: (attack.results || []).map(map), defense: (defense.results || []).map(map) });
+}
+async function handleGetArenaV2Replay(db, id, session, characterId, matchId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const key = String(matchId || "").trim();
+  if (!key) return json({ error: "missing_match_id" }, 400);
+  const history = await db.prepare(`
+    SELECT match_id, completed_at FROM arena_match_history
+    WHERE season_id = ? AND match_id = ?
+      AND (attacker_character_id = ? OR defender_character_id = ?)
+  `).bind(context.season.season_id, key, characterId, characterId).first();
+  if (!history) return json({ error: "arena_replay_not_found" }, 404);
+  const match = await db.prepare(`
+    SELECT match_id, season_id, status, snapshot_json, result_json
+    FROM arena_matches WHERE match_id = ? AND season_id = ?
+  `).bind(key, context.season.season_id).first();
+  if (!match || match.status !== "done") return json({ ok: true, replayAvailable: false });
+  const actionResult = await db.prepare(`
+    SELECT action_seq, response_json, created_at FROM arena_match_actions
+    WHERE match_id = ? ORDER BY action_seq ASC LIMIT 41
+  `).bind(key).all();
+  const actions = actionResult.results || [];
+  if (!actions.length || actions.length > 40) return json({ ok: true, replayAvailable: false });
+  const frames = [];
+  for (let index = 0; index < actions.length; index++) {
+    const action = actions[index];
+    if (Number(action.action_seq) !== index + 1) return json({ ok: true, replayAvailable: false });
+    const response = parseJsonColumn(action.response_json, null);
+    const state = response?.state;
+    if (!state || state.mode !== "arena" || Number(state.actionSeq) !== index + 1 || !Array.isArray(state.units) || !Array.isArray(state.log)) {
+      return json({ ok: true, replayAvailable: false });
+    }
+    frames.push({ actionSeq: index + 1, createdAt: action.created_at, state });
+  }
+  const snapshot = parseJsonColumn(match.snapshot_json, null);
+  if (!snapshot?.attacker || !snapshot?.defender) return json({ ok: true, replayAvailable: false });
+  try {
+    const initialState = arenaCombatPublicState(arenaCombatAdvance(arenaCombatState(snapshot, key)));
+    return json({ ok: true, replayAvailable: true, replay: { version: 1, matchId: key, completedAt: history.completed_at, snapshot, initialState, frames, result: parseJsonColumn(match.result_json, null) } });
+  } catch {
+    return json({ ok: true, replayAvailable: false });
+  }
 }
 async function handleGetArenaV2Ranking(db, id, session, characterId) {
   const context = await arenaV2Context(db, id, session, characterId);
@@ -7153,6 +7205,7 @@ async function apiFetch(request, env) {
         if (action === "getArenaV2Status") return await handleGetArenaV2Status(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2Opponents") return await handleGetArenaV2Opponents(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2History") return await handleGetArenaV2History(db, id, auth, p.get("characterId"));
+        if (action === "getArenaV2Replay") return await handleGetArenaV2Replay(db, id, auth, p.get("characterId"), p.get("matchId"));
         if (action === "getArenaV2Ranking") return await handleGetArenaV2Ranking(db, id, auth, p.get("characterId"));
         if (action === "getArenaV2PlayerCard") return await handleGetArenaV2PlayerCard(db, id, auth, p.get("characterId"), p.get("opponentKey"));
         if (action === "getArenaV2Match") return await handleGetArenaV2Match(db, id, auth, p.get("characterId"), p.get("matchId"));
