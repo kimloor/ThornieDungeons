@@ -73,7 +73,7 @@ Complete and replace the unfinished generic Accessory path before Ver 1.1.0:
 Do not weaken server reward/inventory authority or silently redesign unrelated Reward V2 economy.
 
 ### Gate C — Ver 1.1.0 Release Acceptance
-**Status: READY / NEXT**
+**Status: IN PROGRESS — evidence recorded 2026-10-10; AWAITING Owner approval for the Ver 1.1.0 bump (C8)**
 **Risk: RELEASE GATE — no new gameplay authority intended**
 
 Gate C is the final acceptance gate before declaring the pre-V1.1.0 release complete. It verifies the current Production state as a whole, with special attention to the systems changed during Gates A/B/B.5 and the approved Dungeon V2 Skill/Event work.
@@ -122,6 +122,27 @@ Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area
 - Record deployment workflow/run IDs and final Production SHA.
 - Record the missing W5.5 Security Hardening post-merge Production verification.
 - Review open security follow-ups in the Owner's confidential plan; each is either fixed, or explicitly accepted as a known issue by the Owner at C8.
+
+#### Gate C evidence record (2026-10-10, `main` `a0469e5`)
+
+| Check | Result |
+| --- | --- |
+| C1 baseline | `main` clean; no unmerged required work |
+| C2 build | `node build.js` 63 modules; `index.html` regenerated with no diff; `git diff --check` clean |
+| C3 regression | full suite 649/649 on repeated separate runs (20 consecutive runs 640/640 on `a16cb3e`; 5 runs 649/649 on the final defeat-log branch); Production D1 has `item_provenance` and `item_ownership_events` |
+| C4 Dungeon | Owner production test passed after fixes below |
+| C5 Accessory/Inventory | Owner production test passed |
+| C6 Mobile/UI | Owner production test passed |
+| C7 smoke | Deploy API / Deploy Frontend / Battle Core parity succeeded on `5513f3c`; Deploy Frontend succeeded on `a0469e5`; Sync R2 asset manifest repaired (PR #113) and scheduled run succeeded |
+
+Fixes made inside Gate C: test determinism for Event Floor rewards (PR #109, #110); Raid Wing pre-rolled Enchant options, Boss Enrage battle log, Dungeon monster pool by floor with fixed bosses and resume-safe legacy checkpoints (PR #112, contract in `DUNGEON-FLOOR-V1.md` section 7); `Sync R2 asset manifest` jq argument-limit failure (PR #113); full battle log on the Defeat screen (PR #114).
+
+Open before C8 approval:
+- Owner confirms a newly issued Raid Wing arrives with Enchant options on Production.
+
+Known non-blocking issues accepted for Ver 1.1.0:
+- Raid Wings issued before the fix may still have empty Enchant slots; no data repair scheduled (Production data is test data).
+- Open security follow-ups are tracked privately by the Owner and are accepted or scheduled there; they are intentionally not detailed in this public repository.
 
 #### C8 — Release decision
 Gate C passes only when mandatory focused tests, build/generated-file/diff checks and Production smoke pass; no P0/P1 blocker or critical regression remains; non-blocking known issues are recorded; and Owner approves the release/version bump.
@@ -295,7 +316,7 @@ Accessory V2 Completion                          ✅ COMPLETE
                      ↓
 Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
-Gate C — Ver 1.1.0 Release Acceptance            🟡 READY / NEXT
+Gate C — Ver 1.1.0 Release Acceptance            🟡 IN PROGRESS (awaiting Owner approval)
                      ↓
 Visible game version                             Ver 1.1.0
                      ↓
