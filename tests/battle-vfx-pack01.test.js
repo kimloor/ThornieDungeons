@@ -266,7 +266,7 @@ test("Phaser renders red Critical burst without text and deduplicates replayed l
   assert.match(scene, /this\.add\.star\(0, 0, 8,[\s\S]*0xff283b/);
   assert.match(scene, /critical \? "#ff3548"/);
   assert.match(scene, /critical \? 1\.12 : 1\.04/);
-  assert.match(scene, /const baseDuration = critical \|\| isHeal \? 1200 : 820/);
+  assert.match(scene, /const baseDuration = critical \|\| isHeal \? 1440 : 820/);
   assert.match(scene, /damageFeedbackEvents = feedback\.slice\(\)\.sort/);
   assert.match(bridge, /entry\.displayAmount \?\? entry\.amount/);
   assert.match(read("src/systems/battleCore.js"), /amount > dealt \? \{ displayAmount: amount \} : \{\}/);

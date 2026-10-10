@@ -370,7 +370,7 @@ Approved visual contract:
 - Heal: green positive number.
 - Miss: `MISS`; block: `BLOCK`.
 - Each resolved hit is shown separately, including multi-hit actions; simultaneous hits use small offsets to avoid exact overlap.
-- Normal damage, MISS and BLOCK lifetime is 820 ms at x1 (about 410 ms at x2). Critical damage and Heal lifetime is 1200 ms at x1 (about 600 ms at x2).
+- Normal damage, MISS and BLOCK lifetime is 820 ms at x1 (about 410 ms at x2). Critical damage and Heal lifetime is 1440 ms at x1 (about 720 ms at x2), 20% longer than the previous timing.
 - When a hit defeats a target, the popup shows the full resolved hit amount even if it exceeds the target's remaining HP; the actual HP loss remains authoritative for combat. The optional `displayAmount` is presentation metadata only and must never be used for HP, rewards, or settlement.
 - Feedback is placed near the resolved target, above the battlefield sprite layer and below actor name/status UI, and never captures pointer input.
 - Dungeon and Arena use the same shared Phaser presentation behavior.
