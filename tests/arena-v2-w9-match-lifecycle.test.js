@@ -27,8 +27,8 @@ class D1 {
 function loadInternals() {
   const source = workerSource.replace('export default {', 'const workerDefault = {') + `
 globalThis.__arena = {
-  workerDefault, handleGetArenaV2Status, handleGetArenaV2Opponents,
-  handlePrepareArenaV2Match, handleActivateArenaV2Match, handleGetArenaV2Match,
+  workerDefault, handleGetArenaV2Status, handleGetArenaV2Opponents, handleGetArenaV2History,
+  handlePrepareArenaV2Match, handleActivateArenaV2Match, handleGetArenaV2Match, handleGetArenaV2Replay,
   ensureArenaSetup, ARENA_PREPARED_TTL_MS, ARENA_ACTIVE_DURATION_MS
 };`;
   const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
@@ -288,4 +288,50 @@ test('W9.5 adds no combat resolver, settlement, AI or W9.6/W9.7 scope', () => {
   const section = workerSource.slice(start, end);
   assert.match(section, /prepareArenaV2Match|handlePrepareArenaV2Match/);
   assert.doesNotMatch(section, /settleArena|defense AI|lowest HP|arena_match_history/);
+});
+
+test('Arena History Replay returns ordered recorded frames only to participants without changing tickets or settlement', async () => {
+  const db = createDb();
+  const { seasonId, opponents } = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const activated = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  const matchId = prepared.match.matchId, completedAt = new Date().toISOString();
+  db.raw.prepare("UPDATE arena_matches SET status = 'done', completed_at = ?, result_json = ? WHERE match_id = ?").run(completedAt, JSON.stringify({ result: 'win', settlementVersion: 1 }), matchId);
+  db.raw.prepare(`INSERT INTO arena_match_history (match_id, season_id, attacker_character_id, defender_type, defender_character_id, defender_bot_id, attacker_name, defender_name, attacker_result, attacker_rating_change, defender_rating_change, arena_coin_earned, resolution, completed_at) VALUES (?, ?, 'char-10', ?, ?, ?, 'Attacker', 'Opponent', 'win', 10, 0, 100, 'normal', ?)`).run(matchId, seasonId, prepared.match.defenderType, prepared.match.defenderCharacterId, prepared.match.defenderBotId || '', completedAt);
+  const baseState = JSON.parse(JSON.stringify(activated.match.state));
+  for (let seq = 1; seq <= 2; seq++) {
+    const frame = { ...baseState, actionSeq: seq, log: [...(baseState.log || []), { seq: 100 + seq, round: 1, type: seq === 1 ? 'damage' : 'heal', text: seq === 1 ? 'Recorded damage' : 'Recorded heal' }] };
+    db.raw.prepare("INSERT INTO arena_match_actions (match_id, action_key, action_seq, response_json, created_at) VALUES (?, ?, ?, ?, ?)").run(matchId, `test-action-${seq}`, seq, JSON.stringify({ ok: true, actionSeq: seq, state: frame }), completedAt);
+  }
+  const ticketsBefore = db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets;
+  const receiptsBefore = db.raw.prepare("SELECT COUNT(*) AS c FROM arena_idempotency_receipts WHERE match_id = ?").get(matchId).c;
+  const history = await body(await arena.handleGetArenaV2History(db, 'p1', session('p1'), 'char-10'));
+  assert.equal(history.attack.find(row => row.matchId === matchId).replayAvailable, true);
+  const replay = await body(await arena.handleGetArenaV2Replay(db, 'p1', session('p1'), 'char-10', matchId));
+  assert.equal(replay.replayAvailable, true);
+  assert.deepEqual(replay.replay.frames.map(frame => frame.actionSeq), [1, 2]);
+  assert.equal(replay.replay.initialState.mode, 'arena');
+  assert.equal(replay.replay.snapshot.attacker.name, 'Attacker');
+  const unauthorized = await body(await arena.handleGetArenaV2Replay(db, 'p2', session('p2'), 'char-11', matchId));
+  assert.equal(unauthorized.error, 'arena_replay_not_found');
+  assert.equal(db.raw.prepare("SELECT status FROM arena_matches WHERE match_id = ?").get(matchId).status, 'done');
+  assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, ticketsBefore);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_idempotency_receipts WHERE match_id = ?").get(matchId).c, receiptsBefore);
+  db.close();
+});
+
+test('Arena History Replay rejects incomplete action sequences instead of fabricating missing events', async () => {
+  const db = createDb();
+  const { seasonId, opponents } = await ready(db);
+  const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const activated = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+  const matchId = prepared.match.matchId, completedAt = new Date().toISOString();
+  db.raw.prepare("UPDATE arena_matches SET status = 'done', completed_at = ?, result_json = ? WHERE match_id = ?").run(completedAt, JSON.stringify({ result: 'draw', settlementVersion: 1 }), matchId);
+  db.raw.prepare(`INSERT INTO arena_match_history (match_id, season_id, attacker_character_id, defender_type, defender_character_id, defender_bot_id, attacker_name, defender_name, attacker_result, attacker_rating_change, defender_rating_change, arena_coin_earned, resolution, completed_at) VALUES (?, ?, 'char-10', ?, ?, ?, 'Attacker', 'Opponent', 'draw', 0, 0, 0, 'normal', ?)`).run(matchId, seasonId, prepared.match.defenderType, prepared.match.defenderCharacterId, prepared.match.defenderBotId || '', completedAt);
+  const state = JSON.parse(JSON.stringify(activated.match.state));
+  db.raw.prepare("INSERT INTO arena_match_actions (match_id, action_key, action_seq, response_json, created_at) VALUES (?, 'gap-action', 2, ?, ?)").run(matchId, JSON.stringify({ ok: true, actionSeq: 2, state: { ...state, actionSeq: 2 } }), completedAt);
+  const replay = await body(await arena.handleGetArenaV2Replay(db, 'p1', session('p1'), 'char-10', matchId));
+  assert.equal(replay.ok, true);
+  assert.equal(replay.replayAvailable, false);
+  db.close();
 });

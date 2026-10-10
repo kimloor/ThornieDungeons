@@ -805,7 +805,10 @@ History row should show relevant:
 - Rating change;
 - time;
 - Attack rows may show Arena Coin earned;
-- Defense rows may expose REVENGE where valid.
+- Defense rows may expose REVENGE where valid;
+- REPLAY is available only when the complete, ordered action ledger exists; older/partial records show REPLAY N/A.
+
+Arena-only Replay contract: see [ARENA-HISTORY-REPLAY-V1.md](ARENA-HISTORY-REPLAY-V1.md). Playback is read-only, uses recorded public state frames, and never re-settles a match or grants rewards.
 
 Top summary:
 - Defense Wins;

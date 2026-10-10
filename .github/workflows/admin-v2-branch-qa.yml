@@ -21,6 +21,7 @@ on:
       - "tests/battle-vfx-pack01.test.js"
       - "tests/arena-v2-w9-phaser.test.js"
       - "docs/BATTLE-VFX-V1.md"
+      - "tests/arena-v2-w9-match-lifecycle.test.js"
       - "src/ui/components.js"
       - "src/ui/App.js"
       - "src/state/api.js"
@@ -68,6 +69,8 @@ jobs:
         run: node --test tests/battle-end-flow-v1.test.js
       - name: Phaser damage feedback regressions
         run: node --test tests/battle-vfx-pack01.test.js tests/arena-v2-w9-phaser.test.js
+      - name: Arena History Replay regression
+        run: node --test tests/arena-v2-w9-match-lifecycle.test.js
       - name: Auth V2 regression
         run: |
           # Skip only the pre-existing timing-sensitive retryAfter > 30 assertion in this CI workspace.

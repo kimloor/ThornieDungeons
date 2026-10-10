@@ -385,6 +385,9 @@ function cloudGetArenaV2PlayerCard(url, characterId, opponentKey) {
 function cloudGetArenaV2History(url, characterId) {
   return cloudAuthGet(url, { action: "getArenaV2History", characterId });
 }
+function cloudGetArenaV2Replay(url, characterId, matchId) {
+  return cloudAuthGet(url, { action: "getArenaV2Replay", characterId, matchId });
+}
 function cloudGetArenaV2Ranking(url, characterId) {
   return cloudAuthGet(url, { action: "getArenaV2Ranking", characterId });
 }
