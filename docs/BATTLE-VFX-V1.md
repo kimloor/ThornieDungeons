@@ -359,7 +359,26 @@ Before considering a VFX integration complete:
 
 ---
 
-## 12. Future packs
+
+## 12. Floating damage feedback
+
+Damage feedback is a Phaser presentation layer driven only by the completed combat log. It must never calculate, round for gameplay, or infer hit/critical outcomes.
+
+Approved visual contract:
+- Normal damage: white number with a dark outline.
+- Critical damage: red number with a red jagged burst frame and a short pop-in; do not show the word `CRITICAL!`.
+- Heal: green positive number.
+- Miss: `MISS`; block: `BLOCK`.
+- Each resolved hit is shown separately, including multi-hit actions; simultaneous hits use small offsets to avoid exact overlap.
+- Nominal lifetime is 820 ms at x1 and scales with presentation speed (about 410 ms at x2).
+- Feedback is placed near the resolved target, above the battlefield sprite layer and below actor name/status UI, and never captures pointer input.
+- Dungeon and Arena use the same shared Phaser presentation behavior.
+- Use log sequence IDs to avoid replaying already-presented events after repeated snapshots or resume. A new battle establishes a history baseline rather than replaying old numbers.
+- Skip may bypass feedback waits; missing or failed presentation must not delay or alter combat resolution.
+
+Only resolved `damage`, `heal`, `miss`, and `block` log entries with valid target IDs may create feedback. A critical style is allowed only when the resolved damage log explicitly marks `crit: true`.
+
+## 13. Future packs
 
 Future VFX packs can cover:
 - Stunning Blow
