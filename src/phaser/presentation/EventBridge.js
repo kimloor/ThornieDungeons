@@ -256,7 +256,7 @@ function battleDamageFeedbackEvents(state) {
       type: String(entry.type),
       actorId: String(entry.actorId || ""),
       targetId: String(entry.targetId || ""),
-      amount: Math.max(0, Number(entry.amount) || 0),
+      amount: Math.max(0, Number(entry.displayAmount ?? entry.amount) || 0),
       crit: entry.type === "damage" && entry.crit === true
     }))
     .filter(entry => entry.targetId && (
