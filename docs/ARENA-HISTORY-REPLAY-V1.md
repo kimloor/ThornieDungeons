@@ -19,6 +19,13 @@ Status: **RELEASE CANDIDATE 1.0.52 — QA REQUIRED**
 - Legacy, partial, or malformed ledgers show **REPLAY N/A** instead of fabricating missing actions.
 - Existing retention and current-season history rules remain unchanged; no additional long-term event retention is introduced.
 
+## Matches that finish during Activation
+- Activation resolves the opening defender/Pet turns through Battle Core. If the match ends there (for example a faster, stronger defender defeats the attacker before the first attacker action), the match is stored as done with `activated_at == completed_at`, `arenaActionSeq = 0` and **no** `arena_match_actions` rows.
+- Such a match is replayable with zero recorded frames: the endpoint re-simulates the opening from the locked snapshot and match id (the same computation Activation used) and returns `frames: []` with the terminal `initialState` (final board and log). There is no turn-by-turn animation because no player actions exist.
+- Safety guard: the re-simulated combat result and winning side must equal the stored result. On any mismatch, missing snapshot, or error the endpoint keeps returning **REPLAY N/A**; frames are never fabricated. Gapped, partial, malformed or over-40-action ledgers are still N/A.
+- The history list marks these matches as available using the same activation-finish condition; the replay endpoint remains the final authority and the client shows the existing N/A message if it answers unavailable.
+- The client shows "Match ended during the opening turns", the full opening log, and disables the Play/Replay-again button for zero-frame replays. The path stays read-only.
+
 ## QA gate
 - Test ordered frames, missing/gapped ledger fallback, participant authorization, and no mutation to Ticket balance, match status, or reward receipts.
 - Run `node --check workers/thornie-dungeons-api.js`, `node --check src/ui/components.js`, Arena lifecycle tests, Battle Core parity, and `node build.js` with `git diff --exit-code -- index.html`.
