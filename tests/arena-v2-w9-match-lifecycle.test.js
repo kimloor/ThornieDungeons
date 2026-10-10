@@ -304,6 +304,7 @@ test('Arena History Replay returns ordered recorded frames only to participants 
     db.raw.prepare("INSERT INTO arena_match_actions (match_id, action_key, action_seq, response_json, created_at) VALUES (?, ?, ?, ?, ?)").run(matchId, `test-action-${seq}`, seq, JSON.stringify({ ok: true, actionSeq: seq, state: frame }), completedAt);
   }
   const ticketsBefore = db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets;
+  const receiptsBefore = db.raw.prepare("SELECT COUNT(*) AS c FROM arena_idempotency_receipts WHERE match_id = ?").get(matchId).c;
   const history = await body(await arena.handleGetArenaV2History(db, 'p1', session('p1'), 'char-10'));
   assert.equal(history.attack.find(row => row.matchId === matchId).replayAvailable, true);
   const replay = await body(await arena.handleGetArenaV2Replay(db, 'p1', session('p1'), 'char-10', matchId));
@@ -315,7 +316,7 @@ test('Arena History Replay returns ordered recorded frames only to participants 
   assert.equal(unauthorized.error, 'arena_replay_not_found');
   assert.equal(db.raw.prepare("SELECT status FROM arena_matches WHERE match_id = ?").get(matchId).status, 'done');
   assert.equal(db.raw.prepare("SELECT tickets FROM arena_character_state WHERE character_id = 'char-10'").get().tickets, ticketsBefore);
-  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_idempotency_receipts WHERE match_id = ?").get(matchId).c, 0);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM arena_idempotency_receipts WHERE match_id = ?").get(matchId).c, receiptsBefore);
   db.close();
 });
 

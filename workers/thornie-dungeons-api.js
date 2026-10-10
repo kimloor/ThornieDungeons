@@ -5573,48 +5573,6 @@ async function handleGetArenaV2History(db, id, session, characterId) {
   };
   return json({ ok: true, attack: (attack.results || []).map(map), defense: (defense.results || []).map(map) });
 }
-async function handleGetArenaV2Replay(db, id, session, characterId, matchId) {
-  const context = await arenaV2Context(db, id, session, characterId);
-  if (context.error) return json({ error: context.error });
-  const key = String(matchId || "").trim();
-  if (!key) return json({ error: "missing_match_id" }, 400);
-  const history = await db.prepare(`
-    SELECT match_id, completed_at FROM arena_match_history
-    WHERE season_id = ? AND match_id = ?
-      AND (attacker_character_id = ? OR defender_character_id = ?)
-  `).bind(context.season.season_id, key, characterId, characterId).first();
-  if (!history) return json({ error: "arena_replay_not_found" }, 404);
-  const match = await db.prepare(`
-    SELECT match_id, season_id, status, snapshot_json, result_json
-    FROM arena_matches WHERE match_id = ? AND season_id = ?
-  `).bind(key, context.season.season_id).first();
-  if (!match || match.status !== "done") return json({ ok: true, replayAvailable: false });
-  const actionResult = await db.prepare(`
-    SELECT action_seq, response_json, created_at FROM arena_match_actions
-    WHERE match_id = ? ORDER BY action_seq ASC LIMIT 41
-  `).bind(key).all();
-  const actions = actionResult.results || [];
-  if (!actions.length || actions.length > 40) return json({ ok: true, replayAvailable: false });
-  const frames = [];
-  for (let index = 0; index < actions.length; index++) {
-    const action = actions[index];
-    if (Number(action.action_seq) !== index + 1) return json({ ok: true, replayAvailable: false });
-    const response = parseJsonColumn(action.response_json, null);
-    const state = response?.state;
-    if (!state || state.mode !== "arena" || Number(state.actionSeq) !== index + 1 || !Array.isArray(state.units) || !Array.isArray(state.log)) {
-      return json({ ok: true, replayAvailable: false });
-    }
-    frames.push({ actionSeq: index + 1, createdAt: action.created_at, state });
-  }
-  const snapshot = parseJsonColumn(match.snapshot_json, null);
-  if (!snapshot?.attacker || !snapshot?.defender) return json({ ok: true, replayAvailable: false });
-  try {
-    const initialState = arenaCombatPublicState(arenaCombatAdvance(arenaCombatState(snapshot, key)));
-    return json({ ok: true, replayAvailable: true, replay: { version: 1, matchId: key, completedAt: history.completed_at, snapshot, initialState, frames, result: parseJsonColumn(match.result_json, null) } });
-  } catch {
-    return json({ ok: true, replayAvailable: false });
-  }
-}
 async function handleGetArenaV2Ranking(db, id, session, characterId) {
   const context = await arenaV2Context(db, id, session, characterId);
   if (context.error) return json({ error: context.error });
@@ -6216,6 +6174,49 @@ function arenaCombatPublicState(state) {
 }
 function arenaCombatResult(state) {
   return state.result ? { result: state.result, winnerSide: state.winnerSide || null } : null;
+}
+
+async function handleGetArenaV2Replay(db, id, session, characterId, matchId) {
+  const context = await arenaV2Context(db, id, session, characterId);
+  if (context.error) return json({ error: context.error });
+  const key = String(matchId || "").trim();
+  if (!key) return json({ error: "missing_match_id" }, 400);
+  const history = await db.prepare(`
+    SELECT match_id, completed_at FROM arena_match_history
+    WHERE season_id = ? AND match_id = ?
+      AND (attacker_character_id = ? OR defender_character_id = ?)
+  `).bind(context.season.season_id, key, characterId, characterId).first();
+  if (!history) return json({ error: "arena_replay_not_found" }, 404);
+  const match = await db.prepare(`
+    SELECT match_id, season_id, status, snapshot_json, result_json
+    FROM arena_matches WHERE match_id = ? AND season_id = ?
+  `).bind(key, context.season.season_id).first();
+  if (!match || match.status !== "done") return json({ ok: true, replayAvailable: false });
+  const actionResult = await db.prepare(`
+    SELECT action_seq, response_json, created_at FROM arena_match_actions
+    WHERE match_id = ? ORDER BY action_seq ASC LIMIT 41
+  `).bind(key).all();
+  const actions = actionResult.results || [];
+  if (!actions.length || actions.length > 40) return json({ ok: true, replayAvailable: false });
+  const frames = [];
+  for (let index = 0; index < actions.length; index++) {
+    const action = actions[index];
+    if (Number(action.action_seq) !== index + 1) return json({ ok: true, replayAvailable: false });
+    const response = parseJsonColumn(action.response_json, null);
+    const state = response?.state;
+    if (!state || state.mode !== "arena" || Number(state.actionSeq) !== index + 1 || !Array.isArray(state.units) || !Array.isArray(state.log)) {
+      return json({ ok: true, replayAvailable: false });
+    }
+    frames.push({ actionSeq: index + 1, createdAt: action.created_at, state });
+  }
+  const snapshot = parseJsonColumn(match.snapshot_json, null);
+  if (!snapshot?.attacker || !snapshot?.defender) return json({ ok: true, replayAvailable: false });
+  try {
+    const initialState = arenaCombatPublicState(arenaCombatAdvance(arenaCombatState(snapshot, key)));
+    return json({ ok: true, replayAvailable: true, replay: { version: 1, matchId: key, completedAt: history.completed_at, snapshot, initialState, frames, result: parseJsonColumn(match.result_json, null) } });
+  } catch {
+    return json({ ok: true, replayAvailable: false });
+  }
 }
 
 function arenaPlayerGuard(player) {
