@@ -232,3 +232,13 @@ test("W9.2 existing Dungeon anchors and presentation contract remain unchanged",
   assert.match(adapter, /backgroundUrl: SHARED_PHASER_ASSET_RESOLVER\.manifest\("battleUi\.background"\)/);
   assert.match(adapter, /backgroundUrl: SHARED_PHASER_ASSET_RESOLVER\.manifest\("arenaUi\.background"\)/);
 });
+
+
+test("W9.2 Arena first resolved snapshot presents its damage feedback instead of baselining it away", () => {
+  const scene = source("src/phaser/scenes/BattleScene.js");
+  const firstSnapshot = scene.indexOf("if (isFirstSnapshot) {", scene.indexOf("syncArena(snapshot)"));
+  const firstFeedback = scene.indexOf("damageFeedbackEvents = feedback.slice().sort", firstSnapshot);
+  const firstBaseline = scene.indexOf("this.lastArenaDamageFeedbackSeq = feedback.reduce", firstSnapshot);
+  assert.ok(firstSnapshot >= 0 && firstFeedback > firstSnapshot && firstBaseline > firstFeedback);
+  assert.match(scene, /if \(isArenaPresentationSnapshot\(this\.snapshot\)\) return this\.arenaActorById\(key\)/);
+});

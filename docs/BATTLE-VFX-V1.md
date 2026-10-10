@@ -370,10 +370,11 @@ Approved visual contract:
 - Heal: green positive number.
 - Miss: `MISS`; block: `BLOCK`.
 - Each resolved hit is shown separately, including multi-hit actions; simultaneous hits use small offsets to avoid exact overlap.
-- Nominal lifetime is 820 ms at x1 and scales with presentation speed (about 410 ms at x2).
+- Normal damage, MISS and BLOCK lifetime is 820 ms at x1 (about 410 ms at x2). Critical damage and Heal lifetime is 1200 ms at x1 (about 600 ms at x2).
+- When a hit defeats a target, the popup shows the full resolved hit amount even if it exceeds the target's remaining HP; the actual HP loss remains authoritative for combat. The optional `displayAmount` is presentation metadata only and must never be used for HP, rewards, or settlement.
 - Feedback is placed near the resolved target, above the battlefield sprite layer and below actor name/status UI, and never captures pointer input.
 - Dungeon and Arena use the same shared Phaser presentation behavior.
-- Use log sequence IDs to avoid replaying already-presented events after repeated snapshots or resume. A new battle establishes a history baseline rather than replaying old numbers.
+- Use log sequence IDs to avoid replaying already-presented events after repeated snapshots. A fresh Arena match may arrive as a fully resolved first snapshot, so its current match log must be presented rather than discarded as old history.
 - Feedback runs outside the authoritative action queue, so Skip and missing/failed presentation never delay or alter combat resolution.
 
 Only resolved `damage`, `heal`, `miss`, and `block` log entries with valid target IDs may create feedback. A critical style is allowed only when the resolved damage log explicitly marks `crit: true`.

@@ -62,6 +62,8 @@ jobs:
         run: node --test tests/d1-latency-budget-v1.test.js
       - name: Battle end flow contract tests
         run: node --test tests/battle-end-flow-v1.test.js
+      - name: Phaser damage feedback regressions
+        run: node --test tests/battle-vfx-pack01.test.js tests/arena-v2-w9-phaser.test.js
       - name: Auth V2 regression
         run: |
           # Skip only the pre-existing timing-sensitive retryAfter > 30 assertion in this CI workspace.

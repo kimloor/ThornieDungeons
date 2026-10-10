@@ -195,6 +195,9 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         .filter(event => Number.isFinite(Number(event?.seq)));
       let damageFeedbackEvents = [];
       if (isFirstSnapshot) {
+        // Arena commonly resolves the full match before its first rendered snapshot.
+        // Play that fresh match's log instead of treating it as resumed history.
+        damageFeedbackEvents = feedback.slice().sort((a, b) => Number(a.seq) - Number(b.seq));
         this.lastArenaDamageFeedbackSeq = feedback.reduce((max, event) => Math.max(max, Number(event.seq)), -1);
       } else {
         damageFeedbackEvents = feedback
@@ -275,9 +278,8 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
 
     actorById(actorId) {
       const key = String(actorId || "");
-      const actors = isArenaPresentationSnapshot(this.snapshot)
-        ? Object.values(this.arenaActors).flatMap(team => Object.values(team))
-        : [this.actors.hero, this.actors.pet, ...(this.actors.monsters || [])];
+      if (isArenaPresentationSnapshot(this.snapshot)) return this.arenaActorById(key);
+      const actors = [this.actors.hero, this.actors.pet, ...(this.actors.monsters || [])];
       return actors.find(actor => String(actor?.data?.id || "") === key) || null;
     }
 
@@ -311,7 +313,9 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       popup.add(text);
       if (critical) popup.setScale(0.78);
       this.activeDamagePopups.add(popup);
-      const duration = Math.max(350, Math.round(820 / Math.max(1, Number(speed) || 1)));
+      // Give Critical and Heal extra reading time; normal feedback keeps its original lifetime.
+      const baseDuration = critical || isHeal ? 1200 : 820;
+      const duration = Math.max(350, Math.round(baseDuration / Math.max(1, Number(speed) || 1)));
       return new Promise(resolve => {
         if (!this.tweens?.add) {
           popup.destroy(true);
