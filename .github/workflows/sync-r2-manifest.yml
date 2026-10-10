@@ -26,8 +26,11 @@ jobs:
 
           api="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/r2/buckets/assets/objects"
           cursor=""
-          all='[]'
+          pages_dir=$(mktemp -d)
+          page_no=0
 
+          # Never pass the object list as a command-line argument (Linux caps one
+          # argument at ~128 KB); keep every page on disk and combine with files.
           while true; do
             if [ -n "$cursor" ]; then
               url="${api}?per_page=1000&cursor=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]) )' "$cursor")"
@@ -35,43 +38,43 @@ jobs:
               url="${api}?per_page=1000"
             fi
 
-            tmp=$(mktemp)
-            status=$(curl -sS -o "$tmp" -w '%{http_code}' "$url" \
+            resp="${pages_dir}/response_${page_no}.json"
+            status=$(curl -sS -o "$resp" -w '%{http_code}' "$url" \
               -H "Authorization: Bearer ${CF_API_TOKEN}" \
               -H "Accept: application/json")
-            response=$(cat "$tmp")
-            rm -f "$tmp"
 
             if [ "$status" != "200" ]; then
               echo "Cloudflare R2 API returned HTTP $status"
-              echo "$response" | jq -c '{success, errors, messages}' 2>/dev/null || echo "$response"
+              jq -c '{success, errors, messages}' "$resp" 2>/dev/null || cat "$resp"
               echo "Check that CF_API_TOKEN has Account > Workers R2 Storage > Read permission and that CF_ACCOUNT_ID is the correct Cloudflare Account ID."
               exit 1
             fi
 
-            echo "$response" | jq -e '.success == true' >/dev/null || {
+            jq -e '.success == true' "$resp" >/dev/null || {
               echo "Cloudflare R2 API returned success=false"
-              echo "$response" | jq -c '{success, errors, messages}'
+              jq -c '{success, errors, messages}' "$resp"
               exit 1
             }
 
-            page=$(echo "$response" | jq '.result // []')
-            all=$(jq -n --argjson a "$all" --argjson b "$page" '$a + $b')
+            jq '.result // []' "$resp" > "${pages_dir}/page_${page_no}.json"
 
-            next=$(echo "$response" | jq -r '.result_info.cursor // empty')
-            truncated=$(echo "$response" | jq -r '.result_info.is_truncated // false')
+            next=$(jq -r '.result_info.cursor // empty' "$resp")
+            truncated=$(jq -r '.result_info.is_truncated // false' "$resp")
             if [ "$truncated" != "true" ] || [ -z "$next" ]; then
               break
             fi
             cursor="$next"
+            page_no=$((page_no + 1))
           done
+
+          jq -s 'add // []' "${pages_dir}"/page_*.json > "${pages_dir}/all.json"
 
           mkdir -p src/data
           jq -n \
             --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg bucket "assets" \
-            --argjson objects "$all" \
-            '{bucket:$bucket, generatedAt:$generatedAt, count:($objects|length), objects:$objects}' \
+            --slurpfile objects "${pages_dir}/all.json" \
+            '{bucket:$bucket, generatedAt:$generatedAt, count:($objects[0]|length), objects:$objects[0]}' \
             > src/data/r2-manifest.json
 
       - name: Commit manifest when changed
