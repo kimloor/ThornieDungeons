@@ -260,6 +260,9 @@ test("Phaser renders red Critical burst without text and deduplicates replayed l
   const scene = read("src/phaser/scenes/BattleScene.js");
   const bridge = read("src/phaser/presentation/EventBridge.js");
   assert.match(bridge, /damageFeedbackEvents: battleDamageFeedbackEvents\(state\)/);
+  assert.match(bridge, /suppressDamageFeedback: state\.presentationSkip === true/);
+  assert.match(read("src/ui/App.js"), /resolved\.presentationSkip = true/);
+  assert.match(scene, /snapshot\.suppressDamageFeedback === true/);
   assert.match(scene, /event\.crit === true/);
   assert.match(scene, /this\.add\.star\(0, 0, 8,[\s\S]*0xff283b/);
   assert.match(scene, /critical \? "#ff3548"/);
