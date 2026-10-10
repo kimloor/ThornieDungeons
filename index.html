@@ -11227,7 +11227,6 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
     seq: Number(state.safeActionSeq || state.logSeq || 0),
     selectedTargetId: String(targetUid || state.selectedTargetId || enemyList.find(enemy => enemy.alive)?.id || ""),
     damageFeedbackEvents: battleDamageFeedbackEvents(state),
-    suppressDamageFeedback: state.presentationSkip === true,
     combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
     hero: {
       ...hero,
@@ -12494,7 +12493,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       const feedback = (Array.isArray(snapshot.damageFeedbackEvents) ? snapshot.damageFeedbackEvents : [])
         .filter(event => Number.isFinite(Number(event?.seq)));
       let damageFeedbackEvents = [];
-      if (isFirstSnapshot || snapshot.suppressDamageFeedback === true) {
+      if (isFirstSnapshot) {
         this.lastArenaDamageFeedbackSeq = feedback.reduce((max, event) => Math.max(max, Number(event.seq)), -1);
       } else {
         damageFeedbackEvents = feedback
@@ -12536,7 +12535,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
       const feedback = (Array.isArray(snapshot.damageFeedbackEvents) ? snapshot.damageFeedbackEvents : [])
         .filter(event => Number.isFinite(Number(event?.seq)));
       let damageFeedbackEvents = [];
-      if (isFirstDungeonSnapshot || snapshot.suppressDamageFeedback === true) {
+      if (isFirstDungeonSnapshot) {
         this.lastDungeonDamageFeedbackSeq = feedback.reduce((max, event) => Math.max(max, Number(event.seq)), -1);
       } else {
         damageFeedbackEvents = feedback
@@ -15159,8 +15158,6 @@ function ThornieDungeons() {
     if (heroCommand?.type === "skip_battle") {
       setBattleVfx([]);
       const resolved = DUNGEON_V2.simulateDungeonV2Battle(state, BATTLE_CORE_V1);
-      // Ephemeral UI marker only: suppress accumulated floating feedback for Skip.
-      resolved.presentationSkip = true;
       applyCoreBattleState(resolved, false); finishCoreBattle(resolved, { skip: true }); return;
     }
     if (actor.kind === "hero" && ["basic", "active"].includes(heroCommand?.type)) setHeroAnim("attack");
