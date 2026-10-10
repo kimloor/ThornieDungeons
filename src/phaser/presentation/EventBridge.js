@@ -406,3 +406,5 @@ function buildRaidBossPresentationSnapshot({ boss = {}, config = null, hurtToken
     }
   });
 }
+
+if (typeof module !== "undefined" && module.exports) module.exports = { battleDamageFeedbackEvents };
