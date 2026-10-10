@@ -1,6 +1,6 @@
 # Arena History Replay V1
 
-Status: **IMPLEMENTED — DRAFT PR / QA REQUIRED**
+Status: **RELEASE CANDIDATE 1.0.52 — QA REQUIRED**
 
 ## Scope
 - Replay is available only from Arena V2 HISTORY (ATTACK and DEFENSE).
