@@ -5093,6 +5093,9 @@ function arenaTicketStateAt(row, now = Date.now()) {
 }
 
 async function ensureArenaCharacterState(db, characterId, now = Date.now()) {
+  // Common path: the row exists, so one read is enough (the insert is a no-op for existing rows anyway).
+  const existing = await db.prepare(`SELECT * FROM arena_character_state WHERE character_id = ?`).bind(characterId).first();
+  if (existing) return existing;
   const at = arenaNowIso(now);
   await db.prepare(`
     INSERT INTO arena_character_state
@@ -5293,6 +5296,9 @@ async function ensureArenaV2Season(db, now = Date.now()) {
 }
 
 async function ensureArenaSeasonPlayer(db, season, character, now = Date.now()) {
+  // Common path: the player already has a season row; skip the previous-season lookup and the no-op insert.
+  const current = await db.prepare(`SELECT * FROM arena_season_players WHERE season_id = ? AND character_id = ?`).bind(season.season_id, character.character_id).first();
+  if (current) return current;
   const at = arenaNowIso(now);
   const previous = await db.prepare(`
     SELECT p.rating FROM arena_season_players p JOIN arena_seasons s ON s.season_id = p.season_id
@@ -5344,10 +5350,10 @@ async function ensureArenaSetup(db, character, now = Date.now()) {
       ON CONFLICT(character_id) DO NOTHING
     `).bind(character.character_id, pet ? pet.instId : "", JSON.stringify(slots), at, at).run();
   }
-  return await sanitizeArenaSetup(db, character, now);
+  return await sanitizeArenaSetup(db, character, now, existing || undefined);
 }
-async function sanitizeArenaSetup(db, character, now = Date.now()) {
-  const row = await db.prepare(`SELECT * FROM arena_setup WHERE character_id = ?`).bind(character.character_id).first();
+async function sanitizeArenaSetup(db, character, now = Date.now(), preloadedRow = undefined) {
+  const row = preloadedRow !== undefined ? preloadedRow : await db.prepare(`SELECT * FROM arena_setup WHERE character_id = ?`).bind(character.character_id).first();
   if (!row) return { petInstId: "", skillSlots: [null, null, null, null], initialized: false };
   const { skillLevels } = parsePetsJson(character);
   const learned = new Set(heroActiveSkillList(skillLevels || {}).map((skill) => skill.key));
@@ -5476,8 +5482,7 @@ async function arenaV2Context(db, id, session, characterId, now = Date.now()) {
   if (owned.error) return { error: owned.error };
   const character = owned.row;
   if (Number(character.level) < ARENA_V2_UNLOCK_LEVEL) return { error: "arena_locked", character, requiredLevel: ARENA_V2_UNLOCK_LEVEL };
-  const state = await ensureArenaCharacterState(db, characterId, now);
-  const season = await ensureArenaV2Season(db, now);
+  const [state, season] = await Promise.all([ensureArenaCharacterState(db, characterId, now), ensureArenaV2Season(db, now)]);
   const seasonPlayer = await ensureArenaSeasonPlayer(db, season, character, now);
   return { ok: true, player: auth.row, character, state, season, seasonPlayer };
 }
@@ -5489,9 +5494,11 @@ async function handleGetArenaV2Status(db, id, session, characterId) {
   if (context.error === "arena_locked") return json({ ok: true, unlocked: false, requiredLevel: ARENA_V2_UNLOCK_LEVEL });
   if (context.error) return json({ error: context.error });
   const now = nowIso();
-  const tickets = await reconcileArenaV2Tickets(db, characterId, now);
-  const setup = await ensureArenaSetup(db, context.character, now);
-  const items = await arenaCurrentEquipment(db, characterId);
+  const [tickets, setup, items] = await Promise.all([
+    reconcileArenaV2Tickets(db, characterId, now),
+    ensureArenaSetup(db, context.character, now),
+    arenaCurrentEquipment(db, characterId),
+  ]);
   const parsed = parsePetsJson(context.character);
   const availablePets = (Array.isArray(JSON.parse(context.character.pets_json || '{}')?.list) ? JSON.parse(context.character.pets_json || '{}').list : []).map(p => ({
     instId: p.instId, defId: p.defId, level: Number(p.level) || 1, star: Number(p.star) || 1,
@@ -5825,20 +5832,29 @@ function arenaBotSnapshot(opponent) {
   };
 }
 async function arenaBuildMatchSnapshot(db, context, opponent, source, preparedAt, seed) {
-  const attackerSetup = await ensureArenaSetup(db, context.character, preparedAt);
-  const attackerItems = await arenaCurrentEquipment(db, context.character.character_id);
-  const attacker = await arenaRealSnapshot(db, context.character, attackerSetup, attackerItems, context.seasonPlayer.rating);
-  let defender;
-  if (opponent.type === "bot") {
-    defender = arenaBotSnapshot(opponent);
-  } else {
+  // Attacker and defender snapshots are independent reads; build them concurrently, and fetch each side's
+  // setup/equipment together instead of one after another.
+  const buildAttacker = async () => {
+    const [attackerSetup, attackerItems] = await Promise.all([
+      ensureArenaSetup(db, context.character, preparedAt),
+      arenaCurrentEquipment(db, context.character.character_id),
+    ]);
+    return await arenaRealSnapshot(db, context.character, attackerSetup, attackerItems, context.seasonPlayer.rating);
+  };
+  const buildDefender = async () => {
+    if (opponent.type === "bot") return { snapshot: arenaBotSnapshot(opponent) };
     const defenderCharacter = await db.prepare(`SELECT * FROM characters WHERE character_id = ?`).bind(opponent.characterId).first();
     if (!defenderCharacter) return { error: "arena_opponent_not_found" };
-    const defenderSetup = await sanitizeArenaSetup(db, defenderCharacter, preparedAt);
-    const defenderItems = await arenaCurrentEquipment(db, defenderCharacter.character_id);
-    const defenderPlayer = await db.prepare(`SELECT rating FROM arena_season_players WHERE season_id = ? AND character_id = ?`).bind(context.season.season_id, defenderCharacter.character_id).first();
-    defender = await arenaRealSnapshot(db, defenderCharacter, defenderSetup, defenderItems, defenderPlayer?.rating ?? opponent.rating);
-  }
+    const [defenderSetup, defenderItems, defenderPlayer] = await Promise.all([
+      sanitizeArenaSetup(db, defenderCharacter, preparedAt),
+      arenaCurrentEquipment(db, defenderCharacter.character_id),
+      db.prepare(`SELECT rating FROM arena_season_players WHERE season_id = ? AND character_id = ?`).bind(context.season.season_id, defenderCharacter.character_id).first(),
+    ]);
+    return { snapshot: await arenaRealSnapshot(db, defenderCharacter, defenderSetup, defenderItems, defenderPlayer?.rating ?? opponent.rating) };
+  };
+  const [attacker, defenderResult] = await Promise.all([buildAttacker(), buildDefender()]);
+  if (defenderResult.error) return { error: defenderResult.error };
+  const defender = defenderResult.snapshot;
   return {
     version: 1,
     preparedAt,
@@ -5903,13 +5919,13 @@ async function handlePrepareArenaV2Match(db, id, session, characterId, opponentK
   const context = await arenaV2Context(db, id, session, characterId);
   if (context.error) return json({ error: context.error });
   const nowMs = Date.now();
-  const { opponents } = await getArenaV2OpponentRows(db, context, nowMs);
+  // The opponent list and the open-match lookup are independent reads; run them together.
+  const [{ opponents }, openMatch] = await Promise.all([getArenaV2OpponentRows(db, context, nowMs), arenaOpenMatchForAttacker(db, characterId)]);
   const opponent = source === "revenge"
     ? await arenaRevengeOpponent(db, context.season.season_id, characterId, opponentKey)
     : opponents.find((row) => row.opponentKey === String(opponentKey || ""));
   if (!opponent) return json({ error: "arena_opponent_not_found" }, 404);
-  let existing = await arenaOpenMatchForAttacker(db, characterId);
-  existing = await arenaExpirePreparedMatch(db, existing, nowMs);
+  let existing = await arenaExpirePreparedMatch(db, openMatch, nowMs);
   if (existing?.status === "prepared" && existing.season_id !== context.season.season_id) {
     // Prepared matches are season-bound. A rollover before activation must not
     // occupy the one-open-match slot for the new season.
@@ -5949,11 +5965,16 @@ async function handlePrepareArenaV2Match(db, id, session, characterId, opponentK
   return json({ ok: true, replayed: false, match: arenaMatchPayload(created) });
 }
 async function handleActivateArenaV2Match(db, id, session, characterId, matchId) {
-  const context = await arenaV2Context(db, id, session, characterId);
-  if (context.error) return json({ error: context.error });
   const key = String(matchId || "").trim();
+  // The match row lookup is a read keyed only by ids; run it alongside the auth/context chain and discard it
+  // when the context fails or the id is missing, so authorization behavior is unchanged.
+  const [context, lookedUpMatch] = await Promise.all([
+    arenaV2Context(db, id, session, characterId),
+    key ? db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first() : Promise.resolve(null),
+  ]);
+  if (context.error) return json({ error: context.error });
   if (!key) return json({ error: "missing_match_id" }, 400);
-  let match = await db.prepare(`SELECT * FROM arena_matches WHERE match_id = ? AND attacker_character_id = ?`).bind(key, characterId).first();
+  let match = lookedUpMatch;
   if (!match) return json({ error: "arena_match_not_found" }, 404);
   if (match.status === "active" || match.status === "done") return json({ ok: true, replayed: true, match: arenaMatchPayload(match) });
   if (match.status !== "prepared") return json({ error: "arena_match_expired", match: arenaMatchPayload(match) }, 409);

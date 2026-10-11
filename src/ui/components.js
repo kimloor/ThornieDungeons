@@ -3698,6 +3698,7 @@ function ArenaV2Screen({
   const [refreshAvailableAt, setRefreshAvailableAt] = React.useState("");
   const [unlockBusy, setUnlockBusy] = React.useState(false);
   const [preloadState, setPreloadState] = React.useState("idle");
+  const [battleIntro, setBattleIntro] = React.useState(null);
   const [phaserStatus, setPhaserStatus] = React.useState("idle");
   const [presentationAttempt, setPresentationAttempt] = React.useState(0);
   const preloadGateRef = React.useRef(null);
@@ -3794,6 +3795,32 @@ function ArenaV2Screen({
     }
     return false;
   }, []);
+  // Warm the shared Phaser runtime while the player browses opponents/cards so the first Battle does not pay
+  // for the CDN download. load() is idempotent, never throws into React, and consumes no ticket.
+  React.useEffect(() => {
+    try {
+      if (typeof THORNIE_PHASER_RUNTIME !== "undefined") void THORNIE_PHASER_RUNTIME.load().catch(() => {});
+    } catch (_) { /* presentation prefetch is best-effort */ }
+  }, []);
+  // BATTLE START intro: covers only the battlefield stage (never the action controls). It plays while Activation is in
+  // flight, leaves as soon as the match is active and ~1.1s have passed, and can be tapped away.
+  React.useEffect(() => {
+    if (!battleIntro || !battleIntro.activated || battleIntro.leaving) return undefined;
+    const wait = Math.max(0, 1100 - (Date.now() - battleIntro.startedAt));
+    const timer = setTimeout(() => setBattleIntro(current => (current && current.matchId === battleIntro.matchId ? { ...current, leaving: true } : current)), wait);
+    return () => clearTimeout(timer);
+  }, [battleIntro]);
+  React.useEffect(() => {
+    if (!battleIntro?.leaving) return undefined;
+    const timer = setTimeout(() => setBattleIntro(null), 260);
+    return () => clearTimeout(timer);
+  }, [battleIntro?.leaving]);
+  React.useEffect(() => {
+    if (!battleIntro) return undefined;
+    const timer = setTimeout(() => setBattleIntro(null), 15000);
+    return () => clearTimeout(timer);
+  }, [battleIntro?.matchId]);
+  React.useEffect(() => { if (!match && battleIntro) setBattleIntro(null); }, [match, battleIntro]);
   const beginPreparedArenaMatch = React.useCallback(async preparedMatch => {
     if (!arenaMatchIsPrepared(preparedMatch) || !preparedMatch.matchId) return false;
     const matchId = String(preparedMatch.matchId);
@@ -3808,6 +3835,7 @@ function ArenaV2Screen({
     setPreloadState("loading");
     setPhaserStatus("idle");
     setPresentationAttempt(value => value + 1);
+    setBattleIntro({ matchId, startedAt: Date.now(), activated: false, leaving: false });
     const gate = createArenaV2PreloadGate(10000);
     preloadGateRef.current = gate;
     try {
@@ -3825,11 +3853,14 @@ function ArenaV2Screen({
       if (!activated?.match || !adoptArenaMatch(activated.match)) {
         throw new Error(arenaHumanError("arena_match_not_active", "activation did not return active match", "เปิด Arena match ไม่สำเร็จ"));
       }
+      setBattleIntro(current => (current && current.matchId === matchId ? { ...current, activated: true } : current));
       // Activation is the authoritative ticket boundary. Refresh resources after
-      // confirmation so the global HUD reflects the server's post-ticket state.
-      await syncArenaStatus();
+      // confirmation so the global HUD reflects the server's post-ticket state. This runs in the
+      // background: the first action must not wait for a full status round trip.
+      void Promise.resolve(syncArenaStatus()).catch(() => {});
       return true;
     } catch (error) {
+      setBattleIntro(null);
       // Keep a valid prepared match on screen. The ticket boundary is activate,
       // so retrying presentation with this same ID cannot consume a second ticket.
       setPreloadState("failed");
@@ -4265,6 +4296,14 @@ function ArenaV2Screen({
             else setError(detail?.message || "Arena presentation โหลดไม่สำเร็จ — กด RETRY ได้");
           }
         } }),
+        battleIntro && match && battleIntro.matchId === match.matchId && /*#__PURE__*/React.createElement("div", {
+          className: `md-arena-battle-start${battleIntro.leaving ? " is-leaving" : ""}`, role: "status", "aria-live": "polite",
+          onClick: () => setBattleIntro(current => (current ? { ...current, leaving: true } : current))
+        },
+          /*#__PURE__*/React.createElement("small", null, "ARENA"),
+          /*#__PURE__*/React.createElement("b", null, "BATTLE START"),
+          /*#__PURE__*/React.createElement("span", null, `${match.snapshot?.attacker?.name || "You"}  VS  ${match.snapshot?.defender?.name || "Opponent"}`),
+          match.snapshot?.attacker?.rating != null && match.snapshot?.defender?.rating != null && /*#__PURE__*/React.createElement("small", null, `Rating ${match.snapshot.attacker.rating} vs ${match.snapshot.defender.rating}`)),
         phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, matchIsPrepared ? "Battle presentation unavailable" : "Battle presentation unavailable · controls remain active")), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "loading" ? "Loading Battle…" : preloadState === "failed" ? "Battle preload failed" : "", " · ", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · ")), /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "Targets: ", enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive || !matchIsActive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line), " ")), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setShowFullLog(!showFullLog) }, showFullLog ? "HIDE LOG" : "FULL LOG")), showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-card" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line))))),
       match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-result-card" },
         resultGraphicSrc && /*#__PURE__*/React.createElement("img", { className: "md-arena-result-emblem", src: resultGraphicSrc, alt: "", "aria-hidden": "true" }),
