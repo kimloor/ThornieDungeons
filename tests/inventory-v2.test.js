@@ -164,3 +164,46 @@ test("Inventory compare modal avoids nested scrolling and uses compact mobile la
 });
 
 
+
+test("Enchant comparison is stat-name based, shows differences and keeps percentage stats distinct", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const compareFn = components.slice(components.indexOf("function inventoryComparisonRows"), components.indexOf("function InventoryHeader"));
+  const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
+  assert.match(compareFn, /inventoryEnchantComparisonEntries/);
+  assert.match(compareFn, /normalizedKey \+ '#' \+ entry\.occurrence/);
+  assert.match(compareFn, /occurrenceLabel/);
+  assert.match(compareFn, /statKey: entry\.key/);
+  assert.match(compare, /CURRENT ITEM/);
+  assert.match(compare, /NEW ITEM/);
+  assert.match(compare, /DIFFERENCE/);
+  assert.match(compare, /"—"/);
+  assert.match(compare, /inventoryComparisonFormatValue/);
+  assert.match(components, /critChance: "Crit", critDamage: "Crit DMG"/);
+});
+
+test("Enchant comparison preserves four slots, duplicate names and malformed-slot safety", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const entries = components.slice(components.indexOf("function inventoryEnchantComparisonEntries"), components.indexOf("function inventoryComparisonFormatValue"));
+  const rows = components.slice(components.indexOf("function inventoryComparisonRows"), components.indexOf("function InventoryHeader"));
+  assert.match(entries, /Array\.isArray\(item\?\.empowerSlots\)/);
+  assert.match(entries, /Number\.isFinite\(value\)/);
+  assert.match(entries, /occurrence/);
+  assert.match(rows, /currentEnchant/);
+  assert.match(rows, /nextEnchant/);
+  assert.match(rows, /Math\.max\(currentCounts\.get/);
+  assert.match(rows, /group: 'enchant'/);
+  assert.match(rows, /pushGroup\("base", "\(Base\)"\)/);
+  assert.match(rows, /pushGroup\("refine", "\(Refine\)"\)/);
+  assert.doesNotMatch(rows, /pushGroup\("enchant"/);
+});
+
+test("Equipment compare has four responsive columns and does not combine Base, Refine and Enchant", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
+  const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
+  assert.match(compare, /sellPrice\(item\)/);
+  assert.match(compare, /Base, Refine and Enchant are shown separately/);
+  assert.match(styles, /grid-template-columns:minmax\(80px,1\.15fr\).*minmax\(55px,\.85fr\)/);
+  assert.match(styles, /@media \(max-width:430px\)/);
+  assert.match(styles, /max-height:650px/);
+});

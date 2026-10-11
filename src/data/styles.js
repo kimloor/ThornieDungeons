@@ -2047,36 +2047,42 @@ body::after {
 .md-inv2-enchants { margin-top:12px; padding:10px; border:1px solid rgba(166,108,255,.38); border-radius:11px; }
 .md-inv2-enchants h4 { margin:0 0 6px; color:#b893ff; font-size:10px; letter-spacing:.08em; }
 .md-inv2-enchants > div { padding:3px 0; font-size:11px; color:#d8c8ff; }
-.md-inv2-compare { margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,209,102,.28); }
-.md-inv2-compare-head { display:grid; grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr); align-items:center; gap:7px; margin-bottom:9px; color:var(--gold); font-size:11px; font-weight:800; }
-.md-inv2-compare-item { min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:6px; text-align:left; }
+.md-inv2-compare { margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,209,102,.28); min-width:0; }
+.md-inv2-compare-head { display:grid; grid-template-columns:minmax(0,1fr) 14px minmax(0,1fr); align-items:stretch; gap:6px; margin-bottom:9px; color:var(--gold); font-size:11px; font-weight:800; }
+.md-inv2-compare-card { min-width:0; display:grid; grid-template-columns:32px minmax(0,1fr); grid-template-rows:auto 1fr; align-items:center; gap:4px 6px; padding:6px 7px; border:1px solid rgba(255,209,102,.18); border-radius:9px; background:rgba(255,255,255,.035); }
+.md-inv2-compare-role { grid-column:1 / -1; color:#91a9c3; font-size:8px; letter-spacing:.06em; line-height:1.1; }
 .md-inv2-compare-copy { min-width:0; overflow-wrap:anywhere; }
-.md-inv2-compare-copy strong { display:block; line-height:1.12; }
-.md-inv2-compare-arrow { text-align:center; font-size:16px; }
-.md-inv2-compare-icon { width:34px; height:34px; flex:0 0 34px; }
-.md-inv2-compare-head small { display:block; margin-top:2px; color:var(--ink-soft); font-size:8px; font-weight:700; }
-.md-inv2-compare-columns,.md-inv2-compare-row { display:grid; grid-template-columns:minmax(70px,1fr) minmax(54px,.72fr) minmax(54px,.72fr); align-items:center; column-gap:8px; }
-.md-inv2-compare-columns { padding:4px 9px; color:#91a9c3; font-size:8px; font-weight:900; text-transform:uppercase; }
-.md-inv2-compare-row { min-height:31px; border-top:1px solid rgba(102,160,218,.18); border-radius:0; background:rgba(4,20,49,.42); }
+.md-inv2-compare-copy strong { display:block; line-height:1.12; font-size:10px; }
+.md-inv2-compare-arrow { align-self:center; text-align:center; font-size:16px; }
+.md-inv2-compare-icon { width:32px; height:32px; flex:0 0 32px; }
+.md-inv2-compare-head small { display:block; margin-top:2px; color:var(--ink-soft); font-size:8px; line-height:1.12; font-weight:700; overflow-wrap:anywhere; }
+.md-inv2-compare-columns,.md-inv2-compare-row { display:grid; grid-template-columns:minmax(80px,1.15fr) minmax(42px,.72fr) minmax(42px,.72fr) minmax(55px,.85fr); align-items:center; column-gap:5px; min-width:0; }
+.md-inv2-compare-columns { padding:4px 7px; color:#91a9c3; font-size:7px; font-weight:900; text-transform:uppercase; }
+.md-inv2-compare-row { min-height:27px; padding:3px 7px; border-top:1px solid rgba(102,160,218,.18); border-radius:0; background:rgba(4,20,49,.42); font-size:9px; }
 .md-inv2-compare-columns > :nth-child(n+2),.md-inv2-compare-row > :nth-child(n+2) { text-align:right; }
+.md-inv2-compare-row > :first-child { overflow-wrap:anywhere; }
 .md-inv2-compare-one-screen { margin-top:8px; padding-top:6px; }
 .md-inv2-compare-one-screen .md-inv2-compare-head { gap:5px; margin-bottom:6px; }
-.md-inv2-compare-card { min-width:0; display:grid; grid-template-columns:34px minmax(0,1fr); align-items:center; gap:6px; padding:6px 7px; border:1px solid rgba(255,209,102,.18); border-radius:9px; background:rgba(255,255,255,.035); }
-.md-inv2-compare-card small { display:block; margin-top:1px; color:var(--ink-soft); font-size:8px; line-height:1.12; font-weight:700; overflow-wrap:anywhere; }
-.md-inv2-compare-card .md-inv2-compare-copy strong { font-size:10px; line-height:1.05; }
-.md-inv2-compare-one-screen .md-inv2-compare-icon { width:32px; height:32px; flex:0 0 32px; }
-.md-inv2-compare-one-screen .md-inv2-compare-columns { padding:3px 7px; font-size:7px; }
-.md-inv2-compare-one-screen .md-inv2-compare-row { min-height:25px; padding:3px 7px; font-size:9px; }
-.md-inv2-compare-one-screen .md-inv2-compare-row b { font-size:9px; }
+.md-inv2-compare-one-screen .md-inv2-compare-row b { font-size:9px; font-variant-numeric:tabular-nums; }
 .md-inv2-compare-delta { display:inline; font-size:7px; font-weight:900; }
-.md-inv2-compare-legend { margin-top:5px; color:#91a9c3; font-size:7px; line-height:1.1; text-align:center; }
+.md-inv2-compare-legend { margin-top:5px; color:#91a9c3; font-size:7px; line-height:1.2; text-align:center; }
+.md-inv2-compare-row .positive { color:#71e8ff; }
+.md-inv2-compare-row .negative { color:#ff7777; }
 @media (max-width:430px) {
   .md-inv2-detail-layer { padding-left:8px; padding-right:8px; }
   .md-inv2-detail { width:min(100%,400px); }
-  .md-inv2-compare-card { padding:5px 6px; }
-  .md-inv2-compare-card .md-inv2-compare-copy strong { font-size:9px; }
+  .md-inv2-compare-head { grid-template-columns:minmax(0,1fr) 10px minmax(0,1fr); gap:3px; }
+  .md-inv2-compare-card { padding:5px 4px; grid-template-columns:26px minmax(0,1fr); gap:4px; }
+  .md-inv2-compare-icon { width:26px; height:26px; flex-basis:26px; }
+  .md-inv2-compare-copy strong { font-size:8px; }
   .md-inv2-compare-card small { font-size:7px; }
-  .md-inv2-compare-one-screen .md-inv2-compare-row { min-height:23px; font-size:8px; }
+  .md-inv2-compare-columns,.md-inv2-compare-row { grid-template-columns:minmax(68px,1.15fr) minmax(34px,.65fr) minmax(34px,.65fr) minmax(46px,.8fr); column-gap:3px; }
+  .md-inv2-compare-one-screen .md-inv2-compare-row { min-height:25px; padding:3px 4px; font-size:8px; }
+  .md-inv2-compare-one-screen .md-inv2-compare-row b { font-size:8px; }
+}
+@media (max-height:650px) {
+  .md-inv2-detail-layer { align-items:flex-start; overflow-y:auto; }
+  .md-inv2-detail { max-height:calc(100dvh - 24px); overflow-y:auto; }
 }
 .md-inv2-favorite-toggle { position:absolute !important; z-index:3 !important; top:10px; left:10px; width:32px; height:32px; padding:2px; border:1px solid rgba(255,209,102,.45); border-radius:50%; background-color:rgba(12,8,27,.92); background-size:contain; color:var(--gold); font-size:19px; cursor:pointer; }
 .md-inv2-favorite-toggle.has-art { color:transparent; font-size:0; }

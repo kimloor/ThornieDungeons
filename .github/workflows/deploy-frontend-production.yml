@@ -54,6 +54,12 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing GitHub secret CF_ACCOUNT_ID"; exit 1; }
           wrangler whoami >/dev/null
 
+      - name: Run Inventory UI regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/inventory-v2.test.js
+
       - name: Build generated frontend
         shell: bash
         run: |

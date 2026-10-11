@@ -6207,12 +6207,34 @@ function inventoryStatRows(item) {
   ];
 }
 
+function inventoryEnchantComparisonEntries(item) {
+  const counts = new Map();
+  const entries = [];
+  (Array.isArray(item?.empowerSlots) ? item.empowerSlots : []).forEach(option => {
+    if (!option || typeof option !== "object") return;
+    const key = String(option.key || "").trim();
+    const value = Number(option.value);
+    if (!key || !Number.isFinite(value) || value === 0) return;
+    const normalizedKey = key.toLowerCase();
+    const occurrence = (counts.get(normalizedKey) || 0) + 1;
+    counts.set(normalizedKey, occurrence);
+    entries.push({ key, normalizedKey, occurrence, value: Math.round(value * 10) / 10 });
+  });
+  return entries;
+}
+
+function inventoryComparisonFormatValue(key, value, signed = false) {
+  const number = Math.round((Number(value) || 0) * 10) / 10;
+  const percentKeys = new Set(["hpPct", "mpPct", "dodgeChance", "critChance", "critDamage", "dropBonus"]);
+  const text = signed && number > 0 ? "+" + number : String(number);
+  return text + (percentKeys.has(key) ? "%" : "");
+}
+
 function inventoryComparisonRows(currentItem, nextItem) {
   if (!nextItem || !SLOT_ORDER.includes(nextItem.type)) return [];
   const build = item => ({
     base: inventoryRawBaseStats(item),
-    refine: inventoryRefineStats(item),
-    enchant: inventoryEnchantStats(item)
+    refine: inventoryRefineStats(item)
   });
   const current = build(currentItem);
   const next = build(nextItem);
@@ -6225,6 +6247,7 @@ function inventoryComparisonRows(currentItem, nextItem) {
       if (Math.abs(currentValue) <= 0.0001 && Math.abs(nextValue) <= 0.0001) continue;
       rows.push({
         key: group + ':' + key,
+        statKey: key,
         label: (INVENTORY_STAT_LABELS[key] || key) + ' ' + labelSuffix,
         current: currentValue,
         next: nextValue,
@@ -6234,7 +6257,36 @@ function inventoryComparisonRows(currentItem, nextItem) {
   };
   pushGroup("base", "(Base)");
   pushGroup("refine", "(Refine)");
-  pushGroup("enchant", "(Enchant)");
+
+  // Match each Enchant occurrence by stat name + occurrence number, never by slot index.
+  // Repeated stats remain visible as separate rows instead of being silently collapsed.
+  const currentEnchant = inventoryEnchantComparisonEntries(currentItem);
+  const nextEnchant = inventoryEnchantComparisonEntries(nextItem);
+  const currentCounts = new Map();
+  const nextCounts = new Map();
+  currentEnchant.forEach(entry => currentCounts.set(entry.normalizedKey, (currentCounts.get(entry.normalizedKey) || 0) + 1));
+  nextEnchant.forEach(entry => nextCounts.set(entry.normalizedKey, (nextCounts.get(entry.normalizedKey) || 0) + 1));
+  const currentByOccurrence = new Map(currentEnchant.map(entry => [entry.normalizedKey + '#' + entry.occurrence, entry]));
+  const nextByOccurrence = new Map(nextEnchant.map(entry => [entry.normalizedKey + '#' + entry.occurrence, entry]));
+  const enchantKeys = new Set([...currentByOccurrence.keys(), ...nextByOccurrence.keys()]);
+  for (const key of enchantKeys) {
+    const before = currentByOccurrence.get(key);
+    const after = nextByOccurrence.get(key);
+    const entry = before || after;
+    const currentValue = before ? before.value : 0;
+    const nextValue = after ? after.value : 0;
+    if (Math.abs(currentValue) <= 0.0001 && Math.abs(nextValue) <= 0.0001) continue;
+    const totalOccurrences = Math.max(currentCounts.get(entry.normalizedKey) || 0, nextCounts.get(entry.normalizedKey) || 0);
+    const occurrenceLabel = totalOccurrences > 1 ? ' (' + entry.occurrence + ')' : '';
+    rows.push({
+      key: 'enchant:' + key,
+      statKey: entry.key,
+      label: (INVENTORY_STAT_LABELS[entry.key] || entry.key) + occurrenceLabel + ' (Enchant)',
+      current: currentValue,
+      next: nextValue,
+      group: 'enchant'
+    });
+  }
   return rows;
 }
 
@@ -6375,6 +6427,7 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
     const options = Array.isArray(item?.empowerSlots) ? item.empowerSlots.filter(Boolean) : [];
     const refine = Math.max(0, Number(item?.enhanceLevel) || 0);
     return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-card" },
+      /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-role" }, equipped ? "CURRENT ITEM" : "NEW ITEM"),
       /*#__PURE__*/React.createElement(GameIcon, {
         item: item || {},
         fallback: item ? (item.icon || SLOT_ICON[type] || "📦") : "📦",
@@ -6385,11 +6438,12 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
         /*#__PURE__*/React.createElement("strong", null, item ? itemDisplayName(item) : "Empty Slot"),
         /*#__PURE__*/React.createElement("small", null, item
           ? `${rarityLabel(item)} • ${SLOT_LABEL[type] || type} • Lv.${item.level || 1}`
-          : "Current Slot • Empty"),
+          : "Empty equipment slot"),
         /*#__PURE__*/React.createElement("small", null, item
-          ? `Refine +${refine} • ${options.length ? `Enchant ${options.length}` : "No Enchant"} • ${equipped ? "Equipped" : "Candidate"}`
+          ? `Sell ${sellPrice(item)} Gold • Refine +${refine} • ${options.length ? `Enchant ${options.length}` : "No Enchant"}`
           : "No equipped item")));
   };
+  const formatValue = row => inventoryComparisonFormatValue(row.statKey || "", row.value);
   return /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare md-inv2-compare-one-screen" },
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" },
       meta(currentEquipped, true),
@@ -6398,18 +6452,21 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" },
       /*#__PURE__*/React.createElement("span", null, "STAT"),
       /*#__PURE__*/React.createElement("span", null, "CURRENT"),
-      /*#__PURE__*/React.createElement("span", null, "NEW")),
+      /*#__PURE__*/React.createElement("span", null, "NEW"),
+      /*#__PURE__*/React.createElement("span", null, "DIFFERENCE")),
     compareRows.map(row => {
       const delta = Math.round(((Number(row.next) || 0) - (Number(row.current) || 0)) * 10) / 10;
       const deltaClass = delta > 0 ? "positive" : delta < 0 ? "negative" : "";
+      const currentValue = Math.abs(Number(row.current) || 0) <= 0.0001 ? "—" : inventoryComparisonFormatValue(row.statKey || "", row.current);
+      const nextValue = Math.abs(Number(row.next) || 0) <= 0.0001 ? "—" : inventoryComparisonFormatValue(row.statKey || "", row.next);
+      const deltaValue = delta === 0 ? "0" : inventoryComparisonFormatValue(row.statKey || "", delta, true);
       return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key },
         /*#__PURE__*/React.createElement("span", null, row.label),
-        /*#__PURE__*/React.createElement("b", null, row.current),
-        /*#__PURE__*/React.createElement("b", { className:deltaClass },
-          row.next,
-          delta !== 0 && /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta" }, ` (${delta > 0 ? "+" : ""}${delta})`)));
+        /*#__PURE__*/React.createElement("b", null, currentValue),
+        /*#__PURE__*/React.createElement("b", null, nextValue),
+        /*#__PURE__*/React.createElement("b", { className:deltaClass }, deltaValue));
     }),
-    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Base, Refine and Enchant are shown separately; no final values are combined."));
+    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Base, Refine and Enchant are shown separately; missing stats are —."));
 }
 
 function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }) {
