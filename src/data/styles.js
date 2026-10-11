@@ -2719,6 +2719,13 @@ body::after {
 .md-arena-phaser-stage { position:relative; width:100%; min-height:clamp(300px,48dvh,430px); overflow:hidden; border:1px solid rgba(255,209,102,.2); border-radius:14px; background:rgba(3,9,24,.24); }
 .md-arena-phaser-stage .md-phaser-battlefield { position:absolute; inset:0; width:100%; height:100%; }
 .md-arena-phaser-error { position:absolute; inset:auto 10px 10px; z-index:5; padding:7px 9px; border:1px solid rgba(255,107,123,.55); border-radius:9px; background:rgba(45,10,24,.88); color:#ffc2c9; font-size:10px; font-weight:800; text-align:center; }
+.md-arena-battle-start { position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; background:radial-gradient(circle at 50% 45%, rgba(26,36,70,.72), rgba(5,8,18,.82)); color:#fff; text-align:center; cursor:pointer; animation:md-arena-start-in .22s ease-out both; }
+.md-arena-battle-start small { font-size:11px; letter-spacing:.28em; color:#9fb2d8; }
+.md-arena-battle-start b { font-size:clamp(24px,8vw,38px); letter-spacing:.14em; color:#ffd36b; text-shadow:0 2px 12px rgba(255,190,70,.55); }
+.md-arena-battle-start span { font-size:15px; font-weight:700; }
+.md-arena-battle-start.is-leaving { opacity:0; transition:opacity .25s ease-out; pointer-events:none; }
+@keyframes md-arena-start-in { from { opacity:0; transform:scale(1.06); } to { opacity:1; transform:scale(1); } }
+@media (prefers-reduced-motion: reduce) { .md-arena-battle-start { animation:none; } .md-arena-battle-start.is-leaving { transition:none; } }
 .md-arena-turn-order { margin:4px 0 7px; min-height:38px; border:1px solid rgba(255,209,102,.18); border-radius:10px; background:rgba(3,9,24,.32); overflow:hidden; }
 .md-arena-speed-toggle { margin:0 0 6px; min-width:58px; color:var(--gold); border-color:rgba(255,209,102,.45); }
 .md-arena-fatal-overlay { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:max(18px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px)); background:rgba(2,5,16,.76); backdrop-filter:blur(4px); }

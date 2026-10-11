@@ -24,6 +24,16 @@ The API entrypoint emits a Server-Timing header per request:
 
 The before counts include the old separate session/ownership path and, for battle completion, the two sequential reward-plan reads. The after counts use the shared character authentication query and one reward-read batch.
 
+### Arena battle start (measured in the sqlite harness against a bot opponent)
+
+| Action | Before | After | Test budget | Notes |
+|---|---:|---:|---:|---|
+| prepare | 16 | 12 | <= 12 | read-first ensure helpers, independent reads run together |
+| activate | 13 | 9 | <= 9 | match lookup runs alongside the auth/context chain |
+| status (sync after activate) | 13 | 8 | <= 8 | tickets, setup and equipment load together; `arena_setup` read once |
+
+With a simulated 25 ms per D1 call the sequential wall time dropped from about 410 to 235 ms (prepare), 411 to 261 ms (activate) and 331 to 127 ms (status). A prepare against a real player opponent also loads the attacker and defender sides concurrently. The client no longer waits for the post-activation status refresh before enabling the first action, starts the shared Phaser runtime download when the Arena screen opens, and shows a short BATTLE START intro over the battlefield (never over the action controls) while Activation is in flight. Activation still happens after the presentation preload gate, so a failed preload never consumes a ticket.
+
 ## Implementation rules
 
 - New character mutations should use the shared `authenticateCharacter()` boundary where applicable.

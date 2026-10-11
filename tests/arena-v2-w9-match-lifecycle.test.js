@@ -407,3 +407,87 @@ test('Arena replay client supports zero-frame replays and keeps the N/A fallback
   assert.match(ui, /disabled: replay\.frames\.length === 0, onClick: onPlayPause/);
   assert.match(ui, /setReplayError\(/);
 });
+
+// ---- Arena battle start flow: D1 round-trip budget and client start-up contract ----
+function withD1CallCounter(fn) {
+  const counts = { calls: 0 };
+  const originals = {};
+  for (const method of ['first', 'all', 'run']) {
+    originals[method] = Statement.prototype[method];
+    Statement.prototype[method] = async function (...args) { counts.calls++; return originals[method].apply(this, args); };
+  }
+  const originalBatch = D1.prototype.batch;
+  D1.prototype.batch = async function (statements) {
+    // A batch is a single D1 round trip: do not count its inner statements individually.
+    const before = counts.calls;
+    const result = await originalBatch.call(this, statements);
+    counts.calls = before + 1;
+    return result;
+  };
+  const restore = () => {
+    for (const method of Object.keys(originals)) Statement.prototype[method] = originals[method];
+    D1.prototype.batch = originalBatch;
+  };
+  return fn(counts).finally(restore);
+}
+
+test('Arena prepare, activate and status stay inside their D1 call budget (shared context, no duplicate reads)', async () => {
+  const db = createDb();
+  const { opponents } = await ready(db);
+  await withD1CallCounter(async counts => {
+    counts.calls = 0;
+    const prepared = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+    assert.ok(counts.calls <= 12, `prepare used ${counts.calls} D1 calls`);
+    counts.calls = 0;
+    const activated = await body(await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', prepared.match.matchId));
+    assert.equal(activated.match.status, 'active');
+    assert.ok(counts.calls <= 9, `activate used ${counts.calls} D1 calls`);
+    counts.calls = 0;
+    const status = await body(await arena.handleGetArenaV2Status(db, 'p1', session('p1'), 'char-10'));
+    assert.equal(status.unlocked !== false, true);
+    assert.ok(counts.calls <= 8, `status used ${counts.calls} D1 calls`);
+  });
+  db.close();
+});
+
+test('Arena read-first ensure helpers keep first-time creation and repeat calls idempotent', async () => {
+  const db = createDb();
+  const { opponents } = await ready(db);
+  const first = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  const second = await body(await arena.handlePrepareArenaV2Match(db, 'p1', session('p1'), 'char-10', opponents[0].opponentKey));
+  assert.equal(second.replayed, true);
+  assert.equal(second.match.matchId, first.match.matchId);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS c FROM arena_character_state WHERE character_id = ?').get('char-10').c, 1);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS c FROM arena_season_players WHERE character_id = ?').get('char-10').c, 1);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS c FROM arena_setup WHERE character_id = ?').get('char-10').c, 1);
+  const noMatch = await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', '');
+  assert.equal(noMatch.status, 400);
+  const unknown = await arena.handleActivateArenaV2Match(db, 'p1', session('p1'), 'char-10', 'arena-match-missing');
+  assert.equal(unknown.status, 404);
+  db.close();
+});
+
+test('Arena client start-up: Battle Start intro, background status sync and Phaser prefetch', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'components.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'data', 'styles.js'), 'utf8');
+  // The first action must not wait for the post-activation status refresh.
+  assert.match(ui, /void Promise\.resolve\(syncArenaStatus\(\)\)\.catch\(\(\) => \{\}\);\s*return true;/);
+  assert.doesNotMatch(ui, /setBattleIntro\(current => \(current && current\.matchId === matchId \? \{ \.\.\.current, activated: true \} : current\)\);\s*\/\/[^\n]*\n[^\n]*\n[^\n]*\n\s*await syncArenaStatus\(\);/);
+  // Activation stays after the presentation preload gate (ticket boundary unchanged).
+  assert.ok(ui.indexOf('await gate.promise;') < ui.indexOf('cloudActivateArenaV2Match(url, characterId, matchId)'));
+  // Prefetch is idempotent and best-effort.
+  assert.match(ui, /THORNIE_PHASER_RUNTIME\.load\(\)\.catch\(\(\) => \{\}\)/);
+  // Intro: starts with the prepared flow, leaves after activation, clears on failure and when the match disappears.
+  assert.match(ui, /setBattleIntro\(\{ matchId, startedAt: Date\.now\(\), activated: false, leaving: false \}\)/);
+  assert.match(ui, /battleIntro\.activated/);
+  assert.match(ui, /setBattleIntro\(null\);\s*\/\/ Keep a valid prepared match on screen/);
+  assert.match(ui, /md-arena-battle-start\$\{battleIntro\.leaving \? " is-leaving" : ""\}/);
+  // The intro lives in the battlefield stage next to the Phaser error overlay, never around the skill buttons.
+  const introAt = ui.indexOf('md-arena-battle-start${battleIntro.leaving');
+  assert.ok(introAt > ui.indexOf('createElement(PhaserBattlefield, { key: `arena-phaser-'));
+  assert.ok(introAt < ui.indexOf('md-arena-phaser-error'));
+  assert.ok(introAt < ui.indexOf('md-arena-skill-control'));
+  assert.match(css, /\.md-arena-battle-start \{[^}]*position:absolute; inset:0;/);
+  assert.match(css, /\.md-arena-battle-start\.is-leaving \{[^}]*pointer-events:none;/);
+  assert.match(css, /prefers-reduced-motion: reduce\) \{ \.md-arena-battle-start/);
+});
