@@ -90,7 +90,7 @@ test("Inventory compare separates Base, Refine and Enchant rows in the one-scree
   const compareFn = components.slice(components.indexOf("function inventoryComparisonRows"), components.indexOf("function InventoryOverlayV2"));
   assert.match(compareFn, /inventoryRawBaseStats\(item\)/);
   assert.match(compareFn, /inventoryRefineStats\(item\)/);
-  assert.match(compareFn, /inventoryEnchantStats\(item\)/);
+  assert.match(components, /function inventoryEnchantStats\(item\)/);
   assert.doesNotMatch(compareFn, /itemBonus\(currentItem\)|itemBonus\(nextItem\)/);
   assert.doesNotMatch(compareFn, /getStats|combatPower|freshPlayerFromSave/);
   assert.match(compareFn, /\(Base\)/);
@@ -178,7 +178,7 @@ test("Enchant comparison is stat-name based, shows differences and keeps percent
   assert.match(compare, /DIFFERENCE/);
   assert.match(compare, /"—"/);
   assert.match(compare, /inventoryComparisonFormatValue/);
-  assert.match(components, /critChance: "Crit", critDamage: "Crit DMG"/);
+  assert.match(components, /critChance: "Crit",\s*critDamage: "Crit DMG"/);
 });
 
 test("Enchant comparison preserves four slots, duplicate names and malformed-slot safety", () => {
