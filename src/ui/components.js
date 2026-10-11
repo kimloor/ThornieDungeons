@@ -6464,7 +6464,7 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
         /*#__PURE__*/React.createElement("span", null, row.label),
         /*#__PURE__*/React.createElement("b", null, currentValue),
         /*#__PURE__*/React.createElement("b", null, nextValue),
-        /*#__PURE__*/React.createElement("b", { className:deltaClass }, deltaValue));
+        /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-delta " + deltaClass }, deltaValue));
     }),
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Base, Refine and Enchant are shown separately; missing stats are —."));
 }

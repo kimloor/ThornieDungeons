@@ -66,8 +66,8 @@ test("Equipment comparison renders real current/candidate data with compact meta
   assert.match(compare, /SLOT_LABEL\[type\]/);
   assert.match(compare, /Refine/);
   assert.match(compare, /Enchant/);
-  assert.match(compare, /Equipped/);
-  assert.match(compare, /Candidate/);
+  assert.match(compare, /CURRENT ITEM/);
+  assert.match(compare, /NEW ITEM/);
 });
 
 test("Inventory V2 uses the standard authenticated shell and icon-only tools", () => {
