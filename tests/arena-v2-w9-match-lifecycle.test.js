@@ -491,3 +491,21 @@ test('Arena client start-up: Battle Start intro, background status sync and Phas
   assert.match(css, /\.md-arena-battle-start\.is-leaving \{[^}]*pointer-events:none;/);
   assert.match(css, /prefers-reduced-motion: reduce\) \{ \.md-arena-battle-start/);
 });
+
+test('Arena replay overlay keeps the absolute battlefield inside its own stage and above-nothing controls', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'components.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'data', 'styles.js'), 'utf8');
+  const start = ui.indexOf('function ArenaReplayOverlay');
+  const body = ui.slice(start, ui.indexOf('\nfunction ArenaV2Screen', start));
+  const stageAt = body.indexOf('md-arena-phaser-stage md-arena-replay-stage');
+  const fieldAt = body.indexOf('e(PhaserBattlefield');
+  const controlsAt = body.indexOf('md-arena-action-controls');
+  assert.ok(stageAt > 0 && fieldAt > stageAt, 'PhaserBattlefield must be a child of the replay stage');
+  assert.ok(fieldAt < controlsAt, 'stage comes before the controls in normal flow');
+  // The stage wrapper is the positioned containing block that the .md-phaser-battlefield (position:absolute) needs.
+  assert.match(css, /\.md-arena-phaser-stage \{ position:relative;/);
+  assert.match(css, /\.md-arena-replay-overlay \.md-arena-replay-stage \{[^}]*flex: 1 1 auto;[^}]*min-height: clamp\(/);
+  assert.match(css, /\.md-arena-replay-stage \.md-phaser-battlefield canvas \{\s*pointer-events: none;/);
+  assert.match(css, /\.md-arena-replay-overlay \.md-arena-action-controls \{ position: relative; z-index: 2; \}/);
+  assert.match(css, /\.md-phaser-battlefield \{ position:absolute; inset:0;/);
+});

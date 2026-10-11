@@ -3645,7 +3645,9 @@ function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
     e("div", { className: "md-card" },
       e("p", { className: "md-title" }, "ARENA REPLAY"),
       e("p", { className: "md-sub" }, replay.frames.length === 0 ? "Match ended during the opening turns" : `Action ${index} / ${replay.frames.length}`, last ? " · Match complete" : " · Recorded battle"),
-      e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: state, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} }),
+      // The battlefield is position:absolute (inset:0); it needs its own positioned stage or it covers the whole overlay.
+      e("div", { className: "md-arena-phaser-stage md-arena-replay-stage" },
+        e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: state, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} })),
       e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(replay.frames.length === 0 ? -40 : -6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
       e("div", { className: "md-arena-action-controls", style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
         e("button", { className: "md-btn small", disabled: index <= 0, onClick: () => onSeek(index - 1) }, "‹ PREVIOUS"),

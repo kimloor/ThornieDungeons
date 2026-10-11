@@ -2952,6 +2952,20 @@ body::after {
 .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] p {
   margin: 2px 0;
 }
+/* Replay stage: a positioned, shrinkable box in normal flow so the absolute battlefield never leaves it. */
+.md-arena-replay-overlay .md-arena-replay-stage {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: clamp(180px, 36dvh, 380px);
+  max-height: 52dvh;
+  isolation: isolate;
+}
+.md-arena-replay-overlay .md-arena-replay-stage .md-phaser-battlefield,
+.md-arena-replay-overlay .md-arena-replay-stage .md-phaser-battlefield canvas {
+  pointer-events: none;
+}
+.md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { flex: 0 0 auto; }
+.md-arena-replay-overlay .md-arena-action-controls { position: relative; z-index: 2; }
 .md-arena-replay-overlay .md-arena-action-controls {
   flex: 0 0 auto;
   display: grid !important;
@@ -2975,6 +2989,14 @@ body::after {
   .md-arena-replay-overlay .md-arena-action-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-height: 620px) {
+  .md-arena-replay-overlay .md-arena-replay-stage { min-height: 150px; max-height: 44dvh; }
+}
+@media (max-height: 480px) {
+  /* Landscape phones: give the stage the room, keep one compact status line and a short log. */
+  .md-arena-replay-overlay > .md-card > .md-title { display: none; }
+  .md-arena-replay-overlay .md-arena-replay-stage { min-height: 170px; max-height: 56dvh; }
+  .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { max-height: 30px; }
+  .md-arena-replay-overlay .md-arena-action-controls .md-btn { min-height: 36px; }
   .md-arena-replay-overlay > .md-card { gap: 4px; padding: 8px; }
   .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { max-height: 48px; }
 }
@@ -20847,7 +20869,9 @@ function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
     e("div", { className: "md-card" },
       e("p", { className: "md-title" }, "ARENA REPLAY"),
       e("p", { className: "md-sub" }, replay.frames.length === 0 ? "Match ended during the opening turns" : `Action ${index} / ${replay.frames.length}`, last ? " · Match complete" : " · Recorded battle"),
-      e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: state, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} }),
+      // The battlefield is position:absolute (inset:0); it needs its own positioned stage or it covers the whole overlay.
+      e("div", { className: "md-arena-phaser-stage md-arena-replay-stage" },
+        e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: state, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} })),
       e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(replay.frames.length === 0 ? -40 : -6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
       e("div", { className: "md-arena-action-controls", style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
         e("button", { className: "md-btn small", disabled: index <= 0, onClick: () => onSeek(index - 1) }, "‹ PREVIOUS"),
