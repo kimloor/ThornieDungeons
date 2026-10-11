@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const ROOT = path.resolve(__dirname, "..");
 const inventorySystem = require(path.join(ROOT, "src/systems/inventory.js"));
@@ -206,4 +207,86 @@ test("Equipment compare has four responsive columns and does not combine Base, R
   assert.match(styles, /grid-template-columns:minmax\(80px,1\.15fr\).*minmax\(55px,\.85fr\)/);
   assert.match(styles, /@media \(max-width:430px\)/);
   assert.match(styles, /max-height:650px/);
+});
+
+test("Enchant comparison pairs by stat name and validates real row values", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const start = components.indexOf("function inventoryEnchantComparisonEntries");
+  const end = components.indexOf("function InventoryHeader", start);
+  assert.ok(start >= 0 && end > start, "comparison helpers must remain available in source");
+  const sandbox = {
+    SLOT_ORDER: ["weapon", "wings", "helmet"],
+    INVENTORY_STAT_LABELS: {
+      hp: "HP", str: "STR", agi: "AGI", dex: "DEX", luk: "LUK",
+      critChance: "Crit", critDamage: "Crit DMG"
+    },
+    inventoryRawBaseStats: item => item && item.baseStats ? item.baseStats : {},
+    inventoryRefineStats: item => item && item.refineStats ? item.refineStats : {}
+  };
+  const api = vm.runInNewContext(components.slice(start, end) + "\n;({ inventoryComparisonRows, inventoryComparisonFormatValue })", sandbox);
+  const current = {
+    type: "weapon",
+    baseStats: { hp: 10 },
+    refineStats: { hp: 1 },
+    empowerSlots: [
+      { key: "agi", value: 1 }, { key: "str", value: 1 },
+      { key: "luk", value: 1 }, { key: "critChance", value: 3 }
+    ]
+  };
+  const next = {
+    type: "weapon",
+    baseStats: { hp: 12 },
+    refineStats: { hp: 2 },
+    empowerSlots: [
+      { key: "str", value: 2 }, { key: "luk", value: 2 },
+      { key: "critDamage", value: 5 }, { key: "dex", value: 2 }
+    ]
+  };
+  const rows = api.inventoryComparisonRows(current, next);
+  const enchant = rows.filter(row => row.group === "enchant");
+  const rowFor = key => enchant.find(row => row.statKey === key);
+  assert.equal(enchant.length, 6, "four slots on each item must preserve the union of all six stat names");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify([rowFor("str").current, rowFor("str").next])),
+    [1, 2],
+    "same stat name must compare values regardless of slot position"
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify([rowFor("agi").current, rowFor("agi").next])), [1, 0], "current-only stat is retained");
+  assert.deepEqual(JSON.parse(JSON.stringify([rowFor("dex").current, rowFor("dex").next])), [0, 2], "new-only stat is retained");
+  assert.ok(rowFor("critChance") && rowFor("critDamage"), "Crit and Crit DMG must remain distinct stats");
+  assert.equal(api.inventoryComparisonFormatValue("critChance", 3), "3%");
+  assert.equal(api.inventoryComparisonFormatValue("critDamage", 5, true), "+5%");
+  assert.ok(rows.some(row => row.group === "base" && row.statKey === "hp"));
+  assert.ok(rows.some(row => row.group === "refine" && row.statKey === "hp"));
+  assert.equal(api.inventoryComparisonRows(null, next).filter(row => row.group === "enchant").length, 4, "empty current equipment must be supported");
+  assert.deepEqual(JSON.parse(JSON.stringify(api.inventoryComparisonRows(current, { type: "junk", empowerSlots: [] }))), [], "non-equipment items do not compare");
+});
+
+test("Enchant comparison preserves duplicate stat occurrences and ignores malformed slots safely", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const start = components.indexOf("function inventoryEnchantComparisonEntries");
+  const end = components.indexOf("function InventoryHeader", start);
+  const sandbox = {
+    SLOT_ORDER: ["weapon"],
+    INVENTORY_STAT_LABELS: { str: "STR", critChance: "Crit" },
+    inventoryRawBaseStats: item => item && item.baseStats ? item.baseStats : {},
+    inventoryRefineStats: item => item && item.refineStats ? item.refineStats : {}
+  };
+  const api = vm.runInNewContext(components.slice(start, end) + "\n;({ inventoryComparisonRows })", sandbox);
+  const current = {
+    type: "weapon",
+    empowerSlots: [
+      { key: "str", value: 1 }, { key: "str", value: 2 },
+      null, {}, { key: "critChance", value: "bad" }, "invalid"
+    ]
+  };
+  const next = { type: "weapon", empowerSlots: [{ key: "str", value: 3 }, null, { key: "", value: 4 }] };
+  const rows = api.inventoryComparisonRows(current, next).filter(row => row.group === "enchant");
+  assert.equal(rows.length, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(rows.map(row => [row.label, row.current, row.next]))), [
+    ["STR (1) (Enchant)", 1, 3],
+    ["STR (2) (Enchant)", 2, 0]
+  ]);
+  assert.doesNotThrow(() => api.inventoryComparisonRows({ type: "weapon", empowerSlots: null }, next));
+  assert.doesNotThrow(() => api.inventoryComparisonRows({ type: "weapon", empowerSlots: [{ key: "str", value: NaN }] }, next));
 });
