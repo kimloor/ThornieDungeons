@@ -320,5 +320,5 @@ test("Inventory compare uses a gold framed panel and a large selected-item icon 
   assert.match(styles, /border:1\\.5px solid rgba\\(221,176,65/);
   assert.ok(styles.includes("grid-template-columns:112px minmax(0,1fr)"));
   assert.ok(styles.includes("grid-template-columns:84px minmax(0,1fr)"));
-  assert.match(styles, /@media \\(max-width:430px\\)/);
+  assert.ok(styles.includes("@media (max-width:430px)"));
 });
