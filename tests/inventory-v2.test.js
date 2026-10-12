@@ -177,7 +177,6 @@ test("Enchant comparison is stat-name based, shows differences and keeps percent
   assert.match(compare, /CURRENT ITEM/);
   assert.match(compare, /NEW ITEM/);
   assert.doesNotMatch(compare, /"DIFFERENCE"/);
-  assert.match(compare, /"—"/);
   assert.match(compare, /inventoryComparisonFormatValue/);
   assert.match(components, /critChance: "Crit",\s*critDamage: "Crit DMG"/);
 });
@@ -198,7 +197,7 @@ test("Enchant comparison preserves four slots, duplicate names and malformed-slo
   assert.doesNotMatch(rows, /pushGroup\("enchant"/);
 });
 
-test("Equipment compare has four responsive columns and does not combine Base, Refine and Enchant", () => {
+test("Equipment compare has three responsive columns and does not combine Base, Refine and Enchant", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
