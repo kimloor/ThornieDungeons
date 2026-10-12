@@ -67,8 +67,8 @@ test("Equipment comparison renders real current/candidate data with compact meta
   assert.match(compare, /SLOT_LABEL\[type\]/);
   assert.match(compare, /Refine/);
   assert.match(compare, /Enchant/);
-  assert.match(compare, /CURRENT ITEM/);
-  assert.match(compare, /NEW ITEM/);
+  assert.match(compare, /md-inv2-compare-selected-icon-frame/);
+  assert.match(compare, /md-inv2-compare-selected-title/);
 });
 
 test("Inventory V2 uses the standard authenticated shell and icon-only tools", () => {
@@ -174,8 +174,8 @@ test("Enchant comparison is stat-name based, shows differences and keeps percent
   assert.match(compareFn, /normalizedKey \+ '#' \+ entry\.occurrence/);
   assert.match(compareFn, /occurrenceLabel/);
   assert.match(compareFn, /statKey: entry\.key/);
-  assert.match(compare, /CURRENT ITEM/);
-  assert.match(compare, /NEW ITEM/);
+  assert.match(compare, /md-inv2-compare-selected-icon-frame/);
+  assert.match(compare, /md-inv2-compare-selected-title/);
   assert.doesNotMatch(compare, /"DIFFERENCE"/);
   assert.match(compare, /inventoryComparisonFormatValue/);
   assert.match(components, /critChance: "Crit",\s*critDamage: "Crit DMG"/);
