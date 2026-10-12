@@ -201,11 +201,13 @@ test("Equipment compare has three responsive columns and does not combine Base, 
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
-  assert.match(compare, /sellPrice\(item\)/);
+  assert.match(compare, /md-inv2-compare-selected-icon-frame/);
   assert.match(compare, /Base, Refine and Enchant are shown separately/);
   assert.match(styles, /grid-template-columns:minmax\(0,1\.15fr\) minmax\(0,\.72fr\) minmax\(0,1fr\)/);
   assert.match(styles, /@media \(max-width:430px\)/);
   assert.match(styles, /max-height:650px/);
+  assert.match(styles, /border:1\\.5px solid rgba\\(221,176,65/);
+  assert.match(styles, /md-inv2-compare-selected-icon-frame \\.md-game-icon/);
 });
 
 test("Enchant comparison pairs by stat name and validates real row values", () => {
@@ -302,4 +304,21 @@ test("Inventory compare has exactly three aligned columns and puts signed delta 
   assert.match(compare, /\(" \+ deltaValue \+ "\)/);
   assert.match(styles, /grid-template-columns:minmax\(0,1\.15fr\) minmax\(0,\.72fr\) minmax\(0,1fr\)/);
   assert.match(styles, /@media \(max-width:430px\)/);
+});
+
+
+test("Inventory compare uses a gold framed panel and a large selected-item icon in the upper-left header", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
+  const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
+  assert.match(compare, /currentDetail \\|\\| currentEquipped/);
+  assert.match(compare, /md-inv2-compare-selected-icon-frame/);
+  assert.match(compare, /md-game-icon md-inv2-compare-icon/);
+  assert.match(compare, /md-inv2-compare-selected-title/);
+  assert.match(compare, /"CURRENT"/);
+  assert.match(compare, /"NEW"/);
+  assert.match(styles, /border:1\\.5px solid rgba\\(221,176,65/);
+  assert.match(styles, /grid-template-columns:112px minmax\\(0,1fr\\)/);
+  assert.match(styles, /grid-template-columns:84px minmax\\(0,1fr\\)/);
+  assert.match(styles, /@media \\(max-width:430px\\)/);
 });

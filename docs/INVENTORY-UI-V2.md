@@ -478,3 +478,11 @@ Additional rules:
 - a visual/load failure never changes item ownership, stats or persistence.
 
 The Hero preview must reuse the same shared `HeroRenderer`, `EquipmentVisualResolver`, `AssetResolver` and `TextureRegistry` used by the Phaser presentation architecture rather than creating Inventory-specific equivalents.
+
+
+### Inventory comparison visual alignment (1.0.54)
+
+- The comparison surface uses a rounded gold outer frame and a deep navy/purple panel background, separate from the surrounding item detail shell.
+- The selected candidate item artwork is shown in a large gold-framed square at the upper left; its name, rarity, type/level, Refine/Enchant summary and compared equipped item label sit to the right.
+- Stat, Current and New headings remain aligned to the three data columns. The selected-item artwork is not repeated as two tiny icons in separate Current/New cards.
+- On narrow mobile widths the framed artwork scales down while remaining a prominent header element; comparison values and the bottom action buttons retain their existing behavior.
