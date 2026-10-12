@@ -63,7 +63,7 @@ test("Equipment comparison renders real current/candidate data with compact meta
   assert.match(compare, /currentEquipped/);
   assert.match(compare, /currentDetail/);
   assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 1);
-  assert.match(compare, /rarityLabel\(item\)/);
+  assert.match(compare, /rarityLabel\\(selected\\)/);
   assert.match(compare, /SLOT_LABEL\[type\]/);
   assert.match(compare, /Refine/);
   assert.match(compare, /Enchant/);
