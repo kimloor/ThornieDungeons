@@ -59,16 +59,16 @@ test("Inventory V2 wiring removes duplicate inventory chrome and prewires option
 test("Equipment comparison renders real current/candidate data with compact metadata", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
-  assert.match(compare, /item: item \|\| \{\}/);
+  assert.ok(compare.includes("item: selected || {}"));
   assert.match(compare, /currentEquipped/);
   assert.match(compare, /currentDetail/);
   assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 1);
-  assert.match(compare, /rarityLabel\(item\)/);
+  assert.ok(compare.includes("rarityLabel(selected)"));
   assert.match(compare, /SLOT_LABEL\[type\]/);
   assert.match(compare, /Refine/);
   assert.match(compare, /Enchant/);
-  assert.match(compare, /CURRENT ITEM/);
-  assert.match(compare, /NEW ITEM/);
+  assert.match(compare, /md-inv2-compare-selected-icon-frame/);
+  assert.match(compare, /md-inv2-compare-selected-title/);
 });
 
 test("Inventory V2 uses the standard authenticated shell and icon-only tools", () => {
@@ -174,10 +174,9 @@ test("Enchant comparison is stat-name based, shows differences and keeps percent
   assert.match(compareFn, /normalizedKey \+ '#' \+ entry\.occurrence/);
   assert.match(compareFn, /occurrenceLabel/);
   assert.match(compareFn, /statKey: entry\.key/);
-  assert.match(compare, /CURRENT ITEM/);
-  assert.match(compare, /NEW ITEM/);
-  assert.match(compare, /DIFFERENCE/);
-  assert.match(compare, /"—"/);
+  assert.match(compare, /md-inv2-compare-selected-icon-frame/);
+  assert.match(compare, /md-inv2-compare-selected-title/);
+  assert.doesNotMatch(compare, /"DIFFERENCE"/);
   assert.match(compare, /inventoryComparisonFormatValue/);
   assert.match(components, /critChance: "Crit",\s*critDamage: "Crit DMG"/);
 });
@@ -198,15 +197,17 @@ test("Enchant comparison preserves four slots, duplicate names and malformed-slo
   assert.doesNotMatch(rows, /pushGroup\("enchant"/);
 });
 
-test("Equipment compare has four responsive columns and does not combine Base, Refine and Enchant", () => {
+test("Equipment compare has three responsive columns and does not combine Base, Refine and Enchant", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
-  assert.match(compare, /sellPrice\(item\)/);
+  assert.match(compare, /md-inv2-compare-selected-icon-frame/);
   assert.match(compare, /Base, Refine and Enchant are shown separately/);
-  assert.match(styles, /grid-template-columns:minmax\(80px,1\.15fr\).*minmax\(55px,\.85fr\)/);
+  assert.match(styles, /grid-template-columns:minmax\(0,1\.15fr\) minmax\(0,\.72fr\) minmax\(0,1fr\)/);
   assert.match(styles, /@media \(max-width:430px\)/);
   assert.match(styles, /max-height:650px/);
+  assert.ok(styles.includes("border:1.5px solid rgba(221,176,65"));
+  assert.ok(styles.includes(".md-inv2-compare-selected-icon-frame .md-game-icon"));
 });
 
 test("Enchant comparison pairs by stat name and validates real row values", () => {
@@ -289,4 +290,35 @@ test("Enchant comparison preserves duplicate stat occurrences and ignores malfor
   ]);
   assert.doesNotThrow(() => api.inventoryComparisonRows({ type: "weapon", empowerSlots: null }, next));
   assert.doesNotThrow(() => api.inventoryComparisonRows({ type: "weapon", empowerSlots: [{ key: "str", value: NaN }] }, next));
+});
+
+
+test("Inventory compare has exactly three aligned columns and puts signed delta inside New", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
+  const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
+  const headings = compare.match(/React\.createElement\("span", null, "(?:STAT|CURRENT|NEW|DIFFERENCE)"\)/g) || [];
+  assert.deepEqual(headings.map(x => x.match(/"(STAT|CURRENT|NEW|DIFFERENCE)"\)/)[1]), ["STAT", "CURRENT", "NEW"]);
+  assert.doesNotMatch(compare, /"DIFFERENCE"/);
+  assert.match(compare, /md-inv2-compare-new-value/);
+  assert.match(compare, /\(" \+ deltaValue \+ "\)/);
+  assert.match(styles, /grid-template-columns:minmax\(0,1\.15fr\) minmax\(0,\.72fr\) minmax\(0,1fr\)/);
+  assert.match(styles, /@media \(max-width:430px\)/);
+});
+
+
+test("Inventory compare uses a gold framed panel and a large selected-item icon in the upper-left header", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
+  const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
+  assert.ok(compare.includes("currentDetail || currentEquipped"));
+  assert.match(compare, /md-inv2-compare-selected-icon-frame/);
+  assert.match(compare, /md-game-icon md-inv2-compare-icon/);
+  assert.match(compare, /md-inv2-compare-selected-title/);
+  assert.match(compare, /"CURRENT"/);
+  assert.match(compare, /"NEW"/);
+  assert.ok(styles.includes("border:1.5px solid rgba(221,176,65"));
+  assert.ok(styles.includes("grid-template-columns:112px minmax(0,1fr)"));
+  assert.ok(styles.includes("grid-template-columns:84px minmax(0,1fr)"));
+  assert.ok(styles.includes("@media (max-width:430px)"));
 });

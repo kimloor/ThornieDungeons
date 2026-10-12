@@ -196,8 +196,8 @@ Rules:
 - If both items have different Empower options, compare the final resulting values rather than comparing only base item data.
 - In the Inventory V2 comparison implementation, Base, Refine, and Enchant are presented as separate groups; do not silently merge an Enchant value into Base/Refine.
 - Enchant rows match by stat name rather than slot index. If a stat name occurs more than once, preserve each occurrence as a separate numbered row; do not overwrite or silently collapse duplicate options.
-- Show the union of current and new Enchant stats. A missing side is shown as an em dash, and the Difference column shows the signed numeric change with the correct percentage unit where applicable.
-- The comparison header identifies CURRENT ITEM and NEW ITEM separately and keeps the stat table readable on narrow and short mobile viewports.
+- Show the union of current and new Enchant stats, matching by normalized stat name and occurrence number. Keep exactly three columns: Stat, Current, and New. The New column shows the candidate value followed by the signed delta in parentheses, e.g. `9 (+9)` or `0 (-3)`; there is no separate Difference column.
+- The comparison header identifies CURRENT ITEM and NEW ITEM separately and keeps the stat table readable on narrow and short mobile viewports. The selected item icon remains in the header area; Current and New labels align with their respective numeric columns.
 - CP delta may be shown if it can be calculated consistently from the real character-stat pipeline.
 
 ### Delta colors
@@ -478,3 +478,11 @@ Additional rules:
 - a visual/load failure never changes item ownership, stats or persistence.
 
 The Hero preview must reuse the same shared `HeroRenderer`, `EquipmentVisualResolver`, `AssetResolver` and `TextureRegistry` used by the Phaser presentation architecture rather than creating Inventory-specific equivalents.
+
+
+### Inventory comparison visual alignment (1.0.54)
+
+- The comparison surface uses a rounded gold outer frame and a deep navy/purple panel background, separate from the surrounding item detail shell.
+- The selected candidate item artwork is shown in a large gold-framed square at the upper left; its name, rarity, type/level, Refine/Enchant summary and compared equipped item label sit to the right.
+- Stat, Current and New headings remain aligned to the three data columns. The selected-item artwork is not repeated as two tiny icons in separate Current/New cards.
+- On narrow mobile widths the framed artwork scales down while remaining a prominent header element; comparison values and the bottom action buttons retain their existing behavior.
