@@ -59,7 +59,7 @@ test("Inventory V2 wiring removes duplicate inventory chrome and prewires option
 test("Equipment comparison renders real current/candidate data with compact metadata", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
-  assert.match(compare, /item: item \|\| \{\}/);
+  assert.match(compare, /item: selected \\|\\| \\{\\}/);
   assert.match(compare, /currentEquipped/);
   assert.match(compare, /currentDetail/);
   assert.equal((compare.match(/React\.createElement\(GameIcon/g) || []).length, 1);
