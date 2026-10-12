@@ -3638,6 +3638,9 @@ function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
   const index = Math.max(0, Math.min(replay.frames.length, Number(replay.index) || 0));
   const state = index === 0 ? replay.initialState : replay.frames[index - 1]?.state || replay.initialState;
   const last = index >= replay.frames.length;
+  // BattleScene remembers the highest cue/damage seq it played per battleId, so a backward seek or a restart needs a fresh
+  // run id (new baseline). presentationSkip keeps a jump from re-playing old damage numbers.
+  const presentationState = state ? { ...state, battleId: `${state.battleId || "arena-replay"}:run${replay.run || 0}`, presentationSkip: replay.skip === true } : state;
   return e("div", {
     className: "md-arena-replay-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Arena battle replay",
     style: { position: "fixed", inset: 0, zIndex: 2000, overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", padding: "max(16px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom))", background: "rgba(8, 10, 18, 0.96)" }
@@ -3647,13 +3650,13 @@ function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
       e("p", { className: "md-sub" }, replay.frames.length === 0 ? "Match ended during the opening turns" : `Action ${index} / ${replay.frames.length}`, last ? " · Match complete" : " · Recorded battle"),
       // The battlefield is position:absolute (inset:0); it needs its own positioned stage or it covers the whole overlay.
       e("div", { className: "md-arena-phaser-stage md-arena-replay-stage" },
-        e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: state, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} })),
+        e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: presentationState, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} })),
       e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(replay.frames.length === 0 ? -40 : -6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
       e("div", { className: "md-arena-action-controls", style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
-        e("button", { className: "md-btn small", disabled: index <= 0, onClick: () => onSeek(index - 1) }, "‹ PREVIOUS"),
-        e("button", { className: "md-btn primary", disabled: replay.frames.length === 0, onClick: onPlayPause }, replay.playing ? "PAUSE" : last ? "REPLAY AGAIN" : "PLAY"),
-        e("button", { className: "md-btn small", disabled: last, onClick: () => onSeek(index + 1) }, "NEXT ›"),
-        e("button", { className: "md-btn small secondary", onClick: onClose }, "CLOSE")
+        e("button", { className: "md-btn small md-arena-art-btn secondary", disabled: index <= 0, onClick: () => onSeek(index - 1) }, "‹ PREVIOUS"),
+        e("button", { className: "md-btn small md-arena-art-btn primary", disabled: replay.frames.length === 0, onClick: onPlayPause }, replay.playing ? "PAUSE" : last ? "REPLAY AGAIN" : "PLAY"),
+        e("button", { className: "md-btn small md-arena-art-btn secondary", disabled: last, onClick: () => onSeek(index + 1) }, "NEXT ›"),
+        e("button", { className: "md-btn small md-arena-art-btn secondary", onClick: onClose }, "CLOSE")
       )
     )
   );
@@ -3908,7 +3911,7 @@ function ArenaV2Screen({
     const timer = setInterval(() => setReplay(current => {
       if (!current || !current.playing) return current;
       const nextIndex = current.index + 1;
-      return nextIndex >= current.frames.length ? { ...current, index: current.frames.length, playing: false } : { ...current, index: nextIndex };
+      return nextIndex >= current.frames.length ? { ...current, index: current.frames.length, playing: false, skip: false } : { ...current, index: nextIndex, skip: false };
     }), 1200);
     return () => clearInterval(timer);
   }, [replay?.playing, replay?.frames?.length]);
@@ -4160,7 +4163,7 @@ function ArenaV2Screen({
       /*#__PURE__*/React.createElement("h1", null, "Arena")),
     /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save, arena: arenaCurrency, className: "md-arena-global-currency" }),
     /*#__PURE__*/React.createElement("div", { className: "md-arena-scroll" },
-      /*#__PURE__*/React.createElement("div", { className: !match ? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card" },
+      /*#__PURE__*/React.createElement("div", { className: !match ? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card", "data-arena-battle-header": match ? "true" : undefined },
       match && /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Arena Battle"),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-summary" },
         !match && currentTierBadge && /*#__PURE__*/React.createElement("img", { className: "md-arena-tier-badge", src: currentTierBadge, alt: "", "aria-hidden": "true" }),
@@ -4288,7 +4291,15 @@ function ArenaV2Screen({
         }));
     })),
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Phaser 2v2 Battle · ", matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`), matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Presentation พร้อมก่อนใช้ Ticket; controls จะเปิดหลัง activation สำเร็จ"), !matchIsPrepared && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-speed-toggle", type: "button", onClick: () => setCombatSpeed(value => value === 1 ? 2 : 1), "aria-label": `Arena presentation speed x${combatSpeed}` }, `×${combatSpeed}`), /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Speed Queue: ", (match.state?.queue || []).slice(0, 4).map(q => q.name || q.id || q).join(" › ") || (matchIsPrepared ? "waiting for activation" : "—")), /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
+      /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-battle-card" },
+        /*#__PURE__*/React.createElement("div", { className: "md-arena-battle-top" },
+          /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-battle-title" }, matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`),
+          !matchIsPrepared && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-speed-toggle", type: "button", onClick: () => setCombatSpeed(value => value === 1 ? 2 : 1), "aria-label": `Arena presentation speed x${combatSpeed}` }, `\u00d7${combatSpeed}`),
+          matchIsActive && !match.result && /*#__PURE__*/React.createElement("button", { className: "md-btn flee md-arena-surrender-btn", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER")),
+        matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub md-arena-battle-note" }, "Presentation \u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e01\u0e48\u0e2d\u0e19\u0e43\u0e0a\u0e49 Ticket; controls \u0e08\u0e30\u0e40\u0e1b\u0e34\u0e14\u0e2b\u0e25\u0e31\u0e07 activation \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08"),
+        /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })),
+        // Speed Queue is already shown by the turn-order bar above; the stage takes all remaining height.
+        /*#__PURE__*/React.createElement("div", { className: `md-arena-phaser-stage status-${phaserStatus}` },
         /*#__PURE__*/React.createElement(PhaserBattlefield, { key: `arena-phaser-${match.matchId}-${presentationAttempt}`, mode: "arena", battleState, preparedSnapshot: match.snapshot, combatSpeed, targetUid: selected, onTargetSelected: setSelectedTarget, onStatus: (s, detail) => {
           setPhaserStatus(s);
           if (s === "ready") preloadGateRef.current?.ready();
@@ -4306,13 +4317,24 @@ function ArenaV2Screen({
           /*#__PURE__*/React.createElement("b", null, "BATTLE START"),
           /*#__PURE__*/React.createElement("span", null, `${match.snapshot?.attacker?.name || "You"}  VS  ${match.snapshot?.defender?.name || "Opponent"}`),
           match.snapshot?.attacker?.rating != null && match.snapshot?.defender?.rating != null && /*#__PURE__*/React.createElement("small", null, `Rating ${match.snapshot.attacker.rating} vs ${match.snapshot.defender.rating}`)),
-        phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, matchIsPrepared ? "Battle presentation unavailable" : "Battle presentation unavailable · controls remain active")), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "loading" ? "Loading Battle…" : preloadState === "failed" ? "Battle preload failed" : "", " · ", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(" · ")), /*#__PURE__*/React.createElement("div", { className: "md-sub" }, "Targets: ", enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive || !matchIsActive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))), /*#__PURE__*/React.createElement("p", { className: "md-sub" }, (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line), " ")), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => setShowFullLog(!showFullLog) }, showFullLog ? "HIDE LOG" : "FULL LOG")), showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-card" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line))))),
+        phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, matchIsPrepared ? "Battle presentation unavailable" : "Battle presentation unavailable · controls remain active")),
+        /*#__PURE__*/React.createElement("div", { className: "md-arena-battle-info" },
+          /*#__PURE__*/React.createElement("span", { className: "md-arena-sr-only", "aria-live": "polite" }, preloadState === "loading" ? "Loading Battle\u2026 " : preloadState === "failed" ? "Battle preload failed " : "", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(", "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(", ")),
+          enemyUnits.filter(u => u.alive).length > 1 && /*#__PURE__*/React.createElement("div", { className: "md-arena-target-row" }, /*#__PURE__*/React.createElement("span", null, "Target"), enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, type: "button", className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive || !matchIsActive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))),
+          /*#__PURE__*/React.createElement("button", { type: "button", className: "md-arena-log-strip", "aria-label": "Open full battle log", onClick: () => setShowFullLog(true) },
+            (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line))),
+            /*#__PURE__*/React.createElement("b", null, "FULL LOG"))),
+        showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-arena-log-sheet", role: "dialog", "aria-modal": "true", "aria-label": "Full battle log", onClick: () => setShowFullLog(false) },
+          /*#__PURE__*/React.createElement("section", { className: "md-card md-arena-log-sheet-card", onClick: event => event.stopPropagation() },
+            /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Battle Log"),
+            /*#__PURE__*/React.createElement("div", { className: "md-arena-log-sheet-list" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line)))),
+            /*#__PURE__*/React.createElement("button", { type: "button", className: "md-btn small", onClick: () => setShowFullLog(false) }, "CLOSE")))),
       match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-result-card" },
         resultGraphicSrc && /*#__PURE__*/React.createElement("img", { className: "md-arena-result-emblem", src: resultGraphicSrc, alt: "", "aria-hidden": "true" }),
         /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-result-title" }, "RESULT · ", resultView.outcome),
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Combat: ", resultView.combatResult, " · Rating change: ", resultView.ratingChange ?? "—", " · Arena Coin: ", resultView.arenaCoinEarned ?? "—"),
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Reward: ", resultView.rewardSlot, " · Resolution: ", resultView.resolution),
-        /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-action-controls" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), /*#__PURE__*/React.createElement("button", { className: "md-btn flee md-arena-surrender-btn", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER"), (setup.skillSlots || []).map((skill, index) => {
+        /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-action-controls md-arena-action-dock" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack md-arena-attack-btn", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-auto-btn", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), (setup.skillSlots || []).map((skill, index) => {
           const definition = (status.availableSkills || []).find(candidate => candidate.key === skill);
           return /*#__PURE__*/React.createElement("button", { key: `${index}-${skill || "empty"}`, className: "md-btn small md-arena-skill-control", disabled: busy || !skill, onClick: () => action("active", skill, selected) },
             skill ? /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: skill, className: "md-hero-skill-icon md-arena-battle-skill-icon", alt: definition?.name || heroSkillDisplayName(skill), loading: "eager" }) : /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"),
@@ -4322,8 +4344,19 @@ function ArenaV2Screen({
     replay && /*#__PURE__*/React.createElement(ArenaReplayOverlay, {
       replay,
       onClose: () => setReplay(null),
-      onPlayPause: () => setReplay(current => current ? { ...current, index: current.index >= current.frames.length ? 0 : current.index, playing: current.index >= current.frames.length ? true : !current.playing } : current),
-      onSeek: index => setReplay(current => current ? { ...current, index: Math.max(0, Math.min(current.frames.length, index)), playing: false } : current)
+      onPlayPause: () => setReplay(current => {
+        if (!current) return current;
+        // REPLAY AGAIN restarts from the opening state with a fresh presentation run so the heroes animate again.
+        if (current.index >= current.frames.length) return { ...current, index: 0, playing: current.frames.length > 0, run: (current.run || 0) + 1, skip: true };
+        return { ...current, playing: !current.playing, skip: false };
+      }),
+      onSeek: index => setReplay(current => {
+        if (!current) return current;
+        const next = Math.max(0, Math.min(current.frames.length, index));
+        const backward = next < current.index;
+        // Stepping forward by one frame plays its animation; a backward or multi-frame jump re-baselines silently.
+        return { ...current, index: next, playing: false, run: backward ? (current.run || 0) + 1 : (current.run || 0), skip: backward || next !== current.index + 1 };
+      })
     }),
     !match && /*#__PURE__*/React.createElement(GameDock, {
       onCharacter,

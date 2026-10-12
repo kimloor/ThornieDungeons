@@ -504,8 +504,71 @@ test('Arena replay overlay keeps the absolute battlefield inside its own stage a
   assert.ok(fieldAt < controlsAt, 'stage comes before the controls in normal flow');
   // The stage wrapper is the positioned containing block that the .md-phaser-battlefield (position:absolute) needs.
   assert.match(css, /\.md-arena-phaser-stage \{ position:relative;/);
-  assert.match(css, /\.md-arena-replay-overlay \.md-arena-replay-stage \{[^}]*flex: 1 1 auto;[^}]*min-height: clamp\(/);
-  assert.match(css, /\.md-arena-replay-stage \.md-phaser-battlefield canvas \{\s*pointer-events: none;/);
-  assert.match(css, /\.md-arena-replay-overlay \.md-arena-action-controls \{ position: relative; z-index: 2; \}/);
+  // The scene needs ~300px of height; a shorter stage clips the heroes' heads.
+  assert.match(css, /\.md-arena-replay-overlay \.md-arena-replay-stage \{[^}]*height: clamp\(280px, 46dvh, 430px\);[^}]*min-height: 280px;/);
+  assert.match(css, /\.md-arena-replay-stage \.md-phaser-battlefield canvas \{ pointer-events: none; \}/);
+  assert.match(css, /\.md-arena-replay-overlay \.md-arena-action-controls \{\s*position: sticky;\s*bottom: 0;\s*z-index: 3;/);
   assert.match(css, /\.md-phaser-battlefield \{ position:absolute; inset:0;/);
+});
+
+test('Arena replay controls use the shared Arena art buttons with layout-only CSS', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'components.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'data', 'styles.js'), 'utf8');
+  const start = ui.indexOf('function ArenaReplayOverlay');
+  const body = ui.slice(start, ui.indexOf('\nfunction ArenaV2Screen', start));
+  const controls = body.slice(body.indexOf('md-arena-action-controls'));
+  for (const label of ['PREVIOUS', 'PLAY', 'NEXT', 'CLOSE']) {
+    const at = controls.indexOf(label);
+    assert.ok(at > 0, `${label} button exists`);
+    const buttonStart = controls.lastIndexOf('e("button"', at);
+    assert.match(controls.slice(buttonStart, at), /md-arena-art-btn (secondary|primary)/, `${label} uses md-arena-art-btn`);
+  }
+  assert.doesNotMatch(controls, /className: "md-btn (small )?(secondary|primary)?"[^}]*onClick: (onClose|onPlayPause)/);
+  // No replay-specific look overrides for the buttons (size/font/padding come from .md-arena-art-btn).
+  assert.doesNotMatch(css, /\.md-arena-replay-overlay \.md-arena-action-controls \.md-btn \{[^}]*(font-size|min-height|padding)/);
+});
+
+test('Arena replay re-baselines the Phaser scene on backward seeks and restarts so heroes animate again', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'components.js'), 'utf8');
+  assert.match(ui, /battleId: `\$\{state\.battleId \|\| "arena-replay"\}:run\$\{replay\.run \|\| 0\}`, presentationSkip: replay\.skip === true/);
+  assert.match(ui, /battleState: presentationState,/);
+  // REPLAY AGAIN: new run + silent baseline; backward seek: new run; one-step NEXT: animated; autoplay: animated.
+  assert.match(ui, /run: \(current\.run \|\| 0\) \+ 1, skip: true \}/);
+  assert.match(ui, /run: backward \? \(current\.run \|\| 0\) \+ 1 : \(current\.run \|\| 0\), skip: backward \|\| next !== current\.index \+ 1/);
+  assert.match(ui, /index: nextIndex, skip: false \}/);
+  // The scene keeps a per-battleId high-water mark, so a changed battleId is what makes it play cues again.
+  const scene = fs.readFileSync(path.join(__dirname, '..', 'src', 'phaser', 'scenes', 'BattleScene.js'), 'utf8');
+  assert.match(scene, /lastArenaCueSeq/);
+  const bridge = fs.readFileSync(path.join(__dirname, '..', 'src', 'phaser', 'presentation', 'EventBridge.js'), 'utf8');
+  assert.match(bridge, /battleId: String\(state\.battleId \|\| "arena-preview"\)/);
+  assert.match(bridge, /suppressDamageFeedback: state\.presentationSkip === true/);
+});
+
+test('Arena battle page fits one screen: compact top bar, flexible stage, log sheet and a bottom action dock', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'components.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'data', 'styles.js'), 'utf8');
+  const start = ui.indexOf('function ArenaV2Screen');
+  const arena = ui.slice(start, ui.indexOf('\nfunction materializeMailItem', start));
+  // Top bar holds round, x1/x2 and Surrender; the Speed Queue sentence and HP line no longer sit above the stage.
+  assert.match(arena, /className: "md-arena-battle-top"/);
+  assert.doesNotMatch(arena, /Speed Queue: /);
+  assert.ok(arena.indexOf('md-arena-battle-top') < arena.indexOf('md-arena-turn-order'));
+  assert.ok(arena.indexOf('md-arena-turn-order') < arena.indexOf('md-arena-phaser-stage status-'));
+  assert.ok(arena.indexOf('md-arena-phaser-stage status-') < arena.indexOf('md-arena-battle-info'));
+  const dock = arena.slice(arena.indexOf('md-arena-action-dock'));
+  assert.doesNotMatch(dock.slice(0, dock.indexOf('Skill ${index + 1}')), /action\("surrender"/);
+  assert.equal((arena.match(/action\("surrender"/g) || []).length, 1);
+  assert.match(arena, /enemyUnits\.filter\(u => u\.alive\)\.length > 1 && /);
+  // Full log is a sheet, not an inline card that pushes the stage and controls down.
+  assert.match(arena, /className: "md-arena-log-sheet", role: "dialog"/);
+  assert.match(arena, /className: "md-arena-log-strip"/);
+  assert.match(css, /\.md-arena-scroll > \[data-arena-battle-header="true"\] \{ display:none; \}/);
+  assert.match(arena, /"data-arena-battle-header": match \? "true" : undefined/);
+  assert.match(css, /\.md-arena-scroll > \.md-arena-battle-card \{ flex:1 0 auto; display:flex; flex-direction:column;/);
+  assert.match(css, /\.md-arena-battle-card \.md-arena-phaser-stage \{ flex:1 1 auto; min-height:230px; \}/);
+  assert.match(css, /\.md-arena-log-sheet \{ position:fixed; inset:0;/);
+  assert.match(css, /\.md-arena-action-dock \{ grid-template-columns:repeat\(4,minmax\(0,1fr\)\);/);
+  // Battle/Result stay unskinned (Arena Hub R1): no art buttons in the battle block.
+  const battle = arena.slice(arena.indexOf('md-arena-battle-card'), arena.indexOf('md-arena-result-card'));
+  assert.doesNotMatch(battle, /md-arena-art-btn/);
 });

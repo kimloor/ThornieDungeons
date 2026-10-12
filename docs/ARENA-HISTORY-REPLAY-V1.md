@@ -30,3 +30,9 @@ Status: **RELEASE CANDIDATE 1.0.52 — QA REQUIRED**
 - Test ordered frames, missing/gapped ledger fallback, participant authorization, and no mutation to Ticket balance, match status, or reward receipts.
 - Run `node --check workers/thornie-dungeons-api.js`, `node --check src/ui/components.js`, Arena lifecycle tests, Battle Core parity, and `node build.js` with `git diff --exit-code -- index.html`.
 - This is a separate PR from Phaser damage feedback PR #117 and must not merge/deploy without Owner approval.
+
+## Replay presentation notes
+- The replay overlay owns a positioned stage (`md-arena-phaser-stage md-arena-replay-stage`) at least 280px tall (same proportions as the live battle) because the shared battle scene anchors heroes at half the stage height and never scales them below 0.82; a shorter stage clips the heroes' heads. The card scrolls on very short screens and the controls stay pinned at the bottom; landscape phones use two columns.
+- `BattleScene` remembers the highest cue/damage sequence it played per `battleId`. The overlay therefore appends a run id to the replay `battleId` and increments it on every backward seek and on REPLAY AGAIN, with `presentationSkip` set for jumps so old damage numbers do not re-play; stepping forward one frame or autoplay animates normally.
+- Controls reuse the shared Arena art buttons (`md-arena-art-btn`); replay CSS only lays them out.
+
