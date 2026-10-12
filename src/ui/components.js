@@ -6452,19 +6452,19 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" },
       /*#__PURE__*/React.createElement("span", null, "STAT"),
       /*#__PURE__*/React.createElement("span", null, "CURRENT"),
-      /*#__PURE__*/React.createElement("span", null, "NEW"),
-      /*#__PURE__*/React.createElement("span", null, "DIFFERENCE")),
+      /*#__PURE__*/React.createElement("span", null, "NEW")),
     compareRows.map(row => {
       const delta = Math.round(((Number(row.next) || 0) - (Number(row.current) || 0)) * 10) / 10;
       const deltaClass = delta > 0 ? "positive" : delta < 0 ? "negative" : "";
-      const currentValue = Math.abs(Number(row.current) || 0) <= 0.0001 ? "—" : inventoryComparisonFormatValue(row.statKey || "", row.current);
-      const nextValue = Math.abs(Number(row.next) || 0) <= 0.0001 ? "—" : inventoryComparisonFormatValue(row.statKey || "", row.next);
+      const currentValue = inventoryComparisonFormatValue(row.statKey || "", row.current);
+      const nextValue = inventoryComparisonFormatValue(row.statKey || "", row.next);
       const deltaValue = delta === 0 ? "0" : inventoryComparisonFormatValue(row.statKey || "", delta, true);
       return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key },
         /*#__PURE__*/React.createElement("span", null, row.label),
         /*#__PURE__*/React.createElement("b", null, currentValue),
-        /*#__PURE__*/React.createElement("b", null, nextValue),
-        /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-delta " + deltaClass }, deltaValue));
+        /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-new-value" }, nextValue,
+          " ",
+          /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta " + deltaClass }, "(" + deltaValue + ")")));
     }),
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Base, Refine and Enchant are shown separately; missing stats are —."));
 }

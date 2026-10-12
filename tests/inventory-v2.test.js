@@ -176,7 +176,7 @@ test("Enchant comparison is stat-name based, shows differences and keeps percent
   assert.match(compareFn, /statKey: entry\.key/);
   assert.match(compare, /CURRENT ITEM/);
   assert.match(compare, /NEW ITEM/);
-  assert.match(compare, /DIFFERENCE/);
+  assert.doesNotMatch(compare, /"DIFFERENCE"/);
   assert.match(compare, /"—"/);
   assert.match(compare, /inventoryComparisonFormatValue/);
   assert.match(components, /critChance: "Crit",\s*critDamage: "Crit DMG"/);
@@ -204,7 +204,7 @@ test("Equipment compare has four responsive columns and does not combine Base, R
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
   assert.match(compare, /sellPrice\(item\)/);
   assert.match(compare, /Base, Refine and Enchant are shown separately/);
-  assert.match(styles, /grid-template-columns:minmax\(80px,1\.15fr\).*minmax\(55px,\.85fr\)/);
+  assert.match(styles, /grid-template-columns:minmax\(0,1\.15fr\) minmax\(0,\.72fr\) minmax\(0,1fr\)/);
   assert.match(styles, /@media \(max-width:430px\)/);
   assert.match(styles, /max-height:650px/);
 });
@@ -289,4 +289,18 @@ test("Enchant comparison preserves duplicate stat occurrences and ignores malfor
   ]);
   assert.doesNotThrow(() => api.inventoryComparisonRows({ type: "weapon", empowerSlots: null }, next));
   assert.doesNotThrow(() => api.inventoryComparisonRows({ type: "weapon", empowerSlots: [{ key: "str", value: NaN }] }, next));
+});
+
+
+test("Inventory compare has exactly three aligned columns and puts signed delta inside New", () => {
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
+  const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
+  const headings = compare.match(/React\.createElement\("span", null, "(?:STAT|CURRENT|NEW|DIFFERENCE)"\)/g) || [];
+  assert.deepEqual(headings.map(x => x.match(/"(STAT|CURRENT|NEW|DIFFERENCE)"\)/)[1]), ["STAT", "CURRENT", "NEW"]);
+  assert.doesNotMatch(compare, /"DIFFERENCE"/);
+  assert.match(compare, /md-inv2-compare-new-value/);
+  assert.match(compare, /\(" \+ deltaValue \+ "\)/);
+  assert.match(styles, /grid-template-columns:minmax\(0,1\.15fr\) minmax\(0,\.72fr\) minmax\(0,1fr\)/);
+  assert.match(styles, /@media \(max-width:430px\)/);
 });

@@ -196,8 +196,8 @@ Rules:
 - If both items have different Empower options, compare the final resulting values rather than comparing only base item data.
 - In the Inventory V2 comparison implementation, Base, Refine, and Enchant are presented as separate groups; do not silently merge an Enchant value into Base/Refine.
 - Enchant rows match by stat name rather than slot index. If a stat name occurs more than once, preserve each occurrence as a separate numbered row; do not overwrite or silently collapse duplicate options.
-- Show the union of current and new Enchant stats. A missing side is shown as an em dash, and the Difference column shows the signed numeric change with the correct percentage unit where applicable.
-- The comparison header identifies CURRENT ITEM and NEW ITEM separately and keeps the stat table readable on narrow and short mobile viewports.
+- Show the union of current and new Enchant stats, matching by normalized stat name and occurrence number. Keep exactly three columns: Stat, Current, and New. The New column shows the candidate value followed by the signed delta in parentheses, e.g. `9 (+9)` or `0 (-3)`; there is no separate Difference column.
+- The comparison header identifies CURRENT ITEM and NEW ITEM separately and keeps the stat table readable on narrow and short mobile viewports. The selected item icon remains in the header area; Current and New labels align with their respective numeric columns.
 - CP delta may be shown if it can be calculated consistently from the real character-stat pipeline.
 
 ### Delta colors
