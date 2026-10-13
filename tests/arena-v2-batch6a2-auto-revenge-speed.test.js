@@ -61,7 +61,7 @@ test("W9 6A.2 Revenge opens Player Card before the Ticket boundary", () => {
 test("W9 6A.2 Arena x1/x2 is presentation-only and Arena has no Skip control", () => {
   const section = arenaSection(arenaUi);
   assert.match(section, /const \[combatSpeed, setCombatSpeed\] = React\.useState\(1\)/);
-  assert.match(section, /className: "md-btn small md-arena-speed-toggle"/);
+  assert.match(section, /className: "md-btn small md-arena-art-btn secondary md-arena-speed-toggle"/);
   assert.match(section, /setCombatSpeed\(value => value === 1 \? 2 : 1\)/);
   assert.match(section, /mode: "arena", battleState, preparedSnapshot: match\.snapshot, combatSpeed/);
   assert.doesNotMatch(section, /Skip/);

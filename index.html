@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.0.52" />
+<meta name="application-version" content="1.0.54" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -2141,36 +2141,43 @@ body::after {
 .md-inv2-enchants { margin-top:12px; padding:10px; border:1px solid rgba(166,108,255,.38); border-radius:11px; }
 .md-inv2-enchants h4 { margin:0 0 6px; color:#b893ff; font-size:10px; letter-spacing:.08em; }
 .md-inv2-enchants > div { padding:3px 0; font-size:11px; color:#d8c8ff; }
-.md-inv2-compare { margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,209,102,.28); min-width:0; }
-.md-inv2-compare-head { display:grid; grid-template-columns:minmax(0,1fr) 14px minmax(0,1fr); align-items:stretch; gap:6px; margin-bottom:9px; color:var(--gold); font-size:11px; font-weight:800; }
-.md-inv2-compare-card { min-width:0; display:grid; grid-template-columns:32px minmax(0,1fr); grid-template-rows:auto 1fr; align-items:center; gap:4px 6px; padding:6px 7px; border:1px solid rgba(255,209,102,.18); border-radius:9px; background:rgba(255,255,255,.035); }
-.md-inv2-compare-role { grid-column:1 / -1; color:#91a9c3; font-size:8px; letter-spacing:.06em; line-height:1.1; }
-.md-inv2-compare-copy { min-width:0; overflow-wrap:anywhere; }
-.md-inv2-compare-copy strong { display:block; line-height:1.12; font-size:10px; }
-.md-inv2-compare-arrow { align-self:center; text-align:center; font-size:16px; }
-.md-inv2-compare-icon { width:32px; height:32px; flex:0 0 32px; }
-.md-inv2-compare-head small { display:block; margin-top:2px; color:var(--ink-soft); font-size:8px; line-height:1.12; font-weight:700; overflow-wrap:anywhere; }
-.md-inv2-compare-columns,.md-inv2-compare-row { display:grid; grid-template-columns:minmax(80px,1.15fr) minmax(42px,.72fr) minmax(42px,.72fr) minmax(55px,.85fr); align-items:center; column-gap:5px; min-width:0; }
+.md-inv2-compare { margin-top:12px; padding:12px; border:1.5px solid rgba(221,176,65,.78); border-radius:16px; background:linear-gradient(155deg,rgba(18,18,47,.98),rgba(7,18,43,.98)); box-shadow:inset 0 0 0 1px rgba(255,225,145,.08),0 8px 24px rgba(0,0,0,.22); min-width:0; }
+.md-inv2-compare-head { display:grid; grid-template-columns:112px minmax(0,1fr); align-items:center; gap:14px; margin-bottom:12px; color:var(--gold); font-size:11px; font-weight:800; }
+.md-inv2-compare-selected-icon-frame { position:relative; display:flex; align-items:center; justify-content:center; width:112px; height:112px; min-width:0; border:2px solid rgba(255,209,102,.9); border-radius:15px; background:radial-gradient(circle at 50% 42%,rgba(68,52,103,.95),rgba(5,14,37,.98) 74%); box-shadow:inset 0 0 0 2px rgba(8,14,35,.8),0 0 0 1px rgba(255,225,145,.14); overflow:hidden; }
+.md-inv2-compare-selected-icon-frame::after { content:""; position:absolute; inset:4px; border:1px solid rgba(255,209,102,.24); border-radius:9px; pointer-events:none; }
+.md-inv2-compare-selected-icon-frame .md-game-icon { width:94px; height:94px; object-fit:contain; vertical-align:middle; flex:0 0 94px; }
+.md-inv2-compare-selected-copy { min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:4px; overflow-wrap:anywhere; }
+.md-inv2-compare-selected-title { display:block; color:#ffe098; font-size:clamp(15px,3.8vw,21px); line-height:1.12; font-weight:900; }
+.md-inv2-compare-rarity { display:inline-flex; align-items:center; padding:3px 10px; border:1px solid rgba(213,125,255,.7); border-radius:999px; background:rgba(109,48,157,.28); color:#e8a5ff; font-size:11px; line-height:1.1; }
+.md-inv2-compare-selected-copy small { display:block; color:var(--ink-soft); font-size:10px; line-height:1.25; font-weight:700; }
+.md-inv2-compare-equipped-note { display:block; margin-top:2px; padding:3px 9px; border:1px solid rgba(126,105,255,.6); border-radius:999px; background:rgba(76,54,155,.25); color:#d5c8ff; font-size:10px; }
+.md-inv2-compare-icon { width:94px; height:94px; flex:0 0 94px; }
+.md-inv2-compare-columns,.md-inv2-compare-row { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.72fr) minmax(0,1fr); align-items:center; column-gap:5px; min-width:0; }
 .md-inv2-compare-columns { padding:4px 7px; color:#91a9c3; font-size:7px; font-weight:900; text-transform:uppercase; }
 .md-inv2-compare-row { min-height:27px; padding:3px 7px; border-top:1px solid rgba(102,160,218,.18); border-radius:0; background:rgba(4,20,49,.42); font-size:9px; }
 .md-inv2-compare-columns > :nth-child(n+2),.md-inv2-compare-row > :nth-child(n+2) { text-align:right; }
 .md-inv2-compare-row > :first-child { overflow-wrap:anywhere; }
-.md-inv2-compare-one-screen { margin-top:8px; padding-top:6px; }
-.md-inv2-compare-one-screen .md-inv2-compare-head { gap:5px; margin-bottom:6px; }
+.md-inv2-compare-one-screen { margin-top:8px; padding:12px; }
+.md-inv2-compare-one-screen .md-inv2-compare-head { gap:10px; margin-bottom:10px; }
 .md-inv2-compare-one-screen .md-inv2-compare-row b { font-size:9px; font-variant-numeric:tabular-nums; }
-.md-inv2-compare-delta { display:inline; font-size:7px; font-weight:900; }
+.md-inv2-compare-delta { display:inline; margin-left:2px; font-size:8px; font-weight:900; white-space:nowrap; }
+.md-inv2-compare-new-value { display:flex; align-items:baseline; justify-content:flex-end; flex-wrap:wrap; gap:1px; min-width:0; }
+.md-inv2-compare-new-value small { font-size:8px; }
+.md-inv2-compare-columns > :nth-child(2),.md-inv2-compare-row > :nth-child(2) { text-align:right; }
+.md-inv2-compare-columns > :nth-child(3),.md-inv2-compare-row > :nth-child(3) { text-align:right; }
 .md-inv2-compare-legend { margin-top:5px; color:#91a9c3; font-size:7px; line-height:1.2; text-align:center; }
 .md-inv2-compare-row .positive { color:#71e8ff; }
 .md-inv2-compare-row .negative { color:#ff7777; }
 @media (max-width:430px) {
   .md-inv2-detail-layer { padding-left:8px; padding-right:8px; }
   .md-inv2-detail { width:min(100%,400px); }
-  .md-inv2-compare-head { grid-template-columns:minmax(0,1fr) 10px minmax(0,1fr); gap:3px; }
-  .md-inv2-compare-card { padding:5px 4px; grid-template-columns:26px minmax(0,1fr); gap:4px; }
-  .md-inv2-compare-icon { width:26px; height:26px; flex-basis:26px; }
-  .md-inv2-compare-copy strong { font-size:8px; }
-  .md-inv2-compare-card small { font-size:7px; }
-  .md-inv2-compare-columns,.md-inv2-compare-row { grid-template-columns:minmax(68px,1.15fr) minmax(34px,.65fr) minmax(34px,.65fr) minmax(46px,.8fr); column-gap:3px; }
+  .md-inv2-compare-head { grid-template-columns:84px minmax(0,1fr); gap:9px; }
+  .md-inv2-compare-selected-icon-frame { width:84px; height:84px; border-radius:12px; }
+  .md-inv2-compare-selected-icon-frame .md-game-icon,.md-inv2-compare-icon { width:68px; height:68px; flex-basis:68px; }
+  .md-inv2-compare-selected-title { font-size:15px; }
+  .md-inv2-compare-selected-copy small { font-size:8px; }
+  .md-inv2-compare-rarity,.md-inv2-compare-equipped-note { font-size:8px; }
+  .md-inv2-compare-columns,.md-inv2-compare-row { grid-template-columns:minmax(0,1.1fr) minmax(0,.7fr) minmax(0,1fr); column-gap:3px; }
   .md-inv2-compare-one-screen .md-inv2-compare-row { min-height:25px; padding:3px 4px; font-size:8px; }
   .md-inv2-compare-one-screen .md-inv2-compare-row b { font-size:8px; }
 }
@@ -2515,10 +2522,10 @@ body::after {
   .md-inv2-hero .md-sprite-wrap { transform:scale(1.56); }
   .md-inv2-grid { gap:5px; }
   .md-inv2-detail { padding:22px 20px 18px; }
-  .md-inv2-compare-head { gap:4px; }
-  .md-inv2-compare-item { gap:3px; }
-  .md-inv2-compare-icon { width:28px; height:28px; flex-basis:28px; }
-  .md-inv2-compare-columns,.md-inv2-compare-row { grid-template-columns:minmax(64px,1fr) minmax(58px,.8fr) minmax(58px,.8fr); padding-inline:6px; }
+  .md-inv2-compare-head { grid-template-columns:72px minmax(0,1fr); gap:8px; }
+  .md-inv2-compare-selected-icon-frame { width:72px; height:72px; }
+  .md-inv2-compare-selected-icon-frame .md-game-icon,.md-inv2-compare-icon { width:58px; height:58px; flex-basis:58px; }
+  .md-inv2-compare-columns,.md-inv2-compare-row { grid-template-columns:minmax(0,1.1fr) minmax(0,.7fr) minmax(0,1fr); padding-inline:6px; }
   .md-inv2-salvage-preview { grid-template-columns:1fr 1fr; }
   .md-inv2-salvage-preview strong { grid-column:1 / -1; }
 }
@@ -2821,17 +2828,17 @@ body::after {
 .md-arena-sr-only { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
 /* flex-shrink 0: on very short screens the page scrolls instead of the stage/info/dock overlapping. */
 .md-arena-scroll > .md-arena-battle-card { flex:1 0 auto; display:flex; flex-direction:column; gap:6px; padding:8px 10px; }
-.md-arena-scroll > .md-arena-action-dock { flex:0 0 auto; }
+.md-arena-scroll > .md-arena-action-dock, .md-arena-scroll > .md-arena-log-strip { flex:0 0 auto; }
 .md-arena-battle-top { display:flex; align-items:center; gap:8px; min-height:42px; }
 .md-arena-battle-title { margin:0; flex:1 1 auto; min-width:0; font-size:clamp(15px,4.4vw,18px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .md-arena-battle-top .md-arena-speed-toggle { margin:0; flex:0 0 auto; min-width:56px; }
-.md-arena-battle-top .md-arena-surrender-btn { flex:0 0 auto; min-height:40px; padding:4px 12px; font-size:12px; white-space:nowrap; }
+.md-arena-battle-top .md-arena-surrender-btn { flex:0 0 auto; white-space:nowrap; }
 .md-arena-battle-note { margin:0; }
 .md-arena-battle-card .md-arena-turn-order { margin:0; flex:0 0 auto; }
 .md-arena-battle-card .md-arena-phaser-stage { flex:1 1 auto; min-height:230px; }
 .md-arena-battle-info { flex:0 0 auto; display:flex; flex-direction:column; gap:5px; }
 .md-arena-target-row { display:flex; align-items:center; gap:6px; flex-wrap:nowrap; overflow-x:auto; font-size:12px; color:#9fb2d8; }
-.md-arena-target-row .md-btn { min-height:30px; padding:2px 10px; white-space:nowrap; }
+.md-arena-target-row .md-btn { white-space:nowrap; }
 .md-arena-log-strip { all:unset; box-sizing:border-box; display:flex; align-items:center; gap:8px; min-height:38px; padding:5px 10px; border:1px solid rgba(255,209,102,.22); border-radius:10px; background:rgba(3,9,24,.36); color:#c7d2ee; font-size:12px; line-height:1.3; cursor:pointer; }
 .md-arena-log-strip > span { flex:1 1 0; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .md-arena-log-strip > span + span { display:none; }
@@ -2841,10 +2848,10 @@ body::after {
 .md-arena-log-sheet-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .md-arena-log-sheet-list .md-sub { margin:0 0 6px; }
 /* Action dock: ATTACK + AUTO on the first row, the four skills below in one compact row. */
-.md-arena-action-dock { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
-.md-arena-action-dock > .md-arena-attack-btn { grid-column:span 2; min-height:46px; font-size:15px; letter-spacing:.04em; }
-.md-arena-action-dock > .md-arena-auto-btn { grid-column:span 2; min-height:46px; }
-.md-arena-action-dock > .md-arena-skill-control { flex-direction:column; justify-content:center; align-items:center; gap:2px; min-height:58px; padding:4px 2px; text-align:center; font-size:10.5px; line-height:1.15; }
+.md-arena-action-dock { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:8px 10px; }
+.md-arena-action-dock > .md-arena-attack-btn { grid-column:span 2; }
+.md-arena-action-dock > .md-arena-auto-btn { grid-column:span 2; }
+.md-arena-action-dock > .md-arena-skill-control { flex-direction:column; justify-content:center; align-items:center; gap:2px; padding:4px 2px; text-align:center; font-size:10.5px; line-height:1.15; }
 .md-arena-action-dock > .md-arena-skill-control > span:last-child { max-width:100%; }
 .md-arena-action-dock .md-arena-battle-skill-icon { width:28px; height:28px; }
 @media (max-height: 700px) {
@@ -2853,9 +2860,7 @@ body::after {
   .md-arena-battle-card { gap:4px; padding:6px 8px; }
   .md-arena-log-strip { min-height:30px; padding:3px 8px; }
   .md-arena-log-strip > span { -webkit-line-clamp:1; }
-  .md-arena-action-dock { gap:5px; padding:6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
-  .md-arena-action-dock > .md-arena-attack-btn, .md-arena-action-dock > .md-arena-auto-btn { min-height:40px; }
-  .md-arena-action-dock > .md-arena-skill-control { min-height:48px; }
+  .md-arena-action-dock { gap:5px; padding:6px 8px; }
   .md-arena-action-dock .md-arena-battle-skill-icon { width:24px; height:24px; }
 }
 .md-arena-phaser-stage { position:relative; width:100%; min-height:clamp(300px,48dvh,430px); overflow:hidden; border:1px solid rgba(255,209,102,.2); border-radius:14px; background:rgba(3,9,24,.24); }
@@ -10756,6 +10761,10 @@ function responsiveBattlefieldLayout(width, height, monsterCount = 1) {
 }
 
 function responsiveArenaBattlefieldLayout(width, height) {
+  // Heroes are anchored at half the stage height and extend roughly 132 reference px above that anchor. On a short stage
+  // (compact phones) the usual 0.82 floor would clip their heads, so the floor shrinks with the stage below ~232px.
+  const stageHeight = Math.max(0, Number(height) || 0);
+  const minScale = stageHeight >= 232 ? 0.82 : Math.max(0.5, Math.min(0.82, (0.5 * stageHeight - 8) / 132));
   const shared = createResponsiveSceneLayout({
     width,
     height,
@@ -10765,7 +10774,7 @@ function responsiveArenaBattlefieldLayout(width, height) {
       defenderHero: RESPONSIVE_ANCHORS.ARENA_DEFENDER_HERO,
       defenderPet: RESPONSIVE_ANCHORS.ARENA_DEFENDER_PET
     },
-    scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
+    scale: { referenceWidth: 390, referenceHeight: 520, minScale, maxScale: 1.15 }
   });
   return {
     width: shared.width,
@@ -21564,7 +21573,7 @@ function ArenaV2Screen({
       /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-battle-card" },
         /*#__PURE__*/React.createElement("div", { className: "md-arena-battle-top" },
           /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-battle-title" }, matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`),
-          !matchIsPrepared && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-speed-toggle", type: "button", onClick: () => setCombatSpeed(value => value === 1 ? 2 : 1), "aria-label": `Arena presentation speed x${combatSpeed}` }, `\u00d7${combatSpeed}`),
+          !matchIsPrepared && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-art-btn secondary md-arena-speed-toggle", type: "button", onClick: () => setCombatSpeed(value => value === 1 ? 2 : 1), "aria-label": `Arena presentation speed x${combatSpeed}` }, `\u00d7${combatSpeed}`),
           matchIsActive && !match.result && /*#__PURE__*/React.createElement("button", { className: "md-btn flee md-arena-surrender-btn", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER")),
         matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub md-arena-battle-note" }, "Presentation \u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e01\u0e48\u0e2d\u0e19\u0e43\u0e0a\u0e49 Ticket; controls \u0e08\u0e30\u0e40\u0e1b\u0e34\u0e14\u0e2b\u0e25\u0e31\u0e07 activation \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08"),
         /*#__PURE__*/React.createElement("div", { className: "md-arena-turn-order", "aria-label": "Arena authoritative turn order" }, /*#__PURE__*/React.createElement(TurnOrderBar, { queue: arenaTurnQueue, activeKey: match.state?.currentActorId, round: match.state?.round, monsters: arenaEnemyUnits, petCombat: arenaPet, unitsById: arenaUnitsById, heroName: playerUnits.find(unit => unit.kind === "hero")?.name || "Hero" })),
@@ -21590,26 +21599,27 @@ function ArenaV2Screen({
         phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, matchIsPrepared ? "Battle presentation unavailable" : "Battle presentation unavailable · controls remain active")),
         /*#__PURE__*/React.createElement("div", { className: "md-arena-battle-info" },
           /*#__PURE__*/React.createElement("span", { className: "md-arena-sr-only", "aria-live": "polite" }, preloadState === "loading" ? "Loading Battle\u2026 " : preloadState === "failed" ? "Battle preload failed " : "", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(", "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(", ")),
-          enemyUnits.filter(u => u.alive).length > 1 && /*#__PURE__*/React.createElement("div", { className: "md-arena-target-row" }, /*#__PURE__*/React.createElement("span", null, "Target"), enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, type: "button", className: `md-btn small ${selected === u.id ? "primary" : ""}`, disabled: !u.alive || !matchIsActive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name))),
-          /*#__PURE__*/React.createElement("button", { type: "button", className: "md-arena-log-strip", "aria-label": "Open full battle log", onClick: () => setShowFullLog(true) },
-            (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line))),
-            /*#__PURE__*/React.createElement("b", null, "FULL LOG"))),
+          enemyUnits.filter(u => u.alive).length > 1 && /*#__PURE__*/React.createElement("div", { className: "md-arena-target-row" }, /*#__PURE__*/React.createElement("span", null, "Target"), enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, type: "button", className: `md-btn small md-arena-art-btn ${selected === u.id ? "primary" : "secondary"}`, disabled: !u.alive || !matchIsActive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name)))),
         showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-arena-log-sheet", role: "dialog", "aria-modal": "true", "aria-label": "Full battle log", onClick: () => setShowFullLog(false) },
           /*#__PURE__*/React.createElement("section", { className: "md-card md-arena-log-sheet-card", onClick: event => event.stopPropagation() },
             /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Battle Log"),
             /*#__PURE__*/React.createElement("div", { className: "md-arena-log-sheet-list" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line)))),
-            /*#__PURE__*/React.createElement("button", { type: "button", className: "md-btn small", onClick: () => setShowFullLog(false) }, "CLOSE")))),
+            /*#__PURE__*/React.createElement("button", { type: "button", className: "md-btn small md-arena-art-btn secondary", onClick: () => setShowFullLog(false) }, "CLOSE")))),
       match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-result-card" },
         resultGraphicSrc && /*#__PURE__*/React.createElement("img", { className: "md-arena-result-emblem", src: resultGraphicSrc, alt: "", "aria-hidden": "true" }),
         /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-result-title" }, "RESULT · ", resultView.outcome),
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Combat: ", resultView.combatResult, " · Rating change: ", resultView.ratingChange ?? "—", " · Arena Coin: ", resultView.arenaCoinEarned ?? "—"),
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Reward: ", resultView.rewardSlot, " · Resolution: ", resultView.resolution),
-        /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-action-controls md-arena-action-dock" }, /*#__PURE__*/React.createElement("button", { className: "md-btn attack md-arena-attack-btn", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-auto-btn", disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), (setup.skillSlots || []).map((skill, index) => {
+        /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-action-controls md-arena-action-dock" }, /*#__PURE__*/React.createElement("button", { className: "md-btn md-arena-art-btn primary md-arena-attack-btn", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: `md-btn small md-arena-art-btn ${auto ? "primary" : "secondary"} md-arena-auto-btn`, disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), (setup.skillSlots || []).map((skill, index) => {
           const definition = (status.availableSkills || []).find(candidate => candidate.key === skill);
-          return /*#__PURE__*/React.createElement("button", { key: `${index}-${skill || "empty"}`, className: "md-btn small md-arena-skill-control", disabled: busy || !skill, onClick: () => action("active", skill, selected) },
+          return /*#__PURE__*/React.createElement("button", { key: `${index}-${skill || "empty"}`, className: "md-btn small md-arena-art-btn secondary md-arena-skill-control", disabled: busy || !skill, onClick: () => action("active", skill, selected) },
             skill ? /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: skill, className: "md-hero-skill-icon md-arena-battle-skill-icon", alt: definition?.name || heroSkillDisplayName(skill), loading: "eager" }) : /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"),
             /*#__PURE__*/React.createElement("span", null, skill ? definition?.name || heroSkillDisplayName(skill) : `Skill ${index + 1}`));
         })) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
+      // The battle log sits below the action dock (last thing on screen); tap it for the full log sheet.
+      !matchIsPrepared && /*#__PURE__*/React.createElement("button", { type: "button", className: "md-arena-log-strip", "aria-label": "Open full battle log", onClick: () => setShowFullLog(true) },
+        (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line))),
+        /*#__PURE__*/React.createElement("b", null, "FULL LOG")),
     ),
     replay && /*#__PURE__*/React.createElement(ArenaReplayOverlay, {
       replay,
@@ -23725,53 +23735,50 @@ function ItemStats({ item }) {
 function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
   if (!compareRows.length) return null;
   const rarityLabel = item => ({ common:"Common", junk:"Junk", rare:"Rare", unique:"Unique", elite:"Elite", mythic:"Mythic" })[inventoryRarityKey(item)] || "Common";
-  const meta = (item, equipped) => {
-    const type = inventoryItemType(item);
-    const options = Array.isArray(item?.empowerSlots) ? item.empowerSlots.filter(Boolean) : [];
-    const refine = Math.max(0, Number(item?.enhanceLevel) || 0);
-    return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-card" },
-      /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-role" }, equipped ? "CURRENT ITEM" : "NEW ITEM"),
-      /*#__PURE__*/React.createElement(GameIcon, {
-        item: item || {},
-        fallback: item ? (item.icon || SLOT_ICON[type] || "📦") : "📦",
-        className:"md-game-icon md-inv2-compare-icon",
-        alt: item ? itemDisplayName(item) : "Empty Slot"
-      }),
-      /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-copy" },
-        /*#__PURE__*/React.createElement("strong", null, item ? itemDisplayName(item) : "Empty Slot"),
-        /*#__PURE__*/React.createElement("small", null, item
-          ? `${rarityLabel(item)} • ${SLOT_LABEL[type] || type} • Lv.${item.level || 1}`
-          : "Empty equipment slot"),
-        /*#__PURE__*/React.createElement("small", null, item
-          ? `Sell ${sellPrice(item)} Gold • Refine +${refine} • ${options.length ? `Enchant ${options.length}` : "No Enchant"}`
-          : "No equipped item")));
-  };
-  const formatValue = row => inventoryComparisonFormatValue(row.statKey || "", row.value);
+  const selected = currentDetail || currentEquipped;
+  const type = inventoryItemType(selected);
+  const options = Array.isArray(selected?.empowerSlots) ? selected.empowerSlots.filter(Boolean) : [];
+  const refine = Math.max(0, Number(selected?.enhanceLevel) || 0);
   return /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare md-inv2-compare-one-screen" },
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" },
-      meta(currentEquipped, true),
-      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-arrow", "aria-hidden":"true" }, "→"),
-      meta(currentDetail, false)),
+      /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-selected-icon-frame" },
+        /*#__PURE__*/React.createElement(GameIcon, {
+          item: selected || {},
+          fallback: selected ? (selected.icon || SLOT_ICON[type] || "📦") : "📦",
+          className:"md-game-icon md-inv2-compare-icon",
+          alt: selected ? itemDisplayName(selected) : "Empty Slot"
+        })),
+      /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-selected-copy" },
+        /*#__PURE__*/React.createElement("strong", { className:"md-inv2-compare-selected-title" }, selected ? itemDisplayName(selected) : "Empty Slot"),
+        /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-rarity" }, "♛ " + rarityLabel(selected)),
+        /*#__PURE__*/React.createElement("small", null, selected
+          ? `${rarityLabel(selected)} • ${SLOT_LABEL[type] || type} • Lv.${selected.level || 1}`
+          : "Empty equipment slot"),
+        /*#__PURE__*/React.createElement("small", null, selected
+          ? `Refine +${refine} • ${options.length ? `Enchant ${options.length}` : "No Enchant"}`
+          : "No equipped item"),
+        currentEquipped && currentDetail
+          ? /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-equipped-note" }, "Comparing with ", itemDisplayName(currentEquipped))
+          : null)),
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" },
       /*#__PURE__*/React.createElement("span", null, "STAT"),
       /*#__PURE__*/React.createElement("span", null, "CURRENT"),
-      /*#__PURE__*/React.createElement("span", null, "NEW"),
-      /*#__PURE__*/React.createElement("span", null, "DIFFERENCE")),
+      /*#__PURE__*/React.createElement("span", null, "NEW")),
     compareRows.map(row => {
       const delta = Math.round(((Number(row.next) || 0) - (Number(row.current) || 0)) * 10) / 10;
       const deltaClass = delta > 0 ? "positive" : delta < 0 ? "negative" : "";
-      const currentValue = Math.abs(Number(row.current) || 0) <= 0.0001 ? "—" : inventoryComparisonFormatValue(row.statKey || "", row.current);
-      const nextValue = Math.abs(Number(row.next) || 0) <= 0.0001 ? "—" : inventoryComparisonFormatValue(row.statKey || "", row.next);
+      const currentValue = inventoryComparisonFormatValue(row.statKey || "", row.current);
+      const nextValue = inventoryComparisonFormatValue(row.statKey || "", row.next);
       const deltaValue = delta === 0 ? "0" : inventoryComparisonFormatValue(row.statKey || "", delta, true);
       return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key },
         /*#__PURE__*/React.createElement("span", null, row.label),
         /*#__PURE__*/React.createElement("b", null, currentValue),
-        /*#__PURE__*/React.createElement("b", null, nextValue),
-        /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-delta " + deltaClass }, deltaValue));
+        /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-new-value" }, nextValue,
+          " ",
+          /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta " + deltaClass }, "(" + deltaValue + ")")));
     }),
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Base, Refine and Enchant are shown separately; missing stats are —."));
 }
-
 function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }) {
   return /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" },
     detail.location === "inventory" && SLOT_ORDER.includes(inventoryItemType(currentDetail)) && /*#__PURE__*/React.createElement("button", { disabled:busy, onClick:() => { onEquip(currentDetail); onClose(); } }, "Equip"),

@@ -2734,17 +2734,17 @@ body::after {
 .md-arena-sr-only { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
 /* flex-shrink 0: on very short screens the page scrolls instead of the stage/info/dock overlapping. */
 .md-arena-scroll > .md-arena-battle-card { flex:1 0 auto; display:flex; flex-direction:column; gap:6px; padding:8px 10px; }
-.md-arena-scroll > .md-arena-action-dock { flex:0 0 auto; }
+.md-arena-scroll > .md-arena-action-dock, .md-arena-scroll > .md-arena-log-strip { flex:0 0 auto; }
 .md-arena-battle-top { display:flex; align-items:center; gap:8px; min-height:42px; }
 .md-arena-battle-title { margin:0; flex:1 1 auto; min-width:0; font-size:clamp(15px,4.4vw,18px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .md-arena-battle-top .md-arena-speed-toggle { margin:0; flex:0 0 auto; min-width:56px; }
-.md-arena-battle-top .md-arena-surrender-btn { flex:0 0 auto; min-height:40px; padding:4px 12px; font-size:12px; white-space:nowrap; }
+.md-arena-battle-top .md-arena-surrender-btn { flex:0 0 auto; white-space:nowrap; }
 .md-arena-battle-note { margin:0; }
 .md-arena-battle-card .md-arena-turn-order { margin:0; flex:0 0 auto; }
 .md-arena-battle-card .md-arena-phaser-stage { flex:1 1 auto; min-height:230px; }
 .md-arena-battle-info { flex:0 0 auto; display:flex; flex-direction:column; gap:5px; }
 .md-arena-target-row { display:flex; align-items:center; gap:6px; flex-wrap:nowrap; overflow-x:auto; font-size:12px; color:#9fb2d8; }
-.md-arena-target-row .md-btn { min-height:30px; padding:2px 10px; white-space:nowrap; }
+.md-arena-target-row .md-btn { white-space:nowrap; }
 .md-arena-log-strip { all:unset; box-sizing:border-box; display:flex; align-items:center; gap:8px; min-height:38px; padding:5px 10px; border:1px solid rgba(255,209,102,.22); border-radius:10px; background:rgba(3,9,24,.36); color:#c7d2ee; font-size:12px; line-height:1.3; cursor:pointer; }
 .md-arena-log-strip > span { flex:1 1 0; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .md-arena-log-strip > span + span { display:none; }
@@ -2754,10 +2754,10 @@ body::after {
 .md-arena-log-sheet-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .md-arena-log-sheet-list .md-sub { margin:0 0 6px; }
 /* Action dock: ATTACK + AUTO on the first row, the four skills below in one compact row. */
-.md-arena-action-dock { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
-.md-arena-action-dock > .md-arena-attack-btn { grid-column:span 2; min-height:46px; font-size:15px; letter-spacing:.04em; }
-.md-arena-action-dock > .md-arena-auto-btn { grid-column:span 2; min-height:46px; }
-.md-arena-action-dock > .md-arena-skill-control { flex-direction:column; justify-content:center; align-items:center; gap:2px; min-height:58px; padding:4px 2px; text-align:center; font-size:10.5px; line-height:1.15; }
+.md-arena-action-dock { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:8px 10px; }
+.md-arena-action-dock > .md-arena-attack-btn { grid-column:span 2; }
+.md-arena-action-dock > .md-arena-auto-btn { grid-column:span 2; }
+.md-arena-action-dock > .md-arena-skill-control { flex-direction:column; justify-content:center; align-items:center; gap:2px; padding:4px 2px; text-align:center; font-size:10.5px; line-height:1.15; }
 .md-arena-action-dock > .md-arena-skill-control > span:last-child { max-width:100%; }
 .md-arena-action-dock .md-arena-battle-skill-icon { width:28px; height:28px; }
 @media (max-height: 700px) {
@@ -2766,9 +2766,7 @@ body::after {
   .md-arena-battle-card { gap:4px; padding:6px 8px; }
   .md-arena-log-strip { min-height:30px; padding:3px 8px; }
   .md-arena-log-strip > span { -webkit-line-clamp:1; }
-  .md-arena-action-dock { gap:5px; padding:6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
-  .md-arena-action-dock > .md-arena-attack-btn, .md-arena-action-dock > .md-arena-auto-btn { min-height:40px; }
-  .md-arena-action-dock > .md-arena-skill-control { min-height:48px; }
+  .md-arena-action-dock { gap:5px; padding:6px 8px; }
   .md-arena-action-dock .md-arena-battle-skill-icon { width:24px; height:24px; }
 }
 .md-arena-phaser-stage { position:relative; width:100%; min-height:clamp(300px,48dvh,430px); overflow:hidden; border:1px solid rgba(255,209,102,.2); border-radius:14px; background:rgba(3,9,24,.24); }

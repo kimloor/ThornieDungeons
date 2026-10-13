@@ -334,7 +334,7 @@ test('Arena active public-state unit arrays keep all 2v2 presentation actors add
   assert.equal(resolveUnit(state, 'team_b', 'pet').id, 'team_b_pet');
 });
 
-test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Result unskinned', () => {
+test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Result free of hub panels', () => {
   const styles = fs.readFileSync(path.join(ROOT, 'src/data/styles.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'r2-upload/manifest.json'), 'utf8'));
   for (const key of ['primary', 'secondary', 'danger']) assert.ok(manifest.assets.arenaUi.buttons[key]);
@@ -360,7 +360,9 @@ test('Arena Hub Extension R1 binds approved asset families and keeps Battle/Resu
   const battleStart = arenaUi.indexOf('    match && /*#__PURE__*/React.createElement(React.Fragment');
   const dockStart = arenaUi.indexOf('    !match && /*#__PURE__*/React.createElement(GameDock', battleStart);
   const battleSurface = arenaUi.slice(battleStart, dockStart);
-  assert.doesNotMatch(battleSurface, /md-arena-hub-panel|md-arena-art-btn|arenaUi\.tiers|arenaUi\.progress/);
+  // Owner decision 2026-10-12: Battle buttons use the shared Arena art buttons (md-arena-art-btn); the hub panels, tier art
+  // and progress art still stay out of the Battle surface.
+  assert.doesNotMatch(battleSurface, /md-arena-hub-panel|arenaUi\.tiers|arenaUi\.progress/);
 });
 
 test('Arena Battle + Result Graphics R1 binds approved art without changing authoritative combat behavior', () => {

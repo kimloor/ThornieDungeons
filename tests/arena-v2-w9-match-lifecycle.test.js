@@ -568,7 +568,14 @@ test('Arena battle page fits one screen: compact top bar, flexible stage, log sh
   assert.match(css, /\.md-arena-battle-card \.md-arena-phaser-stage \{ flex:1 1 auto; min-height:230px; \}/);
   assert.match(css, /\.md-arena-log-sheet \{ position:fixed; inset:0;/);
   assert.match(css, /\.md-arena-action-dock \{ grid-template-columns:repeat\(4,minmax\(0,1fr\)\);/);
-  // Battle/Result stay unskinned (Arena Hub R1): no art buttons in the battle block.
-  const battle = arena.slice(arena.indexOf('md-arena-battle-card'), arena.indexOf('md-arena-result-card'));
-  assert.doesNotMatch(battle, /md-arena-art-btn/);
+  // Owner decision 2026-10-12: every battle button is a shared Arena art button and the battle log sits below the dock.
+  for (const marker of ['md-arena-speed-toggle', 'md-arena-attack-btn', 'md-arena-auto-btn', 'md-arena-skill-control']) {
+    const at = arena.indexOf(marker);
+    assert.ok(at > 0, `${marker} exists`);
+    assert.match(arena.slice(arena.lastIndexOf('className', at), at + marker.length), /md-arena-art-btn/, `${marker} uses md-arena-art-btn`);
+  }
+  assert.ok(arena.indexOf('className: "md-arena-log-strip"') > arena.indexOf('md-arena-action-dock'), 'log strip comes after the action dock');
+  assert.equal((arena.match(/className: "md-arena-log-strip"/g) || []).length, 1);
+  assert.doesNotMatch(css, /\.md-arena-action-dock > \.md-arena-(attack|auto)-btn \{[^}]*(min-height|font-size|letter-spacing)/);
+  assert.doesNotMatch(css, /\.md-arena-target-row \.md-btn \{[^}]*(min-height|padding)/);
 });
