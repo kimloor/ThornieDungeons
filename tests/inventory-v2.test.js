@@ -101,7 +101,9 @@ test("Inventory compare separates Base, Refine and Enchant rows in the one-scree
   assert.match(compare, /md-inv2-compare-one-screen/);
   assert.match(compare, /md-inv2-compare-delta/);
   assert.match(compare, /deltaClass/);
-  assert.match(compare, /Base, Refine and Enchant are shown separately/);
+  assert.match(compare, /renderPanel\("base", "BASE STATS"/);
+  assert.match(compare, /renderPanel\("enchant", "ENCHANT"/);
+  assert.doesNotMatch(compare, /are shown separately; missing stats/);
 });
 
 test("Inventory detail shows Mythic boss-weapon signature and separated stat sections", () => {
@@ -202,7 +204,9 @@ test("Equipment compare has three responsive columns and does not combine Base, 
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
   assert.match(compare, /md-inv2-compare-selected-icon-frame/);
-  assert.match(compare, /Base, Refine and Enchant are shown separately/);
+  assert.match(compare, /renderPanel\("base", "BASE STATS"/);
+  assert.match(compare, /renderPanel\("enchant", "ENCHANT"/);
+  assert.doesNotMatch(compare, /are shown separately; missing stats/);
   assert.match(styles, /grid-template-columns:minmax\(0,1\.15fr\) minmax\(0,\.72fr\) minmax\(0,1fr\)/);
   assert.match(styles, /@media \(max-width:430px\)/);
   assert.match(styles, /max-height:650px/);
@@ -321,4 +325,78 @@ test("Inventory compare uses a gold framed panel and a large selected-item icon 
   assert.ok(styles.includes("grid-template-columns:112px minmax(0,1fr)"));
   assert.ok(styles.includes("grid-template-columns:84px minmax(0,1fr)"));
   assert.ok(styles.includes("@media (max-width:430px)"));
+});
+
+function renderItemComparisonTree(compareRows, selected, equipped) {
+  const vm = require("node:vm");
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  const slice = (from, to) => components.slice(components.indexOf(from), components.indexOf(to));
+  const element = (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity).filter(child => child !== null && child !== false && child !== undefined) });
+  const sandbox = {
+    React: { createElement: element },
+    GameIcon: "GameIcon",
+    SLOT_LABEL: { wings: "Wings" },
+    SLOT_ICON: {},
+    itemDisplayName: item => item.name,
+    inventoryRarityKey: item => item?.rarity || "common",
+    inventoryItemType: item => item?.type || "wings",
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(`${slice("function inventoryComparisonFormatValue", "function inventoryComparisonRows")}\n${slice("function ItemComparison", "function ItemActions")}\nthis.ItemComparison = ItemComparison;`, sandbox);
+  return sandbox.ItemComparison({ currentEquipped: equipped, currentDetail: selected, compareRows });
+}
+function collectNodes(node, predicate, found = []) {
+  if (!node || typeof node !== "object") return found;
+  if (predicate(node)) found.push(node);
+  (node.children || []).forEach(child => collectNodes(child, predicate, found));
+  return found;
+}
+function textOf(node) {
+  return typeof node === "string" || typeof node === "number" ? String(node) : (node.children || []).map(textOf).join("");
+}
+
+test("Inventory compare display: Base/Refine and Enchant are separate panels, rows are never merged and values stay in CURRENT / NEW", () => {
+  const rows = [
+    { key: "refine:agi", statKey: "agi", label: "AGI (Refine)", current: 3, next: 0, group: "refine" },
+    { key: "enchant:critchance#1", statKey: "critChance", label: "Crit (1) (Enchant)", current: 0, next: 5, group: "enchant" },
+    { key: "enchant:critchance#2", statKey: "critChance", label: "Crit (2) (Enchant)", current: 0, next: 3, group: "enchant" },
+    { key: "enchant:hppct#1", statKey: "hpPct", label: "HP% (Enchant)", current: 4, next: 4, group: "enchant" },
+  ];
+  const selected = { name: "Robot Wings", rarity: "mythic", type: "wings", level: 1, enhanceLevel: 0, empowerSlots: [{}, {}, {}, {}] };
+  const equipped = { name: "Azure Wings +3", rarity: "mythic", type: "wings" };
+  const tree = renderItemComparisonTree(rows, selected, equipped);
+  const panels = collectNodes(tree, node => /md-inv2-compare-panel/.test(node.props?.className || ""));
+  assert.deepEqual(panels.map(panel => panel.props.className.replace("md-inv2-compare-panel ", "")), ["base", "enchant"]);
+  const rowsOf = panel => collectNodes(panel, node => node.props?.className === "md-inv2-compare-row");
+  const cells = row => ({ stat: textOf(row.children[0]), current: textOf(row.children[1]), next: textOf(row.children[2]) });
+  const base = rowsOf(panels[0]).map(cells);
+  const enchant = rowsOf(panels[1]).map(cells);
+  assert.equal(base.length, 1);
+  assert.equal(enchant.length, 3, "two Crit enchants stay as two rows and the identical HP% row is still listed");
+  assert.match(base[0].stat, /^AGI/); // label has no "(Refine)" suffix, the REFINE tag marks the group
+  assert.doesNotMatch(base[0].stat, /\(Refine\)/);
+  assert.deepEqual([base[0].current, base[0].next.replace(/\(.*\)$/, "")], ["3", "0"]);
+  assert.match(base[0].next, /\(-3\)$/);
+  assert.deepEqual(enchant.map(row => [row.stat, row.current, row.next.replace(/\(.*\)$/, "")]), [["Crit (1)", "0%", "5%"], ["Crit (2)", "0%", "3%"], ["HP%", "4%", "4%"]]);
+  assert.match(enchant[0].next, /\(\+5%\)$/);
+  assert.match(enchant[2].next, /\(0\)$/);
+  // Only the clicked item's icon is shown; no legend/status text at the bottom.
+  assert.equal(collectNodes(tree, node => node.type === "GameIcon").length, 1);
+  assert.equal(collectNodes(tree, node => node.type === "GameIcon")[0].props.alt, "Robot Wings");
+  assert.doesNotMatch(textOf(tree), /are shown separately|missing stats/);
+  // Each panel has its own visible CURRENT / NEW headings.
+  for (const panel of panels) assert.deepEqual(collectNodes(panel, node => node.props?.className === "md-inv2-compare-columns")[0].children.map(textOf), ["STAT", "CURRENT", "NEW"]);
+});
+
+test("Inventory compare display: a panel without rows is omitted and the comparison rows themselves are untouched", () => {
+  const enchantOnly = [{ key: "enchant:spd#1", statKey: "spd", label: "SPD (Enchant)", current: 0, next: 12, group: "enchant" }];
+  const tree = renderItemComparisonTree(enchantOnly, { name: "Robot Wings", rarity: "mythic", type: "wings", enhanceLevel: 0, empowerSlots: [{}] }, null);
+  const panels = collectNodes(tree, node => /md-inv2-compare-panel/.test(node.props?.className || ""));
+  assert.equal(panels.length, 1);
+  assert.match(panels[0].props.className, /enchant/);
+  assert.equal(renderItemComparisonTree([], { name: "x" }, null), null);
+  // Display-only change: the comparison builder still does the pairing (stat name + occurrence) and keeps the same signature.
+  const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
+  assert.match(components, /function inventoryComparisonRows\(currentItem, nextItem\)/);
+  assert.doesNotMatch(components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions")), /inventoryComparisonRows|inventoryEnchantComparisonEntries/);
 });

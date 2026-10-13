@@ -6460,6 +6460,32 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
   const type = inventoryItemType(selected);
   const options = Array.isArray(selected?.empowerSlots) ? selected.empowerSlots.filter(Boolean) : [];
   const refine = Math.max(0, Number(selected?.enhanceLevel) || 0);
+  // Display only: the rows come from the compare-rows builder unchanged. They are split into a Base/Refine panel and an
+  // Enchant panel; every row stays separate (repeated stats are never merged) and keeps its own CURRENT / NEW values.
+  const plainLabel = row => String(row.label || "").replace(/ \((Base|Refine|Enchant)\)$/, "");
+  const baseRows = compareRows.filter(row => row.group !== "enchant");
+  const enchantRows = compareRows.filter(row => row.group === "enchant");
+  const renderRow = row => {
+    const delta = Math.round(((Number(row.next) || 0) - (Number(row.current) || 0)) * 10) / 10;
+    const deltaClass = delta > 0 ? "positive" : delta < 0 ? "negative" : "";
+    const hasCurrent = Math.abs(Number(row.current) || 0) > 0.0001;
+    const hasNext = Math.abs(Number(row.next) || 0) > 0.0001;
+    const currentValue = inventoryComparisonFormatValue(row.statKey || "", row.current);
+    const nextValue = inventoryComparisonFormatValue(row.statKey || "", row.next);
+    const deltaValue = delta === 0 ? "0" : inventoryComparisonFormatValue(row.statKey || "", delta, true);
+    return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key },
+      /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-stat" }, plainLabel(row), row.group === "refine" ? /*#__PURE__*/React.createElement("em", { className:"md-inv2-compare-tag" }, "REFINE") : null),
+      /*#__PURE__*/React.createElement("b", { className: hasCurrent ? "" : "md-inv2-compare-empty" }, currentValue),
+      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-new-value" + (hasNext ? "" : " md-inv2-compare-empty") }, nextValue,
+        /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta " + deltaClass }, "(" + deltaValue + ")")));
+  };
+  const renderPanel = (kind, title, hint, rows) => rows.length ? /*#__PURE__*/React.createElement("section", { className:`md-inv2-compare-panel ${kind}`, key:kind },
+    /*#__PURE__*/React.createElement("h4", null, title, /*#__PURE__*/React.createElement("span", null, hint)),
+    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" },
+      /*#__PURE__*/React.createElement("span", null, "STAT"),
+      /*#__PURE__*/React.createElement("span", null, "CURRENT"),
+      /*#__PURE__*/React.createElement("span", null, "NEW")),
+    rows.map(renderRow)) : null;
   return /*#__PURE__*/React.createElement("section", { className:"md-inv2-compare md-inv2-compare-one-screen" },
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-head" },
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-selected-icon-frame" },
@@ -6471,34 +6497,15 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
         })),
       /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-selected-copy" },
         /*#__PURE__*/React.createElement("strong", { className:"md-inv2-compare-selected-title" }, selected ? itemDisplayName(selected) : "Empty Slot"),
-        /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-rarity" }, "♛ " + rarityLabel(selected)),
+        /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-rarity" }, "\u265b " + rarityLabel(selected)),
         /*#__PURE__*/React.createElement("small", null, selected
-          ? `${rarityLabel(selected)} • ${SLOT_LABEL[type] || type} • Lv.${selected.level || 1}`
+          ? `${SLOT_LABEL[type] || type} \u2022 Lv.${selected.level || 1} \u2022 Refine +${refine} \u2022 ${options.length ? `Enchant ${options.length}` : "No Enchant"}`
           : "Empty equipment slot"),
-        /*#__PURE__*/React.createElement("small", null, selected
-          ? `Refine +${refine} • ${options.length ? `Enchant ${options.length}` : "No Enchant"}`
-          : "No equipped item"),
         currentEquipped && currentDetail
           ? /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-equipped-note" }, "Comparing with ", itemDisplayName(currentEquipped))
           : null)),
-    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" },
-      /*#__PURE__*/React.createElement("span", null, "STAT"),
-      /*#__PURE__*/React.createElement("span", null, "CURRENT"),
-      /*#__PURE__*/React.createElement("span", null, "NEW")),
-    compareRows.map(row => {
-      const delta = Math.round(((Number(row.next) || 0) - (Number(row.current) || 0)) * 10) / 10;
-      const deltaClass = delta > 0 ? "positive" : delta < 0 ? "negative" : "";
-      const currentValue = inventoryComparisonFormatValue(row.statKey || "", row.current);
-      const nextValue = inventoryComparisonFormatValue(row.statKey || "", row.next);
-      const deltaValue = delta === 0 ? "0" : inventoryComparisonFormatValue(row.statKey || "", delta, true);
-      return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", key:row.key },
-        /*#__PURE__*/React.createElement("span", null, row.label),
-        /*#__PURE__*/React.createElement("b", null, currentValue),
-        /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-new-value" }, nextValue,
-          " ",
-          /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta " + deltaClass }, "(" + deltaValue + ")")));
-    }),
-    /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-legend" }, "Base, Refine and Enchant are shown separately; missing stats are —."));
+    renderPanel("base", "BASE STATS", "Base + Refine", baseRows),
+    renderPanel("enchant", "ENCHANT", "each slot listed separately", enchantRows));
 }
 function ItemActions({ detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }) {
   return /*#__PURE__*/React.createElement("div", { className:"md-inv2-detail-actions" },
