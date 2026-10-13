@@ -2729,6 +2729,46 @@ body::after {
 .md-arena-result-title { margin:0 0 2px; text-transform:uppercase; color:#fff0a8; }
 .md-arena-result-card > .md-sub { width:100%; margin:2px 0; text-align:left; }
 .md-arena-result-card > .md-btn { margin-top:5px; }
+/* ---- Arena battle: one-screen layout (no vertical scrolling during a match) ---- */
+.md-arena-scroll > [data-arena-battle-header="true"] { display:none; }
+.md-arena-sr-only { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+/* flex-shrink 0: on very short screens the page scrolls instead of the stage/info/dock overlapping. */
+.md-arena-scroll > .md-arena-battle-card { flex:1 0 auto; display:flex; flex-direction:column; gap:6px; padding:8px 10px; }
+.md-arena-scroll > .md-arena-action-dock, .md-arena-scroll > .md-arena-log-strip { flex:0 0 auto; }
+.md-arena-battle-top { display:flex; align-items:center; gap:8px; min-height:42px; }
+.md-arena-battle-title { margin:0; flex:1 1 auto; min-width:0; font-size:clamp(15px,4.4vw,18px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.md-arena-battle-top .md-arena-speed-toggle { margin:0; flex:0 0 auto; min-width:56px; }
+.md-arena-battle-top .md-arena-surrender-btn { flex:0 0 auto; white-space:nowrap; }
+.md-arena-battle-note { margin:0; }
+.md-arena-battle-card .md-arena-turn-order { margin:0; flex:0 0 auto; }
+.md-arena-battle-card .md-arena-phaser-stage { flex:1 1 auto; min-height:230px; }
+.md-arena-battle-info { flex:0 0 auto; display:flex; flex-direction:column; gap:5px; }
+.md-arena-target-row { display:flex; align-items:center; gap:6px; flex-wrap:nowrap; overflow-x:auto; font-size:12px; color:#9fb2d8; }
+.md-arena-target-row .md-btn { white-space:nowrap; }
+.md-arena-log-strip { all:unset; box-sizing:border-box; display:flex; align-items:center; gap:8px; min-height:38px; padding:5px 10px; border:1px solid rgba(255,209,102,.22); border-radius:10px; background:rgba(3,9,24,.36); color:#c7d2ee; font-size:12px; line-height:1.3; cursor:pointer; }
+.md-arena-log-strip > span { flex:1 1 0; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.md-arena-log-strip > span + span { display:none; }
+.md-arena-log-strip > b { flex:0 0 auto; font-size:11px; letter-spacing:.08em; color:var(--gold); }
+.md-arena-log-sheet { position:fixed; inset:0; z-index:1600; display:flex; align-items:flex-end; justify-content:center; padding:12px; background:rgba(4,8,20,.72); }
+.md-arena-log-sheet-card { width:min(100%,560px); max-height:min(70dvh,560px); display:flex; flex-direction:column; gap:8px; }
+.md-arena-log-sheet-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.md-arena-log-sheet-list .md-sub { margin:0 0 6px; }
+/* Action dock: ATTACK + AUTO on the first row, the four skills below in one compact row. */
+.md-arena-action-dock { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:8px 10px; }
+.md-arena-action-dock > .md-arena-attack-btn { grid-column:span 2; }
+.md-arena-action-dock > .md-arena-auto-btn { grid-column:span 2; }
+.md-arena-action-dock > .md-arena-skill-control { flex-direction:column; justify-content:center; align-items:center; gap:2px; padding:4px 2px; text-align:center; font-size:10.5px; line-height:1.15; }
+.md-arena-action-dock > .md-arena-skill-control > span:last-child { max-width:100%; }
+.md-arena-action-dock .md-arena-battle-skill-icon { width:28px; height:28px; }
+@media (max-height: 700px) {
+  .md-arena-battle-card .md-arena-phaser-stage { min-height:210px; }
+  .md-arena-battle-top { min-height:38px; }
+  .md-arena-battle-card { gap:4px; padding:6px 8px; }
+  .md-arena-log-strip { min-height:30px; padding:3px 8px; }
+  .md-arena-log-strip > span { -webkit-line-clamp:1; }
+  .md-arena-action-dock { gap:5px; padding:6px 8px; }
+  .md-arena-action-dock .md-arena-battle-skill-icon { width:24px; height:24px; }
+}
 .md-arena-phaser-stage { position:relative; width:100%; min-height:clamp(300px,48dvh,430px); overflow:hidden; border:1px solid rgba(255,209,102,.2); border-radius:14px; background:rgba(3,9,24,.24); }
 .md-arena-phaser-stage .md-phaser-battlefield { position:absolute; inset:0; width:100%; height:100%; }
 .md-arena-phaser-error { position:absolute; inset:auto 10px 10px; z-index:5; padding:7px 9px; border:1px solid rgba(255,107,123,.55); border-radius:9px; background:rgba(45,10,24,.88); color:#ffc2c9; font-size:10px; font-weight:800; text-align:center; }
@@ -2837,7 +2877,8 @@ body::after {
   }
 }
 
-/* Arena Replay: mobile-first, bounded layout; keep battle stage and controls separate. */
+/* Arena Replay: the stage keeps the same proportions as the live battle (the scene needs ~300px of height or the heroes'
+   heads clip); the card scrolls if the screen is short and the Arena art buttons stay pinned to the bottom. */
 .md-arena-replay-overlay {
   box-sizing: border-box;
   align-items: center;
@@ -2851,7 +2892,8 @@ body::after {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
 }
 .md-arena-replay-overlay > .md-card > .md-title,
@@ -2860,7 +2902,7 @@ body::after {
   margin: 0;
 }
 .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] {
-  max-height: clamp(56px, 11dvh, 100px);
+  max-height: clamp(48px, 9dvh, 84px);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 4px 8px;
@@ -2869,56 +2911,51 @@ body::after {
   font-size: 12px;
   line-height: 1.3;
 }
-.md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] p {
-  margin: 2px 0;
-}
-/* Replay stage: a positioned, shrinkable box in normal flow so the absolute battlefield never leaves it. */
+.md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] p { margin: 2px 0; }
+/* The battlefield is position:absolute (inset:0): it needs its own positioned stage with a real height. */
 .md-arena-replay-overlay .md-arena-replay-stage {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   width: 100%;
-  min-height: clamp(180px, 36dvh, 380px);
-  max-height: 52dvh;
+  height: clamp(280px, 46dvh, 430px);
+  min-height: 280px;
   isolation: isolate;
 }
 .md-arena-replay-overlay .md-arena-replay-stage .md-phaser-battlefield,
-.md-arena-replay-overlay .md-arena-replay-stage .md-phaser-battlefield canvas {
-  pointer-events: none;
-}
-.md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { flex: 0 0 auto; }
-.md-arena-replay-overlay .md-arena-action-controls { position: relative; z-index: 2; }
+.md-arena-replay-overlay .md-arena-replay-stage .md-phaser-battlefield canvas { pointer-events: none; }
+/* Controls: only layout here; the look comes from the shared .md-arena-art-btn Arena buttons. */
 .md-arena-replay-overlay .md-arena-action-controls {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
   flex: 0 0 auto;
   display: grid !important;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px !important;
-  padding-top: 4px;
+  padding-top: 6px;
+  background: linear-gradient(to bottom, rgba(10,16,34,0), rgba(10,16,34,.92) 28%);
 }
-.md-arena-replay-overlay .md-arena-action-controls .md-btn {
-  box-sizing: border-box;
-  min-width: 0;
-  width: 100%;
-  min-height: 42px;
-  padding: 6px 4px;
-  white-space: normal;
-  font-size: clamp(9px, 2.6vw, 12px);
-  line-height: 1.1;
+.md-arena-replay-overlay .md-arena-action-controls .md-btn { min-width: 0; width: 100%; }
+@media (max-width: 400px) {
+  .md-arena-replay-overlay .md-arena-action-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {
   .md-arena-replay-overlay { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important; }
   .md-arena-replay-overlay > .md-card { padding: 10px 8px; gap: 6px; border-radius: 16px; }
-  .md-arena-replay-overlay .md-arena-action-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-height: 620px) {
-  .md-arena-replay-overlay .md-arena-replay-stage { min-height: 150px; max-height: 44dvh; }
-}
-@media (max-height: 480px) {
-  /* Landscape phones: give the stage the room, keep one compact status line and a short log. */
-  .md-arena-replay-overlay > .md-card > .md-title { display: none; }
-  .md-arena-replay-overlay .md-arena-replay-stage { min-height: 170px; max-height: 56dvh; }
-  .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { max-height: 30px; }
-  .md-arena-replay-overlay .md-arena-action-controls .md-btn { min-height: 36px; }
-  .md-arena-replay-overlay > .md-card { gap: 4px; padding: 8px; }
-  .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { max-height: 48px; }
+/* Landscape phones: stage on the left, status + log + controls on the right. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .md-arena-replay-overlay > .md-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    column-gap: 10px;
+    row-gap: 6px;
+    overflow: hidden;
+  }
+  .md-arena-replay-overlay .md-arena-replay-stage { grid-column: 1; grid-row: 1 / -1; height: 100%; min-height: 0; }
+  .md-arena-replay-overlay > .md-card > :not(.md-arena-replay-stage) { grid-column: 2; }
+  .md-arena-replay-overlay > .md-card > .md-sub[aria-live="polite"] { max-height: none; min-height: 0; }
+  .md-arena-replay-overlay .md-arena-action-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); position: static; background: none; }
 }
 
 `;

@@ -54,6 +54,10 @@ function responsiveBattlefieldLayout(width, height, monsterCount = 1) {
 }
 
 function responsiveArenaBattlefieldLayout(width, height) {
+  // Heroes are anchored at half the stage height and extend roughly 132 reference px above that anchor. On a short stage
+  // (compact phones) the usual 0.82 floor would clip their heads, so the floor shrinks with the stage below ~232px.
+  const stageHeight = Math.max(0, Number(height) || 0);
+  const minScale = stageHeight >= 232 ? 0.82 : Math.max(0.5, Math.min(0.82, (0.5 * stageHeight - 8) / 132));
   const shared = createResponsiveSceneLayout({
     width,
     height,
@@ -63,7 +67,7 @@ function responsiveArenaBattlefieldLayout(width, height) {
       defenderHero: RESPONSIVE_ANCHORS.ARENA_DEFENDER_HERO,
       defenderPet: RESPONSIVE_ANCHORS.ARENA_DEFENDER_PET
     },
-    scale: { referenceWidth: 390, referenceHeight: 520, minScale: 0.82, maxScale: 1.15 }
+    scale: { referenceWidth: 390, referenceHeight: 520, minScale, maxScale: 1.15 }
   });
   return {
     width: shared.width,

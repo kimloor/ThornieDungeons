@@ -216,3 +216,19 @@ test("Ver 1.0.22 contains Arena Phaser scene, sync and animation failures inside
   assert.match(queue, /function createPresentationQueue\(\{ onDrained, onError \} = \{\}\)/);
   assert.match(queue, /try \{\s*await task\.run\(speed\);\s*\} catch \(error\) \{\s*onError\?\.\(error\)/);
 });
+
+test("arena battlefield layout shrinks hero scale on a short stage so heads are not clipped", () => {
+  const vm = require("node:vm");
+  const ctx = {};
+  vm.createContext(ctx);
+  const read = file => fs.readFileSync(path.join(__dirname, "..", "src", "phaser", "layout", file), "utf8");
+  vm.runInContext(`${read("ResponsiveSceneLayout.js")}\n${read("ResponsiveAnchors.js")}\nthis.layout = responsiveArenaBattlefieldLayout;`, ctx);
+  const clearance = stageHeight => 0.5 * stageHeight - 132 * ctx.layout(320, stageHeight).actorScale;
+  // Normal stages keep the 0.82 floor; compact stages scale down but never below 0.5.
+  assert.ok(Math.abs(ctx.layout(320, 305).actorScale - 0.82) < 1e-9);
+  assert.ok(Math.abs(ctx.layout(320, 232).actorScale - 0.82) < 1e-9);
+  assert.ok(ctx.layout(320, 210).actorScale < 0.82 && ctx.layout(320, 210).actorScale >= 0.5);
+  assert.equal(ctx.layout(320, 40).actorScale, 0.5);
+  // The hero's head keeps at least ~7px of clearance from the stage top down to a 180px stage (the 0.5 floor takes over below ~130px).
+  for (const height of [262, 232, 222, 210, 180]) assert.ok(clearance(height) >= 7, `stage ${height}: ${clearance(height)}`);
+});
