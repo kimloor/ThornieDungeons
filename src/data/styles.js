@@ -2958,4 +2958,28 @@ body::after {
   .md-arena-replay-overlay .md-arena-action-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); position: static; background: none; }
 }
 
+/* Inventory compare: Base/Refine and Enchant live in separate panels with readable CURRENT / NEW columns. */
+.md-inv2-compare-one-screen .md-inv2-compare-panel { margin-top:8px; padding:7px 7px 5px; border:1px solid rgba(221,176,65,.38); border-radius:12px; background:rgba(4,14,38,.5); }
+.md-inv2-compare-panel h4 { margin:0 0 4px 3px; display:flex; justify-content:space-between; align-items:baseline; gap:8px; color:var(--gold); font-size:11px; letter-spacing:.14em; font-weight:900; text-transform:uppercase; }
+.md-inv2-compare-panel h4 span { color:#91a9c3; font-size:9.5px; letter-spacing:.02em; font-weight:700; text-transform:none; }
+.md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-columns { padding:2px 8px 3px; font-size:9.5px; letter-spacing:.1em; color:#9fb4cf; }
+.md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row { min-height:32px; margin-top:3px; padding:4px 8px; border:1px solid rgba(102,160,218,.16); border-radius:9px; background:rgba(8,26,60,.62); font-size:12.5px; }
+.md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row b { font-size:12.5px; }
+.md-inv2-compare-stat { display:flex; align-items:center; gap:6px; min-width:0; font-weight:800; }
+.md-inv2-compare-tag { font-style:normal; font-size:8.5px; letter-spacing:.1em; padding:1px 5px; border-radius:6px; background:rgba(255,255,255,.1); color:#b9c8e4; }
+.md-inv2-compare-row .md-inv2-compare-empty { color:#6f81ac; font-weight:600; }
+.md-inv2-compare-panel .md-inv2-compare-new-value { flex-wrap:nowrap; gap:4px; }
+.md-inv2-compare-panel .md-inv2-compare-delta { display:inline-block; margin-left:0; padding:1px 6px; border-radius:7px; background:rgba(255,255,255,.07); font-size:10.5px; color:#9fb4cf; }
+.md-inv2-compare-panel .md-inv2-compare-delta.positive { background:rgba(113,232,255,.14); color:#71e8ff; }
+.md-inv2-compare-panel .md-inv2-compare-delta.negative { background:rgba(255,119,119,.14); color:#ff7777; }
+@media (max-width:430px) {
+  .md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row { min-height:30px; padding:3px 6px; font-size:12px; }
+  .md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row b { font-size:12px; }
+}
+@media (max-height:650px) {
+  .md-inv2-compare-one-screen .md-inv2-compare-panel { margin-top:6px; padding:5px 6px 4px; }
+  .md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row { min-height:27px; padding:2px 6px; font-size:11.5px; }
+  .md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row b { font-size:11.5px; }
+}
+
 `;
