@@ -6186,6 +6186,17 @@ const INVENTORY_STAT_LABELS = Object.freeze({
   critDamage: "Crit DMG", dropBonus: "Drop"
 });
 const INVENTORY_STAT_KEYS = Object.freeze(Object.keys(INVENTORY_STAT_LABELS));
+// Enchant-only display names: percent stats carry a % in the name, and every percent value ends with %.
+const ENCHANT_LABEL_OVERRIDES = Object.freeze({ atkPct: "ATK%", defPct: "DEF%", hpPct: "HP%", mpPct: "MP%", critChance: "Crit", critDamage: "Crit DMG" });
+const INVENTORY_PERCENT_KEYS = Object.freeze(["atkPct", "defPct", "hpPct", "mpPct", "dodgeChance", "critChance", "critDamage", "dropBonus"]);
+function inventoryEnchantOptionLabel(option) {
+  const key = String(option?.key || "");
+  return ENCHANT_LABEL_OVERRIDES[key] || option?.label || option?.stat || key || "Option";
+}
+function inventoryEnchantOptionValue(option) {
+  const key = String(option?.key || "");
+  return "+" + (Number(option?.value) || 0) + (INVENTORY_PERCENT_KEYS.includes(key) ? "%" : "");
+}
 
 function inventoryRawBaseStats(item) {
   if (!item) return {};
@@ -6259,7 +6270,7 @@ function inventoryEnchantComparisonEntries(item) {
 
 function inventoryComparisonFormatValue(key, value, signed = false) {
   const number = Math.round((Number(value) || 0) * 10) / 10;
-  const percentKeys = new Set(["hpPct", "mpPct", "dodgeChance", "critChance", "critDamage", "dropBonus"]);
+  const percentKeys = new Set(["atkPct", "defPct", "hpPct", "mpPct", "dodgeChance", "critChance", "critDamage", "dropBonus"]);
   const text = signed && number > 0 ? "+" + number : String(number);
   return text + (percentKeys.has(key) ? "%" : "");
 }
@@ -6315,7 +6326,7 @@ function inventoryComparisonRows(currentItem, nextItem) {
     rows.push({
       key: 'enchant:' + key,
       statKey: entry.key,
-      label: (INVENTORY_STAT_LABELS[entry.key] || entry.key) + occurrenceLabel + ' (Enchant)',
+      label: (INVENTORY_STAT_LABELS[entry.key] || ({ atkPct: "ATK%", defPct: "DEF%" })[entry.key] || entry.key) + occurrenceLabel + ' (Enchant)',
       current: currentValue,
       next: nextValue,
       group: 'enchant'
@@ -6453,7 +6464,7 @@ function ItemStats({ item }) {
   }));
 }
 
-function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
+function ItemComparison({ currentEquipped, currentDetail, compareRows, cp }) {
   if (!compareRows.length) return null;
   const rarityLabel = item => ({ common:"Common", junk:"Junk", rare:"Rare", unique:"Unique", elite:"Elite", mythic:"Mythic" })[inventoryRarityKey(item)] || "Common";
   const selected = currentDetail || currentEquipped;
@@ -6517,6 +6528,12 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
           ? /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-equipped-note" }, "Comparing with ", itemDisplayName(currentEquipped))
           : null)),
     signatureLines.map(line => /*#__PURE__*/React.createElement("div", { className:"md-inv2-signature md-inv2-compare-signature", key:line.key }, line.label ? /*#__PURE__*/React.createElement("em", null, line.label) : null, `\u2726 ${line.text}`)),
+    cp ? /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row md-inv2-compare-cp", "data-kind":"cp" },
+      /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-stat" }, "CP"),
+      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-current" }, String(cp.current)),
+      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-new-value" },
+        /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-new-number " + (cp.next > cp.current ? "positive" : cp.next < cp.current ? "negative" : "") }, String(cp.next)),
+        cp.next !== cp.current ? /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta " + (cp.next > cp.current ? "positive" : "negative") }, "(" + (cp.next > cp.current ? "+" : "") + (cp.next - cp.current) + ")") : null)) : null,
     renderPanel("base", "BASE STATS", "Base + Refine", baseRows),
     renderPanel("enchant", "ENCHANT", "each slot listed separately", enchantRows));
 }
@@ -6539,7 +6556,7 @@ function inventorySalvagePreview(item) {
   return { kind: "normal", materials: Object.entries(yieldPlan).filter(([, quantity]) => Number(quantity) > 0).map(([junkId, quantity]) => ({ junkId, quantity })) };
 }
 
-function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy, onToggleFavorite, onEquip, onUnequip, onSell, onSalvage, onClose }) {
+function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, cp, salvagePreview, message, busy, onToggleFavorite, onEquip, onUnequip, onSell, onSalvage, onClose }) {
   const rarityLabel = item => ({ common: "Common", junk: "Junk", rare: "Rare", unique: "Unique", elite: "Elite", mythic: "Mythic" })[inventoryRarityKey(item)] || "Common";
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
   const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
@@ -6566,8 +6583,8 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
     !compareRows.length && MYTHIC_V2.signatureText(currentDetail) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-signature" }, `✦ ${MYTHIC_V2.signatureText(currentDetail)}`),
     !compareRows.length && Array.isArray(currentDetail.empowerSlots) && currentDetail.empowerSlots.some(Boolean) && /*#__PURE__*/React.createElement("div", { className:"md-inv2-enchants" },
       /*#__PURE__*/React.createElement("h4", null, "ENCHANT OPTIONS"),
-      currentDetail.empowerSlots.filter(Boolean).map((option,index) => /*#__PURE__*/React.createElement("div", { key:index }, `${option.icon || "✦"} ${option.label || option.stat || "Option"} +${option.value || 0}`))),
-    /*#__PURE__*/React.createElement(ItemComparison, { currentEquipped, currentDetail, compareRows }),
+      currentDetail.empowerSlots.filter(Boolean).map((option,index) => /*#__PURE__*/React.createElement("div", { key:index }, `${option.icon || "✦"} ${inventoryEnchantOptionLabel(option)} ${inventoryEnchantOptionValue(option)}`))),
+    /*#__PURE__*/React.createElement(ItemComparison, { currentEquipped, currentDetail, compareRows, cp }),
     salvagePreview && /*#__PURE__*/React.createElement("div", { className:"md-inv2-salvage-preview" },
       /*#__PURE__*/React.createElement("strong", null, "Salvage Yield"),
       salvagePreview.materials.length
@@ -6630,6 +6647,17 @@ function InventoryOverlayV2({
   const previewEquipped = previewSlot ? { ...equipped, [previewSlot]: currentDetail } : equipped;
   const currentEquipped = currentDetail && SLOT_ORDER.includes(inventoryItemType(currentDetail)) ? equipped[inventoryItemType(currentDetail)] : null;
   const compareRows = detail?.location === "inventory" ? inventoryComparisonRows(currentEquipped, currentDetail) : [];
+  // Combat power with the selected item equipped vs. what is equipped now (same formula as the character CP).
+  let comparisonCp = null;
+  if (compareRows.length) {
+    try {
+      const cpPlayer = freshPlayerFromSave(save);
+      comparisonCp = {
+        current: combatPower(getStats(cpPlayer, equipped), save.character.level),
+        next: combatPower(getStats(cpPlayer, previewEquipped), save.character.level)
+      };
+    } catch (error) { comparisonCp = null; }
+  }
   const salvagePreview = currentDetail && detail?.location === "inventory" && !["junk","potion"].includes(inventoryItemType(currentDetail)) ? inventorySalvagePreview(currentDetail) : null;
   const closeDetail = () => { setDetail(null); setMessage(""); };
   const destructiveConfirm = (item, action) => {
@@ -6692,7 +6720,7 @@ function InventoryOverlayV2({
         )
       ),
       currentDetail && /*#__PURE__*/React.createElement(ItemDetailModal, {
-        detail, currentDetail, currentEquipped, compareRows, salvagePreview, message, busy,
+        detail, currentDetail, currentEquipped, compareRows, cp:comparisonCp, salvagePreview, message, busy,
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
       })
     ),
@@ -6806,7 +6834,7 @@ function InventoryOverlay({
     return /*#__PURE__*/React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 } },
       slots.map((s, i) => /*#__PURE__*/React.createElement("span", {
         key: i,
-        title: s ? `${s.icon} +${s.value} ${s.label}` : "ยังไม่ปลดล็อก (ไปปลดล็อกที่ร้านตีเหล็ก)",
+        title: s ? `${s.icon} ${inventoryEnchantOptionValue(s)} ${inventoryEnchantOptionLabel(s)}` : "ยังไม่ปลดล็อก (ไปปลดล็อกที่ร้านตีเหล็ก)",
         style: {
           fontSize: 10,
           padding: "2px 6px",

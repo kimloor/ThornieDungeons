@@ -1,5 +1,5 @@
 const STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap');
 
 .md-root {
   /* Shared safe-area shell: artwork remains full-bleed while interactive layouts
@@ -46,7 +46,7 @@ const STYLE = `
   --unique: #4FA8E0;
   --elite: #FFB84D;
   --legendary: #FFD166;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Baloo 2', sans-serif;
   color: var(--ink);
   width: 100%;
   max-width: 430px;
@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.55";
+  content: "Ver 1.0.56";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -75,7 +75,7 @@ body::after {
   background: rgba(5,8,18,.72);
   border: 1px solid rgba(255,209,102,.42);
   color: #FFE49A;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Baloo 2', sans-serif;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .35px;
@@ -586,7 +586,7 @@ body::after {
   --violet-deep: #6C4AB6;
   --leaf: #4CAF7D;
   --panel: rgba(18,12,34,0.82);
-  font-family:'Nunito',sans-serif;
+  font-family:'Baloo 2',sans-serif;
   color:var(--ink);
   position:fixed; inset:0; z-index:260; background:rgba(0,0,0,.6);
   display:flex; align-items:flex-end; justify-content:center;
@@ -674,7 +674,7 @@ body::after {
 .md-stage-node {
   display: flex; align-items: center; gap: 12px; text-align: left;
   background: var(--panel); border: 1.5px solid var(--gold-deep); border-radius: 14px; padding: 10px 12px;
-  font-family: 'Nunito'; cursor: pointer; color: var(--ink);
+  font-family: 'Baloo 2'; cursor: pointer; color: var(--ink);
 }
 .md-stage-node.boss { border-color: var(--gold); background: linear-gradient(90deg, rgba(255,209,102,0.15), var(--panel)); }
 .md-stage-node.locked { opacity: 0.4; cursor: not-allowed; border-style: dashed; }
@@ -830,7 +830,7 @@ body::after {
 .md-field-label { font-weight: 800; font-size: 12px; color: #D8E9FF; margin: 10px 0 5px; }
 .md-field {
   width: 100%; min-height: 44px; border: 1.5px solid rgba(130,177,236,.72); border-radius: 10px;
-  padding: 10px 12px; font-family: 'Nunito'; font-weight: 700; font-size: 14px;
+  padding: 10px 12px; font-family: 'Baloo 2'; font-weight: 700; font-size: 14px;
   background: rgba(2,8,25,.7); color: var(--ink); box-shadow: inset 0 0 10px rgba(57,130,218,.1);
 }
 .md-field::placeholder { color: rgba(216,233,255,.45); }
@@ -1179,7 +1179,7 @@ body::after {
 /* stage select dropdown */
 .md-select {
   width: 100%; border: 1.5px solid var(--gold-deep); border-radius: 12px; padding: 12px 14px;
-  font-family: 'Nunito'; font-weight: 800; font-size: 14px; background: rgba(0,0,0,0.35); color: var(--ink);
+  font-family: 'Baloo 2'; font-weight: 800; font-size: 14px; background: rgba(0,0,0,0.35); color: var(--ink);
   appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFD166'><path d='M7 10l5 5 5-5z'/></svg>");
   background-repeat: no-repeat; background-position: right 12px center; background-size: 18px;
@@ -1304,7 +1304,7 @@ body::after {
 .md-pet-detail-tabs { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 8px; }
 .md-pet-detail-tabs button {
   min-height: 34px; border: 1px solid rgba(255,209,102,.25); border-radius: 8px; background: rgba(8,11,28,.72);
-  color: var(--ink-soft); font: 800 10px 'Nunito'; cursor: pointer;
+  color: var(--ink-soft); font: 800 10px 'Baloo 2'; cursor: pointer;
 }
 .md-pet-detail-tabs button.active { color: var(--gold); border-color: var(--gold); background: rgba(255,209,102,.1); }
 .md-pet-tab-content { min-height: 0; margin-bottom: 8px; }
@@ -2035,7 +2035,7 @@ body::after {
 .md-inv2-detail::before { content:""; position:absolute; z-index:0; inset:18px; border-radius:14px; background:rgba(17,11,37,.9); box-shadow:inset 0 0 22px rgba(0,0,0,.24); pointer-events:none; }
 .md-inv2-detail > :not(.md-inv2-popup-close):not(.md-inv2-favorite-toggle) { position:relative; z-index:1; }
 .md-inv2-detail-head { display:flex; align-items:center; gap:12px; margin-top:24px; }
-.md-inv2-detail-head h3 { margin:0; overflow-wrap:anywhere; font-family:inherit; font-weight:900; line-height:1.12; } .md-inv2-detail-head p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
+.md-inv2-detail-head h3 { margin:0; overflow-wrap:anywhere; font-family:inherit; font-weight:800; line-height:1.12; } .md-inv2-detail-head p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
 .md-inv2-detail.rare .md-inv2-detail-head h3 { color:#65adff; }
 .md-inv2-detail.unique .md-inv2-detail-head h3 { color:#bd8cff; }
 .md-inv2-detail.elite .md-inv2-detail-head h3 { color:#ffad5c; }
@@ -2548,7 +2548,7 @@ body::after {
   background:rgba(4,8,24,.48);
   backdrop-filter:blur(2px);
   color:var(--ink);
-  font-family:'Nunito',sans-serif;
+  font-family:'Baloo 2',sans-serif;
 }
 .md-player-card-overlay,
 .md-player-card-overlay * { box-sizing:border-box; }
@@ -2987,4 +2987,5 @@ body::after {
 
 .md-inv2-compare-signature { margin:8px 0 0; padding:6px 9px; font-size:11px; font-weight:800; }
 .md-inv2-compare-signature em { margin-right:6px; font-style:normal; font-size:8.5px; letter-spacing:.1em; padding:1px 5px; border-radius:6px; background:rgba(255,255,255,.1); color:#b9c8e4; }
+.md-inv2-compare-one-screen > .md-inv2-compare-cp { margin:8px 0 0; padding:4px 15px; border:1px solid rgba(221,176,65,.38); border-radius:12px; background:rgba(4,14,38,.5); color:var(--gold); font-weight:800; min-height:32px; }
 `;
