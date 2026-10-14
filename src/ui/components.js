@@ -6472,16 +6472,18 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
     // Same status on both items: current, new and the signed change share one row.
     // A status that exists on only one item gets its own row: the missing side is a dash and the row is tagged.
     const kind = hasCurrent && hasNext ? "both" : hasNext ? "added" : hasCurrent ? "removed" : "none";
-    const deltaClass = kind === "added" ? "positive" : kind === "removed" ? "negative" : delta > 0 ? "positive" : delta < 0 ? "negative" : "";
-    const currentValue = hasCurrent ? inventoryComparisonFormatValue(row.statKey || "", row.current) : "\u2014";
-    const nextValue = hasNext ? inventoryComparisonFormatValue(row.statKey || "", row.next) : "\u2014";
-    const deltaValue = delta === 0 ? "0" : inventoryComparisonFormatValue(row.statKey || "", delta, true);
-    const deltaText = kind === "added" ? "ADDED" : kind === "removed" ? "REMOVED" : "(" + deltaValue + ")";
+    // No status words: the colour carries the change. Up = positive (cyan), down = negative (red).
+    // A side that does not exist is shown as a red 0.
+    const nextClass = kind === "added" ? "positive" : kind === "removed" ? "negative" : delta > 0 ? "positive" : delta < 0 ? "negative" : "";
+    const currentValue = hasCurrent ? inventoryComparisonFormatValue(row.statKey || "", row.current) : inventoryComparisonFormatValue(row.statKey || "", 0);
+    const nextValue = hasNext ? inventoryComparisonFormatValue(row.statKey || "", row.next) : inventoryComparisonFormatValue(row.statKey || "", 0);
+    // Only a stat present on both items shows the signed change; it sits to the left of NEW so the values stay right-aligned under the heading.
+    const deltaText = kind === "both" ? "(" + (delta === 0 ? "0" : inventoryComparisonFormatValue(row.statKey || "", delta, true)) + ")" : null;
     return /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-row", "data-kind":kind, key:row.key },
       /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-stat" }, plainLabel(row), row.group === "refine" ? /*#__PURE__*/React.createElement("em", { className:"md-inv2-compare-tag" }, "REFINE") : null),
-      /*#__PURE__*/React.createElement("b", { className: hasCurrent ? "" : "md-inv2-compare-empty" }, currentValue),
-      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-new-value" + (hasNext ? "" : " md-inv2-compare-empty") }, nextValue,
-        /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta " + deltaClass }, deltaText)));
+      /*#__PURE__*/React.createElement("b", { className: hasCurrent ? "md-inv2-compare-current" : "md-inv2-compare-current negative" }, currentValue),
+      /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-new-value" }, /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-new-number " + nextClass }, nextValue),
+        deltaText ? /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta " + nextClass }, deltaText) : null));
   };
   const renderPanel = (kind, title, hint, rows) => rows.length ? /*#__PURE__*/React.createElement("section", { className:`md-inv2-compare-panel ${kind}`, key:kind },
     /*#__PURE__*/React.createElement("h4", null, title, /*#__PURE__*/React.createElement("span", null, hint)),

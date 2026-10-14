@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.53";
+  content: "Ver 1.0.54";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2074,6 +2074,8 @@ body::after {
 .md-inv2-compare-legend { margin-top:5px; color:#91a9c3; font-size:7px; line-height:1.2; text-align:center; }
 .md-inv2-compare-row .positive { color:#71e8ff; }
 .md-inv2-compare-row .negative { color:#ff7777; }
+.md-inv2-compare-row .md-inv2-compare-delta.positive { color:#71e8ff; }
+.md-inv2-compare-row .md-inv2-compare-delta.negative { color:#ff7777; }
 @media (max-width:430px) {
   .md-inv2-detail-layer { padding-left:8px; padding-right:8px; }
   .md-inv2-detail { width:min(100%,400px); }
@@ -2968,10 +2970,11 @@ body::after {
 .md-inv2-compare-stat { display:flex; align-items:center; gap:6px; min-width:0; font-weight:800; }
 .md-inv2-compare-tag { font-style:normal; font-size:8.5px; letter-spacing:.1em; padding:1px 5px; border-radius:6px; background:rgba(255,255,255,.1); color:#b9c8e4; }
 .md-inv2-compare-row .md-inv2-compare-empty { color:#6f81ac; font-weight:600; }
-.md-inv2-compare-panel .md-inv2-compare-new-value { flex-wrap:nowrap; gap:4px; }
-.md-inv2-compare-panel .md-inv2-compare-delta { display:inline-block; margin-left:0; padding:1px 6px; border-radius:7px; background:rgba(255,255,255,.07); font-size:10.5px; color:#9fb4cf; }
-.md-inv2-compare-panel .md-inv2-compare-delta.positive { background:rgba(113,232,255,.14); color:#71e8ff; }
-.md-inv2-compare-panel .md-inv2-compare-delta.negative { background:rgba(255,119,119,.14); color:#ff7777; }
+.md-inv2-compare-panel .md-inv2-compare-new-value { display:flex; flex-direction:row-reverse; justify-content:flex-start; align-items:baseline; flex-wrap:nowrap; gap:5px; text-align:right; }
+.md-inv2-compare-new-number,.md-inv2-compare-current { font-variant-numeric:tabular-nums; }
+.md-inv2-compare-panel .md-inv2-compare-delta { display:inline-block; margin-left:0; padding:0; background:none; font-size:10.5px; color:#9fb4cf; }
+.md-inv2-compare-panel .md-inv2-compare-delta.positive { background:none; color:#71e8ff; }
+.md-inv2-compare-panel .md-inv2-compare-delta.negative { background:none; color:#ff7777; }
 @media (max-width:430px) {
   .md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row { min-height:30px; padding:3px 6px; font-size:12px; }
   .md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row b { font-size:12px; }

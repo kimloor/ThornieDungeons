@@ -100,7 +100,8 @@ test("Inventory compare separates Base, Refine and Enchant rows in the one-scree
   const compare = components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions"));
   assert.match(compare, /md-inv2-compare-one-screen/);
   assert.match(compare, /md-inv2-compare-delta/);
-  assert.match(compare, /deltaClass/);
+  assert.match(compare, /nextClass/);
+  assert.doesNotMatch(compare, /ADDED|REMOVED/);
   assert.match(compare, /renderPanel\("base", "BASE STATS"/);
   assert.match(compare, /renderPanel\("enchant", "ENCHANT"/);
   assert.doesNotMatch(compare, /are shown separately; missing stats/);
@@ -305,7 +306,7 @@ test("Inventory compare has exactly three aligned columns and puts signed delta 
   assert.deepEqual(headings.map(x => x.match(/"(STAT|CURRENT|NEW|DIFFERENCE)"\)/)[1]), ["STAT", "CURRENT", "NEW"]);
   assert.doesNotMatch(compare, /"DIFFERENCE"/);
   assert.match(compare, /md-inv2-compare-new-value/);
-  assert.match(compare, /\(" \+ deltaValue \+ "\)/);
+  assert.match(compare, /"\(" \+ \(delta === 0/);
   assert.match(styles, /grid-template-columns:minmax\(0,1\.15fr\) minmax\(0,\.72fr\) minmax\(0,1fr\)/);
   assert.match(styles, /@media \(max-width:430px\)/);
 });
@@ -370,17 +371,20 @@ test("Inventory compare display: Base/Refine and Enchant are separate panels; sa
   const panels = collectNodes(tree, node => /md-inv2-compare-panel/.test(node.props?.className || ""));
   assert.deepEqual(panels.map(panel => panel.props.className.replace("md-inv2-compare-panel ", "")), ["base", "enchant"]);
   const rowsOf = panel => collectNodes(panel, node => node.props?.className === "md-inv2-compare-row");
-  const cells = row => ({ stat: textOf(row.children[0]), current: textOf(row.children[1]), next: row.children[2].children[0], delta: textOf(row.children[2].children[1]), kind: row.props["data-kind"] });
+  const cells = row => ({ stat: textOf(row.children[0]), current: textOf(row.children[1]), currentClass: row.children[1].props.className, next: textOf(row.children[2].children[0]), nextClass: row.children[2].children[0].props.className, delta: row.children[2].children[1] ? textOf(row.children[2].children[1]) : "", kind: row.props["data-kind"] });
   const base = rowsOf(panels[0]).map(cells);
   const enchant = rowsOf(panels[1]).map(cells);
   assert.equal(base.length, 1);
   assert.equal(enchant.length, 5, "repeated stats are never merged");
   assert.match(base[0].stat, /^AGI/); // label has no "(Refine)" suffix, the REFINE tag marks the group
   assert.doesNotMatch(base[0].stat, /\(Refine\)/);
-  // A stat that only exists on the current item: its own row, missing side is a dash, tagged REMOVED.
-  assert.deepEqual([base[0].current, base[0].next, base[0].delta, base[0].kind], ["3", "\u2014", "REMOVED", "removed"]);
+  // A stat that only exists on the current item: its own row, missing side is a red 0, no REMOVED word.
+  assert.deepEqual([base[0].current, base[0].next, base[0].delta, base[0].kind], ["3", "0", "", "removed"]);
+  assert.match(base[0].nextClass, /negative/);
   // A stat that only exists on the new item: ADDED. Two Crit enchants stay two separate rows.
-  assert.deepEqual(enchant.slice(0, 2).map(row => [row.stat, row.current, row.next, row.delta, row.kind]), [["Crit (1)", "\u2014", "5%", "ADDED", "added"], ["Crit (2)", "\u2014", "3%", "ADDED", "added"]]);
+  assert.deepEqual(enchant.slice(0, 2).map(row => [row.stat, row.current, row.next, row.delta, row.kind]), [["Crit (1)", "0%", "5%", "", "added"], ["Crit (2)", "0%", "3%", "", "added"]]);
+  assert.match(enchant[0].currentClass, /negative/);
+  assert.match(enchant[0].nextClass, /positive/);
   // The same stat on both items: current, new and the signed change share one row.
   assert.deepEqual(enchant.slice(2).map(row => [row.stat, row.current, row.next, row.delta, row.kind]), [["HP%", "4%", "6%", "(+2%)", "both"], ["MP%", "7%", "7%", "(0)", "both"], ["Dodge", "8%", "5%", "(-3%)", "both"]]);
   // Only the clicked item's icon is shown; no legend/status text at the bottom.
