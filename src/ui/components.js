@@ -6485,6 +6485,12 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
       /*#__PURE__*/React.createElement("b", { className:"md-inv2-compare-new-value" }, /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-new-number " + nextClass }, nextValue),
         deltaText ? /*#__PURE__*/React.createElement("small", { className:"md-inv2-compare-delta " + nextClass }, deltaText) : null));
   };
+  // Boss-weapon unique effect (signature): shown for the selected item; the equipped item's own effect is listed too when it differs.
+  const selectedSignature = selected ? MYTHIC_V2.signatureText(selected) : "";
+  const equippedSignature = currentEquipped && currentDetail ? MYTHIC_V2.signatureText(currentEquipped) : "";
+  const signatureLines = [];
+  if (selectedSignature) signatureLines.push({ key:"selected", label:equippedSignature && equippedSignature !== selectedSignature ? "NEW" : "", text:selectedSignature });
+  if (equippedSignature && equippedSignature !== selectedSignature) signatureLines.push({ key:"equipped", label:"CURRENT", text:equippedSignature });
   const renderPanel = (kind, title, hint, rows) => rows.length ? /*#__PURE__*/React.createElement("section", { className:`md-inv2-compare-panel ${kind}`, key:kind },
     /*#__PURE__*/React.createElement("h4", null, title, /*#__PURE__*/React.createElement("span", null, hint)),
     /*#__PURE__*/React.createElement("div", { className:"md-inv2-compare-columns", "aria-hidden":"true" },
@@ -6510,6 +6516,7 @@ function ItemComparison({ currentEquipped, currentDetail, compareRows }) {
         currentEquipped && currentDetail
           ? /*#__PURE__*/React.createElement("span", { className:"md-inv2-compare-equipped-note" }, "Comparing with ", itemDisplayName(currentEquipped))
           : null)),
+    signatureLines.map(line => /*#__PURE__*/React.createElement("div", { className:"md-inv2-signature md-inv2-compare-signature", key:line.key }, line.label ? /*#__PURE__*/React.createElement("em", null, line.label) : null, `\u2726 ${line.text}`)),
     renderPanel("base", "BASE STATS", "Base + Refine", baseRows),
     renderPanel("enchant", "ENCHANT", "each slot listed separately", enchantRows));
 }

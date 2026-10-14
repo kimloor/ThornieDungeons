@@ -341,6 +341,7 @@ function renderItemComparisonTree(compareRows, selected, equipped) {
     itemDisplayName: item => item.name,
     inventoryRarityKey: item => item?.rarity || "common",
     inventoryItemType: item => item?.type || "wings",
+    MYTHIC_V2: require(path.join(ROOT, "src/systems/mythicV2.js")),
   };
   vm.createContext(sandbox);
   vm.runInContext(`${slice("function inventoryComparisonFormatValue", "function inventoryComparisonRows")}\n${slice("function ItemComparison", "function ItemActions")}\nthis.ItemComparison = ItemComparison;`, sandbox);
@@ -406,4 +407,18 @@ test("Inventory compare display: a panel without rows is omitted and the compari
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   assert.match(components, /function inventoryComparisonRows\(currentItem, nextItem\)/);
   assert.doesNotMatch(components.slice(components.indexOf("function ItemComparison"), components.indexOf("function ItemActions")), /inventoryComparisonRows|inventoryEnchantComparisonEntries/);
+});
+
+test("Inventory compare shows the boss weapon unique effect (signature), plus the equipped one when it differs", () => {
+  const rows = [{ key: "base:atk", statKey: "atk", label: "ATK (Base)", current: 10, next: 21, group: "base" }];
+  const lavalon = { name: "Lavalon Sword", rarity: "mythic", type: "weapon", signatureId: "lavalon_extra_basic", empowerSlots: [] };
+  const icicle = { name: "Frost Blade", rarity: "mythic", type: "weapon", signatureId: "icicle_counter" };
+  const plain = { name: "Iron Sword", rarity: "rare", type: "weapon" };
+  const lines = tree => collectNodes(tree, node => /md-inv2-compare-signature/.test(node.props?.className || "")).map(textOf);
+  assert.deepEqual(lines(renderItemComparisonTree(rows, lavalon, plain)).map(t => t.includes("10%/Hit")), [true]);
+  const both = lines(renderItemComparisonTree(rows, lavalon, icicle));
+  assert.equal(both.length, 2);
+  assert.match(both[0], /^NEW/);
+  assert.match(both[1], /^CURRENT/);
+  assert.deepEqual(lines(renderItemComparisonTree(rows, plain, plain)), []);
 });

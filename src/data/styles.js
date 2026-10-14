@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.54";
+  content: "Ver 1.0.55";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2035,7 +2035,7 @@ body::after {
 .md-inv2-detail::before { content:""; position:absolute; z-index:0; inset:18px; border-radius:14px; background:rgba(17,11,37,.9); box-shadow:inset 0 0 22px rgba(0,0,0,.24); pointer-events:none; }
 .md-inv2-detail > :not(.md-inv2-popup-close):not(.md-inv2-favorite-toggle) { position:relative; z-index:1; }
 .md-inv2-detail-head { display:flex; align-items:center; gap:12px; margin-top:24px; }
-.md-inv2-detail-head h3 { margin:0; overflow-wrap:anywhere; } .md-inv2-detail-head p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
+.md-inv2-detail-head h3 { margin:0; overflow-wrap:anywhere; font-family:inherit; font-weight:900; line-height:1.12; } .md-inv2-detail-head p { margin:2px 0 0; color:var(--ink-soft); font-size:11px; }
 .md-inv2-detail.rare .md-inv2-detail-head h3 { color:#65adff; }
 .md-inv2-detail.unique .md-inv2-detail-head h3 { color:#bd8cff; }
 .md-inv2-detail.elite .md-inv2-detail-head h3 { color:#ffad5c; }
@@ -2985,4 +2985,6 @@ body::after {
   .md-inv2-compare-one-screen .md-inv2-compare-panel .md-inv2-compare-row b { font-size:11.5px; }
 }
 
+.md-inv2-compare-signature { margin:8px 0 0; padding:6px 9px; font-size:11px; font-weight:800; }
+.md-inv2-compare-signature em { margin-right:6px; font-style:normal; font-size:8.5px; letter-spacing:.1em; padding:1px 5px; border-radius:6px; background:rgba(255,255,255,.1); color:#b9c8e4; }
 `;
