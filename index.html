@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.57";
+  content: "Ver 1.0.58";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2849,6 +2849,29 @@ body::after {
 .md-arena-log-sheet-card { width:min(100%,560px); max-height:min(70dvh,560px); display:flex; flex-direction:column; gap:8px; }
 .md-arena-log-sheet-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .md-arena-log-sheet-list .md-sub { margin:0 0 6px; }
+/* Arena log colours: unit names by side + hero/pet, skill, damage/heal numbers, status. Display-only. */
+.md-alog-name { font-weight:700; }
+.md-alog-name.ally.hero { color:#5ee08a; }
+.md-alog-name.ally.pet { color:#9fe8c3; font-style:italic; }
+.md-alog-name.enemy.hero { color:#ff6f7d; }
+.md-alog-name.enemy.pet { color:#ffa56b; font-style:italic; }
+.md-alog-skill { color:#ffd86b; }
+.md-alog-dmg { color:#ffb347; font-weight:800; }
+.md-alog-heal { color:#5eead4; font-weight:800; }
+.md-alog-status { color:#c79bff; font-weight:700; }
+.md-alog-crit { color:#ff9f43; font-weight:800; }
+.md-alog-nested { padding-left:14px; font-size:.94em; opacity:.95; }
+.md-alog-round { color:var(--gold); font-weight:800; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,209,102,.22); }
+.md-alog-battle_start, .md-alog-battle_end { opacity:.7; }
+/* Arena ATB bar: our side green, enemy side red; Pets use a dashed ring. */
+.md-turn-queue-item.side-ally .md-turn-queue-icon { border:2px solid #4ade80; background:rgba(34,197,94,.24); box-shadow:0 0 6px rgba(74,222,128,.7), inset 0 0 6px rgba(74,222,128,.35); }
+.md-turn-queue-item.side-enemy .md-turn-queue-icon { border:2px solid #ff5d6c; background:rgba(239,68,68,.24); box-shadow:0 0 6px rgba(255,93,108,.7), inset 0 0 6px rgba(255,93,108,.35); }
+.md-turn-queue-item.pet.side-ally .md-turn-queue-icon, .md-turn-queue-item.pet.side-enemy .md-turn-queue-icon { border-style:dashed; }
+.md-turn-queue-item.side-ally::after, .md-turn-queue-item.side-enemy::after { content:""; position:absolute; left:22%; right:22%; bottom:3px; height:3px; border-radius:2px; }
+.md-turn-queue-item.side-ally::after { background:#4ade80; }
+.md-turn-queue-item.side-enemy::after { background:#ff5d6c; }
+.md-turn-queue-item.active.side-ally .md-turn-queue-icon { box-shadow:0 0 0 2px #4ade80, 0 0 10px rgba(74,222,128,.9); }
+.md-turn-queue-item.active.side-enemy .md-turn-queue-icon { box-shadow:0 0 0 2px #ff5d6c, 0 0 10px rgba(255,93,108,.9); }
 /* Action dock: ATTACK + AUTO on the first row, the four skills below in one compact row. */
 .md-arena-action-dock { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:8px 10px; }
 .md-arena-action-dock > .md-arena-attack-btn { grid-column:span 2; }
@@ -20555,6 +20578,76 @@ function arenaSetupEquipmentSlots(equipment) {
   return ARENA_SETUP_EQUIPMENT_SLOT_ORDER.map(slot => ({ slot, item: bySlot.get(slot) || null }));
 }
 
+// ---- Arena battle log presentation (display-only; authoritative log entries are never modified) ----
+const ARENA_LOG_ACTION_TYPES = new Set(["damage", "heal", "miss"]);
+// Battle Core logs a status (e.g. stun) BEFORE the damage line of the same action, so the log reads as if the
+// target was stunned before the skill hit. Show the action first and the status it caused right under it.
+function arenaLogDisplayOrder(log) {
+  const lines = (Array.isArray(log) ? log : []).filter(Boolean);
+  const ordered = [];
+  let pending = [];
+  const flush = () => { if (pending.length) { ordered.push(...pending); pending = []; } };
+  for (const entry of lines) {
+    if (entry.type === "status" && entry.actorId && entry.status) { pending.push(entry); continue; }
+    if (pending.length && ARENA_LOG_ACTION_TYPES.has(entry.type) && entry.actorId
+      && pending.every(item => item.actorId === entry.actorId && item.targetId === entry.targetId)) {
+      ordered.push(entry, ...pending);
+      pending = [];
+      continue;
+    }
+    flush();
+    ordered.push(entry);
+  }
+  flush();
+  return ordered;
+}
+function arenaLogEscape(text) { return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function arenaLogUnitClass(unit) {
+  return `${unit.side === "team_a" ? "ally" : "enemy"} ${unit.kind === "pet" ? "pet" : "hero"}`;
+}
+// Splits text into coloured segments: unit names (side + hero/pet), skill names, damage/heal numbers, status keys.
+function arenaLogSegments(entry, unitsById) {
+  const text = String(entry?.text ?? entry?.message ?? entry ?? "");
+  let segments = [{ text }];
+  const splitBy = (regex, classify) => {
+    const next = [];
+    for (const segment of segments) {
+      if (segment.cls) { next.push(segment); continue; }
+      let last = 0;
+      let match;
+      regex.lastIndex = 0;
+      while ((match = regex.exec(segment.text)) !== null) {
+        if (match[0] === "") { regex.lastIndex++; continue; }
+        if (match.index > last) next.push({ text: segment.text.slice(last, match.index) });
+        classify(match).forEach(part => next.push(part));
+        last = match.index + match[0].length;
+      }
+      if (last < segment.text.length) next.push({ text: segment.text.slice(last) });
+    }
+    segments = next;
+  };
+  const names = new Map();
+  Object.values(unitsById || {}).forEach(unit => { if (unit?.name) names.set(String(unit.name), arenaLogUnitClass(unit)); });
+  if (names.size) {
+    const source = [...names.keys()].sort((a, b) => b.length - a.length).map(arenaLogEscape).join("|");
+    splitBy(new RegExp(source, "g"), match => [{ text: match[0], cls: `md-alog-name ${names.get(match[0])}` }]);
+  }
+  const skills = [entry?.actionName, entry?.skillName].filter(value => typeof value === "string" && value);
+  if (skills.length) splitBy(new RegExp([...new Set(skills)].sort((a, b) => b.length - a.length).map(arenaLogEscape).join("|"), "g"), match => [{ text: match[0], cls: "md-alog-skill" }]);
+  splitBy(/(damage|heal) (\d+)/g, match => [{ text: `${match[1]} ` }, { text: match[2], cls: match[1] === "heal" ? "md-alog-heal" : "md-alog-dmg" }]);
+  if (entry?.status) splitBy(new RegExp(`\\b${arenaLogEscape(entry.status)}\\b`, "g"), match => [{ text: match[0], cls: "md-alog-status" }]);
+  return segments;
+}
+function arenaLogLineElement(entry, unitsById, key, { tag = "p", className = "md-sub" } = {}) {
+  const e = React.createElement;
+  const nested = entry?.type === "status" && !!entry?.actorId;
+  const type = String(entry?.type || "info").replace(/[^a-z_]/gi, "");
+  return e(tag, { key, className: `${className} md-alog md-alog-${type}${nested ? " md-alog-nested" : ""}` },
+    nested ? "\u21b3 " : null,
+    ...arenaLogSegments(entry, unitsById).map((segment, index) => segment.cls ? e("span", { key: index, className: segment.cls }, segment.text) : segment.text),
+    entry?.crit && !/crit/i.test(String(entry?.text || "")) ? e("span", { key: "crit", className: "md-alog-crit" }, " CRIT!") : null);
+}
+
 function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
   const e = React.createElement;
   if (!card) return null;
@@ -20995,7 +21088,7 @@ function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
       // The battlefield is position:absolute (inset:0); it needs its own positioned stage or it covers the whole overlay.
       e("div", { className: "md-arena-phaser-stage md-arena-replay-stage" },
         e(PhaserBattlefield, { key: `arena-replay-${replay.matchId}`, mode: "arena", battleState: presentationState, preparedSnapshot: replay.snapshot, combatSpeed: 1, targetUid: null, onTargetSelected: () => {}, onStatus: () => {} })),
-      e("div", { className: "md-sub", "aria-live": "polite" }, (state?.log || []).slice(replay.frames.length === 0 ? -40 : -6).map((line, i) => e("p", { key: `${line.seq || i}-${i}` }, line.text || line.message || String(line)))),
+      e("div", { className: "md-sub", "aria-live": "polite" }, arenaLogDisplayOrder(state?.log).slice(replay.frames.length === 0 ? -40 : -6).map((line, i) => arenaLogLineElement(line, Object.fromEntries((state?.units || []).map(unit => [unit.id, unit])), `${line.seq || i}-${i}`, { className: "" }))),
       e("div", { className: "md-arena-action-controls", style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
         e("button", { className: "md-btn small md-arena-art-btn secondary", disabled: index <= 0, onClick: () => onSeek(index - 1) }, "‹ PREVIOUS"),
         e("button", { className: "md-btn small md-arena-art-btn primary", disabled: replay.frames.length === 0, onClick: onPlayPause }, replay.playing ? "PAUSE" : last ? "REPLAY AGAIN" : "PLAY"),
@@ -21473,9 +21566,11 @@ function ArenaV2Screen({
   const enemyUnits = Object.values(units).filter(u => u.side === "team_b").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
   const selected = selectedTarget || enemyUnits.find(u => u.alive)?.id || enemyUnits[0]?.id || null;
   const battleState = match?.state ? { ...match.state, selectedTargetId: selected } : null;
+  const arenaSideById = Object.fromEntries(Object.values(units).map(unit => [unit.id, unit.side === "team_a" ? "ally" : "enemy"]));
   const arenaTurnQueue = (match?.state?.queue || []).map(item => ({
     key: item.id,
     uid: item.id,
+    side: arenaSideById[item.id] || (item.kind === "pet" || item.kind === "hero" ? "ally" : "enemy"),
     kind: item.kind === "pet" ? "pet" : item.kind === "hero" ? "player" : "monster",
     name: item.name || item.id,
     icon: arenaTurnOrderIcon(item, match?.snapshot),
@@ -21668,7 +21763,7 @@ function ArenaV2Screen({
         showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-arena-log-sheet", role: "dialog", "aria-modal": "true", "aria-label": "Full battle log", onClick: () => setShowFullLog(false) },
           /*#__PURE__*/React.createElement("section", { className: "md-card md-arena-log-sheet-card", onClick: event => event.stopPropagation() },
             /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Battle Log"),
-            /*#__PURE__*/React.createElement("div", { className: "md-arena-log-sheet-list" }, (match.state?.log || []).map((line, i) => /*#__PURE__*/React.createElement("p", { className: "md-sub", key: i }, line.text || line.message || String(line)))),
+            /*#__PURE__*/React.createElement("div", { className: "md-arena-log-sheet-list" }, arenaLogDisplayOrder(match.state?.log).map((line, i) => arenaLogLineElement(line, arenaUnitsById, i))),
             /*#__PURE__*/React.createElement("button", { type: "button", className: "md-btn small md-arena-art-btn secondary", onClick: () => setShowFullLog(false) }, "CLOSE")))),
       match.result ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-result-card" },
         resultGraphicSrc && /*#__PURE__*/React.createElement("img", { className: "md-arena-result-emblem", src: resultGraphicSrc, alt: "", "aria-hidden": "true" }),
@@ -21683,7 +21778,7 @@ function ArenaV2Screen({
         })) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
       // The battle log sits below the action dock (last thing on screen); tap it for the full log sheet.
       !matchIsPrepared && /*#__PURE__*/React.createElement("button", { type: "button", className: "md-arena-log-strip", "aria-label": "Open full battle log", onClick: () => setShowFullLog(true) },
-        (match.state?.log || []).slice(-2).map((line, i) => /*#__PURE__*/React.createElement("span", { key: i }, line.text || line.message || String(line))),
+        arenaLogDisplayOrder(match.state?.log).slice(-2).map((line, i) => arenaLogLineElement(line, arenaUnitsById, i, { tag: "span", className: "" })),
         /*#__PURE__*/React.createElement("b", null, "FULL LOG")),
     ),
     replay && /*#__PURE__*/React.createElement(ArenaReplayOverlay, {
@@ -22892,9 +22987,9 @@ function TurnOrderBar({ queue, activeKey, round, monsters = [], petCombat, heroN
     const isActive = activeKey === item.key;
     return /*#__PURE__*/React.createElement("div", {
       key: `${snapshotKey}:${i}:${item.key}`,
-      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} md-battle-art`,
+      className: `md-turn-queue-item ${item.kind} ${isActive ? "active" : ""} ${item.side ? `side-${item.side}` : ""} md-battle-art`,
       style: battleUiStyle("turnOrderSlot"),
-      title: `${item.kind === "player" ? heroName : item.name} · Speed ${item.speed}`
+      title: `${item.side ? (item.side === "ally" ? "[Ally] " : "[Enemy] ") : ""}${item.kind === "player" ? heroName : item.name} · Speed ${item.speed}`
     }, /*#__PURE__*/React.createElement(TurnOrderActorIcon, {
       item,
       monsterSlot: item.kind === "monster" && !item.isBoss && numberedMonsterUids.length > 1 ? numberedMonsterUids.indexOf(item.uid) + 1 || null : null

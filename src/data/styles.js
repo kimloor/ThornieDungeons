@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.57";
+  content: "Ver 1.0.58";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2755,6 +2755,29 @@ body::after {
 .md-arena-log-sheet-card { width:min(100%,560px); max-height:min(70dvh,560px); display:flex; flex-direction:column; gap:8px; }
 .md-arena-log-sheet-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .md-arena-log-sheet-list .md-sub { margin:0 0 6px; }
+/* Arena log colours: unit names by side + hero/pet, skill, damage/heal numbers, status. Display-only. */
+.md-alog-name { font-weight:700; }
+.md-alog-name.ally.hero { color:#5ee08a; }
+.md-alog-name.ally.pet { color:#9fe8c3; font-style:italic; }
+.md-alog-name.enemy.hero { color:#ff6f7d; }
+.md-alog-name.enemy.pet { color:#ffa56b; font-style:italic; }
+.md-alog-skill { color:#ffd86b; }
+.md-alog-dmg { color:#ffb347; font-weight:800; }
+.md-alog-heal { color:#5eead4; font-weight:800; }
+.md-alog-status { color:#c79bff; font-weight:700; }
+.md-alog-crit { color:#ff9f43; font-weight:800; }
+.md-alog-nested { padding-left:14px; font-size:.94em; opacity:.95; }
+.md-alog-round { color:var(--gold); font-weight:800; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,209,102,.22); }
+.md-alog-battle_start, .md-alog-battle_end { opacity:.7; }
+/* Arena ATB bar: our side green, enemy side red; Pets use a dashed ring. */
+.md-turn-queue-item.side-ally .md-turn-queue-icon { border:2px solid #4ade80; background:rgba(34,197,94,.24); box-shadow:0 0 6px rgba(74,222,128,.7), inset 0 0 6px rgba(74,222,128,.35); }
+.md-turn-queue-item.side-enemy .md-turn-queue-icon { border:2px solid #ff5d6c; background:rgba(239,68,68,.24); box-shadow:0 0 6px rgba(255,93,108,.7), inset 0 0 6px rgba(255,93,108,.35); }
+.md-turn-queue-item.pet.side-ally .md-turn-queue-icon, .md-turn-queue-item.pet.side-enemy .md-turn-queue-icon { border-style:dashed; }
+.md-turn-queue-item.side-ally::after, .md-turn-queue-item.side-enemy::after { content:""; position:absolute; left:22%; right:22%; bottom:3px; height:3px; border-radius:2px; }
+.md-turn-queue-item.side-ally::after { background:#4ade80; }
+.md-turn-queue-item.side-enemy::after { background:#ff5d6c; }
+.md-turn-queue-item.active.side-ally .md-turn-queue-icon { box-shadow:0 0 0 2px #4ade80, 0 0 10px rgba(74,222,128,.9); }
+.md-turn-queue-item.active.side-enemy .md-turn-queue-icon { box-shadow:0 0 0 2px #ff5d6c, 0 0 10px rgba(255,93,108,.9); }
 /* Action dock: ATTACK + AUTO on the first row, the four skills below in one compact row. */
 .md-arena-action-dock { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:8px 10px; }
 .md-arena-action-dock > .md-arena-attack-btn { grid-column:span 2; }
