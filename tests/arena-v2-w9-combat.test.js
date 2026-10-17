@@ -120,7 +120,9 @@ test('Hero-only attacker/defender combinations remain valid Arena teams', async 
   db.raw.prepare("UPDATE arena_setup SET pet_inst_id = '' WHERE character_id = 'char-10'").run();
   const { active } = await activate(db, opponents[0].opponentKey);
   assert.equal(active.ok, true);
-  assert.deepEqual(active.match.state.units.map((unit) => unit.kind), ['hero', 'hero']);
+  // Bots now roll a loadout that may include a Pet, so only the Pet-less attacker side is asserted hero-only.
+  assert.deepEqual(active.match.state.units.filter((unit) => unit.side === 'team_a').map((unit) => unit.kind), ['hero']);
+  assert.ok(active.match.state.units.some((unit) => unit.id === 'team_b_hero'));
   const action = await body(await arena.handleSubmitArenaV2Action(db, 'p1', session('p1'), 'char-10', active.match.matchId, 'hero-only-1', 'basic', null, 'team_b_hero', false));
   assert.equal(action.ok, true);
   db.close();

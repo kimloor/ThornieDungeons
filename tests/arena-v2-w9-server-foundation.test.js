@@ -335,8 +335,13 @@ test('Player Card resolves only from persisted opponent list, uses live equipmen
   assert.equal(botCard.playerCard.isBot, true);
   assert.ok(botCard.playerCard.cp > 0);
   assert.ok(botCard.playerCard.archetype);
-  assert.deepEqual(botCard.playerCard.equipment, []);
-  assert.equal(botCard.playerCard.pet, null);
+  // Bots roll a seeded loadout from the pool: all six gear slots, optional Pet; skills stay private.
+  assert.deepEqual(botCard.playerCard.equipment.map((item) => item.slotType), ['weapon', 'helmet', 'chest', 'gloves', 'boots', 'accessory']);
+  assert.ok(botCard.playerCard.equipment.every((item) => item.itemId && item.name && item.rarity));
+  if (botCard.playerCard.pet) assert.ok(botCard.playerCard.pet.defId && botCard.playerCard.pet.level >= 1);
+  assert.equal('skillSlots' in botCard.playerCard, false);
+  const botCardAgain = await jsonBody(await arena.handleGetArenaV2PlayerCard(db, 'p1', session('p1'), 'char-10', bot.opponentKey));
+  assert.deepEqual(botCardAgain.playerCard.equipment, botCard.playerCard.equipment);
   assert.equal(botCard.playerCard.profileFrameKey, null);
   db.close();
 });
