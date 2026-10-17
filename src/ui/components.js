@@ -4208,7 +4208,9 @@ function ArenaV2Screen({
   const units = match?.state?.units || {};
   const playerUnits = Object.values(units).filter(u => u.side === "team_a").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
   const enemyUnits = Object.values(units).filter(u => u.side === "team_b").map(u => ({ ...u, alive: Number(u.hp) > 0 && !u.dead }));
-  const selected = selectedTarget || enemyUnits.find(u => u.alive)?.id || enemyUnits[0]?.id || null;
+  // A dead enemy cannot be targeted: when the chosen target dies the cursor moves to a living enemy automatically.
+  const livingEnemyIds = enemyUnits.filter(u => u.alive).map(u => u.id);
+  const selected = (selectedTarget && livingEnemyIds.includes(selectedTarget)) ? selectedTarget : (livingEnemyIds[0] || enemyUnits[0]?.id || null);
   const battleState = match?.state ? { ...match.state, selectedTargetId: selected } : null;
   const arenaSideById = Object.fromEntries(Object.values(units).map(unit => [unit.id, unit.side === "team_a" ? "ally" : "enemy"]));
   const arenaTurnQueue = (match?.state?.queue || []).map(item => ({
