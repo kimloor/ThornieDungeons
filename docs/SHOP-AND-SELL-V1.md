@@ -69,3 +69,11 @@ Required checks:
 ## Explicit non-goals
 
 No new migration, no new assets/R2 work, no multi-select sell, no sell-all junk shortcut, no Shop reroll, and no changes to approved economy prices are part of V1.
+
+## Shop stock V2 (timed stock + refresh) — supersedes "no Shop reroll" above
+
+- Equipment tab offers **5** items (was 3) per roll; prices/tiers unchanged.
+- A roll lives **30 minutes** from the moment it is rolled (first shop open, or the first open after expiry). Closing/reopening the shop returns the same offers; it no longer re-rolls on every open. Offers cannot be bought after `expires_at` (`shop_offer_expired`).
+- **Refresh** button (`refreshCharacterShopStock`): free, rolls 5 new offers, restarts the 30 min window, then a **10 s** server-enforced cooldown (`shop_refresh_cooldown`, `retryAfterMs`). The cooldown countdown is shown inside the button.
+- Storage: `character_shop_offers.expires_at` / `refresh_available_at` (migration `0030_shop_timed_stock.sql`); legacy rows with NULL expiry count as expired.
+- The Shop is a full-screen page with fixed height; only the body scrolls.

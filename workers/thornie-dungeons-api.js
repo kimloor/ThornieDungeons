@@ -939,7 +939,22 @@ const W45_SHOP_PRICES = Object.freeze({
   4: Object.freeze({ rare: 4600, unique: 7700, elite: 13500 }),
   5: Object.freeze({ rare: 6900, unique: 11500, elite: 20000 })
 });
-async function handleGetCharacterShopStock(db, id, session, characterId, requestId) {
+// Shop stock V2: 5 equipment offers per roll, valid for 30 minutes from the roll (not re-rolled on every open).
+// Manual refresh rolls a new set and restarts the window; it is rate-limited by a server-side cooldown.
+const SHOP_OFFER_COUNT = 5;
+const SHOP_STOCK_TTL_MS = 30 * 60 * 1000;
+const SHOP_REFRESH_COOLDOWN_MS = 10 * 1000;
+function shopStockResult(tier, offers, expiresAtMs, refreshAtMs, nowMs) {
+  return {
+    tier,
+    items: offers.map(offer => ({ ...offer.item, offerId: offer.offerId, price: offer.price })),
+    expiresAt: new Date(expiresAtMs).toISOString(),
+    expiresInMs: Math.max(0, expiresAtMs - nowMs),
+    refreshInMs: Math.max(0, refreshAtMs - nowMs),
+    serverNow: new Date(nowMs).toISOString()
+  };
+}
+async function handleGetCharacterShopStock(db, id, session, characterId, requestId, { refresh = false } = {}) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
   const owned = await verifyOwnedCharacter(db, id, characterId);
@@ -948,11 +963,21 @@ async function handleGetCharacterShopStock(db, id, session, characterId, request
   if (!/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_request_id" }, 400);
   const floor = Math.max(1, Number(owned.row.unlocked_floor) || 1);
   const tier = dungeonV2ServerTierForFloor(floor);
-  const operation = "shop_stock";
+  const operation = refresh ? "shop_stock_refresh" : "shop_stock";
   const payloadJson = JSON.stringify({ floor, tier });
   const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
   if (replay) return replay;
-  const offers = Array.from({ length: 3 }, (_, index) => {
+  const nowMs = Date.now();
+  const existing = await db.prepare(`SELECT floor, offers_json, expires_at, refresh_available_at FROM character_shop_offers WHERE character_id = ? AND player_id = ?`).bind(characterId, id).first();
+  const existingExpiresMs = existing?.expires_at ? Date.parse(existing.expires_at) : NaN;
+  const existingRefreshMs = existing?.refresh_available_at ? Date.parse(existing.refresh_available_at) : 0;
+  const existingValid = !!existing && Number(existing.floor) === floor && Number.isFinite(existingExpiresMs) && existingExpiresMs > nowMs;
+  if (refresh && existingRefreshMs > nowMs) return json({ error: "shop_refresh_cooldown", retryAfterMs: existingRefreshMs - nowMs }, 429);
+  if (existingValid && !refresh) {
+    const stored = parseJsonColumn(existing.offers_json, []);
+    return json({ ok: true, replayed: false, result: shopStockResult(tier, Array.isArray(stored) ? stored : [], existingExpiresMs, existingRefreshMs, nowMs) });
+  }
+  const offers = Array.from({ length: SHOP_OFFER_COUNT }, (_, index) => {
     const rarity = secureRandomUnit() < 0.18 ? "unique" : "rare";
     const type = ["weapon", "helmet", "chest", "gloves", "boots"][Math.floor(secureRandomUnit() * 5)];
     const offerId = `offer-${randomToken(14)}`;
@@ -963,17 +988,23 @@ async function handleGetCharacterShopStock(db, id, session, characterId, request
     item.id = `shop-item-${randomToken(14)}`;
     return { offerId, price: W45_SHOP_PRICES[tier][rarity], item };
   });
-  const result = { tier, items: offers.map(offer => ({ ...offer.item, offerId: offer.offerId, price: offer.price })) };
+  const expiresAtMs = nowMs + SHOP_STOCK_TTL_MS;
+  const refreshAtMs = refresh ? nowMs + SHOP_REFRESH_COOLDOWN_MS : nowMs;
+  const result = shopStockResult(tier, offers, expiresAtMs, refreshAtMs, nowMs);
   const offersJson = JSON.stringify(offers);
+  // The roll only lands if the stored stock is still exactly what was read (no concurrent roll/purchase) and, for a
+  // manual refresh, the cooldown has really elapsed - so two racing requests cannot both replace the stock.
   return runCharacterReceiptMutation(db, {
     id, characterId, operation, requestId: key, payloadJson,
-    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND unlocked_floor = ?)`,
-    guardBinds: [characterId, id, owned.row.unlocked_floor],
+    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND unlocked_floor = ?)
+      AND (${existing ? "EXISTS (SELECT 1 FROM character_shop_offers WHERE character_id = ? AND offers_json = ?)" : "NOT EXISTS (SELECT 1 FROM character_shop_offers WHERE character_id = ?)"})
+      ${refresh ? "AND NOT EXISTS (SELECT 1 FROM character_shop_offers WHERE character_id = ? AND refresh_available_at > ?)" : ""}`,
+    guardBinds: [characterId, id, owned.row.unlocked_floor, characterId, ...(existing ? [existing.offers_json] : []), ...(refresh ? [characterId, new Date(nowMs).toISOString()] : [])],
     mutationStatements: token => [db.prepare(
-      `INSERT INTO character_shop_offers (character_id, player_id, floor, offers_json, updated_at)
-       SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
-       ON CONFLICT(character_id) DO UPDATE SET player_id = excluded.player_id, floor = excluded.floor, offers_json = excluded.offers_json, updated_at = excluded.updated_at`
-    ).bind(characterId, id, floor, offersJson, nowIso(), token)],
+      `INSERT INTO character_shop_offers (character_id, player_id, floor, offers_json, updated_at, expires_at, refresh_available_at)
+       SELECT ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')
+       ON CONFLICT(character_id) DO UPDATE SET player_id = excluded.player_id, floor = excluded.floor, offers_json = excluded.offers_json, updated_at = excluded.updated_at, expires_at = excluded.expires_at, refresh_available_at = excluded.refresh_available_at`
+    ).bind(characterId, id, floor, offersJson, nowIso(), result.expiresAt, new Date(refreshAtMs).toISOString(), token)],
     result
   });
 }
@@ -990,8 +1021,10 @@ async function handlePurchaseShopEquipment(db, id, session, characterId, offerId
   const payloadJson = JSON.stringify({ offerId: keyOffer });
   const replay = await characterOperationReplay(db, id, characterId, operation, key, payloadJson);
   if (replay) return replay;
-  const shop = await db.prepare(`SELECT floor, offers_json FROM character_shop_offers WHERE character_id = ? AND player_id = ?`).bind(characterId, id).first();
+  const shop = await db.prepare(`SELECT floor, offers_json, expires_at FROM character_shop_offers WHERE character_id = ? AND player_id = ?`).bind(characterId, id).first();
   if (!shop || Number(shop.floor) !== Math.max(1, Number(owned.row.unlocked_floor) || 1)) return json({ error: "shop_offer_expired" }, 409);
+  // Offers are only purchasable inside their 30-minute window (rows from before this rule have no expiry and count as expired).
+  if (!(Date.parse(shop.expires_at || "") > Date.now())) return json({ error: "shop_offer_expired" }, 409);
   const offers = parseJsonColumn(shop.offers_json, []);
   const offer = (Array.isArray(offers) ? offers : []).find(row => row?.offerId === keyOffer);
   if (!offer?.item || !DUNGEON_V2_REWARD_SLOTS.has(String(offer.item.type)) || !["rare", "unique"].includes(String(offer.item.rarity))) return json({ error: "shop_offer_not_found" }, 404);
@@ -7361,6 +7394,8 @@ async function apiFetch(request, env) {
             return await handlePurchaseCharacterResource(db, id, auth, body.characterId, body.resource, body.quantity, body.requestId);
           case "getCharacterShopStock":
             return await handleGetCharacterShopStock(db, id, auth, body.characterId, body.requestId);
+          case "refreshCharacterShopStock":
+            return await handleGetCharacterShopStock(db, id, auth, body.characterId, body.requestId, { refresh: true });
           case "purchaseShopEquipment":
             return await handlePurchaseShopEquipment(db, id, auth, body.characterId, body.offerId, body.requestId);
           case "sellCharacterItem":

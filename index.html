@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.56";
+  content: "Ver 1.0.57";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -682,16 +682,16 @@ body::after {
   --panel: rgba(18,12,34,0.82);
   font-family:'Baloo 2',sans-serif;
   color:var(--ink);
-  position:fixed; inset:0; z-index:260; background:rgba(0,0,0,.6);
-  display:flex; align-items:flex-end; justify-content:center;
-  padding:max(8px,var(--safe-top)) max(0px,var(--safe-right)) max(0px,var(--safe-bottom)) max(0px,var(--safe-left));
+  position:fixed; inset:0; z-index:260; background:#1B1233;
+  display:flex; align-items:stretch; justify-content:center;
+  padding:0 max(0px,var(--safe-right)) 0 max(0px,var(--safe-left));
 }
+/* Full-screen page: fixed height, so the sheet never grows/shrinks with the number of offers (only the body scrolls). */
 .md-shop-sheet {
-  width:min(430px,100vw); max-height:calc(100dvh - var(--safe-top) - 8px);
+  width:min(430px,100vw); height:100dvh;
   display:flex; flex-direction:column; min-height:0;
   overflow:hidden; background:linear-gradient(180deg,#2C1E4A,#1B1233);
-  border:1.5px solid var(--gold-deep); border-bottom:none;
-  border-radius:20px 20px 0 0; padding:14px 16px 0; position:relative;
+  border:none; border-radius:0; padding:max(14px,var(--safe-top)) 16px 0; position:relative;
 }
 .md-shop-header { flex:0 0 auto; min-height:0; }
 .md-shop-title-row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
@@ -3082,6 +3082,15 @@ body::after {
 .md-inv2-compare-signature { margin:8px 0 0; padding:6px 9px; font-size:11px; font-weight:800; }
 .md-inv2-compare-signature em { margin-right:6px; font-style:normal; font-size:8.5px; letter-spacing:.1em; padding:1px 5px; border-radius:6px; background:rgba(255,255,255,.1); color:#b9c8e4; }
 .md-inv2-compare-one-screen > .md-inv2-compare-cp { margin:8px 0 0; padding:4px 15px; border:1px solid rgba(221,176,65,.38); border-radius:12px; background:rgba(4,14,38,.5); color:var(--gold); font-weight:800; min-height:32px; }
+.md-shop-stock-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 8px; }
+.md-shop-stock-timer { min-width:0; font-size:12px; font-weight:800; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+.md-shop-stock-timer.urgent { color:var(--gold); }
+.md-shop-stock-timer.expired { color:var(--coral); }
+.md-shop-refresh-btn {
+  flex:0 0 auto; min-width:128px; min-height:38px; padding:4px 12px; border:1px solid var(--gold-deep); border-radius:10px;
+  background:rgba(255,209,102,.14); color:var(--gold); font:800 12px/1.1 'Baloo 2',sans-serif; font-variant-numeric:tabular-nums;
+}
+.md-shop-refresh-btn:disabled { opacity:.55; color:var(--ink-soft); border-color:rgba(255,209,102,.24); background:rgba(255,255,255,.035); }
 `;
 
 // ===== state/save.js =====
@@ -5121,6 +5130,10 @@ function cloudPurchaseCharacterResource(url, characterId, resource, requestId, q
 }
 function cloudGetCharacterShopStock(url, characterId, requestId) {
   return cloudAuthPost(url, { action: "getCharacterShopStock", characterId, requestId });
+}
+// Manual "refresh stock": rolls a new set of offers; the Worker enforces the 10s cooldown.
+function cloudRefreshCharacterShopStock(url, characterId, requestId) {
+  return cloudAuthPost(url, { action: "refreshCharacterShopStock", characterId, requestId });
 }
 function cloudPurchaseShopEquipment(url, characterId, offerId, requestId) {
   return cloudAuthPost(url, { action: "purchaseShopEquipment", characterId, offerId, requestId });
@@ -16587,9 +16600,30 @@ function ThornieDungeons() {
     const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const result = await cloudGetCharacterShopStock(cred.url, save.characterId, requestId);
     if (!result?.ok) return false;
-    setShopStock({ items: result.result?.items || [], potions: POTION_DEFS });
+    applyShopStockResult(result);
     setShopOpen(true);
     return true;
+  }
+  // Stock lifetime/cooldown arrive as "ms remaining"; keep them as absolute client times so a skewed device clock cannot stretch them.
+  function applyShopStockResult(result) {
+    const now = Date.now();
+    setShopStock({
+      items: result.result?.items || [],
+      potions: POTION_DEFS,
+      expiresAtMs: now + Math.max(0, Number(result.result?.expiresInMs) || 0),
+      refreshAtMs: now + Math.max(0, Number(result.result?.refreshInMs) || 0)
+    });
+  }
+  // force=true is the player's Refresh button (cooldown applies); force=false re-reads the stock after the 30 min window ended.
+  async function refreshShopStock(force) {
+    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const send = force ? cloudRefreshCharacterShopStock : cloudGetCharacterShopStock;
+    const result = await send(cred.url, save.characterId, requestId);
+    if (result?.ok) { applyShopStockResult(result); return { ok: true }; }
+    if (result?.error === "shop_refresh_cooldown") {
+      setShopStock(stock => ({ ...stock, refreshAtMs: Date.now() + Math.max(500, Number(result.retryAfterMs) || 10000) }));
+    }
+    return { ok: false, error: result?.error || "network_error" };
   }
   async function buyShopItem(item) {
     if (!item?.offerId || save.gold < Number(item.price) || !await flushRewardClaimBarrier(save.characterId)) return { ok: false };
@@ -17275,6 +17309,7 @@ function ThornieDungeons() {
     pendingPurchases: shopPending,
     disabled: itemActionBusy,
     ownedCounts: inventory.reduce((acc, it) => { const key = it.type === "potion" ? it.potionId : it.type === "junk" ? it.junkId : ""; if (key) acc[key] = (acc[key] || 0) + (Number(it.quantity) || 1); return acc; }, {}),
+    onRefreshStock: refreshShopStock,
     onBuyItem: guardItemAction(buyShopItem),
     onBuyPotionTier: guardItemAction(buyShopPotionTier),
     onBuyProtectionStone: guardItemAction(buyProtectionStone),
@@ -22149,9 +22184,17 @@ function MapScreen({
     )
   );
 }
-function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},ownedCounts={},disabled=false,onBuyItem,onBuyPotionTier,onBuyProtectionStone,onBuyMaterial,onClose}) {
+function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},ownedCounts={},disabled=false,onRefreshStock,onBuyItem,onBuyPotionTier,onBuyProtectionStone,onBuyMaterial,onClose}) {
   const [tab,setTab]=useState("equipment"); const [status,setStatus]=useState(""); const [quantities,setQuantities]=useState({}); const bodyRef=useRef(null);
   const tabs=[["equipment", "อุปกรณ์"], ["hp", "ยา HP"], ["sp", "ยา SP"], ["other", "อื่นๆ"]];
+  // Equipment stock lives 30 min from its roll; Refresh has a server-enforced 10s cooldown shown inside the button.
+  const [nowMs,setNowMs]=useState(Date.now()); const [refreshing,setRefreshing]=useState(false); const autoRefreshKey=useRef(null);
+  React.useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
+  const stockLeftMs=stock?.expiresAtMs?Math.max(0,stock.expiresAtMs-nowMs):0, stockExpired=!!stock?.expiresAtMs&&stockLeftMs<=0;
+  const refreshLeftSec=stock?.refreshAtMs?Math.max(0,Math.ceil((stock.refreshAtMs-nowMs)/1000)):0;
+  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await onRefreshStock(force);if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
+  React.useEffect(()=>{if(!stockExpired||autoRefreshKey.current===stock.expiresAtMs)return;autoRefreshKey.current=stock.expiresAtMs;runRefresh(false);},[stockExpired,stock?.expiresAtMs]);
+  const formatLeft=ms=>{const total=Math.ceil(ms/1000);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0");};
   const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};
   const selectTab=next=>{setTab(next);if(bodyRef.current) bodyRef.current.scrollTop=0;};
   const getQty=key=>Math.max(1,Math.min(99,Number(quantities[key])||1));
@@ -22182,9 +22225,13 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
       /*#__PURE__*/React.createElement("div",{className:"md-shop-tabs",role:"tablist","aria-label":"Shop categories"},tabs.map(([key,label])=>/*#__PURE__*/React.createElement("button",{key,type:"button",role:"tab","aria-selected":tab===key,className:`md-shop-tab ${tab===key?"active":""}`,onClick:()=>selectTab(key)},label))),
       /*#__PURE__*/React.createElement("div",{className:`md-shop-status ${status?"visible":""}`,role:"status","aria-live":"polite"},status||(disabled?"กำลังยืนยัน…":"ร้านค้าพร้อมซื้อ"))),
     /*#__PURE__*/React.createElement("div",{ref:bodyRef,className:"md-shop-body"},
-      tab==="equipment"&&/*#__PURE__*/React.createElement(React.Fragment,null,stock?.items?.length?stock.items.map(it=>/*#__PURE__*/React.createElement("div",{key:it.id,className:`md-inv-item md-shop-equipment-card ${it.rarity}`},
+      tab==="equipment"&&/*#__PURE__*/React.createElement(React.Fragment,null,
+        /*#__PURE__*/React.createElement("div",{className:"md-shop-stock-bar"},
+          /*#__PURE__*/React.createElement("span",{className:`md-shop-stock-timer ${stockExpired?"expired":stockLeftMs<=60000&&stock?.expiresAtMs?"urgent":""}`},stock?.expiresAtMs?(stockExpired?"⏳ สินค้าหมดเวลา กำลังอัปเดต…":`⏳ สินค้าหมดเวลาใน ${formatLeft(stockLeftMs)}`):"⏳ สินค้าอุปกรณ์"),
+          /*#__PURE__*/React.createElement("button",{type:"button",className:"md-shop-refresh-btn",disabled:disabled||refreshing||refreshLeftSec>0,onClick:()=>runRefresh(true)},refreshing?"🔄 …":refreshLeftSec>0?`🔄 Refresh (${refreshLeftSec}s)`:"🔄 Refresh")),
+        stock?.items?.length?stock.items.map(it=>/*#__PURE__*/React.createElement("div",{key:it.id,className:`md-inv-item md-shop-equipment-card ${it.rarity}`},
         /*#__PURE__*/React.createElement("div",{className:"md-shop-item-copy"},/*#__PURE__*/React.createElement("div",{className:"md-inv-name"},/*#__PURE__*/React.createElement(GameIcon,{item:it,fallback:SLOT_ICON[it.type],className:"md-game-icon md-shop-item-icon",alt:it.name})," ",it.name),/*#__PURE__*/React.createElement("div",{className:"md-shop-item-meta"},/*#__PURE__*/React.createElement(StarRating,{rarity:it.rarity}),/*#__PURE__*/React.createElement("span",{className:"md-inv-stat"},itemStatText(it)))),
-        /*#__PURE__*/React.createElement("button",{className:"md-buy-btn md-shop-buy-action",disabled:disabled||Number(pendingPurchases[`equipment:${it.offerId}`]||0)>0,onClick:()=>guardBuy(gold>=Number(it.price),()=>onBuyItem(it))},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:"gold",fallback:"🪙",className:"md-game-icon md-inline-item-icon",alt:"Gold"}),Number(it.price))
+        /*#__PURE__*/React.createElement("button",{className:"md-buy-btn md-shop-buy-action",disabled:disabled||stockExpired||Number(pendingPurchases[`equipment:${it.offerId}`]||0)>0,onClick:()=>guardBuy(gold>=Number(it.price),()=>onBuyItem(it))},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:"gold",fallback:"🪙",className:"md-game-icon md-inline-item-icon",alt:"Gold"}),Number(it.price))
       )):/*#__PURE__*/React.createElement("p",{className:"md-sub md-shop-empty"},"อุปกรณ์หมดแล้ว — ปิดแล้วเปิดใหม่เพื่อสุ่มร้านใหม่")),
       tab==="hp"&&hpPotions.map(potionRow),tab==="sp"&&spPotions.map(potionRow),
       tab==="other"&&/*#__PURE__*/React.createElement(React.Fragment,null,

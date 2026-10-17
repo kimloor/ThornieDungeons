@@ -4840,9 +4840,17 @@ function MapScreen({
     )
   );
 }
-function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},ownedCounts={},disabled=false,onBuyItem,onBuyPotionTier,onBuyProtectionStone,onBuyMaterial,onClose}) {
+function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},ownedCounts={},disabled=false,onRefreshStock,onBuyItem,onBuyPotionTier,onBuyProtectionStone,onBuyMaterial,onClose}) {
   const [tab,setTab]=useState("equipment"); const [status,setStatus]=useState(""); const [quantities,setQuantities]=useState({}); const bodyRef=useRef(null);
   const tabs=[["equipment", "อุปกรณ์"], ["hp", "ยา HP"], ["sp", "ยา SP"], ["other", "อื่นๆ"]];
+  // Equipment stock lives 30 min from its roll; Refresh has a server-enforced 10s cooldown shown inside the button.
+  const [nowMs,setNowMs]=useState(Date.now()); const [refreshing,setRefreshing]=useState(false); const autoRefreshKey=useRef(null);
+  React.useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
+  const stockLeftMs=stock?.expiresAtMs?Math.max(0,stock.expiresAtMs-nowMs):0, stockExpired=!!stock?.expiresAtMs&&stockLeftMs<=0;
+  const refreshLeftSec=stock?.refreshAtMs?Math.max(0,Math.ceil((stock.refreshAtMs-nowMs)/1000)):0;
+  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await onRefreshStock(force);if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
+  React.useEffect(()=>{if(!stockExpired||autoRefreshKey.current===stock.expiresAtMs)return;autoRefreshKey.current=stock.expiresAtMs;runRefresh(false);},[stockExpired,stock?.expiresAtMs]);
+  const formatLeft=ms=>{const total=Math.ceil(ms/1000);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0");};
   const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};
   const selectTab=next=>{setTab(next);if(bodyRef.current) bodyRef.current.scrollTop=0;};
   const getQty=key=>Math.max(1,Math.min(99,Number(quantities[key])||1));
@@ -4873,9 +4881,13 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
       /*#__PURE__*/React.createElement("div",{className:"md-shop-tabs",role:"tablist","aria-label":"Shop categories"},tabs.map(([key,label])=>/*#__PURE__*/React.createElement("button",{key,type:"button",role:"tab","aria-selected":tab===key,className:`md-shop-tab ${tab===key?"active":""}`,onClick:()=>selectTab(key)},label))),
       /*#__PURE__*/React.createElement("div",{className:`md-shop-status ${status?"visible":""}`,role:"status","aria-live":"polite"},status||(disabled?"กำลังยืนยัน…":"ร้านค้าพร้อมซื้อ"))),
     /*#__PURE__*/React.createElement("div",{ref:bodyRef,className:"md-shop-body"},
-      tab==="equipment"&&/*#__PURE__*/React.createElement(React.Fragment,null,stock?.items?.length?stock.items.map(it=>/*#__PURE__*/React.createElement("div",{key:it.id,className:`md-inv-item md-shop-equipment-card ${it.rarity}`},
+      tab==="equipment"&&/*#__PURE__*/React.createElement(React.Fragment,null,
+        /*#__PURE__*/React.createElement("div",{className:"md-shop-stock-bar"},
+          /*#__PURE__*/React.createElement("span",{className:`md-shop-stock-timer ${stockExpired?"expired":stockLeftMs<=60000&&stock?.expiresAtMs?"urgent":""}`},stock?.expiresAtMs?(stockExpired?"⏳ สินค้าหมดเวลา กำลังอัปเดต…":`⏳ สินค้าหมดเวลาใน ${formatLeft(stockLeftMs)}`):"⏳ สินค้าอุปกรณ์"),
+          /*#__PURE__*/React.createElement("button",{type:"button",className:"md-shop-refresh-btn",disabled:disabled||refreshing||refreshLeftSec>0,onClick:()=>runRefresh(true)},refreshing?"🔄 …":refreshLeftSec>0?`🔄 Refresh (${refreshLeftSec}s)`:"🔄 Refresh")),
+        stock?.items?.length?stock.items.map(it=>/*#__PURE__*/React.createElement("div",{key:it.id,className:`md-inv-item md-shop-equipment-card ${it.rarity}`},
         /*#__PURE__*/React.createElement("div",{className:"md-shop-item-copy"},/*#__PURE__*/React.createElement("div",{className:"md-inv-name"},/*#__PURE__*/React.createElement(GameIcon,{item:it,fallback:SLOT_ICON[it.type],className:"md-game-icon md-shop-item-icon",alt:it.name})," ",it.name),/*#__PURE__*/React.createElement("div",{className:"md-shop-item-meta"},/*#__PURE__*/React.createElement(StarRating,{rarity:it.rarity}),/*#__PURE__*/React.createElement("span",{className:"md-inv-stat"},itemStatText(it)))),
-        /*#__PURE__*/React.createElement("button",{className:"md-buy-btn md-shop-buy-action",disabled:disabled||Number(pendingPurchases[`equipment:${it.offerId}`]||0)>0,onClick:()=>guardBuy(gold>=Number(it.price),()=>onBuyItem(it))},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:"gold",fallback:"🪙",className:"md-game-icon md-inline-item-icon",alt:"Gold"}),Number(it.price))
+        /*#__PURE__*/React.createElement("button",{className:"md-buy-btn md-shop-buy-action",disabled:disabled||stockExpired||Number(pendingPurchases[`equipment:${it.offerId}`]||0)>0,onClick:()=>guardBuy(gold>=Number(it.price),()=>onBuyItem(it))},/*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:"gold",fallback:"🪙",className:"md-game-icon md-inline-item-icon",alt:"Gold"}),Number(it.price))
       )):/*#__PURE__*/React.createElement("p",{className:"md-sub md-shop-empty"},"อุปกรณ์หมดแล้ว — ปิดแล้วเปิดใหม่เพื่อสุ่มร้านใหม่")),
       tab==="hp"&&hpPotions.map(potionRow),tab==="sp"&&spPotions.map(potionRow),
       tab==="other"&&/*#__PURE__*/React.createElement(React.Fragment,null,

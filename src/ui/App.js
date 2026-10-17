@@ -2473,9 +2473,30 @@ function ThornieDungeons() {
     const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const result = await cloudGetCharacterShopStock(cred.url, save.characterId, requestId);
     if (!result?.ok) return false;
-    setShopStock({ items: result.result?.items || [], potions: POTION_DEFS });
+    applyShopStockResult(result);
     setShopOpen(true);
     return true;
+  }
+  // Stock lifetime/cooldown arrive as "ms remaining"; keep them as absolute client times so a skewed device clock cannot stretch them.
+  function applyShopStockResult(result) {
+    const now = Date.now();
+    setShopStock({
+      items: result.result?.items || [],
+      potions: POTION_DEFS,
+      expiresAtMs: now + Math.max(0, Number(result.result?.expiresInMs) || 0),
+      refreshAtMs: now + Math.max(0, Number(result.result?.refreshInMs) || 0)
+    });
+  }
+  // force=true is the player's Refresh button (cooldown applies); force=false re-reads the stock after the 30 min window ended.
+  async function refreshShopStock(force) {
+    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const send = force ? cloudRefreshCharacterShopStock : cloudGetCharacterShopStock;
+    const result = await send(cred.url, save.characterId, requestId);
+    if (result?.ok) { applyShopStockResult(result); return { ok: true }; }
+    if (result?.error === "shop_refresh_cooldown") {
+      setShopStock(stock => ({ ...stock, refreshAtMs: Date.now() + Math.max(500, Number(result.retryAfterMs) || 10000) }));
+    }
+    return { ok: false, error: result?.error || "network_error" };
   }
   async function buyShopItem(item) {
     if (!item?.offerId || save.gold < Number(item.price) || !await flushRewardClaimBarrier(save.characterId)) return { ok: false };
@@ -3161,6 +3182,7 @@ function ThornieDungeons() {
     pendingPurchases: shopPending,
     disabled: itemActionBusy,
     ownedCounts: inventory.reduce((acc, it) => { const key = it.type === "potion" ? it.potionId : it.type === "junk" ? it.junkId : ""; if (key) acc[key] = (acc[key] || 0) + (Number(it.quantity) || 1); return acc; }, {}),
+    onRefreshStock: refreshShopStock,
     onBuyItem: guardItemAction(buyShopItem),
     onBuyPotionTier: guardItemAction(buyShopPotionTier),
     onBuyProtectionStone: guardItemAction(buyProtectionStone),

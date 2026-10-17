@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.56";
+  content: "Ver 1.0.57";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -588,16 +588,16 @@ body::after {
   --panel: rgba(18,12,34,0.82);
   font-family:'Baloo 2',sans-serif;
   color:var(--ink);
-  position:fixed; inset:0; z-index:260; background:rgba(0,0,0,.6);
-  display:flex; align-items:flex-end; justify-content:center;
-  padding:max(8px,var(--safe-top)) max(0px,var(--safe-right)) max(0px,var(--safe-bottom)) max(0px,var(--safe-left));
+  position:fixed; inset:0; z-index:260; background:#1B1233;
+  display:flex; align-items:stretch; justify-content:center;
+  padding:0 max(0px,var(--safe-right)) 0 max(0px,var(--safe-left));
 }
+/* Full-screen page: fixed height, so the sheet never grows/shrinks with the number of offers (only the body scrolls). */
 .md-shop-sheet {
-  width:min(430px,100vw); max-height:calc(100dvh - var(--safe-top) - 8px);
+  width:min(430px,100vw); height:100dvh;
   display:flex; flex-direction:column; min-height:0;
   overflow:hidden; background:linear-gradient(180deg,#2C1E4A,#1B1233);
-  border:1.5px solid var(--gold-deep); border-bottom:none;
-  border-radius:20px 20px 0 0; padding:14px 16px 0; position:relative;
+  border:none; border-radius:0; padding:max(14px,var(--safe-top)) 16px 0; position:relative;
 }
 .md-shop-header { flex:0 0 auto; min-height:0; }
 .md-shop-title-row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
@@ -2988,4 +2988,13 @@ body::after {
 .md-inv2-compare-signature { margin:8px 0 0; padding:6px 9px; font-size:11px; font-weight:800; }
 .md-inv2-compare-signature em { margin-right:6px; font-style:normal; font-size:8.5px; letter-spacing:.1em; padding:1px 5px; border-radius:6px; background:rgba(255,255,255,.1); color:#b9c8e4; }
 .md-inv2-compare-one-screen > .md-inv2-compare-cp { margin:8px 0 0; padding:4px 15px; border:1px solid rgba(221,176,65,.38); border-radius:12px; background:rgba(4,14,38,.5); color:var(--gold); font-weight:800; min-height:32px; }
+.md-shop-stock-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 8px; }
+.md-shop-stock-timer { min-width:0; font-size:12px; font-weight:800; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+.md-shop-stock-timer.urgent { color:var(--gold); }
+.md-shop-stock-timer.expired { color:var(--coral); }
+.md-shop-refresh-btn {
+  flex:0 0 auto; min-width:128px; min-height:38px; padding:4px 12px; border:1px solid var(--gold-deep); border-radius:10px;
+  background:rgba(255,209,102,.14); color:var(--gold); font:800 12px/1.1 'Baloo 2',sans-serif; font-variant-numeric:tabular-nums;
+}
+.md-shop-refresh-btn:disabled { opacity:.55; color:var(--ink-soft); border-color:rgba(255,209,102,.24); background:rgba(255,255,255,.035); }
 `;

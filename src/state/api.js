@@ -162,6 +162,10 @@ function cloudPurchaseCharacterResource(url, characterId, resource, requestId, q
 function cloudGetCharacterShopStock(url, characterId, requestId) {
   return cloudAuthPost(url, { action: "getCharacterShopStock", characterId, requestId });
 }
+// Manual "refresh stock": rolls a new set of offers; the Worker enforces the 10s cooldown.
+function cloudRefreshCharacterShopStock(url, characterId, requestId) {
+  return cloudAuthPost(url, { action: "refreshCharacterShopStock", characterId, requestId });
+}
 function cloudPurchaseShopEquipment(url, characterId, offerId, requestId) {
   return cloudAuthPost(url, { action: "purchaseShopEquipment", characterId, offerId, requestId });
 }
