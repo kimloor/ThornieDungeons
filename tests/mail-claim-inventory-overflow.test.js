@@ -50,7 +50,7 @@ function database() {
     CREATE TABLE daily_login_claims (character_id TEXT PRIMARY KEY, login_streak INTEGER NOT NULL DEFAULT 0, last_claim_date TEXT NOT NULL DEFAULT '', total_claims INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT '');
     CREATE TABLE daily_login_claim_receipts (character_id TEXT NOT NULL, claim_date TEXT NOT NULL, claim_token TEXT NOT NULL UNIQUE, reward_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(character_id, claim_date));
     CREATE TABLE character_operation_receipts (character_id TEXT NOT NULL, operation TEXT NOT NULL, request_id TEXT NOT NULL, operation_token TEXT NOT NULL UNIQUE, payload_json TEXT NOT NULL, result_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(character_id, operation, request_id));
-    CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL, expires_at TEXT, refresh_available_at TEXT);
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
   applyRequiredAutoMigrations(db, path.resolve(__dirname, ".."));

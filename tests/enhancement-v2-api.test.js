@@ -59,7 +59,7 @@ function database() {
     CREATE TABLE daily_login_claims (character_id TEXT PRIMARY KEY, login_streak INTEGER NOT NULL DEFAULT 0, last_claim_date TEXT NOT NULL DEFAULT '', total_claims INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT '');
     CREATE TABLE daily_login_claim_receipts (character_id TEXT NOT NULL, claim_date TEXT NOT NULL, claim_token TEXT NOT NULL UNIQUE, reward_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(character_id, claim_date));
     CREATE TABLE character_operation_receipts (character_id TEXT NOT NULL, operation TEXT NOT NULL, request_id TEXT NOT NULL, operation_token TEXT NOT NULL UNIQUE, payload_json TEXT NOT NULL, result_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(character_id, operation, request_id));
-    CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE character_shop_offers (character_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, floor INTEGER NOT NULL, offers_json TEXT NOT NULL, updated_at TEXT NOT NULL, expires_at TEXT, refresh_available_at TEXT);
   `);
   db.raw.exec(fs.readFileSync(path.join(__dirname, "fixtures/auth-v2-schema.sql"), "utf8"));
   applyRequiredAutoMigrations(db, path.resolve(__dirname, ".."));
@@ -618,7 +618,7 @@ test("Shop stock and gear purchase are server-generated, offer-bound and exact-o
   const context = await setup();
   const stock = await post(context.api, context.db, context.token, { action: "getCharacterShopStock", characterId: context.characterId, requestId: "shop-stock-request-001" });
   assert.equal(stock.body.ok, true);
-  assert.equal(stock.body.result.items.length, 3);
+  assert.equal(stock.body.result.items.length, 5);
   assert.ok(stock.body.result.items.every(item => item.offerId && item.rewardVersion === 2 && ["rare", "unique"].includes(item.rarity)));
   const selected = stock.body.result.items[0];
   const body = { action: "purchaseShopEquipment", characterId: context.characterId, offerId: selected.offerId, requestId: "shop-purchase-request-001", price: 0, item: { id: "forged", atk: 999999, rarity: "mythic" } };
@@ -677,6 +677,40 @@ test("Shop equipment uses carried capacity instead of total item rows", async ()
   const created = context.db.raw.prepare("SELECT extra_json FROM items WHERE item_id = ?").get(purchased.body.result.itemId);
   assert.equal(JSON.parse(created.extra_json).overflow, false);
   assert.equal(context.db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND equipped = 0 AND COALESCE(json_extract(extra_json, '$.overflow'), 0) != 1").get(context.characterId).c, 30);
+});
+
+test("Shop stock lasts 30 minutes across opens; refresh re-rolls with a 10s cooldown; expired offers cannot be bought", async () => {
+  const context = await setup();
+  const first = await post(context.api, context.db, context.token, { action: "getCharacterShopStock", characterId: context.characterId, requestId: "shop-timed-stock-001" });
+  assert.equal(first.body.ok, true);
+  assert.equal(first.body.result.items.length, 5);
+  assert.ok(first.body.result.expiresInMs > 29 * 60 * 1000 && first.body.result.expiresInMs <= 30 * 60 * 1000);
+  // Closing and re-opening the shop returns the same offers, not a new roll.
+  const reopened = await post(context.api, context.db, context.token, { action: "getCharacterShopStock", characterId: context.characterId, requestId: "shop-timed-stock-002" });
+  assert.deepEqual(reopened.body.result.items.map(item => item.offerId), first.body.result.items.map(item => item.offerId));
+  assert.equal(reopened.body.result.expiresAt, first.body.result.expiresAt);
+  // Refresh rolls a new set and starts the cooldown.
+  const refreshed = await post(context.api, context.db, context.token, { action: "refreshCharacterShopStock", characterId: context.characterId, requestId: "shop-timed-refresh-001" });
+  assert.equal(refreshed.body.ok, true);
+  assert.equal(refreshed.body.result.items.length, 5);
+  assert.equal(refreshed.body.result.items.some(item => first.body.result.items.some(old => old.offerId === item.offerId)), false);
+  assert.ok(refreshed.body.result.refreshInMs > 9000 && refreshed.body.result.refreshInMs <= 10000);
+  const tooSoon = await post(context.api, context.db, context.token, { action: "refreshCharacterShopStock", characterId: context.characterId, requestId: "shop-timed-refresh-002" });
+  assert.equal(tooSoon.body.error, "shop_refresh_cooldown");
+  assert.ok(tooSoon.body.retryAfterMs > 0);
+  const stillSame = await post(context.api, context.db, context.token, { action: "getCharacterShopStock", characterId: context.characterId, requestId: "shop-timed-stock-003" });
+  assert.deepEqual(stillSame.body.result.items.map(item => item.offerId), refreshed.body.result.items.map(item => item.offerId));
+  // After the cooldown a refresh works again.
+  context.db.raw.prepare("UPDATE character_shop_offers SET refresh_available_at = ? WHERE character_id = ?").run(new Date(Date.now() - 1000).toISOString(), context.characterId);
+  const again = await post(context.api, context.db, context.token, { action: "refreshCharacterShopStock", characterId: context.characterId, requestId: "shop-timed-refresh-003" });
+  assert.equal(again.body.ok, true);
+  // Once the window is over, offers cannot be bought and the next open rolls a fresh stock.
+  context.db.raw.prepare("UPDATE character_shop_offers SET expires_at = ? WHERE character_id = ?").run(new Date(Date.now() - 1000).toISOString(), context.characterId);
+  const stale = await post(context.api, context.db, context.token, { action: "purchaseShopEquipment", characterId: context.characterId, offerId: again.body.result.items[0].offerId, requestId: "shop-timed-buy-0001" });
+  assert.equal(stale.body.error, "shop_offer_expired");
+  const rolled = await post(context.api, context.db, context.token, { action: "getCharacterShopStock", characterId: context.characterId, requestId: "shop-timed-stock-004" });
+  assert.equal(rolled.body.result.items.some(item => again.body.result.items.some(old => old.offerId === item.offerId)), false);
+  assert.ok(rolled.body.result.expiresInMs > 29 * 60 * 1000);
 });
 
 test("Mythic set salvage refunds server-recorded Horn/Hide exactly once; Boss Weapon returns no Stone", async () => {
