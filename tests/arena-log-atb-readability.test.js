@@ -46,15 +46,46 @@ test('status entries that do not belong to the next action keep their order', ()
 });
 
 test('names colour by side and hero/pet; longest unit name wins; numbers and skills are tagged', () => {
-  const entry = { type: 'damage', text: "BOT Poison's Moon Hare use Stunning Blow to asdfghjtk damage 148.", actionName: 'Stunning Blow' };
+  const entry = { type: 'damage', text: "BOT Poison's Moon Hare use Stunning Blow to asdfghjtk damage 148.", actionName: 'Stunning Blow', actorId: 'b_pet' };
   const segments = arenaLogSegments(entry, units);
   const cls = (text) => segments.find((segment) => segment.text === text)?.cls;
   assert.equal(cls("BOT Poison's Moon Hare"), 'md-alog-name enemy pet');
   assert.equal(cls('asdfghjtk'), 'md-alog-name ally hero');
   assert.equal(cls('Stunning Blow'), 'md-alog-skill');
-  assert.equal(cls('148'), 'md-alog-dmg');
+  assert.equal(cls('148'), 'md-alog-dmg enemy');
   assert.equal(segments.map((segment) => segment.text).join(''), entry.text, 'text is preserved exactly');
   assert.equal(arenaLogSegments({ text: 'a use Heal to b heal 20.' }, {}).find((segment) => segment.text === '20').cls, 'md-alog-heal');
+});
+
+test('enemy Pet uses the same red as the enemy Hero', () => {
+  assert.match(styles, /\.md-alog-name\.enemy\.hero \{ color:(#[0-9a-f]+);/i);
+  const hero = styles.match(/\.md-alog-name\.enemy\.hero \{ color:(#[0-9a-f]+);/i)[1];
+  assert.match(styles, new RegExp(`\\.md-alog-name\\.enemy\\.pet \\{ color:${hero};`, 'i'));
+});
+
+test('every attack reads "use"; Round is displayed as Turn; basic attacks are not highlighted', () => {
+  const basic = { type: 'damage', text: "asdfghjtk's Sprout basic attack to BOT Warrior damage 1.", actorId: 'a_pet', actionName: 'basic attack' };
+  const segs = arenaLogSegments(basic, units);
+  assert.equal(segs.map((segment) => segment.text).join(''), "asdfghjtk's Sprout use basic attack to BOT Warrior damage 1.");
+  assert.equal(segs.some((segment) => segment.cls === 'md-alog-skill'), false);
+  const counter = arenaLogSegments({ type: 'damage', text: 'asdfghjtk counter attack to BOT Warrior damage 3.', actorId: 'a_hero', actionName: 'counter attack' }, units);
+  assert.match(counter.map((segment) => segment.text).join(''), /asdfghjtk use counter attack to/);
+  const skill = arenaLogSegments({ type: 'damage', text: 'BOT Warrior use Guard to asdfghjtk damage 25.', actorId: 'b_hero', actionName: 'Guard' }, units);
+  assert.equal(skill.find((segment) => segment.text === 'Guard').cls, 'md-alog-skill');
+  assert.equal(arenaLogSegments({ type: 'round', text: 'Round 2' }, units).map((segment) => segment.text).join(''), 'Turn 2');
+  assert.match(components, /`Turn \$\{match\.state\?\.round \|\| 0\} \/ 20`/);
+});
+
+test('damage colour follows the side that dealt it; crits use the darker shade', () => {
+  const dmg = (actorId, crit) => arenaLogSegments({ type: 'damage', text: 'x use Y to z damage 9.', actorId, crit, actionName: 'Y' }, units).find((segment) => segment.text === '9').cls;
+  assert.equal(dmg('a_hero', false), 'md-alog-dmg ally');
+  assert.equal(dmg('a_pet', true), 'md-alog-dmg ally crit');
+  assert.equal(dmg('b_hero', false), 'md-alog-dmg enemy');
+  assert.equal(dmg('b_pet', true), 'md-alog-dmg enemy crit');
+  assert.match(styles, /\.md-alog-dmg\.ally \{ color:#5cc8ff; \}/);
+  assert.match(styles, /\.md-alog-dmg\.ally\.crit \{ color:#2b7fff;/);
+  assert.match(styles, /\.md-alog-dmg\.enemy \{ color:#ffb347; \}/);
+  assert.match(styles, /\.md-alog-dmg\.enemy\.crit \{ color:#ff7a18;/);
 });
 
 test('names with regex characters and missing unit maps do not throw', () => {

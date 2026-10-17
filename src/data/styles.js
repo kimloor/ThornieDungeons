@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.58";
+  content: "Ver 1.0.59";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2760,12 +2760,15 @@ body::after {
 .md-alog-name.ally.hero { color:#5ee08a; }
 .md-alog-name.ally.pet { color:#9fe8c3; font-style:italic; }
 .md-alog-name.enemy.hero { color:#ff6f7d; }
-.md-alog-name.enemy.pet { color:#ffa56b; font-style:italic; }
+.md-alog-name.enemy.pet { color:#ff6f7d; font-style:italic; }
 .md-alog-skill { color:#ffd86b; }
-.md-alog-dmg { color:#ffb347; font-weight:800; }
+.md-alog-dmg { font-weight:800; }
+.md-alog-dmg.ally { color:#5cc8ff; }
+.md-alog-dmg.ally.crit { color:#2b7fff; font-weight:900; text-shadow:0 0 6px rgba(43,127,255,.55); }
+.md-alog-dmg.enemy { color:#ffb347; }
+.md-alog-dmg.enemy.crit { color:#ff7a18; font-weight:900; text-shadow:0 0 6px rgba(255,122,24,.55); }
 .md-alog-heal { color:#5eead4; font-weight:800; }
 .md-alog-status { color:#c79bff; font-weight:700; }
-.md-alog-crit { color:#ff9f43; font-weight:800; }
 .md-alog-nested { padding-left:14px; font-size:.94em; opacity:.95; }
 .md-alog-round { color:var(--gold); font-weight:800; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,209,102,.22); }
 .md-alog-battle_start, .md-alog-battle_end { opacity:.7; }

@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.58";
+  content: "Ver 1.0.59";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -2854,12 +2854,15 @@ body::after {
 .md-alog-name.ally.hero { color:#5ee08a; }
 .md-alog-name.ally.pet { color:#9fe8c3; font-style:italic; }
 .md-alog-name.enemy.hero { color:#ff6f7d; }
-.md-alog-name.enemy.pet { color:#ffa56b; font-style:italic; }
+.md-alog-name.enemy.pet { color:#ff6f7d; font-style:italic; }
 .md-alog-skill { color:#ffd86b; }
-.md-alog-dmg { color:#ffb347; font-weight:800; }
+.md-alog-dmg { font-weight:800; }
+.md-alog-dmg.ally { color:#5cc8ff; }
+.md-alog-dmg.ally.crit { color:#2b7fff; font-weight:900; text-shadow:0 0 6px rgba(43,127,255,.55); }
+.md-alog-dmg.enemy { color:#ffb347; }
+.md-alog-dmg.enemy.crit { color:#ff7a18; font-weight:900; text-shadow:0 0 6px rgba(255,122,24,.55); }
 .md-alog-heal { color:#5eead4; font-weight:800; }
 .md-alog-status { color:#c79bff; font-weight:700; }
-.md-alog-crit { color:#ff9f43; font-weight:800; }
 .md-alog-nested { padding-left:14px; font-size:.94em; opacity:.95; }
 .md-alog-round { color:var(--gold); font-weight:800; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,209,102,.22); }
 .md-alog-battle_start, .md-alog-battle_end { opacity:.7; }
@@ -20606,8 +20609,16 @@ function arenaLogUnitClass(unit) {
   return `${unit.side === "team_a" ? "ally" : "enemy"} ${unit.kind === "pet" ? "pet" : "hero"}`;
 }
 // Splits text into coloured segments: unit names (side + hero/pet), skill names, damage/heal numbers, status keys.
-function arenaLogSegments(entry, unitsById) {
+// Display wording only: every attack reads "X use <action> to Y" (Battle Core omits "use" for basic/counter
+// attacks) and turns are called "Turn" instead of "Round". The authoritative log text is never modified.
+function arenaLogDisplayText(entry) {
   const text = String(entry?.text ?? entry?.message ?? entry ?? "");
+  if (entry?.type === "round") return text.replace(/^Round /, "Turn ");
+  if (entry?.type === "damage") return text.replace(/ (basic attack|counter attack) to /, " use $1 to ");
+  return text;
+}
+function arenaLogSegments(entry, unitsById) {
+  const text = arenaLogDisplayText(entry);
   let segments = [{ text }];
   const splitBy = (regex, classify) => {
     const next = [];
@@ -20632,9 +20643,13 @@ function arenaLogSegments(entry, unitsById) {
     const source = [...names.keys()].sort((a, b) => b.length - a.length).map(arenaLogEscape).join("|");
     splitBy(new RegExp(source, "g"), match => [{ text: match[0], cls: `md-alog-name ${names.get(match[0])}` }]);
   }
-  const skills = [entry?.actionName, entry?.skillName].filter(value => typeof value === "string" && value);
+  // Only real skills are highlighted; plain basic/counter attacks stay uncoloured.
+  const skills = [entry?.actionName, entry?.skillName].filter(value => typeof value === "string" && value && !/^(basic|counter) attack$/i.test(value));
   if (skills.length) splitBy(new RegExp([...new Set(skills)].sort((a, b) => b.length - a.length).map(arenaLogEscape).join("|"), "g"), match => [{ text: match[0], cls: "md-alog-skill" }]);
-  splitBy(/(damage|heal) (\d+)/g, match => [{ text: `${match[1]} ` }, { text: match[2], cls: match[1] === "heal" ? "md-alog-heal" : "md-alog-dmg" }]);
+  // Damage number colour follows the side that dealt it (ours blue, enemy orange); crits use the darker shade.
+  const actorUnit = unitsById?.[entry?.actorId];
+  const damageSide = actorUnit ? (actorUnit.side === "team_a" ? " ally" : " enemy") : " enemy";
+  splitBy(/(damage|heal) (\d+)/g, match => [{ text: `${match[1]} ` }, { text: match[2], cls: match[1] === "heal" ? "md-alog-heal" : `md-alog-dmg${damageSide}${entry?.crit ? " crit" : ""}` }]);
   if (entry?.status) splitBy(new RegExp(`\\b${arenaLogEscape(entry.status)}\\b`, "g"), match => [{ text: match[0], cls: "md-alog-status" }]);
   return segments;
 }
@@ -20644,8 +20659,7 @@ function arenaLogLineElement(entry, unitsById, key, { tag = "p", className = "md
   const type = String(entry?.type || "info").replace(/[^a-z_]/gi, "");
   return e(tag, { key, className: `${className} md-alog md-alog-${type}${nested ? " md-alog-nested" : ""}` },
     nested ? "\u21b3 " : null,
-    ...arenaLogSegments(entry, unitsById).map((segment, index) => segment.cls ? e("span", { key: index, className: segment.cls }, segment.text) : segment.text),
-    entry?.crit && !/crit/i.test(String(entry?.text || "")) ? e("span", { key: "crit", className: "md-alog-crit" }, " CRIT!") : null);
+    ...arenaLogSegments(entry, unitsById).map((segment, index) => segment.cls ? e("span", { key: index, className: segment.cls }, segment.text) : segment.text));
 }
 
 function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
@@ -21732,7 +21746,7 @@ function ArenaV2Screen({
     match && /*#__PURE__*/React.createElement(React.Fragment, null,
       /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-battle-card" },
         /*#__PURE__*/React.createElement("div", { className: "md-arena-battle-top" },
-          /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-battle-title" }, matchIsPrepared ? "Preparing" : `Round ${match.state?.round || 0} / 20`),
+          /*#__PURE__*/React.createElement("p", { className: "md-title md-arena-battle-title" }, matchIsPrepared ? "Preparing" : `Turn ${match.state?.round || 0} / 20`),
           !matchIsPrepared && /*#__PURE__*/React.createElement("button", { className: "md-btn small md-arena-art-btn secondary md-arena-speed-toggle", type: "button", onClick: () => setCombatSpeed(value => value === 1 ? 2 : 1), "aria-label": `Arena presentation speed x${combatSpeed}` }, `\u00d7${combatSpeed}`),
           matchIsActive && !match.result && /*#__PURE__*/React.createElement("button", { className: "md-btn flee md-arena-surrender-btn", disabled: busy || (Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now), onClick: () => action("surrender", null, selected) }, Date.parse(match.activatedAt || match.activated_at || "") + 10000 > now ? "SURRENDER (10s)" : "SURRENDER")),
         matchIsPrepared && /*#__PURE__*/React.createElement("p", { className: "md-sub md-arena-battle-note" }, "Presentation \u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e01\u0e48\u0e2d\u0e19\u0e43\u0e0a\u0e49 Ticket; controls \u0e08\u0e30\u0e40\u0e1b\u0e34\u0e14\u0e2b\u0e25\u0e31\u0e07 activation \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08"),
