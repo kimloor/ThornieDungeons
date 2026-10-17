@@ -5063,6 +5063,106 @@ const ARENA_BOT_DEFS = Object.freeze([
   { id: "pet_master", name: "BOT Pet Master", level: 50, rating: 1500, archetype: "pet_master", pet: null },
 ]);
 
+// ---------- Arena bot loadout pool ----------
+// Bots stay fixed archetypes (no DB rows), but their gear, Pet and skills are rolled from per-archetype pools.
+// The roll is deterministic: it derives only from opponent.loadoutSeed (stored in opponents_json), so the Player
+// Card, the match snapshot and Replay always show/fight the same loadout. Gear comes from the same Reward V2
+// generator players use and is applied through itemBonus, then ADDED on top of the base bot stat formula
+// (approved: no Pet stat reduction, no scaling by player rating yet - retune here if bots become too strong).
+// Skill slot order is the bot's priority (arenaCombatHeroCommand takes the first usable skill), so the basic
+// filler skill is listed last in each priority list. Skills respect the player tier gates (T2 Lv15, T3 Lv30, T4 Lv50).
+const ARENA_BOT_GEAR_SLOTS = Object.freeze(["weapon", "helmet", "chest", "gloves", "boots", "accessory"]);
+const ARENA_BOT_LOADOUTS = Object.freeze({
+  warrior: { gearFloor: 1, rarities: ["rare"],
+    skills: { fixed: ["power_strike"], groups: [{ from: ["guard", "toxic_strike"], pick: 1 }], rank: [1, 1], priority: ["toxic_strike", "guard", "power_strike"] },
+    pet: { chance: 1, pool: ["sprout"], star: [1, 1] } },
+  guardian: { gearFloor: 1, rarities: ["rare", "unique"],
+    skills: { fixed: ["guard"], groups: [{ from: ["shield_wall", "power_strike", "heavy_blow"], pick: 2 }], rank: [1, 2], priority: ["shield_wall", "guard", "heavy_blow", "power_strike"] },
+    pet: { chance: 0.5, pool: ["sprout", "moon_hare"], star: [1, 1] } },
+  assassin: { gearFloor: 1, rarities: ["unique"],
+    skills: { fixed: ["power_strike"], groups: [{ from: ["toxic_strike", "stunning_blow", "heavy_blow"], pick: 2 }], rank: [1, 2], priority: ["stunning_blow", "toxic_strike", "heavy_blow", "power_strike"] },
+    pet: { chance: 0.5, pool: ["sparkpup", "ember_fox"], star: [1, 1] } },
+  poison: { gearFloor: 31, rarities: ["rare", "unique"],
+    skills: { fixed: ["toxic_strike"], groups: [{ from: ["stunning_blow", "silent_edge", "counter", "guard"], pick: 2 }], rank: [2, 2], priority: ["stunning_blow", "silent_edge", "toxic_strike", "counter", "guard"] },
+    pet: { chance: 0.7, pool: ["ember_fox", "moon_hare"], star: [1, 1] } },
+  balanced: { gearFloor: 31, rarities: ["unique", "elite"],
+    skills: { fixed: [], groups: [{ from: ["heavy_blow", "blade_storm"], pick: 1 }, { from: ["shield_wall", "counter"], pick: 1 }, { from: ["stunning_blow", "silent_edge"], pick: 1 }], rank: [2, 2], priority: ["blade_storm", "heavy_blow", "silent_edge", "stunning_blow", "counter", "shield_wall"] },
+    pet: { chance: 1, pool: ["hell_wolf", "ember_fox", "moon_hare"], star: [1, 1] } },
+  pet_master: { gearFloor: 51, rarities: ["unique", "elite"],
+    skills: { fixed: ["power_strike"], groups: [{ from: ["rampage", "blade_storm", "fortress", "shield_wall"], pick: 2 }], rank: [2, 3], priority: ["rampage", "fortress", "blade_storm", "shield_wall", "power_strike"] },
+    pet: { chance: 1, pool: ["inferno_drake", "storm_phoenix", "hell_wolf"], star: [2, 3] } },
+});
+function arenaBotSeedFromText(text) {
+  let seed = 2166136261;
+  for (const ch of String(text)) { seed ^= ch.charCodeAt(0); seed = Math.imul(seed, 16777619); }
+  return seed >>> 0;
+}
+function arenaBotRng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function arenaNewBotLoadoutSeed() {
+  const words = new Uint32Array(1);
+  crypto.getRandomValues(words);
+  return words[0] >>> 0;
+}
+// Rows stored before this feature have no loadoutSeed; derive a stable one so Card and Match still agree.
+function arenaBotLoadoutSeed(opponent) {
+  return typeof opponent?.loadoutSeed === "number" && Number.isFinite(opponent.loadoutSeed)
+    ? opponent.loadoutSeed >>> 0
+    : arenaBotSeedFromText(`${opponent?.botId || ""}|${opponent?.slot || ""}`);
+}
+function arenaBotPickOne(list, rng) { return list[Math.min(list.length - 1, Math.floor(rng() * list.length))]; }
+function arenaBotRollInt(range, rng) { return range[0] + Math.min(range[1] - range[0], Math.floor(rng() * (range[1] - range[0] + 1))); }
+function arenaBotItemRow(item, itemId) {
+  const extra = {
+    empowerSlots: Array.isArray(item.empowerSlots) ? item.empowerSlots : [],
+    empowerSlotCapacity: Math.max(0, Number(item.empowerSlotCapacity) || 0),
+    rewardVersion: 2, itemModelVersion: 2, gearTier: Math.max(1, Math.min(5, Number(item.gearTier) || 1)),
+    sourceType: "arena_bot", sourceFloor: Number(item.sourceFloor) || 0,
+  };
+  return {
+    item_id: itemId, slot_type: item.type, equipped: 1, inventory_slot: "", item_template_id: "", rarity: item.rarity,
+    name: String(item.name || item.type).slice(0, 160), item_level: 0, enhance_level: 0, bound: 0, quantity: 1,
+    atk: Number(item.atk) || 0, def: Number(item.def) || 0, hp: Number(item.hp) || 0, mp: Number(item.mp) || 0,
+    extra_json: JSON.stringify(extra),
+  };
+}
+function arenaBotLoadout(opponent) {
+  const archetype = opponent?.archetype || "";
+  const def = ARENA_BOT_LOADOUTS[archetype];
+  const level = Number(opponent?.level) || 10;
+  if (!def) return { equipmentRows: [], skillSlots: [null, null, null, null], skillLevels: {}, pet: null };
+  const seed = arenaBotLoadoutSeed(opponent);
+  const rng = arenaBotRng(seed);
+  const equipmentRows = ARENA_BOT_GEAR_SLOTS.map((slot) => {
+    const rarity = arenaBotPickOne(def.rarities, rng);
+    const item = globalThis.DUNGEON_REWARD_V2.dungeonV2EquipmentItem({ floor: def.gearFloor, type: slot, rarity, sourceType: "arena_bot", rng });
+    return arenaBotItemRow(item, `bot-${seed.toString(16)}-${slot}`);
+  });
+  const chosen = new Set(def.skills.fixed);
+  for (const group of def.skills.groups) {
+    const pool = group.from.filter((key) => !chosen.has(key));
+    for (let n = 0; n < group.pick && pool.length; n++) chosen.add(pool.splice(Math.min(pool.length - 1, Math.floor(rng() * pool.length)), 1)[0]);
+  }
+  const skillLevels = {};
+  for (const key of chosen) skillLevels[key] = arenaBotRollInt(def.skills.rank, rng);
+  const ordered = def.skills.priority.filter((key) => chosen.has(key)).slice(0, 4);
+  const skillSlots = Array.from({ length: 4 }, (_, index) => ordered[index] || null);
+  let pet = null;
+  if (rng() < def.pet.chance) {
+    const defId = arenaBotPickOne(def.pet.pool, rng);
+    pet = { instId: `bot-${seed.toString(16)}-pet`, defId, level: Math.max(1, Math.min(50, level)), star: arenaBotRollInt(def.pet.star, rng) };
+  }
+  return { equipmentRows, skillSlots, skillLevels, pet };
+}
+
 function arenaNowMs(now = Date.now()) {
   const value = now instanceof Date ? now.getTime() : (typeof now === "number" ? now : Date.parse(String(now)));
   return Number.isFinite(value) ? value : Date.now();
@@ -5495,7 +5595,7 @@ async function generateArenaV2Opponents(db, season, character, previous = null) 
     const bot = arenaBotForSlot(slot, rating, previous, used);
     const key = `bot:${bot.botId}`;
     used.add(key);
-    result.push({ opponentKey: key, type: "bot", slot, rewardSlot: band.rewardSlot, botId: bot.botId, name: bot.def.name, level: bot.def.level, rating: bot.rating, archetype: bot.def.archetype, profileFrameKey: null });
+    result.push({ opponentKey: key, type: "bot", slot, rewardSlot: band.rewardSlot, botId: bot.botId, name: bot.def.name, level: bot.def.level, rating: bot.rating, archetype: bot.def.archetype, profileFrameKey: null, loadoutSeed: arenaNewBotLoadoutSeed() });
   }
   return result;
 }
@@ -5652,7 +5752,7 @@ async function handleRefreshArenaV2Opponents(db, id, session, characterId) {
   const next = await generateArenaV2Opponents(db, context.season, context.character, current.opponents);
   if (!next.some((row) => !current.opponents.some((old) => old.opponentKey === row.opponentKey))) {
     const fallback = arenaBotForSlot("higher", context.seasonPlayer.rating, current.opponents, new Set(next.map((row) => row.opponentKey)));
-    next[2] = { opponentKey: `bot:${fallback.botId}`, type: "bot", slot: "higher", rewardSlot: "higher", botId: fallback.botId, name: fallback.def.name, level: fallback.def.level, rating: fallback.rating, archetype: fallback.def.archetype, profileFrameKey: null };
+    next[2] = { opponentKey: `bot:${fallback.botId}`, type: "bot", slot: "higher", rewardSlot: "higher", botId: fallback.botId, name: fallback.def.name, level: fallback.def.level, rating: fallback.rating, archetype: fallback.def.archetype, profileFrameKey: null, loadoutSeed: arenaNewBotLoadoutSeed() };
   }
   const saved = await db.prepare(`
     UPDATE arena_opponent_state SET opponents_json = ?, updated_at = ?
@@ -5817,10 +5917,11 @@ async function arenaRealSnapshot(db, character, setup, items, rating) {
     profileFrameKey: await arenaValidProfileFrame(db, character.character_id),
   };
 }
-function arenaBotCombatStats(snapshot) {
+// Base bot stat formula (level + virtual rating). Gear from the loadout pool is added on top in arenaBotSnapshot.
+function arenaBotBaseStats(snapshot) {
   const level = Number(snapshot?.level) || 10;
   const rating = Number(snapshot?.rating) || 1000;
-  return snapshot?.stats || {
+  return {
     maxHp: 80 + level * 5 + Math.max(0, rating - 1000) * 0.04,
     maxMp: 100,
     atk: 10 + level * 2 + Math.max(0, rating - 1000) * 0.02,
@@ -5831,6 +5932,28 @@ function arenaBotCombatStats(snapshot) {
     critDamage: 50,
     agi: level,
   };
+}
+function arenaBotStatsWithGear(base, equipmentRows) {
+  const bonus = { atk: 0, def: 0, hp: 0, mp: 0, hpPct: 0, mpPct: 0, str: 0, vit: 0, agi: 0, dex: 0, luk: 0, accuracy: 0, critChance: 0, critDamage: 0, dodgeChance: 0 };
+  for (const item of equipmentRows || []) {
+    const current = itemBonus(item);
+    for (const key of Object.keys(current)) bonus[key] = (bonus[key] || 0) + (Number(current[key]) || 0);
+  }
+  // Same combination rules as arenaSnapshotStats (bot raw stats are 0).
+  return {
+    ...base,
+    maxHp: Math.round((base.maxHp + bonus.vit * 12 + bonus.hp) * (1 + bonus.hpPct / 100)),
+    maxMp: Math.round((base.maxMp + bonus.mp) * (1 + bonus.mpPct / 100)),
+    atk: Math.round(base.atk + bonus.str * 3 + Math.floor(bonus.dex * 0.5) + bonus.atk),
+    def: Math.round(base.def + Math.floor(bonus.vit * 0.5) + bonus.def),
+    accuracy: Math.min(99, Math.round((base.accuracy + bonus.accuracy + bonus.dex * 0.5) * 10) / 10),
+    critChance: Math.round((base.critChance + bonus.critChance + bonus.luk * 0.5) * 10) / 10,
+    critDamage: Math.round((base.critDamage + bonus.critDamage) * 10) / 10,
+    dodgeChance: Math.round((base.dodgeChance + bonus.dodgeChance + bonus.agi * 0.5) * 10) / 10,
+  };
+}
+function arenaBotCombatStats(snapshot) {
+  return snapshot?.stats || arenaBotBaseStats(snapshot);
 }
 function arenaBotCombatPower(snapshot, stats = arenaBotCombatStats(snapshot)) {
   const level = Number(snapshot?.level) || 10;
@@ -5847,7 +5970,9 @@ function arenaBotCombatPower(snapshot, stats = arenaBotCombatStats(snapshot)) {
   );
 }
 function arenaBotSnapshot(opponent) {
-  const stats = arenaBotCombatStats(opponent);
+  // Loadout is rolled from opponent.loadoutSeed so the Player Card and the match snapshot always agree.
+  const loadout = arenaBotLoadout(opponent);
+  const stats = arenaBotStatsWithGear(arenaBotBaseStats(opponent), loadout.equipmentRows);
   return {
     type: "bot",
     botId: opponent.botId,
@@ -5857,9 +5982,10 @@ function arenaBotSnapshot(opponent) {
     tier: arenaTierForRating(opponent.rating),
     cp: arenaBotCombatPower(opponent, stats),
     stats,
-    equipment: [],
-    pet: null,
-    skillSlots: [null, null, null, null],
+    equipment: arenaEquipmentSnapshot(loadout.equipmentRows),
+    pet: loadout.pet,
+    skillSlots: loadout.skillSlots,
+    skillLevels: loadout.skillLevels,
     profileFrameKey: null,
     archetype: opponent.archetype || "",
   };
@@ -6132,7 +6258,10 @@ function arenaCombatHeroUnit(snapshot, id, side) {
 }
 function arenaCombatBotUnit(snapshot, id, side) {
   const stats = arenaBotCombatStats(snapshot);
-  return arenaCombatHeroUnit({ ...snapshot, stats, skillLevels: { power_strike: 1 }, skillSlots: ["power_strike"] }, id, side);
+  // Snapshots stored before the loadout pool have all-null skillSlots: keep their original power_strike-only
+  // behaviour so existing matches and Replays re-simulate identically.
+  const hasLoadoutSkills = Array.isArray(snapshot?.skillSlots) && snapshot.skillSlots.some((key) => typeof key === "string");
+  return arenaCombatHeroUnit(hasLoadoutSkills ? { ...snapshot, stats } : { ...snapshot, stats, skillLevels: { power_strike: 1 }, skillSlots: ["power_strike"] }, id, side);
 }
 function arenaCombatPetUnit(snapshot, id, side, ownerName) {
   if (!snapshot?.pet) return null;
@@ -6914,8 +7043,8 @@ async function handleGetArenaV2PlayerCard(db, id, session, characterId, opponent
       rating: bot.rating,
       tier: bot.tier,
       cp: bot.cp,
-      equipment: bot.equipment,
-      pet: bot.pet,
+      equipment: arenaEquipmentPublic(arenaBotLoadout(target).equipmentRows),
+      pet: bot.pet ? { instId: bot.pet.instId, defId: bot.pet.defId, name: PET_DISPLAY_NAMES[bot.pet.defId] || bot.pet.defId || "Pet", level: bot.pet.level, star: bot.pet.star } : null,
       profileFrameKey: null,
       avatar: { mode: "head", layers: [] },
       archetype: bot.archetype,
