@@ -6368,7 +6368,8 @@ function arenaCombatPublicState(state) {
     })),
     skills,
     action: actionMetadata ? { basic: actionMetadata, activeSkills: skills.map((skill) => ({ skillId: skill.key, ...BATTLE_CORE_V1.getActionMetadata(state, current, { type: "active", skillId: skill.key }) })) } : null,
-    log: (state.log || []).slice(-40).map((entry) => pvpPublicLogEntry(entry, { includeSeq: true })),
+    // 160 covers a whole 20-turn match so a multi-round batch (Hero down, Pet fights on) can be presented round by round.
+    log: (state.log || []).slice(-160).map((entry) => pvpPublicLogEntry(entry, { includeSeq: true })),
     result: state.result ? { result: state.result, winnerSide: state.winnerSide || null } : null,
   };
 }

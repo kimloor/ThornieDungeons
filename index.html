@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.0.62";
+  content: "Ver 1.0.63";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -20517,6 +20517,64 @@ function arenaMatchWithResultViewModel(match, resultOverride = undefined) {
   return result ? { ...match, result, resultViewModel: arenaResultViewModel(result) } : match;
 }
 
+// ---- Arena multi-round presentation ----
+// When the controlled Hero is down (or any time several rounds resolve in one response) the server returns the whole
+// remaining fight at once, so HP would jump to its final values and the result would appear immediately. These
+// helpers rebuild the intermediate round-end states from the log so the client can play the rounds one after
+// another before showing the result. Display-only: the authoritative state/result are never modified.
+function arenaRoundSteps(previousState, nextState) {
+  const log = Array.isArray(nextState?.log) ? nextState.log : [];
+  if (!previousState || !log.length) return [];
+  const seen = (Array.isArray(previousState.log) ? previousState.log : []).reduce((max, entry) => Math.max(max, Number(entry?.seq) || 0), -1);
+  const fresh = log.filter(entry => Number(entry?.seq) > seen);
+  // A normal response holds at most one round marker (rest of this round + start of the next); two or more means a batch.
+  if (fresh.filter(entry => entry.type === "round").length < 2) return [];
+  const chunks = [];
+  let current = [];
+  for (const entry of fresh) {
+    if (entry.type === "round" && current.length) { chunks.push(current); current = []; }
+    current.push(entry);
+  }
+  if (current.length) chunks.push(current);
+  const unitsAreArray = Array.isArray(nextState.units);
+  const unitList = unitsAreArray ? nextState.units : Object.values(nextState.units || {});
+  const running = new Map(unitList.map(unit => [unit.id, Number(unit.hp) || 0]));
+  const hpAfterChunk = new Array(chunks.length);
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    hpAfterChunk[i] = new Map(running);
+    for (const entry of chunks[i]) {
+      const amount = Number(entry.amount);
+      if (!entry.targetId || !Number.isFinite(amount)) continue;
+      if (entry.type === "damage") running.set(entry.targetId, (running.get(entry.targetId) || 0) + amount);
+      else if (entry.type === "heal") running.set(entry.targetId, (running.get(entry.targetId) || 0) - amount);
+    }
+  }
+  const steps = [];
+  for (let i = 0; i < chunks.length - 1; i++) {
+    const upto = Number(chunks[i][chunks[i].length - 1].seq);
+    const stepLog = log.filter(entry => Number(entry.seq) <= upto);
+    const marker = [...stepLog].reverse().find(entry => entry.type === "round");
+    const roundNumber = Number(String(marker?.text || "").replace(/^\D+/, ""));
+    const stepUnits = unitList.map(unit => {
+      const maxHp = Number(unit.maxHp) || Infinity;
+      const hp = Math.max(0, Math.min(maxHp, hpAfterChunk[i].get(unit.id) ?? (Number(unit.hp) || 0)));
+      return { ...unit, hp, dead: hp <= 0 };
+    });
+    steps.push({
+      ...nextState,
+      phase: previousState.phase && previousState.phase !== "done" ? previousState.phase : "battle",
+      result: null,
+      action: null,
+      currentActorId: null,
+      round: Number.isFinite(roundNumber) && roundNumber > 0 ? roundNumber : nextState.round,
+      log: stepLog,
+      units: unitsAreArray ? stepUnits : Object.fromEntries(stepUnits.map(unit => [unit.id, unit])),
+      attackCues: chunks[i].filter(entry => entry.actorId && ["damage", "miss", "pet_active", "counter"].includes(entry.type)).length
+    });
+  }
+  return steps;
+}
+
 function arenaTerminalMatchFromResponse(previousMatch, response = {}) {
   const responseMatch = response.match && typeof response.match === "object" ? response.match : null;
   const result = responseMatch?.result ?? response.result ?? previousMatch?.result;
@@ -21208,6 +21266,8 @@ function ArenaV2Screen({
   const autoActionInFlightRef = React.useRef(false);
   const fatalReportedRef = React.useRef(false);
   matchRef.current = match;
+  const combatSpeedRef = React.useRef(1);
+  combatSpeedRef.current = combatSpeed;
   phaserStatusRef.current = phaserStatus;
   const reportArenaFatal = React.useCallback((error, event = {}, kind = "arena_runtime") => {
     if (fatalReportedRef.current) return;
@@ -21505,6 +21565,14 @@ function ArenaV2Screen({
         return false;
       }
       const next = arenaTerminalMatchFromResponse(currentMatch, res);
+      // Several rounds resolved in one response (Hero down, Pet keeps fighting): play them round by round before the
+      // result is shown. Controls stay locked (busy) meanwhile; leaving the match aborts the playback.
+      for (const step of arenaRoundSteps(currentMatch.state, next.state)) {
+        if (matchRef.current?.matchId !== currentMatch.matchId) return true;
+        setMatch({ ...next, result: null, resultViewModel: undefined, state: step });
+        await new Promise(resolve => setTimeout(resolve, Math.round((700 + 450 * (step.attackCues || 0)) / (combatSpeedRef.current || 1))));
+      }
+      if (matchRef.current?.matchId !== currentMatch.matchId) return true;
       setMatch(next);
       setAuto(next.result ? false : !!next.state?.auto || !!next.state?.flags?.auto);
       return true;
