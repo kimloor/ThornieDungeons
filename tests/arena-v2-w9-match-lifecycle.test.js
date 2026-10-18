@@ -558,7 +558,9 @@ test('Arena battle page fits one screen: compact top bar, flexible stage, log sh
   const dock = arena.slice(arena.indexOf('md-arena-action-dock'));
   assert.doesNotMatch(dock.slice(0, dock.indexOf('Skill ${index + 1}')), /action\("surrender"/);
   assert.equal((arena.match(/action\("surrender"/g) || []).length, 1);
-  assert.match(arena, /enemyUnits\.filter\(u => u\.alive\)\.length > 1 && /);
+  // Owner decision 2026-10-18: the bottom Target buttons are gone; targets are chosen by tapping an enemy on the stage.
+  assert.doesNotMatch(arena, /md-arena-target-row/);
+  assert.match(arena, /onTargetSelected: setSelectedTarget/);
   // Full log is a sheet, not an inline card that pushes the stage and controls down.
   assert.match(arena, /className: "md-arena-log-sheet", role: "dialog"/);
   assert.match(arena, /className: "md-arena-log-strip"/);

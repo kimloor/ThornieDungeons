@@ -217,18 +217,27 @@ test("Ver 1.0.22 contains Arena Phaser scene, sync and animation failures inside
   assert.match(queue, /try \{\s*await task\.run\(speed\);\s*\} catch \(error\) \{\s*onError\?\.\(error\)/);
 });
 
-test("arena battlefield layout shrinks hero scale on a short stage so heads are not clipped", () => {
+test("arena compact stage layout keeps Hero heads, HP bars and the Pet row inside the stage without overlap", () => {
   const vm = require("node:vm");
   const ctx = {};
   vm.createContext(ctx);
   const read = file => fs.readFileSync(path.join(__dirname, "..", "src", "phaser", "layout", file), "utf8");
   vm.runInContext(`${read("ResponsiveSceneLayout.js")}\n${read("ResponsiveAnchors.js")}\nthis.layout = responsiveArenaBattlefieldLayout;`, ctx);
-  const clearance = stageHeight => 0.5 * stageHeight - 132 * ctx.layout(320, stageHeight).actorScale;
-  // Normal stages keep the 0.82 floor; compact stages scale down but never below 0.5.
-  assert.ok(Math.abs(ctx.layout(320, 305).actorScale - 0.82) < 1e-9);
-  assert.ok(Math.abs(ctx.layout(320, 232).actorScale - 0.82) < 1e-9);
-  assert.ok(ctx.layout(320, 210).actorScale < 0.82 && ctx.layout(320, 210).actorScale >= 0.5);
-  assert.equal(ctx.layout(320, 40).actorScale, 0.5);
-  // The hero's head keeps at least ~7px of clearance from the stage top down to a 180px stage (the 0.5 floor takes over below ~130px).
-  for (const height of [262, 232, 222, 210, 180]) assert.ok(clearance(height) >= 7, `stage ${height}: ${clearance(height)}`);
+  // Hero sprite is 150px x scale above the anchor; the Pet row's name ends ~60px below the Hero anchor.
+  for (const width of [320, 375, 390]) {
+    for (const height of [200, 210, 232, 262, 305, 380]) {
+      const layout = JSON.parse(JSON.stringify(ctx.layout(width, height)));
+      const scale = layout.actorScale;
+      assert.ok(scale >= 0.82 && scale <= 0.92, `${width}x${height}: scale ${scale}`);
+      const heroTop = layout.pixels.attackerHero.y - 150 * scale;
+      assert.ok(heroTop >= 3, `${width}x${height}: head clearance ${heroTop}`);
+      assert.ok(layout.pixels.attackerPet.y + 34 <= height + 1, `${width}x${height}: Pet labels stay inside the stage`);
+      assert.equal(layout.pixels.attackerHero.y, layout.pixels.defenderHero.y);
+      assert.ok(layout.pixels.attackerPet.y > layout.pixels.attackerHero.y, "Pet row is below the Hero ground line");
+      assert.ok(layout.pixels.attackerPet.x > layout.pixels.attackerHero.x && layout.pixels.defenderPet.x < layout.pixels.defenderHero.x);
+      assert.ok(layout.pixels.defenderPet.x - layout.pixels.attackerPet.x >= 0.2 * width, "Pets do not collide in the middle");
+    }
+  }
+  // Tall stages keep the Dungeon baseline anchors (W9.2 test covers the exact 390x520 pixels).
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.layout(390, 520).normalized.attackerPet)), { x: 0.22, y: 0.84 });
 });
