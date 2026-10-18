@@ -53,11 +53,39 @@ function responsiveBattlefieldLayout(width, height, monsterCount = 1) {
   };
 }
 
+// Stages shorter than this use the compact Arena layout below (phone screens). Taller stages keep the Dungeon baseline anchors.
+const ARENA_COMPACT_STAGE_MAX_HEIGHT = 460;
+// Measured from the actors: HeroActor draws a 150px sprite (x responsive scale, origin at the feet) with the HP bar 14px,
+// HP text ~24px and name ~34px below the anchor; the Pet row sits ARENA_PET_ROW_OFFSET lower and its name ends ~34px below its anchor.
+const ARENA_HERO_REACH_UP = 150;
+const ARENA_PET_ROW_OFFSET = 26;
+const ARENA_LABELS_DOWN = ARENA_PET_ROW_OFFSET + 34;
+
 function responsiveArenaBattlefieldLayout(width, height) {
-  // Heroes are anchored at half the stage height and extend roughly 132 reference px above that anchor. On a short stage
-  // (compact phones) the usual 0.82 floor would clip their heads, so the floor shrinks with the stage below ~232px.
   const stageHeight = Math.max(0, Number(height) || 0);
-  const minScale = stageHeight >= 232 ? 0.82 : Math.max(0.5, Math.min(0.82, (0.5 * stageHeight - 8) / 132));
+  if (stageHeight < ARENA_COMPACT_STAGE_MAX_HEIGHT) {
+    // Compact stage: pick the sprite scale that fits Hero + labels + Pet row inside the stage, then centre that block
+    // vertically so heads are never clipped and the Hero HP bars/names are not hidden behind the Pets. Pets stand
+    // nearer the centre and one row lower, so the four HP bars never overlap.
+    const stageWidth = Math.max(1, Number(width) || 1);
+    const fit = (stageHeight - ARENA_LABELS_DOWN - 12) / ARENA_HERO_REACH_UP;
+    const actorScale = Math.max(0.82, Math.min(0.92, (stageWidth / 390) * 0.95, fit));
+    const margin = Math.max(0, (stageHeight - ARENA_HERO_REACH_UP * actorScale - ARENA_LABELS_DOWN) / 2);
+    const heroY = (ARENA_HERO_REACH_UP * actorScale + margin) / Math.max(1, stageHeight);
+    const petY = heroY + ARENA_PET_ROW_OFFSET / Math.max(1, stageHeight);
+    const shared = createResponsiveSceneLayout({
+      width,
+      height,
+      anchors: {
+        attackerHero: { x: 0.20, y: heroY },
+        attackerPet: { x: 0.38, y: petY },
+        defenderHero: { x: 0.80, y: heroY },
+        defenderPet: { x: 0.62, y: petY }
+      }
+    });
+    return { width: shared.width, height: shared.height, actorScale, normalized: shared.normalized, pixels: shared.pixels };
+  }
+  const minScale = 0.82;
   const shared = createResponsiveSceneLayout({
     width,
     height,

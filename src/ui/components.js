@@ -3244,6 +3244,7 @@ function arenaLogUnitClass(unit) {
 function arenaLogDisplayText(entry) {
   const text = String(entry?.text ?? entry?.message ?? entry ?? "");
   if (entry?.type === "round") return text.replace(/^Round /, "Turn ");
+  if (entry?.type === "damage" && entry?.cause === "poison") return text.replace(/ took (\d+)\./, " took $1 poison damage.");
   if (entry?.type === "damage") return text.replace(/ (basic attack|counter attack) to /, " use $1 to ");
   return text;
 }
@@ -3280,6 +3281,8 @@ function arenaLogSegments(entry, unitsById) {
   const actorUnit = unitsById?.[entry?.actorId];
   const damageSide = actorUnit ? (actorUnit.side === "team_a" ? " ally" : " enemy") : " enemy";
   splitBy(/(damage|heal) (\d+)/g, match => [{ text: `${match[1]} ` }, { text: match[2], cls: match[1] === "heal" ? "md-alog-heal" : `md-alog-dmg${damageSide}${entry?.crit ? " crit" : ""}` }]);
+  // Poison ticks ("X took N poison damage.") are shown in the poison/status purple.
+  if (entry?.cause === "poison") splitBy(/took (\d+) (poison damage)/g, match => [{ text: "took " }, { text: match[1], cls: "md-alog-dmg poison" }, { text: " " }, { text: match[2], cls: "md-alog-status" }]);
   if (entry?.status) splitBy(new RegExp(`\\b${arenaLogEscape(entry.status)}\\b`, "g"), match => [{ text: match[0], cls: "md-alog-status" }]);
   return segments;
 }
@@ -4404,8 +4407,7 @@ function ArenaV2Screen({
           match.snapshot?.attacker?.rating != null && match.snapshot?.defender?.rating != null && /*#__PURE__*/React.createElement("small", null, `Rating ${match.snapshot.attacker.rating} vs ${match.snapshot.defender.rating}`)),
         phaserStatus === "error" && /*#__PURE__*/React.createElement("div", { className: "md-arena-phaser-error", role: "status" }, matchIsPrepared ? "Battle presentation unavailable" : "Battle presentation unavailable · controls remain active")),
         /*#__PURE__*/React.createElement("div", { className: "md-arena-battle-info" },
-          /*#__PURE__*/React.createElement("span", { className: "md-arena-sr-only", "aria-live": "polite" }, preloadState === "loading" ? "Loading Battle\u2026 " : preloadState === "failed" ? "Battle preload failed " : "", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(", "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(", ")),
-          enemyUnits.filter(u => u.alive).length > 1 && /*#__PURE__*/React.createElement("div", { className: "md-arena-target-row" }, /*#__PURE__*/React.createElement("span", null, "Target"), enemyUnits.map(u => /*#__PURE__*/React.createElement("button", { key: u.id, type: "button", className: `md-btn small md-arena-art-btn ${selected === u.id ? "primary" : "secondary"}`, disabled: !u.alive || !matchIsActive, onClick: () => setSelectedTarget(u.id) }, u.kind || "Hero", " ", u.name)))),
+          /*#__PURE__*/React.createElement("span", { className: "md-arena-sr-only", "aria-live": "polite" }, preloadState === "loading" ? "Loading Battle\u2026 " : preloadState === "failed" ? "Battle preload failed " : "", playerUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(", "), " VS ", enemyUnits.map(u => `${u.name} ${u.hp}/${u.maxHp}`).join(", "))),
         showFullLog && /*#__PURE__*/React.createElement("div", { className: "md-arena-log-sheet", role: "dialog", "aria-modal": "true", "aria-label": "Full battle log", onClick: () => setShowFullLog(false) },
           /*#__PURE__*/React.createElement("section", { className: "md-card md-arena-log-sheet-card", onClick: event => event.stopPropagation() },
             /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Battle Log"),
@@ -4418,9 +4420,17 @@ function ArenaV2Screen({
         /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "Reward: ", resultView.rewardSlot, " · Resolution: ", resultView.resolution),
         /*#__PURE__*/React.createElement("button", { className: "md-btn primary", onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); refresh().catch(() => setError("โหลด Arena status ไม่สำเร็จ")); } }, "BACK TO ARENA")) : matchIsPrepared ? /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, preloadState === "failed" ? "Presentation failed before activation. The prepared match is preserved; retry uses the same match ID." : "Waiting for presentation readiness…"), /*#__PURE__*/React.createElement("button", { className: "md-btn primary", disabled: busy, onClick: () => beginPreparedArenaMatch(match) }, "RETRY PRESENTATION"), /*#__PURE__*/React.createElement("button", { className: "md-btn small", disabled: busy, onClick: () => { setMatch(null); setPlayerCard(null); setPreloadState("idle"); } }, "BACK TO ARENA")) : matchIsActive ? /*#__PURE__*/React.createElement("div", { className: "md-card md-arena-action-controls md-arena-action-dock" }, /*#__PURE__*/React.createElement("button", { className: "md-btn md-arena-art-btn primary md-arena-attack-btn", disabled: busy, onClick: () => action("basic", null, selected) }, "⚔️ ATTACK"), /*#__PURE__*/React.createElement("button", { className: `md-btn small md-arena-art-btn ${auto ? "primary" : "secondary"} md-arena-auto-btn`, disabled: busy, onClick: toggleAuto }, auto ? "AUTO ON" : "AUTO"), (setup.skillSlots || []).map((skill, index) => {
           const definition = (status.availableSkills || []).find(candidate => candidate.key === skill);
-          return /*#__PURE__*/React.createElement("button", { key: `${index}-${skill || "empty"}`, className: "md-btn small md-arena-art-btn secondary md-arena-skill-control", disabled: busy || !skill, onClick: () => action("active", skill, selected) },
+          // Battle Core reports whether each active skill is usable (cooldown, SP, silence); locked skills are disabled
+          // so the player cannot trigger an "Active skill unavailable" error.
+          const skillMeta = skill ? (match.state?.action?.activeSkills || []).find(item => item.skillId === skill) : null;
+          const skillLocked = !!skillMeta && skillMeta.usable === false;
+          const cooldownLeft = skillLocked ? Number(skillMeta.cooldownRemaining) || 0 : 0;
+          const heroSilenced = playerUnits.some(u => u.kind === "hero" && (u.statuses || []).includes("silence"));
+          const lockLabel = !skillLocked ? null : cooldownLeft > 0 ? `CD ${cooldownLeft}` : /SP/i.test(String(skillMeta.reason || "")) ? "No SP" : heroSilenced ? "Silenced" : "Locked";
+          return /*#__PURE__*/React.createElement("button", { key: `${index}-${skill || "empty"}`, className: `md-btn small md-arena-art-btn secondary md-arena-skill-control${skillLocked ? " locked" : ""}`, disabled: busy || !skill || skillLocked, onClick: () => action("active", skill, selected) },
             skill ? /*#__PURE__*/React.createElement(HeroSkillIcon, { skillId: skill, className: "md-hero-skill-icon md-arena-battle-skill-icon", alt: definition?.name || heroSkillDisplayName(skill), loading: "eager" }) : /*#__PURE__*/React.createElement("span", { className: "md-hero-skill-icon fallback", "aria-hidden": "true" }, "✦"),
-            /*#__PURE__*/React.createElement("span", null, skill ? definition?.name || heroSkillDisplayName(skill) : `Skill ${index + 1}`));
+            /*#__PURE__*/React.createElement("span", null, skill ? definition?.name || heroSkillDisplayName(skill) : `Skill ${index + 1}`),
+            lockLabel && /*#__PURE__*/React.createElement("b", { className: "md-arena-skill-lock" }, lockLabel));
         })) : /*#__PURE__*/React.createElement("div", { className: "md-card" }, /*#__PURE__*/React.createElement("p", { className: "md-sub" }, `Arena match is ${matchStatus || "unavailable"}; controls are disabled.`), /*#__PURE__*/React.createElement("button", { className: "md-btn small", onClick: () => { setMatch(null); setPlayerCard(null); refresh(); } }, "BACK TO ARENA")),
       // The battle log sits below the action dock (last thing on screen); tap it for the full log sheet.
       !matchIsPrepared && /*#__PURE__*/React.createElement("button", { type: "button", className: "md-arena-log-strip", "aria-label": "Open full battle log", onClick: () => setShowFullLog(true) },

@@ -409,7 +409,8 @@
         amount: dealt,
         ...(amount > dealt ? { displayAmount: amount } : {}),
         crit: !!context.crit,
-        actionName: context.actionName || null
+        actionName: context.actionName || null,
+        ...(context.cause ? { cause: context.cause } : {})
       });
     }
     if (directHit && target.kind === "hero" && actor.side !== target.side && before > target.hp && !context.indirect) {
@@ -600,7 +601,9 @@
       targetId: suppliedTargetId,
       targetLegal,
       spCost,
-      cooldown
+      cooldown,
+      // Turns left before this active skill can be used again (0 when ready); lets the UI show why it is locked.
+      cooldownRemaining: type === "active" && actor ? Math.max(0, Number(actor.cooldowns && actor.cooldowns[command.skillId]) || 0) : 0
     };
   }
 
@@ -862,7 +865,7 @@
     const poison = status(actor, "poison");
     if (poison) {
       const source = state.units[poison.sourceId] || { id: poison.sourceId || "poison", side: state.teamIds.find(side => side !== actor.side) };
-      receiveDamage(state, source, actor, poison.damage, context);
+      receiveDamage(state, source, actor, poison.damage, { ...context, cause: "poison" });
       poison.duration -= 1; if (poison.duration <= 0) delete actor.statuses.poison;
     }
     const regen = status(actor, "pet_regrowth"); if (regen) heal(state, actor, regen.heal, state.units[regen.sourceId], "Regrowth");
