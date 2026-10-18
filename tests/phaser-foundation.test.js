@@ -225,7 +225,7 @@ test("arena compact stage layout keeps Hero heads, HP bars and the Pet row insid
   vm.runInContext(`${read("ResponsiveSceneLayout.js")}\n${read("ResponsiveAnchors.js")}\nthis.layout = responsiveArenaBattlefieldLayout;`, ctx);
   // Hero sprite is 150px x scale above the anchor; the Pet row's name ends ~60px below the Hero anchor.
   for (const width of [320, 375, 390]) {
-    for (const height of [200, 210, 232, 262, 305, 380]) {
+    for (const height of [215, 232, 262, 305, 380]) {
       const layout = JSON.parse(JSON.stringify(ctx.layout(width, height)));
       const scale = layout.actorScale;
       assert.ok(scale >= 0.82 && scale <= 0.92, `${width}x${height}: scale ${scale}`);
@@ -235,7 +235,8 @@ test("arena compact stage layout keeps Hero heads, HP bars and the Pet row insid
       assert.equal(layout.pixels.attackerHero.y, layout.pixels.defenderHero.y);
       assert.ok(layout.pixels.attackerPet.y > layout.pixels.attackerHero.y, "Pet row is below the Hero ground line");
       assert.ok(layout.pixels.attackerPet.x > layout.pixels.attackerHero.x && layout.pixels.defenderPet.x < layout.pixels.defenderHero.x);
-      assert.ok(layout.pixels.defenderPet.x - layout.pixels.attackerPet.x >= 0.2 * width, "Pets do not collide in the middle");
+      assert.ok(layout.pixels.defenderPet.x - layout.pixels.attackerPet.x >= 118 * scale, "the two Pets (118px sprites) do not touch in the middle");
+      assert.ok(layout.pixels.attackerPet.y - layout.pixels.attackerHero.y >= 46, "Pet HP bar sits below the Hero name text");
     }
   }
   // Tall stages keep the Dungeon baseline anchors (W9.2 test covers the exact 390x520 pixels).

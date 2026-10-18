@@ -58,7 +58,7 @@ const ARENA_COMPACT_STAGE_MAX_HEIGHT = 460;
 // Measured from the actors: HeroActor draws a 150px sprite (x responsive scale, origin at the feet) with the HP bar 14px,
 // HP text ~24px and name ~34px below the anchor; the Pet row sits ARENA_PET_ROW_OFFSET lower and its name ends ~34px below its anchor.
 const ARENA_HERO_REACH_UP = 150;
-const ARENA_PET_ROW_OFFSET = 26;
+const ARENA_PET_ROW_OFFSET = 48;
 const ARENA_LABELS_DOWN = ARENA_PET_ROW_OFFSET + 34;
 
 function responsiveArenaBattlefieldLayout(width, height) {
@@ -66,7 +66,7 @@ function responsiveArenaBattlefieldLayout(width, height) {
   if (stageHeight < ARENA_COMPACT_STAGE_MAX_HEIGHT) {
     // Compact stage: pick the sprite scale that fits Hero + labels + Pet row inside the stage, then centre that block
     // vertically so heads are never clipped and the Hero HP bars/names are not hidden behind the Pets. Pets stand
-    // nearer the centre and one row lower, so the four HP bars never overlap.
+    // nearer the centre and a full label row lower (below the Hero name), and far enough apart that the two Pets never touch.
     const stageWidth = Math.max(1, Number(width) || 1);
     const fit = (stageHeight - ARENA_LABELS_DOWN - 12) / ARENA_HERO_REACH_UP;
     const actorScale = Math.max(0.82, Math.min(0.92, (stageWidth / 390) * 0.95, fit));
@@ -77,10 +77,10 @@ function responsiveArenaBattlefieldLayout(width, height) {
       width,
       height,
       anchors: {
-        attackerHero: { x: 0.20, y: heroY },
-        attackerPet: { x: 0.38, y: petY },
-        defenderHero: { x: 0.80, y: heroY },
-        defenderPet: { x: 0.62, y: petY }
+        attackerHero: { x: 0.17, y: heroY },
+        attackerPet: { x: 0.34, y: petY },
+        defenderHero: { x: 0.83, y: heroY },
+        defenderPet: { x: 0.66, y: petY }
       }
     });
     return { width: shared.width, height: shared.height, actorScale, normalized: shared.normalized, pixels: shared.pixels };
