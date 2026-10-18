@@ -4830,6 +4830,12 @@ const PET_COMBAT_SKILLS_V2 = {"sprout":{"active":{"name":"Regrowth","icon":"💚
     if (state.mode === "arena") {
       const attackerSide = state.controlledSide;
       const defenderSide = state.teamIds.find(side => side !== attackerSide) || null;
+      if (state.rules?.arenaPetContinues) {
+        // Hero down does not end the match: the Pet keeps fighting (auto) until a side has no living unit.
+        if (!livingTeamUnits(state, attackerSide).length) { finishBattle(state, "defeat", defenderSide); return true; }
+        if (!livingTeamUnits(state, defenderSide).length) { finishBattle(state, "victory", attackerSide); return true; }
+        return false;
+      }
       const attackerHero = heroForSide(state, attackerSide);
       const defenderHero = heroForSide(state, defenderSide);
       if (!living(attackerHero)) {
@@ -6021,6 +6027,9 @@ async function arenaBuildMatchSnapshot(db, context, opponent, source, preparedAt
     source,
     rewardSlot: opponent.rewardSlot,
     opponentKey: opponent.opponentKey,
+    // Rules version for this match: a downed Hero no longer ends the battle while its Pet is alive.
+    // Snapshots stored before this field existed keep the original Hero-death-ends-match rule (Replay safe).
+    combatRules: { petContinues: true },
     attacker,
     defender,
   };
@@ -6279,7 +6288,8 @@ function arenaCombatState(snapshot, matchId) {
       : arenaCombatHeroUnit(snapshot.defender, "team_b_hero", "team_b"),
     pet: arenaCombatPetUnit(snapshot.defender, "team_b_pet", "team_b", snapshot.defender?.name),
   };
-  const state = BATTLE_CORE_V1.createArenaBattle({ battleId: matchId, seed: Number(snapshot.seed) >>> 0, teamA, teamB });
+  const rules = snapshot.combatRules?.petContinues === true ? { arenaPetContinues: true } : {};
+  const state = BATTLE_CORE_V1.createArenaBattle({ battleId: matchId, seed: Number(snapshot.seed) >>> 0, teamA, teamB, rules });
   state.arenaActionSeq = 0;
   state.arenaStateRev = 0;
   return state;

@@ -926,6 +926,12 @@
     if (state.mode === "arena") {
       const attackerSide = state.controlledSide;
       const defenderSide = state.teamIds.find(side => side !== attackerSide) || null;
+      if (state.rules?.arenaPetContinues) {
+        // Hero down does not end the match: the Pet keeps fighting (auto) until a side has no living unit.
+        if (!livingTeamUnits(state, attackerSide).length) { finishBattle(state, "defeat", defenderSide); return true; }
+        if (!livingTeamUnits(state, defenderSide).length) { finishBattle(state, "victory", attackerSide); return true; }
+        return false;
+      }
       const attackerHero = heroForSide(state, attackerSide);
       const defenderHero = heroForSide(state, defenderSide);
       if (!living(attackerHero)) {

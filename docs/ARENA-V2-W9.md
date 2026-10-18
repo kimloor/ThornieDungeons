@@ -288,9 +288,11 @@ Player input is required only for attacker Hero turns unless Auto is enabled.
 Terminal:
 - attacker Hero dies → attacker LOSS;
 - defender Hero dies → attacker WIN;
+
+> **Rules update (2026-10-18, matches whose snapshot has `combatRules.petContinues`)**: a downed Hero no longer ends the match while its Pet is alive. The Pet keeps acting automatically; a side loses only when its Hero AND Pet are both down (attacker both down → LOSS, defender both down → WIN). After Round 20, if both sides still have a living unit → DRAW. Snapshots stored before this change have no `combatRules` and keep the Hero-death rules above, so existing matches and Replays re-simulate identically. Implemented via `state.rules.arenaPetContinues` in Battle Core (`checkBattleEnd`).
 - Pet death alone does not end the battle;
 - maximum = 20 Battle Core rounds;
-- after Round 20, if both Heroes remain alive → DRAW regardless of HP/damage.
+- after Round 20, if both Heroes remain alive (or, under the 2026-10-18 rules update, both sides still have a living unit) → DRAW regardless of HP/damage.
 
 Draw:
 - Rating ±0;
