@@ -138,7 +138,7 @@ Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area
 Fixes made inside Gate C: test determinism for Event Floor rewards (PR #109, #110); Raid Wing pre-rolled Enchant options, Boss Enrage battle log, Dungeon monster pool by floor with fixed bosses and resume-safe legacy checkpoints (PR #112, contract in `DUNGEON-FLOOR-V1.md` section 7); `Sync R2 asset manifest` jq argument-limit failure (PR #113); full battle log on the Defeat screen (PR #114).
 
 Open before C8 approval:
-- Owner confirms a newly issued Raid Wing arrives with Enchant options on Production.
+- Owner confirmed on 2026-10-19 that a newly issued Raid Wing arrives with Enchant options on Production. This C8 acceptance item is complete; overall Gate C remains IN PROGRESS until focused regression/build checks, Production smoke, W5.5 post-merge security verification, and final release approval are complete.
 
 Known non-blocking issues accepted for Ver 1.1.0:
 - Raid Wings issued before the fix may still have empty Enchant slots; no data repair scheduled (Production data is test data).
@@ -318,7 +318,7 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            🟡 IN PROGRESS (awaiting Owner approval)
                      ↓
-Visible game version                             Ver 1.1.0
+Visible game version                             Ver 1.0.63 (release target: Ver 1.1.0)
                      ↓
 NEW WAVE 1 — Global Loading System V1
                      ↓
