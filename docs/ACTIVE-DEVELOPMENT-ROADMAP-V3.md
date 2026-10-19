@@ -135,6 +135,14 @@ Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area
 | C6 Mobile/UI | Owner production test passed |
 | C7 smoke | Deploy API / Deploy Frontend / Battle Core parity succeeded on `5513f3c`; Deploy Frontend succeeded on `a0469e5`; Sync R2 asset manifest repaired (PR #113) and scheduled run succeeded |
 
+#### Gate C re-check record (2026-10-19, `main` `67665e8`)
+
+| Check | Result |
+| --- | --- |
+| C2 build | `node build.js` regenerated `index.html`; committed `index.html` had a stale `application-version` meta (1.0.54 vs head.html 1.0.63) and was rebuilt/committed; `git diff --check` clean |
+| C3 regression | full suite 705/705 PASS (`node --test tests/*.test.js`), 0 fail / 0 skipped |
+| Pending | C7 Production smoke on latest SHA; W5.5 post-merge Production verification record; C8 Owner approval |
+
 Fixes made inside Gate C: test determinism for Event Floor rewards (PR #109, #110); Raid Wing pre-rolled Enchant options, Boss Enrage battle log, Dungeon monster pool by floor with fixed bosses and resume-safe legacy checkpoints (PR #112, contract in `DUNGEON-FLOOR-V1.md` section 7); `Sync R2 asset manifest` jq argument-limit failure (PR #113); full battle log on the Defeat screen (PR #114).
 
 Open before C8 approval:
