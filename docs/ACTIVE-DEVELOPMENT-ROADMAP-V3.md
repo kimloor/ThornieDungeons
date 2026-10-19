@@ -141,7 +141,11 @@ Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area
 | --- | --- |
 | C2 build | `node build.js` regenerated `index.html`; committed `index.html` had a stale `application-version` meta (1.0.54 vs head.html 1.0.63) and was rebuilt/committed; `git diff --check` clean |
 | C3 regression | full suite 705/705 PASS (`node --test tests/*.test.js`), 0 fail / 0 skipped |
-| Pending | C7 Production smoke on latest SHA; W5.5 post-merge Production verification record; C8 Owner approval |
+| C7 smoke | Production frontend serves `application-version` 1.0.63 and login loads (Owner confirmed); Deploy Frontend failed on `67665e8`/`ef49e75` because the workflow hardcoded version 1.0.54, fixed in `b6ae36e` and Deploy Frontend run `39196886302` succeeded; Deploy API last succeeded on `07d513c` (no Worker/migration change since `902287d`); Sync R2 asset manifest scheduled runs succeeding |
+| C7 D1 | Production D1 `d1_migrations` latest = `0030_shop_timed_stock.sql`; tables `item_provenance`, `item_ownership_events`, `character_shop_offers`, `admin_sessions`, `admin_users`, `admin_audit_log`, `arena_match_actions` present |
+| W5.5 (code + tests) | focused security/auth suites 56/56 PASS (`w5-5-security-hardening`, `admin-v2-auth`, `auth-v2`, `raid-arena-auth-contract`, `save-reliability`, `auth-gameplay-callers`, `auth-client`); `verifyAdminKey` is exported only and not used by any route; CORS echoes only allow-listed origins |
+| W5.5 (live HTTP probes) | PENDING Owner-run curl probes (legacy key rejected, CORS, body limit, error sanitization, forged save / slot isolation) |
+| Pending | W5.5 live probe results; C8 Owner approval |
 
 Fixes made inside Gate C: test determinism for Event Floor rewards (PR #109, #110); Raid Wing pre-rolled Enchant options, Boss Enrage battle log, Dungeon monster pool by floor with fixed bosses and resume-safe legacy checkpoints (PR #112, contract in `DUNGEON-FLOOR-V1.md` section 7); `Sync R2 asset manifest` jq argument-limit failure (PR #113); full battle log on the Defeat screen (PR #114).
 
