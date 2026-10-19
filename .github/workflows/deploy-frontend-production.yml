@@ -74,7 +74,9 @@ jobs:
           test -s index.html || { echo "Generated index.html is missing or empty"; exit 1; }
           grep -q "requestNonce" index.html || { echo "W4 inventory refresh guard missing from index.html"; exit 1; }
           grep -q "remainingQuantity" index.html || { echo "W4 donation result handling missing from index.html"; exit 1; }
-          grep -q 'name="application-version" content="1.0.54"' index.html || { echo "Application version marker missing or stale"; exit 1; }
+          expected_version="$(grep -o 'name="application-version" content="[^"]*"' head.html | head -n 1 | sed 's/.*content="\([^"]*\)"/\1/')"
+          test -n "$expected_version" || { echo "Application version missing in head.html"; exit 1; }
+          grep -q "name=\"application-version\" content=\"$expected_version\"" index.html || { echo "Application version marker missing or stale (expected $expected_version)"; exit 1; }
           test -s admin.html || { echo "admin.html is missing or empty"; exit 1; }
           grep -q 'action: "adminLogin"' admin.html || { echo "Admin V2 login UI missing from admin.html"; exit 1; }
           if grep -q "thornie-admin-key" admin.html; then
