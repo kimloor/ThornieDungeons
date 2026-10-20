@@ -144,8 +144,9 @@ Verify Login/bootstrap/loading, Global Currency/navigation, bottom-nav safe area
 | C7 smoke | Production frontend serves `application-version` 1.0.63 and login loads (Owner confirmed); Deploy Frontend failed on `67665e8`/`ef49e75` because the workflow hardcoded version 1.0.54, fixed in `b6ae36e` and Deploy Frontend run `39196886302` succeeded; Deploy API last succeeded on `07d513c` (no Worker/migration change since `902287d`); Sync R2 asset manifest scheduled runs succeeding |
 | C7 D1 | Production D1 `d1_migrations` latest = `0030_shop_timed_stock.sql`; tables `item_provenance`, `item_ownership_events`, `character_shop_offers`, `admin_sessions`, `admin_users`, `admin_audit_log`, `arena_match_actions` present |
 | W5.5 (code + tests) | focused security/auth suites 56/56 PASS (`w5-5-security-hardening`, `admin-v2-auth`, `auth-v2`, `raid-arena-auth-contract`, `save-reliability`, `auth-gameplay-callers`, `auth-client`); `verifyAdminKey` is exported only and not used by any route; CORS echoes only allow-listed origins |
-| W5.5 (live HTTP probes) | PENDING Owner-run curl probes (legacy key rejected, CORS, body limit, error sanitization, forged save / slot isolation) |
-| Pending | W5.5 live probe results; C8 Owner approval |
+| W5.5 (D1) | `auth_sessions`/`admin_sessions` store `token_hash` only; all 15 players have `password_hash`; 0 active admin sessions. Known issue accepted by Owner: 2 players still hold a legacy `players.password` value (kept per LOGIN-AUTH-V2 lazy-migration policy, not touched) |
+| W5.5 (live HTTP probes) | NOT RUN: Owner cannot run terminal probes and the assistant's fetch got 401 on every GET to the API (non-browser client, inconclusive). Accepted by Owner as a limitation; W5.5 recorded PASS on code + 56/56 tests + D1 |
+| C8 | Owner approved release to Ver 1.1.0 on 2026-10-20 |
 
 Fixes made inside Gate C: test determinism for Event Floor rewards (PR #109, #110); Raid Wing pre-rolled Enchant options, Boss Enrage battle log, Dungeon monster pool by floor with fixed bosses and resume-safe legacy checkpoints (PR #112, contract in `DUNGEON-FLOOR-V1.md` section 7); `Sync R2 asset manifest` jq argument-limit failure (PR #113); full battle log on the Defeat screen (PR #114).
 
@@ -330,7 +331,7 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            🟡 IN PROGRESS (awaiting Owner approval)
                      ↓
-Visible game version                             Ver 1.0.63 (release target: Ver 1.1.0)
+Visible game version                             Ver 1.1.0
                      ↓
 NEW WAVE 1 — Global Loading System V1
                      ↓

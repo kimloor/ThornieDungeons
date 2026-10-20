@@ -27,7 +27,7 @@ test("Dungeon end fixes: first Sprout grant auto-equips server-authoritatively",
   assert.match(worker, /starterGrant\?\.instance\?\.instId \|\| ""/);
 });
 
-test("Dungeon end fixes: visible version matches the current production preview", () => {
+test("Dungeon end fixes: visible version matches the current release", () => {
   const styles = source("src/data/styles.js");
-  assert.match(styles, /content: "Ver 1\.0\.63"/);
+  assert.match(styles, /content: "Ver 1\.1\.0"/);
 });
