@@ -3508,8 +3508,13 @@ function preloadAssetImage(src) {
   return IMAGE_PRELOAD_CACHE.get(src);
 }
 
-function preloadAssetImages(sources, timeoutMs = 0) {
-  const loading = Promise.all([...new Set((sources || []).filter(Boolean))].map(preloadAssetImage));
+function preloadAssetImages(sources, timeoutMs = 0, onProgress = null) {
+  const unique = [...new Set((sources || []).filter(Boolean))];
+  let done = 0;
+  const loading = Promise.all(unique.map(src => preloadAssetImage(src).then(() => {
+    done += 1;
+    if (typeof onProgress === "function") { try { onProgress(done, unique.length); } catch (_) { /* progress is cosmetic */ } }
+  })));
   return timeoutMs ? Promise.race([loading, new Promise(resolve => setTimeout(resolve, timeoutMs))]) : loading;
 }
 
@@ -3547,8 +3552,8 @@ function battleEncounterSources({ equipped = {}, pet = null, monsters = [] } = {
   return sources;
 }
 
-function preloadBattleCriticalAssets(encounter) {
-  const settled = preloadAssetImages(battleEncounterSources(encounter, false));
+function preloadBattleCriticalAssets(encounter, onProgress = null) {
+  const settled = preloadAssetImages(battleEncounterSources(encounter, false), 0, onProgress);
   const ready = Promise.race([
     settled,
     new Promise(resolve => setTimeout(resolve, 1200))
@@ -14370,6 +14375,16 @@ function useGlobalLoadingSnapshot(manager) {
   return snapshot;
 }
 
+// Holds a blocking token while `active` is true; released on inactive/unmount.
+// Screens use it for their initial data load only (never for in-screen actions or polling).
+function useGlobalLoadingToken(active, key, label) {
+  useEffect(() => {
+    if (!active) return undefined;
+    const token = GLOBAL_LOADING.begin({ key, label });
+    return () => token.release();
+  }, [active, key, label]);
+}
+
 function GlobalLoadingOverlay({ manager }) {
   const source = manager || GLOBAL_LOADING;
   const snap = useGlobalLoadingSnapshot(source);
@@ -14675,6 +14690,8 @@ function ThornieDungeons() {
   }, [phase]);
   useEffect(() => {
     (async () => {
+    const bootLoading = GLOBAL_LOADING.begin({ key: "app.bootstrap", label: "กำลังเตรียมเกม…" });
+    try {
       
       // โหลด R2 Asset Manifest ก่อนเริ่มระบบเกม
       try {
@@ -14752,6 +14769,9 @@ function ThornieDungeons() {
         const cachedJunkInfo = await loadCachedJunkInfo();
         if (cachedJunkInfo) applyJunkInfo(cachedJunkInfo);
       }
+    } finally {
+      bootLoading.release();
+    }
     })();
   }, []);
   const persistenceContextFor = useCallback(characterId => makePersistenceContext({
@@ -15072,7 +15092,7 @@ function ThornieDungeons() {
         message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
       };
     }
-    const res = await cloudCreateCharacter(cred.url, slotIndex, name);
+    const res = await GLOBAL_LOADING.run({ key: "character.create", label: "กำลังสร้างตัวละคร…" }, () => cloudCreateCharacter(cred.url, slotIndex, name));
     if (res.error === "name_taken") return {
       ok: false,
       message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
@@ -15100,7 +15120,7 @@ function ThornieDungeons() {
     };
   }
   async function handleDeleteCharacter(slotIndex) {
-    const res = await cloudDeleteCharacter(cred.url, slotIndex);
+    const res = await GLOBAL_LOADING.run({ key: "character.delete", label: "กำลังลบตัวละคร…" }, () => cloudDeleteCharacter(cred.url, slotIndex));
     if (res.error) {
       console.error("[ThornieDungeons] deleteCharacter failed:", res.error);
       return;
@@ -15321,7 +15341,8 @@ function ThornieDungeons() {
     // Fold any in-flight state back into the account before leaving, same as a normal save,
     // so switching characters never loses the last few seconds of progress.
     const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
-    if (!(await flushCurrentCharacter())) {
+    const flushedBeforeLeave = await GLOBAL_LOADING.run({ key: "character.switch", label: "กำลังบันทึกข้อมูล…" }, () => flushCurrentCharacter());
+    if (!flushedBeforeLeave) {
       window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง");
       return false;
     }
@@ -15342,11 +15363,19 @@ function ThornieDungeons() {
     // entirely should never skip the final sync, even though every mutation already
     // persists immediately on its own.
     const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
-    if (!(await flushCurrentCharacter())) {
+    const logoutLoading = GLOBAL_LOADING.begin({ key: "account.logout", label: "กำลังออกจากระบบ…" });
+    let flushedBeforeLogout = false;
+    let logoutResult = null;
+    try {
+      flushedBeforeLogout = await flushCurrentCharacter();
+      if (flushedBeforeLogout) logoutResult = await cloudLogout(cred.url || DEFAULT_SERVER_URL);
+    } finally {
+      logoutLoading.release();
+    }
+    if (!flushedBeforeLogout) {
       window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ จึงยังไม่ออกจากระบบ กรุณาลองใหม่อีกครั้ง");
       return false;
     }
-    const logoutResult = await cloudLogout(cred.url || DEFAULT_SERVER_URL);
     if (logoutResult?.error === "network_error" || logoutResult?.error === "server_error") {
       window.alert("ยังเชื่อมต่อ Server เพื่อออกจากระบบไม่ได้ Session ยังไม่ถูกลบ กรุณาลองใหม่");
       return false;
@@ -15791,12 +15820,14 @@ function ThornieDungeons() {
     driveCoreBattle(state, command);
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
+    const stageLoading = GLOBAL_LOADING.begin({ key: "dungeon.enter", label: "กำลังเข้าดันเจี้ยน…" });
     void (async () => {
     const allowResume = options.allowResume !== false;
     const resumableCheckpoint = allowResume && resumeBattle?.serverContext && Number(resumeBattle.floor) === Number(floorNum)
       ? resumeBattle
       : null;
     let battleAuthorization = null;
+    if (resumableCheckpoint) stageLoading.update({ label: "กำลังกู้คืนการต่อสู้…" });
     setBusy(true);
     if (!resumableCheckpoint) {
       if (resumeBattle?.battleId) {
@@ -15873,6 +15904,7 @@ function ThornieDungeons() {
       catch (e) {
         await cloudClearBattleCheckpoint(cred.url, save.characterId, resumableCheckpoint.battleId);
         setResumeBattle(null);
+        stageLoading.release();
         setBusy(false);
         enterStage(floorNum, carryPlayer, { ...options, allowResume: false });
         return;
@@ -15919,7 +15951,11 @@ function ThornieDungeons() {
     const encounterLog = boss ? `A ${boss.name} blocks the way!` : displayMonsters.length > 1 ? `${displayMonsters.length} monsters appear: ${displayMonsters.map(m => m.name).join(", ")}!` : `A wild ${displayMonsters[0].name} appears!`;
     setLogState([encounterLog, ...initialBattle.log.slice().reverse().map(entry => entry.text)]);
     const battleAssets = { equipped: save?.equipped || {}, pet: initialPet, monsters: displayMonsters };
-    const criticalAssets = preloadBattleCriticalAssets(battleAssets);
+    stageLoading.update({ label: "กำลังโหลดฉากต่อสู้…" });
+    const criticalAssets = preloadBattleCriticalAssets(battleAssets, (current, total) => stageLoading.update({ current, total }));
+    // Registered before the combat-entry handler so the overlay is released in the same tick,
+    // ahead of setPhase("combat"); build.js patches the handler below by exact text.
+    criticalAssets.ready.then(() => stageLoading.release(), () => stageLoading.release());
     criticalAssets.ready.finally(() => {
       setPhase("combat");
       battleIntroUntilRef.current = Date.now() + 800;
@@ -15928,6 +15964,7 @@ function ThornieDungeons() {
       criticalAssets.settled.finally(() => warmBattleDeferredAssets(battleAssets));
     });
     })().catch(error => {
+      stageLoading.release();
       setBusy(false);
       setBattleFinishing(false);
       setLog(error?.message === "dungeon_floor_locked"
@@ -19116,6 +19153,7 @@ function LeaderboardScreen({
   const [board, setBoard] = useState("floor"); // "floor"/"cp"/"pet_cp" (character sort), "raid", or "pvp"
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
+  useGlobalLoadingToken(rows === null, "leaderboard.load", "กำลังโหลดอันดับ…");
   const [refreshKey, setRefreshKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
@@ -19292,6 +19330,7 @@ function FriendScreen({
   const [requestsData, setRequestsData] = useState(null);
   const [blocked, setBlocked] = useState(null);
   const [loadError, setLoadError] = useState("");
+  useGlobalLoadingToken(friends === null && !loadError, "friends.load", "กำลังโหลดรายชื่อเพื่อน…");
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -20048,6 +20087,7 @@ function GuildScreen({
   const e = React.createElement;
   const url = serverUrl || DEFAULT_SERVER_URL;
   const [myGuild, setMyGuild] = useState(undefined); // undefined=loading, null=none, object=profile
+  useGlobalLoadingToken(myGuild === undefined, "guild.load", "กำลังโหลดข้อมูลกิลด์…");
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
@@ -20518,6 +20558,7 @@ function RaidScreen({
 }) {
   const [status, setStatus] = useState(null);
   const [error, setError] = useState(null);
+  useGlobalLoadingToken(!status && !error, "raid.load", "กำลังโหลดข้อมูล Raid…");
   const [attacking, setAttacking] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [toast, setToast] = useState(null);
@@ -21635,6 +21676,7 @@ function ArenaV2Screen({
     setBattleIntro({ matchId, startedAt: Date.now(), activated: false, leaving: false });
     const gate = createArenaV2PreloadGate(10000);
     preloadGateRef.current = gate;
+    const matchLoading = GLOBAL_LOADING.begin({ key: "arena.match", label: "กำลังเข้าสู่ Arena…" });
     try {
       await gate.promise;
       setPreloadState("ready");
@@ -21657,6 +21699,7 @@ function ArenaV2Screen({
       void Promise.resolve(syncArenaStatus()).catch(() => {});
       return true;
     } catch (error) {
+      matchLoading.release();
       setBattleIntro(null);
       // Keep a valid prepared match on screen. The ticket boundary is activate,
       // so retrying presentation with this same ID cannot consume a second ticket.
@@ -21664,6 +21707,7 @@ function ArenaV2Screen({
       setError(error?.message || arenaHumanError("arena_preload_failed", "", "โหลด Arena presentation ไม่สำเร็จ"));
       return false;
     } finally {
+      matchLoading.release();
       if (preloadGateRef.current === gate) preloadGateRef.current = null;
       if (preparedFlowRef.current === matchId) preparedFlowRef.current = "";
       setBusy(false);
@@ -21681,7 +21725,7 @@ function ArenaV2Screen({
   }, [adoptArenaMatch, beginPreparedArenaMatch, characterId, url]);
   const refresh = React.useCallback(async () => {
     setError("");
-    const [s, o, resumed] = await Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]);
+    const [s, o, resumed] = await GLOBAL_LOADING.run({ key: "arena.hub", label: "กำลังโหลด Arena…" }, () => Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]));
     if (s?.error) { setError(s.error); return; }
     setStatus(s); setSetup(current => s.setup || current); setOpponents(o?.opponents || []); setRefreshAvailableAt(o?.refreshAvailableAt || "");
     onHudChange?.(s?.unlocked === false ? null : {
@@ -21718,8 +21762,8 @@ function ArenaV2Screen({
   React.useEffect(() => () => preloadGateRef.current?.cancel(), []);
   const loadTab = async next => {
     setTab(next); setError("");
-    if (next === "history") setHistory(await cloudGetArenaV2History(url, characterId));
-    if (next === "ranking") setRanking((await cloudGetArenaV2Ranking(url, characterId))?.rows || []);
+    if (next === "history") setHistory(await GLOBAL_LOADING.run({ key: "arena.history", label: "กำลังโหลดประวัติ Arena…" }, () => cloudGetArenaV2History(url, characterId)));
+    if (next === "ranking") setRanking((await GLOBAL_LOADING.run({ key: "arena.ranking", label: "กำลังโหลดอันดับ Arena…" }, () => cloudGetArenaV2Ranking(url, characterId)))?.rows || []);
   };
   const openReplay = async matchId => {
     if (!matchId || replayBusyId) return;
@@ -21761,7 +21805,7 @@ function ArenaV2Screen({
     if (busy) return; setBusy(true); setError("");
     currentActionRef.current = "prepare_match";
     try {
-      const prepared = await cloudPrepareArenaV2Match(url, characterId, opponentKey, source);
+      const prepared = await GLOBAL_LOADING.run({ key: "arena.prepare", label: "กำลังเตรียมการต่อสู้…" }, () => cloudPrepareArenaV2Match(url, characterId, opponentKey, source));
       if (prepared?.error) throw new Error(arenaHumanError(prepared.error, prepared.reason, "เตรียม Arena match ไม่สำเร็จ"));
       if (arenaMatchIsPrepared(prepared?.match)) {
         await beginPreparedArenaMatch(prepared.match);
@@ -22240,6 +22284,8 @@ function MailboxScreen({
   onBack
 }) {
   const [mails, setMails] = useState(null);
+  const mailboxLoadedOnceRef = React.useRef(false);
+  useGlobalLoadingToken(mails === null && !mailboxLoadedOnceRef.current, "mailbox.load", "กำลังโหลดกล่องจดหมาย…");
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState({});
   const [mailError, setMailError] = useState("");
@@ -22254,6 +22300,7 @@ function MailboxScreen({
     setMailError("");
     setMails(null);
     cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
+      mailboxLoadedOnceRef.current = true;
       if (!res || res.error) {
         setMailError(mailboxErrorText(res && res.error));
         setMails([]);
@@ -22268,6 +22315,7 @@ function MailboxScreen({
         return next;
       });
     }).catch(() => {
+      mailboxLoadedOnceRef.current = true;
       setMailError(mailboxErrorText("network_error"));
       setMails([]);
     });

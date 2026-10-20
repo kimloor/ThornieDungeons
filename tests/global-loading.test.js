@@ -187,3 +187,49 @@ test("Global Loading: build wiring, overlay accessibility, mount and Character S
   assert.match(app, /GLOBAL_LOADING\.begin\(\{ key: "character\.enter"/);
   assert.match(app, /finally \{\s*enterLoading\.release\(\);\s*\}\s*if \(res\.error\)/, "release must precede the existing error handling");
 });
+
+test("Global Loading V2: every wired target begins a token and releases on all exits", () => {
+  const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const app = read("src/ui/App.js");
+  const comp = read("src/ui/components.js");
+  const manifest = read("src/assets/manifest.js");
+  // App-level flows
+  assert.match(app, /GLOBAL_LOADING\.begin\(\{ key: "app\.bootstrap"/);
+  assert.match(app, /\} finally \{\s*bootLoading\.release\(\);\s*\}/);
+  assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "character\.create"/);
+  assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "character\.delete"/);
+  assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "character\.switch"[^)]*\)[^;]*flushCurrentCharacter/);
+  // logout: token released before any alert
+  const logout = app.slice(app.indexOf("async function logout()"), app.indexOf("async function requireLoginAfterSecurityChange"));
+  assert.ok(logout.indexOf("logoutLoading.release()") > -1 && logout.indexOf("logoutLoading.release()") < logout.indexOf("window.alert"));
+  // dungeon entry: released on success, failure, and resume-restore fallback
+  const stage = app.slice(app.indexOf("function enterStage("), app.indexOf("function buildPetCombatUnit("));
+  assert.match(stage, /GLOBAL_LOADING\.begin\(\{ key: "dungeon\.enter"/);
+  assert.equal((stage.match(/stageLoading\.release\(\)/g) || []).length, 4);
+  assert.match(stage, /\.catch\(error => \{\s*stageLoading\.release\(\);/);
+  assert.match(stage, /preloadBattleCriticalAssets\(battleAssets, \(current, total\) => stageLoading\.update/);
+  // the build patch for the combat-entry handler must keep matching
+  assert.match(stage, /criticalAssets\.ready\.finally\(\(\) => \{\s*setPhase\("combat"\);/);
+  // real preload counts only
+  assert.match(manifest, /onProgress\(done, unique\.length\)/);
+  // screen-level initial loads
+  ["friends.load", "guild.load", "leaderboard.load", "raid.load", "mailbox.load"].forEach(key => {
+    assert.ok(comp.includes(`useGlobalLoadingToken(`) && comp.includes(`"${key}"`), key);
+  });
+  ["arena.hub", "arena.history", "arena.ranking", "arena.prepare"].forEach(key => assert.ok(comp.includes(`key: "${key}"`), key));
+  // arena match: released before the error state is set and again in finally
+  const arena = comp.slice(comp.indexOf("const matchLoading = GLOBAL_LOADING.begin"), comp.indexOf("const syncArenaMatch"));
+  assert.ok(arena.indexOf("matchLoading.release()") < arena.indexOf("setError(error?.message"));
+  assert.equal((arena.match(/matchLoading\.release\(\)/g) || []).length, 2);
+});
+
+test("Global Loading V2: hooks that read state are declared after that state (no TDZ at render)", () => {
+  const comp = fs.readFileSync(path.join(__dirname, "..", "src/ui/components.js"), "utf8");
+  const friends = comp.indexOf('useGlobalLoadingToken(friends === null && !loadError');
+  assert.ok(friends > comp.indexOf("const [loadError, setLoadError] = useState(\"\")"));
+  assert.ok(friends > comp.indexOf("const [friends, setFriends] = useState(null)"));
+  const raid = comp.indexOf('useGlobalLoadingToken(!status && !error, "raid.load"');
+  assert.ok(raid > comp.indexOf("const [status, setStatus] = useState(null);"));
+  const lb = comp.indexOf('useGlobalLoadingToken(rows === null, "leaderboard.load"');
+  assert.ok(lb > comp.indexOf("const [rows, setRows] = useState(null);"));
+});

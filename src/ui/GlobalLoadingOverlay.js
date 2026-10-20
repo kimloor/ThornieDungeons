@@ -38,6 +38,16 @@ function useGlobalLoadingSnapshot(manager) {
   return snapshot;
 }
 
+// Holds a blocking token while `active` is true; released on inactive/unmount.
+// Screens use it for their initial data load only (never for in-screen actions or polling).
+function useGlobalLoadingToken(active, key, label) {
+  useEffect(() => {
+    if (!active) return undefined;
+    const token = GLOBAL_LOADING.begin({ key, label });
+    return () => token.release();
+  }, [active, key, label]);
+}
+
 function GlobalLoadingOverlay({ manager }) {
   const source = manager || GLOBAL_LOADING;
   const snap = useGlobalLoadingSnapshot(source);

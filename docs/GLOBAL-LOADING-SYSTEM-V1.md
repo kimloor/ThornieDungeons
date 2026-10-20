@@ -128,10 +128,19 @@ Verify:
 
 ## 10. Implementation status
 
-PR 1 (`feat/global-loading-v1`):
-- `src/state/globalLoading.js`: `createGlobalLoadingManager` / `GLOBAL_LOADING` (token ownership, 150 ms show delay, 300 ms minimum visible, stale-owner failsafe 60 s, `run()` helper that releases before rethrowing, label sanitizing, determinate progress only from real counts);
-- `src/ui/GlobalLoadingOverlay.js`: single shared overlay (CSS fallback emblem, `role="status"`, `aria-busy`, progressbar only when determinate, safe-area aware, reduced-motion aware, z-index 2100 below the runtime error popup);
-- mounted once in `tail.html` inside `GlobalGameErrorBoundary`;
-- integrated target #2 (Character Select -> game bootstrap): `enterCharacterSlot` holds a token only around `cloudEnterCharacter` and releases it before the existing error handling.
+PR 1 (#125, merged): manager `src/state/globalLoading.js`, overlay `src/ui/GlobalLoadingOverlay.js`, single mount in `tail.html`, Character Select -> game (`enterCharacterSlot`).
 
-Not yet integrated (follow-up PRs, one target group each, Owner review between): Login -> Character Select (currently a presentation-only transition with its own busy state), Dungeon/Arena entry, Phaser preload (determinate), cloud restore/checkpoint, character switch/logout. G14 artwork replaces the CSS emblem later.
+PR 2 (`feat/global-loading-v2`): remaining targets, Owner decision 2026-10-20 (Login keeps its own `authBusy` + departing transition and is intentionally NOT wired):
+
+| Target | Key | Wiring |
+| --- | --- | --- |
+| App bootstrap / session restore / config | `app.bootstrap` | token for the whole bootstrap IIFE, `finally` release |
+| Create / delete character | `character.create` / `character.delete` | `GLOBAL_LOADING.run` around the cloud call |
+| Back to Character Select | `character.switch` | `run` around the flush; released before the existing alert |
+| Logout | `account.logout` | token around flush + `cloudLogout`; released before any alert |
+| Dungeon entry (new + resume) | `dungeon.enter` | begin at `enterStage`, label switches to resume; released on combat entry, on error (`catch`), and on the resume-restore fallback; determinate progress from real critical-asset counts (`preloadBattleCriticalAssets(…, onProgress)`) |
+| Friends / Guild / Leaderboard / Raid / Mailbox | `friends.load` / `guild.load` / `leaderboard.load` / `raid.load` / `mailbox.load` | `useGlobalLoadingToken(active, …)` for the screen's initial data load only (Mailbox: first load only; reloads after claim/delete stay inline) |
+| Arena Hub entry, history, ranking | `arena.hub` / `arena.history` / `arena.ranking` | `run` around the fetches |
+| Arena prepare / enter match | `arena.prepare` / `arena.match` | `run` around prepare; token around the existing preload gate, released before `setError` and in `finally` (gate itself unchanged) |
+
+Intentionally still inline: chat/DM polling, autosave/sync, in-screen actions (buy/sell/equip/craft/gacha/stats/skills/guild actions/friend actions/raid attack), Arena player card. G14 artwork replaces the CSS emblem later.
