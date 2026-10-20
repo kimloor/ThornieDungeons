@@ -84,8 +84,13 @@ function preloadAssetImage(src) {
   return IMAGE_PRELOAD_CACHE.get(src);
 }
 
-function preloadAssetImages(sources, timeoutMs = 0) {
-  const loading = Promise.all([...new Set((sources || []).filter(Boolean))].map(preloadAssetImage));
+function preloadAssetImages(sources, timeoutMs = 0, onProgress = null) {
+  const unique = [...new Set((sources || []).filter(Boolean))];
+  let done = 0;
+  const loading = Promise.all(unique.map(src => preloadAssetImage(src).then(() => {
+    done += 1;
+    if (typeof onProgress === "function") { try { onProgress(done, unique.length); } catch (_) { /* progress is cosmetic */ } }
+  })));
   return timeoutMs ? Promise.race([loading, new Promise(resolve => setTimeout(resolve, timeoutMs))]) : loading;
 }
 
@@ -123,8 +128,8 @@ function battleEncounterSources({ equipped = {}, pet = null, monsters = [] } = {
   return sources;
 }
 
-function preloadBattleCriticalAssets(encounter) {
-  const settled = preloadAssetImages(battleEncounterSources(encounter, false));
+function preloadBattleCriticalAssets(encounter, onProgress = null) {
+  const settled = preloadAssetImages(battleEncounterSources(encounter, false), 0, onProgress);
   const ready = Promise.race([
     settled,
     new Promise(resolve => setTimeout(resolve, 1200))

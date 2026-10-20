@@ -176,7 +176,7 @@ The successor roadmap starts here, after Ver 1.1.0 gate acceptance.
 One PR per component, in order, each stopping for Owner approval: PR-C Error catalog (code → Thai message) → PR-B API client policy table (timeout/retry/dedupe/session handling) → PR-A Server Operation Manager (requestId reuse on retry, optimistic/rollback, per-character queue, lock registry) → PR-D Overlay shell (migrate Inventory/Craft/Mail/Guild one per commit). Boundary with WAVE 1: Global Loading = full-screen blocking only; Server Operation Manager = inline pending; never both for one action. Contract doc: `CLIENT-SYSTEMS-V1.md` (to be written).
 
 ### WAVE 1 — Global Loading System V1
-**Status: IN PROGRESS — PR 1 (core + overlay + Character Select integration) open for Owner review**
+**Status: IN PROGRESS — PR 1 merged (#125); PR 2 (all remaining targets) open for Owner review**
 **Risk: MEDIUM**
 **Contract:** `GLOBAL-LOADING-SYSTEM-V1.md`
 

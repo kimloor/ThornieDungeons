@@ -1468,6 +1468,7 @@ function LeaderboardScreen({
   const [board, setBoard] = useState("floor"); // "floor"/"cp"/"pet_cp" (character sort), "raid", or "pvp"
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
+  useGlobalLoadingToken(rows === null, "leaderboard.load", "กำลังโหลดอันดับ…", () => handleRefresh());
   const [refreshKey, setRefreshKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
@@ -1644,6 +1645,7 @@ function FriendScreen({
   const [requestsData, setRequestsData] = useState(null);
   const [blocked, setBlocked] = useState(null);
   const [loadError, setLoadError] = useState("");
+  useGlobalLoadingToken(friends === null && !loadError, "friends.load", "กำลังโหลดรายชื่อเพื่อน…", () => loadAll());
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -2400,6 +2402,7 @@ function GuildScreen({
   const e = React.createElement;
   const url = serverUrl || DEFAULT_SERVER_URL;
   const [myGuild, setMyGuild] = useState(undefined); // undefined=loading, null=none, object=profile
+  useGlobalLoadingToken(myGuild === undefined, "guild.load", "กำลังโหลดข้อมูลกิลด์…", () => loadMyGuild());
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
@@ -2870,6 +2873,7 @@ function RaidScreen({
 }) {
   const [status, setStatus] = useState(null);
   const [error, setError] = useState(null);
+  useGlobalLoadingToken(!status && !error, "raid.load", "กำลังโหลดข้อมูล Raid…", () => load());
   const [attacking, setAttacking] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [toast, setToast] = useState(null);
@@ -3987,6 +3991,7 @@ function ArenaV2Screen({
     setBattleIntro({ matchId, startedAt: Date.now(), activated: false, leaving: false });
     const gate = createArenaV2PreloadGate(10000);
     preloadGateRef.current = gate;
+    const matchLoading = GLOBAL_LOADING.begin({ key: "arena.match", label: "กำลังเข้าสู่ Arena…" });
     try {
       await gate.promise;
       setPreloadState("ready");
@@ -4009,6 +4014,7 @@ function ArenaV2Screen({
       void Promise.resolve(syncArenaStatus()).catch(() => {});
       return true;
     } catch (error) {
+      matchLoading.release();
       setBattleIntro(null);
       // Keep a valid prepared match on screen. The ticket boundary is activate,
       // so retrying presentation with this same ID cannot consume a second ticket.
@@ -4016,6 +4022,7 @@ function ArenaV2Screen({
       setError(error?.message || arenaHumanError("arena_preload_failed", "", "โหลด Arena presentation ไม่สำเร็จ"));
       return false;
     } finally {
+      matchLoading.release();
       if (preloadGateRef.current === gate) preloadGateRef.current = null;
       if (preparedFlowRef.current === matchId) preparedFlowRef.current = "";
       setBusy(false);
@@ -4033,7 +4040,7 @@ function ArenaV2Screen({
   }, [adoptArenaMatch, beginPreparedArenaMatch, characterId, url]);
   const refresh = React.useCallback(async () => {
     setError("");
-    const [s, o, resumed] = await Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]);
+    const [s, o, resumed] = await GLOBAL_LOADING.run({ key: "arena.hub", label: "กำลังโหลด Arena…", onRetry: () => { refresh().catch(() => setError("โหลด Arena ไม่สำเร็จ")); } }, () => Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]));
     if (s?.error) { setError(s.error); return; }
     setStatus(s); setSetup(current => s.setup || current); setOpponents(o?.opponents || []); setRefreshAvailableAt(o?.refreshAvailableAt || "");
     onHudChange?.(s?.unlocked === false ? null : {
@@ -4070,8 +4077,8 @@ function ArenaV2Screen({
   React.useEffect(() => () => preloadGateRef.current?.cancel(), []);
   const loadTab = async next => {
     setTab(next); setError("");
-    if (next === "history") setHistory(await cloudGetArenaV2History(url, characterId));
-    if (next === "ranking") setRanking((await cloudGetArenaV2Ranking(url, characterId))?.rows || []);
+    if (next === "history") setHistory(await GLOBAL_LOADING.run({ key: "arena.history", label: "กำลังโหลดประวัติ Arena…", onRetry: () => loadTab(next) }, () => cloudGetArenaV2History(url, characterId)));
+    if (next === "ranking") setRanking((await GLOBAL_LOADING.run({ key: "arena.ranking", label: "กำลังโหลดอันดับ Arena…", onRetry: () => loadTab(next) }, () => cloudGetArenaV2Ranking(url, characterId)))?.rows || []);
   };
   const openReplay = async matchId => {
     if (!matchId || replayBusyId) return;
@@ -4113,7 +4120,7 @@ function ArenaV2Screen({
     if (busy) return; setBusy(true); setError("");
     currentActionRef.current = "prepare_match";
     try {
-      const prepared = await cloudPrepareArenaV2Match(url, characterId, opponentKey, source);
+      const prepared = await GLOBAL_LOADING.run({ key: "arena.prepare", label: "กำลังเตรียมการต่อสู้…" }, () => cloudPrepareArenaV2Match(url, characterId, opponentKey, source));
       if (prepared?.error) throw new Error(arenaHumanError(prepared.error, prepared.reason, "เตรียม Arena match ไม่สำเร็จ"));
       if (arenaMatchIsPrepared(prepared?.match)) {
         await beginPreparedArenaMatch(prepared.match);
@@ -4592,6 +4599,8 @@ function MailboxScreen({
   onBack
 }) {
   const [mails, setMails] = useState(null);
+  const mailboxLoadedOnceRef = React.useRef(false);
+  useGlobalLoadingToken(mails === null && !mailboxLoadedOnceRef.current, "mailbox.load", "กำลังโหลดกล่องจดหมาย…", () => load());
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState({});
   const [mailError, setMailError] = useState("");
@@ -4606,6 +4615,7 @@ function MailboxScreen({
     setMailError("");
     setMails(null);
     cloudGetMailbox(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
+      mailboxLoadedOnceRef.current = true;
       if (!res || res.error) {
         setMailError(mailboxErrorText(res && res.error));
         setMails([]);
@@ -4620,6 +4630,7 @@ function MailboxScreen({
         return next;
       });
     }).catch(() => {
+      mailboxLoadedOnceRef.current = true;
       setMailError(mailboxErrorText("network_error"));
       setMails([]);
     });

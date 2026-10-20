@@ -265,6 +265,8 @@ function ThornieDungeons() {
   }, [phase]);
   useEffect(() => {
     (async () => {
+    const bootLoading = GLOBAL_LOADING.begin({ key: "app.bootstrap", label: "กำลังเตรียมเกม…", onRetry: () => window.location.reload() });
+    try {
       
       // โหลด R2 Asset Manifest ก่อนเริ่มระบบเกม
       try {
@@ -342,6 +344,9 @@ function ThornieDungeons() {
         const cachedJunkInfo = await loadCachedJunkInfo();
         if (cachedJunkInfo) applyJunkInfo(cachedJunkInfo);
       }
+    } finally {
+      bootLoading.release();
+    }
     })();
   }, []);
   const persistenceContextFor = useCallback(characterId => makePersistenceContext({
@@ -662,7 +667,7 @@ function ThornieDungeons() {
         message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
       };
     }
-    const res = await cloudCreateCharacter(cred.url, slotIndex, name);
+    const res = await GLOBAL_LOADING.run({ key: "character.create", label: "กำลังสร้างตัวละคร…" }, () => cloudCreateCharacter(cred.url, slotIndex, name));
     if (res.error === "name_taken") return {
       ok: false,
       message: "ชื่อนี้มีตัวละครอื่นในบัญชีใช้อยู่แล้ว ลองชื่ออื่นนะคะ"
@@ -690,7 +695,7 @@ function ThornieDungeons() {
     };
   }
   async function handleDeleteCharacter(slotIndex) {
-    const res = await cloudDeleteCharacter(cred.url, slotIndex);
+    const res = await GLOBAL_LOADING.run({ key: "character.delete", label: "กำลังลบตัวละคร…" }, () => cloudDeleteCharacter(cred.url, slotIndex));
     if (res.error) {
       console.error("[ThornieDungeons] deleteCharacter failed:", res.error);
       return;
@@ -911,7 +916,8 @@ function ThornieDungeons() {
     // Fold any in-flight state back into the account before leaving, same as a normal save,
     // so switching characters never loses the last few seconds of progress.
     const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
-    if (!(await flushCurrentCharacter())) {
+    const flushedBeforeLeave = await GLOBAL_LOADING.run({ key: "character.switch", label: "กำลังบันทึกข้อมูล…" }, () => flushCurrentCharacter());
+    if (!flushedBeforeLeave) {
       window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง");
       return false;
     }
@@ -932,11 +938,19 @@ function ThornieDungeons() {
     // entirely should never skip the final sync, even though every mutation already
     // persists immediately on its own.
     const context = save?.characterId ? persistenceContextFor(save.characterId) : null;
-    if (!(await flushCurrentCharacter())) {
+    const logoutLoading = GLOBAL_LOADING.begin({ key: "account.logout", label: "กำลังออกจากระบบ…" });
+    let flushedBeforeLogout = false;
+    let logoutResult = null;
+    try {
+      flushedBeforeLogout = await flushCurrentCharacter();
+      if (flushedBeforeLogout) logoutResult = await cloudLogout(cred.url || DEFAULT_SERVER_URL);
+    } finally {
+      logoutLoading.release();
+    }
+    if (!flushedBeforeLogout) {
       window.alert("ยังบันทึกข้อมูลไป Cloud ไม่สำเร็จ จึงยังไม่ออกจากระบบ กรุณาลองใหม่อีกครั้ง");
       return false;
     }
-    const logoutResult = await cloudLogout(cred.url || DEFAULT_SERVER_URL);
     if (logoutResult?.error === "network_error" || logoutResult?.error === "server_error") {
       window.alert("ยังเชื่อมต่อ Server เพื่อออกจากระบบไม่ได้ Session ยังไม่ถูกลบ กรุณาลองใหม่");
       return false;
@@ -1369,12 +1383,14 @@ function ThornieDungeons() {
     driveCoreBattle(state, command);
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
+    const stageLoading = GLOBAL_LOADING.begin({ key: "dungeon.enter", label: "กำลังเข้าดันเจี้ยน…" });
     void (async () => {
     const allowResume = options.allowResume !== false;
     const resumableCheckpoint = allowResume && resumeBattle?.serverContext && Number(resumeBattle.floor) === Number(floorNum)
       ? resumeBattle
       : null;
     let battleAuthorization = null;
+    if (resumableCheckpoint) stageLoading.update({ label: "กำลังกู้คืนการต่อสู้…" });
     setBusy(true);
     if (!resumableCheckpoint) {
       if (resumeBattle?.battleId) {
@@ -1451,6 +1467,7 @@ function ThornieDungeons() {
       catch (e) {
         await cloudClearBattleCheckpoint(cred.url, save.characterId, resumableCheckpoint.battleId);
         setResumeBattle(null);
+        stageLoading.release();
         setBusy(false);
         enterStage(floorNum, carryPlayer, { ...options, allowResume: false });
         return;
@@ -1497,7 +1514,11 @@ function ThornieDungeons() {
     const encounterLog = boss ? `A ${boss.name} blocks the way!` : displayMonsters.length > 1 ? `${displayMonsters.length} monsters appear: ${displayMonsters.map(m => m.name).join(", ")}!` : `A wild ${displayMonsters[0].name} appears!`;
     setLogState([encounterLog, ...initialBattle.log.slice().reverse().map(entry => entry.text)]);
     const battleAssets = { equipped: save?.equipped || {}, pet: initialPet, monsters: displayMonsters };
-    const criticalAssets = preloadBattleCriticalAssets(battleAssets);
+    stageLoading.update({ label: "กำลังโหลดฉากต่อสู้…" });
+    const criticalAssets = preloadBattleCriticalAssets(battleAssets, (current, total) => stageLoading.update({ current, total }));
+    // Registered before the combat-entry handler so the overlay is released in the same tick,
+    // ahead of setPhase("combat"); build.js patches the handler below by exact text.
+    criticalAssets.ready.then(() => stageLoading.release(), () => stageLoading.release());
     criticalAssets.ready.finally(() => {
       setPhase("combat");
       setTimeout(() => driveCoreBattle(initialBattle), 0);
@@ -1505,6 +1526,7 @@ function ThornieDungeons() {
       criticalAssets.settled.finally(() => warmBattleDeferredAssets(battleAssets));
     });
     })().catch(error => {
+      stageLoading.release();
       setBusy(false);
       setBattleFinishing(false);
       setLog(error?.message === "dungeon_floor_locked"

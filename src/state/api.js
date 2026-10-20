@@ -26,6 +26,9 @@ const _inFlight = new Map();
 function dedupeKey(url, body) {
   return url + "::" + JSON.stringify(body);
 }
+// Retry buttons must start a fresh request instead of joining a hung one.
+function cloudResetInFlight() { _inFlight.clear(); }
+const API_GET_TIMEOUT_MS = 15000; // reads only; POSTs stay single-attempt without a client timeout (non-idempotent)
 function withDedupe(key, fn) {
   if (_inFlight.has(key)) return _inFlight.get(key);
   const p = fn().finally(() => _inFlight.delete(key));
@@ -33,12 +36,14 @@ function withDedupe(key, fn) {
   return p;
 }
 
-async function cloudGet(url, params, { headers = {} } = {}) {
+async function cloudGet(url, params, { headers = {}, timeoutMs = API_GET_TIMEOUT_MS } = {}) {
   const qs = new URLSearchParams(params).toString();
   const fullUrl = `${url}?${qs}`;
   return withDedupe(dedupeKey(fullUrl, headers), () => withRetry(async () => {
+    const controller = timeoutMs > 0 && typeof AbortController === "function" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
-      const res = await fetch(fullUrl, { headers });
+      const res = await fetch(fullUrl, controller ? { headers, signal: controller.signal } : { headers });
       const data = await res.json();
       if (!res.ok) return { ...data, error: data.error || (res.status >= 500 ? "server_error" : "request_failed"), status: res.status };
       return data;
@@ -46,6 +51,8 @@ async function cloudGet(url, params, { headers = {} } = {}) {
       return {
         error: "network_error"
       };
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }));
 }
