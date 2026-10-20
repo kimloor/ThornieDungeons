@@ -1468,7 +1468,7 @@ function LeaderboardScreen({
   const [board, setBoard] = useState("floor"); // "floor"/"cp"/"pet_cp" (character sort), "raid", or "pvp"
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
-  useGlobalLoadingToken(rows === null, "leaderboard.load", "กำลังโหลดอันดับ…");
+  useGlobalLoadingToken(rows === null, "leaderboard.load", "กำลังโหลดอันดับ…", () => handleRefresh());
   const [refreshKey, setRefreshKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
@@ -1645,7 +1645,7 @@ function FriendScreen({
   const [requestsData, setRequestsData] = useState(null);
   const [blocked, setBlocked] = useState(null);
   const [loadError, setLoadError] = useState("");
-  useGlobalLoadingToken(friends === null && !loadError, "friends.load", "กำลังโหลดรายชื่อเพื่อน…");
+  useGlobalLoadingToken(friends === null && !loadError, "friends.load", "กำลังโหลดรายชื่อเพื่อน…", () => loadAll());
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -2402,7 +2402,7 @@ function GuildScreen({
   const e = React.createElement;
   const url = serverUrl || DEFAULT_SERVER_URL;
   const [myGuild, setMyGuild] = useState(undefined); // undefined=loading, null=none, object=profile
-  useGlobalLoadingToken(myGuild === undefined, "guild.load", "กำลังโหลดข้อมูลกิลด์…");
+  useGlobalLoadingToken(myGuild === undefined, "guild.load", "กำลังโหลดข้อมูลกิลด์…", () => loadMyGuild());
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
@@ -2873,7 +2873,7 @@ function RaidScreen({
 }) {
   const [status, setStatus] = useState(null);
   const [error, setError] = useState(null);
-  useGlobalLoadingToken(!status && !error, "raid.load", "กำลังโหลดข้อมูล Raid…");
+  useGlobalLoadingToken(!status && !error, "raid.load", "กำลังโหลดข้อมูล Raid…", () => load());
   const [attacking, setAttacking] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [toast, setToast] = useState(null);
@@ -4040,7 +4040,7 @@ function ArenaV2Screen({
   }, [adoptArenaMatch, beginPreparedArenaMatch, characterId, url]);
   const refresh = React.useCallback(async () => {
     setError("");
-    const [s, o, resumed] = await GLOBAL_LOADING.run({ key: "arena.hub", label: "กำลังโหลด Arena…" }, () => Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]));
+    const [s, o, resumed] = await GLOBAL_LOADING.run({ key: "arena.hub", label: "กำลังโหลด Arena…", onRetry: () => { refresh().catch(() => setError("โหลด Arena ไม่สำเร็จ")); } }, () => Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]));
     if (s?.error) { setError(s.error); return; }
     setStatus(s); setSetup(current => s.setup || current); setOpponents(o?.opponents || []); setRefreshAvailableAt(o?.refreshAvailableAt || "");
     onHudChange?.(s?.unlocked === false ? null : {
@@ -4077,8 +4077,8 @@ function ArenaV2Screen({
   React.useEffect(() => () => preloadGateRef.current?.cancel(), []);
   const loadTab = async next => {
     setTab(next); setError("");
-    if (next === "history") setHistory(await GLOBAL_LOADING.run({ key: "arena.history", label: "กำลังโหลดประวัติ Arena…" }, () => cloudGetArenaV2History(url, characterId)));
-    if (next === "ranking") setRanking((await GLOBAL_LOADING.run({ key: "arena.ranking", label: "กำลังโหลดอันดับ Arena…" }, () => cloudGetArenaV2Ranking(url, characterId)))?.rows || []);
+    if (next === "history") setHistory(await GLOBAL_LOADING.run({ key: "arena.history", label: "กำลังโหลดประวัติ Arena…", onRetry: () => loadTab(next) }, () => cloudGetArenaV2History(url, characterId)));
+    if (next === "ranking") setRanking((await GLOBAL_LOADING.run({ key: "arena.ranking", label: "กำลังโหลดอันดับ Arena…", onRetry: () => loadTab(next) }, () => cloudGetArenaV2Ranking(url, characterId)))?.rows || []);
   };
   const openReplay = async matchId => {
     if (!matchId || replayBusyId) return;
@@ -4600,7 +4600,7 @@ function MailboxScreen({
 }) {
   const [mails, setMails] = useState(null);
   const mailboxLoadedOnceRef = React.useRef(false);
-  useGlobalLoadingToken(mails === null && !mailboxLoadedOnceRef.current, "mailbox.load", "กำลังโหลดกล่องจดหมาย…");
+  useGlobalLoadingToken(mails === null && !mailboxLoadedOnceRef.current, "mailbox.load", "กำลังโหลดกล่องจดหมาย…", () => load());
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState({});
   const [mailError, setMailError] = useState("");

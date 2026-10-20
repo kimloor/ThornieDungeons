@@ -265,7 +265,7 @@ function ThornieDungeons() {
   }, [phase]);
   useEffect(() => {
     (async () => {
-    const bootLoading = GLOBAL_LOADING.begin({ key: "app.bootstrap", label: "กำลังเตรียมเกม…" });
+    const bootLoading = GLOBAL_LOADING.begin({ key: "app.bootstrap", label: "กำลังเตรียมเกม…", onRetry: () => window.location.reload() });
     try {
       
       // โหลด R2 Asset Manifest ก่อนเริ่มระบบเกม

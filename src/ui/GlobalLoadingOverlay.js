@@ -18,6 +18,13 @@ const GLOBAL_LOADING_STYLE = `
 .gl-rune { position: absolute; inset: 29px; background: #FFD166; transform: rotate(45deg); border-radius: 3px; opacity: .85; animation: gl-pulse 1.6s ease-in-out infinite; }
 .gl-label { margin: 0; font: 800 15px/1.35 'Baloo 2', sans-serif; color: #FFD166; letter-spacing: .02em; }
 .gl-toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); transform: translateX(-50%); z-index: 2101; max-width: min(88vw, 380px); padding: 10px 14px; border-radius: 12px; background: rgba(30,20,56,.96); border: 1px solid rgba(255,209,102,.45); color: #F3EEFF; font: 700 12px/1.4 'Baloo 2', sans-serif; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.45); animation: gl-fade-in .18s ease-out both; }
+.gl-toast-text { margin: 0; }
+.gl-toast-status { margin: 6px 0 0; font-size: 11px; color: #B9AEDD; }
+.gl-toast-status.ok { color: #7FE3A0; }
+.gl-toast-status.down { color: #FF8F8F; }
+.gl-toast-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.gl-toast-btn { min-height: 36px; padding: 6px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: #F3EEFF; font: 800 12px/1 'Baloo 2', sans-serif; cursor: pointer; }
+.gl-toast-btn.primary { background: linear-gradient(90deg, #FFD166, #FFA94D); color: #2A1B4D; border-color: transparent; }
 .gl-progress { width: 100%; height: 8px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
 .gl-progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #FFD166, #FFA94D); transition: width .2s ease-out; }
 .gl-progress-text { margin: -6px 0 0; font: 700 11px/1 'Baloo 2', sans-serif; color: #B9AEDD; font-variant-numeric: tabular-nums; }
@@ -41,23 +48,61 @@ function useGlobalLoadingSnapshot(manager) {
 
 // Holds a blocking token while `active` is true; released on inactive/unmount.
 // Screens use it for their initial data load only (never for in-screen actions or polling).
-function useGlobalLoadingToken(active, key, label) {
+// `onRetry` (optional) must be idempotent (a reload): it powers the Retry button shown if the
+// failsafe fires. A retry re-acquires the token so the overlay reflects the new attempt.
+function useGlobalLoadingToken(active, key, label, onRetry) {
+  const retryRef = useRef(onRetry);
+  retryRef.current = onRetry;
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!active) return undefined;
-    const token = GLOBAL_LOADING.begin({ key, label });
+    const token = GLOBAL_LOADING.begin({
+      key,
+      label,
+      onRetry: () => {
+        setAttempt(n => n + 1);
+        if (typeof retryRef.current === "function") retryRef.current();
+      }
+    });
     return () => token.release();
-  }, [active, key, label]);
+  }, [active, key, label, attempt]);
 }
 
 function GlobalLoadingOverlay({ manager }) {
   const source = manager || GLOBAL_LOADING;
   const snap = useGlobalLoadingSnapshot(source);
-  const notice = snap.staleNotice ? /*#__PURE__*/React.createElement("div", {
+  const n = snap.staleNotice;
+  const connectionText = !n ? "" : n.connection === "checking" ? "กำลังตรวจสอบการเชื่อมต่อ Server…"
+    : n.connection === "ok" ? "Server ตอบสนองปกติ (" + n.ms + " ms)" + (n.canRetry ? "" : " — งานนี้อาจยังประมวลผลอยู่ ไม่ควรกดซ้ำ")
+    : n.connection === "down" ? "ติดต่อ Server ไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง" : "";
+  const notice = n ? /*#__PURE__*/React.createElement("div", {
     className: "gl-toast",
     role: "status",
     "aria-live": "polite",
     "data-global-loading-notice": "true"
-  }, /*#__PURE__*/React.createElement("style", null, GLOBAL_LOADING_STYLE), "ใช้เวลานานกว่าปกติ ระบบอาจยังทำงานอยู่เบื้องหลัง หากหน้าไม่คืบหน้าให้ลองอีกครั้ง") : null;
+  }, /*#__PURE__*/React.createElement("style", null, GLOBAL_LOADING_STYLE), /*#__PURE__*/React.createElement("p", {
+    className: "gl-toast-text"
+  }, "ใช้เวลานานกว่าปกติ"), connectionText ? /*#__PURE__*/React.createElement("p", {
+    className: "gl-toast-status " + (n.connection === "ok" || n.connection === "down" ? n.connection : "")
+  }, connectionText) : null, /*#__PURE__*/React.createElement("div", {
+    className: "gl-toast-actions"
+  }, n.canRetry ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "gl-toast-btn primary",
+    onClick: () => source.retryStale()
+  }, "ลองอีกครั้ง") : /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "gl-toast-btn primary",
+    onClick: () => source.recheckConnection()
+  }, "ตรวจสอบการเชื่อมต่อ"), !n.canRetry ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "gl-toast-btn",
+    onClick: () => { if (typeof window !== "undefined") window.location.reload(); }
+  }, "รีเฟรชแอป") : null, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "gl-toast-btn",
+    onClick: () => source.dismissStale()
+  }, "ปิด"))) : null;
   if (!snap.visible) return notice;
   const determinate = snap.mode === "determinate";
   return /*#__PURE__*/React.createElement(React.Fragment, null, notice, /*#__PURE__*/React.createElement("div", {

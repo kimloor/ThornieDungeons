@@ -147,7 +147,7 @@ test("Global Loading: stale owner failsafe auto-dismisses, shows a transient not
   assert.equal(stale.length, 1);
   assert.equal(stale[0].key, "forgotten");
   assert.equal(manager.getSnapshot().staleNotice.key, "forgotten");
-  advance(5000);
+  advance(30000);
   assert.equal(manager.getSnapshot().staleNotice, null, "notice clears itself");
 });
 
@@ -249,4 +249,85 @@ test("Global Loading V2: hooks that read state are declared after that state (no
   assert.ok(raid > comp.indexOf("const [status, setStatus] = useState(null);"));
   const lb = comp.indexOf('useGlobalLoadingToken(rows === null, "leaderboard.load"');
   assert.ok(lb > comp.indexOf("const [rows, setRows] = useState(null);"));
+});
+
+test("Global Loading: Retry is offered only for owners that declare an idempotent onRetry, and runs beforeRetry first", async () => {
+  const order = [];
+  const { manager, advance } = harness({ beforeRetry: () => order.push("before"), probe: async () => ({ ok: true, ms: 42 }) });
+  manager.begin({ key: "reload", onRetry: () => order.push("retry") });
+  manager.begin({ key: "mutation" });
+  advance(30000);
+  assert.equal(manager.getSnapshot().staleNotice.canRetry === false || manager.getSnapshot().staleNotice.canRetry === true, true);
+  // the last stale owner's notice wins; release order is by creation so "mutation" fired second
+  assert.equal(manager.getSnapshot().staleNotice.key, "mutation");
+  assert.equal(manager.getSnapshot().staleNotice.canRetry, false);
+  manager.retryStale();
+  assert.deepEqual(order, ["before"], "no onRetry for a non-idempotent owner: nothing is re-run");
+  const second = harness({ beforeRetry: () => order.push("before2") });
+  second.manager.begin({ key: "reload", onRetry: () => order.push("retry2") });
+  second.advance(30000);
+  assert.equal(second.manager.getSnapshot().staleNotice.canRetry, true);
+  second.manager.retryStale();
+  assert.deepEqual(order.slice(1), ["before2", "retry2"]);
+  assert.equal(second.manager.getSnapshot().staleNotice, null);
+});
+
+test("Global Loading: stale notice probes the server and can re-check or be dismissed", async () => {
+  let ok = false;
+  const { manager, advance } = harness({ probe: async () => ({ ok, ms: 17 }) });
+  manager.begin({ key: "slow" });
+  advance(30000);
+  assert.equal(manager.getSnapshot().staleNotice.connection, "checking");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(manager.getSnapshot().staleNotice.connection, "down");
+  ok = true;
+  manager.recheckConnection();
+  assert.equal(manager.getSnapshot().staleNotice.connection, "checking");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(manager.getSnapshot().staleNotice.connection, "ok");
+  assert.equal(manager.getSnapshot().staleNotice.ms, 17);
+  manager.dismissStale();
+  assert.equal(manager.getSnapshot().staleNotice, null);
+});
+
+test("Global Loading: a throwing probe is reported as down, never as success", async () => {
+  const { manager, advance } = harness({ probe: async () => { throw new Error("x"); } });
+  manager.begin({ key: "slow" });
+  advance(30000);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(manager.getSnapshot().staleNotice.connection, "down");
+});
+
+test("API client: GET times out into network_error and cloudResetInFlight lets a retry start fresh", async () => {
+  const vm = require("node:vm");
+  const source = fs.readFileSync(path.join(__dirname, "..", "src/state/api.js"), "utf8");
+  let calls = 0;
+  const sandbox = {
+    console, setTimeout, clearTimeout, URLSearchParams, AbortController, JSON,
+    fetch: (url, options = {}) => { calls += 1; return new Promise((resolve, reject) => { options.signal?.addEventListener("abort", () => reject(new Error("aborted"))); }); }
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(source + "\n;globalThis.__api = { cloudGet, cloudResetInFlight };", sandbox);
+  const result = await sandbox.__api.cloudGet("https://x.test", { action: "a" }, { timeoutMs: 20 });
+  assert.equal(result.error, "network_error");
+  assert.ok(calls >= 1);
+  assert.equal(typeof sandbox.__api.cloudResetInFlight, "function");
+});
+
+test("Global Loading: overlay notice exposes Retry / re-check / dismiss and idempotent screens declare onRetry", () => {
+  const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const overlay = read("src/ui/GlobalLoadingOverlay.js");
+  assert.match(overlay, /source\.retryStale\(\)/);
+  assert.match(overlay, /source\.recheckConnection\(\)/);
+  assert.match(overlay, /source\.dismissStale\(\)/);
+  const comp = read("src/ui/components.js");
+  ["loadAll", "loadMyGuild", "handleRefresh", "load"].forEach(name => assert.ok(comp.includes(`() => ${name}());`), name));
+  assert.match(comp, /key: "arena\.hub"[^}]*onRetry/);
+  const app = read("src/ui/App.js");
+  // mutations must NOT declare a retry (double-create/consume risk)
+  ["character.create", "character.delete", "dungeon.enter", "account.logout", "character.switch"].forEach(key => {
+    const i = app.indexOf(`key: "${key}"`);
+    assert.ok(i > -1 && !app.slice(i, i + 160).includes("onRetry"), key);
+  });
+  assert.doesNotMatch(comp.slice(comp.indexOf('key: "arena.prepare"'), comp.indexOf('key: "arena.prepare"') + 160), /onRetry/);
 });

@@ -144,3 +144,9 @@ PR 2 (`feat/global-loading-v2`): remaining targets, Owner decision 2026-10-20 (L
 | Arena prepare / enter match | `arena.prepare` / `arena.match` | `run` around prepare; token around the existing preload gate, released before `setError` and in `finally` (gate itself unchanged) |
 
 Intentionally still inline: chat/DM polling, autosave/sync, in-screen actions (buy/sell/equip/craft/gacha/stats/skills/guild actions/friend actions/raid attack), Arena player card. G14 artwork replaces the CSS emblem later.
+
+### Stuck-loading recovery (PR 2 addendum)
+- Failsafe: any owner auto-dismisses after 30 s (per-owner `maxMs`); the overlay is released and a 30 s notice appears.
+- The notice runs a reachability probe against the public config endpoint and shows "Server ตอบสนองปกติ (ms)" / "ติดต่อ Server ไม่ได้".
+- **Retry** (`ลองอีกครั้ง`) exists only for idempotent loads that declare `onRetry`: bootstrap (page reload), Friends, Guild, Leaderboard, Raid, Mailbox first load, Arena hub / history / ranking. Mutations (create/delete/switch/logout, Dungeon entry, Arena prepare/match, character enter) never retry automatically: the notice offers connection re-check, app refresh and dismiss instead.
+- API client: GET requests now time out after 15 s into `network_error` (existing retry policy applies); `cloudResetInFlight()` runs before any Retry so it cannot join a hung request. POSTs are unchanged (no client timeout, single attempt).
