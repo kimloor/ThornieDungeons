@@ -135,13 +135,30 @@ test("Global Loading: run() releases on success, rethrows failures untouched, re
   assert.equal(ownersDuringCatch, 0, "ownership must be released before the caller handles the error");
 });
 
-test("Global Loading: stale owner failsafe releases without reporting success", () => {
+test("Global Loading: stale owner failsafe auto-dismisses, shows a transient notice, never reports success", () => {
   const { manager, advance, stale } = harness();
   manager.begin({ key: "forgotten", label: "x" });
-  advance(150 + 60000);
+  advance(29999);
+  assert.equal(manager.getSnapshot().blockingCount, 1);
+  assert.equal(manager.getSnapshot().staleNotice, null);
+  advance(1);
   assert.equal(manager.getSnapshot().blockingCount, 0);
+  assert.equal(manager.getSnapshot().visible, false, "overlay must not stay after the failsafe (min-visible already elapsed)");
   assert.equal(stale.length, 1);
   assert.equal(stale[0].key, "forgotten");
+  assert.equal(manager.getSnapshot().staleNotice.key, "forgotten");
+  advance(5000);
+  assert.equal(manager.getSnapshot().staleNotice, null, "notice clears itself");
+});
+
+test("Global Loading: per-owner maxMs overrides the default and late release after stale is a no-op", () => {
+  const { manager, advance } = harness();
+  const token = manager.begin({ key: "quick-fail", maxMs: 5000 });
+  advance(5000);
+  assert.equal(manager.getSnapshot().blockingCount, 0);
+  assert.equal(token.isActive(), false);
+  token.release();
+  assert.equal(manager.getSnapshot().blockingCount, 0);
 });
 
 test("Global Loading: releasing before show delay leaves no pending timers", () => {

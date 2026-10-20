@@ -17,6 +17,7 @@ const GLOBAL_LOADING_STYLE = `
 .gl-ring-inner { inset: 14px; border: 2px solid rgba(185,174,221,.2); border-bottom-color: #B9AEDD; animation: gl-spin 1.7s linear infinite reverse; }
 .gl-rune { position: absolute; inset: 29px; background: #FFD166; transform: rotate(45deg); border-radius: 3px; opacity: .85; animation: gl-pulse 1.6s ease-in-out infinite; }
 .gl-label { margin: 0; font: 800 15px/1.35 'Baloo 2', sans-serif; color: #FFD166; letter-spacing: .02em; }
+.gl-toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); transform: translateX(-50%); z-index: 2101; max-width: min(88vw, 380px); padding: 10px 14px; border-radius: 12px; background: rgba(30,20,56,.96); border: 1px solid rgba(255,209,102,.45); color: #F3EEFF; font: 700 12px/1.4 'Baloo 2', sans-serif; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.45); animation: gl-fade-in .18s ease-out both; }
 .gl-progress { width: 100%; height: 8px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
 .gl-progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #FFD166, #FFA94D); transition: width .2s ease-out; }
 .gl-progress-text { margin: -6px 0 0; font: 700 11px/1 'Baloo 2', sans-serif; color: #B9AEDD; font-variant-numeric: tabular-nums; }
@@ -51,9 +52,15 @@ function useGlobalLoadingToken(active, key, label) {
 function GlobalLoadingOverlay({ manager }) {
   const source = manager || GLOBAL_LOADING;
   const snap = useGlobalLoadingSnapshot(source);
-  if (!snap.visible) return null;
+  const notice = snap.staleNotice ? /*#__PURE__*/React.createElement("div", {
+    className: "gl-toast",
+    role: "status",
+    "aria-live": "polite",
+    "data-global-loading-notice": "true"
+  }, /*#__PURE__*/React.createElement("style", null, GLOBAL_LOADING_STYLE), "ใช้เวลานานกว่าปกติ ระบบอาจยังทำงานอยู่เบื้องหลัง หากหน้าไม่คืบหน้าให้ลองอีกครั้ง") : null;
+  if (!snap.visible) return notice;
   const determinate = snap.mode === "determinate";
-  return /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, notice, /*#__PURE__*/React.createElement("div", {
     className: "gl-overlay",
     role: "status",
     "aria-live": "polite",
@@ -79,5 +86,5 @@ function GlobalLoadingOverlay({ manager }) {
     style: { width: snap.percent + "%" }
   })), /*#__PURE__*/React.createElement("p", {
     className: "gl-progress-text"
-  }, snap.current + " / " + snap.total)) : null));
+  }, snap.current + " / " + snap.total)) : null)));
 }

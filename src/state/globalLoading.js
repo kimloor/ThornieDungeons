@@ -5,7 +5,8 @@
 const GLOBAL_LOADING_DEFAULTS = Object.freeze({
   showDelayMs: 150,      // fast work never flashes the overlay
   minVisibleMs: 300,     // once shown, stay visible long enough to read
-  staleOwnerMs: 60000,   // failsafe: a forgotten token cannot trap the player forever
+  staleOwnerMs: 30000,   // failsafe: a stuck/forgotten token auto-dismisses (callers may pass maxMs)
+  staleNoticeMs: 5000,   // how long the "took too long" notice stays on screen
   maxLabelLength: 80,
   defaultLabel: "กำลังโหลด…"
 });
@@ -42,6 +43,9 @@ function createGlobalLoadingManager(options = {}) {
   let showTimer = null;
   let hideTimer = null;
   let snapshot = null;
+  let staleNotice = null;
+  let staleNoticeTimer = null;
+  let staleSeq = 0;
 
   function blockingOwners() {
     return Array.from(owners.values()).filter(o => o.blocking);
@@ -56,6 +60,7 @@ function createGlobalLoadingManager(options = {}) {
       activeCount: owners.size,
       blockingCount: blocking.length,
       keys: Object.freeze(blocking.map(o => o.key)),
+      staleNotice,
       label: latest ? latest.label : cfg.defaultLabel,
       mode: progress ? "determinate" : "indeterminate",
       current: progress ? progress.current : 0,
@@ -66,7 +71,7 @@ function createGlobalLoadingManager(options = {}) {
 
   function sameSnapshot(a, b) {
     return !!a && a.visible === b.visible && a.activeCount === b.activeCount && a.blockingCount === b.blockingCount
-      && a.label === b.label && a.mode === b.mode && a.current === b.current && a.total === b.total
+      && a.staleNotice === b.staleNotice && a.label === b.label && a.mode === b.mode && a.current === b.current && a.total === b.total
       && a.keys.join("|") === b.keys.join("|");
   }
 
@@ -114,8 +119,15 @@ function createGlobalLoadingManager(options = {}) {
     if (!owner) return false; // idempotent: double release is safe
     owners.delete(id);
     if (owner.staleTimer !== null) clearTimer(owner.staleTimer);
-    if (reason === "stale" && onStale) {
-      try { onStale({ key: owner.key, label: owner.label, ageMs: now() - owner.startedAt }); } catch (_) { /* ignore */ }
+    if (reason === "stale") {
+      // The work may still be running in the background; the player is simply no longer trapped.
+      staleSeq += 1;
+      staleNotice = Object.freeze({ id: staleSeq, key: owner.key, label: owner.label });
+      if (staleNoticeTimer !== null) clearTimer(staleNoticeTimer);
+      staleNoticeTimer = setTimer(() => { staleNoticeTimer = null; staleNotice = null; refresh(); }, cfg.staleNoticeMs);
+      if (onStale) {
+        try { onStale({ key: owner.key, label: owner.label, ageMs: now() - owner.startedAt }); } catch (_) { /* ignore */ }
+      }
     }
     evaluate();
     return true;
@@ -133,7 +145,8 @@ function createGlobalLoadingManager(options = {}) {
       startedAt: now(),
       staleTimer: null
     };
-    if (cfg.staleOwnerMs > 0) owner.staleTimer = setTimer(() => release(id, "stale"), cfg.staleOwnerMs);
+    const maxMs = Number.isFinite(spec.maxMs) && spec.maxMs > 0 ? spec.maxMs : cfg.staleOwnerMs;
+    if (maxMs > 0) owner.staleTimer = setTimer(() => release(id, "stale"), maxMs);
     owners.set(id, owner);
     evaluate();
     return Object.freeze({
