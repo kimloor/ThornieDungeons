@@ -7240,8 +7240,8 @@ async function handleAdminSetGameConfigItem(db, adminAuth, key, value) {
 }
 
 // ---------- admin: recipes + monster loot (admin.html) ----------
-// Admin V2 uses the dedicated Admin session verifier. The legacy ADMIN_API_KEY path is
-// retained only as a temporary rollback path during Phase 0 production verification.
+// Admin V2 uses the dedicated Admin session verifier. The legacy ADMIN_API_KEY query/body
+// path no longer authorizes any request (verifyAdminAccess requires a Bearer admin session).
 // Reading recipes/monster_loot uses the generic authenticated getSheet action; writes
 // use dedicated handlers because getSheet is read-only by design.
 async function handleAdminUpsertRecipe(db, adminAuth, recipeId, type, name, setId, empowerSlotCount, materials) {

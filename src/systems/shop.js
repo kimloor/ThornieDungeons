@@ -27,42 +27,6 @@ function sellUnitPrice(it) {
 function sellPrice(it) {
   return sellUnitPrice(it) * Math.max(1, Number(it?.quantity) || 1);
 }
-function shopBuyPrice(it) {
-  if (it?.rewardVersion === 2 && typeof DUNGEON_REWARD_V2 !== "undefined") {
-    return DUNGEON_REWARD_V2.dungeonV2ShopPrice(it.gearTier, it.rarity);
-  }
-  return Math.max(10, Math.round(itemValueScore(it) * (RARITY_MULT[it.rarity] || 1) * 2.2));
-}
-
-function generateShopStock(floor) {
-  const items = [];
-  const eligibleFloor = Math.max(1, Number(floor) || 1);
-  const eligibleTier = typeof DUNGEON_REWARD_V2 !== "undefined" ? DUNGEON_REWARD_V2.dungeonV2ShopTier(eligibleFloor) : gearTierForFloor(eligibleFloor);
-  const tierFloor = [1, 31, 51, 71, 91][eligibleTier - 1] || 1;
-  for (let i = 0; i < 3; i++) {
-    // No Elite cadence existed in the pre-V2 shop. Keep the stock rotation
-    // infrastructure, but make its regular pool R/U only until a cadence is
-    // explicitly contracted; never make Mythic a normal-shop result.
-    const rarity = Math.random() < 0.18 ? "unique" : "rare";
-    const drop = generateDrop(tierFloor, {
-      forceRarity: rarity,
-      sourceType: "shop_normal",
-      sourceIdentity: `normal-shop-tier-${eligibleTier}`
-    });
-    drop.sourceFloor = eligibleFloor;
-    items.push({
-      ...drop,
-      price: typeof DUNGEON_REWARD_V2 !== "undefined"
-        ? DUNGEON_REWARD_V2.dungeonV2ShopPrice(eligibleTier, drop.rarity)
-        : shopBuyPrice(drop)
-    });
-  }
-  return {
-    // Potion tiers are a fixed catalog (not randomized like gear rolls) — always all 8 in stock.
-    potions: POTION_DEFS,
-    items
-  };
-}
 const emptyEquipped = () => ({
   weapon: null,
   helmet: null,
