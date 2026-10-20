@@ -1,5 +1,5 @@
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(GlobalGameErrorBoundary, null, React.createElement(ThornieDungeons)));
+root.render(React.createElement(GlobalGameErrorBoundary, null, React.createElement(React.Fragment, null, React.createElement(ThornieDungeons), React.createElement(GlobalLoadingOverlay, null))));
 clearTimeout(window.__thornieBootTimer);
 } catch (err) {
   clearTimeout(window.__thornieBootTimer);

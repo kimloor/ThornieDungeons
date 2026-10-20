@@ -1,6 +1,6 @@
 # Global Loading System V1
 
-Status: **ACTIVE-DESIGN / APPROVED FOR IMPLEMENTATION PLANNING**
+Status: **IN IMPLEMENTATION — PR 1 (core manager + overlay + first integration) awaiting Owner review**
 
 This contract defines one shared loading experience for ThornieDungeons. It is presentation/orchestration only and must not change gameplay, API authority, save semantics, reward settlement, navigation ownership, or Phaser combat resolution.
 
@@ -125,3 +125,13 @@ Verify:
 - Do not mix implementation into the active Dungeon Cloud Sync PR/hotfix.
 - Runtime implementation enters the DEV lane after the current critical Cloud Sync gate and according to Project Lead priority.
 - G14 Graphics may prepare approved presentation assets independently when it does not alter runtime code or conflict with the active Graphics queue.
+
+## 10. Implementation status
+
+PR 1 (`feat/global-loading-v1`):
+- `src/state/globalLoading.js`: `createGlobalLoadingManager` / `GLOBAL_LOADING` (token ownership, 150 ms show delay, 300 ms minimum visible, stale-owner failsafe 60 s, `run()` helper that releases before rethrowing, label sanitizing, determinate progress only from real counts);
+- `src/ui/GlobalLoadingOverlay.js`: single shared overlay (CSS fallback emblem, `role="status"`, `aria-busy`, progressbar only when determinate, safe-area aware, reduced-motion aware, z-index 2100 below the runtime error popup);
+- mounted once in `tail.html` inside `GlobalGameErrorBoundary`;
+- integrated target #2 (Character Select -> game bootstrap): `enterCharacterSlot` holds a token only around `cloudEnterCharacter` and releases it before the existing error handling.
+
+Not yet integrated (follow-up PRs, one target group each, Owner review between): Login -> Character Select (currently a presentation-only transition with its own busy state), Dungeon/Arena entry, Phaser preload (determinate), cloud restore/checkpoint, character switch/logout. G14 artwork replaces the CSS emblem later.

@@ -709,7 +709,15 @@ function ThornieDungeons() {
   async function enterCharacterSlot(slotIndex) {
     AUDIO_MANAGER.handleUserGesture();
     if (!account || !account.characters[slotIndex]) return;
-    const res = await cloudEnterCharacter(cred.url, slotIndex);
+    // Global Loading V1: a real blocking wait. Release BEFORE any error handling so the
+    // existing error path (below) is never hidden behind the overlay.
+    const enterLoading = GLOBAL_LOADING.begin({ key: "character.enter", label: "กำลังเข้าสู่ตัวละคร…" });
+    let res;
+    try {
+      res = await cloudEnterCharacter(cred.url, slotIndex);
+    } finally {
+      enterLoading.release();
+    }
     if (res.error) {
       console.error("[ThornieDungeons] enterCharacter failed:", res.error);
       return;
