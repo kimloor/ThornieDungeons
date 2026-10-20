@@ -211,8 +211,8 @@ test("Global Loading V2: every wired target begins a token and releases on all e
   const comp = read("src/ui/components.js");
   const manifest = read("src/assets/manifest.js");
   // App-level flows
-  assert.match(app, /GLOBAL_LOADING\.begin\(\{ key: "app\.bootstrap"/);
-  assert.match(app, /\} finally \{\s*bootLoading\.release\(\);\s*\}/);
+  assert.doesNotMatch(app, /app\.bootstrap/, "Owner decision: no overlay on app bootstrap");
+  assert.match(app, /label: "กำลังเข้าเกม โปรดรอสักครู่"/);
   assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "character\.create"/);
   assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "character\.delete"/);
   assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "character\.switch"[^)]*\)[^;]*flushCurrentCharacter/);
@@ -222,7 +222,8 @@ test("Global Loading V2: every wired target begins a token and releases on all e
   // dungeon entry: released on success, failure, and resume-restore fallback
   const stage = app.slice(app.indexOf("function enterStage("), app.indexOf("function buildPetCombatUnit("));
   assert.match(stage, /GLOBAL_LOADING\.begin\(\{ key: "dungeon\.enter"/);
-  assert.equal((stage.match(/stageLoading\.release\(\)/g) || []).length, 4);
+  assert.equal((stage.match(/stageLoading\.release\(\)/g) || []).length, 2, "released only on error and resume fallback; success is handed to CombatScreen");
+  assert.match(stage, /maxMs: 45000/);
   assert.match(stage, /\.catch\(error => \{\s*stageLoading\.release\(\);/);
   assert.match(stage, /preloadBattleCriticalAssets\(battleAssets, \(current, total\) => stageLoading\.update/);
   // the build patch for the combat-entry handler must keep matching
@@ -330,4 +331,47 @@ test("Global Loading: overlay notice exposes Retry / re-check / dismiss and idem
     assert.ok(i > -1 && !app.slice(i, i + 160).includes("onRetry"), key);
   });
   assert.doesNotMatch(comp.slice(comp.indexOf('key: "arena.prepare"'), comp.indexOf('key: "arena.prepare"') + 160), /onRetry/);
+});
+
+test("Global Loading V3: Dungeon overlay is held until the Phaser stage is ready, then released by key", () => {
+  const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const comp = read("src/ui/components.js");
+  assert.match(comp, /if \(phaserStatus === "ready" \|\| phaserStatus === "error"\) GLOBAL_LOADING\.releaseKey\("dungeon\.enter"\)/);
+  const { createGlobalLoadingManager } = require("../src/state/globalLoading.js");
+  let time = 0;
+  const timers = new Map(); let seq = 1;
+  const manager = createGlobalLoadingManager({
+    now: () => time,
+    setTimeout: (fn, ms) => { const id = seq++; timers.set(id, { fn, at: time + ms }); return id; },
+    clearTimeout: id => timers.delete(id)
+  });
+  const token = manager.begin({ key: "dungeon.enter", maxMs: 45000 });
+  manager.begin({ key: "other" });
+  manager.releaseKey("dungeon.enter");
+  assert.equal(token.isActive(), false);
+  assert.equal(manager.getSnapshot().blockingCount, 1, "releaseKey must not touch other owners");
+  manager.releaseKey("dungeon.enter");
+  assert.equal(manager.getSnapshot().blockingCount, 1, "releaseKey is idempotent");
+});
+
+test("Global Loading V3: confirming the battle result (victory, defeat, flee) is covered and released before errors", () => {
+  const app = fs.readFileSync(path.join(__dirname, "..", "src/ui/App.js"), "utf8");
+  const finish = app.slice(app.indexOf("async function finishCoreBattle("), app.indexOf("function retryTerminalBattle()"));
+  assert.match(finish, /GLOBAL_LOADING\.begin\(\{ key: "battle\.confirm", label: "กำลังยืนยันผลการต่อสู้…" \}\)/);
+  assert.ok(finish.indexOf("confirmLoading.release()") < finish.indexOf('setBattleFinishStatus("error")'), "released before the error state");
+  assert.match(finish, /finally \{\s*confirmLoading\.release\(\);\s*\}/);
+  // "fled" ends through the same terminal flow
+  assert.match(app, /next\.result === "fled"\) \{\s*backToMap\(\)/);
+});
+
+test("Global Loading V3: Arena history/ranking load once per hub visit and are invalidated by match/refresh", () => {
+  const comp = fs.readFileSync(path.join(__dirname, "..", "src/ui/components.js"), "utf8");
+  assert.match(comp, /const arenaTabCacheRef = React\.useRef\(\{ history: false, ranking: false \}\)/);
+  assert.match(comp, /const loadTab = async \(next, force = false\)/);
+  assert.match(comp, /next === "history" && \(force \|\| !cache\.history\)/);
+  assert.match(comp, /next === "ranking" && \(force \|\| !cache\.ranking\)/);
+  assert.match(comp, /onRetry: \(\) => loadTab\(next, true\)/);
+  // cache is only marked after a successful response and is reset on refresh and on adopting a match
+  assert.match(comp, /if \(!res\?\.error\) arenaTabCacheRef\.current\.history = true/);
+  assert.ok((comp.match(/arenaTabCacheRef\.current = \{ history: false, ranking: false \}/g) || []).length >= 2);
 });

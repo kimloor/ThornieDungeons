@@ -134,19 +134,22 @@ PR 2 (`feat/global-loading-v2`): remaining targets, Owner decision 2026-10-20 (L
 
 | Target | Key | Wiring |
 | --- | --- | --- |
-| App bootstrap / session restore / config | `app.bootstrap` | token for the whole bootstrap IIFE, `finally` release |
+| App bootstrap | (none) | Owner decision 2026-10-20: no overlay on app start; the plain startup screen is kept |
 | Create / delete character | `character.create` / `character.delete` | `GLOBAL_LOADING.run` around the cloud call |
 | Back to Character Select | `character.switch` | `run` around the flush; released before the existing alert |
 | Logout | `account.logout` | token around flush + `cloudLogout`; released before any alert |
-| Dungeon entry (new + resume) | `dungeon.enter` | begin at `enterStage`, label switches to resume; released on combat entry, on error (`catch`), and on the resume-restore fallback; determinate progress from real critical-asset counts (`preloadBattleCriticalAssets(…, onProgress)`) |
+| Dungeon entry (new + resume) | `dungeon.enter` | begin at `enterStage` (maxMs 45 s), label switches to resume, determinate progress from real critical-asset counts; the token is **held through combat entry and released by `CombatScreen` when the Phaser stage reports `ready`/`error`** (`GLOBAL_LOADING.releaseKey`); also released on error (`catch`) and the resume-restore fallback |
+| Battle result confirmation (victory / defeat / flee) | `battle.confirm` | token around the server confirmation and the outcome screen change in `finishCoreBattle`; released before any error state |
 | Friends / Guild / Leaderboard / Raid / Mailbox | `friends.load` / `guild.load` / `leaderboard.load` / `raid.load` / `mailbox.load` | `useGlobalLoadingToken(active, …)` for the screen's initial data load only (Mailbox: first load only; reloads after claim/delete stay inline) |
 | Arena Hub entry, history, ranking | `arena.hub` / `arena.history` / `arena.ranking` | `run` around the fetches |
 | Arena prepare / enter match | `arena.prepare` / `arena.match` | `run` around prepare; token around the existing preload gate, released before `setError` and in `finally` (gate itself unchanged) |
+
+Arena History / Ranking tabs are fetched once per Arena Hub visit (cache cleared when leaving the hub, on hub refresh and when a match starts/finishes; Retry forces a reload).
 
 Intentionally still inline: chat/DM polling, autosave/sync, in-screen actions (buy/sell/equip/craft/gacha/stats/skills/guild actions/friend actions/raid attack), Arena player card. G14 artwork replaces the CSS emblem later.
 
 ### Stuck-loading recovery (PR 2 addendum)
 - Failsafe: any owner auto-dismisses after 30 s (per-owner `maxMs`); the overlay is released and a 30 s notice appears.
 - The notice runs a reachability probe against the public config endpoint and shows "Server ตอบสนองปกติ (ms)" / "ติดต่อ Server ไม่ได้".
-- **Retry** (`ลองอีกครั้ง`) exists only for idempotent loads that declare `onRetry`: bootstrap (page reload), Friends, Guild, Leaderboard, Raid, Mailbox first load, Arena hub / history / ranking. Mutations (create/delete/switch/logout, Dungeon entry, Arena prepare/match, character enter) never retry automatically: the notice offers connection re-check, app refresh and dismiss instead.
+- **Retry** (`ลองอีกครั้ง`) exists only for idempotent loads that declare `onRetry`: Friends, Guild, Leaderboard, Raid, Mailbox first load, Arena hub / history / ranking. Mutations (create/delete/switch/logout, Dungeon entry, Arena prepare/match, character enter) never retry automatically: the notice offers connection re-check, app refresh and dismiss instead.
 - API client: GET requests now time out after 15 s into `network_error` (existing retry policy applies); `cloudResetInFlight()` runs before any Retry so it cannot join a hung request. POSTs are unchanged (no client timeout, single attempt).

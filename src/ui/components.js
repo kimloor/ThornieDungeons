@@ -3930,10 +3930,14 @@ function ArenaV2Screen({
     });
     return nextStatus;
   }, [characterId, onHudChange, url]);
+  // History / ranking are fetched once per Arena Hub visit; leaving the hub discards this state.
+  // A started/finished match or a hub refresh invalidates them so the next tab open is fresh.
+  const arenaTabCacheRef = React.useRef({ history: false, ranking: false });
   const adoptArenaMatch = React.useCallback(nextMatch => {
     if (!nextMatch) return false;
     const lifecycle = arenaMatchLifecycleStatus(nextMatch);
     if (lifecycle === "active" || lifecycle === "done") {
+      arenaTabCacheRef.current = { history: false, ranking: false };
       setMatch(arenaMatchWithResultViewModel(nextMatch));
       setAuto(!!nextMatch.state?.auto || !!nextMatch.state?.flags?.auto);
       setTab("battle");
@@ -4040,6 +4044,7 @@ function ArenaV2Screen({
   }, [adoptArenaMatch, beginPreparedArenaMatch, characterId, url]);
   const refresh = React.useCallback(async () => {
     setError("");
+    arenaTabCacheRef.current = { history: false, ranking: false };
     const [s, o, resumed] = await GLOBAL_LOADING.run({ key: "arena.hub", label: "กำลังโหลด Arena…", onRetry: () => { refresh().catch(() => setError("โหลด Arena ไม่สำเร็จ")); } }, () => Promise.all([cloudGetArenaV2Status(url, characterId), cloudGetArenaV2Opponents(url, characterId), cloudGetArenaV2Match(url, characterId)]));
     if (s?.error) { setError(s.error); return; }
     setStatus(s); setSetup(current => s.setup || current); setOpponents(o?.opponents || []); setRefreshAvailableAt(o?.refreshAvailableAt || "");
@@ -4075,10 +4080,19 @@ function ArenaV2Screen({
     } else if (now < end) rolloverRefreshRef.current = false;
   }, [now, status, refresh]);
   React.useEffect(() => () => preloadGateRef.current?.cancel(), []);
-  const loadTab = async next => {
+  const loadTab = async (next, force = false) => {
     setTab(next); setError("");
-    if (next === "history") setHistory(await GLOBAL_LOADING.run({ key: "arena.history", label: "กำลังโหลดประวัติ Arena…", onRetry: () => loadTab(next) }, () => cloudGetArenaV2History(url, characterId)));
-    if (next === "ranking") setRanking((await GLOBAL_LOADING.run({ key: "arena.ranking", label: "กำลังโหลดอันดับ Arena…", onRetry: () => loadTab(next) }, () => cloudGetArenaV2Ranking(url, characterId)))?.rows || []);
+    const cache = arenaTabCacheRef.current;
+    if (next === "history" && (force || !cache.history)) {
+      const res = await GLOBAL_LOADING.run({ key: "arena.history", label: "กำลังโหลดประวัติ Arena…", onRetry: () => loadTab(next, true) }, () => cloudGetArenaV2History(url, characterId));
+      setHistory(res);
+      if (!res?.error) arenaTabCacheRef.current.history = true;
+    }
+    if (next === "ranking" && (force || !cache.ranking)) {
+      const res = await GLOBAL_LOADING.run({ key: "arena.ranking", label: "กำลังโหลดอันดับ Arena…", onRetry: () => loadTab(next, true) }, () => cloudGetArenaV2Ranking(url, characterId));
+      setRanking(res?.rows || []);
+      if (!res?.error) arenaTabCacheRef.current.ranking = true;
+    }
   };
   const openReplay = async matchId => {
     if (!matchId || replayBusyId) return;
@@ -5829,6 +5843,10 @@ function CombatScreen({
   const [autoRun, setAutoRun] = useState(false);
   const [showBattleIntro, setShowBattleIntro] = useState(true);
   const [phaserStatus, setPhaserStatus] = useState("disabled");
+  // Dungeon entry keeps the global overlay until the Phaser stage is actually ready (or failed).
+  useEffect(() => {
+    if (phaserStatus === "ready" || phaserStatus === "error") GLOBAL_LOADING.releaseKey("dungeon.enter");
+  }, [phaserStatus, battleState && battleState.battleId]);
   const skills = heroActiveSkillList(player.skillLevels || {});
   const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
