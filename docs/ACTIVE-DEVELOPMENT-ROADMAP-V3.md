@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V3
 
-Status: **ACTIVE-PLANNING — PRE-V1.1.0 RELEASE GATE IN PROGRESS**
+Status: **ACTIVE-PLANNING — Ver 1.1.0 RELEASED 2026-10-20; WAVE 1 is next**
 
 This is the successor roadmap after the completed historical W0-W9R and Gameplay WAVE 1-7 roadmap. Historical numbering is not reused here.
 
@@ -73,7 +73,7 @@ Complete and replace the unfinished generic Accessory path before Ver 1.1.0:
 Do not weaken server reward/inventory authority or silently redesign unrelated Reward V2 economy.
 
 ### Gate C — Ver 1.1.0 Release Acceptance
-**Status: IN PROGRESS — evidence recorded 2026-10-10; AWAITING Owner approval for the Ver 1.1.0 bump (C8)**
+**Status: COMPLETE — Owner approved C8 and Ver 1.1.0 shipped 2026-10-20 (`01bb4e2`)**
 **Risk: RELEASE GATE — no new gameplay authority intended**
 
 Gate C is the final acceptance gate before declaring the pre-V1.1.0 release complete. It verifies the current Production state as a whole, with special attention to the systems changed during Gates A/B/B.5 and the approved Dungeon V2 Skill/Event work.
@@ -329,7 +329,7 @@ Accessory V2 Completion                          ✅ COMPLETE
                      ↓
 Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
-Gate C — Ver 1.1.0 Release Acceptance            🟡 IN PROGRESS (awaiting Owner approval)
+Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
 Visible game version                             Ver 1.1.0
                      ↓
