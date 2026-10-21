@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V3
 
-Status: **ACTIVE-PLANNING — Ver 1.1.0 RELEASED 2026-10-20; WAVE 1 is next**
+Status: **ACTIVE-PLANNING — Ver 1.1.1 RELEASED 2026-10-21; WAVE 1 COMPLETE; WAVE 1 PREP (Client Systems V1) contract awaiting Owner approval**
 
 This is the successor roadmap after the completed historical W0-W9R and Gameplay WAVE 1-7 roadmap. Historical numbering is not reused here.
 
@@ -170,13 +170,13 @@ Only after C8 approval: bump visible version to **Ver 1.1.0**, build again, depl
 The successor roadmap starts here, after Ver 1.1.0 gate acceptance.
 
 ### WAVE 1 PREP — Client Systems V1
-**Status: PROPOSED / QUEUED AFTER Ver 1.1.0**
+**Status: ACTIVE — contract draft `CLIENT-SYSTEMS-V1.md` written; implementation (PR-C first) starts only after Owner approves the contract**
 **Risk: MEDIUM-HIGH — touches many client flows; no server contract or economy change**
 
 One PR per component, in order, each stopping for Owner approval: PR-C Error catalog (code → Thai message) → PR-B API client policy table (timeout/retry/dedupe/session handling) → PR-A Server Operation Manager (requestId reuse on retry, optimistic/rollback, per-character queue, lock registry) → PR-D Overlay shell (migrate Inventory/Craft/Mail/Guild one per commit). Boundary with WAVE 1: Global Loading = full-screen blocking only; Server Operation Manager = inline pending; never both for one action. Contract doc: `CLIENT-SYSTEMS-V1.md` (to be written).
 
 ### WAVE 1 — Global Loading System V1
-**Status: IN PROGRESS — PR 1 merged (#125); PR 2 (all remaining targets) open for Owner review**
+**Status: COMPLETE — shipped 2026-10-20/21: #125 (core + overlay + Character Select), #126 (all targets, stuck-load Retry + server probe, GET timeout), #127 (dungeon overlay held until Phaser ready, battle result confirmation incl. flee, Arena tab cache), #128 (Ver 1.1.1 follow-ups: mailbox delete, Arena/Shop refresh, pet gacha; inventory Sort order remembered)**
 **Risk: MEDIUM**
 **Contract:** `GLOBAL-LOADING-SYSTEM-V1.md`
 
@@ -333,7 +333,9 @@ Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
 Visible game version                             Ver 1.1.1
                      ↓
-NEW WAVE 1 — Global Loading System V1
+NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
+                     ↓
+WAVE 1 PREP — Client Systems V1                 🟡 CONTRACT DRAFT (awaiting Owner approval)
                      ↓
 WAVE 1.5 — Player Information Center
                      ↓
