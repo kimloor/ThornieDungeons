@@ -1,6 +1,6 @@
 # Client Systems V1
 
-Status: **IN IMPLEMENTATION — PR-C (Error catalog) open for Owner review; PR-B/PR-A/PR-D not started**
+Status: **IN IMPLEMENTATION — PR-C merged (#129, Ver 1.1.2); PR-B (API client policy) open for Owner review; PR-A/PR-D not started**
 Risk: MEDIUM-HIGH (touches many client flows; no server contract, D1 or economy change)
 Roadmap: WAVE 1 PREP. One PR per component, in this order, each stopping for Owner approval:
 PR-C Error catalog -> PR-B API client policy -> PR-A Server Operation Manager -> PR-D Overlay shell.
@@ -116,3 +116,12 @@ Server/Worker changes, new endpoints, D1 migrations, offline mode, replacing `fe
 - Migrated: `friendErrorText`, `chatErrorText`, `guildErrorText`, `mailboxErrorText` (their duplicated session lines now come from the catalog). A snapshot fixture captured **before** the change (`tests/fixtures/error-text-snapshot.json`, 4 helpers x 195 inputs) proves identical output.
 - Intentional wording change (1): `session_revoked` now shows the session-expired text on those four screens (it used to fall through to a generic error).
 - Not migrated, awaiting Owner decision: `arenaHumanError` appends the raw `[code]` and reason to the text players see; `registerErrorText` / `forgotErrorText` / `changeErrorText` are inline in the auth modal. Open question: keep the raw `[code]` suffix in Arena messages (useful for support screenshots) or hide it behind the catalog fallback?
+
+## 10. PR-B implementation notes (Ver 1.1.3)
+
+- `src/state/apiPolicy.js`: `API_POLICY` has one entry per server action (102 actions: 35 reads, 67 writes) built from six shared profiles; `apiPolicyFor(action, method)` falls back to conservative per-method defaults. `api.js` (`cloudGet`/`cloudPost`) reads the policy; explicit call options still win.
+- Coverage tests enumerate `api.js` and fail on a missing entry, a wrong method, or a dead entry.
+- **Reads unchanged**: 15 s timeout, 2 retries (now declared, plus a `timedOut: true` flag on `network_error`).
+- **POST timeouts (25 s) only for the 17 receipt-protected actions**: allocateStats, allocateHeroSkills, resetCharacterStats, resetHeroSkills, petEconomyAction, consumePotion, purchaseCharacterResource, getCharacterShopStock, refreshCharacterShopStock, purchaseShopEquipment, sellCharacterItem, salvageItem, mutateV2Blacksmith, mutateLegacyBlacksmith, attackRaidBoss, craftItem (operationId), submitArenaV2Action (actionKey). 25 s is below the 30 s Global Loading failsafe so the real error surfaces first. POSTs are never auto-retried (that needs a reused requestId = PR-A). `keepalive` page-close flushes are never timed out.
+- **Finding that changed the plan**: the contract assumed "carries a requestId" means idempotent. For `acceptFriendRequest` / `rejectFriendRequest` / `cancelFriendRequest` the `requestId` is the friend-request row id (state-guarded by `status = 'pending'`), and `claimAllMail` is exact-once by mail state, so they are labelled `idempotency: "state"` and get **no** timeout. All other POSTs (login, create/delete/enter character, start/complete battle, mailbox claim/delete, guild/friend/chat sends, Arena prepare/activate/refresh, ...) keep no client timeout and a single attempt.
+- Deviation from the draft: the proposed `loading` hint (`none|screen|blocking`) is replaced by a `background` flag (chat polling, autosave, checkpoints, read markers) because the blocking overlay depends on per-call context (e.g. `petEconomyAction` is only a blocking gacha for one sub-action). Auto-wiring Global Loading from policy stays an Owner decision (open question 4).
