@@ -18,6 +18,7 @@ const MODULE_ORDER = [
   "systems/audio.js",
   "state/localCache.js",
   "state/configCache.js",
+  "state/errorCatalog.js",
   "state/auth.js",
   "state/globalLoading.js",
   "state/api.js",
