@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.2" />
+<meta name="application-version" content="1.1.3" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.2";
+  content: "Ver 1.1.3";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -5164,6 +5164,153 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = { ERROR_KIND_BY_CODE, ERROR_TEXT_TH, errorKind, errorMessage, isSessionErrorCode, errorCodesOfKind, errorCodeOf };
 }
 
+// ===== state/apiPolicy.js =====
+// Client Systems V1 / PR-B: declared API client policy, one entry per server action.
+//
+//   method       GET | POST
+//   timeoutMs    client-side abort (0 = none). Reads: 15 s. POSTs get a timeout ONLY when the Worker
+//                de-duplicates the action with a server-side receipt (requestId / operationId /
+//                actionKey), so an ambiguous outcome can be replayed safely. Other POSTs keep no
+//                client timeout and a single attempt (they may be non-idempotent).
+//   retries      automatic transient retries (reads only; POST retries belong to PR-A with a reused id)
+//   idempotency  "natural" (read) | "receipt" (server receipts) | "state" (state-guarded, e.g. only
+//                pending requests can be resolved) | "none"
+//   background   true = autosave / polling: must never become a blocking full-screen loading
+const API_POLICY_DEFAULTS = Object.freeze({
+  GET: Object.freeze({ method: "GET", timeoutMs: 15000, retries: 2, idempotency: "natural", background: false }),
+  POST: Object.freeze({ method: "POST", timeoutMs: 0, retries: 0, idempotency: "none", background: false })
+});
+
+const P = Object.freeze({
+  read: Object.freeze({ ...API_POLICY_DEFAULTS.GET }),
+  readBackground: Object.freeze({ ...API_POLICY_DEFAULTS.GET, background: true }),
+  write: Object.freeze({ ...API_POLICY_DEFAULTS.POST }),
+  writeState: Object.freeze({ ...API_POLICY_DEFAULTS.POST, idempotency: "state" }),
+  writeBackground: Object.freeze({ ...API_POLICY_DEFAULTS.POST, background: true }),
+  writeReceipt: Object.freeze({ ...API_POLICY_DEFAULTS.POST, timeoutMs: 25000, idempotency: "receipt" })
+});
+
+const API_POLICY = Object.freeze({
+  // read (30)
+  getArenaV2History: P.read,
+  getArenaV2Match: P.read,
+  getArenaV2Opponents: P.read,
+  getArenaV2PlayerCard: P.read,
+  getArenaV2Ranking: P.read,
+  getArenaV2Replay: P.read,
+  getArenaV2Status: P.read,
+  getBattleState: P.read,
+  getBlockedList: P.read,
+  getDailyLogin: P.read,
+  getDungeonEncounterPreview: P.read,
+  getFriendList: P.read,
+  getFriendRequests: P.read,
+  getGameConfig: P.read,
+  getGuildApplications: P.read,
+  getInventory: P.read,
+  getJunkInfo: P.read,
+  getLeaderboard: P.read,
+  getLeaderboardHistory: P.read,
+  getMailbox: P.read,
+  getMonsterLoot: P.read,
+  getMyApplications: P.read,
+  getMyGuild: P.read,
+  getPublicGuildProfile: P.read,
+  getPublicProfile: P.read,
+  getRaidStatus: P.read,
+  getRecipes: P.read,
+  searchCharacters: P.read,
+  searchGuilds: P.read,
+  validateSession: P.read,
+  // readBackground (5)
+  getDirectConversations: P.readBackground,
+  getDirectMessages: P.readBackground,
+  getGlobalChat: P.readBackground,
+  getGuildChat: P.readBackground,
+  getGuildChatStatus: P.readBackground,
+  // write (42)
+  acceptGuildApplication: P.write,
+  acknowledgeArenaV2Unlock: P.write,
+  activateArenaV2Match: P.write,
+  blockCharacter: P.write,
+  cancelGuildApplication: P.write,
+  changePassword: P.write,
+  claimDailyLogin: P.write,
+  claimMail: P.write,
+  claimRaidMilestones: P.write,
+  clearBattleCheckpoint: P.write,
+  completeBattle: P.write,
+  createCharacter: P.write,
+  createGuild: P.write,
+  createRecoveryCode: P.write,
+  deleteAllClaimedMail: P.write,
+  deleteCharacter: P.write,
+  deleteMail: P.write,
+  deleteMails: P.write,
+  disbandGuild: P.write,
+  donateGuildItem: P.write,
+  enterCharacter: P.write,
+  forgotPassword: P.write,
+  kickGuildMember: P.write,
+  leaveGuild: P.write,
+  login: P.write,
+  logout: P.write,
+  prepareArenaV2Match: P.write,
+  refreshArenaV2Opponents: P.write,
+  register: P.write,
+  rejectGuildApplication: P.write,
+  removeFriend: P.write,
+  requestGuildJoin: P.write,
+  saveArenaV2Setup: P.write,
+  sendDirectMessage: P.write,
+  sendFriendRequest: P.write,
+  sendGlobalMessage: P.write,
+  sendGuildMessage: P.write,
+  setArenaV2Auto: P.write,
+  startDungeonBattle: P.write,
+  transferGuildLeadership: P.write,
+  unblockCharacter: P.write,
+  updateGuildSettings: P.write,
+  // writeState (4)
+  acceptFriendRequest: P.writeState,
+  cancelFriendRequest: P.writeState,
+  claimAllMail: P.writeState,
+  rejectFriendRequest: P.writeState,
+  // writeBackground (4)
+  markConversationRead: P.writeBackground,
+  markGuildChatRead: P.writeBackground,
+  saveBattleCheckpoint: P.writeBackground,
+  syncItems: P.writeBackground,
+  // writeReceipt (17)
+  allocateHeroSkills: P.writeReceipt,
+  allocateStats: P.writeReceipt,
+  attackRaidBoss: P.writeReceipt,
+  consumePotion: P.writeReceipt,
+  craftItem: P.writeReceipt,
+  getCharacterShopStock: P.writeReceipt,
+  mutateLegacyBlacksmith: P.writeReceipt,
+  mutateV2Blacksmith: P.writeReceipt,
+  petEconomyAction: P.writeReceipt,
+  purchaseCharacterResource: P.writeReceipt,
+  purchaseShopEquipment: P.writeReceipt,
+  refreshCharacterShopStock: P.writeReceipt,
+  resetCharacterStats: P.writeReceipt,
+  resetHeroSkills: P.writeReceipt,
+  salvageItem: P.writeReceipt,
+  sellCharacterItem: P.writeReceipt,
+  submitArenaV2Action: P.writeReceipt
+});
+
+function apiPolicyFor(action, method = "POST") {
+  const verb = String(method || "POST").toUpperCase() === "GET" ? "GET" : "POST";
+  const entry = typeof action === "string" && Object.prototype.hasOwnProperty.call(API_POLICY, action) ? API_POLICY[action] : null;
+  return entry && entry.method === verb ? entry : API_POLICY_DEFAULTS[verb];
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { API_POLICY, API_POLICY_DEFAULTS, apiPolicyFor };
+}
+
 // ===== state/auth.js =====
 const AUTH_REMEMBERED_SESSION_KEY = "thornie-auth-session-v2";
 const AUTH_TAB_SESSION_KEY = "thornie-auth-tab-session-v2";
@@ -5562,7 +5709,12 @@ function dedupeKey(url, body) {
 }
 // Retry buttons must start a fresh request instead of joining a hung one.
 function cloudResetInFlight() { _inFlight.clear(); }
-const API_GET_TIMEOUT_MS = 15000; // reads only; POSTs stay single-attempt without a client timeout (non-idempotent)
+const API_GET_TIMEOUT_MS = 15000;
+// Per-action behavior comes from API_POLICY (src/state/apiPolicy.js). Explicit call options win.
+function apiPolicyOrDefault(action, method) {
+  if (typeof apiPolicyFor === "function") return apiPolicyFor(action, method);
+  return method === "GET" ? { timeoutMs: API_GET_TIMEOUT_MS, retries: 2 } : { timeoutMs: 0, retries: 0 };
+}
 function withDedupe(key, fn) {
   if (_inFlight.has(key)) return _inFlight.get(key);
   const p = fn().finally(() => _inFlight.delete(key));
@@ -5570,44 +5722,55 @@ function withDedupe(key, fn) {
   return p;
 }
 
-async function cloudGet(url, params, { headers = {}, timeoutMs = API_GET_TIMEOUT_MS } = {}) {
+async function cloudGet(url, params, { headers = {}, timeoutMs, retries } = {}) {
   const qs = new URLSearchParams(params).toString();
   const fullUrl = `${url}?${qs}`;
+  const policy = apiPolicyOrDefault(params && params.action, "GET");
+  const effectiveTimeoutMs = timeoutMs !== undefined ? timeoutMs : policy.timeoutMs;
+  const effectiveRetries = retries !== undefined ? retries : policy.retries;
   return withDedupe(dedupeKey(fullUrl, headers), () => withRetry(async () => {
-    const controller = timeoutMs > 0 && typeof AbortController === "function" ? new AbortController() : null;
-    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    const controller = effectiveTimeoutMs > 0 && typeof AbortController === "function" ? new AbortController() : null;
+    let timedOut = false;
+    const timer = controller ? setTimeout(() => { timedOut = true; controller.abort(); }, effectiveTimeoutMs) : null;
     try {
       const res = await fetch(fullUrl, controller ? { headers, signal: controller.signal } : { headers });
       const data = await res.json();
       if (!res.ok) return { ...data, error: data.error || (res.status >= 500 ? "server_error" : "request_failed"), status: res.status };
       return data;
     } catch (e) {
-      return {
-        error: "network_error"
-      };
+      return timedOut ? { error: "network_error", timedOut: true } : { error: "network_error" };
     } finally {
       if (timer) clearTimeout(timer);
     }
-  }));
+  }, { retries: effectiveRetries }));
 }
-async function cloudPost(url, body, { retries = 0, baseDelayMs = 300, headers = {}, keepalive = false } = {}) {
+async function cloudPost(url, body, { retries, baseDelayMs = 300, headers = {}, keepalive = false, timeoutMs } = {}) {
+  const policy = apiPolicyOrDefault(body && body.action, "POST");
+  const effectiveRetries = retries !== undefined ? retries : policy.retries;
+  // keepalive requests (page-close flushes) are fire-and-forget: never time them out.
+  const effectiveTimeoutMs = keepalive ? 0 : (timeoutMs !== undefined ? timeoutMs : policy.timeoutMs);
   return withDedupe(dedupeKey(url, { body, headers, keepalive }), () => withRetry(async () => {
+    const controller = effectiveTimeoutMs > 0 && typeof AbortController === "function" ? new AbortController() : null;
+    let timedOut = false;
+    const timer = controller ? setTimeout(() => { timedOut = true; controller.abort(); }, effectiveTimeoutMs) : null;
     try {
-      const res = await fetch(url, {
+      const init = {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify(body),
         keepalive: !!keepalive
-      });
+      };
+      if (controller) init.signal = controller.signal;
+      const res = await fetch(url, init);
       const data = await res.json();
       if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
       return data;
     } catch (e) {
-      return {
-        error: "network_error"
-      };
+      return timedOut ? { error: "network_error", timedOut: true } : { error: "network_error" };
+    } finally {
+      if (timer) clearTimeout(timer);
     }
-  }, { retries, baseDelayMs }));
+  }, { retries: effectiveRetries, baseDelayMs }));
 }
 
 // ---------- central player-session API boundary ----------

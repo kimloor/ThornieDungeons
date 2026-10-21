@@ -28,7 +28,12 @@ function dedupeKey(url, body) {
 }
 // Retry buttons must start a fresh request instead of joining a hung one.
 function cloudResetInFlight() { _inFlight.clear(); }
-const API_GET_TIMEOUT_MS = 15000; // reads only; POSTs stay single-attempt without a client timeout (non-idempotent)
+const API_GET_TIMEOUT_MS = 15000;
+// Per-action behavior comes from API_POLICY (src/state/apiPolicy.js). Explicit call options win.
+function apiPolicyOrDefault(action, method) {
+  if (typeof apiPolicyFor === "function") return apiPolicyFor(action, method);
+  return method === "GET" ? { timeoutMs: API_GET_TIMEOUT_MS, retries: 2 } : { timeoutMs: 0, retries: 0 };
+}
 function withDedupe(key, fn) {
   if (_inFlight.has(key)) return _inFlight.get(key);
   const p = fn().finally(() => _inFlight.delete(key));
@@ -36,44 +41,55 @@ function withDedupe(key, fn) {
   return p;
 }
 
-async function cloudGet(url, params, { headers = {}, timeoutMs = API_GET_TIMEOUT_MS } = {}) {
+async function cloudGet(url, params, { headers = {}, timeoutMs, retries } = {}) {
   const qs = new URLSearchParams(params).toString();
   const fullUrl = `${url}?${qs}`;
+  const policy = apiPolicyOrDefault(params && params.action, "GET");
+  const effectiveTimeoutMs = timeoutMs !== undefined ? timeoutMs : policy.timeoutMs;
+  const effectiveRetries = retries !== undefined ? retries : policy.retries;
   return withDedupe(dedupeKey(fullUrl, headers), () => withRetry(async () => {
-    const controller = timeoutMs > 0 && typeof AbortController === "function" ? new AbortController() : null;
-    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    const controller = effectiveTimeoutMs > 0 && typeof AbortController === "function" ? new AbortController() : null;
+    let timedOut = false;
+    const timer = controller ? setTimeout(() => { timedOut = true; controller.abort(); }, effectiveTimeoutMs) : null;
     try {
       const res = await fetch(fullUrl, controller ? { headers, signal: controller.signal } : { headers });
       const data = await res.json();
       if (!res.ok) return { ...data, error: data.error || (res.status >= 500 ? "server_error" : "request_failed"), status: res.status };
       return data;
     } catch (e) {
-      return {
-        error: "network_error"
-      };
+      return timedOut ? { error: "network_error", timedOut: true } : { error: "network_error" };
     } finally {
       if (timer) clearTimeout(timer);
     }
-  }));
+  }, { retries: effectiveRetries }));
 }
-async function cloudPost(url, body, { retries = 0, baseDelayMs = 300, headers = {}, keepalive = false } = {}) {
+async function cloudPost(url, body, { retries, baseDelayMs = 300, headers = {}, keepalive = false, timeoutMs } = {}) {
+  const policy = apiPolicyOrDefault(body && body.action, "POST");
+  const effectiveRetries = retries !== undefined ? retries : policy.retries;
+  // keepalive requests (page-close flushes) are fire-and-forget: never time them out.
+  const effectiveTimeoutMs = keepalive ? 0 : (timeoutMs !== undefined ? timeoutMs : policy.timeoutMs);
   return withDedupe(dedupeKey(url, { body, headers, keepalive }), () => withRetry(async () => {
+    const controller = effectiveTimeoutMs > 0 && typeof AbortController === "function" ? new AbortController() : null;
+    let timedOut = false;
+    const timer = controller ? setTimeout(() => { timedOut = true; controller.abort(); }, effectiveTimeoutMs) : null;
     try {
-      const res = await fetch(url, {
+      const init = {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify(body),
         keepalive: !!keepalive
-      });
+      };
+      if (controller) init.signal = controller.signal;
+      const res = await fetch(url, init);
       const data = await res.json();
       if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
       return data;
     } catch (e) {
-      return {
-        error: "network_error"
-      };
+      return timedOut ? { error: "network_error", timedOut: true } : { error: "network_error" };
+    } finally {
+      if (timer) clearTimeout(timer);
     }
-  }, { retries, baseDelayMs }));
+  }, { retries: effectiveRetries, baseDelayMs }));
 }
 
 // ---------- central player-session API boundary ----------
