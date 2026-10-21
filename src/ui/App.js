@@ -265,8 +265,6 @@ function ThornieDungeons() {
   }, [phase]);
   useEffect(() => {
     (async () => {
-    const bootLoading = GLOBAL_LOADING.begin({ key: "app.bootstrap", label: "กำลังเตรียมเกม…", onRetry: () => window.location.reload() });
-    try {
       
       // โหลด R2 Asset Manifest ก่อนเริ่มระบบเกม
       try {
@@ -344,9 +342,6 @@ function ThornieDungeons() {
         const cachedJunkInfo = await loadCachedJunkInfo();
         if (cachedJunkInfo) applyJunkInfo(cachedJunkInfo);
       }
-    } finally {
-      bootLoading.release();
-    }
     })();
   }, []);
   const persistenceContextFor = useCallback(characterId => makePersistenceContext({
@@ -716,7 +711,7 @@ function ThornieDungeons() {
     if (!account || !account.characters[slotIndex]) return;
     // Global Loading V1: a real blocking wait. Release BEFORE any error handling so the
     // existing error path (below) is never hidden behind the overlay.
-    const enterLoading = GLOBAL_LOADING.begin({ key: "character.enter", label: "กำลังเข้าสู่ตัวละคร…" });
+    const enterLoading = GLOBAL_LOADING.begin({ key: "character.enter", label: "กำลังเข้าเกม โปรดรอสักครู่" });
     let res;
     try {
       res = await cloudEnterCharacter(cred.url, slotIndex);
@@ -1217,8 +1212,17 @@ function ThornieDungeons() {
       ]);
       if (!completionSettled) setBattleFinishStatus("confirming");
     }
-    completionOutcome = await completionPromise;
+    // Confirming the result with the server (victory / defeat / flee) blocks input behind the
+    // global overlay. Released before any error state is shown and after the outcome screen.
+    const confirmLoading = GLOBAL_LOADING.begin({ key: "battle.confirm", label: "กำลังยืนยันผลการต่อสู้…" });
+    try {
+      completionOutcome = await completionPromise;
+    } catch (confirmError) {
+      confirmLoading.release();
+      throw confirmError;
+    }
     if (!completionOutcome.ok) {
+      confirmLoading.release();
       finishingBattleIdRef.current = null;
       setBusy(false);
       setBattleFinishing(true);
@@ -1234,7 +1238,11 @@ function ThornieDungeons() {
       }
       return;
     }
-    await finalizeTerminalOutcome(next, completionOutcome.completionReceipt);
+    try {
+      await finalizeTerminalOutcome(next, completionOutcome.completionReceipt);
+    } finally {
+      confirmLoading.release();
+    }
   }
 
   function retryTerminalBattle() {
@@ -1383,7 +1391,7 @@ function ThornieDungeons() {
     driveCoreBattle(state, command);
   }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
-    const stageLoading = GLOBAL_LOADING.begin({ key: "dungeon.enter", label: "กำลังเข้าดันเจี้ยน…" });
+    const stageLoading = GLOBAL_LOADING.begin({ key: "dungeon.enter", label: "กำลังเข้าดันเจี้ยน…", maxMs: 45000 });
     void (async () => {
     const allowResume = options.allowResume !== false;
     const resumableCheckpoint = allowResume && resumeBattle?.serverContext && Number(resumeBattle.floor) === Number(floorNum)
@@ -1516,9 +1524,10 @@ function ThornieDungeons() {
     const battleAssets = { equipped: save?.equipped || {}, pet: initialPet, monsters: displayMonsters };
     stageLoading.update({ label: "กำลังโหลดฉากต่อสู้…" });
     const criticalAssets = preloadBattleCriticalAssets(battleAssets, (current, total) => stageLoading.update({ current, total }));
-    // Registered before the combat-entry handler so the overlay is released in the same tick,
-    // ahead of setPhase("combat"); build.js patches the handler below by exact text.
-    criticalAssets.ready.then(() => stageLoading.release(), () => stageLoading.release());
+    // The overlay stays up through setPhase("combat") and is released by CombatScreen once the
+    // Phaser stage reports ready/error (GLOBAL_LOADING.releaseKey("dungeon.enter")). Before then
+    // only the label changes; build.js patches the handler below by exact text.
+    criticalAssets.ready.then(() => stageLoading.update({ label: "กำลังเตรียมฉากต่อสู้…", current: null, total: null }), () => {});
     criticalAssets.ready.finally(() => {
       setPhase("combat");
       setTimeout(() => driveCoreBattle(initialBattle), 0);

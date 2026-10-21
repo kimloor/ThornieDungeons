@@ -225,6 +225,11 @@ function createGlobalLoadingManager(options = {}) {
       if (beforeRetry) { try { beforeRetry(); } catch (_) { /* ignore */ } }
       if (fn) { try { fn(); } catch (_) { /* the retried flow owns its own error UI */ } }
     },
+    // Hand-off: a flow that began a token can have another component release it by key when the
+    // real end condition (e.g. Phaser stage ready) is reached.
+    releaseKey(key) {
+      Array.from(owners.values()).filter(o => o.key === key).forEach(o => release(o.id, "released"));
+    },
     dismissStale: clearStaleNotice,
     recheckConnection() {
       if (!probe || !staleNotice) return;
