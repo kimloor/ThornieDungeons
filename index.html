@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.0" />
+<meta name="application-version" content="1.1.1" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.0";
+  content: "Ver 1.1.1";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -9730,7 +9730,49 @@ function sortInventoryDeterministic(inventory) {
   );
 }
 
+// Remembered display order. The server returns items in its own order after equip / unequip / sell,
+// so the order produced by "Sort" is stored per character on this device and re-applied on display.
+// Items not in the saved order (new drops, unequipped items) are appended at the end.
+const INVENTORY_ORDER_STORAGE_PREFIX = "thornie.inventoryOrder.v1.";
+const INVENTORY_ORDER_MAX_IDS = 600;
+
+function applyInventoryOrder(inventory, orderIds) {
+  const list = Array.isArray(inventory) ? inventory : [];
+  if (!Array.isArray(orderIds) || orderIds.length === 0 || list.length < 2) return list;
+  const rank = new Map();
+  orderIds.forEach((id, index) => { if (!rank.has(id)) rank.set(id, index); });
+  const known = [];
+  const fresh = [];
+  list.forEach(item => {
+    const id = inventoryItemRuntimeId(item);
+    (id && rank.has(id) ? known : fresh).push(item);
+  });
+  known.sort((a, b) => rank.get(inventoryItemRuntimeId(a)) - rank.get(inventoryItemRuntimeId(b)));
+  return known.concat(fresh);
+}
+
+function loadInventoryOrder(characterId) {
+  if (!characterId) return [];
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(INVENTORY_ORDER_STORAGE_PREFIX + characterId) : null;
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(id => typeof id === "string").slice(0, INVENTORY_ORDER_MAX_IDS) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveInventoryOrder(characterId, orderIds) {
+  if (!characterId) return;
+  try {
+    if (typeof localStorage === "undefined") return;
+    const ids = (orderIds || []).filter(id => typeof id === "string").slice(0, INVENTORY_ORDER_MAX_IDS);
+    localStorage.setItem(INVENTORY_ORDER_STORAGE_PREFIX + characterId, JSON.stringify(ids));
+  } catch (_) { /* storage can be unavailable (private mode); order then lasts for this session only */ }
+}
+
 if (typeof module !== "undefined" && module.exports) module.exports = {
+  applyInventoryOrder, loadInventoryOrder, saveInventoryOrder, INVENTORY_ORDER_STORAGE_PREFIX,
   INVENTORY_CAPACITY, inventoryStackKey, insertInventoryItems, normalizeInventoryCapacity,
   claimOverflowItem, claimAllOverflowThatFits, inventoryRarityKey, inventoryItemCategory,
   inventoryItemRuntimeId, inventoryItemBackendId, inventoryItemType, inventoryItemJunkId,
@@ -14795,6 +14837,10 @@ function ThornieDungeons() {
   useEffect(() => { equippedRef.current = equipped; }, [equipped]);
   useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
   useEffect(() => { inventoryOverflowRef.current = inventoryOverflow; }, [inventoryOverflow]);
+  // Order chosen with "Sort" is remembered per character so equip / unequip / sell do not scramble it.
+  const [inventoryOrder, setInventoryOrder] = useState([]);
+  useEffect(() => { setInventoryOrder(loadInventoryOrder(save && save.characterId)); }, [save && save.characterId]);
+  const displayInventory = React.useMemo(() => applyInventoryOrder(inventory, inventoryOrder), [inventory, inventoryOrder]);
   const [heroAnim, setHeroAnim] = useState("");
   const [petAnim, setPetAnim] = useState("");
   const [enemyAnims, setEnemyAnims] = useState({}); // uid -> anim class
@@ -16961,6 +17007,9 @@ function ThornieDungeons() {
   function sortInventoryNow() {
     const next = sortInventoryDeterministic(inventoryRef.current);
     commitInventorySnapshot({ inventory: next, overflow: inventoryOverflowRef.current });
+    const sortedIds = next.map(inventoryItemRuntimeId).filter(Boolean);
+    setInventoryOrder(sortedIds);
+    saveInventoryOrder(save && save.characterId, sortedIds);
   }
   function claimOverflowOne(itemId) {
     return commitInventorySnapshot(claimOverflowItem(inventoryRef.current, inventoryOverflowRef.current, itemId));
@@ -17184,7 +17233,7 @@ function ThornieDungeons() {
   async function pullGacha() {
     if (save.diamonds < GACHA_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
     const requestId = globalThis.crypto?.randomUUID?.() || `pet-gacha-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudPetEconomyAction(cred.url, save.characterId, "gacha", "", requestId);
+    const result = await GLOBAL_LOADING.run({ key: "pet.gacha", label: "กำลังสุ่มสัตว์เลี้ยง…" }, () => cloudPetEconomyAction(cred.url, save.characterId, "gacha", "", requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setGachaResult({ pet: getPetDef(result.result?.defId), duplicate: !!result.result?.duplicate });
@@ -17727,7 +17776,7 @@ function ThornieDungeons() {
     onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlayV2, {
     equipped: equipped,
-    inventory: inventory,
+    inventory: displayInventory,
     overflow: inventoryOverflow,
     busy: itemActionBusy,
     characterName: save.characterName,
@@ -22217,7 +22266,7 @@ function ArenaV2Screen({
           if (busy || refreshSeconds > 0) return;
           setBusy(true); setError("");
           try {
-            const r = await cloudRefreshArenaV2Opponents(url, characterId);
+            const r = await GLOBAL_LOADING.run({ key: "arena.refresh", label: "กำลังรีเฟรชคู่ต่อสู้…" }, () => cloudRefreshArenaV2Opponents(url, characterId));
             if (r?.error === "arena_refresh_cooldown") {
               setRefreshAvailableAt(r.refreshAvailableAt || new Date(Date.now() + Math.max(1, Number(r.retryAfter) || 1) * 1000).toISOString());
               return;
@@ -22526,7 +22575,7 @@ function MailboxScreen({
     if (busy) return;
     setBusy(true);
     setMailError("");
-    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
+    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายไม่สำเร็จ กรุณาลองใหม่"); return; }
       load();
@@ -22538,7 +22587,7 @@ function MailboxScreen({
     if (!ids.length || busy) return;
     setBusy(true);
     setMailError("");
-    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids).then(res => {
+    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายที่เลือกไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
@@ -22550,7 +22599,7 @@ function MailboxScreen({
     if (busy) return;
     setBusy(true);
     setMailError("");
-    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
+    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
@@ -22871,7 +22920,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   React.useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const stockLeftMs=stock?.expiresAtMs?Math.max(0,stock.expiresAtMs-nowMs):0, stockExpired=!!stock?.expiresAtMs&&stockLeftMs<=0;
   const refreshLeftSec=stock?.refreshAtMs?Math.max(0,Math.ceil((stock.refreshAtMs-nowMs)/1000)):0;
-  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await onRefreshStock(force);if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
+  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await GLOBAL_LOADING.run({key:"shop.refresh",label:"กำลังรีเฟรชร้านค้า…"},()=>onRefreshStock(force));if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
   React.useEffect(()=>{if(!stockExpired||autoRefreshKey.current===stock.expiresAtMs)return;autoRefreshKey.current=stock.expiresAtMs;runRefresh(false);},[stockExpired,stock?.expiresAtMs]);
   const formatLeft=ms=>{const total=Math.ceil(ms/1000);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0");};
   const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};
@@ -22879,7 +22928,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   const getQty=key=>Math.max(1,Math.min(99,Number(quantities[key])||1));
   const maxQty=(price,currency="gold")=>Math.max(1,Math.min(99,Math.floor((currency==="diamond"?Number(diamonds||0):Number(gold||0))/Math.max(1,Number(price)||1))));
   const setQty=(key,value,price,currency="gold")=>setQuantities(current=>({...current,[key]:Math.max(1,Math.min(maxQty(price,currency),Math.floor(Number(value)||1)))}));
-  const guardBuy=(canAfford,action)=>{if(disabled)return;if(!canAfford)return showStatus("เงินไม่พอซื้อ");action();};
+  const guardBuy=(canAfford,action)=>{if(disabled||refreshing)return;if(!canAfford)return showStatus("เงินไม่พอซื้อ");action();};
   const quantityControl=(key,price,currency,onBuy,label)=>{const qty=getQty(key),max=maxQty(price,currency),pending=Number(pendingPurchases[key]||0),total=Number(price)*qty,balance=currency==="diamond"?Number(diamonds||0):Number(gold||0),shortfall=Math.max(0,total-balance);return /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-wrap"},
     /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-row"},
       /*#__PURE__*/React.createElement("button",{type:"button",className:"md-shop-qty-btn",disabled:disabled||qty<=1,onClick:()=>setQty(key,qty-1,price,currency), "aria-label":`ลดจำนวน ${label}`},"−"),

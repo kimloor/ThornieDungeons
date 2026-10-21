@@ -4382,7 +4382,7 @@ function ArenaV2Screen({
           if (busy || refreshSeconds > 0) return;
           setBusy(true); setError("");
           try {
-            const r = await cloudRefreshArenaV2Opponents(url, characterId);
+            const r = await GLOBAL_LOADING.run({ key: "arena.refresh", label: "กำลังรีเฟรชคู่ต่อสู้…" }, () => cloudRefreshArenaV2Opponents(url, characterId));
             if (r?.error === "arena_refresh_cooldown") {
               setRefreshAvailableAt(r.refreshAvailableAt || new Date(Date.now() + Math.max(1, Number(r.retryAfter) || 1) * 1000).toISOString());
               return;
@@ -4691,7 +4691,7 @@ function MailboxScreen({
     if (busy) return;
     setBusy(true);
     setMailError("");
-    cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId).then(res => {
+    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายไม่สำเร็จ กรุณาลองใหม่"); return; }
       load();
@@ -4703,7 +4703,7 @@ function MailboxScreen({
     if (!ids.length || busy) return;
     setBusy(true);
     setMailError("");
-    cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids).then(res => {
+    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายที่เลือกไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
@@ -4715,7 +4715,7 @@ function MailboxScreen({
     if (busy) return;
     setBusy(true);
     setMailError("");
-    cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId).then(res => {
+    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
@@ -5036,7 +5036,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   React.useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const stockLeftMs=stock?.expiresAtMs?Math.max(0,stock.expiresAtMs-nowMs):0, stockExpired=!!stock?.expiresAtMs&&stockLeftMs<=0;
   const refreshLeftSec=stock?.refreshAtMs?Math.max(0,Math.ceil((stock.refreshAtMs-nowMs)/1000)):0;
-  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await onRefreshStock(force);if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
+  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await GLOBAL_LOADING.run({key:"shop.refresh",label:"กำลังรีเฟรชร้านค้า…"},()=>onRefreshStock(force));if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
   React.useEffect(()=>{if(!stockExpired||autoRefreshKey.current===stock.expiresAtMs)return;autoRefreshKey.current=stock.expiresAtMs;runRefresh(false);},[stockExpired,stock?.expiresAtMs]);
   const formatLeft=ms=>{const total=Math.ceil(ms/1000);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0");};
   const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};
@@ -5044,7 +5044,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   const getQty=key=>Math.max(1,Math.min(99,Number(quantities[key])||1));
   const maxQty=(price,currency="gold")=>Math.max(1,Math.min(99,Math.floor((currency==="diamond"?Number(diamonds||0):Number(gold||0))/Math.max(1,Number(price)||1))));
   const setQty=(key,value,price,currency="gold")=>setQuantities(current=>({...current,[key]:Math.max(1,Math.min(maxQty(price,currency),Math.floor(Number(value)||1)))}));
-  const guardBuy=(canAfford,action)=>{if(disabled)return;if(!canAfford)return showStatus("เงินไม่พอซื้อ");action();};
+  const guardBuy=(canAfford,action)=>{if(disabled||refreshing)return;if(!canAfford)return showStatus("เงินไม่พอซื้อ");action();};
   const quantityControl=(key,price,currency,onBuy,label)=>{const qty=getQty(key),max=maxQty(price,currency),pending=Number(pendingPurchases[key]||0),total=Number(price)*qty,balance=currency==="diamond"?Number(diamonds||0):Number(gold||0),shortfall=Math.max(0,total-balance);return /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-wrap"},
     /*#__PURE__*/React.createElement("div",{className:"md-shop-quantity-row"},
       /*#__PURE__*/React.createElement("button",{type:"button",className:"md-shop-qty-btn",disabled:disabled||qty<=1,onClick:()=>setQty(key,qty-1,price,currency), "aria-label":`ลดจำนวน ${label}`},"−"),
