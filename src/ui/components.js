@@ -1596,9 +1596,6 @@ function LeaderboardScreen({
 // ---------- Phase 6.2: Friend System V1 ----------
 function friendErrorText(error) {
   const map = {
-    invalid_session: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
-    session_expired: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
-    session_replaced: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
     cannot_request_self: "ส่งคำขอหาตัวเองไม่ได้",
     cannot_block_self: "บล็อกตัวเองไม่ได้",
     already_friends: "เป็นเพื่อนกันอยู่แล้ว",
@@ -1613,7 +1610,7 @@ function friendErrorText(error) {
     forbidden: "ไม่มีสิทธิ์ทำรายการนี้",
     server_error: "ระบบเพื่อนขัดข้อง กรุณาลองใหม่",
   };
-  return map[error] || "เกิดข้อผิดพลาด กรุณาลองใหม่";
+  return errorMessage(error, { overrides: map, fallback: "เกิดข้อผิดพลาด กรุณาลองใหม่" });
 }
 const FRIEND_TABS = [
   { key: "friends", label: "เพื่อน" },
@@ -1937,9 +1934,6 @@ const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEN
 // ---------- Phase 6.3: Chat System V1 ----------
 function chatErrorText(error) {
   const map = {
-    invalid_session: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
-    session_expired: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
-    session_replaced: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
     message_empty: "กรุณาพิมพ์ข้อความ",
     message_too_long: "ข้อความยาวเกินไป",
     chat_rate_limited: "ส่งข้อความเร็วเกินไป กรุณารอสักครู่",
@@ -1953,7 +1947,7 @@ function chatErrorText(error) {
     character_not_found: "ไม่พบผู้เล่นนี้",
     server_error: "ระบบแชทขัดข้อง กรุณาลองใหม่",
   };
-  return map[error] || "เกิดข้อผิดพลาด กรุณาลองใหม่";
+  return errorMessage(error, { overrides: map, fallback: "เกิดข้อผิดพลาด กรุณาลองใหม่" });
 }
 const CHAT_TABS = [
   { key: "global", label: "โลก" },
@@ -2342,9 +2336,6 @@ function ChatScreen({
 // ---------- Phase 6.4: Guild System V1 Core ----------
 function guildErrorText(error) {
   const map = {
-    invalid_session: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
-    session_expired: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
-    session_replaced: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
     guild_create_level_too_low: "ต้องมีเลเวล 30 ขึ้นไปจึงจะสร้างกิลด์ได้",
     invalid_guild_name: "ชื่อกิลด์ต้องมี 3-20 ตัวอักษร และห้ามมีอักขระควบคุม",
     invalid_join_policy: "นโยบายการรับสมาชิกไม่ถูกต้อง",
@@ -2371,7 +2362,7 @@ function guildErrorText(error) {
     invalid_target: "เป้าหมายไม่ถูกต้อง",
     server_error: "ระบบกิลด์ขัดข้อง กรุณาลองใหม่",
   };
-  return map[error] || "เกิดข้อผิดพลาด กรุณาลองใหม่";
+  return errorMessage(error, { overrides: map, fallback: "เกิดข้อผิดพลาด กรุณาลองใหม่" });
 }
 const GUILD_CREATE_MIN_LEVEL_CLIENT = 30; // display only — server (GUILD_CREATE_MIN_LEVEL) is authoritative
 const GUILD_JOIN_POLICY_OPTIONS = [
@@ -4621,8 +4612,8 @@ function MailboxScreen({
   const claimAllRequestRef = React.useRef(null);
   React.useEffect(() => { claimAllRequestRef.current = null; }, [characterId]);
 
-  const mailboxErrorText = error => error === "invalid_session" || error === "session_expired" || error === "session_replaced"
-    ? "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่"
+  const mailboxErrorText = error => isSessionErrorCode(error)
+    ? errorMessage(error)
     : "โหลดกล่องจดหมายไม่สำเร็จ กรุณาลองใหม่";
 
   const load = () => {

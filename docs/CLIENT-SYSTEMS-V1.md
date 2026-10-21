@@ -1,6 +1,6 @@
 # Client Systems V1
 
-Status: **DRAFT — awaiting Owner approval (no code written yet)**
+Status: **IN IMPLEMENTATION — PR-C (Error catalog) open for Owner review; PR-B/PR-A/PR-D not started**
 Risk: MEDIUM-HIGH (touches many client flows; no server contract, D1 or economy change)
 Roadmap: WAVE 1 PREP. One PR per component, in this order, each stopping for Owner approval:
 PR-C Error catalog -> PR-B API client policy -> PR-A Server Operation Manager -> PR-D Overlay shell.
@@ -108,3 +108,11 @@ Goal: shared shell for modal sheets (Inventory, Craft, Mail, Guild) with consist
 ## 8. Out of scope
 
 Server/Worker changes, new endpoints, D1 migrations, offline mode, replacing `fetch`, graphics (G14 owns the loading artwork).
+
+## 9. PR-C implementation notes (Ver 1.1.2)
+
+- `src/state/errorCatalog.js`: `ERROR_KIND_BY_CODE` (all 189 Worker codes + client-only `network_error`, `session_replaced`, `session_revoked`), `ERROR_TEXT_TH` (shared session text only), `errorKind`, `isSessionErrorCode`, `errorCodesOfKind`, `errorMessage(code, { overrides, fallback })` (override -> catalog -> fallback, never the raw code).
+- Drift guard: `tests/error-catalog.test.js` scans `workers/` and fails when a Worker error code is not classified; also asserts the hand-written `SESSION_LIFECYCLE_ERRORS` (auth.js) and `BATTLE_SESSION_ERRORS` (App.js) equal the catalog's session kind.
+- Migrated: `friendErrorText`, `chatErrorText`, `guildErrorText`, `mailboxErrorText` (their duplicated session lines now come from the catalog). A snapshot fixture captured **before** the change (`tests/fixtures/error-text-snapshot.json`, 4 helpers x 195 inputs) proves identical output.
+- Intentional wording change (1): `session_revoked` now shows the session-expired text on those four screens (it used to fall through to a generic error).
+- Not migrated, awaiting Owner decision: `arenaHumanError` appends the raw `[code]` and reason to the text players see; `registerErrorText` / `forgotErrorText` / `changeErrorText` are inline in the auth modal. Open question: keep the raw `[code]` suffix in Arena messages (useful for support screenshots) or hide it behind the catalog fallback?
