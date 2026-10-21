@@ -229,6 +229,10 @@ function ThornieDungeons() {
   useEffect(() => { equippedRef.current = equipped; }, [equipped]);
   useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
   useEffect(() => { inventoryOverflowRef.current = inventoryOverflow; }, [inventoryOverflow]);
+  // Order chosen with "Sort" is remembered per character so equip / unequip / sell do not scramble it.
+  const [inventoryOrder, setInventoryOrder] = useState([]);
+  useEffect(() => { setInventoryOrder(loadInventoryOrder(save && save.characterId)); }, [save && save.characterId]);
+  const displayInventory = React.useMemo(() => applyInventoryOrder(inventory, inventoryOrder), [inventory, inventoryOrder]);
   const [heroAnim, setHeroAnim] = useState("");
   const [petAnim, setPetAnim] = useState("");
   const [enemyAnims, setEnemyAnims] = useState({}); // uid -> anim class
@@ -2382,6 +2386,9 @@ function ThornieDungeons() {
   function sortInventoryNow() {
     const next = sortInventoryDeterministic(inventoryRef.current);
     commitInventorySnapshot({ inventory: next, overflow: inventoryOverflowRef.current });
+    const sortedIds = next.map(inventoryItemRuntimeId).filter(Boolean);
+    setInventoryOrder(sortedIds);
+    saveInventoryOrder(save && save.characterId, sortedIds);
   }
   function claimOverflowOne(itemId) {
     return commitInventorySnapshot(claimOverflowItem(inventoryRef.current, inventoryOverflowRef.current, itemId));
@@ -2605,7 +2612,7 @@ function ThornieDungeons() {
   async function pullGacha() {
     if (save.diamonds < GACHA_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
     const requestId = globalThis.crypto?.randomUUID?.() || `pet-gacha-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudPetEconomyAction(cred.url, save.characterId, "gacha", "", requestId);
+    const result = await GLOBAL_LOADING.run({ key: "pet.gacha", label: "กำลังสุ่มสัตว์เลี้ยง…" }, () => cloudPetEconomyAction(cred.url, save.characterId, "gacha", "", requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setGachaResult({ pet: getPetDef(result.result?.defId), duplicate: !!result.result?.duplicate });
@@ -3148,7 +3155,7 @@ function ThornieDungeons() {
     onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlayV2, {
     equipped: equipped,
-    inventory: inventory,
+    inventory: displayInventory,
     overflow: inventoryOverflow,
     busy: itemActionBusy,
     characterName: save.characterName,

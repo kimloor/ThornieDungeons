@@ -191,7 +191,49 @@ function sortInventoryDeterministic(inventory) {
   );
 }
 
+// Remembered display order. The server returns items in its own order after equip / unequip / sell,
+// so the order produced by "Sort" is stored per character on this device and re-applied on display.
+// Items not in the saved order (new drops, unequipped items) are appended at the end.
+const INVENTORY_ORDER_STORAGE_PREFIX = "thornie.inventoryOrder.v1.";
+const INVENTORY_ORDER_MAX_IDS = 600;
+
+function applyInventoryOrder(inventory, orderIds) {
+  const list = Array.isArray(inventory) ? inventory : [];
+  if (!Array.isArray(orderIds) || orderIds.length === 0 || list.length < 2) return list;
+  const rank = new Map();
+  orderIds.forEach((id, index) => { if (!rank.has(id)) rank.set(id, index); });
+  const known = [];
+  const fresh = [];
+  list.forEach(item => {
+    const id = inventoryItemRuntimeId(item);
+    (id && rank.has(id) ? known : fresh).push(item);
+  });
+  known.sort((a, b) => rank.get(inventoryItemRuntimeId(a)) - rank.get(inventoryItemRuntimeId(b)));
+  return known.concat(fresh);
+}
+
+function loadInventoryOrder(characterId) {
+  if (!characterId) return [];
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(INVENTORY_ORDER_STORAGE_PREFIX + characterId) : null;
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(id => typeof id === "string").slice(0, INVENTORY_ORDER_MAX_IDS) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveInventoryOrder(characterId, orderIds) {
+  if (!characterId) return;
+  try {
+    if (typeof localStorage === "undefined") return;
+    const ids = (orderIds || []).filter(id => typeof id === "string").slice(0, INVENTORY_ORDER_MAX_IDS);
+    localStorage.setItem(INVENTORY_ORDER_STORAGE_PREFIX + characterId, JSON.stringify(ids));
+  } catch (_) { /* storage can be unavailable (private mode); order then lasts for this session only */ }
+}
+
 if (typeof module !== "undefined" && module.exports) module.exports = {
+  applyInventoryOrder, loadInventoryOrder, saveInventoryOrder, INVENTORY_ORDER_STORAGE_PREFIX,
   INVENTORY_CAPACITY, inventoryStackKey, insertInventoryItems, normalizeInventoryCapacity,
   claimOverflowItem, claimAllOverflowThatFits, inventoryRarityKey, inventoryItemCategory,
   inventoryItemRuntimeId, inventoryItemBackendId, inventoryItemType, inventoryItemJunkId,

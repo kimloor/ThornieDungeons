@@ -375,3 +375,22 @@ test("Global Loading V3: Arena history/ranking load once per hub visit and are i
   assert.match(comp, /if \(!res\?\.error\) arenaTabCacheRef\.current\.history = true/);
   assert.ok((comp.match(/arenaTabCacheRef\.current = \{ history: false, ranking: false \}/g) || []).length >= 2);
 });
+
+test("Global Loading V4: mailbox delete, arena opponent refresh, shop refresh and pet gacha are covered", () => {
+  const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const comp = read("src/ui/components.js");
+  const app = read("src/ui/App.js");
+  // all three mailbox delete paths (single, selected, all claimed)
+  assert.equal((comp.match(/GLOBAL_LOADING\.run\(\{ key: "mailbox\.delete", label: "กำลังลบจดหมาย…" \}/g) || []).length, 3);
+  assert.match(comp, /GLOBAL_LOADING\.run\(\{ key: "arena\.refresh", label: "กำลังรีเฟรชคู่ต่อสู้…" \}, \(\) => cloudRefreshArenaV2Opponents/);
+  // shop: full-screen overlay (blocks every buy path) plus a defensive guard inside the sheet
+  assert.match(comp, /GLOBAL_LOADING\.run\(\{key:"shop\.refresh",label:"กำลังรีเฟรชร้านค้า…"\},\(\)=>onRefreshStock\(force\)\)/);
+  assert.match(comp, /const guardBuy=\(canAfford,action\)=>\{if\(disabled\|\|refreshing\)return;/);
+  assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "pet\.gacha", label: "กำลังสุ่มสัตว์เลี้ยง…" \}/);
+  // these are mutations: none may declare a retry
+  ["mailbox.delete", "arena.refresh", "shop.refresh", "pet.gacha"].forEach(key => {
+    const source = key === "pet.gacha" ? app : comp;
+    const i = source.indexOf(key);
+    assert.ok(i > -1 && !source.slice(i, i + 140).includes("onRetry"), key);
+  });
+});
