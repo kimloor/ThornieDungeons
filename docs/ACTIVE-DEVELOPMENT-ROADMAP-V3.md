@@ -335,7 +335,7 @@ Visible game version                             Ver 1.1.4
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓
-WAVE 1 PREP — Client Systems V1                 🟡 CONTRACT DRAFT (awaiting Owner approval)
+WAVE 1 PREP — Client Systems V1                 ✅ PR-C / PR-B / PR-A COMPLETE (Ver 1.1.4, 2026-10-22)
                      ↓
 WAVE 1.5 — Player Information Center
                      ↓
