@@ -388,7 +388,8 @@ test("Global Loading V4: mailbox delete, arena opponent refresh, shop refresh an
   assert.match(app, /key: "shop\.refresh", group: "shop", characterId, ui: "overlay"/);
   assert.doesNotMatch(comp, /GLOBAL_LOADING\.run\(\{key:"shop\.refresh"/);
   assert.match(comp, /const guardBuy=\(canAfford,action\)=>\{if\(disabled\|\|refreshing\)return;/);
-  assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "pet\.gacha", label: "กำลังสุ่มสัตว์เลี้ยง…" \}/);
+  // PR-A: gacha overlay is owned by the operation manager
+  assert.match(app, /key: "pet\.gacha", group: "pet", characterId, ui: "overlay"/);
   // these are mutations: none may declare a retry
   ["mailbox.delete", "arena.refresh", "shop.refresh", "pet.gacha"].forEach(key => {
     const source = key === "pet.gacha" || key === "shop.refresh" ? app : comp;

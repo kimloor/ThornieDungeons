@@ -2627,7 +2627,10 @@ function ThornieDungeons() {
   }
   async function commitActivePet(petAction, instId = "") {
     if (!await flushRewardClaimBarrier(save.characterId)) return false;
-    const result = await cloudPetEconomyAction(cred.url, save.characterId, petAction, instId, "");
+    const characterId = save.characterId;
+    // equip/unequip send no requestId (state-setting), so the manager must not auto-retry them.
+    const result = await OPERATIONS.run({ key: `pet.${petAction}`, group: "pet", characterId, action: "petEconomyAction", retry: false, conflict: "reject" },
+      () => cloudPetEconomyAction(cred.url, characterId, petAction, instId, ""));
     if (!result?.ok) return false;
     petCombatRef.current = null;
     setPetCombat(null);
@@ -2638,8 +2641,9 @@ function ThornieDungeons() {
   function unequipPet() { return commitActivePet("unequip"); }
   async function pullGacha() {
     if (save.diamonds < GACHA_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `pet-gacha-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await GLOBAL_LOADING.run({ key: "pet.gacha", label: "กำลังสุ่มสัตว์เลี้ยง…" }, () => cloudPetEconomyAction(cred.url, save.characterId, "gacha", "", requestId));
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "pet.gacha", group: "pet", characterId, ui: "overlay", label: "กำลังสุ่มสัตว์เลี้ยง…", action: "petEconomyAction", conflict: "reject" },
+      requestId => cloudPetEconomyAction(cred.url, characterId, "gacha", "", requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setGachaResult({ pet: getPetDef(result.result?.defId), duplicate: !!result.result?.duplicate });
@@ -2657,8 +2661,9 @@ function ThornieDungeons() {
     const have = petDuplicateCount(save.petDuplicates, pet.defId);
     if (have < cost) return { ok: false, need: cost, have };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, need: cost, have };
-    const requestId = globalThis.crypto?.randomUUID?.() || `pet-star-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudPetEconomyAction(cred.url, save.characterId, "star_up", instId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `pet.starUp:${instId}`, group: "pet", characterId, action: "petEconomyAction", conflict: "reject" },
+      requestId => cloudPetEconomyAction(cred.url, characterId, "star_up", instId, requestId));
     if (!result?.ok) return result?.error === "pet_star_max" ? { ok: false, maxed: true } : { ok: false, need: cost, have };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return { ok: true };
