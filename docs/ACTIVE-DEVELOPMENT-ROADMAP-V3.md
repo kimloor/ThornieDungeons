@@ -370,3 +370,7 @@ New findings discovered during the pre-V1.1.0 gate are recorded for the successo
 - defects that make the changed system unsafe or unverifiable.
 
 Do not silently pull unrelated future gameplay into the Ver 1.1.0 gate.
+
+## Backlog (unscheduled)
+
+- Guest Login V1: design recorded in `docs/GUEST-LOGIN-V1.md` (draft, risk HIGH, awaiting Owner approval and a roadmap slot).
