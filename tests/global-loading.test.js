@@ -381,7 +381,7 @@ test("Global Loading V4: mailbox delete, arena opponent refresh, shop refresh an
   const comp = read("src/ui/components.js");
   const app = read("src/ui/App.js");
   // all three mailbox delete paths (single, selected, all claimed)
-  assert.equal((comp.match(/GLOBAL_LOADING\.run\(\{ key: "mailbox\.delete", label: "กำลังลบจดหมาย…" \}/g) || []).length, 3);
+  assert.equal((comp.match(/OPERATIONS\.run\(\{ key: "mailbox\.delete", group: "mailbox", characterId, ui: "overlay", label: "กำลังลบจดหมาย…", conflict: "reject" \}/g) || []).length, 3);
   assert.match(comp, /GLOBAL_LOADING\.run\(\{ key: "arena\.refresh", label: "กำลังรีเฟรชคู่ต่อสู้…" \}, \(\) => cloudRefreshArenaV2Opponents/);
   // shop: full-screen overlay (blocks every buy path) plus a defensive guard inside the sheet
   // PR-A: the operation manager owns the shop overlay (one token per intent); the component no longer opens its own

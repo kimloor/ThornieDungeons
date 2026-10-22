@@ -1688,9 +1688,9 @@ function FriendScreen({
   // Applies `apply()` immediately (already called by the caller before this runs), then
   // fires the real request in the background. On failure or network error, `revert()`
   // restores the exact pre-action snapshot the caller captured — no full reload either way.
-  const runOptimistic = (key, revert, promise) => {
+  const runOptimistic = (key, revert, task) => {
     setBusyKey(key);
-    promise.then(res => {
+    OPERATIONS.run({ key: `friends.${key}`, group: "social", characterId, conflict: "reject" }, task).then(res => {
       setBusyKey("");
       if (!res || res.error) {
         revert();
@@ -1709,7 +1709,7 @@ function FriendScreen({
     const prevSearch = searchResults;
     const prevOutgoing = requestsData.outgoing;
     if (searchResults) setSearchResults(searchResults.map(r => r.characterId === row.characterId ? { ...r, relationship: "outgoing_pending", requestId: null } : r));
-    const promise = cloudSendFriendRequest(url, characterId, row.characterId).then(res => {
+    const promise = () => cloudSendFriendRequest(url, characterId, row.characterId).then(res => {
       if (res && res.ok) {
         setRequestsData(rd => ({ ...rd, outgoing: [...rd.outgoing, { requestId: res.requestId, characterId: row.characterId, name: row.name, level: row.level, online: row.online, createdAt: new Date().toISOString(), expiresAt: res.expiresAt }] }));
         setSearchResults(sr => sr ? sr.map(r => r.characterId === row.characterId ? { ...r, requestId: res.requestId } : r) : sr);
@@ -1735,7 +1735,7 @@ function FriendScreen({
       setRequestsData(rd => ({ ...rd, incoming: prevIncoming }));
       setFriends(prevFriends);
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudAcceptFriendRequest(url, characterId, req.requestId));
+    }, () => cloudAcceptFriendRequest(url, characterId, req.requestId));
   };
 
   const handleReject = (req) => {
@@ -1748,7 +1748,7 @@ function FriendScreen({
     runOptimistic(key, () => {
       setRequestsData(rd => ({ ...rd, incoming: prevIncoming }));
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudRejectFriendRequest(url, characterId, req.requestId));
+    }, () => cloudRejectFriendRequest(url, characterId, req.requestId));
   };
 
   const handleCancel = (req) => {
@@ -1761,7 +1761,7 @@ function FriendScreen({
     runOptimistic(key, () => {
       setRequestsData(rd => ({ ...rd, outgoing: prevOutgoing }));
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudCancelFriendRequest(url, characterId, req.requestId));
+    }, () => cloudCancelFriendRequest(url, characterId, req.requestId));
   };
 
   const handleRemove = (friend) => {
@@ -1774,7 +1774,7 @@ function FriendScreen({
     runOptimistic(key, () => {
       setFriends(prevFriends);
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudRemoveFriend(url, characterId, friend.characterId));
+    }, () => cloudRemoveFriend(url, characterId, friend.characterId));
   };
 
   const handleBlock = (entity) => {
@@ -1796,7 +1796,7 @@ function FriendScreen({
       setRequestsData(prevRequests);
       setBlocked(prevBlocked);
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudBlockCharacter(url, characterId, entity.characterId));
+    }, () => cloudBlockCharacter(url, characterId, entity.characterId));
   };
 
   const handleUnblock = (entity) => {
@@ -1809,7 +1809,7 @@ function FriendScreen({
     runOptimistic(key, () => {
       setBlocked(prevBlocked);
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudUnblockCharacter(url, characterId, entity.characterId));
+    }, () => cloudUnblockCharacter(url, characterId, entity.characterId));
   };
 
   const onlineDot = (online) => online ? "🟢" : "⚪";
@@ -2553,7 +2553,7 @@ function GuildScreen({
       }
       const donationId = pendingDonationId || (globalThis.crypto?.randomUUID?.() || `donation-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       setPendingDonationId(donationId);
-      const result = await cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId);
+      const result = await OPERATIONS.run({ key: "guild.donate", group: "guild", characterId, conflict: "reject" }, () => cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId));
       if (!result || result.error) { setDonationError(guildErrorText(result && result.error)); return; }
       setPendingDonationId("");
       setDonationResult(result);
@@ -2931,7 +2931,7 @@ function RaidScreen({
     setLastResult(null);
     const pendingAttack = attackRequestIdRef.current || { requestId: globalThis.crypto?.randomUUID?.() || `raid-${Date.now()}-${Math.random().toString(36).slice(2)}`, paidDiamonds: !!useDiamonds };
     attackRequestIdRef.current = pendingAttack;
-    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, pendingAttack.paidDiamonds, pendingAttack.requestId).then(res => {
+    OPERATIONS.run({ key: "raid.attack", group: "raid", characterId, action: "attackRaidBoss", requestId: pendingAttack.requestId, conflict: "reject" }, id => cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, pendingAttack.paidDiamonds, id)).then(res => {
       if (!res || res.error) {
         if (!res?.error || !["network_error", "server_error", "timeout", "operation_in_progress"].includes(res.error)) attackRequestIdRef.current = null;
         setLastResult({ error: res && res.error }); return;
@@ -4648,7 +4648,7 @@ function MailboxScreen({
     setMailError("");
     try {
       if (onBeforeClaim && !await onBeforeClaim(characterId)) throw new Error("save_barrier_failed");
-      const res = await cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId);
+      const res = await OPERATIONS.run({ key: `mailbox.claim:${mailId}`, group: "mailbox", characterId, conflict: "reject" }, () => cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId));
       if (!res || res.error) { setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); return; }
       onApplyReward(res, characterId);
       load();
@@ -4667,7 +4667,8 @@ function MailboxScreen({
     const requestId = claimAllRequestRef.current;
     try {
       if (onBeforeClaim && !await onBeforeClaim(characterId)) throw new Error("save_barrier_failed");
-      const res = await cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId, requestId);
+      // requestId stays in claimAllRequestRef so a manual re-click after a failure reuses it
+      const res = await OPERATIONS.run({ key: "mailbox.claimAll", group: "mailbox", characterId, action: "claimAllMail", requestId, conflict: "reject" }, id => cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId, id));
       if (!res || res.error) { setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); return; }
       claimAllRequestRef.current = null;
       onApplyReward(res, characterId);
@@ -4682,7 +4683,7 @@ function MailboxScreen({
     if (busy) return;
     setBusy(true);
     setMailError("");
-    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId)).then(res => {
+    OPERATIONS.run({ key: "mailbox.delete", group: "mailbox", characterId, ui: "overlay", label: "กำลังลบจดหมาย…", conflict: "reject" }, () => cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายไม่สำเร็จ กรุณาลองใหม่"); return; }
       load();
@@ -4694,7 +4695,7 @@ function MailboxScreen({
     if (!ids.length || busy) return;
     setBusy(true);
     setMailError("");
-    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids)).then(res => {
+    OPERATIONS.run({ key: "mailbox.delete", group: "mailbox", characterId, ui: "overlay", label: "กำลังลบจดหมาย…", conflict: "reject" }, () => cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายที่เลือกไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
@@ -4706,7 +4707,7 @@ function MailboxScreen({
     if (busy) return;
     setBusy(true);
     setMailError("");
-    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId)).then(res => {
+    OPERATIONS.run({ key: "mailbox.delete", group: "mailbox", characterId, ui: "overlay", label: "กำลังลบจดหมาย…", conflict: "reject" }, () => cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
