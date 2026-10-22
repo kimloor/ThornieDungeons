@@ -17406,8 +17406,9 @@ function ThornieDungeons() {
     const used = Object.values(safeDraft).reduce((sum, value) => sum + value, 0);
     if (!used || used > save.character.statPoints) return false;
     if (!await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `stat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudAllocateStats(cred.url, save.characterId, safeDraft, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.stats", group: "progression", characterId, action: "allocateStats", conflict: "reject" },
+      requestId => cloudAllocateStats(cred.url, characterId, safeDraft, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -17415,8 +17416,9 @@ function ThornieDungeons() {
   async function resetAllStats() {
     const refunded = STAT_INFO.reduce((sum, st) => sum + Math.max(0, Number(save.character.stats[st.key]) || 0), 0);
     if (!refunded || save.diamonds < STAT_RESET_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `stat-reset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudResetCharacterStats(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.statsReset", group: "progression", characterId, action: "resetCharacterStats", conflict: "reject" },
+      requestId => cloudResetCharacterStats(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -17424,8 +17426,9 @@ function ThornieDungeons() {
   async function commitSkillDraft(draft) {
     const normalized = Object.fromEntries(Object.entries(draft || {}).map(([key, value]) => [key, Math.max(0, Math.floor(Number(value) || 0))]).filter(([, value]) => value > 0));
     if (!Object.keys(normalized).length || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `skill-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudAllocateHeroSkills(cred.url, save.characterId, normalized, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.skills", group: "progression", characterId, action: "allocateHeroSkills", conflict: "reject" },
+      requestId => cloudAllocateHeroSkills(cred.url, characterId, normalized, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -17433,8 +17436,9 @@ function ThornieDungeons() {
   function learnHeroSkill(draft) { return commitSkillDraft(draft); }
   async function resetAllSkills() {
     if (!heroSkillSpentPoints(save.character.skillLevels) || save.diamonds < SKILL_RESET_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `skill-reset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudResetHeroSkills(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.skillsReset", group: "progression", characterId, action: "resetHeroSkills", conflict: "reject" },
+      requestId => cloudResetHeroSkills(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
