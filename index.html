@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.4" />
+<meta name="application-version" content="1.1.5" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.4";
+  content: "Ver 1.1.5";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -982,6 +982,49 @@ body::after {
 .md-settings-section-head .md-sub { margin:2px 0 0; color:var(--ink-soft); font-size:11px; line-height:1.35; }
 .md-settings-sound { margin:0; padding:0; border:0; background:transparent; }
 .md-settings-stack { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.md-info-page { position:fixed; inset:0; z-index:130; display:flex; flex-direction:column; background:#0b0818; color:var(--ink,#F3EEFF); padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+.md-info-page, .md-info-page * { box-sizing:border-box; }
+.md-info-header { display:flex; align-items:center; gap:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,209,102,.28); }
+.md-info-header-copy { flex:1 1 auto; min-width:0; }
+.md-info-header .md-title { margin:0; font-size:18px; color:var(--ink,#F3EEFF); overflow-wrap:anywhere; }
+.md-info-header .md-sub { margin:2px 0 0; font-size:11px; color:var(--ink-soft,#B9AEDD); }
+.md-info-back, .md-info-close { flex:0 0 auto; min-width:44px; width:44px; height:44px; padding:0; margin:0; }
+.md-info-body { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px 2px 24px; }
+.md-info-group { margin:0 0 14px; }
+.md-info-group-title { margin:0 0 6px; font-size:12px; letter-spacing:.04em; color:var(--gold,#FFD166); }
+.md-info-card { display:flex; align-items:center; gap:10px; width:100%; min-height:56px; margin:0 0 8px; padding:10px 12px; text-align:left; color:inherit; font:inherit; cursor:pointer; border:1px solid rgba(255,209,102,.28); border-radius:12px; background:rgba(18,12,34,.82); }
+.md-info-card:active { background:rgba(139,106,232,.28); }
+.md-info-card-icon { flex:0 0 auto; font-size:24px; line-height:1; }
+.md-info-card-copy { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
+.md-info-card-copy strong { font-size:14px; }
+.md-info-card-copy small { font-size:11px; color:var(--ink-soft,#B9AEDD); overflow-wrap:anywhere; }
+.md-info-badge { flex:0 0 auto; padding:2px 8px; border-radius:999px; font-size:10px; border:1px solid rgba(185,174,221,.5); color:var(--ink-soft,#B9AEDD); }
+.md-info-badge.is-new { background:#FF6B6B; border-color:#FF6B6B; color:#fff; font-weight:700; }
+.md-info-tabs { display:flex; gap:6px; margin:0 0 10px; }
+.md-info-tab { flex:1 1 0; min-height:40px; padding:6px 4px; font:inherit; font-size:12px; color:var(--ink-soft,#B9AEDD); background:rgba(18,12,34,.82); border:1px solid rgba(255,209,102,.28); border-radius:10px; cursor:pointer; }
+.md-info-tab.is-active { color:#1b1230; background:var(--gold,#FFD166); border-color:var(--gold,#FFD166); font-weight:700; }
+.md-info-entry { margin:0 0 10px; padding:12px; border:1px solid rgba(255,209,102,.28); border-radius:12px; background:rgba(18,12,34,.82); }
+.md-info-entry.is-latest { border-color:var(--gold,#FFD166); }
+.md-info-entry-head { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--ink-soft,#B9AEDD); }
+.md-info-ver { color:var(--gold,#FFD166); font-weight:700; }
+.md-info-entry-title { margin:4px 0 6px; font-size:15px; }
+.md-info-list { margin:0; padding-left:18px; font-size:13px; line-height:1.5; }
+.md-info-road-group { margin:0 0 12px; }
+.md-info-road-title { margin:0 0 6px; font-size:13px; }
+.md-info-road-title.status-completed { color:#7BD88F; }
+.md-info-road-title.status-in_progress { color:var(--gold,#FFD166); }
+.md-info-road-title.status-planned { color:var(--ink-soft,#B9AEDD); }
+.md-info-road-row { display:flex; flex-direction:column; margin:0 0 6px; padding:8px 10px; border-radius:10px; background:rgba(18,12,34,.82); border:1px solid rgba(255,209,102,.18); font-size:13px; }
+.md-info-road-row span { font-size:11px; color:var(--ink-soft,#B9AEDD); }
+.md-info-note { font-size:11px; color:var(--ink-soft,#B9AEDD); }
+.md-info-meta { display:flex; flex-wrap:wrap; gap:6px 12px; margin:0 0 8px; font-size:11px; color:var(--ink-soft,#B9AEDD); }
+.md-info-draft { margin:0 0 10px; padding:8px 10px; font-size:12px; border-radius:10px; border:1px dashed rgba(255,209,102,.5); color:var(--gold,#FFD166); }
+.md-info-block { margin:0 0 12px; }
+.md-info-block h4 { margin:0 0 4px; font-size:14px; color:var(--gold,#FFD166); }
+.md-info-block p { margin:0 0 6px; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
+.md-info-reserved { display:flex; flex-direction:column; align-items:center; gap:8px; padding:36px 16px; text-align:center; color:var(--ink-soft,#B9AEDD); }
+.md-info-reserved-icon { font-size:40px; }
+.md-info-entry-title, .md-info-list { overflow-wrap:anywhere; }
 .md-settings-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; min-width:0; }
 .md-settings-message { margin:10px 0 0; }
 .md-sound-row { padding:8px 0; border-top:1px solid rgba(153,190,237,.16); min-width:0; }
@@ -7398,6 +7441,225 @@ const STAT_INFO = [{
 }];
 // Base speed value before AGI is applied — shared by player, pets, and monsters.
 const BASE_SPEED = 10;
+
+// ===== data/infoCenter.js =====
+// Player Information Center content (WAVE 1.5, docs/PLAYER-INFORMATION-CONTENT-POLICY.md).
+// Data only: no UI, no balance numbers. Player-facing text is Thai. Do not add internal security,
+// anti-cheat, validation or QA details here (policy section 3). A release that changes documented
+// behaviour must update this file in the same release (policy section 5).
+const INFO_CENTER_VERSION_SEEN_KEY = "td.info.seenVersion";
+
+const INFO_CENTER = {
+  groups: [
+    { id: "news", title: "ข่าวสาร" },
+    { id: "guide", title: "คู่มือ" },
+    { id: "policy", title: "นโยบายและข้อกำหนด" },
+    { id: "other", title: "ข้อมูลอื่น ๆ" }
+  ],
+
+  sections: [
+    { id: "announcements", group: "news", kind: "announcements", icon: "📣", title: "ประกาศ", subtitle: "อัปเดตล่าสุด ประวัติเวอร์ชัน และแผนงานของเกม" },
+    { id: "guide", group: "guide", kind: "reserved", icon: "📖", title: "คู่มือเกม", subtitle: "กติกาและกลไกของเกม",
+      reservedText: "คู่มือเกมกำลังอยู่ระหว่างจัดทำ จะเพิ่มเนื้อหาในเวอร์ชันถัดไป", topics: [] },
+    { id: "terms", group: "policy", kind: "document", icon: "📜", title: "ข้อกำหนดการใช้งาน", subtitle: "Terms of Service",
+      version: "0.1", status: "draft", effectiveDate: "2026-10-22", lastUpdated: "2026-10-22",
+      blocks: [
+        { heading: "1. ขอบเขตของบริการ", body: [
+          "ThornieDungeons เป็นเกมแนวดันเจียนที่เล่นผ่านเว็บเบราว์เซอร์ ขณะนี้อยู่ในช่วงพัฒนาและทดสอบ ฟีเจอร์ ข้อมูล และกติกาอาจเปลี่ยนแปลงได้ตามความเหมาะสม",
+          "การเริ่มใช้งานหมายถึงคุณยอมรับข้อกำหนดฉบับนี้ หากไม่ยอมรับ โปรดหยุดใช้งาน"
+        ] },
+        { heading: "2. บัญชีผู้เล่น", body: [
+          "คุณต้องดูแล Player ID รหัสผ่าน และ Recovery Code ของคุณเอง และไม่ควรแชร์ให้ผู้อื่น",
+          "กิจกรรมที่เกิดขึ้นผ่านบัญชีของคุณถือเป็นความรับผิดชอบของคุณ หากสงสัยว่าบัญชีถูกใช้โดยผู้อื่น ให้เปลี่ยนรหัสผ่านใน Settings ทันที"
+        ] },
+        { heading: "3. ไอเทมและสกุลเงินในเกม", body: [
+          "ไอเทม ทอง เพชร และทรัพย์สินอื่นในเกมเป็นข้อมูลในเกมเท่านั้น ไม่มีมูลค่าเป็นเงินจริง ไม่สามารถแลกเปลี่ยนเป็นเงิน และไม่ถือเป็นทรัพย์สินของผู้เล่น",
+          "ทีมงานอาจปรับสมดุล แก้ไข หรือรีเซ็ตข้อมูลในเกมได้ โดยเฉพาะในช่วงทดสอบ"
+        ] },
+        { heading: "4. การใช้งานที่เหมาะสม", body: [
+          "ต้องเล่นตามกติกา Fair Play / Community Rules ซึ่งถือเป็นส่วนหนึ่งของข้อกำหนดนี้",
+          "ทีมงานอาจจำกัดหรือระงับบัญชีที่ละเมิดกติกา และอาจแก้ไขข้อมูลบัญชีที่ได้มาโดยไม่ถูกต้อง"
+        ] },
+        { heading: "5. การให้บริการและความรับผิด", body: [
+          "บริการให้ตามสภาพที่เป็นอยู่ อาจมีการหยุดชั่วคราว ข้อผิดพลาด หรือข้อมูลสูญหายได้ ทีมงานจะพยายามลดความเสียหาย แต่ไม่รับประกันว่าบริการจะต่อเนื่องหรือปราศจากข้อผิดพลาด",
+          "ในขอบเขตที่กฎหมายอนุญาต ทีมงานไม่รับผิดชอบต่อความเสียหายทางอ้อมที่เกิดจากการใช้งานเกม"
+        ] },
+        { heading: "6. การเปลี่ยนแปลงข้อกำหนด", body: [
+          "ข้อกำหนดนี้อาจถูกปรับปรุง โดยจะแสดงเลขเวอร์ชันและวันที่แก้ไขล่าสุดไว้ในหน้านี้ การใช้งานต่อหลังมีการปรับปรุงถือว่ายอมรับฉบับใหม่"
+        ] }
+      ] },
+    { id: "privacy", group: "policy", kind: "document", icon: "🔒", title: "นโยบายความเป็นส่วนตัว", subtitle: "Privacy Policy",
+      version: "0.1", status: "draft", effectiveDate: "2026-10-22", lastUpdated: "2026-10-22",
+      blocks: [
+        { heading: "1. ข้อมูลที่เกมเก็บ", body: [
+          "ข้อมูลบัญชี: Player ID, รหัสผ่าน และ Recovery Code ซึ่งเก็บในรูปแบบที่ไม่สามารถอ่านกลับเป็นค่าเดิมได้",
+          "ข้อมูลในเกม: ตัวละคร ไอเทม ความคืบหน้า จดหมาย รายชื่อเพื่อน กิลด์ และข้อความแชทในเกม",
+          "ข้อมูลทางเทคนิค: ที่อยู่ IP ที่ใช้ชั่วคราวเพื่อจำกัดความถี่ในการลองซ้ำและป้องกันการใช้งานผิดปกติ รวมถึงบันทึกข้อผิดพลาดของระบบ"
+        ] },
+        { heading: "2. ข้อมูลที่เก็บบนอุปกรณ์ของคุณ", body: [
+          "เซสชันการเข้าสู่ระบบถูกเก็บในหน้าต่างเบราว์เซอร์ที่เปิดเกม และจะหายเมื่อปิดแท็บ",
+          "การตั้งค่าเสียง ลำดับการเรียงไอเทม และข้อมูลแคชบางส่วนถูกเก็บในเบราว์เซอร์ของอุปกรณ์นี้ ซึ่งคุณลบได้โดยล้างข้อมูลเว็บไซต์"
+        ] },
+        { heading: "3. วัตถุประสงค์การใช้ข้อมูล", body: [
+          "ใช้เพื่อให้คุณเข้าสู่ระบบ เล่นเกม บันทึกความคืบหน้า ใช้ฟีเจอร์สังคม ดูแลความปลอดภัยของบัญชี และแก้ไขข้อผิดพลาดของระบบ"
+        ] },
+        { heading: "4. ผู้ให้บริการที่เกี่ยวข้อง", body: [
+          "เกมให้บริการผ่าน Cloudflare (โฮสต์เว็บ ระบบเซิร์ฟเวอร์ ฐานข้อมูล และที่เก็บไฟล์ภาพ/เสียง)",
+          "เบราว์เซอร์โหลดไลบรารีโค้ดจาก unpkg และฟอนต์จาก Google Fonts",
+          "จากโค้ดของเกมในเวอร์ชันนี้ เกมไม่แสดงโฆษณาและไม่ติดตั้งเครื่องมือวิเคราะห์พฤติกรรมของบุคคลที่สาม"
+        ] },
+        { heading: "5. การเก็บรักษาและการลบข้อมูล", body: [
+          "ข้อมูลบัญชีและข้อมูลในเกมจะเก็บไว้ตราบเท่าที่บัญชียังใช้งานอยู่ หรือเท่าที่จำเป็นต่อการให้บริการ",
+          "ช่องทางขอแก้ไขหรือลบข้อมูลจะประกาศในหน้า \"ช่องทางติดต่อ\" เมื่อเปิดให้บริการ"
+        ] },
+        { heading: "6. การเปลี่ยนแปลงนโยบาย", body: [
+          "หากเปลี่ยนวิธีเก็บหรือใช้ข้อมูล (เช่น เพิ่มผู้ให้บริการใหม่) นโยบายนี้จะถูกปรับปรุงพร้อมเลขเวอร์ชันและวันที่ใหม่"
+        ] }
+      ] },
+    { id: "fairplay", group: "policy", kind: "document", icon: "🛡️", title: "กติกาการเล่นอย่างยุติธรรม", subtitle: "Fair Play / Community Rules",
+      version: "0.1", status: "draft", effectiveDate: "2026-10-22", lastUpdated: "2026-10-22",
+      blocks: [
+        { heading: "1. หลักการ", body: [
+          "ทุกคนควรได้เล่นอย่างยุติธรรม และอยู่ร่วมกันอย่างให้เกียรติกัน"
+        ] },
+        { heading: "2. สิ่งที่ไม่อนุญาต", body: [
+          "ใช้โปรแกรมช่วยเล่น บอท หรือวิธีใด ๆ ที่ทำให้ได้เปรียบโดยไม่ชอบ",
+          "ใช้ข้อผิดพลาดของเกมเพื่อให้ได้ไอเทม ทอง หรือเพชรที่ไม่ควรได้ และไม่แจ้งทีมงาน",
+          "ขายหรือแลกบัญชีเป็นเงินจริง หรือใช้บัญชีของผู้อื่นโดยไม่ได้รับอนุญาต",
+          "ส่งข้อความที่หยาบคาย คุกคาม เหยียด หรือสแปม ในแชท ชื่อตัวละคร ชื่อกิลด์ หรือจดหมาย"
+        ] },
+        { heading: "3. การพบข้อผิดพลาดของเกม", body: [
+          "หากพบข้อผิดพลาดที่ทำให้ได้ประโยชน์เกินปกติ โปรดอย่าใช้ซ้ำและแจ้งทีมงานผ่านช่องทางติดต่อเมื่อเปิดให้บริการ"
+        ] },
+        { heading: "4. ผลของการละเมิด", body: [
+          "ทีมงานอาจเตือน ลบสิ่งที่ได้มาโดยไม่ถูกต้อง จำกัดการใช้งานบางฟีเจอร์ หรือระงับบัญชี ขึ้นกับความร้ายแรง"
+        ] }
+      ] },
+    { id: "purchase", group: "policy", kind: "document", icon: "💎", title: "นโยบายการซื้อและการคืนเงิน", subtitle: "Purchase & Refund Policy",
+      version: "0.1", status: "draft", effectiveDate: "2026-10-22", lastUpdated: "2026-10-22",
+      blocks: [
+        { heading: "1. สถานะปัจจุบัน", body: [
+          "ขณะนี้เกมยังไม่เปิดให้ชำระเงินจริง ไม่มีการเรียกเก็บเงินใด ๆ ในเกม"
+        ] },
+        { heading: "2. เมื่อเปิดให้ซื้อในอนาคต", body: [
+          "ก่อนเปิดการชำระเงินจริง นโยบายนี้จะถูกทบทวนและปรับปรุงให้ตรงกับระบบการชำระเงินที่ใช้จริง และจะแจ้งผู้เล่นล่วงหน้า",
+          "เงื่อนไขการคืนเงิน ราคา และวิธีชำระเงินจะระบุในหน้านี้ก่อนเปิดใช้งาน"
+        ] },
+        { heading: "3. สกุลเงินและไอเทมในเกม", body: [
+          "ทอง เพชร และไอเทมที่ได้จากการเล่นไม่มีมูลค่าเป็นเงินจริง และไม่สามารถขอคืนเป็นเงิน"
+        ] }
+      ] },
+    { id: "account", group: "other", kind: "reserved", icon: "👤", title: "บัญชีและข้อมูล", subtitle: "Account & Data",
+      reservedText: "ส่วนนี้สงวนไว้สำหรับข้อมูลการจัดการบัญชีและข้อมูลผู้เล่น จะเพิ่มในอนาคต" },
+    { id: "support", group: "other", kind: "reserved", icon: "💬", title: "ช่องทางติดต่อ", subtitle: "Support / Contact",
+      reservedText: "ส่วนนี้สงวนไว้สำหรับช่องทางติดต่อและแจ้งปัญหา จะประกาศเมื่อพร้อมให้บริการ" },
+    { id: "credits", group: "other", kind: "reserved", icon: "🏷️", title: "เครดิตและลิขสิทธิ์", subtitle: "Credits / Licenses",
+      reservedText: "ส่วนนี้สงวนไว้สำหรับเครดิตและใบอนุญาตของผู้เกี่ยวข้อง จะเพิ่มในอนาคต" }
+  ],
+
+  // Curated player view. Reconstructed from release/commit evidence (git history of the version badge).
+  // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
+  announcements: {
+    latest: {
+      version: "1.1.5", date: "2026-10-22", title: "ศูนย์ข้อมูลผู้เล่น",
+      items: [
+        "เพิ่มหน้า \"ข้อมูลและนโยบาย\" ใน Settings: ประกาศ ประวัติเวอร์ชัน แผนงาน และข้อกำหนด/นโยบายฉบับร่าง",
+        "คู่มือเกมกำลังจัดทำ และจะเพิ่มในเวอร์ชันถัดไป"
+      ]
+    },
+    history: [
+      { version: "1.1.4", date: "2026-10-22", title: "ปรับปรุงการสั่งงานไปยังเซิร์ฟเวอร์", items: [
+        "กดปุ่มซ้ำระหว่างรอผลจะไม่ทำรายการซ้ำ",
+        "ถ้าเน็ตหลุดกลางการซื้อ/ขาย/ตีบวก ระบบลองใหม่ให้อัตโนมัติอย่างปลอดภัย โดยไม่หักของซ้ำ",
+        "ข้อความแจ้งข้อผิดพลาดของ Arena อ่านง่ายขึ้น"
+      ] },
+      { version: "1.1.2–1.1.3", date: "2026-10-21", title: "ปรับปรุงระบบภายใน", items: [
+        "ข้อความแจ้งข้อผิดพลาดเป็นภาษาไทยสม่ำเสมอขึ้น",
+        "จัดระเบียบการเรียกเซิร์ฟเวอร์ให้ตอบสนองเสถียรขึ้น"
+      ] },
+      { version: "1.1.1", date: "2026-10-21", title: "หน้าโหลดกลาง", items: [
+        "จดหมาย รีเฟรชอันดับ/คู่ต่อสู้ Arena รีเฟรชร้านค้า และกาชา ใช้หน้าโหลดแบบเดียวกัน",
+        "ลำดับการเรียงไอเทมถูกจำไว้ต่อตัวละครบนอุปกรณ์เครื่องนี้"
+      ] },
+      { version: "1.1.0", date: "2026-10-20", title: "ปล่อยเวอร์ชัน 1.1.0", items: [
+        "ศัตรูในดันเจียนสุ่มตามชั้น และบอสประจำชั้นคงที่",
+        "บอสมีข้อความแจ้งเมื่อเข้าสู่โหมดคลั่ง (Enrage)",
+        "แก้ปีก Raid ให้มีช่อง Enchant ตั้งแต่ได้รับ"
+      ] },
+      { version: "1.0.58–1.0.63", date: "2026-10-17 – 2026-10-18", title: "ปรับปรุง Arena", items: [
+        "แถบ ATB สีเขียว/แดง และบันทึกการต่อสู้อ่านง่ายขึ้น",
+        "Pet ยังสู้ต่อได้เมื่อ Hero ล้ม ฝ่ายที่แพ้คือเมื่อทั้งคู่ล้ม",
+        "สนามต่อสู้ใหญ่ขึ้นและจัดวางใหม่",
+        "บอทใน Arena สุ่มอุปกรณ์ Pet และสกิลมากขึ้น"
+      ] },
+      { version: "1.0.57", date: "2026-10-17", title: "ร้านค้าเต็มจอ", items: [
+        "ร้านค้าเปลี่ยนเป็นหน้าเต็มจอ มีข้อเสนอแบบจับเวลาและปุ่มรีเฟรช"
+      ] },
+      { version: "1.0.54–1.0.56", date: "2026-10-14", title: "ปรับปรุงหน้ากระเป๋าและฟอนต์", items: [
+        "หน้าเปรียบเทียบไอเทมแสดงการเปลี่ยนแปลงด้วยสี และเปรียบเทียบค่า CP",
+        "แสดงเอฟเฟกต์พิเศษของบอส และค่า Enchant เป็นเปอร์เซ็นต์",
+        "ใช้ฟอนต์ Baloo 2 ทั้งเกม"
+      ] },
+      { version: "1.0.49–1.0.53", date: "2026-10-05 – 2026-10-10", title: "ร้านค้า ขายของ และ Arena", items: [
+        "ซื้อเป็นจำนวนมาก และขายไอเทมเป็นกอง",
+        "ปรับการจบการต่อสู้ให้เล่นแอนิเมชันก่อนแสดงผล",
+        "จัดวางไอเทมใหม่อัตโนมัติ (Smart Placement)",
+        "แก้ Arena Replay บางแมตช์ดูไม่ได้"
+      ] },
+      { version: "1.0.41–1.0.48", date: "2026-10-04 – 2026-10-05", title: "ปรับปรุง UI บนมือถือ", items: [
+        "แก้ภาพและเลย์เอาต์บนมือถือหลายจุด รวมถึงแถบล่างของ Arena",
+        "ปรับการแสดงผลตอนจบดันเจียน ศัตรูระดับ Elite และ Pet"
+      ] },
+      { version: "1.0.35–1.0.39", date: "2026-10-03 – 2026-10-04", title: "ไอคอนใหม่และแก้ไขดันเจียน", items: [
+        "เพิ่มไอคอนตัวละครใน ATB และไอคอนสกิลของ Hero",
+        "ปรับ UI ของช่องไอเทมล้น และแก้การบันทึกจุดต่อของดันเจียน"
+      ] },
+      { version: "1.0.17–1.0.34", date: "2026-09-27 – 2026-10-01", title: "Arena V2 และตัวอย่าง Hero", items: [
+        "เปิดตัว Arena V2 พร้อมภาพการต่อสู้ใหม่ และใช้ V2 เป็นระบบหลักตั้งแต่ 1.0.34",
+        "เพิ่มตัวอย่าง Hero แบบสดในหน้ากระเป๋า"
+      ] },
+      { version: "1.0.7–1.0.16", date: "2026-09-26 – 2026-09-27", title: "ระบบภาพการต่อสู้ใหม่", items: [
+        "เริ่มใช้ระบบภาพการต่อสู้ใหม่ พร้อม Hero รุ่นใหม่ ปีก และชุด Azure"
+      ] }
+    ],
+    roadmap: [
+      { status: "completed", title: "Dungeon V2", note: "ระบบดันเจียน ศัตรู และบอสรุ่นใหม่" },
+      { status: "completed", title: "Arena V2", note: "การต่อสู้ผู้เล่นรุ่นใหม่ พร้อมประวัติและรีเพลย์" },
+      { status: "completed", title: "ร้านค้าและการขายไอเทม", note: "ซื้อจำนวนมาก ขายเป็นกอง" },
+      { status: "completed", title: "หน้าโหลดกลางและระบบเรียกเซิร์ฟเวอร์", note: "ลดอาการค้างและการทำรายการซ้ำ" },
+      { status: "completed", title: "ศูนย์ข้อมูลผู้เล่น", note: "ประกาศ แผนงาน และนโยบายฉบับร่าง" },
+      { status: "in_progress", title: "คู่มือเกม", note: "รวบรวมกติกาและกลไกของเกม" },
+      { status: "planned", title: "ปรับปรุงระบบตีบวกและคราฟต์", note: "" },
+      { status: "planned", title: "ร้านค้าหลักและระบบเพชร", note: "ต้องผ่านการทบทวนนโยบายก่อนเปิดใช้" },
+      { status: "planned", title: "ปรับปรุงกาชาสัตว์เลี้ยง", note: "" },
+      { status: "planned", title: "ตลาดซื้อขายระหว่างผู้เล่น", note: "" }
+    ],
+    statusLabels: { completed: "เสร็จแล้ว", in_progress: "กำลังพัฒนา", planned: "วางแผนไว้" }
+  }
+};
+
+function infoFindSection(id) {
+  return INFO_CENTER.sections.find(section => section.id === id) || null;
+}
+
+// Route formats: "terms" (section) or "guide/<topicId>" (section + topic, for future contextual "?" help).
+// Unknown ids resolve to null so callers can fall back to the menu instead of showing a blank page.
+function infoResolveRoute(route) {
+  if (!route) return null;
+  const [sectionId, topicId = ""] = String(route).split("/");
+  const section = infoFindSection(sectionId);
+  if (!section) return null;
+  const topic = topicId && Array.isArray(section.topics) ? (section.topics.find(item => item.id === topicId) || null) : null;
+  return { sectionId: section.id, topicId: topic ? topic.id : "" };
+}
+
+function infoLatestVersion() {
+  return INFO_CENTER.announcements.latest.version;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { INFO_CENTER, INFO_CENTER_VERSION_SEEN_KEY, infoFindSection, infoResolveRoute, infoLatestVersion };
+}
 
 // ===== systems/skills.js =====
 // ---------- skills (unlocked every 10 levels, up to level 90 — level cap is 99) ----------
@@ -18497,6 +18759,115 @@ function ThornieDungeons() {
   }));
 }
 
+// ===== ui/infoCenter.js =====
+// Player Information Center page (WAVE 1.5). Presentation only: all content lives in src/data/infoCenter.js.
+function infoSeenVersion() {
+  try { return window.localStorage?.getItem(INFO_CENTER_VERSION_SEEN_KEY) || ""; } catch (e) { return ""; }
+}
+function infoMarkSeen() {
+  try { window.localStorage?.setItem(INFO_CENTER_VERSION_SEEN_KEY, infoLatestVersion()); } catch (e) {}
+}
+function infoHasNew() {
+  return infoSeenVersion() !== infoLatestVersion();
+}
+
+function InfoAnnouncementEntry({ entry, latest }) {
+  const e = React.createElement;
+  return e("article", { className: "md-info-entry" + (latest ? " is-latest" : "") },
+    e("div", { className: "md-info-entry-head" },
+      e("span", { className: "md-info-ver" }, "Ver " + entry.version),
+      e("span", { className: "md-info-date" }, entry.date)
+    ),
+    e("h4", { className: "md-info-entry-title" }, entry.title),
+    e("ul", { className: "md-info-list" }, entry.items.map((item, index) => e("li", { key: index }, item)))
+  );
+}
+
+function InfoAnnouncements() {
+  const e = React.createElement;
+  const [tab, setTab] = useState("latest");
+  const data = INFO_CENTER.announcements;
+  const tabs = [["latest", "อัปเดตล่าสุด"], ["history", "ประวัติเวอร์ชัน"], ["roadmap", "แผนงาน"]];
+  return e("div", null,
+    e("div", { className: "md-info-tabs", role: "tablist" }, tabs.map(([id, label]) =>
+      e("button", { key: id, role: "tab", "aria-selected": tab === id, className: "md-info-tab" + (tab === id ? " is-active" : ""), onClick: () => setTab(id) }, label))),
+    tab === "latest" && e(InfoAnnouncementEntry, { entry: data.latest, latest: true }),
+    tab === "history" && data.history.map(entry => e(InfoAnnouncementEntry, { key: entry.version, entry })),
+    tab === "roadmap" && e("div", { className: "md-info-roadmap" },
+      ["in_progress", "planned", "completed"].map(status => {
+        const rows = data.roadmap.filter(item => item.status === status);
+        if (!rows.length) return null;
+        return e("section", { key: status, className: "md-info-road-group" },
+          e("h4", { className: "md-info-road-title status-" + status }, data.statusLabels[status]),
+          rows.map((item, index) => e("div", { key: index, className: "md-info-road-row" },
+            e("strong", null, item.title),
+            item.note ? e("span", null, item.note) : null)));
+      }),
+      e("p", { className: "md-info-note" }, "แผนงานเป็นแนวทางเบื้องต้น อาจเปลี่ยนแปลงได้ และไม่ใช่การรับประกันวันที่ปล่อย"))
+  );
+}
+
+function InfoDocument({ section }) {
+  const e = React.createElement;
+  return e("div", null,
+    e("div", { className: "md-info-meta" },
+      e("span", null, "เวอร์ชัน " + section.version),
+      e("span", null, "มีผล " + section.effectiveDate),
+      e("span", null, "แก้ไขล่าสุด " + section.lastUpdated)
+    ),
+    section.status === "draft" && e("p", { className: "md-info-draft" }, "ฉบับร่างสำหรับช่วงทดสอบ เนื้อหาอาจมีการปรับปรุง และจะทบทวนอีกครั้งก่อนเปิดให้บริการเชิงพาณิชย์"),
+    section.blocks.map((block, index) => e("section", { key: index, className: "md-info-block" },
+      e("h4", null, block.heading),
+      block.body.map((text, i) => e("p", { key: i }, text))))
+  );
+}
+
+function InfoReserved({ section }) {
+  const e = React.createElement;
+  return e("div", { className: "md-info-reserved" },
+    e("div", { className: "md-info-reserved-icon", "aria-hidden": "true" }, section.icon),
+    e("p", null, section.reservedText || "เร็ว ๆ นี้")
+  );
+}
+
+// route: "section" or "section/topic" (see infoResolveRoute). Unknown routes open the menu.
+function InfoCenterScreen({ initialRoute, onClose }) {
+  const e = React.createElement;
+  const resolved = infoResolveRoute(initialRoute);
+  const [sectionId, setSectionId] = useState(resolved ? resolved.sectionId : "");
+  const [seenTick, setSeenTick] = useState(0);
+  const section = sectionId ? infoFindSection(sectionId) : null;
+  useEffect(() => {
+    if (sectionId === "announcements") { infoMarkSeen(); setSeenTick(tick => tick + 1); }
+  }, [sectionId]);
+  const hasNew = infoHasNew();
+  const back = () => (section ? setSectionId("") : onClose && onClose());
+  const body = !section ? e("div", { className: "md-info-menu" }, INFO_CENTER.groups.map(group =>
+      e("section", { key: group.id, className: "md-info-group" },
+        e("h3", { className: "md-info-group-title" }, group.title),
+        INFO_CENTER.sections.filter(item => item.group === group.id).map(item =>
+          e("button", { key: item.id, className: "md-info-card", onClick: () => setSectionId(item.id) },
+            e("span", { className: "md-info-card-icon", "aria-hidden": "true" }, item.icon),
+            e("span", { className: "md-info-card-copy" },
+              e("strong", null, item.title),
+              e("small", null, item.subtitle)),
+            item.id === "announcements" && hasNew ? e("span", { className: "md-info-badge is-new" }, "NEW") : null,
+            item.kind === "reserved" ? e("span", { className: "md-info-badge" }, "เร็ว ๆ นี้") : null,
+            item.status === "draft" ? e("span", { className: "md-info-badge" }, "ฉบับร่าง") : null)))))
+    : section.kind === "announcements" ? e(InfoAnnouncements, null)
+    : section.kind === "document" ? e(InfoDocument, { section })
+    : e(InfoReserved, { section });
+  return ReactDOM.createPortal(e("div", { className: "md-info-page", role: "dialog", "aria-modal": "true", "aria-label": "ข้อมูลและนโยบาย", "data-seen": seenTick },
+    e("header", { className: "md-info-header" },
+      e("button", { className: "md-btn info small md-info-back", onClick: back, "aria-label": section ? "กลับไปเมนูข้อมูล" : "ปิด" }, section ? "\u2190" : "\u2715"),
+      e("div", { className: "md-info-header-copy" },
+        e("h2", { className: "md-title" }, section ? section.title : "ข้อมูลและนโยบาย"),
+        e("p", { className: "md-sub" }, section ? section.subtitle : "ประกาศ คู่มือ และนโยบายของเกม")),
+      section ? e("button", { className: "md-btn flee small md-info-close", onClick: onClose, "aria-label": "ปิดหน้าข้อมูล" }, "\u2715") : null),
+    e("main", { className: "md-info-body" }, body)
+  ), document.body);
+}
+
 // ===== ui/components.js =====
 function Starfield() {
   const dots = [{
@@ -18699,6 +19070,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
+  const [infoOpen, setInfoOpen] = useState(false);
   const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
   const soundRow = (label, volume, muted, onVolumeChange, onMuteChange) => e("div", { className: "md-sound-row" },
     e("div", { className: "md-sound-row-head" }, e("strong", null, label), e("span", null, `${Math.round(volume * 100)}%`)),
@@ -18754,7 +19126,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
     ),
     children
   );
-  return ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
+  const settingsSheet = ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
     e("div", { className: "md-settings-header" },
       e("div", { className: "md-settings-header-copy" },
         e("h2", { className: "md-title" }, "Settings"),
@@ -18785,11 +19157,15 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
       e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password")
     )),
     message && e("p", { className: "md-auth-error md-settings-message" }, message),
+    settingsSection("\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22", "\u0e1b\u0e23\u0e30\u0e01\u0e32\u0e28 \u0e04\u0e39\u0e48\u0e21\u0e37\u0e2d \u0e02\u0e49\u0e2d\u0e01\u0e33\u0e2b\u0e19\u0e14 \u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22\u0e02\u0e2d\u0e07\u0e40\u0e01\u0e21", e("div", { className: "md-settings-actions" },
+      e("button", { className: "md-btn info wide", disabled: busy, onClick: () => setInfoOpen(true) }, "\u0e40\u0e1b\u0e34\u0e14\u0e2b\u0e19\u0e49\u0e32\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22", infoHasNew() ? " \u2022 NEW" : "")
+    )),
     settingsSection("Account", "จัดการตัวละครและเซสชัน", e("div", { className: "md-settings-actions" },
       e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร"),
       e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
     ))
   )), document.body);
+  return e(React.Fragment, null, settingsSheet, infoOpen ? e(InfoCenterScreen, { onClose: () => setInfoOpen(false) }) : null);
 }
 function GameDock({
   onCharacter,
