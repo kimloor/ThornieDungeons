@@ -17761,8 +17761,9 @@ function ThornieDungeons() {
     return mutateLegacyBlacksmith(itemId, { type: "empower_open" }).then(({ ok, result }) => ({ ok, message: ok ? `🔮 เสริมพลังสำเร็จ! ได้รับ ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` : "เสริมพลังไม่สำเร็จ" }));
   }
   async function openShop() {
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudGetCharacterShopStock(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "shop.open", group: "shop", characterId, action: "getCharacterShopStock", conflict: "reject" },
+      requestId => cloudGetCharacterShopStock(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     applyShopStockResult(result);
     setShopOpen(true);
@@ -17780,9 +17781,13 @@ function ThornieDungeons() {
   }
   // force=true is the player's Refresh button (cooldown applies); force=false re-reads the stock after the 30 min window ended.
   async function refreshShopStock(force) {
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const characterId = save.characterId;
     const send = force ? cloudRefreshCharacterShopStock : cloudGetCharacterShopStock;
-    const result = await send(cred.url, save.characterId, requestId);
+    // The manager owns the full-screen overlay here (one token per intent, not per retry).
+    const result = await OPERATIONS.run({
+      key: "shop.refresh", group: "shop", characterId, ui: "overlay", label: "กำลังรีเฟรชร้านค้า…",
+      action: force ? "refreshCharacterShopStock" : "getCharacterShopStock", conflict: "reject"
+    }, requestId => send(cred.url, characterId, requestId));
     if (result?.ok) { applyShopStockResult(result); return { ok: true }; }
     if (result?.error === "shop_refresh_cooldown") {
       setShopStock(stock => ({ ...stock, refreshAtMs: Date.now() + Math.max(500, Number(result.retryAfterMs) || 10000) }));
@@ -23540,7 +23545,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   React.useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const stockLeftMs=stock?.expiresAtMs?Math.max(0,stock.expiresAtMs-nowMs):0, stockExpired=!!stock?.expiresAtMs&&stockLeftMs<=0;
   const refreshLeftSec=stock?.refreshAtMs?Math.max(0,Math.ceil((stock.refreshAtMs-nowMs)/1000)):0;
-  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await GLOBAL_LOADING.run({key:"shop.refresh",label:"กำลังรีเฟรชร้านค้า…"},()=>onRefreshStock(force));if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
+  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await onRefreshStock(force);if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
   React.useEffect(()=>{if(!stockExpired||autoRefreshKey.current===stock.expiresAtMs)return;autoRefreshKey.current=stock.expiresAtMs;runRefresh(false);},[stockExpired,stock?.expiresAtMs]);
   const formatLeft=ms=>{const total=Math.ceil(ms/1000);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0");};
   const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};

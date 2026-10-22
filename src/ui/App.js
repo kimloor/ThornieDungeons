@@ -2533,8 +2533,9 @@ function ThornieDungeons() {
     return mutateLegacyBlacksmith(itemId, { type: "empower_open" }).then(({ ok, result }) => ({ ok, message: ok ? `🔮 เสริมพลังสำเร็จ! ได้รับ ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` : "เสริมพลังไม่สำเร็จ" }));
   }
   async function openShop() {
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudGetCharacterShopStock(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "shop.open", group: "shop", characterId, action: "getCharacterShopStock", conflict: "reject" },
+      requestId => cloudGetCharacterShopStock(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     applyShopStockResult(result);
     setShopOpen(true);
@@ -2552,9 +2553,13 @@ function ThornieDungeons() {
   }
   // force=true is the player's Refresh button (cooldown applies); force=false re-reads the stock after the 30 min window ended.
   async function refreshShopStock(force) {
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const characterId = save.characterId;
     const send = force ? cloudRefreshCharacterShopStock : cloudGetCharacterShopStock;
-    const result = await send(cred.url, save.characterId, requestId);
+    // The manager owns the full-screen overlay here (one token per intent, not per retry).
+    const result = await OPERATIONS.run({
+      key: "shop.refresh", group: "shop", characterId, ui: "overlay", label: "กำลังรีเฟรชร้านค้า…",
+      action: force ? "refreshCharacterShopStock" : "getCharacterShopStock", conflict: "reject"
+    }, requestId => send(cred.url, characterId, requestId));
     if (result?.ok) { applyShopStockResult(result); return { ok: true }; }
     if (result?.error === "shop_refresh_cooldown") {
       setShopStock(stock => ({ ...stock, refreshAtMs: Date.now() + Math.max(500, Number(result.retryAfterMs) || 10000) }));

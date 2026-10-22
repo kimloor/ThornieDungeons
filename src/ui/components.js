@@ -5027,7 +5027,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   React.useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const stockLeftMs=stock?.expiresAtMs?Math.max(0,stock.expiresAtMs-nowMs):0, stockExpired=!!stock?.expiresAtMs&&stockLeftMs<=0;
   const refreshLeftSec=stock?.refreshAtMs?Math.max(0,Math.ceil((stock.refreshAtMs-nowMs)/1000)):0;
-  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await GLOBAL_LOADING.run({key:"shop.refresh",label:"กำลังรีเฟรชร้านค้า…"},()=>onRefreshStock(force));if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
+  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await onRefreshStock(force);if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
   React.useEffect(()=>{if(!stockExpired||autoRefreshKey.current===stock.expiresAtMs)return;autoRefreshKey.current=stock.expiresAtMs;runRefresh(false);},[stockExpired,stock?.expiresAtMs]);
   const formatLeft=ms=>{const total=Math.ceil(ms/1000);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0");};
   const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};
