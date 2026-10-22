@@ -75,3 +75,15 @@ Reusable cards, tabs/accordion, typography, scrolling, responsive behavior and d
 ## 8. Scope control
 
 W1.5 is informational/presentation work unless a separately approved defect is discovered. Do not change gameplay balance, reward authority, economy, API/Worker, DB/schema or player data merely to make Guide content match an assumption. Report conflicts and resolve the authoritative rule first.
+
+## 9. Implementation notes (Ver 1.1.5: PR A + B + D)
+
+Owner decisions: separate full-screen page opened from a button in Settings; Thai only; Support / Account & Data / Credits are reserved areas without details; Game Guide (PR C) is a separate later PR; policy drafts (PR D) do not depend on the Guide, so they ship with the structure and announcements.
+
+- Data: `src/data/infoCenter.js` (`INFO_CENTER`: groups, sections, announcements, roadmap; helpers `infoFindSection`, `infoResolveRoute`, `infoLatestVersion`). Presentation: `src/ui/infoCenter.js` (`InfoCenterScreen`). Entry: Settings > "ข้อมูลและนโยบาย".
+- Deep links: route `"section"` or `"section/topic"` through `infoResolveRoute`; `InfoCenterScreen({ initialRoute })` opens it, unknown routes fall back to the menu. Guide topics are not defined yet (PR C).
+- NEW badge: compares the latest announcement version with `localStorage` key `td.info.seenVersion`; opening Announcements marks it seen.
+- Version history was reconstructed from Git evidence (each change of the `Ver x.y.z` badge in `src/data/styles.js`, plus the PR/commit subjects), grouped into ranges. Versions before 1.0.7 have no verifiable record and are not listed.
+- Policy drafts (Terms, Privacy, Fair Play, Purchase & Refund) are version 0.1 / `status: "draft"`, written from the services actually in use at 2026-10-22 (Cloudflare Pages/Workers/D1/R2, unpkg for React, Google Fonts; no ads and no third-party analytics found in the client code; session in `sessionStorage`; audio/sort/cache in `localStorage`; IP used for rate limiting). They are not legal review; real-money checkout stays disabled until the Legal & Policy Gate.
+- Release rule reminder: every release that changes player-relevant behaviour updates `INFO_CENTER.announcements` (latest + history); `tests/info-center.test.js` fails if the latest announcement does not match the visible version.
+- Tests: `tests/info-center.test.js` (data integrity, reserved areas, draft status, deep links, version sync, roadmap without dates, public-information boundary word check, UI wiring).

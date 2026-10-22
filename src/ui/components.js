@@ -199,6 +199,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
+  const [infoOpen, setInfoOpen] = useState(false);
   const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
   const soundRow = (label, volume, muted, onVolumeChange, onMuteChange) => e("div", { className: "md-sound-row" },
     e("div", { className: "md-sound-row-head" }, e("strong", null, label), e("span", null, `${Math.round(volume * 100)}%`)),
@@ -254,7 +255,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
     ),
     children
   );
-  return ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
+  const settingsSheet = ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
     e("div", { className: "md-settings-header" },
       e("div", { className: "md-settings-header-copy" },
         e("h2", { className: "md-title" }, "Settings"),
@@ -285,11 +286,15 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
       e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password")
     )),
     message && e("p", { className: "md-auth-error md-settings-message" }, message),
+    settingsSection("\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22", "\u0e1b\u0e23\u0e30\u0e01\u0e32\u0e28 \u0e04\u0e39\u0e48\u0e21\u0e37\u0e2d \u0e02\u0e49\u0e2d\u0e01\u0e33\u0e2b\u0e19\u0e14 \u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22\u0e02\u0e2d\u0e07\u0e40\u0e01\u0e21", e("div", { className: "md-settings-actions" },
+      e("button", { className: "md-btn info wide", disabled: busy, onClick: () => setInfoOpen(true) }, "\u0e40\u0e1b\u0e34\u0e14\u0e2b\u0e19\u0e49\u0e32\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22", infoHasNew() ? " \u2022 NEW" : "")
+    )),
     settingsSection("Account", "จัดการตัวละครและเซสชัน", e("div", { className: "md-settings-actions" },
       e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร"),
       e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
     ))
   )), document.body);
+  return e(React.Fragment, null, settingsSheet, infoOpen ? e(InfoCenterScreen, { onClose: () => setInfoOpen(false) }) : null);
 }
 function GameDock({
   onCharacter,
