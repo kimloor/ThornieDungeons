@@ -15385,41 +15385,18 @@ function ThornieDungeons() {
   // The header's last cell is a large speed button for the opening rounds,
   // then becomes Skip after five player turns.
   const [combatTurnCount, setCombatTurnCount] = useState(0);
-  // Separate lock for item-mutating actions (Enhance/Empower/Reroll/Salvage/Sell/Equip/BuyMaterial).
-  // itemActionLockRef is checked+set *synchronously* so a rapid second click can never slip in
-  // and run against a stale `save`/`inventory` closure before the first click's state has
-  // committed — the ref only unlocks on the next tick (after React has flushed the update),
-  // not at the end of the (synchronous) handler itself. itemActionBusy is the render-visible
-  // twin used to actually disable/gray out the buttons in the UI.
-  const itemActionLockRef = useRef(false);
+  // Item-mutating actions: server writes are serialized by OPERATIONS (group "inventory"); the
+  // synchronous handlers (equip, sort, favorite...) are refused while any such write is in flight so
+  // they never run against a stale closure. itemActionBusy drives the disabled/gray state.
   const blacksmithRequestRef = useRef(new Map());
-  const [itemActionBusy, setItemActionBusy] = useState(false);
+  const itemActionBusy = useOperationPending({ group: "inventory", characterId: save && save.characterId });
   const [shopPending, setShopPending] = useState({});
   function guardItemAction(fn) {
     return (...args) => {
-      if (itemActionLockRef.current) {
-        return {
-          ok: false,
-          message: "⏳ กำลังดำเนินการอยู่ กรุณารอสักครู่..."
-        };
+      if (OPERATIONS.isGroupPending("inventory", save && save.characterId)) {
+        return { ok: false, message: OPERATIONS.config.busyMessage };
       }
-      itemActionLockRef.current = true;
-      setItemActionBusy(true);
-      const release = () => {
-        setTimeout(() => {
-          itemActionLockRef.current = false;
-          setItemActionBusy(false);
-        }, 0);
-      };
-      try {
-        const result = fn(...args);
-        if (result && typeof result.then === "function") return result.finally(release);
-        release();
-        return result;
-      } catch (error) {
-        release();
-        throw error;
-      }
+      return fn(...args);
     };
   }
   const monstersRef = useRef([]);
