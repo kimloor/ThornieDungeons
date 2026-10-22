@@ -2245,9 +2245,11 @@ function ThornieDungeons() {
     if (stackable && sellQuantity > storedQuantity) return { ok: false, message: "จำนวนขายมากกว่าจำนวนที่มี" };
     if (!stackable && sellQuantity !== 1) return { ok: false, message: "ไอเท็มนี้ขายได้ครั้งละ 1 ชิ้น" };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, message: "บันทึกสถานะก่อนขายไม่สำเร็จ กรุณาลองใหม่" };
-    const requestId = globalThis.crypto?.randomUUID?.() || `sell-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudSellCharacterItem(cred.url, save.characterId, item.id, requestId, sellQuantity);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `inventory.sell:${item.id}`, group: "inventory", characterId, action: "sellCharacterItem", conflict: "reject" },
+      requestId => cloudSellCharacterItem(cred.url, characterId, item.id, requestId, sellQuantity));
     if (!result?.ok) {
+      if (result?.error === "operation_busy") return { ok: false, message: result.message };
       const messages = { item_favorited: "ปลด Favorite/Lock ก่อนขาย", invalid_sell_quantity: "จำนวนขายไม่ถูกต้อง", stack_changed: "จำนวนไอเท็มเปลี่ยนแล้ว กรุณาเปิดรายละเอียดใหม่" };
       return { ok: false, message: messages[result?.error] || "ขายไอเท็มไม่สำเร็จ กรุณาลองใหม่" };
     }
@@ -2328,7 +2330,11 @@ function ThornieDungeons() {
     const requestKey = `legacy:${mutation.type}:${itemId}:${mutation.slotIndex ?? ""}:${mutation.useProtectionStone ? 1 : 0}`;
     const requestId = blacksmithRequestRef.current.get(requestKey) || `legacy-${mutation.type}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
     blacksmithRequestRef.current.set(requestKey, requestId);
-    const res = await cloudMutateLegacyBlacksmith(cred.url, save.characterId, itemId, mutation, requestId);
+    const characterId = save.characterId;
+    // The saved requestId (blacksmithRequestRef) still survives a manual re-click after a transient failure.
+    const res = await OPERATIONS.run({ key: `blacksmith:${requestKey}`, group: "inventory", characterId, action: "mutateLegacyBlacksmith", requestId, conflict: "reject" },
+      id => cloudMutateLegacyBlacksmith(cred.url, characterId, itemId, mutation, id));
+    if (res?.error === "operation_busy") return { ok: false, message: res.message };
     if (!res?.ok) {
       if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
       if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
@@ -2350,7 +2356,10 @@ function ThornieDungeons() {
     const requestKey = `${mutation.type}:${itemId}:${Number(mutation.expectedVersion) || 0}:${Number(mutation.slotIndex) || 0}:${mutation.useProtectionStone === true ? 1 : 0}`;
     const requestId = blacksmithRequestRef.current.get(requestKey) || blacksmithRequestId(mutation.type, itemId);
     blacksmithRequestRef.current.set(requestKey, requestId);
-    const res = await cloudMutateV2Blacksmith(cred.url, save.characterId, itemId, mutation, requestId);
+    const characterId = save.characterId;
+    const res = await OPERATIONS.run({ key: `blacksmith:${requestKey}`, group: "inventory", characterId, action: "mutateV2Blacksmith", requestId, conflict: "reject" },
+      id => cloudMutateV2Blacksmith(cred.url, characterId, itemId, mutation, id));
+    if (res?.error === "operation_busy") return { ok: false, message: res.message };
     if (!res?.ok) {
       if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
       if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
@@ -2453,9 +2462,11 @@ function ThornieDungeons() {
     if (found.location === "equipped") return { ok: false, message: "ถอดอุปกรณ์ก่อนแยกชิ้นส่วน" };
     if (found.item.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนแยกชิ้นส่วน" };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, message: "บันทึกสถานะก่อนแยกชิ้นส่วนไม่สำเร็จ กรุณาลองใหม่" };
-    const requestId = globalThis.crypto?.randomUUID?.() || `salvage-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudSalvageItem(cred.url, save.characterId, itemId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `inventory.salvage:${itemId}`, group: "inventory", characterId, action: "salvageItem", conflict: "reject" },
+      requestId => cloudSalvageItem(cred.url, characterId, itemId, requestId));
     if (!result?.ok) {
+      if (result?.error === "operation_busy") return { ok: false, message: result.message };
       const messages = {
         salvage_not_eligible: "ไอเทมนี้ยังไม่อยู่ในตาราง Salvage V2",
         mythic_salvage_not_eligible: "ไอเทมพิเศษนี้ไม่มีสูตรแยกชิ้นส่วนที่รองรับ",
