@@ -34,7 +34,7 @@ test("Batch 6A preserves API error code/reason without entering fatal recovery",
   const message = arenaHumanError("arena_action_illegal", "not_your_turn", "action failed");
   assert.match(message, /คำสั่ง Arena นี้ใช้ไม่ได้/);
   assert.match(message, /not your turn/);
-  assert.match(message, /arena_action_illegal/);
+  assert.doesNotMatch(message, /arena_action_illegal/, "raw [code] is hidden from players");
   assert.match(arenaUi, /if \(\["arena_match_not_active", "arena_action_illegal", "arena_combat_conflict"\]\.includes\(res\.error\)\) await syncArenaMatch\(\)/);
   assert.doesNotMatch(arenaUi, /reportArenaFatal\(detail \|\| new Error\("Arena Phaser presentation failed"\), \{\}, "phaser_error"\);\s*\}\s*else setError/);
 });

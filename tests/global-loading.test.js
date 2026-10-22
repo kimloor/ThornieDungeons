@@ -381,15 +381,18 @@ test("Global Loading V4: mailbox delete, arena opponent refresh, shop refresh an
   const comp = read("src/ui/components.js");
   const app = read("src/ui/App.js");
   // all three mailbox delete paths (single, selected, all claimed)
-  assert.equal((comp.match(/GLOBAL_LOADING\.run\(\{ key: "mailbox\.delete", label: "กำลังลบจดหมาย…" \}/g) || []).length, 3);
+  assert.equal((comp.match(/OPERATIONS\.run\(\{ key: "mailbox\.delete", group: "mailbox", characterId, ui: "overlay", label: "กำลังลบจดหมาย…", conflict: "reject" \}/g) || []).length, 3);
   assert.match(comp, /GLOBAL_LOADING\.run\(\{ key: "arena\.refresh", label: "กำลังรีเฟรชคู่ต่อสู้…" \}, \(\) => cloudRefreshArenaV2Opponents/);
   // shop: full-screen overlay (blocks every buy path) plus a defensive guard inside the sheet
-  assert.match(comp, /GLOBAL_LOADING\.run\(\{key:"shop\.refresh",label:"กำลังรีเฟรชร้านค้า…"\},\(\)=>onRefreshStock\(force\)\)/);
+  // PR-A: the operation manager owns the shop overlay (one token per intent); the component no longer opens its own
+  assert.match(app, /key: "shop\.refresh", group: "shop", characterId, ui: "overlay"/);
+  assert.doesNotMatch(comp, /GLOBAL_LOADING\.run\(\{key:"shop\.refresh"/);
   assert.match(comp, /const guardBuy=\(canAfford,action\)=>\{if\(disabled\|\|refreshing\)return;/);
-  assert.match(app, /GLOBAL_LOADING\.run\(\{ key: "pet\.gacha", label: "กำลังสุ่มสัตว์เลี้ยง…" \}/);
+  // PR-A: gacha overlay is owned by the operation manager
+  assert.match(app, /key: "pet\.gacha", group: "pet", characterId, ui: "overlay"/);
   // these are mutations: none may declare a retry
   ["mailbox.delete", "arena.refresh", "shop.refresh", "pet.gacha"].forEach(key => {
-    const source = key === "pet.gacha" ? app : comp;
+    const source = key === "pet.gacha" || key === "shop.refresh" ? app : comp;
     const i = source.indexOf(key);
     assert.ok(i > -1 && !source.slice(i, i + 140).includes("onRetry"), key);
   });

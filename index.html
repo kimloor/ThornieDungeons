@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.3" />
+<meta name="application-version" content="1.1.4" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.3";
+  content: "Ver 1.1.4";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -6388,6 +6388,192 @@ function cloudUpdateGuildSettings(url, characterId, description, joinPolicy) {
     description,
     joinPolicy
   });
+}
+
+// ===== state/operations.js =====
+// Server Operation Manager (docs/CLIENT-SYSTEMS-V1.md section 11)
+// Standard lifecycle for state-changing server actions: one requestId per player intent,
+// automatic retry of receipt-protected actions, per-character queue, pending registry for
+// disabling controls, optimistic apply + scoped rollback, errors via the catalog.
+// It never resolves gameplay: the Worker stays authoritative; callers keep their own result handling.
+const OPERATIONS_DEFAULTS = Object.freeze({
+  maxRetries: 3,              // retries after the first attempt (receipt actions only)
+  backoffMs: [1000, 2000, 4000],
+  jitter: 0.2,                // +/-20% so devices do not retry in lockstep
+  budgetMs: 45000,            // stop retrying once an intent has taken this long in total
+  busyMessage: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e17\u0e33\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e01\u0e48\u0e2d\u0e19\u0e2b\u0e19\u0e49\u0e32 \u0e01\u0e23\u0e38\u0e13\u0e32\u0e23\u0e2d\u0e2a\u0e31\u0e01\u0e04\u0e23\u0e39\u0e48"
+});
+
+function newOperationRequestId(prefix) {
+  const rand = (typeof globalThis !== "undefined" && globalThis.crypto && typeof globalThis.crypto.randomUUID === "function")
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix || "op"}-${rand}`;
+}
+
+// Transient = the request may not have reached (or finished on) the server. Business errors
+// (insufficient_funds, item_not_found, ...) are final and never retried.
+function isTransientOperationResult(result) {
+  if (!result || typeof result !== "object") return false;
+  return result.error === "network_error" || result.error === "server_error" ||
+    result.timedOut === true || Number(result.status) >= 500;
+}
+
+// Reverts only the keys this operation changed, and only when nobody else has changed them since.
+// current: live state, applied: state right after the optimistic apply, previous: state before it.
+// Anything that moved on its own (e.g. a reward that arrived while waiting) is left untouched.
+function revertOperationFields(current, applied, previous, keys) {
+  const next = { ...current };
+  (keys || Object.keys(applied || {})).forEach(key => {
+    if (Object.is(current[key], applied[key])) next[key] = previous[key];
+  });
+  return next;
+}
+
+function createOperationManager(options = {}) {
+  const cfg = { ...OPERATIONS_DEFAULTS, ...(options.config || {}) };
+  const sleep = options.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
+  const now = options.now || (() => Date.now());
+  const random = options.random || Math.random;
+  const policyFor = options.policyFor || null;     // (action, "POST") => { idempotency }
+  const loading = options.loading || null;         // GLOBAL_LOADING-like { run(spec, task) }
+  const explain = options.errorMessage || null;    // errorMessage(code, { overrides, fallback })
+  const beforeRetry = typeof options.beforeRetry === "function" ? options.beforeRetry : null;
+
+  const pending = new Map();      // key -> count (inline pending registry)
+  const queues = new Map();       // `${characterId}:${group}` -> tail promise
+  const listeners = new Set();
+  let version = 0;
+
+  function notify() {
+    version += 1;
+    listeners.forEach(fn => { try { fn(version); } catch (_) { /* ignore */ } });
+  }
+  function mark(key, delta) {
+    const count = (pending.get(key) || 0) + delta;
+    if (count > 0) pending.set(key, count); else pending.delete(key);
+    notify();
+  }
+
+  function canRetry(spec) {
+    if (spec.retry === false) return false;
+    if (!spec.action || !policyFor) return false;
+    const policy = policyFor(spec.action, "POST");
+    return !!policy && policy.idempotency === "receipt";
+  }
+
+  function backoffDelay(retryIndex) {
+    const base = cfg.backoffMs[Math.min(retryIndex, cfg.backoffMs.length - 1)];
+    const spread = (random() * 2 - 1) * cfg.jitter;
+    return Math.max(0, Math.round(base * (1 + spread)));
+  }
+
+  function finalize(spec, result) {
+    const res = result && typeof result === "object" ? result : { ok: false, error: "network_error" };
+    if (res.ok || res.message || !explain) return res;
+    const text = explain(res.error, { overrides: spec.errorOverrides || null, fallback: "" });
+    return text ? { ...res, message: text } : res;
+  }
+
+  async function attempts(spec, task) {
+    const requestId = spec.requestId || newOperationRequestId(spec.action || spec.key);
+    const retriable = canRetry(spec);
+    const startedAt = now();
+    let result;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        result = await task(requestId, { attempt, retried: attempt > 0 });
+      } catch (_) {
+        result = { ok: false, error: "network_error" };
+      }
+      if (!retriable || !isTransientOperationResult(result) || attempt >= cfg.maxRetries) break;
+      const wait = backoffDelay(attempt);
+      if (now() - startedAt + wait > cfg.budgetMs) break;
+      await sleep(wait);
+      if (beforeRetry) { try { beforeRetry(); } catch (_) { /* ignore */ } }
+    }
+    return { result, requestId };
+  }
+
+  async function execute(spec, task) {
+    let ctx;
+    let applied = false;
+    if (typeof spec.apply === "function") { ctx = spec.apply(); applied = true; }
+    let outcome;
+    const work = () => attempts(spec, task);
+    try {
+      outcome = (spec.ui === "overlay" && loading)
+        ? await loading.run({ key: spec.key, label: spec.label || "" }, work)
+        : await work();
+    } catch (error) {
+      const failed = { ok: false, error: "network_error" };
+      if (typeof spec.settle === "function") { try { spec.settle(failed); } catch (_) { /* ignore */ } }
+      if (applied && typeof spec.rollback === "function") spec.rollback(ctx, failed);
+      throw error;
+    }
+    const result = finalize(spec, outcome.result);
+    // settle() runs once per intent on every exit path (success, failure, throw): clear local pending UI here.
+    if (typeof spec.settle === "function") { try { spec.settle(result); } catch (_) { /* ignore */ } }
+    if (!result.ok && applied && typeof spec.rollback === "function") spec.rollback(ctx, result);
+    return result;
+  }
+
+  // spec: { key, group?, characterId?, action?, ui?: "inline"|"overlay"|"none", label?, apply?, rollback?,
+  //         requestId?, retry?, conflict?: "queue"|"reject", errorOverrides?, settle?(result) }
+  function run(spec, task) {
+    const key = String(spec && spec.key || "");
+    if (!key) throw new Error("OPERATIONS.run requires a key");
+    const groupKey = spec.group ? `${spec.characterId || "-"}:${spec.group}` : null;
+    // The same intent twice (double tap) is always rejected, never queued behind itself.
+    if (pending.has(key)) return Promise.resolve({ ok: false, error: "operation_busy", message: cfg.busyMessage });
+    const tail = groupKey ? queues.get(groupKey) : null;
+    if (tail && spec.conflict === "reject") return Promise.resolve({ ok: false, error: "operation_busy", message: cfg.busyMessage });
+
+    mark(key, 1);
+    if (spec.ui !== "none") mark(`group:${groupKey || key}`, 1);
+    // Cleanup runs BEFORE the caller's await resumes, so `await run(a); run(b)` never sees a stale lock.
+    const cleanup = () => {
+      mark(key, -1);
+      if (spec.ui !== "none") mark(`group:${groupKey || key}`, -1);
+      if (groupKey && queues.get(groupKey) === done) queues.delete(groupKey);
+    };
+    const start = async () => {
+      try { return await execute(spec, task); } finally { cleanup(); }
+    };
+    const job = (tail || Promise.resolve()).then(start);
+    const done = job.catch(() => {});
+    if (groupKey) queues.set(groupKey, done);
+    return job;
+  }
+
+  return {
+    run,
+    isPending: key => pending.has(String(key)),
+    isGroupPending: (group, characterId) => pending.has(`group:${characterId || "-"}:${group}`),
+    pendingKeys: () => Array.from(pending.keys()),
+    subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    getVersion: () => version,
+    config: cfg
+  };
+}
+
+const OPERATIONS = createOperationManager({
+  policyFor: typeof apiPolicyFor === "function" ? apiPolicyFor : null,
+  loading: typeof GLOBAL_LOADING !== "undefined" ? GLOBAL_LOADING : null,
+  errorMessage: typeof errorMessage === "function" ? errorMessage : null,
+  beforeRetry: () => { if (typeof cloudResetInFlight === "function") cloudResetInFlight(); }
+});
+
+// React hook: re-renders when pending state changes. Pass a key, or { group, characterId } for a whole queue.
+function useOperationPending(target) {
+  const [, setTick] = useState(0);
+  useEffect(() => OPERATIONS.subscribe(v => setTick(v)), []);
+  if (target && typeof target === "object") return OPERATIONS.isGroupPending(target.group, target.characterId);
+  return OPERATIONS.isPending(target);
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { OPERATIONS_DEFAULTS, createOperationManager, isTransientOperationResult, revertOperationFields, newOperationRequestId };
 }
 
 // ===== ui/playerCard.js =====
@@ -15199,41 +15385,18 @@ function ThornieDungeons() {
   // The header's last cell is a large speed button for the opening rounds,
   // then becomes Skip after five player turns.
   const [combatTurnCount, setCombatTurnCount] = useState(0);
-  // Separate lock for item-mutating actions (Enhance/Empower/Reroll/Salvage/Sell/Equip/BuyMaterial).
-  // itemActionLockRef is checked+set *synchronously* so a rapid second click can never slip in
-  // and run against a stale `save`/`inventory` closure before the first click's state has
-  // committed — the ref only unlocks on the next tick (after React has flushed the update),
-  // not at the end of the (synchronous) handler itself. itemActionBusy is the render-visible
-  // twin used to actually disable/gray out the buttons in the UI.
-  const itemActionLockRef = useRef(false);
+  // Item-mutating actions: server writes are serialized by OPERATIONS (group "inventory"); the
+  // synchronous handlers (equip, sort, favorite...) are refused while any such write is in flight so
+  // they never run against a stale closure. itemActionBusy drives the disabled/gray state.
   const blacksmithRequestRef = useRef(new Map());
-  const [itemActionBusy, setItemActionBusy] = useState(false);
+  const itemActionBusy = useOperationPending({ group: "inventory", characterId: save && save.characterId });
   const [shopPending, setShopPending] = useState({});
   function guardItemAction(fn) {
     return (...args) => {
-      if (itemActionLockRef.current) {
-        return {
-          ok: false,
-          message: "⏳ กำลังดำเนินการอยู่ กรุณารอสักครู่..."
-        };
+      if (OPERATIONS.isGroupPending("inventory", save && save.characterId)) {
+        return { ok: false, message: OPERATIONS.config.busyMessage };
       }
-      itemActionLockRef.current = true;
-      setItemActionBusy(true);
-      const release = () => {
-        setTimeout(() => {
-          itemActionLockRef.current = false;
-          setItemActionBusy(false);
-        }, 0);
-      };
-      try {
-        const result = fn(...args);
-        if (result && typeof result.then === "function") return result.finally(release);
-        release();
-        return result;
-      } catch (error) {
-        release();
-        throw error;
-      }
+      return fn(...args);
     };
   }
   const monstersRef = useRef([]);
@@ -17220,8 +17383,9 @@ function ThornieDungeons() {
     const used = Object.values(safeDraft).reduce((sum, value) => sum + value, 0);
     if (!used || used > save.character.statPoints) return false;
     if (!await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `stat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudAllocateStats(cred.url, save.characterId, safeDraft, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.stats", group: "progression", characterId, action: "allocateStats", conflict: "reject" },
+      requestId => cloudAllocateStats(cred.url, characterId, safeDraft, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -17229,8 +17393,9 @@ function ThornieDungeons() {
   async function resetAllStats() {
     const refunded = STAT_INFO.reduce((sum, st) => sum + Math.max(0, Number(save.character.stats[st.key]) || 0), 0);
     if (!refunded || save.diamonds < STAT_RESET_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `stat-reset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudResetCharacterStats(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.statsReset", group: "progression", characterId, action: "resetCharacterStats", conflict: "reject" },
+      requestId => cloudResetCharacterStats(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -17238,8 +17403,9 @@ function ThornieDungeons() {
   async function commitSkillDraft(draft) {
     const normalized = Object.fromEntries(Object.entries(draft || {}).map(([key, value]) => [key, Math.max(0, Math.floor(Number(value) || 0))]).filter(([, value]) => value > 0));
     if (!Object.keys(normalized).length || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `skill-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudAllocateHeroSkills(cred.url, save.characterId, normalized, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.skills", group: "progression", characterId, action: "allocateHeroSkills", conflict: "reject" },
+      requestId => cloudAllocateHeroSkills(cred.url, characterId, normalized, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -17247,8 +17413,9 @@ function ThornieDungeons() {
   function learnHeroSkill(draft) { return commitSkillDraft(draft); }
   async function resetAllSkills() {
     if (!heroSkillSpentPoints(save.character.skillLevels) || save.diamonds < SKILL_RESET_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `skill-reset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudResetHeroSkills(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.skillsReset", group: "progression", characterId, action: "resetHeroSkills", conflict: "reject" },
+      requestId => cloudResetHeroSkills(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -17283,9 +17450,11 @@ function ThornieDungeons() {
     if (stackable && sellQuantity > storedQuantity) return { ok: false, message: "จำนวนขายมากกว่าจำนวนที่มี" };
     if (!stackable && sellQuantity !== 1) return { ok: false, message: "ไอเท็มนี้ขายได้ครั้งละ 1 ชิ้น" };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, message: "บันทึกสถานะก่อนขายไม่สำเร็จ กรุณาลองใหม่" };
-    const requestId = globalThis.crypto?.randomUUID?.() || `sell-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudSellCharacterItem(cred.url, save.characterId, item.id, requestId, sellQuantity);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `inventory.sell:${item.id}`, group: "inventory", characterId, action: "sellCharacterItem", conflict: "reject" },
+      requestId => cloudSellCharacterItem(cred.url, characterId, item.id, requestId, sellQuantity));
     if (!result?.ok) {
+      if (result?.error === "operation_busy") return { ok: false, message: result.message };
       const messages = { item_favorited: "ปลด Favorite/Lock ก่อนขาย", invalid_sell_quantity: "จำนวนขายไม่ถูกต้อง", stack_changed: "จำนวนไอเท็มเปลี่ยนแล้ว กรุณาเปิดรายละเอียดใหม่" };
       return { ok: false, message: messages[result?.error] || "ขายไอเท็มไม่สำเร็จ กรุณาลองใหม่" };
     }
@@ -17366,7 +17535,11 @@ function ThornieDungeons() {
     const requestKey = `legacy:${mutation.type}:${itemId}:${mutation.slotIndex ?? ""}:${mutation.useProtectionStone ? 1 : 0}`;
     const requestId = blacksmithRequestRef.current.get(requestKey) || `legacy-${mutation.type}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
     blacksmithRequestRef.current.set(requestKey, requestId);
-    const res = await cloudMutateLegacyBlacksmith(cred.url, save.characterId, itemId, mutation, requestId);
+    const characterId = save.characterId;
+    // The saved requestId (blacksmithRequestRef) still survives a manual re-click after a transient failure.
+    const res = await OPERATIONS.run({ key: `blacksmith:${requestKey}`, group: "inventory", characterId, action: "mutateLegacyBlacksmith", requestId, conflict: "reject" },
+      id => cloudMutateLegacyBlacksmith(cred.url, characterId, itemId, mutation, id));
+    if (res?.error === "operation_busy") return { ok: false, message: res.message };
     if (!res?.ok) {
       if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
       if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
@@ -17388,7 +17561,10 @@ function ThornieDungeons() {
     const requestKey = `${mutation.type}:${itemId}:${Number(mutation.expectedVersion) || 0}:${Number(mutation.slotIndex) || 0}:${mutation.useProtectionStone === true ? 1 : 0}`;
     const requestId = blacksmithRequestRef.current.get(requestKey) || blacksmithRequestId(mutation.type, itemId);
     blacksmithRequestRef.current.set(requestKey, requestId);
-    const res = await cloudMutateV2Blacksmith(cred.url, save.characterId, itemId, mutation, requestId);
+    const characterId = save.characterId;
+    const res = await OPERATIONS.run({ key: `blacksmith:${requestKey}`, group: "inventory", characterId, action: "mutateV2Blacksmith", requestId, conflict: "reject" },
+      id => cloudMutateV2Blacksmith(cred.url, characterId, itemId, mutation, id));
+    if (res?.error === "operation_busy") return { ok: false, message: res.message };
     if (!res?.ok) {
       if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
       if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
@@ -17491,9 +17667,11 @@ function ThornieDungeons() {
     if (found.location === "equipped") return { ok: false, message: "ถอดอุปกรณ์ก่อนแยกชิ้นส่วน" };
     if (found.item.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนแยกชิ้นส่วน" };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, message: "บันทึกสถานะก่อนแยกชิ้นส่วนไม่สำเร็จ กรุณาลองใหม่" };
-    const requestId = globalThis.crypto?.randomUUID?.() || `salvage-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudSalvageItem(cred.url, save.characterId, itemId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `inventory.salvage:${itemId}`, group: "inventory", characterId, action: "salvageItem", conflict: "reject" },
+      requestId => cloudSalvageItem(cred.url, characterId, itemId, requestId));
     if (!result?.ok) {
+      if (result?.error === "operation_busy") return { ok: false, message: result.message };
       const messages = {
         salvage_not_eligible: "ไอเทมนี้ยังไม่อยู่ในตาราง Salvage V2",
         mythic_salvage_not_eligible: "ไอเทมพิเศษนี้ไม่มีสูตรแยกชิ้นส่วนที่รองรับ",
@@ -17509,29 +17687,31 @@ function ThornieDungeons() {
   async function buyCharacterResource(kind, id = "", quantity = 1) {
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false };
     const normalizedQuantity = Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1)));
-    const requestId = globalThis.crypto?.randomUUID?.() || `purchase-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const pendingKey = `${kind}:${id || ""}`;
-    const previousSave = save;
     const unitPrice = kind === "potion" ? Number(getPotionDef(id)?.price || 0) : kind === "material" ? Number(MATERIAL_SHOP_PRICE[id] || 0) : kind === "protection_stone" ? Number(PROTECTION_STONE_PRICE || 0) : 0;
     const total = unitPrice * normalizedQuantity;
-    if (!unitPrice || (kind === "protection_stone" ? previousSave.diamonds < total : previousSave.gold < total)) return { ok: false, error: "insufficient_funds" };
-    setShopPending(current => ({ ...current, [pendingKey]: (current[pendingKey] || 0) + normalizedQuantity }));
-    setSave(current => kind === "protection_stone" ? { ...current, diamonds: Math.max(0, Number(current.diamonds || 0) - total) } : { ...current, gold: Math.max(0, Number(current.gold || 0) - total) });
-    let result = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      result = await cloudPurchaseCharacterResource(cred.url, save.characterId, { kind, id }, requestId, normalizedQuantity);
-      if (result?.ok || !["network_error", "server_error"].includes(result?.error)) break;
-      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)));
-    }
-    setShopPending(current => {
-      const next = { ...current, [pendingKey]: Math.max(0, (current[pendingKey] || 0) - normalizedQuantity) };
-      if (!next[pendingKey]) delete next[pendingKey];
-      return next;
-    });
-    if (!result?.ok) {
-      setSave(previousSave);
-      return result || { ok: false, error: "network_error" };
-    }
+    if (!unitPrice || (kind === "protection_stone" ? save.diamonds < total : save.gold < total)) return { ok: false, error: "insufficient_funds" };
+    const characterId = save.characterId;
+    const spendField = kind === "protection_stone" ? "diamonds" : "gold";
+    const result = await OPERATIONS.run({
+      key: `shop.resource:${pendingKey}`,
+      group: "inventory",
+      characterId,
+      action: "purchaseCharacterResource",
+      conflict: "reject",
+      apply: () => {
+        setShopPending(current => ({ ...current, [pendingKey]: (current[pendingKey] || 0) + normalizedQuantity }));
+        setSave(current => ({ ...current, [spendField]: Math.max(0, Number(current[spendField] || 0) - total) }));
+      },
+      // Refund exactly what this purchase deducted; rewards that arrived meanwhile stay.
+      rollback: () => setSave(current => ({ ...current, [spendField]: Number(current[spendField] || 0) + total })),
+      settle: () => setShopPending(current => {
+        const next = { ...current, [pendingKey]: Math.max(0, (current[pendingKey] || 0) - normalizedQuantity) };
+        if (!next[pendingKey]) delete next[pendingKey];
+        return next;
+      })
+    }, requestId => cloudPurchaseCharacterResource(cred.url, characterId, { kind, id }, requestId, normalizedQuantity));
+    if (!result?.ok) return result || { ok: false, error: "network_error" };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return result;
   }
@@ -17558,8 +17738,9 @@ function ThornieDungeons() {
     return mutateLegacyBlacksmith(itemId, { type: "empower_open" }).then(({ ok, result }) => ({ ok, message: ok ? `🔮 เสริมพลังสำเร็จ! ได้รับ ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` : "เสริมพลังไม่สำเร็จ" }));
   }
   async function openShop() {
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudGetCharacterShopStock(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "shop.open", group: "shop", characterId, action: "getCharacterShopStock", conflict: "reject" },
+      requestId => cloudGetCharacterShopStock(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     applyShopStockResult(result);
     setShopOpen(true);
@@ -17577,9 +17758,13 @@ function ThornieDungeons() {
   }
   // force=true is the player's Refresh button (cooldown applies); force=false re-reads the stock after the 30 min window ended.
   async function refreshShopStock(force) {
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const characterId = save.characterId;
     const send = force ? cloudRefreshCharacterShopStock : cloudGetCharacterShopStock;
-    const result = await send(cred.url, save.characterId, requestId);
+    // The manager owns the full-screen overlay here (one token per intent, not per retry).
+    const result = await OPERATIONS.run({
+      key: "shop.refresh", group: "shop", characterId, ui: "overlay", label: "กำลังรีเฟรชร้านค้า…",
+      action: force ? "refreshCharacterShopStock" : "getCharacterShopStock", conflict: "reject"
+    }, requestId => send(cred.url, characterId, requestId));
     if (result?.ok) { applyShopStockResult(result); return { ok: true }; }
     if (result?.error === "shop_refresh_cooldown") {
       setShopStock(stock => ({ ...stock, refreshAtMs: Date.now() + Math.max(500, Number(result.retryAfterMs) || 10000) }));
@@ -17588,18 +17773,23 @@ function ThornieDungeons() {
   }
   async function buyShopItem(item) {
     if (!item?.offerId || save.gold < Number(item.price) || !await flushRewardClaimBarrier(save.characterId)) return { ok: false };
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const previousSave = save;
-    setShopPending(current => ({ ...current, [`equipment:${item.offerId}`]: 1 }));
-    setSave(current => ({ ...current, gold: Math.max(0, Number(current.gold || 0) - Number(item.price)) }));
-    let result = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      result = await cloudPurchaseShopEquipment(cred.url, save.characterId, item.offerId, requestId);
-      if (result?.ok || !["network_error", "server_error"].includes(result?.error)) break;
-      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)));
-    }
-    setShopPending(current => { const next = { ...current }; delete next[`equipment:${item.offerId}`]; return next; });
-    if (!result?.ok) { setSave(previousSave); return result || { ok: false, error: "network_error" }; }
+    const characterId = save.characterId;
+    const price = Number(item.price);
+    const pendingKey = `equipment:${item.offerId}`;
+    const result = await OPERATIONS.run({
+      key: `shop.equipment:${item.offerId}`,
+      group: "inventory",
+      characterId,
+      action: "purchaseShopEquipment",
+      conflict: "reject",
+      apply: () => {
+        setShopPending(current => ({ ...current, [pendingKey]: 1 }));
+        setSave(current => ({ ...current, gold: Math.max(0, Number(current.gold || 0) - price) }));
+      },
+      rollback: () => setSave(current => ({ ...current, gold: Number(current.gold || 0) + price })),
+      settle: () => setShopPending(current => { const next = { ...current }; delete next[pendingKey]; return next; })
+    }, requestId => cloudPurchaseShopEquipment(cred.url, characterId, item.offerId, requestId));
+    if (!result?.ok) return result || { ok: false, error: "network_error" };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setShopStock(stock => ({ ...stock, items: (stock?.items || []).filter(entry => entry.offerId !== item.offerId) }));
     return result;
@@ -17642,7 +17832,10 @@ function ThornieDungeons() {
   }
   async function commitActivePet(petAction, instId = "") {
     if (!await flushRewardClaimBarrier(save.characterId)) return false;
-    const result = await cloudPetEconomyAction(cred.url, save.characterId, petAction, instId, "");
+    const characterId = save.characterId;
+    // equip/unequip send no requestId (state-setting), so the manager must not auto-retry them.
+    const result = await OPERATIONS.run({ key: `pet.${petAction}`, group: "pet", characterId, action: "petEconomyAction", retry: false, conflict: "reject" },
+      () => cloudPetEconomyAction(cred.url, characterId, petAction, instId, ""));
     if (!result?.ok) return false;
     petCombatRef.current = null;
     setPetCombat(null);
@@ -17653,8 +17846,9 @@ function ThornieDungeons() {
   function unequipPet() { return commitActivePet("unequip"); }
   async function pullGacha() {
     if (save.diamonds < GACHA_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `pet-gacha-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await GLOBAL_LOADING.run({ key: "pet.gacha", label: "กำลังสุ่มสัตว์เลี้ยง…" }, () => cloudPetEconomyAction(cred.url, save.characterId, "gacha", "", requestId));
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "pet.gacha", group: "pet", characterId, ui: "overlay", label: "กำลังสุ่มสัตว์เลี้ยง…", action: "petEconomyAction", conflict: "reject" },
+      requestId => cloudPetEconomyAction(cred.url, characterId, "gacha", "", requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setGachaResult({ pet: getPetDef(result.result?.defId), duplicate: !!result.result?.duplicate });
@@ -17672,8 +17866,9 @@ function ThornieDungeons() {
     const have = petDuplicateCount(save.petDuplicates, pet.defId);
     if (have < cost) return { ok: false, need: cost, have };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, need: cost, have };
-    const requestId = globalThis.crypto?.randomUUID?.() || `pet-star-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudPetEconomyAction(cred.url, save.characterId, "star_up", instId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `pet.starUp:${instId}`, group: "pet", characterId, action: "petEconomyAction", conflict: "reject" },
+      requestId => cloudPetEconomyAction(cred.url, characterId, "star_up", instId, requestId));
     if (!result?.ok) return result?.error === "pet_star_max" ? { ok: false, maxed: true } : { ok: false, need: cost, have };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return { ok: true };
@@ -18453,7 +18648,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
         registration_unavailable: "สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่",
         rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
       };
-      setModalError(registerErrorText[result?.error] || "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่");
+      setModalError(errorMessage(result?.error, { overrides: registerErrorText, fallback: "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่" }));
     }
   };
   const submitForgot = async () => {
@@ -18469,7 +18664,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
         invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน"
       };
-      setModalError(forgotErrorText[result.error] || "ดำเนินการไม่สำเร็จ กรุณาลองใหม่");
+      setModalError(errorMessage(result.error, { overrides: forgotErrorText, fallback: "ดำเนินการไม่สำเร็จ กรุณาลองใหม่" }));
     }
   };
   return e("div", { className: `md-login-wrap${departing ? " is-departing" : ""}` },
@@ -18548,7 +18743,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
         invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน"
       };
-      return setMessage(changeErrorText[result?.error] || "เปลี่ยน Password ไม่สำเร็จ");
+      return setMessage(errorMessage(result?.error, { overrides: changeErrorText, fallback: "เปลี่ยน Password ไม่สำเร็จ" }));
     }
     onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
   };
@@ -19993,9 +20188,9 @@ function FriendScreen({
   // Applies `apply()` immediately (already called by the caller before this runs), then
   // fires the real request in the background. On failure or network error, `revert()`
   // restores the exact pre-action snapshot the caller captured — no full reload either way.
-  const runOptimistic = (key, revert, promise) => {
+  const runOptimistic = (key, revert, task) => {
     setBusyKey(key);
-    promise.then(res => {
+    OPERATIONS.run({ key: `friends.${key}`, group: "social", characterId, conflict: "reject" }, task).then(res => {
       setBusyKey("");
       if (!res || res.error) {
         revert();
@@ -20014,7 +20209,7 @@ function FriendScreen({
     const prevSearch = searchResults;
     const prevOutgoing = requestsData.outgoing;
     if (searchResults) setSearchResults(searchResults.map(r => r.characterId === row.characterId ? { ...r, relationship: "outgoing_pending", requestId: null } : r));
-    const promise = cloudSendFriendRequest(url, characterId, row.characterId).then(res => {
+    const promise = () => cloudSendFriendRequest(url, characterId, row.characterId).then(res => {
       if (res && res.ok) {
         setRequestsData(rd => ({ ...rd, outgoing: [...rd.outgoing, { requestId: res.requestId, characterId: row.characterId, name: row.name, level: row.level, online: row.online, createdAt: new Date().toISOString(), expiresAt: res.expiresAt }] }));
         setSearchResults(sr => sr ? sr.map(r => r.characterId === row.characterId ? { ...r, requestId: res.requestId } : r) : sr);
@@ -20040,7 +20235,7 @@ function FriendScreen({
       setRequestsData(rd => ({ ...rd, incoming: prevIncoming }));
       setFriends(prevFriends);
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudAcceptFriendRequest(url, characterId, req.requestId));
+    }, () => cloudAcceptFriendRequest(url, characterId, req.requestId));
   };
 
   const handleReject = (req) => {
@@ -20053,7 +20248,7 @@ function FriendScreen({
     runOptimistic(key, () => {
       setRequestsData(rd => ({ ...rd, incoming: prevIncoming }));
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudRejectFriendRequest(url, characterId, req.requestId));
+    }, () => cloudRejectFriendRequest(url, characterId, req.requestId));
   };
 
   const handleCancel = (req) => {
@@ -20066,7 +20261,7 @@ function FriendScreen({
     runOptimistic(key, () => {
       setRequestsData(rd => ({ ...rd, outgoing: prevOutgoing }));
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudCancelFriendRequest(url, characterId, req.requestId));
+    }, () => cloudCancelFriendRequest(url, characterId, req.requestId));
   };
 
   const handleRemove = (friend) => {
@@ -20079,7 +20274,7 @@ function FriendScreen({
     runOptimistic(key, () => {
       setFriends(prevFriends);
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudRemoveFriend(url, characterId, friend.characterId));
+    }, () => cloudRemoveFriend(url, characterId, friend.characterId));
   };
 
   const handleBlock = (entity) => {
@@ -20101,7 +20296,7 @@ function FriendScreen({
       setRequestsData(prevRequests);
       setBlocked(prevBlocked);
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudBlockCharacter(url, characterId, entity.characterId));
+    }, () => cloudBlockCharacter(url, characterId, entity.characterId));
   };
 
   const handleUnblock = (entity) => {
@@ -20114,7 +20309,7 @@ function FriendScreen({
     runOptimistic(key, () => {
       setBlocked(prevBlocked);
       if (prevSearch) setSearchResults(prevSearch);
-    }, cloudUnblockCharacter(url, characterId, entity.characterId));
+    }, () => cloudUnblockCharacter(url, characterId, entity.characterId));
   };
 
   const onlineDot = (online) => online ? "🟢" : "⚪";
@@ -20858,7 +21053,7 @@ function GuildScreen({
       }
       const donationId = pendingDonationId || (globalThis.crypto?.randomUUID?.() || `donation-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       setPendingDonationId(donationId);
-      const result = await cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId);
+      const result = await OPERATIONS.run({ key: "guild.donate", group: "guild", characterId, conflict: "reject" }, () => cloudDonateGuildItem(url, characterId, donateJunkId, quantity, donationId));
       if (!result || result.error) { setDonationError(guildErrorText(result && result.error)); return; }
       setPendingDonationId("");
       setDonationResult(result);
@@ -21236,7 +21431,7 @@ function RaidScreen({
     setLastResult(null);
     const pendingAttack = attackRequestIdRef.current || { requestId: globalThis.crypto?.randomUUID?.() || `raid-${Date.now()}-${Math.random().toString(36).slice(2)}`, paidDiamonds: !!useDiamonds };
     attackRequestIdRef.current = pendingAttack;
-    cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, pendingAttack.paidDiamonds, pendingAttack.requestId).then(res => {
+    OPERATIONS.run({ key: "raid.attack", group: "raid", characterId, action: "attackRaidBoss", requestId: pendingAttack.requestId, conflict: "reject" }, id => cloudAttackRaidBoss(serverUrl || DEFAULT_SERVER_URL, characterId, pendingAttack.paidDiamonds, id)).then(res => {
       if (!res || res.error) {
         if (!res?.error || !["network_error", "server_error", "timeout", "operation_in_progress"].includes(res.error)) attackRequestIdRef.current = null;
         setLastResult({ error: res && res.error }); return;
@@ -21347,8 +21542,8 @@ function arenaHumanError(code, reason, fallback = "Arena request failed") {
   };
   const label = labels[token] || String(fallback || token || "Arena request failed");
   const reasonText = detail ? ` — ${detail}` : "";
-  const tokenText = token ? ` [${token}]` : "";
-  return `${label}${reasonText}${tokenText}`;
+  // The raw [code] is intentionally not shown to players (PR-A decision); codes live in the error catalog.
+  return `${label}${reasonText}`;
 }
 
 // Settlement is authoritative server data. This boundary converts both the W9 V2
@@ -22953,7 +23148,7 @@ function MailboxScreen({
     setMailError("");
     try {
       if (onBeforeClaim && !await onBeforeClaim(characterId)) throw new Error("save_barrier_failed");
-      const res = await cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId);
+      const res = await OPERATIONS.run({ key: `mailbox.claim:${mailId}`, group: "mailbox", characterId, conflict: "reject" }, () => cloudClaimMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId));
       if (!res || res.error) { setMailError("รับรางวัลไม่สำเร็จ กรุณาลองใหม่"); return; }
       onApplyReward(res, characterId);
       load();
@@ -22972,7 +23167,8 @@ function MailboxScreen({
     const requestId = claimAllRequestRef.current;
     try {
       if (onBeforeClaim && !await onBeforeClaim(characterId)) throw new Error("save_barrier_failed");
-      const res = await cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId, requestId);
+      // requestId stays in claimAllRequestRef so a manual re-click after a failure reuses it
+      const res = await OPERATIONS.run({ key: "mailbox.claimAll", group: "mailbox", characterId, action: "claimAllMail", requestId, conflict: "reject" }, id => cloudClaimAllMail(serverUrl || DEFAULT_SERVER_URL, characterId, id));
       if (!res || res.error) { setMailError("รับรางวัลทั้งหมดไม่สำเร็จ กรุณาลองใหม่"); return; }
       claimAllRequestRef.current = null;
       onApplyReward(res, characterId);
@@ -22987,7 +23183,7 @@ function MailboxScreen({
     if (busy) return;
     setBusy(true);
     setMailError("");
-    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId)).then(res => {
+    OPERATIONS.run({ key: "mailbox.delete", group: "mailbox", characterId, ui: "overlay", label: "กำลังลบจดหมาย…", conflict: "reject" }, () => cloudDeleteMail(serverUrl || DEFAULT_SERVER_URL, characterId, mailId)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายไม่สำเร็จ กรุณาลองใหม่"); return; }
       load();
@@ -22999,7 +23195,7 @@ function MailboxScreen({
     if (!ids.length || busy) return;
     setBusy(true);
     setMailError("");
-    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids)).then(res => {
+    OPERATIONS.run({ key: "mailbox.delete", group: "mailbox", characterId, ui: "overlay", label: "กำลังลบจดหมาย…", conflict: "reject" }, () => cloudDeleteMails(serverUrl || DEFAULT_SERVER_URL, characterId, ids)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายที่เลือกไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
@@ -23011,7 +23207,7 @@ function MailboxScreen({
     if (busy) return;
     setBusy(true);
     setMailError("");
-    GLOBAL_LOADING.run({ key: "mailbox.delete", label: "กำลังลบจดหมาย…" }, () => cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId)).then(res => {
+    OPERATIONS.run({ key: "mailbox.delete", group: "mailbox", characterId, ui: "overlay", label: "กำลังลบจดหมาย…", conflict: "reject" }, () => cloudDeleteAllClaimedMail(serverUrl || DEFAULT_SERVER_URL, characterId)).then(res => {
       setBusy(false);
       if (!res || res.error) { setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); return; }
       setSelected({});
@@ -23332,7 +23528,7 @@ function ShopOverlay({gold,diamonds,protectionStones,stock,pendingPurchases={},o
   React.useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const stockLeftMs=stock?.expiresAtMs?Math.max(0,stock.expiresAtMs-nowMs):0, stockExpired=!!stock?.expiresAtMs&&stockLeftMs<=0;
   const refreshLeftSec=stock?.refreshAtMs?Math.max(0,Math.ceil((stock.refreshAtMs-nowMs)/1000)):0;
-  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await GLOBAL_LOADING.run({key:"shop.refresh",label:"กำลังรีเฟรชร้านค้า…"},()=>onRefreshStock(force));if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
+  const runRefresh=async force=>{if(refreshing||!onRefreshStock)return;setRefreshing(true);try{const res=await onRefreshStock(force);if(res&&!res.ok&&force&&res.error!=="shop_refresh_cooldown")showStatus("รีเฟรชไม่สำเร็จ ลองใหม่อีกครั้ง");}finally{setRefreshing(false);}};
   React.useEffect(()=>{if(!stockExpired||autoRefreshKey.current===stock.expiresAtMs)return;autoRefreshKey.current=stock.expiresAtMs;runRefresh(false);},[stockExpired,stock?.expiresAtMs]);
   const formatLeft=ms=>{const total=Math.ceil(ms/1000);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0");};
   const showStatus=msg=>{setStatus(msg);window.setTimeout(()=>setStatus(current=>current===msg?"":current),1400);};

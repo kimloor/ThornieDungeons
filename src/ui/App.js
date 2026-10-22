@@ -170,41 +170,18 @@ function ThornieDungeons() {
   // The header's last cell is a large speed button for the opening rounds,
   // then becomes Skip after five player turns.
   const [combatTurnCount, setCombatTurnCount] = useState(0);
-  // Separate lock for item-mutating actions (Enhance/Empower/Reroll/Salvage/Sell/Equip/BuyMaterial).
-  // itemActionLockRef is checked+set *synchronously* so a rapid second click can never slip in
-  // and run against a stale `save`/`inventory` closure before the first click's state has
-  // committed — the ref only unlocks on the next tick (after React has flushed the update),
-  // not at the end of the (synchronous) handler itself. itemActionBusy is the render-visible
-  // twin used to actually disable/gray out the buttons in the UI.
-  const itemActionLockRef = useRef(false);
+  // Item-mutating actions: server writes are serialized by OPERATIONS (group "inventory"); the
+  // synchronous handlers (equip, sort, favorite...) are refused while any such write is in flight so
+  // they never run against a stale closure. itemActionBusy drives the disabled/gray state.
   const blacksmithRequestRef = useRef(new Map());
-  const [itemActionBusy, setItemActionBusy] = useState(false);
+  const itemActionBusy = useOperationPending({ group: "inventory", characterId: save && save.characterId });
   const [shopPending, setShopPending] = useState({});
   function guardItemAction(fn) {
     return (...args) => {
-      if (itemActionLockRef.current) {
-        return {
-          ok: false,
-          message: "⏳ กำลังดำเนินการอยู่ กรุณารอสักครู่..."
-        };
+      if (OPERATIONS.isGroupPending("inventory", save && save.characterId)) {
+        return { ok: false, message: OPERATIONS.config.busyMessage };
       }
-      itemActionLockRef.current = true;
-      setItemActionBusy(true);
-      const release = () => {
-        setTimeout(() => {
-          itemActionLockRef.current = false;
-          setItemActionBusy(false);
-        }, 0);
-      };
-      try {
-        const result = fn(...args);
-        if (result && typeof result.then === "function") return result.finally(release);
-        release();
-        return result;
-      } catch (error) {
-        release();
-        throw error;
-      }
+      return fn(...args);
     };
   }
   const monstersRef = useRef([]);
@@ -2178,8 +2155,9 @@ function ThornieDungeons() {
     const used = Object.values(safeDraft).reduce((sum, value) => sum + value, 0);
     if (!used || used > save.character.statPoints) return false;
     if (!await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `stat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudAllocateStats(cred.url, save.characterId, safeDraft, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.stats", group: "progression", characterId, action: "allocateStats", conflict: "reject" },
+      requestId => cloudAllocateStats(cred.url, characterId, safeDraft, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -2187,8 +2165,9 @@ function ThornieDungeons() {
   async function resetAllStats() {
     const refunded = STAT_INFO.reduce((sum, st) => sum + Math.max(0, Number(save.character.stats[st.key]) || 0), 0);
     if (!refunded || save.diamonds < STAT_RESET_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `stat-reset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudResetCharacterStats(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.statsReset", group: "progression", characterId, action: "resetCharacterStats", conflict: "reject" },
+      requestId => cloudResetCharacterStats(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -2196,8 +2175,9 @@ function ThornieDungeons() {
   async function commitSkillDraft(draft) {
     const normalized = Object.fromEntries(Object.entries(draft || {}).map(([key, value]) => [key, Math.max(0, Math.floor(Number(value) || 0))]).filter(([, value]) => value > 0));
     if (!Object.keys(normalized).length || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `skill-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudAllocateHeroSkills(cred.url, save.characterId, normalized, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.skills", group: "progression", characterId, action: "allocateHeroSkills", conflict: "reject" },
+      requestId => cloudAllocateHeroSkills(cred.url, characterId, normalized, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -2205,8 +2185,9 @@ function ThornieDungeons() {
   function learnHeroSkill(draft) { return commitSkillDraft(draft); }
   async function resetAllSkills() {
     if (!heroSkillSpentPoints(save.character.skillLevels) || save.diamonds < SKILL_RESET_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `skill-reset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudResetHeroSkills(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "progression.skillsReset", group: "progression", characterId, action: "resetHeroSkills", conflict: "reject" },
+      requestId => cloudResetHeroSkills(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return true;
@@ -2241,9 +2222,11 @@ function ThornieDungeons() {
     if (stackable && sellQuantity > storedQuantity) return { ok: false, message: "จำนวนขายมากกว่าจำนวนที่มี" };
     if (!stackable && sellQuantity !== 1) return { ok: false, message: "ไอเท็มนี้ขายได้ครั้งละ 1 ชิ้น" };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, message: "บันทึกสถานะก่อนขายไม่สำเร็จ กรุณาลองใหม่" };
-    const requestId = globalThis.crypto?.randomUUID?.() || `sell-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudSellCharacterItem(cred.url, save.characterId, item.id, requestId, sellQuantity);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `inventory.sell:${item.id}`, group: "inventory", characterId, action: "sellCharacterItem", conflict: "reject" },
+      requestId => cloudSellCharacterItem(cred.url, characterId, item.id, requestId, sellQuantity));
     if (!result?.ok) {
+      if (result?.error === "operation_busy") return { ok: false, message: result.message };
       const messages = { item_favorited: "ปลด Favorite/Lock ก่อนขาย", invalid_sell_quantity: "จำนวนขายไม่ถูกต้อง", stack_changed: "จำนวนไอเท็มเปลี่ยนแล้ว กรุณาเปิดรายละเอียดใหม่" };
       return { ok: false, message: messages[result?.error] || "ขายไอเท็มไม่สำเร็จ กรุณาลองใหม่" };
     }
@@ -2324,7 +2307,11 @@ function ThornieDungeons() {
     const requestKey = `legacy:${mutation.type}:${itemId}:${mutation.slotIndex ?? ""}:${mutation.useProtectionStone ? 1 : 0}`;
     const requestId = blacksmithRequestRef.current.get(requestKey) || `legacy-${mutation.type}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
     blacksmithRequestRef.current.set(requestKey, requestId);
-    const res = await cloudMutateLegacyBlacksmith(cred.url, save.characterId, itemId, mutation, requestId);
+    const characterId = save.characterId;
+    // The saved requestId (blacksmithRequestRef) still survives a manual re-click after a transient failure.
+    const res = await OPERATIONS.run({ key: `blacksmith:${requestKey}`, group: "inventory", characterId, action: "mutateLegacyBlacksmith", requestId, conflict: "reject" },
+      id => cloudMutateLegacyBlacksmith(cred.url, characterId, itemId, mutation, id));
+    if (res?.error === "operation_busy") return { ok: false, message: res.message };
     if (!res?.ok) {
       if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
       if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
@@ -2346,7 +2333,10 @@ function ThornieDungeons() {
     const requestKey = `${mutation.type}:${itemId}:${Number(mutation.expectedVersion) || 0}:${Number(mutation.slotIndex) || 0}:${mutation.useProtectionStone === true ? 1 : 0}`;
     const requestId = blacksmithRequestRef.current.get(requestKey) || blacksmithRequestId(mutation.type, itemId);
     blacksmithRequestRef.current.set(requestKey, requestId);
-    const res = await cloudMutateV2Blacksmith(cred.url, save.characterId, itemId, mutation, requestId);
+    const characterId = save.characterId;
+    const res = await OPERATIONS.run({ key: `blacksmith:${requestKey}`, group: "inventory", characterId, action: "mutateV2Blacksmith", requestId, conflict: "reject" },
+      id => cloudMutateV2Blacksmith(cred.url, characterId, itemId, mutation, id));
+    if (res?.error === "operation_busy") return { ok: false, message: res.message };
     if (!res?.ok) {
       if (!["network_error", "server_error", "timeout"].includes(res?.error)) blacksmithRequestRef.current.delete(requestKey);
       if (res?.character) hydrateAuthoritativeBlacksmithSnapshot(res);
@@ -2449,9 +2439,11 @@ function ThornieDungeons() {
     if (found.location === "equipped") return { ok: false, message: "ถอดอุปกรณ์ก่อนแยกชิ้นส่วน" };
     if (found.item.favorite) return { ok: false, message: "ปลด Favorite/Lock ก่อนแยกชิ้นส่วน" };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, message: "บันทึกสถานะก่อนแยกชิ้นส่วนไม่สำเร็จ กรุณาลองใหม่" };
-    const requestId = globalThis.crypto?.randomUUID?.() || `salvage-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudSalvageItem(cred.url, save.characterId, itemId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `inventory.salvage:${itemId}`, group: "inventory", characterId, action: "salvageItem", conflict: "reject" },
+      requestId => cloudSalvageItem(cred.url, characterId, itemId, requestId));
     if (!result?.ok) {
+      if (result?.error === "operation_busy") return { ok: false, message: result.message };
       const messages = {
         salvage_not_eligible: "ไอเทมนี้ยังไม่อยู่ในตาราง Salvage V2",
         mythic_salvage_not_eligible: "ไอเทมพิเศษนี้ไม่มีสูตรแยกชิ้นส่วนที่รองรับ",
@@ -2467,29 +2459,31 @@ function ThornieDungeons() {
   async function buyCharacterResource(kind, id = "", quantity = 1) {
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false };
     const normalizedQuantity = Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1)));
-    const requestId = globalThis.crypto?.randomUUID?.() || `purchase-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const pendingKey = `${kind}:${id || ""}`;
-    const previousSave = save;
     const unitPrice = kind === "potion" ? Number(getPotionDef(id)?.price || 0) : kind === "material" ? Number(MATERIAL_SHOP_PRICE[id] || 0) : kind === "protection_stone" ? Number(PROTECTION_STONE_PRICE || 0) : 0;
     const total = unitPrice * normalizedQuantity;
-    if (!unitPrice || (kind === "protection_stone" ? previousSave.diamonds < total : previousSave.gold < total)) return { ok: false, error: "insufficient_funds" };
-    setShopPending(current => ({ ...current, [pendingKey]: (current[pendingKey] || 0) + normalizedQuantity }));
-    setSave(current => kind === "protection_stone" ? { ...current, diamonds: Math.max(0, Number(current.diamonds || 0) - total) } : { ...current, gold: Math.max(0, Number(current.gold || 0) - total) });
-    let result = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      result = await cloudPurchaseCharacterResource(cred.url, save.characterId, { kind, id }, requestId, normalizedQuantity);
-      if (result?.ok || !["network_error", "server_error"].includes(result?.error)) break;
-      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)));
-    }
-    setShopPending(current => {
-      const next = { ...current, [pendingKey]: Math.max(0, (current[pendingKey] || 0) - normalizedQuantity) };
-      if (!next[pendingKey]) delete next[pendingKey];
-      return next;
-    });
-    if (!result?.ok) {
-      setSave(previousSave);
-      return result || { ok: false, error: "network_error" };
-    }
+    if (!unitPrice || (kind === "protection_stone" ? save.diamonds < total : save.gold < total)) return { ok: false, error: "insufficient_funds" };
+    const characterId = save.characterId;
+    const spendField = kind === "protection_stone" ? "diamonds" : "gold";
+    const result = await OPERATIONS.run({
+      key: `shop.resource:${pendingKey}`,
+      group: "inventory",
+      characterId,
+      action: "purchaseCharacterResource",
+      conflict: "reject",
+      apply: () => {
+        setShopPending(current => ({ ...current, [pendingKey]: (current[pendingKey] || 0) + normalizedQuantity }));
+        setSave(current => ({ ...current, [spendField]: Math.max(0, Number(current[spendField] || 0) - total) }));
+      },
+      // Refund exactly what this purchase deducted; rewards that arrived meanwhile stay.
+      rollback: () => setSave(current => ({ ...current, [spendField]: Number(current[spendField] || 0) + total })),
+      settle: () => setShopPending(current => {
+        const next = { ...current, [pendingKey]: Math.max(0, (current[pendingKey] || 0) - normalizedQuantity) };
+        if (!next[pendingKey]) delete next[pendingKey];
+        return next;
+      })
+    }, requestId => cloudPurchaseCharacterResource(cred.url, characterId, { kind, id }, requestId, normalizedQuantity));
+    if (!result?.ok) return result || { ok: false, error: "network_error" };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return result;
   }
@@ -2516,8 +2510,9 @@ function ThornieDungeons() {
     return mutateLegacyBlacksmith(itemId, { type: "empower_open" }).then(({ ok, result }) => ({ ok, message: ok ? `🔮 เสริมพลังสำเร็จ! ได้รับ ${result.option?.icon || "✦"} +${result.option?.value || 0} ${result.option?.label || ""}` : "เสริมพลังไม่สำเร็จ" }));
   }
   async function openShop() {
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudGetCharacterShopStock(cred.url, save.characterId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "shop.open", group: "shop", characterId, action: "getCharacterShopStock", conflict: "reject" },
+      requestId => cloudGetCharacterShopStock(cred.url, characterId, requestId));
     if (!result?.ok) return false;
     applyShopStockResult(result);
     setShopOpen(true);
@@ -2535,9 +2530,13 @@ function ThornieDungeons() {
   }
   // force=true is the player's Refresh button (cooldown applies); force=false re-reads the stock after the 30 min window ended.
   async function refreshShopStock(force) {
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const characterId = save.characterId;
     const send = force ? cloudRefreshCharacterShopStock : cloudGetCharacterShopStock;
-    const result = await send(cred.url, save.characterId, requestId);
+    // The manager owns the full-screen overlay here (one token per intent, not per retry).
+    const result = await OPERATIONS.run({
+      key: "shop.refresh", group: "shop", characterId, ui: "overlay", label: "กำลังรีเฟรชร้านค้า…",
+      action: force ? "refreshCharacterShopStock" : "getCharacterShopStock", conflict: "reject"
+    }, requestId => send(cred.url, characterId, requestId));
     if (result?.ok) { applyShopStockResult(result); return { ok: true }; }
     if (result?.error === "shop_refresh_cooldown") {
       setShopStock(stock => ({ ...stock, refreshAtMs: Date.now() + Math.max(500, Number(result.retryAfterMs) || 10000) }));
@@ -2546,18 +2545,23 @@ function ThornieDungeons() {
   }
   async function buyShopItem(item) {
     if (!item?.offerId || save.gold < Number(item.price) || !await flushRewardClaimBarrier(save.characterId)) return { ok: false };
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const previousSave = save;
-    setShopPending(current => ({ ...current, [`equipment:${item.offerId}`]: 1 }));
-    setSave(current => ({ ...current, gold: Math.max(0, Number(current.gold || 0) - Number(item.price)) }));
-    let result = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      result = await cloudPurchaseShopEquipment(cred.url, save.characterId, item.offerId, requestId);
-      if (result?.ok || !["network_error", "server_error"].includes(result?.error)) break;
-      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)));
-    }
-    setShopPending(current => { const next = { ...current }; delete next[`equipment:${item.offerId}`]; return next; });
-    if (!result?.ok) { setSave(previousSave); return result || { ok: false, error: "network_error" }; }
+    const characterId = save.characterId;
+    const price = Number(item.price);
+    const pendingKey = `equipment:${item.offerId}`;
+    const result = await OPERATIONS.run({
+      key: `shop.equipment:${item.offerId}`,
+      group: "inventory",
+      characterId,
+      action: "purchaseShopEquipment",
+      conflict: "reject",
+      apply: () => {
+        setShopPending(current => ({ ...current, [pendingKey]: 1 }));
+        setSave(current => ({ ...current, gold: Math.max(0, Number(current.gold || 0) - price) }));
+      },
+      rollback: () => setSave(current => ({ ...current, gold: Number(current.gold || 0) + price })),
+      settle: () => setShopPending(current => { const next = { ...current }; delete next[pendingKey]; return next; })
+    }, requestId => cloudPurchaseShopEquipment(cred.url, characterId, item.offerId, requestId));
+    if (!result?.ok) return result || { ok: false, error: "network_error" };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setShopStock(stock => ({ ...stock, items: (stock?.items || []).filter(entry => entry.offerId !== item.offerId) }));
     return result;
@@ -2600,7 +2604,10 @@ function ThornieDungeons() {
   }
   async function commitActivePet(petAction, instId = "") {
     if (!await flushRewardClaimBarrier(save.characterId)) return false;
-    const result = await cloudPetEconomyAction(cred.url, save.characterId, petAction, instId, "");
+    const characterId = save.characterId;
+    // equip/unequip send no requestId (state-setting), so the manager must not auto-retry them.
+    const result = await OPERATIONS.run({ key: `pet.${petAction}`, group: "pet", characterId, action: "petEconomyAction", retry: false, conflict: "reject" },
+      () => cloudPetEconomyAction(cred.url, characterId, petAction, instId, ""));
     if (!result?.ok) return false;
     petCombatRef.current = null;
     setPetCombat(null);
@@ -2611,8 +2618,9 @@ function ThornieDungeons() {
   function unequipPet() { return commitActivePet("unequip"); }
   async function pullGacha() {
     if (save.diamonds < GACHA_COST || !await flushRewardClaimBarrier(save.characterId)) return false;
-    const requestId = globalThis.crypto?.randomUUID?.() || `pet-gacha-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await GLOBAL_LOADING.run({ key: "pet.gacha", label: "กำลังสุ่มสัตว์เลี้ยง…" }, () => cloudPetEconomyAction(cred.url, save.characterId, "gacha", "", requestId));
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: "pet.gacha", group: "pet", characterId, ui: "overlay", label: "กำลังสุ่มสัตว์เลี้ยง…", action: "petEconomyAction", conflict: "reject" },
+      requestId => cloudPetEconomyAction(cred.url, characterId, "gacha", "", requestId));
     if (!result?.ok) return false;
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setGachaResult({ pet: getPetDef(result.result?.defId), duplicate: !!result.result?.duplicate });
@@ -2630,8 +2638,9 @@ function ThornieDungeons() {
     const have = petDuplicateCount(save.petDuplicates, pet.defId);
     if (have < cost) return { ok: false, need: cost, have };
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false, need: cost, have };
-    const requestId = globalThis.crypto?.randomUUID?.() || `pet-star-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const result = await cloudPetEconomyAction(cred.url, save.characterId, "star_up", instId, requestId);
+    const characterId = save.characterId;
+    const result = await OPERATIONS.run({ key: `pet.starUp:${instId}`, group: "pet", characterId, action: "petEconomyAction", conflict: "reject" },
+      requestId => cloudPetEconomyAction(cred.url, characterId, "star_up", instId, requestId));
     if (!result?.ok) return result?.error === "pet_star_max" ? { ok: false, maxed: true } : { ok: false, need: cost, have };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return { ok: true };

@@ -9,10 +9,13 @@ const components = fs.readFileSync("src/ui/components.js","utf8");
 test("Phase 5 Shop purchase sends quantity, optimistic pending state, rollback, and same-request retry", () => {
   assert.match(api, /quantity = undefined/);
   assert.match(app, /setShopPending/);
-  assert.match(app, /setSave\(current => kind === "protection_stone"/);
+  assert.match(app, /action: "purchaseCharacterResource"/);
+  assert.match(app, /spendField = kind === "protection_stone" \? "diamonds" : "gold"/);
   assert.match(app, /cloudPurchaseCharacterResource\([^\n]+normalizedQuantity/);
-  assert.match(app, /requestId[\s\S]*for \(let attempt = 0; attempt < 4; attempt\+\+\)/);
-  assert.match(app, /setSave\(previousSave\)/);
+  // same requestId across retries now lives in OPERATIONS.run (tests/operations.test.js)
+  assert.match(app, /OPERATIONS\.run\(\{[\s\S]*?key: `shop\.resource:/);
+  assert.doesNotMatch(app, /for \(let attempt = 0; attempt < 4; attempt\+\+\)/);
+  assert.match(app, /rollback: \(\) => setSave\(current => \(\{ \.\.\.current, \[spendField\]/);
   assert.match(components, /pendingPurchases/);
   assert.match(components, /กำลังยืนยัน/);
 });

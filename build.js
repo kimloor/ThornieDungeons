@@ -23,6 +23,7 @@ const MODULE_ORDER = [
   "state/auth.js",
   "state/globalLoading.js",
   "state/api.js",
+  "state/operations.js",
   "ui/playerCard.js",
   "ui/guildProfile.js",
   "state/persistence.js",
