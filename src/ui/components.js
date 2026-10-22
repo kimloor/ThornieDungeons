@@ -148,7 +148,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
         registration_unavailable: "สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่",
         rate_limited: "สมัครบัญชีถี่เกินไปจากเครือข่ายนี้ กรุณาลองใหม่ภายหลัง",
       };
-      setModalError(registerErrorText[result?.error] || "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่");
+      setModalError(errorMessage(result?.error, { overrides: registerErrorText, fallback: "สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่" }));
     }
   };
   const submitForgot = async () => {
@@ -164,7 +164,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
         invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน"
       };
-      setModalError(forgotErrorText[result.error] || "ดำเนินการไม่สำเร็จ กรุณาลองใหม่");
+      setModalError(errorMessage(result.error, { overrides: forgotErrorText, fallback: "ดำเนินการไม่สำเร็จ กรุณาลองใหม่" }));
     }
   };
   return e("div", { className: `md-login-wrap${departing ? " is-departing" : ""}` },
@@ -243,7 +243,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
         invalid_password_characters: "Password ใช้ได้เฉพาะ A-Z, a-z และ 0-9 เท่านั้น ห้ามเว้นวรรคหรือใช้อักขระพิเศษ",
         password_mismatch: "Confirm Password ไม่ตรงกัน"
       };
-      return setMessage(changeErrorText[result?.error] || "เปลี่ยน Password ไม่สำเร็จ");
+      return setMessage(errorMessage(result?.error, { overrides: changeErrorText, fallback: "เปลี่ยน Password ไม่สำเร็จ" }));
     }
     onRequireLogin("เปลี่ยน Password สำเร็จ กรุณาเข้าสู่ระบบใหม่");
   };
@@ -3042,8 +3042,8 @@ function arenaHumanError(code, reason, fallback = "Arena request failed") {
   };
   const label = labels[token] || String(fallback || token || "Arena request failed");
   const reasonText = detail ? ` — ${detail}` : "";
-  const tokenText = token ? ` [${token}]` : "";
-  return `${label}${reasonText}${tokenText}`;
+  // The raw [code] is intentionally not shown to players (PR-A decision); codes live in the error catalog.
+  return `${label}${reasonText}`;
 }
 
 // Settlement is authoritative server data. This boundary converts both the W9 V2
