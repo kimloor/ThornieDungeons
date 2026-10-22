@@ -113,16 +113,20 @@ function createOperationManager(options = {}) {
         ? await loading.run({ key: spec.key, label: spec.label || "" }, work)
         : await work();
     } catch (error) {
-      if (applied && typeof spec.rollback === "function") spec.rollback(ctx, { ok: false, error: "network_error" });
+      const failed = { ok: false, error: "network_error" };
+      if (typeof spec.settle === "function") { try { spec.settle(failed); } catch (_) { /* ignore */ } }
+      if (applied && typeof spec.rollback === "function") spec.rollback(ctx, failed);
       throw error;
     }
     const result = finalize(spec, outcome.result);
+    // settle() runs once per intent on every exit path (success, failure, throw): clear local pending UI here.
+    if (typeof spec.settle === "function") { try { spec.settle(result); } catch (_) { /* ignore */ } }
     if (!result.ok && applied && typeof spec.rollback === "function") spec.rollback(ctx, result);
     return result;
   }
 
   // spec: { key, group?, characterId?, action?, ui?: "inline"|"overlay"|"none", label?, apply?, rollback?,
-  //         requestId?, retry?, conflict?: "queue"|"reject", errorOverrides? }
+  //         requestId?, retry?, conflict?: "queue"|"reject", errorOverrides?, settle?(result) }
   function run(spec, task) {
     const key = String(spec && spec.key || "");
     if (!key) throw new Error("OPERATIONS.run requires a key");

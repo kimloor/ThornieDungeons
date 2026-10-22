@@ -230,3 +230,13 @@ test("defaults match the approved plan (3 retries, 1/2/4 s, 45 s budget)", () =>
   assert.deepEqual(Array.from(OPERATIONS_DEFAULTS.backoffMs), [1000, 2000, 4000]);
   assert.equal(OPERATIONS_DEFAULTS.budgetMs, 45000);
 });
+
+test("settle runs once on success, failure and throw, before rollback", async () => {
+  const { mgr } = make();
+  const events = [];
+  const base = { settle: r => events.push(`settle:${r.ok ? "ok" : r.error}`), apply: () => 1, rollback: () => events.push("rollback") };
+  await mgr.run({ key: "a", ...base }, async () => ({ ok: true }));
+  await mgr.run({ key: "b", ...base }, async () => ({ ok: false, error: "insufficient_funds" }));
+  await mgr.run({ key: "c", ...base }, async () => { throw new Error("x"); });
+  assert.deepEqual(events, ["settle:ok", "settle:insufficient_funds", "rollback", "settle:network_error", "rollback"]);
+});

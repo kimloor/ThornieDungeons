@@ -6506,16 +6506,20 @@ function createOperationManager(options = {}) {
         ? await loading.run({ key: spec.key, label: spec.label || "" }, work)
         : await work();
     } catch (error) {
-      if (applied && typeof spec.rollback === "function") spec.rollback(ctx, { ok: false, error: "network_error" });
+      const failed = { ok: false, error: "network_error" };
+      if (typeof spec.settle === "function") { try { spec.settle(failed); } catch (_) { /* ignore */ } }
+      if (applied && typeof spec.rollback === "function") spec.rollback(ctx, failed);
       throw error;
     }
     const result = finalize(spec, outcome.result);
+    // settle() runs once per intent on every exit path (success, failure, throw): clear local pending UI here.
+    if (typeof spec.settle === "function") { try { spec.settle(result); } catch (_) { /* ignore */ } }
     if (!result.ok && applied && typeof spec.rollback === "function") spec.rollback(ctx, result);
     return result;
   }
 
   // spec: { key, group?, characterId?, action?, ui?: "inline"|"overlay"|"none", label?, apply?, rollback?,
-  //         requestId?, retry?, conflict?: "queue"|"reject", errorOverrides? }
+  //         requestId?, retry?, conflict?: "queue"|"reject", errorOverrides?, settle?(result) }
   function run(spec, task) {
     const key = String(spec && spec.key || "");
     if (!key) throw new Error("OPERATIONS.run requires a key");
@@ -17691,29 +17695,31 @@ function ThornieDungeons() {
   async function buyCharacterResource(kind, id = "", quantity = 1) {
     if (!await flushRewardClaimBarrier(save.characterId)) return { ok: false };
     const normalizedQuantity = Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1)));
-    const requestId = globalThis.crypto?.randomUUID?.() || `purchase-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const pendingKey = `${kind}:${id || ""}`;
-    const previousSave = save;
     const unitPrice = kind === "potion" ? Number(getPotionDef(id)?.price || 0) : kind === "material" ? Number(MATERIAL_SHOP_PRICE[id] || 0) : kind === "protection_stone" ? Number(PROTECTION_STONE_PRICE || 0) : 0;
     const total = unitPrice * normalizedQuantity;
-    if (!unitPrice || (kind === "protection_stone" ? previousSave.diamonds < total : previousSave.gold < total)) return { ok: false, error: "insufficient_funds" };
-    setShopPending(current => ({ ...current, [pendingKey]: (current[pendingKey] || 0) + normalizedQuantity }));
-    setSave(current => kind === "protection_stone" ? { ...current, diamonds: Math.max(0, Number(current.diamonds || 0) - total) } : { ...current, gold: Math.max(0, Number(current.gold || 0) - total) });
-    let result = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      result = await cloudPurchaseCharacterResource(cred.url, save.characterId, { kind, id }, requestId, normalizedQuantity);
-      if (result?.ok || !["network_error", "server_error"].includes(result?.error)) break;
-      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)));
-    }
-    setShopPending(current => {
-      const next = { ...current, [pendingKey]: Math.max(0, (current[pendingKey] || 0) - normalizedQuantity) };
-      if (!next[pendingKey]) delete next[pendingKey];
-      return next;
-    });
-    if (!result?.ok) {
-      setSave(previousSave);
-      return result || { ok: false, error: "network_error" };
-    }
+    if (!unitPrice || (kind === "protection_stone" ? save.diamonds < total : save.gold < total)) return { ok: false, error: "insufficient_funds" };
+    const characterId = save.characterId;
+    const spendField = kind === "protection_stone" ? "diamonds" : "gold";
+    const result = await OPERATIONS.run({
+      key: `shop.resource:${pendingKey}`,
+      group: "inventory",
+      characterId,
+      action: "purchaseCharacterResource",
+      conflict: "reject",
+      apply: () => {
+        setShopPending(current => ({ ...current, [pendingKey]: (current[pendingKey] || 0) + normalizedQuantity }));
+        setSave(current => ({ ...current, [spendField]: Math.max(0, Number(current[spendField] || 0) - total) }));
+      },
+      // Refund exactly what this purchase deducted; rewards that arrived meanwhile stay.
+      rollback: () => setSave(current => ({ ...current, [spendField]: Number(current[spendField] || 0) + total })),
+      settle: () => setShopPending(current => {
+        const next = { ...current, [pendingKey]: Math.max(0, (current[pendingKey] || 0) - normalizedQuantity) };
+        if (!next[pendingKey]) delete next[pendingKey];
+        return next;
+      })
+    }, requestId => cloudPurchaseCharacterResource(cred.url, characterId, { kind, id }, requestId, normalizedQuantity));
+    if (!result?.ok) return result || { ok: false, error: "network_error" };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     return result;
   }
@@ -17770,18 +17776,23 @@ function ThornieDungeons() {
   }
   async function buyShopItem(item) {
     if (!item?.offerId || save.gold < Number(item.price) || !await flushRewardClaimBarrier(save.characterId)) return { ok: false };
-    const requestId = globalThis.crypto?.randomUUID?.() || `shop-buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const previousSave = save;
-    setShopPending(current => ({ ...current, [`equipment:${item.offerId}`]: 1 }));
-    setSave(current => ({ ...current, gold: Math.max(0, Number(current.gold || 0) - Number(item.price)) }));
-    let result = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      result = await cloudPurchaseShopEquipment(cred.url, save.characterId, item.offerId, requestId);
-      if (result?.ok || !["network_error", "server_error"].includes(result?.error)) break;
-      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)));
-    }
-    setShopPending(current => { const next = { ...current }; delete next[`equipment:${item.offerId}`]; return next; });
-    if (!result?.ok) { setSave(previousSave); return result || { ok: false, error: "network_error" }; }
+    const characterId = save.characterId;
+    const price = Number(item.price);
+    const pendingKey = `equipment:${item.offerId}`;
+    const result = await OPERATIONS.run({
+      key: `shop.equipment:${item.offerId}`,
+      group: "inventory",
+      characterId,
+      action: "purchaseShopEquipment",
+      conflict: "reject",
+      apply: () => {
+        setShopPending(current => ({ ...current, [pendingKey]: 1 }));
+        setSave(current => ({ ...current, gold: Math.max(0, Number(current.gold || 0) - price) }));
+      },
+      rollback: () => setSave(current => ({ ...current, gold: Number(current.gold || 0) + price })),
+      settle: () => setShopPending(current => { const next = { ...current }; delete next[pendingKey]; return next; })
+    }, requestId => cloudPurchaseShopEquipment(cred.url, characterId, item.offerId, requestId));
+    if (!result?.ok) return result || { ok: false, error: "network_error" };
     hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
     setShopStock(stock => ({ ...stock, items: (stock?.items || []).filter(entry => entry.offerId !== item.offerId) }));
     return result;
