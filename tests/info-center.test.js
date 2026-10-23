@@ -83,7 +83,7 @@ test("UI wiring: Settings opens the separate Information Center page; storage ac
   const comps = read("src/ui/components.js");
   const ui = read("src/ui/infoCenter.js");
   assert.match(comps, /InfoCenterScreen, \{ onClose: \(\) => setInfoOpen\(false\) \}/);
-  assert.match(comps, /onClick: \(\) => setInfoOpen\(true\)/);
+  assert.match(comps, /\(\) => setInfoOpen\(true\)/);
   assert.match(ui, /function InfoCenterScreen\(\{ initialRoute, onClose \}\)/);
   assert.match(ui, /infoResolveRoute\(initialRoute\)/);
   assert.match(ui, /try \{ return window\.localStorage/);

@@ -870,7 +870,7 @@ function ThornieDungeons() {
       onCharacter: () => { setCharacterReturnPhase(fromPhase); setPhase("character"); },
       onOpenInv: () => setInvOpen(true),
       onPets: () => { setPetReturnPhase(fromPhase); setPhase("pets"); },
-      onSettings: () => setAccountSettingsOpen(true),
+      onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
       onSave: manualSave,
       onMainHub: () => setPhase("menu"),
     };
@@ -2855,7 +2855,7 @@ function ThornieDungeons() {
       setPhase("pets");
     },
     onOpenSkill: () => setPhase("skill"),
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
     onFriend: () => {
@@ -2883,7 +2883,7 @@ function ThornieDungeons() {
       setPetReturnPhase("skill");
       setPhase("pets");
     },
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
     onFriend: () => {
@@ -2926,7 +2926,7 @@ function ThornieDungeons() {
     ),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onFriend: () => {
       setUtilityReturnPhase("map");
       setPhase("friend");
@@ -2956,7 +2956,7 @@ function ThornieDungeons() {
       setPhase("character");
     },
     onOpenInv: () => setInvOpen(true),
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
     onFriend: () => {
@@ -3161,6 +3161,9 @@ function ThornieDungeons() {
     onRequireLogin: requireLoginAfterSecurityChange,
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
+    syncStatus: persistenceStatus,
+    onRetrySync: manualSave,
+    initialPage: typeof accountSettingsOpen === "string" ? accountSettingsOpen : "",
     onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlayV2, {
     equipped: equipped,
@@ -3187,7 +3190,7 @@ function ThornieDungeons() {
       setPetReturnPhase(phase);
       setPhase("pets");
     },
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onSave: manualSave,
     onMainHub: () => { setInvOpen(false); setPhase("menu"); },
     onFriend: () => {
