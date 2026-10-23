@@ -7,30 +7,34 @@ const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
 const comps = read("src/ui/components.js");
 const app = read("src/ui/App.js");
 const between = (source, from, to) => source.slice(source.indexOf(from), source.indexOf(to, source.indexOf(from)));
+const overlay = between(comps, "function AccountSettingsOverlay(", "function GameDock(");
 
-test("More menu: only Settings and Friend remain (no Save, Chat, Guild, Main Hub duplicates)", () => {
+test("More menu: Settings content is one tap away (sound, account, character, info) plus Friend; no Save/Chat/Guild/Main Hub duplicates", () => {
   const dock = between(comps, "function GameDock", "// Renders the icon+amount chips");
-  assert.match(dock, /openSettings/);
+  ["sound", "account", "character", "info"].forEach(page => assert.match(dock, new RegExp(`openSettings\\("${page}"\\)`), page));
   assert.match(dock, /openFriend/);
+  assert.doesNotMatch(dock, /createElement\("span", null, "Settings"\)/, "no separate Settings entry in More");
   assert.doesNotMatch(dock, /openChat|openGuild|openMainHub|handleSave|saveFlash|onSave/);
 });
 
-test("Settings is a menu of sub-pages: sound, account & security, character & data, information; logout stays separate", () => {
-  const overlay = between(comps, "function AccountSettingsOverlay(", "function GameDock(");
-  ["sound", "account", "character"].forEach(key => assert.match(overlay, new RegExp(`goPage\\("${key}"\\)`), key));
-  assert.match(overlay, /setInfoOpen\(true\)/);
-  assert.match(overlay, /className: "md-settings-logout"/);
+test("Opening a More entry goes straight to its page; the Settings menu stays as the fallback for other callers", () => {
+  assert.match(app, /onSettings: page => setAccountSettingsOpen\(typeof page === "string" \? page : true\)/);
+  assert.match(app, /initialPage: typeof accountSettingsOpen === "string" \? accountSettingsOpen : ""/);
+  assert.match(overlay, /initialPage === "info"\) return e\(InfoCenterScreen, \{ onClose \}\)/);
+  assert.match(overlay, /useState\(direct && initialPage !== "info" \? initialPage : ""\)/);
+  assert.match(overlay, /page && !direct \? e\("button"/, "back arrow only when reached through the Settings menu");
+  assert.match(overlay, /onClick: onClose, "aria-label": "Close settings"/);
   assert.match(overlay, /page === "sound" \? soundPage : page === "account" \? accountPage : page === "character" \? characterPage : menuPage/);
-  // sub-pages carry the previous sections unchanged
+});
+
+test("Sub-pages carry the previous sections; logout is on the character page and at the bottom of the menu", () => {
   assert.match(between(overlay, "const accountPage", "const characterPage"), /Recovery Code[\s\S]*Change Password/);
   assert.match(between(overlay, "const soundPage", "const accountPage"), /BGM[\s\S]*SFX/);
-  // back arrow only on a sub-page; close always available
-  assert.match(overlay, /page \? e\("button", \{ className: "md-btn info small md-settings-close", onClick: \(\) => goPage\(""\)/);
-  assert.match(overlay, /onClick: onClose, "aria-label": "Close settings"/);
+  assert.match(between(overlay, "const characterPage", "const menuPage"), /onSwitchCharacter[\s\S]*onLogout/);
+  assert.match(overlay, /className: "md-settings-logout"/);
 });
 
 test("Sync status replaces the Save button: retry is only offered when a sync failed", () => {
-  const overlay = between(comps, "function AccountSettingsOverlay(", "function GameDock(");
   assert.match(overlay, /syncStatus === "failed" \? e\("button"[\s\S]*retrySync/);
   assert.match(app, /syncStatus: persistenceStatus,\s*onRetrySync: manualSave/);
 });

@@ -982,6 +982,8 @@ body::after {
 .md-settings-section-head .md-sub { margin:2px 0 0; color:var(--ink-soft); font-size:11px; line-height:1.35; }
 .md-settings-sound { margin:0; padding:0; border:0; background:transparent; }
 .md-settings-stack { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.md-hub-more-grid button { position:relative; }
+.md-hub-more-new { position:absolute; top:2px; right:2px; padding:1px 5px; border-radius:999px; font-size:9px; font-style:normal; font-weight:700; background:#FF6B6B; color:#fff; }
 .md-settings-menu { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
 .md-settings-row { display:flex; align-items:center; gap:10px; width:100%; min-height:58px; padding:10px 12px; text-align:left; color:inherit; font:inherit; cursor:pointer; border:1px solid rgba(255,209,102,.28); border-radius:12px; background:rgba(5,15,38,.58); }
 .md-settings-row:active { background:rgba(139,106,232,.28); }
@@ -7578,8 +7580,8 @@ const INFO_CENTER = {
     latest: {
       version: "1.1.6", date: "2026-10-23", title: "จัดระเบียบเมนูและ Settings",
       items: [
-        "Settings แบ่งเป็นหมวด: เสียง, บัญชีและความปลอดภัย, ตัวละครและข้อมูล, ข้อมูลและนโยบาย",
-        "เมนู \"เพิ่มเติม\" ด้านล่างเหลือเฉพาะ Settings กับเพื่อน เพราะแชทและกิลด์มีทางเข้าอยู่ในเมืองแล้ว",
+        "เมนู \"เพิ่มเติม\" ด้านล่างมีทางลัดตรงไปยัง เสียง, บัญชีและความปลอดภัย, ตัวละครและข้อมูล, ข้อมูลและนโยบาย และเพื่อน แตะครั้งเดียวถึงหน้านั้น",
+        "เอาทางลัดแชท กิลด์ และกลับหน้าหลักออกจากเมนูนี้ เพราะมีทางเข้าอยู่ในเมืองแล้ว",
         "เอาปุ่ม Save ออก: เกมบันทึกข้อมูลให้อัตโนมัติ หากซิงค์ไม่สำเร็จจะมีปุ่ม \"ลองซิงค์อีกครั้ง\" ใน Settings > ตัวละครและข้อมูล"
       ]
     },
@@ -16366,7 +16368,7 @@ function ThornieDungeons() {
       onCharacter: () => { setCharacterReturnPhase(fromPhase); setPhase("character"); },
       onOpenInv: () => setInvOpen(true),
       onPets: () => { setPetReturnPhase(fromPhase); setPhase("pets"); },
-      onSettings: () => setAccountSettingsOpen(true),
+      onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
       onSave: manualSave,
       onMainHub: () => setPhase("menu"),
     };
@@ -18364,7 +18366,7 @@ function ThornieDungeons() {
       setPhase("pets");
     },
     onOpenSkill: () => setPhase("skill"),
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
     onFriend: () => {
@@ -18392,7 +18394,7 @@ function ThornieDungeons() {
       setPetReturnPhase("skill");
       setPhase("pets");
     },
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
     onFriend: () => {
@@ -18435,7 +18437,7 @@ function ThornieDungeons() {
     ),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onFriend: () => {
       setUtilityReturnPhase("map");
       setPhase("friend");
@@ -18465,7 +18467,7 @@ function ThornieDungeons() {
       setPhase("character");
     },
     onOpenInv: () => setInvOpen(true),
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
     onFriend: () => {
@@ -18672,6 +18674,7 @@ function ThornieDungeons() {
     onLogout: logout,
     syncStatus: persistenceStatus,
     onRetrySync: manualSave,
+    initialPage: typeof accountSettingsOpen === "string" ? accountSettingsOpen : "",
     onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlayV2, {
     equipped: equipped,
@@ -18698,7 +18701,7 @@ function ThornieDungeons() {
       setPetReturnPhase(phase);
       setPhase("pets");
     },
-    onSettings: () => setAccountSettingsOpen(true),
+    onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onSave: manualSave,
     onMainHub: () => { setInvOpen(false); setPhase("menu"); },
     onFriend: () => {
@@ -19082,7 +19085,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
     passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
   );
 }
-function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolumeChange, onBgmMuteChange, onSfxVolumeChange, onSfxMuteChange, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, syncStatus, onRetrySync, onClose }) {
+function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolumeChange, onBgmMuteChange, onSfxVolumeChange, onSfxMuteChange, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, syncStatus, onRetrySync, initialPage, onClose }) {
   const e = React.createElement;
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
@@ -19092,7 +19095,8 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
   const [message, setMessage] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [infoOpen, setInfoOpen] = useState(false);
-  const [page, setPage] = useState("");
+  const direct = initialPage === "sound" || initialPage === "account" || initialPage === "character" || initialPage === "info";
+  const [page, setPage] = useState(direct && initialPage !== "info" ? initialPage : "");
   const [syncBusy, setSyncBusy] = useState(false);
   const goPage = next => { setMessage(""); setPage(next); };
   const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
@@ -19195,6 +19199,9 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
     settingsSection("ตัวละคร", "สลับไปเลือกตัวละครอื่นในบัญชีนี้", e("div", { className: "md-settings-actions" },
       e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร")
     )),
+    settingsSection("ออกจากระบบ", "ออกจากบัญชีนี้บนอุปกรณ์เครื่องนี้", e("div", { className: "md-settings-actions" },
+      e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
+    )),
     settingsSection("การซิงค์ข้อมูล", "เกมบันทึกข้อมูลขึ้นเซิร์ฟเวอร์ให้อัตโนมัติ ไม่ต้องกดบันทึกเอง", e("div", { className: "md-settings-stack" },
       e("p", { className: "md-settings-sync status-" + (syncStatus || "saved"), role: "status" }, syncLabel),
       syncStatus === "failed" ? e("button", { className: "md-btn primary wide", disabled: syncBusy, onClick: retrySync }, syncBusy ? "กำลังลองซิงค์…" : "ลองซิงค์อีกครั้ง") : null
@@ -19211,7 +19218,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
   );
   const settingsSheet = ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
     e("div", { className: "md-settings-header" },
-      page ? e("button", { className: "md-btn info small md-settings-close", onClick: () => goPage(""), "aria-label": "กลับไปเมนู Settings" }, "←") : null,
+      page && !direct ? e("button", { className: "md-btn info small md-settings-close", onClick: () => goPage(""), "aria-label": "กลับไปเมนู Settings" }, "←") : null,
       e("div", { className: "md-settings-header-copy" },
         e("h2", { className: "md-title" }, page ? pageMeta[page][0] : "Settings"),
         e("p", { className: "md-sub" }, page ? pageMeta[page][1] : "ACCOUNT & SECURITY"),
@@ -19221,6 +19228,7 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
     ),
     page === "sound" ? soundPage : page === "account" ? accountPage : page === "character" ? characterPage : menuPage
   )), document.body);
+  if (initialPage === "info") return e(InfoCenterScreen, { onClose });
   return e(React.Fragment, null, settingsSheet, infoOpen ? e(InfoCenterScreen, { onClose: () => setInfoOpen(false) }) : null);
 }
 
@@ -19233,9 +19241,10 @@ function GameDock({
   onFriend
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
-  const openSettings = () => {
+  // Settings content lives directly in this menu: each entry opens its page in one tap.
+  const openSettings = page => {
     setMoreOpen(false);
-    onSettings?.();
+    onSettings?.(page);
   };
   const openFriend = () => {
     setMoreOpen(false);
@@ -19251,7 +19260,7 @@ function GameDock({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")))), /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: () => openSettings("sound") }, "🔊", /*#__PURE__*/React.createElement("span", null, "เสียง")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: () => openSettings("account") }, "🔐", /*#__PURE__*/React.createElement("span", null, "บัญชี")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: () => openSettings("character") }, "🧙", /*#__PURE__*/React.createElement("span", null, "ตัวละคร")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: () => openSettings("info") }, "📖", /*#__PURE__*/React.createElement("span", null, "ข้อมูล"), infoHasNew() ? /*#__PURE__*/React.createElement("em", { className: "md-hub-more-new" }, "NEW") : null), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {

@@ -888,6 +888,8 @@ body::after {
 .md-settings-section-head .md-sub { margin:2px 0 0; color:var(--ink-soft); font-size:11px; line-height:1.35; }
 .md-settings-sound { margin:0; padding:0; border:0; background:transparent; }
 .md-settings-stack { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.md-hub-more-grid button { position:relative; }
+.md-hub-more-new { position:absolute; top:2px; right:2px; padding:1px 5px; border-radius:999px; font-size:9px; font-style:normal; font-weight:700; background:#FF6B6B; color:#fff; }
 .md-settings-menu { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
 .md-settings-row { display:flex; align-items:center; gap:10px; width:100%; min-height:58px; padding:10px 12px; text-align:left; color:inherit; font:inherit; cursor:pointer; border:1px solid rgba(255,209,102,.28); border-radius:12px; background:rgba(5,15,38,.58); }
 .md-settings-row:active { background:rgba(139,106,232,.28); }
