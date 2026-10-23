@@ -87,3 +87,12 @@ Owner decisions: separate full-screen page opened from a button in Settings; Tha
 - Policy drafts (Terms, Privacy, Fair Play, Purchase & Refund) are version 0.1 / `status: "draft"`, written from the services actually in use at 2026-10-22 (Cloudflare Pages/Workers/D1/R2, unpkg for React, Google Fonts; no ads and no third-party analytics found in the client code; session in `sessionStorage`; audio/sort/cache in `localStorage`; IP used for rate limiting). They are not legal review; real-money checkout stays disabled until the Legal & Policy Gate.
 - Release rule reminder: every release that changes player-relevant behaviour updates `INFO_CENTER.announcements` (latest + history); `tests/info-center.test.js` fails if the latest announcement does not match the visible version.
 - Tests: `tests/info-center.test.js` (data integrity, reserved areas, draft status, deep links, version sync, roadmap without dates, public-information boundary word check, UI wiring).
+
+## 10. Settings reorganisation (Ver 1.1.6)
+
+Owner decisions: remove the duplicated shortcuts from the bottom "More" menu entirely (Guild, Chat and Main Hub already exist in Town / Hub); Settings becomes a menu of sub-pages; Friend stays in More; remove the Save button.
+
+- More menu now holds only Settings and Friend. `GameDock` no longer takes `onSave`, `onChat`, `onGuild`, `onMainHub` (the screens still pass them; they are ignored and can be cleaned up later).
+- Settings menu: Sound / Account & Security (Recovery Code, Change Password) / Character & Data (switch character, sync status) / Information & Policy (opens the Information Center) / Logout (separate, at the bottom). Each sub-page has a back arrow; the close button stays available.
+- Save removal rationale: the persistence queue (`src/state/persistence.js`) is drained immediately on every enqueue (`commitInventorySnapshot`, run state, checkpoints, quick slots), failed transient writes retry on `online` and `visibilitychange`, and logout / character switch flush first. The manual button only re-sent failed writes, which is now "Settings > Character & Data > Retry sync" (shown only when the status is `failed`). `manualSave` in `App.js` is kept for that retry.
+- Tests: `tests/settings-reorg.test.js`; navigation tests updated for the smaller More menu.

@@ -85,8 +85,9 @@ test("Guild donation consume guard models 500 to 499 and rejects a failed consum
 test("Guild navigation has deterministic back and Main Hub recovery", () => {
   const app = fs.readFileSync(path.join(ROOT, "src/ui/App.js"), "utf8");
   const ui = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
-  assert.match(ui, /กลับหน้าหลัก/);
-  assert.match(ui, /onMainHub\?\.\(\)/);
+  // Settings reorg (Ver 1.1.6): the More menu no longer carries a Main Hub shortcut; screens keep their own back / Town buttons.
+  const dockSource = ui.slice(ui.indexOf("function GameDock"), ui.indexOf("// Renders the icon+amount chips"));
+  assert.doesNotMatch(dockSource, /onMainHub\?\.\(\)/);
   assert.match(ui, /function TownScreen\([\s\S]*?onMainHub,[\s\S]*?e\(GameDock, \{[\s\S]*?onMainHub\s*\}\)/);
   assert.match(ui, /function MapScreen\([\s\S]*?onMainHub[\s\S]*?onGuild,[\s\S]*?onMainHub\s*\}/);
   assert.match(ui, /function PetScreen\([\s\S]*?onMainHub[\s\S]*?onGuild,[\s\S]*?onMainHub\s*\}/);

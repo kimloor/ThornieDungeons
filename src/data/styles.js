@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.5";
+  content: "Ver 1.1.6";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -888,6 +888,21 @@ body::after {
 .md-settings-section-head .md-sub { margin:2px 0 0; color:var(--ink-soft); font-size:11px; line-height:1.35; }
 .md-settings-sound { margin:0; padding:0; border:0; background:transparent; }
 .md-settings-stack { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.md-settings-menu { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.md-settings-row { display:flex; align-items:center; gap:10px; width:100%; min-height:58px; padding:10px 12px; text-align:left; color:inherit; font:inherit; cursor:pointer; border:1px solid rgba(255,209,102,.28); border-radius:12px; background:rgba(5,15,38,.58); }
+.md-settings-row:active { background:rgba(139,106,232,.28); }
+.md-settings-row.is-alert { border-color:#FF6B6B; }
+.md-settings-row-icon { flex:0 0 auto; font-size:22px; line-height:1; }
+.md-settings-row-copy { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
+.md-settings-row-copy strong { font-size:14px; }
+.md-settings-row-copy small { font-size:11px; color:var(--ink-soft); overflow-wrap:anywhere; }
+.md-settings-row-badge { flex:0 0 auto; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700; background:#FF6B6B; color:#fff; }
+.md-settings-row-chev { flex:0 0 auto; font-size:20px; color:var(--ink-soft); }
+.md-settings-logout { margin-top:10px; padding-top:12px; border-top:1px solid rgba(255,209,102,.2); }
+.md-settings-sync { margin:0; font-size:13px; }
+.md-settings-sync.status-saved { color:#7BD88F; }
+.md-settings-sync.status-saving { color:var(--gold); }
+.md-settings-sync.status-failed { color:#FF6B6B; font-weight:700; }
 .md-info-page { position:fixed; inset:0; z-index:130; display:flex; flex-direction:column; background:#0b0818; color:var(--ink,#F3EEFF); padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
 .md-info-page, .md-info-page * { box-sizing:border-box; }
 .md-info-header { display:flex; align-items:center; gap:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,209,102,.28); }

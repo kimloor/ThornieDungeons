@@ -3161,6 +3161,8 @@ function ThornieDungeons() {
     onRequireLogin: requireLoginAfterSecurityChange,
     onSwitchCharacter: backToCharacterSelect,
     onLogout: logout,
+    syncStatus: persistenceStatus,
+    onRetrySync: manualSave,
     onClose: () => setAccountSettingsOpen(false)
   }), invOpen && /*#__PURE__*/React.createElement(InventoryOverlayV2, {
     equipped: equipped,

@@ -15,14 +15,13 @@ function sourceBetween(start, end) {
   return components.slice(from, to);
 }
 
-test("shared GameDock owns the only More menu with Settings, Save, Friend, Chat, and Guild", () => {
+test("shared GameDock owns the only More menu with Settings and Friend (Save, Chat, Guild, Main Hub shortcuts removed in Ver 1.1.6)", () => {
   const dock = sourceBetween("function GameDock", "// Renders the icon+amount chips");
   const panel = dock.slice(dock.indexOf("moreOpen &&"), dock.indexOf('React.createElement("nav"'));
   assert.match(panel, /Settings/);
-  assert.match(panel, /Save/);
   assert.match(panel, /Friend/);
-  assert.match(panel, /Chat/);
-  assert.match(panel, /Guild/);
+  assert.doesNotMatch(panel, /Save|Chat|Guild|กลับหน้าหลัก/);
+  assert.doesNotMatch(dock, /onSave|onChat|onGuild|onMainHub|saveFlash/);
   assert.doesNotMatch(panel, /Daily|Mail|Shop|Enhance|Craft|Raid|Arena|Leaderboard|Switch Character|Logout|รายวัน|จดหมาย|อันดับ|ร้านค้า|ตีบวก|ประดิษฐ์|เปลี่ยนตัว|ออกจากระบบ/);
   assert.equal((components.match(/className: "md-hub-more-panel"/g) || []).length, 1);
 });

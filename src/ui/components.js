@@ -190,7 +190,7 @@ function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onR
     passwordResetRecovery && recoveryPanel(passwordResetRecovery, () => { onClearPasswordResetRecovery(); setForgotOpen(false); })
   );
 }
-function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolumeChange, onBgmMuteChange, onSfxVolumeChange, onSfxMuteChange, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, onClose }) {
+function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolumeChange, onBgmMuteChange, onSfxVolumeChange, onSfxMuteChange, recoveryConfigured, onRecoveryConfigured, onRequireLogin, onSwitchCharacter, onLogout, syncStatus, onRetrySync, onClose }) {
   const e = React.createElement;
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
@@ -200,6 +200,9 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
   const [message, setMessage] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [infoOpen, setInfoOpen] = useState(false);
+  const [page, setPage] = useState("");
+  const [syncBusy, setSyncBusy] = useState(false);
+  const goPage = next => { setMessage(""); setPage(next); };
   const copyCode = () => navigator.clipboard?.writeText(recoveryCode).catch(() => {});
   const soundRow = (label, volume, muted, onVolumeChange, onMuteChange) => e("div", { className: "md-sound-row" },
     e("div", { className: "md-sound-row-head" }, e("strong", null, label), e("span", null, `${Math.round(volume * 100)}%`)),
@@ -255,19 +258,28 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
     ),
     children
   );
-  const settingsSheet = ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
-    e("div", { className: "md-settings-header" },
-      e("div", { className: "md-settings-header-copy" },
-        e("h2", { className: "md-title" }, "Settings"),
-        e("p", { className: "md-sub" }, "ACCOUNT & SECURITY"),
-        e("p", { className: "md-sub md-settings-player-id" }, `Player ID: ${playerId}`)
-      ),
-      e("button", { className: "md-btn flee small md-settings-close", onClick: onClose, "aria-label": "Close settings" }, "✕")
-    ),
-    settingsSection("Sound", "ปรับเสียงของอุปกรณ์นี้", e("div", { className: "md-settings-sound" },
+  const syncLabel = syncStatus === "failed" ? "ซิงค์ไม่สำเร็จ" : syncStatus === "saving" ? "กำลังซิงค์…" : "ซิงค์แล้ว";
+  const retrySync = async () => {
+    if (syncBusy || !onRetrySync) return;
+    setSyncBusy(true);
+    try { await onRetrySync(); } finally { setSyncBusy(false); }
+  };
+  const menuRow = (key, icon, title, summary, onClick, badge, alert) => e("button", { key, type: "button", className: "md-settings-row" + (alert ? " is-alert" : ""), onClick },
+    e("span", { className: "md-settings-row-icon", "aria-hidden": "true" }, icon),
+    e("span", { className: "md-settings-row-copy" }, e("strong", null, title), e("small", null, summary)),
+    badge ? e("span", { className: "md-settings-row-badge" }, badge) : null,
+    e("span", { className: "md-settings-row-chev", "aria-hidden": "true" }, "›")
+  );
+  const pageMeta = {
+    sound: ["เสียง", "SOUND"],
+    account: ["บัญชีและความปลอดภัย", "ACCOUNT & SECURITY"],
+    character: ["ตัวละครและข้อมูล", "CHARACTER & DATA"]
+  };
+  const soundPage = settingsSection("Sound", "ปรับเสียงของอุปกรณ์นี้", e("div", { className: "md-settings-sound" },
       soundRow("BGM", audioSettings?.bgmVolume ?? 0.5, audioSettings?.bgmMuted === true, onBgmVolumeChange, onBgmMuteChange),
       soundRow("SFX", audioSettings?.sfxVolume ?? 0.5, audioSettings?.sfxMuted === true, onSfxVolumeChange, onSfxMuteChange)
-    )),
+    ));
+  const accountPage = e(React.Fragment, null,
     settingsSection("Recovery Code", recoveryConfigured ? "ตั้งค่า Recovery Code แล้ว" : "ยังไม่ได้ตั้งค่า Recovery Code", recoveryCode
       ? e("div", { className: "md-settings-stack" },
           e("p", { className: "md-sub" }, "Recovery Code ใหม่นี้จะแสดงเพียงครั้งเดียว"),
@@ -285,38 +297,50 @@ function AccountSettingsOverlay({ serverUrl, playerId, audioSettings, onBgmVolum
       e("input", { className: "md-field", type: "password", placeholder: "ยืนยัน Password ใหม่", value: confirmPassword, onChange: event => setConfirmPassword(event.target.value), onFocus: event => event.currentTarget.select(), autoComplete: "new-password" }),
       e("button", { className: "md-btn primary wide", disabled: busy, onClick: changePassword }, "เปลี่ยน Password")
     )),
-    message && e("p", { className: "md-auth-error md-settings-message" }, message),
-    settingsSection("\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22", "\u0e1b\u0e23\u0e30\u0e01\u0e32\u0e28 \u0e04\u0e39\u0e48\u0e21\u0e37\u0e2d \u0e02\u0e49\u0e2d\u0e01\u0e33\u0e2b\u0e19\u0e14 \u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22\u0e02\u0e2d\u0e07\u0e40\u0e01\u0e21", e("div", { className: "md-settings-actions" },
-      e("button", { className: "md-btn info wide", disabled: busy, onClick: () => setInfoOpen(true) }, "\u0e40\u0e1b\u0e34\u0e14\u0e2b\u0e19\u0e49\u0e32\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e41\u0e25\u0e30\u0e19\u0e42\u0e22\u0e1a\u0e32\u0e22", infoHasNew() ? " \u2022 NEW" : "")
+    message && e("p", { className: "md-auth-error md-settings-message" }, message)
+  );
+  const characterPage = e(React.Fragment, null,
+    settingsSection("ตัวละคร", "สลับไปเลือกตัวละครอื่นในบัญชีนี้", e("div", { className: "md-settings-actions" },
+      e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร")
     )),
-    settingsSection("Account", "จัดการตัวละครและเซสชัน", e("div", { className: "md-settings-actions" },
-      e("button", { className: "md-btn info wide", disabled: busy, onClick: onSwitchCharacter }, "เปลี่ยนตัวละคร"),
-      e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
+    settingsSection("การซิงค์ข้อมูล", "เกมบันทึกข้อมูลขึ้นเซิร์ฟเวอร์ให้อัตโนมัติ ไม่ต้องกดบันทึกเอง", e("div", { className: "md-settings-stack" },
+      e("p", { className: "md-settings-sync status-" + (syncStatus || "saved"), role: "status" }, syncLabel),
+      syncStatus === "failed" ? e("button", { className: "md-btn primary wide", disabled: syncBusy, onClick: retrySync }, syncBusy ? "กำลังลองซิงค์…" : "ลองซิงค์อีกครั้ง") : null
     ))
+  );
+  const menuPage = e("div", { className: "md-settings-menu" },
+    menuRow("sound", "🔊", "เสียง", "BGM / SFX", () => goPage("sound")),
+    menuRow("account", "🔐", "บัญชีและความปลอดภัย", recoveryConfigured ? "รหัสผ่าน · Recovery Code ตั้งค่าแล้ว" : "รหัสผ่าน · ยังไม่ได้ตั้ง Recovery Code", () => goPage("account"), recoveryConfigured ? null : "ควรตั้ง"),
+    menuRow("character", "🧙", "ตัวละครและข้อมูล", "เปลี่ยนตัวละคร · " + syncLabel, () => goPage("character"), syncStatus === "failed" ? "!" : null, syncStatus === "failed"),
+    menuRow("info", "📖", "ข้อมูลและนโยบาย", "ประกาศ คู่มือ ข้อกำหนด และนโยบาย", () => setInfoOpen(true), infoHasNew() ? "NEW" : null),
+    e("div", { className: "md-settings-logout" },
+      e("button", { className: "md-btn flee wide", disabled: busy, onClick: onLogout }, "ออกจากระบบ")
+    )
+  );
+  const settingsSheet = ReactDOM.createPortal(e("div", { className: "md-auth-sheet-overlay" }, e("section", { className: "md-card md-auth-sheet md-account-sheet", role: "dialog", "aria-modal": "true" },
+    e("div", { className: "md-settings-header" },
+      page ? e("button", { className: "md-btn info small md-settings-close", onClick: () => goPage(""), "aria-label": "กลับไปเมนู Settings" }, "←") : null,
+      e("div", { className: "md-settings-header-copy" },
+        e("h2", { className: "md-title" }, page ? pageMeta[page][0] : "Settings"),
+        e("p", { className: "md-sub" }, page ? pageMeta[page][1] : "ACCOUNT & SECURITY"),
+        page ? null : e("p", { className: "md-sub md-settings-player-id" }, `Player ID: ${playerId}`)
+      ),
+      e("button", { className: "md-btn flee small md-settings-close", onClick: onClose, "aria-label": "Close settings" }, "✕")
+    ),
+    page === "sound" ? soundPage : page === "account" ? accountPage : page === "character" ? characterPage : menuPage
   )), document.body);
   return e(React.Fragment, null, settingsSheet, infoOpen ? e(InfoCenterScreen, { onClose: () => setInfoOpen(false) }) : null);
 }
+
 function GameDock({
   onCharacter,
   onOpenInv,
   onPets,
   activeKey,
   onSettings,
-  onSave,
-  onFriend,
-  onChat,
-  onGuild,
-  onMainHub
+  onFriend
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
-  const [saveFlash, setSaveFlash] = useState("");
-  const handleSave = async () => {
-    if (!onSave || saveFlash === "saving") return;
-    setSaveFlash("saving");
-    const ok = await onSave();
-    setSaveFlash(ok ? "saved" : "failed");
-    setTimeout(() => setSaveFlash(""), 1600);
-  };
   const openSettings = () => {
     setMoreOpen(false);
     onSettings?.();
@@ -324,18 +348,6 @@ function GameDock({
   const openFriend = () => {
     setMoreOpen(false);
     onFriend?.();
-  };
-  const openChat = () => {
-    setMoreOpen(false);
-    onChat?.();
-  };
-  const openGuild = () => {
-    setMoreOpen(false);
-    onGuild?.();
-  };
-  const openMainHub = () => {
-    setMoreOpen(false);
-    onMainHub?.();
   };
   return /*#__PURE__*/React.createElement(React.Fragment, null, moreOpen && /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-panel"
@@ -347,7 +359,7 @@ function GameDock({
     "aria-label": "ปิดเมนู"
   }, "✕")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-more-grid"
-  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: handleSave, disabled: saveFlash === "saving" }, saveFlash === "saved" ? "✅" : saveFlash === "failed" ? "⚠️" : "💾", /*#__PURE__*/React.createElement("span", null, saveFlash === "saving" ? "Saving…" : saveFlash === "saved" ? "Saved" : saveFlash === "failed" ? "Retry" : "Save")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openChat }, "💬", /*#__PURE__*/React.createElement("span", null, "Chat")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openGuild }, "🏰", /*#__PURE__*/React.createElement("span", null, "Guild")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openMainHub }, "🏠", /*#__PURE__*/React.createElement("span", null, "กลับหน้าหลัก")))), /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("button", { type: "button", onClick: openSettings }, "⚙️", /*#__PURE__*/React.createElement("span", null, "Settings")), /*#__PURE__*/React.createElement("button", { type: "button", onClick: openFriend }, "👥", /*#__PURE__*/React.createElement("span", null, "Friend")))), /*#__PURE__*/React.createElement("nav", {
     className: "md-hub-dock",
     "aria-label": "เมนูหลัก"
   }, /*#__PURE__*/React.createElement("button", {
