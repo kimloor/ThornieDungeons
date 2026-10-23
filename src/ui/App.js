@@ -2766,7 +2766,7 @@ function ThornieDungeons() {
       setPhase("mailbox");
     },
     onSave: manualSave,
-    onAccountSettings: () => setAccountSettingsOpen(true),
+    onAccountSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onFriend: () => {
       setUtilityReturnPhase("menu");
       setPhase("friend");
@@ -2823,7 +2823,7 @@ function ThornieDungeons() {
       setPhase("gacha");
     },
     onSave: manualSave,
-    onAccountSettings: () => setAccountSettingsOpen(true),
+    onAccountSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onFriend: () => {
       setUtilityReturnPhase("town");
       setPhase("friend");

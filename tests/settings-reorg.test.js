@@ -47,3 +47,12 @@ test("Autosave evidence: inventory commits enqueue immediately, failed syncs ret
   assert.match(app, /flushedBeforeLogout = await flushCurrentCharacter\(\)/);
   assert.match(app, /key: "character\.switch"[\s\S]*flushCurrentCharacter\(\)/);
 });
+
+test("Every entry point that feeds the More menu forwards the requested page (regression: Hub ignored it and always opened the menu)", () => {
+  const lambdas = app.match(/(onSettings|onAccountSettings): [^\n]*setAccountSettingsOpen\([^\n]*\),/g) || [];
+  assert.ok(lambdas.length >= 8, `found ${lambdas.length}`);
+  lambdas.forEach(line => assert.match(line, /page => setAccountSettingsOpen\(typeof page === "string" \? page : true\)/, line));
+  assert.doesNotMatch(app, /(onSettings|onAccountSettings): \(\) => setAccountSettingsOpen/);
+  // screens hand the handler to GameDock without dropping the argument
+  assert.match(comps, /onSettings: onAccountSettings,/);
+});
