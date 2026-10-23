@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.6" />
+<meta name="application-version" content="1.1.7" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -158,7 +158,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.6";
+  content: "Ver 1.1.7";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -7578,14 +7578,16 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.6", date: "2026-10-23", title: "จัดระเบียบเมนูและ Settings",
+      version: "1.1.7", date: "2026-10-23", title: "แก้เมนูเพิ่มเติม",
       items: [
-        "เมนู \"เพิ่มเติม\" ด้านล่างมีทางลัดตรงไปยัง เสียง, บัญชีและความปลอดภัย, ตัวละครและข้อมูล, ข้อมูลและนโยบาย และเพื่อน แตะครั้งเดียวถึงหน้านั้น",
-        "เอาทางลัดแชท กิลด์ และกลับหน้าหลักออกจากเมนูนี้ เพราะมีทางเข้าอยู่ในเมืองแล้ว",
-        "เอาปุ่ม Save ออก: เกมบันทึกข้อมูลให้อัตโนมัติ หากซิงค์ไม่สำเร็จจะมีปุ่ม \"ลองซิงค์อีกครั้ง\" ใน Settings > ตัวละครและข้อมูล"
+        "แก้ปัญหาเมนู \"เพิ่มเติม\" ที่หน้าหลักดันเจียน ปุ่มเสียง/บัญชี/ตัวละคร/ข้อมูลเปิดไปหน้า Settings เดียวกันหมด ตอนนี้เปิดตรงตามปุ่มที่กด"
       ]
     },
     history: [
+      { version: "1.1.6", date: "2026-10-23", title: "จัดระเบียบเมนูและ Settings", items: [
+        "เมนู \"เพิ่มเติม\" ด้านล่างมีทางลัดไปยัง เสียง บัญชี ตัวละคร ข้อมูล และเพื่อน",
+        "เอาปุ่ม Save ออก เกมบันทึกให้อัตโนมัติ และมีปุ่มลองซิงค์ใหม่เมื่อซิงค์ไม่สำเร็จ"
+      ] },
       { version: "1.1.5", date: "2026-10-22", title: "ศูนย์ข้อมูลผู้เล่น", items: [
         "เพิ่มหน้า \"ข้อมูลและนโยบาย\": ประกาศ ประวัติเวอร์ชัน แผนงาน และข้อกำหนด/นโยบายฉบับร่าง"
       ] },
@@ -18277,7 +18279,7 @@ function ThornieDungeons() {
       setPhase("mailbox");
     },
     onSave: manualSave,
-    onAccountSettings: () => setAccountSettingsOpen(true),
+    onAccountSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onFriend: () => {
       setUtilityReturnPhase("menu");
       setPhase("friend");
@@ -18334,7 +18336,7 @@ function ThornieDungeons() {
       setPhase("gacha");
     },
     onSave: manualSave,
-    onAccountSettings: () => setAccountSettingsOpen(true),
+    onAccountSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),
     onFriend: () => {
       setUtilityReturnPhase("town");
       setPhase("friend");
