@@ -4,6 +4,9 @@
 // behaviour must update this file in the same release (policy section 5).
 const INFO_CENTER_VERSION_SEEN_KEY = "td.info.seenVersion";
 
+// Game Guide content lives in data/infoGuide.js (a global in the bundle, required in Node tests).
+const INFO_GUIDE_SOURCE = typeof INFO_GUIDE !== "undefined" ? INFO_GUIDE : require("./infoGuide.js").INFO_GUIDE;
+
 const INFO_CENTER = {
   groups: [
     { id: "news", title: "ข่าวสาร" },
@@ -14,8 +17,8 @@ const INFO_CENTER = {
 
   sections: [
     { id: "announcements", group: "news", kind: "announcements", icon: "📣", title: "ประกาศ", subtitle: "อัปเดตล่าสุด ประวัติเวอร์ชัน และแผนงานของเกม" },
-    { id: "guide", group: "guide", kind: "reserved", icon: "📖", title: "คู่มือเกม", subtitle: "กติกาและกลไกของเกม",
-      reservedText: "คู่มือเกมกำลังอยู่ระหว่างจัดทำ จะเพิ่มเนื้อหาในเวอร์ชันถัดไป", topics: [] },
+    { id: "guide", group: "guide", kind: "guide", icon: "\ud83d\udcd6", title: "คู่มือเกม", subtitle: "กติกาและกลไกของเกม",
+      intro: INFO_GUIDE_SOURCE.intro, topics: INFO_GUIDE_SOURCE.topics },
     { id: "terms", group: "policy", kind: "document", icon: "📜", title: "ข้อกำหนดการใช้งาน", subtitle: "Terms of Service",
       version: "0.1", status: "draft", effectiveDate: "2026-10-22", lastUpdated: "2026-10-22",
       blocks: [
@@ -116,12 +119,17 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.7", date: "2026-10-23", title: "แก้เมนูเพิ่มเติม",
+      version: "1.1.8", date: "2026-10-24", title: "คู่มือเกม",
       items: [
-        "แก้ปัญหาเมนู \"เพิ่มเติม\" ที่หน้าหลักดันเจียน ปุ่มเสียง/บัญชี/ตัวละคร/ข้อมูลเปิดไปหน้า Settings เดียวกันหมด ตอนนี้เปิดตรงตามปุ่มที่กด"
+        "เปิดคู่มือเกมแล้ว ที่เมนูเพิ่มเติม > ข้อมูล > คู่มือเกม มี 10 หัวข้อ: อัตราดรอป, Refine, Enchant, ค่าสเตตัสและเพดาน, CC และ Boss, Set bonus, Dungeon, Arena, Raid Boss และ Pet",
+        "ตัวเลขในคู่มือตรวจจากระบบเกมปัจจุบัน และจะอัปเดตทุกครั้งที่มีการปรับบาลานซ์"
       ]
     },
     history: [
+      { version: "1.1.7", date: "2026-10-23", title: "แก้เมนูเพิ่มเติม",
+      items: [
+        "แก้ปัญหาเมนู \"เพิ่มเติม\" ที่หน้าหลักดันเจียน ปุ่มเสียง/บัญชี/ตัวละคร/ข้อมูลเปิดไปหน้า Settings เดียวกันหมด ตอนนี้เปิดตรงตามปุ่มที่กด"
+      ] },
       { version: "1.1.6", date: "2026-10-23", title: "จัดระเบียบเมนูและ Settings", items: [
         "เมนู \"เพิ่มเติม\" ด้านล่างมีทางลัดไปยัง เสียง บัญชี ตัวละคร ข้อมูล และเพื่อน",
         "เอาปุ่ม Save ออก เกมบันทึกให้อัตโนมัติ และมีปุ่มลองซิงค์ใหม่เมื่อซิงค์ไม่สำเร็จ"
