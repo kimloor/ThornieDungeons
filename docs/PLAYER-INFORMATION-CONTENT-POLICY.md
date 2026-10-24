@@ -96,3 +96,10 @@ Owner decisions: remove the duplicated shortcuts from the bottom "More" menu ent
 - `GameDock` no longer takes `onSave`, `onChat`, `onGuild`, `onMainHub` (screens still pass them; they are ignored and can be cleaned up later).
 - Save removal rationale: the persistence queue (`src/state/persistence.js`) is drained immediately on every enqueue (`commitInventorySnapshot`, run state, checkpoints, quick slots), failed transient writes retry on `online` and `visibilitychange`, and logout / character switch flush first. The manual button only re-sent failed writes, which is now "Character > Retry sync" (shown only when the status is `failed`). `manualSave` in `App.js` is kept for that retry.
 - Tests: `tests/settings-reorg.test.js`; navigation tests updated for the smaller More menu.
+
+## 11. Game Guide (Ver 1.1.8: PR C)
+
+- Entry: More > Information > Game Guide. Deep links: `guide/<topicId>`; topic ids are `drops`, `refine`, `enchant`, `stats`, `cc-boss`, `sets`, `dungeon`, `arena`, `raid`, `pets`.
+- Content lives in `src/data/infoGuide.js` as pure data (Thai only). Every number is built from `INFO_GUIDE_FACTS`; `tests/info-guide.test.js` loads the real modules (rewardV2, enhancementV2, mythicV2, dungeonV2) and Worker/client constants and fails when a number drifts. A balance change must update `INFO_GUIDE_FACTS` and the announcement in the same release (section 5).
+- Audit sources: rewardV2 (tiers, rarity bands, first-clear, EXP/gold), `src/ui/App.js` + `enhancement.js` (material rolls), enhancementV2 (Refine, Enchant), `stats.js`/`constants.js` (stats, caps, reset cost), `battleCore.js` + `dungeonV2.js` (CC, Boss, Enrage), mythicV2 (sets, boss weapons), Worker constants (floor pools, fixed bosses, events, Arena, Raid, Pet gacha/star-up).
+- Rules applied: describe only behaviour that actually runs (unused helpers such as the Elite accessory-drop function, stale code comments and the legacy Refine table are not published); no internal security/validation details; no dates or promises; the boundary-word check in `tests/info-center.test.js` also covers the Guide.

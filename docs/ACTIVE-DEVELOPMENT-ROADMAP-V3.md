@@ -194,7 +194,7 @@ Implement the shared App-level loading manager/overlay:
 Graphics dependency: G14 Global Loading Presentation Pack may provide the shared Dungeon Gate/rune visual identity, with a functional lightweight fallback.
 
 ### WAVE 1.5 — Player Information Center
-**Status: IN PROGRESS — PR A+B+D (structure, announcements, policy drafts) in Ver 1.1.7; PR C (Game Guide) pending**
+**Status: COMPLETE — PR A+B+D (structure, announcements, policy drafts) Ver 1.1.5–1.1.7; PR C (Game Guide, 10 topics, audited numbers) Ver 1.1.8**
 **Risk: MEDIUM — player-facing information/UI; no gameplay authority change intended**
 
 Add a shared player-facing information center under Settings after Ver 1.1.0 and Global Loading V1:
@@ -331,13 +331,13 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
-Visible game version                             Ver 1.1.7
+Visible game version                             Ver 1.1.8
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓
 WAVE 1 PREP — Client Systems V1                 ✅ PR-C / PR-B / PR-A COMPLETE (Ver 1.1.7, 2026-10-22)
                      ↓
-WAVE 1.5 — Player Information Center     🟡 PR A+B+D Ver 1.1.7; PR C Game Guide pending
+WAVE 1.5 — Player Information Center     ✅ COMPLETE (PR A+B+D Ver 1.1.5–1.1.7; PR C Game Guide Ver 1.1.8)
                      ↓
 WAVE 2 — Admin V2 Expansion
                      ↓

@@ -30,6 +30,7 @@ const MODULE_ORDER = [
   "data/gameConfig.js",
   "state/serialize.js",
   "data/constants.js",
+  "data/infoGuide.js",
   "data/infoCenter.js",
   "systems/skills.js",
   "systems/heroSkillsV1.js",

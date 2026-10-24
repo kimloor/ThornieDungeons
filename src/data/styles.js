@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.7";
+  content: "Ver 1.1.8";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -943,6 +943,11 @@ body::after {
 .md-info-meta { display:flex; flex-wrap:wrap; gap:6px 12px; margin:0 0 8px; font-size:11px; color:var(--ink-soft,#B9AEDD); }
 .md-info-draft { margin:0 0 10px; padding:8px 10px; font-size:12px; border-radius:10px; border:1px dashed rgba(255,209,102,.5); color:var(--gold,#FFD166); }
 .md-info-block { margin:0 0 12px; }
+.md-info-rows { margin:0 0 6px; padding:0; border:1px solid rgba(255,209,102,.18); border-radius:10px; overflow:hidden; }
+.md-info-row { display:flex; gap:10px; justify-content:space-between; padding:7px 10px; font-size:12px; line-height:1.45; border-bottom:1px solid rgba(255,255,255,.06); }
+.md-info-row:last-child { border-bottom:0; }
+.md-info-row dt { flex:0 0 36%; margin:0; color:var(--ink-soft,#B9AEDD); overflow-wrap:anywhere; }
+.md-info-row dd { flex:1 1 auto; margin:0; text-align:right; overflow-wrap:anywhere; }
 .md-info-block h4 { margin:0 0 4px; font-size:14px; color:var(--gold,#FFD166); }
 .md-info-block p { margin:0 0 6px; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
 .md-info-reserved { display:flex; flex-direction:column; align-items:center; gap:8px; padding:36px 16px; text-align:center; color:var(--ink-soft,#B9AEDD); }

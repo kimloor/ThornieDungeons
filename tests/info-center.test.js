@@ -20,7 +20,7 @@ test("sections: unique ids, valid groups and kinds, required fields", () => {
   ["announcements", "guide", "terms", "privacy", "fairplay", "purchase", "account", "support", "credits"].forEach(id => assert.ok(ids.includes(id), id));
   INFO_CENTER.sections.forEach(section => {
     assert.ok(groups.has(section.group), section.id);
-    assert.ok(["announcements", "document", "reserved"].includes(section.kind), section.id);
+    assert.ok(["announcements", "guide", "document", "reserved"].includes(section.kind), section.id);
     assert.ok(section.title && section.subtitle && section.icon, section.id);
     if (section.kind === "document") {
       assert.match(section.version, /^\d+\.\d+$/);
@@ -33,8 +33,9 @@ test("sections: unique ids, valid groups and kinds, required fields", () => {
   INFO_CENTER.groups.forEach(group => assert.ok(INFO_CENTER.sections.some(section => section.group === group.id), group.id));
 });
 
-test("Support, Account & Data, Credits and Guide are reserved areas without details", () => {
-  ["guide", "account", "support", "credits"].forEach(id => assert.equal(infoFindSection(id).kind, "reserved"));
+test("Support, Account & Data and Credits are reserved areas; Guide is a real section", () => {
+  assert.equal(infoFindSection("guide").kind, "guide");
+  ["account", "support", "credits"].forEach(id => assert.equal(infoFindSection(id).kind, "reserved"));
 });
 
 test("policy documents stay drafts until the Legal & Policy Gate and never enable real-money checkout", () => {
@@ -45,7 +46,8 @@ test("policy documents stay drafts until the Legal & Policy Gate and never enabl
 
 test("deep links resolve sections and fall back safely", () => {
   assert.deepEqual(infoResolveRoute("terms"), { sectionId: "terms", topicId: "" });
-  assert.deepEqual(infoResolveRoute("guide/drops"), { sectionId: "guide", topicId: "" }, "unknown topic keeps the section");
+  assert.deepEqual(infoResolveRoute("guide/drops"), { sectionId: "guide", topicId: "drops" });
+  assert.deepEqual(infoResolveRoute("guide/nope"), { sectionId: "guide", topicId: "" }, "unknown topic keeps the section");
   assert.equal(infoResolveRoute("nope"), null);
   assert.equal(infoResolveRoute(""), null);
   assert.equal(infoResolveRoute(undefined), null);
