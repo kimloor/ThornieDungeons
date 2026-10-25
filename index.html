@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.10" />
+<meta name="application-version" content="1.1.11" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -52,6 +52,13 @@ Run `node build.js` after source changes. index.html is the single generated app
   // game-wide diagnostic surface instead of an early boot-only handler.
   window.__thornieRuntimeQueue = window.__thornieRuntimeQueue || [];
   window.__thornieCaptureRuntimeError = function(kind, message, error, source, line, column) {
+    // Browsers hide the details of errors thrown by foreign (cross-origin) scripts or extensions and report only
+    // "Script error." with no file/line. The game's own code is same-origin and always carries them, so these
+    // opaque events are counted but never shown as a game crash.
+    if (kind === 'window_error' && String(message || '') === 'Script error.' && !source && !(Number(line) > 0) && !(error && error.message)) {
+      window.__thornieOpaqueScriptErrors = (window.__thornieOpaqueScriptErrors || 0) + 1;
+      return;
+    }
     var detail = {
       event: String(kind || 'runtime_error'),
       message: String(error && error.message || message || 'Unknown runtime error'),
@@ -165,7 +172,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.10";
+  content: "Ver 1.1.11";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -8019,12 +8026,16 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.10", date: "2026-10-25", title: "แก้แถบเบลอด้านบนบน iOS 27",
+      version: "1.1.11", date: "2026-10-25", title: "แก้ป๊อปอัป Game Runtime Error ที่หน้า Login",
       items: [
-        "แก้แถบด้านบนสุดที่เบลอเมื่อเปิดเกมจากไอคอนบนหน้าจอหลักของ iPhone (iOS 27) ให้เป็นพื้นทึบ ถ้ายังเบลออยู่ ให้ลบไอคอนเกมแล้วเพิ่มใหม่อีกครั้ง"
+        "แก้ป๊อปอัป Game Runtime Error (Script error.) ที่เด้งขึ้นเองตอนอยู่หน้า Login โดยไม่ได้กดอะไร"
       ]
     },
     history: [
+      { version: "1.1.10", date: "2026-10-25", title: "แก้แถบเบลอด้านบนบน iOS 27",
+      items: [
+        "แก้แถบด้านบนสุดที่เบลอเมื่อเปิดเกมจากไอคอนบนหน้าจอหลักของ iPhone (iOS 27) ให้เป็นพื้นทึบ ถ้ายังเบลออยู่ ให้ลบไอคอนเกมแล้วเพิ่มใหม่อีกครั้ง"
+      ] },
       { version: "1.1.9", date: "2026-10-25", title: "ปรับคู่มือและแถบด้านบน",
       items: [
         "คู่มือเกม: แต่ละหัวข้อแบ่งเป็นพับเปิด-ปิดได้ เปิดอ่านทีละส่วน",

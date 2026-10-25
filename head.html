@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.10" />
+<meta name="application-version" content="1.1.11" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -52,6 +52,13 @@ Run `node build.js` after source changes. index.html is the single generated app
   // game-wide diagnostic surface instead of an early boot-only handler.
   window.__thornieRuntimeQueue = window.__thornieRuntimeQueue || [];
   window.__thornieCaptureRuntimeError = function(kind, message, error, source, line, column) {
+    // Browsers hide the details of errors thrown by foreign (cross-origin) scripts or extensions and report only
+    // "Script error." with no file/line. The game's own code is same-origin and always carries them, so these
+    // opaque events are counted but never shown as a game crash.
+    if (kind === 'window_error' && String(message || '') === 'Script error.' && !source && !(Number(line) > 0) && !(error && error.message)) {
+      window.__thornieOpaqueScriptErrors = (window.__thornieOpaqueScriptErrors || 0) + 1;
+      return;
+    }
     var detail = {
       event: String(kind || 'runtime_error'),
       message: String(error && error.message || message || 'Unknown runtime error'),
