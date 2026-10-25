@@ -302,11 +302,11 @@ test("guide content boundary: no internal details, no dates or promises", () => 
   assert.match(joined, /[\u0e00-\u0e7f]/);
 });
 
-test("safe area: installed iOS app uses an opaque status bar so the iOS 27 top blur has nothing to cover", () => {
+test("safe area: every screen uses --safe-top-eff, lowered on installed iOS apps to clear the iOS 27 top blur", () => {
   const head = read("head.html");
-  assert.match(head, /name="apple-mobile-web-app-status-bar-style" content="black"/);
-  assert.doesNotMatch(head, /black-translucent/);
-  assert.doesNotMatch(head, /ios-top-strip/);
+  assert.match(head, /:root \{ --safe-top-eff: env\(safe-area-inset-top, 0px\); \}/);
+  assert.match(head, /@media all and \(display-mode: standalone\) \{\s*@supports \(-webkit-touch-callout: none\) \{\s*:root \{ --safe-top-eff: calc\(env\(safe-area-inset-top, 0px\) \+ 32px\); \}/);
   assert.match(head, /viewport-fit=cover/);
-  assert.doesNotMatch(read("src/data/styles.js"), /body::before/);
+  ["src/data/styles.js", "src/ui/components.js", "src/ui/GlobalLoadingOverlay.js"].forEach(file =>
+    assert.doesNotMatch(read(file), /env\(safe-area-inset-top/, file + " must go through --safe-top-eff"));
 });

@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.12" />
+<meta name="application-version" content="1.1.13" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -29,6 +29,14 @@ Run `node build.js` after source changes. index.html is the single generated app
 <style>
   html, body { margin: 0; padding: 0; background: #0d0818; min-height: 100vh; }
   body { display: flex; justify-content: center; align-items: flex-start; padding: 16px 0; }
+  /* Top inset used by every screen. iOS 27 blurs roughly the top 50pt of an installed (Home Screen) app, so there the
+     content starts 32px lower; everywhere else this is just the normal safe-area inset. */
+  :root { --safe-top-eff: env(safe-area-inset-top, 0px); }
+  @media all and (display-mode: standalone) {
+    @supports (-webkit-touch-callout: none) {
+      :root { --safe-top-eff: calc(env(safe-area-inset-top, 0px) + 32px); }
+    }
+  }
   #root { width: 100%; display: flex; justify-content: center; }
   * { -webkit-tap-highlight-color: transparent; }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
