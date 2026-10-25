@@ -13,11 +13,12 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.11" />
+<meta name="application-version" content="1.1.12" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<!-- iOS 27 blurs the top of installed apps that use a translucent status bar; an opaque one starts the page below the bar (re-add the Home Screen icon to apply). -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 <meta name="apple-mobile-web-app-title" content="ThornieDungeons" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
@@ -30,12 +31,6 @@ Run `node build.js` after source changes. index.html is the single generated app
   body { display: flex; justify-content: center; align-items: flex-start; padding: 16px 0; }
   #root { width: 100%; display: flex; justify-content: center; }
   * { -webkit-tap-highlight-color: transparent; }
-  /* iOS 27 draws a system blur over the top of installed web apps. WebKit leaves it off when an opaque fixed box
-     (>= 6px tall, >= 80% wide, within 4px of the top) sits at the top edge; the status bar then takes its color. */
-  #ios-top-strip { display: none; }
-  @supports (-webkit-touch-callout: none) {
-    #ios-top-strip { display: block; position: fixed; top: 0; left: 0; right: 0; height: max(env(safe-area-inset-top, 0px), 20px); background: #1B1233; z-index: 2147483646; pointer-events: none; }
-  }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
   .md-enemy-img { object-fit: contain; max-width: none; }
   .md-enemy-img.md-pet-img { width: 64px !important; height: 64px !important; }
@@ -43,7 +38,6 @@ Run `node build.js` after source changes. index.html is the single generated app
 </style>
 </head>
 <body>
-<div id="ios-top-strip" aria-hidden="true"></div>
 <div id="root"><div id="boot-status">Loading ThornieDungeons&hellip;</div></div>
 
 <script>
@@ -172,7 +166,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.11";
+  content: "Ver 1.1.12";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -8026,12 +8020,16 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.11", date: "2026-10-25", title: "แก้ป๊อปอัป Game Runtime Error ที่หน้า Login",
+      version: "1.1.12", date: "2026-10-25", title: "ย้ายเกมลงมาใต้แถบสถานะบน iOS",
       items: [
-        "แก้ป๊อปอัป Game Runtime Error (Script error.) ที่เด้งขึ้นเองตอนอยู่หน้า Login โดยไม่ได้กดอะไร"
+        "iPhone ที่เปิดเกมจากไอคอนหน้าจอหลัก: เกมเริ่มใต้แถบสถานะแล้ว ไม่ถูกแถบเบลอของ iOS 27 บังด้านบน (ต้องลบไอคอนเกมแล้วเพิ่มใหม่หนึ่งครั้งจึงจะมีผล)"
       ]
     },
     history: [
+      { version: "1.1.11", date: "2026-10-25", title: "แก้ป๊อปอัป Game Runtime Error ที่หน้า Login",
+      items: [
+        "แก้ป๊อปอัป Game Runtime Error (Script error.) ที่เด้งขึ้นเองตอนอยู่หน้า Login โดยไม่ได้กดอะไร"
+      ] },
       { version: "1.1.10", date: "2026-10-25", title: "แก้แถบเบลอด้านบนบน iOS 27",
       items: [
         "แก้แถบด้านบนสุดที่เบลอเมื่อเปิดเกมจากไอคอนบนหน้าจอหลักของ iPhone (iOS 27) ให้เป็นพื้นทึบ ถ้ายังเบลออยู่ ให้ลบไอคอนเกมแล้วเพิ่มใหม่อีกครั้ง"

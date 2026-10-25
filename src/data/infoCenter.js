@@ -119,12 +119,16 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.11", date: "2026-10-25", title: "แก้ป๊อปอัป Game Runtime Error ที่หน้า Login",
+      version: "1.1.12", date: "2026-10-25", title: "ย้ายเกมลงมาใต้แถบสถานะบน iOS",
       items: [
-        "แก้ป๊อปอัป Game Runtime Error (Script error.) ที่เด้งขึ้นเองตอนอยู่หน้า Login โดยไม่ได้กดอะไร"
+        "iPhone ที่เปิดเกมจากไอคอนหน้าจอหลัก: เกมเริ่มใต้แถบสถานะแล้ว ไม่ถูกแถบเบลอของ iOS 27 บังด้านบน (ต้องลบไอคอนเกมแล้วเพิ่มใหม่หนึ่งครั้งจึงจะมีผล)"
       ]
     },
     history: [
+      { version: "1.1.11", date: "2026-10-25", title: "แก้ป๊อปอัป Game Runtime Error ที่หน้า Login",
+      items: [
+        "แก้ป๊อปอัป Game Runtime Error (Script error.) ที่เด้งขึ้นเองตอนอยู่หน้า Login โดยไม่ได้กดอะไร"
+      ] },
       { version: "1.1.10", date: "2026-10-25", title: "แก้แถบเบลอด้านบนบน iOS 27",
       items: [
         "แก้แถบด้านบนสุดที่เบลอเมื่อเปิดเกมจากไอคอนบนหน้าจอหลักของ iPhone (iOS 27) ให้เป็นพื้นทึบ ถ้ายังเบลออยู่ ให้ลบไอคอนเกมแล้วเพิ่มใหม่อีกครั้ง"
