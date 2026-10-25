@@ -62,11 +62,9 @@ const STYLE = `
   flex-direction: column;
 }
 .md-root * { box-sizing: border-box; }
-/* Opaque cover for the iOS translucent status bar: page content must not show (blurred) behind the notch/clock area. */
-body::before { content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top, 0px); background:#1B1233; z-index:2147483646; pointer-events:none; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.9";
+  content: "Ver 1.1.10";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;

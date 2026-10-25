@@ -119,14 +119,18 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.9", date: "2026-10-25", title: "ปรับคู่มือและแถบด้านบน",
+      version: "1.1.10", date: "2026-10-25", title: "แก้แถบเบลอด้านบนบน iOS 27",
+      items: [
+        "แก้แถบด้านบนสุดที่เบลอเมื่อเปิดเกมจากไอคอนบนหน้าจอหลักของ iPhone (iOS 27) ให้เป็นพื้นทึบ ถ้ายังเบลออยู่ ให้ลบไอคอนเกมแล้วเพิ่มใหม่อีกครั้ง"
+      ]
+    },
+    history: [
+      { version: "1.1.9", date: "2026-10-25", title: "ปรับคู่มือและแถบด้านบน",
       items: [
         "คู่มือเกม: แต่ละหัวข้อแบ่งเป็นพับเปิด-ปิดได้ เปิดอ่านทีละส่วน",
         "หัวข้อ Set bonus แยกเป็น Azure / Robot / Skeleton พร้อมโบนัส 2, 4 และ 6 ชิ้น",
         "แก้แถบด้านบนสุดของเกมบนมือถือที่เคยเห็นเป็นส่วนเบลอ ให้เป็นพื้นทึบ"
-      ]
-    },
-    history: [
+      ] },
       { version: "1.1.8", date: "2026-10-24", title: "คู่มือเกม",
       items: [
         "เปิดคู่มือเกมแล้ว ที่เมนูเพิ่มเติม > ข้อมูล > คู่มือเกม มี 10 หัวข้อ: อัตราดรอป, Refine, Enchant, ค่าสเตตัสและเพดาน, CC และ Boss, Set bonus, Dungeon, Arena, Raid Boss และ Pet",

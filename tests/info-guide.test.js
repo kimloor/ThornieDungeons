@@ -302,8 +302,10 @@ test("guide content boundary: no internal details, no dates or promises", () => 
   assert.match(joined, /[\u0e00-\u0e7f]/);
 });
 
-test("safe area: opaque cover over the translucent status bar at the top of the game", () => {
-  const styles = read("src/data/styles.js");
-  assert.match(styles, /body::before \{[^}]*height:env\(safe-area-inset-top, 0px\)[^}]*background:#1B1233/);
-  assert.match(read("head.html"), /viewport-fit=cover/);
+test("safe area: opaque fixed strip keeps the iOS 27 top blur off the installed app", () => {
+  const head = read("head.html");
+  assert.match(head, /<div id="ios-top-strip" aria-hidden="true"><\/div>\s*<div id="root">/);
+  assert.match(head, /@supports \(-webkit-touch-callout: none\) \{\s*#ios-top-strip \{[^}]*position: fixed; top: 0; left: 0; right: 0; height: max\(env\(safe-area-inset-top, 0px\), 20px\); background: #1B1233/);
+  assert.match(head, /viewport-fit=cover/);
+  assert.doesNotMatch(read("src/data/styles.js"), /body::before/);
 });
