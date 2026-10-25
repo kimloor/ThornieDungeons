@@ -247,15 +247,28 @@ const INFO_GUIDE = {
     {
       id: "sets", icon: "\ud83e\udde9", title: "Set bonus และอาวุธบอส", subtitle: "โบนัสเซ็ต Mythic และสกิลประจำอาวุธ",
       blocks: [
-        { heading: "เซ็ต Mythic",
-          body: ["เซ็ต Mythic มี 3 ตระกูล: Azure, Robot, Skeleton โบนัสนับจากจำนวนชิ้นของตระกูลเดียวกันที่สวมอยู่"],
+        { heading: "วิธีนับโบนัสเซ็ต",
+          body: ["เซ็ต Mythic มี 3 ตระกูล: Azure, Robot, Skeleton โบนัสนับจากจำนวนชิ้นของตระกูลเดียวกันที่สวมอยู่ (สูงสุด 6 ชิ้น) และผสมหลายตระกูลได้ เช่น 4+2 หรือ 2+2+2 โดยแต่ละตระกูลได้โบนัสตามจำนวนชิ้นของตัวเอง"] },
+        { heading: "Azure",
+          body: [],
           rows: [
-            ["2 ชิ้น", "Azure AGI +" + infoGuideF.setTwoPiece + " \u00b7 Robot VIT +" + infoGuideF.setTwoPiece + " \u00b7 Skeleton STR +" + infoGuideF.setTwoPiece],
-            ["4 ชิ้น Azure", "MP ที่ใช้กับสกิลแอ็กทีฟลดเหลือ " + (infoGuideF.setFourMpMultiplier * 100) + "%"],
-            ["4 ชิ้น Robot", "ต้าน CC +" + infoGuideF.setFourCcResist + " (Stun/Silence ติดยากขึ้น)"],
-            ["4 ชิ้น Skeleton", "Crit Damage +" + infoGuideF.setFourCritDamage + "%"],
-            ["6 ชิ้น Robot", "เมื่อ HP ลดต่ำกว่า 50% ได้ DEF Up 2 เทิร์น"],
-            ["6 ชิ้น Skeleton", "เมื่อโจมตีคริติคอล ติด Armor Break 2 เทิร์นแน่นอน"]
+            ["2 ชิ้น", "AGI +" + infoGuideF.setTwoPiece],
+            ["4 ชิ้น", "MP ที่ใช้กับสกิลแอ็กทีฟลดเหลือ " + (infoGuideF.setFourMpMultiplier * 100) + "%"],
+            ["6 ชิ้น", "ไม่มีโบนัสเพิ่ม (ได้เฉพาะโบนัส 2 และ 4 ชิ้น)"]
+          ] },
+        { heading: "Robot",
+          body: [],
+          rows: [
+            ["2 ชิ้น", "VIT +" + infoGuideF.setTwoPiece],
+            ["4 ชิ้น", "ต้าน CC +" + infoGuideF.setFourCcResist + " (Stun/Silence ติดยากขึ้น)"],
+            ["6 ชิ้น", "เมื่อ HP ลดต่ำกว่า 50% ได้ DEF Up 2 เทิร์น"]
+          ] },
+        { heading: "Skeleton",
+          body: [],
+          rows: [
+            ["2 ชิ้น", "STR +" + infoGuideF.setTwoPiece],
+            ["4 ชิ้น", "Crit Damage +" + infoGuideF.setFourCritDamage + "%"],
+            ["6 ชิ้น", "เมื่อโจมตีคริติคอล ติด Armor Break 2 เทิร์นแน่นอน"]
           ] },
         { heading: "อาวุธบอส",
           body: ["อาวุธบอสแต่ละชนิดมีสกิลประจำตัว"],

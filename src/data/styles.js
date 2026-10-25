@@ -62,9 +62,11 @@ const STYLE = `
   flex-direction: column;
 }
 .md-root * { box-sizing: border-box; }
+/* Opaque cover for the iOS translucent status bar: page content must not show (blurred) behind the notch/clock area. */
+body::before { content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top, 0px); background:#1B1233; z-index:2147483646; pointer-events:none; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.8";
+  content: "Ver 1.1.9";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -943,6 +945,12 @@ body::after {
 .md-info-meta { display:flex; flex-wrap:wrap; gap:6px 12px; margin:0 0 8px; font-size:11px; color:var(--ink-soft,#B9AEDD); }
 .md-info-draft { margin:0 0 10px; padding:8px 10px; font-size:12px; border-radius:10px; border:1px dashed rgba(255,209,102,.5); color:var(--gold,#FFD166); }
 .md-info-block { margin:0 0 12px; }
+.md-info-acc-item { margin:0 0 8px; border:1px solid rgba(255,209,102,.28); border-radius:12px; background:rgba(18,12,34,.82); overflow:hidden; }
+.md-info-acc-item.is-open { border-color:rgba(255,209,102,.6); }
+.md-info-acc-head { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; min-height:46px; padding:10px 12px; text-align:left; color:var(--gold,#FFD166); font:inherit; font-size:14px; font-weight:700; cursor:pointer; background:transparent; border:0; }
+.md-info-acc-arrow { flex:0 0 auto; font-size:14px; }
+.md-info-acc-body { padding:0 12px 10px; }
+.md-info-acc-body p { margin:0 0 6px; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
 .md-info-rows { margin:0 0 6px; padding:0; border:1px solid rgba(255,209,102,.18); border-radius:10px; overflow:hidden; }
 .md-info-row { display:flex; gap:10px; justify-content:space-between; padding:7px 10px; font-size:12px; line-height:1.45; border-bottom:1px solid rgba(255,255,255,.06); }
 .md-info-row:last-child { border-bottom:0; }
