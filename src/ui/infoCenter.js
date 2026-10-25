@@ -70,6 +70,8 @@ function InfoReserved({ section }) {
 
 function InfoGuide({ section, topicId, onOpenTopic }) {
   const e = React.createElement;
+  const [openIndex, setOpenIndex] = useState(-1);
+  useEffect(() => { setOpenIndex(-1); }, [topicId]);
   const topic = topicId ? section.topics.find(item => item.id === topicId) : null;
   if (!topic) {
     return e("div", { className: "md-info-menu" },
@@ -79,11 +81,17 @@ function InfoGuide({ section, topicId, onOpenTopic }) {
           e("span", { className: "md-info-card-icon", "aria-hidden": "true" }, item.icon),
           e("span", { className: "md-info-card-copy" }, e("strong", null, item.title), e("small", null, item.subtitle)))));
   }
-  return e("div", null, topic.blocks.map((block, index) => e("section", { key: index, className: "md-info-block" },
-    e("h4", null, block.heading),
-    (block.body || []).map((text, i) => e("p", { key: "p" + i }, text)),
-    block.rows && block.rows.length ? e("dl", { className: "md-info-rows" }, block.rows.map((row, i) =>
-      e("div", { key: i, className: "md-info-row" }, e("dt", null, row[0]), e("dd", null, row[1])))) : null)));
+  // One block open at a time keeps each topic short on a phone screen.
+  return e("div", { className: "md-info-acc" }, topic.blocks.map((block, index) => {
+    const open = openIndex === index;
+    return e("section", { key: index, className: "md-info-acc-item" + (open ? " is-open" : "") },
+      e("button", { className: "md-info-acc-head", "aria-expanded": open ? "true" : "false", onClick: () => setOpenIndex(open ? -1 : index) },
+        e("span", null, block.heading), e("span", { className: "md-info-acc-arrow", "aria-hidden": "true" }, open ? "\u25be" : "\u25b8")),
+      open ? e("div", { className: "md-info-acc-body" },
+        (block.body || []).map((text, i) => e("p", { key: "p" + i }, text)),
+        block.rows && block.rows.length ? e("dl", { className: "md-info-rows" }, block.rows.map((row, i) =>
+          e("div", { key: i, className: "md-info-row" }, e("dt", null, row[0]), e("dd", null, row[1])))) : null) : null);
+  }));
 }
 
 // route: "section" or "section/topic" (see infoResolveRoute). Unknown routes open the menu.

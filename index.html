@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.8" />
+<meta name="application-version" content="1.1.9" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -156,9 +156,11 @@ const STYLE = `
   flex-direction: column;
 }
 .md-root * { box-sizing: border-box; }
+/* Opaque cover for the iOS translucent status bar: page content must not show (blurred) behind the notch/clock area. */
+body::before { content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top, 0px); background:#1B1233; z-index:2147483646; pointer-events:none; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.8";
+  content: "Ver 1.1.9";
   position: fixed;
   top: calc(4px + env(safe-area-inset-top, 0px));
   left: 50%;
@@ -1037,6 +1039,12 @@ body::after {
 .md-info-meta { display:flex; flex-wrap:wrap; gap:6px 12px; margin:0 0 8px; font-size:11px; color:var(--ink-soft,#B9AEDD); }
 .md-info-draft { margin:0 0 10px; padding:8px 10px; font-size:12px; border-radius:10px; border:1px dashed rgba(255,209,102,.5); color:var(--gold,#FFD166); }
 .md-info-block { margin:0 0 12px; }
+.md-info-acc-item { margin:0 0 8px; border:1px solid rgba(255,209,102,.28); border-radius:12px; background:rgba(18,12,34,.82); overflow:hidden; }
+.md-info-acc-item.is-open { border-color:rgba(255,209,102,.6); }
+.md-info-acc-head { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; min-height:46px; padding:10px 12px; text-align:left; color:var(--gold,#FFD166); font:inherit; font-size:14px; font-weight:700; cursor:pointer; background:transparent; border:0; }
+.md-info-acc-arrow { flex:0 0 auto; font-size:14px; }
+.md-info-acc-body { padding:0 12px 10px; }
+.md-info-acc-body p { margin:0 0 6px; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
 .md-info-rows { margin:0 0 6px; padding:0; border:1px solid rgba(255,209,102,.18); border-radius:10px; overflow:hidden; }
 .md-info-row { display:flex; gap:10px; justify-content:space-between; padding:7px 10px; font-size:12px; line-height:1.45; border-bottom:1px solid rgba(255,255,255,.06); }
 .md-info-row:last-child { border-bottom:0; }
@@ -7714,15 +7722,28 @@ const INFO_GUIDE = {
     {
       id: "sets", icon: "\ud83e\udde9", title: "Set bonus และอาวุธบอส", subtitle: "โบนัสเซ็ต Mythic และสกิลประจำอาวุธ",
       blocks: [
-        { heading: "เซ็ต Mythic",
-          body: ["เซ็ต Mythic มี 3 ตระกูล: Azure, Robot, Skeleton โบนัสนับจากจำนวนชิ้นของตระกูลเดียวกันที่สวมอยู่"],
+        { heading: "วิธีนับโบนัสเซ็ต",
+          body: ["เซ็ต Mythic มี 3 ตระกูล: Azure, Robot, Skeleton โบนัสนับจากจำนวนชิ้นของตระกูลเดียวกันที่สวมอยู่ (สูงสุด 6 ชิ้น) และผสมหลายตระกูลได้ เช่น 4+2 หรือ 2+2+2 โดยแต่ละตระกูลได้โบนัสตามจำนวนชิ้นของตัวเอง"] },
+        { heading: "Azure",
+          body: [],
           rows: [
-            ["2 ชิ้น", "Azure AGI +" + infoGuideF.setTwoPiece + " \u00b7 Robot VIT +" + infoGuideF.setTwoPiece + " \u00b7 Skeleton STR +" + infoGuideF.setTwoPiece],
-            ["4 ชิ้น Azure", "MP ที่ใช้กับสกิลแอ็กทีฟลดเหลือ " + (infoGuideF.setFourMpMultiplier * 100) + "%"],
-            ["4 ชิ้น Robot", "ต้าน CC +" + infoGuideF.setFourCcResist + " (Stun/Silence ติดยากขึ้น)"],
-            ["4 ชิ้น Skeleton", "Crit Damage +" + infoGuideF.setFourCritDamage + "%"],
-            ["6 ชิ้น Robot", "เมื่อ HP ลดต่ำกว่า 50% ได้ DEF Up 2 เทิร์น"],
-            ["6 ชิ้น Skeleton", "เมื่อโจมตีคริติคอล ติด Armor Break 2 เทิร์นแน่นอน"]
+            ["2 ชิ้น", "AGI +" + infoGuideF.setTwoPiece],
+            ["4 ชิ้น", "MP ที่ใช้กับสกิลแอ็กทีฟลดเหลือ " + (infoGuideF.setFourMpMultiplier * 100) + "%"],
+            ["6 ชิ้น", "ไม่มีโบนัสเพิ่ม (ได้เฉพาะโบนัส 2 และ 4 ชิ้น)"]
+          ] },
+        { heading: "Robot",
+          body: [],
+          rows: [
+            ["2 ชิ้น", "VIT +" + infoGuideF.setTwoPiece],
+            ["4 ชิ้น", "ต้าน CC +" + infoGuideF.setFourCcResist + " (Stun/Silence ติดยากขึ้น)"],
+            ["6 ชิ้น", "เมื่อ HP ลดต่ำกว่า 50% ได้ DEF Up 2 เทิร์น"]
+          ] },
+        { heading: "Skeleton",
+          body: [],
+          rows: [
+            ["2 ชิ้น", "STR +" + infoGuideF.setTwoPiece],
+            ["4 ชิ้น", "Crit Damage +" + infoGuideF.setFourCritDamage + "%"],
+            ["6 ชิ้น", "เมื่อโจมตีคริติคอล ติด Armor Break 2 เทิร์นแน่นอน"]
           ] },
         { heading: "อาวุธบอส",
           body: ["อาวุธบอสแต่ละชนิดมีสกิลประจำตัว"],
@@ -7993,13 +8014,19 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.8", date: "2026-10-24", title: "คู่มือเกม",
+      version: "1.1.9", date: "2026-10-25", title: "ปรับคู่มือและแถบด้านบน",
       items: [
-        "เปิดคู่มือเกมแล้ว ที่เมนูเพิ่มเติม > ข้อมูล > คู่มือเกม มี 10 หัวข้อ: อัตราดรอป, Refine, Enchant, ค่าสเตตัสและเพดาน, CC และ Boss, Set bonus, Dungeon, Arena, Raid Boss และ Pet",
-        "ตัวเลขในคู่มือตรวจจากระบบเกมปัจจุบัน และจะอัปเดตทุกครั้งที่มีการปรับบาลานซ์"
+        "คู่มือเกม: แต่ละหัวข้อแบ่งเป็นพับเปิด-ปิดได้ เปิดอ่านทีละส่วน",
+        "หัวข้อ Set bonus แยกเป็น Azure / Robot / Skeleton พร้อมโบนัส 2, 4 และ 6 ชิ้น",
+        "แก้แถบด้านบนสุดของเกมบนมือถือที่เคยเห็นเป็นส่วนเบลอ ให้เป็นพื้นทึบ"
       ]
     },
     history: [
+      { version: "1.1.8", date: "2026-10-24", title: "คู่มือเกม",
+      items: [
+        "เปิดคู่มือเกมแล้ว ที่เมนูเพิ่มเติม > ข้อมูล > คู่มือเกม มี 10 หัวข้อ: อัตราดรอป, Refine, Enchant, ค่าสเตตัสและเพดาน, CC และ Boss, Set bonus, Dungeon, Arena, Raid Boss และ Pet",
+        "ตัวเลขในคู่มือตรวจจากระบบเกมปัจจุบัน และจะอัปเดตทุกครั้งที่มีการปรับบาลานซ์"
+      ] },
       { version: "1.1.7", date: "2026-10-23", title: "แก้เมนูเพิ่มเติม",
       items: [
         "แก้ปัญหาเมนู \"เพิ่มเติม\" ที่หน้าหลักดันเจียน ปุ่มเสียง/บัญชี/ตัวละคร/ข้อมูลเปิดไปหน้า Settings เดียวกันหมด ตอนนี้เปิดตรงตามปุ่มที่กด"
@@ -19278,6 +19305,8 @@ function InfoReserved({ section }) {
 
 function InfoGuide({ section, topicId, onOpenTopic }) {
   const e = React.createElement;
+  const [openIndex, setOpenIndex] = useState(-1);
+  useEffect(() => { setOpenIndex(-1); }, [topicId]);
   const topic = topicId ? section.topics.find(item => item.id === topicId) : null;
   if (!topic) {
     return e("div", { className: "md-info-menu" },
@@ -19287,11 +19316,17 @@ function InfoGuide({ section, topicId, onOpenTopic }) {
           e("span", { className: "md-info-card-icon", "aria-hidden": "true" }, item.icon),
           e("span", { className: "md-info-card-copy" }, e("strong", null, item.title), e("small", null, item.subtitle)))));
   }
-  return e("div", null, topic.blocks.map((block, index) => e("section", { key: index, className: "md-info-block" },
-    e("h4", null, block.heading),
-    (block.body || []).map((text, i) => e("p", { key: "p" + i }, text)),
-    block.rows && block.rows.length ? e("dl", { className: "md-info-rows" }, block.rows.map((row, i) =>
-      e("div", { key: i, className: "md-info-row" }, e("dt", null, row[0]), e("dd", null, row[1])))) : null)));
+  // One block open at a time keeps each topic short on a phone screen.
+  return e("div", { className: "md-info-acc" }, topic.blocks.map((block, index) => {
+    const open = openIndex === index;
+    return e("section", { key: index, className: "md-info-acc-item" + (open ? " is-open" : "") },
+      e("button", { className: "md-info-acc-head", "aria-expanded": open ? "true" : "false", onClick: () => setOpenIndex(open ? -1 : index) },
+        e("span", null, block.heading), e("span", { className: "md-info-acc-arrow", "aria-hidden": "true" }, open ? "\u25be" : "\u25b8")),
+      open ? e("div", { className: "md-info-acc-body" },
+        (block.body || []).map((text, i) => e("p", { key: "p" + i }, text)),
+        block.rows && block.rows.length ? e("dl", { className: "md-info-rows" }, block.rows.map((row, i) =>
+          e("div", { key: i, className: "md-info-row" }, e("dt", null, row[0]), e("dd", null, row[1])))) : null) : null);
+  }));
 }
 
 // route: "section" or "section/topic" (see infoResolveRoute). Unknown routes open the menu.

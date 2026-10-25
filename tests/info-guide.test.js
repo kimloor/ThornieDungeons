@@ -59,6 +59,8 @@ test("guide section is wired into the Information Center with deep links", () =>
   const ui = read("src/ui/infoCenter.js");
   assert.match(ui, /function InfoGuide\(/);
   assert.match(ui, /section\.kind === "guide"/);
+  assert.match(ui, /md-info-acc-head/);
+  assert.match(ui, /aria-expanded/);
   assert.match(ui, /useState\(resolved \? resolved\.topicId : ""\)/);
   const build = read("build.js");
   assert.ok(build.indexOf('"data/infoGuide.js"') > -1 && build.indexOf('"data/infoGuide.js"') < build.indexOf('"data/infoCenter.js"'));
@@ -174,7 +176,6 @@ test("cc-boss: boss resist, enrage and conversion match battle core", () => {
 });
 
 test("sets: set bonuses and boss weapon texts match mythicV2", () => {
-  const sets = ["azure", "robot", "skeleton"];
   const equipped = id => Object.fromEntries(mythic.SET_SLOTS.slice(0, 6).map(slot => [slot, { type: slot, setId: id, setFamily: id, rewardVersion: 2, itemModelVersion: 2, rarity: "mythic", gearTier: 1 }]));
   const fx = id => mythic.setEffects(equipped(id));
   assert.equal(fx("skeleton").str, F.setTwoPiece);
@@ -185,7 +186,17 @@ test("sets: set bonuses and boss weapon texts match mythicV2", () => {
   assert.equal(fx("robot").ccResist, F.setFourCcResist);
   assert.equal(fx("skeleton").skeletonCritArmorBreak, true);
   assert.equal(fx("robot").robotThresholdDefUp, true);
-  assert.ok(sets.every(id => fx(id).counts[id] === 6), "fixture equips six pieces of one family");
+  // Azure has no 6-piece effect: six pieces behave exactly like four, and the guide says so.
+  assert.equal(fx("azure").skeletonCritArmorBreak, false);
+  assert.equal(fx("azure").robotThresholdDefUp, false);
+  assert.equal(JSON.stringify({ ...fx("azure"), counts: 0 }), JSON.stringify({ ...mythic.setEffects(Object.fromEntries(mythic.SET_SLOTS.slice(0, 4).map(slot => [slot, { type: slot, setId: "azure", setFamily: "azure", rewardVersion: 2, itemModelVersion: 2, rarity: "mythic", gearTier: 1 }]))), counts: 0 }));
+  const sets = INFO_GUIDE.topics.find(topic => topic.id === "sets");
+  ["Azure", "Robot", "Skeleton"].forEach(name => {
+    const block = sets.blocks.find(item => item.heading === name);
+    assert.deepEqual(block.rows.map(row => row[0]), ["2 ชิ้น", "4 ชิ้น", "6 ชิ้น"], name);
+  });
+  assert.match(sets.blocks.find(item => item.heading === "Azure").rows[2][1], /ไม่มีโบนัสเพิ่ม/);
+  assert.ok(["azure", "robot", "skeleton"].every(id => fx(id).counts[id] === 6), "fixture equips six pieces of one family");
   Object.values(mythic.BOSS_WEAPONS).forEach(weapon => assert.ok(guideText.includes(mythic.signatureText({ signatureId: weapon.signatureId }).replace(/"/g, '\\"')), weapon.id));
 });
 
@@ -289,4 +300,10 @@ test("guide content boundary: no internal details, no dates or promises", () => 
     .forEach(pattern => assert.doesNotMatch(joined, pattern, String(pattern)));
   assert.doesNotMatch(joined, /\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}|เร็ว ๆ นี้|จะเปิดให้|ภายใน/);
   assert.match(joined, /[\u0e00-\u0e7f]/);
+});
+
+test("safe area: opaque cover over the translucent status bar at the top of the game", () => {
+  const styles = read("src/data/styles.js");
+  assert.match(styles, /body::before \{[^}]*height:env\(safe-area-inset-top, 0px\)[^}]*background:#1B1233/);
+  assert.match(read("head.html"), /viewport-fit=cover/);
 });
