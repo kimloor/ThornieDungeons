@@ -5,7 +5,7 @@ const GLOBAL_LOADING_STYLE = `
 .gl-overlay {
   position: fixed; inset: 0; z-index: 2100;
   display: flex; align-items: center; justify-content: center;
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  padding: var(--safe-top-eff) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: radial-gradient(circle at 50% 42%, rgba(44,30,74,.82), rgba(10,6,24,.92));
   color: #F3EEFF; touch-action: none; user-select: none; -webkit-user-select: none;
   animation: gl-fade-in .18s ease-out both;

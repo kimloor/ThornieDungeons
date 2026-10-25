@@ -3803,7 +3803,7 @@ function ArenaReplayOverlay({ replay, onClose, onPlayPause, onSeek }) {
   const presentationState = state ? { ...state, battleId: `${state.battleId || "arena-replay"}:run${replay.run || 0}`, presentationSkip: replay.skip === true } : state;
   return e("div", {
     className: "md-arena-replay-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Arena battle replay",
-    style: { position: "fixed", inset: 0, zIndex: 2000, overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", padding: "max(16px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom))", background: "rgba(8, 10, 18, 0.96)" }
+    style: { position: "fixed", inset: 0, zIndex: 2000, overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px", padding: "max(16px, var(--safe-top-eff)) 12px max(16px, env(safe-area-inset-bottom))", background: "rgba(8, 10, 18, 0.96)" }
   },
     e("div", { className: "md-card" },
       e("p", { className: "md-title" }, "ARENA REPLAY"),

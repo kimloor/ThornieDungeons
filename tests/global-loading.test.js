@@ -197,7 +197,7 @@ test("Global Loading: build wiring, overlay accessibility, mount and Character S
   assert.match(overlay, /role: "status"/);
   assert.match(overlay, /"aria-busy": "true"/);
   assert.match(overlay, /role: "progressbar"/);
-  assert.match(overlay, /safe-area-inset-top/);
+  assert.match(overlay, /safe-top-eff/);
   assert.match(overlay, /prefers-reduced-motion: reduce/);
   assert.match(read("tail.html"), /React\.createElement\(GlobalLoadingOverlay, null\)/);
   const app = read("src/ui/App.js");

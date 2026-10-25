@@ -52,7 +52,7 @@ test("Inventory V2 wiring removes duplicate inventory chrome and prewires option
   assert.match(components, /const visibleCount = expanded \? INVENTORY_CAPACITY : 10/);
   assert.doesNotMatch(components.slice(components.indexOf("function InventoryOverlayV2"), components.indexOf("function InventoryOverlay({")), /Quick Slots|gold|diamonds|protectionStones/);
   assert.match(manifest, /optionalAsset\(`inventoryUi\.\$\{key\}`\)/);
-  assert.match(styles, /--safe-top:\s*env\(safe-area-inset-top/);
+  assert.match(styles, /--safe-top:\s*var\(--safe-top-eff\)/);
   assert.match(styles, /@media \(min-width:431px\) and \(max-width:700px\)/);
 });
 

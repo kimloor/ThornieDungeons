@@ -4,7 +4,7 @@ const STYLE = `
 .md-root {
   /* Shared safe-area shell: artwork remains full-bleed while interactive layouts
      consume these tokens instead of guessing device notch/home-indicator sizes. */
-  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-top: var(--safe-top-eff);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -64,9 +64,9 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.12";
+  content: "Ver 1.1.13";
   position: fixed;
-  top: calc(4px + env(safe-area-inset-top, 0px));
+  top: calc(4px + var(--safe-top-eff));
   left: 50%;
   transform: translateX(-50%);
   z-index: 2147483647;
@@ -271,7 +271,7 @@ body::after {
 .md-log-hint { position: absolute; right: 7px; bottom: 2px; color: var(--gold); font-size: 7px; opacity: .72; }
 .md-battle-log-overlay {
   position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
-  padding: max(18px, env(safe-area-inset-top, 0px)) 14px max(18px, env(safe-area-inset-bottom, 0px));
+  padding: max(18px, var(--safe-top-eff)) 14px max(18px, env(safe-area-inset-bottom, 0px));
   background: rgba(3,4,14,.82); backdrop-filter: blur(3px);
 }
 .md-battle-log-expanded {
@@ -343,7 +343,7 @@ body::after {
 .md-hub-resources.with-arena button { padding:5px 3px; font-size:8.5px; }
 .md-hub-resources.with-arena .md-resource-icon { width:17px; height:17px; }
 .md-hub-resources b { color:var(--ink); }
-.md-currency-overlay { box-sizing:border-box; position:fixed; inset:0; z-index:210; display:grid; place-items:center; padding:max(18px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px)); background:rgba(2,5,16,.76); backdrop-filter:blur(5px); }
+.md-currency-overlay { box-sizing:border-box; position:fixed; inset:0; z-index:210; display:grid; place-items:center; padding:max(18px,var(--safe-top-eff)) max(14px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px)); background:rgba(2,5,16,.76); backdrop-filter:blur(5px); }
 .md-currency-card { box-sizing:border-box; position:relative; width:min(92vw,390px); max-width:100%; padding:22px 20px 18px; border:1px solid rgba(255,209,102,.64); border-radius:18px; background:linear-gradient(180deg,rgba(18,30,67,.99),rgba(6,13,34,.99)); box-shadow:0 18px 55px rgba(0,0,0,.68); text-align:center; }
 .md-currency-close { position:absolute; top:9px; right:9px; width:44px; height:44px; border:0; border-radius:11px; background:rgba(255,255,255,.08); color:#fff; font-size:24px; cursor:pointer; }
 .md-currency-detail-icon { width:64px; height:64px; margin:0 auto 7px; display:grid; place-items:center; border:1px solid rgba(255,209,102,.34); border-radius:18px; background:rgba(3,11,30,.7); }
@@ -569,7 +569,7 @@ body::after {
 .md-inv-list { display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow-y: auto; }
 .md-shop-list { display: flex; flex-direction: column; gap: 6px; }
 .md-shop-sheet-backdrop {
-  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-top: var(--safe-top-eff);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -854,7 +854,7 @@ body::after {
   display:flex;
   align-items:flex-end;
   justify-content:center;
-  padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+  padding:max(12px,var(--safe-top-eff)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
   background:rgba(5,7,18,.82);
   backdrop-filter:blur(4px);
   color:var(--ink);
@@ -864,7 +864,7 @@ body::after {
 .md-auth-sheet {
   width:min(100%,420px);
   max-width:100%;
-  max-height:min(calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),760px);
+  max-height:min(calc(100dvh - 24px - var(--safe-top-eff) - env(safe-area-inset-bottom)),760px);
   overflow:auto;
   overscroll-behavior:contain;
   border-radius:18px;
@@ -905,7 +905,7 @@ body::after {
 .md-settings-sync.status-saved { color:#7BD88F; }
 .md-settings-sync.status-saving { color:var(--gold); }
 .md-settings-sync.status-failed { color:#FF6B6B; font-weight:700; }
-.md-info-page { position:fixed; inset:0; z-index:130; display:flex; flex-direction:column; background:#0b0818; color:var(--ink,#F3EEFF); padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+.md-info-page { position:fixed; inset:0; z-index:130; display:flex; flex-direction:column; background:#0b0818; color:var(--ink,#F3EEFF); padding:max(10px,var(--safe-top-eff)) max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
 .md-info-page, .md-info-page * { box-sizing:border-box; }
 .md-info-header { display:flex; align-items:center; gap:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,209,102,.28); }
 .md-info-header-copy { flex:1 1 auto; min-width:0; }
@@ -1699,7 +1699,7 @@ body::after {
 
 /* ---- Combat layout V2: six-part header + Quick Slot dock ---- */
 .md-root-combat { overscroll-behavior: none; }
-.md-scene.battle-bg { min-height:0; overflow:hidden; overscroll-behavior:none; padding-top:calc(8px + env(safe-area-inset-top, 0px)); padding-bottom:max(6px,env(safe-area-inset-bottom,0px)); }
+.md-scene.battle-bg { min-height:0; overflow:hidden; overscroll-behavior:none; padding-top:calc(8px + var(--safe-top-eff)); padding-bottom:max(6px,env(safe-area-inset-bottom,0px)); }
 .md-battle-art {
   background-image: var(--battle-ui-image);
   background-repeat: no-repeat;
@@ -2559,7 +2559,7 @@ body::after {
 .md-raid-boss-sprite { display:block; width:min(72vw, 280px); height:clamp(180px, 42vh, 310px); margin:10px auto 4px; object-fit:contain; object-position:center; user-select:none; -webkit-user-drag:none; }
 .md-raid-boss-fallback { display:flex; align-items:center; justify-content:center; min-height:180px; border:1px dashed rgba(255,209,102,.45); border-radius:18px; background:radial-gradient(circle, rgba(167,139,240,.22), rgba(16,18,32,.18) 70%); color:var(--gold); font-size:22px; font-weight:900; letter-spacing:.18em; }
 .md-toast { position: sticky; top: 4px; z-index: 20; margin: 0 auto 10px; padding: 10px 14px; border-radius: 12px; background: linear-gradient(135deg, var(--violet-deep), var(--violet)); border: 1px solid var(--gold-glow); color: var(--ink); font-size: 13px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); animation: mdToastIn 0.25s ease-out; }
-.md-save-state { position:fixed; z-index:90; top:max(8px,env(safe-area-inset-top)); left:50%; transform:translateX(-50%); max-width:calc(100% - 24px); padding:6px 11px; border-radius:999px; background:rgba(25,18,45,.94); border:1px solid rgba(255,209,102,.5); color:var(--ink-soft); font-size:11px; line-height:1.3; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,.36); pointer-events:none; }
+.md-save-state { position:fixed; z-index:90; top:max(8px,var(--safe-top-eff)); left:50%; transform:translateX(-50%); max-width:calc(100% - 24px); padding:6px 11px; border-radius:999px; background:rgba(25,18,45,.94); border:1px solid rgba(255,209,102,.5); color:var(--ink-soft); font-size:11px; line-height:1.3; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,.36); pointer-events:none; }
 .md-save-state-failed { background:rgba(82,20,35,.96); border-color:#ef7a8f; color:#fff; }
 .md-daily-toast-overlay { position:absolute; inset:0; z-index:20; background:transparent; display:flex; align-items:center; justify-content:center; padding:20px; }
 .md-daily-toast-card { position:relative; width:100%; max-width:320px; background:linear-gradient(180deg,#30204f 0%,#1b1233 100%); border:1.5px solid var(--gold-deep); border-radius:18px; padding:18px 16px 14px; box-shadow:0 10px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,209,102,0.15); text-align:center; animation: mdToastIn 0.25s ease-out; }
@@ -2615,7 +2615,7 @@ body::after {
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:max(14px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+  padding:max(14px,var(--safe-top-eff)) max(10px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
   background:rgba(4,8,24,.48);
   backdrop-filter:blur(2px);
   color:var(--ink);
@@ -2628,7 +2628,7 @@ body::after {
   width:min(94vw,760px);
   aspect-ratio:8/5;
   min-height:0;
-  max-height:calc(100dvh - max(28px,env(safe-area-inset-top)) - max(28px,env(safe-area-inset-bottom)));
+  max-height:calc(100dvh - max(28px,var(--safe-top-eff)) - max(28px,env(safe-area-inset-bottom)));
   padding:7.5% 5.5% 4.5%;
   border:0;
   border-radius:22px;
@@ -2881,7 +2881,7 @@ body::after {
 @media (prefers-reduced-motion: reduce) { .md-arena-battle-start { animation:none; } .md-arena-battle-start.is-leaving { transition:none; } }
 .md-arena-turn-order { margin:4px 0 7px; min-height:38px; border:1px solid rgba(255,209,102,.18); border-radius:10px; background:rgba(3,9,24,.32); overflow:hidden; }
 .md-arena-speed-toggle { margin:0 0 6px; min-width:58px; color:var(--gold); border-color:rgba(255,209,102,.45); }
-.md-arena-fatal-overlay { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:max(18px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px)); background:rgba(2,5,16,.76); backdrop-filter:blur(4px); }
+.md-arena-fatal-overlay { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:max(18px,var(--safe-top-eff)) max(14px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px)); background:rgba(2,5,16,.76); backdrop-filter:blur(4px); }
 .md-arena-fatal-card { width:min(92vw,520px); max-height:min(82dvh,680px); display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,139,139,.72); border-radius:16px; background:rgba(24,14,35,.98); box-shadow:0 18px 55px rgba(0,0,0,.68); color:#FFD6D6; }
 .md-arena-fatal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border-bottom:1px solid rgba(255,139,139,.35); color:#FF9E9E; }
 .md-arena-fatal-close { width:36px; height:36px; flex:0 0 36px; border:0; border-radius:10px; background:rgba(255,255,255,.08); color:#fff; font-size:23px; line-height:1; cursor:pointer; }
@@ -2911,7 +2911,7 @@ body::after {
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:max(16px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));
+  padding:max(16px,var(--safe-top-eff)) max(12px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));
   background:rgba(4,8,24,.72);
   backdrop-filter:blur(3px);
 }
@@ -2949,7 +2949,7 @@ body::after {
   .md-player-card-nameplate h2 { font-size:13px; }
   .md-player-card-actions { width:80%; }
 }
-.md-guild-profile-overlay { --ink:#F3EEFF; --ink-soft:#B9AEDD; --gold:#FFD166; --gold-deep:#C9932A; position:fixed; inset:0; z-index:150; display:flex; align-items:center; justify-content:center; box-sizing:border-box; padding:max(16px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px)); background:rgba(4,8,24,.76); backdrop-filter:blur(4px); }
+.md-guild-profile-overlay { --ink:#F3EEFF; --ink-soft:#B9AEDD; --gold:#FFD166; --gold-deep:#C9932A; position:fixed; inset:0; z-index:150; display:flex; align-items:center; justify-content:center; box-sizing:border-box; padding:max(16px,var(--safe-top-eff)) max(12px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px)); background:rgba(4,8,24,.76); backdrop-filter:blur(4px); }
 .md-guild-profile-overlay, .md-guild-profile-overlay * { box-sizing:border-box; }
 .md-guild-profile { position:relative; width:min(92vw,460px); max-height:min(88dvh,620px); overflow:auto; padding:28px 22px 22px; border:1px solid rgba(255,209,102,.45); border-radius:22px; background:linear-gradient(160deg,rgba(35,31,72,.98),rgba(9,24,58,.99)); box-shadow:0 18px 60px rgba(0,0,0,.6); }
 .md-guild-profile-close { position:absolute; top:10px; right:10px; width:44px; height:44px; border:0; border-radius:10px; background:rgba(255,255,255,.08); color:var(--ink); font-size:20px; cursor:pointer; }
@@ -2987,7 +2987,7 @@ body::after {
 .md-arena-replay-overlay > .md-card {
   box-sizing: border-box;
   width: min(100%, 760px);
-  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px);
+  max-height: calc(100dvh - var(--safe-top-eff) - env(safe-area-inset-bottom, 0px) - 20px);
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -3039,7 +3039,7 @@ body::after {
   .md-arena-replay-overlay .md-arena-action-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {
-  .md-arena-replay-overlay { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important; }
+  .md-arena-replay-overlay { padding: max(8px, var(--safe-top-eff)) 8px max(8px, env(safe-area-inset-bottom)) !important; }
   .md-arena-replay-overlay > .md-card { padding: 10px 8px; gap: 6px; border-radius: 16px; }
 }
 /* Landscape phones: stage on the left, status + log + controls on the right. */
