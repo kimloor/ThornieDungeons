@@ -3510,7 +3510,7 @@ function ArenaPlayerCardOverlay({ card, busy, onBattle, onClose }) {
           e("div", null, e("span", null, "CP"), e("strong", null, card.cp == null ? "—" : Number(card.cp || 0).toLocaleString("en-US"))),
           e("div", null, e("span", null, "Rating"), e("strong", null, card.rating ?? "—")),
           e("div", null, e("span", null, "Tier"), e("strong", null, card.tier || "—")),
-          e("div", null, e("span", null, "Pet"), e("strong", null, pet)),
+          e("div", null, e("span", null, "Pet"), e("strong", { className: "md-arena-card-pet" }, e(PetAvatar, { defId: card.pet?.defId, size: 32, alt: "" }), e("span", null, pet))),
           e("div", { className: "md-arena-card-equipment-row" },
             e("span", null, "Equipment"),
             equipmentItems.length
@@ -4507,13 +4507,13 @@ function ArenaV2Screen({
       /*#__PURE__*/React.createElement("p", { className: "md-title" }, "SETUP · Pet + 4 Skills"),
       /*#__PURE__*/React.createElement("details", { className: "md-arena-setup-picker md-arena-pet-picker" },
         /*#__PURE__*/React.createElement("summary", null,
-          /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, setup.petInstId ? arenaSetupPetIcon((status.availablePets || []).find(p => p.instId === setup.petInstId)) : "🐾"),
-          /*#__PURE__*/React.createElement("span", null, "PET", /*#__PURE__*/React.createElement("b", null, (status.availablePets || []).find(p => p.instId === setup.petInstId)?.name || "No Pet")),
+          /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, React.createElement(PetAvatar, { defId: (status.availablePets || []).find(p => p.instId === setup.petInstId)?.defId, size: 36, alt: "" })),
+          /*#__PURE__*/React.createElement("span", null, "PET", /*#__PURE__*/React.createElement("b", null, (status.availablePets || []).find(p => p.instId === setup.petInstId)?.name || "No Pet"), setup.petInstId && React.createElement("small", null, "Lv.", (status.availablePets || []).find(p => p.instId === setup.petInstId)?.level || 1)),
           /*#__PURE__*/React.createElement("i", null, "CHANGE")),
         /*#__PURE__*/React.createElement("div", { className: "md-arena-setup-options", role: "listbox", "aria-label": "Arena Pet" },
           /*#__PURE__*/React.createElement("button", { type: "button", className: !setup.petInstId ? "selected" : "", onClick: () => setSetup({ ...setup, petInstId: "" }), "aria-selected": !setup.petInstId }, /*#__PURE__*/React.createElement("span", null, "🐾"), /*#__PURE__*/React.createElement("b", null, "No Pet")),
           (status.availablePets || []).map(p => /*#__PURE__*/React.createElement("button", { type: "button", key: p.instId, className: setup.petInstId === p.instId ? "selected" : "", onClick: () => setSetup({ ...setup, petInstId: p.instId }), "aria-selected": setup.petInstId === p.instId },
-            /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, arenaSetupPetIcon(p)),
+            /*#__PURE__*/React.createElement("span", { className: "md-arena-pet-avatar", "aria-hidden": "true" }, React.createElement(PetAvatar, { defId: p.defId, size: 36, alt: "" })),
             /*#__PURE__*/React.createElement("b", null, p.name),
             /*#__PURE__*/React.createElement("small", null, "Lv", p.level, " · ★", p.star))))),
       /*#__PURE__*/React.createElement("div", { className: "md-arena-skill-setup-grid" }, [0, 1, 2, 3].map(i => {
@@ -5205,7 +5205,7 @@ function PetRoster({ owned, activePetId, selectedPetId, petDuplicates, onSelect 
       onClick: () => onSelect(inst.instId)
     }, /*#__PURE__*/React.createElement("span", {
       className: "md-pet-roster-icon"
-    }, def.icon), /*#__PURE__*/React.createElement("span", {
+    }, React.createElement(PetAvatar, { defId: inst.defId, size: 40, alt: "" })), /*#__PURE__*/React.createElement("span", {
       className: "md-pet-roster-copy"
     }, /*#__PURE__*/React.createElement("strong", null, def.name), /*#__PURE__*/React.createElement("small", null, PET_RARITY_LABEL[def.rarity], " · Lv.", petLevel, " · ", "★".repeat(star)), /*#__PURE__*/React.createElement("small", null, "Dup ", petDuplicateCount(petDuplicates, inst.defId))), isActive && /*#__PURE__*/React.createElement("span", {
       className: "md-pet-active-dot",
@@ -5343,7 +5343,7 @@ function PetScreen({
     style: petUiStyle("mainFrame")
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-pet-showcase"
-  }, auraUrl && /*#__PURE__*/React.createElement("img", {
+  }, React.createElement(PetAvatar, { defId: selected.defId, size: 32, className: "md-pet-detail-avatar", alt: "" }), auraUrl && /*#__PURE__*/React.createElement("img", {
     className: "md-pet-star-aura",
     src: auraUrl,
     alt: "",
@@ -5500,7 +5500,7 @@ function GachaScreen({
     }
   }, /*#__PURE__*/React.createElement("p", {
     className: "md-title"
-  }, gachaResult.pet.icon, " ", gachaResult.pet.name), /*#__PURE__*/React.createElement("p", {
+  }, React.createElement(PetAvatar, { defId: gachaResult.pet.id, size: 64, alt: "" }), " ", gachaResult.pet.name), /*#__PURE__*/React.createElement("p", {
     className: "md-sub",
     style: {
       margin: 0

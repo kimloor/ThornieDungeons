@@ -1,6 +1,8 @@
 # Pet Avatar Contract — G13
 
-Status: **ACTIVE-DESIGN / READY_FOR_GRAPHICS**
+Status: **OWNER APPROVED / INTEGRATED — Production verification pending**
+
+Current implementation and QA evidence: [G13-PET-AVATAR-INTEGRATION.md](G13-PET-AVATAR-INTEGRATION.md).
 
 G13 follows the completed G12 Hero Skill Icon Pack and owns Pet portrait/avatar presentation plus the shared custom Pet selector presentation. It does not change Pet gameplay, stats, rarity, progression, skills, Battle Core, Arena authority, or save data.
 
@@ -23,7 +25,7 @@ Eight production Pet identities exist:
 
 All eight already have Idle/Attack/Death battle-frame families under `r2-upload/sprite/pet/<pet_id>/animations/`.
 
-Audit result: **0/8 dedicated Pet portrait/avatar production assets currently exist.** The authoritative Pet definitions still carry emoji `icon` values for legacy/presentation fallback. G13 must not create new Pet identities or duplicate gameplay definitions.
+Audit result: **0/8 dedicated Pet portrait/avatar production assets existed at the 2026-10-04 audit baseline.** The authoritative Pet definitions still carry emoji `icon` values for legacy/presentation fallback. G13 must not create new Pet identities or duplicate gameplay definitions.
 
 ## G13 asset contract
 
@@ -79,3 +81,21 @@ G13 is COMPLETE only when:
 - visible version is bumped for user-visible integration.
 
 Any future authoritative Pet must add its avatar/manifest entry in the same feature batch.
+
+## Approved integration — Ver 1.1.17
+
+Owner approved all eight portraits from PR #148 / `6f69d16`. The exports are copied
+byte-for-byte into `r2-upload/ui/pet-avatars/` and registered additively under
+`assets.petAvatars` using authoritative catalog IDs (including `sprout`, not `sprout001`).
+`petAvatarUrl(defId)` and `PetAvatar` in `src/assets/manifest.js` provide one shared
+resolution/failure path. A failed URL falls back to its catalog emoji with no retry
+loop; unknown/no Pet uses 🐾.
+
+Consumers: Pet Roster, a small Detail showcase portrait, Gacha result, Arena Setup
+rows and summary (name + level), and the existing Arena Player Card Pet row.
+Arena's Phaser battle actors, animations, timing, state and generic ATB actor-role
+icons remain unchanged; there was no separate Pet portrait inside the battle stage
+to replace. Future Player Card surfaces can use the same resolver/component.
+Mobile roster entries stack portrait above labels so the 40 px image does not
+overlap the narrow sidebar text. Detail retains its animated showcase and existing
+name/level/stat locations.

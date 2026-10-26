@@ -79,7 +79,7 @@ test("Arena setup, cooldown, milestones, currencies, and dock use the shared mob
   const skillDropdown = between(components, "function ArenaSkillDropdown", "function ArenaV2Screen");
   assert.match(skillDropdown, /ReactDOM\.createPortal/);
   assert.match(arena, /HeroSkillIcon/);
-  assert.match(setup, /arenaSetupPetIcon/);
+  assert.match(setup, /PetAvatar/);
   assert.match(setup, /md-arena-loadout/);
   assert.match(arena, /`REFRESH · \$\{refreshSeconds\}s`/);
   assert.doesNotMatch(arena, /md-arena-refresh-cooldown/);

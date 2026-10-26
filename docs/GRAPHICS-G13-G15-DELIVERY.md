@@ -1,5 +1,10 @@
 # G13 delivery audit and G14–G15 asset preparation
 
+This is the historical audit/review-candidate record. Owner subsequently approved
+all 8 images and authorized full integration. Current status and release evidence:
+[G13-PET-AVATAR-INTEGRATION.md](G13-PET-AVATAR-INTEGRATION.md).
+The audit-time pending approvals and DEV-only handoff below are superseded by that integration.
+
 Audit date: 2026-10-26 (Asia/Bangkok). Issue: #146.
 Baseline: main `d96cb5c5eacdba5bd9e06e6a25fadf3454a53558`, Ver 1.1.14.
 Pre-publication recheck: main `e203856172a0f0646f85aa51068381f3d590fd6e`, Ver 1.1.15 (#147).

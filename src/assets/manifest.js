@@ -25,6 +25,35 @@ function optionalAsset(key) {
   return typeof path === "string" && path ? assetUrl(path) : "";
 }
 
+// Portraits use catalog IDs; the sprout001 alias belongs only to battle sprites.
+function petAvatarUrl(defId) {
+  if (typeof defId !== "string" || !/^[a-z][a-z0-9_]*$/.test(defId)) return "";
+  return optionalAsset(`petAvatars.${defId}`);
+}
+
+function PetAvatar({ defId, size = 40, className = "", alt }) {
+  const [failedSrc, setFailedSrc] = React.useState("");
+  const definition = PET_POOL.find(pet => pet.id === defId);
+  const src = definition ? petAvatarUrl(defId) : "";
+  const label = alt === undefined ? definition?.name || "Pet" : alt;
+  const props = {
+    className: `md-pet-avatar ${className}`.trim(),
+    style: { "--pet-avatar-size": `${size}px` },
+    title: label || undefined
+  };
+  if (!src || failedSrc === src) {
+    return React.createElement("span", {
+      ...props, role: label ? "img" : undefined,
+      "aria-label": label || undefined, "aria-hidden": label ? undefined : "true"
+    }, definition?.icon || "🐾");
+  }
+  return React.createElement("img", {
+    ...props, src, alt: label, width: 256, height: 256,
+    "aria-hidden": label ? undefined : "true", draggable: false,
+    decoding: "async", onError: () => setFailedSrc(src)
+  });
+}
+
 function battleUiStyle(key) {
   const src = optionalAsset(`battleUi.${key}`);
   return src ? { "--battle-ui-image": `url("${src}")` } : undefined;

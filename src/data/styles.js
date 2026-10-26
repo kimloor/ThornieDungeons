@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.15";
+  content: "Ver 1.1.17";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -111,7 +111,7 @@ body::after {
 .md-root-dungeon.md-dungeon-modal-open { --md-dungeon-veil: .69; }
 /* Keep normal screens above the backdrop, but never rewrite overlay positioning. The inventory,
    blacksmith and daily-reward sheets rely on position:absolute to open over the current screen. */
-.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-daily-toast-overlay) { position: relative; z-index: 2; }
+.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-shared-overlay):not(.md-daily-toast-overlay) { position: relative; z-index: 2; }
 @keyframes md-global-dungeon-breathe {
   0% { transform: scale(1.025) translate3d(0,0,0); filter: brightness(.92); }
   100% { transform: scale(1.055) translate3d(0,-.45%,0); filter: brightness(1.04); }
@@ -134,7 +134,7 @@ body::after {
   box-shadow:inset 0 0 55px rgba(14,55,92,.12);
 }
 .md-root-town.md-town-modal-open::after { background:rgba(3,8,24,.58); }
-.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-daily-toast-overlay) { position:relative; z-index:2; }
+.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-shared-overlay):not(.md-daily-toast-overlay) { position:relative; z-index:2; }
 @keyframes md-town-camera-breathe {
   0% { transform:scale(1.015) translate3d(0,0,0); filter:saturate(1.02) brightness(.98); }
   100% { transform:scale(1.04) translate3d(0,-.35%,0); filter:saturate(1.07) brightness(1.03); }
@@ -1327,16 +1327,20 @@ body::after {
   overscroll-behavior: contain; scrollbar-width: thin; padding: 2px 2px 2px 0;
 }
 .md-pet-roster-item {
-  width: 100%; min-height: 70px; border: 1px solid rgba(255,209,102,.22); border-radius: 10px;
+  width: 100%; min-height: 104px; border: 1px solid rgba(255,209,102,.22); border-radius: 10px;
   background: rgba(8,11,28,.72); color: var(--ink); padding: 6px 4px; cursor: pointer;
-  display: grid; grid-template-columns: 28px minmax(0,1fr); align-items: center; gap: 4px;
-  position: relative; text-align: left; font: inherit;
+  display: grid; grid-template-columns: minmax(0,1fr); align-items: center; justify-items: center; gap: 2px;
+  position: relative; text-align: center; font: inherit;
 }
 .md-pet-roster-item.selected { border-color: var(--gold); background: rgba(255,209,102,.12); box-shadow: 0 0 0 1px rgba(255,209,102,.22), 0 0 12px rgba(255,209,102,.14); }
 .md-pet-roster-item.active { box-shadow: inset 0 0 0 1px rgba(76,175,125,.5); }
 .md-pet-roster-item.selected.active { box-shadow: inset 0 0 0 1px rgba(76,175,125,.55), 0 0 0 1px rgba(255,209,102,.22), 0 0 12px rgba(255,209,102,.14); }
-.md-pet-roster-icon { font-size: 24px; text-align: center; }
-.md-pet-roster-copy { min-width: 0; display: flex; flex-direction: column; }
+.md-pet-roster-icon { font-size: 24px; text-align: center; display:flex; align-items:center; justify-content:center; }
+.md-pet-avatar { width:var(--pet-avatar-size,40px); height:var(--pet-avatar-size,40px); flex:0 0 var(--pet-avatar-size,40px); display:inline-flex; align-items:center; justify-content:center; object-fit:contain; vertical-align:middle; font-size:calc(var(--pet-avatar-size,40px) * .65); line-height:1; }
+.md-arena-card-pet { display:flex; align-items:center; justify-content:flex-end; gap:6px; }
+.md-arena-card-pet > span { min-width:0; overflow-wrap:anywhere; }
+.md-pet-detail-avatar { position:absolute; top:0; left:0; z-index:3; }
+.md-pet-roster-copy { min-width: 0; width:100%; display: flex; flex-direction: column; }
 .md-pet-roster-copy strong { font: 800 10px/1.2 'Baloo 2'; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-pet-roster-copy small { color: var(--ink-soft); font-size: 8.5px; line-height: 1.25; }
 .md-pet-active-dot { position: absolute; right: 4px; top: 3px; color: var(--leaf); font-size: 8px; }
@@ -1417,7 +1421,7 @@ body::after {
 @media (max-width: 380px) {
   .md-pet-card { padding-inline: 4px; }
   .md-pet-layout { grid-template-columns: minmax(0, 1fr) 72px; gap: 4px; }
-  .md-pet-roster-item { grid-template-columns: 24px minmax(0,1fr); min-height: 64px; padding: 4px 3px; }
+  .md-pet-roster-item { grid-template-columns: minmax(0,1fr); min-height: 104px; padding: 4px 3px; }
   .md-pet-roster-icon { font-size: 20px; }
   .md-pet-name-row strong { font-size: 15px; }
   .md-pet-name-row > div:first-child { gap: 4px; }
@@ -2304,7 +2308,7 @@ body::after {
   .md-guild-page { min-height:0; height:auto; overflow-y:auto; }
   .md-pet-card { padding:12px 10px 14px; }
   .md-pet-layout { grid-template-columns:minmax(0,1fr) 116px; gap:10px; }
-  .md-pet-roster-item { min-height:82px; grid-template-columns:36px minmax(0,1fr); padding:8px 6px; }
+  .md-pet-roster-item { min-height:82px; grid-template-columns:40px minmax(0,1fr); padding:8px 6px; }
   .md-pet-roster-icon { font-size:30px; }
   .md-pet-roster-copy strong { font-size:12px; }
   .md-pet-roster-copy small { font-size:10px; }
@@ -2779,7 +2783,7 @@ body::after {
 .md-arena-setup-picker > summary b { overflow:hidden; color:#eef7ff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
 .md-arena-setup-picker > summary i { color:#ffe39a; font-size:8px; font-style:normal; font-weight:900; }
 .md-arena-pet-picker { margin:8px 0; }
-.md-arena-pet-avatar { width:36px; height:36px; flex:0 0 36px; display:grid; place-items:center; border:1px solid rgba(100,196,255,.32); border-radius:50%; background:radial-gradient(circle,rgba(79,168,224,.22),rgba(3,13,34,.9)); font-size:21px; }
+.md-arena-pet-avatar { width:36px; height:36px; flex:0 0 36px; display:grid; place-items:center; border:1px solid rgba(100,196,255,.32); border-radius:8px; background:radial-gradient(circle,rgba(79,168,224,.22),rgba(3,13,34,.9)); font-size:21px; }
 .md-arena-setup-options { position:absolute; z-index:35; top:calc(100% + 4px); left:0; right:0; max-height:min(42dvh,310px); padding:6px; display:grid; gap:5px; overflow-y:auto; border:1px solid rgba(255,209,102,.5); border-radius:11px; background:rgba(5,13,34,.99); box-shadow:0 12px 28px rgba(0,0,0,.58); }
 .md-arena-setup-options button { min-width:0; min-height:48px; padding:5px 8px; display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:7px; border:1px solid rgba(111,177,226,.23); border-radius:9px; background:rgba(255,255,255,.035); color:#eaf4ff; text-align:left; cursor:pointer; }
 .md-arena-setup-options button.selected { border-color:#ffe39a; background:rgba(255,209,102,.11); }\n.md-arena-setup-options button:disabled { opacity:.38; cursor:not-allowed; filter:saturate(.65); }
