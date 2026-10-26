@@ -1,6 +1,6 @@
 # ThornieDungeons Admin V2 — Security / Auth Contract
 
-Status: **ACTIVE-PRODUCTION — Admin V2 account-backed auth/session foundation deployed; W5.5 legacy-path hardening complete / Production verified**
+Status: **ACTIVE-PRODUCTION — Admin V2 account-backed auth/session foundation deployed; W5.5 legacy-path hardening complete / Production verified; Wave 2 implementation contracts (section 22) pending Owner approval**
 
 This document defines the security and authentication foundation for the ThornieDungeons Admin V2 console.
 
@@ -560,7 +560,7 @@ This section supersedes earlier *proposed* role separation for Wave 2, but does 
 | W2-C | APPROVED | Admin page security hardening: review data injection into HTML/DOM, use safe rendering/escaping, appropriate CSP and security headers, and safely retire obsolete legacy adminKey code without disrupting existing flows. |
 | W2-D | APPROVED | Destructive action safety: typed confirmation, required operator reason, pre-action target preview, server re-validation and audit; no bulk/wildcard deletion implied. |
 | W2-E | APPROVED | Read-only Admin Audit Viewer with actionable filters and sanitized records, without exposing passwords, session credentials or other secrets. |
-| W2-F | DESIGN REVIEW ONLY | Admin Delete Item concept below; no production mutation enabled by this decision. VERY HIGH risk, separate implementation approval and data-integrity release gate required. |
+| W2-F | INCLUDED IN WAVE 2 (Owner, 2026-10-26 update) | Admin Delete Item concept below; implementation contract in section 22.7. VERY HIGH risk: last slice, own data-integrity release gate, disabled by a server-side switch until the Owner enables it. No production mutation enabled by this section. |
 | Additional Admin Tools | DEFERRED DESIGN | Owner and Project Lead will decide new tools in a separate design session; no implied authorization. |
 
 ### W2-F conceptual screen / workflow (not final API/schema contract)
@@ -582,4 +582,118 @@ This section supersedes earlier *proposed* role separation for Wave 2, but does 
 
 - W2-A and W2-C may be developed separately after precise implementation contracts and file ownership are resolved; then W2-D and W2-E on the audited foundation.
 - HIGH-risk Worker/authoritative data changes require a feature branch and QA/release gates per `AGENTS.md`.
-- Do not implement W2-F or new Admin tools until Owner approves their detailed contracts. Do not introduce W2-B role tiers without a new Owner decision.
+- Section 22 holds the implementation contracts. W2-F implementation starts only after section 22 is approved (PR merge) and W2-A, W2-D and W2-E are in production. Do not implement other new Admin tools until Owner approves their contracts. Do not introduce W2-B role tiers without a new Owner decision.
+
+---
+
+## 22. Wave 2 Implementation Contracts (2026-10-26)
+
+**Status: CONTRACT FOR OWNER APPROVAL — DOCS ONLY.** Approval = merge of the PR that adds this section. Merging authorizes the *slice contracts below* to be implemented, each in its own feature branch / PR with its own QA and release gates. It does not authorize any code, schema or production change by itself, and it does not authorize any other Admin tool.
+
+Baseline: `main` 63b95d0 (Ver 1.1.18). Admin/Worker code was re-checked against that baseline: the findings of Issue #144 still hold (eight unaudited Admin mutations, no CSP/security headers on `/admin`, leftover `adminKey` arguments).
+
+### 22.1 Owner decisions recorded
+
+- No new role tiers: a single `admin` role; accountability through action-level audit (W2-B removed). Authentication, session and server-side validation remain the preventive controls.
+- Audit records full item detail (complete before-state of the affected row, sanitized of secrets).
+- **W2-F Admin Delete Item is included in Wave 2**, with a detailed confirmation step. It is the last slice and has its own data-integrity release gate (22.7).
+- CSP and security headers on `/admin` are approved (W2-C).
+
+### 22.2 Slice order, risk and gates
+
+`W2-A ∥ W2-C  →  W2-D  →  W2-E  →  W2-F`
+
+| Slice | Risk | Touches | Depends on |
+| --- | --- | --- | --- |
+| W2-A mutation audit | HIGH (Worker, write path) | `workers/thornie-dungeons-api.js`, tests | — |
+| W2-C hardening + CSP | MEDIUM | `admin.html`, static headers, Worker call sites | — |
+| W2-D destructive safety | MEDIUM–HIGH | `admin.html`, 3 delete handlers | W2-A |
+| W2-E Audit Viewer | MEDIUM | new read action, `admin.html` | W2-A |
+| W2-F Delete Player Item | VERY HIGH (player data, irreversible) | new read + write actions, `admin.html` | W2-A, W2-D, W2-E |
+
+Every slice: feature branch + PR, targeted tests, full suite, Admin V2 QA workflow, Battle Core parity, Admin HTML guard, independent QA, merge, auto deploy, live verification. Per `AGENTS.md`, risk HIGH or above stops for Owner approval before merge. Each slice PR states whether the visible game version is bumped.
+
+### 22.3 W2-A — Mutation audit logging
+
+**Covered actions (revalidated on 63b95d0):**
+
+| Action | `event_type` | `target_type` / `target_id` |
+| --- | --- | --- |
+| `saveGameConfig` | `ADMIN_GAME_CONFIG_SAVE` | `game_config` / `*` (changed keys in metadata) |
+| `setGameConfigItem` | `ADMIN_GAME_CONFIG_SET` | `game_config` / key |
+| `adminUpsertRecipe` | `ADMIN_RECIPE_UPSERT` | `recipe` / `recipeId` |
+| `adminDeleteRecipe` | `ADMIN_RECIPE_DELETE` | `recipe` / `recipeId` |
+| `adminUpsertMonsterLootEntry` | `ADMIN_MONSTER_LOOT_UPSERT` | `monster_loot` / `entryId` |
+| `adminDeleteMonsterLootEntry` | `ADMIN_MONSTER_LOOT_DELETE` | `monster_loot` / `entryId` |
+| `adminUpsertJunkInfo` | `ADMIN_JUNK_INFO_UPSERT` | `junk_info` / `junkId` |
+| `adminDeleteJunkInfo` | `ADMIN_JUNK_INFO_DELETE` | `junk_info` / `junkId` |
+
+**Rules:**
+- Reuse `admin_audit_log` and `adminAuditStatement`; no new table. Actor is the authenticated Admin player id, as in the existing search/view audit calls.
+- Mutation and audit row execute in the same `db.batch`, so both commit or neither does. If the audit statement fails the mutation must not persist and the response is an error (`admin_audit_failed`, HTTP 500). The handlers that currently use a single `.run()` are converted to `db.batch`.
+- The before-state is read immediately before the batch. A concurrent edit between read and batch is possible with several admins; this is a known, documented limitation (the audit records what was observed).
+- `metadata_json` = `{ outcome, before, after, changedKeys }`. `before` is `null` for inserts, `after` is `null` for deletes. For `saveGameConfig` only changed keys are recorded (old/new value).
+- Redaction: keys matching `/pass|token|secret|hash|recovery/i` are replaced by `"[redacted]"` before writing. Metadata is capped at 16 KB; beyond that it stores `truncated: true` and the list of fields.
+- Validation rejections (no state change) are not audited. No-op writes (identical values) are audited with `changedKeys: []`.
+- Retention: no automatic deletion in Wave 2. W2-E reports row counts so growth can be reviewed.
+
+**Acceptance:** every one of the eight actions writes exactly one audit row atomically with its mutation; injected audit failure leaves the mutation unapplied; no secret field appears in any row; actor equals the session's Admin id; existing Recipes / Monster Drops / Junk Info flows keep working.
+
+### 22.4 W2-C — Admin security hardening
+
+- **Rendering:** every value interpolated into HTML goes through a single escape helper, or is assigned with `textContent` / DOM construction. Remaining raw `innerHTML` data sinks in `admin.html` are removed or proven constant. The Admin HTML guard is extended to fail on unescaped interpolation in `innerHTML` templates.
+- **CSP and headers on `/admin`:** move the single inline `<script>` of `admin.html` to a same-origin file so scripts need no `unsafe-inline`. Proposed policy (final values confirmed in the implementation PR against the API origin(s) actually used):
+  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' <admin API origin>; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`
+  plus `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, `Cache-Control: no-store` for the Admin HTML. The mechanism (Worker response wrapper vs static headers file) is chosen after confirming how `/admin` is served; game pages must be unaffected.
+- **Legacy cleanup:** remove the obsolete `adminKey` arguments from the `verifyAdminAccess` call sites (`p.get("adminKey")`, `body.adminKey`). Legacy-key requests stay rejected. The exported `verifyAdminKey` helper is removed only if no test or import depends on it.
+- **Acceptance:** headers present on `/admin` and absent from game pages; every Admin tab loads and works with zero CSP violations in the browser console; no `adminKey` reference remains in Admin code paths; existing §18 QA items still pass.
+
+### 22.5 W2-D — Destructive action safety
+
+In scope: `adminDeleteRecipe`, `adminDeleteMonsterLootEntry`, `adminDeleteJunkInfo` now, and W2-F when implemented. No bulk or wildcard delete.
+
+- UI: dialog shows a server-loaded preview of the exact target, requires the operator to type the exact target id, and requires a reason (trimmed, 5–300 characters).
+- Server: requires `reason` and `confirmId` equal to the target id; re-reads the target and rejects if it no longer exists. The reason is stored in the audit metadata.
+- Old clients without `reason` receive `reason_required` (HTTP 400). Deploy API and `admin.html` together; a brief window where deletes fail for an old page is acceptable for an Admin-only tool.
+
+### 22.6 W2-E — Read-only Audit Viewer
+
+- New read action (name fixed in the PR) requiring an Admin session. Filters: `event_type`, actor, `target_type` / `target_id`, date range. Cursor pagination on `(created_at, audit_id)`, default 25, maximum 50.
+- Output is re-sanitized server-side with the 22.3 denylist, so older rows cannot leak secrets. Viewing is itself audited with filter summary and result count only.
+- If filtering by `event_type` needs an index, it is added by a separate additive migration in `migrations/auto/`, only after measuring.
+- UI: one new tab. No edit or delete controls.
+
+### 22.7 W2-F — Delete Player Item (VERY HIGH)
+
+Item rows live in `items` (`item_id`, `player_id`, `character_id`, `slot_type`, `equipped`, `quantity`, `extra_json`, `updated_at`, …); provenance in `item_provenance` and `item_ownership_events`. The player-side sell/salvage handlers already use guarded `DELETE … WHERE item_id AND player_id AND character_id AND equipped = 0 AND extra_json = <observed>` inside `db.batch`; W2-F follows that pattern.
+
+**Flow (matches §21):** exact Player ID lookup → character picker → item inspector → pre-delete review → reason + typed confirmation → server re-validation → atomic delete.
+
+**API shape (names fixed in the PR):**
+1. `adminGetItemDetail(playerId, characterId, itemId)` — read-only. Returns the sanitized row, its `item_provenance` row, the latest ownership events, and a `deletable` verdict with `blockedReason`.
+2. `adminPreviewItemDelete(…, quantity)` — returns the snapshot and a `snapshotHash` (SHA-256 of the canonical row JSON including `updated_at` and `quantity`).
+3. `adminDeleteItem(playerId, characterId, itemId, quantity, reason, confirmText, snapshotHash, requestId)`.
+
+**Rules:**
+- Target is identified only by the exact `(player_id, character_id, item_id)` triple; never by name, never bulk, no generic SQL.
+- Blocked (V1): `equipped = 1` (`item_equipped`); a pending row for the item in `character_operation_receipts` (`operation_pending`); ownership not matching the triple; any state not stored in `items`. Mailbox and market escrow are excluded until separately contracted. Proposed default, to be verified against code in the implementation PR: block while the character has an active run (`character_run_state` row).
+- Stack handling: quantity `1 ≤ q ≤ observed quantity`. `q = quantity` deletes the row; `q < quantity` runs `UPDATE … SET quantity = quantity - q` guarded by the observed quantity. Non-stackable gear deletes the full row only.
+- Stale-state protection: the server recomputes the hash from the current row; mismatch → `item_state_changed` (HTTP 409), nothing written.
+- Atomicity: one `db.batch` whose statements share the same guard: `INSERT` audit row `… SELECT … WHERE EXISTS(guard)`, `INSERT` an `item_ownership_events` row (`admin_deleted`, to nobody) the same way, then the guarded `DELETE`/`UPDATE`. If the guard fails nothing is inserted, and the handler returns 409 when the item change affected 0 rows.
+- Idempotency without a new table: the audit row id is derived from `requestId` (`adm-del-<requestId>`), a primary key, so a replay cannot delete twice and returns `already_applied`.
+- Audit metadata: actor, target player/character/item, quantity requested/remaining, reason, outcome, full sanitized row snapshot, provenance row and recent ownership events.
+- Abuse limit (proposed): at most 20 `adminDeleteItem` successes per Admin per hour, counted from the audit table.
+- No restore tool in V1. The audit snapshot is the recovery source; a compensation procedure is designed separately and approved before enabling.
+
+**Release gate (all required before first production use):**
+1. Contract details above implemented and independently reviewed; open items below resolved in the PR.
+2. Tested on a throwaway D1 recreated from the real schema: success, stale hash, equipped, pending operation, wrong owner, partial stack, replay, injected audit failure.
+3. A D1 restore point (Time Travel bookmark or export) recorded immediately before enabling.
+4. Server-side kill switch: the feature ships **disabled** (key in `game_config`, absent = off) and is enabled only on Owner instruction.
+5. First production deletion is performed with the Owner present, on a test account.
+
+**Open items to resolve before the W2-F implementation PR:** confirm which storage states other than `items` can hold an item; confirm how derived stats react when an equipped item is blocked/unequipped; confirm `item_ownership_events.event_type` conventions; confirm the active-run default.
+
+### 22.8 Documentation upkeep
+
+Each slice PR updates this file (status line and the slice's section), `docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md` (Wave 2 entry) and `docs/PROJECT-INDEX.md` in the same PR.
