@@ -1,0 +1,15 @@
+{
+  "approval": "candidate-not-published",
+  "assets": {
+    "petAvatars": {
+      "sprout": "ui/pet-avatars/sprout.png",
+      "flamekit": "ui/pet-avatars/flamekit.png",
+      "sparkpup": "ui/pet-avatars/sparkpup.png",
+      "ember_fox": "ui/pet-avatars/ember_fox.png",
+      "moon_hare": "ui/pet-avatars/moon_hare.png",
+      "hell_wolf": "ui/pet-avatars/hell_wolf.png",
+      "inferno_drake": "ui/pet-avatars/inferno_drake.png",
+      "storm_phoenix": "ui/pet-avatars/storm_phoenix.png"
+    }
+  }
+}
