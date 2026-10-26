@@ -1,0 +1,250 @@
+[
+  {
+    "id": "sprout",
+    "width": 256,
+    "height": 256,
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 44251,
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      24,
+      24,
+      235,
+      234
+    ],
+    "padding": [
+      24,
+      24,
+      21,
+      22
+    ],
+    "sha256": "6e038754f2c6a057000caa0a271175e8f42951da90ddb2c516ae0628d30603a6",
+    "manifest_key": "petAvatars.sprout",
+    "r2_path": "ui/pet-avatars/sprout.png",
+    "technical": "PASS",
+    "visual": "PASS_LOCAL_PREVIEW",
+    "approval": "PENDING_LEAD_ARTWORK_REVIEW",
+    "live_rendering": "NOT_VERIFIED"
+  },
+  {
+    "id": "flamekit",
+    "width": 256,
+    "height": 256,
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 59509,
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      29,
+      30,
+      236,
+      227
+    ],
+    "padding": [
+      29,
+      30,
+      20,
+      29
+    ],
+    "sha256": "e934cfb5ef9e56c622d887d707d8d0ff741e5c0a5d9e63334b97e797413f33b0",
+    "manifest_key": "petAvatars.flamekit",
+    "r2_path": "ui/pet-avatars/flamekit.png",
+    "technical": "PASS",
+    "visual": "PASS_LOCAL_PREVIEW",
+    "approval": "PENDING_LEAD_ARTWORK_REVIEW",
+    "live_rendering": "NOT_VERIFIED"
+  },
+  {
+    "id": "sparkpup",
+    "width": 256,
+    "height": 256,
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 56176,
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      54,
+      25,
+      226,
+      232
+    ],
+    "padding": [
+      54,
+      25,
+      30,
+      24
+    ],
+    "sha256": "37e8b915586120fc39df34470f2925fd382a7939190b1b19ea4c0af587f09811",
+    "manifest_key": "petAvatars.sparkpup",
+    "r2_path": "ui/pet-avatars/sparkpup.png",
+    "technical": "PASS",
+    "visual": "PASS_LOCAL_PREVIEW",
+    "approval": "PENDING_LEAD_ARTWORK_REVIEW",
+    "live_rendering": "NOT_VERIFIED"
+  },
+  {
+    "id": "ember_fox",
+    "width": 256,
+    "height": 256,
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 58813,
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      54,
+      20,
+      217,
+      232
+    ],
+    "padding": [
+      54,
+      20,
+      39,
+      24
+    ],
+    "sha256": "d9c6ea69da8d92472fe09f8744280da890987a9fad6d4ea2f5cb88ada5e5f572",
+    "manifest_key": "petAvatars.ember_fox",
+    "r2_path": "ui/pet-avatars/ember_fox.png",
+    "technical": "PASS",
+    "visual": "PASS_LOCAL_PREVIEW",
+    "approval": "PENDING_LEAD_ARTWORK_REVIEW",
+    "live_rendering": "NOT_VERIFIED"
+  },
+  {
+    "id": "moon_hare",
+    "width": 256,
+    "height": 256,
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 50837,
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      42,
+      20,
+      206,
+      234
+    ],
+    "padding": [
+      42,
+      20,
+      50,
+      22
+    ],
+    "sha256": "4a8e0fb7dbf2b609ca1176f52ed5d8e5547a95ebc3b74808d79c181b8122f251",
+    "manifest_key": "petAvatars.moon_hare",
+    "r2_path": "ui/pet-avatars/moon_hare.png",
+    "technical": "PASS",
+    "visual": "PASS_LOCAL_PREVIEW",
+    "approval": "PENDING_LEAD_ARTWORK_REVIEW",
+    "live_rendering": "NOT_VERIFIED"
+  },
+  {
+    "id": "hell_wolf",
+    "width": 256,
+    "height": 256,
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 67723,
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      35,
+      22,
+      224,
+      232
+    ],
+    "padding": [
+      35,
+      22,
+      32,
+      24
+    ],
+    "sha256": "fc83107131776e612d1fc0326bd3b46e3a43822c189d0c858319924024af680d",
+    "manifest_key": "petAvatars.hell_wolf",
+    "r2_path": "ui/pet-avatars/hell_wolf.png",
+    "technical": "PASS",
+    "visual": "PASS_LOCAL_PREVIEW",
+    "approval": "PENDING_LEAD_ARTWORK_REVIEW",
+    "live_rendering": "NOT_VERIFIED"
+  },
+  {
+    "id": "inferno_drake",
+    "width": 256,
+    "height": 256,
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 64237,
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      42,
+      23,
+      229,
+      225
+    ],
+    "padding": [
+      42,
+      23,
+      27,
+      31
+    ],
+    "sha256": "93194cd60418d87ee9e32b8ca5e394fe4f78af78e330c73bdc664cc778c38cce",
+    "manifest_key": "petAvatars.inferno_drake",
+    "r2_path": "ui/pet-avatars/inferno_drake.png",
+    "technical": "PASS",
+    "visual": "PASS_LOCAL_PREVIEW",
+    "approval": "PENDING_LEAD_ARTWORK_REVIEW",
+    "live_rendering": "NOT_VERIFIED"
+  },
+  {
+    "id": "storm_phoenix",
+    "width": 256,
+    "height": 256,
+    "format": "PNG",
+    "mode": "RGBA",
+    "bytes": 72132,
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      25,
+      32,
+      229,
+      236
+    ],
+    "padding": [
+      25,
+      32,
+      27,
+      20
+    ],
+    "sha256": "d9bb3d988eb8d1de7bd72c4f390821a90d8ffa96502b0be608b3c437748dafde",
+    "manifest_key": "petAvatars.storm_phoenix",
+    "r2_path": "ui/pet-avatars/storm_phoenix.png",
+    "technical": "PASS",
+    "visual": "PASS_LOCAL_PREVIEW",
+    "approval": "PENDING_LEAD_ARTWORK_REVIEW",
+    "live_rendering": "NOT_VERIFIED"
+  }
+]
