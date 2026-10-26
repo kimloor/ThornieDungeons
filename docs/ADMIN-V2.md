@@ -543,3 +543,43 @@ QA:
 - Frontend Production deployment + live verification SUCCESS.
 
 Deferred Admin item deletion tooling remains deferred to a separately approved later Admin phase.
+
+---
+
+## 21. Wave 2 Expansion — Owner scope decisions and Admin Delete Item design (2026-10-26)
+
+**Status: PARTIALLY APPROVED SCOPE / DESIGN ONLY — NOT IMPLEMENTATION AUTHORIZATION FOR W2-F OR NEW TOOLS.**
+This section supersedes earlier *proposed* role separation for Wave 2, but does not remove existing Admin authentication, authorization checks, or server-side safety. Owner reviewed Claude's read-only audit of Ver 1.1.14 (Issue #144).
+
+### Approved Wave 2 work
+
+| ID | Decision | Scope and acceptance direction |
+| --- | --- | --- |
+| W2-A | APPROVED | Audit all existing Admin mutations (eight actions identified in the audit; revalidate against latest main). Actor/action/target/time/outcome and non-secret before/after change detail, consistent with actual atomic transaction boundaries. If audit persistence fails, mutation must not silently succeed without evidence. Define/redact exact diff/snapshot fields in the implementation contract. |
+| W2-B | NOT REQUIRED / REMOVED | Do not introduce new Owner/Admin/Viewer role tiers in Wave 2. Owner prefers accountability using action-level audit history. Maintain existing account-backed Admin login/session, server authorization, input validation and other preventive controls; audit is not a substitute for security. |
+| W2-C | APPROVED | Admin page security hardening: review data injection into HTML/DOM, use safe rendering/escaping, appropriate CSP and security headers, and safely retire obsolete legacy adminKey code without disrupting existing flows. |
+| W2-D | APPROVED | Destructive action safety: typed confirmation, required operator reason, pre-action target preview, server re-validation and audit; no bulk/wildcard deletion implied. |
+| W2-E | APPROVED | Read-only Admin Audit Viewer with actionable filters and sanitized records, without exposing passwords, session credentials or other secrets. |
+| W2-F | DESIGN REVIEW ONLY | Admin Delete Item concept below; no production mutation enabled by this decision. VERY HIGH risk, separate implementation approval and data-integrity release gate required. |
+| Additional Admin Tools | DEFERRED DESIGN | Owner and Project Lead will decide new tools in a separate design session; no implied authorization. |
+
+### W2-F conceptual screen / workflow (not final API/schema contract)
+
+1. **Player lookup:** search by exact Player ID / Login ID, display an explicit account match. Use existing read-only Player Viewer/search APIs when possible. Avoid fuzzy destructive target selection.
+2. **Character selection:** list characters belonging to the chosen player. Make selected character and its authoritative ID visible.
+3. **Item inspector and selection:** show server-authoritative item rows separated as relevant by Inventory / Equipped; use **exact unique item instance ID** (never just display name). Show item identity, location, quality/tier, Refine, Enchant, and available provenance/ownership history. Confirm which item categories and storage states current APIs support before final design.
+4. **Stackable item handling:** show stack ID and current quantity, let operator choose an explicit quantity or full stack *only if* item/stack semantics support it; validate bounds and ownership server-side.
+5. **Pre-delete review:** show player ID, character ID, exact item/stack ID, name, location, quantity, equipped/stat impact if applicable, reason and sanitized snapshot. Block unavailable, locked, transaction-pending or disputed ownership states; exclude Mailbox/Market escrow from V1 until explicitly contracted.
+6. **Confirmation:** require operator reason plus typed confirmation; confirmation is bound to an exact server-side target and checked again for stale state before action.
+7. **Execution safety (future):** authenticated Admin identity, server-side authoritative ownership and state checks, idempotency/duplicate prevention, transactional mutation and appropriate audit with sanitized before-state, and explicit success/failure feedback. No wildcard/bulk delete, generic SQL execution, or silent item restore.
+8. **Audit/tracing:** record actor, target player/character/item, action, quantity, reason, result and time; redact secret fields; design a recovery/compensation process separately before enabling irreversible data mutation.
+
+**UI layout proposal:** Admin Tools > Delete Player Item; Player Search panel > Character picker > searchable Item Inspector table > Selected Item detail panel > Reason and typed-confirmation review dialog. A read-only inspector is useful independently from delete capability.
+
+**Open design questions (not yet approved):** exact supported item storage locations, how equipped/stacked items affect derived state, provenance fields and retention, transactional API/DB implementation, handling pending transactions, backup/rollback strategy, and final permissions policy under the existing Admin auth model.
+
+### Sequence / guards
+
+- W2-A and W2-C may be developed separately after precise implementation contracts and file ownership are resolved; then W2-D and W2-E on the audited foundation.
+- HIGH-risk Worker/authoritative data changes require a feature branch and QA/release gates per `AGENTS.md`.
+- Do not implement W2-F or new Admin tools until Owner approves their detailed contracts. Do not introduce W2-B role tiers without a new Owner decision.
