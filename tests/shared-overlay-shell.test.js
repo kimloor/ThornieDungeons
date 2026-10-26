@@ -37,4 +37,11 @@ expectMatch(mail, /React\.createElement\(SharedOverlayShell/, "Mail shell migrat
 expectMatch(mail, /error:errorSlot/, "Mail shared error slot");
 expectMatch(mail, /loading:mails === null/, "Mail shared loading state");
 
-console.log("shared-overlay-shell: 16 assertions passed");
+const guildStart = components.indexOf("function GuildScreen(");
+const guildEnd = components.indexOf("\n// ---------- Phase 3: Raid Boss", guildStart);
+const guild = components.slice(guildStart, guildEnd);
+expectMatch(guild, /e\(SharedOverlayShell/, "Guild shell migration");
+expectMatch(guild, /error:errorSlot/, "Guild shared error slot");
+expectMatch(guild, /loading:myGuild === undefined/, "Guild shared loading state");
+
+console.log("shared-overlay-shell: 19 assertions passed");

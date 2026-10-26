@@ -2800,13 +2800,22 @@ function GuildScreen({
       e("div", { className: "md-card", style: { display: "flex", gap: 6 } }, footerBtn));
   };
 
-  return e("div", { className: "md-panel md-guild-page" },
+  const errorSlot = loadError && e(React.Fragment, null,
+    e("p", { className:"md-sub" }, loadError),
+    e("button", { className:"md-btn info small", onClick:loadMyGuild }, "ลองใหม่"));
+  return e(SharedOverlayShell, {
+    title:"🏰 Guild",
+    subtitle:myGuild?.name || "ชุมชนนักผจญภัย",
+    onBack,
+    onClose:onBack,
+    error:errorSlot,
+    loading:myGuild === undefined,
+    className:"md-guild-overlay",
+    bodyClassName:"md-panel md-guild-page",
+    footer:e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub })
+  },
     toast && e("div", { className: "md-toast" }, toast),
-    myGuild === undefined ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, "กำลังโหลด..."))
-      : loadError ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, loadError))
-        : myGuild ? memberView() : noGuildView(),
-    e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub }));
+    myGuild === undefined || loadError ? null : myGuild ? memberView() : noGuildView());
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative

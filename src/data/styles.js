@@ -1311,7 +1311,7 @@ body::after {
 .md-chat-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
 /* Guild V1 page shell — identical treatment to .md-chat-page/.md-friend-page above
    (itself mirroring .md-pet-page). */
-.md-guild-page { min-width: 0; min-height:640px; overflow-x:hidden; overflow-y:auto; }
+.md-guild-page { min-width:0; min-height:0; overflow-x:hidden; overflow-y:auto; }
 .md-guild-page > .md-hub-dock { flex:0 0 auto; min-height:var(--md-dock-height); margin-top:auto; }
 .md-guild-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
 .md-pet-card { padding: 8px 6px 10px; overflow: hidden; }
@@ -2301,7 +2301,7 @@ body::after {
   .md-pet-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-friend-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-chat-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
-  .md-guild-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-guild-page { min-height:0; height:auto; overflow-y:auto; }
   .md-pet-card { padding:12px 10px 14px; }
   .md-pet-layout { grid-template-columns:minmax(0,1fr) 116px; gap:10px; }
   .md-pet-roster-item { min-height:82px; grid-template-columns:36px minmax(0,1fr); padding:8px 6px; }
@@ -2444,7 +2444,7 @@ body::after {
   .md-pet-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-friend-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-chat-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
-  .md-guild-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-guild-page { min-height:0; height:auto; overflow-y:auto; }
   .md-pet-card { padding:14px 12px 16px; }
   .md-pet-layout { grid-template-columns:minmax(0,1fr) 132px; gap:14px; }
   .md-pet-roster-item { min-height:90px; grid-template-columns:42px minmax(0,1fr); padding:9px 7px; }
