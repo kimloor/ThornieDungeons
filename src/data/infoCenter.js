@@ -119,6 +119,14 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
+      version: "1.1.19", date: "2026-10-26", title: "ไอคอนศูนย์ข้อมูลผู้เล่น",
+      items: [
+        "เพิ่มไอคอนเฉพาะสำหรับประกาศ คู่มือ และเอกสารนโยบายทั้ง 6 หมวด",
+        "หากภาพโหลดไม่สำเร็จ ระบบจะแสดงสัญลักษณ์เดิมโดยไม่กระทบการนำทาง"
+      ]
+    },
+    history: [
+      {
       version: "1.1.18", date: "2026-10-26", title: "ประตูเวทสำหรับหน้ากำลังโหลด",
       items: [
         "เพิ่มประตูดันเจียนและรูนเวทให้หน้ากำลังโหลดทุกระบบ",
@@ -126,7 +134,6 @@ const INFO_CENTER = {
         "หากภาพโหลดไม่สำเร็จ ระบบจะใช้สัญลักษณ์เดิมและทำงานต่อได้ตามปกติ"
       ]
     },
-    history: [
       {
       version: "1.1.17", date: "2026-10-26", title: "ภาพประจำตัวสัตว์เลี้ยงครบทั้ง 8 ตัว",
       items: [

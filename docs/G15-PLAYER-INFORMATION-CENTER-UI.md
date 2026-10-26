@@ -4,6 +4,8 @@ Issue: #152
 
 Baseline: Ver 1.1.18 / `63b95d0e5025cfce5458f99b34341972cc3fda0d`
 
+Release target: Ver 1.1.19
+
 Risk: MEDIUM — player-visible artwork and later optional UI integration; no backend or gameplay authority
 
 Status: **OWNER APPROVED / R2 STAGED / RUNTIME INTEGRATED — PRODUCTION PENDING**

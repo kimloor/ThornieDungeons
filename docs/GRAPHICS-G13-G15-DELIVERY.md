@@ -90,7 +90,7 @@ DEV should retain CSS emblem until image decoding succeeds and on error; a missi
 image must never acquire loading ownership or block ready state. Budget applies to initial
 payload; do not preload unused animation frames. G14 production waits for G13 Graphics acceptance.
 
-## G15 candidate delivery — Issue #152 / Owner review gate
+## G15 delivery — Issue #152 / PR #153 / Ver 1.1.19 release gate
 
 Status: **OWNER APPROVED / R2 STAGED / RUNTIME INTEGRATED — PRODUCTION PENDING**. Baseline `main` is Ver 1.1.18 at
 `63b95d0e5025cfce5458f99b34341972cc3fda0d`. Risk is MEDIUM: new player-facing
