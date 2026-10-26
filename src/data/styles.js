@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.15";
+  content: "Ver 1.1.16";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -111,7 +111,7 @@ body::after {
 .md-root-dungeon.md-dungeon-modal-open { --md-dungeon-veil: .69; }
 /* Keep normal screens above the backdrop, but never rewrite overlay positioning. The inventory,
    blacksmith and daily-reward sheets rely on position:absolute to open over the current screen. */
-.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-daily-toast-overlay) { position: relative; z-index: 2; }
+.md-root-dungeon > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-shared-overlay):not(.md-daily-toast-overlay) { position: relative; z-index: 2; }
 @keyframes md-global-dungeon-breathe {
   0% { transform: scale(1.025) translate3d(0,0,0); filter: brightness(.92); }
   100% { transform: scale(1.055) translate3d(0,-.45%,0); filter: brightness(1.04); }
@@ -134,7 +134,7 @@ body::after {
   box-shadow:inset 0 0 55px rgba(14,55,92,.12);
 }
 .md-root-town.md-town-modal-open::after { background:rgba(3,8,24,.58); }
-.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-daily-toast-overlay) { position:relative; z-index:2; }
+.md-root-town > :not(style):not(.md-stars):not(.md-equip-overlay):not(.md-shared-overlay):not(.md-daily-toast-overlay) { position:relative; z-index:2; }
 @keyframes md-town-camera-breathe {
   0% { transform:scale(1.015) translate3d(0,0,0); filter:saturate(1.02) brightness(.98); }
   100% { transform:scale(1.04) translate3d(0,-.35%,0); filter:saturate(1.07) brightness(1.03); }

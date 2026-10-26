@@ -96,6 +96,9 @@ Implementation notes (Ver 1.1.15):
 - Existing loading ownership is preserved: first-load Mailbox/Guild still use Global Loading, action pending remains inline or under the existing Server Operation Manager, and the shell does not create a second operation manager.
 - Existing Server Operation Manager integrations remain unchanged (Inventory mutations through their guarded operations, Mailbox claim/delete, Guild donation). Crafting remains on its pre-existing direct action path because PR-A explicitly left Craft out; PR-D does not change API, request-id, economy or gameplay behavior.
 
+Hotfix note (Ver 1.1.16):
+- The shared overlay is excluded from the Dungeon/Town direct-child stacking selector, preserving its absolute overlay positioning instead of allowing Inventory or Crafting to flow below the active page.
+
 ## 6. Risks and mitigations
 
 | Risk | Mitigation |
