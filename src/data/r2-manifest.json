@@ -1,7 +1,7 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-10-26T06:23:35Z",
-  "count": 726,
+  "generatedAt": "2026-10-26T14:19:39Z",
+  "count": 746,
   "objects": [
     {
       "key": "audio/bgm/main_theme.mp3",
@@ -1556,9 +1556,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/PUBLICATION.json",
-      "etag": "2133b4ef61ba5ae709e125472d180d2b",
-      "last_modified": "2026-09-29T01:50:55.397Z",
-      "size": 219,
+      "etag": "edfaa5dd3f2c27dbb7871a642e4746fd",
+      "last_modified": "2026-10-26T13:43:43.452Z",
+      "size": 208,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -3327,9 +3327,9 @@
     },
     {
       "key": "manifest.json",
-      "etag": "031baf2560af11287a42ffc12d974626",
-      "last_modified": "2026-10-04T06:02:35.879Z",
-      "size": 59669,
+      "etag": "73b2fc8a83bd9402754b24d4f947d546",
+      "last_modified": "2026-10-26T13:43:47.040Z",
+      "size": 60652,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -6604,6 +6604,72 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/info-center/announcements.png",
+      "etag": "3afd35df1546f00364c66b179558d727",
+      "last_modified": "2026-10-26T13:43:50.420Z",
+      "size": 18033,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/info-center/fairplay.png",
+      "etag": "d05a5cda26e14f513b08f45b5d1dfb97",
+      "last_modified": "2026-10-26T13:43:53.821Z",
+      "size": 16478,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/info-center/guide.png",
+      "etag": "a0eac20beadc74ae8c1903e7bba6617b",
+      "last_modified": "2026-10-26T13:43:57.302Z",
+      "size": 16237,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/info-center/privacy.png",
+      "etag": "7e62819960fd8d6024a565db133cc919",
+      "last_modified": "2026-10-26T13:44:00.609Z",
+      "size": 16805,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/info-center/purchase.png",
+      "etag": "2a81d8f98dd4fea7df8ca038ba808ecc",
+      "last_modified": "2026-10-26T13:44:04.531Z",
+      "size": 19575,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/info-center/terms.png",
+      "etag": "df1dd153b349b1517059fd3503309ad3",
+      "last_modified": "2026-10-26T13:44:08.428Z",
+      "size": 14187,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/inventory/equipment_slot_frame.png",
       "etag": "3c6b0025a9d0861d35d6f2169a19c06a",
       "last_modified": "2026-09-16T07:33:16.382Z",
@@ -7000,12 +7066,166 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/loading/fullscreen/gate_closed.webp",
+      "etag": "95ea620218fcc889f524a1ef7edad181",
+      "last_modified": "2026-10-26T13:44:12.283Z",
+      "size": 221338,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/loading/fullscreen/gate_open.webp",
+      "etag": "e217e286108cac5602798e88c4f6e80c",
+      "last_modified": "2026-10-26T13:44:15.977Z",
+      "size": 174714,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/loading/fullscreen/gate_opening.webp",
+      "etag": "7ed75c3e785142ce6f9f3d05fcc6af26",
+      "last_modified": "2026-10-26T13:44:19.729Z",
+      "size": 175118,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/loading/gate_emblem.png",
+      "etag": "bc8afcb52b13db134db8cd14abd18038",
+      "last_modified": "2026-10-26T08:37:16.091Z",
+      "size": 65241,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/loading/gate_emblem_open.png",
+      "etag": "897492a7cfecc5a4047e214849489f46",
+      "last_modified": "2026-10-26T08:37:19.082Z",
+      "size": 67336,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/loading/gate_emblem_opening.png",
+      "etag": "fa6de0224a6ea6b496918043e0893dc9",
+      "last_modified": "2026-10-26T08:37:21.869Z",
+      "size": 65464,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/login-background.webp",
       "etag": "5bb8cab6f7aadb8548342c2bbc5a8020",
       "last_modified": "2026-09-08T07:20:19.630Z",
       "size": 197928,
       "http_metadata": {
         "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pet-avatars/ember_fox.png",
+      "etag": "fea6777062cd844dc9c1dd37ea183294",
+      "last_modified": "2026-10-26T06:31:36.663Z",
+      "size": 58813,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pet-avatars/flamekit.png",
+      "etag": "39c6fdc3bb603133097d3110bfae20dc",
+      "last_modified": "2026-10-26T06:31:40.365Z",
+      "size": 59509,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pet-avatars/hell_wolf.png",
+      "etag": "5669b6040f123352da109ef541798c58",
+      "last_modified": "2026-10-26T06:31:43.599Z",
+      "size": 67723,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pet-avatars/inferno_drake.png",
+      "etag": "c27ff4f2295796f95db30f09df6e045a",
+      "last_modified": "2026-10-26T06:31:46.830Z",
+      "size": 64237,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pet-avatars/moon_hare.png",
+      "etag": "3ccd0be1f3c76060792e26955d2169a9",
+      "last_modified": "2026-10-26T06:31:50.363Z",
+      "size": 50837,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pet-avatars/sparkpup.png",
+      "etag": "ad4142e4858426aa54ccb7a6cf30dbc0",
+      "last_modified": "2026-10-26T06:31:53.610Z",
+      "size": 56176,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pet-avatars/sprout.png",
+      "etag": "495c0a3a01c93397cb55f3caff203279",
+      "last_modified": "2026-10-26T06:31:56.823Z",
+      "size": 44251,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/pet-avatars/storm_phoenix.png",
+      "etag": "318a781f01240a3ac339fdbed5a192ea",
+      "last_modified": "2026-10-26T06:31:59.951Z",
+      "size": 72132,
+      "http_metadata": {
+        "contentType": "image/png"
       },
       "custom_metadata": {},
       "storage_class": "Standard"
