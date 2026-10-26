@@ -26,4 +26,8 @@ const inventory = components.slice(inventoryStart, inventoryEnd);
 expectMatch(inventory, /React\.createElement\(SharedOverlayShell/, "Inventory shell migration");
 if (/React\.createElement\(StatusBar/.test(inventory)) throw new Error("Inventory must not duplicate the Ver 1.1.14 currency bar");
 
-console.log("shared-overlay-shell: 12 assertions passed");
+const craftStart = components.indexOf("function CraftingOverlay(");
+const craft = components.slice(craftStart);
+expectMatch(craft, /React\.createElement\(SharedOverlayShell/, "Craft shell migration");
+
+console.log("shared-overlay-shell: 13 assertions passed");

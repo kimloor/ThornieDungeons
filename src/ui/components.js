@@ -7540,14 +7540,14 @@ function CraftingOverlay({
       .finally(() => setCraftingId(null));
   };
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
-    /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
-      /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "🛠️ ประดิษฐ์ไอเทม"),
-        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ประดิษฐ์ Mythic Set และ Boss Weapon ตาม Tier ของชั้นสูงสุด ", floor || 1)
-      ),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
-    ),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"🛠️ ประดิษฐ์ไอเทม",
+    subtitle:`Mythic Set และ Boss Weapon · Tier ชั้น ${floor || 1}`,
+    onBack:onClose,
+    onClose,
+    className:"md-crafting-overlay",
+    bodyClassName:"md-equip-sheet"
+  },
     craftPresentation && /*#__PURE__*/React.createElement(PhaserForgePresentation, { event: craftPresentation }),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", formatNumber(gold)),
@@ -7591,5 +7591,5 @@ function CraftingOverlay({
     }),
     msg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, textAlign: "center", color: "var(--ink)" } }, msg),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านประดิษฐ์")
-  ));
+  );
 }
