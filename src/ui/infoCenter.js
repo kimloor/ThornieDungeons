@@ -9,6 +9,27 @@ function infoHasNew() {
   return infoSeenVersion() !== infoLatestVersion();
 }
 
+const INFO_CENTER_ART_IDS = new Set(["announcements", "guide", "terms", "privacy", "fairplay", "purchase"]);
+
+function InfoCenterSectionIcon({ section }) {
+  const e = React.createElement;
+  const src = INFO_CENTER_ART_IDS.has(section?.id) ? infoCenterUiUrl(section.id) : "";
+  const [failedSrc, setFailedSrc] = useState("");
+  if (!src || failedSrc === src) {
+    return e("span", { className: "md-info-card-icon is-fallback", "aria-hidden": "true" }, section?.icon || "ℹ️");
+  }
+  return e("span", { className: "md-info-card-icon", "aria-hidden": "true" },
+    e("img", {
+      src,
+      alt: "",
+      width: 128,
+      height: 128,
+      decoding: "async",
+      draggable: false,
+      onError: () => setFailedSrc(src)
+    }));
+}
+
 function InfoAnnouncementEntry({ entry, latest }) {
   const e = React.createElement;
   return e("article", { className: "md-info-entry" + (latest ? " is-latest" : "") },
@@ -113,7 +134,7 @@ function InfoCenterScreen({ initialRoute, onClose }) {
         e("h3", { className: "md-info-group-title" }, group.title),
         INFO_CENTER.sections.filter(item => item.group === group.id).map(item =>
           e("button", { key: item.id, className: "md-info-card", onClick: () => { setTopicId(""); setSectionId(item.id); } },
-            e("span", { className: "md-info-card-icon", "aria-hidden": "true" }, item.icon),
+            e(InfoCenterSectionIcon, { section: item }),
             e("span", { className: "md-info-card-copy" },
               e("strong", null, item.title),
               e("small", null, item.subtitle)),

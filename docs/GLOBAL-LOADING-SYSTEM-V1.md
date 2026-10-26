@@ -135,6 +135,16 @@ overlay uses the closed frame only after all frames decode; on final owner relea
 delays dismissal. Reduced Motion skips the transition. R2 hash verification, frontend deployment,
 live manifest resolution and 3/3 256×256 image decode passed on 2026-10-26.
 
+G14 fullscreen upgrade (Issue #152 / PR #153, Ver 1.1.19 release gate): Owner approved the
+1536×1024 Closed, Opening and Fully Open scene sequence. Optimized WebP derivatives are staged
+under `ui/loading/fullscreen/` and mapped by three additive `loadingUi.fullscreenGate*` keys.
+The artwork fills the viewport with a centered cover crop; loading text, real progress, retry and
+safe-area behavior remain DOM-owned. On successful completion the overlay holds for a 900 ms
+non-looping sequence and reveals the game only afterward. Reduced Motion shows the Open frame
+without animation for a 120 ms handoff. CSS ring/rune presentation is failure-only. The loading
+manager, token ownership, Phaser readiness and gameplay lifecycle remain unchanged. R2 publication,
+deployment and live verification are pending the merge/release gate.
+
 PR 1 (#125, merged): manager `src/state/globalLoading.js`, overlay `src/ui/GlobalLoadingOverlay.js`, single mount in `tail.html`, Character Select -> game (`enterCharacterSlot`).
 
 PR 2 (`feat/global-loading-v2`): remaining targets, Owner decision 2026-10-20 (Login keeps its own `authBusy` + departing transition and is intentionally NOT wired):

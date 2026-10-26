@@ -31,6 +31,12 @@ function loadingUiUrl(key) {
   return optionalAsset(`loadingUi.${key}`);
 }
 
+// G15 section art is optional presentation. Information Center keeps its
+// existing emoji when a key is absent or the decoded image fails.
+function infoCenterUiUrl(key) {
+  return optionalAsset(`infoCenterUi.${key}`);
+}
+
 // Portraits use catalog IDs; the sprout001 alias belongs only to battle sprites.
 function petAvatarUrl(defId) {
   if (typeof defId !== "string" || !/^[a-z][a-z0-9_]*$/.test(defId)) return "";

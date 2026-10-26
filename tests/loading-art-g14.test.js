@@ -9,8 +9,12 @@ const read = file => fs.readFileSync(path.join(root, file), "utf8");
 const manifest = JSON.parse(read("r2-upload/manifest.json"));
 const qa = JSON.parse(read("docs/graphics/g14/QA.json"));
 
-test("G14 loading frame pack matches the approved manifest, hashes and PNG budget", () => {
-  assert.deepEqual(manifest.assets.loadingUi, {
+test("G14 loading emblem frame pack remains compatible and hash-exact", () => {
+  assert.deepEqual({
+    gateEmblem: manifest.assets.loadingUi.gateEmblem,
+    gateEmblemOpening: manifest.assets.loadingUi.gateEmblemOpening,
+    gateEmblemOpen: manifest.assets.loadingUi.gateEmblemOpen
+  }, {
     gateEmblem: "ui/loading/gate_emblem.png",
     gateEmblemOpening: "ui/loading/gate_emblem_opening.png",
     gateEmblemOpen: "ui/loading/gate_emblem_open.png"
@@ -30,19 +34,40 @@ test("G14 loading frame pack matches the approved manifest, hashes and PNG budge
   }
 });
 
-test("G14 presentation keeps the CSS fallback and never acquires loading ownership", () => {
+test("G14 fullscreen presentation uses CSS only as a failed-asset fallback and never owns loading", () => {
   const overlay = read("src/ui/GlobalLoadingOverlay.js");
-  assert.match(overlay, /loadingUiUrl\("gateEmblem"\)/);
-  assert.match(overlay, /loadingUiUrl\("gateEmblemOpening"\)/);
-  assert.match(overlay, /loadingUiUrl\("gateEmblemOpen"\)/);
+  assert.match(overlay, /loadingUiUrl\("fullscreenGateClosed"\)/);
+  assert.match(overlay, /loadingUiUrl\("fullscreenGateOpening"\)/);
+  assert.match(overlay, /loadingUiUrl\("fullscreenGateOpen"\)/);
   assert.match(overlay, /hasArtSources && !artFailed && loadedFrames === 7/);
   assert.match(overlay, /onError: \(\) => setArtFailed\(true\)/);
-  assert.match(overlay, /if \(reduced \|\| !artReady\) return undefined/);
+  assert.match(overlay, /setExitMode\(reduced \? "reduced" : "motion"\)/);
   assert.match(overlay, /prefers-reduced-motion: reduce/);
-  assert.match(overlay, /setTimeout\(\(\) => setHoldExit\(false\), 360\)/);
+  assert.match(overlay, /reduced \? 120 : 900/);
+  assert.match(overlay, /\(!hasArtSources \|\| artFailed\) \?/);
+  assert.match(overlay, /object-fit: cover/);
   const component = overlay.slice(overlay.indexOf("function GlobalLoadingOverlay"));
   assert.doesNotMatch(component, /GLOBAL_LOADING\.(begin|run|releaseKey)/);
   assert.match(overlay, /className: "gl-rune"/);
+});
+
+test("G14 fullscreen production frames are 1536x1024 WebP with approved hashes", () => {
+  const expected = {
+    fullscreenGateClosed: ["ui/loading/fullscreen/gate_closed.webp", 221338, "42d88171768c2dae3f955c02ca578faa11df7c32a32964e4c59bd4fa7f18ca8d"],
+    fullscreenGateOpening: ["ui/loading/fullscreen/gate_opening.webp", 175118, "0597465e1e1b858281366bf09e05fba3d947cc3d424fd6f657c21d070cab8f10"],
+    fullscreenGateOpen: ["ui/loading/fullscreen/gate_open.webp", 174714, "f7a52b4ce9b375251fe3b323933e02e343896d76120fd5782ad094c93eac595f"]
+  };
+  for (const [key, [assetPath, bytes, hash]] of Object.entries(expected)) {
+    assert.equal(manifest.assets.loadingUi[key], assetPath);
+    const buffer = fs.readFileSync(path.join(root, "r2-upload", assetPath));
+    assert.equal(buffer.subarray(0, 4).toString("ascii"), "RIFF");
+    assert.equal(buffer.subarray(8, 12).toString("ascii"), "WEBP");
+    assert.equal(buffer.subarray(12, 16).toString("ascii"), "VP8 ");
+    assert.equal(buffer.readUInt16LE(26) & 0x3fff, 1536);
+    assert.equal(buffer.readUInt16LE(28) & 0x3fff, 1024);
+    assert.equal(buffer.length, bytes);
+    assert.equal(crypto.createHash("sha256").update(buffer).digest("hex"), hash);
+  }
 });
 
 test("G14 manifest resolver is optional and introduces no new loader", () => {

@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.18";
+  content: "Ver 1.1.19";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -929,7 +929,9 @@ body::after {
 .md-info-group-title { margin:0 0 6px; font-size:12px; letter-spacing:.04em; color:var(--gold,#FFD166); }
 .md-info-card { display:flex; align-items:center; gap:10px; width:100%; min-height:56px; margin:0 0 8px; padding:10px 12px; text-align:left; color:inherit; font:inherit; cursor:pointer; border:1px solid rgba(255,209,102,.28); border-radius:12px; background:rgba(18,12,34,.82); }
 .md-info-card:active { background:rgba(139,106,232,.28); }
-.md-info-card-icon { flex:0 0 auto; font-size:24px; line-height:1; }
+.md-info-card-icon { flex:0 0 32px; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; font-size:24px; line-height:1; }
+.md-info-card-icon img { display:block; width:32px; height:32px; object-fit:contain; }
+.md-info-card-icon.is-fallback { font-size:24px; }
 .md-info-card-copy { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
 .md-info-card-copy strong { font-size:14px; }
 .md-info-card-copy small { font-size:11px; color:var(--ink-soft,#B9AEDD); overflow-wrap:anywhere; }

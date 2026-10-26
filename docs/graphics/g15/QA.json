@@ -1,0 +1,81 @@
+{
+  "task": "G15 Player Information Center UI Pack",
+  "issue": 152,
+  "baseline": "63b95d0e5025cfce5458f99b34341972cc3fda0d",
+  "status": "owner-approved-runtime-integrated-pending-production",
+  "canvas": { "width": 128, "height": 128 },
+  "format": "PNG RGBA",
+  "target_bytes": 60000,
+  "hard_limit_bytes": 200000,
+  "minimum_safe_padding_px": 10,
+  "preview_sizes_css_px": [24, 32, 40],
+  "checks": {
+    "decode": "PASS 6/6",
+    "rgba_alpha": "PASS 6/6",
+    "safe_padding": "PASS 6/6",
+    "target_budget": "PASS 6/6",
+    "duplicate_sha256": "PASS — none",
+    "dark_light_small_size_preview": "PASS 6/6",
+    "owner_approval": "PASS",
+    "r2_staged": true,
+    "r2_published": false,
+    "runtime_integrated": true,
+    "production_verified": false
+  },
+  "assets": [
+    {
+      "filename": "announcements.png",
+      "manifest_key": "infoCenterUi.announcements",
+      "proposed_r2_path": "ui/info-center/announcements.png",
+      "bytes": 18033,
+      "alpha_bounds": { "x": 12, "y": 12, "width": 104, "height": 103 },
+      "padding": { "left": 12, "top": 12, "right": 12, "bottom": 13 },
+      "sha256": "caa0f600a494c492326466ae61e1d600b023a23f1fc0b8a06be689ff7619017c"
+    },
+    {
+      "filename": "guide.png",
+      "manifest_key": "infoCenterUi.guide",
+      "proposed_r2_path": "ui/info-center/guide.png",
+      "bytes": 16237,
+      "alpha_bounds": { "x": 12, "y": 12, "width": 104, "height": 104 },
+      "padding": { "left": 12, "top": 12, "right": 12, "bottom": 12 },
+      "sha256": "1f29d136b1a9b7e05df01075e1f196d9c96a478e2287c2ab775fb795a64587e0"
+    },
+    {
+      "filename": "terms.png",
+      "manifest_key": "infoCenterUi.terms",
+      "proposed_r2_path": "ui/info-center/terms.png",
+      "bytes": 14187,
+      "alpha_bounds": { "x": 12, "y": 14, "width": 104, "height": 99 },
+      "padding": { "left": 12, "top": 14, "right": 12, "bottom": 15 },
+      "sha256": "1857bbaf0b28bddef785d69948986963171875e86a21c5568c426b9a43ccfc1e"
+    },
+    {
+      "filename": "privacy.png",
+      "manifest_key": "infoCenterUi.privacy",
+      "proposed_r2_path": "ui/info-center/privacy.png",
+      "bytes": 16805,
+      "alpha_bounds": { "x": 12, "y": 13, "width": 104, "height": 102 },
+      "padding": { "left": 12, "top": 13, "right": 12, "bottom": 13 },
+      "sha256": "a1a1fc4addb7617a890cabbcbd4346cce9c09965590b7e256df062ae4a527988"
+    },
+    {
+      "filename": "fairplay.png",
+      "manifest_key": "infoCenterUi.fairplay",
+      "proposed_r2_path": "ui/info-center/fairplay.png",
+      "bytes": 16478,
+      "alpha_bounds": { "x": 12, "y": 12, "width": 104, "height": 104 },
+      "padding": { "left": 12, "top": 12, "right": 12, "bottom": 12 },
+      "sha256": "626b344ce7682dfa80b1f98f0baa3217e4d9b744c5f1fb21a81617a16dce3136"
+    },
+    {
+      "filename": "purchase.png",
+      "manifest_key": "infoCenterUi.purchase",
+      "proposed_r2_path": "ui/info-center/purchase.png",
+      "bytes": 19575,
+      "alpha_bounds": { "x": 13, "y": 12, "width": 102, "height": 104 },
+      "padding": { "left": 13, "top": 12, "right": 13, "bottom": 12 },
+      "sha256": "80580d92b6f29661b452a941994f0cde81ff936753fb9f10b9592694ba9c0043"
+    }
+  ]
+}

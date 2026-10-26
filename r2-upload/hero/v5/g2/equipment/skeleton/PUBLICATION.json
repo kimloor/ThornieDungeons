@@ -1,6 +1,6 @@
 {
   "approval": "user-approved revision-r2 eight-frame sheets",
-  "itemBinding": "pending-no-items-created",
-  "runtimeIntegrated": false,
+  "itemBinding": "setId:skeleton",
+  "runtimeIntegrated": true,
   "pipeline": "upload-r2-assets.yml verifies every uploaded object by SHA256"
 }
