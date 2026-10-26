@@ -30,4 +30,11 @@ const craftStart = components.indexOf("function CraftingOverlay(");
 const craft = components.slice(craftStart);
 expectMatch(craft, /React\.createElement\(SharedOverlayShell/, "Craft shell migration");
 
-console.log("shared-overlay-shell: 13 assertions passed");
+const mailStart = components.indexOf("function MailboxScreen(");
+const mailEnd = components.indexOf("\nfunction floorEventPreview", mailStart);
+const mail = components.slice(mailStart, mailEnd);
+expectMatch(mail, /React\.createElement\(SharedOverlayShell/, "Mail shell migration");
+expectMatch(mail, /error:errorSlot/, "Mail shared error slot");
+expectMatch(mail, /loading:mails === null/, "Mail shared loading state");
+
+console.log("shared-overlay-shell: 16 assertions passed");

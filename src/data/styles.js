@@ -2004,6 +2004,9 @@ body::after {
 .md-shared-overlay-footer { flex:0 0 auto; padding:6px max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); background:linear-gradient(180deg,rgba(9,13,35,.86),rgba(5,8,24,.98)); }
 .md-shared-overlay-footer > .md-hub-dock { margin:0; }
 .md-shared-overlay-body.md-equip-sheet { width:100%; max-height:none; border:0; border-radius:0; box-shadow:none; }
+.md-shared-overlay-body.md-panel { z-index:auto; border-top:0; }
+.md-mail-page { gap:10px; }
+.md-mail-claim-all { flex:0 0 auto; }
 @media (min-width:700px) {
   .md-shared-overlay { padding:18px max(18px,var(--safe-right)) max(18px,var(--safe-bottom)) max(18px,var(--safe-left)); align-items:center; justify-content:center; }
   .md-shared-overlay-panel { width:min(100%,760px); max-height:min(92dvh,920px); border:1.5px solid var(--gold-deep); border-radius:24px; box-shadow:0 22px 70px rgba(0,0,0,.56); }

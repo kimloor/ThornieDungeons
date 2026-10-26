@@ -4813,28 +4813,33 @@ function MailboxScreen({
     }).catch(() => { setBusy(false); setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
-  if (!mails) {
-    return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "กำลังโหลด..."));
-  }
-  const unclaimed = mails.filter(m => !m.claimed);
-  const claimedMails = mails.filter(m => m.claimed);
+  const visibleMails = mails || [];
+  const unclaimed = visibleMails.filter(m => !m.claimed);
+  const claimedMails = visibleMails.filter(m => m.claimed);
   const selectedCount = Object.values(selected).filter(Boolean).length;
+  const errorSlot = mailError && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, mailError),
+    /*#__PURE__*/React.createElement("button", { className: "md-btn info small", disabled: busy, onClick: load }, "ลองใหม่"));
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "📬 กล่องจดหมาย"),
-      unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
-    mailError && /*#__PURE__*/React.createElement("div", { className: "md-card md-mail-error", role: "alert" },
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, mailError),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn info small", disabled: busy, onClick: load }, "ลองใหม่")),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"📬 กล่องจดหมาย",
+    subtitle:mails ? `${unclaimed.length} ฉบับรอรับรางวัล` : "กำลังโหลด",
+    onBack,
+    onClose:onBack,
+    error:errorSlot,
+    loading:mails === null,
+    loadingLabel:mailboxLoadedOnceRef.current ? "กำลังอัปเดตกล่องจดหมาย…" : "",
+    className:"md-mail-overlay",
+    bodyClassName:"md-panel md-mail-page"
+  },
+    unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary wide small md-mail-claim-all", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด"),
     claimedMails.length > 0 && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, selectedCount > 0 ? `เลือกแล้ว ${selectedCount} ฉบับ` : "จดหมายที่รับแล้ว"),
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6 } },
         selectedCount > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteSelected }, "🗑️ ลบที่เลือก"),
         /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteAllClaimed }, "🗑️ ลบที่รับแล้วทั้งหมด"))),
-    mails.length === 0 && !mailError && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
-    mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
+    visibleMails.length === 0 && mails !== null && !mailError && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
+    visibleMails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
       m.claimed && /*#__PURE__*/React.createElement("input", {
         type: "checkbox",
         checked: !!selected[m.mailId],
@@ -4853,8 +4858,7 @@ function MailboxScreen({
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 4 } },
           m.claimed
             ? /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: () => handleDeleteOne(m.mailId) }, "🗑️ ลบ")
-            : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))))),
-    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+            : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))))));
 }
 function floorEventPreview(monsters) {
   const modifierEvents = new Map();
