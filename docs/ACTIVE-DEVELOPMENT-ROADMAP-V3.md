@@ -216,10 +216,27 @@ Content rules:
 
 Graphics dependency: **G15 Player Information Center UI Pack** provides the shared visual identity/icons/status presentation. Cards, tabs/accordion, typography, scrolling and responsive layout remain reusable runtime UI rather than image-baked layouts.
 
-### WAVE 2 — Admin V2 Expansion
-**Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
+### Wave 1.5 / Ver 1.1.14 acceptance follow-up (2026-10-26)
 
-Expand Admin V2 as the operations/audit foundation needed before the next economy-heavy systems. Detailed permissions, mutation tools and destructive-operation contracts will be approved separately. Admin surface hardening (escaping/rendering review of `admin.html`) is included in this Wave. Admin Delete Item remains a candidate for this Wave; do not implement it from this roadmap heading alone.
+**Wave 1.5 status: COMPLETE** (Player Information Center PR A+B+D and Guide PR C previously implemented; no new gameplay authority). The release review for **Ver 1.1.14**, PR #143, was completed in read-only audit Issue #144: baseline `d96cb5c`; Claude reports 71-module deterministic build, full Node regression **804/804 PASS**, and successful PR checks, Frontend deploy, Battle Core parity and workflow-based Production frontend marker check. This is evidence from the audit report, not an independent rerun by Project Lead.
+
+**Mobile/iOS visual acceptance: PASS — Owner verified directly on real device** (reported 2026-10-26). This closes the previously UNKNOWN manual visual QA item for Ver 1.1.14. No separate device test log or screenshot attached here.
+
+**Later main baseline:** Ver 1.1.15 / Client Systems PR-D merged after that review; the above 804/804 count applies to Ver 1.1.14 and must not be misreported as the Ver 1.1.15 test result.
+
+### WAVE 2 — Admin V2 Expansion
+**Status: OWNER APPROVED W2-A / W2-C / W2-D / W2-E SCOPE; W2-F DESIGN ONLY; ADDITIONAL TOOLS PENDING DESIGN (2026-10-26)**
+**Contract/design record:** `docs/ADMIN-V2.md` section 21; Claude read-only audit Issue #144.
+
+- **W2-A — mutation audit logging (approved):** cover all current Admin data mutations, with actor, action, target, sanitized change detail and reliable persistence. Revalidate the eight unaudited mutation actions reported in Issue #144 against the latest code.
+- **W2-B — new role tiers (removed by Owner):** do not implement Owner/Admin/Viewer split; preserve existing Admin authentication and all preventive server checks. Action audit supports traceability but does not replace authorization.
+- **W2-C — Admin security hardening (approved):** review safe rendering/escaping, CSP/security headers and obsolete legacy Admin authentication code.
+- **W2-D — destructive action safety (approved):** typed confirmation, reason, target preview, server validation, audit.
+- **W2-E — read-only Audit Viewer (approved):** filterable history with sanitized records.
+- **W2-F — Delete Player Item (design only, VERY HIGH):** proposed Player ID lookup → character picker → exact item instance/stack selection and inspector → amount where applicable → review/equipped impact → typed confirmation + reason → atomic server validation/deletion and audit. No wildcard/bulk delete, Mailbox or escrow mutation in V1 without another contract; separate Owner approval required before implementation.
+- **Other Admin Tools:** design together with Owner later; no implementation scope approved yet.
+
+Implementation follows risk routing in `AGENTS.md`; API/DB/player data changes require appropriate branches, QA, deployment and live verification. Do not infer approval for economy mutations, destructive tooling or schema changes from this roadmap.
 
 ### WAVE 3 — Blacksmith + Crafting Redesign
 **Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
