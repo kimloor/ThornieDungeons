@@ -28,7 +28,7 @@
     "technical": "PASS",
     "visual": "PASS_LOCAL_PREVIEW",
     "approval": "OWNER_APPROVED_2026-10-26",
-    "live_rendering": "PENDING_DEPLOYMENT"
+    "live_rendering": "PASS_PRODUCTION_256x256_2026-10-26"
   },
   {
     "id": "flamekit",
@@ -59,7 +59,7 @@
     "technical": "PASS",
     "visual": "PASS_LOCAL_PREVIEW",
     "approval": "OWNER_APPROVED_2026-10-26",
-    "live_rendering": "PENDING_DEPLOYMENT"
+    "live_rendering": "PASS_PRODUCTION_256x256_2026-10-26"
   },
   {
     "id": "sparkpup",
@@ -90,7 +90,7 @@
     "technical": "PASS",
     "visual": "PASS_LOCAL_PREVIEW",
     "approval": "OWNER_APPROVED_2026-10-26",
-    "live_rendering": "PENDING_DEPLOYMENT"
+    "live_rendering": "PASS_PRODUCTION_256x256_2026-10-26"
   },
   {
     "id": "ember_fox",
@@ -121,7 +121,7 @@
     "technical": "PASS",
     "visual": "PASS_LOCAL_PREVIEW",
     "approval": "OWNER_APPROVED_2026-10-26",
-    "live_rendering": "PENDING_DEPLOYMENT"
+    "live_rendering": "PASS_PRODUCTION_256x256_2026-10-26"
   },
   {
     "id": "moon_hare",
@@ -152,7 +152,7 @@
     "technical": "PASS",
     "visual": "PASS_LOCAL_PREVIEW",
     "approval": "OWNER_APPROVED_2026-10-26",
-    "live_rendering": "PENDING_DEPLOYMENT"
+    "live_rendering": "PASS_PRODUCTION_256x256_2026-10-26"
   },
   {
     "id": "hell_wolf",
@@ -183,7 +183,7 @@
     "technical": "PASS",
     "visual": "PASS_LOCAL_PREVIEW",
     "approval": "OWNER_APPROVED_2026-10-26",
-    "live_rendering": "PENDING_DEPLOYMENT"
+    "live_rendering": "PASS_PRODUCTION_256x256_2026-10-26"
   },
   {
     "id": "inferno_drake",
@@ -214,7 +214,7 @@
     "technical": "PASS",
     "visual": "PASS_LOCAL_PREVIEW",
     "approval": "OWNER_APPROVED_2026-10-26",
-    "live_rendering": "PENDING_DEPLOYMENT"
+    "live_rendering": "PASS_PRODUCTION_256x256_2026-10-26"
   },
   {
     "id": "storm_phoenix",
@@ -245,6 +245,6 @@
     "technical": "PASS",
     "visual": "PASS_LOCAL_PREVIEW",
     "approval": "OWNER_APPROVED_2026-10-26",
-    "live_rendering": "PENDING_DEPLOYMENT"
+    "live_rendering": "PASS_PRODUCTION_256x256_2026-10-26"
   }
 ]

@@ -1,6 +1,6 @@
 # G13 Pet Avatar integration — Ver 1.1.17
 
-Status: **IMPLEMENTED / LOCAL QA PASS — release verification pending**.
+Status: **DONE / PRODUCTION VERIFIED — 8/8 portraits published and integrated**.
 Issue #146; PR #148. Risk MEDIUM: assets and client presentation only.
 Owner approved the eight PNGs from `6f69d1690b743837dbb381934c23f4af99788eb3`
 and explicitly authorized Graphics to stage, integrate, test, merge/deploy and verify.
@@ -82,11 +82,42 @@ No authenticated Production gameplay/selection test is claimed by this local run
 
 ## Release gates
 
-Pending until recorded below: merge approved PR, Upload R2 assets workflow download/hash
-verification for the eight files and manifest, frontend deploy, live avatar decode and
-manifest verification, and merged-branch cleanup.
-Do not mark the Graphics/runtime implementation as Production-verified solely from local tests.
-G14/G15 remain specification-only, queued in order; no additional artwork was published.
+Merge, upload/hash verification, frontend deployment, live asset checks and branch
+cleanup are complete; exact evidence follows. G14/G15 remain specification-only.
 
-Exact next action: publish integration to the existing approved PR #148, merge after
-checks, verify R2 upload and frontend workflows, and record actual Production evidence.
+## Production evidence — 2026-10-26 (Asia/Bangkok)
+
+- PR #148 merged to `main`: `3ce83a0d6077e75a514e5cd989399e0c7f6588a7` (Ver 1.1.17).
+  Integration head: `9e4c0b69134ac5bf1077e791200881d1d2fb60ec`.
+- Upload R2 assets run **40280305831**, job **121431917817**: SUCCESS. Logs
+  explicitly record `Verified manifest.json` and all eight `ui/pet-avatars/*.png`,
+  then `Uploaded and verified 9 object(s).` The workflow downloaded each object
+  and compared local/remote SHA-256. All staged bytes match approved QA hashes.
+- Deploy ThornieDungeons Frontend run **40280305689**, job **121431917332**: SUCCESS,
+  including Inventory regression, build, generated output and Production verification.
+- Live Cloud Browser: `/assets/manifest.json` parses with schema thornie-assets-v2
+  and all 8 exact `assets.petAvatars` entries; all eight Worker-facing image URLs
+  return real decoded images, `complete=true`, natural dimensions 256×256.
+- Production root visibly reaches Login and both meta/badge show **1.1.17**.
+  No game runtime error observed in the anonymous login path (browser-extension
+  metadata error is unrelated and excluded). No authenticated Production Pet
+  selection/gameplay test was performed; those consumer behaviors were exercised
+  in the isolated Chromium fixture described above.
+- Cleanup merged branches run **40280356969**, job **121432070333**: SUCCESS.
+  Remote branch listing confirms `graphics/146-pet-avatar-review` is gone; only
+  `main` and permanent `ops/branch-cleanup` remain.
+
+The release checklist is satisfied by this evidence; this record
+is the current acceptance state. Counts: 8 approved / 8 staged / 8 uploaded /
+8 live decoded; 0 missing, 0 regenerated, 0 replaced production paths.
+G14 is the next Graphics task using the prepared one-emblem loading specification;
+G15 remains queued after G14. No G14/G15 artwork was produced in this integration.
+
+Copy-ready Project Lead handoff:
+> #146 DONE — PR #148 merged, Ver 1.1.17, release main 3ce83a0. G13 8/8
+> approved portraits integrated through one resolver/component; no gameplay/API/D1
+> changes. Full tests 811/811; browser fixture 360/390/1280 + failure injection PASS.
+> R2 upload/hash verification 40280305831 and frontend deploy 40280305689 PASS;
+> Production manifest + all 8 image decodes + Login version verified. Branch cleaned.
+> Authenticated Production Pet selection not tested. Next: start G14 from prepared
+> specification; G15 remains queued.
