@@ -90,7 +90,11 @@ DEV should retain CSS emblem until image decoding succeeds and on error; a missi
 image must never acquire loading ownership or block ready state. Budget applies to initial
 payload; do not preload unused animation frames. G14 production waits for G13 Graphics acceptance.
 
-## G15 proposed delivery specification (planning only)
+## G15 candidate delivery — Issue #152 / Owner review gate
+
+Status: **ARTWORK CANDIDATE / OWNER REVIEW**. Baseline `main` is Ver 1.1.18 at
+`63b95d0e5025cfce5458f99b34341972cc3fda0d`. Risk is MEDIUM: new player-facing
+artwork and later optional runtime integration, with no Worker/API/D1/gameplay/data authority change.
 
 Current Info Center uses data-driven emoji for six live sections, runtime NEW text,
 and completed/in_progress/planned roadmap groups. No dedicated infoCenterUi family found.
@@ -119,6 +123,29 @@ existing check/clock/dot primitives with text; do not bake text or depend on col
 No background/card/tab/button/accordion/table artwork required. No extra icons for reserved
 Account/Support/Credits scope. Runtime typography, legal drafts, guide values and layout remain DEV/content ownership.
 Production follows G14 acceptance and Lead confirmation of final icon reuse decisions.
+
+Six candidate icons were generated with the built-in imagegen workflow, normalized to
+128×128 RGBA with 12 px or greater transparent padding, and kept under
+`docs/graphics/g15/` outside the R2 auto-upload path. `PREVIEW.jpg` shows every icon on
+dark and light backgrounds at the actual 24/32/40 px target sizes. Exact dimensions,
+alpha bounds, byte sizes and SHA-256 hashes are recorded in `QA.json`; prompts and the
+additive-only manifest proposal are recorded beside the artwork.
+
+All six candidates pass local decode, alpha, safe-padding, budget, duplicate-hash and
+small-size visual checks. The existing Arena information medallion remains the recommended
+reuse for a generic Information Center entry; none of the six section meanings had a
+semantically correct reusable production icon. No NEW badge, roadmap status, card,
+background, tab, accordion, table or reserved Account/Support/Credits artwork was created.
+
+This gate deliberately makes no changes to `r2-upload/manifest.json`, `src/assets/manifest.js`,
+`src/ui/infoCenter.js`, `src/data/infoCenter.js`, runtime styles, visible version or generated
+`index.html`. R2 publishing, manifest integration, runtime fallback wiring, full regression,
+build, deploy and Production verification remain blocked on explicit Owner artwork approval.
+
+Exact next action: Owner reviews `docs/graphics/g15/PREVIEW.jpg`. If approved, continue on
+the same task branch: stage only the approved 6 PNGs to `r2-upload/ui/info-center/`, add the
+`infoCenterUi` manifest group additively, integrate the shared optional resolver with emoji
+fallback, run the complete G15 test/build/responsive/deploy gate and verify Production.
 
 ## Publication and acceptance
 
