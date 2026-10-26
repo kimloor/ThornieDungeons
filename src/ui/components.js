@@ -579,7 +579,7 @@ function HubScreen({
   };
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("main", {
     className: "md-hub-shell"
-  }, /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save, arena: arenaHud }), /*#__PURE__*/React.createElement("header", {
+  }, /*#__PURE__*/React.createElement("header", {
     className: "md-hub-topbar"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hub-profile"
@@ -697,7 +697,6 @@ function TownScreen({
   e("strong", null, label));
   return e(React.Fragment, null,
     e("main", { className: "md-town-shell" },
-      e(GlobalCurrencyBar, { save, arena: arenaHud, className: "md-town-resources" }),
       e("section", { className: "md-town-world", "aria-label": "ตัวเมือง" },
         e("h1", { className: "md-town-title" }, "Town"),
         e("button", {
@@ -1931,8 +1930,10 @@ function FriendScreen({
 
   return e("div", { className: "md-panel md-friend-page" },
     toast && e("div", { className: "md-toast" }, toast),
+    e("header", { className: "md-character-page-title" },
+      e("button", { type: "button", onClick: onBack, "aria-label": "ย้อนกลับ" }, "‹"),
+      e("h1", null, "Friend")),
     e("div", { className: "md-card", style: { marginBottom: 10 } },
-      e("p", { className: "md-title" }, "👥 เพื่อน"),
       e("input", {
         className: "md-field",
         style: { width: "100%" },
@@ -1950,7 +1951,6 @@ function FriendScreen({
     loadError && e("p", { className: "md-sub" }, loadError),
     e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0 } },
       query.trim() ? searchBody() : tab === "friends" ? friendsBody() : tab === "requests" ? requestsBody() : blockedBody()),
-    e(BackButton, { onClick: onBack }),
     e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onChat, onGuild, onMainHub }));
 }
 const FRIEND_OUTGOING_PENDING_CAP_CLIENT = 20; // display only — server (FRIEND_OUTGOING_PENDING_CAP) is authoritative
@@ -4352,7 +4352,6 @@ function ArenaV2Screen({
       /*#__PURE__*/React.createElement("button", { type: "button", onClick: onBack, "aria-label": "ย้อนกลับ" }, "‹"),
       arenaHubAssets.emblem && /*#__PURE__*/React.createElement("img", { className: "md-arena-brand-emblem", src: arenaHubAssets.emblem, alt: "", "aria-hidden": "true" }),
       /*#__PURE__*/React.createElement("h1", null, "Arena")),
-    /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save, arena: arenaCurrency, className: "md-arena-global-currency" }),
     /*#__PURE__*/React.createElement("div", { className: "md-arena-scroll" },
       /*#__PURE__*/React.createElement("div", { className: !match ? "md-card md-arena-hub-panel md-arena-summary-panel" : "md-card", "data-arena-battle-header": match ? "true" : undefined },
       match && /*#__PURE__*/React.createElement("p", { className: "md-title" }, "Arena Battle"),
@@ -4931,7 +4930,6 @@ function MapScreen({
     onSelectFloor(detail.floor, detail.monsters, detail.previewContext);
   };
   return e("main", { className: `md-dungeon-map-page${detail ? " detail-open" : ""}` },
-    e(GlobalCurrencyBar, { save, arena: arenaHud, className: "md-dungeon-resources" }),
     e("header", { className: "md-dungeon-map-header" },
       e("button", { type: "button", onClick: onBack, "aria-label": "กลับหน้าหลัก" }, "‹"),
       e("div", null,

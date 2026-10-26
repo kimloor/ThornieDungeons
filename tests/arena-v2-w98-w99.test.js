@@ -241,7 +241,7 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
   assert.match(arenaUi, /md-character-page-title md-arena-page-header/);
   assert.match(arenaUi, /md-arena-phaser-stage/);
   assert.match(arenaUi, /className: "md-arena-scroll"/);
-  assert.match(arenaUi, /React\.createElement\(GlobalCurrencyBar/);
+  assert.doesNotMatch(arenaUi, /React\.createElement\(GlobalCurrencyBar/, 'pages no longer render their own currency bar');
   assert.match(arenaUi, /md-tab-row md-arena-tab-row/);
   assert.match(arenaUi, /React\.createElement\(GameDock/);
   assert.match(styles, /\.md-hub-resources\.with-arena \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
@@ -252,7 +252,7 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
   assert.match(styles, /\.md-arena-phaser-stage \{ position:relative;[^}]*min-height:clamp\(300px,48dvh,430px\)/);
   assert.match(appUi, /arena: arenaHud/);
   assert.match(appUi, /arenaHud: arenaHud/);
-  assert.match(appUi, /phase !== "arena" && .*StatusBar/);
+  assert.match(appUi, /phase !== "combat" && [^\n]*md-app-currency[^\n]*GlobalCurrencyBar, \{ save: save, arena: arenaHud/);
   assert.match(appUi, /cloudGetArenaV2Status\(cred\.url, characterId\)/);
   assert.doesNotMatch(arenaUi, /onHudChange\?\.\(null\)/);
 });

@@ -64,7 +64,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.13";
+  content: "Ver 1.1.14";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -337,6 +337,12 @@ body::after {
 .md-hub-icon-btn { width:44px; height:44px; padding:0; position:relative; display:grid; place-items:center; border-radius:13px; border:1px solid rgba(255,209,102,.34); background:rgba(5,13,35,.76); color:var(--ink); font-size:21px; cursor:pointer; }
 .md-hub-icon-btn:active { transform:translateY(2px); }
 .md-hub-icon-btn i { position:absolute; top:4px; right:4px; width:9px; height:9px; border-radius:50%; background:#ff5566; border:2px solid #09152f; box-shadow:0 0 9px #ff5566; animation:md-hub-alert 1.15s ease-in-out infinite; }
+/* One shared currency bar for every signed-in screen (rendered once by App, not per page). It is the first in-flow child of
+   .md-root, so it already clears the top inset; pages below therefore start from a zero top inset. Fixed overlays that sit
+   inside the root keep the real inset. */
+.md-app-currency { flex:0 0 auto; position:relative; z-index:30; padding:max(var(--md-page-pad),var(--safe-top-eff)) max(var(--md-page-pad),var(--safe-right)) 0 max(var(--md-page-pad),var(--safe-left)); }
+.md-root.md-has-currency { --safe-top: 0px; }
+.md-root.md-has-currency :is(.md-battle-log-overlay, .md-shop-sheet-backdrop, .md-inv2-modal-layer, .md-inv2-detail-layer, .md-inv2-popup, .md-save-state, .md-player-card-overlay, .md-arena-fatal-overlay, .md-arena-unlock-overlay, .md-guild-profile-overlay) { --safe-top: var(--safe-top-eff); }
 .md-hub-resources { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
 .md-hub-resources.with-arena { grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; }
 .md-hub-resources button { min-width:0; min-height:34px; padding:5px 6px; display:inline-flex; align-items:center; justify-content:center; gap:3px; text-align:center; border-radius:10px; border:1px solid rgba(99,177,232,.25); background:rgba(4,13,35,.65); color:var(--ink-soft); font:inherit; font-size:9px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; backdrop-filter:blur(6px); cursor:pointer; touch-action:manipulation; }
@@ -907,6 +913,12 @@ body::after {
 .md-settings-sync.status-failed { color:#FF6B6B; font-weight:700; }
 .md-info-page { position:fixed; inset:0; z-index:130; display:flex; flex-direction:column; background:#0b0818; color:var(--ink,#F3EEFF); padding:max(10px,var(--safe-top-eff)) max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
 .md-info-page, .md-info-page * { box-sizing:border-box; }
+.md-info-page { max-width:430px; margin:0 auto; }
+@media (min-width:431px) and (max-width:700px) { .md-info-page { max-width:700px; } }
+@media (min-width:701px) { .md-info-page { max-width:820px; } }
+.md-info-header.md-character-page-title { padding-bottom:10px; border-bottom:1px solid rgba(255,209,102,.28); }
+.md-info-header h1 { font-size:20px; padding:3px 8px; text-align:center; overflow-wrap:anywhere; }
+.md-info-sub { margin:6px 0 10px; text-align:center; font-size:11px; color:var(--ink-soft,#B9AEDD); }
 .md-info-header { display:flex; align-items:center; gap:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,209,102,.28); }
 .md-info-header-copy { flex:1 1 auto; min-width:0; }
 .md-info-header .md-title { margin:0; font-size:18px; color:var(--ink,#F3EEFF); overflow-wrap:anywhere; }

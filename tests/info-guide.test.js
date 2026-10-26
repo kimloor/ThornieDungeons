@@ -310,3 +310,40 @@ test("safe area: every screen uses --safe-top-eff, lowered on installed iOS apps
   ["src/data/styles.js", "src/ui/components.js", "src/ui/GlobalLoadingOverlay.js"].forEach(file =>
     assert.doesNotMatch(read(file), /env\(safe-area-inset-top/, file + " must go through --safe-top-eff"));
 });
+
+test("one shared currency bar: App renders it once, pages do not, overlays keep the real top inset", () => {
+  const app = read("src/ui/App.js");
+  const components = read("src/ui/components.js");
+  assert.equal((app.match(/React\.createElement\(GlobalCurrencyBar/g) || []).length, 1);
+  assert.equal((components.match(/createElement\(GlobalCurrencyBar/g) || []).length, 0, "no page renders its own bar");
+  assert.match(app, /"md-has-currency "/);
+  const styles = read("src/data/styles.js");
+  assert.match(styles, /\.md-root\.md-has-currency \{ --safe-top: 0px; \}/);
+  // Every fixed overlay inside the root that reads --safe-top must be restored to the real inset.
+  const restore = styles.match(/\.md-root\.md-has-currency :is\(([^)]*)\) \{ --safe-top: var\(--safe-top-eff\); \}/);
+  assert.ok(restore);
+  const restored = restore[1].split(",").map(item => item.trim());
+  const rules = styles.replace(/\/\*[\s\S]*?\*\//g, "").match(/[^{}]+\{[^{}]*\}/g);
+  rules.forEach(rule => {
+    const [selector, body] = rule.split("{");
+    if (!/var\(--safe-top\)/.test(body) || !/position:\s*fixed/.test(body)) return;
+    selector.split(",").map(item => item.trim()).filter(item => /^\.md-/.test(item) && !item.includes(" ")).forEach(item => {
+      if ([".md-currency-overlay", ".md-info-page", ".md-auth-sheet-overlay"].includes(item)) return;
+      assert.ok(restored.includes(item), item + " is fixed and reads --safe-top, so it must be in the restore list");
+    });
+  });
+});
+
+test("Information and Friend pages use the Character page header and the info page keeps the game width", () => {
+  const info = read("src/ui/infoCenter.js");
+  assert.match(info, /className: "md-character-page-title md-info-header"/);
+  assert.match(info, /className: "md-info-close"/);
+  const components = read("src/ui/components.js");
+  const friend = components.slice(components.indexOf('className: "md-panel md-friend-page"'));
+  assert.match(friend.slice(0, 700), /md-character-page-title/);
+  assert.doesNotMatch(friend.slice(0, 9000), /e\(BackButton, \{ onClick: onBack \}\)/, "no bottom back button on the Friend page");
+  const styles = read("src/data/styles.js");
+  assert.match(styles, /\.md-info-page \{ max-width:430px; margin:0 auto; \}/);
+  assert.match(styles, /@media \(min-width:431px\) and \(max-width:700px\) \{ \.md-info-page \{ max-width:700px; \} \}/);
+  assert.match(styles, /@media \(min-width:701px\) \{ \.md-info-page \{ max-width:820px; \} \}/);
+});

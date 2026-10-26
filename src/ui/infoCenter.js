@@ -125,12 +125,11 @@ function InfoCenterScreen({ initialRoute, onClose }) {
     : section.kind === "document" ? e(InfoDocument, { section })
     : e(InfoReserved, { section });
   return ReactDOM.createPortal(e("div", { className: "md-info-page", role: "dialog", "aria-modal": "true", "aria-label": "ข้อมูลและนโยบาย", "data-seen": seenTick },
-    e("header", { className: "md-info-header" },
-      e("button", { className: "md-btn info small md-info-back", onClick: back, "aria-label": section ? "กลับไปเมนูข้อมูล" : "ปิด" }, section ? "\u2190" : "\u2715"),
-      e("div", { className: "md-info-header-copy" },
-        e("h2", { className: "md-title" }, topic ? topic.title : section ? section.title : "ข้อมูลและนโยบาย"),
-        e("p", { className: "md-sub" }, topic ? topic.subtitle : section ? section.subtitle : "ประกาศ คู่มือ และนโยบายของเกม")),
-      section ? e("button", { className: "md-btn flee small md-info-close", onClick: onClose, "aria-label": "ปิดหน้าข้อมูล" }, "\u2715") : null),
+    e("header", { className: "md-character-page-title md-info-header" },
+      e("button", { type: "button", onClick: back, "aria-label": section ? "กลับไปเมนูข้อมูล" : "ย้อนกลับ" }, "‹"),
+      e("h1", null, topic ? topic.title : section ? section.title : "ข้อมูลและนโยบาย"),
+      e("button", { type: "button", className: "md-info-close", onClick: onClose, "aria-label": "ปิดหน้าข้อมูล" }, "✕")),
+    e("p", { className: "md-info-sub" }, topic ? topic.subtitle : section ? section.subtitle : "ประกาศ คู่มือ และนโยบายของเกม"),
     e("main", { className: "md-info-body" }, body)
   ), document.body);
 }
