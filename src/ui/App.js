@@ -2722,16 +2722,10 @@ function ThornieDungeons() {
   const dungeonModalOpen = invOpen || shopOpen || blacksmithOpen || craftingOpen;
   const isTown = phase === "town";
   return /*#__PURE__*/React.createElement("div", {
-    className: isTown
+    className: (phase !== "combat" ? "md-has-currency " : "") + (isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
-      : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${phase === "combat" ? " md-root-combat" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "menu" && phase !== "town" && phase !== "login" && phase !== "combat" && phase !== "character" && phase !== "skill" && phase !== "map" && phase !== "arena" && /*#__PURE__*/React.createElement(StatusBar, {
-    player: player,
-    save: save,
-    phase: phase,
-    equipped: equipped,
-    arena: arenaHud
-  }), phase === "menu" && /*#__PURE__*/React.createElement(HubScreen, {
+      : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${phase === "combat" ? " md-root-combat" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`)
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "combat" && /*#__PURE__*/React.createElement("div", { className: "md-app-currency" }, /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save: save, arena: arenaHud })), phase === "menu" && /*#__PURE__*/React.createElement(HubScreen, {
     save: save,
     cp: cp,
     arenaHud: arenaHud,
