@@ -106,6 +106,82 @@ function BackButton({ onClick, label = "← Back", className = "" }) {
     onClick
   }, label);
 }
+
+// Shared modal/page shell for the Client Systems V1 PR-D surfaces. The shell owns
+// viewport behavior only; screen state and server-operation state stay with the
+// existing feature component so opening/closing the shell cannot reset them.
+let sharedOverlayInstanceId = 0;
+let sharedOverlayLockCount = 0;
+function SharedOverlayShell({
+  title,
+  subtitle = "",
+  onBack,
+  onClose,
+  children,
+  error = null,
+  loading = false,
+  loadingLabel = "",
+  footer = null,
+  className = "",
+  panelClassName = "",
+  bodyClassName = ""
+}) {
+  const rootRef = useRef(null);
+  const titleIdRef = useRef("");
+  if (!titleIdRef.current) titleIdRef.current = `md-shared-overlay-title-${++sharedOverlayInstanceId}`;
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const opener = document.activeElement;
+    sharedOverlayLockCount += 1;
+    document.documentElement.classList.add("md-shared-overlay-open");
+    document.body.classList.add("md-shared-overlay-open");
+    const initialFocus = rootRef.current?.querySelector("[data-overlay-initial-focus]");
+    if (initialFocus?.focus) initialFocus.focus({ preventScroll: true });
+    return () => {
+      sharedOverlayLockCount = Math.max(0, sharedOverlayLockCount - 1);
+      if (sharedOverlayLockCount === 0) {
+        document.documentElement.classList.remove("md-shared-overlay-open");
+        document.body.classList.remove("md-shared-overlay-open");
+      }
+      if (opener?.isConnected && opener.focus) opener.focus({ preventScroll: true });
+    };
+  }, []);
+
+  const backAction = onBack || onClose;
+  const closeAction = onClose || onBack;
+  return /*#__PURE__*/React.createElement("div", {
+    ref: rootRef,
+    className: `md-shared-overlay${className ? ` ${className}` : ""}`,
+    role: "presentation"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: `md-shared-overlay-panel${panelClassName ? ` ${panelClassName}` : ""}`,
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-labelledby": titleIdRef.current,
+    "aria-busy": loading ? "true" : undefined
+  }, /*#__PURE__*/React.createElement("header", { className: "md-shared-overlay-header" },
+    backAction && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-shared-overlay-back",
+      onClick: backAction,
+      "aria-label": "ย้อนกลับ",
+      "data-overlay-initial-focus": "true"
+    }, "‹"),
+    /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-heading" },
+      /*#__PURE__*/React.createElement("h2", { id: titleIdRef.current }, title),
+      subtitle && /*#__PURE__*/React.createElement("p", null, subtitle)),
+    closeAction && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-shared-overlay-close",
+      onClick: closeAction,
+      "aria-label": "ปิด"
+    }, "×")),
+  error && /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-error", role: "alert" }, error),
+  loading && loadingLabel && /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-loading", role: "status" }, loadingLabel),
+  /*#__PURE__*/React.createElement("div", { className: `md-shared-overlay-body${bodyClassName ? ` ${bodyClassName}` : ""}` }, children),
+  footer && /*#__PURE__*/React.createElement("footer", { className: "md-shared-overlay-footer" }, footer)));
+}
 function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onRememberLogin, onLogin, onRegister, onForgotPassword, registrationRecovery, onFinishRegistration, passwordResetRecovery, onClearPasswordResetRecovery }) {
   const e = React.createElement;
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -2724,13 +2800,22 @@ function GuildScreen({
       e("div", { className: "md-card", style: { display: "flex", gap: 6 } }, footerBtn));
   };
 
-  return e("div", { className: "md-panel md-guild-page" },
+  const errorSlot = loadError && e(React.Fragment, null,
+    e("p", { className:"md-sub" }, loadError),
+    e("button", { className:"md-btn info small", onClick:loadMyGuild }, "ลองใหม่"));
+  return e(SharedOverlayShell, {
+    title:"🏰 Guild",
+    subtitle:myGuild?.name || "ชุมชนนักผจญภัย",
+    onBack,
+    onClose:onBack,
+    error:errorSlot,
+    loading:myGuild === undefined,
+    className:"md-guild-overlay",
+    bodyClassName:"md-panel md-guild-page",
+    footer:e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub })
+  },
     toast && e("div", { className: "md-toast" }, toast),
-    myGuild === undefined ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, "กำลังโหลด..."))
-      : loadError ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, loadError))
-        : myGuild ? memberView() : noGuildView(),
-    e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub }));
+    myGuild === undefined || loadError ? null : myGuild ? memberView() : noGuildView());
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
@@ -4737,28 +4822,33 @@ function MailboxScreen({
     }).catch(() => { setBusy(false); setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
-  if (!mails) {
-    return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "กำลังโหลด..."));
-  }
-  const unclaimed = mails.filter(m => !m.claimed);
-  const claimedMails = mails.filter(m => m.claimed);
+  const visibleMails = mails || [];
+  const unclaimed = visibleMails.filter(m => !m.claimed);
+  const claimedMails = visibleMails.filter(m => m.claimed);
   const selectedCount = Object.values(selected).filter(Boolean).length;
+  const errorSlot = mailError && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, mailError),
+    /*#__PURE__*/React.createElement("button", { className: "md-btn info small", disabled: busy, onClick: load }, "ลองใหม่"));
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "📬 กล่องจดหมาย"),
-      unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
-    mailError && /*#__PURE__*/React.createElement("div", { className: "md-card md-mail-error", role: "alert" },
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, mailError),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn info small", disabled: busy, onClick: load }, "ลองใหม่")),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"📬 กล่องจดหมาย",
+    subtitle:mails ? `${unclaimed.length} ฉบับรอรับรางวัล` : "กำลังโหลด",
+    onBack,
+    onClose:onBack,
+    error:errorSlot,
+    loading:mails === null,
+    loadingLabel:mailboxLoadedOnceRef.current ? "กำลังอัปเดตกล่องจดหมาย…" : "",
+    className:"md-mail-overlay",
+    bodyClassName:"md-panel md-mail-page"
+  },
+    unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary wide small md-mail-claim-all", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด"),
     claimedMails.length > 0 && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, selectedCount > 0 ? `เลือกแล้ว ${selectedCount} ฉบับ` : "จดหมายที่รับแล้ว"),
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6 } },
         selectedCount > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteSelected }, "🗑️ ลบที่เลือก"),
         /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteAllClaimed }, "🗑️ ลบที่รับแล้วทั้งหมด"))),
-    mails.length === 0 && !mailError && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
-    mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
+    visibleMails.length === 0 && mails !== null && !mailError && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
+    visibleMails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
       m.claimed && /*#__PURE__*/React.createElement("input", {
         type: "checkbox",
         checked: !!selected[m.mailId],
@@ -4777,8 +4867,7 @@ function MailboxScreen({
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 4 } },
           m.claimed
             ? /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: () => handleDeleteOne(m.mailId) }, "🗑️ ลบ")
-            : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))))),
-    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+            : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))))));
 }
 function floorEventPreview(monsters) {
   const modifierEvents = new Map();
@@ -6552,15 +6641,6 @@ function inventoryComparisonRows(currentItem, nextItem) {
   return rows;
 }
 
-function InventoryHeader({ characterName, onClose }) {
-  return /*#__PURE__*/React.createElement("header", { className: "md-character-page-title md-inv2-header" },
-    /*#__PURE__*/React.createElement("button", { className: "md-inv2-close", type:"button", onClick: onClose, "aria-label": "ย้อนกลับ" }, "‹"),
-    /*#__PURE__*/React.createElement("div", { className:"md-inv2-title" },
-      /*#__PURE__*/React.createElement("h2", null, "Inventory"),
-      /*#__PURE__*/React.createElement("span", { className:"md-inv2-ornament md-inventory-art", style:inventoryUiStyle("sectionOrnament") }),
-      /*#__PURE__*/React.createElement("p", null, characterName || "Adventurer")));
-}
-
 const INVENTORY_SLOT_POSITIONS = {
   helmet: "left l1", chest: "left l2", boots: "left l3", wings: "left l4",
   gloves: "right r1", weapon: "right r2", accessory: "right r3"
@@ -6906,10 +6986,16 @@ function InventoryOverlayV2({
   };
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay md-inv2-overlay" },
-    /*#__PURE__*/React.createElement(StatusBar, { player:null, save, phase:"inventory", equipped }),
-    /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
-      /*#__PURE__*/React.createElement(InventoryHeader, { characterName, onClose }),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"Inventory",
+    subtitle:characterName || "Adventurer",
+    onBack:onClose,
+    onClose,
+    className:"md-inv2-overlay",
+    panelClassName:"md-inv2-shell-panel",
+    bodyClassName:"md-inv2-sheet",
+    footer:/*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub })
+  },
       /*#__PURE__*/React.createElement(EquipmentStage, { equipped, previewEquipped, characterName, onOpenDetail:setDetail }),
       overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner", onClick: () => setOverflowOpen(true), "aria-label": `ไอเทมที่ล้น ${overflow.length}` },
         /*#__PURE__*/React.createElement("span", { className: `md-inv2-overflow-icon md-inventory-art ${inventoryUiUrl("icons.overflow") ? "has-art" : ""}`, style: iconButtonStyle("overflow"), "aria-hidden":"true" }, inventoryUiUrl("icons.overflow") ? null : "📦"),
@@ -6940,8 +7026,7 @@ function InventoryOverlayV2({
         detail, currentDetail, currentEquipped, compareRows, cp:comparisonCp, salvagePreview, message, busy,
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
       })
-    ),
-    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub }));
+    );
 }
 
 function InventoryOverlay({
@@ -7468,14 +7553,14 @@ function CraftingOverlay({
       .finally(() => setCraftingId(null));
   };
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
-    /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
-      /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "🛠️ ประดิษฐ์ไอเทม"),
-        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ประดิษฐ์ Mythic Set และ Boss Weapon ตาม Tier ของชั้นสูงสุด ", floor || 1)
-      ),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
-    ),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"🛠️ ประดิษฐ์ไอเทม",
+    subtitle:`Mythic Set และ Boss Weapon · Tier ชั้น ${floor || 1}`,
+    onBack:onClose,
+    onClose,
+    className:"md-crafting-overlay",
+    bodyClassName:"md-equip-sheet"
+  },
     craftPresentation && /*#__PURE__*/React.createElement(PhaserForgePresentation, { event: craftPresentation }),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", formatNumber(gold)),
@@ -7519,5 +7604,5 @@ function CraftingOverlay({
     }),
     msg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, textAlign: "center", color: "var(--ink)" } }, msg),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านประดิษฐ์")
-  ));
+  );
 }

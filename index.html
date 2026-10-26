@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.14" />
+<meta name="application-version" content="1.1.15" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -174,7 +174,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.14";
+  content: "Ver 1.1.15";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -1421,7 +1421,7 @@ body::after {
 .md-chat-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
 /* Guild V1 page shell — identical treatment to .md-chat-page/.md-friend-page above
    (itself mirroring .md-pet-page). */
-.md-guild-page { min-width: 0; min-height:640px; overflow-x:hidden; overflow-y:auto; }
+.md-guild-page { min-width:0; min-height:0; overflow-x:hidden; overflow-y:auto; }
 .md-guild-page > .md-hub-dock { flex:0 0 auto; min-height:var(--md-dock-height); margin-top:auto; }
 .md-guild-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
 .md-pet-card { padding: 8px 6px 10px; overflow: hidden; }
@@ -2098,6 +2098,31 @@ body::after {
 
 
 /* ---- character equipment / inventory redesign ---- */
+.md-shared-overlay-open { overflow:hidden; overscroll-behavior:none; }
+.md-shared-overlay { position:absolute; inset:0; z-index:20; min-width:0; min-height:0; display:flex; flex-direction:column; background:rgba(6,3,15,.82); isolation:isolate; }
+.md-shared-overlay-panel { flex:1 1 auto; min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; background:linear-gradient(180deg,#30204f 0%,#1b1233 72%,#120b24 100%); }
+.md-shared-overlay-header { flex:0 0 auto; position:sticky; top:0; z-index:6; min-height:58px; padding:max(8px,var(--safe-top)) max(10px,var(--safe-right)) 8px max(10px,var(--safe-left)); display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:center; gap:8px; border-bottom:1px solid rgba(255,209,102,.28); background:linear-gradient(180deg,rgba(20,29,64,.99),rgba(10,14,38,.98)); box-shadow:0 7px 18px rgba(0,0,0,.24); }
+.md-shared-overlay-heading { min-width:0; text-align:center; }
+.md-shared-overlay-heading h2 { margin:0; color:var(--gold); font:800 21px/1.1 'Baloo 2'; overflow-wrap:anywhere; }
+.md-shared-overlay-heading p { margin:2px 0 0; color:var(--ink-soft); font-size:10px; line-height:1.2; overflow-wrap:anywhere; }
+.md-shared-overlay-back,.md-shared-overlay-close { width:44px; height:44px; padding:0; display:grid; place-items:center; border:1px solid rgba(255,209,102,.42); border-radius:12px; background:rgba(4,12,31,.76); color:#ffe098; font-size:25px; line-height:1; cursor:pointer; touch-action:manipulation; }
+.md-shared-overlay-back { justify-self:start; }
+.md-shared-overlay-close { justify-self:end; }
+.md-shared-overlay-body { flex:1 1 auto; min-width:0; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:12px max(14px,var(--safe-right)) max(16px,var(--safe-bottom)) max(14px,var(--safe-left)); }
+.md-shared-overlay-error,.md-shared-overlay-loading { flex:0 0 auto; margin:10px max(14px,var(--safe-right)) 0 max(14px,var(--safe-left)); padding:10px 12px; border:1px solid rgba(255,107,123,.5); border-radius:12px; background:rgba(91,24,42,.72); color:#ffd7dd; text-align:center; font-size:12px; font-weight:800; }
+.md-shared-overlay-loading { border-color:rgba(113,232,255,.4); background:rgba(7,48,69,.72); color:#c9f8ff; }
+.md-shared-overlay-footer { flex:0 0 auto; padding:6px max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); background:linear-gradient(180deg,rgba(9,13,35,.86),rgba(5,8,24,.98)); }
+.md-shared-overlay-footer > .md-hub-dock { margin:0; }
+.md-shared-overlay-body.md-equip-sheet { width:100%; max-height:none; border:0; border-radius:0; box-shadow:none; }
+.md-shared-overlay-body.md-panel { z-index:auto; border-top:0; }
+.md-mail-page { gap:10px; }
+.md-mail-claim-all { flex:0 0 auto; }
+@media (min-width:700px) {
+  .md-shared-overlay { padding:18px max(18px,var(--safe-right)) max(18px,var(--safe-bottom)) max(18px,var(--safe-left)); align-items:center; justify-content:center; }
+  .md-shared-overlay-panel { width:min(100%,760px); max-height:min(92dvh,920px); border:1.5px solid var(--gold-deep); border-radius:24px; box-shadow:0 22px 70px rgba(0,0,0,.56); }
+  .md-shared-overlay-heading h2 { font-size:27px; }
+  .md-shared-overlay-heading p { font-size:12px; }
+}
 .md-equip-overlay { position:absolute; inset:0; z-index:20; background:rgba(6,3,15,0.82); display:flex; align-items:flex-end; justify-content:center; }
 .md-equip-sheet { width:100%; max-height:96%; overflow-y:auto; background:linear-gradient(180deg,#30204f 0%,#1b1233 72%,#120b24 100%); border:1.5px solid var(--gold-deep); border-bottom:none; border-radius:22px 22px 0 0; padding:12px 12px 18px; box-shadow:0 -12px 35px rgba(0,0,0,.45); }
 .md-equip-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
@@ -2166,6 +2191,8 @@ body::after {
 /* ---- Inventory V2: responsive equipment stage + popup details ---- */
 .md-inventory-art { background-image:var(--inventory-ui-image); background-repeat:no-repeat; background-position:center; background-size:100% 100%; }
 .md-inv2-overlay { align-items:stretch; justify-content:stretch; flex-direction:column; padding:0; background:linear-gradient(180deg,rgba(3,8,25,.34),rgba(3,8,25,.7)),url("/assets/ui/character-select-background.webp") center/cover no-repeat; }
+.md-inv2-overlay .md-shared-overlay-panel { background:linear-gradient(180deg,rgba(7,13,33,.32),rgba(6,7,22,.7)); }
+.md-inv2-overlay .md-shared-overlay-body.md-inv2-sheet { width:100%; max-height:none; border:0; border-radius:0; box-shadow:none; }
 .md-inv2-overlay > .md-status { flex:0 0 auto; z-index:3; }
 .md-inv2-sheet { flex:1 1 auto; min-height:0; max-height:none; border-radius:0; border:0; padding:8px max(14px,var(--safe-right)) max(14px,var(--safe-bottom)) max(14px,var(--safe-left)); background:linear-gradient(180deg,rgba(7,13,33,.32),rgba(6,7,22,.7)); box-shadow:none; }
 .md-inv2-overlay > .md-hub-dock { flex:0 0 auto; z-index:3; margin:0 max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
@@ -2384,7 +2411,7 @@ body::after {
   .md-pet-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-friend-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-chat-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
-  .md-guild-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-guild-page { min-height:0; height:auto; overflow-y:auto; }
   .md-pet-card { padding:12px 10px 14px; }
   .md-pet-layout { grid-template-columns:minmax(0,1fr) 116px; gap:10px; }
   .md-pet-roster-item { min-height:82px; grid-template-columns:36px minmax(0,1fr); padding:8px 6px; }
@@ -2527,7 +2554,7 @@ body::after {
   .md-pet-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-friend-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-chat-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
-  .md-guild-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-guild-page { min-height:0; height:auto; overflow-y:auto; }
   .md-pet-card { padding:14px 12px 16px; }
   .md-pet-layout { grid-template-columns:minmax(0,1fr) 132px; gap:14px; }
   .md-pet-roster-item { min-height:90px; grid-template-columns:42px minmax(0,1fr); padding:9px 7px; }
@@ -8040,14 +8067,20 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.14", date: "2026-10-26", title: "แถบเงินตราแบบรวม และปรับหน้าข้อมูล/เพื่อน",
+      version: "1.1.15", date: "2026-10-26", title: "หน้าต่างเมนูหลักแบบเดียวกัน",
+      items: [
+        "กระเป๋า ประดิษฐ์ กล่องจดหมาย และกิลด์ ใช้หัวข้อ ปุ่มย้อนกลับ และปุ่มปิดแบบเดียวกัน",
+        "หัวข้ออยู่กับที่ขณะเลื่อนเนื้อหา และปรับพื้นที่ปลอดภัยบนมือถือกับหน้าจอ Desktop",
+        "กระเป๋าใช้แถบเงินตรากลางเพียงชุดเดียว ไม่แสดงข้อมูลสกุลเงินซ้ำ"
+      ]
+    },
+    history: [
+      { version: "1.1.14", date: "2026-10-26", title: "แถบเงินตราแบบรวม และปรับหน้าข้อมูล/เพื่อน",
       items: [
         "แถบเงินตราด้านบนเป็นชุดเดียวกันทุกหน้า (ยกเว้นตอนต่อสู้) แก้ไขที่เดียวแสดงผลเหมือนกันทั้งเกม",
         "หน้าข้อมูลบนเว็บกว้างเท่าหน้าเกม ไม่ขยายเต็มจอ",
         "หน้าข้อมูลและหน้าเพื่อนใช้ปุ่มย้อนกลับและหัวข้อแบบเดียวกับหน้าตัวละคร"
-      ]
-    },
-    history: [
+      ] },
       { version: "1.1.13", date: "2026-10-25", title: "เลื่อนหน้าเกมลงหลบแถบเบลอบน iOS 27",
       items: [
         "iPhone ที่เปิดเกมจากไอคอนหน้าจอหลัก: เลื่อนเนื้อหาด้านบนของทุกหน้า (แถบเงินตรา ปุ่มกลับ หัวข้อ) ลงมา 32px เพื่อพ้นแถบเบลอของ iOS 27"
@@ -19520,6 +19553,82 @@ function BackButton({ onClick, label = "← Back", className = "" }) {
     onClick
   }, label);
 }
+
+// Shared modal/page shell for the Client Systems V1 PR-D surfaces. The shell owns
+// viewport behavior only; screen state and server-operation state stay with the
+// existing feature component so opening/closing the shell cannot reset them.
+let sharedOverlayInstanceId = 0;
+let sharedOverlayLockCount = 0;
+function SharedOverlayShell({
+  title,
+  subtitle = "",
+  onBack,
+  onClose,
+  children,
+  error = null,
+  loading = false,
+  loadingLabel = "",
+  footer = null,
+  className = "",
+  panelClassName = "",
+  bodyClassName = ""
+}) {
+  const rootRef = useRef(null);
+  const titleIdRef = useRef("");
+  if (!titleIdRef.current) titleIdRef.current = `md-shared-overlay-title-${++sharedOverlayInstanceId}`;
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const opener = document.activeElement;
+    sharedOverlayLockCount += 1;
+    document.documentElement.classList.add("md-shared-overlay-open");
+    document.body.classList.add("md-shared-overlay-open");
+    const initialFocus = rootRef.current?.querySelector("[data-overlay-initial-focus]");
+    if (initialFocus?.focus) initialFocus.focus({ preventScroll: true });
+    return () => {
+      sharedOverlayLockCount = Math.max(0, sharedOverlayLockCount - 1);
+      if (sharedOverlayLockCount === 0) {
+        document.documentElement.classList.remove("md-shared-overlay-open");
+        document.body.classList.remove("md-shared-overlay-open");
+      }
+      if (opener?.isConnected && opener.focus) opener.focus({ preventScroll: true });
+    };
+  }, []);
+
+  const backAction = onBack || onClose;
+  const closeAction = onClose || onBack;
+  return /*#__PURE__*/React.createElement("div", {
+    ref: rootRef,
+    className: `md-shared-overlay${className ? ` ${className}` : ""}`,
+    role: "presentation"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: `md-shared-overlay-panel${panelClassName ? ` ${panelClassName}` : ""}`,
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-labelledby": titleIdRef.current,
+    "aria-busy": loading ? "true" : undefined
+  }, /*#__PURE__*/React.createElement("header", { className: "md-shared-overlay-header" },
+    backAction && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-shared-overlay-back",
+      onClick: backAction,
+      "aria-label": "ย้อนกลับ",
+      "data-overlay-initial-focus": "true"
+    }, "‹"),
+    /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-heading" },
+      /*#__PURE__*/React.createElement("h2", { id: titleIdRef.current }, title),
+      subtitle && /*#__PURE__*/React.createElement("p", null, subtitle)),
+    closeAction && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-shared-overlay-close",
+      onClick: closeAction,
+      "aria-label": "ปิด"
+    }, "×")),
+  error && /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-error", role: "alert" }, error),
+  loading && loadingLabel && /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-loading", role: "status" }, loadingLabel),
+  /*#__PURE__*/React.createElement("div", { className: `md-shared-overlay-body${bodyClassName ? ` ${bodyClassName}` : ""}` }, children),
+  footer && /*#__PURE__*/React.createElement("footer", { className: "md-shared-overlay-footer" }, footer)));
+}
 function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onRememberLogin, onLogin, onRegister, onForgotPassword, registrationRecovery, onFinishRegistration, passwordResetRecovery, onClearPasswordResetRecovery }) {
   const e = React.createElement;
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -22138,13 +22247,22 @@ function GuildScreen({
       e("div", { className: "md-card", style: { display: "flex", gap: 6 } }, footerBtn));
   };
 
-  return e("div", { className: "md-panel md-guild-page" },
+  const errorSlot = loadError && e(React.Fragment, null,
+    e("p", { className:"md-sub" }, loadError),
+    e("button", { className:"md-btn info small", onClick:loadMyGuild }, "ลองใหม่"));
+  return e(SharedOverlayShell, {
+    title:"🏰 Guild",
+    subtitle:myGuild?.name || "ชุมชนนักผจญภัย",
+    onBack,
+    onClose:onBack,
+    error:errorSlot,
+    loading:myGuild === undefined,
+    className:"md-guild-overlay",
+    bodyClassName:"md-panel md-guild-page",
+    footer:e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub })
+  },
     toast && e("div", { className: "md-toast" }, toast),
-    myGuild === undefined ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, "กำลังโหลด..."))
-      : loadError ? e("div", { className: "md-card" }, e("p", { className: "md-sub" }, loadError))
-        : myGuild ? memberView() : noGuildView(),
-    e(BackButton, { onClick: onBack }),
-    e(GameDock, { onCharacter, onOpenInv, onPets, onSettings, onSave, onFriend, onChat, onMainHub }));
+    myGuild === undefined || loadError ? null : myGuild ? memberView() : noGuildView());
 }
 // ---------- Phase 3: Raid Boss ----------
 const RAID_STAMINA_MAX_CLIENT = 10; // fallback only — server response's staminaMax is authoritative
@@ -24151,28 +24269,33 @@ function MailboxScreen({
     }).catch(() => { setBusy(false); setMailError("ลบจดหมายที่รับแล้วไม่สำเร็จ กรุณาลองใหม่"); });
   };
 
-  if (!mails) {
-    return /*#__PURE__*/React.createElement("div", { className: "md-panel" },
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "กำลังโหลด..."));
-  }
-  const unclaimed = mails.filter(m => !m.claimed);
-  const claimedMails = mails.filter(m => m.claimed);
+  const visibleMails = mails || [];
+  const unclaimed = visibleMails.filter(m => !m.claimed);
+  const claimedMails = visibleMails.filter(m => m.claimed);
   const selectedCount = Object.values(selected).filter(Boolean).length;
+  const errorSlot = mailError && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("p", { className: "md-sub" }, mailError),
+    /*#__PURE__*/React.createElement("button", { className: "md-btn info small", disabled: busy, onClick: load }, "ลองใหม่"));
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1 } },
-    /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" } },
-      /*#__PURE__*/React.createElement("p", { className: "md-title" }, "📬 กล่องจดหมาย"),
-      unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด")),
-    mailError && /*#__PURE__*/React.createElement("div", { className: "md-card md-mail-error", role: "alert" },
-      /*#__PURE__*/React.createElement("p", { className: "md-sub" }, mailError),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn info small", disabled: busy, onClick: load }, "ลองใหม่")),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"📬 กล่องจดหมาย",
+    subtitle:mails ? `${unclaimed.length} ฉบับรอรับรางวัล` : "กำลังโหลด",
+    onBack,
+    onClose:onBack,
+    error:errorSlot,
+    loading:mails === null,
+    loadingLabel:mailboxLoadedOnceRef.current ? "กำลังอัปเดตกล่องจดหมาย…" : "",
+    className:"md-mail-overlay",
+    bodyClassName:"md-panel md-mail-page"
+  },
+    unclaimed.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn primary wide small md-mail-claim-all", disabled: busy, onClick: handleClaimAll }, "รับทั้งหมด"),
     claimedMails.length > 0 && /*#__PURE__*/React.createElement("div", { className: "md-card", style: { marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
       /*#__PURE__*/React.createElement("p", { className: "md-sub" }, selectedCount > 0 ? `เลือกแล้ว ${selectedCount} ฉบับ` : "จดหมายที่รับแล้ว"),
       /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6 } },
         selectedCount > 0 && /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteSelected }, "🗑️ ลบที่เลือก"),
         /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: handleDeleteAllClaimed }, "🗑️ ลบที่รับแล้วทั้งหมด"))),
-    mails.length === 0 && !mailError && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
-    mails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
+    visibleMails.length === 0 && mails !== null && !mailError && /*#__PURE__*/React.createElement("p", { className: "md-sub" }, "ยังไม่มีจดหมาย"),
+    visibleMails.map(m => /*#__PURE__*/React.createElement("div", { key: m.mailId, className: "md-card", style: { marginBottom: 8, opacity: m.claimed ? 0.6 : 1, display: "flex", gap: 8 } },
       m.claimed && /*#__PURE__*/React.createElement("input", {
         type: "checkbox",
         checked: !!selected[m.mailId],
@@ -24191,8 +24314,7 @@ function MailboxScreen({
         /*#__PURE__*/React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 4 } },
           m.claimed
             ? /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", disabled: busy, onClick: () => handleDeleteOne(m.mailId) }, "🗑️ ลบ")
-            : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))))),
-    /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small", onClick: onBack }, "← Back"));
+            : /*#__PURE__*/React.createElement("button", { className: "md-btn primary small", disabled: busy, onClick: () => handleClaim(m.mailId) }, "รับรางวัล"))))));
 }
 function floorEventPreview(monsters) {
   const modifierEvents = new Map();
@@ -25966,15 +26088,6 @@ function inventoryComparisonRows(currentItem, nextItem) {
   return rows;
 }
 
-function InventoryHeader({ characterName, onClose }) {
-  return /*#__PURE__*/React.createElement("header", { className: "md-character-page-title md-inv2-header" },
-    /*#__PURE__*/React.createElement("button", { className: "md-inv2-close", type:"button", onClick: onClose, "aria-label": "ย้อนกลับ" }, "‹"),
-    /*#__PURE__*/React.createElement("div", { className:"md-inv2-title" },
-      /*#__PURE__*/React.createElement("h2", null, "Inventory"),
-      /*#__PURE__*/React.createElement("span", { className:"md-inv2-ornament md-inventory-art", style:inventoryUiStyle("sectionOrnament") }),
-      /*#__PURE__*/React.createElement("p", null, characterName || "Adventurer")));
-}
-
 const INVENTORY_SLOT_POSITIONS = {
   helmet: "left l1", chest: "left l2", boots: "left l3", wings: "left l4",
   gloves: "right r1", weapon: "right r2", accessory: "right r3"
@@ -26320,10 +26433,16 @@ function InventoryOverlayV2({
   };
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay md-inv2-overlay" },
-    /*#__PURE__*/React.createElement(StatusBar, { player:null, save, phase:"inventory", equipped }),
-    /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
-      /*#__PURE__*/React.createElement(InventoryHeader, { characterName, onClose }),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"Inventory",
+    subtitle:characterName || "Adventurer",
+    onBack:onClose,
+    onClose,
+    className:"md-inv2-overlay",
+    panelClassName:"md-inv2-shell-panel",
+    bodyClassName:"md-inv2-sheet",
+    footer:/*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub })
+  },
       /*#__PURE__*/React.createElement(EquipmentStage, { equipped, previewEquipped, characterName, onOpenDetail:setDetail }),
       overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner", onClick: () => setOverflowOpen(true), "aria-label": `ไอเทมที่ล้น ${overflow.length}` },
         /*#__PURE__*/React.createElement("span", { className: `md-inv2-overflow-icon md-inventory-art ${inventoryUiUrl("icons.overflow") ? "has-art" : ""}`, style: iconButtonStyle("overflow"), "aria-hidden":"true" }, inventoryUiUrl("icons.overflow") ? null : "📦"),
@@ -26354,8 +26473,7 @@ function InventoryOverlayV2({
         detail, currentDetail, currentEquipped, compareRows, cp:comparisonCp, salvagePreview, message, busy,
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
       })
-    ),
-    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub }));
+    );
 }
 
 function InventoryOverlay({
@@ -26882,14 +27000,14 @@ function CraftingOverlay({
       .finally(() => setCraftingId(null));
   };
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay" }, /*#__PURE__*/React.createElement("div", { className: "md-equip-sheet" },
-    /*#__PURE__*/React.createElement("div", { className: "md-equip-head" },
-      /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("p", { className: "md-equip-head-title" }, "🛠️ ประดิษฐ์ไอเทม"),
-        /*#__PURE__*/React.createElement("div", { className: "md-equip-head-sub" }, "ประดิษฐ์ Mythic Set และ Boss Weapon ตาม Tier ของชั้นสูงสุด ", floor || 1)
-      ),
-      /*#__PURE__*/React.createElement("button", { className: "md-btn flee small", onClick: onClose, style: { minHeight: 38, padding: "6px 11px", boxShadow: "none" } }, "✕")
-    ),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"🛠️ ประดิษฐ์ไอเทม",
+    subtitle:`Mythic Set และ Boss Weapon · Tier ชั้น ${floor || 1}`,
+    onBack:onClose,
+    onClose,
+    className:"md-crafting-overlay",
+    bodyClassName:"md-equip-sheet"
+  },
     craftPresentation && /*#__PURE__*/React.createElement(PhaserForgePresentation, { event: craftPresentation }),
     /*#__PURE__*/React.createElement("div", { className: "md-equip-summary", style: { marginTop: 2, marginBottom: 8 } },
       /*#__PURE__*/React.createElement("span", { className: "md-equip-stat-chip" }, /*#__PURE__*/React.createElement(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-inline-item-icon", alt: "Gold" }), " ", formatNumber(gold)),
@@ -26933,7 +27051,7 @@ function CraftingOverlay({
     }),
     msg && /*#__PURE__*/React.createElement("div", { className: "md-item-detail-sub", style: { marginTop: 6, textAlign: "center", color: "var(--ink)" } }, msg),
     /*#__PURE__*/React.createElement("button", { className: "md-btn flee wide small md-equip-close", onClick: onClose }, "← ปิดร้านประดิษฐ์")
-  ));
+  );
 }
 
 // ===== ui/combatPresentationFix.js =====

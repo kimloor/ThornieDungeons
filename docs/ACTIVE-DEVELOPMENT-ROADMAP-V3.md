@@ -170,7 +170,7 @@ Only after C8 approval: bump visible version to **Ver 1.1.0**, build again, depl
 The successor roadmap starts here, after Ver 1.1.0 gate acceptance.
 
 ### WAVE 1 PREP — Client Systems V1
-**Status: ACTIVE — contract draft `CLIENT-SYSTEMS-V1.md` written; implementation (PR-C first) starts only after Owner approves the contract**
+**Status: COMPLETE — PR-C / PR-B / PR-A merged; PR-D shared overlay shell implemented for Ver 1.1.15**
 **Risk: MEDIUM-HIGH — touches many client flows; no server contract or economy change**
 
 One PR per component, in order, each stopping for Owner approval: PR-C Error catalog (code → Thai message) → PR-B API client policy table (timeout/retry/dedupe/session handling) → PR-A Server Operation Manager (requestId reuse on retry, optimistic/rollback, per-character queue, lock registry) → PR-D Overlay shell (migrate Inventory/Craft/Mail/Guild one per commit). Boundary with WAVE 1: Global Loading = full-screen blocking only; Server Operation Manager = inline pending; never both for one action. Contract doc: `CLIENT-SYSTEMS-V1.md` (to be written).
@@ -331,11 +331,11 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
-Visible game version                             Ver 1.1.14
+Visible game version                             Ver 1.1.15
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓
-WAVE 1 PREP — Client Systems V1                 ✅ PR-C / PR-B / PR-A COMPLETE (Ver 1.1.7, 2026-10-22)
+WAVE 1 PREP — Client Systems V1                 ✅ PR-C / PR-B / PR-A / PR-D COMPLETE (Ver 1.1.15, 2026-10-26)
                      ↓
 WAVE 1.5 — Player Information Center     ✅ COMPLETE (PR A+B+D Ver 1.1.5–1.1.7; PR C Game Guide Ver 1.1.8)
                      ↓

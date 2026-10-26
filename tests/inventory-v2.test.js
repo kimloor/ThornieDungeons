@@ -73,8 +73,9 @@ test("Equipment comparison renders real current/candidate data with compact meta
 
 test("Inventory V2 uses the standard authenticated shell and icon-only tools", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
-  const inventory = components.slice(components.indexOf("function InventoryHeader"), components.indexOf("function InventoryOverlay({"));
-  assert.match(inventory, /React\.createElement\(StatusBar/);
+  const inventory = components.slice(components.indexOf("function EquipmentStage"), components.indexOf("function InventoryOverlay({"));
+  assert.match(inventory, /React\.createElement\(SharedOverlayShell/);
+  assert.doesNotMatch(inventory, /React\.createElement\(StatusBar/);
   assert.match(inventory, /React\.createElement\(GameDock/);
   assert.match(inventory, /activeKey:"inventory"/);
   assert.match(inventory, /aria-label":"Filter"/);
@@ -119,7 +120,7 @@ test("Inventory detail shows Mythic boss-weapon signature and separated stat sec
 test("Inventory detail keeps corner controls separate and previews salvage yield from the shared table", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
-  const inventory = components.slice(components.indexOf("function InventoryHeader"), components.indexOf("function InventoryOverlay({"));
+  const inventory = components.slice(components.indexOf("function ItemDetailModal"), components.indexOf("function InventoryOverlay({"));
   assert.match(styles, /\.md-inv2-popup-close \{ position:absolute !important; right:10px; top:10px/);
   assert.match(styles, /\.md-inv2-favorite-toggle[^}]*top:10px; left:10px/);
   assert.match(inventory, /const salvagePreview = [\s\S]*inventorySalvagePreview\(currentDetail\)/);
@@ -133,7 +134,7 @@ test("Inventory detail keeps corner controls separate and previews salvage yield
 test("Inventory W1 decomposes InventoryOverlayV2 and exposes read-only item helpers", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   [
-    "InventoryHeader", "EquipmentStage", "EquipmentSlot", "InventoryToolbar",
+    "SharedOverlayShell", "EquipmentStage", "EquipmentSlot", "InventoryToolbar",
     "InventoryGrid", "InventoryCell", "InventoryFilterModal", "OverflowModal",
     "ItemDetailModal", "ItemStats", "ItemComparison", "ItemActions"
   ].forEach(name => assert.match(components, new RegExp(`function ${name}\\(`)));
@@ -218,7 +219,7 @@ test("Equipment compare has three responsive columns and does not combine Base, 
 test("Enchant comparison pairs by stat name and validates real row values", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const start = components.indexOf("function inventoryEnchantComparisonEntries");
-  const end = components.indexOf("function InventoryHeader", start);
+  const end = components.indexOf("const INVENTORY_SLOT_POSITIONS", start);
   assert.ok(start >= 0 && end > start, "comparison helpers must remain available in source");
   const sandbox = {
     SLOT_ORDER: ["weapon", "wings", "helmet"],

@@ -1,6 +1,6 @@
 # Client Systems V1
 
-Status: **IN IMPLEMENTATION — PR-C merged (#129, Ver 1.1.2); PR-B (API client policy) open for Owner review; PR-A/PR-D not started**
+Status: **COMPLETE — PR-C / PR-B / PR-A merged; PR-D implemented for Ver 1.1.15**
 Risk: MEDIUM-HIGH (touches many client flows; no server contract, D1 or economy change)
 Roadmap: WAVE 1 PREP. One PR per component, in this order, each stopping for Owner approval:
 PR-C Error catalog -> PR-B API client policy -> PR-A Server Operation Manager -> PR-D Overlay shell.
@@ -88,6 +88,13 @@ Acceptance: concurrency tests (double click, retry after timeout reuses requestI
 ## 5. PR-D — Overlay shell
 
 Goal: shared shell for modal sheets (Inventory, Craft, Mail, Guild) with consistent safe-area handling, scroll lock, focus return and error slot. Migrate one screen per commit. Lowest priority; may be split or deferred after Owner review of PR-A.
+
+Implementation notes (Ver 1.1.15):
+- `SharedOverlayShell` owns the common dialog semantics, fixed header, Back/Close actions, safe-area padding, contained scrolling, 44 px touch targets, body scroll lock, focus return, responsive desktop panel and shared loading/error slots.
+- Inventory, Crafting, Mailbox and Guild were migrated in that order, one screen per commit. Existing feature state and mutation handlers remain owned by each screen; closing the shell does not introduce a new reset or persistence path.
+- The Ver 1.1.14 Global Currency Bar remains the only currency bar. Inventory's duplicate legacy `StatusBar` was removed; the global bar stays outside and above the shell.
+- Existing loading ownership is preserved: first-load Mailbox/Guild still use Global Loading, action pending remains inline or under the existing Server Operation Manager, and the shell does not create a second operation manager.
+- Existing Server Operation Manager integrations remain unchanged (Inventory mutations through their guarded operations, Mailbox claim/delete, Guild donation). Crafting remains on its pre-existing direct action path because PR-A explicitly left Craft out; PR-D does not change API, request-id, economy or gameplay behavior.
 
 ## 6. Risks and mitigations
 
