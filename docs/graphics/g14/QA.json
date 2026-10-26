@@ -1,0 +1,23 @@
+{
+  "task": "G14 Global Loading Presentation Pack",
+  "approval": "OWNER_APPROVED_2026-10-26",
+  "canvas": { "width": 256, "height": 256 },
+  "format": "PNG RGBA",
+  "target_bytes": 100000,
+  "hard_limit_bytes": 200000,
+  "animation": { "sequence": ["closed", "opening", "open"], "duration_ms": 360, "loop": false },
+  "frames": [
+    { "state": "closed", "file": "gate_emblem.png", "manifest_key": "gateEmblem", "r2_path": "ui/loading/gate_emblem.png", "bytes": 65241, "sha256": "ee0a7c0f71228e32ae4ed628bee114bbbd1434ebce3a9d2065f7bf91333863c5", "alpha_bounds": { "x": 20, "y": 24, "width": 216, "height": 208 }, "padding": { "left": 20, "top": 24, "right": 20, "bottom": 24 } },
+    { "state": "opening", "file": "gate_emblem_opening.png", "manifest_key": "gateEmblemOpening", "r2_path": "ui/loading/gate_emblem_opening.png", "bytes": 65464, "sha256": "21a79757d6fcd764d0d47b346688d4a33065a086cc493a5b883b630309a85749", "alpha_bounds": { "x": 20, "y": 22, "width": 216, "height": 212 }, "padding": { "left": 20, "top": 22, "right": 20, "bottom": 22 } },
+    { "state": "open", "file": "gate_emblem_open.png", "manifest_key": "gateEmblemOpen", "r2_path": "ui/loading/gate_emblem_open.png", "bytes": 67336, "sha256": "42d665a0d229f67118267a3b958472ebd77058a5c66f70a1d4a484123eacd215", "alpha_bounds": { "x": 20, "y": 20, "width": 216, "height": 216 }, "padding": { "left": 20, "top": 20, "right": 20, "bottom": 20 } }
+  ],
+  "checks": {
+    "transparent_alpha": "PASS",
+    "safe_padding": "PASS",
+    "dark_and_light_preview": "PASS",
+    "display_sizes_32_48_64_96": "PASS",
+    "theme_match": "OWNER_APPROVED",
+    "r2_upload": "PENDING_PR_MERGE",
+    "production_decode": "PENDING_DEPLOY"
+  }
+}

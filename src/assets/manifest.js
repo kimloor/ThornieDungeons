@@ -25,6 +25,12 @@ function optionalAsset(key) {
   return typeof path === "string" && path ? assetUrl(path) : "";
 }
 
+// G14 loading artwork is presentation-only. Callers must keep the CSS loading
+// emblem as the functional fallback when a key is absent or an image fails.
+function loadingUiUrl(key) {
+  return optionalAsset(`loadingUi.${key}`);
+}
+
 // Portraits use catalog IDs; the sprout001 alias belongs only to battle sprites.
 function petAvatarUrl(defId) {
   if (typeof defId !== "string" || !/^[a-z][a-z0-9_]*$/.test(defId)) return "";

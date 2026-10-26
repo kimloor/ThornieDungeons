@@ -224,7 +224,9 @@ Until a dedicated contract exists, inspect latest `main`, the latest approved ta
 - Read the relevant visual contract, current execution wave, and R2 rules.
 - All new/replaced production icons must pass the shared **Production icon asset budget** in `r2-upload/README.md` before publication; keep large editable masters separate from runtime exports.
 - **G10 Shared ATB Actor Icon Pack** is COMPLETE / integrated in shared Dungeon Battle and Arena TurnOrderBar presentation.
-- **G10 Shared ATB Actor Icons: COMPLETE. G10.5 Global Icon Audit/Optimization: COMPLETE. G11 Azure/Robot/Skeleton production icon families: COMPLETE. G12 Hero Skill Icon Pack: COMPLETE / Production Ver 1.0.39 (36/36).**\n- G13 Pet Avatar Pack: 8/8 Owner-approved portraits integrated and Production verified for Ver 1.1.17. Historical audit baseline: 8 authoritative Pets, 8/8 battle sprite families and 0/8 portraits. See `G13-PET-AVATAR-INTEGRATION.md`.\n- **G14 Global Loading Presentation Pack: APPROVED / QUEUED AFTER G13**. Shared Dungeon Gate/rune loading identity; runtime architecture is governed by `GLOBAL-LOADING-SYSTEM-V1.md`.
+- **G10 Shared ATB Actor Icons: COMPLETE. G10.5 Global Icon Audit/Optimization: COMPLETE. G11 Azure/Robot/Skeleton production icon families: COMPLETE. G12 Hero Skill Icon Pack: COMPLETE / Production Ver 1.0.39 (36/36).**
+- G13 Pet Avatar Pack: 8/8 Owner-approved portraits integrated and Production verified for Ver 1.1.17. Historical audit baseline: 8 authoritative Pets, 8/8 battle sprite families and 0/8 portraits. See `G13-PET-AVATAR-INTEGRATION.md`.
+- **G14 Global Loading Presentation Pack: OWNER APPROVED / IN PR**. Ver 1.1.18 three-frame shared Dungeon Gate presentation; Production gates pending. See `G14-GLOBAL-LOADING-PRESENTATION.md` and `GLOBAL-LOADING-SYSTEM-V1.md`.
 - Do not infer asset names, manifest keys, or paths.
 
 ### QA
