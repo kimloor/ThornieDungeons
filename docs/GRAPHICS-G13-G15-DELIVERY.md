@@ -92,7 +92,7 @@ payload; do not preload unused animation frames. G14 production waits for G13 Gr
 
 ## G15 candidate delivery — Issue #152 / Owner review gate
 
-Status: **ARTWORK CANDIDATE / OWNER REVIEW**. Baseline `main` is Ver 1.1.18 at
+Status: **OWNER APPROVED / R2 STAGED / RUNTIME INTEGRATED — PRODUCTION PENDING**. Baseline `main` is Ver 1.1.18 at
 `63b95d0e5025cfce5458f99b34341972cc3fda0d`. Risk is MEDIUM: new player-facing
 artwork and later optional runtime integration, with no Worker/API/D1/gameplay/data authority change.
 
@@ -137,15 +137,16 @@ reuse for a generic Information Center entry; none of the six section meanings h
 semantically correct reusable production icon. No NEW badge, roadmap status, card,
 background, tab, accordion, table or reserved Account/Support/Credits artwork was created.
 
-This gate deliberately makes no changes to `r2-upload/manifest.json`, `src/assets/manifest.js`,
-`src/ui/infoCenter.js`, `src/data/infoCenter.js`, runtime styles, visible version or generated
-`index.html`. R2 publishing, manifest integration, runtime fallback wiring, full regression,
-build, deploy and Production verification remain blocked on explicit Owner artwork approval.
+Owner approved all six candidates. Identical optimized bytes are now staged under
+`r2-upload/ui/info-center/`, the manifest gains the additive `infoCenterUi` group, and the
+Information Center uses a shared optional resolver with fixed-size decorative images and the
+existing emoji as missing-key/decode-error fallback. Data/content, NEW badge, roadmap text,
+navigation and deep-link contracts are unchanged. R2 publishing, deploy and Production
+verification remain blocked on the combined-task review/release gate.
 
-Exact next action: Owner reviews `docs/graphics/g15/PREVIEW.jpg`. If approved, continue on
-the same task branch: stage only the approved 6 PNGs to `r2-upload/ui/info-center/`, add the
-`infoCenterUi` manifest group additively, integrate the shared optional resolver with emoji
-fallback, run the complete G15 test/build/responsive/deploy gate and verify Production.
+Exact next action: finish the combined Package B/C review gates, run the complete shared
+test/build/responsive gate, obtain Project Lead release approval, then merge and verify R2
+upload hashes, frontend deployment and live 6/6 image decoding.
 
 ## Publication and acceptance
 

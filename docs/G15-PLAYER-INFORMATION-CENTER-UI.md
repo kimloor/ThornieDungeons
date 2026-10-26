@@ -6,16 +6,17 @@ Baseline: Ver 1.1.18 / `63b95d0e5025cfce5458f99b34341972cc3fda0d`
 
 Risk: MEDIUM — player-visible artwork and later optional UI integration; no backend or gameplay authority
 
-Status: **ARTWORK CANDIDATE / OWNER REVIEW**
+Status: **OWNER APPROVED / R2 STAGED / RUNTIME INTEGRATED — PRODUCTION PENDING**
 
 ## Delivery state
 
 | Gate | State | Evidence |
 | --- | --- | --- |
 | Artwork Candidate | PASS — 6/6 | `docs/graphics/g15/*.png` and `PREVIEW.jpg` |
-| Owner Approved | PENDING | Owner decision required before publication |
-| R2 Published | NOT STARTED | No files staged under `r2-upload/ui/info-center/` |
-| Runtime Integrated | NOT STARTED | Existing emoji UI remains unchanged |
+| Owner Approved | PASS | Owner approval received for all six candidates |
+| R2 Staged | PASS — 6/6 | `r2-upload/ui/info-center/` and additive `assets.infoCenterUi` |
+| R2 Published | PENDING MERGE | Upload/download SHA workflow runs only after the approved merge gate |
+| Runtime Integrated | PASS (branch) | Shared optional resolver, fixed-size images and emoji fallback |
 | Production Verified | NOT STARTED | Blocked on approval, integration and deploy |
 
 ## Candidate contract
@@ -38,22 +39,22 @@ gem, card, cart or price tag and does not imply that real-money checkout is enab
 
 ## Review and publication boundary
 
-The six files in `docs/graphics/g15/` are review candidates, not production R2 assets.
-Approval of the artwork authorizes the next gate only; it does not itself prove R2 upload,
-runtime integration, deployment or Production acceptance.
+The six approved review files remain as immutable evidence in `docs/graphics/g15/`; identical
+optimized bytes are staged for R2. Approval authorizes publication but does not itself prove
+the post-merge R2 workflow, deployment or Production acceptance.
 
-After approval:
+Implementation on PR #153:
 
-1. Copy only approved optimized icons to `r2-upload/ui/info-center/`.
-2. Add `assets.infoCenterUi` to the R2 manifest without changing existing groups.
-3. Use the shared optional manifest resolver; preserve current emoji fallback for missing
+1. Copied only approved optimized icons to `r2-upload/ui/info-center/`.
+2. Added `assets.infoCenterUi` to the R2 manifest without changing existing groups.
+3. Uses the shared optional manifest resolver and preserves current emoji fallback for missing
    keys and image load errors, with no retry loop or layout shift.
-4. Preserve navigation, deep links, scrolling, NEW badge and roadmap status text.
-5. Run focused and full regression, build/generated-file checks, responsive browser QA,
+4. Navigation, deep links, scrolling, NEW badge and roadmap status text remain runtime-owned.
+5. Focused and full regression, build/generated-file checks, responsive browser QA,
    R2 SHA validation, deployment and live decode verification.
 
 ## Known limitations at this gate
 
 - Static preview QA is complete; browser runtime/responsive behavior is not yet exercised.
-- No live R2 object or manifest entry exists for G15 yet.
-- Owner artwork approval is pending.
+- Live R2 upload/hash and Production decode remain pending the merge/release gate.
+- Browser responsive evidence is recorded with the combined-task QA after Packages B/C settle.

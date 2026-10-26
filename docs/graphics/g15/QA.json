@@ -2,7 +2,7 @@
   "task": "G15 Player Information Center UI Pack",
   "issue": 152,
   "baseline": "63b95d0e5025cfce5458f99b34341972cc3fda0d",
-  "status": "artwork-candidate-owner-review",
+  "status": "owner-approved-runtime-integrated-pending-production",
   "canvas": { "width": 128, "height": 128 },
   "format": "PNG RGBA",
   "target_bytes": 60000,
@@ -16,9 +16,10 @@
     "target_budget": "PASS 6/6",
     "duplicate_sha256": "PASS — none",
     "dark_light_small_size_preview": "PASS 6/6",
-    "owner_approval": "PENDING",
+    "owner_approval": "PASS",
+    "r2_staged": true,
     "r2_published": false,
-    "runtime_integrated": false,
+    "runtime_integrated": true,
     "production_verified": false
   },
   "assets": [
