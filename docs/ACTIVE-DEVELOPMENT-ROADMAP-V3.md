@@ -328,7 +328,7 @@ Graphics work is tracked separately from gameplay Wave numbering.
 
 - G10-G12: COMPLETE / Production.
 - G13 Pet Avatar Pack + Shared Pet Selector Presentation: COMPLETE / PRODUCTION VERIFIED (Ver 1.1.17); see `G13-PET-AVATAR-INTEGRATION.md`.
-- G14 Global Loading Presentation Pack: APPROVED / QUEUED AFTER G13.
+- G14 Global Loading Presentation Pack: OWNER APPROVED / IN PR — Ver 1.1.18 candidate; three-frame shared Dungeon Gate completion presentation with CSS/reduced-motion fallback. Production gates pending; see `G14-GLOBAL-LOADING-PRESENTATION.md`.
 - G15 Player Information Center UI Pack: APPROVED / QUEUED AFTER G14. Scope: production icons/visual identity for Announcements, Guide, Terms, Privacy, Fair Play and Purchase Policy plus NEW/public-roadmap status presentation. Layout/cards/accordion/text remain runtime UI.
 - G16-G20: generic equipment production art, one Tier set at a time after G15 — G16 T1 Beginner/Leather, G17 T2 Bronze, G18 T3 Steel/Chain, G19 T4 Platinum, G20 T5 Dragon Slayer. Each Tier includes its matching Accessory item icon; Accessory remains icon-only with no Hero wearable layer.
 - Graphics may run in parallel only where asset/runtime ownership does not conflict with the blocking release gate.
@@ -348,7 +348,7 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
-Visible game version                             Ver 1.1.17
+Visible game version                             Ver 1.1.18
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓

@@ -69,7 +69,7 @@ have genuine alpha coverage (0–255 after RGBA conversion). Portraits must not 
 - Suggested display checks: 32, 40, 48, 64, 96 CSS px; mobile 360/390 px and desktop 1280 px. These are QA targets, not claims of browser testing.
 - DEV owns build, focused UI tests, fallback failure injection, visible patch bump and deployment. Graphics has changed no Worker/D1/gameplay/runtime UI.
 
-## G14 proposed delivery specification (planning only)
+## G14 approved delivery — Issue #150 / Ver 1.1.18 candidate
 
 No existing `loadingUi` manifest group or dedicated loading pack found. Current
 GlobalLoadingOverlay.js has a CSS rune/rings at 76×76 over dark purple radial gradient.
@@ -78,11 +78,12 @@ Use the current gold `#FFD166`, muted lavender `#B9AEDD`, dark purple identity.
 
 | Priority | Filename under r2-upload/ | Manifest key proposal | Canvas / format | Target / hard limit |
 | --- | --- | --- | --- | --- |
-| Required | ui/loading/gate_emblem.png | loadingUi.gateEmblem | 256×256 alpha PNG, ≥20 px padding | ≤100 KB / 200 KB |
-| Optional, only after visual review | ui/loading/rune_ring.png | loadingUi.runeRing | 256×256 alpha PNG, ≥20 px padding | ≤80 KB / 200 KB |
+| Required / approved | ui/loading/gate_emblem.png | loadingUi.gateEmblem | 256×256 alpha PNG, ≥20 px padding | 65,241 B / PASS |
+| Owner-approved completion frame | ui/loading/gate_emblem_opening.png | loadingUi.gateEmblemOpening | 256×256 alpha PNG, ≥20 px padding | 65,464 B / PASS |
+| Owner-approved completion frame | ui/loading/gate_emblem_open.png | loadingUi.gateEmblemOpen | 256×256 alpha PNG, ≥20 px padding | 67,336 B / PASS |
 
-Smallest batch is one emblem. Keep current CSS background/vignette: no extra mobile/desktop
-background files needed. No frame sequence/GIF/video unless static + CSS motion proves insufficient.
+Owner approved the three-frame `closed → opening → open` extension on 2026-10-26. Keep current
+CSS background/vignette: no extra mobile/desktop background files or GIF/video are needed.
 One neutral gate/rune works for initial load and scene transitions, no Dungeon/Arena words.
 Optional ring must contribute visible value beyond the existing CSS rings, otherwise omit it.
 DEV should retain CSS emblem until image decoding succeeds and on error; a missing decorative

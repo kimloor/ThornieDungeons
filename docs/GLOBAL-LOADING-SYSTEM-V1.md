@@ -128,6 +128,13 @@ Verify:
 
 ## 10. Implementation status
 
+G14 presentation (Issue #150, Ver 1.1.18 candidate): Owner-approved three-frame Dungeon Gate
+art is staged under `ui/loading/` and mapped by the additive `loadingUi` manifest group. The
+overlay uses the closed frame only after all frames decode; on final owner release it plays a
+360 ms non-looping open transition. Missing/failed/slow artwork retains the CSS rune and never
+delays dismissal. Reduced Motion skips the transition. R2/deploy/Production verification remain
+pending until the PR merges.
+
 PR 1 (#125, merged): manager `src/state/globalLoading.js`, overlay `src/ui/GlobalLoadingOverlay.js`, single mount in `tail.html`, Character Select -> game (`enterCharacterSlot`).
 
 PR 2 (`feat/global-loading-v2`): remaining targets, Owner decision 2026-10-20 (Login keeps its own `authBusy` + departing transition and is intentionally NOT wired):
