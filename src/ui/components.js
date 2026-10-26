@@ -106,6 +106,82 @@ function BackButton({ onClick, label = "← Back", className = "" }) {
     onClick
   }, label);
 }
+
+// Shared modal/page shell for the Client Systems V1 PR-D surfaces. The shell owns
+// viewport behavior only; screen state and server-operation state stay with the
+// existing feature component so opening/closing the shell cannot reset them.
+let sharedOverlayInstanceId = 0;
+let sharedOverlayLockCount = 0;
+function SharedOverlayShell({
+  title,
+  subtitle = "",
+  onBack,
+  onClose,
+  children,
+  error = null,
+  loading = false,
+  loadingLabel = "",
+  footer = null,
+  className = "",
+  panelClassName = "",
+  bodyClassName = ""
+}) {
+  const rootRef = useRef(null);
+  const titleIdRef = useRef("");
+  if (!titleIdRef.current) titleIdRef.current = `md-shared-overlay-title-${++sharedOverlayInstanceId}`;
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const opener = document.activeElement;
+    sharedOverlayLockCount += 1;
+    document.documentElement.classList.add("md-shared-overlay-open");
+    document.body.classList.add("md-shared-overlay-open");
+    const initialFocus = rootRef.current?.querySelector("[data-overlay-initial-focus]");
+    if (initialFocus?.focus) initialFocus.focus({ preventScroll: true });
+    return () => {
+      sharedOverlayLockCount = Math.max(0, sharedOverlayLockCount - 1);
+      if (sharedOverlayLockCount === 0) {
+        document.documentElement.classList.remove("md-shared-overlay-open");
+        document.body.classList.remove("md-shared-overlay-open");
+      }
+      if (opener?.isConnected && opener.focus) opener.focus({ preventScroll: true });
+    };
+  }, []);
+
+  const backAction = onBack || onClose;
+  const closeAction = onClose || onBack;
+  return /*#__PURE__*/React.createElement("div", {
+    ref: rootRef,
+    className: `md-shared-overlay${className ? ` ${className}` : ""}`,
+    role: "presentation"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: `md-shared-overlay-panel${panelClassName ? ` ${panelClassName}` : ""}`,
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-labelledby": titleIdRef.current,
+    "aria-busy": loading ? "true" : undefined
+  }, /*#__PURE__*/React.createElement("header", { className: "md-shared-overlay-header" },
+    backAction && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-shared-overlay-back",
+      onClick: backAction,
+      "aria-label": "ย้อนกลับ",
+      "data-overlay-initial-focus": "true"
+    }, "‹"),
+    /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-heading" },
+      /*#__PURE__*/React.createElement("h2", { id: titleIdRef.current }, title),
+      subtitle && /*#__PURE__*/React.createElement("p", null, subtitle)),
+    closeAction && /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "md-shared-overlay-close",
+      onClick: closeAction,
+      "aria-label": "ปิด"
+    }, "×")),
+  error && /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-error", role: "alert" }, error),
+  loading && loadingLabel && /*#__PURE__*/React.createElement("div", { className: "md-shared-overlay-loading", role: "status" }, loadingLabel),
+  /*#__PURE__*/React.createElement("div", { className: `md-shared-overlay-body${bodyClassName ? ` ${bodyClassName}` : ""}` }, children),
+  footer && /*#__PURE__*/React.createElement("footer", { className: "md-shared-overlay-footer" }, footer)));
+}
 function LoginScreen({ cred, setCred, error, busy, departing, rememberLogin, onRememberLogin, onLogin, onRegister, onForgotPassword, registrationRecovery, onFinishRegistration, passwordResetRecovery, onClearPasswordResetRecovery }) {
   const e = React.createElement;
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -6552,15 +6628,6 @@ function inventoryComparisonRows(currentItem, nextItem) {
   return rows;
 }
 
-function InventoryHeader({ characterName, onClose }) {
-  return /*#__PURE__*/React.createElement("header", { className: "md-character-page-title md-inv2-header" },
-    /*#__PURE__*/React.createElement("button", { className: "md-inv2-close", type:"button", onClick: onClose, "aria-label": "ย้อนกลับ" }, "‹"),
-    /*#__PURE__*/React.createElement("div", { className:"md-inv2-title" },
-      /*#__PURE__*/React.createElement("h2", null, "Inventory"),
-      /*#__PURE__*/React.createElement("span", { className:"md-inv2-ornament md-inventory-art", style:inventoryUiStyle("sectionOrnament") }),
-      /*#__PURE__*/React.createElement("p", null, characterName || "Adventurer")));
-}
-
 const INVENTORY_SLOT_POSITIONS = {
   helmet: "left l1", chest: "left l2", boots: "left l3", wings: "left l4",
   gloves: "right r1", weapon: "right r2", accessory: "right r3"
@@ -6906,10 +6973,16 @@ function InventoryOverlayV2({
   };
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-equip-overlay md-inv2-overlay" },
-    /*#__PURE__*/React.createElement(StatusBar, { player:null, save, phase:"inventory", equipped }),
-    /*#__PURE__*/React.createElement("section", { className: "md-equip-sheet md-inv2-sheet" },
-      /*#__PURE__*/React.createElement(InventoryHeader, { characterName, onClose }),
+  return /*#__PURE__*/React.createElement(SharedOverlayShell, {
+    title:"Inventory",
+    subtitle:characterName || "Adventurer",
+    onBack:onClose,
+    onClose,
+    className:"md-inv2-overlay",
+    panelClassName:"md-inv2-shell-panel",
+    bodyClassName:"md-inv2-sheet",
+    footer:/*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub })
+  },
       /*#__PURE__*/React.createElement(EquipmentStage, { equipped, previewEquipped, characterName, onOpenDetail:setDetail }),
       overflow.length > 0 && /*#__PURE__*/React.createElement("button", { className: "md-inv2-overflow-banner", onClick: () => setOverflowOpen(true), "aria-label": `ไอเทมที่ล้น ${overflow.length}` },
         /*#__PURE__*/React.createElement("span", { className: `md-inv2-overflow-icon md-inventory-art ${inventoryUiUrl("icons.overflow") ? "has-art" : ""}`, style: iconButtonStyle("overflow"), "aria-hidden":"true" }, inventoryUiUrl("icons.overflow") ? null : "📦"),
@@ -6940,8 +7013,7 @@ function InventoryOverlayV2({
         detail, currentDetail, currentEquipped, compareRows, cp:comparisonCp, salvagePreview, message, busy,
         onToggleFavorite, onEquip, onUnequip, onSell:runSell, onSalvage:runSalvage, onClose:closeDetail
       })
-    ),
-    /*#__PURE__*/React.createElement(GameDock, { onCharacter, onOpenInv:() => {}, onPets, activeKey:"inventory", onSettings, onSave, onFriend, onChat, onGuild, onMainHub }));
+    );
 }
 
 function InventoryOverlay({

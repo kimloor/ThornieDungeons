@@ -1988,6 +1988,27 @@ body::after {
 
 
 /* ---- character equipment / inventory redesign ---- */
+.md-shared-overlay-open { overflow:hidden; overscroll-behavior:none; }
+.md-shared-overlay { position:absolute; inset:0; z-index:20; min-width:0; min-height:0; display:flex; flex-direction:column; background:rgba(6,3,15,.82); isolation:isolate; }
+.md-shared-overlay-panel { flex:1 1 auto; min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; background:linear-gradient(180deg,#30204f 0%,#1b1233 72%,#120b24 100%); }
+.md-shared-overlay-header { flex:0 0 auto; position:sticky; top:0; z-index:6; min-height:58px; padding:max(8px,var(--safe-top)) max(10px,var(--safe-right)) 8px max(10px,var(--safe-left)); display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:center; gap:8px; border-bottom:1px solid rgba(255,209,102,.28); background:linear-gradient(180deg,rgba(20,29,64,.99),rgba(10,14,38,.98)); box-shadow:0 7px 18px rgba(0,0,0,.24); }
+.md-shared-overlay-heading { min-width:0; text-align:center; }
+.md-shared-overlay-heading h2 { margin:0; color:var(--gold); font:800 21px/1.1 'Baloo 2'; overflow-wrap:anywhere; }
+.md-shared-overlay-heading p { margin:2px 0 0; color:var(--ink-soft); font-size:10px; line-height:1.2; overflow-wrap:anywhere; }
+.md-shared-overlay-back,.md-shared-overlay-close { width:44px; height:44px; padding:0; display:grid; place-items:center; border:1px solid rgba(255,209,102,.42); border-radius:12px; background:rgba(4,12,31,.76); color:#ffe098; font-size:25px; line-height:1; cursor:pointer; touch-action:manipulation; }
+.md-shared-overlay-back { justify-self:start; }
+.md-shared-overlay-close { justify-self:end; }
+.md-shared-overlay-body { flex:1 1 auto; min-width:0; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:12px max(14px,var(--safe-right)) max(16px,var(--safe-bottom)) max(14px,var(--safe-left)); }
+.md-shared-overlay-error,.md-shared-overlay-loading { flex:0 0 auto; margin:10px max(14px,var(--safe-right)) 0 max(14px,var(--safe-left)); padding:10px 12px; border:1px solid rgba(255,107,123,.5); border-radius:12px; background:rgba(91,24,42,.72); color:#ffd7dd; text-align:center; font-size:12px; font-weight:800; }
+.md-shared-overlay-loading { border-color:rgba(113,232,255,.4); background:rgba(7,48,69,.72); color:#c9f8ff; }
+.md-shared-overlay-footer { flex:0 0 auto; padding:6px max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); background:linear-gradient(180deg,rgba(9,13,35,.86),rgba(5,8,24,.98)); }
+.md-shared-overlay-footer > .md-hub-dock { margin:0; }
+@media (min-width:700px) {
+  .md-shared-overlay { padding:18px max(18px,var(--safe-right)) max(18px,var(--safe-bottom)) max(18px,var(--safe-left)); align-items:center; justify-content:center; }
+  .md-shared-overlay-panel { width:min(100%,760px); max-height:min(92dvh,920px); border:1.5px solid var(--gold-deep); border-radius:24px; box-shadow:0 22px 70px rgba(0,0,0,.56); }
+  .md-shared-overlay-heading h2 { font-size:27px; }
+  .md-shared-overlay-heading p { font-size:12px; }
+}
 .md-equip-overlay { position:absolute; inset:0; z-index:20; background:rgba(6,3,15,0.82); display:flex; align-items:flex-end; justify-content:center; }
 .md-equip-sheet { width:100%; max-height:96%; overflow-y:auto; background:linear-gradient(180deg,#30204f 0%,#1b1233 72%,#120b24 100%); border:1.5px solid var(--gold-deep); border-bottom:none; border-radius:22px 22px 0 0; padding:12px 12px 18px; box-shadow:0 -12px 35px rgba(0,0,0,.45); }
 .md-equip-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
@@ -2056,6 +2077,8 @@ body::after {
 /* ---- Inventory V2: responsive equipment stage + popup details ---- */
 .md-inventory-art { background-image:var(--inventory-ui-image); background-repeat:no-repeat; background-position:center; background-size:100% 100%; }
 .md-inv2-overlay { align-items:stretch; justify-content:stretch; flex-direction:column; padding:0; background:linear-gradient(180deg,rgba(3,8,25,.34),rgba(3,8,25,.7)),url("ui/character-select-background.webp") center/cover no-repeat; }
+.md-inv2-overlay .md-shared-overlay-panel { background:linear-gradient(180deg,rgba(7,13,33,.32),rgba(6,7,22,.7)); }
+.md-inv2-overlay .md-shared-overlay-body.md-inv2-sheet { width:100%; max-height:none; border:0; border-radius:0; box-shadow:none; }
 .md-inv2-overlay > .md-status { flex:0 0 auto; z-index:3; }
 .md-inv2-sheet { flex:1 1 auto; min-height:0; max-height:none; border-radius:0; border:0; padding:8px max(14px,var(--safe-right)) max(14px,var(--safe-bottom)) max(14px,var(--safe-left)); background:linear-gradient(180deg,rgba(7,13,33,.32),rgba(6,7,22,.7)); box-shadow:none; }
 .md-inv2-overlay > .md-hub-dock { flex:0 0 auto; z-index:3; margin:0 max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
