@@ -4,26 +4,27 @@
 const GLOBAL_LOADING_STYLE = `
 .gl-overlay {
   position: fixed; inset: 0; z-index: 2100;
-  display: flex; align-items: center; justify-content: center;
+  display: block; overflow: hidden;
   padding: var(--safe-top-eff) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-  background: radial-gradient(circle at 50% 42%, rgba(44,30,74,.82), rgba(10,6,24,.92));
+  background: #08050f;
   color: #F3EEFF; touch-action: none; user-select: none; -webkit-user-select: none;
   animation: gl-fade-in .18s ease-out both;
 }
-.gl-panel { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(78vw, 320px); text-align: center; }
-.gl-emblem { position: relative; width: 96px; height: 96px; }
-.gl-ring, .gl-ring-inner { position: absolute; border-radius: 50%; }
-.gl-ring { inset: 0; border: 3px solid rgba(255,209,102,.22); border-top-color: #FFD166; animation: gl-spin 1.1s linear infinite; }
-.gl-ring-inner { inset: 14px; border: 2px solid rgba(185,174,221,.2); border-bottom-color: #B9AEDD; animation: gl-spin 1.7s linear infinite reverse; }
-.gl-rune { position: absolute; inset: 29px; background: #FFD166; transform: rotate(45deg); border-radius: 3px; opacity: .85; animation: gl-pulse 1.6s ease-in-out infinite; }
-.gl-art { position: absolute; inset: 2px; width: calc(100% - 4px); height: calc(100% - 4px); object-fit: contain; opacity: 0; pointer-events: none; }
-.gl-emblem.art-ready .gl-art-closed { opacity: 1; animation: gl-art-breathe 1.8s ease-in-out infinite; }
-.gl-emblem.art-ready .gl-rune { display: none; }
-.gl-overlay.gl-exiting .gl-ring, .gl-overlay.gl-exiting .gl-ring-inner { opacity: 0; transition: opacity .12s ease-out; }
-.gl-overlay.gl-exiting .gl-art { animation-duration: .36s; animation-timing-function: ease-in-out; animation-fill-mode: both; }
+.gl-gate-stage { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(circle at 50% 42%, #2c1e4a, #08050f 72%); }
+.gl-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; opacity: 0; pointer-events: none; }
+.gl-gate-stage.closed-ready .gl-art-closed { opacity: 1; }
+.gl-overlay.gl-exiting .gl-art { animation-duration: .9s; animation-timing-function: ease-in-out; animation-fill-mode: both; }
 .gl-overlay.gl-exiting .gl-art-closed { animation-name: gl-gate-closed; }
 .gl-overlay.gl-exiting .gl-art-opening { animation-name: gl-gate-opening; }
 .gl-overlay.gl-exiting .gl-art-open { animation-name: gl-gate-open; }
+.gl-overlay.gl-reduced .gl-art { animation: none !important; opacity: 0; }
+.gl-overlay.gl-reduced .gl-art-open { opacity: 1; }
+.gl-panel { position: absolute; z-index: 2; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(24px, 7vh, 72px)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(78vw, 360px); padding: 12px 16px; text-align: center; border-radius: 14px; background: linear-gradient(180deg, rgba(8,5,15,.1), rgba(8,5,15,.72)); text-shadow: 0 2px 5px rgba(0,0,0,.95); }
+.gl-fallback { position: relative; width: 72px; height: 72px; margin-bottom: 2px; }
+.gl-ring, .gl-ring-inner { position: absolute; border-radius: 50%; }
+.gl-ring { inset: 0; border: 3px solid rgba(255,209,102,.22); border-top-color: #FFD166; animation: gl-spin 1.1s linear infinite; }
+.gl-ring-inner { inset: 14px; border: 2px solid rgba(185,174,221,.2); border-bottom-color: #B9AEDD; animation: gl-spin 1.7s linear infinite reverse; }
+.gl-rune { position: absolute; inset: 23px; background: #FFD166; transform: rotate(45deg); border-radius: 3px; opacity: .85; animation: gl-pulse 1.6s ease-in-out infinite; }
 .gl-label { margin: 0; font: 800 15px/1.35 'Baloo 2', sans-serif; color: #FFD166; letter-spacing: .02em; }
 .gl-toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); transform: translateX(-50%); z-index: 2101; max-width: min(88vw, 380px); padding: 10px 14px; border-radius: 12px; background: rgba(30,20,56,.96); border: 1px solid rgba(255,209,102,.45); color: #F3EEFF; font: 700 12px/1.4 'Baloo 2', sans-serif; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.45); animation: gl-fade-in .18s ease-out both; }
 .gl-toast-text { margin: 0; }
@@ -38,14 +39,16 @@ const GLOBAL_LOADING_STYLE = `
 .gl-progress-text { margin: -6px 0 0; font: 700 11px/1 'Baloo 2', sans-serif; color: #B9AEDD; font-variant-numeric: tabular-nums; }
 @keyframes gl-spin { to { transform: rotate(360deg); } }
 @keyframes gl-pulse { 0%, 100% { transform: rotate(45deg) scale(.8); opacity: .55; } 50% { transform: rotate(45deg) scale(1); opacity: 1; } }
-@keyframes gl-art-breathe { 0%, 100% { filter: drop-shadow(0 0 3px rgba(185,174,221,.28)); } 50% { filter: drop-shadow(0 0 8px rgba(255,209,102,.42)); } }
-@keyframes gl-gate-closed { 0%, 18% { opacity: 1; transform: scale(1); } 45%, 100% { opacity: 0; transform: scale(1.025); } }
-@keyframes gl-gate-opening { 0%, 12% { opacity: 0; transform: scale(.985); } 34%, 60% { opacity: 1; transform: scale(1.015); } 82%, 100% { opacity: 0; transform: scale(1.035); } }
-@keyframes gl-gate-open { 0%, 52% { opacity: 0; transform: scale(1); } 78%, 100% { opacity: 1; transform: scale(1.045); filter: drop-shadow(0 0 10px rgba(185,174,221,.5)); } }
+@keyframes gl-gate-closed { 0%, 24% { opacity: 1; transform: scale(1); } 43%, 100% { opacity: 0; transform: scale(1.01); } }
+@keyframes gl-gate-opening { 0%, 18% { opacity: 0; transform: scale(.995); } 36%, 61% { opacity: 1; transform: scale(1.005); } 78%, 100% { opacity: 0; transform: scale(1.015); } }
+@keyframes gl-gate-open { 0%, 56% { opacity: 0; transform: scale(1); } 76%, 100% { opacity: 1; transform: scale(1.02); } }
 @keyframes gl-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .gl-overlay { animation: none; }
   .gl-ring, .gl-ring-inner, .gl-rune, .gl-art { animation: none !important; }
+}
+@media (max-width: 480px) {
+  .gl-panel { width: min(86vw, 340px); bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); padding: 10px 14px; }
 }
 `;
 
@@ -85,27 +88,27 @@ function GlobalLoadingOverlay({ manager }) {
   const snap = useGlobalLoadingSnapshot(source);
   const [loadedFrames, setLoadedFrames] = useState(0);
   const [artFailed, setArtFailed] = useState(false);
-  const [holdExit, setHoldExit] = useState(false);
+  const [exitMode, setExitMode] = useState("");
   const wasVisibleRef = React.useRef(false);
   const lastVisibleRef = React.useRef(snap);
-  const closedSrc = loadingUiUrl("gateEmblem");
-  const openingSrc = loadingUiUrl("gateEmblemOpening");
-  const openSrc = loadingUiUrl("gateEmblemOpen");
+  const closedSrc = loadingUiUrl("fullscreenGateClosed");
+  const openingSrc = loadingUiUrl("fullscreenGateOpening");
+  const openSrc = loadingUiUrl("fullscreenGateOpen");
   const hasArtSources = Boolean(closedSrc && openingSrc && openSrc);
   const artReady = hasArtSources && !artFailed && loadedFrames === 7;
   useEffect(() => {
     if (snap.visible) {
       wasVisibleRef.current = true;
       lastVisibleRef.current = snap;
-      setHoldExit(false);
+      setExitMode("");
       return undefined;
     }
     if (!wasVisibleRef.current) return undefined;
     wasVisibleRef.current = false;
     const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduced || !artReady) return undefined;
-    setHoldExit(true);
-    const timer = setTimeout(() => setHoldExit(false), 360);
+    if (!artReady) return undefined;
+    setExitMode(reduced ? "reduced" : "motion");
+    const timer = setTimeout(() => setExitMode(""), reduced ? 120 : 900);
     return () => clearTimeout(timer);
   }, [snap.visible, artReady]);
   const shown = snap.visible ? snap : lastVisibleRef.current;
@@ -141,30 +144,33 @@ function GlobalLoadingOverlay({ manager }) {
     className: "gl-toast-btn",
     onClick: () => source.dismissStale()
   }, "ปิด"))) : null;
-  if (!snap.visible && !holdExit) return notice;
+  if (!snap.visible && !exitMode) return notice;
   const determinate = snap.visible && shown.mode === "determinate";
   return /*#__PURE__*/React.createElement(React.Fragment, null, notice, /*#__PURE__*/React.createElement("div", {
-    className: "gl-overlay" + (holdExit ? " gl-exiting" : ""),
+    className: "gl-overlay" + (exitMode ? " gl-exiting" : "") + (exitMode === "reduced" ? " gl-reduced" : ""),
     role: "status",
     "aria-live": "polite",
     "aria-busy": "true",
     "aria-label": shown.label,
     "data-global-loading": "true"
   }, /*#__PURE__*/React.createElement("style", null, GLOBAL_LOADING_STYLE), /*#__PURE__*/React.createElement("div", {
-    className: "gl-panel"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "gl-emblem" + (artReady ? " art-ready" : ""),
+    className: "gl-gate-stage" + ((loadedFrames & 1) && !artFailed ? " closed-ready" : ""),
     "aria-hidden": "true"
-  }, /*#__PURE__*/React.createElement("span", { className: "gl-ring" }), /*#__PURE__*/React.createElement("span", { className: "gl-ring-inner" }), /*#__PURE__*/React.createElement("span", { className: "gl-rune" }), hasArtSources ? [
+  }, hasArtSources ? [
     [closedSrc, "gl-art gl-art-closed", 1],
     [openingSrc, "gl-art gl-art-opening", 2],
     [openSrc, "gl-art gl-art-open", 4]
   ].map(([src, className, bit]) => /*#__PURE__*/React.createElement("img", {
-    key: className, className, src, alt: "", width: 256, height: 256,
+    key: className, className, src, alt: "", width: 1536, height: 1024,
     decoding: "async", draggable: false,
     onLoad: () => setLoadedFrames(mask => mask | bit),
     onError: () => setArtFailed(true)
-  })) : null), /*#__PURE__*/React.createElement("p", {
+  })) : null), /*#__PURE__*/React.createElement("div", {
+    className: "gl-panel"
+  }, (!hasArtSources || artFailed) ? /*#__PURE__*/React.createElement("div", {
+    className: "gl-fallback",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("span", { className: "gl-ring" }), /*#__PURE__*/React.createElement("span", { className: "gl-ring-inner" }), /*#__PURE__*/React.createElement("span", { className: "gl-rune" })) : null, /*#__PURE__*/React.createElement("p", {
     className: "gl-label"
   }, shown.label), determinate ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "gl-progress",

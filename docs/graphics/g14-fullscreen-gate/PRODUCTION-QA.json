@@ -1,0 +1,48 @@
+{
+  "approval": "OWNER_APPROVED_2026-10-26",
+  "status": "R2_STAGED_RUNTIME_INTEGRATED_PRODUCTION_PENDING",
+  "format": "WebP RGB",
+  "canvas": { "width": 1536, "height": 1024 },
+  "runtime": {
+    "fit": "cover",
+    "position": "50% 50%",
+    "sequence": ["closed", "opening", "open"],
+    "durationMs": 900,
+    "loop": false,
+    "reducedMotion": "open frame; no animation; 120ms presentation handoff",
+    "fallback": "CSS ring/rune only on missing manifest key or image load failure"
+  },
+  "frames": [
+    {
+      "state": "closed",
+      "manifestKey": "loadingUi.fullscreenGateClosed",
+      "r2Path": "ui/loading/fullscreen/gate_closed.webp",
+      "bytes": 221338,
+      "sha256": "42d88171768c2dae3f955c02ca578faa11df7c32a32964e4c59bd4fa7f18ca8d"
+    },
+    {
+      "state": "opening",
+      "manifestKey": "loadingUi.fullscreenGateOpening",
+      "r2Path": "ui/loading/fullscreen/gate_opening.webp",
+      "bytes": 175118,
+      "sha256": "0597465e1e1b858281366bf09e05fba3d947cc3d424fd6f657c21d070cab8f10"
+    },
+    {
+      "state": "open",
+      "manifestKey": "loadingUi.fullscreenGateOpen",
+      "r2Path": "ui/loading/fullscreen/gate_open.webp",
+      "bytes": 174714,
+      "sha256": "f7a52b4ce9b375251fe3b323933e02e343896d76120fd5782ad094c93eac595f"
+    }
+  ],
+  "checks": {
+    "ownerApproval": "PASS_3_OF_3",
+    "decode": "PASS_3_OF_3",
+    "desktopCrop1280": "PASS_STATIC_PREVIEW",
+    "mobileCrop360_390": "PASS_STATIC_PREVIEW",
+    "manifest": "PASS_ADDITIVE",
+    "runtimeFallback": "PASS_AUTOMATED",
+    "r2Published": "PENDING_MERGE_WORKFLOW",
+    "productionVerified": "NOT_STARTED"
+  }
+}

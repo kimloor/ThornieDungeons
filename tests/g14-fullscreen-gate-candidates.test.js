@@ -36,11 +36,13 @@ test("fullscreen gate review candidates are hash-exact 1536x1024 masters", () =>
   }
 });
 
-test("unapproved fullscreen candidates are documentation-only", () => {
+test("approved fullscreen candidates are published through optimized production derivatives", () => {
   const manifest = fs.readFileSync(path.join(ROOT, "r2-upload/manifest.json"), "utf8");
   const runtime = fs.readFileSync(path.join(ROOT, "src/ui/GlobalLoadingOverlay.js"), "utf8");
   for (const file of Object.keys(EXPECTED)) {
     assert.ok(!manifest.includes(`g14-fullscreen-gate/${file}`));
     assert.ok(!runtime.includes(`g14-fullscreen-gate/${file}`));
   }
+  assert.match(manifest, /ui\/loading\/fullscreen\/gate_closed\.webp/);
+  assert.match(runtime, /fullscreenGateClosed/);
 });
