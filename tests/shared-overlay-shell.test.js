@@ -17,6 +17,8 @@ expectMatch(components, /className: "md-shared-overlay-error", role: "alert"/, "
 expectMatch(styles, /\.md-shared-overlay-header\s*\{[^}]*position:sticky/s, "sticky header style");
 expectMatch(styles, /\.md-shared-overlay-body\s*\{[^}]*overflow-y:auto/s, "scroll container style");
 expectMatch(styles, /\.md-shared-overlay-back,.md-shared-overlay-close\s*\{[^}]*width:44px;[^}]*height:44px/s, "44px touch targets");
+expectMatch(styles, /\.md-root-dungeon\s*>\s*:not\(style\)[^{]*:not\(\.md-shared-overlay\)/, "Dungeon root preserves shared overlay positioning");
+expectMatch(styles, /\.md-root-town\s*>\s*:not\(style\)[^{]*:not\(\.md-shared-overlay\)/, "Town root preserves shared overlay positioning");
 expectMatch(styles, /var\(--safe-top\)/, "top safe area");
 expectMatch(styles, /var\(--safe-bottom\)/, "bottom safe area");
 
@@ -44,4 +46,4 @@ expectMatch(guild, /e\(SharedOverlayShell/, "Guild shell migration");
 expectMatch(guild, /error:errorSlot/, "Guild shared error slot");
 expectMatch(guild, /loading:myGuild === undefined/, "Guild shared loading state");
 
-console.log("shared-overlay-shell: 19 assertions passed");
+console.log("shared-overlay-shell: 21 assertions passed");
