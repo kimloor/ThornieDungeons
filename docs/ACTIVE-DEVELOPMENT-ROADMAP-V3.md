@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V3
 
-Status: **ACTIVE-PLANNING — Ver 1.1.1 RELEASED 2026-10-21; WAVE 1 COMPLETE; WAVE 1 PREP (Client Systems V1) contract awaiting Owner approval**
+Status: **ACTIVE-PLANNING — main at Ver 1.1.18 (checked 2026-10-26); WAVE 1, WAVE 1 PREP and WAVE 1.5 COMPLETE; WAVE 2 Admin V2 implementation contracts awaiting Owner approval**
 
 This is the successor roadmap after the completed historical W0-W9R and Gameplay WAVE 1-7 roadmap. Historical numbering is not reused here.
 
@@ -225,15 +225,15 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 **Later main baseline:** Ver 1.1.15 / Client Systems PR-D merged after that review; the above 804/804 count applies to Ver 1.1.14 and must not be misreported as the Ver 1.1.15 test result.
 
 ### WAVE 2 — Admin V2 Expansion
-**Status: OWNER APPROVED W2-A / W2-C / W2-D / W2-E SCOPE; W2-F DESIGN ONLY; ADDITIONAL TOOLS PENDING DESIGN (2026-10-26)**
-**Contract/design record:** `docs/ADMIN-V2.md` section 21; Claude read-only audit Issue #144.
+**Status: OWNER APPROVED W2-A / W2-C / W2-D / W2-E / W2-F SCOPE; IMPLEMENTATION CONTRACTS (ADMIN-V2.md section 22) AWAITING OWNER APPROVAL; ADDITIONAL TOOLS PENDING DESIGN (2026-10-26)**
+**Contract/design record:** `docs/ADMIN-V2.md` sections 21-22; Claude read-only audit Issue #144.
 
 - **W2-A — mutation audit logging (approved):** cover all current Admin data mutations, with actor, action, target, sanitized change detail and reliable persistence. Revalidate the eight unaudited mutation actions reported in Issue #144 against the latest code.
 - **W2-B — new role tiers (removed by Owner):** do not implement Owner/Admin/Viewer split; preserve existing Admin authentication and all preventive server checks. Action audit supports traceability but does not replace authorization.
 - **W2-C — Admin security hardening (approved):** review safe rendering/escaping, CSP/security headers and obsolete legacy Admin authentication code.
 - **W2-D — destructive action safety (approved):** typed confirmation, reason, target preview, server validation, audit.
 - **W2-E — read-only Audit Viewer (approved):** filterable history with sanitized records.
-- **W2-F — Delete Player Item (design only, VERY HIGH):** proposed Player ID lookup → character picker → exact item instance/stack selection and inspector → amount where applicable → review/equipped impact → typed confirmation + reason → atomic server validation/deletion and audit. No wildcard/bulk delete, Mailbox or escrow mutation in V1 without another contract; separate Owner approval required before implementation.
+- **W2-F — Delete Player Item (included in Wave 2 by Owner; last slice, VERY HIGH, own release gate and server-side kill switch, contract in ADMIN-V2.md 22.7):** proposed Player ID lookup → character picker → exact item instance/stack selection and inspector → amount where applicable → review/equipped impact → typed confirmation + reason → atomic server validation/deletion and audit. No wildcard/bulk delete, Mailbox or escrow mutation in V1 without another contract; implementation starts only after the section 22 contract is approved and W2-A/W2-D/W2-E are in production.
 - **Other Admin Tools:** design together with Owner later; no implementation scope approved yet.
 
 Implementation follows risk routing in `AGENTS.md`; API/DB/player data changes require appropriate branches, QA, deployment and live verification. Do not infer approval for economy mutations, destructive tooling or schema changes from this roadmap.

@@ -26,7 +26,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 | Document | Scope |
 | --- | --- |
-| [`ACTIVE-DEVELOPMENT-ROADMAP-V3.md`](ACTIVE-DEVELOPMENT-ROADMAP-V3.md) | **ACTIVE-PLANNING** — successor roadmap: Cloud Sync + UI Fix pre-Ver-1.1.0 gate, then fresh WAVE 1 Global Loading and future design gate. |\n| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **HISTORICAL / COMPLETE** — completed W0-W9R and Gameplay WAVE 1-7 roadmap; retained as release history and no longer used for new numbering. |
+| [`ACTIVE-DEVELOPMENT-ROADMAP-V3.md`](ACTIVE-DEVELOPMENT-ROADMAP-V3.md) | **ACTIVE-PLANNING** — successor roadmap: Waves 1, 1 PREP and 1.5 complete; WAVE 2 Admin V2 Expansion contracts awaiting Owner approval; later Waves per roadmap. |\n| [`ACTIVE-DEVELOPMENT-ROADMAP-V1.md`](ACTIVE-DEVELOPMENT-ROADMAP-V1.md) | **HISTORICAL / COMPLETE** — completed W0-W9R and Gameplay WAVE 1-7 roadmap; retained as release history and no longer used for new numbering. |
 | [`BATTLE-SYSTEM-V1.md`](BATTLE-SYSTEM-V1.md) | Dungeon Battle V1 gameplay, shared combat architecture, turn/action flow, statuses, UI behavior, checkpointing, and reward safety. |
 | [`BATTLE-RESULT-COMMIT-V1.md`](BATTLE-RESULT-COMMIT-V1.md) | **ACTIVE-DESIGN** terminal-action presentation, Result Confirming/Ready UX, Final Battle Commit direction, reward receipt/idempotency, and post-battle recovery contract. |
 | [`BATTLE-VFX-V1.md`](BATTLE-VFX-V1.md) | Battle VFX presentation, timing, asset families, runtime integration, and Graphics/DEV handoff contract. |
@@ -48,7 +48,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`INVENTORY-UI-V2.md`](INVENTORY-UI-V2.md) | Inventory/equipment layout, item popup, compare rules, rarity presentation, capacity, overflow, and responsive behavior. |
 | [`SHOP-AND-SELL-V1.md`](SHOP-AND-SELL-V1.md) | **ACTIVE-PRODUCTION / V1** — Shop bulk purchase, stack selling, server-authoritative prices, optimistic purchase UX, overflow/pending guards, and QA contract. |
 | [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) | Login/Auth V2 account, session, password, recovery, migration, frontend, and backend security contract. |
-| [`ADMIN-V2.md`](ADMIN-V2.md) | **ACTIVE-PRODUCTION** Admin V2 auth/session foundation plus Phase 1 Dashboard, server-side Player Search, sanitized read-only Player Viewer/Items, and audit-safe read paths. |
+| [`ADMIN-V2.md`](ADMIN-V2.md) | **ACTIVE-PRODUCTION** Admin V2 auth/session foundation plus Phase 1 Dashboard, server-side Player Search, sanitized read-only Player Viewer/Items, and audit-safe read paths. Wave 2 expansion contracts (mutation audit, hardening/CSP, destructive safety, Audit Viewer, Delete Item) are in section 21-22. |
 | [`NAVIGATION-SETTINGS-V1.md`](NAVIGATION-SETTINGS-V1.md) | Shared bottom navigation, More menu, Settings/account-security hub, return flows, and mobile navigation behavior. |
 | [`PET-SYSTEM-V2.md`](PET-SYSTEM-V2.md) | Pet roles, progression, stats, skills, combat behavior, page UI, save migration, and playtest rules. |\n| [`PET-AVATAR-CONTRACT-G13.md`](PET-AVATAR-CONTRACT-G13.md) | **COMPLETE / G13 PRODUCTION VERIFIED — Ver 1.1.17** — eight-Pet portrait/avatar family, shared resolver, asset budget, and custom Pet selector presentation contract. |\n| [`HERO-SKILL-ICON-CONTRACT-G12.md`](HERO-SKILL-ICON-CONTRACT-G12.md) | **ACTIVE-PRODUCTION / G12 COMPLETE** — 36 Hero skill icons, shared resolver, four runtime consumers, production asset budget and fallback contract. |
 | [`G15-PLAYER-INFORMATION-CENTER-UI.md`](G15-PLAYER-INFORMATION-CENTER-UI.md) | **ARTWORK CANDIDATE / OWNER REVIEW** — six Player Information Center icon candidates, QA evidence, proposed manifest contract and approval boundary. |
@@ -278,3 +278,4 @@ When an approved production contract changes:
 - Post-WAVE 6 Full Project Gap Audit + Security Re-Audit: COMPLETE / GATE PASSED; inventory read-isolation blocker resolved and Production verified by PR #63.
 - WAVE 7 Presentation Expansion: COMPLETE / PRODUCTION VERIFIED; W7A Terminal/Boss/Enrage/Raid + W7B Enhance/Craft presentation shipped. Summoning remains separately deferred.
 - Admin V2 Phase 1: COMPLETE / PRODUCTION VERIFIED; Dashboard + server-side Player Search + sanitized read-only Player Viewer/Items shipped in PR #71.
+- Admin V2 Wave 2: Owner scope decisions recorded (2026-10-26); implementation contracts in `ADMIN-V2.md` section 22 awaiting Owner approval; no Wave 2 code shipped.
