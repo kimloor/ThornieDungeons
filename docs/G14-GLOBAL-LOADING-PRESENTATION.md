@@ -1,6 +1,6 @@
 # G14 Global Loading Presentation Pack — Ver 1.1.18
 
-Status: **PARTIAL — OWNER APPROVED / R2 + RUNTIME PR PREPARATION**
+Status: **DONE — PRODUCTION VERIFIED / Ver 1.1.18**
 
 Issue: #150. Risk: **MEDIUM** (presentation assets and shared client UI only). No Worker,
 API, D1, gameplay, economy, persistence, Battle Core or loading-token ownership changes.
@@ -52,13 +52,19 @@ required motion and functional fallback.
 - Failure injection: CSS fallback PASS, one failed request, no retry, no blocked dismissal.
 - Reduced motion: completion animation skipped and dismissal remains immediate.
 
-## Release gates
+## Release and Production verification
 
 - Owner artwork approval: **PASS**.
-- Candidate + runtime PR: **PENDING**.
-- R2 workflow upload/download SHA-256 verification: **PENDING MERGE**.
-- Frontend deploy and live manifest/image decode: **PENDING MERGE**.
-- Production presentation verification: **PENDING DEPLOY**.
-- Branch cleanup: **PENDING MERGE + PRODUCTION VERIFICATION**.
+- PR #151 merged: `57611966c9013ae2c2d7c6545c8fa91c93433fe4`.
+- R2 workflow run `40293498728`: **SUCCESS**; uploaded and downloaded/verified
+  `manifest.json` and all three `ui/loading/` frames (4 objects total).
+- Frontend deployment run `40293498739`: **SUCCESS**; Production version ID
+  `a0fa49a6-8777-43b5-815a-b43540bc7b3f`.
+- Live `/assets/manifest.json`: `thornie-assets-v2`, all three `loadingUi` paths resolve.
+- Live image decode: **PASS 3/3**, each reports 256×256 natural dimensions.
+- Production root: Login rendered with visible **Ver 1.1.18** and no observed game error.
+- Authenticated Production transitions were not exercised because no Production player account
+  was used. The same built runtime passed the isolated browser consumer/failure/reduced-motion QA.
+- Automatic cleanup workflow run `40293567340`: **SUCCESS**; remote work branch removed.
 
-G14 must remain PARTIAL until the pending release gates pass.
+G14 is complete. Next Graphics roadmap item: G15 Player Information Center UI Pack.

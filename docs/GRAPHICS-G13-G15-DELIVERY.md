@@ -69,7 +69,7 @@ have genuine alpha coverage (0–255 after RGBA conversion). Portraits must not 
 - Suggested display checks: 32, 40, 48, 64, 96 CSS px; mobile 360/390 px and desktop 1280 px. These are QA targets, not claims of browser testing.
 - DEV owns build, focused UI tests, fallback failure injection, visible patch bump and deployment. Graphics has changed no Worker/D1/gameplay/runtime UI.
 
-## G14 approved delivery — Issue #150 / Ver 1.1.18 candidate
+## G14 completed delivery — Issue #150 / PR #151 / Ver 1.1.18 Production
 
 No existing `loadingUi` manifest group or dedicated loading pack found. Current
 GlobalLoadingOverlay.js has a CSS rune/rings at 76×76 over dark purple radial gradient.

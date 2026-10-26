@@ -17,7 +17,9 @@
     "dark_and_light_preview": "PASS",
     "display_sizes_32_48_64_96": "PASS",
     "theme_match": "OWNER_APPROVED",
-    "r2_upload": "PENDING_PR_MERGE",
-    "production_decode": "PENDING_DEPLOY"
+    "r2_upload": "PASS_RUN_40293498728",
+    "production_decode": "PASS_3_OF_3_256X256",
+    "frontend_deploy": "PASS_RUN_40293498739",
+    "production_version": "1.1.18"
   }
 }
