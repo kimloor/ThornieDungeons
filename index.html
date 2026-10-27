@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.21" />
+<meta name="application-version" content="1.1.22" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -174,7 +174,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.21";
+  content: "Ver 1.1.22";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -5276,7 +5276,8 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   shop_offer_not_found: "business",
   slot_occupied: "business",
   target_not_guild_member: "business",
-  // admin (7) + W2-D delete-safety validation (3)
+  // admin (7) + W2-D delete-safety validation (3) + W2-E filter validation (1)
+  invalid_filter: "validation",
   admin_audit_failed: "admin",
   confirm_mismatch: "validation",
   invalid_reason: "validation",
@@ -8118,13 +8119,20 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
+      version: "1.1.22", date: "2026-10-27", title: "หน้าตรวจประวัติระบบหลังบ้าน",
+      items: [
+        "เพิ่มหน้าตรวจดูประวัติการแก้ไขข้อมูลเกมสำหรับผู้ดูแลระบบ (อ่านอย่างเดียว)",
+        "ไม่มีการเปลี่ยนแปลงต่อการเล่น ไอเทม หรือข้อมูลตัวละครของผู้เล่น"
+      ]
+    },
+    history: [
+      {
       version: "1.1.21", date: "2026-10-27", title: "ปรับปรุงระบบหลังบ้านเพิ่มเติม",
       items: [
         "เพิ่มขั้นตอนยืนยันและบันทึกเหตุผลเมื่อผู้ดูแลระบบลบข้อมูลเกม",
         "ไม่มีการเปลี่ยนแปลงต่อการเล่น ไอเทม หรือข้อมูลตัวละครของผู้เล่น"
       ]
     },
-    history: [
       {
       version: "1.1.20", date: "2026-10-27", title: "ปรับปรุงระบบหลังบ้าน",
       items: [

@@ -110,6 +110,7 @@
   <div class="tab" data-tab="recipes">Recipes</div>
   <div class="tab" data-tab="monsters">Monster Drops</div>
   <div class="tab" data-tab="junk">Junk Info</div>
+  <div class="tab" data-tab="audit">Audit Log</div>
 </div>
 
 <main>
@@ -275,6 +276,34 @@
   </section>
 
   <!-- ===================== JUNK INFO TAB ===================== -->
+  <section id="tab-audit">
+    <div class="card">
+      <h2>Audit Log (อ่านอย่างเดียว)</h2>
+      <div class="muted">การเปิดดูหน้านี้ถูกบันทึกเป็น audit ด้วย (เก็บเฉพาะชื่อตัวกรองและจำนวนผลลัพธ์)</div>
+      <div class="playerSearchRow">
+        <input id="auditEventType" placeholder="event_type เช่น ADMIN_RECIPE_DELETE" autocomplete="off">
+        <input id="auditActor" placeholder="actor (Player ID)" autocomplete="off">
+      </div>
+      <div class="playerSearchRow">
+        <input id="auditTargetType" placeholder="target_type" autocomplete="off">
+        <input id="auditTargetId" placeholder="target_id" autocomplete="off">
+      </div>
+      <div class="playerSearchRow">
+        <input id="auditFrom" type="datetime-local" title="ตั้งแต่">
+        <input id="auditTo" type="datetime-local" title="ถึง">
+        <button class="btn-primary" id="auditSearchBtn" type="button" style="margin-top:0;">ค้นหา</button>
+      </div>
+      <div class="msg" id="auditMsg"></div>
+      <div style="overflow-x:auto;">
+        <table id="auditTable">
+          <thead><tr><th>เวลา</th><th>Actor</th><th>Event</th><th>Target</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="ghost" id="auditMoreBtn" type="button" style="display:none;padding:8px 16px;border-radius:6px;">โหลดเพิ่ม</button>
+    </div>
+  </section>
+
   <section id="tab-junk">
     <div class="card">
       <h2>วัตถุดิบ (junkId) ทั้งหมด</h2>

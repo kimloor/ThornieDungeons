@@ -194,7 +194,8 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   shop_offer_not_found: "business",
   slot_occupied: "business",
   target_not_guild_member: "business",
-  // admin (7) + W2-D delete-safety validation (3)
+  // admin (7) + W2-D delete-safety validation (3) + W2-E filter validation (1)
+  invalid_filter: "validation",
   admin_audit_failed: "admin",
   confirm_mismatch: "validation",
   invalid_reason: "validation",
