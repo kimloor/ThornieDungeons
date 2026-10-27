@@ -44,3 +44,7 @@ Image generation used the built-in ImageGen tool; see `PROMPT.md` for the prompt
 ## Latest Attack_01 continuation checkpoint
 
 **ATTACK_01 BOUNDED OVERLAP EXPERIMENT — OWNER VISUAL REVIEW PENDING.** See [review and limitations](owner-selected-recut/attack_01/bounded-overlap-review/README.md). All seven candidate export bytes and protected Idle artwork remain unchanged. Offline visibility masks expose the chest skirt/shoulder plates but leave a raised-shoulder ring; actual Leather runtime fixture separately shows helmet/bracer overlap outside the proposed hand crop. This is not visual acceptance, runtime readiness or final-56 inventory promotion. Current prototype supersedes old blocked-source continuation notes for Attack_01 only; rejected source pixels remain rejected.
+
+## Azure layer order recheck
+
+Owner requested a fresh part-by-part Azure order inspection: see [exact order and cumulative stages](owner-selected-recut/attack_01/azure-layer-walkthrough/README.md). This view uses complete unmasked parts, with no cropped hand or torso redraw. Leather matches the prior unmasked Azure-anatomical-order checkpoint pixel-for-pixel; the different arm filenames are explicitly mapped. Order is verified; artwork fit remains pending.

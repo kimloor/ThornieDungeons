@@ -1,0 +1,102 @@
+{
+  "status": "AZURE_LAYER_ORDER_VERIFIED_ATTACK_01_VISUAL_ACCEPTANCE_PENDING",
+  "main": "7ef31753b969386d2750857dddaa53d44c03081c",
+  "branchParent": "1ca732eba38a77a27a07adee5dd66c4ea6f395a1",
+  "risk": "LOW offline composition evidence only",
+  "rows": [
+    {
+      "backToFront": 1,
+      "meaning": "Base",
+      "azureLayer": "base",
+      "azureManifestPath": "hero/v5/g2/base/attack_01.png",
+      "azureSha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+      "leatherLayer": "base",
+      "leatherSource": "r2-upload/hero/v5/g2/base/attack_01.png",
+      "leatherSha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442"
+    },
+    {
+      "backToFront": 2,
+      "meaning": "Underlay",
+      "azureLayer": "coverage_underlay",
+      "azureManifestPath": "hero/v5/g2/equipment/azure/attack_01/coverage_underlay.png",
+      "azureSha256": "7da34d8662ad29b54797b6f384d03aa4e6440303c6875aeaf52eb81dde39747a",
+      "leatherLayer": "coverage_underlay",
+      "leatherSource": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/coverage_underlay.png",
+      "leatherSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b"
+    },
+    {
+      "backToFront": 3,
+      "meaning": "Chest + shoulder plates",
+      "azureLayer": "torso_armor",
+      "azureManifestPath": "hero/v5/g2/equipment/azure/attack_01/torso_armor.png",
+      "azureSha256": "5739697871758ab0a70190afc70c71747857c3a0aec00588892d5e746859434d",
+      "leatherLayer": "torso_armor",
+      "leatherSource": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/torso_armor.png",
+      "leatherSha256": "9f7471045fcf1753e231c85b1bb9c837e115d6af4bc22d9cfaaf4e7b8c3565e3"
+    },
+    {
+      "backToFront": 4,
+      "meaning": "Trousers + boots",
+      "azureLayer": "legs_boots",
+      "azureManifestPath": "hero/v5/g2/equipment/azure/attack_01/legs_boots.png",
+      "azureSha256": "391b099f5852d0dad0e2395e971778f3379a350a69019762f4862ba79e445b83",
+      "leatherLayer": "legs_boots",
+      "leatherSource": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/legs_boots.png",
+      "leatherSha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf"
+    },
+    {
+      "backToFront": 5,
+      "meaning": "Extended arm",
+      "azureLayer": "arm_rear",
+      "azureManifestPath": "hero/v5/g2/equipment/azure/attack_01/arm_rear.png",
+      "azureSha256": "a5b2a5383e5a8dfb2be94314be19aea9b9752001929ea1eb8da5846cf12a1f47",
+      "leatherLayer": "arm_front",
+      "leatherSource": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/arm_front.png",
+      "leatherSha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148"
+    },
+    {
+      "backToFront": 6,
+      "meaning": "Helmet",
+      "azureLayer": "helmet",
+      "azureManifestPath": "hero/v5/g2/equipment/azure/attack_01/helmet.png?v=azure_angel_fullface_v1",
+      "azureSha256": "175dae552fbe060039f305830996440c3df1d661ddbf927e9619625a91baf63d",
+      "leatherLayer": "helmet",
+      "leatherSource": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/helmet.png",
+      "leatherSha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318"
+    },
+    {
+      "backToFront": 7,
+      "meaning": "Complete sword",
+      "azureLayer": "sword",
+      "azureManifestPath": "hero/v5/g2/equipment/azure/attack_01/sword.png?v=azure_royal_bastion_compact_grip",
+      "azureSha256": "0b96a711d24c2d3c4eaaa911cc512a6659c9388683e2e1a83b24d11f6cf43cc7",
+      "leatherLayer": "sword",
+      "leatherSource": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/sword.png",
+      "leatherSha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb"
+    },
+    {
+      "backToFront": 8,
+      "meaning": "Raised sword arm",
+      "azureLayer": "arm_front",
+      "azureManifestPath": "hero/v5/g2/equipment/azure/attack_01/arm_front.png",
+      "azureSha256": "ba5898774b7f8ead9751e54292f5b4a153ba8cfd1e870e2c70da872bcd2229f0",
+      "leatherLayer": "arm_rear",
+      "leatherSource": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/arm_rear.png",
+      "leatherSha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb"
+    }
+  ],
+  "masksUsed": false,
+  "extraTorsoPass": false,
+  "extraHandPass": false,
+  "artworkModified": false,
+  "samePixelsAsEarlierUnmaskedAzureOrderCheckpoint": true,
+  "runtimeModified": false,
+  "runtimeOffsetBaked": false,
+  "visualAccepted": false,
+  "G3Complete": false,
+  "knownIssues": [
+    "Waist insertion remains above chest skirt under strict Azure order.",
+    "Sleeve insertion remains above shoulder plates under strict Azure order.",
+    "This offline anatomical mapping is different from merged leather_overlap_v1; no runtime or slot remapping authorized."
+  ]
+}
