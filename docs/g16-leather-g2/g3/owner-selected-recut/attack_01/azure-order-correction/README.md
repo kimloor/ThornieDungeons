@@ -1,0 +1,13 @@
+# Attack_01 — additional helmet shift and actual Azure order
+
+Status: OWNER VISUAL REVIEW PENDING. Main checked 7ef31753b969386d2750857dddaa53d44c03081c; mandatory contracts unchanged. Risk MEDIUM review graphics only.
+
+Owner requested helmet slightly further left and layer order taken from Azure. Helmet moved an additional -4px X (total -16px relative to azure-alignment-review). Other six export PNG byte streams are unchanged from owner-position-correction. No new generation, redesign, Base edit, scaling or limb deformation.
+
+AZURE_RESOLVED_LAYERS.json was produced by executing the actual merged HeroV5RuntimeContract.js heroV5FrameLayers against manifest-selected Azure Attack_01 with all five slots. It returns Base → underlay → torso → legs → arm_rear → helmet → sword → arm_front. Azure arm_rear is the opposite extended arm and Azure arm_front is raised. Leather anatomical mapping therefore swaps those two names ONLY in offline composition: Base → empty underlay → torso → legs → Leather arm_front (extended) → helmet → sword → Leather arm_rear (raised). No extra final torso pass or cropped hand pass is added. build.py asserts the exact resolved sequence and applies it to actual files.
+
+REVIEW.png/reassembled.png show that exact anatomical order; AZURE_ORDER_COMPARISON.png shows both outfits using it. Visible limitation: Leather upper trouser insertion now overlaps its split chest skirt, and rounded sleeve insertion caps overlap shoulder armor. Azure distributes these regions differently between its body/arm/leg layers. Matching sequence alone cannot make differently cut artwork occlude identically. This limitation is shown openly, not silently corrected by modifying passed pieces, adding a torso redraw or restoring a different order. Further compatible trimming/masking or pose-specific ordering needs Owner/Project Lead/DEV direction and review. Do not certify this as visual fit PASS.
+
+This is an offline review composition. Existing merged leather_overlap_v1 intentionally resolves a different pairwise order, so runtime compatibility remains pending DEV review before integration. No runtime source/profile/slot changes, no R2/live manifest/deploy. No final-56 promotion or G3 completion claim. Seven 768x768 RGBA/origin0 PNGs pass alpha-edge/dimension/hash checks. Complete separate sword and its up-left grip placement remain byte-identical; original Base and prior evidence are preserved.
+
+Reproduce: node-execute the canonical resolver with current manifest to regenerate AZURE_RESOLVED_LAYERS.json if source contracts change, then python docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/build.py. This does not authorize a runtime or artwork change.
