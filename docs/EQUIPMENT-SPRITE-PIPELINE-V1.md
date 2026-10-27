@@ -62,6 +62,41 @@ This is the reusable authoring workflow approved after G16 prototype review. It 
 
 Prototype approval is not a Production PASS. Do not repeat generation blindly when it changes anatomy; show the comparison and resolve the affected source/fit before claiming acceptance. No automatic approval is inferred from an image-generation result or successful PNG decoding.
 
+## 4B. Approved cutting and hidden-overlap completion method — G16 Idle_01 (2026-10-27)
+
+**Owner visual result: G16 G2 — OWNER VISUAL APPROVED.** The Owner approved the latest overlap-completed asset sheet on 2026-10-27. Evidence: `G16_OVERLAP_COMPLETION_ASSET_SHEET.png` and `G16_OVERLAP_COMPLETION_REVIEW.zip`, delivered for review. This approval applies to the revised Idle_01 artwork and assembled visual preview; earlier rejected cuts are not the approved source. It does not certify runtime compatibility, other frames or production publication.
+
+### Cutting and completion procedure
+
+1. Keep the registered weapon-free dressed Hero and complete separate sword as masters. Cut on the original 768×768 coordinate system; retain fixed origin and scale in every exported layer.
+2. Review the marked asset sheet and classify each boundary as **remove**, **complete**, or **preserve**. A part must contain enough of its own material to join beneath the adjacent equipment. Do not simply trace the visible silhouette where another part previously covered it.
+3. Finish **one part at a time**: cut, inspect enlarged and against contrasting backgrounds, fill its missing insertion material, clean its contour/alpha, then accept that part before continuing. Remove isolated fragments, skin contamination, unrelated equipment and jagged cut ends. Use masks to preserve approved visible artwork.
+4. **Helmet:** trim the marked far-side cheek extension below the brow and remove the detached endpoint. Keep the approved helmet shape and open face; do not include facial skin in the helmet layer.
+5. **Chest/shoulders:** complete the collar/back-neck edge, shoulder undersides and armhole margins with matching leather. Join additions smoothly to the original contour. Preserve the approved chest, belt and visible design.
+6. **Trousers/boots:** complete a continuous waistband/hip insertion above the trousers, removing the V-shaped notch and upward spike. This upper material must extend beneath the belt/skirt in the reviewed composition. Preserve original knees and boots; use the weapon-free source rather than reconstructing a sword-shaped missing stripe.
+7. **Both arms:** complete rounded leather upper-arm insertion caps so sleeves extend beneath the shoulder/chest junction. Close truncated ends and blend material/shading into each existing sleeve. Fit only the new hidden cap to the existing sleeve cross-section; preserve original forearms, gloves, pose and coordinates. Do not translate or re-pose original limbs to conceal a seam.
+8. Keep the complete sword unchanged and registered to the anatomical right hand. Preserve a complete weapon master even when glove pixels must cover the grip in a preview.
+9. Reassemble the **actual exported parts** on the unchanged Base. Inspect shoulder, neck, waist, wrist and weapon-grip joins at enlarged and gameplay scale. Hidden completion is validated against the actual occluding alpha and draw order; adding material does not automatically make it hidden. Review exposed additions and silhouette changes explicitly.
+10. Deliver isolated completed parts and the assembled result together. Include the current-contract comparison, addition/removal masks, preservation checks, dimensions, alpha bounds and hashes. Keep all seven declared PNG paths; `coverage_underlay.png` remains fully transparent with the documented empty reason. Each equipment part owns its own seam coverage.
+
+### Composition evidence and DEV boundary
+
+The visually approved authoring preview used:
+
+`Base → legs_boots → arm_rear → arm_front → torso_armor → helmet → sword → copied right-hand occlusion pixels`
+
+The right-hand occlusion pixels are copied at unchanged coordinates from the weapon-free source. This preview order lets the chest/shoulders cover the completed sleeve caps and waistband. **It differs from the locked runtime order in section 3**, where torso is drawn before legs and arms. Keep both the current-contract composite and proposed authoring composite as evidence; do not label the proposed preview as an exact-current-runtime assembly.
+
+Owner visual approval does not authorize changing draw order, adding a runtime hand layer, changing slot ownership, or misusing `fullFaceHelmet`. DEV must approve and regression-test a compatible ordering/occlusion and hair-suppression solution before integration/publication, including compatibility with existing equipment. Never bake runtime offset Y=84 into exports.
+
+In the approved review package, measured added-pixel occlusion was approximately 95.3% for the rear arm, 97.5% for the front arm and 93.3% for the trousers. These are package-specific observations, **not universal acceptance thresholds**; remaining exposed pixels require visual review. Chest edge completions are largely visible by design. Do not claim that every added pixel is hidden.
+
+### Approval scope and handoff
+
+- **Approved:** latest G16 Idle_01 overlap-completed artwork and visual assembly; this cutting/completion method.
+- **Still required:** DEV runtime/order/hand-occlusion and helmet-hair compatibility approval; reconciliation of the separately identified Gate 0 SHA-256 ledger discrepancy before publication; remaining-frame production and G4–G6 checks.
+- This documentation update creates no additional frames, runtime changes, R2 upload or Production PASS. Continue only within the task scope assigned after this approval.
+
 ## 5. Gates and owner acceptance
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |
@@ -93,4 +128,4 @@ This is a **proposed authoring package**, not a new live R2 structure or a reque
 3. Continue **G17 Bronze → G18 Steel/Chain → G19 Platinum → G20 Dragon Slayer** using the validated template.
 
 ## 8. Change control
-This document is specification only. Owner approval of this pipeline **does not** approve any new G16 art, Skeleton replacement art, repository code change, R2 overwrite, runtime hair behavior or deploy. Graphics authors its own implementation PR when tasked; Project Lead reviews handoff/gates. No Worker/API/D1, gameplay, item-stat, persistence or economy changes. Generated `index.html` is built via `node build.js`, never hand edited. Docs-only commit does not bump visible game version.
+This document records the specification and the scoped G16 Idle_01 Owner visual approval in section 4B. Pipeline approval alone **does not** approve other G16 art, Skeleton replacement art, repository code change, R2 overwrite, runtime hair behavior or deploy. Graphics authors its own implementation PR when tasked; Project Lead reviews handoff/gates. No Worker/API/D1, gameplay, item-stat, persistence or economy changes. Generated `index.html` is built via `node build.js`, never hand edited. Docs-only commit does not bump visible game version.
