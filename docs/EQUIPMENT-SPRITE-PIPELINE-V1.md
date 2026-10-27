@@ -1,6 +1,6 @@
 # ThornieDungeons — Equipment Sprite Pipeline V1
-Status: **OWNER APPROVED — DESIGN CONTRACT ONLY** (2026-10-27)
-Scope: Hero V5 G2 modular wearable equipment art; no implementation, asset regeneration, R2 upload, gameplay or runtime change in this document commit.
+Status: **OWNER APPROVED — G16 G2 RUNTIME COMPATIBILITY IMPLEMENTED / PR REVIEW PENDING** (2026-10-27)
+Scope: Hero V5 G2 modular wearable equipment art and the scoped G16 compatibility contract; no asset regeneration, R2 upload, gameplay, economy, Worker/API/D1 or deployment change.
 Approved decisions: **HYBRID / AZURE-REFERENCE / FULL-SET-FIRST / G16 BEFORE SKELETON / WEAPON-FREE HERO + SEPARATE COMPLETE WEAPON**.
 
 ## 1. Purpose and boundaries
@@ -94,8 +94,18 @@ In the approved review package, measured added-pixel occlusion was approximately
 ### Approval scope and handoff
 
 - **Approved:** latest G16 Idle_01 overlap-completed artwork and visual assembly; this cutting/completion method.
-- **Still required:** DEV runtime/order/hand-occlusion and helmet-hair compatibility approval; reconciliation of the separately identified Gate 0 SHA-256 ledger discrepancy before publication; remaining-frame production and G4–G6 checks.
-- This documentation update creates no additional frames, runtime changes, R2 upload or Production PASS. Continue only within the task scope assigned after this approval.
+- **Still required:** Project Lead review of the implemented runtime compatibility PR; remaining-frame production and G4–G6 checks. The Gate 0 SHA-256 ledger discrepancy is reconciled in the Master Template.
+- This G2 approval creates no additional frames, R2 upload or Production PASS. The separately approved scoped runtime capability is recorded in §4C; continue asset work only within the next assigned gate.
+
+## 4C. G16 G2 scoped runtime compatibility contract (implemented; PR review pending)
+
+- Opt-in family metadata: `compositionProfile: "leather_overlap_v1"`. Existing families without this profile keep the locked order in §3.
+- Pairwise order: Leather Chest + Gloves moves both arm layers before torso; Leather Chest + Boots moves legs before torso. Mixed non-Leather pairs retain their previous relative order. Slot ownership, transparent underlay eligibility and far/near wing positions are unchanged.
+- Scoped weapon occlusion reuses `arm_rear` as a cropped post-sword render pass; it adds neither an equipment slot nor an eighth exported PNG. Idle_01 uses `[0,493,768,42]`. Each later pose requires its own reviewed crop metadata. No resolved weapon or no Leather Gloves means no pass; Boss Weapon selection remains authoritative.
+- Explicit `hairMode` values are `hidden_full_cover`, `baked_into_helmet`, and `default`. The Leather open-face/full-hair-cover helmet uses `hidden_full_cover`. Missing metadata preserves legacy behavior: `fullFaceHelmet:true` maps to hidden hair; otherwise separate default hair is drawn. Missing/fallback helmet restores default hair.
+- Generic Tier 1 equipment maps to the Leather presentation family only when it has no explicit `setId`; supported Azure/Robot/Skeleton set identity remains authoritative. Inventory/persistence data is not rewritten and Accessory remains icon-only.
+- The runtime capability is additive only. The incomplete G16 family is not added to the production manifest in this gate; publication still requires G3–G6.
+- Automated QA uses the actual G16 Idle_01 exports and confirms the implemented composite is pixel-identical to the Owner-approved preview. See `docs/g16-leather-g2/qa/RUNTIME_IMPLEMENTED_COMPARISON.png`.
 
 ## 5. Gates and owner acceptance
 | Gate | Deliverable | Acceptance |
