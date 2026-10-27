@@ -40,3 +40,7 @@ No Base/Azure/Skeleton, runtime, hair/slot metadata, live manifest, R2 upload, g
 ## Checks and reproduction
 
 From repository root: `python docs/g16-leather-g2/g3/attack-review-pack-v1/build.py` (Pillow, NumPy, SciPy). It regenerates candidates and sheets; verifies 21/21 PNG dimensions/RGBA/origin0, alpha edges and explicit empty underlay; confirms six Attack_01 export hashes and its bounded alpha-only chest cut; checks all eight canonical Base files against latest main and all 28 protected Idle PNGs against the task branch; and verifies runtime/manifest byte identity. Check SHA256SUMS from this folder. These technical checks do not imply visual acceptance. No frontend build is needed because no application source changed.
+
+## Azure pose comparison
+
+[Same-scale Azure vs Leather inspection](azure-comparison/README.md) compares all three attacks with the exact same source canvas, review crop and scale. Broad actions correspond, but exact elbow/wrist/leg fit is not certified; Owner review remains pending. This diagnostic changes no artwork.

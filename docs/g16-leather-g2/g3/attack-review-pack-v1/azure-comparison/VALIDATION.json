@@ -1,0 +1,209 @@
+{
+  "status": "READ_ONLY_POSE_COMPARISON_NOT_VISUAL_ACCEPTANCE",
+  "main": "7ef31753b969386d2750857dddaa53d44c03081c",
+  "branchParent": "0f3c9ad90f1af45f0d2148efd228e5ce0712b933",
+  "risk": "LOW read-only QA evidence",
+  "frames": [
+    {
+      "frame": "attack_01",
+      "sharedBaseSha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+      "azureSources": [
+        {
+          "layer": "base",
+          "selectedPath": "hero/v5/g2/base/attack_01.png",
+          "sha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442"
+        },
+        {
+          "layer": "coverage_underlay",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_01/coverage_underlay.png",
+          "sha256": "7da34d8662ad29b54797b6f384d03aa4e6440303c6875aeaf52eb81dde39747a"
+        },
+        {
+          "layer": "torso_armor",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_01/torso_armor.png",
+          "sha256": "5739697871758ab0a70190afc70c71747857c3a0aec00588892d5e746859434d"
+        },
+        {
+          "layer": "legs_boots",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_01/legs_boots.png",
+          "sha256": "391b099f5852d0dad0e2395e971778f3379a350a69019762f4862ba79e445b83"
+        },
+        {
+          "layer": "arm_rear",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_01/arm_rear.png",
+          "sha256": "a5b2a5383e5a8dfb2be94314be19aea9b9752001929ea1eb8da5846cf12a1f47"
+        },
+        {
+          "layer": "helmet",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_01/helmet.png?v=azure_angel_fullface_v1",
+          "sha256": "175dae552fbe060039f305830996440c3df1d661ddbf927e9619625a91baf63d"
+        },
+        {
+          "layer": "sword",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_01/sword.png?v=azure_royal_bastion_compact_grip",
+          "sha256": "0b96a711d24c2d3c4eaaa911cc512a6659c9388683e2e1a83b24d11f6cf43cc7"
+        },
+        {
+          "layer": "arm_front",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_01/arm_front.png",
+          "sha256": "ba5898774b7f8ead9751e54292f5b4a153ba8cfd1e870e2c70da872bcd2229f0"
+        }
+      ],
+      "azureCompositeSha256": "a032aab42c1233c9d826dbf88dcbb13a550dc162d696e96c306207b76b5532ae",
+      "leatherCandidate": "../qa/attack_01.png",
+      "leatherCompositeSha256": "8f011241f1b14be24c5ec7e61f23fb0b78e4877d0ae9b7d68f69037dcca65cf3",
+      "sameCanvas": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "comparisonCrop": [
+        70,
+        120,
+        768,
+        720
+      ],
+      "scale": 1,
+      "runtimeOffsetApplied": false,
+      "wings": false
+    },
+    {
+      "frame": "attack_02",
+      "sharedBaseSha256": "d6b5c542822e5d88702e882721eeabb74c07703b72ec88414410c6f0bac6db9a",
+      "azureSources": [
+        {
+          "layer": "base",
+          "selectedPath": "hero/v5/g2/base/attack_02.png",
+          "sha256": "d6b5c542822e5d88702e882721eeabb74c07703b72ec88414410c6f0bac6db9a"
+        },
+        {
+          "layer": "coverage_underlay",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_02/coverage_underlay.png",
+          "sha256": "514bd1e6f3d6701da4f4c013bc094f7bfb5e553ae5f503af1765e352be9c39f5"
+        },
+        {
+          "layer": "torso_armor",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_02/torso_armor.png",
+          "sha256": "3dfcffb32fae6ed95246c80df470a77a6541b535706ce7771e0f289302c5bc1f"
+        },
+        {
+          "layer": "legs_boots",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_02/legs_boots.png",
+          "sha256": "334fcdc9c4203e5dd9ef2e99d96d38320436dcccfe0bec5c79eaabe340b1e4c5"
+        },
+        {
+          "layer": "arm_rear",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_02/arm_rear.png",
+          "sha256": "bdbfd58d7b0b7714eb67edc4cf0b1295c1a0eb834b959a9fcf25d651d77531c1"
+        },
+        {
+          "layer": "helmet",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_02/helmet.png?v=azure_angel_fullface_v1",
+          "sha256": "ce407df5662708ff904953157f75599e6ef14ac1b54e9bd7cae89b365b91041d"
+        },
+        {
+          "layer": "sword",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_02/sword.png?v=azure_royal_bastion_compact_grip",
+          "sha256": "073337dd445e234098177b810764cbf8d3adc5cd2faacbc11bf51545f1fa50b9"
+        },
+        {
+          "layer": "arm_front",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_02/arm_front.png",
+          "sha256": "2dbb0594cc510d42e64b33c1c13ca119de742bc64e5e64db212fbe9a3605ed3d"
+        }
+      ],
+      "azureCompositeSha256": "d7d8c3aeb0f2e9dc3ecd9cac4dc0813091d2a8a01eac14f6f90475684b4881ed",
+      "leatherCandidate": "../qa/attack_02.png",
+      "leatherCompositeSha256": "d80ad87ff42c58b04e2e657a86f86ff0da04ab7f4871082ca4b44bc00fa6e16f",
+      "sameCanvas": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "comparisonCrop": [
+        70,
+        120,
+        768,
+        720
+      ],
+      "scale": 1,
+      "runtimeOffsetApplied": false,
+      "wings": false
+    },
+    {
+      "frame": "attack_03",
+      "sharedBaseSha256": "9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667",
+      "azureSources": [
+        {
+          "layer": "base",
+          "selectedPath": "hero/v5/g2/base/attack_03.png",
+          "sha256": "9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667"
+        },
+        {
+          "layer": "coverage_underlay",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_03/coverage_underlay.png",
+          "sha256": "64c09ce405dfe296d622dbc47efed5d9a32c1fdc82ccafc1fd21a1a386631a0d"
+        },
+        {
+          "layer": "torso_armor",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_03/torso_armor.png",
+          "sha256": "2ebe36ce3aca7a4f48ae6a7031b6339f1f5c8f340b8c15acd407034ea9ffeeae"
+        },
+        {
+          "layer": "legs_boots",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_03/legs_boots.png",
+          "sha256": "9fc1423641de99683c81bcbbee51cdf6f485383d15529bcb6f2285a188ee27ab"
+        },
+        {
+          "layer": "arm_rear",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_03/arm_rear.png",
+          "sha256": "0477e6da2ccb676d717e6e48f7e11a97db93b80bd4159260487db4f42de7ebd0"
+        },
+        {
+          "layer": "helmet",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_03/helmet.png?v=azure_angel_fullface_v1",
+          "sha256": "008bdf66e935695eae8ba9a21a0243c4f23c24a96277c615a812616c543c62eb"
+        },
+        {
+          "layer": "sword",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_03/sword.png?v=azure_royal_bastion_compact_grip",
+          "sha256": "cb0bd129b72cd48de7d7ef37081db173538963bc5c03ea6cdad61bde9016a589"
+        },
+        {
+          "layer": "arm_front",
+          "selectedPath": "hero/v5/g2/equipment/azure/attack_03/arm_front.png",
+          "sha256": "f184d9ca649650ed10d6f8de0d673e994ec0ab3e17d4b5bfc44126cf4fbb1d6f"
+        }
+      ],
+      "azureCompositeSha256": "38c39e30ae93ac0b3a4daf4ee5aacd7da2cf1bc0fae16b424211775f217d242d",
+      "leatherCandidate": "../qa/attack_03.png",
+      "leatherCompositeSha256": "bd4d19eb8a23f16e781adfe5e12afa8fbbe880da2d59f56f34f81a7d7d705610",
+      "sameCanvas": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "comparisonCrop": [
+        70,
+        120,
+        768,
+        720
+      ],
+      "scale": 1,
+      "runtimeOffsetApplied": false,
+      "wings": false
+    }
+  ],
+  "artworkChanged": false,
+  "runtimeChanged": false,
+  "poseExactMatchClaimed": false
+}
