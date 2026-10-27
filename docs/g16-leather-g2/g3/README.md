@@ -40,3 +40,7 @@ Per the task's explicit instruction, **“Stop ... and request Project Lead/Owne
 From repository root: `python docs/g16-leather-g2/g3/build_idle_evidence.py` (Pillow + NumPy), then `node docs/g16-leather-g2/g3/verify_runtime.cjs`. After adding/editing documents regenerate the evidence hashes with the Python script. Run `sha256sum -c SHA256SUMS` within this folder. These are scoped offline checks; a full runtime/build regression is deferred to G5 because no runtime source changed.
 
 Image generation used the built-in ImageGen tool; see `PROMPT.md` for the prompt specification and input provenance. Rejected source native size is recorded in VALIDATION.json. No source master was overwritten.
+
+## Latest Attack_01 continuation checkpoint
+
+**ATTACK_01 BOUNDED OVERLAP EXPERIMENT — OWNER VISUAL REVIEW PENDING.** See [review and limitations](owner-selected-recut/attack_01/bounded-overlap-review/README.md). All seven candidate export bytes and protected Idle artwork remain unchanged. Offline visibility masks expose the chest skirt/shoulder plates but leave a raised-shoulder ring; actual Leather runtime fixture separately shows helmet/bracer overlap outside the proposed hand crop. This is not visual acceptance, runtime readiness or final-56 inventory promotion. Current prototype supersedes old blocked-source continuation notes for Attack_01 only; rejected source pixels remain rejected.

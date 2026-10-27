@@ -1,0 +1,296 @@
+{
+  "status": "ATTACK_01_BOUNDED_OVERLAP_EXPERIMENT_OWNER_REVIEW_PENDING",
+  "main": "7ef31753b969386d2750857dddaa53d44c03081c",
+  "branchCheckpoint": "9ab7d5e9f62942c273edceb4142a4432348bf8b4",
+  "risk": "MEDIUM",
+  "visualApproved": false,
+  "finalInventoryPromotion": false,
+  "G3Complete": false,
+  "G4Ready": false,
+  "exportsUnchanged": true,
+  "hiddenInsertionPreserved": true,
+  "masksReviewOnly": true,
+  "azureAnatomicalOrder": [
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_front",
+    "helmet",
+    "sword",
+    "arm_rear"
+  ],
+  "extraTorsoPass": false,
+  "maskStats": [
+    {
+      "layer": "arm_rear",
+      "window": [
+        275,
+        390,
+        340,
+        470
+      ],
+      "changedAlphaPixels": 2061,
+      "changedBounds": [
+        278,
+        390,
+        325,
+        462
+      ],
+      "rgbUnchanged": true
+    },
+    {
+      "layer": "arm_front",
+      "window": [
+        365,
+        420,
+        435,
+        495
+      ],
+      "changedAlphaPixels": 904,
+      "changedBounds": [
+        374,
+        432,
+        410,
+        468
+      ],
+      "rgbUnchanged": true
+    },
+    {
+      "layer": "legs_boots",
+      "window": [
+        275,
+        470,
+        410,
+        535
+      ],
+      "changedAlphaPixels": 1037,
+      "changedBounds": [
+        307,
+        493,
+        385,
+        515
+      ],
+      "rgbUnchanged": true
+    }
+  ],
+  "runtimeFixture": {
+    "order": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_rear",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword"
+    ],
+    "usesFullUnmaskedExports": true,
+    "proposedCrop": [
+      278,
+      282,
+      65,
+      58
+    ],
+    "cropOwnerReviewed": false,
+    "liveMetadataChanged": false,
+    "architectureChanged": false
+  },
+  "scopedReferenceChecks": [
+    {
+      "path": "src/phaser/presentation/HeroV5RuntimeContract.js",
+      "sha256": "2c4ea44ea52592ed17d41e87e9568df89b800268faa1978084d9c626f631b4fb",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/manifest.json",
+      "sha256": "3888a4d36ab2b23fc8be0c6f194ddb041da00ed1331dcd4952f75d6805393f54",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/equipment/azure/attack_01/sword.png",
+      "sha256": "0b96a711d24c2d3c4eaaa911cc512a6659c9388683e2e1a83b24d11f6cf43cc7",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/idle_01.png",
+      "sha256": "1c4e9d24d7d560b96e85dbdbccc47d17739c156a1377d4afb7f53fd90983e5e5",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/idle_02.png",
+      "sha256": "18c5935634ffbf3758eadb505864cf44a1143a349e742591e0bf7db5fc5773f9",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/idle_03.png",
+      "sha256": "bd15c3f045e362030d885fe65b5a3725ccbd6c4ed30d8da3868af66730ccc981",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/attack_01.png",
+      "sha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/attack_02.png",
+      "sha256": "d6b5c542822e5d88702e882721eeabb74c07703b72ec88414410c6f0bac6db9a",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/attack_03.png",
+      "sha256": "9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/death_01.png",
+      "sha256": "8fe820026682becdc889f4adce522722720c78d242d7007ed994cd113fad292b",
+      "identicalToLatestMain": true
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/death_02.png",
+      "sha256": "b9c5f58a1a03a921c21ab45e3ac60fe070347988755ed639e365a9c13e0e0ae3",
+      "identicalToLatestMain": true
+    }
+  ],
+  "protectedIdlePngCount": 28,
+  "files": [
+    {
+      "layer": "coverage_underlay",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "identicalToCheckpoint": true,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "layer": "torso_armor",
+      "sha256": "9f7471045fcf1753e231c85b1bb9c837e115d6af4bc22d9cfaaf4e7b8c3565e3",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        278,
+        370,
+        476,
+        565
+      ],
+      "identicalToCheckpoint": true
+    },
+    {
+      "layer": "legs_boots",
+      "sha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        228,
+        493,
+        440,
+        667
+      ],
+      "identicalToCheckpoint": true
+    },
+    {
+      "layer": "arm_rear",
+      "sha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        233,
+        277,
+        342,
+        462
+      ],
+      "identicalToCheckpoint": true
+    },
+    {
+      "layer": "helmet",
+      "sha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        261,
+        240,
+        470,
+        415
+      ],
+      "identicalToCheckpoint": true
+    },
+    {
+      "layer": "sword",
+      "sha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        125,
+        167,
+        348,
+        339
+      ],
+      "identicalToCheckpoint": true
+    },
+    {
+      "layer": "arm_front",
+      "sha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        374,
+        432,
+        515,
+        518
+      ],
+      "identicalToCheckpoint": true
+    }
+  ],
+  "knownIssues": [
+    "Visibility masks are offline evidence only, not supported or integrated runtime metadata.",
+    "Arm filenames remain anatomically reversed relative to Azure; no slot remapping made.",
+    "Helmet and complete sword unchanged; owner must assess placement/hand occlusion.",
+    "Torso/limb/base fit still requires visual acceptance; masking does not certify anatomy. Raised shoulder armhole/ring remains visibly exposed after masks.",
+    "Leather runtime fixture places helmet over raised forearm/bracer outside the proposed glove crop; do not enlarge the crop to include unrelated forearm without review.",
+    "Proposed Attack_01 hand rectangle is not the Idle crop and still needs review.",
+    "Other four Attack/Death poses not started."
+  ],
+  "productionChanges": false
+}
