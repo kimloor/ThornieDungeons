@@ -8,7 +8,7 @@ Release target: Ver 1.1.19
 
 Risk: MEDIUM — player-visible artwork and later optional UI integration; no backend or gameplay authority
 
-Status: **OWNER APPROVED / R2 STAGED / RUNTIME INTEGRATED — PRODUCTION PENDING**
+Status: **DONE / PRODUCTION VERIFIED**
 
 ## Delivery state
 
@@ -17,9 +17,9 @@ Status: **OWNER APPROVED / R2 STAGED / RUNTIME INTEGRATED — PRODUCTION PENDING
 | Artwork Candidate | PASS — 6/6 | `docs/graphics/g15/*.png` and `PREVIEW.jpg` |
 | Owner Approved | PASS | Owner approval received for all six candidates |
 | R2 Staged | PASS — 6/6 | `r2-upload/ui/info-center/` and additive `assets.infoCenterUi` |
-| R2 Published | PENDING MERGE | Upload/download SHA workflow runs only after the approved merge gate |
-| Runtime Integrated | PASS (branch) | Shared optional resolver, fixed-size images and emoji fallback |
-| Production Verified | NOT STARTED | Blocked on approval, integration and deploy |
+| R2 Published | PASS — 6/6 | Run #40333086818 uploaded, downloaded and SHA-verified every icon |
+| Runtime Integrated | PASS | Shared optional resolver, fixed-size images and emoji fallback |
+| Production Verified | PASS — 6/6 | Live files decoded as 128x128 RGBA and matched recorded SHA-256 on 2026-10-27 |
 
 ## Candidate contract
 
@@ -55,8 +55,13 @@ Implementation on PR #153:
 5. Focused and full regression, build/generated-file checks, responsive browser QA,
    R2 SHA validation, deployment and live decode verification.
 
-## Known limitations at this gate
+## Production evidence and limitation
 
-- Static preview QA is complete; browser runtime/responsive behavior is not yet exercised.
-- Live R2 upload/hash and Production decode remain pending the merge/release gate.
-- Browser responsive evidence is recorded with the combined-task QA after Packages B/C settle.
+- PR #153 merged as `2ceb79ea2aa6d029376698070cc7ff0b9ddf827f`.
+- R2 upload/read-back verification: run #40333086818, 11/11 changed objects overall.
+- Frontend Production deployment and endpoint smoke check: run #40333086817, Worker version
+  `193f6e7b-4e4d-427a-ad31-033f3a211175`.
+- Focused combined tests passed 48/48; full Node regression passed 823/823; build and
+  generated-output integrity passed.
+- Static 360/390/1280 composition and responsive contracts passed. An authenticated,
+  interactive Production session was not available for a manual in-game transition capture.
