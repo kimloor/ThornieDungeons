@@ -1,0 +1,41 @@
+{
+  "status": "OFFLINE_OWNER_ORDER_ONLY_RUNTIME_REVIEW_REQUIRED",
+  "frames": {
+    "attack_01": {
+      "sourceLayer": "arm_rear",
+      "anatomy": "right sword arm",
+      "offlineOrder": "entire right arm after complete sword",
+      "extraHandPass": false,
+      "runtimeCrop": null,
+      "runtimeCropStatus": "NOT_DEFINED_OR_APPROVED_FOR_THIS_NEW_POSE_EXPORT",
+      "grip": [
+        310,
+        309
+      ]
+    },
+    "attack_02": {
+      "sourceLayer": "arm_rear",
+      "anatomy": "right sword arm",
+      "offlineOrder": "entire right arm after complete sword",
+      "extraHandPass": false,
+      "runtimeCrop": null,
+      "runtimeCropStatus": "NOT_DEFINED_OR_APPROVED_FOR_THIS_NEW_POSE_EXPORT",
+      "grip": [
+        489,
+        448
+      ]
+    },
+    "attack_03": {
+      "sourceLayer": "arm_rear",
+      "anatomy": "right sword arm",
+      "offlineOrder": "entire right arm after complete sword",
+      "extraHandPass": false,
+      "runtimeCrop": null,
+      "runtimeCropStatus": "NOT_DEFINED_OR_APPROVED_FOR_THIS_NEW_POSE_EXPORT",
+      "grip": [
+        413,
+        551
+      ]
+    }
+  }
+}

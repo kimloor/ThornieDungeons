@@ -60,3 +60,7 @@ Owner accepted the Attack_01 stacking order. [Neckline fit study](owner-selected
 ## Latest neckline refinement candidate
 
 [Neckline refinement review](owner-selected-recut/attack_01/neckline-refinement-review/README.md): continuous leather/gold rim finished over the lowered neckline; canonical neck retained and right-neck shirt sliver covered. Owner-approved stacking retained; only bounded chest artwork changed. Candidate requires Owner visual acceptance before remaining-pose expansion.
+
+## Latest Attack_01–03 review sheet
+
+Owner authorized the remaining chin trim and Attack_02/03 expansion. [Attack review pack V1](attack-review-pack-v1/README.md) contains actual three-frame reassemblies, all 21 candidate equipment pieces, Base overlays and hand/placement metadata. Attack_01 chin overlap trimmed; Attack_02/03 use clothing-only reconstruction on their original Base frames. Owner visual acceptance is pending; no final inventory promotion, no new accepted-path claim. Death_01/02 remain absent and G3/G4 remain incomplete.

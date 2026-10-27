@@ -1,0 +1,321 @@
+{
+  "authoringOnly": true,
+  "anatomyUnmodified": true,
+  "origin": [
+    0,
+    0
+  ],
+  "backToFront": [
+    "base",
+    "coverage_underlay",
+    "legs_boots",
+    "arm_front",
+    "torso_armor",
+    "helmet",
+    "sword",
+    "arm_rear"
+  ],
+  "attack01ChinAlphaCut": {
+    "changedPixels": 586,
+    "bounds": [
+      330,
+      393,
+      415,
+      434
+    ],
+    "rule": "manual jaw clearance guide +3px, chest alpha only; approximate visual guide, not rig landmark"
+  },
+  "rightSourceGarmentTube": [
+    [
+      315,
+      465
+    ],
+    [
+      303,
+      440
+    ],
+    [
+      289,
+      418
+    ],
+    [
+      269,
+      397
+    ],
+    [
+      261,
+      374
+    ],
+    [
+      272,
+      349
+    ],
+    [
+      287,
+      330
+    ],
+    [
+      307,
+      308
+    ],
+    [
+      308,
+      278
+    ],
+    [
+      308,
+      265
+    ]
+  ],
+  "leftSourceGarmentTube": [
+    [
+      370,
+      431
+    ],
+    [
+      384,
+      449
+    ],
+    [
+      414,
+      468
+    ],
+    [
+      447,
+      485
+    ],
+    [
+      473,
+      493
+    ],
+    [
+      496,
+      493
+    ],
+    [
+      518,
+      493
+    ],
+    [
+      530,
+      493
+    ]
+  ],
+  "sourceMeshCoverage": {
+    "arm_rear": {
+      "sourceAlphaAbove128Pixels": 9908,
+      "outsideSourceMeshPixels": 0,
+      "sourceMasterPreserved": true
+    },
+    "arm_front": {
+      "sourceAlphaAbove128Pixels": 5523,
+      "outsideSourceMeshPixels": 0,
+      "sourceMasterPreserved": true
+    }
+  },
+  "sourceTubeHalfWidth": 65,
+  "targetTubeHalfWidth": 60,
+  "leftArmAdditionalTranslation": [
+    0,
+    -3
+  ],
+  "poses": {
+    "attack_02": {
+      "helmet": [
+        -34,
+        -1
+      ],
+      "chest": [
+        -35,
+        -8
+      ],
+      "legs": [
+        -39,
+        2
+      ],
+      "right": [
+        [
+          333,
+          447
+        ],
+        [
+          352,
+          447
+        ],
+        [
+          372,
+          447
+        ],
+        [
+          392,
+          447
+        ],
+        [
+          414,
+          447
+        ],
+        [
+          438,
+          447
+        ],
+        [
+          464,
+          447
+        ],
+        [
+          490,
+          447
+        ],
+        [
+          513,
+          447
+        ],
+        [
+          524,
+          447
+        ]
+      ],
+      "left": [
+        [
+          293,
+          418
+        ],
+        [
+          280,
+          423
+        ],
+        [
+          261,
+          431
+        ],
+        [
+          239,
+          443
+        ],
+        [
+          221,
+          453
+        ],
+        [
+          207,
+          462
+        ],
+        [
+          188,
+          469
+        ],
+        [
+          178,
+          472
+        ]
+      ],
+      "swordAngle": -88,
+      "grip": [
+        489,
+        448
+      ]
+    },
+    "attack_03": {
+      "helmet": [
+        -34,
+        -1
+      ],
+      "chest": [
+        -33,
+        -6
+      ],
+      "legs": [
+        -30,
+        3
+      ],
+      "right": [
+        [
+          339,
+          430
+        ],
+        [
+          350,
+          449
+        ],
+        [
+          360,
+          466
+        ],
+        [
+          371,
+          485
+        ],
+        [
+          383,
+          501
+        ],
+        [
+          394,
+          518
+        ],
+        [
+          403,
+          533
+        ],
+        [
+          416,
+          548
+        ],
+        [
+          430,
+          561
+        ],
+        [
+          439,
+          570
+        ]
+      ],
+      "left": [
+        [
+          297,
+          420
+        ],
+        [
+          287,
+          432
+        ],
+        [
+          274,
+          455
+        ],
+        [
+          256,
+          477
+        ],
+        [
+          240,
+          493
+        ],
+        [
+          228,
+          503
+        ],
+        [
+          208,
+          511
+        ],
+        [
+          198,
+          514
+        ]
+      ],
+      "swordAngle": -12,
+      "grip": [
+        413,
+        551
+      ]
+    }
+  },
+  "swordSource": "docs/g16-leather-g2/exports/idle_01/sword.png",
+  "swordSourceSha256": "b3786f8f1e69c4c2924844df57d12d65804d11b3ce24bf80a18b2e286e8b960d",
+  "swordSourceGrip": [
+    270,
+    515
+  ],
+  "garmentMeshDetails": "See build.py for all torso/leg TPS control points. These deform clothing pixels only; original Base is never remapped. Manual surface guides are not pixel-exact bone anchors."
+}

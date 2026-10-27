@@ -967,5 +967,14 @@
     "ownerOrderRetained": true,
     "artworkAccepted": false,
     "finalInventoryPromotion": false
+  },
+  "latestAttackReviewPack": {
+    "report": "attack-review-pack-v1/VALIDATION.json",
+    "status": "THREE_ATTACK_FRAME_CANDIDATES_OWNER_REVIEW_PENDING",
+    "ownerAuthorizedExpansion": true,
+    "candidatePngPaths": 21,
+    "acceptedNewPngPaths": 0,
+    "promotedToFinal": false,
+    "deathFramesCreated": false
   }
 }
