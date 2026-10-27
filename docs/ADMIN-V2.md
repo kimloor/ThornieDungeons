@@ -588,7 +588,7 @@ This section supersedes earlier *proposed* role separation for Wave 2, but does 
 
 ## 22. Wave 2 Implementation Contracts (2026-10-26)
 
-**Status: CONTRACT FOR OWNER APPROVAL — DOCS ONLY.** Approval = merge of the PR that adds this section. Merging authorizes the *slice contracts below* to be implemented, each in its own feature branch / PR with its own QA and release gates. It does not authorize any code, schema or production change by itself, and it does not authorize any other Admin tool.
+**Status: CONTRACT APPROVED (PR #154 merged); slice implementation in progress — W2-A in PR (see 22.3), W2-C/D/E/F not started.** Original note: contract for Owner approval, docs only. Approval = merge of the PR that adds this section. Merging authorizes the *slice contracts below* to be implemented, each in its own feature branch / PR with its own QA and release gates. It does not authorize any code, schema or production change by itself, and it does not authorize any other Admin tool.
 
 Baseline: `main` 63b95d0 (Ver 1.1.18). Admin/Worker code was re-checked against that baseline: the findings of Issue #144 still hold (eight unaudited Admin mutations, no CSP/security headers on `/admin`, leftover `adminKey` arguments).
 
@@ -614,6 +614,8 @@ Baseline: `main` 63b95d0 (Ver 1.1.18). Admin/Worker code was re-checked against 
 Every slice: feature branch + PR, targeted tests, full suite, Admin V2 QA workflow, Battle Core parity, Admin HTML guard, independent QA, merge, auto deploy, live verification. Per `AGENTS.md`, risk HIGH or above stops for Owner approval before merge. Each slice PR states whether the visible game version is bumped.
 
 ### 22.3 W2-A — Mutation audit logging
+
+**Implementation status (2026-10-27): IN PR (feature branch `feat/w2a-admin-mutation-audit`), risk HIGH, awaiting Owner approval before merge. Shipped as visible Ver 1.1.20 only because the new `admin_audit_failed` code had to be registered in `src/state/errorCatalog.js` (drift guard); no schema change, no new migration.** Implementation notes: shared helper `runAdminMutationWithAudit` (Worker) runs the mutation statements plus one `adminAuditStatement` in a single `db.batch`; any batch failure returns `admin_audit_failed` (HTTP 500) with nothing persisted. Deletes of a non-existent target are still audited (`before: null`, `changedKeys: []`); successful deletes use `changedKeys: ["deleted"]`. Tests: `tests/admin-v2-mutation-audit.test.js`.
 
 **Covered actions (revalidated on 63b95d0):**
 

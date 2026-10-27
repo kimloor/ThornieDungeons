@@ -194,7 +194,8 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   shop_offer_not_found: "business",
   slot_occupied: "business",
   target_not_guild_member: "business",
-  // admin (6)
+  // admin (7)
+  admin_audit_failed: "admin",
   admin_auth_failed: "admin",
   admin_key_not_configured: "admin",
   admin_session_expired: "admin",

@@ -10,6 +10,7 @@ on:
       - "workers/modules/mailbox.js"
       - "migrations/auto/*admin_v2*.sql"
       - "tests/admin-v2-auth.test.js"
+      - "tests/admin-v2-mutation-audit.test.js"
       - "tests/shop-v1-phase1.test.js"
       - "tests/shop-v1-phase3.test.js"
       - "tests/shop-v1-phase4.test.js"
@@ -51,6 +52,8 @@ jobs:
           node --check src/data/styles.js
       - name: Admin V2 auth tests
         run: node --test tests/admin-v2-auth.test.js
+      - name: Admin V2 mutation audit tests (W2-A)
+        run: node --test tests/admin-v2-mutation-audit.test.js
       - name: SHOP-AND-SELL Phase 1 contract tests
         run: node --test tests/shop-v1-phase1.test.js
       - name: SHOP-AND-SELL Phase 3 contract tests

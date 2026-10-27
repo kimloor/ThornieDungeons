@@ -7206,37 +7206,118 @@ async function handleAdminGetSheet(db, adminAuth, tableName) {
   return json({ ok: true, sheet: tableName, rows });
 }
 
+// ---------- admin mutation audit (W2-A, ADMIN-V2.md 22.3) ----------
+// Every Admin write is committed in the SAME db.batch as its admin_audit_log row, so the
+// mutation and its evidence either both persist or neither does. The before-state is read
+// just before the batch; a concurrent edit by another admin in between is a documented
+// limitation (the audit records what was observed).
+const ADMIN_AUDIT_REDACT_RE = /pass|token|secret|hash|recovery/i;
+const ADMIN_AUDIT_METADATA_MAX_BYTES = 16 * 1024;
+
+function redactAdminAuditValue(value, depth = 0) {
+  if (value === null || typeof value !== "object") return value;
+  if (depth > 8) return "[truncated-depth]";
+  if (Array.isArray(value)) return value.map((v) => redactAdminAuditValue(v, depth + 1));
+  const out = {};
+  for (const k of Object.keys(value)) {
+    out[k] = ADMIN_AUDIT_REDACT_RE.test(k) ? "[redacted]" : redactAdminAuditValue(value[k], depth + 1);
+  }
+  return out;
+}
+
+function safeParseAdminAuditJson(text) {
+  if (typeof text !== "string") return text ?? null;
+  try { return JSON.parse(text); } catch (_) { return text; }
+}
+
+function buildAdminAuditMetadata({ before = null, after = null, changedKeys = [] }) {
+  const meta = {
+    outcome: "ok",
+    before: redactAdminAuditValue(before),
+    after: redactAdminAuditValue(after),
+    changedKeys: Array.isArray(changedKeys) ? changedKeys.slice() : [],
+  };
+  if (new TextEncoder().encode(JSON.stringify(meta)).length <= ADMIN_AUDIT_METADATA_MAX_BYTES) return meta;
+  const fields = (v) => (v && typeof v === "object" && !Array.isArray(v)) ? Object.keys(v) : [];
+  return {
+    outcome: "ok",
+    truncated: true,
+    fields: Array.from(new Set([...fields(meta.before), ...fields(meta.after)])).slice(0, 200),
+    changedKeys: meta.changedKeys.slice(0, 200),
+  };
+}
+
+// Runs the mutation statements and the audit INSERT atomically. Any failure rolls the whole
+// batch back; the caller gets admin_audit_failed (HTTP 500) and nothing is persisted.
+async function runAdminMutationWithAudit(db, adminAuth, audit, mutationStatements, okBody = { ok: true }) {
+  try {
+    await db.batch([
+      ...mutationStatements,
+      adminAuditStatement(
+        db,
+        adminAuth.playerId,
+        audit.eventType,
+        buildAdminAuditMetadata(audit),
+        audit.targetType,
+        audit.targetId
+      ),
+    ]);
+  } catch (error) {
+    console.error("admin_audit_failed", audit.eventType, error && error.message);
+    return json({ error: "admin_audit_failed" }, 500);
+  }
+  return json(okBody);
+}
+
+const ADMIN_GAME_CONFIG_UPSERT_SQL =
+  `INSERT INTO game_config (key, value_json, updated_at) VALUES (?, ?, ?)
+   ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at`;
+
 async function handleAdminSaveGameConfig(db, adminAuth, config) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!config || typeof config !== "object") return json({ error: "invalid_config" });
 
   const now = nowIso();
-  const stmts = Object.keys(config).map((key) =>
-    db
-      .prepare(
-        `INSERT INTO game_config (key, value_json, updated_at) VALUES (?, ?, ?)
-         ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at`
-      )
-      .bind(key, JSON.stringify(config[key]), now)
+  const keys = Object.keys(config);
+  const existingRows = keys.length ? ((await db.prepare(`SELECT key, value_json FROM game_config`).all()).results || []) : [];
+  const existing = new Map(existingRows.map((r) => [r.key, r.value_json]));
+  const changedKeys = [];
+  const before = {};
+  const after = {};
+  for (const key of keys) {
+    const next = JSON.stringify(config[key]);
+    if (existing.get(key) === next) continue;
+    changedKeys.push(key);
+    before[key] = existing.has(key) ? safeParseAdminAuditJson(existing.get(key)) : null;
+    after[key] = safeParseAdminAuditJson(next);
+  }
+  const stmts = keys.map((key) =>
+    db.prepare(ADMIN_GAME_CONFIG_UPSERT_SQL).bind(key, JSON.stringify(config[key]), now)
   );
-  if (stmts.length) await db.batch(stmts);
-
-  return json({ ok: true });
+  return await runAdminMutationWithAudit(
+    db, adminAuth,
+    { eventType: "ADMIN_GAME_CONFIG_SAVE", targetType: "game_config", targetId: "*", before, after, changedKeys },
+    stmts
+  );
 }
 
 async function handleAdminSetGameConfigItem(db, adminAuth, key, value) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!key) return json({ error: "missing_fields" });
 
-  await db
-    .prepare(
-      `INSERT INTO game_config (key, value_json, updated_at) VALUES (?, ?, ?)
-       ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at`
-    )
-    .bind(key, JSON.stringify(value), nowIso())
-    .run();
-
-  return json({ ok: true });
+  const next = JSON.stringify(value);
+  const row = await db.prepare(`SELECT value_json FROM game_config WHERE key = ?`).bind(key).first();
+  const changed = !row || row.value_json !== next;
+  return await runAdminMutationWithAudit(
+    db, adminAuth,
+    {
+      eventType: "ADMIN_GAME_CONFIG_SET", targetType: "game_config", targetId: String(key),
+      before: row ? { value: safeParseAdminAuditJson(row.value_json) } : null,
+      after: { value: safeParseAdminAuditJson(next) },
+      changedKeys: changed ? [String(key)] : [],
+    },
+    [db.prepare(ADMIN_GAME_CONFIG_UPSERT_SQL).bind(key, next, nowIso())]
+  );
 }
 
 // ---------- admin: recipes + monster loot (admin.html) ----------
@@ -7244,6 +7325,22 @@ async function handleAdminSetGameConfigItem(db, adminAuth, key, value) {
 // path no longer authorizes any request (verifyAdminAccess requires a Bearer admin session).
 // Reading recipes/monster_loot uses the generic authenticated getSheet action; writes
 // use dedicated handlers because getSheet is read-only by design.
+function adminRecipeAuditRow(row) {
+  if (!row) return null;
+  return {
+    recipe_id: row.recipe_id,
+    result_item_def: safeParseAdminAuditJson(row.result_item_def),
+    materials: safeParseAdminAuditJson(row.materials_json),
+    source: row.source,
+    created_at: row.created_at,
+  };
+}
+
+function adminChangedFields(beforeRow, afterRow, fields) {
+  if (!beforeRow) return fields.slice();
+  return fields.filter((f) => JSON.stringify(beforeRow[f]) !== JSON.stringify(afterRow[f]));
+}
+
 async function handleAdminUpsertRecipe(db, adminAuth, recipeId, type, name, setId, empowerSlotCount, materials) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!recipeId || !type || !name || !materials || typeof materials !== "object") return json({ error: "missing_fields" });
@@ -7258,22 +7355,54 @@ async function handleAdminUpsertRecipe(db, adminAuth, recipeId, type, name, setI
     setId: setId || "azure",
     empowerSlotCount: Number(empowerSlotCount) || 5,
   };
-  await db
-    .prepare(
+  const now = nowIso();
+  const beforeRow = await db.prepare(`SELECT * FROM recipes WHERE recipe_id = ?`).bind(recipeId).first();
+  const before = adminRecipeAuditRow(beforeRow);
+  // ON CONFLICT keeps source/created_at, so the predicted after-state mirrors that.
+  const after = {
+    recipe_id: recipeId,
+    result_item_def: resultDef,
+    materials,
+    source: beforeRow ? beforeRow.source : "admin",
+    created_at: beforeRow ? beforeRow.created_at : now,
+  };
+  return await runAdminMutationWithAudit(
+    db, adminAuth,
+    {
+      eventType: "ADMIN_RECIPE_UPSERT", targetType: "recipe", targetId: String(recipeId),
+      before, after, changedKeys: adminChangedFields(before, after, ["result_item_def", "materials"]),
+    },
+    [db.prepare(
       `INSERT INTO recipes (recipe_id, result_item_def, materials_json, source, created_at)
        VALUES (?, ?, ?, 'admin', ?)
        ON CONFLICT(recipe_id) DO UPDATE SET result_item_def = excluded.result_item_def, materials_json = excluded.materials_json`
-    )
-    .bind(recipeId, JSON.stringify(resultDef), JSON.stringify(materials), nowIso())
-    .run();
-  return json({ ok: true });
+    ).bind(recipeId, JSON.stringify(resultDef), JSON.stringify(materials), now)]
+  );
 }
 
 async function handleAdminDeleteRecipe(db, adminAuth, recipeId) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!recipeId) return json({ error: "missing_fields" });
-  await db.prepare(`DELETE FROM recipes WHERE recipe_id = ?`).bind(recipeId).run();
-  return json({ ok: true });
+  const beforeRow = await db.prepare(`SELECT * FROM recipes WHERE recipe_id = ?`).bind(recipeId).first();
+  return await runAdminMutationWithAudit(
+    db, adminAuth,
+    {
+      eventType: "ADMIN_RECIPE_DELETE", targetType: "recipe", targetId: String(recipeId),
+      before: adminRecipeAuditRow(beforeRow), after: null, changedKeys: beforeRow ? ["deleted"] : [],
+    },
+    [db.prepare(`DELETE FROM recipes WHERE recipe_id = ?`).bind(recipeId)]
+  );
+}
+
+const ADMIN_MONSTER_LOOT_FIELDS = ["monster_id", "kind", "item_type", "rarity", "junk_id", "qty_min", "qty_max", "weight", "drop_chance"];
+
+function adminMonsterLootAuditRow(row) {
+  if (!row) return null;
+  const out = { entry_id: row.entry_id };
+  for (const f of ADMIN_MONSTER_LOOT_FIELDS) out[f] = row[f];
+  out.created_at = row.created_at;
+  out.updated_at = row.updated_at;
+  return out;
 }
 
 async function handleAdminUpsertMonsterLootEntry(db, adminAuth, entry) {
@@ -7286,8 +7415,22 @@ async function handleAdminUpsertMonsterLootEntry(db, adminAuth, entry) {
   if (rarity && validRarities.indexOf(rarity) === -1) return json({ error: "invalid_rarity", allowed: validRarities });
   const id = entryId || crypto.randomUUID();
   const now = nowIso();
-  await db
-    .prepare(
+  // Single source for the bound values so the audited after-state cannot drift from the write.
+  const v = {
+    monster_id: monsterId, kind, item_type: itemType || null, rarity: rarity || null, junk_id: junkId || null,
+    qty_min: Number(qtyMin) || 1, qty_max: Number(qtyMax) || 1, weight: Number(weight) || 1,
+    drop_chance: Number(dropChance) != null ? Number(dropChance) : 1,
+  };
+  const beforeRow = await db.prepare(`SELECT * FROM monster_loot WHERE entry_id = ?`).bind(id).first();
+  const before = adminMonsterLootAuditRow(beforeRow);
+  const after = { entry_id: id, ...v, created_at: beforeRow ? beforeRow.created_at : now, updated_at: now };
+  return await runAdminMutationWithAudit(
+    db, adminAuth,
+    {
+      eventType: "ADMIN_MONSTER_LOOT_UPSERT", targetType: "monster_loot", targetId: String(id),
+      before, after, changedKeys: adminChangedFields(before, after, ADMIN_MONSTER_LOOT_FIELDS),
+    },
+    [db.prepare(
       `INSERT INTO monster_loot (entry_id, monster_id, kind, item_type, rarity, junk_id, qty_min, qty_max, weight, drop_chance, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(entry_id) DO UPDATE SET
@@ -7295,39 +7438,63 @@ async function handleAdminUpsertMonsterLootEntry(db, adminAuth, entry) {
          rarity = excluded.rarity, junk_id = excluded.junk_id, qty_min = excluded.qty_min,
          qty_max = excluded.qty_max, weight = excluded.weight, drop_chance = excluded.drop_chance,
          updated_at = excluded.updated_at`
-    )
-    .bind(id, monsterId, kind, itemType || null, rarity || null, junkId || null, Number(qtyMin) || 1, Number(qtyMax) || 1, Number(weight) || 1, Number(dropChance) != null ? Number(dropChance) : 1, now, now)
-    .run();
-  return json({ ok: true, entryId: id });
+    ).bind(id, v.monster_id, v.kind, v.item_type, v.rarity, v.junk_id, v.qty_min, v.qty_max, v.weight, v.drop_chance, now, now)],
+    { ok: true, entryId: id }
+  );
 }
 
 async function handleAdminDeleteMonsterLootEntry(db, adminAuth, entryId) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!entryId) return json({ error: "missing_fields" });
-  await db.prepare(`DELETE FROM monster_loot WHERE entry_id = ?`).bind(entryId).run();
-  return json({ ok: true });
+  const beforeRow = await db.prepare(`SELECT * FROM monster_loot WHERE entry_id = ?`).bind(entryId).first();
+  return await runAdminMutationWithAudit(
+    db, adminAuth,
+    {
+      eventType: "ADMIN_MONSTER_LOOT_DELETE", targetType: "monster_loot", targetId: String(entryId),
+      before: adminMonsterLootAuditRow(beforeRow), after: null, changedKeys: beforeRow ? ["deleted"] : [],
+    },
+    [db.prepare(`DELETE FROM monster_loot WHERE entry_id = ?`).bind(entryId)]
+  );
 }
 
 async function handleAdminUpsertJunkInfo(db, adminAuth, junkId, name, icon) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!junkId || !name) return json({ error: "missing_fields" });
   const now = nowIso();
-  await db
-    .prepare(
+  const beforeRow = await db.prepare(`SELECT * FROM junk_info WHERE junk_id = ?`).bind(junkId).first();
+  const before = beforeRow
+    ? { junk_id: beforeRow.junk_id, name: beforeRow.name, icon: beforeRow.icon, created_at: beforeRow.created_at, updated_at: beforeRow.updated_at }
+    : null;
+  const after = { junk_id: junkId, name, icon: icon || "📦", created_at: beforeRow ? beforeRow.created_at : now, updated_at: now };
+  return await runAdminMutationWithAudit(
+    db, adminAuth,
+    {
+      eventType: "ADMIN_JUNK_INFO_UPSERT", targetType: "junk_info", targetId: String(junkId),
+      before, after, changedKeys: adminChangedFields(before, after, ["name", "icon"]),
+    },
+    [db.prepare(
       `INSERT INTO junk_info (junk_id, name, icon, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(junk_id) DO UPDATE SET name = excluded.name, icon = excluded.icon, updated_at = excluded.updated_at`
-    )
-    .bind(junkId, name, icon || "📦", now, now)
-    .run();
-  return json({ ok: true });
+    ).bind(junkId, name, icon || "📦", now, now)]
+  );
 }
 
 async function handleAdminDeleteJunkInfo(db, adminAuth, junkId) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!junkId) return json({ error: "missing_fields" });
-  await db.prepare(`DELETE FROM junk_info WHERE junk_id = ?`).bind(junkId).run();
-  return json({ ok: true });
+  const beforeRow = await db.prepare(`SELECT * FROM junk_info WHERE junk_id = ?`).bind(junkId).first();
+  return await runAdminMutationWithAudit(
+    db, adminAuth,
+    {
+      eventType: "ADMIN_JUNK_INFO_DELETE", targetType: "junk_info", targetId: String(junkId),
+      before: beforeRow
+        ? { junk_id: beforeRow.junk_id, name: beforeRow.name, icon: beforeRow.icon, created_at: beforeRow.created_at, updated_at: beforeRow.updated_at }
+        : null,
+      after: null, changedKeys: beforeRow ? ["deleted"] : [],
+    },
+    [db.prepare(`DELETE FROM junk_info WHERE junk_id = ?`).bind(junkId)]
+  );
 }
 
 // ---------- request boundary hardening ----------
