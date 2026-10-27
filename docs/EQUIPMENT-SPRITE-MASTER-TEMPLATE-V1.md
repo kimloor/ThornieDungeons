@@ -54,10 +54,10 @@ Default hair = `topknot`; Azure `fullFaceHelmet:true`. Current supported equipme
 Full-face helmet: hide hair_back/front. Partial/open/crown: bake default topknot into every helmet frame and suppress separate hair. No helmet: render default hair. Current runtime only suppresses hair via `fullFaceHelmet === true`; do not misuse this flag for open helmets. DEV must design/backward-test a compatible hair mode BEFORE any open-helmet art publication. No implementation approved here.
 
 ## 6. Anatomical anchors — accuracy boundary
-Head, shoulder, wrist, waist, knees, feet and safe silhouette envelopes must be **measured from original approved pixel images per frame**. Numeric coordinates are NOT contained in the inspected JSON contracts and cannot be inferred reliably from sword grips, bounding boxes or common geometry. This investigation verified metadata and files, **not the pixel decoded images**: mark that measurement as **PENDING**, not PASS. Before G16 Idle_01 prototype is position-certified, a Graphics/QA agent must attach an image-measured annex (8 frames, source SHA-256, anatomical anchor coordinates, bbox/silhouette envelope, comparison composites). Once verified, reuse it for all sets. This is a targeted pending physical-validation item, not a reason to repeat reference research for every set.
+The original eight PNG images have now been directly reviewed, SHA-256 hashed, decompressed and measured for strict raw-alpha bounds; §9 records the evidence. Anatomical joint estimates from visible original images are provided separately as **non-rig visual landmarks**, not pixel-exact joints. Occluded joints and garment fit can only be finally accepted in G2 Owner prototype review and G4 all-frame composite review. No ungrounded numerical rigidity/tolerance is invented.
 
 ## 7. Release and reuse
-- Reference inventory/contract: **PASS (read-only repository)**; pixel anatomical measurements, fresh PNG SHA-256, alpha decoding, CI, R2/Production probes: **NOT RUN**.
+- Reference inventory/contract: **PASS (read-only repository)**; raw PNG SHA-256 / PNG decoding / raw-alpha bounds: **PASS (§9)**; precise invisible skeletal joints: **not a defined or verified rig contract**; CI, R2/Production probes: **NOT RUN (documentation-only)**.
 - Gate 0 reference inventory and raw-pixel validation are **COMPLETE** (see §9). Visual landmark coordinates are guides, not pixel-perfect rig pivots; verify actual fit at G2.
 - Gate G1: complete Leather concept requires Owner preview approval.
 - Gate G2: Idle_01 seven-layer prototype requires separate Owner approval before expansion to 56 paths.
@@ -80,9 +80,9 @@ Using GitHub original Base image retrieval, all 8 PNG images were opened and vis
 | death_01 | (244,213,550,618) | (345,296) | (410,431) | (456,580) | backward-falling torso |
 | death_02 | (185,355,476,675) | (380,450) | (300,568) | (244,654) | kneeling/collapsed |
 
-**Interpretation:** Idle animation shows modest vertical bob, but Attack/Death change limb direction and large silhouette bounds. Do not apply Idle anchors to Attack or Death. Source images show distinct shoulders, elbows/wrists, hips, knees and boot shapes, but exact skin/garment contours and joint centers were NOT quantified. For any production-ready atlas, derive explicit bilateral shoulder/wrist, waist, knees, feet and helmet fit points by pixel-mask/annotation review, with pixel-alpha bbox measurement and raw PNG SHA-256 read-back. Above coordinates are for coarse review navigation only.
+**Interpretation:** Idle animation shows modest vertical bob, but Attack/Death change limb direction and large silhouette bounds. Do not apply Idle anchors to Attack or Death. Source images show distinct shoulders, elbows/wrists, hips, knees and boot shapes, but exact skin/garment contours and joint centers were NOT quantified. Production fit must be evaluated against the actual Base in G2 and G4; §9 provides raw-alpha bbox and raw PNG SHA-256 read-back. Above coordinates are for coarse review navigation only.
 
-**Verification grading:** 8/8 visual source frames READ/PASS for existence and pose recognition; numeric bboxes/landmarks **PROVISIONAL**; exact anchor acceptance **PENDING**. No render, new artwork, R2 upload, CI or Production checks were performed as part of this visual review.
+**Verification grading:** 8/8 visual source frames READ/PASS for existence and pose recognition; §8 visual bboxes/landmarks **PROVISIONAL**; §9 raw-alpha bounds and SHA-256 **VERIFIED**; final garment fit belongs to G2/G4. No render, new artwork, R2 upload, CI or Production checks were performed as part of this visual review.
 
 
 ## 9. Gate 0 final machine-readable image integrity evidence (2026-10-27)
