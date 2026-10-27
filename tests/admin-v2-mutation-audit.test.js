@@ -100,7 +100,7 @@ test("recipe upsert/delete audit full before/after", async () => {
   const db = createDb();
   await h.handleAdminUpsertRecipe(db, ADMIN, "r1", "sword", "Blade", "azure", 5, { iron: 2 });
   await h.handleAdminUpsertRecipe(db, ADMIN, "r1", "sword", "Blade+", "azure", 5, { iron: 3 });
-  await h.handleAdminDeleteRecipe(db, ADMIN, "r1");
+  await h.handleAdminDeleteRecipe(db, ADMIN, "r1", "test cleanup", "r1");
   const rows = audits(db);
   assert.deepEqual(rows.map((r) => r.event_type), ["ADMIN_RECIPE_UPSERT", "ADMIN_RECIPE_UPSERT", "ADMIN_RECIPE_DELETE"]);
   assert.ok(rows.every((r) => r.target_type === "recipe" && r.target_id === "r1" && r.player_id === "Admin_1"));
@@ -119,7 +119,7 @@ test("monster loot upsert/delete audit; after-state mirrors the stored row", asy
   const entry = { entryId: "e1", monsterId: "slime", kind: "gear", itemType: "sword", rarity: "rare", qtyMin: 1, qtyMax: 2, weight: 3, dropChance: 0.5 };
   assert.equal((await j(await h.handleAdminUpsertMonsterLootEntry(db, ADMIN, entry))).entryId, "e1");
   await h.handleAdminUpsertMonsterLootEntry(db, ADMIN, { ...entry, weight: 9 });
-  await h.handleAdminDeleteMonsterLootEntry(db, ADMIN, "e1");
+  await h.handleAdminDeleteMonsterLootEntry(db, ADMIN, "e1", "test cleanup", "e1");
   const rows = audits(db);
   assert.deepEqual(rows.map((r) => r.event_type), ["ADMIN_MONSTER_LOOT_UPSERT", "ADMIN_MONSTER_LOOT_UPSERT", "ADMIN_MONSTER_LOOT_DELETE"]);
   assert.equal(rows[0].meta.after.drop_chance, 0.5);
@@ -133,7 +133,7 @@ test("junk info upsert/delete audit", async () => {
   const db = createDb();
   await h.handleAdminUpsertJunkInfo(db, ADMIN, "j1", "Scrap", "🔩");
   await h.handleAdminUpsertJunkInfo(db, ADMIN, "j1", "Scrap", "🔧");
-  await h.handleAdminDeleteJunkInfo(db, ADMIN, "j1");
+  await h.handleAdminDeleteJunkInfo(db, ADMIN, "j1", "test cleanup", "j1");
   const rows = audits(db);
   assert.deepEqual(rows.map((r) => r.event_type), ["ADMIN_JUNK_INFO_UPSERT", "ADMIN_JUNK_INFO_UPSERT", "ADMIN_JUNK_INFO_DELETE"]);
   assert.deepEqual(rows[1].meta.changedKeys, ["icon"]);
@@ -152,11 +152,11 @@ test("injected audit failure leaves every one of the 8 mutations unapplied", asy
     () => h.handleAdminSaveGameConfig(db, ADMIN, { keep: 2, other: 1 }),
     () => h.handleAdminSetGameConfigItem(db, ADMIN, "keep", 3),
     () => h.handleAdminUpsertRecipe(db, ADMIN, "r2", "sword", "N", "azure", 5, { a: 1 }),
-    () => h.handleAdminDeleteRecipe(db, ADMIN, "r1"),
+    () => h.handleAdminDeleteRecipe(db, ADMIN, "r1", "test cleanup", "r1"),
     () => h.handleAdminUpsertMonsterLootEntry(db, ADMIN, { entryId: "e2", monsterId: "m", kind: "junk", junkId: "j1" }),
-    () => h.handleAdminDeleteMonsterLootEntry(db, ADMIN, "e1"),
+    () => h.handleAdminDeleteMonsterLootEntry(db, ADMIN, "e1", "test cleanup", "e1"),
     () => h.handleAdminUpsertJunkInfo(db, ADMIN, "j2", "New", "x"),
-    () => h.handleAdminDeleteJunkInfo(db, ADMIN, "j1"),
+    () => h.handleAdminDeleteJunkInfo(db, ADMIN, "j1", "test cleanup", "j1"),
   ];
   const origError = console.error; console.error = () => {};
   try {

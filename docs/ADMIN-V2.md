@@ -654,6 +654,8 @@ Every slice: feature branch + PR, targeted tests, full suite, Admin V2 QA workfl
 
 ### 22.5 W2-D — Destructive action safety
 
+**Implementation status (2026-10-27): IN PR (stacked on W2-A and W2-C), risk HIGH-adjacent (delete paths), visible Ver 1.1.21 (new validation codes `reason_required`, `invalid_reason`, `confirm_mismatch` registered in the error catalog).** Server: reason trimmed 5-300 chars, `confirmId` must equal the target id exactly, target re-read and rejected with `not_found` (404, not audited) if missing, reason stored in `metadata_json.reason`; validation order is auth, missing id, reason, confirmId, existence. UI: `openDestructiveDialog` shows the server-loaded row, requires typing the id and a reason before the button enables; the old `confirm()` is gone. Tests: `tests/admin-v2-destructive-safety.test.js`.
+
 In scope: `adminDeleteRecipe`, `adminDeleteMonsterLootEntry`, `adminDeleteJunkInfo` now, and W2-F when implemented. No bulk or wildcard delete.
 
 - UI: dialog shows a server-loaded preview of the exact target, requires the operator to type the exact target id, and requires a reason (trimmed, 5–300 characters).
