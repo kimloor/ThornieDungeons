@@ -65,3 +65,21 @@ Head, shoulder, wrist, waist, knees, feet and safe silhouette envelopes must be 
 - Skeleton artwork remains untouched until G16 complete.
 - Each new graphics agent records a short preflight: latest main SHA, current Base Git identities, manifest selection, renderer compatibility, and whether annex is locked. If unchanged, reuse without rebuilding master. Any drift requires scoped revalidation.
 - This documentation creates no asset, renderer, Worker/API/D1, gameplay or economy change.
+
+## 8. Direct visual inspection annex — 8 Base PNGs (2026-10-27)
+Using GitHub original Base image retrieval, all 8 PNG images were opened and visually reviewed at 768×768, with the exact paths and Git blobs in §2. This is a **visual reference map**, not algorithmically measured landmarks. Coordinates below are approximate image-reading estimates (±15–30 pixels depending on contour) and MUST NOT be used as immutable pixel-perfect anchors. X grows right, Y grows down, origin top-left.
+
+| Frame | Approx visible silhouette bbox (x0,y0,x1,y1) | Head visual center | Torso visual center | Feet/lower contact area | Notes |
+|---|---|---|---|---|---|
+| idle_01 | (246,208,464,646) | (359,303) | (356,433) | (336,615) | relaxed standing, forward-facing-right |
+| idle_02 | (246,196,464,635) | (359,291) | (354,420) | (339,607) | same pose, upward idle bob |
+| idle_03 | (246,205,464,643) | (359,300) | (354,430) | (340,613) | same pose, intermediate idle bob |
+| attack_01 | (225,257,511,669) | (375,350) | (352,474) | (307,628) | raised rear fist, other hand forward |
+| attack_02 | (189,260,514,671) | (340,344) | (323,459) | (288,625) | extended forward punching arm |
+| attack_03 | (206,258,439,670) | (341,344) | (322,461) | (283,626) | lowered striking forearm |
+| death_01 | (244,213,550,618) | (345,296) | (410,431) | (456,580) | backward-falling torso |
+| death_02 | (185,355,476,675) | (380,450) | (300,568) | (244,654) | kneeling/collapsed |
+
+**Interpretation:** Idle animation shows modest vertical bob, but Attack/Death change limb direction and large silhouette bounds. Do not apply Idle anchors to Attack or Death. Source images show distinct shoulders, elbows/wrists, hips, knees and boot shapes, but exact skin/garment contours and joint centers were NOT quantified. For any production-ready atlas, derive explicit bilateral shoulder/wrist, waist, knees, feet and helmet fit points by pixel-mask/annotation review, with pixel-alpha bbox measurement and raw PNG SHA-256 read-back. Above coordinates are for coarse review navigation only.
+
+**Verification grading:** 8/8 visual source frames READ/PASS for existence and pose recognition; numeric bboxes/landmarks **PROVISIONAL**; exact anchor acceptance **PENDING**. No render, new artwork, R2 upload, CI or Production checks were performed as part of this visual review.
