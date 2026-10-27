@@ -1,0 +1,82 @@
+{
+  "status": "OWNER_SPECIFIED_ORDER_RENDERED_VISUAL_ACCEPTANCE_PENDING",
+  "main": "7ef31753b969386d2750857dddaa53d44c03081c",
+  "branchParent": "6d52c2ca6c6c1e792c0ec1916ed8a01db42dc83c",
+  "risk": "LOW offline assembly only",
+  "frontToBack": [
+    "arm_rear",
+    "sword",
+    "helmet",
+    "torso_armor",
+    "arm_front",
+    "legs_boots",
+    "base"
+  ],
+  "backToFront": [
+    "base",
+    "legs_boots",
+    "arm_front",
+    "torso_armor",
+    "helmet",
+    "sword",
+    "arm_rear"
+  ],
+  "anatomy": {
+    "arm_rear": "anatomical right / raised sword arm",
+    "arm_front": "anatomical left / extended arm"
+  },
+  "underlay": "Fully transparent; omitted from visible order, existing PNG preserved",
+  "sourceFiles": [
+    {
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/arm_rear.png",
+      "sha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb"
+    },
+    {
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/sword.png",
+      "sha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb"
+    },
+    {
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/helmet.png",
+      "sha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318"
+    },
+    {
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/torso_armor.png",
+      "sha256": "9f7471045fcf1753e231c85b1bb9c837e115d6af4bc22d9cfaaf4e7b8c3565e3"
+    },
+    {
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/arm_front.png",
+      "sha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148"
+    },
+    {
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/owner-selected-recut/attack_01/azure-order-correction/exports/legs_boots.png",
+      "sha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf"
+    },
+    {
+      "layer": "base",
+      "path": "r2-upload/hero/v5/g2/base/attack_01.png",
+      "sha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442"
+    }
+  ],
+  "transforms": false,
+  "masks": false,
+  "extraTorsoPass": false,
+  "extraHandPass": false,
+  "runtimeChanged": false,
+  "exportsChanged": false,
+  "visualAccepted": false,
+  "G3Complete": false,
+  "outputDimensions": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    0
+  ]
+}

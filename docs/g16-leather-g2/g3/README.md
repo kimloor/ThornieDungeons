@@ -48,3 +48,7 @@ Image generation used the built-in ImageGen tool; see `PROMPT.md` for the prompt
 ## Azure layer order recheck
 
 Owner requested a fresh part-by-part Azure order inspection: see [exact order and cumulative stages](owner-selected-recut/attack_01/azure-layer-walkthrough/README.md). This view uses complete unmasked parts, with no cropped hand or torso redraw. Leather matches the prior unmasked Azure-anatomical-order checkpoint pixel-for-pixel; the different arm filenames are explicitly mapped. Order is verified; artwork fit remains pending.
+
+## Latest Owner-specified Attack_01 order
+
+[Owner layer-order review](owner-selected-recut/attack_01/owner-layer-order/README.md): front to back = right raised arm → sword → helmet → chest → left extended arm → legs/trousers → Base. Rendered from unchanged full parts without masks or extra passes. Owner visual acceptance and runtime compatibility remain pending.

@@ -949,5 +949,10 @@
     "runtimeReady": false,
     "finalInventoryPromotion": false,
     "otherFourPosesStarted": false
+  },
+  "latestAttack01OwnerOrder": {
+    "report": "owner-selected-recut/attack_01/owner-layer-order/VALIDATION.json",
+    "visualAccepted": false,
+    "runtimeChanged": false
   }
 }
