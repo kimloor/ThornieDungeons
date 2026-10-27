@@ -7406,7 +7406,7 @@ async function apiFetch(request, env) {
           return await handleAdminValidateSession(db, adminAuth);
         }
         if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers"].includes(action)) {
-          const adminAuth = await verifyAdminAccess(db, env, request, p.get("adminKey"));
+          const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           if (action === "runLeaderboardSnapshot") return json({ ok: true, ...(await runLeaderboardSnapshot(db)) });
           if (action === "getPlayer") return await handleAdminGetPlayer(db, adminAuth, p.get("id"));
@@ -7447,7 +7447,7 @@ async function apiFetch(request, env) {
         if (action === "getDirectMessages") return await handleGetDirectMessages(db, id, auth, p.get("characterId"), p.get("withCharacterId"), p.get("afterId"));
         if (action === "getDirectConversations") return await handleGetDirectConversations(db, id, auth, p.get("characterId"));
         if (action === "runChatRetentionCleanup") {
-          const adminAuth = await verifyAdminAccess(db, env, request, p.get("adminKey"));
+          const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           return json({ ok: true, ...(await runChatRetentionCleanup(db)) });
         }
@@ -7475,7 +7475,7 @@ async function apiFetch(request, env) {
           return await handleAdminLogout(db, adminAuth);
         }
         if (["saveGameConfig", "setGameConfigItem", "adminUpsertRecipe", "adminDeleteRecipe", "adminUpsertMonsterLootEntry", "adminDeleteMonsterLootEntry", "adminUpsertJunkInfo", "adminDeleteJunkInfo"].includes(body.action)) {
-          const adminAuth = await verifyAdminAccess(db, env, request, body.adminKey);
+          const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           switch (body.action) {
             case "saveGameConfig": return await handleAdminSaveGameConfig(db, adminAuth, body.config);

@@ -392,7 +392,7 @@ async function commitCredentialChange(db, baseStatements, playerId, reason) {
   await db.batch(statements);
 }
 
-async function verifyAdminAccess(db, env, request, legacyAdminKey) {
+async function verifyAdminAccess(db, env, request) {
   const token = bearerToken(request);
   // Admin V2 is now the only authoritative administrative boundary.  The old
   // query/body `adminKey` compatibility path was useful during the bootstrap

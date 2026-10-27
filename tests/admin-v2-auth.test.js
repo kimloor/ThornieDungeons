@@ -378,7 +378,8 @@ test("Admin Phase 1 player search/viewer is server-side, sanitized, audited, and
 });
 
 test("Admin Phase 1 UI exposes dashboard/search/viewer without player mutation controls", () => {
-  const html = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
+  const html = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8")
+    + fs.readFileSync(path.join(__dirname, "../admin-app.js"), "utf8");
   assert.match(html, /data-tab="dashboard"/);
   assert.match(html, /data-tab="players"/);
   assert.match(html, /action:\s*"getGameStats"/);
@@ -402,7 +403,8 @@ test("legacy ADMIN_API_KEY compatibility is retired while Admin V2 UI remains se
   assert.equal(legacyResponse.status, 401);
   assert.equal(legacy.error, "admin_session_required");
 
-  const html = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
+  const html = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8")
+    + fs.readFileSync(path.join(__dirname, "../admin-app.js"), "utf8");
   assert.doesNotMatch(html, /thornie-admin-key/);
   assert.doesNotMatch(html, /adminKey\s*:/);
   assert.doesNotMatch(html, /localStorage/);

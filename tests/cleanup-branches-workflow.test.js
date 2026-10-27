@@ -16,7 +16,7 @@ test("branch cleanup evaluates main pushes and only applicable release gates", (
 
   assert.match(
     workflow,
-    /index\.html\|admin\.html\|worker\.js\|wrangler\.jsonc\|\.github\/workflows\/deploy-frontend-production\.yml/
+    /index\.html\|admin\.html\|admin-app\.js\|worker\.js\|wrangler\.jsonc\|\.github\/workflows\/deploy-frontend-production\.yml/
   );
   assert.match(
     workflow,

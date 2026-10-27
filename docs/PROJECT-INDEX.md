@@ -278,4 +278,4 @@ When an approved production contract changes:
 - Post-WAVE 6 Full Project Gap Audit + Security Re-Audit: COMPLETE / GATE PASSED; inventory read-isolation blocker resolved and Production verified by PR #63.
 - WAVE 7 Presentation Expansion: COMPLETE / PRODUCTION VERIFIED; W7A Terminal/Boss/Enrage/Raid + W7B Enhance/Craft presentation shipped. Summoning remains separately deferred.
 - Admin V2 Phase 1: COMPLETE / PRODUCTION VERIFIED; Dashboard + server-side Player Search + sanitized read-only Player Viewer/Items shipped in PR #71.
-- Admin V2 Wave 2: Owner scope decisions recorded (2026-10-26); implementation contracts in `ADMIN-V2.md` section 22 awaiting Owner approval; no Wave 2 code shipped.
+- Admin V2 Wave 2: Owner scope decisions recorded (2026-10-26); contracts in `ADMIN-V2.md` section 22 approved; W2-C (`admin-app.js`, Admin CSP/security headers) is in its own PR; no Wave 2 code is in production yet.
