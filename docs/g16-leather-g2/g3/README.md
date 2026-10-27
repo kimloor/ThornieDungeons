@@ -1,4 +1,14 @@
-# G16 Gate 3 — Idle expansion / pose review hold
+# G16 Gate 3 — current review status and evidence
+
+Status: **ATTACK_01–03 POSES OWNER CONFIRMED / REAR-TORSO CORRECTION COMPLETE — ART REVIEW PENDING**.
+
+The Owner confirmed all three current attack poses match. The remaining error was the visible armor surface: Attack_02/03 require rear-facing torso panels, not distorted front plates. [Latest rear-torso review](attack-back-torso-review/README.md) and [Project Lead handoff](attack-back-torso-review/PROJECT_LEAD_HANDOFF.md) are the current review authority. Exactly two torso PNGs changed; the other 19 Attack PNGs, including all seven Attack_01 files, remain byte-identical. Existing torso alpha footprints and all composite silhouettes are unchanged. See Pipeline §4D for the recorded authoring method and facing rule.
+
+The 21 declared final export paths below remain the Idle inventory; the 21 Attack candidate paths are separate review material. No new corrected rear-art acceptance, final inventory promotion, Death_01/02 completion, G3 completion or G4 readiness is inferred. Main rechecked 7ef31753b969386d2750857dddaa53d44c03081c; existing PR #160 is updated, with no R2/runtime/production changes.
+
+## Archived progress notes
+
+The text below preserves earlier attempts and checkpoint notes, including old pose holds and pending-review wording. Those describe their original submissions; they do not override the Owner's subsequent pose acceptance or the current correction above. The rejected generated sources remain rejected and are not used in the current Attack candidates.
 
 Status: **G16 G3 PHASE A REVIEW HOLD — SOURCE RECONSTRUCTION AUTHORIZED; ATTACK_01 CANDIDATE NOT ACCEPTED**.
 

@@ -1,5 +1,7 @@
 # Azure vs Leather — Attack_01/02/03 comparison
 
+**Subsequent Owner correction:** all three attack poses are confirmed to match. The earlier Graphics contour-based inference below is superseded. The outstanding issue was front/back torso surface identity. See [current rear-torso correction](../../attack-back-torso-review/README.md) and Pipeline §4D; do not treat the old inference as an active pose blocker.
+
 Read-only QA evidence. Main checked 7ef31753b969386d2750857dddaa53d44c03081c; task branch parent 0f3c9ad90f1af45f0d2148efd228e5ce0712b933. Risk LOW. No equipment source, placement or runtime modification.
 
 AZURE_LEATHER_ATTACK_COMPARISON.png: each row is Attack_01, Attack_02, Attack_03; Azure left, current Leather candidate right. Every source stays on its original 768×768 canvas at [0,0]. Both columns use exactly the same review crop [70,120,768,720] and scale 1; no bbox fitting, limb shifting, recentering or per-set scaling. Wings are disabled for both; Azure helmet suppresses hair. The common runtime Y=84 presentation offset is not baked into either image.

@@ -1,5 +1,5 @@
 {
-  "status": "G16_G3_PHASE_A_REVIEW_HOLD",
+  "status": "G16_G3_ATTACK_POSES_OWNER_CONFIRMED_REAR_TORSO_ART_REVIEW_PENDING",
   "baseline": "1372ed16327aeb7290b1bad0a9c2fa022b425335",
   "gate0Reused": true,
   "expectedPaths": 56,
@@ -976,5 +976,20 @@
     "acceptedNewPngPaths": 0,
     "promotedToFinal": false,
     "deathFramesCreated": false
+  },
+  "previousStatus": "G16_G3_PHASE_A_REVIEW_HOLD",
+  "inventoryScope": "Declared final g3/exports paths only; separate Attack candidates are not promoted or counted as accepted",
+  "currentReview": {
+    "report": "attack-back-torso-review/VALIDATION.json",
+    "ownerAcceptedAttackPoses": [
+      "attack_01",
+      "attack_02",
+      "attack_03"
+    ],
+    "changedTorsoPngPaths": 2,
+    "otherAttackPngsByteIdentical": 19,
+    "correctedRearArtworkAccepted": false,
+    "deathFramesComplete": false,
+    "finalInventoryPromotion": false
   }
 }
