@@ -92,7 +92,7 @@ payload; do not preload unused animation frames. G14 production waits for G13 Gr
 
 ## G15 delivery — Issue #152 / PR #153 / Ver 1.1.19 release gate
 
-Status: **OWNER APPROVED / R2 STAGED / RUNTIME INTEGRATED — PRODUCTION PENDING**. Baseline `main` is Ver 1.1.18 at
+Status: **DONE / PRODUCTION VERIFIED**. Baseline `main` was Ver 1.1.18 at
 `63b95d0e5025cfce5458f99b34341972cc3fda0d`. Risk is MEDIUM: new player-facing
 artwork and later optional runtime integration, with no Worker/API/D1/gameplay/data authority change.
 
@@ -122,7 +122,7 @@ Public roadmap: reuse runtime Completed/In Development/Planned labels, optionall
 existing check/clock/dot primitives with text; do not bake text or depend on color alone.
 No background/card/tab/button/accordion/table artwork required. No extra icons for reserved
 Account/Support/Credits scope. Runtime typography, legal drafts, guide values and layout remain DEV/content ownership.
-Production follows G14 acceptance and Lead confirmation of final icon reuse decisions.
+Production publication completed through merged PR #153 for Ver 1.1.19.
 
 Six candidate icons were generated with the built-in imagegen workflow, normalized to
 128×128 RGBA with 12 px or greater transparent padding, and kept under
@@ -142,11 +142,12 @@ Owner approved all six candidates. Identical optimized bytes are now staged unde
 Information Center uses a shared optional resolver with fixed-size decorative images and the
 existing emoji as missing-key/decode-error fallback. Data/content, NEW badge, roadmap text,
 navigation and deep-link contracts are unchanged. R2 publishing, deploy and Production
-verification remain blocked on the combined-task review/release gate.
+verification passed after the combined-task release gate.
 
-Exact next action: finish the combined Package B/C review gates, run the complete shared
-test/build/responsive gate, obtain Project Lead release approval, then merge and verify R2
-upload hashes, frontend deployment and live 6/6 image decoding.
+Production evidence: PR #153 merged as `2ceb79ea2aa6d029376698070cc7ff0b9ddf827f`;
+R2 run #40333086818 uploaded and read-back SHA-verified all six icons; frontend run
+#40333086817 deployed and verified the Production endpoint; direct live decode and SHA checks
+passed 6/6 on 2026-10-27. Focused tests passed 48/48 and full Node regression passed 823/823.
 
 ## Publication and acceptance
 
