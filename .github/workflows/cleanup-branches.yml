@@ -95,7 +95,7 @@ jobs:
             [ -n "$file" ] || continue
 
             case "$file" in
-              index.html|admin.html|worker.js|wrangler.jsonc|.github/workflows/deploy-frontend-production.yml)
+              index.html|admin.html|admin-app.js|worker.js|wrangler.jsonc|.github/workflows/deploy-frontend-production.yml)
                 require_frontend=true ;;
             esac
 
