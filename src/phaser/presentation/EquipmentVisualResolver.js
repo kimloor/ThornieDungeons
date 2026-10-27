@@ -14,7 +14,12 @@ function isAzureVisualItem(item) {
 
 function heroV5SetFamily(item) {
   const setId = String(item?.setId || "").trim().toLowerCase();
-  return ["azure", "robot", "skeleton"].includes(setId) ? setId : null;
+  // Explicit set identity remains authoritative. An unknown set must not be
+  // reinterpreted as generic gear merely because it also carries a tier.
+  if (setId) return ["azure", "robot", "skeleton"].includes(setId) ? setId : null;
+  // G16 is a presentation-only binding for the existing generic Tier 1 item
+  // schema. It does not add set identity to inventory or persistence data.
+  return Number(item?.gearTier) === 1 ? "leather" : null;
 }
 
 function heroV5BossWeaponVisualId(item) {

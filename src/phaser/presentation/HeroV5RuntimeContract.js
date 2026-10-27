@@ -1,6 +1,6 @@
 // ---------- W8 Hero V5 G2 Runtime Contract ----------
 const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
-  version: 3,
+  version: 4,
   characterId: "hero001",
   variant: "g2",
   canvas: Object.freeze({ width: 768, height: 768 }),
@@ -29,7 +29,9 @@ const HERO_V5_AZURE_SLOT_LAYERS = Object.freeze({
   boots: Object.freeze(["legs_boots"]),
   weapon: Object.freeze(["sword"])
 });
-const HERO_V5_SET_FAMILIES = Object.freeze(["azure", "robot", "skeleton"]);
+const HERO_V5_SET_FAMILIES = Object.freeze(["azure", "robot", "skeleton", "leather"]);
+const HERO_V5_HAIR_MODES = Object.freeze(["hidden_full_cover", "baked_into_helmet", "default"]);
+const HERO_V5_LEATHER_COMPOSITION_PROFILE = "leather_overlap_v1";
 
 function isHeroV5RuntimeEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
@@ -122,7 +124,16 @@ function heroV5SanitizeEquipmentSelection(config, selection = {}) {
   };
 }
 
-function heroV5EquipmentLayersForSelection(selection = {}) {
+function heroV5MoveLayersBefore(order, names, target) {
+  const moving = names.filter(name => order.includes(name));
+  if (!moving.length || !order.includes(target)) return order;
+  const remaining = order.filter(name => !moving.includes(name));
+  const targetIndex = remaining.indexOf(target);
+  remaining.splice(targetIndex, 0, ...moving);
+  return remaining;
+}
+
+function heroV5EquipmentLayersForSelection(selection = {}, config = null) {
   const equipment = selection?.equipment || Object.fromEntries(Object.entries(selection?.azure || {}).map(([slot, enabled]) => [slot, enabled ? "azure" : null]));
   const requested = [];
   // The underlay is a whole-body seam closer. Only use it when the three
@@ -135,20 +146,53 @@ function heroV5EquipmentLayersForSelection(selection = {}) {
   if (equipment.helmet) requested.push("helmet");
   if (selection.bossWeapon || equipment.weapon) requested.push("sword");
   if (equipment.gloves) requested.push("arm_front");
-  return HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
+  let order = HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
+  const leatherProfile = config?.equipment?.leather?.compositionProfile === HERO_V5_LEATHER_COMPOSITION_PROFILE;
+  if (!leatherProfile || equipment.chest !== "leather") return order;
+  // Only the matching Leather pairs opt into the overlap order. Any legacy or
+  // mixed-family pair retains its previous relative order.
+  if (equipment.boots === "leather") order = heroV5MoveLayersBefore(order, ["legs_boots"], "torso_armor");
+  if (equipment.gloves === "leather") order = heroV5MoveLayersBefore(order, ["arm_rear", "arm_front"], "torso_armor");
+  return order;
 }
 
 function heroV5AzureLayersForSelection(selection = {}) { return heroV5EquipmentLayersForSelection(selection); }
 
-function heroV5FrameLayer(name, path) {
+function heroV5FrameLayer(name, path, metadata = {}) {
   return {
     name,
     path,
     x: 0,
     y: HERO_V5_RUNTIME_CONTRACT.runtimeOffsetY,
     scale: 1,
-    rotation: 0
+    rotation: 0,
+    ...metadata
   };
+}
+
+function heroV5HelmetHairMode(config, frameId, equipmentSelection, equipmentLayerNames) {
+  const helmetFamily = equipmentSelection?.equipment?.helmet;
+  const helmetConfig = helmetFamily ? config?.equipment?.[helmetFamily] : null;
+  const helmetFrame = helmetConfig?.frames?.[frameId];
+  if (!helmetFamily || !equipmentLayerNames.includes("helmet") || !helmetFrame?.helmet) return "default";
+  if (HERO_V5_HAIR_MODES.includes(helmetConfig?.hairMode)) return helmetConfig.hairMode;
+  return helmetConfig?.fullFaceHelmet === true ? "hidden_full_cover" : "default";
+}
+
+function heroV5RightHandOcclusionLayer(config, frameId, equipmentSelection, equipmentLayerNames) {
+  const gloveFamily = equipmentSelection?.equipment?.gloves;
+  const gloveConfig = gloveFamily ? config?.equipment?.[gloveFamily] : null;
+  const handConfig = gloveConfig?.handOcclusion;
+  if (gloveConfig?.compositionProfile !== HERO_V5_LEATHER_COMPOSITION_PROFILE
+      || handConfig?.sourceLayer !== "arm_rear"
+      || handConfig?.after !== "sword"
+      || !equipmentLayerNames.includes("sword")) return null;
+  const crop = handConfig?.frames?.[frameId]?.crop;
+  if (!Array.isArray(crop) || crop.length !== 4 || crop.some(value => !Number.isFinite(Number(value)))) return null;
+  const normalizedCrop = crop.map(Number);
+  if (normalizedCrop[2] <= 0 || normalizedCrop[3] <= 0) return null;
+  const sourcePath = gloveConfig?.frames?.[frameId]?.arm_rear;
+  return sourcePath ? heroV5FrameLayer("right_hand_occlusion", sourcePath, { crop: normalizedCrop }) : null;
 }
 
 function heroV5HairLayers(config, frameId, includeHair = true) {
@@ -174,23 +218,21 @@ function heroV5FrameLayers(config, frameId, {
   const wingFamily = equipmentSelection?.wings === "robot" || equipmentSelection?.wings === "skeleton" ? equipmentSelection.wings : "azure";
   const wingConfig = wingFamily === "azure" ? config?.wingTemplate : config?.wings?.[wingFamily];
   const wingFrame = includeWings ? wingConfig?.frames?.[frameId] : null;
-  const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection);
+  const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection, config);
 
   const layers = [];
   if (includeWings && wingFrame?.wing_far) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
   layers.push(heroV5FrameLayer("base", basePath));
-  // Suppress hair only when a complete full-face helmet is actually selected.
-  const helmetFamily = equipmentSelection?.equipment?.helmet;
-  const helmetFrame = helmetFamily ? config?.equipment?.[helmetFamily]?.frames?.[frameId] : null;
-  const fullFaceHelmet = equipmentLayerNames.includes("helmet") && !!helmetFrame?.helmet
-    && config?.equipment?.[helmetFamily]?.fullFaceHelmet === true;
-  layers.push(...heroV5HairLayers(config, frameId, includeHair && !fullFaceHelmet));
+  const hairMode = heroV5HelmetHairMode(config, frameId, equipmentSelection, equipmentLayerNames);
+  layers.push(...heroV5HairLayers(config, frameId, includeHair && hairMode === "default"));
   equipmentLayerNames.forEach(name => {
     const slot = name === "torso_armor" || name === "coverage_underlay" ? "chest" : name === "legs_boots" ? "boots" : name === "arm_rear" || name === "arm_front" ? "gloves" : name === "helmet" ? "helmet" : "weapon";
     const family = slot === "weapon" && equipmentSelection?.bossWeapon ? equipmentSelection.bossWeapon : equipmentSelection?.equipment?.[slot];
     const path = family ? config?.equipment?.[family]?.frames?.[frameId]?.[name] : null;
     if (path) layers.push(heroV5FrameLayer(name, path));
   });
+  const handOcclusion = heroV5RightHandOcclusionLayer(config, frameId, equipmentSelection, equipmentLayerNames);
+  if (handOcclusion) layers.push(handOcclusion);
   if (includeWings && wingFrame?.wing_near) layers.push(heroV5FrameLayer("wing_near", wingFrame.wing_near));
   return layers;
 }
@@ -221,7 +263,7 @@ function resolveHeroV5BaseWingContract({ characterId = "hero001", includeWings =
     resolved[state] = frames;
   }
 
-  const hasEquipment = heroV5EquipmentLayersForSelection(sanitizedSelection).length > 0;
+  const hasEquipment = heroV5EquipmentLayersForSelection(sanitizedSelection, config).length > 0;
   const families = Object.values(sanitizedSelection.equipment || {}).filter(Boolean);
   const familyMode = sanitizedSelection.bossWeapon || (families.length && families.every(value => value === families[0]) ? families[0] : "mixed");
   return Object.freeze({
