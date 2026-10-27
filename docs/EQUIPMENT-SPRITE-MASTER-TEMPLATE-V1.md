@@ -90,14 +90,20 @@ Using GitHub original Base image retrieval, all 8 PNG images were opened and vis
 
 | Frame | Raw PNG SHA-256 | Alpha>0 bounds [L,T,R,B) | Alpha>0 pixels |
 |---|---|---|---:|
-| idle_01 | `579afb8b58518d7c3397d1bc29744df6ef0c7d14728e8b0b9f333f6f10dbb062` | [244,206,464,646] | 64305 |
-| idle_02 | `0175d1a45643a55683f1f1ee973e560502fb0da227a7589d733ca9f373f74d4a` | [244,194,464,634] | 64305 |
-| idle_03 | `36681408666113e5fb3c62d371ebb0f3c381c1183b81bda9c5e245d6f4ccc609` | [244,202,464,642] | 64305 |
-| attack_01 | `a30e83047d8218558044e97e660154e9d1d6e12805db1ea94b16d7fd79d9739e` | [224,256,512,670] | 62162 |
-| attack_02 | `2651ed58209b6bec5e06ffc6bba4eed7058cd4f467e9a4bd57f7cbed1412c0ba` | [188,257,512,672] | 61748 |
-| attack_03 | `0e0a455cc315e4e7396d46ea30c85408623fb4cc8b0a96095eddceae946f948a` | [204,256,436,669] | 57662 |
-| death_01 | `20502f785cda199e6632dbff175e4b93a8404624d50e1513d4be3dc2695dda6a` | [132,212,554,704] | 58864 |
-| death_02 | `a5b722a6e62647674cd5152e8286f687cd02e318b1c8754dec7606ba4518b8b3` | [183,355,692,705] | 53034 |
+| idle_01 | `1c4e9d24d7d560b96e85dbdbccc47d17739c156a1377d4afb7f53fd90983e5e5` | [244,206,464,646] | 64305 |
+| idle_02 | `18c5935634ffbf3758eadb505864cf44a1143a349e742591e0bf7db5fc5773f9` | [244,194,464,634] | 64305 |
+| idle_03 | `bd15c3f045e362030d885fe65b5a3725ccbd6c4ed30d8da3868af66730ccc981` | [244,202,464,642] | 64305 |
+| attack_01 | `b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442` | [224,256,512,670] | 62162 |
+| attack_02 | `d6b5c542822e5d88702e882721eeabb74c07703b72ec88414410c6f0bac6db9a` | [188,257,512,672] | 61748 |
+| attack_03 | `9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667` | [204,256,436,669] | 57662 |
+| death_01 | `8fe820026682becdc889f4adce522722720c78d242d7007ed994cd113fad292b` | [132,212,554,704] | 58864 |
+| death_02 | `b9c5f58a1a03a921c21ab45e3ac60fe070347988755ed639e365a9c13e0e0ae3` | [183,355,692,705] | 53034 |
+
+### Gate 0 SHA-256 ledger reconciliation (2026-10-27)
+
+The earlier §9 SHA-256 values were not hashes of the canonical repository PNG byte streams. Recalculation directly from all eight files on main produced the corrected values above. The previous ledger values were, in frame order: `579afb8b…b062`, `0175d1a4…d4a`, `36681408…609`, `a30e8304…39e`, `2651ed58…0ba`, `0e0a455c…48a`, `20502f78…a6a`, and `a5b722a6…b8b`.
+
+This was a ledger-generation/input error, not Base artwork drift: every Git blob SHA-1 and byte size still matches §2, all decoded alpha bounds and pixel counts remain unchanged, and the approved G16 Idle_01 preview reconstructs pixel-identically from the current repository Base plus its validated exports. The exact non-canonical input used by the earlier one-off hash procedure cannot be reconstructed because that procedure was not archived. Do not modify Base or approved G16 artwork to match the superseded values. The source-package SHA-256 is a separate package hash and is unchanged by this correction.
 
 **Read the differences correctly:** §8's approximate visible contours differ from strict `alpha>0` bounds; the Death frames in particular have very low-alpha outlier pixels beyond visually solid body. The table above is objectively measured raw-alpha envelope, **not** a reliable garment edge, limb articulation point, ground-contact anchor, or permission to stretch armor to that envelope. Graphics must inspect visible edges at intended playback scale during G1/G2.
 

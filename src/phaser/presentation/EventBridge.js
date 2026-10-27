@@ -17,7 +17,8 @@ function heroV3PresentationLayerFrames(selection = {}) {
     x: Number(layer.x) || 0,
     y: Number(layer.y) || 0,
     scale: Number(layer.scale ?? 1),
-    rotation: Number(layer.rotation) || 0
+    rotation: Number(layer.rotation) || 0,
+    crop: Array.isArray(layer.crop) ? layer.crop.slice(0, 4).map(Number) : null
   })).filter(layer => layer.url);
   const idle = normalize(typeof resolveHeroV3Layers === "function"
     ? resolveHeroV3Layers("hero001", selection, "idle", 0)
@@ -57,7 +58,8 @@ function heroPresentationLayerFrames(selection = {}, { preferV5 = false, v5Selec
         x: Number(layer.x) || 0,
         y: Number(layer.y) || 0,
         scale: Number(layer.scale ?? 1),
-        rotation: Number(layer.rotation) || 0
+        rotation: Number(layer.rotation) || 0,
+        crop: Array.isArray(layer.crop) ? layer.crop.slice(0, 4).map(Number) : null
       })).filter(layer => layer.url);
       return {
         ...v5,

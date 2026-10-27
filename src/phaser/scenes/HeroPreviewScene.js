@@ -1,7 +1,9 @@
 // ---------- W8 Shared Hero Preview Scene ----------
 function heroPreviewFallbackLayerNames(name) {
   if (name === "wing_far" || name === "wing_near") return ["wing_far", "wing_near"];
-  if (name === "arm_rear" || name === "arm_front") return ["arm_rear", "arm_front", "coverage_underlay"];
+  if (name === "arm_rear" || name === "arm_front" || name === "right_hand_occlusion") {
+    return ["arm_rear", "arm_front", "right_hand_occlusion", "coverage_underlay"];
+  }
   if (name === "torso_armor") return ["torso_armor", "coverage_underlay"];
   if (name === "legs_boots") return ["legs_boots", "coverage_underlay"];
   return name ? [name] : [];
