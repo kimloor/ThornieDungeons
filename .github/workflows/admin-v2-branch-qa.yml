@@ -7,6 +7,7 @@ on:
       - "admin-app.js"
       - "worker.js"
       - "tests/admin-v2-hardening.test.js"
+      - "tests/admin-v2-destructive-safety.test.js"
       - "workers/thornie-dungeons-api.js"
       - "workers/thornie-dungeons-api-entry.js"
       - "workers/modules/auth.js"
@@ -59,6 +60,8 @@ jobs:
         run: node --test tests/admin-v2-mutation-audit.test.js
       - name: Admin hardening tests (W2-C)
         run: node --test tests/admin-v2-hardening.test.js
+      - name: Admin destructive safety tests (W2-D)
+        run: node --test tests/admin-v2-destructive-safety.test.js
       - name: Admin app script syntax
         run: node --check admin-app.js
       - name: SHOP-AND-SELL Phase 1 contract tests
