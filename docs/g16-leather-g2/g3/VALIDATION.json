@@ -1,5 +1,5 @@
 {
-  "status": "G16_G3_BLOCKED_VISUAL_DEVIATION_REVIEW_REQUIRED",
+  "status": "G16_G3_PHASE_A_REVIEW_HOLD",
   "baseline": "1372ed16327aeb7290b1bad0a9c2fa022b425335",
   "gate0Reused": true,
   "expectedPaths": 56,
@@ -930,5 +930,14 @@
     "attack_03": "9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667",
     "death_01": "8fe820026682becdc889f4adce522722720c78d242d7007ed994cd113fad292b",
     "death_02": "b9c5f58a1a03a921c21ab45e3ac60fe070347988755ed639e365a9c13e0e0ae3"
+  },
+  "latestMainCheckedForRevision": "32bca9eca232355a2ae98bc5f3fd54e9c5d28637",
+  "sourceRevision": {
+    "report": "revision-a/VALIDATION.json",
+    "phase": "A_ATTACK_01",
+    "candidatePaths": 7,
+    "countedAsFinal": false,
+    "materialDesignReviewRequired": true,
+    "remainingFourPosesStarted": false
   }
 }

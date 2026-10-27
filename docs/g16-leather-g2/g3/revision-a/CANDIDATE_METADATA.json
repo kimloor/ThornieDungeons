@@ -1,0 +1,48 @@
+{
+  "status": "CANDIDATE_NOT_ACCEPTED",
+  "compositionProfile": "leather_overlap_v1",
+  "hairMode": "hidden_full_cover",
+  "canvas": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    0
+  ],
+  "frame": "attack_01",
+  "handOcclusion": {
+    "sourceLayer": "arm_rear",
+    "after": "sword",
+    "frames": {
+      "attack_01": {
+        "crop": [
+          270,
+          275,
+          74,
+          68
+        ],
+        "review": "candidate; inspect raised forearm/helmet interference"
+      }
+    }
+  },
+  "weaponRegistration": {
+    "source": "../../exports/idle_01/sword.png",
+    "sourceCanvas": [
+      768,
+      768
+    ],
+    "sourceGrip": [
+      270,
+      512
+    ],
+    "targetGrip": [
+      310,
+      309
+    ],
+    "uniformScale": 1,
+    "rotationDegrees": -115,
+    "runtimeTransform": false
+  },
+  "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+}

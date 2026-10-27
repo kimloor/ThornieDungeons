@@ -1,6 +1,8 @@
 # G16 Gate 3 — Idle expansion / pose review hold
 
-Status: **G16 G3 BLOCKED — MATERIAL VISUAL DEVIATION / PROJECT LEAD + OWNER REVIEW REQUIRED**.
+Status: **G16 G3 PHASE A REVIEW HOLD — SOURCE RECONSTRUCTION AUTHORIZED; ATTACK_01 CANDIDATE NOT ACCEPTED**.
+
+Source revision update: see [Phase A README](revision-a/README.md) and [enlarged detail review](revision-a/qa/ATTACK_01_DETAIL_REVIEW.png). Per-pose reconstruction and bounded paintover were authorized and attempted for Attack_01. Seven candidate PNGs are isolated from final exports; approved final inventory remains 21/56. Material cheek/shoulder contour differences and hidden-material/extraction defects still block Phase A. Original whole-sheet attempt remains rejected. The sections below retain the earlier attempt history; the current revision disposition is in revision-a/.
 Risk: MEDIUM. Checked main: `1372ed16327aeb7290b1bad0a9c2fa022b425335` (newer than assigned `b3c44c1`; intervening Admin merge does not change equipment contracts). AGENTS.md, Master Template, Pipeline §4B/§4C, runtime contract, current manifest and R2 README read. Gate 0 reused; no Base, default-hair, relevant manifest selection or runtime source drift from task baseline. PR #156 is merged; historical G2 pending-review wording is not rewritten.
 
 ## Deliverables and limits

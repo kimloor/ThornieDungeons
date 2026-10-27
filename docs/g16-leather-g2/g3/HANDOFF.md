@@ -1,14 +1,15 @@
-ThornieDungeons — G16 G3 Graphics Handoff
-Status: G16 G3 BLOCKED — VISUAL DEVIATION REVIEW REQUIRED
+ThornieDungeons — G16 G3 Source Revision Handoff
+Status: PHASE A ATTACK_01 REVIEW HOLD — NOT G3 COMPLETE
 Risk: MEDIUM
-Baseline: 1372ed16327aeb7290b1bad0a9c2fa022b425335
+Latest main checked: 32bca9eca232355a2ae98bc5f3fd54e9c5d28637
+PR: #160 (existing draft) | Branch: art/g16-g3-leather-frames
 
-Result: 21/56 PNG paths present (locked Idle_01 + new Idle_02/03); 35 Attack/Death paths remain missing, explicitly inventoried. Idle_01 bytes/composite preserved. Idle_02/03 use verified exact Base translations -12/-4; crops [0,481,768,42] and [0,489,768,42]. Canvas 768x768 RGBA; underlay transparent; alpha/dimensions/no-edge-clipping/SHA checks PASS. Actual merged resolver accepts the three idle crops/order/hair mode offline.
+Per-pose reconstruction used canonical Attack_01 Base + approved G2 appearance, followed by bounded equipment repair masks. No old rejected source pixels reused; no anatomy/limb transforms. Seven isolated candidate PNGs, actual full-set/weapon-free composites, 50% Base overlay, enlarged cheek/shoulder/wrist/grip review, provisional crop and complete sword registration are in docs/g16-leather-g2/g3/revision-a/.
 
-Evidence: docs/g16-leather-g2/g3/ — idle contact sheet/GIF/composites, rejected generated source, POSE_DRIFT_REVIEW.png, IDLE_METADATA.json, VALIDATION.json and SHA256SUMS.
+Checks: 7 candidate PNGs 768x768 RGBA/origin0/no edge clipping PASS; underlay transparent. Face-core RGBA identity PASS. Bounded repair changed zero pixels outside recorded masks. All Base hashes 8/8 and previously validated Idle PNG bytes 21/21 unchanged. Actual merged resolver accepts candidate order/crop metadata offline only; final crop clearance is not accepted.
 
-Blocker: generated Attack/Death source changes anatomy placement and helmet/shoulder details. Stopped affected frame production per explicit task review boundary. No accepted source exists for per-frame crops or final extraction. No Attack/Death previews or G4 readiness claimed.
+Blockers: cheek/temple contour and raised pauldron differ from G2; helmet's occluded region and sleeve cap remain incomplete; slot extraction has shoulder/skirt contamination and minor skin/seam defects. See ATTACK_01_DETAIL_REVIEW.png and ATTACK_01_SEVEN_LAYER_REVIEW.png. Do not promote these candidates to final exports.
 
-Next: Project Lead/Owner review POSE_DRIFT_REVIEW.png and README.md; authorize a source-repair approach preserving Base and approved design (proposed bounded full-size per-pose edits or approved editable rig/paintover source). Then finish five poses/35 PNGs, crops, all animation previews and G4 handoff. Do not approve current generated candidates as final exports.
+Inventory: final 21/56 retained; 7 candidate paths NOT counted; 35 final paths missing. Other four poses not started because explicit Phase A stop gate applies. G4 NOT READY.
 
-Publication boundary respected: no R2, live manifest, runtime, deploy, gameplay/economy, Worker/API/D1, Base/Azure/Skeleton changes. Production NOT TESTED. Branch art/g16-g3-leather-frames; draft PR contains review hold, not completion.
+Next: Project Lead/Owner review material cheek/shoulder contour differences; then continue Phase A source completion/clean isolation against the same canonical Base. The reconstruction method is already authorized and does not need approval again. Once Phase A passes, complete remaining four poses/35 final paths, final hand crops, animation/contact sheets, and G4 handoff. No R2/runtime/live manifest/manual deploy/Base/Azure/Skeleton/gameplay/economy/Worker/API/D1 changes. Production NOT VERIFIED.

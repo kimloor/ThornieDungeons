@@ -30,7 +30,8 @@
  *   GET  ?action=getMonsterLoot                                             (NEW, monster loot table)
  *   GET  ?action=getJunkInfo                                                (NEW, admin.html — material names/icons)
  *   POST { action: "adminUpsertJunkInfo", junkId, name, icon }                (NEW, Admin Bearer)
- *   POST { action: "adminDeleteJunkInfo", junkId }                            (NEW, Admin Bearer)
+ *   GET  ?action=adminListAuditLog&eventType&actor&targetType&targetId&from&to&limit&cursor (Admin Bearer, read-only; W2-E)
+ *   POST { action: "adminDeleteJunkInfo", junkId, reason, confirmId }                            (NEW, Admin Bearer)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid|pvp            (pvp = NEW)
  *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD             (NEW, Phase 2.1, last 7 days)
  *   GET  ?action=getPlayer&id=            (admin, Admin Bearer)
@@ -41,9 +42,9 @@
  *   POST { action: "saveGameConfig", config } (Admin Bearer)
  *   POST { action: "setGameConfigItem", key, value } (Admin Bearer)
  *   POST { action: "adminUpsertRecipe", recipeId, type, name, setId, empowerSlotCount, materials } (Admin Bearer)
- *   POST { action: "adminDeleteRecipe", recipeId } (Admin Bearer)
+ *   POST { action: "adminDeleteRecipe", recipeId, reason, confirmId } (Admin Bearer; W2-D)
  *   POST { action: "adminUpsertMonsterLootEntry", entry: {...} } (Admin Bearer)
- *   POST { action: "adminDeleteMonsterLootEntry", entryId } (Admin Bearer)
+ *   POST { action: "adminDeleteMonsterLootEntry", entryId, reason, confirmId } (Admin Bearer; W2-D)
  *
  * Phase 2 (leaderboard, migration_v3.sql already applied — leaderboard_stats exists):
  *   - GET ?action=getLeaderboard&board=floor|cp|pet_cp returns top 50 rows, read-only,
@@ -7230,9 +7231,10 @@ function safeParseAdminAuditJson(text) {
   try { return JSON.parse(text); } catch (_) { return text; }
 }
 
-function buildAdminAuditMetadata({ before = null, after = null, changedKeys = [] }) {
+function buildAdminAuditMetadata({ before = null, after = null, changedKeys = [], reason = undefined }) {
   const meta = {
     outcome: "ok",
+    ...(reason !== undefined ? { reason } : {}),
     before: redactAdminAuditValue(before),
     after: redactAdminAuditValue(after),
     changedKeys: Array.isArray(changedKeys) ? changedKeys.slice() : [],
@@ -7241,6 +7243,7 @@ function buildAdminAuditMetadata({ before = null, after = null, changedKeys = []
   const fields = (v) => (v && typeof v === "object" && !Array.isArray(v)) ? Object.keys(v) : [];
   return {
     outcome: "ok",
+    ...(reason !== undefined ? { reason } : {}),
     truncated: true,
     fields: Array.from(new Set([...fields(meta.before), ...fields(meta.after)])).slice(0, 200),
     changedKeys: meta.changedKeys.slice(0, 200),
@@ -7267,6 +7270,23 @@ async function runAdminMutationWithAudit(db, adminAuth, audit, mutationStatement
     return json({ error: "admin_audit_failed" }, 500);
   }
   return json(okBody);
+}
+
+// W2-D (ADMIN-V2.md 22.5): every Admin delete needs a reason (trimmed 5-300 chars) and a
+// confirmId equal to the exact target id. Returns { reason } or an error Response.
+const ADMIN_DELETE_REASON_MIN = 5;
+const ADMIN_DELETE_REASON_MAX = 300;
+function validateAdminDestructive(targetId, reason, confirmId) {
+  if (!targetId) return { response: json({ error: "missing_fields" }, 400) };
+  const trimmed = typeof reason === "string" ? reason.trim() : "";
+  if (!trimmed) return { response: json({ error: "reason_required" }, 400) };
+  if (trimmed.length < ADMIN_DELETE_REASON_MIN || trimmed.length > ADMIN_DELETE_REASON_MAX) {
+    return { response: json({ error: "invalid_reason", min: ADMIN_DELETE_REASON_MIN, max: ADMIN_DELETE_REASON_MAX }, 400) };
+  }
+  if (typeof confirmId !== "string" || confirmId !== String(targetId)) {
+    return { response: json({ error: "confirm_mismatch" }, 400) };
+  }
+  return { reason: trimmed };
 }
 
 const ADMIN_GAME_CONFIG_UPSERT_SQL =
@@ -7380,15 +7400,17 @@ async function handleAdminUpsertRecipe(db, adminAuth, recipeId, type, name, setI
   );
 }
 
-async function handleAdminDeleteRecipe(db, adminAuth, recipeId) {
+async function handleAdminDeleteRecipe(db, adminAuth, recipeId, reason, confirmId) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
-  if (!recipeId) return json({ error: "missing_fields" });
+  const check = validateAdminDestructive(recipeId, reason, confirmId);
+  if (check.response) return check.response;
   const beforeRow = await db.prepare(`SELECT * FROM recipes WHERE recipe_id = ?`).bind(recipeId).first();
+  if (!beforeRow) return json({ error: "not_found" }, 404);
   return await runAdminMutationWithAudit(
     db, adminAuth,
     {
       eventType: "ADMIN_RECIPE_DELETE", targetType: "recipe", targetId: String(recipeId),
-      before: adminRecipeAuditRow(beforeRow), after: null, changedKeys: beforeRow ? ["deleted"] : [],
+      before: adminRecipeAuditRow(beforeRow), after: null, changedKeys: ["deleted"], reason: check.reason,
     },
     [db.prepare(`DELETE FROM recipes WHERE recipe_id = ?`).bind(recipeId)]
   );
@@ -7443,15 +7465,17 @@ async function handleAdminUpsertMonsterLootEntry(db, adminAuth, entry) {
   );
 }
 
-async function handleAdminDeleteMonsterLootEntry(db, adminAuth, entryId) {
+async function handleAdminDeleteMonsterLootEntry(db, adminAuth, entryId, reason, confirmId) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
-  if (!entryId) return json({ error: "missing_fields" });
+  const check = validateAdminDestructive(entryId, reason, confirmId);
+  if (check.response) return check.response;
   const beforeRow = await db.prepare(`SELECT * FROM monster_loot WHERE entry_id = ?`).bind(entryId).first();
+  if (!beforeRow) return json({ error: "not_found" }, 404);
   return await runAdminMutationWithAudit(
     db, adminAuth,
     {
       eventType: "ADMIN_MONSTER_LOOT_DELETE", targetType: "monster_loot", targetId: String(entryId),
-      before: adminMonsterLootAuditRow(beforeRow), after: null, changedKeys: beforeRow ? ["deleted"] : [],
+      before: adminMonsterLootAuditRow(beforeRow), after: null, changedKeys: ["deleted"], reason: check.reason,
     },
     [db.prepare(`DELETE FROM monster_loot WHERE entry_id = ?`).bind(entryId)]
   );
@@ -7480,10 +7504,12 @@ async function handleAdminUpsertJunkInfo(db, adminAuth, junkId, name, icon) {
   );
 }
 
-async function handleAdminDeleteJunkInfo(db, adminAuth, junkId) {
+async function handleAdminDeleteJunkInfo(db, adminAuth, junkId, reason, confirmId) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
-  if (!junkId) return json({ error: "missing_fields" });
+  const check = validateAdminDestructive(junkId, reason, confirmId);
+  if (check.response) return check.response;
   const beforeRow = await db.prepare(`SELECT * FROM junk_info WHERE junk_id = ?`).bind(junkId).first();
+  if (!beforeRow) return json({ error: "not_found" }, 404);
   return await runAdminMutationWithAudit(
     db, adminAuth,
     {
@@ -7491,10 +7517,101 @@ async function handleAdminDeleteJunkInfo(db, adminAuth, junkId) {
       before: beforeRow
         ? { junk_id: beforeRow.junk_id, name: beforeRow.name, icon: beforeRow.icon, created_at: beforeRow.created_at, updated_at: beforeRow.updated_at }
         : null,
-      after: null, changedKeys: beforeRow ? ["deleted"] : [],
+      after: null, changedKeys: ["deleted"], reason: check.reason,
     },
     [db.prepare(`DELETE FROM junk_info WHERE junk_id = ?`).bind(junkId)]
   );
+}
+
+// ---------- admin: read-only Audit Viewer (W2-E, ADMIN-V2.md 22.6) ----------
+const ADMIN_AUDIT_VIEW_DEFAULT_LIMIT = 25;
+const ADMIN_AUDIT_VIEW_MAX_LIMIT = 50;
+
+function encodeAdminAuditCursor(row) {
+  return btoa(JSON.stringify([row.created_at, row.audit_id])).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function decodeAdminAuditCursor(text) {
+  try {
+    const padded = String(text).replace(/-/g, "+").replace(/_/g, "/");
+    const parsed = JSON.parse(atob(padded + "=".repeat((4 - (padded.length % 4)) % 4)));
+    if (Array.isArray(parsed) && parsed.length === 2 && typeof parsed[0] === "string" && typeof parsed[1] === "string") return parsed;
+  } catch (_) {}
+  return null;
+}
+function adminAuditDateBound(text) {
+  const ms = Date.parse(text);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+async function handleAdminListAuditLog(db, adminAuth, params) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
+  const text = (name) => String(params.get(name) || "").trim().slice(0, 200);
+  const filters = {
+    eventType: text("eventType"), actor: text("actor"), targetType: text("targetType"), targetId: text("targetId"),
+    from: text("from"), to: text("to"),
+  };
+  const where = [];
+  const binds = [];
+  if (filters.eventType) { where.push("event_type = ?"); binds.push(filters.eventType); }
+  if (filters.actor) { where.push("player_id = ?"); binds.push(filters.actor); }
+  if (filters.targetType) { where.push("target_type = ?"); binds.push(filters.targetType); }
+  if (filters.targetId) { where.push("target_id = ?"); binds.push(filters.targetId); }
+  if (filters.from) {
+    const from = adminAuditDateBound(filters.from);
+    if (!from) return json({ error: "invalid_filter" }, 400);
+    where.push("created_at >= ?"); binds.push(from);
+  }
+  if (filters.to) {
+    const to = adminAuditDateBound(filters.to);
+    if (!to) return json({ error: "invalid_filter" }, 400);
+    where.push("created_at <= ?"); binds.push(to);
+  }
+  const rawCursor = String(params.get("cursor") || "");
+  if (rawCursor) {
+    const cursor = decodeAdminAuditCursor(rawCursor);
+    if (!cursor) return json({ error: "invalid_filter" }, 400);
+    where.push("(created_at < ? OR (created_at = ? AND audit_id < ?))");
+    binds.push(cursor[0], cursor[0], cursor[1]);
+  }
+  const limit = Math.min(ADMIN_AUDIT_VIEW_MAX_LIMIT, Math.max(1, Math.floor(Number(params.get("limit")) || ADMIN_AUDIT_VIEW_DEFAULT_LIMIT)));
+  const result = await db.prepare(
+    `SELECT audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at
+     FROM admin_audit_log
+     ${where.length ? "WHERE " + where.join(" AND ") : ""}
+     ORDER BY created_at DESC, audit_id DESC
+     LIMIT ?`
+  ).bind(...binds, limit + 1).all();
+  const fetched = result.results || [];
+  const page = fetched.slice(0, limit);
+  const entries = page.map((row) => ({
+    auditId: row.audit_id,
+    createdAt: row.created_at,
+    actor: row.player_id,
+    eventType: row.event_type,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    // Re-sanitized on read with the 22.3 denylist so older rows cannot leak secrets.
+    metadata: redactAdminAuditValue(safeParseAdminAuditJson(row.metadata_json)),
+  }));
+  // Viewing is itself audited: filter summary (which filters, never their values) and counts only.
+  try {
+    await writeAdminAudit(
+      db, adminAuth.playerId, "ADMIN_AUDIT_VIEW",
+      {
+        filters: Object.keys(filters).filter((k) => filters[k]),
+        paged: !!rawCursor, limit, resultCount: entries.length,
+      },
+      "audit_log", null
+    );
+  } catch (error) {
+    console.error("admin_audit_failed", "ADMIN_AUDIT_VIEW", error && error.message);
+    return json({ error: "admin_audit_failed" }, 500);
+  }
+  return json({
+    ok: true,
+    entries,
+    nextCursor: fetched.length > limit ? encodeAdminAuditCursor(page[page.length - 1]) : null,
+  });
 }
 
 // ---------- request boundary hardening ----------
@@ -7572,12 +7689,13 @@ async function apiFetch(request, env) {
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           return await handleAdminValidateSession(db, adminAuth);
         }
-        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers"].includes(action)) {
+        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers", "adminListAuditLog"].includes(action)) {
           const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           if (action === "runLeaderboardSnapshot") return json({ ok: true, ...(await runLeaderboardSnapshot(db)) });
           if (action === "getPlayer") return await handleAdminGetPlayer(db, adminAuth, p.get("id"));
           if (action === "adminSearchPlayers") return await handleAdminSearchPlayers(db, adminAuth, p.get("query"), p.get("limit"));
+          if (action === "adminListAuditLog") return await handleAdminListAuditLog(db, adminAuth, p);
           if (action === "getAllPlayers") return await handleAdminGetAllPlayers(db, adminAuth);
           if (action === "getPlayerItems") return await handleAdminGetPlayerItems(db, adminAuth, p.get("id"));
           if (action === "getGameStats") return await handleAdminGetGameStats(db, adminAuth);
@@ -7648,11 +7766,11 @@ async function apiFetch(request, env) {
             case "saveGameConfig": return await handleAdminSaveGameConfig(db, adminAuth, body.config);
             case "setGameConfigItem": return await handleAdminSetGameConfigItem(db, adminAuth, body.key, body.value);
             case "adminUpsertRecipe": return await handleAdminUpsertRecipe(db, adminAuth, body.recipeId, body.type, body.name, body.setId, body.empowerSlotCount, body.materials);
-            case "adminDeleteRecipe": return await handleAdminDeleteRecipe(db, adminAuth, body.recipeId);
+            case "adminDeleteRecipe": return await handleAdminDeleteRecipe(db, adminAuth, body.recipeId, body.reason, body.confirmId);
             case "adminUpsertMonsterLootEntry": return await handleAdminUpsertMonsterLootEntry(db, adminAuth, body.entry);
-            case "adminDeleteMonsterLootEntry": return await handleAdminDeleteMonsterLootEntry(db, adminAuth, body.entryId);
+            case "adminDeleteMonsterLootEntry": return await handleAdminDeleteMonsterLootEntry(db, adminAuth, body.entryId, body.reason, body.confirmId);
             case "adminUpsertJunkInfo": return await handleAdminUpsertJunkInfo(db, adminAuth, body.junkId, body.name, body.icon);
-            case "adminDeleteJunkInfo": return await handleAdminDeleteJunkInfo(db, adminAuth, body.junkId);
+            case "adminDeleteJunkInfo": return await handleAdminDeleteJunkInfo(db, adminAuth, body.junkId, body.reason, body.confirmId);
           }
         }
         const token = bearerToken(request);

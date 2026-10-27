@@ -654,6 +654,8 @@ Every slice: feature branch + PR, targeted tests, full suite, Admin V2 QA workfl
 
 ### 22.5 W2-D — Destructive action safety
 
+**Implementation status (2026-10-27): IN PR (stacked on W2-A and W2-C), risk HIGH-adjacent (delete paths), visible Ver 1.1.21 (new validation codes `reason_required`, `invalid_reason`, `confirm_mismatch` registered in the error catalog).** Server: reason trimmed 5-300 chars, `confirmId` must equal the target id exactly, target re-read and rejected with `not_found` (404, not audited) if missing, reason stored in `metadata_json.reason`; validation order is auth, missing id, reason, confirmId, existence. UI: `openDestructiveDialog` shows the server-loaded row, requires typing the id and a reason before the button enables; the old `confirm()` is gone. Tests: `tests/admin-v2-destructive-safety.test.js`.
+
 In scope: `adminDeleteRecipe`, `adminDeleteMonsterLootEntry`, `adminDeleteJunkInfo` now, and W2-F when implemented. No bulk or wildcard delete.
 
 - UI: dialog shows a server-loaded preview of the exact target, requires the operator to type the exact target id, and requires a reason (trimmed, 5–300 characters).
@@ -661,6 +663,8 @@ In scope: `adminDeleteRecipe`, `adminDeleteMonsterLootEntry`, `adminDeleteJunkIn
 - Old clients without `reason` receive `reason_required` (HTTP 400). Deploy API and `admin.html` together; a brief window where deletes fail for an old page is acceptable for an Admin-only tool.
 
 ### 22.6 W2-E — Read-only Audit Viewer
+
+**Implementation status (2026-10-27): IN PR (stacked on W2-D), read-only, visible Ver 1.1.22 (new validation code `invalid_filter`).** Action: `GET ?action=adminListAuditLog` (Admin Bearer) with `eventType`, `actor`, `targetType`, `targetId`, `from`, `to`, `limit` (default 25, max 50), `cursor` (opaque, encodes `(created_at, audit_id)`, ordered newest first); invalid dates/cursor -> `invalid_filter` (400). Entries are re-sanitized with the 22.3 denylist on read; unparseable legacy metadata is returned as the raw string. Each view writes `ADMIN_AUDIT_VIEW` (filter names, `paged`, `limit`, `resultCount` only; never filter values) and fails closed with `admin_audit_failed` if that write fails. No migration/index: production `admin_audit_log` held 1 row when measured (2026-10-27); revisit when event_type filtering is measurably slow. UI: one new "Audit Log" tab, two buttons (search, load more) plus a per-row detail toggle; no edit/delete controls. Tests: `tests/admin-v2-audit-viewer.test.js`.
 
 - New read action (name fixed in the PR) requiring an Admin session. Filters: `event_type`, actor, `target_type` / `target_id`, date range. Cursor pagination on `(created_at, audit_id)`, default 25, maximum 50.
 - Output is re-sanitized server-side with the 22.3 denylist, so older rows cannot leak secrets. Viewing is itself audited with filter summary and result count only.

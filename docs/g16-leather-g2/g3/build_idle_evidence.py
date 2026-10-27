@@ -59,6 +59,11 @@ review.convert('RGB').save(P/'qa/POSE_DRIFT_REVIEW.png')
 (P/'IDLE_METADATA.json').write_text(json.dumps(metadata,indent=2)+'\n')
 inventory=[{'frame':f,'layer':n,'status':'PRESENT_G4_PENDING' if f.startswith('idle') else 'MISSING_BLOCKED_POSE_REVIEW','path':str((P/'exports'/f/f'{n}.png').relative_to(ROOT)) if f.startswith('idle') else None} for f in frames for n in names]
 report={'status':'G16_G3_BLOCKED_VISUAL_DEVIATION_REVIEW_REQUIRED','baseline':'1372ed16327aeb7290b1bad0a9c2fa022b425335','gate0Reused':True,'expectedPaths':56,'presentPaths':21,'missingPaths':35,'idle01ByteIdentical':True,'idleBaseExactTranslations':{'idle_02':[0,-12],'idle_03':[0,-4]},'idleCompositesExactTranslations':True,'generatedAttemptNativeDimensions':native,'generatedAttemptAccepted':False,'runtimeOffsetBaked':False,'runtimeManifestModified':False,'R2Published':False,'G4Ready':False,'inventory':inventory,'files':records,'baseHashes':{f:sha(ROOT/'r2-upload/hero/v5/g2/base'/f'{f}.png') for f in frames}}
+revision=P/'revision-a/VALIDATION.json'
+if revision.exists():
+ report['status']='G16_G3_PHASE_A_REVIEW_HOLD'
+ report['latestMainCheckedForRevision']='32bca9eca232355a2ae98bc5f3fd54e9c5d28637'
+ report['sourceRevision']={'report':'revision-a/VALIDATION.json','phase':'A_ATTACK_01','candidatePaths':7,'countedAsFinal':False,'materialDesignReviewRequired':True,'remainingFourPosesStarted':False}
 (P/'VALIDATION.json').write_text(json.dumps(report,indent=2)+'\n')
 paths=sorted(p for p in P.rglob('*') if p.is_file() and p.name!='SHA256SUMS')
 (P/'SHA256SUMS').write_text(''.join(f'{sha(p)}  {p.relative_to(P)}\n' for p in paths))

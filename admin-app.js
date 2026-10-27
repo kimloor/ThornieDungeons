@@ -151,6 +151,7 @@ document.querySelectorAll(".tab").forEach(t => {
     t.classList.add("active");
     document.getElementById("tab-" + t.dataset.tab).classList.add("active");
     if (t.dataset.tab === "dashboard") void loadDashboard();
+    if (t.dataset.tab === "audit") void loadAuditPage(true);
     if (t.dataset.tab === "players") setTimeout(() => document.getElementById("playerSearchInput")?.focus(), 0);
   };
 });
@@ -428,11 +429,68 @@ document.getElementById("saveRecipeBtn").onclick = async () => {
   loadRecipes();
 };
 
+// ==================================================================
+// W2-D: destructive action dialog (server preview + typed target id + reason)
+// ==================================================================
+const DELETE_REASON_MIN = 5;
+const DELETE_REASON_MAX = 300;
+
+async function loadDeletePreview(sheet, keyField, id) {
+  const res = await apiGet({ action: "getSheet", sheet });
+  if (res.error) return { error: res.error };
+  const row = (Array.isArray(res.rows) ? res.rows : []).find(r => String(r[keyField]) === String(id));
+  return row ? { row } : { error: "not_found" };
+}
+
+// Resolves to { reason, confirmId } or null if cancelled. Never sends anything itself.
+function openDestructiveDialog({ title, targetId, preview }) {
+  return new Promise(resolve => {
+    const back = el("div", { className: "modalBack" });
+    const box = el("div", { className: "modalBox" });
+    const reason = el("textarea", { rows: 3, placeholder: `เหตุผล (${DELETE_REASON_MIN}-${DELETE_REASON_MAX} ตัวอักษร)` });
+    const confirmInput = el("input", { type: "text", placeholder: "พิมพ์ ID ให้ตรงเพื่อยืนยัน", autocomplete: "off" });
+    const err = el("div", { className: "msg err" });
+    const okBtn = el("button", { className: "btn-primary", type: "button", text: "ลบถาวร", disabled: true });
+    const cancelBtn = el("button", { className: "ghost", type: "button", text: "ยกเลิก" });
+    cancelBtn.style.marginLeft = "8px";
+    const finish = (value) => { back.remove(); resolve(value); };
+    const refresh = () => {
+      const len = reason.value.trim().length;
+      okBtn.disabled = !(confirmInput.value === String(targetId) && len >= DELETE_REASON_MIN && len <= DELETE_REASON_MAX);
+    };
+    confirmInput.oninput = refresh;
+    reason.oninput = refresh;
+    okBtn.onclick = () => finish({ reason: reason.value.trim(), confirmId: confirmInput.value });
+    cancelBtn.onclick = () => finish(null);
+    back.onclick = (event) => { if (event.target === back) finish(null); };
+    box.append(
+      el("h3", { text: title }),
+      el("div", { className: "muted", text: "ข้อมูลปัจจุบันจากเซิร์ฟเวอร์ (ที่จะถูกลบ):" }),
+      el("pre", { text: JSON.stringify(preview, null, 2) }),
+      el("label", { text: `พิมพ์ "${targetId}" เพื่อยืนยัน` }), confirmInput,
+      el("label", { text: "เหตุผลในการลบ" }), reason,
+      err, el("div", {}, okBtn, cancelBtn)
+    );
+    back.appendChild(box);
+    document.body.appendChild(back);
+    confirmInput.focus();
+  });
+}
+
+// Shared flow: load preview -> dialog -> POST. Returns true when the delete succeeded.
+async function destructiveDelete({ action, idField, id, sheet, keyField, title }) {
+  const loaded = await loadDeletePreview(sheet, keyField, id);
+  if (loaded.error) { alert("โหลดข้อมูลเป้าหมายไม่สำเร็จ: " + loaded.error); return false; }
+  const input = await openDestructiveDialog({ title, targetId: id, preview: loaded.row });
+  if (!input) return false;
+  const res = await apiPost({ action, [idField]: id, reason: input.reason, confirmId: input.confirmId });
+  if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return false; }
+  return true;
+}
+
 async function deleteRecipe(recipeId) {
-  if (!confirm(`ลบ recipe "${recipeId}" ?`)) return;
-  const res = await apiPost({ action: "adminDeleteRecipe", recipeId });
-  if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
-  loadRecipes();
+  const done = await destructiveDelete({ action: "adminDeleteRecipe", idField: "recipeId", id: recipeId, sheet: "recipes", keyField: "recipe_id", title: `ลบ recipe "${recipeId}"` });
+  if (done) loadRecipes();
 }
 
 // ==================================================================
@@ -574,12 +632,75 @@ document.getElementById("addJunkBtn").onclick = async () => {
 };
 
 async function deleteLootEntry(entryId, kind) {
-  if (!confirm("ลบแถวนี้?")) return;
-  const res = await apiPost({ action: "adminDeleteMonsterLootEntry", entryId });
-  if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
+  const done = await destructiveDelete({ action: "adminDeleteMonsterLootEntry", idField: "entryId", id: entryId, sheet: "monster_loot", keyField: "entry_id", title: "ลบแถว Monster Drop" });
+  if (!done) return;
   monsterLootCache = monsterLootCache.filter(r => r.entry_id !== entryId);
   if (kind === "gear") renderGearTable(); else renderJunkTable();
 }
+
+// ==================================================================
+// AUDIT LOG TAB (W2-E, read-only: no edit or delete controls)
+// ==================================================================
+let auditNextCursor = null;
+let auditFilters = {};
+
+function readAuditFilters() {
+  const val = (id) => document.getElementById(id).value.trim();
+  const f = { eventType: val("auditEventType"), actor: val("auditActor"), targetType: val("auditTargetType"), targetId: val("auditTargetId") };
+  const from = val("auditFrom"), to = val("auditTo");
+  if (from) f.from = new Date(from).toISOString();
+  if (to) f.to = new Date(to).toISOString();
+  Object.keys(f).forEach(k => { if (!f[k]) delete f[k]; });
+  return f;
+}
+
+function auditRow(entry) {
+  const tr = document.createElement("tr");
+  const detail = el("pre", { text: JSON.stringify(entry.metadata, null, 2) });
+  detail.style.display = "none";
+  detail.style.whiteSpace = "pre-wrap";
+  detail.style.wordBreak = "break-all";
+  const toggle = el("button", { type: "button", text: "ดู" });
+  toggle.onclick = () => {
+    const open = detail.style.display === "none";
+    detail.style.display = open ? "block" : "none";
+    toggle.textContent = open ? "ซ่อน" : "ดู";
+  };
+  const target = [entry.targetType, entry.targetId].filter(Boolean).join(": ") || "—";
+  tr.append(
+    cell(entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"),
+    cell(entry.actor || "—", "mono"),
+    cell(entry.eventType),
+    cell(target),
+    el("td", {}, toggle, detail)
+  );
+  return tr;
+}
+
+async function loadAuditPage(reset) {
+  const msg = document.getElementById("auditMsg");
+  const body = document.querySelector("#auditTable tbody");
+  if (reset) {
+    auditFilters = readAuditFilters();
+    auditNextCursor = null;
+    body.replaceChildren();
+  }
+  const params = { action: "adminListAuditLog", limit: 25, ...auditFilters };
+  if (!reset && auditNextCursor) params.cursor = auditNextCursor;
+  const res = await apiGet(params);
+  if (res.error) {
+    msg.textContent = "โหลดไม่สำเร็จ: " + res.error;
+    msg.className = "msg err";
+    return;
+  }
+  (res.entries || []).forEach(entry => body.appendChild(auditRow(entry)));
+  auditNextCursor = res.nextCursor || null;
+  document.getElementById("auditMoreBtn").style.display = auditNextCursor ? "inline-block" : "none";
+  msg.textContent = body.children.length ? `แสดง ${body.children.length} รายการ` : "ไม่พบรายการ";
+  msg.className = "msg";
+}
+document.getElementById("auditSearchBtn").onclick = () => void loadAuditPage(true);
+document.getElementById("auditMoreBtn").onclick = () => void loadAuditPage(false);
 
 // ==================================================================
 // JUNK INFO TAB
@@ -644,9 +765,8 @@ document.getElementById("saveJunkInfoBtn").onclick = async () => {
 };
 
 async function deleteJunkInfo(junkId) {
-  if (!confirm(`ลบวัตถุดิบ "${junkId}" ? (recipe ที่ใช้วัตถุดิบนี้อยู่จะยังอ้างอิง junkId เดิม แค่ไม่มีชื่อ/icon ให้แสดงในเกม)`)) return;
-  const res = await apiPost({ action: "adminDeleteJunkInfo", junkId });
-  if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return; }
+  const done = await destructiveDelete({ action: "adminDeleteJunkInfo", idField: "junkId", id: junkId, sheet: "junk_info", keyField: "junk_id", title: `ลบวัตถุดิบ "${junkId}" (recipe ที่ใช้อยู่จะยังอ้างอิง junkId เดิม แต่ไม่มีชื่อ/icon)` });
+  if (!done) return;
   await loadJunkInfoList();
   renderJunkInfoTable();
 }
