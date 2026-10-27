@@ -1,0 +1,13 @@
+# Owner position and overlap correction — Attack_01
+
+Status: OWNER VISUAL REVIEW PENDING. Latest main checked 7ef31753b969386d2750857dddaa53d44c03081c; mandatory equipment contracts unchanged. Risk MEDIUM graphics review only.
+
+Owner requested direct comparison with the reattached Attack reference: helmet left; raise the chest left shoulder/remove its tilt; correct both arm stacking; trousers/legs right. No new art generation or piece redesign in this pass.
+
+Changes relative to azure-alignment-review: helmet -12px X; trousers/boots +10px X; remove the introduced chest 13° rotation, retain uniform raw scale .26 and set buckle [362,483] from the Owner's own reference (previous Azure-guided buckle [344,516] did not fit Leather). Thus chest also moves approximately right18/up33, with the now-untilted raised left shoulder higher. Arms retain identical PNG bytes; separate weapon, up-left direction and [310,309] grip remain byte-identical. All exports are fixed 768x768 RGBA/origin0; no Base edit, runtime Y offset baking or limb deformation.
+
+Three actual-export offline orders were compared (A/B/C). C restores the raised arm over the helmet and sword grip while the chest/pauldrons cover sleeve insertion caps. The opposite arm remains behind its chest shoulder boundary. Selected authoring order: Base → empty underlay → legs → opposite arm (arm_front) → helmet → sword → raised arm (arm_rear) → torso. The collar/helmet seam and garment fit still require the Owner's visual acceptance against SOURCE_COMPARISON.png; this is not automatic approval.
+
+IMPORTANT DEV BOUNDARY: this scoped offline composition differs from merged leather_overlap_v1 ordering. No renderer, runtime metadata, global order, slot mapping or production manifest was changed. LAYER_COMPARISON.png shows current-runtime versus proposed authoring order on the exact same corrected PNGs. Project Lead/DEV must review a pose-specific compatible ordering/occlusion approach before integration. Seven declared PNGs remain seven; no eighth exported slot or new runtime architecture is introduced by these review assets. Do not claim runtime PASS from the corrected authoring preview.
+
+REVIEW.png/reassembled.png are built from the actual exports on unchanged Base. SOURCE_COMPARISON.png uses the attached reference normalized uniformly once to 768px. PLACEMENT.json/VALIDATION.json record positions/order, per-file alpha bounds and SHA. Original approved Idle art, passed piece designs, prior review assets and full sword master remain preserved. No R2, deploy, Base/Azure/Skeleton, gameplay/economy/Worker/API/D1 change; no final-56 promotion or G3 completion claim.

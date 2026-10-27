@@ -1,0 +1,50 @@
+{
+  "helmetDelta": [
+    -12,
+    0
+  ],
+  "legsDelta": [
+    10,
+    0
+  ],
+  "chest": {
+    "rawBuckle": [
+      711,
+      848
+    ],
+    "targetBuckle": [
+      362,
+      483
+    ],
+    "uniformScale": 0.26,
+    "rotationDegrees": 0,
+    "removedPreviousRotationDegrees": 13
+  },
+  "variantOrders": {
+    "A": [
+      "legs_boots",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword",
+      "arm_rear"
+    ],
+    "B": [
+      "legs_boots",
+      "torso_armor",
+      "arm_front",
+      "helmet",
+      "sword",
+      "arm_rear"
+    ],
+    "C": [
+      "legs_boots",
+      "arm_front",
+      "helmet",
+      "sword",
+      "arm_rear",
+      "torso_armor"
+    ]
+  },
+  "runtimeModified": false
+}
