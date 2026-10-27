@@ -1,6 +1,6 @@
 # G14 Fullscreen Dungeon Gate Upgrade — Artwork Review
 
-Status: **OWNER APPROVED / R2 STAGED / RUNTIME INTEGRATED — PRODUCTION PENDING**
+Status: **DONE / PRODUCTION VERIFIED**
 
 Package: Combined Graphics Task, Package B
 
@@ -32,7 +32,14 @@ immutable evidence; production hashes and encoded sizes are recorded in `PRODUCT
 Runtime now fills the viewport using a centered `object-fit:cover` crop, places loading text/progress in
 the safe-area-aware DOM layer, and plays a non-looping 900 ms Closed -> Opening -> Fully Open sequence.
 Reduced Motion shows the final Open frame without animation. CSS rings are rendered only when a manifest
-key is missing or image decoding fails. Publication and live decode remain pending the merge/release gate.
+key is missing or image decoding fails.
+
+PR #153 merged as `2ceb79ea2aa6d029376698070cc7ff0b9ddf827f`. R2 upload run
+[#40333086818](https://github.com/kimloor/ThornieDungeons/actions/runs/40333086818)
+uploaded and read-back verified all three WebP files. Frontend deploy run
+[#40333086817](https://github.com/kimloor/ThornieDungeons/actions/runs/40333086817)
+deployed Worker version `193f6e7b-4e4d-427a-ad31-033f3a211175`. Direct Production
+downloads on 2026-10-27 decoded at 1536x1024 and matched every recorded SHA-256.
 
 ## Generation record
 

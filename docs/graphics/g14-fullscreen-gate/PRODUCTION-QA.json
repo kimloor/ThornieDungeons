@@ -1,6 +1,6 @@
 {
   "approval": "OWNER_APPROVED_2026-10-26",
-  "status": "R2_STAGED_RUNTIME_INTEGRATED_PRODUCTION_PENDING",
+  "status": "DONE_PRODUCTION_VERIFIED",
   "format": "WebP RGB",
   "canvas": { "width": 1536, "height": 1024 },
   "runtime": {
@@ -42,7 +42,8 @@
     "mobileCrop360_390": "PASS_STATIC_PREVIEW",
     "manifest": "PASS_ADDITIVE",
     "runtimeFallback": "PASS_AUTOMATED",
-    "r2Published": "PENDING_MERGE_WORKFLOW",
-    "productionVerified": "NOT_STARTED"
+    "r2Published": "PASS_RUN_40333086818_READBACK_SHA",
+    "frontendDeploy": "PASS_RUN_40333086817_WORKER_VERSION_193f6e7b-4e4d-427a-ad31-033f3a211175",
+    "productionVerified": "PASS_2026-10-27_LIVE_DECODE_AND_SHA_3_OF_3"
   }
 }

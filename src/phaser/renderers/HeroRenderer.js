@@ -63,6 +63,7 @@ class HeroRenderer {
         this.layerImages.push(entry);
       }
       entry.image.setDisplaySize(size, size);
+      if (typeof this.root?.moveTo === "function") this.root.moveTo(entry.image, index);
     });
   }
 
@@ -83,6 +84,11 @@ class HeroRenderer {
       const key = this.textureKey(layer.url);
       if (key && this.scene?.textures?.exists(key) && entry.image.texture.key !== key) entry.image.setTexture(key);
       const scale = Number(layer.scale ?? 1);
+      const crop = Array.isArray(layer.crop) && layer.crop.length === 4 ? layer.crop.map(Number) : null;
+      if (typeof entry.image.setCrop === "function") {
+        if (crop && crop.every(Number.isFinite) && crop[2] > 0 && crop[3] > 0) entry.image.setCrop(...crop);
+        else entry.image.setCrop();
+      }
       entry.image
         .setVisible(true)
         .setDisplaySize(size * scale, size * scale)

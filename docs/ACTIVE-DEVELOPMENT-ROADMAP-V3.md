@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V3
 
-Status: **ACTIVE-PLANNING — main at Ver 1.1.18 (checked 2026-10-26); WAVE 1, WAVE 1 PREP and WAVE 1.5 COMPLETE; WAVE 2 Admin V2 implementation contracts awaiting Owner approval**
+Status: **ACTIVE-PLANNING — Ver 1.1.1 RELEASED 2026-10-21; WAVE 1 COMPLETE; WAVE 1 PREP (Client Systems V1) contract awaiting Owner approval**
 
 This is the successor roadmap after the completed historical W0-W9R and Gameplay WAVE 1-7 roadmap. Historical numbering is not reused here.
 
@@ -225,7 +225,7 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 **Later main baseline:** Ver 1.1.15 / Client Systems PR-D merged after that review; the above 804/804 count applies to Ver 1.1.14 and must not be misreported as the Ver 1.1.15 test result.
 
 ### WAVE 2 — Admin V2 Expansion
-**Status: CONTRACTS (ADMIN-V2.md section 22) APPROVED; W2-A (HIGH, Ver 1.1.20), W2-D bumps to Ver 1.1.21, W2-E to Ver 1.1.22, W2-C (MEDIUM), W2-D and W2-E each IN their own PR (stacked, merge in order A, C, D, E); W2-F not started; ADDITIONAL TOOLS PENDING DESIGN (2026-10-27)**
+**Status: CONTRACTS (ADMIN-V2.md section 22) APPROVED; W2-A (Ver 1.1.20), W2-C (no version bump), W2-D (Ver 1.1.21) and W2-E (Ver 1.1.22) MERGED; W2-F NOT STARTED (blocked on W2-A/D/E production verification and ADMIN-V2.md 22.7 open items); ADDITIONAL TOOLS PENDING DESIGN (2026-10-27)**
 **Contract/design record:** `docs/ADMIN-V2.md` sections 21-22; Claude read-only audit Issue #144.
 
 - **W2-A — mutation audit logging (approved):** cover all current Admin data mutations, with actor, action, target, sanitized change detail and reliable persistence. Revalidate the eight unaudited mutation actions reported in Issue #144 against the latest code.
@@ -233,7 +233,7 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 - **W2-C — Admin security hardening (approved):** review safe rendering/escaping, CSP/security headers and obsolete legacy Admin authentication code.
 - **W2-D — destructive action safety (approved):** typed confirmation, reason, target preview, server validation, audit.
 - **W2-E — read-only Audit Viewer (approved):** filterable history with sanitized records.
-- **W2-F — Delete Player Item (included in Wave 2 by Owner; last slice, VERY HIGH, own release gate and server-side kill switch, contract in ADMIN-V2.md 22.7):** proposed Player ID lookup → character picker → exact item instance/stack selection and inspector → amount where applicable → review/equipped impact → typed confirmation + reason → atomic server validation/deletion and audit. No wildcard/bulk delete, Mailbox or escrow mutation in V1 without another contract; implementation starts only after the section 22 contract is approved and W2-A/W2-D/W2-E are in production.
+- **W2-F — Delete Player Item (design only, VERY HIGH):** proposed Player ID lookup → character picker → exact item instance/stack selection and inspector → amount where applicable → review/equipped impact → typed confirmation + reason → atomic server validation/deletion and audit. No wildcard/bulk delete, Mailbox or escrow mutation in V1 without another contract; separate Owner approval required before implementation.
 - **Other Admin Tools:** design together with Owner later; no implementation scope approved yet.
 
 Implementation follows risk routing in `AGENTS.md`; API/DB/player data changes require appropriate branches, QA, deployment and live verification. Do not infer approval for economy mutations, destructive tooling or schema changes from this roadmap.
@@ -328,8 +328,8 @@ Graphics work is tracked separately from gameplay Wave numbering.
 
 - G10-G12: COMPLETE / Production.
 - G13 Pet Avatar Pack + Shared Pet Selector Presentation: COMPLETE / PRODUCTION VERIFIED (Ver 1.1.17); see `G13-PET-AVATAR-INTEGRATION.md`.
-- G14 Global Loading Presentation Pack: FULLSCREEN UPGRADE OWNER APPROVED / IN PR #153 — Ver 1.1.19 release gate. The original Ver 1.1.18 emblem remains Production verified; approved 1536×1024 fullscreen Closed/Opening/Open WebP derivatives are staged with additive manifest keys and runtime cover-crop integration. R2/deploy/live verification are pending merge. See `G14-GLOBAL-LOADING-PRESENTATION.md` and `graphics/g14-fullscreen-gate/README.md`.
-- G15 Player Information Center UI Pack: OWNER APPROVED / IN PR #153 — Ver 1.1.19 / Issue #152. Six approved 128×128 RGBA icons are staged with additive `infoCenterUi` manifest mapping and optional runtime resolver/emoji fallback; Production R2 upload, deployment and live verification remain gated. NEW/public-roadmap statuses remain runtime text. See `G15-PLAYER-INFORMATION-CENTER-UI.md`.
+- G14 Global Loading Presentation Pack: COMPLETE / PRODUCTION VERIFIED — Ver 1.1.19 / merged PR #153. Approved 1536×1024 fullscreen Closed/Opening/Open WebP frames, additive manifest keys, one-shot runtime transition, Reduced Motion and asset-failure CSS fallback are live. R2 read-back SHA verification and frontend deployment passed in runs #40333086818 and #40333086817. See `G14-GLOBAL-LOADING-PRESENTATION.md` and `graphics/g14-fullscreen-gate/README.md`.
+- G15 Player Information Center UI Pack: COMPLETE / PRODUCTION VERIFIED — Ver 1.1.19 / Issue #152 / merged PR #153. Six approved 128×128 RGBA icons are live with additive `infoCenterUi` mapping, shared optional resolver and emoji fallback; live decode and SHA match passed 6/6. NEW/public-roadmap statuses remain runtime text. See `G15-PLAYER-INFORMATION-CENTER-UI.md`.
 - G16-G20: generic equipment production art, one Tier set at a time after G15 — G16 T1 Beginner/Leather, G17 T2 Bronze, G18 T3 Steel/Chain, G19 T4 Platinum, G20 T5 Dragon Slayer. Each Tier includes its matching Accessory item icon; Accessory remains icon-only with no Hero wearable layer.
 - Graphics may run in parallel only where asset/runtime ownership does not conflict with the blocking release gate.
 
