@@ -52,3 +52,7 @@ Owner requested a fresh part-by-part Azure order inspection: see [exact order an
 ## Latest Owner-specified Attack_01 order
 
 [Owner layer-order review](owner-selected-recut/attack_01/owner-layer-order/README.md): front to back = right raised arm → sword → helmet → chest → left extended arm → legs/trousers → Base. Rendered from unchanged full parts without masks or extra passes. Owner visual acceptance and runtime compatibility remain pending.
+
+## Neck-fit method study (latest)
+
+Owner accepted the Attack_01 stacking order. [Neckline fit study](owner-selected-recut/attack_01/neckline-fit-study/README.md) compares canonical neck, Owner source, current hollow collar and an alpha-only neckline trial. Proposed correction: lower/shape the chest neckline to reveal the original neck, refine shirt-edge coverage and gold rim. Trial is unfinished; full Attack_01 visual acceptance remains pending.

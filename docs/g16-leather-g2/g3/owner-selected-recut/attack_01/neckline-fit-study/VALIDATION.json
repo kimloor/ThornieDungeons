@@ -1,0 +1,92 @@
+{
+  "status": "NECKLINE_METHOD_PROTOTYPE_NOT_FINAL",
+  "ownerOrderApproved": true,
+  "artworkAccepted": false,
+  "main": "7ef31753b969386d2750857dddaa53d44c03081c",
+  "branchParent": "b9c9a58fd56c5ce177412473fdb4d0b541c5c6de",
+  "risk": "LOW offline diagnostic and reversible neckline cut",
+  "finding": "Rigid high empty collar covers original neck and visually detaches head from torso. The cut reveals canonical neck skin.",
+  "method": "Alpha-only recut of candidate chest neckline; no new skin, pose or Base pixels. Keep full source chest and use a sibling TRIAL only.",
+  "polygon": [
+    [
+      327,
+      388
+    ],
+    [
+      392,
+      397
+    ],
+    [
+      394,
+      417
+    ],
+    [
+      377,
+      422
+    ],
+    [
+      372,
+      428
+    ],
+    [
+      372,
+      433
+    ],
+    [
+      368,
+      436
+    ],
+    [
+      360,
+      437
+    ],
+    [
+      350,
+      433
+    ],
+    [
+      343,
+      429
+    ],
+    [
+      338,
+      420
+    ],
+    [
+      331,
+      410
+    ]
+  ],
+  "changedChestAlphaPixels": 1740,
+  "rgbUnchanged": true,
+  "sourceChestSha256": "9f7471045fcf1753e231c85b1bb9c837e115d6af4bc22d9cfaaf4e7b8c3565e3",
+  "trialChestSha256": "06db8370bf6126bf17002d28db7a9fe0bcfcded4e1aeaa0706b3ea4a864f8252",
+  "baseSha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+  "backToFront": [
+    "base",
+    "legs_boots",
+    "arm_front",
+    "torso_armor",
+    "helmet",
+    "sword",
+    "arm_rear"
+  ],
+  "dimensions": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    0
+  ],
+  "runtimeOffsetBaked": false,
+  "runtimeChanged": false,
+  "remainingWork": [
+    "Remove exposed white Base-shirt sliver at neck edge by adjusting chest-owned coverage.",
+    "Finish a narrow consistent leather/gold neckline following original neck; avoid recreating a tall hollow ring.",
+    "Retain original Base chin/neck shadow; inspect both helmet cheek edge and shoulder seams at gameplay scale."
+  ],
+  "productionChanges": false,
+  "finalInventoryPromotion": false,
+  "G3Complete": false
+}

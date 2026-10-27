@@ -953,6 +953,12 @@
   "latestAttack01OwnerOrder": {
     "report": "owner-selected-recut/attack_01/owner-layer-order/VALIDATION.json",
     "visualAccepted": false,
-    "runtimeChanged": false
+    "runtimeChanged": false,
+    "layerOrderAccepted": true
+  },
+  "latestAttack01NeckStudy": {
+    "report": "owner-selected-recut/attack_01/neckline-fit-study/VALIDATION.json",
+    "status": "METHOD_PROTOTYPE_NOT_FINAL",
+    "artworkAccepted": false
   }
 }
