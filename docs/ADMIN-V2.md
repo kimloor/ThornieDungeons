@@ -664,6 +664,8 @@ In scope: `adminDeleteRecipe`, `adminDeleteMonsterLootEntry`, `adminDeleteJunkIn
 
 ### 22.6 W2-E — Read-only Audit Viewer
 
+**Implementation status (2026-10-27): IN PR (stacked on W2-D), read-only, visible Ver 1.1.22 (new validation code `invalid_filter`).** Action: `GET ?action=adminListAuditLog` (Admin Bearer) with `eventType`, `actor`, `targetType`, `targetId`, `from`, `to`, `limit` (default 25, max 50), `cursor` (opaque, encodes `(created_at, audit_id)`, ordered newest first); invalid dates/cursor -> `invalid_filter` (400). Entries are re-sanitized with the 22.3 denylist on read; unparseable legacy metadata is returned as the raw string. Each view writes `ADMIN_AUDIT_VIEW` (filter names, `paged`, `limit`, `resultCount` only; never filter values) and fails closed with `admin_audit_failed` if that write fails. No migration/index: production `admin_audit_log` held 1 row when measured (2026-10-27); revisit when event_type filtering is measurably slow. UI: one new "Audit Log" tab, two buttons (search, load more) plus a per-row detail toggle; no edit/delete controls. Tests: `tests/admin-v2-audit-viewer.test.js`.
+
 - New read action (name fixed in the PR) requiring an Admin session. Filters: `event_type`, actor, `target_type` / `target_id`, date range. Cursor pagination on `(created_at, audit_id)`, default 25, maximum 50.
 - Output is re-sanitized server-side with the 22.3 denylist, so older rows cannot leak secrets. Viewing is itself audited with filter summary and result count only.
 - If filtering by `event_type` needs an index, it is added by a separate additive migration in `migrations/auto/`, only after measuring.

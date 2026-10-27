@@ -151,6 +151,7 @@ document.querySelectorAll(".tab").forEach(t => {
     t.classList.add("active");
     document.getElementById("tab-" + t.dataset.tab).classList.add("active");
     if (t.dataset.tab === "dashboard") void loadDashboard();
+    if (t.dataset.tab === "audit") void loadAuditPage(true);
     if (t.dataset.tab === "players") setTimeout(() => document.getElementById("playerSearchInput")?.focus(), 0);
   };
 });
@@ -636,6 +637,70 @@ async function deleteLootEntry(entryId, kind) {
   monsterLootCache = monsterLootCache.filter(r => r.entry_id !== entryId);
   if (kind === "gear") renderGearTable(); else renderJunkTable();
 }
+
+// ==================================================================
+// AUDIT LOG TAB (W2-E, read-only: no edit or delete controls)
+// ==================================================================
+let auditNextCursor = null;
+let auditFilters = {};
+
+function readAuditFilters() {
+  const val = (id) => document.getElementById(id).value.trim();
+  const f = { eventType: val("auditEventType"), actor: val("auditActor"), targetType: val("auditTargetType"), targetId: val("auditTargetId") };
+  const from = val("auditFrom"), to = val("auditTo");
+  if (from) f.from = new Date(from).toISOString();
+  if (to) f.to = new Date(to).toISOString();
+  Object.keys(f).forEach(k => { if (!f[k]) delete f[k]; });
+  return f;
+}
+
+function auditRow(entry) {
+  const tr = document.createElement("tr");
+  const detail = el("pre", { text: JSON.stringify(entry.metadata, null, 2) });
+  detail.style.display = "none";
+  detail.style.whiteSpace = "pre-wrap";
+  detail.style.wordBreak = "break-all";
+  const toggle = el("button", { type: "button", text: "ดู" });
+  toggle.onclick = () => {
+    const open = detail.style.display === "none";
+    detail.style.display = open ? "block" : "none";
+    toggle.textContent = open ? "ซ่อน" : "ดู";
+  };
+  const target = [entry.targetType, entry.targetId].filter(Boolean).join(": ") || "—";
+  tr.append(
+    cell(entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"),
+    cell(entry.actor || "—", "mono"),
+    cell(entry.eventType),
+    cell(target),
+    el("td", {}, toggle, detail)
+  );
+  return tr;
+}
+
+async function loadAuditPage(reset) {
+  const msg = document.getElementById("auditMsg");
+  const body = document.querySelector("#auditTable tbody");
+  if (reset) {
+    auditFilters = readAuditFilters();
+    auditNextCursor = null;
+    body.replaceChildren();
+  }
+  const params = { action: "adminListAuditLog", limit: 25, ...auditFilters };
+  if (!reset && auditNextCursor) params.cursor = auditNextCursor;
+  const res = await apiGet(params);
+  if (res.error) {
+    msg.textContent = "โหลดไม่สำเร็จ: " + res.error;
+    msg.className = "msg err";
+    return;
+  }
+  (res.entries || []).forEach(entry => body.appendChild(auditRow(entry)));
+  auditNextCursor = res.nextCursor || null;
+  document.getElementById("auditMoreBtn").style.display = auditNextCursor ? "inline-block" : "none";
+  msg.textContent = body.children.length ? `แสดง ${body.children.length} รายการ` : "ไม่พบรายการ";
+  msg.className = "msg";
+}
+document.getElementById("auditSearchBtn").onclick = () => void loadAuditPage(true);
+document.getElementById("auditMoreBtn").onclick = () => void loadAuditPage(false);
 
 // ==================================================================
 // JUNK INFO TAB

@@ -30,6 +30,7 @@
  *   GET  ?action=getMonsterLoot                                             (NEW, monster loot table)
  *   GET  ?action=getJunkInfo                                                (NEW, admin.html — material names/icons)
  *   POST { action: "adminUpsertJunkInfo", junkId, name, icon }                (NEW, Admin Bearer)
+ *   GET  ?action=adminListAuditLog&eventType&actor&targetType&targetId&from&to&limit&cursor (Admin Bearer, read-only; W2-E)
  *   POST { action: "adminDeleteJunkInfo", junkId, reason, confirmId }                            (NEW, Admin Bearer)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid|pvp            (pvp = NEW)
  *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD             (NEW, Phase 2.1, last 7 days)
@@ -7522,6 +7523,97 @@ async function handleAdminDeleteJunkInfo(db, adminAuth, junkId, reason, confirmI
   );
 }
 
+// ---------- admin: read-only Audit Viewer (W2-E, ADMIN-V2.md 22.6) ----------
+const ADMIN_AUDIT_VIEW_DEFAULT_LIMIT = 25;
+const ADMIN_AUDIT_VIEW_MAX_LIMIT = 50;
+
+function encodeAdminAuditCursor(row) {
+  return btoa(JSON.stringify([row.created_at, row.audit_id])).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function decodeAdminAuditCursor(text) {
+  try {
+    const padded = String(text).replace(/-/g, "+").replace(/_/g, "/");
+    const parsed = JSON.parse(atob(padded + "=".repeat((4 - (padded.length % 4)) % 4)));
+    if (Array.isArray(parsed) && parsed.length === 2 && typeof parsed[0] === "string" && typeof parsed[1] === "string") return parsed;
+  } catch (_) {}
+  return null;
+}
+function adminAuditDateBound(text) {
+  const ms = Date.parse(text);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+async function handleAdminListAuditLog(db, adminAuth, params) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
+  const text = (name) => String(params.get(name) || "").trim().slice(0, 200);
+  const filters = {
+    eventType: text("eventType"), actor: text("actor"), targetType: text("targetType"), targetId: text("targetId"),
+    from: text("from"), to: text("to"),
+  };
+  const where = [];
+  const binds = [];
+  if (filters.eventType) { where.push("event_type = ?"); binds.push(filters.eventType); }
+  if (filters.actor) { where.push("player_id = ?"); binds.push(filters.actor); }
+  if (filters.targetType) { where.push("target_type = ?"); binds.push(filters.targetType); }
+  if (filters.targetId) { where.push("target_id = ?"); binds.push(filters.targetId); }
+  if (filters.from) {
+    const from = adminAuditDateBound(filters.from);
+    if (!from) return json({ error: "invalid_filter" }, 400);
+    where.push("created_at >= ?"); binds.push(from);
+  }
+  if (filters.to) {
+    const to = adminAuditDateBound(filters.to);
+    if (!to) return json({ error: "invalid_filter" }, 400);
+    where.push("created_at <= ?"); binds.push(to);
+  }
+  const rawCursor = String(params.get("cursor") || "");
+  if (rawCursor) {
+    const cursor = decodeAdminAuditCursor(rawCursor);
+    if (!cursor) return json({ error: "invalid_filter" }, 400);
+    where.push("(created_at < ? OR (created_at = ? AND audit_id < ?))");
+    binds.push(cursor[0], cursor[0], cursor[1]);
+  }
+  const limit = Math.min(ADMIN_AUDIT_VIEW_MAX_LIMIT, Math.max(1, Math.floor(Number(params.get("limit")) || ADMIN_AUDIT_VIEW_DEFAULT_LIMIT)));
+  const result = await db.prepare(
+    `SELECT audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at
+     FROM admin_audit_log
+     ${where.length ? "WHERE " + where.join(" AND ") : ""}
+     ORDER BY created_at DESC, audit_id DESC
+     LIMIT ?`
+  ).bind(...binds, limit + 1).all();
+  const fetched = result.results || [];
+  const page = fetched.slice(0, limit);
+  const entries = page.map((row) => ({
+    auditId: row.audit_id,
+    createdAt: row.created_at,
+    actor: row.player_id,
+    eventType: row.event_type,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    // Re-sanitized on read with the 22.3 denylist so older rows cannot leak secrets.
+    metadata: redactAdminAuditValue(safeParseAdminAuditJson(row.metadata_json)),
+  }));
+  // Viewing is itself audited: filter summary (which filters, never their values) and counts only.
+  try {
+    await writeAdminAudit(
+      db, adminAuth.playerId, "ADMIN_AUDIT_VIEW",
+      {
+        filters: Object.keys(filters).filter((k) => filters[k]),
+        paged: !!rawCursor, limit, resultCount: entries.length,
+      },
+      "audit_log", null
+    );
+  } catch (error) {
+    console.error("admin_audit_failed", "ADMIN_AUDIT_VIEW", error && error.message);
+    return json({ error: "admin_audit_failed" }, 500);
+  }
+  return json({
+    ok: true,
+    entries,
+    nextCursor: fetched.length > limit ? encodeAdminAuditCursor(page[page.length - 1]) : null,
+  });
+}
+
 // ---------- request boundary hardening ----------
 const MAX_REQUEST_BODY_BYTES = 512 * 1024;
 const DEFAULT_CORS_ORIGINS = Object.freeze([
@@ -7597,12 +7689,13 @@ async function apiFetch(request, env) {
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           return await handleAdminValidateSession(db, adminAuth);
         }
-        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers"].includes(action)) {
+        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers", "adminListAuditLog"].includes(action)) {
           const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           if (action === "runLeaderboardSnapshot") return json({ ok: true, ...(await runLeaderboardSnapshot(db)) });
           if (action === "getPlayer") return await handleAdminGetPlayer(db, adminAuth, p.get("id"));
           if (action === "adminSearchPlayers") return await handleAdminSearchPlayers(db, adminAuth, p.get("query"), p.get("limit"));
+          if (action === "adminListAuditLog") return await handleAdminListAuditLog(db, adminAuth, p);
           if (action === "getAllPlayers") return await handleAdminGetAllPlayers(db, adminAuth);
           if (action === "getPlayerItems") return await handleAdminGetPlayerItems(db, adminAuth, p.get("id"));
           if (action === "getGameStats") return await handleAdminGetGameStats(db, adminAuth);
