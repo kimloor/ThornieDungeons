@@ -1,0 +1,46 @@
+{
+  "status": "ONE_PIECE_OWNER_REVIEW_PENDING",
+  "frame": "attack_01",
+  "piece": "torso_armor",
+  "source": "../step-01-helmet/owner_source.png",
+  "method": "built-in ImageGen isolated extraction and hidden leather completion; no source pixel-identity claim",
+  "canvas": [
+    768,
+    768
+  ],
+  "mode": "RGBA",
+  "origin": [
+    0,
+    0
+  ],
+  "rawDimensions": [
+    1254,
+    1254
+  ],
+  "rawAlphaBounds": [
+    409,
+    456,
+    837,
+    909
+  ],
+  "offlineRegistration": {
+    "uniformScale": 0.32,
+    "translation": [
+      154.12,
+      228.07999999999998
+    ]
+  },
+  "runtimeOffsetBaked": false,
+  "alphaBounds": [
+    285,
+    374,
+    422,
+    519
+  ],
+  "sha256": "16d114cc4ca9be2497557b69a513d21ff955dd5540b480885ddcacf302f351b2",
+  "alphaNonzeroPixels": 11943,
+  "edgeAlphaNonzero": 0,
+  "collarShoulderArmholeCompletion": "VISUAL_REVIEW_PENDING",
+  "noNextPieceStarted": true,
+  "promotedToFinal": false
+}

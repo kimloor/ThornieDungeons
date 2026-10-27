@@ -1,6 +1,6 @@
 # Owner-selected source recut — piece 01: helmet
 
-Status: ONE PIECE / OWNER REVIEW PENDING. Latest main checked: 32bca9eca232355a2ae98bc5f3fd54e9c5d28637. Risk: MEDIUM graphics authoring only.
+Status: ONE PIECE / OWNER VISUAL APPROVED (Owner instructed continuation, 2026-10-27). Latest main checked: 32bca9eca232355a2ae98bc5f3fd54e9c5d28637. Risk: MEDIUM graphics authoring only.
 
 Owner selected the attached source on 2026-10-27 and asked to recut one piece at a time. This authorizes this source for extraction and supersedes the earlier restriction on using this image as a cutting source; it does not approve all-frame artwork, final fit or publication.
 

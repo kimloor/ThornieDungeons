@@ -1,5 +1,5 @@
 {
-  "status": "ONE_PIECE_OWNER_REVIEW_PENDING",
+  "status": "OWNER_VISUAL_APPROVED_ONE_PIECE",
   "piece": "helmet",
   "frame": "attack_01",
   "ownerSelectedSource": "F8646736-0EB7-4371-A1D8-87FCF8B13B71.png",
@@ -47,5 +47,6 @@
   "exportSha256": "fe7857892db382855107d937b46d87a8fd3d50158e6afbd339f613f653190b0a",
   "noOtherPiecesStarted": true,
   "promotedToFinal": false,
-  "method": "ImageGen isolated extraction + hidden completion; whole-helmet offline registration; no pixel-identity claim"
+  "method": "ImageGen isolated extraction + hidden completion; whole-helmet offline registration; no pixel-identity claim",
+  "ownerApprovalEvidence": "Owner: โอเค ทำต่อได้เลย; subsequent ทำต่อ (2026-10-27)"
 }
