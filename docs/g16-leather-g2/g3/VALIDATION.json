@@ -1,0 +1,934 @@
+{
+  "status": "G16_G3_BLOCKED_VISUAL_DEVIATION_REVIEW_REQUIRED",
+  "baseline": "1372ed16327aeb7290b1bad0a9c2fa022b425335",
+  "gate0Reused": true,
+  "expectedPaths": 56,
+  "presentPaths": 21,
+  "missingPaths": 35,
+  "idle01ByteIdentical": true,
+  "idleBaseExactTranslations": {
+    "idle_02": [
+      0,
+      -12
+    ],
+    "idle_03": [
+      0,
+      -4
+    ]
+  },
+  "idleCompositesExactTranslations": true,
+  "generatedAttemptNativeDimensions": [
+    1774,
+    887
+  ],
+  "generatedAttemptAccepted": false,
+  "runtimeOffsetBaked": false,
+  "runtimeManifestModified": false,
+  "R2Published": false,
+  "G4Ready": false,
+  "inventory": [
+    {
+      "frame": "idle_01",
+      "layer": "coverage_underlay",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/coverage_underlay.png"
+    },
+    {
+      "frame": "idle_01",
+      "layer": "torso_armor",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/torso_armor.png"
+    },
+    {
+      "frame": "idle_01",
+      "layer": "legs_boots",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/legs_boots.png"
+    },
+    {
+      "frame": "idle_01",
+      "layer": "arm_rear",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/arm_rear.png"
+    },
+    {
+      "frame": "idle_01",
+      "layer": "helmet",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/helmet.png"
+    },
+    {
+      "frame": "idle_01",
+      "layer": "sword",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/sword.png"
+    },
+    {
+      "frame": "idle_01",
+      "layer": "arm_front",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/arm_front.png"
+    },
+    {
+      "frame": "idle_02",
+      "layer": "coverage_underlay",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/coverage_underlay.png"
+    },
+    {
+      "frame": "idle_02",
+      "layer": "torso_armor",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/torso_armor.png"
+    },
+    {
+      "frame": "idle_02",
+      "layer": "legs_boots",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/legs_boots.png"
+    },
+    {
+      "frame": "idle_02",
+      "layer": "arm_rear",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/arm_rear.png"
+    },
+    {
+      "frame": "idle_02",
+      "layer": "helmet",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/helmet.png"
+    },
+    {
+      "frame": "idle_02",
+      "layer": "sword",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/sword.png"
+    },
+    {
+      "frame": "idle_02",
+      "layer": "arm_front",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/arm_front.png"
+    },
+    {
+      "frame": "idle_03",
+      "layer": "coverage_underlay",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/coverage_underlay.png"
+    },
+    {
+      "frame": "idle_03",
+      "layer": "torso_armor",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/torso_armor.png"
+    },
+    {
+      "frame": "idle_03",
+      "layer": "legs_boots",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/legs_boots.png"
+    },
+    {
+      "frame": "idle_03",
+      "layer": "arm_rear",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/arm_rear.png"
+    },
+    {
+      "frame": "idle_03",
+      "layer": "helmet",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/helmet.png"
+    },
+    {
+      "frame": "idle_03",
+      "layer": "sword",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/sword.png"
+    },
+    {
+      "frame": "idle_03",
+      "layer": "arm_front",
+      "status": "PRESENT_G4_PENDING",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/arm_front.png"
+    },
+    {
+      "frame": "attack_01",
+      "layer": "coverage_underlay",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_01",
+      "layer": "torso_armor",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_01",
+      "layer": "legs_boots",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_01",
+      "layer": "arm_rear",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_01",
+      "layer": "helmet",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_01",
+      "layer": "sword",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_01",
+      "layer": "arm_front",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_02",
+      "layer": "coverage_underlay",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_02",
+      "layer": "torso_armor",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_02",
+      "layer": "legs_boots",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_02",
+      "layer": "arm_rear",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_02",
+      "layer": "helmet",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_02",
+      "layer": "sword",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_02",
+      "layer": "arm_front",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_03",
+      "layer": "coverage_underlay",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_03",
+      "layer": "torso_armor",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_03",
+      "layer": "legs_boots",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_03",
+      "layer": "arm_rear",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_03",
+      "layer": "helmet",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_03",
+      "layer": "sword",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "attack_03",
+      "layer": "arm_front",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_01",
+      "layer": "coverage_underlay",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_01",
+      "layer": "torso_armor",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_01",
+      "layer": "legs_boots",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_01",
+      "layer": "arm_rear",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_01",
+      "layer": "helmet",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_01",
+      "layer": "sword",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_01",
+      "layer": "arm_front",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_02",
+      "layer": "coverage_underlay",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_02",
+      "layer": "torso_armor",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_02",
+      "layer": "legs_boots",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_02",
+      "layer": "arm_rear",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_02",
+      "layer": "helmet",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_02",
+      "layer": "sword",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    },
+    {
+      "frame": "death_02",
+      "layer": "arm_front",
+      "status": "MISSING_BLOCKED_POSE_REVIEW",
+      "path": null
+    }
+  ],
+  "files": [
+    {
+      "frame": "idle_01",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        0
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "frame": "idle_01",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/torso_armor.png",
+      "sha256": "d9e5be85ac66d27f286227ce442dd5b036198468077f838302f8421bed470166",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        276,
+        375,
+        428,
+        508
+      ],
+      "alphaNonzeroPixels": 12533,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        0
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_01",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/legs_boots.png",
+      "sha256": "4ec24b9c709e659e90abf32343b2f91848e44cb8402cddbeae59ec3a150463d5",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        262,
+        465,
+        438,
+        648
+      ],
+      "alphaNonzeroPixels": 17001,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        0
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_01",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/arm_rear.png",
+      "sha256": "20db657e38bb1d6581216a6eb234b179873dcd1f0dc203099aa5ca2ab655f88d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        249,
+        376,
+        338,
+        531
+      ],
+      "alphaNonzeroPixels": 6980,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        0
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_01",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/helmet.png",
+      "sha256": "ff2051efd61d15dc7db0f47a4c218dc262c73300a4652df9ec3c3911a7674931",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        248,
+        189,
+        462,
+        383
+      ],
+      "alphaNonzeroPixels": 22324,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        0
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_01",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/sword.png",
+      "sha256": "b3786f8f1e69c4c2924844df57d12d65804d11b3ce24bf80a18b2e286e8b960d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        231,
+        489,
+        471,
+        633
+      ],
+      "alphaNonzeroPixels": 6211,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        0
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_01",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/arm_front.png",
+      "sha256": "ba3736cb72deb0c0710849e8d35e643db73ec619887d3d66135939250fb111c1",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        387,
+        412,
+        466,
+        536
+      ],
+      "alphaNonzeroPixels": 3836,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        0
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -12
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "frame": "idle_02",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/torso_armor.png",
+      "sha256": "f2d2c5e71851dc7caeaa2d9a372ff0f415ce96193a90369da93cfd550dabcbfb",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        276,
+        363,
+        428,
+        496
+      ],
+      "alphaNonzeroPixels": 12533,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -12
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/legs_boots.png",
+      "sha256": "7ef82cd5405ff2fd31873f581baae0b9c0eee978dd00c385f3e022403f9d3d8d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        262,
+        453,
+        438,
+        636
+      ],
+      "alphaNonzeroPixels": 17001,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -12
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/arm_rear.png",
+      "sha256": "b9a79956536c489b0375eef88a51caaea68c64f3c16ed9792191672ad33dbc46",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        249,
+        364,
+        338,
+        519
+      ],
+      "alphaNonzeroPixels": 6980,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -12
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/helmet.png",
+      "sha256": "9ee9f0586c6fd9b3ad1fc47e95ba41aba962b2cc939fc623cdfac9147d33f717",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        248,
+        177,
+        462,
+        371
+      ],
+      "alphaNonzeroPixels": 22324,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -12
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/sword.png",
+      "sha256": "c147b1160dd1ac157c445c5cfae15d906d8440f026a860823e5855ff5d72ad00",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        231,
+        477,
+        471,
+        621
+      ],
+      "alphaNonzeroPixels": 6211,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -12
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/arm_front.png",
+      "sha256": "f2462a9ef2c05bcbce2843fe3f2160f8f528c2d3ff84a08443319ebe1d152c86",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        387,
+        400,
+        466,
+        524
+      ],
+      "alphaNonzeroPixels": 3836,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -12
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -4
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "frame": "idle_03",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/torso_armor.png",
+      "sha256": "f12dc1188f8bf49cf159e64147dd6c518f165548f952486911a6e047d93fd39c",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        276,
+        371,
+        428,
+        504
+      ],
+      "alphaNonzeroPixels": 12533,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -4
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/legs_boots.png",
+      "sha256": "15f62021ece497e5d02e98e14acdb1b595daaad84aea97ecf7b97139837120dc",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        262,
+        461,
+        438,
+        644
+      ],
+      "alphaNonzeroPixels": 17001,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -4
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/arm_rear.png",
+      "sha256": "3921cf806d1a185b0e871e5ee94cd7b013c2bdb82c8f041df0fef58d0f5e1876",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        249,
+        372,
+        338,
+        527
+      ],
+      "alphaNonzeroPixels": 6980,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -4
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/helmet.png",
+      "sha256": "29ea22e518d63ff24a6870834159c5da3cf0b1235195d37d37741bba03cb0931",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        248,
+        185,
+        462,
+        379
+      ],
+      "alphaNonzeroPixels": 22324,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -4
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/sword.png",
+      "sha256": "07155279f58b8cd3d38e92facbfb3f7b2547d7bf8d5263aa51e8ee9c4f9867ed",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        231,
+        485,
+        471,
+        629
+      ],
+      "alphaNonzeroPixels": 6211,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -4
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/arm_front.png",
+      "sha256": "5dab3c443e01b5e84bb021815c9aa3c0e1800ed16533439e0e5b1c8595743b9a",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        387,
+        408,
+        466,
+        532
+      ],
+      "alphaNonzeroPixels": 3836,
+      "edgeAlphaNonzero": 0,
+      "offlineTranslation": [
+        0,
+        -4
+      ],
+      "origin": [
+        0,
+        0
+      ]
+    }
+  ],
+  "baseHashes": {
+    "idle_01": "1c4e9d24d7d560b96e85dbdbccc47d17739c156a1377d4afb7f53fd90983e5e5",
+    "idle_02": "18c5935634ffbf3758eadb505864cf44a1143a349e742591e0bf7db5fc5773f9",
+    "idle_03": "bd15c3f045e362030d885fe65b5a3725ccbd6c4ed30d8da3868af66730ccc981",
+    "attack_01": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+    "attack_02": "d6b5c542822e5d88702e882721eeabb74c07703b72ec88414410c6f0bac6db9a",
+    "attack_03": "9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667",
+    "death_01": "8fe820026682becdc889f4adce522722720c78d242d7007ed994cd113fad292b",
+    "death_02": "b9c5f58a1a03a921c21ab45e3ac60fe070347988755ed639e365a9c13e0e0ae3"
+  }
+}
