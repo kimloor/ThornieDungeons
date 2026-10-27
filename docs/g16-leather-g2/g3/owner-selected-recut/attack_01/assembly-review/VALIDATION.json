@@ -1,0 +1,245 @@
+{
+  "status": "ATTACK_01_REASSEMBLY_OWNER_REVIEW_PENDING",
+  "latestMainChecked": "7ef31753b969386d2750857dddaa53d44c03081c",
+  "compositionProfile": "leather_overlap_v1",
+  "hairMode": "hidden_full_cover",
+  "handOcclusion": {
+    "sourceLayer": "arm_rear",
+    "after": "sword",
+    "frames": {
+      "attack_01": {
+        "crop": [
+          277,
+          277,
+          67,
+          69
+        ],
+        "status": "OFFLINE_REVIEW_CANDIDATE"
+      }
+    }
+  },
+  "baseSha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+  "baseModified": false,
+  "runtimeOffsetBaked": false,
+  "registeredPieces": [
+    {
+      "layer": "legs_boots",
+      "rawDimensions": [
+        1254,
+        1254
+      ],
+      "rawBounds": [
+        253,
+        432,
+        990,
+        1035
+      ],
+      "uniformScale": 0.288,
+      "translation": [
+        146.13600000000002,
+        368.584
+      ]
+    },
+    {
+      "layer": "arm_rear",
+      "rawDimensions": [
+        1254,
+        1254
+      ],
+      "rawBounds": [
+        433,
+        267,
+        908,
+        988
+      ],
+      "uniformScale": 0.23,
+      "translation": [
+        133.41,
+        215.59
+      ]
+    },
+    {
+      "layer": "arm_front",
+      "rawDimensions": [
+        1254,
+        1254
+      ],
+      "rawBounds": [
+        437,
+        515,
+        1046,
+        945
+      ],
+      "uniformScale": 0.21,
+      "translation": [
+        267.23828282889497,
+        339.2151963299849
+      ]
+    }
+  ],
+  "files": [
+    {
+      "layer": "coverage_underlay",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "layer": "torso_armor",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        285,
+        374,
+        422,
+        519
+      ],
+      "alphaNonzeroPixels": 12727,
+      "edgeAlphaNonzero": 0,
+      "sha256": "a9a521519db7b83cc6cd2d6eb7f32941ee71c52bbe835314cfa9aaecb0663981"
+    },
+    {
+      "layer": "legs_boots",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        219,
+        493,
+        431,
+        667
+      ],
+      "alphaNonzeroPixels": 16772,
+      "edgeAlphaNonzero": 0,
+      "sha256": "1ffb6838ada86fa19be8d16f31fa2caf5f490a7c7d49c0f6ba6e9ae1f77ac23a"
+    },
+    {
+      "layer": "arm_rear",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        233,
+        277,
+        342,
+        462
+      ],
+      "alphaNonzeroPixels": 10002,
+      "edgeAlphaNonzero": 0,
+      "sha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb"
+    },
+    {
+      "layer": "helmet",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        277,
+        240,
+        486,
+        415
+      ],
+      "alphaNonzeroPixels": 21087,
+      "edgeAlphaNonzero": 0,
+      "sha256": "fe7857892db382855107d937b46d87a8fd3d50158e6afbd339f613f653190b0a"
+    },
+    {
+      "layer": "sword",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        278,
+        76,
+        346,
+        350
+      ],
+      "alphaNonzeroPixels": 6332,
+      "edgeAlphaNonzero": 0,
+      "sha256": "21b795cc28f4d3b29ab977299b1b04812ade784deb7d73f9f162883747ee56bc"
+    },
+    {
+      "layer": "arm_front",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        372,
+        435,
+        513,
+        521
+      ],
+      "alphaNonzeroPixels": 5692,
+      "edgeAlphaNonzero": 0,
+      "sha256": "9c7e451bec57ea4530347a6f3b0ae6d7c701c11644c312a61c0503b2cc476711"
+    }
+  ],
+  "helmetBytesUnchanged": true,
+  "chestBytesUnchanged": false,
+  "frontRegistration": {
+    "rawCapAnchor": [
+      521,
+      590
+    ],
+    "targetCapAnchor": [
+      389,
+      451
+    ],
+    "uniformScale": 0.21,
+    "rotationDegrees": -6
+  },
+  "hiddenMaterialCompletion": "rear cap copied from its own upper sleeve; narrow chest underarm seam copied from chest interior; prior standalone masters unchanged",
+  "sourcePixelIdentityClaim": false,
+  "fullFrameVisualAccepted": false,
+  "promotedToFinal56": false,
+  "R2Published": false,
+  "runtimeSourceModified": false
+}
