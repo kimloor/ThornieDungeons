@@ -960,5 +960,12 @@
     "report": "owner-selected-recut/attack_01/neckline-fit-study/VALIDATION.json",
     "status": "METHOD_PROTOTYPE_NOT_FINAL",
     "artworkAccepted": false
+  },
+  "latestAttack01NeckRefinement": {
+    "report": "owner-selected-recut/attack_01/neckline-refinement-review/VALIDATION.json",
+    "status": "CANDIDATE_OWNER_VISUAL_REVIEW_PENDING",
+    "ownerOrderRetained": true,
+    "artworkAccepted": false,
+    "finalInventoryPromotion": false
   }
 }

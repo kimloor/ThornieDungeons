@@ -56,3 +56,7 @@ Owner requested a fresh part-by-part Azure order inspection: see [exact order an
 ## Neck-fit method study (latest)
 
 Owner accepted the Attack_01 stacking order. [Neckline fit study](owner-selected-recut/attack_01/neckline-fit-study/README.md) compares canonical neck, Owner source, current hollow collar and an alpha-only neckline trial. Proposed correction: lower/shape the chest neckline to reveal the original neck, refine shirt-edge coverage and gold rim. Trial is unfinished; full Attack_01 visual acceptance remains pending.
+
+## Latest neckline refinement candidate
+
+[Neckline refinement review](owner-selected-recut/attack_01/neckline-refinement-review/README.md): continuous leather/gold rim finished over the lowered neckline; canonical neck retained and right-neck shirt sliver covered. Owner-approved stacking retained; only bounded chest artwork changed. Candidate requires Owner visual acceptance before remaining-pose expansion.
