@@ -115,3 +115,6 @@ A task is complete when the relevant steps are satisfied:
 8. Relevant docs/comments updated.
 9. Short copy-ready handoff provided.
 10. For branch-based work, merged remote branches are cleaned up after release verification, or explicitly reported as `BRANCH_CLEANUP_PENDING` when the available tools cannot safely perform the cleanup.
+
+## 13. Equipment sprite mandatory preflight (Owner approved, 2026-10-27)
+Before **every** equipment sprite creation, edit, replacement, or reuse (G16–G20 and Skeleton revisions), read `docs/EQUIPMENT-SPRITE-MASTER-TEMPLATE-V1.md` and `docs/EQUIPMENT-SPRITE-PIPELINE-V1.md`. Reuse locked Gate 0 references; run scoped integrity/compatibility checks, not full analysis again, unless Base/manifest/runtime changes. Do not represent pending per-pixel anatomical anchor measurement as PASS. Respect Owner concept/Idle_01 approval gates and DEV helmet-hair compatibility gate. Never silently generate or publish replacement art.
