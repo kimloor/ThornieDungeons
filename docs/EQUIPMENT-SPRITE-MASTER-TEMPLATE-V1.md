@@ -1,6 +1,6 @@
 # Equipment Sprite Master Template V1 — Gate 0 Reusable Baseline
 
-Status: **CONTRACT REFERENCE LOCKED / PIXEL-ANCHOR QA PENDING** (2026-10-27)
+Status: **GATE 0 REFERENCE / RAW-ALPHA LOCKED — COMPLETE; ANATOMICAL LANDMARKS ARE VISUAL GUIDES (NOT RIG COORDINATES)** (2026-10-27)
 Baseline main: `631ae775173d2141cd4a0a3fe75f9707fa1da9bd`
 Owner instruction: **Read this document AND `docs/EQUIPMENT-SPRITE-PIPELINE-V1.md` BEFORE EVERY equipment sprite creation or revision.** Reuse the baseline for G16, later Skeleton revision, G17–G20. Only revalidate changed source-contract parts; do not restart this inventory every time.
 
@@ -58,7 +58,7 @@ Head, shoulder, wrist, waist, knees, feet and safe silhouette envelopes must be 
 
 ## 7. Release and reuse
 - Reference inventory/contract: **PASS (read-only repository)**; pixel anatomical measurements, fresh PNG SHA-256, alpha decoding, CI, R2/Production probes: **NOT RUN**.
-- Overall Gate 0 physical validation: **PARTIAL** until the annex above is measured. Never claim G0 fully done without it.
+- Gate 0 reference inventory and raw-pixel validation are **COMPLETE** (see §9). Visual landmark coordinates are guides, not pixel-perfect rig pivots; verify actual fit at G2.
 - Gate G1: complete Leather concept requires Owner preview approval.
 - Gate G2: Idle_01 seven-layer prototype requires separate Owner approval before expansion to 56 paths.
 - G3–G6: frames, visual QA, automated regression, R2 and production evidence separately.
@@ -83,3 +83,40 @@ Using GitHub original Base image retrieval, all 8 PNG images were opened and vis
 **Interpretation:** Idle animation shows modest vertical bob, but Attack/Death change limb direction and large silhouette bounds. Do not apply Idle anchors to Attack or Death. Source images show distinct shoulders, elbows/wrists, hips, knees and boot shapes, but exact skin/garment contours and joint centers were NOT quantified. For any production-ready atlas, derive explicit bilateral shoulder/wrist, waist, knees, feet and helmet fit points by pixel-mask/annotation review, with pixel-alpha bbox measurement and raw PNG SHA-256 read-back. Above coordinates are for coarse review navigation only.
 
 **Verification grading:** 8/8 visual source frames READ/PASS for existence and pose recognition; numeric bboxes/landmarks **PROVISIONAL**; exact anchor acceptance **PENDING**. No render, new artwork, R2 upload, CI or Production checks were performed as part of this visual review.
+
+
+## 9. Gate 0 final machine-readable image integrity evidence (2026-10-27)
+**Actual original file bytes** were fetched from the GitHub connector at the path in §2; raw PNG SHA-256 was calculated independently over decoded file bytes. PNG IHDR: all eight files are **768×768, 8-bit RGBA (PNG color type 6)**. Their zlib IDAT pixel data was decompressed, PNG row filters reversed, and the `alpha > 0` bounding rectangle computed; rectangle format is `[left, top, rightExclusive, bottomExclusive]`. Opaque-pixel metric below means *nonzero alpha* (not fully opaque). Git blob SHA-1 and source path provenance remain in §2.
+
+| Frame | Raw PNG SHA-256 | Alpha>0 bounds [L,T,R,B) | Alpha>0 pixels |
+|---|---|---|---:|
+| idle_01 | `579afb8b58518d7c3397d1bc29744df6ef0c7d14728e8b0b9f333f6f10dbb062` | [244,206,464,646] | 64305 |
+| idle_02 | `0175d1a45643a55683f1f1ee973e560502fb0da227a7589d733ca9f373f74d4a` | [244,194,464,634] | 64305 |
+| idle_03 | `36681408666113e5fb3c62d371ebb0f3c381c1183b81bda9c5e245d6f4ccc609` | [244,202,464,642] | 64305 |
+| attack_01 | `a30e83047d8218558044e97e660154e9d1d6e12805db1ea94b16d7fd79d9739e` | [224,256,512,670] | 62162 |
+| attack_02 | `2651ed58209b6bec5e06ffc6bba4eed7058cd4f467e9a4bd57f7cbed1412c0ba` | [188,257,512,672] | 61748 |
+| attack_03 | `0e0a455cc315e4e7396d46ea30c85408623fb4cc8b0a96095eddceae946f948a` | [204,256,436,669] | 57662 |
+| death_01 | `20502f785cda199e6632dbff175e4b93a8404624d50e1513d4be3dc2695dda6a` | [132,212,554,704] | 58864 |
+| death_02 | `a5b722a6e62647674cd5152e8286f687cd02e318b1c8754dec7606ba4518b8b3` | [183,355,692,705] | 53034 |
+
+**Read the differences correctly:** §8's approximate visible contours differ from strict `alpha>0` bounds; the Death frames in particular have very low-alpha outlier pixels beyond visually solid body. The table above is objectively measured raw-alpha envelope, **not** a reliable garment edge, limb articulation point, ground-contact anchor, or permission to stretch armor to that envelope. Graphics must inspect visible edges at intended playback scale during G1/G2.
+
+### Pose-specific landmark reference map (visual estimates; all coordinates on source canvas)
+This map was estimated from the eight rendered original Base images in §8. Landmarks below are intentionally **rough review points** (approximate ±15–30px, sometimes more on occluded joints) for locating anatomy, not rig pivots, collision geometry, mathematically measured keypoints or acceptance thresholds. `L/R` describe IMAGE-LEFT / IMAGE-RIGHT, not character laterality.
+
+| Frame | Head center | Shoulder L / R | Wrist/hand L / R | Waist | Knee L / R | Foot L / R |
+|---|---|---|---|---|---|---|
+| idle_01 | (359,303) | (306,402) / (408,408) | (267,517) / (444,515) | (357,481) | (305,568) / (402,561) | (286,618) / (393,616) |
+| idle_02 | (359,291) | (306,390) / (408,396) | (267,505) / (444,503) | (357,469) | (305,556) / (402,549) | (286,606) / (393,604) |
+| idle_03 | (359,299) | (306,398) / (408,404) | (267,513) / (444,511) | (357,477) | (305,564) / (402,557) | (286,614) / (393,612) |
+| attack_01 | (375,350) | (302,414) / (385,449) | (299,312) / (481,494) | (351,511) | (302,576) / (393,580) | (247,637) / (364,629) |
+| attack_02 | (340,344) | (285,430) / (354,441) | (212,457) / (487,449) | (327,507) | (253,570) / (372,576) | (213,637) / (335,624) |
+| attack_03 | (341,344) | (289,428) / (354,447) | (229,526) / (413,558) | (328,508) | (263,583) / (367,579) | (228,630) / (334,637) |
+| death_01 | (345,296) | (338,389) / (452,409) | (307,513) / (530,484) | (420,458) | (417,534) / (495,541) | (389,582) / (501,581) |
+| death_02 | (380,450) | (283,529) / (357,541) | (323,648) / (395,652) | (294,603) | (244,636) / (357,632) | (208,650) / (302,655) |
+
+### Gate 0 disposition / reuse contract
+- **DONE / REUSABLE as reference and authoring template:** eight original-image raw bytes + SHA-256, dimensions, PNG RGBA format, exact Alpha>0 envelopes, per-pose coarse visual landmark guide, existing Azure grip coordinates, slot/layer/hair policy, manifest precedence and path provenance are archived here.
+- **G0 does not certify pixel-perfect rig joints:** these do not exist as canonical source coordinates and cannot be derived reliably from transparency alone. Physical fit, occluded wrist/shoulder joints, hair seams, silhouette allowance and armor proportions MUST be judged on the **G16 Idle_01 seven-layer prototype (Owner Gate G2)** against actual Base, and again during all-frame G4 QA. No numeric joint tolerance has been invented.
+- Downstream G17–G20 and Skeleton must **reuse** these references, not repeat Gate 0, unless Base SHA-256, frame IDs, PNG dimensions, default hair, runtime layering or manifest selection changes. Document scoped revalidation when needed.
+- **G16 Gate 1 concept production is still pending Graphics assignment/Owner approval**, and G16 Gate 2 requires Owner prototype sign-off. Nothing here approves art, runtime hair implementation, R2, or deploying to Production.
