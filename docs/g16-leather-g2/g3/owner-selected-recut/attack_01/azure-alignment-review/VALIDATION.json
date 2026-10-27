@@ -1,0 +1,223 @@
+{
+  "status": "OWNER_ALIGNMENT_REVIEW_PENDING",
+  "compositionProfile": "leather_overlap_v1",
+  "hairMode": "hidden_full_cover",
+  "handOcclusionCrop": [
+    277,
+    277,
+    67,
+    69
+  ],
+  "transforms": {
+    "helmet": {
+      "delta": [
+        0,
+        0
+      ],
+      "basis": "shared canonical head reference; no Azure ornament bbox fitting"
+    },
+    "arm_rear": {
+      "delta": [
+        0,
+        0
+      ],
+      "basis": "Azure Attack01 raised grip [310,309] already shared"
+    },
+    "arm_front": {
+      "delta": [
+        2,
+        -3
+      ],
+      "basis": "Azure opposite wrist visual alignment"
+    },
+    "legs_boots": {
+      "delta": [
+        -1,
+        0
+      ],
+      "basis": "Azure left boot alpha contact x218 bottom667"
+    },
+    "torso_armor": {
+      "uniformScale": 0.26,
+      "angleDegrees": 13,
+      "sourceAnchor": [
+        711,
+        848
+      ],
+      "targetAnchor": [
+        344,
+        516
+      ],
+      "matrix": [
+        [
+          0.2533362168441612,
+          -0.0584872741294049
+        ],
+        [
+          0.0584872741294049,
+          0.2533362168441612
+        ]
+      ],
+      "translation": [
+        213.47515828553676,
+        259.5864362101444
+      ]
+    },
+    "sword": {
+      "uniformScale": 1,
+      "angleDegrees": -172.86425466957812,
+      "sourceAnchor": [
+        270,
+        515
+      ],
+      "targetAnchor": [
+        310,
+        309
+      ],
+      "matrix": [
+        [
+          -0.9922546330619532,
+          0.12422054245207866
+        ],
+        [
+          -0.12422054245207866,
+          -0.9922546330619532
+        ]
+      ],
+      "translation": [
+        513.9351715639068,
+        853.5506824889671
+      ]
+    }
+  },
+  "azureExactContractGrip": [
+    310,
+    309
+  ],
+  "azureVisualGuides": {
+    "buckle": [
+      344,
+      516
+    ],
+    "oppositeWristAdjustment": [
+      2,
+      -3
+    ],
+    "leftBootContact": [
+      218,
+      667
+    ]
+  },
+  "accuracy": "Grip is canonical contract; buckle/wrist are manual visual guides, not rig coordinates. Azure slot bboxes are not interchangeable anatomical anchors.",
+  "azureRaisedArmLayer": "arm_front",
+  "leatherRaisedArmLayer": "arm_rear",
+  "weaponSource": "docs/g16-leather-g2/exports/idle_01/sword.png",
+  "weaponSourceSha256": "b3786f8f1e69c4c2924844df57d12d65804d11b3ce24bf80a18b2e286e8b960d",
+  "baseSha256": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+  "baseModified": false,
+  "runtimeArchitectureModified": false,
+  "promotedToFinal": false,
+  "R2Uploaded": false,
+  "files": [
+    {
+      "name": "torso_armor",
+      "size": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        273,
+        308,
+        438,
+        622
+      ],
+      "sha256": "3220de8eb558a3cdfd50f1ce6b9cae1469ea8760d28238cb4ea4d26398aefd3b"
+    },
+    {
+      "name": "coverage_underlay",
+      "size": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": null,
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b"
+    },
+    {
+      "name": "sword",
+      "size": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        125,
+        167,
+        348,
+        339
+      ],
+      "sha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb"
+    },
+    {
+      "name": "arm_rear",
+      "size": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        233,
+        277,
+        342,
+        462
+      ],
+      "sha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb"
+    },
+    {
+      "name": "helmet",
+      "size": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        277,
+        240,
+        486,
+        415
+      ],
+      "sha256": "fe7857892db382855107d937b46d87a8fd3d50158e6afbd339f613f653190b0a"
+    },
+    {
+      "name": "legs_boots",
+      "size": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        218,
+        493,
+        430,
+        667
+      ],
+      "sha256": "8c93c9892399e37d59d05a51891612c8b094cc3fb9f238abb3e8a91730fa5293"
+    },
+    {
+      "name": "arm_front",
+      "size": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "alphaBounds": [
+        374,
+        432,
+        515,
+        518
+      ],
+      "sha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148"
+    }
+  ]
+}
