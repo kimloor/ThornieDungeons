@@ -225,7 +225,7 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 **Later main baseline:** Ver 1.1.15 / Client Systems PR-D merged after that review; the above 804/804 count applies to Ver 1.1.14 and must not be misreported as the Ver 1.1.15 test result.
 
 ### WAVE 2 — Admin V2 Expansion
-**Status: CONTRACTS (ADMIN-V2.md section 22) APPROVED; W2-A IN PR (Ver 1.1.20, risk HIGH, awaiting Owner merge approval); W2-C next in parallel; W2-D/E/F not started; ADDITIONAL TOOLS PENDING DESIGN (2026-10-27)**
+**Status: CONTRACTS (ADMIN-V2.md section 22) APPROVED; W2-A (HIGH, Ver 1.1.20), W2-C (MEDIUM), W2-D and W2-E each IN their own PR (stacked, merge in order A, C, D, E); W2-F not started; ADDITIONAL TOOLS PENDING DESIGN (2026-10-27)**
 **Contract/design record:** `docs/ADMIN-V2.md` sections 21-22; Claude read-only audit Issue #144.
 
 - **W2-A — mutation audit logging (approved):** cover all current Admin data mutations, with actor, action, target, sanitized change detail and reliable persistence. Revalidate the eight unaudited mutation actions reported in Issue #144 against the latest code.

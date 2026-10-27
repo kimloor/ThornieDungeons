@@ -63,6 +63,36 @@ async function handleR2Admin(request, env, url) {
   }
 }
 
+// W2-C (ADMIN-V2.md 22.4): CSP + security headers for the Admin page only. Game pages are untouched.
+// connect-src lists the one API origin admin-app.js talks to (SERVER_URL).
+const ADMIN_API_ORIGIN = "https://thornie-dungeons-api.ekqtjl.workers.dev";
+const ADMIN_PATHS = new Set(["/admin", "/admin/", "/admin.html"]);
+const ADMIN_SCRIPT_PATH = "/admin-app.js";
+const ADMIN_CSP = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  `connect-src 'self' ${ADMIN_API_ORIGIN}`,
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'"
+].join("; ");
+
+function withAdminSecurityHeaders(response, pathname) {
+  const headers = new Headers(response.headers);
+  headers.set("X-Content-Type-Options", "nosniff");
+  if (pathname === ADMIN_SCRIPT_PATH) {
+    headers.set("Cache-Control", "no-store");
+  } else {
+    headers.set("Content-Security-Policy", ADMIN_CSP);
+    headers.set("Referrer-Policy", "no-referrer");
+    headers.set("X-Frame-Options", "DENY");
+    headers.set("Cache-Control", "no-store");
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -97,6 +127,9 @@ export default {
     }
 
     // Static Assets owns the normal site entrypoint. index.html is the only generated app entrypoint.
+    if (ADMIN_PATHS.has(url.pathname) || url.pathname === ADMIN_SCRIPT_PATH) {
+      return withAdminSecurityHeaders(await env.ASSETS.fetch(request), url.pathname);
+    }
     return env.ASSETS.fetch(request);
   }
 };

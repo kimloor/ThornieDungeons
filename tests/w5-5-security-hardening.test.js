@@ -362,9 +362,8 @@ test("duplicate registration exposes one generic availability error", async () =
   assert.equal(duplicate.body.error === "id_unavailable", false);
 });
 
-test("Admin output escapes untrusted values before HTML interpolation", () => {
-  const html = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
-  assert.match(html, /function escapeHtml\(value\)/);
-  assert.doesNotMatch(html, /\$\{r\.(?:recipeId|type|name|setId|item_type|rarity|weight|junk_id|qty_min|qty_max|drop_chance)\}/);
-  assert.doesNotMatch(html, /\$\{j\.(?:junk_id|name|icon)\}/);
+test("Admin output never builds HTML from data (W2-C: DOM construction only)", () => {
+  const js = fs.readFileSync(path.join(__dirname, "../admin-app.js"), "utf8");
+  assert.doesNotMatch(js, /\.innerHTML|\.outerHTML|insertAdjacentHTML|document\.write|\beval\(|new Function/);
+  assert.match(js, /function el\(tag, props/);
 });

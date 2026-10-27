@@ -7,6 +7,7 @@ on:
     paths:
       - "index.html"
       - "admin.html"
+      - "admin-app.js"
       - "worker.js"
       - "wrangler.jsonc"
       - ".github/workflows/deploy-frontend-production.yml"
@@ -78,9 +79,14 @@ jobs:
           test -n "$expected_version" || { echo "Application version missing in head.html"; exit 1; }
           grep -q "name=\"application-version\" content=\"$expected_version\"" index.html || { echo "Application version marker missing or stale (expected $expected_version)"; exit 1; }
           test -s admin.html || { echo "admin.html is missing or empty"; exit 1; }
-          grep -q 'action: "adminLogin"' admin.html || { echo "Admin V2 login UI missing from admin.html"; exit 1; }
-          if grep -q "thornie-admin-key" admin.html; then
-            echo "Legacy Admin key storage still present in admin.html"
+          test -s admin-app.js || { echo "admin-app.js is missing or empty"; exit 1; }
+          grep -q 'action: "adminLogin"' admin-app.js || { echo "Admin V2 login UI missing from admin-app.js"; exit 1; }
+          if grep -q "<script>" admin.html; then
+            echo "Inline script reintroduced in admin.html (CSP requires admin-app.js)"
+            exit 1
+          fi
+          if grep -q "thornie-admin-key" admin.html admin-app.js; then
+            echo "Legacy Admin key storage still present in Admin files"
             exit 1
           fi
 
@@ -109,8 +115,21 @@ jobs:
             -H "Sec-Fetch-Mode: navigate" \
             --output "$admin_response_file" \
             "$PRODUCTION_URL/admin"
-          grep -q 'action: "adminLogin"' "$admin_response_file"
-          if grep -q "thornie-admin-key" "$admin_response_file"; then
+          admin_headers_file="$RUNNER_TEMP/thorniedungeons-admin-headers.txt"
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Sec-Fetch-Mode: navigate" \
+            --dump-header "$admin_headers_file" --output /dev/null \
+            "$PRODUCTION_URL/admin"
+          grep -qi "^content-security-policy:.*script-src 'self'" "$admin_headers_file" || { echo "Admin CSP header missing"; exit 1; }
+          grep -qi "^x-frame-options: DENY" "$admin_headers_file" || { echo "Admin X-Frame-Options missing"; exit 1; }
+          if curl --silent --max-time 30 --head "$PRODUCTION_URL/" | grep -qi "^content-security-policy:"; then
+            echo "Game page unexpectedly carries the Admin CSP"
+            exit 1
+          fi
+          admin_js_file="$RUNNER_TEMP/thorniedungeons-admin-app.js"
+          curl --fail --silent --show-error --max-time 30 --output "$admin_js_file" "$PRODUCTION_URL/admin-app.js"
+          grep -q 'action: "adminLogin"' "$admin_js_file"
+          if grep -q "thornie-admin-key" "$admin_response_file" "$admin_js_file"; then
             echo "Production Admin page still contains legacy key storage"
             exit 1
           fi
