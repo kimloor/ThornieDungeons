@@ -1,15 +1,18 @@
 {
-  "status": "ARTWORK_REVIEW_HOLD_NO_RUNTIME_CHANGE",
-  "death_01": {
-    "sourceLayer": "arm_rear",
-    "anatomy": "anatomical right open hand",
-    "weaponEmpty": true,
-    "required": false,
-    "crop": null,
-    "emptyReason": "Death pose releases weapon; Azure Death contract has no required grip and transparent sword.",
-    "runtimeApproved": false,
-    "note": "No post-sword pass is needed with this empty weapon. No Idle crop is copied. Manual profile-order study is not renderer validation."
+  "frames": {
+    "death_01": {
+      "sourceLayer": "arm_rear",
+      "crop": null,
+      "required": false,
+      "status": "NOT_REQUIRED_EMPTY_DEATH_SWORD"
+    },
+    "death_02": {
+      "sourceLayer": "arm_rear",
+      "crop": null,
+      "required": false,
+      "status": "NOT_REQUIRED_EMPTY_DEATH_SWORD"
+    }
   },
-  "death_02": { "status": "NOT_STARTED", "crop": null },
-  "attack": { "status": "UNCHANGED_RUNTIME_CROPS_UNRESOLVED_SEPARATE_DEV_GATE" }
+  "attackStatus": "UNRESOLVED_SEPARATE_DEV_GATE",
+  "runtimeChanged": false
 }

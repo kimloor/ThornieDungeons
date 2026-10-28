@@ -1,0 +1,19 @@
+{
+  "mode": "built-in ImageGen",
+  "frame": "death_02",
+  "geometryAdmitted": false,
+  "parts": [
+    {
+      "layer": "arm_rear",
+      "prompt": "Use case precise-object-edit. Isolated right equipment arm for canonical kneeling Death_02 game pose. Image1 is exact arm/hand silhouette and placement target: shoulder top left, relaxed elbow, forearm slanting down right, loosely curled hand hanging at the bottom. Image2 is approved Leather material/design reference only. Dress ONLY image1 in matching dark brown cloth sleeve from rounded upper-arm insertion cap to elbow, brown leather forearm bracer with thin brass border, one rivet and a small side buckle, and dark brown full-finger leather glove. Preserve exact shoulder/elbow/wrist/hand coordinates, relaxed fingers, anatomy and image1 canvas placement. Do not pose from image2 or use its clenched fist. Cover all skin. Keep complete hidden sleeve cap, natural leather folds and clean outlined fantasy cartoon rendering matching image2. No shoulder armor, torso, skin, face, weapon, text or shadow. Output one isolated sleeve/bracer/glove on actual transparent background, same canvas composition and margins as image1."
+    },
+    {
+      "layer": "arm_front",
+      "prompt": "Use case precise-object-edit. Isolated anatomical left equipment arm for kneeling bowed Death_02. Image1 is exact relaxed arm silhouette and canvas target: narrow upper sleeve insertion at top, elbow bent slightly, forearm slants down right, loose hanging fingers at bottom. Image2 is approved Leather material/design only. Dress image1 in dark brown cloth sleeve, thin brass outlined brown leather forearm bracer with two small brass rivets and wrist strap, and full-finger dark brown leather glove. Preserve exact image1 anatomy, elbow, wrist, hand and curved fingertips, placement and generous transparent margins. No new pose or fist, no anatomical stretch, no extra fingers. Finish upper sleeve insertion beneath shoulder armor. Cover all skin. Match image2 outlined fantasy cartoon rendering and brown/brass palette. One isolated equipment arm, no shoulder plate, torso, body, skin, face, sword, text or background."
+    },
+    {
+      "layer": "legs_boots",
+      "prompt": "Use case precise-object-edit. Isolated folded kneeling trousers and boots for Death_02. Image1 is the EXACT canonical kneeling lower-body target, including its canvas placement in the UPPER HALF and EMPTY LOWER HALF. Image2 is approved Leather design reference ONLY, never a pose reference. Replace ONLY the pants and boots in image1 with image2 dark brown cloth trousers, round brown leather knee pads each with one small brass rivet, brown leather shin bands and dark brown leather boots with toe panels. Preserve image1 exact waist, folded hips, thighs, knees, ankles and left-pointing rear boot positions. The knees touch the ground, BOTH lower legs fold back under the seated hips; do not turn this into standing legs. Remove the unrelated bare forearm/hand that overlaps at right; reconstruct continuous pants behind it. No skin, arms, torso, face, sword or white shirt. Complete the continuous waistband insertion at top. Keep same thin dark outlines, material rendering and restrained brown/brass palette as image2. Maintain EXACT image1 margins: isolated legs occupy ONLY upper half of square, lower half stays transparent, no recentering or resizing. Transparent background, no text, shadows or scene."
+    }
+  ]
+}

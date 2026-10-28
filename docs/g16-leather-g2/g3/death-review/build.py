@@ -78,6 +78,10 @@ add=needed>old;arr[add,:3]=arr[ix[0],ix[1],:3][add];arr[:,:,3]=np.maximum(old,ne
 parts['torso_armor']=Image.fromarray(arr)
 mask.save(M/'chest_owned_insertion_mask.png')
 
+# Owner accepted the latest placement sheet on 2026-10-28. Bake only
+# these exact offline integer shifts; all five other exports remain unchanged.
+for n,(dx,dy) in {'helmet':(-2,-8),'torso_armor':(-2,-6)}.items():
+    shifted=Image.new('RGBA',(768,768));shifted.paste(parts[n],(dx,dy));parts[n]=shifted
 for n,im in parts.items():im.save(E/(n+'.png'))
 orders={'authoring':['coverage_underlay','legs_boots','arm_front','torso_armor','helmet','sword','arm_rear'],
         'leather_runtime_no_weapon':['coverage_underlay','legs_boots','arm_rear','arm_front','torso_armor','helmet','sword']}
@@ -97,7 +101,7 @@ for n in LAYERS:
     azure=Image.alpha_composite(azure,Image.open(f).convert('RGBA'));azsources.append({'layer':n,'path':str(f.relative_to(R)),'sha256':sha(f)})
 azure.save(Q/'azure.png')
 sheet=Image.new('RGB',(1920,590),(220,225,233));d=ImageDraw.Draw(sheet)
-for i,(label,im) in enumerate([('Canonical Base / unchanged',base),('Azure / current main manifest',azure),('Leather Death_01 / REVIEW HOLD',Image.open(Q/'leather_runtime_no_weapon.png'))]):
+for i,(label,im) in enumerate([('Canonical Base / unchanged',base),('Azure / current main manifest',azure),('Leather Death_01 / OWNER APPROVED',Image.open(Q/'leather_runtime_no_weapon.png'))]):
     d.text((i*640+15,15),label,font=font,fill='black');sheet.paste(flat(im.crop((100,140,740,680))),(i*640,45))
 sheet.save(P/'DEATH_01_COMPARISON.png')
 sheet=Image.new('RGB',(1400,600),(220,225,233));d=ImageDraw.Draw(sheet)
@@ -119,15 +123,5 @@ protected=list((R/'r2-upload/hero/v5/g2/base').glob('*.png'))+list((R/'docs/g16-
 for f in protected:assert subprocess.check_output(['git','show','HEAD:'+str(f.relative_to(R))],cwd=R)==f.read_bytes()
 (P/'PLACEMENT.json').write_text(json.dumps(guides,indent=2)+'\n')
 (P/'DONOR_ADMISSION.json').write_text(json.dumps(admissions,indent=2)+'\n')
-(P/'VALIDATION.json').write_text(json.dumps({'status':'G16_G3_DEATH_01_VISUAL_HOLD_MATERIAL_REGISTRATION_DEFECTS','mainChecked':subprocess.check_output(['git','rev-parse','origin/main'],cwd=R,text=True).strip(),'branchParent':'bd25be1f4e252856be8d0e85dbe12ea8ec5e46ca','risk':'MEDIUM','torsoFacing':'front / reclined three-quarter','files':records,'azureSources':azsources,'protectedPngCount':len(protected),'protectedByteIdentical':True,'baseResampled':False,'runtimeChanged':False,'runtimeOffsetBaked':False,'productionManifestChanged':False,'death02Started':False,'G3Complete':False,'G4Ready':False,'visualAcceptance':False,'technicalChecks':'PASS; does not imply visual acceptance','knownDefects':['Donor-to-canonical silhouette mismatch produces smeared/flattened material at wrist/hand boundaries and boot/leg edges.','Reconstructed bracer, shin bands and knee surfaces require comparison/acceptance against approved Leather design.','Chest-owned insertion and helmet-to-neck clearance remain prototype art-review points, not accepted fit.'],'inventory':{'expectedFinal':56,'establishedIdleAttackPaths':42,'death01PrototypePaths':7,'acceptedDeathPaths':0,'death02MissingPaths':7,'finalInventoryReconciled':False}},indent=2)+'\n')
-
-study=Image.open(Q/'leather_runtime_no_weapon.png').convert('RGBA')
-focus=Image.new('RGB',(1440,960),(220,225,233));d=ImageDraw.Draw(focus)
-for i,(label,box) in enumerate([('Right wrist / donor material stretches', (277,440,342,510)),('Boot edges / flattened material', (360,533,535,620)),('Neck + chest seam / fit review', (320,359,470,443))]):
-    for j,(tag,im) in enumerate([('Canonical Base',base),('Current prototype',study)]):
-        c=flat(im.crop(box));c.thumbnail((430,260));scale=min(430/c.width,260/c.height);c=c.resize((round(c.width*scale),round(c.height*scale)),Image.Resampling.NEAREST)
-        focus.paste(c,(i*480+(480-c.width)//2,70+j*360));d.text((i*480+12,20+j*360),label if j==0 else tag,font=font,fill='black')
-d.text((15,850),'HOLD: no Death_02 expansion; no G3 completion or 56/56 acceptance.',font=font,fill=(150,25,25))
-d.text((15,880),'Base anatomy and Attack art preserved. Material registration defects remain visible.',font=font,fill=(150,25,25))
-focus.save(P/'FOCUSED_VISUAL_REVIEW.png')
-print('PASS: 7 prototype paths; protected Base, Idle and Attack bytes unchanged. Visual review pending.')
+(P/'VALIDATION.json').write_text(json.dumps({'status':'DEATH_01_OWNER_APPROVED_DEATH_02_REVIEW_PENDING','mainChecked':subprocess.check_output(['git','rev-parse','origin/main'],cwd=R,text=True).strip(),'risk':'MEDIUM','ownerAccepted':'2026-10-28 latest placement-review-v2 after.png at 52252e222217c3b8207093d7dff59e3974c74698','approvedOfflineShifts':{'helmet':[-2,-8],'torso_armor':[-2,-6]},'torsoFacing':'front / reclined three-quarter','files':records,'azureSources':azsources,'protectedPngCount':len(protected),'protectedByteIdentical':True,'baseResampled':False,'runtimeChanged':False,'runtimeOffsetBaked':False,'productionManifestChanged':False,'G3Complete':False,'G4Ready':False,'death01VisualAcceptance':True,'death02VisualAcceptance':False,'technicalChecks':'PASS; Death_02 still requires Owner visual review'},indent=2)+'\n')
+print('PASS: Death_01 accepted positions baked into 7 paths; Base, Idle and Attack bytes unchanged.')

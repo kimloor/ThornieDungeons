@@ -1,8 +1,18 @@
 {
-  "status": "G16_G3_DEATH_01_VISUAL_HOLD_MATERIAL_REGISTRATION_DEFECTS",
+  "status": "DEATH_01_OWNER_APPROVED_DEATH_02_REVIEW_PENDING",
   "mainChecked": "614d8e363efa074d257319f3e3578a56196c2a06",
-  "branchParent": "bd25be1f4e252856be8d0e85dbe12ea8ec5e46ca",
   "risk": "MEDIUM",
+  "ownerAccepted": "2026-10-28 latest placement-review-v2 after.png at 52252e222217c3b8207093d7dff59e3974c74698",
+  "approvedOfflineShifts": {
+    "helmet": [
+      -2,
+      -8
+    ],
+    "torso_armor": [
+      -2,
+      -6
+    ]
+  },
   "torsoFacing": "front / reclined three-quarter",
   "files": [
     {
@@ -26,7 +36,7 @@
     {
       "layer": "torso_armor",
       "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/torso_armor.png",
-      "sha256": "3cdc8c8e84ef636a565440a5ea9c5c5d73d7d310f993a049afcec3b71193fe70",
+      "sha256": "e6c380b7d98d663c4c8b4393465ec19a1935133fee7b5a2dc212e2a9e9d2532a",
       "dimensions": [
         768,
         768
@@ -37,10 +47,10 @@
         0
       ],
       "alphaBounds": [
-        317,
-        363,
-        491,
-        479
+        315,
+        357,
+        489,
+        473
       ],
       "alphaNonzeroPixels": 11822,
       "edgeAlphaNonzero": 0
@@ -92,7 +102,7 @@
     {
       "layer": "helmet",
       "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/helmet.png",
-      "sha256": "a252b081c43b4c74c8200108bb2650d3b1d4b5ee078c0d404e52cca8a999ee7c",
+      "sha256": "04ae98f95c297540401252a991c9dbe787fe03c3e7d7e28d7fdf4ac613decd58",
       "dimensions": [
         768,
         768
@@ -103,10 +113,10 @@
         0
       ],
       "alphaBounds": [
-        232,
-        197,
-        433,
-        390
+        230,
+        189,
+        431,
+        382
       ],
       "alphaNonzeroPixels": 19955,
       "edgeAlphaNonzero": 0
@@ -195,22 +205,9 @@
   "runtimeChanged": false,
   "runtimeOffsetBaked": false,
   "productionManifestChanged": false,
-  "death02Started": false,
   "G3Complete": false,
   "G4Ready": false,
-  "visualAcceptance": false,
-  "technicalChecks": "PASS; does not imply visual acceptance",
-  "knownDefects": [
-    "Donor-to-canonical silhouette mismatch produces smeared/flattened material at wrist/hand boundaries and boot/leg edges.",
-    "Reconstructed bracer, shin bands and knee surfaces require comparison/acceptance against approved Leather design.",
-    "Chest-owned insertion and helmet-to-neck clearance remain prototype art-review points, not accepted fit."
-  ],
-  "inventory": {
-    "expectedFinal": 56,
-    "establishedIdleAttackPaths": 42,
-    "death01PrototypePaths": 7,
-    "acceptedDeathPaths": 0,
-    "death02MissingPaths": 7,
-    "finalInventoryReconciled": false
-  }
+  "death01VisualAcceptance": true,
+  "death02VisualAcceptance": false,
+  "technicalChecks": "PASS; Death_02 still requires Owner visual review"
 }

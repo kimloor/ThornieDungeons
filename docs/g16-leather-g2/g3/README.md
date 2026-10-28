@@ -1,76 +1,28 @@
-# G16 Gate 3 — current review status and evidence
+# G16 G3 — current artwork review
 
-Status: **ATTACK_01–03 POSES OWNER CONFIRMED / REAR-TORSO CORRECTION COMPLETE — ART REVIEW PENDING**.
+Status: **DEATH_01 OWNER APPROVED / DEATH_02 OWNER REVIEW PENDING** (2026-10-28). Existing Draft PR #160, branch `art/g16-g3-leather-frames`. Latest main inspected: `614d8e363efa074d257319f3e3578a56196c2a06`. Risk MEDIUM: isolated Death equipment art and scoped documentation cleanup.
 
-The Owner confirmed all three current attack poses match. The remaining error was the visible armor surface: Attack_02/03 require rear-facing torso panels, not distorted front plates. [Latest rear-torso review](attack-back-torso-review/README.md) and [Project Lead handoff](attack-back-torso-review/PROJECT_LEAD_HANDOFF.md) are the current review authority. Exactly two torso PNGs changed; the other 19 Attack PNGs, including all seven Attack_01 files, remain byte-identical. Existing torso alpha footprints and all composite silhouettes are unchanged. See Pipeline §4D for the recorded authoring method and facing rule.
+## Current source of truth
 
-The 21 declared final export paths below remain the Idle inventory; the 21 Attack candidate paths are separate review material. No new corrected rear-art acceptance, final inventory promotion, Death_01/02 completion, G3 completion or G4 readiness is inferred. Main rechecked 7ef31753b969386d2750857dddaa53d44c03081c; existing PR #160 is updated, with no R2/runtime/production changes.
+- `VALIDATION.json`: current 8-frame inventory and per-frame SHA-256, alpha, dimensions, origin, draw-order and hand-occlusion records.
+- `SHA256SUMS`: the 56 current declared equipment paths only, relative to this folder. Historical authoring checkpoints are not extra final exports.
+- `qa/FULL_SET_CONTACT_SHEET.png`: all eight actual export reassemblies. Idle/Attack/Death contact sheets and GIF previews are alongside it.
+- `death-review/DEATH_02_COMPARISON.png`: canonical Base / current-main Azure resolver / Leather candidate, same crop, origin and scale.
+- `death-review/DEATH_PARTS_SHEET.png`: both Death frames and all 14 isolated declared pieces.
+- `PROJECT_LEAD_HANDOFF.md`: one current, copy-ready handoff. Superseded checkpoint READMEs, stale validation ledgers and handoffs have been removed at Owner request; `CLEANUP.json` records scope and recovery commit.
 
-## Archived progress notes
+## Approval record and export locations
 
-The text below preserves earlier attempts and checkpoint notes, including old pose holds and pending-review wording. Those describe their original submissions; they do not override the Owner's subsequent pose acceptance or the current correction above. The rejected generated sources remain rejected and are not used in the current Attack candidates.
+Idle: approved G2 material, exact canonical bob translations, `exports/idle_01` through `idle_03`. Attack: all poses and corrected Attack_02/03 rear torso surfaces approved; all 21 PNGs stay unchanged in `attack-back-torso-review/exports/attack_01` through `attack_03`. Death_01: Owner accepted the latest two-step placement preview at `52252e2`, then said to continue. Helmet [-2,-8] and chest [-2,-6] are now baked as exact integer offline shifts into `death-review/exports/death_01`; the actual reassembly matches the accepted preview pixel-for-pixel. The five other Death_01 files are byte-identical.
 
-Status: **G16 G3 PHASE A REVIEW HOLD — SOURCE RECONSTRUCTION AUTHORIZED; ATTACK_01 CANDIDATE NOT ACCEPTED**.
+Death_02: seven new candidate files in `death-review/exports/death_02`. It uses its own canonical kneeling/collapsed anatomy, manual clothing-only helmet/chest reconstruction from approved Idle pieces, and three bounded isolated-part ImageGen RGB donors. No generated Base/face/body geometry is admitted. Prompts, inputs, donor masters and admission masks remain available for future edits.
 
-Source revision update: see [Phase A README](revision-a/README.md) and [enlarged detail review](revision-a/qa/ATTACK_01_DETAIL_REVIEW.png). Per-pose reconstruction and bounded paintover were authorized and attempted for Attack_01. Seven candidate PNGs are isolated from final exports; approved final inventory remains 21/56. Material cheek/shoulder contour differences and hidden-material/extraction defects still block Phase A. Original whole-sheet attempt remains rejected. The sections below retain the earlier attempt history; the current revision disposition is in revision-a/.
-Risk: MEDIUM. Checked main: `1372ed16327aeb7290b1bad0a9c2fa022b425335` (newer than assigned `b3c44c1`; intervening Admin merge does not change equipment contracts). AGENTS.md, Master Template, Pipeline §4B/§4C, runtime contract, current manifest and R2 README read. Gate 0 reused; no Base, default-hair, relevant manifest selection or runtime source drift from task baseline. PR #156 is merged; historical G2 pending-review wording is not rewritten.
+## Gate boundaries
 
-## Deliverables and limits
+All **56 declared paths are present**, consisting of 49 established reference paths and **7 unaccepted Death_02 candidate paths**. This is not 56/56 visual acceptance, final inventory promotion, G3 completion or G4 acceptance. Review Death_02 next; after acceptance reconcile the final state and continue G4. Technical checks do not substitute for Owner visual acceptance.
 
-- `exports/idle_01/`: all seven locked G2 PNG files, copied byte-for-byte. Original evidence is untouched.
-- `exports/idle_02/` and `exports/idle_03/`: fourteen new fixed-canvas RGBA PNGs. The canonical Bases are exact RGBA translations of Idle_01 by (0,-12) and (0,-4), verified before applying those same offline translations to every equipment layer. No per-part movement, rescaling, interpolation or Y=84 runtime offset is used. Full-sword master is preserved.
-- `qa/IDLE_CONTACT_SHEET.png`, `qa/idle_preview.gif`, and three actual layer composites: idle review material. Idle_01 composite matches the approved preview pixel-for-pixel; the other composites match its exact Base translations.
-- `IDLE_METADATA.json`: offline fixture only, **not an approved production manifest**. Merged runtime profile/hair mode and cropped arm_rear pass are used.
-- `VALIDATION.json`: all **56 expected paths** explicitly listed, **21 present / 35 missing**. Dimensions, mode, nonzero alpha, alpha bounds, canvas-edge clipping, byte hashes and Base hashes are recorded. Empty underlay has its required reason.
-- `masters/weapon_free_pose_attempt_01.png`: rejected ImageGen source attempt. Generated idle cells are also rejected; they never replace the approved Idle_01.
-- `qa/POSE_DRIFT_REVIEW.png`: generated Attack/Death candidates overlaid with cyan unchanged Base. Only one uniform whole-sheet scale is applied to recover the 384px reference-cell layout; no per-body registration is used to conceal drift.
+All eight original Bases, 21 Attack PNGs and 28 protected G2/G3 Idle checkpoints remain byte-identical. All current exports are 768×768 RGBA at origin [0,0], no edge alpha/clipping, no baked runtime Y=84. Underlay stays empty; Death sword stays empty with explicit emptyReason.
 
-## Crop disposition
+Idle uses inherited reviewed hand crops. Attack uses the Owner-approved offline order; runtime order/crop compatibility remains a separate DEV gate. Empty Death weapons need no post-sword hand crop. All-frame sheets/GIFs are offline artwork evidence, not actual renderer regression tests. No production manifest, runtime, Base/Azure/Skeleton, R2, merge, gameplay, API/Worker/D1 or deployment change.
 
-| Frame | Crop [x,y,width,height] | Disposition |
-| --- | --- | --- |
-| idle_01 | [0,493,768,42] | Approved reference, unchanged |
-| idle_02 | [0,481,768,42] | Exact -12 Base translation; offline verified |
-| idle_03 | [0,489,768,42] | Exact -4 Base translation; offline verified |
-| attack_01–03 | Unset | No accepted per-frame arm export; must inspect actual hand before defining |
-| death_01–02 | Unset | No accepted per-frame arm export; must inspect actual hand before defining |
-
-Merged `HeroV5RuntimeContract.js` was exercised with the idle fixture: all three frames resolve `base → coverage_underlay → legs_boots → arm_rear → arm_front → torso_armor → helmet → sword → right_hand_occlusion`, hide default hair, and return the matching crops. The full 768px crop width is safe for these exact idle translations because arm_rear and the sword move together. This does not certify other poses, mixed-set visual quality or G5 runtime integration.
-
-## Blocking visual findings / exact next action
-
-The first weapon-free whole-sheet attempt changes anatomy placement and costume details materially. In particular, Attack_01's raised glove and opposite forearm do not register to Base, Attack_02/03's extended/lowered hands drift, Death_01's torso/limbs drift, and Death_02's kneeling head/arms do not fit the unchanged Base. Helmet ridges, cheek panels and shoulder proportions also vary from the locked artwork. These are not accepted as permissible armor silhouette extensions. The candidate face artwork must never be used to replace original facial anatomy.
-
-Per the task's explicit instruction, **“Stop ... and request Project Lead/Owner review if any frame materially deviates from the approved visual design”**, production of the five affected frames is paused. Do not extract these candidates into final slots or fabricate transparent placeholders to claim 56/56. Proposed continuation for review: retain the exact idle results; retry bounded per-pose weapon-free source edits against full-size Base and the locked design, or use an approved editable rig/paintover source. Never normalize limbs independently to conceal mismatch. No runtime architecture expansion is proposed. Anatomical right-hand grip and its association with arm_rear remain unverified for the five blocked poses.
-
-**G3 is not complete; G4 all-frame QA is not ready.** Attack/Death composites, animation previews, crops and their 35 PNGs remain absent. Idle visual sign-off remains with G4/Owner. No R2 upload, live manifest edit, build/deploy, gameplay/economy, Worker/API/D1, Base/Azure/Skeleton edit, CI/Production PASS or publication is included.
-
-## Reproduction
-
-From repository root: `python docs/g16-leather-g2/g3/build_idle_evidence.py` (Pillow + NumPy), then `node docs/g16-leather-g2/g3/verify_runtime.cjs`. After adding/editing documents regenerate the evidence hashes with the Python script. Run `sha256sum -c SHA256SUMS` within this folder. These are scoped offline checks; a full runtime/build regression is deferred to G5 because no runtime source changed.
-
-Image generation used the built-in ImageGen tool; see `PROMPT.md` for the prompt specification and input provenance. Rejected source native size is recorded in VALIDATION.json. No source master was overwritten.
-
-## Latest Attack_01 continuation checkpoint
-
-**ATTACK_01 BOUNDED OVERLAP EXPERIMENT — OWNER VISUAL REVIEW PENDING.** See [review and limitations](owner-selected-recut/attack_01/bounded-overlap-review/README.md). All seven candidate export bytes and protected Idle artwork remain unchanged. Offline visibility masks expose the chest skirt/shoulder plates but leave a raised-shoulder ring; actual Leather runtime fixture separately shows helmet/bracer overlap outside the proposed hand crop. This is not visual acceptance, runtime readiness or final-56 inventory promotion. Current prototype supersedes old blocked-source continuation notes for Attack_01 only; rejected source pixels remain rejected.
-
-## Azure layer order recheck
-
-Owner requested a fresh part-by-part Azure order inspection: see [exact order and cumulative stages](owner-selected-recut/attack_01/azure-layer-walkthrough/README.md). This view uses complete unmasked parts, with no cropped hand or torso redraw. Leather matches the prior unmasked Azure-anatomical-order checkpoint pixel-for-pixel; the different arm filenames are explicitly mapped. Order is verified; artwork fit remains pending.
-
-## Latest Owner-specified Attack_01 order
-
-[Owner layer-order review](owner-selected-recut/attack_01/owner-layer-order/README.md): front to back = right raised arm → sword → helmet → chest → left extended arm → legs/trousers → Base. Rendered from unchanged full parts without masks or extra passes. Owner visual acceptance and runtime compatibility remain pending.
-
-## Neck-fit method study (latest)
-
-Owner accepted the Attack_01 stacking order. [Neckline fit study](owner-selected-recut/attack_01/neckline-fit-study/README.md) compares canonical neck, Owner source, current hollow collar and an alpha-only neckline trial. Proposed correction: lower/shape the chest neckline to reveal the original neck, refine shirt-edge coverage and gold rim. Trial is unfinished; full Attack_01 visual acceptance remains pending.
-
-## Latest neckline refinement candidate
-
-[Neckline refinement review](owner-selected-recut/attack_01/neckline-refinement-review/README.md): continuous leather/gold rim finished over the lowered neckline; canonical neck retained and right-neck shirt sliver covered. Owner-approved stacking retained; only bounded chest artwork changed. Candidate requires Owner visual acceptance before remaining-pose expansion.
-
-## Latest Attack_01–03 review sheet
-
-Owner authorized the remaining chin trim and Attack_02/03 expansion. [Attack review pack V1](attack-review-pack-v1/README.md) contains actual three-frame reassemblies, all 21 candidate equipment pieces, Base overlays and hand/placement metadata. Attack_01 chin overlap trimmed; Attack_02/03 use clothing-only reconstruction on their original Base frames. Owner visual acceptance is pending; no final inventory promotion, no new accepted-path claim. Death_01/02 remain absent and G3/G4 remain incomplete.
+Rebuild Death_01: `python docs/g16-leather-g2/g3/death-review/build.py`. Rebuild Death_02: `python docs/g16-leather-g2/g3/death-review/build_death02.py` (do not use --prepare unless updating pose inputs). Refresh current inventory/sheets/GIFs: `python docs/g16-leather-g2/g3/build_current_qa.py`. Verify the final-path ledger with `sha256sum -c SHA256SUMS` from this folder. Older nested scripts/images are source-authoring checkpoints only; their removed status reports must not be treated as current gates.

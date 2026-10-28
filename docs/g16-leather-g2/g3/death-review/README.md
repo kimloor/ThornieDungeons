@@ -1,36 +1,17 @@
-# G16 Death_01 — focused visual hold
+# G16 Death artwork — current review
 
-Status: **G16 G3 DEATH_01 VISUAL HOLD — MATERIAL REGISTRATION DEFECTS** (2026-10-28).
-Risk MEDIUM. Existing Draft PR #160, branch `art/g16-g3-leather-frames`, parent `bd25be1f4e252856be8d0e85dbe12ea8ec5e46ca`.
+**Death_01 OWNER APPROVED / Death_02 OWNER REVIEW PENDING**, 2026-10-28. Main `614d8e3`, existing Draft PR #160. Current gate/inventory/handoff: [G3 README](../README.md) and [Project Lead handoff](../PROJECT_LEAD_HANDOFF.md).
 
-The assignment explicitly requires stopping with a focused visual review when canonical pose or approved Leather design cannot be preserved satisfactorily. The seven-layer Death_01 prototype exists, but its material registration does not pass Graphics review. **Death_02 is not started. G3 is not complete; G4 is not ready.** Do not promote these prototype exports to a final inventory.
+## Death_01 accepted result
 
-## Review evidence
+Owner accepted the final placement preview at `52252e222217c3b8207093d7dff59e3974c74698`: helmet left 2px/up 8px, torso left 2px/up 6px from the initial prototype. Those exact integer translations are baked into the existing seven layer paths; the other five files are byte-identical. The actual reassembly matches the accepted preview pixel-for-pixel. `qa/DEATH_01_OWNER_APPROVAL_SHEET.png` preserves the latest approved comparison. Superseded placement v1/v2 trial folders and the prior visual-hold sheet are removed. Original source checkpoints remain recoverable in Git.
 
-- `DEATH_01_COMPARISON.png`: unchanged canonical Base, current-main Azure reference and actual Leather seven-file reassembly, identical source canvas/crop/scale.
-- `FOCUSED_VISUAL_REVIEW.png`: wrists, boots and neckline; material stretching/edge flattening remains visible.
-- `SEVEN_PARTS.png`: all seven isolated prototype paths. Underlay and sword are intentionally transparent.
-- `qa/leather_runtime_no_weapon.png`: manual profile-order study (Base → legs → right arm → left arm → chest → helmet; empty underlay/sword omitted). This is **not a runtime renderer test or compatibility PASS**.
-- `qa/authoring.png`: separate Attack-style authoring-order comparison; not the selected Death review image. Complete-arm-after-torso ordering hides the near pauldron, so it is not assumed suitable for this pose.
-- `masters/`: three bounded isolated-part ImageGen donors, supplied pose/design inputs and canonical admission masks. No generated whole Hero or generated face/body is admitted.
-- `build.py`, `PLACEMENT.json`, `DONOR_ADMISSION.json`, `VALIDATION.json`, `SHA256SUMS`: reproducible reconstruction, placements and technical evidence.
+## Death_02 candidate
 
-## Preflight and construction
+`DEATH_02_COMPARISON.png` compares canonical Base, main-manifest Azure resolved through the actual resolver and the actual Leather seven-PNG reassembly. It uses one shared origin/crop/scale, without runtime Y=84. `DEATH_PARTS_SHEET.png` shows the isolated pieces. `DEATH_CONTACT_SHEET.png` shows both frames; all-frame contact sheets and animation previews are in ../qa/.
 
-Latest main inspected: `614d8e363efa074d257319f3e3578a56196c2a06` (main manifest sync). Read current main AGENTS.md and runtime contract, Master Template and Pipeline §§4B–4D, approved G2 Idle and current Attack rear-torso evidence. AGENTS, all canonical Base files and runtime contract are unchanged between this task branch and main; Gate 0 is reused. Main has no G16 production family selection. Current-main Azure Death paths are selected through its manifest; selected file hashes are in VALIDATION.json. No merge from main was necessary for this isolated study.
+Canonical bowed/kneeling anatomy and original face/expression are preserved. Helmet and front torso use clothing-only TPS reconstruction from approved G2 isolated material, with explicitly recorded manual visual guides (not exact rig pivots). Three built-in ImageGen edits provide isolated sleeves/gloves/folded-leg material. Only donor RGB is admitted inside canonical per-part alpha masks; generated anatomy and donor geometry are rejected. Sleeve caps, chest shirt coverage and waistband insertion belong to their own equipment piece. `coverage_underlay` remains transparent. The Death sword is intentionally transparent because the pose releases it and the approved Azure contract specifies no grip.
 
-Death_01 exposes the front torso, reclining backward, with an open anatomical right hand. Helmet and front chest start from approved Idle isolated equipment, fitted with clothing-only TPS using recorded approximate visual guides. Base is neither remapped nor repainted. Three ImageGen edits supply only isolated leg/sleeve/glove material; their RGB is admitted within per-part canonical Base alpha masks. Donor geometry is rejected. Missing donor material is extended from interior RGB; final narrow contour is reconstructed on the canonical part boundary. Original Base face/expression stays the actual original pixels wherever visible. Chest owns its bounded shirt/armhole coverage; underlay stays empty.
+Use `build.py` for accepted Death_01, `build_death02.py` for the distinct Death_02 (never a translation/rotation of Death_01), and ../build_current_qa.py for current validation, comparison sheets and animation previews. `DEATH_02_PLACEMENT.json` records the per-part guides and masks; `masters/death_02/PROMPTS.json` records exact built-in ImageGen prompts. Retained masters/ inputs, complete donors and masks are reusable source material, not additional exported paths.
 
-This preserves canonical part locations, but **does not prove acceptable equipment fit**. The mismatch between donor placement and canonical contours causes stretched/flattened material at the right wrist, thumb/fingers and boot edges. Bracer/knee/shin shading and band details are sharper/different from the approved material. Chest insertion and helmet/neckline clearance also need visual acceptance. These are artwork defects/review points, separate from Base byte preservation. Do not treat successful PNG decoding as visual acceptance, or use a larger silhouette to conceal the mismatch.
-
-## Scoped QA and remaining work
-
-Seven PNG paths are 768×768 RGBA, origin [0,0], with no nonzero canvas-edge alpha. Underlay emptyReason: `Owner: coverage belongs to each equipment piece; no shared underlay artwork`. Sword emptyReason: `Death pose releases weapon; Azure Death contract has no required grip and transparent sword.` No eighth equipment export exists. Runtime Y=84 is not baked.
-
-57 protected PNGs remain byte-identical: eight canonical Bases, 28 G2/G3 Idle checkpoints, and all 21 approved current Attack exports, including both corrected rear torsos. No Base/Azure/Skeleton, production manifest, runtime, gameplay, API/Worker/D1, R2 or deployment change. No frontend build is required because no application source changed.
-
-Inventory is **42 established Idle/Attack paths + 7 unaccepted Death_01 prototype paths + 7 unstarted Death_02 paths**, not 56 accepted paths. Final 8-frame reconciliation/contact sheets/animations and full-set QA remain pending accepted Death artwork. Prior Attack runtime hand crops remain unresolved; do not copy Idle crop metadata. Death_01 has an empty sword, so weapon-hand occlusion is not required for this prototype; this is recorded in HAND_OCCLUSION.json. Death_02 metadata remains unassigned.
-
-Next: Project Lead/Owner reviews the focused material/fit evidence. Revise/register only Death_01 isolated equipment, preserve original canonical anatomy and approved Attack bytes; obtain Death_01 material/pose acceptance before Death_02 construction. Do not merge, publish R2, integrate a production manifest or deploy.
-
-Reproduce from repo root: `python docs/g16-leather-g2/g3/death-review/build.py` (Pillow, NumPy, SciPy). Verify this package with `sha256sum -c SHA256SUMS` from its directory.
+Death_02 still needs Owner visual acceptance. Do not infer G3 completion, G4 visual approval or runtime/production readiness from file presence. The current runtime-order study uses Base → legs → both arms → torso → helmet (empty paths omitted); no new runtime/profile change is made or approved. Death weapons need no post-sword crop. Existing Attack order and crop review remains separate. No R2, production manifest integration, merge or deploy.
