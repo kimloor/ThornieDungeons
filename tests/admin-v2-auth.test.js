@@ -387,7 +387,10 @@ test("Admin Phase 1 UI exposes dashboard/search/viewer without player mutation c
   assert.match(html, /action:\s*"getPlayer"/);
   assert.match(html, /Player Viewer/);
   assert.match(html, /read-only/);
-  assert.doesNotMatch(html, /adminDeletePlayer|adminDeleteItem|setPlayerGold|setPlayerDiamonds|playerMutation/i);
+  // W2-F added exactly one player-affecting action (guarded item delete, dialog flow only).
+  assert.doesNotMatch(html, /adminDeletePlayer|setPlayerGold|setPlayerDiamonds|playerMutation/i);
+  assert.equal((html.match(/action: "adminDeleteItem"/g) || []).length, 1);
+  assert.equal((html.match(/adminDeleteItemFlow\(/g) || []).length, 2);
 });
 
 test("legacy ADMIN_API_KEY compatibility is retired while Admin V2 UI remains session-only", async () => {

@@ -196,6 +196,10 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   target_not_guild_member: "business",
   // admin (7) + W2-D delete-safety validation (3) + W2-E filter validation (1)
   invalid_filter: "validation",
+  feature_disabled: "business",
+  operation_pending: "business",
+  character_in_run: "business",
+  item_state_changed: "business",
   admin_audit_failed: "admin",
   confirm_mismatch: "validation",
   invalid_reason: "validation",

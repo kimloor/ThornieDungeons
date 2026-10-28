@@ -9,6 +9,7 @@ on:
       - "tests/admin-v2-hardening.test.js"
       - "tests/admin-v2-destructive-safety.test.js"
       - "tests/admin-v2-audit-viewer.test.js"
+      - "tests/admin-v2-delete-item.test.js"
       - "workers/thornie-dungeons-api.js"
       - "workers/thornie-dungeons-api-entry.js"
       - "workers/modules/auth.js"
@@ -65,6 +66,8 @@ jobs:
         run: node --test tests/admin-v2-destructive-safety.test.js
       - name: Admin audit viewer tests (W2-E)
         run: node --test tests/admin-v2-audit-viewer.test.js
+      - name: Admin delete item tests (W2-F)
+        run: node --test tests/admin-v2-delete-item.test.js
       - name: Admin app script syntax
         run: node --check admin-app.js
       - name: SHOP-AND-SELL Phase 1 contract tests

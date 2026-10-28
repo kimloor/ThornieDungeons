@@ -31,6 +31,8 @@
  *   GET  ?action=getJunkInfo                                                (NEW, admin.html — material names/icons)
  *   POST { action: "adminUpsertJunkInfo", junkId, name, icon }                (NEW, Admin Bearer)
  *   GET  ?action=adminListAuditLog&eventType&actor&targetType&targetId&from&to&limit&cursor (Admin Bearer, read-only; W2-E)
+ *   GET  ?action=adminGetItemDetail|adminPreviewItemDelete&playerId&characterId&itemId[&quantity]  (Admin Bearer; W2-F)
+ *   POST { action: "adminDeleteItem", playerId, characterId, itemId, quantity, reason, confirmText, snapshotHash, requestId } (Admin Bearer; W2-F, disabled unless game_config admin_item_delete_enabled=true)
  *   POST { action: "adminDeleteJunkInfo", junkId, reason, confirmId }                            (NEW, Admin Bearer)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid|pvp            (pvp = NEW)
  *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD             (NEW, Phase 2.1, last 7 days)
@@ -7614,6 +7616,177 @@ async function handleAdminListAuditLog(db, adminAuth, params) {
   });
 }
 
+// ---------- admin: delete player item (W2-F, ADMIN-V2.md 22.7) ----------
+// VERY HIGH risk. Ships DISABLED: enabled only when game_config key
+// `admin_item_delete_enabled` holds JSON true (absent = off). One exact
+// (player_id, character_id, item_id) triple per request; never bulk, never by name.
+const ADMIN_ITEM_DELETE_FLAG = "admin_item_delete_enabled";
+const ADMIN_ITEM_DELETE_HOURLY_LIMIT = 20;
+const ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS = 30 * 60 * 1000;
+const ADMIN_ITEM_STACK_SLOTS = new Set(["junk", "potion"]);
+
+async function adminItemDeleteEnabled(db) {
+  const row = await db.prepare(`SELECT value_json FROM game_config WHERE key = ?`).bind(ADMIN_ITEM_DELETE_FLAG).first();
+  return !!row && row.value_json === "true";
+}
+
+function canonicalAdminItemJson(row) {
+  const out = {};
+  for (const k of Object.keys(row).sort()) out[k] = row[k];
+  return JSON.stringify(out);
+}
+async function adminItemSnapshotHash(row) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonicalAdminItemJson(row)));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function adminItemExtra(row) {
+  const parsed = safeParseAdminAuditJson(row.extra_json);
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+}
+function adminItemStackInfo(row) {
+  const stackable = ADMIN_ITEM_STACK_SLOTS.has(row.slot_type);
+  const extraQty = Math.trunc(Number(adminItemExtra(row).quantity));
+  const quantity = stackable && extraQty > 0 ? extraQty : Math.max(1, Math.trunc(Number(row.quantity)) || 1);
+  return { stackable, quantity };
+}
+
+function sanitizeAdminItemRow(row) {
+  return redactAdminAuditValue({ ...row, extra_json: safeParseAdminAuditJson(row.extra_json) });
+}
+
+async function loadAdminItemTriple(db, playerId, characterId, itemId) {
+  return await db.prepare(`SELECT * FROM items WHERE item_id = ? AND player_id = ? AND character_id = ?`)
+    .bind(itemId, playerId, characterId).first();
+}
+
+// Returns the machine-readable reason an item cannot be deleted, or null when deletable.
+async function adminItemBlockedReason(db, row, characterId) {
+  if (Number(row.equipped) === 1) return "item_equipped";
+  const pending = await db.prepare(`SELECT 1 AS x FROM character_operation_receipts WHERE character_id = ? AND result_json = 'pending' LIMIT 1`).bind(characterId).first();
+  if (pending) return "operation_pending";
+  const run = await db.prepare(`SELECT updated_at FROM character_run_state WHERE character_id = ?`).bind(characterId).first();
+  if (run) {
+    const age = Date.now() - Date.parse(run.updated_at);
+    if (!Number.isFinite(age) || age < ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS) return "character_in_run";
+  }
+  return null;
+}
+
+function adminItemTripleError(playerId, characterId, itemId) {
+  if (!playerId || !characterId || !itemId) return json({ error: "missing_fields" }, 400);
+  return null;
+}
+
+async function handleAdminGetItemDetail(db, adminAuth, params) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
+  const playerId = String(params.get("playerId") || ""), characterId = String(params.get("characterId") || ""), itemId = String(params.get("itemId") || "");
+  const bad = adminItemTripleError(playerId, characterId, itemId);
+  if (bad) return bad;
+  const row = await loadAdminItemTriple(db, playerId, characterId, itemId);
+  if (!row) return json({ error: "item_not_found" }, 404);
+  const provenance = await db.prepare(`SELECT * FROM item_provenance WHERE item_id = ?`).bind(itemId).first();
+  const events = (await db.prepare(`SELECT * FROM item_ownership_events WHERE item_id = ? ORDER BY occurred_at DESC LIMIT 10`).bind(itemId).all()).results || [];
+  const blockedReason = await adminItemBlockedReason(db, row, characterId);
+  return json({
+    ok: true,
+    enabled: await adminItemDeleteEnabled(db),
+    item: sanitizeAdminItemRow(row),
+    provenance: provenance ? redactAdminAuditValue(provenance) : null,
+    events: events.map((e) => redactAdminAuditValue({ ...e, context_json: safeParseAdminAuditJson(e.context_json) })),
+    deletable: !blockedReason,
+    blockedReason,
+  });
+}
+
+async function handleAdminPreviewItemDelete(db, adminAuth, params) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
+  if (!(await adminItemDeleteEnabled(db))) return json({ error: "feature_disabled" }, 403);
+  const playerId = String(params.get("playerId") || ""), characterId = String(params.get("characterId") || ""), itemId = String(params.get("itemId") || "");
+  const bad = adminItemTripleError(playerId, characterId, itemId);
+  if (bad) return bad;
+  const row = await loadAdminItemTriple(db, playerId, characterId, itemId);
+  if (!row) return json({ error: "item_not_found" }, 404);
+  const blockedReason = await adminItemBlockedReason(db, row, characterId);
+  if (blockedReason) return json({ error: blockedReason }, 409);
+  const stack = adminItemStackInfo(row);
+  const requested = params.get("quantity") === null || params.get("quantity") === "" ? stack.quantity : Number(params.get("quantity"));
+  if (!Number.isInteger(requested) || requested < 1 || requested > stack.quantity || (!stack.stackable && requested !== 1)) {
+    return json({ error: "invalid_quantity", max: stack.stackable ? stack.quantity : 1 }, 400);
+  }
+  return json({
+    ok: true, item: sanitizeAdminItemRow(row), stackable: stack.stackable, observedQuantity: stack.quantity,
+    quantity: requested, remaining: stack.quantity - requested, snapshotHash: await adminItemSnapshotHash(row),
+  });
+}
+
+async function handleAdminDeleteItem(db, adminAuth, body) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
+  if (!(await adminItemDeleteEnabled(db))) return json({ error: "feature_disabled" }, 403);
+  const { playerId, characterId, itemId, quantity, reason, confirmText, snapshotHash, requestId } = body || {};
+  const bad = adminItemTripleError(playerId, characterId, itemId);
+  if (bad) return bad;
+  if (typeof requestId !== "string" || !/^[A-Za-z0-9_-]{8,64}$/.test(requestId)) return json({ error: "invalid_request_id" }, 400);
+  const check = validateAdminDestructive(itemId, reason, confirmText);
+  if (check.response) return check.response;
+  if (typeof snapshotHash !== "string" || !/^[0-9a-f]{64}$/.test(snapshotHash)) return json({ error: "item_state_changed" }, 409);
+
+  const auditId = `adm-del-${requestId}`;
+  // Idempotent replay: the audit row id is the request id, so a replay can never delete twice.
+  const prior = await db.prepare(`SELECT player_id FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
+  if (prior) return json({ ok: true, already_applied: true });
+
+  const since = new Date(Date.now() - 3600 * 1000).toISOString();
+  const recent = await db.prepare(`SELECT COUNT(*) AS c FROM admin_audit_log WHERE player_id = ? AND event_type = 'ADMIN_ITEM_DELETE' AND created_at >= ?`).bind(adminAuth.playerId, since).first();
+  if (Number(recent?.c) >= ADMIN_ITEM_DELETE_HOURLY_LIMIT) return json({ error: "admin_rate_limited", retryAfter: 3600 }, 429);
+
+  const row = await loadAdminItemTriple(db, playerId, characterId, itemId);
+  if (!row) return json({ error: "item_not_found" }, 404);
+  const blockedReason = await adminItemBlockedReason(db, row, characterId);
+  if (blockedReason) return json({ error: blockedReason }, 409);
+  if ((await adminItemSnapshotHash(row)) !== snapshotHash) return json({ error: "item_state_changed" }, 409);
+  const stack = adminItemStackInfo(row);
+  const qty = quantity === undefined || quantity === null ? stack.quantity : Number(quantity);
+  if (!Number.isInteger(qty) || qty < 1 || qty > stack.quantity || (!stack.stackable && qty !== 1)) {
+    return json({ error: "invalid_quantity", max: stack.stackable ? stack.quantity : 1 }, 400);
+  }
+
+  const now = nowIso();
+  const remaining = stack.quantity - qty;
+  const provenance = await db.prepare(`SELECT * FROM item_provenance WHERE item_id = ?`).bind(itemId).first();
+  const events = (await db.prepare(`SELECT * FROM item_ownership_events WHERE item_id = ? ORDER BY occurred_at DESC LIMIT 5`).bind(itemId).all()).results || [];
+  const metadata = buildAdminAuditMetadata({
+    before: { playerId, characterId, itemId, quantityRequested: qty, item: sanitizeAdminItemRow(row), provenance: provenance ? redactAdminAuditValue(provenance) : null, recentEvents: events.map((e) => redactAdminAuditValue(e)) },
+    after: remaining > 0 ? { quantityRemaining: remaining } : null,
+    changedKeys: remaining > 0 ? ["quantity"] : ["deleted"],
+    reason: check.reason,
+  });
+  // Every statement carries the same guard against the observed row; if it no longer matches,
+  // nothing is inserted and the item statement affects 0 rows -> 409, nothing written.
+  const guard = `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?)`;
+  const guardBinds = [itemId, playerId, characterId, row.updated_at, row.extra_json || ""];
+  const itemStatement = remaining > 0
+    ? db.prepare(`UPDATE items SET extra_json = json_set(COALESCE(NULLIF(extra_json, ''), '{}'), '$.quantity', ?), updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?`)
+        .bind(remaining, now, itemId, playerId, characterId, row.updated_at, row.extra_json || "")
+    : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?`)
+        .bind(itemId, playerId, characterId, row.updated_at, row.extra_json || "");
+  let results;
+  try {
+    results = await db.batch([
+      db.prepare(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) SELECT ?, ?, 'ADMIN_ITEM_DELETE', 'item', ?, ?, ? WHERE ${guard}`)
+        .bind(auditId, adminAuth.playerId, itemId, JSON.stringify(metadata), now, ...guardBinds),
+      db.prepare(`INSERT OR IGNORE INTO item_ownership_events (event_id, item_id, from_player_id, from_character_id, to_player_id, to_character_id, event_type, context_json, occurred_at) SELECT ?, ?, ?, ?, NULL, NULL, 'admin_deleted', ?, ? WHERE ${guard}`)
+        .bind(auditId, itemId, playerId, characterId, JSON.stringify({ auditId, quantity: qty, remaining, reason: check.reason }), now, ...guardBinds),
+      itemStatement,
+    ]);
+  } catch (error) {
+    console.error("admin_audit_failed", "ADMIN_ITEM_DELETE", error && error.message);
+    return json({ error: "admin_audit_failed" }, 500);
+  }
+  if (Number(results?.[2]?.meta?.changes) !== 1) return json({ error: "item_state_changed" }, 409);
+  return json({ ok: true, auditId, deleted: remaining === 0, quantity: qty, remaining });
+}
+
 // ---------- request boundary hardening ----------
 const MAX_REQUEST_BODY_BYTES = 512 * 1024;
 const DEFAULT_CORS_ORIGINS = Object.freeze([
@@ -7689,13 +7862,15 @@ async function apiFetch(request, env) {
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           return await handleAdminValidateSession(db, adminAuth);
         }
-        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers", "adminListAuditLog"].includes(action)) {
+        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers", "adminListAuditLog", "adminGetItemDetail", "adminPreviewItemDelete"].includes(action)) {
           const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           if (action === "runLeaderboardSnapshot") return json({ ok: true, ...(await runLeaderboardSnapshot(db)) });
           if (action === "getPlayer") return await handleAdminGetPlayer(db, adminAuth, p.get("id"));
           if (action === "adminSearchPlayers") return await handleAdminSearchPlayers(db, adminAuth, p.get("query"), p.get("limit"));
           if (action === "adminListAuditLog") return await handleAdminListAuditLog(db, adminAuth, p);
+          if (action === "adminGetItemDetail") return await handleAdminGetItemDetail(db, adminAuth, p);
+          if (action === "adminPreviewItemDelete") return await handleAdminPreviewItemDelete(db, adminAuth, p);
           if (action === "getAllPlayers") return await handleAdminGetAllPlayers(db, adminAuth);
           if (action === "getPlayerItems") return await handleAdminGetPlayerItems(db, adminAuth, p.get("id"));
           if (action === "getGameStats") return await handleAdminGetGameStats(db, adminAuth);
@@ -7759,7 +7934,7 @@ async function apiFetch(request, env) {
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           return await handleAdminLogout(db, adminAuth);
         }
-        if (["saveGameConfig", "setGameConfigItem", "adminUpsertRecipe", "adminDeleteRecipe", "adminUpsertMonsterLootEntry", "adminDeleteMonsterLootEntry", "adminUpsertJunkInfo", "adminDeleteJunkInfo"].includes(body.action)) {
+        if (["saveGameConfig", "setGameConfigItem", "adminUpsertRecipe", "adminDeleteRecipe", "adminUpsertMonsterLootEntry", "adminDeleteMonsterLootEntry", "adminUpsertJunkInfo", "adminDeleteJunkInfo", "adminDeleteItem"].includes(body.action)) {
           const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           switch (body.action) {
@@ -7771,6 +7946,7 @@ async function apiFetch(request, env) {
             case "adminDeleteMonsterLootEntry": return await handleAdminDeleteMonsterLootEntry(db, adminAuth, body.entryId, body.reason, body.confirmId);
             case "adminUpsertJunkInfo": return await handleAdminUpsertJunkInfo(db, adminAuth, body.junkId, body.name, body.icon);
             case "adminDeleteJunkInfo": return await handleAdminDeleteJunkInfo(db, adminAuth, body.junkId, body.reason, body.confirmId);
+            case "adminDeleteItem": return await handleAdminDeleteItem(db, adminAuth, body);
           }
         }
         const token = bearerToken(request);
