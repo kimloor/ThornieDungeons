@@ -3,7 +3,7 @@
   "graphicsBaseCommit": "91d443658130884ba3e04d22d1cc4c771263002c",
   "graphicsBranch": "art/g16-g3-leather-frames",
   "devBranch": "dev/g16-g5-runtime-foreground",
-  "browserFixtureCommit": "3966d364d94bea004c458456cc325643029653cb",
+  "browserFixtureCommit": "fc08773fb7ccabb72496fe719dd4d38ffb3abbe8",
   "compositionProfile": "leather_overlap_v1",
   "actualRuntimeRendererTested": true,
   "renderer": {
@@ -55,8 +55,9 @@
   },
   "hostSmoke": {
     "heroPreviewHost": {"mounted": true, "rendererType": 1, "idleOrderMatched": true},
+    "battlefieldHost": {"mounted": true, "rendererType": 1, "idleOrderMatched": true},
     "battleHeroActor": {"mounted": true, "idleAttackDeathTransitionsMatched": true},
-    "battlefieldHost": "Covered by existing Phaser architecture/full regression; the G5 browser fixture exercises its production HeroActor/Renderer composition path without entering authoritative gameplay."
+    "authorityBoundary": "The host fixture exercises presentation only and does not enter or mutate authoritative gameplay."
   },
   "regression": {
     "g16Compatibility": {"passed": 12, "failed": 0},
