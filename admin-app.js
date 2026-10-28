@@ -810,3 +810,6 @@ async function deleteJunkInfo(junkId) {
   await loadJunkInfoList();
   renderJunkInfoTable();
 }
+
+// Restore a still-valid Admin session after a page reload (token lives in sessionStorage only).
+void restoreAdminSession();
