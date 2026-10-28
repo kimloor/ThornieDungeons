@@ -223,6 +223,13 @@ function resolveItemIconPath(item) {
     return icons[setFamily]?.[item.type] || "";
   }
 
+  // Generic Tier 1 icons share the existing Leather presentation identity.
+  // An explicit setId (including an unsupported one) must never fall through.
+  if (!setFamily && Number(item.gearTier) === 1
+      && ["weapon", "helmet", "chest", "gloves", "boots", "accessory"].includes(item.type)) {
+    return icons.leather?.[item.type] || "";
+  }
+
   return "";
 }
 
