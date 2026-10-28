@@ -79,3 +79,9 @@ test("verifyAdminAccess no longer takes a legacy key argument", () => {
   assert.match(read("workers/modules/auth.js"), /async function verifyAdminAccess\(db, env, request\) \{/);
   assert.doesNotMatch(read("workers/thornie-dungeons-api.js"), /verifyAdminAccess\([^)]*,[^)]*,[^)]*,/);
 });
+
+test("Admin session is restored on load (restoreAdminSession is actually invoked)", () => {
+  const js = read("admin-app.js");
+  assert.match(js, /^void restoreAdminSession\(\);$/m);
+  assert.equal((js.match(/restoreAdminSession\(/g) || []).length, 2);
+});
