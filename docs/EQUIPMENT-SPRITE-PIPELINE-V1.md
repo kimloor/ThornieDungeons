@@ -1,6 +1,6 @@
 # ThornieDungeons — Equipment Sprite Pipeline V1
-Status: **OWNER APPROVED — G16 G2 RUNTIME COMPATIBILITY IMPLEMENTED / PR REVIEW PENDING** (2026-10-27)
-Scope: Hero V5 G2 modular wearable equipment art and the scoped G16 compatibility contract; no asset regeneration, R2 upload, gameplay, economy, Worker/API/D1 or deployment change.
+Status: **OWNER APPROVED — G16 G4 FINAL VISUAL ACCEPTED / G5–G6 PENDING** (2026-10-28)
+Scope: Hero V5 G2 modular equipment authoring, review and scoped runtime compatibility. Controlled art creation/correction follows the gates below; this document does not authorize R2 upload, gameplay/economy, Worker/API/D1 or deployment changes.
 Approved decisions: **HYBRID / AZURE-REFERENCE / FULL-SET-FIRST / G16 BEFORE SKELETON / WEAPON-FREE HERO + SEPARATE COMPLETE WEAPON**.
 
 ## 1. Purpose and boundaries
@@ -94,10 +94,10 @@ In the approved review package, measured added-pixel occlusion was approximately
 ### Approval scope and handoff
 
 - **Approved:** latest G16 Idle_01 overlap-completed artwork and visual assembly; this cutting/completion method.
-- **Still required:** Project Lead review of the implemented runtime compatibility PR; remaining-frame production and G4–G6 checks. The Gate 0 SHA-256 ledger discrepancy is reconciled in the Master Template.
-- This G2 approval creates no additional frames, R2 upload or Production PASS. The separately approved scoped runtime capability is recorded in §4C; continue asset work only within the next assigned gate.
+- **Still required:** remaining-frame production and G4–G6 checks. The scoped G2 runtime capability was merged through PR #156. The Gate 0 SHA-256 ledger discrepancy is reconciled in the Master Template.
+- This G2 approval creates no additional frames, R2 upload or Production PASS. The separately approved and merged scoped runtime capability is recorded in §4C; continue asset work only within the assigned gate.
 
-## 4C. G16 G2 scoped runtime compatibility contract (implemented; PR review pending)
+## 4C. G16 G2 scoped runtime compatibility contract (merged — PR #156)
 
 - Opt-in family metadata: `compositionProfile: "leather_overlap_v1"`. Existing families without this profile keep the locked order in §3.
 - Pairwise order: Leather Chest + Gloves moves both arm layers before torso; Leather Chest + Boots moves legs before torso. Mixed non-Leather pairs retain their previous relative order. Slot ownership, transparent underlay eligibility and far/near wing positions are unchanged.
@@ -107,7 +107,40 @@ In the approved review package, measured added-pixel occlusion was approximately
 - The runtime capability is additive only. The incomplete G16 family is not added to the production manifest in this gate; publication still requires G3–G6.
 - Automated QA uses the actual G16 Idle_01 exports and confirms the implemented composite is pixel-identical to the Owner-approved preview. See `docs/g16-leather-g2/qa/RUNTIME_IMPLEMENTED_COMPARISON.png`.
 
+## 4D. G16 Attack continuation — pose, layering, local repairs and torso facing (Owner confirmed)
+
+This section records the reusable method learned during the Attack_01–03 work. **Owner confirmed that all three current attack poses match.** Earlier Graphics statements that the poses differed were an interpretation error: different armor silhouettes were mistaken for a different pose. Preserve those accepted poses. Attack_01 shows the front; Attack_02 and Attack_03 show the back toward camera, following each manifest-selected Azure reference. **Project Lead/Owner approved the corrected rear-torso artwork at `bd25be1f4e252856be8d0e85dbe12ea8ec5e46ca` in the 2026-10-28 Death-frame assignment.** All current Attack artwork is locked. This approval does not complete G3; both Death frames still require accepted artwork.
+
+### Per-pose preflight and surface identity
+
+1. Resolve current Azure assets through the actual manifest and runtime resolver, then inspect both the complete outfit and isolated torso/arms. Establish **which garment surface is visible** before cutting, deforming or generating a part. Record per-pose `torsoFacing`: Attack_01 = front; Attack_02/03 = back-facing / three-quarter rear. Head direction does not determine torso direction during a twist.
+2. Compare Azure and Leather using the same 768×768 origin, scale and shared review crop. Distinguish pose/anatomy, front/back garment surface and equipment volume. Large helmets, pauldrons or blades change the silhouette without proving that joints moved. Owner's pose acceptance takes precedence over an agent's silhouette inference.
+3. Retargeting a front chest through translation, rotation or a surface mesh **cannot create a back panel**. For back-facing frames, reconstruct the visible rear leather panel, rear neckline, seams, shoulder backs, belt and skirt surfaces in the existing part footprint. Do not leave front chest clasps or a central front belt buckle on the exposed back. Do not mirror front armor and call it a rear design.
+
+### Reconstruction and cleanup procedure
+
+4. Start from the actual canonical Base for each pose and the approved/selected Leather material/design masters. Keep original anatomy, face/head/limbs, canvas origin and sword grip unchanged. Rejected whole-body Attack/Death source pixels remain excluded.
+5. Reuse complete isolated material and hidden insertion regions where valid. Clothing-only mesh/TPS reconstruction may fit sleeves, gloves or trousers to a pose; record all guides/transforms as manual surface-authoring choices, not pixel-exact bone pivots. Preserve original source masters, and check that the source mesh includes the complete upper insertion and glove/boot material. Never deform or repaint the Base to fit equipment.
+6. Complete one part at a time. Use original alpha masks to protect accepted visible art. For bounded generated paintover, supply an isolated-part edit target, its canonical/assembled fit reference and a design reference. Save the donor and prompt, admit only the authorized part/region, and assert that protected exports and pixels remain unchanged. Do not admit newly generated body/face/skin pixels into equipment.
+7. Neck repair: reveal the original Base neck by lowering/opening the chest neckline; finish a narrow continuous leather/gold rim. Keep chest-owned material over unwanted white Base-shirt edges. Preserve the canonical chin shadow and remove only chest/shoulder pixels that protrude into the chin, using a documented visual clearance mask. Do not move the head, redraw the neck or introduce a shared underlay/skin layer.
+8. Keep the complete independently generated sword master. Register handle [270,515] to each canonical grip (Attack_01 [310,309], Attack_02 [489,448], Attack_03 [413,551]); compare direction to the actual selected Azure sword. Retain original complete sword bytes when only the torso is being corrected.
+
+### Anatomical layers and review contract
+
+9. Current Leather filenames are anatomically opposite to Azure for the two arms. For these Attack candidates, Leather `arm_rear` = anatomical right sword arm; Leather `arm_front` = anatomical left arm. Check actual pixels rather than trusting names.
+10. Owner-approved offline front → back order: **right arm → sword → helmet → torso → left arm → trousers/boots → Base**. Compose in reverse; keep the declared underlay fully transparent. No extra torso redraw or cropped-hand pass is hidden in this preview. This is the Owner's authoring order, not a claim that it is Azure's filename order or the merged `leather_overlap_v1` resolver order.
+11. Keep authoring assembly and runtime compatibility separate. Full-arm-after-sword preview does not authorize a runtime order change or a larger hand rectangle. Record per-pose hand status explicitly; leave unresolved runtime crop metadata unapproved rather than copying the Idle crop. Existing far/near wing handling and other equipment families remain untouched.
+12. Deliver actual seven-PNG reassemblies, a three-frame full-set sheet, isolated-part sheet, Source/Base overlays, neck/wrist/grip details, front/back orientation labels, placement/alpha/bbox/SHA-256 reports and preservation checks. Review crops may enlarge/trim for readability; exported paths stay 768×768 RGBA at origin [0,0], with no baked runtime Y=84.
+13. Acceptance is granular: the three poses were accepted first, then the corrected Attack_02/03 rear torso surfaces were accepted on 2026-10-28. Preserve all 21 current Attack exports byte-for-byte during Death production. G3 completion still requires the remaining Death frames and accepted all-frame inventory; file existence or PNG checks do not imply visual acceptance, R2 approval or Production PASS.
+
+Evidence/provenance: `docs/g16-leather-g2/g3/owner-selected-recut/attack_01/` (layer, neck and bounded donor checkpoints), `attack-review-pack-v1/` (three-frame clothing reconstruction), and `attack-review-pack-v1/azure-comparison/` (same-scale Azure comparison). Historical pending wording is not rewritten; this section records Owner's subsequent pose acceptance and facing correction.
+
 ## 5. Gates and owner acceptance
+
+G16 current handoff (2026-10-28): Owner Final G4 Visual Approval accepts all eight frames and Idle/Attack/Death animation previews from the corrected ChatGPT package, and authorizes final upload to existing Draft PR #160. Exactly 11 PNG replacements and 45 byte-identical preserved equipment PNGs are reconciled in `docs/g16-leather-g2/g3/VALIDATION.json` and `SHA256SUMS`. `g4-source/OWNER_APPROVAL.md` pins the package and approval. Current contact/comparison/GIF evidence is in `g3/qa/`. Earlier G3 byte-preservation statements above describe their historical stage; only the 11 Owner-approved G4 seam/RGB corrections supersede those byte locks. Poses, Base anatomy/origin, rear torso facing, helmet/sword/underlay bytes and Death_02 helmet [0,-8] remain locked.
+
+G4 visual acceptance does not certify actual runtime. DEV must separately resolve Attack/Death_02 foreground anatomical right-arm order and Attack hand crops, then run G5 actual renderer/slot/hair/fallback regression. Empty Death swords require no crop. G6 R2/production manifest/deploy remain unapproved; no runtime changes are authorized by this artwork publication.
+
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |
 | G0 Reference lock | Actual 8 Base frames, Azure refs/hashes, per-pose anchor map, silhouette zones | Exact provenance, unchanged Base and fixed origins |

@@ -1,0 +1,64 @@
+{
+  "compositionProfile": "leather_overlap_v1",
+  "hairMode": "hidden_full_cover",
+  "handOcclusion": {
+    "sourceLayer": "arm_rear",
+    "after": "sword",
+    "frames": {
+      "idle_01": {
+        "crop": [
+          0,
+          493,
+          768,
+          42
+        ]
+      },
+      "idle_02": {
+        "crop": [
+          0,
+          481,
+          768,
+          42
+        ]
+      },
+      "idle_03": {
+        "crop": [
+          0,
+          489,
+          768,
+          42
+        ]
+      }
+    }
+  },
+  "status": "IDLE_ONLY_REMAINING_POSES_BLOCKED",
+  "frames": {
+    "idle_01": {
+      "coverage_underlay": "docs/g16-leather-g2/g3/exports/idle_01/coverage_underlay.png",
+      "torso_armor": "docs/g16-leather-g2/g3/exports/idle_01/torso_armor.png",
+      "legs_boots": "docs/g16-leather-g2/g3/exports/idle_01/legs_boots.png",
+      "arm_rear": "docs/g16-leather-g2/g3/exports/idle_01/arm_rear.png",
+      "helmet": "docs/g16-leather-g2/g3/exports/idle_01/helmet.png",
+      "sword": "docs/g16-leather-g2/g3/exports/idle_01/sword.png",
+      "arm_front": "docs/g16-leather-g2/g3/exports/idle_01/arm_front.png"
+    },
+    "idle_02": {
+      "coverage_underlay": "docs/g16-leather-g2/g3/exports/idle_02/coverage_underlay.png",
+      "torso_armor": "docs/g16-leather-g2/g3/exports/idle_02/torso_armor.png",
+      "legs_boots": "docs/g16-leather-g2/g3/exports/idle_02/legs_boots.png",
+      "arm_rear": "docs/g16-leather-g2/g3/exports/idle_02/arm_rear.png",
+      "helmet": "docs/g16-leather-g2/g3/exports/idle_02/helmet.png",
+      "sword": "docs/g16-leather-g2/g3/exports/idle_02/sword.png",
+      "arm_front": "docs/g16-leather-g2/g3/exports/idle_02/arm_front.png"
+    },
+    "idle_03": {
+      "coverage_underlay": "docs/g16-leather-g2/g3/exports/idle_03/coverage_underlay.png",
+      "torso_armor": "docs/g16-leather-g2/g3/exports/idle_03/torso_armor.png",
+      "legs_boots": "docs/g16-leather-g2/g3/exports/idle_03/legs_boots.png",
+      "arm_rear": "docs/g16-leather-g2/g3/exports/idle_03/arm_rear.png",
+      "helmet": "docs/g16-leather-g2/g3/exports/idle_03/helmet.png",
+      "sword": "docs/g16-leather-g2/g3/exports/idle_03/sword.png",
+      "arm_front": "docs/g16-leather-g2/g3/exports/idle_03/arm_front.png"
+    }
+  }
+}

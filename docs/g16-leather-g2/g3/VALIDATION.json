@@ -1,0 +1,1858 @@
+{
+  "baseSha256": {
+    "idle_01": "1c4e9d24d7d560b96e85dbdbccc47d17739c156a1377d4afb7f53fd90983e5e5",
+    "idle_02": "18c5935634ffbf3758eadb505864cf44a1143a349e742591e0bf7db5fc5773f9",
+    "idle_03": "bd15c3f045e362030d885fe65b5a3725ccbd6c4ed30d8da3868af66730ccc981",
+    "attack_01": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+    "attack_02": "d6b5c542822e5d88702e882721eeabb74c07703b72ec88414410c6f0bac6db9a",
+    "attack_03": "9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667",
+    "death_01": "8fe820026682becdc889f4adce522722720c78d242d7007ed994cd113fad292b",
+    "death_02": "b9c5f58a1a03a921c21ab45e3ac60fe070347988755ed639e365a9c13e0e0ae3"
+  },
+  "assemblyOrderByFrame": {
+    "idle_01": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_rear",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword"
+    ],
+    "idle_02": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_rear",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword"
+    ],
+    "idle_03": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_rear",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword"
+    ],
+    "attack_01": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword",
+      "arm_rear"
+    ],
+    "attack_02": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword",
+      "arm_rear"
+    ],
+    "attack_03": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword",
+      "arm_rear"
+    ],
+    "death_01": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_rear",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword"
+    ],
+    "death_02": [
+      "coverage_underlay",
+      "legs_boots",
+      "arm_front",
+      "torso_armor",
+      "helmet",
+      "sword",
+      "arm_rear"
+    ]
+  },
+  "azureSources": {
+    "death_01": [
+      {
+        "name": "base",
+        "path": "hero/v5/g2/base/death_01.png",
+        "sha256": "8fe820026682becdc889f4adce522722720c78d242d7007ed994cd113fad292b"
+      },
+      {
+        "name": "coverage_underlay",
+        "path": "hero/v5/g2/equipment/azure/death_01/coverage_underlay.png",
+        "sha256": "5c2ec80e7d520c01d20cd58193ddc487a85c540f04db4f780a493b3a846a903c"
+      },
+      {
+        "name": "torso_armor",
+        "path": "hero/v5/g2/equipment/azure/death_01/torso_armor.png",
+        "sha256": "4bf800fb5d99815dd45506d0dccb3313164f01a62b511863407621b200f6e02b"
+      },
+      {
+        "name": "legs_boots",
+        "path": "hero/v5/g2/equipment/azure/death_01/legs_boots.png",
+        "sha256": "21ba7b7a1d72156bbae40d476f5c4d785bd933a944bd1422d89a257f04b7a91c"
+      },
+      {
+        "name": "arm_rear",
+        "path": "hero/v5/g2/equipment/azure/death_01/arm_rear.png",
+        "sha256": "3d86f1e52bc2b1a5be6e9bd8b5647b30b4ebcc53877c94d98b9e5b5d5cdfaf8c"
+      },
+      {
+        "name": "helmet",
+        "path": "hero/v5/g2/equipment/azure/death_01/helmet.png?v=azure_angel_fullface_death_r3",
+        "sha256": "da735aa91ab050654d6ca15609b919a85872d40c0a506ea5b8e8012efc67b258"
+      },
+      {
+        "name": "sword",
+        "path": "hero/v5/g2/equipment/azure/death_01/sword.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b"
+      },
+      {
+        "name": "arm_front",
+        "path": "hero/v5/g2/equipment/azure/death_01/arm_front.png",
+        "sha256": "7a7a11dbf532098d37af6b9b182d003584e58cc6877ade4cc913a30eee3ef818"
+      }
+    ],
+    "death_02": [
+      {
+        "name": "base",
+        "path": "hero/v5/g2/base/death_02.png",
+        "sha256": "b9c5f58a1a03a921c21ab45e3ac60fe070347988755ed639e365a9c13e0e0ae3"
+      },
+      {
+        "name": "coverage_underlay",
+        "path": "hero/v5/g2/equipment/azure/death_02/coverage_underlay.png",
+        "sha256": "48ddaa6af157db951ec98a6c81c3e72e8955c1520b311be17e64f87722f98b37"
+      },
+      {
+        "name": "torso_armor",
+        "path": "hero/v5/g2/equipment/azure/death_02/torso_armor.png",
+        "sha256": "d33f8cf60a1abc51701ae8bf32c5a25572bc11596c92b9b6d43a876da5f12d7c"
+      },
+      {
+        "name": "legs_boots",
+        "path": "hero/v5/g2/equipment/azure/death_02/legs_boots.png",
+        "sha256": "5520fd69eea0e7a4c64807154ff4bbc667f874c0469b077b62808268ee6eb917"
+      },
+      {
+        "name": "arm_rear",
+        "path": "hero/v5/g2/equipment/azure/death_02/arm_rear.png",
+        "sha256": "e83662471b5130915fde898166330ad084215d73b718651cb3df20a70eb34637"
+      },
+      {
+        "name": "helmet",
+        "path": "hero/v5/g2/equipment/azure/death_02/helmet.png?v=azure_angel_fullface_v1",
+        "sha256": "8899e3d44ef103d1fc4306bdb9b1156c38895ba06b75f2903895c8dd726cbcbd"
+      },
+      {
+        "name": "sword",
+        "path": "hero/v5/g2/equipment/azure/death_02/sword.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b"
+      },
+      {
+        "name": "arm_front",
+        "path": "hero/v5/g2/equipment/azure/death_02/arm_front.png",
+        "sha256": "cdd39360bacd0b02201a25e502734b1765b92d8dd9ece938c1704cee42755448"
+      }
+    ]
+  },
+  "handOcclusion": {
+    "idle_01": {
+      "sourceLayer": "arm_rear",
+      "crop": [
+        0,
+        493,
+        768,
+        42
+      ],
+      "status": "INHERITED_REVIEWED_IDLE_TRANSLATION"
+    },
+    "idle_02": {
+      "sourceLayer": "arm_rear",
+      "crop": [
+        0,
+        481,
+        768,
+        42
+      ],
+      "status": "INHERITED_REVIEWED_IDLE_TRANSLATION"
+    },
+    "idle_03": {
+      "sourceLayer": "arm_rear",
+      "crop": [
+        0,
+        489,
+        768,
+        42
+      ],
+      "status": "INHERITED_REVIEWED_IDLE_TRANSLATION"
+    },
+    "attack_01": {
+      "sourceLayer": "arm_rear",
+      "crop": null,
+      "status": "UNRESOLVED_SEPARATE_DEV_REVIEW",
+      "offlineOrder": "full anatomical right arm after sword; Owner-approved artwork order, not current runtime certification"
+    },
+    "attack_02": {
+      "sourceLayer": "arm_rear",
+      "crop": null,
+      "status": "UNRESOLVED_SEPARATE_DEV_REVIEW",
+      "offlineOrder": "full anatomical right arm after sword; Owner-approved artwork order, not current runtime certification"
+    },
+    "attack_03": {
+      "sourceLayer": "arm_rear",
+      "crop": null,
+      "status": "UNRESOLVED_SEPARATE_DEV_REVIEW",
+      "offlineOrder": "full anatomical right arm after sword; Owner-approved artwork order, not current runtime certification"
+    },
+    "death_01": {
+      "sourceLayer": "arm_rear",
+      "crop": null,
+      "required": false,
+      "status": "NOT_REQUIRED_EMPTY_DEATH_SWORD"
+    },
+    "death_02": {
+      "sourceLayer": "arm_rear",
+      "crop": null,
+      "required": false,
+      "status": "NOT_REQUIRED_EMPTY_DEATH_SWORD",
+      "offlineOrder": "Owner: anatomical right arm in front of chest armor; separate DEV compatibility gate"
+    }
+  },
+  "death02RightArmOrder": {
+    "sourceLayer": "arm_rear",
+    "visibleOrder": "right arm in front of chest",
+    "runtimeCompatibilityStatus": "SEPARATE_DEV_GATE_NOT_APPROVED"
+  },
+  "status": "G16 G4 VISUAL ACCEPTED \u2014 FINAL GITHUB PUBLICATION",
+  "mainChecked": "614d8e363efa074d257319f3e3578a56196c2a06",
+  "risk": "LOW: exact Owner-approved asset replacement on existing Draft branch",
+  "expectedPaths": 56,
+  "presentPaths": 56,
+  "acceptedG4Paths": 56,
+  "candidatePaths": 0,
+  "G3Complete": true,
+  "G4VisualQaPassed": true,
+  "G5Passed": false,
+  "G6Passed": false,
+  "ownerFinalApproval": {
+    "date": "2026-10-28",
+    "record": "g4-source/OWNER_APPROVAL.md"
+  },
+  "approvedPackage": {
+    "libraryFileId": "libfile_c1eb731419288191b800041781351ab1",
+    "sha256": "7309387c117b72be4d47def0a6a989238ee83fcf7000afb434b080caafa7cd82",
+    "acceptedSourceCommit": "7c9d72d938a60cd1d363234bdb8a0905fb2d1f4c",
+    "memberLedger": "g4-source/APPROVED_PACKAGE_SHA256SUMS"
+  },
+  "approvedReplacements": [
+    "docs/g16-leather-g2/g3/exports/idle_01/arm_front.png",
+    "docs/g16-leather-g2/g3/exports/idle_02/arm_front.png",
+    "docs/g16-leather-g2/g3/exports/idle_03/arm_front.png",
+    "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/torso_armor.png",
+    "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/torso_armor.png",
+    "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/torso_armor.png",
+    "docs/g16-leather-g2/g3/death-review/exports/death_01/torso_armor.png",
+    "docs/g16-leather-g2/g3/death-review/exports/death_01/legs_boots.png",
+    "docs/g16-leather-g2/g3/death-review/exports/death_01/arm_rear.png",
+    "docs/g16-leather-g2/g3/death-review/exports/death_02/torso_armor.png",
+    "docs/g16-leather-g2/g3/death-review/exports/death_02/legs_boots.png"
+  ],
+  "preservedEquipmentCount": 45,
+  "preservedEquipmentByteIdentical": true,
+  "allHelmetsSwordsUnderlaysUnchanged": true,
+  "approvedDeath02HelmetTranslation": [
+    0,
+    -8
+  ],
+  "approvedDeath02HelmetPreserved": true,
+  "compositeNonzeroAlphaSilhouetteIdenticalAll8": true,
+  "interiorOpacityMayIncreaseForCoverage": true,
+  "idleExactBobPreserved": true,
+  "deathRgbRepairAlphaPreserved": true,
+  "baseModified": false,
+  "runtimeChanged": false,
+  "productionManifestChanged": false,
+  "runtimeOffsetBaked": false,
+  "actualRuntimeRendererTested": false,
+  "files": [
+    {
+      "frame": "idle_01",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_01",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/torso_armor.png",
+      "sha256": "d9e5be85ac66d27f286227ce442dd5b036198468077f838302f8421bed470166",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        276,
+        375,
+        428,
+        508
+      ],
+      "acceptedSourceSha256": "d9e5be85ac66d27f286227ce442dd5b036198468077f838302f8421bed470166",
+      "alphaNonzeroPixels": 12533,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_01",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/legs_boots.png",
+      "sha256": "4ec24b9c709e659e90abf32343b2f91848e44cb8402cddbeae59ec3a150463d5",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        262,
+        465,
+        438,
+        648
+      ],
+      "acceptedSourceSha256": "4ec24b9c709e659e90abf32343b2f91848e44cb8402cddbeae59ec3a150463d5",
+      "alphaNonzeroPixels": 17001,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_01",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/arm_rear.png",
+      "sha256": "20db657e38bb1d6581216a6eb234b179873dcd1f0dc203099aa5ca2ab655f88d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        249,
+        376,
+        338,
+        531
+      ],
+      "acceptedSourceSha256": "20db657e38bb1d6581216a6eb234b179873dcd1f0dc203099aa5ca2ab655f88d",
+      "alphaNonzeroPixels": 6980,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_01",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/helmet.png",
+      "sha256": "ff2051efd61d15dc7db0f47a4c218dc262c73300a4652df9ec3c3911a7674931",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        248,
+        189,
+        462,
+        383
+      ],
+      "acceptedSourceSha256": "ff2051efd61d15dc7db0f47a4c218dc262c73300a4652df9ec3c3911a7674931",
+      "alphaNonzeroPixels": 22324,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_01",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/sword.png",
+      "sha256": "b3786f8f1e69c4c2924844df57d12d65804d11b3ce24bf80a18b2e286e8b960d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        231,
+        489,
+        471,
+        633
+      ],
+      "acceptedSourceSha256": "b3786f8f1e69c4c2924844df57d12d65804d11b3ce24bf80a18b2e286e8b960d",
+      "alphaNonzeroPixels": 6211,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_01",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/exports/idle_01/arm_front.png",
+      "sha256": "68668a5082b775db3fb49a711172388cfed2c85a456cf762eec1f89b1e2c9865",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        387,
+        412,
+        466,
+        536
+      ],
+      "acceptedSourceSha256": "ba3736cb72deb0c0710849e8d35e643db73ec619887d3d66135939250fb111c1",
+      "alphaNonzeroPixels": 3914,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "idle_02",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_02",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/torso_armor.png",
+      "sha256": "f2d2c5e71851dc7caeaa2d9a372ff0f415ce96193a90369da93cfd550dabcbfb",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        276,
+        363,
+        428,
+        496
+      ],
+      "acceptedSourceSha256": "f2d2c5e71851dc7caeaa2d9a372ff0f415ce96193a90369da93cfd550dabcbfb",
+      "alphaNonzeroPixels": 12533,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_02",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/legs_boots.png",
+      "sha256": "7ef82cd5405ff2fd31873f581baae0b9c0eee978dd00c385f3e022403f9d3d8d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        262,
+        453,
+        438,
+        636
+      ],
+      "acceptedSourceSha256": "7ef82cd5405ff2fd31873f581baae0b9c0eee978dd00c385f3e022403f9d3d8d",
+      "alphaNonzeroPixels": 17001,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_02",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/arm_rear.png",
+      "sha256": "b9a79956536c489b0375eef88a51caaea68c64f3c16ed9792191672ad33dbc46",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        249,
+        364,
+        338,
+        519
+      ],
+      "acceptedSourceSha256": "b9a79956536c489b0375eef88a51caaea68c64f3c16ed9792191672ad33dbc46",
+      "alphaNonzeroPixels": 6980,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_02",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/helmet.png",
+      "sha256": "9ee9f0586c6fd9b3ad1fc47e95ba41aba962b2cc939fc623cdfac9147d33f717",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        248,
+        177,
+        462,
+        371
+      ],
+      "acceptedSourceSha256": "9ee9f0586c6fd9b3ad1fc47e95ba41aba962b2cc939fc623cdfac9147d33f717",
+      "alphaNonzeroPixels": 22324,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_02",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/sword.png",
+      "sha256": "c147b1160dd1ac157c445c5cfae15d906d8440f026a860823e5855ff5d72ad00",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        231,
+        477,
+        471,
+        621
+      ],
+      "acceptedSourceSha256": "c147b1160dd1ac157c445c5cfae15d906d8440f026a860823e5855ff5d72ad00",
+      "alphaNonzeroPixels": 6211,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_02",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/exports/idle_02/arm_front.png",
+      "sha256": "4d6f9128a8ae2f2e27a05ddb69737e9bc529e66a0620329b35fff3c8c47a1771",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        387,
+        400,
+        466,
+        524
+      ],
+      "acceptedSourceSha256": "f2462a9ef2c05bcbce2843fe3f2160f8f528c2d3ff84a08443319ebe1d152c86",
+      "alphaNonzeroPixels": 3914,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "idle_03",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_03",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/torso_armor.png",
+      "sha256": "f12dc1188f8bf49cf159e64147dd6c518f165548f952486911a6e047d93fd39c",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        276,
+        371,
+        428,
+        504
+      ],
+      "acceptedSourceSha256": "f12dc1188f8bf49cf159e64147dd6c518f165548f952486911a6e047d93fd39c",
+      "alphaNonzeroPixels": 12533,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_03",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/legs_boots.png",
+      "sha256": "15f62021ece497e5d02e98e14acdb1b595daaad84aea97ecf7b97139837120dc",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        262,
+        461,
+        438,
+        644
+      ],
+      "acceptedSourceSha256": "15f62021ece497e5d02e98e14acdb1b595daaad84aea97ecf7b97139837120dc",
+      "alphaNonzeroPixels": 17001,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_03",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/arm_rear.png",
+      "sha256": "3921cf806d1a185b0e871e5ee94cd7b013c2bdb82c8f041df0fef58d0f5e1876",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        249,
+        372,
+        338,
+        527
+      ],
+      "acceptedSourceSha256": "3921cf806d1a185b0e871e5ee94cd7b013c2bdb82c8f041df0fef58d0f5e1876",
+      "alphaNonzeroPixels": 6980,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_03",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/helmet.png",
+      "sha256": "29ea22e518d63ff24a6870834159c5da3cf0b1235195d37d37741bba03cb0931",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        248,
+        185,
+        462,
+        379
+      ],
+      "acceptedSourceSha256": "29ea22e518d63ff24a6870834159c5da3cf0b1235195d37d37741bba03cb0931",
+      "alphaNonzeroPixels": 22324,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_03",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/sword.png",
+      "sha256": "07155279f58b8cd3d38e92facbfb3f7b2547d7bf8d5263aa51e8ee9c4f9867ed",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        231,
+        485,
+        471,
+        629
+      ],
+      "acceptedSourceSha256": "07155279f58b8cd3d38e92facbfb3f7b2547d7bf8d5263aa51e8ee9c4f9867ed",
+      "alphaNonzeroPixels": 6211,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "idle_03",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/exports/idle_03/arm_front.png",
+      "sha256": "ad1d6864aa381a8c6347700b7a8366a59db4bc56312f3b4f56ba3a38f66d2f52",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        387,
+        408,
+        466,
+        532
+      ],
+      "acceptedSourceSha256": "5dab3c443e01b5e84bb021815c9aa3c0e1800ed16533439e0e5b1c8595743b9a",
+      "alphaNonzeroPixels": 3914,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "attack_01",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_01",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/torso_armor.png",
+      "sha256": "42460489b5b0e202b4a95510171411ad63072f093cc6aa5c66017e39fd4932bd",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        278,
+        370,
+        476,
+        565
+      ],
+      "acceptedSourceSha256": "f84fa06dfc72da74dafca66e0425af3fccd635e4f90de17029856aa52d867ba4",
+      "alphaNonzeroPixels": 10314,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "attack_01",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/legs_boots.png",
+      "sha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        228,
+        493,
+        440,
+        667
+      ],
+      "acceptedSourceSha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf",
+      "alphaNonzeroPixels": 16772,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_01",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/arm_rear.png",
+      "sha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        233,
+        277,
+        342,
+        462
+      ],
+      "acceptedSourceSha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb",
+      "alphaNonzeroPixels": 10002,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_01",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/helmet.png",
+      "sha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        261,
+        240,
+        470,
+        415
+      ],
+      "acceptedSourceSha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318",
+      "alphaNonzeroPixels": 21087,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_01",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/sword.png",
+      "sha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        125,
+        167,
+        348,
+        339
+      ],
+      "acceptedSourceSha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb",
+      "alphaNonzeroPixels": 6341,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_01",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/arm_front.png",
+      "sha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        374,
+        432,
+        515,
+        518
+      ],
+      "acceptedSourceSha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148",
+      "alphaNonzeroPixels": 5692,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_02",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_02",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/torso_armor.png",
+      "sha256": "8ede7e4d09bb99114690a5ecb7ab20f1992725549b333c24c6423015f9a2f415",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        264,
+        400,
+        442,
+        565
+      ],
+      "acceptedSourceSha256": "474fa5144e7826c7f1d2e8fed116242e7346c5abd191bd83e5566cfeb9d1ff58",
+      "alphaNonzeroPixels": 7751,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "attack_02",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/legs_boots.png",
+      "sha256": "2bfd21ee0b43ac37e522f4c4d6969ac01bfd6e6400dde41a7be1f2de7222e7c4",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        189,
+        495,
+        401,
+        669
+      ],
+      "acceptedSourceSha256": "2bfd21ee0b43ac37e522f4c4d6969ac01bfd6e6400dde41a7be1f2de7222e7c4",
+      "alphaNonzeroPixels": 16772,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_02",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/arm_rear.png",
+      "sha256": "6653c23663d9a263d6bf9d504f7dbc02142c847ee2428541f6d53790899fa086",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        337,
+        417,
+        515,
+        482
+      ],
+      "acceptedSourceSha256": "6653c23663d9a263d6bf9d504f7dbc02142c847ee2428541f6d53790899fa086",
+      "alphaNonzeroPixels": 8047,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_02",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/helmet.png",
+      "sha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        227,
+        239,
+        436,
+        414
+      ],
+      "acceptedSourceSha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+      "alphaNonzeroPixels": 21087,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_02",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/sword.png",
+      "sha256": "e0dc0057c3c10c0a42348038896954722b254a6a870eefa0b0fba3d26fde850a",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        462,
+        251,
+        614,
+        487
+      ],
+      "acceptedSourceSha256": "e0dc0057c3c10c0a42348038896954722b254a6a870eefa0b0fba3d26fde850a",
+      "alphaNonzeroPixels": 6332,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_02",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/arm_front.png",
+      "sha256": "02c6b3b5f74a28931fbb3c183b4c39dcc5135277586b891adc9aa3048b1a6b50",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        189,
+        408,
+        292,
+        478
+      ],
+      "acceptedSourceSha256": "02c6b3b5f74a28931fbb3c183b4c39dcc5135277586b891adc9aa3048b1a6b50",
+      "alphaNonzeroPixels": 3860,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_03",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_03",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/torso_armor.png",
+      "sha256": "76efd5dc05242164888572fd3184d0d406ea92491d3d24cbbdcac98280061252",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        265,
+        401,
+        443,
+        566
+      ],
+      "acceptedSourceSha256": "2bc9388f7d0fa88baa5409262e8407ca7760de3ad33d5ea20990719d389c8e2c",
+      "alphaNonzeroPixels": 7608,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "attack_03",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/legs_boots.png",
+      "sha256": "209ee607054365a7ec17a44922557d0cfc978f186de4b01b89b63c3ddd2aba55",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        209,
+        492,
+        393,
+        672
+      ],
+      "acceptedSourceSha256": "209ee607054365a7ec17a44922557d0cfc978f186de4b01b89b63c3ddd2aba55",
+      "alphaNonzeroPixels": 16625,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_03",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/arm_rear.png",
+      "sha256": "9b5ff381f9ad3645e7c500e3e891a18aed9226848f8526868416a5e432f33a00",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        330,
+        431,
+        437,
+        575
+      ],
+      "acceptedSourceSha256": "9b5ff381f9ad3645e7c500e3e891a18aed9226848f8526868416a5e432f33a00",
+      "alphaNonzeroPixels": 7093,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_03",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/helmet.png",
+      "sha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        227,
+        239,
+        436,
+        414
+      ],
+      "acceptedSourceSha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+      "alphaNonzeroPixels": 21087,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_03",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/sword.png",
+      "sha256": "4c07195c55d4136e6275a03a3373059b317ee219e4c858d16db1d2764a235e77",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        371,
+        526,
+        634,
+        626
+      ],
+      "acceptedSourceSha256": "4c07195c55d4136e6275a03a3373059b317ee219e4c858d16db1d2764a235e77",
+      "alphaNonzeroPixels": 6344,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "attack_03",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/arm_front.png",
+      "sha256": "816873b3eedc694d1e40ad3516a019afcfdb4784f1703136d65de2b81100e54e",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        209,
+        420,
+        304,
+        518
+      ],
+      "acceptedSourceSha256": "816873b3eedc694d1e40ad3516a019afcfdb4784f1703136d65de2b81100e54e",
+      "alphaNonzeroPixels": 4261,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_01",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_01",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/torso_armor.png",
+      "sha256": "49f1858e9d3c3311b01e71826d8b7d70755829064c16aca8da64020f0e01908f",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        315,
+        357,
+        489,
+        473
+      ],
+      "acceptedSourceSha256": "e6c380b7d98d663c4c8b4393465ec19a1935133fee7b5a2dc212e2a9e9d2532a",
+      "alphaNonzeroPixels": 11865,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "death_01",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/legs_boots.png",
+      "sha256": "d3d5d2926ccc28b989b2d2175fd36c2ad6670a37ad2ed200219c5b69549211fc",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        363,
+        435,
+        530,
+        618
+      ],
+      "acceptedSourceSha256": "9fcd347f0001fbbb0934f96261be2daa32d58ee1be19f2d452a56924a3e1c64f",
+      "alphaNonzeroPixels": 17044,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "death_01",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/arm_rear.png",
+      "sha256": "7b623c2456daca26e076435b4b8f3a82f02abdb971f02d08acc95f0089014ed6",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        275,
+        375,
+        380,
+        510
+      ],
+      "acceptedSourceSha256": "a93ce88b4979c403de81be3f8c9b27c8106761c43a72c98ac760fd2d4c094655",
+      "alphaNonzeroPixels": 6240,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "death_01",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/helmet.png",
+      "sha256": "04ae98f95c297540401252a991c9dbe787fe03c3e7d7e28d7fdf4ac613decd58",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        230,
+        189,
+        431,
+        382
+      ],
+      "acceptedSourceSha256": "04ae98f95c297540401252a991c9dbe787fe03c3e7d7e28d7fdf4ac613decd58",
+      "alphaNonzeroPixels": 19955,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_01",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Death releases weapon; approved pose requires no sword grip.",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_01",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/arm_front.png",
+      "sha256": "789d5b4da55c87650b189b5b529be1cc8847402c05c1867e8a8196faf25ca052",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        447,
+        386,
+        554,
+        460
+      ],
+      "acceptedSourceSha256": "789d5b4da55c87650b189b5b529be1cc8847402c05c1867e8a8196faf25ca052",
+      "alphaNonzeroPixels": 3508,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_02",
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_02/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_02",
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_02/torso_armor.png",
+      "sha256": "e1cad60636b2280214add1ee5edf5459cfc6bd48c46aaf32ea9fb87baea0aee8",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        237,
+        514,
+        369,
+        632
+      ],
+      "acceptedSourceSha256": "0f0a25ee24e93accdffe62bb70fc370b5279face769c959da18de448dcb61b1d",
+      "alphaNonzeroPixels": 10291,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "death_02",
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_02/legs_boots.png",
+      "sha256": "936d898ec284f7c78d285a4c9d9957355d60b99ae444941dbb6ba7ddeb1933be",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        183,
+        590,
+        378,
+        678
+      ],
+      "acceptedSourceSha256": "55adf74c36c0f56f94e63176ffffb16fcf42b948eee8842feba8f747ede3641e",
+      "alphaNonzeroPixels": 11897,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": true
+    },
+    {
+      "frame": "death_02",
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_02/arm_rear.png",
+      "sha256": "89f41733873303f8bdeacf3429a9157b38308a20c5086cc66a35511f10be4e69",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        257,
+        514,
+        348,
+        674
+      ],
+      "acceptedSourceSha256": "89f41733873303f8bdeacf3429a9157b38308a20c5086cc66a35511f10be4e69",
+      "alphaNonzeroPixels": 6115,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_02",
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_02/helmet.png",
+      "sha256": "679d3a819e0c79374483f1c22454704e923ed7a56133326310c53872b930b7f1",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        260,
+        325,
+        486,
+        534
+      ],
+      "acceptedSourceSha256": "679d3a819e0c79374483f1c22454704e923ed7a56133326310c53872b930b7f1",
+      "alphaNonzeroPixels": 28785,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_02",
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_02/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "emptyReason": "Death releases weapon; approved pose requires no sword grip.",
+      "acceptedSourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    },
+    {
+      "frame": "death_02",
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_02/arm_front.png",
+      "sha256": "52f550aa517a33feed699ad60b322ee2e2ce4f7016aa97251c2a545d0431f849",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        341,
+        544,
+        412,
+        671
+      ],
+      "acceptedSourceSha256": "52f550aa517a33feed699ad60b322ee2e2ce4f7016aa97251c2a545d0431f849",
+      "alphaNonzeroPixels": 3333,
+      "edgeAlphaNonzero": 0,
+      "artStatus": "OWNER_FINAL_G4_VISUAL_APPROVED",
+      "changedSinceG3": false
+    }
+  ],
+  "remainingWhiteExposure": [
+    {
+      "frame": "attack_01",
+      "uncoveredBaseWhitePixels": 0
+    },
+    {
+      "frame": "attack_02",
+      "uncoveredBaseWhitePixels": 0
+    },
+    {
+      "frame": "attack_03",
+      "uncoveredBaseWhitePixels": 0
+    },
+    {
+      "frame": "death_01",
+      "uncoveredBaseWhitePixels": 0
+    },
+    {
+      "frame": "death_02",
+      "uncoveredBaseWhitePixels": 0
+    }
+  ],
+  "remainingGate": "Separate DEV compatibility review and G5 actual runtime regression; G6 not authorized",
+  "evidence": [
+    {
+      "path": "docs/g16-leather-g2/g3/qa/ATTACK_CONTACT_SHEET.png",
+      "sha256": "f05dcc95db8e607838137c744adcdc5386b4d00b38e54ae19ac74691fa6f977d"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/FULL_SET_CONTACT_SHEET.png",
+      "sha256": "6119446629c6f4195a38909ccd5010d6c63ddde572d0e9c86dc91c3063438b41"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/IDLE_CONTACT_SHEET.png",
+      "sha256": "bdd5024fa48687110e6e6f3e66b7f53e1649f40fd49e427c02715719fc80dcb5"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/MATERIAL_BEFORE_AFTER.png",
+      "sha256": "0d3a3e2642743e44f507d193caee708702906e827bf15c28dcc52dd4b82722ae"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/SEAM_BEFORE_AFTER.png",
+      "sha256": "3a1035867fd881439a06deec97fdf91f640618e478ca59988a921aa101b7487f"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/attack_01_composite.png",
+      "sha256": "427cf12d18b98d1c9df88c3292999ecf3e1e21c21b6049554f1e8f2f5c07fef3"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/attack_02_composite.png",
+      "sha256": "c137b0c5400940a26dc222760d5fc8f30e766dd1d57c874bca5e1b8746b3107b"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/attack_03_composite.png",
+      "sha256": "c6cbadf11f470fb02f7adebf024c8315692583a9e388918ebaf6cd1533687fea"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/attack_preview.gif",
+      "sha256": "60ebe7423c7c03949651decbb6fa26f46fa4e855516ef1b385b187ebe075bfe4"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/base_pose_reference.png",
+      "sha256": "5de2474ff03754dda48dd3de93295fe48e9e888c2fbaf0ba8ea0d462625c8e3a"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/death_01_composite.png",
+      "sha256": "040b21ff4cdabcf904920ce5d90e863f6b43e62cd9d1a885d86dd15bbe836f0d"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/death_02_composite.png",
+      "sha256": "4c97ef3e3bb902a6e9b532e88341c17054bc82b6733759b598298f32b2cb4407"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/death_preview.gif",
+      "sha256": "2685a3ae7c00cf6e452c3abd595be794bdeb884c152fc458a949aa1119438150"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/idle_01_composite.png",
+      "sha256": "efbb850684ba70456954e8a5b7625466a5f7f0855e31e3da1618923451abd37d"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/idle_02_composite.png",
+      "sha256": "48db2f13d3f610033b0553627e63093791defa31f8108839fd9aff2f76dec4d0"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/idle_03_composite.png",
+      "sha256": "243e4e6c2f9a8d13673304ac2c1ef8249e7a910874b14058ad88306bd5d94b2e"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/qa/idle_preview.gif",
+      "sha256": "49cf5c9ee2ef8b86a4cbfc3afd18925bd5f82c3b00a9d9bf874b8b74f6010778"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/PROMPTS.json",
+      "sha256": "c48ab25dde023d11311d42b4d15263aa32adf4d592f0a783c9303ac6fa0977d7"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/SOURCE_PROVENANCE.json",
+      "sha256": "51988da5ac9cb1313ce834f435327ca6805ef4e1efc607f1146d78e61ada44bc"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/attack_01_chest_coverage.png",
+      "sha256": "bdfc185b13c1beae36819197552267a89383701db82b826a569b8efcb97604a9"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/attack_02_chest_coverage.png",
+      "sha256": "97404c71d1025fe067133a6e3a6f7c5a7afddb9efaa7bc8e4c12d07a5c09a8c5"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/attack_03_chest_coverage.png",
+      "sha256": "ed1100c95678327075d9a1ba3d96d9de5edf84cc4fea554964d4766358ec7b0f"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/death_01_arm_rear_rgb.png",
+      "sha256": "69a9aed15d590ca872627736030e45bc9b631eb4a41bed33ccca7451270fcdd7"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/death_01_chest_coverage.png",
+      "sha256": "7680425494926b702ec0e94f4f3099b3bce98e544f72178bce37d6eda60ff1ae"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/death_01_legs_boots_rgb.png",
+      "sha256": "580f06f7f5a3c9c74996ce46013f493e9cb0e2a50d83ab5f119f97deb878e2c3"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/death_02_chest_coverage.png",
+      "sha256": "90e7c70aa16f99bd11d06a8955e749992882576377514dbc3217adc9f673c754"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/death_02_legs_boots_rgb.png",
+      "sha256": "19021bcbe7f8688233882cf17e4d1aaed4bd4b93523e1c82e80264174a22bdb6"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masks/idle_01_sleeve_coverage.png",
+      "sha256": "4dd01cdd45c252c1153648fb529ac8c708b8fdbc551626aab217096ef8dcd613"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masters/death_01_arm_rear_donor.png",
+      "sha256": "5cb32c436decdfaf6ac974d03479c04e56a436edb7a1b03a719e5ff8040693a1"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masters/death_01_legs_boots_donor.png",
+      "sha256": "4a4296fc1e1b892e48692c66712e27585f9045d32da6992f3960530c4156b679"
+    },
+    {
+      "path": "docs/g16-leather-g2/g3/g4-source/masters/death_02_legs_boots_donor.png",
+      "sha256": "889aaf45d85e1bde3e0e729a7fa6175a75ff3f0761fe1c365d29f386a426505f"
+    }
+  ]
+}

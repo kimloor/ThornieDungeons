@@ -1,0 +1,166 @@
+{
+  "legs_boots": {
+    "donor": "legs_material_donor.png",
+    "box": [
+      350,
+      430,
+      550,
+      630
+    ],
+    "poly": [
+      [
+        394,
+        446
+      ],
+      [
+        457,
+        435
+      ],
+      [
+        480,
+        456
+      ],
+      [
+        540,
+        490
+      ],
+      [
+        540,
+        621
+      ],
+      [
+        355,
+        625
+      ],
+      [
+        354,
+        549
+      ],
+      [
+        389,
+        516
+      ]
+    ],
+    "admittedChannels": "donor RGB only; canonical Base alpha inside manual part region; no donor geometry"
+  },
+  "arm_rear": {
+    "donor": "right_arm_material_donor.png",
+    "box": [
+      260,
+      370,
+      410,
+      520
+    ],
+    "poly": [
+      [
+        355,
+        375
+      ],
+      [
+        379,
+        395
+      ],
+      [
+        371,
+        425
+      ],
+      [
+        340,
+        450
+      ],
+      [
+        329,
+        473
+      ],
+      [
+        341,
+        478
+      ],
+      [
+        336,
+        501
+      ],
+      [
+        278,
+        513
+      ],
+      [
+        272,
+        477
+      ],
+      [
+        285,
+        452
+      ],
+      [
+        295,
+        429
+      ],
+      [
+        304,
+        402
+      ],
+      [
+        327,
+        380
+      ]
+    ],
+    "admittedChannels": "donor RGB only; canonical Base alpha inside manual part region; no donor geometry"
+  },
+  "arm_front": {
+    "donor": "left_arm_material_donor.png",
+    "box": [
+      430,
+      360,
+      570,
+      500
+    ],
+    "poly": [
+      [
+        450,
+        386
+      ],
+      [
+        476,
+        399
+      ],
+      [
+        498,
+        414
+      ],
+      [
+        524,
+        416
+      ],
+      [
+        551,
+        431
+      ],
+      [
+        559,
+        464
+      ],
+      [
+        504,
+        466
+      ],
+      [
+        498,
+        442
+      ],
+      [
+        475,
+        440
+      ],
+      [
+        462,
+        431
+      ],
+      [
+        447,
+        418
+      ]
+    ],
+    "admittedChannels": "donor RGB only; canonical Base alpha inside manual part region; no donor geometry"
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "mode": "built-in ImageGen then fixed-canvas masked extraction",
+  "rawDimensions": [
+    1254,
+    1254
+  ],
+  "normalization": [
+    768,
+    768
+  ],
+  "perLimbTransforms": false,
+  "baseModified": false,
+  "faceCoreBox": [
+    356,
+    356,
+    446,
+    412
+  ],
+  "faceCoreRGBAUnchanged": true,
+  "records": [
+    {
+      "layer": "arm_front",
+      "allowedPolygon": [
+        [
+          445,
+          473
+        ],
+        [
+          480,
+          468
+        ],
+        [
+          511,
+          481
+        ],
+        [
+          518,
+          501
+        ],
+        [
+          507,
+          521
+        ],
+        [
+          477,
+          525
+        ],
+        [
+          451,
+          511
+        ]
+      ],
+      "changedPixels": 2600,
+      "changedOutsideMask": 0
+    },
+    {
+      "layer": "helmet",
+      "allowedPolygon": [
+        [
+          312,
+          337
+        ],
+        [
+          351,
+          337
+        ],
+        [
+          349,
+          355
+        ],
+        [
+          338,
+          374
+        ],
+        [
+          338,
+          413
+        ],
+        [
+          312,
+          410
+        ]
+      ],
+      "changedPixels": 2313,
+      "changedOutsideMask": 0
+    },
+    {
+      "layer": "torso_armor",
+      "allowedPolygon": [
+        [
+          288,
+          432
+        ],
+        [
+          305,
+          437
+        ],
+        [
+          308,
+          471
+        ],
+        [
+          318,
+          485
+        ],
+        [
+          312,
+          495
+        ],
+        [
+          288,
+          489
+        ]
+      ],
+      "changedPixels": 1082,
+      "changedOutsideMask": 0
+    }
+  ]
+}
