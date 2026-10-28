@@ -1,5 +1,5 @@
 # ThornieDungeons — Equipment Sprite Pipeline V1
-Status: **OWNER APPROVED — G16 G5 RUNTIME IMPLEMENTED / PR REVIEW PENDING; G6 PENDING** (2026-10-28)
+Status: **G16 G5 POST-MERGE ACCEPTED; G6 END-TO-END PUBLICATION AUTHORIZED / PRODUCTION EVIDENCE PENDING** (2026-10-28)
 Scope: Hero V5 G2 modular equipment authoring, review and scoped runtime compatibility. Controlled art creation/correction follows the gates below; this document does not authorize R2 upload, gameplay/economy, Worker/API/D1 or deployment changes.
 Approved decisions: **HYBRID / AZURE-REFERENCE / FULL-SET-FIRST / G16 BEFORE SKELETON / WEAPON-FREE HERO + SEPARATE COMPLETE WEAPON**.
 
@@ -148,7 +148,7 @@ Evidence/provenance: `docs/g16-leather-g2/g3/owner-selected-recut/attack_01/` (l
 
 G16 current handoff (2026-10-28): Owner Final G4 Visual Approval accepts all eight frames and Idle/Attack/Death animation previews from the corrected ChatGPT package, and authorizes final upload to existing Draft PR #160. Exactly 11 PNG replacements and 45 byte-identical preserved equipment PNGs are reconciled in `docs/g16-leather-g2/g3/VALIDATION.json` and `SHA256SUMS`. `g4-source/OWNER_APPROVAL.md` pins the package and approval. Current contact/comparison/GIF evidence is in `g3/qa/`. Earlier G3 byte-preservation statements above describe their historical stage; only the 11 Owner-approved G4 seam/RGB corrections supersede those byte locks. Poses, Base anatomy/origin, rear torso facing, helmet/sword/underlay bytes and Death_02 helmet [0,-8] remain locked.
 
-G4 visual acceptance is preserved. G5 implements the approved scoped foreground-arm capability and actual-renderer QA, but remains pending Project Lead PR review. Empty Death swords require no crop. G6 R2/production manifest/deploy remain unapproved.
+G4 visual acceptance is preserved. G5 scoped runtime foreground-arm implementation is merged (Graphics PR #160, DEV PR #164) and post-merge QA accepted at main e74a8b522f2092156ded830fc5ca48bddbed3e9e. Empty Death swords require no crop. G6 full publication is Owner-authorized subject to sequential SHA/read-back, manifest and live QA gates; publication/Production Verified are not yet evidenced here. See §9.
 
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |
@@ -180,4 +180,62 @@ This is a **proposed authoring package**, not a new live R2 structure or a reque
 3. Continue **G17 Bronze → G18 Steel/Chain → G19 Platinum → G20 Dragon Slayer** using the validated template.
 
 ## 8. Change control
-This document records the specification and the scoped G16 Idle_01 Owner visual approval in section 4B. Pipeline approval alone **does not** approve other G16 art, Skeleton replacement art, repository code change, R2 overwrite, runtime hair behavior or deploy. Graphics authors its own implementation PR when tasked; Project Lead reviews handoff/gates. No Worker/API/D1, gameplay, item-stat, persistence or economy changes. Generated `index.html` is built via `node build.js`, never hand edited. Docs-only commit does not bump visible game version.
+This document records the reusable specification, historical staged Owner approvals, and G16 lessons through the G6 publication procedure. Pipeline approval alone **does not** approve other G16 art, Skeleton replacement art, repository code change, R2 overwrite, runtime hair behavior or deploy. Graphics authors its own implementation PR when tasked; Project Lead reviews handoff/gates. No Worker/API/D1, gameplay, item-stat, persistence or economy changes. Generated `index.html` is built via `node build.js`, never hand edited. Docs-only commit does not bump visible game version.
+
+
+## 9. End-to-end repeatable equipment sprite production SOP — G16 lessons (2026-10-28)
+
+This is the **operational checklist for future equipment families**. Read Gate 0 Master Template, the earlier detailed cutting procedures (§4A–4D), and the current live manifest/contract before using it. Historical interim statuses and rejected visual variants above remain provenance, not the latest approval state. **G16 G5 passed post-merge QA at main `e74a8b522f2092156ded830fc5ca48bddbed3e9e`; G6 full publication was separately authorized but must not be reported complete before read-back and Production evidence.**
+
+### Stage 0 — Reference and Gate 0 source lock
+1. Read `AGENTS.md`, this pipeline, `docs/EQUIPMENT-SPRITE-MASTER-TEMPLATE-V1.md`, current `r2-upload/manifest.json`, Hero V5 Runtime Contract, and Azure frame contracts. Record exact main HEAD.
+2. Resolve each of the eight **actual manifest-selected** Hero Bases and Azure pose/equipment reference images. Preserve Base identity using recorded raw SHA-256, dimensions, alpha and origin. Never redraw, shift, auto-trim or re-center Base.
+3. Reuse an existing approved Gate 0 baseline if unchanged; only revalidate altered inputs. Treat visual anatomical landmark estimates as guides, not exact rig joints; preserve runtime Y offset **84 in code**, not in PNG files.
+4. Produce a concise source/anchor/pose and integrity record before G1. Stop on conflicting manifest, pose or checksum authority.
+
+### Stage 1 — Owner concept approval (G1)
+1. Establish the theme, material, full-set silhouette, helmet/hair treatment, right-hand weapon and optional icon-only Accessory. Use **HYBRID, Azure-reference, Full Set First**; no mandatory exhaustive mixed-set visual matrix.
+2. Show a fully dressed **weapon-free** Hero and a **complete separate weapon**. Review against the locked Base/Azure anatomy and pose; do not infer an approval from image-generation output.
+3. For full hair-cover Leather helmets use `hidden_full_cover`; helmets with exposed hair bake the approved hairstyle with helmet and use `baked_into_helmet`; without helmet use `default`. Obtain explicit Owner visual acceptance before cutting.
+
+### Stage 2 — G2 single-frame pilot, registered slicing and completion
+1. Begin with `idle_01` and the approved weapon-free dressed Hero. Register the complete weapon uniformly at the anatomically correct grip; retain an independent complete sword master.
+2. Cut **one layer at a time** in original **768×768 RGBA / [0,0]** coordinates: helmet, torso_armor, legs_boots, arm_rear, arm_front, sword and coverage_underlay. Review each extracted piece enlarged and against contrasting backgrounds.
+3. Repair truncated *hidden insertion geometry* (collar/back-neck, shoulder/upper sleeve caps, waist/hip, glove/wrist, boot seams) from bounded compatible material; clean stray pixels, wrong-surface fragments and alpha fringes. Preserve the approved visible silhouette, source pose, light direction and piece material; do not merely cut along visible overlap edges.
+4. Keep each equipment piece responsible for its own seam/coverage. Export a **fully transparent coverage_underlay** with explicit `emptyReason` for the G16 rule; do not add shared underlay art to hide a defective cut.
+5. Reassemble **the exact exported pieces** over unchanged Base, not an idealized concept. Check sword grip and hand occlusion, torso facing, shoulder/glove/waist/boot gaps, silhouette and default hair suppression at enlarged and game display size. Only an Owner-approved reviewed composite may advance.
+6. Use the already merged scoped `leather_overlap_v1` pairwise ordering for Chest+Gloves and Chest+Boots; retain the approved per-frame Idle post-sword cropped arm when needed. Rendering fixes require DEV compatibility review and regressions, not silent global reorder.
+
+### Stage 3 — G3 full frame expansion
+1. Produce exactly **8 frames × 7 paths = 56 fixed-canvas PNGs**: `idle_01–03`, `attack_01–03`, `death_01–02`; layers `coverage_underlay, torso_armor, legs_boots, arm_rear, helmet, sword, arm_front`.
+2. Match **each** original Base/Azure pose separately; Idle has accepted bob **[0,-12,-4]**. In G16, Attack_01 faces front, Attack_02/03 have rear-facing torso; Death_01 and Death_02 retain their individually approved poses (including Death_02 helmet offset **[0,-8]** in authoring coordinates).
+3. Preserve complete weapon master and correct handedness/foreground insertion. G16 Death swords are intentionally empty; all eight underlays are intentionally empty. Every transparent exported path still exists and records an `emptyReason`.
+4. Maintain SHA-ledger traceability and do not alter Owner-locked frames while fixing other frames. Record frame-by-frame visual acceptance; rejected variants and intermediate candidates never replace accepted source.
+
+### Stage 4 — G4 final correction, Owner approval and Git publication
+1. Build full-frame contact sheet, isolated layer sheets, before/after seam/material comparisons, Idle/Attack/Death animation previews and **actual exported-layer** composites.
+2. Test skin/Base exposure at armor seams, shoulder insertions, leg/boot/wrist continuity and rear torso-facing; repair with bounded masks/donor pixels. Preserve original piece alpha when an approved repair is RGB-only. Explicitly identify changed bytes versus unchanged assets.
+3. Verify every final PNG: path/inventory, dimensions, RGBA, [0,0], alpha edge/bbox, intentional empty layers, decode and SHA-256. For G16 final G4: **11 Owner-approved replacements, 45 byte-identical preserved**, recorded in `docs/g16-leather-g2/g3/VALIDATION.json`, `SHA256SUMS`, `g4-source/OWNER_APPROVAL.md`.
+4. Obtain Owner approval of **all eight final composites and animation previews** before Git publication. Commit only final approved files and essential provenance/QA; keep historical evidence. Graphics opens its PR; Project Lead reviews and controls merge.
+
+### Stage 5 — G5 runtime integration and real renderer acceptance
+1. Audit equipment slot ownership, `compositionProfile`, `hairMode`, fullFaceHelmet legacy fallback, transparent underlay conditions, selected setId precedence, generic Tier-1 binding, Boss sword authority, wings and Azure/Robot/Skeleton isolation.
+2. For G16 `leather_overlap_v1`, declare `frameComposition.<frameId>.foreground: ["arm_rear"]` for `attack_01`, `attack_02`, `attack_03`, `death_02`. Move only the selected Leather-owned frame layer after the resolved sword, preserving other relative order; **do not duplicate the full foreground arm with a cropped hand pass**.
+3. Preserve Idle hand crops `idle_01 [0,493,768,42]`, `idle_02 [0,481,768,42]`, `idle_03 [0,489,768,42]`. Attack and Death have **no cropped hand pass**. Empty Death sword, offset 84 and Idle bob remain unchanged.
+4. Verify all eight frame paths with actual `EquipmentVisualResolver → HeroV5RuntimeContract → EventBridge → HeroRenderer` (Phaser), real Idle→Attack→Death transitions, HeroPreviewHost/BattlefieldHost and Battle HeroActor. Compare with final G4 references using **alpha-support and premultiplied color** tolerances appropriate to Canvas compositing; do not confuse non-identical raw RGBA rounding with meaningful visual defects.
+5. Run targeted Hero/W8/Skeleton/Phaser/Mythic/equipment checks, full regression, `node build.js`, `git diff --check`, SHA ledger, and verify a clean generated build. Distinguish Canvas PASS from **WebGL not tested**, and local tests from missing CI. Obtain post-merge QA before G6. G16 post-merge evidence reported **56/56 hashes, 12/12 G16, 120/120 targeted, 911/911 full regression**, and actual Canvas 8/8 (source: G5 handoff; do not represent these as newly rerun in this document).
+
+### Stage 6 — G6 release: two ordered publication gates, production smoke and rollback
+1. **Preflight:** recheck latest main, live R2 manifest and `assets` bucket collisions; preserve live manifest bytes/hash for safe rollback and account for concurrent edits. Source is final `VALIDATION.json` (each `files[].path`). R2 key `hero/v5/g2/equipment/<family>/<frame>/<layer>.png`; staging path `r2-upload/<same-key>`. Copy bytes unchanged; no image re-encoding/resizing.
+2. **Gate A — PNG upload:** stage 56 approved PNGs only, in an isolated commit. The repo's normal main-push workflow uploads *changed paths* under `r2-upload/`; **do not run full-staging `workflow_dispatch`**. Inspect triggers before pushing. Do **not** include/activate Leather manifest in the same upload batch.
+3. After Gate A workflow success, independently read back **all 56 R2 objects** and compare their **SHA-256** to the final source ledger (not ETag). Verify public URL, content type `image/png`, dimensions, alpha and decode; ensure the active manifest did not change. Stop on any collision, missing key, failed hash or unexpected unrelated upload.
+4. **Gate B — activation (only after A PASS):** add exactly one family under `assets.hero001.v5.g2.equipment.leather` in `r2-upload/manifest.json`: `approval:"approved"`, canvas 768×768, origin x/y=0, `compositionProfile:"leather_overlap_v1"`, `hairMode:"hidden_full_cover"`, four foreground-frame entries, three Idle hand crops and **56 concrete frame/layer R2 strings**. Preserve all other manifest families and app/backend files.
+5. Publish/read back the manifest as a *separate* controlled commit/workflow, verify the live JSON and semantic diff, ensure all listed objects remain accessible and no prior family was overwritten.
+6. Production smoke: asset requests, authenticated Inventory/equipment and Hero Preview if accessible, Battle Idle/Attack/Death, sword/Boss overlap, helmet/hair/fallback, mobile display and Azure/Robot/Skeleton. State which checks were **actually authenticated**; do not claim Production Verified solely from successful public asset decoding.
+7. Record source SHA, publication commits, workflow IDs, 56 per-object read-back hashes, manifest before/after, browser/host test evidence and rollback readiness in `docs/g16-leather-g2/g6/PUBLICATION.json`.
+8. On material failure, stop activation or **remove only the Leather manifest block / safely reconcile the saved manifest** and verify live read-back and unaffected families. Keep uploaded R2 PNGs unreferenced; do not delete artwork/evidence or assume deleting staging deletes R2 objects. Do not revert unrelated later manifest updates.
+9. Owner performs **final visual acceptance on Production**. Only close the family as Production Complete after actual publication, runtime smoke, accurate limitations and Owner verification. G16 publication is **authorized**, not presumed complete until returned G6 evidence confirms each gate.
+
+### Minimal future-family acceptance record
+
+For each new set record: `family/setId`, latest main SHA, locked Base/Azure references, Owner G1/G2/G4 approvals, 8×7 file ledger and SHA-256, transparent emptyReasons, renderer layer order/crops/hair metadata, G5 test counts and Canvas/WebGL coverage, R2 keys and read-back hashes, activation manifest SHA/semantic diff, deployment/workflow IDs, public/authenticated smoke, rollback steps and Owner Production decision. Do not silently copy G16-specific posture/crops into another family: re-measure each pose and require its own approvals.
