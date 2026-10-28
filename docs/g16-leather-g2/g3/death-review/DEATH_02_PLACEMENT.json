@@ -417,8 +417,13 @@
     "sword",
     "arm_rear"
   ],
+  "finalHelmetOfflineTranslation": [
+    0,
+    -8
+  ],
+  "ownerFinalInstruction": "2026-10-28: raise helmet 8px then submit; right arm remains in front of chest",
+  "artStatus": "OWNER_ACCEPTED_FOR_G3_HANDOFF",
   "runtimeOffsetBaked": false,
   "generatedBaseUsed": false,
-  "torsoFacing": "front / bowed three-quarter",
-  "ownerOrderCorrection": "2026-10-28: anatomical right arm (arm_rear) in front of torso; art assembly only"
+  "torsoFacing": "front / bowed three-quarter"
 }

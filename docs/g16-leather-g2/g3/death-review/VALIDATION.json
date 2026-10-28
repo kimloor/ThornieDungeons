@@ -1,5 +1,5 @@
 {
-  "status": "DEATH_01_OWNER_APPROVED_DEATH_02_REVIEW_PENDING",
+  "status": "DEATH_01_OWNER_APPROVED",
   "mainChecked": "614d8e363efa074d257319f3e3578a56196c2a06",
   "risk": "MEDIUM",
   "ownerAccepted": "2026-10-28 latest placement-review-v2 after.png at 52252e222217c3b8207093d7dff59e3974c74698",
@@ -205,9 +205,6 @@
   "runtimeChanged": false,
   "runtimeOffsetBaked": false,
   "productionManifestChanged": false,
-  "G3Complete": false,
-  "G4Ready": false,
   "death01VisualAcceptance": true,
-  "death02VisualAcceptance": false,
-  "technicalChecks": "PASS; Death_02 still requires Owner visual review"
+  "technicalChecks": "PASS; final all-frame gate is in ../VALIDATION.json"
 }

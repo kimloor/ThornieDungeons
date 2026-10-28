@@ -41,6 +41,8 @@ guides={};parts={n:Image.new('RGBA',(768,768)) for n in LAYERS}
 parts['helmet']=warp('helmet',
  [[260,290],[280,235],[355,195],[420,230],[449,280],[435,308],[390,287],[345,278],[325,329],[352,375],[295,356]],
  [[276,434],[295,380],[395,342],[456,391],[470,452],[444,500],[405,466],[360,454],[315,485],[331,534],[277,502]])
+# Owner final instruction: helmet up exactly 8px, then submit the artwork.
+shifted=Image.new('RGBA',(768,768));shifted.paste(parts['helmet'],(0,-8));parts['helmet']=shifted
 parts['torso_armor']=warp('torso_armor',
  [[281,400],[307,398],[333,384],[360,395],[384,402],[409,410],[423,426],[322,437],[397,438],[317,467],[382,473],[355,490],[309,497],[407,502]],
  [[252,538],[278,532],[306,535],[328,550],[347,552],[355,566],[365,584],[270,566],[348,588],[254,594],[321,610],[288,610],[239,615],[338,631]])
@@ -76,5 +78,5 @@ order=['coverage_underlay','legs_boots','arm_front','torso_armor','helmet','swor
 out=base.copy()
 for n in order:out=Image.alpha_composite(out,parts[n])
 Q=P/'qa';Q.mkdir(exist_ok=True);out.save(Q/'death_02.png')
-(P/'DEATH_02_PLACEMENT.json').write_text(json.dumps({'guides':guides,'admissions':specs,'order':order,'runtimeOffsetBaked':False,'generatedBaseUsed':False,'torsoFacing':'front / bowed three-quarter'},indent=2)+'\n')
-print('Built 7 Death_02 candidate layers from distinct canonical kneeling pose; visual acceptance pending.')
+(P/'DEATH_02_PLACEMENT.json').write_text(json.dumps({'guides':guides,'admissions':specs,'order':order,'finalHelmetOfflineTranslation':[0,-8],'ownerFinalInstruction':'2026-10-28: raise helmet 8px then submit; right arm remains in front of chest','artStatus':'OWNER_ACCEPTED_FOR_G3_HANDOFF','runtimeOffsetBaked':False,'generatedBaseUsed':False,'torsoFacing':'front / bowed three-quarter'},indent=2)+'\n')
+print('Built 7 final Death_02 layers with Owner-requested helmet up 8px and foreground right arm.')

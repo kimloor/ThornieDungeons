@@ -1,5 +1,5 @@
 # ThornieDungeons — Equipment Sprite Pipeline V1
-Status: **OWNER APPROVED — G16 G2 RUNTIME COMPATIBILITY IMPLEMENTED / PR REVIEW PENDING** (2026-10-27)
+Status: **OWNER APPROVED — G16 G3 ARTWORK COMPLETE / G4 VISUAL QA PENDING** (2026-10-28)
 Scope: Hero V5 G2 modular equipment authoring, review and scoped runtime compatibility. Controlled art creation/correction follows the gates below; this document does not authorize R2 upload, gameplay/economy, Worker/API/D1 or deployment changes.
 Approved decisions: **HYBRID / AZURE-REFERENCE / FULL-SET-FIRST / G16 BEFORE SKELETON / WEAPON-FREE HERO + SEPARATE COMPLETE WEAPON**.
 
@@ -136,6 +136,9 @@ This section records the reusable method learned during the Attack_01–03 work.
 Evidence/provenance: `docs/g16-leather-g2/g3/owner-selected-recut/attack_01/` (layer, neck and bounded donor checkpoints), `attack-review-pack-v1/` (three-frame clothing reconstruction), and `attack-review-pack-v1/azure-comparison/` (same-scale Azure comparison). Historical pending wording is not rewritten; this section records Owner's subsequent pose acceptance and facing correction.
 
 ## 5. Gates and owner acceptance
+
+G16 current handoff: Owner accepted Death_01 and the Death_02 foreground right-arm order, then directed an exact 8px upward helmet shift and submission. The final 56-path artwork inventory and preservation checks are in `docs/g16-leather-g2/g3/VALIDATION.json`; final source/approval details and next gates are in its README and PROJECT_LEAD_HANDOFF.md. This closes artwork expansion only. G4 full-set visual/animation QA, separate DEV review of Attack/Death_02 foreground arm ordering and Attack hand crops, G5 runtime regression and G6 publication remain pending. No runtime, R2, production-manifest or deployment authorization is added.
+
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |
 | G0 Reference lock | Actual 8 Base frames, Azure refs/hashes, per-pose anchor map, silhouette zones | Exact provenance, unchanged Base and fixed origins |

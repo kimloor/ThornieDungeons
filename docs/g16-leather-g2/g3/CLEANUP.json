@@ -1,7 +1,7 @@
 {
   "authorized": "Owner 2026-10-28: remove unnecessary or completed documents uploaded to repo",
   "scope": "superseded G3 status readmes/handoffs/validation ledgers and redundant Death_01 placement trials",
-  "removedCount": 58,
+  "removedCount": 59,
   "removed": [
     "docs/g16-leather-g2/g3/revision-a/VALIDATION.json",
     "docs/g16-leather-g2/g3/revision-a/README.md",
@@ -60,7 +60,8 @@
     "docs/g16-leather-g2/g3/death-review/placement-review-v2/after.png",
     "docs/g16-leather-g2/g3/death-review/placement-review-v2/before.png",
     "docs/g16-leather-g2/g3/death-review/placement-review-v2/build.py",
-    "docs/g16-leather-g2/g3/qa/POSE_DRIFT_REVIEW.png"
+    "docs/g16-leather-g2/g3/qa/POSE_DRIFT_REVIEW.png",
+    "docs/g16-leather-g2/g3/death-review/DEATH_02_ARM_ORDER_COMPARISON.png"
   ],
   "preserved": [
     "Master Template and Pipeline contracts",
@@ -70,5 +71,6 @@
     "generation prompts, garment guides and source assets still required by builders"
   ],
   "recoveryCommit": "52252e222217c3b8207093d7dff59e3974c74698",
-  "replacementStatus": "g3/README.md and g3/PROJECT_LEAD_HANDOFF.md"
+  "replacementStatus": "g3/README.md and g3/PROJECT_LEAD_HANDOFF.md",
+  "additionalCleanupRecoveryCommit": "03b50c08c06d5decb1cc9f246a3c0f70e4aa50b6"
 }

@@ -1,14 +1,29 @@
 {
-  "status": "DEATH_01_APPROVED_DEATH_02_OWNER_REVIEW_PENDING",
+  "status": "G16 G3 ARTWORK COMPLETE \u2014 G4 VISUAL QA PENDING",
   "mainChecked": "614d8e363efa074d257319f3e3578a56196c2a06",
-  "risk": "LOW offline order-only correction",
+  "risk": "LOW final integer helmet placement and artwork handoff",
   "expectedPaths": 56,
   "presentPaths": 56,
-  "death02CandidatePaths": 7,
-  "establishedReferencePaths": 49,
-  "finalInventoryPromoted": false,
-  "G3Complete": false,
-  "G4Ready": false,
+  "acceptedG3Paths": 56,
+  "candidatePaths": 0,
+  "finalInventoryPromoted": true,
+  "G3Complete": true,
+  "G4Ready": true,
+  "G4VisualQaPassed": false,
+  "ownerFinalInstruction": "2026-10-28: raise Death_02 helmet 8px then submit; preserve foreground right arm",
+  "finalChange": {
+    "frame": "death_02",
+    "layer": "helmet",
+    "offlineTranslation": [
+      0,
+      -8
+    ],
+    "previousCommit": "03b50c08c06d5decb1cc9f246a3c0f70e4aa50b6",
+    "exactPixelTranslationVerified": true,
+    "clippedNonzeroAlphaPixels": 0,
+    "otherEquipmentPngsByteIdentical": 55,
+    "generatedArtworkUsedForFinalChange": false
+  },
   "baseSha256": {
     "idle_01": "1c4e9d24d7d560b96e85dbdbccc47d17739c156a1377d4afb7f53fd90983e5e5",
     "idle_02": "18c5935634ffbf3758eadb505864cf44a1143a349e742591e0bf7db5fc5773f9",
@@ -21,22 +36,16 @@
   },
   "protectedExistingEquipmentPngCount": 49,
   "protectedExistingEquipmentByteIdentical": true,
-  "all56EquipmentPngsByteIdenticalTo": "2264d4117a711acaf453631fefd8d9cb36a34c16",
-  "death02RightArmOrderCorrection": {
-    "sourceLayer": "arm_rear",
-    "anatomy": "right arm",
-    "visibleOrder": "right arm in front of chest",
-    "changedCompositePixels": 4574,
-    "allChangedPixelsInsideRightArmAlpha": true,
-    "runtimeCompatible": null,
-    "runtimeCompatibilityStatus": "UNREVIEWED_SEPARATE_DEV_GATE"
-  },
   "death01ApprovedCompositePixelIdentical": true,
+  "death02RightArmOrder": {
+    "sourceLayer": "arm_rear",
+    "visibleOrder": "right arm in front of chest",
+    "runtimeCompatibilityStatus": "SEPARATE_DEV_GATE_NOT_APPROVED"
+  },
   "runtimeChanged": false,
   "productionManifestChanged": false,
   "runtimeOffsetBaked": false,
   "actualRuntimeRendererTested": false,
-  "fullSetVisualAcceptance": false,
   "assemblyOrderByFrame": {
     "idle_01": [
       "coverage_underlay",
@@ -278,7 +287,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
     },
     {
@@ -303,7 +312,7 @@
       ],
       "alphaNonzeroPixels": 12533,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_01",
@@ -327,7 +336,7 @@
       ],
       "alphaNonzeroPixels": 17001,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_01",
@@ -351,7 +360,7 @@
       ],
       "alphaNonzeroPixels": 6980,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_01",
@@ -375,7 +384,7 @@
       ],
       "alphaNonzeroPixels": 22324,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_01",
@@ -399,7 +408,7 @@
       ],
       "alphaNonzeroPixels": 6211,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_01",
@@ -423,7 +432,7 @@
       ],
       "alphaNonzeroPixels": 3836,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_02",
@@ -442,7 +451,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
     },
     {
@@ -467,7 +476,7 @@
       ],
       "alphaNonzeroPixels": 12533,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_02",
@@ -491,7 +500,7 @@
       ],
       "alphaNonzeroPixels": 17001,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_02",
@@ -515,7 +524,7 @@
       ],
       "alphaNonzeroPixels": 6980,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_02",
@@ -539,7 +548,7 @@
       ],
       "alphaNonzeroPixels": 22324,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_02",
@@ -563,7 +572,7 @@
       ],
       "alphaNonzeroPixels": 6211,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_02",
@@ -587,7 +596,7 @@
       ],
       "alphaNonzeroPixels": 3836,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_03",
@@ -606,7 +615,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
     },
     {
@@ -631,7 +640,7 @@
       ],
       "alphaNonzeroPixels": 12533,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_03",
@@ -655,7 +664,7 @@
       ],
       "alphaNonzeroPixels": 17001,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_03",
@@ -679,7 +688,7 @@
       ],
       "alphaNonzeroPixels": 6980,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_03",
@@ -703,7 +712,7 @@
       ],
       "alphaNonzeroPixels": 22324,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_03",
@@ -727,7 +736,7 @@
       ],
       "alphaNonzeroPixels": 6211,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "idle_03",
@@ -751,7 +760,7 @@
       ],
       "alphaNonzeroPixels": 3836,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_01",
@@ -770,7 +779,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
     },
     {
@@ -795,7 +804,7 @@
       ],
       "alphaNonzeroPixels": 10080,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_01",
@@ -819,7 +828,7 @@
       ],
       "alphaNonzeroPixels": 16772,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_01",
@@ -843,7 +852,7 @@
       ],
       "alphaNonzeroPixels": 10002,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_01",
@@ -867,7 +876,7 @@
       ],
       "alphaNonzeroPixels": 21087,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_01",
@@ -891,7 +900,7 @@
       ],
       "alphaNonzeroPixels": 6341,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_01",
@@ -915,7 +924,7 @@
       ],
       "alphaNonzeroPixels": 5692,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_02",
@@ -934,7 +943,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
     },
     {
@@ -959,7 +968,7 @@
       ],
       "alphaNonzeroPixels": 7543,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_02",
@@ -983,7 +992,7 @@
       ],
       "alphaNonzeroPixels": 16772,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_02",
@@ -1007,7 +1016,7 @@
       ],
       "alphaNonzeroPixels": 8047,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_02",
@@ -1031,7 +1040,7 @@
       ],
       "alphaNonzeroPixels": 21087,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_02",
@@ -1055,7 +1064,7 @@
       ],
       "alphaNonzeroPixels": 6332,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_02",
@@ -1079,7 +1088,7 @@
       ],
       "alphaNonzeroPixels": 3860,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_03",
@@ -1098,7 +1107,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
     },
     {
@@ -1123,7 +1132,7 @@
       ],
       "alphaNonzeroPixels": 7539,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_03",
@@ -1147,7 +1156,7 @@
       ],
       "alphaNonzeroPixels": 16625,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_03",
@@ -1171,7 +1180,7 @@
       ],
       "alphaNonzeroPixels": 7093,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_03",
@@ -1195,7 +1204,7 @@
       ],
       "alphaNonzeroPixels": 21087,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_03",
@@ -1219,7 +1228,7 @@
       ],
       "alphaNonzeroPixels": 6344,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "attack_03",
@@ -1243,7 +1252,7 @@
       ],
       "alphaNonzeroPixels": 4261,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_01",
@@ -1262,7 +1271,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
     },
     {
@@ -1287,7 +1296,7 @@
       ],
       "alphaNonzeroPixels": 11822,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_01",
@@ -1311,7 +1320,7 @@
       ],
       "alphaNonzeroPixels": 17044,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_01",
@@ -1335,7 +1344,7 @@
       ],
       "alphaNonzeroPixels": 6240,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_01",
@@ -1359,7 +1368,7 @@
       ],
       "alphaNonzeroPixels": 19955,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_01",
@@ -1378,7 +1387,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Death releases weapon; canonical Azure Death contract requires no grip and selects a transparent sword."
     },
     {
@@ -1403,7 +1412,7 @@
       ],
       "alphaNonzeroPixels": 3508,
       "edgeAlphaNonzero": 0,
-      "artStatus": "ESTABLISHED_OWNER_ACCEPTED_REFERENCE"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_02",
@@ -1422,7 +1431,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "OWNER_REVIEW_PENDING",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
     },
     {
@@ -1447,7 +1456,7 @@
       ],
       "alphaNonzeroPixels": 10251,
       "edgeAlphaNonzero": 0,
-      "artStatus": "OWNER_REVIEW_PENDING"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_02",
@@ -1471,7 +1480,7 @@
       ],
       "alphaNonzeroPixels": 11897,
       "edgeAlphaNonzero": 0,
-      "artStatus": "OWNER_REVIEW_PENDING"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_02",
@@ -1495,13 +1504,13 @@
       ],
       "alphaNonzeroPixels": 6115,
       "edgeAlphaNonzero": 0,
-      "artStatus": "OWNER_REVIEW_PENDING"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_02",
       "layer": "helmet",
       "path": "docs/g16-leather-g2/g3/death-review/exports/death_02/helmet.png",
-      "sha256": "230fc1b55cc95b0f8dc979249408ee5eb7488b78f7a331b5ce916f998eccba4c",
+      "sha256": "679d3a819e0c79374483f1c22454704e923ed7a56133326310c53872b930b7f1",
       "dimensions": [
         768,
         768
@@ -1513,13 +1522,13 @@
       ],
       "alphaBounds": [
         260,
-        333,
+        325,
         486,
-        542
+        534
       ],
       "alphaNonzeroPixels": 28785,
       "edgeAlphaNonzero": 0,
-      "artStatus": "OWNER_REVIEW_PENDING"
+      "artStatus": "OWNER_ACCEPTED_G3"
     },
     {
       "frame": "death_02",
@@ -1538,7 +1547,7 @@
       "alphaBounds": null,
       "alphaNonzeroPixels": 0,
       "edgeAlphaNonzero": 0,
-      "artStatus": "OWNER_REVIEW_PENDING",
+      "artStatus": "OWNER_ACCEPTED_G3",
       "emptyReason": "Death releases weapon; canonical Azure Death contract requires no grip and selects a transparent sword."
     },
     {
@@ -1563,8 +1572,8 @@
       ],
       "alphaNonzeroPixels": 3333,
       "edgeAlphaNonzero": 0,
-      "artStatus": "OWNER_REVIEW_PENDING"
+      "artStatus": "OWNER_ACCEPTED_G3"
     }
   ],
-  "remainingGate": "Owner acceptance of Death_02, then reconcile acceptance state and proceed G4 visual QA; separate DEV review for Attack/Death_02 foreground arm order and Attack hand crops."
+  "remainingGate": "G4 full-set visual/animation QA, then G5 runtime regression and separate DEV review for Attack/Death_02 foreground arm order and Attack hand crops. G6 R2/manifest/deploy not authorized."
 }
