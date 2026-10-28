@@ -215,14 +215,12 @@ test("validation: reason, confirmText, requestId and ids are required; 401 witho
   assert.equal(count(db, "items"), 4); assert.equal(audits(db).length, 0);
 });
 
-test("abuse limit: the 21st successful delete within an hour is rejected", async () => {
+test("no per-Admin delete rate limit (Owner decision): 25 consecutive deletes all succeed", async () => {
   const db = createDb();
   const ins = db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, created_at, updated_at) VALUES (?,?,?,?,?,?)");
-  for (let i = 0; i < 21; i++) ins.run(`bulk${i}`, "P1", "c1", "weapon", "t", "t");
-  for (let i = 0; i < 20; i++) assert.equal((await del(db, { itemId: `bulk${i}` })).ok, true, `delete ${i}`);
-  const r = await del(db, { itemId: "bulk20" });
-  assert.equal(r.status, 429); assert.equal(r.error, "admin_rate_limited");
-  assert.equal(count(db, "items", "item_id='bulk20'"), 1);
+  for (let i = 0; i < 25; i++) ins.run(`bulk${i}`, "P1", "c1", "weapon", "t", "t");
+  for (let i = 0; i < 25; i++) assert.equal((await del(db, { itemId: `bulk${i}` })).ok, true, `delete ${i}`);
+  assert.equal(audits(db).length, 25);
 });
 
 test("worker source: single-target guarded statements, no bulk or generic SQL, routed through Admin auth", () => {

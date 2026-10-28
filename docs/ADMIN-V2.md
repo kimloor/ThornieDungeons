@@ -673,7 +673,7 @@ In scope: `adminDeleteRecipe`, `adminDeleteMonsterLootEntry`, `adminDeleteJunkIn
 
 ### 22.7 W2-F — Delete Player Item (VERY HIGH)
 
-**Implementation status (2026-10-27): IN PR, NOT MERGED — needs Owner approval; ships DISABLED (Ver 1.1.23).** Enable only on Owner instruction by setting `game_config.admin_item_delete_enabled` to JSON `true` (absent or anything else = off). Actions: `adminGetItemDetail` (GET, read-only, works while disabled and reports `enabled`), `adminPreviewItemDelete` (GET), `adminDeleteItem` (POST). New codes: `feature_disabled`, `operation_pending`, `character_in_run`, `item_state_changed` (plus existing `item_equipped`, `item_not_found`, `invalid_quantity`, `invalid_request_id`, `admin_rate_limited`). Tests: `tests/admin-v2-delete-item.test.js`.
+**Implementation status (2026-10-27): IN PR, NOT MERGED — needs Owner approval; ships DISABLED (Ver 1.1.23).** Enable only on Owner instruction by setting `game_config.admin_item_delete_enabled` to JSON `true` (absent or anything else = off). Actions: `adminGetItemDetail` (GET, read-only, works while disabled and reports `enabled`), `adminPreviewItemDelete` (GET), `adminDeleteItem` (POST). New codes: `feature_disabled`, `operation_pending`, `character_in_run`, `item_state_changed` (plus existing `item_equipped`, `item_not_found`, `invalid_quantity`, `invalid_request_id`). Tests: `tests/admin-v2-delete-item.test.js`.
 
 **Open items resolved in this PR (verified against code and read-only production queries, 2026-10-27):**
 1. *Other storage that can hold an item:* only `items` holds live items. `mailbox.items_json` holds unclaimed mail snapshots, `guild_donation_stack_snapshot` and `w6_legacy_item_cleanup_audit` are historical records; none hold a live item, so they are out of scope (mail/market escrow stays excluded as the contract says). `character_run_state` carries no item data (floor/hp/mp/gold/potions/pet only).
@@ -681,7 +681,7 @@ In scope: `adminDeleteRecipe`, `adminDeleteMonsterLootEntry`, `adminDeleteJunkIn
 3. *Ownership event conventions:* the only `event_type` in `item_ownership_events` is `acquire` (56 rows; ids `acquire-<itemId>`); sell/salvage/craft write no removal event. W2-F adds `admin_deleted` with `event_id = adm-del-<requestId>`, `from_*` = owner, `to_*` = NULL, `context_json = {auditId, quantity, remaining, reason}`.
 4. *Derived stats (Owner delegated):* `characters` has no cached derived-stat columns; stats are computed from equipped items. Equipped items are blocked (`item_equipped`), and unequipped items contribute nothing, so deleting one cannot change derived stats and no unequip path is needed in V1.
 
-**Stack handling note:** stack size for `junk`/`potion` lives in `extra_json.quantity` (the `quantity` column stays 1); partial delete rewrites it with `json_set` under the same observed-state guard. Gear is delete-whole only. `confirmText` must equal the exact `item_id`. Abuse limit 20 successes per Admin per hour (counted from `admin_audit_log`).
+**Stack handling note:** stack size for `junk`/`potion` lives in `extra_json.quantity` (the `quantity` column stays 1); partial delete rewrites it with `json_set` under the same observed-state guard. Gear is delete-whole only. `confirmText` must equal the exact `item_id`. No per-Admin rate limit (Owner decision 2026-10-28, overriding the proposed 20/hour in the contract); every delete is still audited.
 
 **Release gate status:** (2) tests pass locally on a schema mirroring production, and the guarded statements (`INSERT … SELECT … WHERE EXISTS`, `json_set`, stale-guard writes 0 rows) were run on a throwaway production-region D1, since deleted; the full handler-through-`db.batch` path has not run on real D1. (1) independent review, (3) restore point and (5) Owner-present first deletion are still required. (4) kill switch is implemented.
 
@@ -702,7 +702,7 @@ Item rows live in `items` (`item_id`, `player_id`, `character_id`, `slot_type`, 
 - Atomicity: one `db.batch` whose statements share the same guard: `INSERT` audit row `… SELECT … WHERE EXISTS(guard)`, `INSERT` an `item_ownership_events` row (`admin_deleted`, to nobody) the same way, then the guarded `DELETE`/`UPDATE`. If the guard fails nothing is inserted, and the handler returns 409 when the item change affected 0 rows.
 - Idempotency without a new table: the audit row id is derived from `requestId` (`adm-del-<requestId>`), a primary key, so a replay cannot delete twice and returns `already_applied`.
 - Audit metadata: actor, target player/character/item, quantity requested/remaining, reason, outcome, full sanitized row snapshot, provenance row and recent ownership events.
-- Abuse limit (proposed): at most 20 `adminDeleteItem` successes per Admin per hour, counted from the audit table.
+- Abuse limit: none (Owner decision 2026-10-28; the earlier proposal of 20/hour was dropped).
 - No restore tool in V1. The audit snapshot is the recovery source; a compensation procedure is designed separately and approved before enabling.
 
 **Release gate (all required before first production use):**

@@ -7621,7 +7621,6 @@ async function handleAdminListAuditLog(db, adminAuth, params) {
 // `admin_item_delete_enabled` holds JSON true (absent = off). One exact
 // (player_id, character_id, item_id) triple per request; never bulk, never by name.
 const ADMIN_ITEM_DELETE_FLAG = "admin_item_delete_enabled";
-const ADMIN_ITEM_DELETE_HOURLY_LIMIT = 20;
 const ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS = 30 * 60 * 1000;
 const ADMIN_ITEM_STACK_SLOTS = new Set(["junk", "potion"]);
 
@@ -7735,10 +7734,6 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
   // Idempotent replay: the audit row id is the request id, so a replay can never delete twice.
   const prior = await db.prepare(`SELECT player_id FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
   if (prior) return json({ ok: true, already_applied: true });
-
-  const since = new Date(Date.now() - 3600 * 1000).toISOString();
-  const recent = await db.prepare(`SELECT COUNT(*) AS c FROM admin_audit_log WHERE player_id = ? AND event_type = 'ADMIN_ITEM_DELETE' AND created_at >= ?`).bind(adminAuth.playerId, since).first();
-  if (Number(recent?.c) >= ADMIN_ITEM_DELETE_HOURLY_LIMIT) return json({ error: "admin_rate_limited", retryAfter: 3600 }, 429);
 
   const row = await loadAdminItemTriple(db, playerId, characterId, itemId);
   if (!row) return json({ error: "item_not_found" }, 404);
