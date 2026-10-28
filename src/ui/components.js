@@ -2349,7 +2349,7 @@ function ChatScreen({
   };
 
   const globalPane = () => e(React.Fragment, null,
-    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+    e("div", { className: "md-card md-chat-scroll-panel", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
       messageList(globalMessages, globalLoaded, "ยังไม่มีข้อความ")),
     pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
     globalError && e("p", { className: "md-sub" }, globalError),
@@ -2367,7 +2367,7 @@ function ChatScreen({
 
   const guildPane = () => e(React.Fragment, null,
     guildName && e("p", { className: "md-sub", style: { margin: "0 0 6px" } }, `🏰 ${guildName}`),
-    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+    e("div", { className: "md-card md-chat-scroll-panel", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
       messageList(guildMessages, guildLoaded, "ยังไม่มีข้อความในกิลด์")),
     pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
     guildError && e("p", { className: "md-sub", role: "alert" }, guildError),
@@ -2380,7 +2380,7 @@ function ChatScreen({
   const conversationListPane = () => {
     if (conversations === null) return e("p", { className: "md-sub" }, "กำลังโหลด...");
     if (!conversations.length) return e("p", { className: "md-sub" }, "ยังไม่มีการสนทนา — เริ่มแชทได้จากหน้าเพื่อน");
-    return e("div", { className: "md-card", style: { overflowY: "auto", minHeight: 0, flex: 1 } },
+    return e("div", { className: "md-card md-chat-scroll-panel", style: { overflowY: "auto", minHeight: 0, flex: 1 } },
       e("div", { className: "md-inv-list" }, conversations.map((c) => e("div", {
         key: c.characterId,
         className: "md-shop-row",
@@ -2394,7 +2394,7 @@ function ChatScreen({
   };
 
   const threadPane = () => e(React.Fragment, null,
-    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+    e("div", { className: "md-card md-chat-scroll-panel", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
       messageList(threadMessages, threadLoaded, "ยังไม่มีข้อความ — ส่งข้อความแรกได้เลย")),
     pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
     !threadCanSend && e("p", { className: "md-sub" }, "ไม่สามารถส่งข้อความได้ในขณะนี้ (ไม่ได้เป็นเพื่อนหรือมีการบล็อก)"),
@@ -2412,7 +2412,7 @@ function ChatScreen({
       }),
       e("button", { className: "md-btn small primary", disabled: threadSending || !threadInput.trim() || !threadCanSend, onClick: handleSendDirect }, "ส่ง")));
 
-  const stickerPane = () => e("div", { className: "md-card", style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center" } },
+  const stickerPane = () => e("div", { className: "md-card md-chat-scroll-panel", style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center" } },
     e("p", { className: "md-sub" }, "😄 สติกเกอร์ — เร็วๆ นี้"));
 
   return e("div", { className: "md-panel md-chat-page" },
