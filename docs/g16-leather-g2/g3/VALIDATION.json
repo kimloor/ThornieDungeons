@@ -1,7 +1,7 @@
 {
   "status": "DEATH_01_APPROVED_DEATH_02_OWNER_REVIEW_PENDING",
   "mainChecked": "614d8e363efa074d257319f3e3578a56196c2a06",
-  "risk": "MEDIUM isolated Death artwork",
+  "risk": "LOW offline order-only correction",
   "expectedPaths": 56,
   "presentPaths": 56,
   "death02CandidatePaths": 7,
@@ -21,6 +21,16 @@
   },
   "protectedExistingEquipmentPngCount": 49,
   "protectedExistingEquipmentByteIdentical": true,
+  "all56EquipmentPngsByteIdenticalTo": "2264d4117a711acaf453631fefd8d9cb36a34c16",
+  "death02RightArmOrderCorrection": {
+    "sourceLayer": "arm_rear",
+    "anatomy": "right arm",
+    "visibleOrder": "right arm in front of chest",
+    "changedCompositePixels": 4574,
+    "allChangedPixelsInsideRightArmAlpha": true,
+    "runtimeCompatible": null,
+    "runtimeCompatibilityStatus": "UNREVIEWED_SEPARATE_DEV_GATE"
+  },
   "death01ApprovedCompositePixelIdentical": true,
   "runtimeChanged": false,
   "productionManifestChanged": false,
@@ -94,11 +104,11 @@
     "death_02": [
       "coverage_underlay",
       "legs_boots",
-      "arm_rear",
       "arm_front",
       "torso_armor",
       "helmet",
-      "sword"
+      "sword",
+      "arm_rear"
     ]
   },
   "azureSources": {
@@ -246,7 +256,8 @@
       "sourceLayer": "arm_rear",
       "crop": null,
       "required": false,
-      "status": "NOT_REQUIRED_EMPTY_DEATH_SWORD"
+      "status": "NOT_REQUIRED_EMPTY_DEATH_SWORD",
+      "offlineOrder": "Owner: anatomical right arm in front of chest armor; separate DEV compatibility gate"
     }
   },
   "files": [
@@ -1555,5 +1566,5 @@
       "artStatus": "OWNER_REVIEW_PENDING"
     }
   ],
-  "remainingGate": "Owner acceptance of Death_02, then reconcile acceptance state and proceed G4 visual QA; separate DEV review for Attack hand crops/order."
+  "remainingGate": "Owner acceptance of Death_02, then reconcile acceptance state and proceed G4 visual QA; separate DEV review for Attack/Death_02 foreground arm order and Attack hand crops."
 }

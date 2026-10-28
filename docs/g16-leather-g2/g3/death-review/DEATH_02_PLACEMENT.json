@@ -411,13 +411,14 @@
   "order": [
     "coverage_underlay",
     "legs_boots",
-    "arm_rear",
     "arm_front",
     "torso_armor",
     "helmet",
-    "sword"
+    "sword",
+    "arm_rear"
   ],
   "runtimeOffsetBaked": false,
   "generatedBaseUsed": false,
-  "torsoFacing": "front / bowed three-quarter"
+  "torsoFacing": "front / bowed three-quarter",
+  "ownerOrderCorrection": "2026-10-28: anatomical right arm (arm_rear) in front of torso; art assembly only"
 }

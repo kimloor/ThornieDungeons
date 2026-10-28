@@ -10,7 +10,8 @@
       "sourceLayer": "arm_rear",
       "crop": null,
       "required": false,
-      "status": "NOT_REQUIRED_EMPTY_DEATH_SWORD"
+      "status": "NOT_REQUIRED_EMPTY_DEATH_SWORD",
+      "offlineOrder": "Owner: anatomical right arm in front of chest armor; separate DEV compatibility gate"
     }
   },
   "attackStatus": "UNRESOLVED_SEPARATE_DEV_GATE",

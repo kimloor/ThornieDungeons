@@ -35,10 +35,14 @@ for f in frames:
     else:
         order=['coverage_underlay','legs_boots','arm_rear','arm_front','torso_armor','helmet','sword']
         hand[f]={'sourceLayer':'arm_rear','crop':[0,493+{'idle_01':0,'idle_02':-12,'idle_03':-4}[f],768,42],'status':'INHERITED_REVIEWED_IDLE_TRANSLATION'} if f.startswith('idle') else {'sourceLayer':'arm_rear','crop':None,'required':False,'status':'NOT_REQUIRED_EMPTY_DEATH_SWORD'}
+    if f=='death_02':
+        order=['coverage_underlay','legs_boots','arm_front','torso_armor','helmet','sword','arm_rear']
+        hand[f]['offlineOrder']='Owner: anatomical right arm in front of chest armor; separate DEV compatibility gate'
     for n in order:out=Image.alpha_composite(out,parts[n])
     if f.startswith('idle'):
         x,y,w,h=hand[f]['crop'];overlay=Image.new('RGBA',(768,768));overlay.paste(parts['arm_rear'].crop((x,y,x+w,y+h)),(x,y));out=Image.alpha_composite(out,overlay)
     orders[f]=order;comps[f]=out;out.save(Q/(f+'_composite.png'))
+    if f=='death_02':out.save(D/'qa/death_02.png')
 assert len(records)==56
 
 # Preserve every established Idle/Attack and the accepted Death_01 result.
@@ -99,7 +103,22 @@ for col,f in enumerate(frames[6:]):
         else:dr.text((col*400+20,y+90),'INTENTIONALLY TRANSPARENT',font=small,fill='black')
 parts_sheet.save(D/'DEATH_PARTS_SHEET.png')
 
-report={'status':'DEATH_01_APPROVED_DEATH_02_OWNER_REVIEW_PENDING','mainChecked':subprocess.check_output(['git','rev-parse','origin/main'],cwd=R,text=True).strip(),'risk':'MEDIUM isolated Death artwork','expectedPaths':56,'presentPaths':56,'death02CandidatePaths':7,'establishedReferencePaths':49,'finalInventoryPromoted':False,'G3Complete':False,'G4Ready':False,'baseSha256':basehash,'protectedExistingEquipmentPngCount':len(protected),'protectedExistingEquipmentByteIdentical':True,'death01ApprovedCompositePixelIdentical':True,'runtimeChanged':False,'productionManifestChanged':False,'runtimeOffsetBaked':False,'actualRuntimeRendererTested':False,'fullSetVisualAcceptance':False,'assemblyOrderByFrame':orders,'azureSources':azureledger,'handOcclusion':hand,'files':records,'remainingGate':'Owner acceptance of Death_02, then reconcile acceptance state and proceed G4 visual QA; separate DEV review for Attack hand crops/order.'}
+# Direct before/after study of the requested order correction, identical art.
+old=Image.open(R/'r2-upload/hero/v5/g2/base/death_02.png').convert('RGBA')
+for n in ['coverage_underlay','legs_boots','arm_rear','arm_front','torso_armor','helmet','sword']:
+    old=Image.alpha_composite(old,Image.open(source('death_02')/(n+'.png')).convert('RGBA'))
+new=comps['death_02'];diff=np.any(np.array(old)!=np.array(new),axis=2)
+arm=np.array(Image.open(source('death_02')/'arm_rear.png'))[:,:,3]>0
+assert not (diff & ~arm).any()
+for rec in records:
+    path=R/rec['path'];assert path.read_bytes()==gitbytes('2264d4117a711acaf453631fefd8d9cb36a34c16',path)
+order_sheet=Image.new('RGB',(1000,950),(220,225,233));dr=ImageDraw.Draw(order_sheet)
+for col,(label,im) in enumerate([('BEFORE / right arm behind armor',old),('AFTER / right arm in front of armor',new)]):
+    x=col*500;dr.text((x+12,14),label,font=small,fill='black')
+    order_sheet.paste(flat(im.crop((180,320,490,690))).resize((465,555),Image.Resampling.NEAREST),(x+17,50))
+    order_sheet.paste(flat(im.crop((240,505,365,605))).resize((450,360),Image.Resampling.NEAREST),(x+25,580))
+order_sheet.save(D/'DEATH_02_ARM_ORDER_COMPARISON.png')
+report={'status':'DEATH_01_APPROVED_DEATH_02_OWNER_REVIEW_PENDING','mainChecked':subprocess.check_output(['git','rev-parse','origin/main'],cwd=R,text=True).strip(),'risk':'LOW offline order-only correction','expectedPaths':56,'presentPaths':56,'death02CandidatePaths':7,'establishedReferencePaths':49,'finalInventoryPromoted':False,'G3Complete':False,'G4Ready':False,'baseSha256':basehash,'protectedExistingEquipmentPngCount':len(protected),'protectedExistingEquipmentByteIdentical':True,'all56EquipmentPngsByteIdenticalTo':'2264d4117a711acaf453631fefd8d9cb36a34c16','death02RightArmOrderCorrection':{'sourceLayer':'arm_rear','anatomy':'right arm','visibleOrder':'right arm in front of chest','changedCompositePixels':int(diff.sum()),'allChangedPixelsInsideRightArmAlpha':True,'runtimeCompatible':None,'runtimeCompatibilityStatus':'UNREVIEWED_SEPARATE_DEV_GATE'},'death01ApprovedCompositePixelIdentical':True,'runtimeChanged':False,'productionManifestChanged':False,'runtimeOffsetBaked':False,'actualRuntimeRendererTested':False,'fullSetVisualAcceptance':False,'assemblyOrderByFrame':orders,'azureSources':azureledger,'handOcclusion':hand,'files':records,'remainingGate':'Owner acceptance of Death_02, then reconcile acceptance state and proceed G4 visual QA; separate DEV review for Attack/Death_02 foreground arm order and Attack hand crops.'}
 (P/'VALIDATION.json').write_text(json.dumps(report,indent=2)+'\n')
 (D/'HAND_OCCLUSION.json').write_text(json.dumps({'frames':{k:v for k,v in hand.items() if k.startswith('death')},'attackStatus':'UNRESOLVED_SEPARATE_DEV_GATE','runtimeChanged':False},indent=2)+'\n')
 (P/'SHA256SUMS').write_text(''.join(r['sha256']+'  '+str(Path(r['path']).relative_to(P.relative_to(R)))+'\n' for r in records))

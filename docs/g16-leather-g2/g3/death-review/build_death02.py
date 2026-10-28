@@ -70,7 +70,9 @@ ch[:,:,3]=np.array(ImageChops.subtract(Image.fromarray(ch[:,:,3]),mask));parts['
 
 E=P/'exports/death_02';E.mkdir(parents=True,exist_ok=True)
 for n,im in parts.items():im.save(E/(n+'.png'))
-order=['coverage_underlay','legs_boots','arm_rear','arm_front','torso_armor','helmet','sword']
+# Owner: anatomical right arm (arm_rear) must appear in front of chest armor.
+# Offline art assembly only; this does not change the runtime resolver.
+order=['coverage_underlay','legs_boots','arm_front','torso_armor','helmet','sword','arm_rear']
 out=base.copy()
 for n in order:out=Image.alpha_composite(out,parts[n])
 Q=P/'qa';Q.mkdir(exist_ok=True);out.save(Q/'death_02.png')
