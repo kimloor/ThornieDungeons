@@ -138,6 +138,8 @@
     let alphaDifferingPixels = 0;
     let maximumAlphaDelta = 0;
     let alphaSupportDifferingPixels = 0;
+    let premultipliedDifferingPixels = 0;
+    let maximumPremultipliedDelta = 0;
     for (let offset = 0; offset < actual.data.length; offset += 4) {
       let pixelDiffers = false;
       let maximumPixelDelta = 0;
@@ -158,11 +160,23 @@
       if (alphaDelta) alphaDifferingPixels += 1;
       maximumAlphaDelta = Math.max(maximumAlphaDelta, alphaDelta);
       if (!!actualAlpha !== !!approvedAlpha) alphaSupportDifferingPixels += 1;
+      let premultipliedDiffers = alphaDelta !== 0;
+      let maximumPixelPremultipliedDelta = alphaDelta;
+      for (let channel = 0; channel < 3; channel += 1) {
+        const actualPremultiplied = Math.round(actual.data[offset + channel] * actualAlpha / 255);
+        const approvedPremultiplied = Math.round(approved.data[offset + channel] * approvedAlpha / 255);
+        const delta = Math.abs(actualPremultiplied - approvedPremultiplied);
+        premultipliedDiffers ||= delta !== 0;
+        maximumPixelPremultipliedDelta = Math.max(maximumPixelPremultipliedDelta, delta);
+      }
+      if (premultipliedDiffers) premultipliedDifferingPixels += 1;
+      maximumPremultipliedDelta = Math.max(maximumPremultipliedDelta, maximumPixelPremultipliedDelta);
     }
     comparisonFrames.push({ frameId, actual, approved });
     return { ...transition, comparison: "rgba-exact", differingPixels, maximumChannelDelta,
       visibleDifferingPixels, maximumVisibleChannelDelta, alphaDifferingPixels,
-      maximumAlphaDelta, alphaSupportDifferingPixels };
+      maximumAlphaDelta, alphaSupportDifferingPixels, premultipliedDifferingPixels,
+      maximumPremultipliedDelta };
   };
   const buildComparisonSheet = () => {
     const tile = 256;
@@ -200,7 +214,9 @@
       context.fillText("actual Phaser Canvas", tile + 8, y + tile + 20);
       context.fillText("visible RGBA diff ×8", tile * 2 + 8, y + tile + 20);
     });
-    document.getElementById("comparison-sheet").src = canvas.toDataURL("image/png");
+    const dataUrl = canvas.toDataURL("image/png");
+    document.getElementById("comparison-sheet").src = dataUrl;
+    document.getElementById("comparison-download").href = dataUrl;
   };
   window.__g16G5CompareAll = async () => {
     const results = [];
