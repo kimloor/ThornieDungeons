@@ -266,9 +266,39 @@
       window.__g16G5PreviewHost = previewHost;
       setTimeout(() => resolve({ ready: false, error: "preview host timeout" }), 10000);
     });
+    const battleReady = new Promise(resolve => {
+      const battleHost = createBattlefieldHost({
+        mountNode: document.getElementById("battle-host"),
+        snapshot: {
+          battleId: "g16-g5-smoke",
+          hero: {
+            id: "g16-g5-host-hero", name: "G16 Leather", kind: "hero",
+            hp: 1, maxHp: 1, alive: true, anim: "idle",
+            visualMode: previewLayerFrames.mode,
+            layerFrames: previewLayerFrames,
+            layers: previewLayerFrames.idle[0]
+          },
+          pet: null,
+          monsters: []
+        },
+        onReady: ({ game: battleGame, scene }) => resolve({
+          ready: true,
+          rendererType: battleGame?.renderer?.type,
+          visibleOrder: scene?.actors?.hero?.heroRenderer?.root?.list
+            ?.filter(image => image.visible)
+            ?.map(image => scene.actors.hero.heroRenderer.layerImages.find(entry => entry.image === image)?.name)
+            ?.filter(Boolean) || []
+        }),
+        onError: error => resolve({ ready: false, error: error.message })
+      });
+      battleHost.mount();
+      window.__g16G5BattlefieldHost = battleHost;
+      setTimeout(() => resolve({ ready: false, error: "battlefield host timeout" }), 10000);
+    });
     const results = await window.__g16G5CompareAll();
     const hostSmoke = {
       preview: await previewReady,
+      battlefield: await battleReady,
       battleActor: window.__g16G5BattleActorSmoke
     };
     document.getElementById("result").textContent = JSON.stringify({ frames: results, hostSmoke }, null, 2);
