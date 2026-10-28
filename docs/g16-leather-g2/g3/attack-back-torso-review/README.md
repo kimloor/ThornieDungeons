@@ -1,6 +1,6 @@
 # G16 Attack — rear-facing torso correction
 
-Status: **CORRECTION COMPLETE / OWNER REAR-ART REVIEW PENDING**. Risk MEDIUM, isolated torso material only. Latest main `7ef31753b969386d2750857dddaa53d44c03081c`; branch parent `3f76ca6bc99c4099ee6f7f324a5d7304f740796a`. Existing Draft PR #160.
+Status: **ATTACK REAR TORSO OWNER/PROJECT LEAD APPROVED — 2026-10-28**. The current Death-frame assignment accepts `TORSO_BEFORE_AFTER_AZURE.png` and `ATTACK_REVIEW_SHEET.png` at `bd25be1f4e252856be8d0e85dbe12ea8ec5e46ca`. Attack_01–03 poses and all 21 current Attack exports are locked. Historical production details below describe the original correction checkpoint; pending-approval wording below is superseded by this acceptance record. Risk MEDIUM, isolated torso material only. Latest main at that checkpoint `7ef31753b969386d2750857dddaa53d44c03081c`; branch parent `3f76ca6bc99c4099ee6f7f324a5d7304f740796a`. Existing Draft PR #160.
 
 **Owner confirmed all three attack poses are correct.** The earlier Graphics inference that they differed is superseded. The error was carrying front-facing torso details into Attack_02/03: both must show the back toward camera, following Azure. This checkpoint changes no pose or non-torso equipment.
 
