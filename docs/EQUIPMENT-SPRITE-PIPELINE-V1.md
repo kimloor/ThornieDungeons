@@ -1,5 +1,5 @@
 # ThornieDungeons — Equipment Sprite Pipeline V1
-Status: **OWNER APPROVED — G16 G3 ARTWORK COMPLETE / G4 VISUAL QA PENDING** (2026-10-28)
+Status: **OWNER APPROVED — G16 G4 FINAL VISUAL ACCEPTED / G5–G6 PENDING** (2026-10-28)
 Scope: Hero V5 G2 modular equipment authoring, review and scoped runtime compatibility. Controlled art creation/correction follows the gates below; this document does not authorize R2 upload, gameplay/economy, Worker/API/D1 or deployment changes.
 Approved decisions: **HYBRID / AZURE-REFERENCE / FULL-SET-FIRST / G16 BEFORE SKELETON / WEAPON-FREE HERO + SEPARATE COMPLETE WEAPON**.
 
@@ -137,7 +137,9 @@ Evidence/provenance: `docs/g16-leather-g2/g3/owner-selected-recut/attack_01/` (l
 
 ## 5. Gates and owner acceptance
 
-G16 current handoff: Owner accepted Death_01 and the Death_02 foreground right-arm order, then directed an exact 8px upward helmet shift and submission. The final 56-path artwork inventory and preservation checks are in `docs/g16-leather-g2/g3/VALIDATION.json`; final source/approval details and next gates are in its README and PROJECT_LEAD_HANDOFF.md. This closes artwork expansion only. G4 full-set visual/animation QA, separate DEV review of Attack/Death_02 foreground arm ordering and Attack hand crops, G5 runtime regression and G6 publication remain pending. No runtime, R2, production-manifest or deployment authorization is added.
+G16 current handoff (2026-10-28): Owner Final G4 Visual Approval accepts all eight frames and Idle/Attack/Death animation previews from the corrected ChatGPT package, and authorizes final upload to existing Draft PR #160. Exactly 11 PNG replacements and 45 byte-identical preserved equipment PNGs are reconciled in `docs/g16-leather-g2/g3/VALIDATION.json` and `SHA256SUMS`. `g4-source/OWNER_APPROVAL.md` pins the package and approval. Current contact/comparison/GIF evidence is in `g3/qa/`. Earlier G3 byte-preservation statements above describe their historical stage; only the 11 Owner-approved G4 seam/RGB corrections supersede those byte locks. Poses, Base anatomy/origin, rear torso facing, helmet/sword/underlay bytes and Death_02 helmet [0,-8] remain locked.
+
+G4 visual acceptance does not certify actual runtime. DEV must separately resolve Attack/Death_02 foreground anatomical right-arm order and Attack hand crops, then run G5 actual renderer/slot/hair/fallback regression. Empty Death swords require no crop. G6 R2/production manifest/deploy remain unapproved; no runtime changes are authorized by this artwork publication.
 
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |
