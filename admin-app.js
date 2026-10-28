@@ -228,6 +228,22 @@ document.getElementById("playerSearchInput").addEventListener("keydown", event =
   if (event.key === "Enter") { event.preventDefault(); void searchAdminPlayers(); }
 });
 
+// W2-G: restore a deleted item from its audit snapshot (server preview -> dialog -> restore).
+async function adminRestoreItemFlow(entry) {
+  const pv = await apiGet({ action: "adminPreviewItemRestore", auditId: entry.auditId });
+  if (pv.error) { alert("กู้คืนไม่ได้: " + pv.error); return false; }
+  if (pv.alreadyRestored) { alert("รายการนี้ถูกกู้คืนไปแล้ว"); return true; }
+  const where = pv.overflow ? "เข้า 'ไอเทมที่ล้น' (คลังเต็ม)" : "เข้าคลังปกติ";
+  const input = await openDestructiveDialog({
+    title: `กู้คืนไอเทม ${pv.originalItemId} จำนวน ${pv.quantity} ${where}${pv.idChanged ? " (รหัสเดิมถูกใช้แล้ว จะใช้รหัสใหม่)" : ""}`,
+    targetId: pv.originalItemId, preview: pv.item, confirmLabel: "กู้คืน", reasonLabel: "เหตุผลในการกู้คืน"
+  });
+  if (!input) return false;
+  const res = await apiPost({ action: "adminRestoreItem", auditId: entry.auditId, reason: input.reason, confirmText: input.confirmId });
+  if (res.error) { alert("กู้คืนไม่สำเร็จ: " + res.error); return false; }
+  return true;
+}
+
 // W2-F: Admin item delete. Server preview (snapshot + hash) -> dialog -> guarded delete.
 async function adminDeleteItemFlow(playerId, item) {
   const base = { playerId, characterId: item.character_id, itemId: item.item_id };
@@ -476,7 +492,7 @@ async function loadDeletePreview(sheet, keyField, id) {
 }
 
 // Resolves to { reason, confirmId } or null if cancelled. Never sends anything itself.
-function openDestructiveDialog({ title, targetId, preview, maxQuantity = 0 }) {
+function openDestructiveDialog({ title, targetId, preview, maxQuantity = 0, confirmLabel = "ลบถาวร", reasonLabel = "เหตุผลในการลบ" }) {
   return new Promise(resolve => {
     const back = el("div", { className: "modalBack" });
     const box = el("div", { className: "modalBox" });
@@ -486,7 +502,7 @@ function openDestructiveDialog({ title, targetId, preview, maxQuantity = 0 }) {
       ? el("input", { type: "number", min: "1", max: String(maxQuantity), value: String(maxQuantity) })
       : null;
     const err = el("div", { className: "msg err" });
-    const okBtn = el("button", { className: "btn-primary", type: "button", text: "ลบถาวร", disabled: true });
+    const okBtn = el("button", { className: "btn-primary", type: "button", text: confirmLabel, disabled: true });
     const cancelBtn = el("button", { className: "ghost", type: "button", text: "ยกเลิก" });
     cancelBtn.style.marginLeft = "8px";
     const finish = (value) => { back.remove(); resolve(value); };
@@ -508,7 +524,7 @@ function openDestructiveDialog({ title, targetId, preview, maxQuantity = 0 }) {
       el("pre", { text: JSON.stringify(preview, null, 2) }),
       ...(qtyInput ? [el("label", { text: `จำนวนที่จะลบ (สูงสุด ${maxQuantity})` }), qtyInput] : []),
       el("label", { text: `พิมพ์ "${targetId}" เพื่อยืนยัน` }), confirmInput,
-      el("label", { text: "เหตุผลในการลบ" }), reason,
+      el("label", { text: reasonLabel }), reason,
       err, el("div", {}, okBtn, cancelBtn)
     );
     back.appendChild(box);
@@ -707,12 +723,21 @@ function auditRow(entry) {
     toggle.textContent = open ? "ซ่อน" : "ดู";
   };
   const target = [entry.targetType, entry.targetId].filter(Boolean).join(": ") || "—";
+  const actions = [toggle];
+  if (entry.eventType === "ADMIN_ITEM_DELETE") {
+    if (entry.restored) actions.push(el("span", { className: "pill", text: "กู้คืนแล้ว" }));
+    else {
+      const restoreBtn = el("button", { type: "button", text: "กู้คืน" });
+      restoreBtn.onclick = async () => { if (await adminRestoreItemFlow(entry)) void loadAuditPage(true); };
+      actions.push(restoreBtn);
+    }
+  }
   tr.append(
     cell(entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"),
     cell(entry.actor || "—", "mono"),
     cell(entry.eventType),
     cell(target),
-    el("td", {}, toggle, detail)
+    el("td", {}, ...actions, detail)
   );
   return tr;
 }

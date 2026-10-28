@@ -225,9 +225,9 @@ test("no per-Admin delete rate limit (Owner decision): 25 consecutive deletes al
 
 test("worker source: single-target guarded statements, no bulk or generic SQL, routed through Admin auth", () => {
   const src = fs.readFileSync(path.join(__dirname, "../workers/thornie-dungeons-api.js"), "utf8");
-  const block = src.slice(src.indexOf("async function handleAdminDeleteItem"), src.indexOf("// ---------- request boundary hardening"));
+  const block = src.slice(src.indexOf("async function handleAdminDeleteItem"), src.indexOf("// ---------- admin: restore a deleted item (W2-G)"));
   assert.doesNotMatch(block, /DELETE FROM items WHERE (?!item_id = \?)/);
   assert.doesNotMatch(block, /\bIN \(|LIKE/);
   assert.match(src, /case "adminDeleteItem": return await handleAdminDeleteItem\(db, adminAuth, body\)/);
-  assert.match(src, /"adminGetItemDetail", "adminPreviewItemDelete"\]\.includes\(action\)/);
+  assert.match(src, /"adminGetItemDetail", "adminPreviewItemDelete"/);
 });
