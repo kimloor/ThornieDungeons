@@ -8,12 +8,14 @@
     html, body { margin: 0; width: 100%; min-height: 100%; background: #d9dfe6; font: 14px system-ui, sans-serif; }
     #stage { width: 768px; height: 768px; }
     #status { position: fixed; left: 8px; bottom: 8px; padding: 6px 8px; background: #fff; color: #172033; }
+    #result { position: absolute; left: 780px; top: 8px; width: 560px; white-space: pre-wrap; font-size: 11px; }
     canvas { display: block; }
   </style>
 </head>
 <body>
   <div id="stage"></div>
   <div id="status">booting</div>
+  <pre id="result">comparison pending</pre>
   <script>
     globalThis.SHARED_PHASER_ASSET_RESOLVER = Object.freeze({
       resolve: value => String(value || ""),

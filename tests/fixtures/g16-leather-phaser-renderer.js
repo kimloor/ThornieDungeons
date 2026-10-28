@@ -148,6 +148,12 @@
     return results;
   };
   window.__g16G5Capture = () => game.canvas.toDataURL("image/png");
+  (async () => {
+    while (!window.__g16G5Ready) await new Promise(resolve => setTimeout(resolve, 25));
+    const results = await window.__g16G5CompareAll();
+    document.getElementById("result").textContent = JSON.stringify(results, null, 2);
+    document.body.dataset.comparison = "complete";
+  })();
 })().catch(error => {
   document.getElementById("status").textContent = `error:${error.message}`;
   window.__g16G5Error = String(error?.stack || error);
