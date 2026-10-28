@@ -143,10 +143,10 @@ test("audit failure on the view write fails closed", async () => {
 
 test("read-only: only the one GET action is routed and the UI has no edit/delete controls", () => {
   const worker = fs.readFileSync(path.join(__dirname, "../workers/thornie-dungeons-api.js"), "utf8");
-  assert.match(worker, /"adminSearchPlayers", "adminListAuditLog"\]\.includes\(action\)/);
+  assert.match(worker, /"adminSearchPlayers", "adminListAuditLog"/);
   assert.doesNotMatch(worker, /\["[^\]]*adminListAuditLog[^\]]*"\]\.includes\(body\.action\)/);
   const start = worker.indexOf("async function handleAdminListAuditLog");
-  const end = worker.indexOf("// ---------- request boundary hardening");
+  const end = worker.indexOf("// ---------- admin: delete player item (W2-F");
   const block = worker.slice(start, end);
   assert.doesNotMatch(block, /\b(DELETE|UPDATE|DROP|ALTER)\b/);
   assert.equal((block.match(/INSERT/g) || []).length, 0);

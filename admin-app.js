@@ -228,6 +228,32 @@ document.getElementById("playerSearchInput").addEventListener("keydown", event =
   if (event.key === "Enter") { event.preventDefault(); void searchAdminPlayers(); }
 });
 
+// W2-F: Admin item delete. Server preview (snapshot + hash) -> dialog -> guarded delete.
+async function adminDeleteItemFlow(playerId, item) {
+  const base = { playerId, characterId: item.character_id, itemId: item.item_id };
+  const detail = await apiGet({ action: "adminGetItemDetail", ...base });
+  if (detail.error) { alert("โหลดรายละเอียดไอเทมไม่สำเร็จ: " + detail.error); return false; }
+  if (!detail.deletable) { alert("ลบไอเทมนี้ไม่ได้: " + detail.blockedReason); return false; }
+  let pv = await apiGet({ action: "adminPreviewItemDelete", ...base });
+  if (pv.error) { alert("ลบไอเทมไม่ได้: " + pv.error); return false; }
+  const input = await openDestructiveDialog({
+    title: `ลบไอเทม ${item.item_id} ของ ${playerId}`, targetId: item.item_id,
+    preview: { item: pv.item, provenance: detail.provenance, recentEvents: detail.events },
+    maxQuantity: pv.stackable ? pv.observedQuantity : 0
+  });
+  if (!input) return false;
+  if (pv.stackable && input.quantity !== pv.quantity) {
+    pv = await apiGet({ action: "adminPreviewItemDelete", ...base, quantity: input.quantity });
+    if (pv.error) { alert("ลบไอเทมไม่ได้: " + pv.error); return false; }
+  }
+  const res = await apiPost({
+    action: "adminDeleteItem", ...base, quantity: pv.quantity, reason: input.reason, confirmText: input.confirmId,
+    snapshotHash: pv.snapshotHash, requestId: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, "")
+  });
+  if (res.error) { alert("ลบไม่สำเร็จ: " + res.error); return false; }
+  return true;
+}
+
 function renderPlayerViewer(res) {
   const card = document.getElementById("playerViewerCard");
   const player = res.player || {};
@@ -272,6 +298,13 @@ function renderPlayerViewer(res) {
       if (index === 0) td.className = "mono";
       tr.appendChild(td);
     });
+    const actionTd = document.createElement("td");
+    if (Number(item.equipped) !== 1) {
+      const delBtn = el("button", { className: "del", type: "button", text: "ลบ (Admin)" });
+      delBtn.onclick = async () => { if (await adminDeleteItemFlow(player.id, item)) void openPlayerViewer(player.id); };
+      actionTd.appendChild(delBtn);
+    }
+    tr.appendChild(actionTd);
     itemBody.appendChild(tr);
   });
   card.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -443,12 +476,15 @@ async function loadDeletePreview(sheet, keyField, id) {
 }
 
 // Resolves to { reason, confirmId } or null if cancelled. Never sends anything itself.
-function openDestructiveDialog({ title, targetId, preview }) {
+function openDestructiveDialog({ title, targetId, preview, maxQuantity = 0 }) {
   return new Promise(resolve => {
     const back = el("div", { className: "modalBack" });
     const box = el("div", { className: "modalBox" });
     const reason = el("textarea", { rows: 3, placeholder: `เหตุผล (${DELETE_REASON_MIN}-${DELETE_REASON_MAX} ตัวอักษร)` });
     const confirmInput = el("input", { type: "text", placeholder: "พิมพ์ ID ให้ตรงเพื่อยืนยัน", autocomplete: "off" });
+    const qtyInput = maxQuantity > 0
+      ? el("input", { type: "number", min: "1", max: String(maxQuantity), value: String(maxQuantity) })
+      : null;
     const err = el("div", { className: "msg err" });
     const okBtn = el("button", { className: "btn-primary", type: "button", text: "ลบถาวร", disabled: true });
     const cancelBtn = el("button", { className: "ghost", type: "button", text: "ยกเลิก" });
@@ -456,17 +492,21 @@ function openDestructiveDialog({ title, targetId, preview }) {
     const finish = (value) => { back.remove(); resolve(value); };
     const refresh = () => {
       const len = reason.value.trim().length;
-      okBtn.disabled = !(confirmInput.value === String(targetId) && len >= DELETE_REASON_MIN && len <= DELETE_REASON_MAX);
+      const qty = qtyInput ? Number(qtyInput.value) : 1;
+      const qtyOk = !qtyInput || (Number.isInteger(qty) && qty >= 1 && qty <= maxQuantity);
+      okBtn.disabled = !(qtyOk && confirmInput.value === String(targetId) && len >= DELETE_REASON_MIN && len <= DELETE_REASON_MAX);
     };
     confirmInput.oninput = refresh;
     reason.oninput = refresh;
-    okBtn.onclick = () => finish({ reason: reason.value.trim(), confirmId: confirmInput.value });
+    if (qtyInput) qtyInput.oninput = refresh;
+    okBtn.onclick = () => finish({ reason: reason.value.trim(), confirmId: confirmInput.value, quantity: qtyInput ? Number(qtyInput.value) : undefined });
     cancelBtn.onclick = () => finish(null);
     back.onclick = (event) => { if (event.target === back) finish(null); };
     box.append(
       el("h3", { text: title }),
       el("div", { className: "muted", text: "ข้อมูลปัจจุบันจากเซิร์ฟเวอร์ (ที่จะถูกลบ):" }),
       el("pre", { text: JSON.stringify(preview, null, 2) }),
+      ...(qtyInput ? [el("label", { text: `จำนวนที่จะลบ (สูงสุด ${maxQuantity})` }), qtyInput] : []),
       el("label", { text: `พิมพ์ "${targetId}" เพื่อยืนยัน` }), confirmInput,
       el("label", { text: "เหตุผลในการลบ" }), reason,
       err, el("div", {}, okBtn, cancelBtn)
