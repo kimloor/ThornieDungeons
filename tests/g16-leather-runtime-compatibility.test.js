@@ -187,6 +187,30 @@ test("Leather hand pass is Idle-only and foreground arms suppress duplicate crop
   assert.equal(layerNames(defended, "attack", 1).at(-1), "arm_rear");
 });
 
+test("Leather sword uses a scoped Base hand pass when gloves are unequipped", () => {
+  const context = runtime();
+  const result = resolve(context, { equipment: { weapon: "leather" } });
+  const expectedCrops = {
+    idle: [[0, 493, 768, 42], [0, 481, 768, 42], [0, 489, 768, 42]],
+    attack: [[233, 277, 109, 185], [337, 417, 178, 65], [330, 431, 107, 144]]
+  };
+  for (const state of ["idle", "attack"]) {
+    result[state].forEach((frame, index) => {
+      const names = Array.from(frame, layer => layer.name);
+      assert.ok(names.indexOf("sword") < names.indexOf("right_hand_occlusion"), `${state}_${index + 1}`);
+      const hand = frame.find(layer => layer.name === "right_hand_occlusion");
+      assert.match(hand.path, new RegExp(`/base/${state}_0${index + 1}\\.png$`));
+      assert.deepEqual(Array.from(hand.crop), expectedCrops[state][index]);
+    });
+  }
+  result.death.forEach(frame => assert.ok(!Array.from(frame, layer => layer.name).includes("right_hand_occlusion")));
+
+  const unequipped = resolve(context, { equipment: {} });
+  const legacySword = resolve(context, { equipment: { weapon: "azure" } });
+  assert.ok(!layerNames(unequipped).includes("right_hand_occlusion"));
+  assert.ok(!layerNames(legacySword).includes("right_hand_occlusion"));
+});
+
 test("Azure Robot and Skeleton retain the locked legacy order", () => {
   const context = runtime();
   const expected = [

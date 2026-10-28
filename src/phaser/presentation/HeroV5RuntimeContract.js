@@ -32,6 +32,14 @@ const HERO_V5_AZURE_SLOT_LAYERS = Object.freeze({
 const HERO_V5_SET_FAMILIES = Object.freeze(["azure", "robot", "skeleton", "leather"]);
 const HERO_V5_HAIR_MODES = Object.freeze(["hidden_full_cover", "baked_into_helmet", "default"]);
 const HERO_V5_LEATHER_COMPOSITION_PROFILE = "leather_overlap_v1";
+// Attack frames place the complete Leather sword-arm layer in the foreground.
+// These matching Base crops supply the same local hand/weapon relationship when
+// that optional glove layer is absent, without changing the shared layer order.
+const HERO_V5_LEATHER_BARE_HAND_CROPS = Object.freeze({
+  attack_01: Object.freeze([233, 277, 109, 185]),
+  attack_02: Object.freeze([337, 417, 178, 65]),
+  attack_03: Object.freeze([330, 431, 107, 144])
+});
 
 function isHeroV5RuntimeEnabled() {
   if (typeof globalThis !== "undefined" && globalThis.__THORNIE_HERO_V5__ === true) return true;
@@ -211,19 +219,24 @@ function heroV5HelmetHairMode(config, frameId, equipmentSelection, equipmentLaye
 function heroV5RightHandOcclusionLayer(config, frameId, equipmentSelection, equipmentLayerNames) {
   const gloveFamily = equipmentSelection?.equipment?.gloves;
   const gloveConfig = gloveFamily ? config?.equipment?.[gloveFamily] : null;
-  const handConfig = gloveConfig?.handOcclusion;
-  if (gloveConfig?.compositionProfile !== HERO_V5_LEATHER_COMPOSITION_PROFILE
+  const weaponFamily = equipmentSelection?.bossWeapon || equipmentSelection?.equipment?.weapon;
+  const bareLeatherSword = !gloveFamily && weaponFamily === "leather";
+  const occlusionConfig = bareLeatherSword ? config?.equipment?.leather : gloveConfig;
+  const handConfig = occlusionConfig?.handOcclusion;
+  if (occlusionConfig?.compositionProfile !== HERO_V5_LEATHER_COMPOSITION_PROFILE
       || handConfig?.sourceLayer !== "arm_rear"
       || handConfig?.after !== "sword"
       || !equipmentLayerNames.includes("sword")) return null;
   // A complete foreground arm already supplies the approved hand-over-weapon
   // relationship. Never append a cropped duplicate in that case.
-  if (equipmentLayerNames.indexOf(handConfig.sourceLayer) > equipmentLayerNames.indexOf(handConfig.after)) return null;
-  const crop = handConfig?.frames?.[frameId]?.crop;
+  if (!bareLeatherSword && equipmentLayerNames.indexOf(handConfig.sourceLayer) > equipmentLayerNames.indexOf(handConfig.after)) return null;
+  const crop = handConfig?.frames?.[frameId]?.crop || (bareLeatherSword ? HERO_V5_LEATHER_BARE_HAND_CROPS[frameId] : null);
   if (!Array.isArray(crop) || crop.length !== 4 || crop.some(value => !Number.isFinite(Number(value)))) return null;
   const normalizedCrop = crop.map(Number);
   if (normalizedCrop[2] <= 0 || normalizedCrop[3] <= 0) return null;
-  const sourcePath = gloveConfig?.frames?.[frameId]?.arm_rear;
+  const sourcePath = bareLeatherSword
+    ? config?.base?.frames?.[frameId]
+    : gloveConfig?.frames?.[frameId]?.arm_rear;
   return sourcePath ? heroV5FrameLayer("right_hand_occlusion", sourcePath, { crop: normalizedCrop }) : null;
 }
 
