@@ -63,6 +63,7 @@
 
   class G16G5Scene extends Phaser.Scene {
     constructor() { super({ key: "G16G5Scene" }); }
+    assetKey(reference) { return keyFor(reference); }
     preload() {
       const urls = SHARED_PHASER_ASSET_RESOLVER.resolveAll(
         ["idle", "attack", "death"].flatMap(state => layerFrames[state].flatMap(frame => frame.map(layer => layer.url)))
@@ -78,6 +79,21 @@
         textureKey: keyFor
       });
       heroRenderer.applyVisualFrame("idle", 0);
+      const battleActor = new HeroActor(this, {
+        id: "g16-g5-hero", name: "G16 Leather", kind: "hero", hp: 1, maxHp: 1,
+        alive: true, visualMode: layerFrames.mode, layerFrames
+      });
+      battleActor.container.setVisible(false);
+      const battleOrders = {};
+      [["idle", 0], ["attack", 0], ["attack", 1], ["attack", 2], ["death", 0], ["death", 1]].forEach(([state, index]) => {
+        battleActor.applyVisualFrame(state, index);
+        battleOrders[`${state}_${index}`] = battleActor.heroRenderer.root.list
+          .filter(image => image.visible)
+          .map(image => battleActor.heroRenderer.layerImages.find(entry => entry.image === image)?.name)
+          .filter(Boolean);
+      });
+      window.__g16G5BattleActorSmoke = { ready: true, orders: battleOrders };
+      battleActor.destroy();
       window.__g16G5Ready = true;
       status.textContent = `ready:${game.renderer.type}`;
     }
@@ -227,8 +243,35 @@
   window.__g16G5Capture = () => game.canvas.toDataURL("image/png");
   (async () => {
     while (!window.__g16G5Ready) await new Promise(resolve => setTimeout(resolve, 25));
+    const previewLayerFrames = Object.fromEntries(Object.entries(layerFrames).map(([name, value]) => [name,
+      Array.isArray(value) ? value.map(frame => Array.isArray(frame) ? frame.map(layer => ({
+        ...layer, url: `../../${layer.url}`
+      })) : frame) : value
+    ]));
+    const previewReady = new Promise(resolve => {
+      const previewHost = createHeroPreviewHost({
+        mountNode: document.getElementById("preview-host"),
+        snapshot: { hero: { layerFrames: previewLayerFrames, layers: previewLayerFrames.idle[0] } },
+        onReady: ({ game: previewGame, scene }) => resolve({
+          ready: true,
+          rendererType: previewGame?.renderer?.type,
+          visibleOrder: scene?.heroRenderer?.root?.list
+            ?.filter(image => image.visible)
+            ?.map(image => scene.heroRenderer.layerImages.find(entry => entry.image === image)?.name)
+            ?.filter(Boolean) || []
+        }),
+        onError: error => resolve({ ready: false, error: error.message })
+      });
+      previewHost.mount();
+      window.__g16G5PreviewHost = previewHost;
+      setTimeout(() => resolve({ ready: false, error: "preview host timeout" }), 10000);
+    });
     const results = await window.__g16G5CompareAll();
-    document.getElementById("result").textContent = JSON.stringify(results, null, 2);
+    const hostSmoke = {
+      preview: await previewReady,
+      battleActor: window.__g16G5BattleActorSmoke
+    };
+    document.getElementById("result").textContent = JSON.stringify({ frames: results, hostSmoke }, null, 2);
     document.body.dataset.comparison = "complete";
   })().catch(error => {
     document.getElementById("result").textContent = `comparison error: ${error.message}`;
