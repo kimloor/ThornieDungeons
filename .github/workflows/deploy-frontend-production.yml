@@ -134,6 +134,25 @@ jobs:
             exit 1
           fi
 
+          # Source, tooling and config must not be served publicly (.assetsignore).
+          for private_path in \
+            /workers/thornie-dungeons-api.js \
+            /workers/modules/auth.js \
+            /worker.js \
+            /wrangler.jsonc \
+            /AGENTS.md \
+            /build.js \
+            /migrations/auto/0022_admin_v2_auth.sql \
+            /tests/admin-v2-auth.test.js \
+            /docs/ADMIN-V2.md \
+            /src/data/styles.js; do
+            status=$(curl --silent --output /dev/null --write-out "%{http_code}" --max-time 30 "$PRODUCTION_URL$private_path")
+            if [ "$status" = "200" ]; then
+              echo "Private repository file is publicly served: $private_path"
+              exit 1
+            fi
+          done
+
           echo "Production frontend verified: $PRODUCTION_URL"
           echo "Production Admin verified: $PRODUCTION_URL/admin"
 
