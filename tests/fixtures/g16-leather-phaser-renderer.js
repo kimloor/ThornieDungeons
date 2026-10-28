@@ -111,6 +111,7 @@
   };
   const imageDataFor = url => new Promise((resolve, reject) => {
     const image = new Image();
+    image.crossOrigin = "anonymous";
     image.onload = () => {
       const canvas = document.createElement("canvas");
       canvas.width = 768;
@@ -153,7 +154,10 @@
     const results = await window.__g16G5CompareAll();
     document.getElementById("result").textContent = JSON.stringify(results, null, 2);
     document.body.dataset.comparison = "complete";
-  })();
+  })().catch(error => {
+    document.getElementById("result").textContent = `comparison error: ${error.message}`;
+    document.body.dataset.comparison = "error";
+  });
 })().catch(error => {
   document.getElementById("status").textContent = `error:${error.message}`;
   window.__g16G5Error = String(error?.stack || error);
