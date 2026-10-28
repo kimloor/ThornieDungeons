@@ -12873,7 +12873,7 @@ const SHARED_EQUIPMENT_VISUAL_RESOLVER = createEquipmentVisualResolver();
 // ===== phaser/presentation/HeroV5RuntimeContract.js =====
 // ---------- W8 Hero V5 G2 Runtime Contract ----------
 const HERO_V5_RUNTIME_CONTRACT = Object.freeze({
-  version: 4,
+  version: 5,
   characterId: "hero001",
   variant: "g2",
   canvas: Object.freeze({ width: 768, height: 768 }),
@@ -13006,7 +13006,20 @@ function heroV5MoveLayersBefore(order, names, target) {
   return remaining;
 }
 
-function heroV5EquipmentLayersForSelection(selection = {}, config = null) {
+function heroV5LayerSlot(name) {
+  if (name === "torso_armor" || name === "coverage_underlay") return "chest";
+  if (name === "legs_boots") return "boots";
+  if (name === "arm_rear" || name === "arm_front") return "gloves";
+  if (name === "helmet") return "helmet";
+  return name === "sword" ? "weapon" : null;
+}
+
+function heroV5MoveLayersToForeground(order, names) {
+  const moving = names.filter((name, index) => order.includes(name) && names.indexOf(name) === index);
+  return moving.length ? [...order.filter(name => !moving.includes(name)), ...moving] : order;
+}
+
+function heroV5EquipmentLayersForSelection(selection = {}, config = null, frameId = null) {
   const equipment = selection?.equipment || Object.fromEntries(Object.entries(selection?.azure || {}).map(([slot, enabled]) => [slot, enabled ? "azure" : null]));
   const requested = [];
   // The underlay is a whole-body seam closer. Only use it when the three
@@ -13020,12 +13033,28 @@ function heroV5EquipmentLayersForSelection(selection = {}, config = null) {
   if (selection.bossWeapon || equipment.weapon) requested.push("sword");
   if (equipment.gloves) requested.push("arm_front");
   let order = HERO_V5_RUNTIME_CONTRACT.azureLayerOrder.filter(name => requested.includes(name));
-  const leatherProfile = config?.equipment?.leather?.compositionProfile === HERO_V5_LEATHER_COMPOSITION_PROFILE;
-  if (!leatherProfile || equipment.chest !== "leather") return order;
+  const leatherConfig = config?.equipment?.leather;
+  const leatherProfile = leatherConfig?.compositionProfile === HERO_V5_LEATHER_COMPOSITION_PROFILE;
+  if (!leatherProfile) return order;
   // Only the matching Leather pairs opt into the overlap order. Any legacy or
   // mixed-family pair retains its previous relative order.
-  if (equipment.boots === "leather") order = heroV5MoveLayersBefore(order, ["legs_boots"], "torso_armor");
-  if (equipment.gloves === "leather") order = heroV5MoveLayersBefore(order, ["arm_rear", "arm_front"], "torso_armor");
+  if (equipment.chest === "leather" && equipment.boots === "leather") {
+    order = heroV5MoveLayersBefore(order, ["legs_boots"], "torso_armor");
+  }
+  if (equipment.chest === "leather" && equipment.gloves === "leather") {
+    order = heroV5MoveLayersBefore(order, ["arm_rear", "arm_front"], "torso_armor");
+  }
+
+  // G16 foreground rules are metadata-driven and apply only to a layer owned
+  // by the selected Leather slot. All other layers keep their relative order.
+  const foreground = Array.isArray(leatherConfig?.frameComposition?.[frameId]?.foreground)
+    ? leatherConfig.frameComposition[frameId].foreground
+    : [];
+  const resolvedForeground = foreground.filter(name => {
+    const slot = heroV5LayerSlot(name);
+    return slot && equipment[slot] === "leather" && !!leatherConfig?.frames?.[frameId]?.[name];
+  });
+  order = heroV5MoveLayersToForeground(order, resolvedForeground);
   return order;
 }
 
@@ -13060,6 +13089,9 @@ function heroV5RightHandOcclusionLayer(config, frameId, equipmentSelection, equi
       || handConfig?.sourceLayer !== "arm_rear"
       || handConfig?.after !== "sword"
       || !equipmentLayerNames.includes("sword")) return null;
+  // A complete foreground arm already supplies the approved hand-over-weapon
+  // relationship. Never append a cropped duplicate in that case.
+  if (equipmentLayerNames.indexOf(handConfig.sourceLayer) > equipmentLayerNames.indexOf(handConfig.after)) return null;
   const crop = handConfig?.frames?.[frameId]?.crop;
   if (!Array.isArray(crop) || crop.length !== 4 || crop.some(value => !Number.isFinite(Number(value)))) return null;
   const normalizedCrop = crop.map(Number);
@@ -13091,7 +13123,7 @@ function heroV5FrameLayers(config, frameId, {
   const wingFamily = equipmentSelection?.wings === "robot" || equipmentSelection?.wings === "skeleton" ? equipmentSelection.wings : "azure";
   const wingConfig = wingFamily === "azure" ? config?.wingTemplate : config?.wings?.[wingFamily];
   const wingFrame = includeWings ? wingConfig?.frames?.[frameId] : null;
-  const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection, config);
+  const equipmentLayerNames = heroV5EquipmentLayersForSelection(equipmentSelection, config, frameId);
 
   const layers = [];
   if (includeWings && wingFrame?.wing_far) layers.push(heroV5FrameLayer("wing_far", wingFrame.wing_far));
@@ -13099,7 +13131,7 @@ function heroV5FrameLayers(config, frameId, {
   const hairMode = heroV5HelmetHairMode(config, frameId, equipmentSelection, equipmentLayerNames);
   layers.push(...heroV5HairLayers(config, frameId, includeHair && hairMode === "default"));
   equipmentLayerNames.forEach(name => {
-    const slot = name === "torso_armor" || name === "coverage_underlay" ? "chest" : name === "legs_boots" ? "boots" : name === "arm_rear" || name === "arm_front" ? "gloves" : name === "helmet" ? "helmet" : "weapon";
+    const slot = heroV5LayerSlot(name);
     const family = slot === "weapon" && equipmentSelection?.bossWeapon ? equipmentSelection.bossWeapon : equipmentSelection?.equipment?.[slot];
     const path = family ? config?.equipment?.[family]?.frames?.[frameId]?.[name] : null;
     if (path) layers.push(heroV5FrameLayer(name, path));

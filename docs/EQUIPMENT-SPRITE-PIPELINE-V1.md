@@ -1,5 +1,5 @@
 # ThornieDungeons — Equipment Sprite Pipeline V1
-Status: **OWNER APPROVED — G16 G4 FINAL VISUAL ACCEPTED / G5–G6 PENDING** (2026-10-28)
+Status: **OWNER APPROVED — G16 G5 RUNTIME IMPLEMENTED / PR REVIEW PENDING; G6 PENDING** (2026-10-28)
 Scope: Hero V5 G2 modular equipment authoring, review and scoped runtime compatibility. Controlled art creation/correction follows the gates below; this document does not authorize R2 upload, gameplay/economy, Worker/API/D1 or deployment changes.
 Approved decisions: **HYBRID / AZURE-REFERENCE / FULL-SET-FIRST / G16 BEFORE SKELETON / WEAPON-FREE HERO + SEPARATE COMPLETE WEAPON**.
 
@@ -135,11 +135,20 @@ This section records the reusable method learned during the Attack_01–03 work.
 
 Evidence/provenance: `docs/g16-leather-g2/g3/owner-selected-recut/attack_01/` (layer, neck and bounded donor checkpoints), `attack-review-pack-v1/` (three-frame clothing reconstruction), and `attack-review-pack-v1/azure-comparison/` (same-scale Azure comparison). Historical pending wording is not rewritten; this section records Owner's subsequent pose acceptance and facing correction.
 
+## 4E. G16 G5 frame-specific runtime composition (implemented; PR review pending)
+
+- `leather_overlap_v1` accepts `frameComposition.<frameId>.foreground`. Attack_01–03 and Death_02 declare `arm_rear` as foreground. The rule is applied only when that layer belongs to the selected Leather slot and the layer path exists in the resolved frame.
+- Existing pairwise Chest/Gloves and Chest/Boots ordering is applied first. Moving the declared Leather foreground layer is stable: every other equipment layer keeps its previous relative order. Global Azure/Robot/Skeleton order, slot ownership, underlay eligibility and Wing positions are unchanged.
+- Attack_01–03 render the complete anatomical right arm once after the resolved Leather or Boss sword. They do not use a cropped post-sword hand pass. Death_02 also renders the complete right arm in foreground; both Death sword exports remain intentionally empty and Death uses no hand pass.
+- Idle retains reviewed crops Idle_01 `[0,493,768,42]`, Idle_02 `[0,481,768,42]`, and Idle_03 `[0,489,768,42]`. The runtime refuses to append a cropped pass whenever its complete source layer is already after the sword.
+- The G5 browser fixture uses the exact final G4 ledger through the actual Equipment Resolver, Hero V5 contract, EventBridge and Phaser `HeroRenderer`; it does not publish Leather paths to the production manifest. Actual Canvas captures and validation are recorded in `g3/qa/G5_RUNTIME_COMPARISON.png` and `G5_RUNTIME_VALIDATION.json`.
+- Known issue retained by scope: a network/runtime Helmet texture 404 can remove the Helmet after hair suppression and leave a bald fallback. Contract-level incomplete Helmet bundles restore default hair. G5 does not redesign the pre-existing runtime-404 fallback.
+
 ## 5. Gates and owner acceptance
 
 G16 current handoff (2026-10-28): Owner Final G4 Visual Approval accepts all eight frames and Idle/Attack/Death animation previews from the corrected ChatGPT package, and authorizes final upload to existing Draft PR #160. Exactly 11 PNG replacements and 45 byte-identical preserved equipment PNGs are reconciled in `docs/g16-leather-g2/g3/VALIDATION.json` and `SHA256SUMS`. `g4-source/OWNER_APPROVAL.md` pins the package and approval. Current contact/comparison/GIF evidence is in `g3/qa/`. Earlier G3 byte-preservation statements above describe their historical stage; only the 11 Owner-approved G4 seam/RGB corrections supersede those byte locks. Poses, Base anatomy/origin, rear torso facing, helmet/sword/underlay bytes and Death_02 helmet [0,-8] remain locked.
 
-G4 visual acceptance does not certify actual runtime. DEV must separately resolve Attack/Death_02 foreground anatomical right-arm order and Attack hand crops, then run G5 actual renderer/slot/hair/fallback regression. Empty Death swords require no crop. G6 R2/production manifest/deploy remain unapproved; no runtime changes are authorized by this artwork publication.
+G4 visual acceptance is preserved. G5 implements the approved scoped foreground-arm capability and actual-renderer QA, but remains pending Project Lead PR review. Empty Death swords require no crop. G6 R2/production manifest/deploy remain unapproved.
 
 | Gate | Deliverable | Acceptance |
 | --- | --- | --- |

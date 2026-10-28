@@ -1,0 +1,83 @@
+{
+  "status": "G16 G5 DEV IMPLEMENTATION COMPLETE — PR REVIEW PENDING",
+  "graphicsBaseCommit": "91d443658130884ba3e04d22d1cc4c771263002c",
+  "graphicsBranch": "art/g16-g3-leather-frames",
+  "devBranch": "dev/g16-g5-runtime-foreground",
+  "browserFixtureCommit": "fc08773fb7ccabb72496fe719dd4d38ffb3abbe8",
+  "compositionProfile": "leather_overlap_v1",
+  "actualRuntimeRendererTested": true,
+  "renderer": {
+    "engine": "Phaser 3.90.0",
+    "requested": "CANVAS and AUTO",
+    "observedType": 1,
+    "observedName": "Canvas",
+    "note": "AUTO selected Canvas in the Cloud Chrome run; no WebGL-specific rounding result is claimed."
+  },
+  "frameComposition": {
+    "idle_01": ["base", "coverage_underlay", "legs_boots", "arm_rear", "arm_front", "torso_armor", "helmet", "sword", "right_hand_occlusion"],
+    "idle_02": ["base", "coverage_underlay", "legs_boots", "arm_rear", "arm_front", "torso_armor", "helmet", "sword", "right_hand_occlusion"],
+    "idle_03": ["base", "coverage_underlay", "legs_boots", "arm_rear", "arm_front", "torso_armor", "helmet", "sword", "right_hand_occlusion"],
+    "attack_01": ["base", "coverage_underlay", "legs_boots", "arm_front", "torso_armor", "helmet", "sword", "arm_rear"],
+    "attack_02": ["base", "coverage_underlay", "legs_boots", "arm_front", "torso_armor", "helmet", "sword", "arm_rear"],
+    "attack_03": ["base", "coverage_underlay", "legs_boots", "arm_front", "torso_armor", "helmet", "sword", "arm_rear"],
+    "death_01": ["base", "coverage_underlay", "legs_boots", "arm_rear", "arm_front", "torso_armor", "helmet", "sword"],
+    "death_02": ["base", "coverage_underlay", "legs_boots", "arm_front", "torso_armor", "helmet", "sword", "arm_rear"]
+  },
+  "handOcclusion": {
+    "idle_01": [0, 493, 768, 42],
+    "idle_02": [0, 481, 768, 42],
+    "idle_03": [0, 489, 768, 42],
+    "attack_01": null,
+    "attack_02": null,
+    "attack_03": null,
+    "death_01": null,
+    "death_02": null,
+    "duplicateForegroundGuardVerified": true
+  },
+  "pixelComparison": {
+    "offlineContractPixelIdenticalFrames": 8,
+    "offlineContractFrameCount": 8,
+    "actualCanvasAlphaSupportDifferingPixelsAllFrames": 0,
+    "actualCanvasMaximumAlphaDelta": 2,
+    "actualCanvasMaximumPremultipliedChannelDelta": 3,
+    "rawRgbaByteIdentity": false,
+    "explanation": "Browser Canvas source-over compositing uses premultiplied-alpha rounding. Raw unpremultiplied RGB can diverge strongly at near-transparent pixels (up to 128), while nonzero-alpha support is identical and the maximum premultiplied visible channel delta is 3/255. No material visual difference was observed.",
+    "perFrame": {
+      "idle_01": {"differingPixels": 27363, "alphaDifferingPixels": 549, "maximumAlphaDelta": 2, "alphaSupportDifferingPixels": 0, "maximumPremultipliedDelta": 2},
+      "idle_02": {"differingPixels": 27363, "alphaDifferingPixels": 549, "maximumAlphaDelta": 2, "alphaSupportDifferingPixels": 0, "maximumPremultipliedDelta": 2},
+      "idle_03": {"differingPixels": 27363, "alphaDifferingPixels": 549, "maximumAlphaDelta": 2, "alphaSupportDifferingPixels": 0, "maximumPremultipliedDelta": 2},
+      "attack_01": {"differingPixels": 29960, "alphaDifferingPixels": 320, "maximumAlphaDelta": 1, "alphaSupportDifferingPixels": 0, "maximumPremultipliedDelta": 2},
+      "attack_02": {"differingPixels": 29693, "alphaDifferingPixels": 448, "maximumAlphaDelta": 1, "alphaSupportDifferingPixels": 0, "maximumPremultipliedDelta": 2},
+      "attack_03": {"differingPixels": 27756, "alphaDifferingPixels": 520, "maximumAlphaDelta": 1, "alphaSupportDifferingPixels": 0, "maximumPremultipliedDelta": 3},
+      "death_01": {"differingPixels": 26706, "alphaDifferingPixels": 1076, "maximumAlphaDelta": 1, "alphaSupportDifferingPixels": 0, "maximumPremultipliedDelta": 2},
+      "death_02": {"differingPixels": 23521, "alphaDifferingPixels": 621, "maximumAlphaDelta": 2, "alphaSupportDifferingPixels": 0, "maximumPremultipliedDelta": 2}
+    }
+  },
+  "hostSmoke": {
+    "heroPreviewHost": {"mounted": true, "rendererType": 1, "idleOrderMatched": true},
+    "battlefieldHost": {"mounted": true, "rendererType": 1, "idleOrderMatched": true},
+    "battleHeroActor": {"mounted": true, "idleAttackDeathTransitionsMatched": true},
+    "authorityBoundary": "The host fixture exercises presentation only and does not enter or mutate authoritative gameplay."
+  },
+  "regression": {
+    "g16Compatibility": {"passed": 12, "failed": 0},
+    "targetedHeroSkeletonPhaserMythicEquipment": {"passed": 120, "failed": 0},
+    "fullSuite": {"passed": 878, "failed": 0},
+    "g4Sha256Ledger": {"passed": 56, "failed": 0},
+    "build": "PASS — node build.js regenerated index.html (27515 lines, 71 modules)",
+    "diffCheck": "PASS"
+  },
+  "compatibility": {
+    "azureRobotSkeletonOrderUnchanged": true,
+    "hairModesAndLegacyFullFaceHelmetUnchanged": true,
+    "genericTier1AndExplicitSetIdPriorityUnchanged": true,
+    "bossWeaponOverrideUnchanged": true,
+    "transparentUnderlayAndEmptyDeathSwordsVerified": true,
+    "artworkModified": false,
+    "productionManifestModified": false
+  },
+  "knownIssues": [
+    "Runtime Texture-404 bald fallback remains pre-existing and is intentionally outside G5 scope."
+  ],
+  "recommendation": "G5 PASS recommended, pending Project Lead review of the DEV PR and QA evidence. This is not G5 Accepted and not G6 Ready."
+}
