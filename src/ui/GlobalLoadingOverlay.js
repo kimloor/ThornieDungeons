@@ -13,10 +13,13 @@ const GLOBAL_LOADING_STYLE = `
 .gl-gate-stage { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(circle at 50% 42%, #2c1e4a, #08050f 72%); }
 .gl-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; opacity: 0; pointer-events: none; }
 .gl-gate-stage.closed-ready .gl-art-closed { opacity: 1; }
-.gl-overlay.gl-exiting .gl-art { animation-duration: .9s; animation-timing-function: ease-in-out; animation-fill-mode: both; }
-.gl-overlay.gl-exiting .gl-art-closed { animation-name: gl-gate-closed; }
-.gl-overlay.gl-exiting .gl-art-opening { animation-name: gl-gate-opening; }
-.gl-overlay.gl-exiting .gl-art-open { animation-name: gl-gate-open; }
+.gl-overlay.gl-gate-opening .gl-art { animation-duration: .9s; animation-timing-function: ease-in-out; animation-fill-mode: both; }
+.gl-overlay.gl-gate-opening .gl-art-closed { animation-name: gl-gate-closed; }
+.gl-overlay.gl-gate-opening .gl-art-opening { animation-name: gl-gate-opening; }
+.gl-overlay.gl-gate-opening .gl-art-open { animation-name: gl-gate-open; }
+.gl-overlay.gl-gate-open .gl-art, .gl-overlay.gl-gate-fading .gl-art { animation: none; opacity: 0; }
+.gl-overlay.gl-gate-open .gl-art-open, .gl-overlay.gl-gate-fading .gl-art-open { opacity: 1; transform: scale(1.02); }
+.gl-overlay.gl-gate-fading { animation: gl-fade-out .18s ease-in both; }
 .gl-overlay.gl-reduced .gl-art { animation: none !important; opacity: 0; }
 .gl-overlay.gl-reduced .gl-art-open { opacity: 1; }
 .gl-panel { position: absolute; z-index: 2; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(24px, 7vh, 72px)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(78vw, 360px); padding: 12px 16px; text-align: center; border-radius: 14px; background: linear-gradient(180deg, rgba(8,5,15,.1), rgba(8,5,15,.72)); text-shadow: 0 2px 5px rgba(0,0,0,.95); }
@@ -43,6 +46,7 @@ const GLOBAL_LOADING_STYLE = `
 @keyframes gl-gate-opening { 0%, 18% { opacity: 0; transform: scale(.995); } 36%, 61% { opacity: 1; transform: scale(1.005); } 78%, 100% { opacity: 0; transform: scale(1.015); } }
 @keyframes gl-gate-open { 0%, 56% { opacity: 0; transform: scale(1); } 76%, 100% { opacity: 1; transform: scale(1.02); } }
 @keyframes gl-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gl-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .gl-overlay { animation: none; }
   .gl-ring, .gl-ring-inner, .gl-rune, .gl-art { animation: none !important; }
@@ -51,6 +55,13 @@ const GLOBAL_LOADING_STYLE = `
   .gl-panel { width: min(86vw, 340px); bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); padding: 10px 14px; }
 }
 `;
+
+const GLOBAL_LOADING_GATE_TIMING = Object.freeze({
+  openingMs: 900,
+  fullOpenHoldMs: 1000,
+  fadeOutMs: 180,
+  reducedExitMs: 120
+});
 
 function useGlobalLoadingSnapshot(manager) {
   const [snapshot, setSnapshot] = useState(() => manager.getSnapshot());
@@ -107,9 +118,28 @@ function GlobalLoadingOverlay({ manager }) {
     wasVisibleRef.current = false;
     const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (!artReady) return undefined;
-    setExitMode(reduced ? "reduced" : "motion");
-    const timer = setTimeout(() => setExitMode(""), reduced ? 120 : 900);
-    return () => clearTimeout(timer);
+    const timers = [];
+    const schedule = (callback, delay) => {
+      const timer = setTimeout(callback, delay);
+      timers.push(timer);
+    };
+    if (reduced) {
+      setExitMode("reduced-open");
+      schedule(() => {
+        setExitMode("reduced-exit");
+        schedule(() => setExitMode(""), GLOBAL_LOADING_GATE_TIMING.reducedExitMs);
+      }, GLOBAL_LOADING_GATE_TIMING.fullOpenHoldMs);
+    } else {
+      setExitMode("opening");
+      schedule(() => {
+        setExitMode("open");
+        schedule(() => {
+          setExitMode("fading");
+          schedule(() => setExitMode(""), GLOBAL_LOADING_GATE_TIMING.fadeOutMs);
+        }, GLOBAL_LOADING_GATE_TIMING.fullOpenHoldMs);
+      }, GLOBAL_LOADING_GATE_TIMING.openingMs);
+    }
+    return () => timers.forEach(clearTimeout);
   }, [snap.visible, artReady]);
   const shown = snap.visible ? snap : lastVisibleRef.current;
   const n = snap.staleNotice;
@@ -147,12 +177,13 @@ function GlobalLoadingOverlay({ manager }) {
   if (!snap.visible && !exitMode) return notice;
   const determinate = snap.visible && shown.mode === "determinate";
   return /*#__PURE__*/React.createElement(React.Fragment, null, notice, /*#__PURE__*/React.createElement("div", {
-    className: "gl-overlay" + (exitMode ? " gl-exiting" : "") + (exitMode === "reduced" ? " gl-reduced" : ""),
+    className: "gl-overlay" + (exitMode ? " gl-exiting gl-gate-" + exitMode : "") + (exitMode.startsWith("reduced") ? " gl-reduced" : ""),
     role: "status",
     "aria-live": "polite",
     "aria-busy": "true",
     "aria-label": shown.label,
-    "data-global-loading": "true"
+    "data-global-loading": "true",
+    "data-loading-gate-phase": exitMode || "loading"
   }, /*#__PURE__*/React.createElement("style", null, GLOBAL_LOADING_STYLE), /*#__PURE__*/React.createElement("div", {
     className: "gl-gate-stage" + ((loadedFrames & 1) && !artFailed ? " closed-ready" : ""),
     "aria-hidden": "true"

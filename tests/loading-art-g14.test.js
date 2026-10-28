@@ -41,14 +41,28 @@ test("G14 fullscreen presentation uses CSS only as a failed-asset fallback and n
   assert.match(overlay, /loadingUiUrl\("fullscreenGateOpen"\)/);
   assert.match(overlay, /hasArtSources && !artFailed && loadedFrames === 7/);
   assert.match(overlay, /onError: \(\) => setArtFailed\(true\)/);
-  assert.match(overlay, /setExitMode\(reduced \? "reduced" : "motion"\)/);
+  assert.match(overlay, /setExitMode\("opening"\)/);
+  assert.match(overlay, /setExitMode\("open"\)/);
+  assert.match(overlay, /setExitMode\("fading"\)/);
+  assert.match(overlay, /setExitMode\("reduced-open"\)/);
   assert.match(overlay, /prefers-reduced-motion: reduce/);
-  assert.match(overlay, /reduced \? 120 : 900/);
+  assert.match(overlay, /data-loading-gate-phase/);
   assert.match(overlay, /\(!hasArtSources \|\| artFailed\) \?/);
   assert.match(overlay, /object-fit: cover/);
   const component = overlay.slice(overlay.indexOf("function GlobalLoadingOverlay"));
   assert.doesNotMatch(component, /GLOBAL_LOADING\.(begin|run|releaseKey)/);
   assert.match(overlay, /className: "gl-rune"/);
+});
+
+test("G14 exit timing holds the fully-open gate for 1000ms before fade-out", () => {
+  const overlay = read("src/ui/GlobalLoadingOverlay.js");
+  assert.match(overlay, /openingMs: 900/);
+  assert.match(overlay, /fullOpenHoldMs: 1000/);
+  assert.match(overlay, /fadeOutMs: 180/);
+  assert.match(overlay, /setExitMode\("open"\);\s*schedule\(\(\) => \{\s*setExitMode\("fading"\)/);
+  assert.match(overlay, /GLOBAL_LOADING_GATE_TIMING\.fullOpenHoldMs/);
+  assert.match(overlay, /return \(\) => timers\.forEach\(clearTimeout\)/);
+  assert.match(overlay, /\.gl-overlay\.gl-gate-fading \{ animation: gl-fade-out \.18s ease-in both; \}/);
 });
 
 test("G14 fullscreen production frames are 1536x1024 WebP with approved hashes", () => {

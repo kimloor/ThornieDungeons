@@ -9183,7 +9183,7 @@ if (typeof module !== "undefined") module.exports = {
   }
   function chance(state, percent) { return nextRandom(state) * 100 < clamp(percent, 0, 100); }
   function choose(state, list) { return list.length ? list[Math.flo
-... 443400 bytes omitted ...
+... 444628 bytes omitted ...
 
     // Drain every older full-snapshot write before the authoritative transaction. Without
     // this barrier, a delayed pre-mutation Gold/items snapshot could arrive afterward and
