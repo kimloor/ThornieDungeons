@@ -123,6 +123,7 @@
     image.onerror = () => reject(new Error(`Reference image failed: ${url}`));
     image.src = url;
   });
+  const comparisonFrames = [];
   window.__g16G5Compare = async frameId => {
     const transition = await window.__g16G5SetFrame(frameId);
     if (game.renderer.type !== Phaser.CANVAS) {
@@ -132,20 +133,79 @@
     const approved = await imageDataFor(`../../docs/g16-leather-g2/g3/qa/${frameId}_composite.png`);
     let differingPixels = 0;
     let maximumChannelDelta = 0;
+    let visibleDifferingPixels = 0;
+    let maximumVisibleChannelDelta = 0;
+    let alphaDifferingPixels = 0;
+    let maximumAlphaDelta = 0;
+    let alphaSupportDifferingPixels = 0;
     for (let offset = 0; offset < actual.data.length; offset += 4) {
       let pixelDiffers = false;
+      let maximumPixelDelta = 0;
       for (let channel = 0; channel < 4; channel += 1) {
         const delta = Math.abs(actual.data[offset + channel] - approved.data[offset + channel]);
         maximumChannelDelta = Math.max(maximumChannelDelta, delta);
+        maximumPixelDelta = Math.max(maximumPixelDelta, delta);
         pixelDiffers ||= delta !== 0;
       }
       if (pixelDiffers) differingPixels += 1;
+      const actualAlpha = actual.data[offset + 3];
+      const approvedAlpha = approved.data[offset + 3];
+      if (actualAlpha || approvedAlpha) {
+        if (pixelDiffers) visibleDifferingPixels += 1;
+        maximumVisibleChannelDelta = Math.max(maximumVisibleChannelDelta, maximumPixelDelta);
+      }
+      const alphaDelta = Math.abs(actualAlpha - approvedAlpha);
+      if (alphaDelta) alphaDifferingPixels += 1;
+      maximumAlphaDelta = Math.max(maximumAlphaDelta, alphaDelta);
+      if (!!actualAlpha !== !!approvedAlpha) alphaSupportDifferingPixels += 1;
     }
-    return { ...transition, comparison: "rgba-exact", differingPixels, maximumChannelDelta };
+    comparisonFrames.push({ frameId, actual, approved });
+    return { ...transition, comparison: "rgba-exact", differingPixels, maximumChannelDelta,
+      visibleDifferingPixels, maximumVisibleChannelDelta, alphaDifferingPixels,
+      maximumAlphaDelta, alphaSupportDifferingPixels };
+  };
+  const buildComparisonSheet = () => {
+    const tile = 256;
+    const labelHeight = 28;
+    const canvas = document.createElement("canvas");
+    canvas.width = tile * 3;
+    canvas.height = comparisonFrames.length * (tile + labelHeight);
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#d9dfe6";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    comparisonFrames.forEach(({ frameId, actual, approved }, row) => {
+      const y = row * (tile + labelHeight);
+      const source = document.createElement("canvas");
+      source.width = source.height = 768;
+      const sourceContext = source.getContext("2d");
+      sourceContext.putImageData(approved, 0, 0);
+      context.drawImage(source, 0, y, tile, tile);
+      sourceContext.putImageData(actual, 0, 0);
+      context.drawImage(source, tile, y, tile, tile);
+      const diff = sourceContext.createImageData(768, 768);
+      for (let offset = 0; offset < diff.data.length; offset += 4) {
+        const visible = actual.data[offset + 3] || approved.data[offset + 3];
+        for (let channel = 0; channel < 3; channel += 1) {
+          diff.data[offset + channel] = visible
+            ? Math.min(255, Math.abs(actual.data[offset + channel] - approved.data[offset + channel]) * 8)
+            : 0;
+        }
+        diff.data[offset + 3] = 255;
+      }
+      sourceContext.putImageData(diff, 0, 0);
+      context.drawImage(source, tile * 2, y, tile, tile);
+      context.fillStyle = "#172033";
+      context.font = "15px system-ui, sans-serif";
+      context.fillText(`${frameId} — approved G4`, 8, y + tile + 20);
+      context.fillText("actual Phaser Canvas", tile + 8, y + tile + 20);
+      context.fillText("visible RGBA diff ×8", tile * 2 + 8, y + tile + 20);
+    });
+    document.getElementById("comparison-sheet").src = canvas.toDataURL("image/png");
   };
   window.__g16G5CompareAll = async () => {
     const results = [];
     for (const frameId of FRAME_IDS) results.push(await window.__g16G5Compare(frameId));
+    buildComparisonSheet();
     return results;
   };
   window.__g16G5Capture = () => game.canvas.toDataURL("image/png");
