@@ -197,6 +197,7 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   // admin (7) + W2-D delete-safety validation (3) + W2-E filter validation (1)
   invalid_filter: "validation",
   feature_disabled: "business",
+  audit_not_restorable: "business",
   operation_pending: "business",
   character_in_run: "business",
   item_state_changed: "business",

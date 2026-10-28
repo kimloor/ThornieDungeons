@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.23" />
+<meta name="application-version" content="1.1.24" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -174,7 +174,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.23";
+  content: "Ver 1.1.24";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -5279,6 +5279,7 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   // admin (7) + W2-D delete-safety validation (3) + W2-E filter validation (1)
   invalid_filter: "validation",
   feature_disabled: "business",
+  audit_not_restorable: "business",
   operation_pending: "business",
   character_in_run: "business",
   item_state_changed: "business",
@@ -8123,13 +8124,20 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
+      version: "1.1.24", date: "2026-10-28", title: "เครื่องมือกู้คืนไอเทมสำหรับผู้ดูแลระบบ",
+      items: [
+        "เตรียมเครื่องมือกู้คืนไอเทมจากประวัติการลบสำหรับผู้ดูแลระบบ (ยังปิดใช้งานอยู่)",
+        "ไม่มีการเปลี่ยนแปลงต่อการเล่น ไอเทม หรือข้อมูลตัวละครของผู้เล่น"
+      ]
+    },
+    history: [
+      {
       version: "1.1.23", date: "2026-10-27", title: "เตรียมเครื่องมือหลังบ้านสำหรับไอเทม",
       items: [
         "เตรียมเครื่องมือตรวจสอบและจัดการไอเทมสำหรับผู้ดูแลระบบ (ยังปิดใช้งานอยู่)",
         "ไม่มีการเปลี่ยนแปลงต่อการเล่น ไอเทม หรือข้อมูลตัวละครของผู้เล่น"
       ]
     },
-    history: [
       {
       version: "1.1.22", date: "2026-10-27", title: "หน้าตรวจประวัติระบบหลังบ้าน",
       items: [
