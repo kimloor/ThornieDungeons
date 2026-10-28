@@ -1,0 +1,1305 @@
+{
+  "status": "G16 G6 PUBLICATION COMPLETE — OWNER PRODUCTION VISUAL ACCEPTANCE PENDING",
+  "ownerAuthorization": "2026-10-28: Complete all controlled production phases; no artwork redesign or unrelated implementation.",
+  "sourceCommit": "6b356fe2d322986983b62b460e005d4b8833c96f",
+  "approvedBaseline": "e74a8b522f2092156ded830fc5ca48bddbed3e9e",
+  "finalG4Commit": "91d443658130884ba3e04d22d1cc4c771263002c",
+  "publicationCommits": {
+    "png": "211851d04d8bcdaa1af490c5cf4f03b4264e540c",
+    "manifest": "432dfc39bde81cbb878e07cdce8310b4fcbf2d75"
+  },
+  "phaseA": {
+    "status": "PASS",
+    "collisionCheck": "R2 assets prefix empty before publication; repository staging paths absent",
+    "fileCount": 56,
+    "totalBytes": 1585329,
+    "workflowRunId": 40695407694,
+    "workflowConclusion": "success",
+    "changedFiles": 56,
+    "manifestUnchanged": true,
+    "independentReadback": "Downloaded all 56 R2 object bodies through authenticated Cloudflare GET; SHA-256 over Uint8Array bytes, independent of upload workflow. All SHA match G4 ledger. Same bytes already fully PNG-decoded by Pillow; IHDR independently checked on readback.",
+    "mimeCheck": "56/56 image/png from R2 object metadata",
+    "publicBrowserDecode": {
+      "passed": 56,
+      "total": 56,
+      "dimensions": [
+        768,
+        768
+      ],
+      "method": "Navigated every concrete public PNG URL; image.complete and naturalWidth/naturalHeight verified."
+    },
+    "objects": [
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_01/coverage_underlay.png",
+        "key": "hero/v5/g2/equipment/leather/idle_01/coverage_underlay.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_01/coverage_underlay.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "pngSignature": [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10
+          ],
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_01/coverage_underlay.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_01/torso_armor.png",
+        "key": "hero/v5/g2/equipment/leather/idle_01/torso_armor.png",
+        "sha256": "d9e5be85ac66d27f286227ce442dd5b036198468077f838302f8421bed470166",
+        "bytes": 37034,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_01/torso_armor.png",
+          "status": 200,
+          "sha256": "d9e5be85ac66d27f286227ce442dd5b036198468077f838302f8421bed470166",
+          "bytes": 37034,
+          "pngSignature": [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10
+          ],
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_01/torso_armor.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_01/legs_boots.png",
+        "key": "hero/v5/g2/equipment/leather/idle_01/legs_boots.png",
+        "sha256": "4ec24b9c709e659e90abf32343b2f91848e44cb8402cddbeae59ec3a150463d5",
+        "bytes": 47441,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_01/legs_boots.png",
+          "status": 200,
+          "sha256": "4ec24b9c709e659e90abf32343b2f91848e44cb8402cddbeae59ec3a150463d5",
+          "bytes": 47441,
+          "pngSignature": [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10
+          ],
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_01/legs_boots.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_01/arm_rear.png",
+        "key": "hero/v5/g2/equipment/leather/idle_01/arm_rear.png",
+        "sha256": "20db657e38bb1d6581216a6eb234b179873dcd1f0dc203099aa5ca2ab655f88d",
+        "bytes": 23063,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_01/arm_rear.png",
+          "status": 200,
+          "sha256": "20db657e38bb1d6581216a6eb234b179873dcd1f0dc203099aa5ca2ab655f88d",
+          "bytes": 23063,
+          "pngSignature": [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10
+          ],
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_01/arm_rear.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_01/helmet.png",
+        "key": "hero/v5/g2/equipment/leather/idle_01/helmet.png",
+        "sha256": "ff2051efd61d15dc7db0f47a4c218dc262c73300a4652df9ec3c3911a7674931",
+        "bytes": 56834,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_01/helmet.png",
+          "status": 200,
+          "sha256": "ff2051efd61d15dc7db0f47a4c218dc262c73300a4652df9ec3c3911a7674931",
+          "bytes": 56834,
+          "pngSignature": [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10
+          ],
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_01/helmet.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_01/sword.png",
+        "key": "hero/v5/g2/equipment/leather/idle_01/sword.png",
+        "sha256": "b3786f8f1e69c4c2924844df57d12d65804d11b3ce24bf80a18b2e286e8b960d",
+        "bytes": 24830,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_01/sword.png",
+          "status": 200,
+          "sha256": "b3786f8f1e69c4c2924844df57d12d65804d11b3ce24bf80a18b2e286e8b960d",
+          "bytes": 24830,
+          "pngSignature": [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10
+          ],
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_01/sword.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_01/arm_front.png",
+        "key": "hero/v5/g2/equipment/leather/idle_01/arm_front.png",
+        "sha256": "68668a5082b775db3fb49a711172388cfed2c85a456cf762eec1f89b1e2c9865",
+        "bytes": 15415,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_01/arm_front.png",
+          "status": 200,
+          "sha256": "68668a5082b775db3fb49a711172388cfed2c85a456cf762eec1f89b1e2c9865",
+          "bytes": 15415,
+          "pngSignature": [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10
+          ],
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_01/arm_front.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_02/coverage_underlay.png",
+        "key": "hero/v5/g2/equipment/leather/idle_02/coverage_underlay.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_02/coverage_underlay.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_02/coverage_underlay.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_02/torso_armor.png",
+        "key": "hero/v5/g2/equipment/leather/idle_02/torso_armor.png",
+        "sha256": "f2d2c5e71851dc7caeaa2d9a372ff0f415ce96193a90369da93cfd550dabcbfb",
+        "bytes": 37012,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_02/torso_armor.png",
+          "status": 200,
+          "sha256": "f2d2c5e71851dc7caeaa2d9a372ff0f415ce96193a90369da93cfd550dabcbfb",
+          "bytes": 37012,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_02/torso_armor.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_02/legs_boots.png",
+        "key": "hero/v5/g2/equipment/leather/idle_02/legs_boots.png",
+        "sha256": "7ef82cd5405ff2fd31873f581baae0b9c0eee978dd00c385f3e022403f9d3d8d",
+        "bytes": 47469,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_02/legs_boots.png",
+          "status": 200,
+          "sha256": "7ef82cd5405ff2fd31873f581baae0b9c0eee978dd00c385f3e022403f9d3d8d",
+          "bytes": 47469,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_02/legs_boots.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_02/arm_rear.png",
+        "key": "hero/v5/g2/equipment/leather/idle_02/arm_rear.png",
+        "sha256": "b9a79956536c489b0375eef88a51caaea68c64f3c16ed9792191672ad33dbc46",
+        "bytes": 23063,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_02/arm_rear.png",
+          "status": 200,
+          "sha256": "b9a79956536c489b0375eef88a51caaea68c64f3c16ed9792191672ad33dbc46",
+          "bytes": 23063,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_02/arm_rear.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_02/helmet.png",
+        "key": "hero/v5/g2/equipment/leather/idle_02/helmet.png",
+        "sha256": "9ee9f0586c6fd9b3ad1fc47e95ba41aba962b2cc939fc623cdfac9147d33f717",
+        "bytes": 56805,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_02/helmet.png",
+          "status": 200,
+          "sha256": "9ee9f0586c6fd9b3ad1fc47e95ba41aba962b2cc939fc623cdfac9147d33f717",
+          "bytes": 56805,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_02/helmet.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_02/sword.png",
+        "key": "hero/v5/g2/equipment/leather/idle_02/sword.png",
+        "sha256": "c147b1160dd1ac157c445c5cfae15d906d8440f026a860823e5855ff5d72ad00",
+        "bytes": 24828,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_02/sword.png",
+          "status": 200,
+          "sha256": "c147b1160dd1ac157c445c5cfae15d906d8440f026a860823e5855ff5d72ad00",
+          "bytes": 24828,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_02/sword.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_02/arm_front.png",
+        "key": "hero/v5/g2/equipment/leather/idle_02/arm_front.png",
+        "sha256": "4d6f9128a8ae2f2e27a05ddb69737e9bc529e66a0620329b35fff3c8c47a1771",
+        "bytes": 15414,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_02/arm_front.png",
+          "status": 200,
+          "sha256": "4d6f9128a8ae2f2e27a05ddb69737e9bc529e66a0620329b35fff3c8c47a1771",
+          "bytes": 15414,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_02/arm_front.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_03/coverage_underlay.png",
+        "key": "hero/v5/g2/equipment/leather/idle_03/coverage_underlay.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_03/coverage_underlay.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_03/coverage_underlay.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_03/torso_armor.png",
+        "key": "hero/v5/g2/equipment/leather/idle_03/torso_armor.png",
+        "sha256": "f12dc1188f8bf49cf159e64147dd6c518f165548f952486911a6e047d93fd39c",
+        "bytes": 37025,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_03/torso_armor.png",
+          "status": 200,
+          "sha256": "f12dc1188f8bf49cf159e64147dd6c518f165548f952486911a6e047d93fd39c",
+          "bytes": 37025,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_03/torso_armor.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_03/legs_boots.png",
+        "key": "hero/v5/g2/equipment/leather/idle_03/legs_boots.png",
+        "sha256": "15f62021ece497e5d02e98e14acdb1b595daaad84aea97ecf7b97139837120dc",
+        "bytes": 47448,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_03/legs_boots.png",
+          "status": 200,
+          "sha256": "15f62021ece497e5d02e98e14acdb1b595daaad84aea97ecf7b97139837120dc",
+          "bytes": 47448,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_03/legs_boots.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_03/arm_rear.png",
+        "key": "hero/v5/g2/equipment/leather/idle_03/arm_rear.png",
+        "sha256": "3921cf806d1a185b0e871e5ee94cd7b013c2bdb82c8f041df0fef58d0f5e1876",
+        "bytes": 23062,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_03/arm_rear.png",
+          "status": 200,
+          "sha256": "3921cf806d1a185b0e871e5ee94cd7b013c2bdb82c8f041df0fef58d0f5e1876",
+          "bytes": 23062,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_03/arm_rear.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_03/helmet.png",
+        "key": "hero/v5/g2/equipment/leather/idle_03/helmet.png",
+        "sha256": "29ea22e518d63ff24a6870834159c5da3cf0b1235195d37d37741bba03cb0931",
+        "bytes": 56829,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_03/helmet.png",
+          "status": 200,
+          "sha256": "29ea22e518d63ff24a6870834159c5da3cf0b1235195d37d37741bba03cb0931",
+          "bytes": 56829,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_03/helmet.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_03/sword.png",
+        "key": "hero/v5/g2/equipment/leather/idle_03/sword.png",
+        "sha256": "07155279f58b8cd3d38e92facbfb3f7b2547d7bf8d5263aa51e8ee9c4f9867ed",
+        "bytes": 24830,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_03/sword.png",
+          "status": 200,
+          "sha256": "07155279f58b8cd3d38e92facbfb3f7b2547d7bf8d5263aa51e8ee9c4f9867ed",
+          "bytes": 24830,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_03/sword.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/exports/idle_03/arm_front.png",
+        "key": "hero/v5/g2/equipment/leather/idle_03/arm_front.png",
+        "sha256": "ad1d6864aa381a8c6347700b7a8366a59db4bc56312f3b4f56ba3a38f66d2f52",
+        "bytes": 15415,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/idle_03/arm_front.png",
+          "status": 200,
+          "sha256": "ad1d6864aa381a8c6347700b7a8366a59db4bc56312f3b4f56ba3a38f66d2f52",
+          "bytes": 15415,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/idle_03/arm_front.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/coverage_underlay.png",
+        "key": "hero/v5/g2/equipment/leather/attack_01/coverage_underlay.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_01/coverage_underlay.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_01/coverage_underlay.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/torso_armor.png",
+        "key": "hero/v5/g2/equipment/leather/attack_01/torso_armor.png",
+        "sha256": "42460489b5b0e202b4a95510171411ad63072f093cc6aa5c66017e39fd4932bd",
+        "bytes": 36855,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_01/torso_armor.png",
+          "status": 200,
+          "sha256": "42460489b5b0e202b4a95510171411ad63072f093cc6aa5c66017e39fd4932bd",
+          "bytes": 36855,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_01/torso_armor.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/legs_boots.png",
+        "key": "hero/v5/g2/equipment/leather/attack_01/legs_boots.png",
+        "sha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf",
+        "bytes": 47460,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_01/legs_boots.png",
+          "status": 200,
+          "sha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf",
+          "bytes": 47460,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_01/legs_boots.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/arm_rear.png",
+        "key": "hero/v5/g2/equipment/leather/attack_01/arm_rear.png",
+        "sha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb",
+        "bytes": 31376,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_01/arm_rear.png",
+          "status": 200,
+          "sha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb",
+          "bytes": 31376,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_01/arm_rear.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/helmet.png",
+        "key": "hero/v5/g2/equipment/leather/attack_01/helmet.png",
+        "sha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318",
+        "bytes": 59720,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_01/helmet.png",
+          "status": 200,
+          "sha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318",
+          "bytes": 59720,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_01/helmet.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/sword.png",
+        "key": "hero/v5/g2/equipment/leather/attack_01/sword.png",
+        "sha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb",
+        "bytes": 26392,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_01/sword.png",
+          "status": 200,
+          "sha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb",
+          "bytes": 26392,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_01/sword.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_01/arm_front.png",
+        "key": "hero/v5/g2/equipment/leather/attack_01/arm_front.png",
+        "sha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148",
+        "bytes": 20562,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_01/arm_front.png",
+          "status": 200,
+          "sha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148",
+          "bytes": 20562,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_01/arm_front.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/coverage_underlay.png",
+        "key": "hero/v5/g2/equipment/leather/attack_02/coverage_underlay.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_02/coverage_underlay.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_02/coverage_underlay.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/torso_armor.png",
+        "key": "hero/v5/g2/equipment/leather/attack_02/torso_armor.png",
+        "sha256": "8ede7e4d09bb99114690a5ecb7ab20f1992725549b333c24c6423015f9a2f415",
+        "bytes": 27579,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_02/torso_armor.png",
+          "status": 200,
+          "sha256": "8ede7e4d09bb99114690a5ecb7ab20f1992725549b333c24c6423015f9a2f415",
+          "bytes": 27579,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_02/torso_armor.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/legs_boots.png",
+        "key": "hero/v5/g2/equipment/leather/attack_02/legs_boots.png",
+        "sha256": "2bfd21ee0b43ac37e522f4c4d6969ac01bfd6e6400dde41a7be1f2de7222e7c4",
+        "bytes": 47426,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_02/legs_boots.png",
+          "status": 200,
+          "sha256": "2bfd21ee0b43ac37e522f4c4d6969ac01bfd6e6400dde41a7be1f2de7222e7c4",
+          "bytes": 47426,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_02/legs_boots.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/arm_rear.png",
+        "key": "hero/v5/g2/equipment/leather/attack_02/arm_rear.png",
+        "sha256": "6653c23663d9a263d6bf9d504f7dbc02142c847ee2428541f6d53790899fa086",
+        "bytes": 24815,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_02/arm_rear.png",
+          "status": 200,
+          "sha256": "6653c23663d9a263d6bf9d504f7dbc02142c847ee2428541f6d53790899fa086",
+          "bytes": 24815,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_02/arm_rear.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/helmet.png",
+        "key": "hero/v5/g2/equipment/leather/attack_02/helmet.png",
+        "sha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+        "bytes": 59670,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_02/helmet.png",
+          "status": 200,
+          "sha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+          "bytes": 59670,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_02/helmet.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/sword.png",
+        "key": "hero/v5/g2/equipment/leather/attack_02/sword.png",
+        "sha256": "e0dc0057c3c10c0a42348038896954722b254a6a870eefa0b0fba3d26fde850a",
+        "bytes": 26294,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_02/sword.png",
+          "status": 200,
+          "sha256": "e0dc0057c3c10c0a42348038896954722b254a6a870eefa0b0fba3d26fde850a",
+          "bytes": 26294,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_02/sword.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_02/arm_front.png",
+        "key": "hero/v5/g2/equipment/leather/attack_02/arm_front.png",
+        "sha256": "02c6b3b5f74a28931fbb3c183b4c39dcc5135277586b891adc9aa3048b1a6b50",
+        "bytes": 14942,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_02/arm_front.png",
+          "status": 200,
+          "sha256": "02c6b3b5f74a28931fbb3c183b4c39dcc5135277586b891adc9aa3048b1a6b50",
+          "bytes": 14942,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_02/arm_front.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/coverage_underlay.png",
+        "key": "hero/v5/g2/equipment/leather/attack_03/coverage_underlay.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_03/coverage_underlay.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_03/coverage_underlay.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/torso_armor.png",
+        "key": "hero/v5/g2/equipment/leather/attack_03/torso_armor.png",
+        "sha256": "76efd5dc05242164888572fd3184d0d406ea92491d3d24cbbdcac98280061252",
+        "bytes": 27180,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_03/torso_armor.png",
+          "status": 200,
+          "sha256": "76efd5dc05242164888572fd3184d0d406ea92491d3d24cbbdcac98280061252",
+          "bytes": 27180,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_03/torso_armor.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/legs_boots.png",
+        "key": "hero/v5/g2/equipment/leather/attack_03/legs_boots.png",
+        "sha256": "209ee607054365a7ec17a44922557d0cfc978f186de4b01b89b63c3ddd2aba55",
+        "bytes": 45698,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_03/legs_boots.png",
+          "status": 200,
+          "sha256": "209ee607054365a7ec17a44922557d0cfc978f186de4b01b89b63c3ddd2aba55",
+          "bytes": 45698,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_03/legs_boots.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/arm_rear.png",
+        "key": "hero/v5/g2/equipment/leather/attack_03/arm_rear.png",
+        "sha256": "9b5ff381f9ad3645e7c500e3e891a18aed9226848f8526868416a5e432f33a00",
+        "bytes": 23697,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_03/arm_rear.png",
+          "status": 200,
+          "sha256": "9b5ff381f9ad3645e7c500e3e891a18aed9226848f8526868416a5e432f33a00",
+          "bytes": 23697,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_03/arm_rear.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/helmet.png",
+        "key": "hero/v5/g2/equipment/leather/attack_03/helmet.png",
+        "sha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+        "bytes": 59670,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_03/helmet.png",
+          "status": 200,
+          "sha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+          "bytes": 59670,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_03/helmet.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/sword.png",
+        "key": "hero/v5/g2/equipment/leather/attack_03/sword.png",
+        "sha256": "4c07195c55d4136e6275a03a3373059b317ee219e4c858d16db1d2764a235e77",
+        "bytes": 24524,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_03/sword.png",
+          "status": 200,
+          "sha256": "4c07195c55d4136e6275a03a3373059b317ee219e4c858d16db1d2764a235e77",
+          "bytes": 24524,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_03/sword.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/attack-back-torso-review/exports/attack_03/arm_front.png",
+        "key": "hero/v5/g2/equipment/leather/attack_03/arm_front.png",
+        "sha256": "816873b3eedc694d1e40ad3516a019afcfdb4784f1703136d65de2b81100e54e",
+        "bytes": 16536,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/attack_03/arm_front.png",
+          "status": 200,
+          "sha256": "816873b3eedc694d1e40ad3516a019afcfdb4784f1703136d65de2b81100e54e",
+          "bytes": 16536,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/attack_03/arm_front.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_01/coverage_underlay.png",
+        "key": "hero/v5/g2/equipment/leather/death_01/coverage_underlay.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_01/coverage_underlay.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_01/coverage_underlay.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_01/torso_armor.png",
+        "key": "hero/v5/g2/equipment/leather/death_01/torso_armor.png",
+        "sha256": "49f1858e9d3c3311b01e71826d8b7d70755829064c16aca8da64020f0e01908f",
+        "bytes": 34757,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_01/torso_armor.png",
+          "status": 200,
+          "sha256": "49f1858e9d3c3311b01e71826d8b7d70755829064c16aca8da64020f0e01908f",
+          "bytes": 34757,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_01/torso_armor.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_01/legs_boots.png",
+        "key": "hero/v5/g2/equipment/leather/death_01/legs_boots.png",
+        "sha256": "d3d5d2926ccc28b989b2d2175fd36c2ad6670a37ad2ed200219c5b69549211fc",
+        "bytes": 45684,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_01/legs_boots.png",
+          "status": 200,
+          "sha256": "d3d5d2926ccc28b989b2d2175fd36c2ad6670a37ad2ed200219c5b69549211fc",
+          "bytes": 45684,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_01/legs_boots.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_01/arm_rear.png",
+        "key": "hero/v5/g2/equipment/leather/death_01/arm_rear.png",
+        "sha256": "7b623c2456daca26e076435b4b8f3a82f02abdb971f02d08acc95f0089014ed6",
+        "bytes": 20647,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_01/arm_rear.png",
+          "status": 200,
+          "sha256": "7b623c2456daca26e076435b4b8f3a82f02abdb971f02d08acc95f0089014ed6",
+          "bytes": 20647,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_01/arm_rear.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_01/helmet.png",
+        "key": "hero/v5/g2/equipment/leather/death_01/helmet.png",
+        "sha256": "04ae98f95c297540401252a991c9dbe787fe03c3e7d7e28d7fdf4ac613decd58",
+        "bytes": 50151,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_01/helmet.png",
+          "status": 200,
+          "sha256": "04ae98f95c297540401252a991c9dbe787fe03c3e7d7e28d7fdf4ac613decd58",
+          "bytes": 50151,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_01/helmet.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_01/sword.png",
+        "key": "hero/v5/g2/equipment/leather/death_01/sword.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Death releases weapon; approved pose requires no sword grip.",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_01/sword.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_01/sword.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_01/arm_front.png",
+        "key": "hero/v5/g2/equipment/leather/death_01/arm_front.png",
+        "sha256": "789d5b4da55c87650b189b5b529be1cc8847402c05c1867e8a8196faf25ca052",
+        "bytes": 13049,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_01/arm_front.png",
+          "status": 200,
+          "sha256": "789d5b4da55c87650b189b5b529be1cc8847402c05c1867e8a8196faf25ca052",
+          "bytes": 13049,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_01/arm_front.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_02/coverage_underlay.png",
+        "key": "hero/v5/g2/equipment/leather/death_02/coverage_underlay.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_02/coverage_underlay.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_02/coverage_underlay.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_02/torso_armor.png",
+        "key": "hero/v5/g2/equipment/leather/death_02/torso_armor.png",
+        "sha256": "e1cad60636b2280214add1ee5edf5459cfc6bd48c46aaf32ea9fb87baea0aee8",
+        "bytes": 31304,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_02/torso_armor.png",
+          "status": 200,
+          "sha256": "e1cad60636b2280214add1ee5edf5459cfc6bd48c46aaf32ea9fb87baea0aee8",
+          "bytes": 31304,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_02/torso_armor.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_02/legs_boots.png",
+        "key": "hero/v5/g2/equipment/leather/death_02/legs_boots.png",
+        "sha256": "936d898ec284f7c78d285a4c9d9957355d60b99ae444941dbb6ba7ddeb1933be",
+        "bytes": 31960,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_02/legs_boots.png",
+          "status": 200,
+          "sha256": "936d898ec284f7c78d285a4c9d9957355d60b99ae444941dbb6ba7ddeb1933be",
+          "bytes": 31960,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_02/legs_boots.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_02/arm_rear.png",
+        "key": "hero/v5/g2/equipment/leather/death_02/arm_rear.png",
+        "sha256": "89f41733873303f8bdeacf3429a9157b38308a20c5086cc66a35511f10be4e69",
+        "bytes": 19981,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_02/arm_rear.png",
+          "status": 200,
+          "sha256": "89f41733873303f8bdeacf3429a9157b38308a20c5086cc66a35511f10be4e69",
+          "bytes": 19981,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_02/arm_rear.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_02/helmet.png",
+        "key": "hero/v5/g2/equipment/leather/death_02/helmet.png",
+        "sha256": "679d3a819e0c79374483f1c22454704e923ed7a56133326310c53872b930b7f1",
+        "bytes": 66570,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_02/helmet.png",
+          "status": 200,
+          "sha256": "679d3a819e0c79374483f1c22454704e923ed7a56133326310c53872b930b7f1",
+          "bytes": 66570,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_02/helmet.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_02/sword.png",
+        "key": "hero/v5/g2/equipment/leather/death_02/sword.png",
+        "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+        "bytes": 2367,
+        "emptyReason": "Death releases weapon; approved pose requires no sword grip.",
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_02/sword.png",
+          "status": 200,
+          "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+          "bytes": 2367,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_02/sword.png",
+        "publicDecodePassed": true
+      },
+      {
+        "source": "docs/g16-leather-g2/g3/death-review/exports/death_02/arm_front.png",
+        "key": "hero/v5/g2/equipment/leather/death_02/arm_front.png",
+        "sha256": "52f550aa517a33feed699ad60b322ee2e2ce4f7016aa97251c2a545d0431f849",
+        "bytes": 13343,
+        "emptyReason": null,
+        "readback": {
+          "key": "hero/v5/g2/equipment/leather/death_02/arm_front.png",
+          "status": 200,
+          "sha256": "52f550aa517a33feed699ad60b322ee2e2ce4f7016aa97251c2a545d0431f849",
+          "bytes": 13343,
+          "width": 768,
+          "height": 768,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        "publicUrl": "https://thorniedungeons.ekqtjl.workers.dev/assets/hero/v5/g2/equipment/leather/death_02/arm_front.png",
+        "publicDecodePassed": true
+      }
+    ]
+  },
+  "phaseB": {
+    "status": 200,
+    "workflowRunId": 40696444121,
+    "workflowConclusion": "success",
+    "changedFiles": [
+      "r2-upload/manifest.json"
+    ],
+    "liveSha256": "5081ee187af29eec124aaa1e71eeb99cb70a90decd615e6da5ff539010d59b91",
+    "withoutLeatherSha256": "3888a4d36ab2b23fc8be0c6f194ddb041da00ed1331dcd4952f75d6805393f54",
+    "leatherBlockSha256": "c1f249efece034989995a3d3301d8c7d1097899f5c3bc1b67170df990e28c58a",
+    "frameCount": 8,
+    "pathCount": 56,
+    "otherManifestContentUnchanged": true,
+    "publicBrowserMetadataVerified": true,
+    "metadata": {
+      "compositionProfile": "leather_overlap_v1",
+      "hairMode": "hidden_full_cover",
+      "foregroundFrames": [
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "death_02"
+      ],
+      "foreground": [
+        "arm_rear"
+      ],
+      "idleCrops": [
+        [
+          0,
+          493,
+          768,
+          42
+        ],
+        [
+          0,
+          481,
+          768,
+          42
+        ],
+        [
+          0,
+          489,
+          768,
+          42
+        ]
+      ],
+      "attackDeathCrops": null
+    }
+  },
+  "production": {
+    "url": "https://thorniedungeons.ekqtjl.workers.dev/",
+    "worker": "thorniedungeons",
+    "deploymentId": "d83c2236-1a75-46ee-8fab-0d28391dc717",
+    "versionId": "cfd68839-27ab-43e3-a0be-cd814a5b1564",
+    "trafficPercentage": 100,
+    "deployedAtUtc": "2026-10-28T13:27:00.270274Z",
+    "manualDeploymentInvoked": false,
+    "automaticBuildChecks": [
+      {
+        "id": 122844665062,
+        "name": "Workers Builds: thorniedungeons",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 122844368171,
+        "name": "cleanup",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 122844367646,
+        "name": "upload",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "runtimeG5ForegroundSupportObserved": true,
+    "duplicateHandGuardObserved": true,
+    "applicationCodeChanged": false
+  },
+  "qa": {
+    "publicBoot": "PASS: Loading dungeon followed by login screen, Ver 1.1.24",
+    "desktopViewport": [
+      1363,
+      936
+    ],
+    "desktopHorizontalOverflow": false,
+    "appErrorsObserved": "No application errors in observed public boot; browser extension metadata warnings excluded",
+    "publicAssetMissingErrors": "None on the 56 individually navigated PNGs",
+    "authenticatedSessionTested": false,
+    "authenticatedProductionPass": false,
+    "blockedChecks": [
+      "Inventory/Equipment",
+      "Hero Preview",
+      "Battle presentation and Idle→Attack→Death",
+      "foreground arm visual in live battle",
+      "sword/Boss overlap visual",
+      "helmet/hair in authenticated game",
+      "full-set/mixed fallback visuals",
+      "Azure/Robot/Skeleton live gameplay regression",
+      "mobile viewport visual",
+      "in-game loading/error presentation"
+    ],
+    "blockReason": "Browser has no authenticated player session; login wall. No credentials supplied or account created.",
+    "isolatedContractChecks": {
+      "fullSetFrames": 8,
+      "legacyFamilyCases": 24,
+      "partialSlotCases": 256,
+      "bossWeaponCases": 24,
+      "totalAdditionalCases": 304,
+      "status": "PASS",
+      "scope": "Merged runtime code + activated manifest in isolated Node VM, not authenticated Production visual QA"
+    },
+    "productionVerified": false,
+    "ownerVisualAcceptance": "PENDING"
+  },
+  "rollback": {
+    "status": "READY_NOT_INVOKED",
+    "beforeManifestSha256": "3888a4d36ab2b23fc8be0c6f194ddb041da00ed1331dcd4952f75d6805393f54",
+    "beforeManifestGitSource": "211851d04d8bcdaa1af490c5cf4f03b4264e540c:r2-upload/manifest.json",
+    "plan": "Recheck latest main/live manifest; remove only equipment.leather, preserve concurrent edits; publish manifest only; download/read-back SHA and verify other families; keep 56 PNGs unreferenced. Never blindly reset entire manifest or delete source/evidence.",
+    "materialFailureObserved": false
+  },
+  "knownLimitations": [
+    "Authenticated and mobile Production visuals pending Owner/session-based QA; no false Production Verified claim.",
+    "Pre-existing Helmet texture-404 bald fallback remains out of scope; all 56 published assets currently decoded successfully.",
+    "WebGL-specific renderer QA not rerun.",
+    "Shell public HTTP client received Cloudflare error 1010/403; no evasion attempted. Public browser access succeeded.",
+    "One Cloudflare readback request returned transient HTTP 500 internal authentication error; read-only batch retried successfully, all 56 hashes verified."
+  ],
+  "ownerVerificationChecklist": [
+    "Log in on Production; equip generic Tier-1 Leather and inspect Inventory/Hero Preview.",
+    "Verify Idle→Attack→Death, right arm foreground and sword/Boss overlap.",
+    "Verify helmet/hair, partial/mixed equipment and existing Azure/Robot/Skeleton.",
+    "Verify mobile viewport, loading/error presentation; provide final Production visual acceptance."
+  ]
+}
