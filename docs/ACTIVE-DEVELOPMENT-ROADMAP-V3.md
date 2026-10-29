@@ -322,6 +322,14 @@ Approved design boundary:
 
 Future systems such as Dungeon/content/progression expansion, longer-term endgame loops, live real-money Diamond purchasing, or other new gameplay systems require separate Project Lead design approval before receiving final Wave numbers.
 
+## H01 — Halloween Event V1 (Special Event Lane; between G16 and G17)
+**Status: DESIGN IN PROGRESS / OWNER-APPROVED DIRECTION / IMPLEMENTATION NOT AUTHORIZED (2026-10-29)**  
+**Risk: HIGH — battle/reward/inventory/event timing authority.**
+
+Owner direction: rotating Raid Boss/Halloween World Event banner every 5 seconds; same dungeon door design recolored dark purple in the upper-left map arch marked by Owner; one fixed Halloween boss using existing battle mechanics; mutually exclusive 5% event weapon / 95% gold reward; one calendar month counted from actual event activation. See [H01-HALLOWEEN-EVENT-V1.md](H01-HALLOWEEN-EVENT-V1.md) for ordered PL → Owner contract → DEV asset interface → Graphics concept/approval → final assets → DEV integration → QA → Owner release dependencies.
+
+Boss and weapon identity/stats, gold amount, access limits, exact start/expiry treatment, and delivery rules remain **Owner pending**. Do not start authoritative implementation or R2 release before their gates. Keep H01 isolated from blocked Admin V2 PR #182.
+
 ## 4. GRAPHICS PARALLEL LANE
 
 Graphics work is tracked separately from gameplay Wave numbering.
