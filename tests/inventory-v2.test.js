@@ -161,6 +161,10 @@ test("Inventory compare modal keeps bounded internal scrolling and compact mobil
   const detail = components.slice(detailStart, detailEnd);
   assert.match(detail, /!compareRows\.length && .*md-inv2-detail-head/);
   assert.match(detail, /!compareRows\.length && .*ItemStats/);
+  assert.match(detail, /ReactDOM\.createPortal/);
+  assert.match(detail, /document\.body/);
+  assert.match(styles, /body > \.md-inv2-detail-layer \{/);
+  assert.match(styles, /touch-action:pan-y/);
   assert.match(styles, /\.md-inv2-detail \{[^}]*overflow-y:auto/);
   assert.match(styles, /\.md-inv2-detail-layer \.md-inv2-detail \{[^}]*max-height:[^;]+;/);
   assert.match(styles, /\.md-inv2-detail-layer \.md-inv2-detail-actions \{[^}]*padding-bottom:/);
