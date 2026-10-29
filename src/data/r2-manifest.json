@@ -1,6 +1,6 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-10-29T01:49:55Z",
+  "generatedAt": "2026-10-29T08:34:38Z",
   "count": 808,
   "objects": [
     {
@@ -2172,9 +2172,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/PUBLICATION.json",
-      "etag": "edfaa5dd3f2c27dbb7871a642e4746fd",
-      "last_modified": "2026-10-26T13:43:43.452Z",
-      "size": 208,
+      "etag": "089b554a235caf90039a2388df7b192f",
+      "last_modified": "2026-10-29T04:03:50.860Z",
+      "size": 745,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -2183,9 +2183,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/SOURCE_VALIDATION.json",
-      "etag": "233636284df39ee2de6125e08feb38aa",
-      "last_modified": "2026-09-29T01:50:58.766Z",
-      "size": 7521,
+      "etag": "a0e5618a57c858dc912146992993e106",
+      "last_modified": "2026-10-29T04:03:53.409Z",
+      "size": 8270,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -2590,9 +2590,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_01/arm_rear.png",
-      "etag": "d5e83eb816246dbb37d6ef5200d7bf4b",
-      "last_modified": "2026-09-29T01:53:07.785Z",
-      "size": 28130,
+      "etag": "0a4088b7365b9f9e80770d449b56ebd5",
+      "last_modified": "2026-10-29T02:59:11.542Z",
+      "size": 26333,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2612,9 +2612,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_01/helmet.png",
-      "etag": "74866199136ab672aa5dda06117f07fd",
-      "last_modified": "2026-09-29T01:53:14.442Z",
-      "size": 175640,
+      "etag": "bb53acb0eff6529bd75b40836d848282",
+      "last_modified": "2026-10-29T02:59:14.655Z",
+      "size": 176547,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2623,9 +2623,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_01/legs_boots.png",
-      "etag": "9fbc92499f1e46ef7c51e1f8d488e20c",
-      "last_modified": "2026-09-29T01:53:17.736Z",
-      "size": 54496,
+      "etag": "b0eaf1d25adcec24c850d312ed720667",
+      "last_modified": "2026-10-29T02:59:17.624Z",
+      "size": 63527,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2645,9 +2645,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_01/torso_armor.png",
-      "etag": "12f55751bab22ec9d7cada888954de9c",
-      "last_modified": "2026-09-29T01:53:24.307Z",
-      "size": 25714,
+      "etag": "5d2e4f69451258050b2f89720e160e25",
+      "last_modified": "2026-10-29T02:59:20.305Z",
+      "size": 37196,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2667,9 +2667,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_02/arm_rear.png",
-      "etag": "c86273a3adfbdef944213483c1659e80",
-      "last_modified": "2026-09-29T01:53:31.091Z",
-      "size": 28101,
+      "etag": "365f170a75084f0c2bf975c1646d030c",
+      "last_modified": "2026-10-29T04:03:55.966Z",
+      "size": 26301,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2689,9 +2689,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_02/helmet.png",
-      "etag": "dbadaea871888f422f44a69ee0c7467e",
-      "last_modified": "2026-09-29T01:53:39.212Z",
-      "size": 175622,
+      "etag": "831084c54557b52311a36702b67d6668",
+      "last_modified": "2026-10-29T04:03:58.650Z",
+      "size": 176531,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2700,9 +2700,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_02/legs_boots.png",
-      "etag": "b7c29ebfeed7e34b29be4545e0ee4ca8",
-      "last_modified": "2026-09-29T01:53:42.686Z",
-      "size": 54495,
+      "etag": "21fd1c7409e5204fa4564ba46e42bf38",
+      "last_modified": "2026-10-29T04:04:01.282Z",
+      "size": 63552,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2722,9 +2722,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_02/torso_armor.png",
-      "etag": "cab2b0ec8451b7861f98ae15a34112e8",
-      "last_modified": "2026-09-29T01:53:49.456Z",
-      "size": 25712,
+      "etag": "13fda7771830a3c65f86f37d7912dcbb",
+      "last_modified": "2026-10-29T04:04:03.991Z",
+      "size": 37170,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2744,9 +2744,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_03/arm_rear.png",
-      "etag": "60d3eff8f2bdacbb32f289e70ddaf62a",
-      "last_modified": "2026-09-29T01:53:55.949Z",
-      "size": 28119,
+      "etag": "88e3b0d842c4c4b0307e9710f426a755",
+      "last_modified": "2026-10-29T04:04:06.677Z",
+      "size": 26321,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2766,9 +2766,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_03/helmet.png",
-      "etag": "25f1c12843ecfd17ce6b4d82249958e5",
-      "last_modified": "2026-09-29T01:54:02.767Z",
-      "size": 175630,
+      "etag": "918d6f569fdd7d4b2bcb76ee1405b859",
+      "last_modified": "2026-10-29T04:04:09.389Z",
+      "size": 176541,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2777,9 +2777,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_03/legs_boots.png",
-      "etag": "d0b114cd660befeddde0acd43356c434",
-      "last_modified": "2026-09-29T01:54:06.274Z",
-      "size": 54495,
+      "etag": "a5044c4dcfebc8bdcfe2c3b191812c70",
+      "last_modified": "2026-10-29T04:04:12.051Z",
+      "size": 63535,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -2799,9 +2799,9 @@
     },
     {
       "key": "hero/v5/g2/equipment/skeleton/idle_03/torso_armor.png",
-      "etag": "f5195f75189ce515371b99ef3015c43a",
-      "last_modified": "2026-09-29T01:54:13.082Z",
-      "size": 25714,
+      "etag": "d5da4acdbf1f4075e9b3b85db113629f",
+      "last_modified": "2026-10-29T04:04:14.605Z",
+      "size": 37186,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -3943,9 +3943,9 @@
     },
     {
       "key": "manifest.json",
-      "etag": "f16632f96d4b6184fa85d6505fe0b196",
-      "last_modified": "2026-10-28T14:22:20.362Z",
-      "size": 65455,
+      "etag": "d2834731dd01ff8a7302cda9d094fc3d",
+      "last_modified": "2026-10-29T06:34:44.493Z",
+      "size": 66499,
       "http_metadata": {
         "contentType": "application/json"
       },
