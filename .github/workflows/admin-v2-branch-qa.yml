@@ -11,6 +11,8 @@ on:
       - "tests/admin-v2-audit-viewer.test.js"
       - "tests/admin-v2-delete-item.test.js"
       - "tests/admin-v2-restore-item.test.js"
+      - "tests/admin-v2-item-prod-schema.test.js"
+      - "tests/helpers/prod-schema.sql"
       - "workers/thornie-dungeons-api.js"
       - "workers/thornie-dungeons-api-entry.js"
       - "workers/modules/auth.js"
@@ -71,6 +73,8 @@ jobs:
         run: node --test tests/admin-v2-delete-item.test.js
       - name: Admin restore item tests (W2-G)
         run: node --test tests/admin-v2-restore-item.test.js
+      - name: Admin item handlers on exact production DDL (W2-F/G hardening)
+        run: node --test tests/admin-v2-item-prod-schema.test.js
       - name: Admin app script syntax
         run: node --check admin-app.js
       - name: SHOP-AND-SELL Phase 1 contract tests
