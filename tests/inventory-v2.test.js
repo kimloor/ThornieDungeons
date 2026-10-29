@@ -165,8 +165,8 @@ test("Inventory compare modal keeps bounded internal scrolling and compact mobil
   assert.match(detail, /document\.body/);
   assert.match(styles, /body > \.md-inv2-detail-layer \{/);
   assert.match(styles, /touch-action:pan-y/);
-  assert.match(styles, /body > \\.md-inv2-detail-layer \\{[^}]*--ink:#F3EEFF/);
-  assert.match(styles, /body > \\.md-inv2-detail-layer \\{[^}]*color:var\\(--ink\\)/);
+  assert.match(styles, /body > \.md-inv2-detail-layer \{[^}]*--ink:#F3EEFF/);
+  assert.match(styles, /body > \.md-inv2-detail-layer \{[^}]*color:var\(--ink\)/);
   assert.match(styles, /\.md-inv2-detail \{[^}]*overflow-y:auto/);
   assert.match(styles, /\.md-inv2-detail-layer \.md-inv2-detail \{[^}]*max-height:[^;]+;/);
   assert.match(styles, /\.md-inv2-detail-layer \.md-inv2-detail-actions \{[^}]*padding-bottom:/);
