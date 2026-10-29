@@ -51,6 +51,14 @@ Source: Owner directions and two screenshots supplied on 2026-10-29 (Dungeon Hub
 
 **Stage B — AFTER OWNER QA ACCEPTANCE / future design:** Revisit whether the gate should appear with **30% or 50% chance after successful clearance of a dungeon floor**. Neither value is approved or implemented yet. DEV must propose a server-authoritative event-entrance eligibility/spawn lifecycle, including which clears qualify, whether chance is per clear, persistence, replay protection, gate duration/consumption, and how this works with the one-month event window. **Do not pre-emptively implement either probability or hide the always-available gate during Stage A.** Owner chooses after testing.
 
+### Event expiry and in-progress battle policy (Owner approved)
+
+- At event expiry, **deny new Halloween encounter entries**; remove/disable the event entrance in accordance with the agreed inactive-state UI.
+- If a Halloween battle was **validly started before the expiry instant**, allow that in-progress run to continue through its normal result and pay its eligible reward, even if the finish or claim occurs after expiry.
+- Server must prove the run began within the active window, validate run identity/ownership and prevent forged start timestamps, duplicate rewards and new runs after closure. On reconnect/resume, use the existing authoritative run/checkpoint where applicable; no extension to unrelated dungeon runs.
+- Exact event activation timestamp, timezone, meaning of “one calendar month” at month-end and cutoff inclusivity still require a DEV/Owner contract check before implementation. Do not silently equate one month with 30 days.
+- QA must test starting immediately before expiry, starting exactly at/after expiry, finishing after expiry, reconnection, retries and idempotency.
+
 ## 2. Decision register — pending Owner contract (DO NOT IMPLEMENT/INVENT VALUES)
 
 | ID | Decision | State | Why needed |
@@ -59,7 +67,7 @@ Source: Owner directions and two screenshots supplied on 2026-10-29 (Dungeon Hub
 | D02 | `Excaliburnt`: sword with stone/pedestal chunk attached at blade tip (hammer-like silhouette), Mythic, tier by floor at drop, **no unique status**; precise base stats, tier calculation, frame/rig compatibility and stacking remain to audit; both item icon and wearable frames REQUIRED | DIRECTION APPROVED / TECHNICAL AUDIT + ARTWORK ACCEPTANCE PENDING | Graphics and economy/inventory authority |
 | D03 | Gold equals the player's applicable chapter-boss gold payout (floor 9 → boss floor 10; floor 11 → boss floor 20); verify formula at chapter boundaries, max floor and progress snapshot | RULE APPROVED / EDGE CASE AUDIT PENDING | Server reward logic |
 | D04 | TEST PHASE: Halloween gate continuously available and repeat entry allowed during the active event window for QA; no post-clear spawn RNG. Any existing battle resource/attempt costs need audit, not silently bypassed. POST-QA: decide 30% vs 50% gate appearance chance after successfully clearing a dungeon floor; trigger/lifetime/retry details pending | TEST ACCESS APPROVED / POST-QA SPAWN PENDING | Dungeon encounter rules |
-| D05 | Exact activation instant/timezone; one-calendar-month expiry semantics; hide/disable expired gate and pending runs | PENDING | Secure timed event behavior |
+| D05 | One calendar month after activation; new entries stop at expiry; battle runs validly started before expiry may finish and receive normal eligible rewards; exact start instant/timezone and calendar arithmetic still pending | EXPIRY RUN POLICY APPROVED / TIMESTAMP DETAILS PENDING | Secure timed event behavior |
 | D06 | Banner rotation on inactive events, timer lifecycle, click targets and destination; do not degrade Raid Boss | PENDING DETAIL | UX integration |
 | D07 | Weapon permanence after expiry, duplicate drops, capacity/overflow/mailbox delivery | PENDING | Player data safety |
 | D08 | Boss stats same as chapter boss at player's current progression tier; alternate normal attacks with random skill turns; skill pool: existing Stun, Silence, Poison; trigger existing Rage on HP below 50% | RULE APPROVED / EXISTING SYSTEM COMPATIBILITY AUDIT PENDING | Confirm exact scaling and whether Silence and attack cadence exist without new mechanics |
@@ -140,4 +148,4 @@ H01-04 + H01-05 + H01-06 -> H01-07 -> H01-08 -> H01-09 -> H01-10
 - **NOT STARTED:** H01 implementation, asset publication, staging QA, production deployment.
 - **Parallel dependency:** Admin V2 PR #182 remains separate, open and security-blocked; do not merge or activate it because of H01.
 
-**Next conversation:** Owner + PL discuss Excaliburnt remaining balance, gear tier derivation, event timing/expiry details; event test-stage entry is approved and 30%/50% post-QA spawn selection remains deferred; wearable frame production is now mandatory but waits for DEV contract and artwork review; then assign H01-02 DEV interface audit before instructing Graphics to produce final assets.
+**Next conversation:** Owner + PL discuss Excaliburnt remaining balance, gear tier derivation and exact activation calendar/timezone; expiry battle continuation is approved; event test-stage entry is approved and 30%/50% post-QA spawn selection remains deferred; wearable frame production is now mandatory but waits for DEV contract and artwork review; then assign H01-02 DEV interface audit before instructing Graphics to produce final assets.
