@@ -3082,7 +3082,7 @@ function RaidScreen({
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel md-raid-scroll-panel", style: { flex: 1, position: "relative" } },
     toast && /*#__PURE__*/React.createElement("div", { className: "md-toast" }, toast),
     /*#__PURE__*/React.createElement(RaidBossCard, {
       boss,

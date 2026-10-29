@@ -1215,7 +1215,7 @@ body::after {
    Motion stays in lightweight CSS layers: camera push, rune glow, fog and particles. */
 .md-character-select-wrap {
   flex: 1 1 auto; min-height: 0; max-height:100%; display: flex; flex-direction: column; justify-content: center;
-  padding: 18px 16px 20px; position: relative; z-index: 1; isolation: isolate; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain;
+  padding: 18px 16px 20px; position: relative; z-index: 1; isolation: isolate; overflow:hidden;
   background: #071126;
 }
 .md-character-select-wrap::before,
@@ -2731,6 +2731,12 @@ body::after {
   .md-equipped-item-icon, .md-inventory-item-icon { width:30px; height:30px; }
   .md-quickslot-item-icon { width:26px; height:26px; }
 }
+
+
+/* Raid content must scroll inside the viewport-fit game shell, not the document. */
+.md-raid-scroll-panel { min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:max(14px,var(--safe-bottom)); }
+/* Desktop character selection fits its shell without an unnecessary scrollbar. */
+@media (max-height:700px) { .md-character-select-wrap { overflow-y:auto; justify-content:flex-start; } }
 
 /* ---- mobile web polish ---- */
 @media (max-width: 480px) {
@@ -16227,7 +16233,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = BATTLE_VFX
 // changing the manager contract. No baked text, no mode-specific words.
 const GLOBAL_LOADING_STYLE = `
 .gl-overlay {
-  position: fixed; inset: 0; z-index: 2100;
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2100;
   display: block; overflow: hidden;
   padding: var(--safe-top-eff) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: #08050f;
@@ -22970,7 +22976,7 @@ function RaidScreen({
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  return /*#__PURE__*/React.createElement("div", { className: "md-panel", style: { flex: 1, position: "relative" } },
+  return /*#__PURE__*/React.createElement("div", { className: "md-panel md-raid-scroll-panel", style: { flex: 1, position: "relative" } },
     toast && /*#__PURE__*/React.createElement("div", { className: "md-toast" }, toast),
     /*#__PURE__*/React.createElement(RaidBossCard, {
       boss,
