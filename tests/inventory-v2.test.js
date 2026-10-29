@@ -153,7 +153,7 @@ test("Inventory W1 decomposes InventoryOverlayV2 and exposes read-only item help
   assert.equal(inventorySystem.inventoryItemPotionId({ type:"potion", potionId:"small_hp" }), "small_hp");
 });
 
-test("Inventory compare modal avoids nested scrolling and uses compact mobile layout", () => {
+test("Inventory compare modal keeps bounded internal scrolling and compact mobile layout", () => {
   const components = fs.readFileSync(path.join(ROOT, "src/ui/components.js"), "utf8");
   const styles = fs.readFileSync(path.join(ROOT, "src/data/styles.js"), "utf8");
   const detailStart = components.indexOf("function ItemDetailModal");
@@ -161,7 +161,9 @@ test("Inventory compare modal avoids nested scrolling and uses compact mobile la
   const detail = components.slice(detailStart, detailEnd);
   assert.match(detail, /!compareRows\.length && .*md-inv2-detail-head/);
   assert.match(detail, /!compareRows\.length && .*ItemStats/);
-  assert.match(styles, /\.md-inv2-detail \{[^}]*overflow:hidden/);
+  assert.match(styles, /\.md-inv2-detail \{[^}]*overflow-y:auto/);
+  assert.match(styles, /\.md-inv2-detail-layer \.md-inv2-detail \{[^}]*max-height:[^;]+;/);
+  assert.match(styles, /\.md-inv2-detail-layer \.md-inv2-detail-actions \{[^}]*padding-bottom:/);
   assert.match(styles, /\.md-inv2-detail-layer \{ align-items:center/);
   assert.match(styles, /\.md-inv2-compare-one-screen/);
   assert.match(styles, /@media \(max-width:430px\)/);
