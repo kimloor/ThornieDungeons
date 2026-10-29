@@ -928,7 +928,10 @@ body::after {
 .md-info-header .md-sub { margin:2px 0 0; font-size:11px; color:var(--ink-soft,#B9AEDD); }
 .md-info-back, .md-info-close { flex:0 0 auto; min-width:44px; width:44px; height:44px; padding:0; margin:0; }
 .md-info-page .md-info-header .md-info-close { position:absolute; top:max(0px,var(--safe-top-eff)); right:0; z-index:2; }
-.md-info-page .md-info-header { position:static; padding-right:44px; }
+.md-info-page .md-info-header { position:static; display:grid; grid-template-columns:54px minmax(0,1fr) 54px; gap:0; padding-right:0; }
+.md-info-page .md-info-header h1 { grid-column:2; justify-self:center; min-width:0; max-width:100%; text-align:center; line-height:1.2; }
+.md-info-page .md-info-header > button:first-child { grid-column:1; justify-self:start; }
+.md-info-page .md-info-header .md-info-close { grid-column:3; justify-self:end; }
 .md-info-body { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px 2px 24px; }
 .md-info-group { margin:0 0 14px; }
 .md-info-group-title { margin:0 0 6px; font-size:12px; letter-spacing:.04em; color:var(--gold,#FFD166); }
@@ -2154,7 +2157,7 @@ body::after {
 .md-inv2-filter-row select { width:54%; min-height:36px; border:1px solid rgba(255,209,102,.35); border-radius:9px; background:#100a20; color:var(--ink); padding:5px 8px; }
 .md-inv2-popup-actions,.md-inv2-detail-actions { display:flex; gap:8px; margin-top:14px; }
 .md-inv2-popup-actions button,.md-inv2-detail-actions button,.md-inv2-overflow-row button { flex:1; min-height:40px; border:1px solid rgba(255,209,102,.5); border-radius:11px; background:#27183d; color:var(--ink); font-weight:800; cursor:pointer; }
-.md-inv2-detail { padding:14px 16px 12px; isolation:isolate; border-color:#aaa; overflow:hidden; } .md-inv2-detail.rare { border-color:#459cff; } .md-inv2-detail.unique { border-color:#a66cff; }
+.md-inv2-detail { padding:14px 16px 12px; isolation:isolate; border-color:#aaa; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; } .md-inv2-detail.rare { border-color:#459cff; } .md-inv2-detail.unique { border-color:#a66cff; }
 .md-inv2-detail.elite { border-color:#ff9a3d; } .md-inv2-detail.mythic { border-color:#ffd166; }
 .md-inv2-detail::before { content:""; position:absolute; z-index:0; inset:18px; border-radius:14px; background:rgba(17,11,37,.9); box-shadow:inset 0 0 22px rgba(0,0,0,.24); pointer-events:none; }
 .md-inv2-detail > :not(.md-inv2-popup-close):not(.md-inv2-favorite-toggle) { position:relative; z-index:1; }
@@ -3155,6 +3158,18 @@ body::after {
 }
 .md-shop-refresh-btn:disabled { opacity:.55; color:var(--ink-soft); border-color:rgba(255,209,102,.24); background:rgba(255,255,255,.035); }
 
+/* v1.1.29: Compare uses the popup's own bounded scroll area; never clip action buttons. */
+.md-inv2-detail-layer .md-inv2-detail {
+  max-height:min(92dvh,760px,calc(100dvh - 28px - var(--safe-top) - var(--safe-bottom)));
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+.md-inv2-detail-layer .md-inv2-detail-actions { padding-bottom:max(4px,var(--safe-bottom)); }
+/* Shared three-column page headings remain visually centered between Back and Close. */
+.md-character-page-title > h1 { min-width:0; max-width:100%; text-align:center; }
 /* Issue #169 viewport-fit authority. These late overrides intentionally neutralize older
    breakpoint minimums: the document never scrolls, while designated content panels do. */
 .md-root,
