@@ -1,0 +1,29 @@
+{
+  "approval": "Owner approved revision07; publication authorized",
+  "scope": "Idle_01 four layers only",
+  "baseline": "32152e4",
+  "objects": {
+    "hero/v5/g2/equipment/skeleton/idle_01/helmet.png": {
+      "before_sha256": "0003c180dc1950c0540beeff825ceb4dfabcf79caa2077f5cb45872299c8fd7e",
+      "sha256": "33084455216da0ef68ef00218d9ea67c4cf23d27e94e2cbca4eb6f9096e00d84",
+      "bytes": 176547
+    },
+    "hero/v5/g2/equipment/skeleton/idle_01/torso_armor.png": {
+      "before_sha256": "c952b7311d9fd1a8431199842b154fd8cdfbcc81c8f5198c562ef10400b397fa",
+      "sha256": "f94698824bc0fd916cff8bc2a997742c9b0ebc91c7c4b4a761aa5da26c595214",
+      "bytes": 37196
+    },
+    "hero/v5/g2/equipment/skeleton/idle_01/arm_rear.png": {
+      "before_sha256": "400f97cb11d490eb92d3096c53ce012f90c7cc540ec2facf7efa2a1f8bc9992f",
+      "sha256": "38bd00f95249e1718d4cd4e1836928a3a6f272e993f9415140ff4b1dad49b6fc",
+      "bytes": 26333
+    },
+    "hero/v5/g2/equipment/skeleton/idle_01/legs_boots.png": {
+      "before_sha256": "7c8023af70dfb6881ccace4a13729c2d26bd5f33cef90fa330574dfb0a611966",
+      "sha256": "e2a6e8000f54a7a2841e001ddb87f600edc8fa4039605098a0d6ed68bd18de27",
+      "bytes": 63527
+    }
+  },
+  "r2_verification": "pending upload workflow",
+  "production_visual_acceptance": "pending"
+}

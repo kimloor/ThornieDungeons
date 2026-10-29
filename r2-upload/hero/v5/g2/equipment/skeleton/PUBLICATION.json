@@ -2,5 +2,11 @@
   "approval": "user-approved revision-r2 eight-frame sheets",
   "itemBinding": "setId:skeleton",
   "runtimeIntegrated": true,
-  "pipeline": "upload-r2-assets.yml verifies every uploaded object by SHA256"
+  "pipeline": "upload-r2-assets.yml verifies every uploaded object by SHA256",
+  "idle01Revision": {
+    "approval": "Owner approved revision07 on 2026-10-29",
+    "scope": "helmet, torso_armor, arm_rear, legs_boots only",
+    "evidence": "docs/skeleton-visual-audit/approved-idle-01/",
+    "otherFrames": "unchanged"
+  }
 }
