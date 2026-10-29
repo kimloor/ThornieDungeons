@@ -174,7 +174,11 @@ function GlobalLoadingOverlay({ manager }) {
     className: "gl-toast-btn",
     onClick: () => source.dismissStale()
   }, "ปิด"))) : null;
-  if (!snap.visible && !exitMode) return notice;
+  // Keep the blocking gate mounted across the first released-token render.
+  // Effects run after paint; without this handoff the Result page flashes for one frame
+  // before the opening animation's exitMode has been scheduled.
+  const exitHandoffPending = !snap.visible && wasVisibleRef.current && artReady;
+  if (!snap.visible && !exitMode && !exitHandoffPending) return notice;
   const determinate = snap.visible && shown.mode === "determinate";
   return /*#__PURE__*/React.createElement(React.Fragment, null, notice, /*#__PURE__*/React.createElement("div", {
     className: "gl-overlay" + (exitMode ? " gl-exiting gl-gate-" + exitMode : "") + (exitMode.startsWith("reduced") ? " gl-reduced" : ""),
