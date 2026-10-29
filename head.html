@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.24" />
+<meta name="application-version" content="1.1.25" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -27,8 +27,11 @@ Run `node build.js` after source changes. index.html is the single generated app
 <link rel="preload" as="image" href="ui/town-background.webp" fetchpriority="low" />
 <link rel="preload" as="image" href="ui/dungeon-select/dungeon-floor-select-v2.webp" fetchpriority="high" />
 <style>
-  html, body { margin: 0; padding: 0; background: #0d0818; min-height: 100vh; }
-  body { display: flex; justify-content: center; align-items: flex-start; padding: 16px 0; }
+  html, body {
+    width: 100%; height: var(--md-visual-viewport-height, 100dvh); min-height: 0;
+    margin: 0; padding: 0; overflow: hidden; background: #0d0818;
+  }
+  body { display: flex; justify-content: center; align-items: flex-start; box-sizing: border-box; padding: 16px 0; }
   /* Top inset used by every screen. iOS 27 blurs roughly the top 50pt of an installed (Home Screen) app, so there the
      content starts 32px lower; everywhere else this is just the normal safe-area inset. */
   :root { --safe-top-eff: env(safe-area-inset-top, 0px); }
@@ -37,13 +40,33 @@ Run `node build.js` after source changes. index.html is the single generated app
       :root { --safe-top-eff: calc(env(safe-area-inset-top, 0px) + 32px); }
     }
   }
-  #root { width: 100%; display: flex; justify-content: center; }
+  #root { width: 100%; height: 100%; min-height: 0; display: flex; justify-content: center; }
   * { -webkit-tap-highlight-color: transparent; }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
   .md-enemy-img { object-fit: contain; max-width: none; }
   .md-enemy-img.md-pet-img { width: 64px !important; height: 64px !important; }
   .md-monster-board { max-width: none !important; }
 </style>
+<script>
+  // Mobile browser chrome and the software keyboard change the visual viewport without
+  // consistently changing 100vh. Keep one height authority for the document and game shell.
+  (function installVisualViewportHeight() {
+    if (window.__thornieViewportFitInstalled) return;
+    window.__thornieViewportFitInstalled = true;
+    var viewport = window.visualViewport;
+    var sync = function() {
+      var height = viewport && viewport.height ? viewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--md-visual-viewport-height', Math.round(height) + 'px');
+    };
+    sync();
+    window.addEventListener('resize', sync, { passive: true });
+    window.addEventListener('orientationchange', sync, { passive: true });
+    if (viewport) {
+      viewport.addEventListener('resize', sync, { passive: true });
+      viewport.addEventListener('scroll', sync, { passive: true });
+    }
+  }());
+</script>
 </head>
 <body>
 <div id="root"><div id="boot-status">Loading ThornieDungeons&hellip;</div></div>

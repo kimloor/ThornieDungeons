@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.24" />
+<meta name="application-version" content="1.1.25" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -27,8 +27,11 @@ Run `node build.js` after source changes. index.html is the single generated app
 <link rel="preload" as="image" href="/assets/ui/town-background.webp" fetchpriority="low" />
 <link rel="preload" as="image" href="/assets/ui/dungeon-select/dungeon-floor-select-v2.webp" fetchpriority="high" />
 <style>
-  html, body { margin: 0; padding: 0; background: #0d0818; min-height: 100vh; }
-  body { display: flex; justify-content: center; align-items: flex-start; padding: 16px 0; }
+  html, body {
+    width: 100%; height: var(--md-visual-viewport-height, 100dvh); min-height: 0;
+    margin: 0; padding: 0; overflow: hidden; background: #0d0818;
+  }
+  body { display: flex; justify-content: center; align-items: flex-start; box-sizing: border-box; padding: 16px 0; }
   /* Top inset used by every screen. iOS 27 blurs roughly the top 50pt of an installed (Home Screen) app, so there the
      content starts 32px lower; everywhere else this is just the normal safe-area inset. */
   :root { --safe-top-eff: env(safe-area-inset-top, 0px); }
@@ -37,13 +40,33 @@ Run `node build.js` after source changes. index.html is the single generated app
       :root { --safe-top-eff: calc(env(safe-area-inset-top, 0px) + 32px); }
     }
   }
-  #root { width: 100%; display: flex; justify-content: center; }
+  #root { width: 100%; height: 100%; min-height: 0; display: flex; justify-content: center; }
   * { -webkit-tap-highlight-color: transparent; }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
   .md-enemy-img { object-fit: contain; max-width: none; }
   .md-enemy-img.md-pet-img { width: 64px !important; height: 64px !important; }
   .md-monster-board { max-width: none !important; }
 </style>
+<script>
+  // Mobile browser chrome and the software keyboard change the visual viewport without
+  // consistently changing 100vh. Keep one height authority for the document and game shell.
+  (function installVisualViewportHeight() {
+    if (window.__thornieViewportFitInstalled) return;
+    window.__thornieViewportFitInstalled = true;
+    var viewport = window.visualViewport;
+    var sync = function() {
+      var height = viewport && viewport.height ? viewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--md-visual-viewport-height', Math.round(height) + 'px');
+    };
+    sync();
+    window.addEventListener('resize', sync, { passive: true });
+    window.addEventListener('orientationchange', sync, { passive: true });
+    if (viewport) {
+      viewport.addEventListener('resize', sync, { passive: true });
+      viewport.addEventListener('scroll', sync, { passive: true });
+    }
+  }());
+</script>
 </head>
 <body>
 <div id="root"><div id="boot-status">Loading ThornieDungeons&hellip;</div></div>
@@ -166,15 +189,16 @@ const STYLE = `
   overflow: hidden;
   box-shadow: 0 10px 34px rgba(0,0,0,0.5);
   background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bot) 100%);
-  min-height: max(640px, 100vh);
-  min-height: max(640px, 100dvh);
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
 }
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.24";
+  content: "Ver 1.1.25";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -434,7 +458,7 @@ body::after {
 .md-cp-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.35); border: 1px solid var(--gold-deep); border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 800; color: var(--gold); max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Main Hub v2 — a first-person dungeon antechamber rather than a flat button directory. */
-.md-hub-shell { flex:1; min-height:640px; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); display:flex; flex-direction:column; gap:var(--md-page-gap); position:relative; overflow:hidden; }
+.md-hub-shell { flex:1 1 auto; min-height:0; max-height:100%; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); display:flex; flex-direction:column; gap:var(--md-page-gap); position:relative; overflow:hidden; }
 .md-hub-topbar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px; border:1px solid rgba(255,209,102,.38); border-radius:16px; background:linear-gradient(110deg,rgba(5,14,37,.88),rgba(14,31,64,.68)); box-shadow:0 8px 24px rgba(0,0,0,.3); backdrop-filter:blur(9px); }
 .md-hub-profile { min-width:0; display:flex; align-items:center; gap:8px; }
 .md-hub-mark { width:39px; height:39px; flex:0 0 39px; border-radius:11px; border:1px solid rgba(255,209,102,.74); box-shadow:0 0 14px rgba(0,184,255,.25); }
@@ -469,7 +493,7 @@ body::after {
 .md-currency-card p { margin:0 0 9px; color:#d8e8fb; font-size:12px; line-height:1.5; }
 .md-currency-card small { display:block; color:#99aec8; font-size:10px; line-height:1.4; }
 .md-arena-global-resource { border-color:rgba(99,177,232,.25) !important; background:rgba(4,13,35,.65) !important; }
-.md-hub-world { flex:1; min-height:365px; position:relative; overflow:hidden; border:1px solid rgba(255,209,102,.26); border-radius:22px; background:radial-gradient(circle at 50% 39%,rgba(0,170,255,.12),transparent 28%),linear-gradient(180deg,rgba(2,9,27,.10),rgba(2,9,27,.02) 45%,rgba(2,8,24,.48)); box-shadow:inset 0 0 45px rgba(0,0,0,.2),0 10px 28px rgba(0,0,0,.25); }
+.md-hub-world { flex:1 1 auto; min-height:0; position:relative; overflow:hidden; border:1px solid rgba(255,209,102,.26); border-radius:22px; background:radial-gradient(circle at 50% 39%,rgba(0,170,255,.12),transparent 28%),linear-gradient(180deg,rgba(2,9,27,.10),rgba(2,9,27,.02) 45%,rgba(2,8,24,.48)); box-shadow:inset 0 0 45px rgba(0,0,0,.2),0 10px 28px rgba(0,0,0,.25); }
 .md-hub-world::before { content:""; position:absolute; left:50%; top:27%; width:130px; height:180px; transform:translateX(-50%); border-radius:50%; background:radial-gradient(ellipse,rgba(42,198,255,.18),rgba(31,116,255,.06) 48%,transparent 72%); filter:blur(7px); animation:md-hub-gate-glow 3.5s ease-in-out infinite; pointer-events:none; }
 .md-hub-raid-callout { position:absolute; top:8px; left:8px; right:8px; min-height:48px; z-index:3; display:flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid rgba(255,125,104,.58); border-radius:14px; background:linear-gradient(100deg,rgba(60,13,32,.88),rgba(19,17,45,.78)); color:var(--ink); text-align:left; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.28); }
 .md-hub-raid-callout > img { width:34px; height:34px; flex:0 0 34px; filter:drop-shadow(0 0 6px rgba(255,108,92,.3)); }
@@ -507,7 +531,7 @@ body::after {
 
 /* Character Status / Skills — data-first layout. The page deliberately has no hero or
    equipment artwork: the scroll area belongs to readable stats and reversible previews. */
-.md-character-page { flex:1; min-height:640px; height:100dvh; max-height:none; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); display:flex; flex-direction:column; gap:var(--md-page-gap); position:relative; overflow:hidden; }
+.md-character-page { flex:1 1 auto; min-height:0; max-height:100%; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); display:flex; flex-direction:column; gap:var(--md-page-gap); position:relative; overflow:hidden; }
 .md-character-page-title { min-height:48px; display:grid; grid-template-columns:48px 1fr 48px; align-items:center; }
 .md-character-page-title button { width:44px; height:44px; border:1px solid #f3c759; border-radius:13px; background:linear-gradient(180deg,rgba(10,35,74,.96),rgba(3,16,42,.98)); color:#ffe496; font-family:'Baloo 2'; font-size:34px; line-height:1; box-shadow:0 3px 0 #6c4616; cursor:pointer; }
 .md-character-page-title h1 { grid-column:2; margin:0; padding:3px 20px; justify-self:center; border-bottom:1px solid rgba(255,209,102,.62); color:#ffe6a0; font-family:'Baloo 2'; font-size:25px; line-height:1; text-shadow:0 2px 5px #000; }
@@ -607,10 +631,10 @@ body::after {
 }
 
 /* Town hub — landmark buttons sit over the art instead of being baked into it. */
-.md-town-shell { flex:1; min-height:640px; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); display:flex; flex-direction:column; gap:var(--md-page-gap); position:relative; overflow:hidden; }
+.md-town-shell { flex:1 1 auto; min-height:0; max-height:100%; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); display:flex; flex-direction:column; gap:var(--md-page-gap); position:relative; overflow:hidden; }
 .md-town-resources { position:relative; z-index:8; }
 .md-town-resources span { background:linear-gradient(180deg,rgba(6,24,51,.92),rgba(3,14,34,.9)); border-color:rgba(255,210,105,.55); color:#e9f7ff; box-shadow:0 3px 10px rgba(0,0,0,.22); }
-.md-town-world { flex:1; min-height:470px; position:relative; }
+.md-town-world { flex:1 1 auto; min-height:0; position:relative; }
 .md-town-title { position:absolute; z-index:6; top:1px; left:50%; transform:translateX(-50%); margin:0; min-width:116px; padding:3px 19px 4px; border:1px solid rgba(255,220,132,.9); border-radius:999px; background:linear-gradient(180deg,rgba(8,38,76,.94),rgba(3,20,48,.95)); box-shadow:0 3px 0 rgba(91,53,16,.78),0 4px 14px rgba(0,0,0,.25); color:#fff0bc; font-family:'Baloo 2'; font-size:21px; line-height:1.05; text-align:center; text-shadow:0 2px 0 rgba(0,0,0,.5); }
 .md-town-leaderboard { position:absolute; z-index:7; top:-2px; left:0; width:96px; padding:0; display:flex; flex-direction:column; align-items:center; border:0; background:transparent; color:#071b3b; cursor:pointer; filter:drop-shadow(0 2px 3px rgba(255,255,255,.75)); }
 .md-town-leaderboard img { width:72px; height:52px; object-fit:contain; animation:md-town-bird-float 2.8s ease-in-out infinite; }
@@ -813,7 +837,7 @@ body::after {
   filter:saturate(.9) contrast(1.08) brightness(.78);
 }
 .md-dungeon-map-page {
-  flex:1; min-height:640px; height:100dvh; max-height:none;
+  flex:1 1 auto; min-height:0; max-height:100%;
   padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left));
   display:flex; flex-direction:column; gap:var(--md-page-gap); position:relative; overflow:hidden;
 }
@@ -911,8 +935,8 @@ body::after {
 
 /* login */
 .md-login-wrap {
-  flex: 1; min-height: 640px; display: flex; flex-direction: column; justify-content: center;
-  padding: 20px; position: relative; z-index: 2; isolation: isolate;
+  flex: 1 1 auto; min-height: 0; max-height:100%; display: flex; flex-direction: column; justify-content: center;
+  padding: 20px; position: relative; z-index: 2; isolation: isolate; overflow-y:auto; overscroll-behavior:contain;
   background-image:
     linear-gradient(180deg, rgba(5,8,24,0.08) 0%, rgba(5,8,24,0.28) 46%, rgba(5,8,24,0.5) 100%),
     url("/assets/ui/login-background.webp");
@@ -1190,8 +1214,8 @@ body::after {
    The generated background is the next physical space beyond login-background.webp.
    Motion stays in lightweight CSS layers: camera push, rune glow, fog and particles. */
 .md-character-select-wrap {
-  flex: 1; min-height: 640px; display: flex; flex-direction: column; justify-content: center;
-  padding: 18px 16px 20px; position: relative; z-index: 1; isolation: isolate; overflow: hidden;
+  flex: 1 1 auto; min-height: 0; max-height:100%; display: flex; flex-direction: column; justify-content: center;
+  padding: 18px 16px 20px; position: relative; z-index: 1; isolation: isolate; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain;
   background: #071126;
 }
 .md-character-select-wrap::before,
@@ -1407,18 +1431,18 @@ body::after {
 
 /* Pet V2 page: PNGs provide the ornamental presentation while CSS owns all
    layout, labels, progress values and tap targets. */
-.md-pet-page { min-width: 0; min-height:640px; overflow-x:hidden; }
+.md-pet-page { flex:1 1 auto; min-width:0; min-height:0; max-height:100%; overflow-x:hidden; overflow-y:hidden; }
 .md-pet-page > .md-hub-dock { flex:0 0 auto; min-height:var(--md-dock-height); margin-top:auto; }
 .md-pet-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
 /* Friend V1 page shell — same full-height/safe-area/dock-at-bottom treatment as
    .md-pet-page above, so GameDock never overlaps content or sits above the safe area. */
-.md-friend-page { min-width: 0; min-height:640px; overflow-x:hidden; overflow-y:auto; }
+.md-friend-page { flex:1 1 auto; min-width:0; min-height:0; max-height:100%; overflow:hidden; }
 .md-friend-page > .md-hub-dock { flex:0 0 auto; min-height:var(--md-dock-height); margin-top:auto; }
 .md-friend-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
 /* Chat V1 page shell — identical treatment to .md-friend-page above (itself mirroring
    .md-pet-page), so Chat's GameDock gets the same full-height/safe-area/dock-at-bottom
    behavior with no page-specific nav bar. */
-.md-chat-page { min-width: 0; min-height:640px; overflow-x:hidden; overflow-y:auto; }
+.md-chat-page { flex:1 1 auto; min-width:0; min-height:0; max-height:100%; overflow:hidden; }
 .md-chat-page > .md-hub-dock { flex:0 0 auto; min-height:var(--md-dock-height); margin-top:auto; }
 .md-chat-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
 /* Guild V1 page shell — identical treatment to .md-chat-page/.md-friend-page above
@@ -1427,6 +1451,9 @@ body::after {
 .md-guild-page > .md-hub-dock { flex:0 0 auto; min-height:var(--md-dock-height); margin-top:auto; }
 .md-guild-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
 .md-pet-card { padding: 8px 6px 10px; overflow: hidden; }
+.md-pet-page > .md-pet-card { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.md-friend-page > .md-card:last-of-type { flex:1 1 auto; min-height:0; overflow-y:auto !important; overscroll-behavior:contain; }
+.md-chat-scroll-panel { min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .md-pet-ui-art {
   background-image: var(--pet-ui-image, none);
   background-repeat: no-repeat;
@@ -2414,9 +2441,9 @@ body::after {
   .md-skill-level-control { grid-template-columns:38px minmax(72px,auto) 38px; }
   .md-skill-level-control > span { font-size:11px; }
 
-  .md-pet-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
-  .md-friend-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
-  .md-chat-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-pet-page { min-height:0; height:auto; overflow:hidden; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-friend-page { min-height:0; height:auto; overflow:hidden; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-chat-page { min-height:0; height:auto; overflow:hidden; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-guild-page { min-height:0; height:auto; overflow-y:auto; }
   .md-pet-card { padding:12px 10px 14px; }
   .md-pet-layout { grid-template-columns:minmax(0,1fr) 116px; gap:10px; }
@@ -2557,9 +2584,9 @@ body::after {
   .md-skill-level-control { grid-template-columns:42px minmax(82px,auto) 42px; }
   .md-skill-level-control > span { font-size:12px; }
 
-  .md-pet-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
-  .md-friend-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
-  .md-chat-page { min-height:100dvh; height:100dvh; overflow-y:auto; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-pet-page { min-height:0; height:auto; overflow:hidden; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-friend-page { min-height:0; height:auto; overflow:hidden; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
+  .md-chat-page { min-height:0; height:auto; overflow:hidden; padding:max(var(--md-page-pad),var(--safe-top)) max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); }
   .md-guild-page { min-height:0; height:auto; overflow-y:auto; }
   .md-pet-card { padding:14px 12px 16px; }
   .md-pet-layout { grid-template-columns:minmax(0,1fr) 132px; gap:14px; }
@@ -2855,7 +2882,7 @@ body::after {
 .md-arena-page-header h1 { grid-column:3; justify-self:start; margin:0; padding:3px 0 3px 2px; }
 /* Arena uses a real flow footer so the dock reserves layout space instead of covering the scroll surface. */
 /* Arena follows Inventory V2's flow-footer shell: scrollable content flexes, GameDock reserves its own space. */
-.md-arena-v2 { display:flex; flex-direction:column; flex:1 1 auto; height:100dvh; max-height:100dvh; min-height:0; overflow:hidden; padding-bottom:max(8px,var(--safe-bottom)); position:relative; }
+.md-arena-v2 { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; max-height:100%; overflow:hidden; padding-bottom:max(8px,var(--safe-bottom)); position:relative; }
 .md-arena-global-currency { flex:0 0 auto; }
 .md-arena-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px; padding:0 max(var(--md-page-pad),var(--safe-right)) 10px max(var(--md-page-pad),var(--safe-left)); }
 .md-arena-v2 > .md-hub-dock { position:static; flex:0 0 auto; min-height:var(--md-dock-height); width:auto; max-width:none; margin:0 max(var(--md-page-pad),var(--safe-right)) max(var(--md-page-pad),var(--safe-bottom)) max(var(--md-page-pad),var(--safe-left)); z-index:20; transform:none; }
@@ -3250,6 +3277,79 @@ body::after {
   background:rgba(255,209,102,.14); color:var(--gold); font:800 12px/1.1 'Baloo 2',sans-serif; font-variant-numeric:tabular-nums;
 }
 .md-shop-refresh-btn:disabled { opacity:.55; color:var(--ink-soft); border-color:rgba(255,209,102,.24); background:rgba(255,255,255,.035); }
+
+/* Issue #169 viewport-fit authority. These late overrides intentionally neutralize older
+   breakpoint minimums: the document never scrolls, while designated content panels do. */
+.md-root,
+.md-root-combat { height:100%; min-height:0; max-height:100%; }
+.md-hub-shell,
+.md-town-shell,
+.md-character-page,
+.md-dungeon-map-page,
+.md-pet-page,
+.md-friend-page,
+.md-chat-page,
+.md-arena-v2 { flex:1 1 auto; min-height:0; max-height:100%; height:auto; overflow:hidden; }
+.md-hub-world,
+.md-town-world { flex:1 1 auto; min-height:0; }
+.md-pet-page > .md-pet-card,
+.md-friend-page > .md-card:last-of-type { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+
+@media (max-width:480px) {
+  body { padding:0 !important; }
+  .md-root { max-width:100%; height:100%; min-height:0; max-height:100%; border-radius:0; box-shadow:none; }
+}
+
+@media (max-height:700px) {
+  .md-root {
+    --md-page-pad:6px;
+    --md-page-gap:6px;
+    --md-dock-height:62px;
+    --md-dock-hit:48px;
+    --md-dock-icon:28px;
+    --md-dock-label:8px;
+  }
+  .md-app-currency { padding-top:max(5px,var(--safe-top-eff)); }
+  .md-hub-topbar { padding:5px 7px; }
+  .md-hub-mark { width:34px; height:34px; flex-basis:34px; }
+  .md-hub-profile-copy > strong { font-size:16px; }
+  .md-hub-icon-btn { width:44px; height:44px; }
+  .md-hub-world-actions { left:6px; right:6px; bottom:6px; gap:6px; }
+  .md-hub-town-btn,.md-hub-enter-btn { min-height:52px; }
+  .md-hub-town-btn span,.md-hub-enter-btn span { font-size:17px; }
+  .md-hub-town-btn b,.md-hub-enter-btn small { font-size:8px; }
+  .md-character-page-title,.md-dungeon-map-header { min-height:46px; }
+  .md-character-summary { padding-block:7px; }
+  .md-town-title { font-size:18px; }
+  .md-login-wrap,.md-character-select-wrap { justify-content:flex-start; }
+  .md-arena-v2 > .md-hub-dock { min-height:var(--md-dock-height); }
+}
+
+@media (max-height:480px) and (orientation:landscape) {
+  .md-root {
+    --md-page-pad:5px;
+    --md-page-gap:4px;
+    --md-dock-height:54px;
+    --md-dock-hit:44px;
+    --md-dock-icon:24px;
+    --md-dock-label:7px;
+  }
+  .md-app-currency { padding-top:max(3px,var(--safe-top-eff)); }
+  .md-hub-resources button { min-height:30px; padding-block:3px; }
+  .md-hub-topbar { padding:3px 6px; }
+  .md-hub-mark { width:30px; height:30px; flex-basis:30px; }
+  .md-hub-character-meta { margin-top:2px; }
+  .md-hub-icon-btn { width:40px; height:40px; }
+  .md-hub-world-actions { grid-template-columns:1fr 1.35fr; }
+  .md-hub-town-btn,.md-hub-enter-btn { min-height:44px; padding:4px 6px; }
+  .md-character-page-title,.md-dungeon-map-header { min-height:44px; }
+  .md-character-summary { padding:5px 10px; }
+  .md-character-tabs { min-height:44px; }
+  .md-login-wrap,.md-character-select-wrap { padding-top:max(6px,var(--safe-top)); padding-bottom:max(6px,var(--safe-bottom)); }
+  .md-login-emblem { width:52px; height:52px; margin-bottom:3px; }
+  .md-login-brand p { margin-top:3px; }
+  .md-character-select-title { padding-bottom:4px; }
+}
 `;
 
 // ===== state/save.js =====
@@ -8131,13 +8231,20 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
+      version: "1.1.25", date: "2026-10-28", title: "ปรับหน้าจอเกมให้พอดีกับมือถือ",
+      items: [
+        "ปรับทุกหน้าหลักให้พอดีกับพื้นที่แสดงผลจริงของมือถือและเมื่อหมุนหน้าจอ",
+        "หน้าที่มีรายการยาวยังเลื่อนได้ภายใน โดยแถบเมนูและปุ่มสำคัญไม่หลุดออกจากหน้าจอ"
+      ]
+    },
+    history: [
+      {
       version: "1.1.24", date: "2026-10-28", title: "เครื่องมือกู้คืนไอเทมสำหรับผู้ดูแลระบบ",
       items: [
         "เตรียมเครื่องมือกู้คืนไอเทมจากประวัติการลบสำหรับผู้ดูแลระบบ (ยังปิดใช้งานอยู่)",
         "ไม่มีการเปลี่ยนแปลงต่อการเล่น ไอเทม หรือข้อมูลตัวละครของผู้เล่น"
       ]
     },
-    history: [
       {
       version: "1.1.23", date: "2026-10-27", title: "เตรียมเครื่องมือหลังบ้านสำหรับไอเทม",
       items: [
@@ -22130,7 +22237,7 @@ function ChatScreen({
   };
 
   const globalPane = () => e(React.Fragment, null,
-    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+    e("div", { className: "md-card md-chat-scroll-panel", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
       messageList(globalMessages, globalLoaded, "ยังไม่มีข้อความ")),
     pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
     globalError && e("p", { className: "md-sub" }, globalError),
@@ -22148,7 +22255,7 @@ function ChatScreen({
 
   const guildPane = () => e(React.Fragment, null,
     guildName && e("p", { className: "md-sub", style: { margin: "0 0 6px" } }, `🏰 ${guildName}`),
-    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+    e("div", { className: "md-card md-chat-scroll-panel", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
       messageList(guildMessages, guildLoaded, "ยังไม่มีข้อความในกิลด์")),
     pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
     guildError && e("p", { className: "md-sub", role: "alert" }, guildError),
@@ -22161,7 +22268,7 @@ function ChatScreen({
   const conversationListPane = () => {
     if (conversations === null) return e("p", { className: "md-sub" }, "กำลังโหลด...");
     if (!conversations.length) return e("p", { className: "md-sub" }, "ยังไม่มีการสนทนา — เริ่มแชทได้จากหน้าเพื่อน");
-    return e("div", { className: "md-card", style: { overflowY: "auto", minHeight: 0, flex: 1 } },
+    return e("div", { className: "md-card md-chat-scroll-panel", style: { overflowY: "auto", minHeight: 0, flex: 1 } },
       e("div", { className: "md-inv-list" }, conversations.map((c) => e("div", {
         key: c.characterId,
         className: "md-shop-row",
@@ -22175,7 +22282,7 @@ function ChatScreen({
   };
 
   const threadPane = () => e(React.Fragment, null,
-    e("div", { className: "md-card", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
+    e("div", { className: "md-card md-chat-scroll-panel", style: { marginBottom: 10, overflowY: "auto", minHeight: 0, flex: 1 } },
       messageList(threadMessages, threadLoaded, "ยังไม่มีข้อความ — ส่งข้อความแรกได้เลย")),
     pollError && e("p", { className: "md-sub" }, "การเชื่อมต่อไม่เสถียร กำลังลองใหม่..."),
     !threadCanSend && e("p", { className: "md-sub" }, "ไม่สามารถส่งข้อความได้ในขณะนี้ (ไม่ได้เป็นเพื่อนหรือมีการบล็อก)"),
@@ -22193,7 +22300,7 @@ function ChatScreen({
       }),
       e("button", { className: "md-btn small primary", disabled: threadSending || !threadInput.trim() || !threadCanSend, onClick: handleSendDirect }, "ส่ง")));
 
-  const stickerPane = () => e("div", { className: "md-card", style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center" } },
+  const stickerPane = () => e("div", { className: "md-card md-chat-scroll-panel", style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center" } },
     e("p", { className: "md-sub" }, "😄 สติกเกอร์ — เร็วๆ นี้"));
 
   return e("div", { className: "md-panel md-chat-page" },

@@ -245,7 +245,7 @@ test('Arena browser shell reuses the shared global currency row, horizontal tabs
   assert.match(arenaUi, /md-tab-row md-arena-tab-row/);
   assert.match(arenaUi, /React\.createElement\(GameDock/);
   assert.match(styles, /\.md-hub-resources\.with-arena \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
-  assert.match(styles, /\.md-arena-v2 \{ display:flex; flex-direction:column; flex:1 1 auto; height:100dvh/);
+  assert.match(styles, /\.md-arena-v2 \{ display:flex; flex-direction:column; flex:1 1 auto; min-height:0; max-height:100%; overflow:hidden/);
   assert.match(styles, /\.md-arena-v2 > \.md-hub-dock \{ position:static; flex:0 0 auto; min-height:var\(--md-dock-height\)/);
   assert.match(styles, /\.md-arena-scroll \{ flex:1 1 auto; min-height:0; overflow-y:auto/);
   assert.match(styles, /\.md-arena-tab-row \{ display:grid; grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
