@@ -1,7 +1,7 @@
 {
   "approval": "Owner approved revision07; publication authorized",
   "scope": "Idle_01 four layers only",
-  "baseline": "32152e4",
+  "baseline": "32152e436c4dde474bb4ac0db29f0ba10708f4c5",
   "objects": {
     "hero/v5/g2/equipment/skeleton/idle_01/helmet.png": {
       "before_sha256": "0003c180dc1950c0540beeff825ceb4dfabcf79caa2077f5cb45872299c8fd7e",
@@ -24,6 +24,40 @@
       "bytes": 63527
     }
   },
-  "r2_verification": "pending upload workflow",
-  "production_visual_acceptance": "pending"
+  "r2_verification": {
+    "status": "PASS",
+    "run_id": 40809505708,
+    "job_id": 123236221846,
+    "objects_verified": 6,
+    "png_objects_verified": 4,
+    "method": "workflow remote put/get SHA-256 equality",
+    "url": "https://github.com/kimloor/ThornieDungeons/actions/runs/40809505708"
+  },
+  "production_visual_acceptance": "PENDING Owner in-game review",
+  "asset_commit": "b21d5105660b3e23a27ee2163daf410c263ec27d",
+  "public_browser_decode": {
+    "status": "PASS",
+    "images": 4,
+    "dimensions": [
+      768,
+      768
+    ],
+    "cache_buster": "skeletonRevision=b21d510",
+    "paths": [
+      "hero/v5/g2/equipment/skeleton/idle_01/helmet.png",
+      "hero/v5/g2/equipment/skeleton/idle_01/torso_armor.png",
+      "hero/v5/g2/equipment/skeleton/idle_01/arm_rear.png",
+      "hero/v5/g2/equipment/skeleton/idle_01/legs_boots.png"
+    ]
+  },
+  "local_checks": {
+    "skeleton_tests": "3/3 PASS",
+    "staged_composite_matches_owner_preview": true,
+    "unchanged_other_frames": true
+  },
+  "notes": [
+    "Direct container HTTP read-back returned403; browser decode succeeds4/4",
+    "No Manifest/Runtime/Base change or frontend version bump; in-place asset publication only",
+    "Idle_02\u201303/Attack/Death retain old artwork; no cross-frame visual consistency acceptance implied"
+  ]
 }
