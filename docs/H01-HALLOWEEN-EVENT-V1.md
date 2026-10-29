@@ -44,6 +44,13 @@ Source: Owner directions and two screenshots supplied on 2026-10-29 (Dungeon Hub
 
 **Excaliburnt must be a fully implemented equippable weapon**, not merely an Inventory icon. Graphics deliverables are (1) dedicated inventory/item-detail icon and (2) matching weapon sprite frame overlays for the complete existing boss-floor weapon animation contract (Idle, Attack and Death wherever the current contract requires), with approved silhouette and identical positioning/crop/grip/layering conventions. DEV must audit the *actual* historical boss-floor weapon assets and runtime before specifying frame files. No frame count or dimensions are invented here. Compare assembled Hero composites against the approved reference in every relevant frame. Each item/icon/frame needs SHA evidence, R2 mapping and runtime decode QA prior to publication. The new weapon's sword classification, Mythic rarity, floor-derived Tier and no unique status are unchanged. Art production/approval remains pending.
 
+
+### Two-stage Halloween gate availability (Owner direction, 2026-10-29)
+
+**Stage A — TEST / always accessible:** Throughout the active event window, show the purple event gate and allow repeated entry for testing. Do **not** roll a random chance to spawn the gate during this phase. Preserve server-side event start/end checks and existing battle authority; no automatic exemption from pre-existing stamina, attempt, or run-safety rules is implied. This is a QA access policy, not an authorization to deploy or activate production before release gates.
+
+**Stage B — AFTER OWNER QA ACCEPTANCE / future design:** Revisit whether the gate should appear with **30% or 50% chance after successful clearance of a dungeon floor**. Neither value is approved or implemented yet. DEV must propose a server-authoritative event-entrance eligibility/spawn lifecycle, including which clears qualify, whether chance is per clear, persistence, replay protection, gate duration/consumption, and how this works with the one-month event window. **Do not pre-emptively implement either probability or hide the always-available gate during Stage A.** Owner chooses after testing.
+
 ## 2. Decision register — pending Owner contract (DO NOT IMPLEMENT/INVENT VALUES)
 
 | ID | Decision | State | Why needed |
@@ -51,7 +58,7 @@ Source: Owner directions and two screenshots supplied on 2026-10-29 (Dungeon Hub
 | D01 | Boss `Haloween nightmare`: grim reaper riding a skeletal horse, wielding a scythe; detailed look, sprite size/rig and animation frame contract pending | DIRECTION APPROVED / ASSETS PENDING | Graphics concept and runtime mapping |
 | D02 | `Excaliburnt`: sword with stone/pedestal chunk attached at blade tip (hammer-like silhouette), Mythic, tier by floor at drop, **no unique status**; precise base stats, tier calculation, frame/rig compatibility and stacking remain to audit; both item icon and wearable frames REQUIRED | DIRECTION APPROVED / TECHNICAL AUDIT + ARTWORK ACCEPTANCE PENDING | Graphics and economy/inventory authority |
 | D03 | Gold equals the player's applicable chapter-boss gold payout (floor 9 → boss floor 10; floor 11 → boss floor 20); verify formula at chapter boundaries, max floor and progress snapshot | RULE APPROVED / EDGE CASE AUDIT PENDING | Server reward logic |
-| D04 | Entry requirements, attempts/stamina, repeat fights, cooldown, level limits | PENDING | Dungeon encounter rules |
+| D04 | TEST PHASE: Halloween gate continuously available and repeat entry allowed during the active event window for QA; no post-clear spawn RNG. Any existing battle resource/attempt costs need audit, not silently bypassed. POST-QA: decide 30% vs 50% gate appearance chance after successfully clearing a dungeon floor; trigger/lifetime/retry details pending | TEST ACCESS APPROVED / POST-QA SPAWN PENDING | Dungeon encounter rules |
 | D05 | Exact activation instant/timezone; one-calendar-month expiry semantics; hide/disable expired gate and pending runs | PENDING | Secure timed event behavior |
 | D06 | Banner rotation on inactive events, timer lifecycle, click targets and destination; do not degrade Raid Boss | PENDING DETAIL | UX integration |
 | D07 | Weapon permanence after expiry, duplicate drops, capacity/overflow/mailbox delivery | PENDING | Player data safety |
@@ -103,7 +110,7 @@ H01-04 + H01-05 + H01-06 -> H01-07 -> H01-08 -> H01-09 -> H01-10
 - Rotate exactly every 5 seconds across approved active banners, no timer accumulation or duplicate intervals on remount; deterministic fallback when one banner exists; respect reduced motion if animations added.
 - Keep existing Raid Boss navigation; Halloween banner opens the agreed event destination. Ensure explicit touch behavior (auto-rotation vs user tap) and accessibility.
 - Place dark-purple gate in screenshot's upper-left arch without overlapping floor controls; preserve responsive map scaling and back/close navigation.
-- Do not make event actionable outside authorized active window; ensure safe inactive/pending presentation.
+- Do not make event actionable outside authorized active window; ensure safe inactive/pending presentation. During Stage A testing, continuously display the gate while the event is active and allow repeat entry; no gate-spawn RNG. Stage B 30%/50% is a deferred decision.
 - Any player-visible change requires frontend version bump and announcement update; run `node build.js` (never hand-edit `index.html`).
 
 **Backend / battle / reward (DEV authority)**
@@ -133,4 +140,4 @@ H01-04 + H01-05 + H01-06 -> H01-07 -> H01-08 -> H01-09 -> H01-10
 - **NOT STARTED:** H01 implementation, asset publication, staging QA, production deployment.
 - **Parallel dependency:** Admin V2 PR #182 remains separate, open and security-blocked; do not merge or activate it because of H01.
 
-**Next conversation:** Owner + PL discuss Excaliburnt remaining balance, gear tier derivation, entry and expiry details; wearable frame production is now mandatory but waits for DEV contract and artwork review; then assign H01-02 DEV interface audit before instructing Graphics to produce final assets.
+**Next conversation:** Owner + PL discuss Excaliburnt remaining balance, gear tier derivation, event timing/expiry details; event test-stage entry is approved and 30%/50% post-QA spawn selection remains deferred; wearable frame production is now mandatory but waits for DEV contract and artwork review; then assign H01-02 DEV interface audit before instructing Graphics to produce final assets.
