@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.30" />
+<meta name="application-version" content="1.1.31" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.30";
+  content: "Ver 1.1.31";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3298,6 +3298,14 @@ body::after {
 
 /* v1.1.30: Portaled Compare is independent of the clipped Inventory shell. */
 body > .md-inv2-detail-layer {
+  --ink:#F3EEFF;
+  --ink-soft:#B9AEDD;
+  --gold:#FFD166;
+  --gold-deep:#C9932A;
+  --coral:#FF6B6B;
+  --violet:#8B6AE8;
+  color:var(--ink);
+  font-family:'Baloo 2',sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -8279,12 +8287,11 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.30", date: "2026-10-29", title: "ปรับปรุงการเลื่อนหน้าเปรียบเทียบไอเทมบนมือถือ",
-      items: [
-        "แก้หน้าต่างเปรียบเทียบไอเทมให้เลื่อนได้บนมือถือ และเข้าถึงปุ่มดำเนินการด้านล่าง"
-      ]
+      version: "1.1.31", date: "2026-10-29", title: "แก้สีตัวอักษรหน้ารายละเอียดไอเทม",
+      items: ["คืนสีตัวอักษรและปุ่มให้ถูกต้องในหน้าต่างเปรียบเทียบไอเทมบนมือถือ"]
     },
     history: [
+      { version: "1.1.30", date: "2026-10-29", title: "ปรับการเลื่อนหน้าต่างเปรียบเทียบไอเทม", items: ["แก้การเลื่อนภายในหน้าต่างเพื่อเข้าถึงปุ่มด้านล่าง"] },
       { version: "1.1.29", date: "2026-10-29", title: "ปรับหัวข้อและการเลื่อนหน้าไอเทม", items: ["จัดหัวข้อหน้าให้อยู่กึ่งกลาง และปรับการเลื่อนในหน้ารายละเอียดไอเทม"] },
       {
         version: "1.1.28", date: "2026-10-29", title: "ปรับปรุงร้านค้าและการนำทาง",

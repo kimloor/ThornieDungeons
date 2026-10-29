@@ -65,7 +65,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.30";
+  content: "Ver 1.1.31";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3160,6 +3160,14 @@ body::after {
 
 /* v1.1.30: Portaled Compare is independent of the clipped Inventory shell. */
 body > .md-inv2-detail-layer {
+  --ink:#F3EEFF;
+  --ink-soft:#B9AEDD;
+  --gold:#FFD166;
+  --gold-deep:#C9932A;
+  --coral:#FF6B6B;
+  --violet:#8B6AE8;
+  color:var(--ink);
+  font-family:'Baloo 2',sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
