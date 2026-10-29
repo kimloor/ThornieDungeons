@@ -7680,6 +7680,21 @@ async function adminItemBlockedReason(db, row, characterId) {
   return null;
 }
 
+// Transaction-level twin of the activity checks in adminItemBlockedReason(). The preflight read
+// gives a precise error code; this guard is what actually stops a pending operation or a fresh
+// run that begins between the preflight and db.batch (Project Lead review A1, 2026-10-29).
+function adminItemActivityGuardSql() {
+  return `NOT EXISTS (SELECT 1 FROM character_operation_receipts WHERE character_id = ? AND result_json = 'pending')
+          AND NOT EXISTS (SELECT 1 FROM character_run_state WHERE character_id = ? AND (updated_at >= ? OR julianday(updated_at) IS NULL))`;
+}
+function adminItemActivityGuardBinds(characterId) {
+  return [characterId, characterId, new Date(Date.now() - ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS).toISOString()];
+}
+// A losing concurrent request hits the audit primary key and the whole batch rolls back.
+function isAdminAuditDuplicate(error) {
+  return /UNIQUE|constraint/i.test(String(error && error.message)) && /admin_audit_log|audit_id/i.test(String(error && error.message));
+}
+
 function adminItemTripleError(playerId, characterId, itemId) {
   if (!playerId || !characterId || !itemId) return json({ error: "missing_fields" }, 400);
   return null;
@@ -7766,13 +7781,14 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
   });
   // Every statement carries the same guard against the observed row; if it no longer matches,
   // nothing is inserted and the item statement affects 0 rows -> 409, nothing written.
-  const guard = `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?)`;
-  const guardBinds = [itemId, playerId, characterId, row.updated_at, row.extra_json || ""];
+  const guard = `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?)
+    AND ${adminItemActivityGuardSql()}`;
+  const guardBinds = [itemId, playerId, characterId, row.updated_at, row.extra_json || "", ...adminItemActivityGuardBinds(characterId)];
   const itemStatement = remaining > 0
-    ? db.prepare(`UPDATE items SET extra_json = json_set(COALESCE(NULLIF(extra_json, ''), '{}'), '$.quantity', ?), updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?`)
-        .bind(remaining, now, itemId, playerId, characterId, row.updated_at, row.extra_json || "")
-    : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?`)
-        .bind(itemId, playerId, characterId, row.updated_at, row.extra_json || "");
+    ? db.prepare(`UPDATE items SET extra_json = json_set(COALESCE(NULLIF(extra_json, ''), '{}'), '$.quantity', ?), updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ? AND ${adminItemActivityGuardSql()}`)
+        .bind(remaining, now, itemId, playerId, characterId, row.updated_at, row.extra_json || "", ...adminItemActivityGuardBinds(characterId))
+    : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ? AND ${adminItemActivityGuardSql()}`)
+        .bind(itemId, playerId, characterId, row.updated_at, row.extra_json || "", ...adminItemActivityGuardBinds(characterId));
   let results;
   try {
     results = await db.batch([
@@ -7783,10 +7799,20 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
       itemStatement,
     ]);
   } catch (error) {
+    if (isAdminAuditDuplicate(error) && (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first())) {
+      return json({ ok: true, already_applied: true });
+    }
     console.error("admin_audit_failed", "ADMIN_ITEM_DELETE", error && error.message);
     return json({ error: "admin_audit_failed" }, 500);
   }
-  if (Number(results?.[2]?.meta?.changes) !== 1) return json({ error: "item_state_changed" }, 409);
+  if (Number(results?.[2]?.meta?.changes) !== 1) {
+    // The guard refused. If a concurrent request with the same id already applied, say so.
+    if (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first()) return json({ ok: true, already_applied: true });
+    // Otherwise report the precise reason when it is an activity block, else a state change.
+    const now2 = await loadAdminItemTriple(db, playerId, characterId, itemId);
+    const reason2 = now2 ? await adminItemBlockedReason(db, now2, characterId) : null;
+    return json({ error: reason2 || "item_state_changed" }, 409);
+  }
   return json({ ok: true, auditId, deleted: remaining === 0, quantity: qty, remaining });
 }
 
