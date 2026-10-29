@@ -40,7 +40,7 @@ test("Skeleton production bundle is complete, RGBA 768, and hash-exact", () => {
   for (const frameId of FRAME_IDS) {
     assert.deepEqual(Object.keys(skeleton.frames[frameId]), LAYERS);
     for (const layer of LAYERS) {
-      const assetPath = skeleton.frames[frameId][layer];
+      const assetPath = skeleton.frames[frameId][layer].split("?")[0];
       const bytes = fs.readFileSync(path.join(ROOT, "r2-upload", assetPath));
       assert.deepEqual(pngHeader(bytes), { width: 768, height: 768, colorType: 6 });
       assert.equal(crypto.createHash("sha256").update(bytes).digest("hex"), validation.sha256[assetPath]);
@@ -59,7 +59,7 @@ test("mixed equipment renders only the visual family actually equipped in each s
   const paths = Array.from(resolved.idle[0], layer => String(layer.path));
 
   assert.equal(resolved.mode, "v5-g2-lavalonSword");
-  assert.ok(paths.some(value => value.includes("/equipment/skeleton/") && value.endsWith("/torso_armor.png")));
+  assert.ok(paths.some(value => value.includes("/equipment/skeleton/") && value.split("?")[0].endsWith("/torso_armor.png")));
   assert.ok(paths.some(value => value.includes("/equipment/azure/") && value.includes("helmet.png")));
   assert.ok(paths.some(value => value.includes("/weapons/lavalon_sword/")));
   assert.ok(paths.some(value => value.includes("/wings/")));
@@ -83,5 +83,31 @@ test("a complete Skeleton set resolves all seven ordered layers without fallback
         .map(layer => layer.name);
       assert.deepEqual(skeletonLayers, LAYERS);
     }
+  }
+});
+
+test("Inventory preview preserves revised Skeleton idle URLs through the asset resolver", () => {
+  const { context } = runtimeContext();
+  for (const file of ["src/assets/loader.js", "src/phaser/assets/AssetResolver.js", "src/phaser/presentation/EventBridge.js", "src/phaser/assets/TextureRegistry.js"]) {
+    vm.runInContext(fs.readFileSync(path.join(ROOT, file), "utf8"), context);
+  }
+  const snapshot = vm.runInContext(`buildHeroPreviewSnapshot({equipped:{
+    helmet:{setId:"azure"},chest:{setId:"skeleton"},gloves:{setId:"common"},boots:{}
+  }})`, context);
+  snapshot.hero.layerFrames.idle.forEach((layers, index) => {
+    const chest = layers.find(layer => layer.name === "torso_armor");
+    assert.equal(chest.url, `/assets/hero/v5/g2/equipment/skeleton/idle_0${index + 1}/torso_armor.png?v=skeleton_idle_r07_20261029`);
+    assert.ok(!layers.some(layer => ["coverage_underlay", "legs_boots", "arm_rear", "arm_front"].includes(layer.name)));
+    const oldUrl = chest.url.split("?")[0];
+    const keys = vm.runInContext(`[
+      phaserTextureKeyForUrl(${JSON.stringify(oldUrl)}),
+      phaserTextureKeyForUrl(${JSON.stringify(chest.url)})
+    ]`, context);
+    assert.notEqual(keys[0], keys[1]);
+  });
+  const config = JSON.parse(fs.readFileSync(path.join(ROOT, "r2-upload/manifest.json"))).assets.hero001.v5.g2.equipment.skeleton;
+  for (const frameId of FRAME_IDS) for (const layer of LAYERS) {
+    const revised = frameId.startsWith("idle_") && ["helmet", "torso_armor", "arm_rear", "legs_boots"].includes(layer);
+    assert.equal(config.frames[frameId][layer].includes("?v=skeleton_idle_r07_20261029"), revised);
   }
 });
