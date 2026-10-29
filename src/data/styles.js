@@ -65,7 +65,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.27";
+  content: "Ver 1.1.28";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -601,11 +601,13 @@ body::after {
 }
 /* Full-screen page: fixed height, so the sheet never grows/shrinks with the number of offers (only the body scrolls). */
 .md-shop-sheet {
-  width:min(430px,100vw); height:100dvh;
+  width:100%; max-width:430px; height:var(--md-visual-viewport-height,100dvh);
   display:flex; flex-direction:column; min-height:0;
   overflow:hidden; background:linear-gradient(180deg,#2C1E4A,#1B1233);
   border:none; border-radius:0; padding:max(14px,var(--safe-top)) 16px 0; position:relative;
 }
+@media (min-width:431px) and (max-width:700px) { .md-shop-sheet { max-width:700px; } }
+@media (min-width:701px) { .md-shop-sheet { max-width:820px; } }
 .md-shop-header { flex:0 0 auto; min-height:0; }
 .md-shop-title-row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .md-shop-close { min-width:40px; min-height:40px; padding:6px 12px !important; }
@@ -925,6 +927,8 @@ body::after {
 .md-info-header .md-title { margin:0; font-size:18px; color:var(--ink,#F3EEFF); overflow-wrap:anywhere; }
 .md-info-header .md-sub { margin:2px 0 0; font-size:11px; color:var(--ink-soft,#B9AEDD); }
 .md-info-back, .md-info-close { flex:0 0 auto; min-width:44px; width:44px; height:44px; padding:0; margin:0; }
+.md-info-page .md-info-header .md-info-close { position:absolute; top:max(0px,var(--safe-top-eff)); right:0; z-index:2; }
+.md-info-page .md-info-header { position:static; padding-right:44px; }
 .md-info-body { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px 2px 24px; }
 .md-info-group { margin:0 0 14px; }
 .md-info-group-title { margin:0 0 6px; font-size:12px; letter-spacing:.04em; color:var(--gold,#FFD166); }
