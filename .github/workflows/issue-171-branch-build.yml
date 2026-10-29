@@ -1,0 +1,29 @@
+name: Issue 171 branch build and QA
+on:
+  push:
+    branches: [fix/issue-171-ui-scroll-gate]
+permissions:
+  contents: write
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node build.js
+      - run: node --test --test-concurrency=1 tests/*.test.js
+      - run: git diff --check
+      - name: Commit generated build
+        run: |
+          if ! git diff --quiet -- index.html; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "build: regenerate index.html for issue 171 [skip ci]"
+            git push
+          fi
