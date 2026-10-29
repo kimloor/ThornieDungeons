@@ -184,3 +184,17 @@ H01-04 + H01-05 + H01-06 -> H01-07 -> H01-08 -> H01-09 -> H01-10
 **Post-QA random gate appearance is NOT locked:** Owner will later choose 30% or 50% after successfully clearing a dungeon floor. Do not implement either probability in the initial always-available test phase. Exact activation date/time is likewise **not scheduled**; activation is a future authorized server-config action, not automatic on deployment.
 
 **Next action:** Project Lead issues scoped contract-gap verification to DEV; Graphics pre-production concept work remains subject to PL work sequencing and Owner visual review. Keep H01 separate from Admin V2 PR #182.
+
+### H01-02B Owner-approved skill parameters and Salvage — 2026-10-29
+
+**Owner approved (design contract; no implementation or artwork authorization):**
+
+| Halloween skill | Damage | Status proc | Duration | Additional rule |
+| --- | --- | --- | --- | --- |
+| Stun (existing Frozen Shackles reference) | 0.90 × ATK | 25% | 1 turn | Reuse existing Stun effect |
+| Silence (existing Silent Edge Rank 1 numeric reference) | 1.50 × ATK | 25% | 2 turns | Reuse existing Silence effect; DEV must implement boss-side action without silently applying Hero-specific mechanics |
+| Poison (existing Toxic Bloom reference) | 0.90 × ATK | 40% | 3 turns | Poison tick = 0.12 × ATK, following existing effect timing |
+
+Existing H01 alternating normal/skill cadence and no consecutive identical status skill remain in force. **Excaliburnt Salvage is allowed and returns zero materials**, matching the existing non-set Mythic Boss Weapon no-material-return precedent; preserve Mythic normal eligibility, inventory safety, and transactional behavior. No Boss Weapon identity/signature is assigned to Excaliburnt.
+
+**Implementation readiness:** The two outstanding Owner gameplay/economy value decisions in H01-02B are **CLOSED**. Technical implementation remains **NOT AUTHORIZED** pending DEV design/QA of Halloween boss skill mapping and persistence, secure server-only persisted cryptographic reward outcome, event authorization/expiry, Mythic Event validation and Salvage, and real D1/Phaser QA. The specific RNG implementation, month-end cutoff, and Graphics asset interfaces discussed by PL are technical design directions, not deployed or proven functionality. Exact event activation date/time and 30%/50% post-QA gate spawn remain deferred.
