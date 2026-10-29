@@ -36,6 +36,9 @@ const HERO_V5_LEATHER_COMPOSITION_PROFILE = "leather_overlap_v1";
 // These matching Base crops supply the same local hand/weapon relationship when
 // that optional glove layer is absent, without changing the shared layer order.
 const HERO_V5_LEATHER_BARE_HAND_CROPS = Object.freeze({
+  idle_01: Object.freeze([244, 493, 48, 42]),
+  idle_02: Object.freeze([244, 481, 48, 42]),
+  idle_03: Object.freeze([244, 489, 48, 42]),
   attack_01: Object.freeze([233, 277, 109, 185]),
   attack_02: Object.freeze([337, 417, 178, 65]),
   attack_03: Object.freeze([330, 431, 107, 144])
@@ -230,7 +233,10 @@ function heroV5RightHandOcclusionLayer(config, frameId, equipmentSelection, equi
   // A complete foreground arm already supplies the approved hand-over-weapon
   // relationship. Never append a cropped duplicate in that case.
   if (!bareLeatherSword && equipmentLayerNames.indexOf(handConfig.sourceLayer) > equipmentLayerNames.indexOf(handConfig.after)) return null;
-  const crop = handConfig?.frames?.[frameId]?.crop || (bareLeatherSword ? HERO_V5_LEATHER_BARE_HAND_CROPS[frameId] : null);
+  // Base includes clothing: use its hand-only bounds, never the full-width glove crop.
+  const crop = bareLeatherSword
+    ? HERO_V5_LEATHER_BARE_HAND_CROPS[frameId]
+    : handConfig?.frames?.[frameId]?.crop;
   if (!Array.isArray(crop) || crop.length !== 4 || crop.some(value => !Number.isFinite(Number(value)))) return null;
   const normalizedCrop = crop.map(Number);
   if (normalizedCrop[2] <= 0 || normalizedCrop[3] <= 0) return null;

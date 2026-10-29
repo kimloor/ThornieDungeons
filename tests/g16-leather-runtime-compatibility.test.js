@@ -191,7 +191,7 @@ test("Leather sword uses a scoped Base hand pass when gloves are unequipped", ()
   const context = runtime();
   const result = resolve(context, { equipment: { weapon: "leather" } });
   const expectedCrops = {
-    idle: [[0, 493, 768, 42], [0, 481, 768, 42], [0, 489, 768, 42]],
+    idle: [[244, 493, 48, 42], [244, 481, 48, 42], [244, 489, 48, 42]],
     attack: [[233, 277, 109, 185], [337, 417, 178, 65], [330, 431, 107, 144]]
   };
   for (const state of ["idle", "attack"]) {
@@ -351,4 +351,19 @@ test("snapshot and renderer preserve and apply crop metadata without duplicating
   renderer.setData({ layerFrames: { canvas:{width:768,height:768}, idle:[[{ name:"right_hand_occlusion", url:"arm.png" }]] } });
   renderer.applyVisualFrame("idle", 0);
   assert.deepEqual(cropCalls.at(-1), []);
+});
+
+
+test("bare Leather sword never redraws Base pants over equipped legs in any idle frame", () => {
+  for (const boots of ["leather", "azure", "skeleton", "robot"]) {
+    const settings = config();
+    const result = resolve(runtime(settings), { equipment: { weapon: "leather", boots, chest: "skeleton" } });
+    result.idle.forEach((layers, index) => {
+      assert.ok(layers.some(layer => layer.name === "legs_boots" && layer.path === settings.equipment[boots].frames[`idle_0${index + 1}`].legs_boots));
+      const hand = layers.find(layer => layer.name === "right_hand_occlusion");
+      // x >= 296 contains the Base trouser silhouette in the old full-width band.
+      assert.ok(hand.crop[0] + hand.crop[2] <= 292, `pants must remain untouched: ${boots}/idle_${index + 1}`);
+      assert.equal(hand.crop[1], [493, 481, 489][index]);
+    });
+  }
 });
