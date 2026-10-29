@@ -6859,7 +6859,7 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
   const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
   const itemType = inventoryItemType(currentDetail);
-  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer md-inv2-detail-layer" }, /*#__PURE__*/React.createElement("div", {
+  return ReactDOM.createPortal(/*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer md-inv2-detail-layer", role:"presentation" }, /*#__PURE__*/React.createElement("div", {
     className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art`,
     style: inventoryRarityKey(currentDetail) === "mythic" ? inventoryUiStyle("mythicFrame") || inventoryUiStyle("popupFrame") : inventoryUiStyle("popupFrame")
   },
@@ -6889,7 +6889,7 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
         ? salvagePreview.materials.map(material => /*#__PURE__*/React.createElement("span", { key:material.junkId }, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:material.junkId }, fallback:JUNK_INFO[material.junkId]?.icon || "📦", className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO[material.junkId]?.name || material.junkId }), JUNK_INFO[material.junkId]?.name || material.junkId, " ×", material.quantity))
         : /*#__PURE__*/React.createElement("span", null, "ไม่มีวัสดุคืน")),
     message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
-    /*#__PURE__*/React.createElement(ItemActions, { detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose })));
+    /*#__PURE__*/React.createElement(ItemActions, { detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }))), document.body);
 }
 
 function InventoryOverlayV2({

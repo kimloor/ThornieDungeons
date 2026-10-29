@@ -65,7 +65,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.29";
+  content: "Ver 1.1.30";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3158,6 +3158,24 @@ body::after {
 }
 .md-shop-refresh-btn:disabled { opacity:.55; color:var(--ink-soft); border-color:rgba(255,209,102,.24); background:rgba(255,255,255,.035); }
 
+/* v1.1.30: Portaled Compare is independent of the clipped Inventory shell. */
+body > .md-inv2-detail-layer {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  z-index:210;
+  overflow:hidden;
+  touch-action:pan-y;
+}
+body > .md-inv2-detail-layer .md-inv2-detail {
+  width:min(100%,420px);
+  min-height:0;
+  max-height:calc(100dvh - 28px - var(--safe-top) - var(--safe-bottom));
+  overflow-y:auto;
+  touch-action:pan-y;
+  -webkit-overflow-scrolling:touch;
+}
 /* v1.1.29: Compare uses the popup's own bounded scroll area; never clip action buttons. */
 .md-inv2-detail-layer .md-inv2-detail {
   max-height:min(92dvh,760px,calc(100dvh - 28px - var(--safe-top) - var(--safe-bottom)));
