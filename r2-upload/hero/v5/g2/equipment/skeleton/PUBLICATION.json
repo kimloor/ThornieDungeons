@@ -8,5 +8,12 @@
     "scope": "helmet, torso_armor, arm_rear, legs_boots only",
     "evidence": "docs/skeleton-visual-audit/approved-idle-01/",
     "otherFrames": "unchanged"
+  },
+  "idle02Idle03Revision": {
+    "approval": "Owner approved 2026-10-29",
+    "scope": "8 PNG: helmet, torso_armor, arm_rear, legs_boots in idle_02 and idle_03",
+    "evidence": "docs/skeleton-visual-audit/idle-02-03-review/",
+    "otherFrames": "unchanged",
+    "runtimeIntegrated": true
   }
 }

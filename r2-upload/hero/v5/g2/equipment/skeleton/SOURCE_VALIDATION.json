@@ -16,17 +16,17 @@
     "hero/v5/g2/equipment/skeleton/idle_01/sword.png": "29058320bfc41f4bfe166d073eba59bac482ddc0b43032a5b6f3f3b5c782a3d9",
     "hero/v5/g2/equipment/skeleton/idle_01/arm_front.png": "622997feb85a3bdc635b56c5c0a22d85c197efbce92492d13158c4b4ae45581c",
     "hero/v5/g2/equipment/skeleton/idle_02/coverage_underlay.png": "9d53a2b4fbc76e33267e142bebdaa47b4fa05e7b1c113de7ff073311e98ceeb5",
-    "hero/v5/g2/equipment/skeleton/idle_02/torso_armor.png": "a803273964cb5f60b9d9d437fb39ccf50a8562f39f01878e7e0911c8e1b34a8a",
-    "hero/v5/g2/equipment/skeleton/idle_02/legs_boots.png": "565a0d7193fa3e7f8cb2b1f965892b5d9979aa26c3c462949bc297736c01223c",
-    "hero/v5/g2/equipment/skeleton/idle_02/arm_rear.png": "2ea69bec9ffab63e7640657b3978f9ed7a143795996962c1a6eed19c81ffbab5",
-    "hero/v5/g2/equipment/skeleton/idle_02/helmet.png": "1fc4fd887fab4b5d3cbdad1dfa4d8f964172b6387bf2569d3c967a743e08de96",
+    "hero/v5/g2/equipment/skeleton/idle_02/torso_armor.png": "7a49eda8b1f32fb5b45b28524eebe6a27c6c3b625a9b3c2dadd24a791227f387",
+    "hero/v5/g2/equipment/skeleton/idle_02/legs_boots.png": "34bacfb92a9c1b422d463e02ad3eda080e39bee772351cd938f9a7c4eb9f3f29",
+    "hero/v5/g2/equipment/skeleton/idle_02/arm_rear.png": "d7e3c786811e031f44602dce14dbbdf1b4d857286b1ffa55d5e71b6df8b2f821",
+    "hero/v5/g2/equipment/skeleton/idle_02/helmet.png": "81c90c66f26470e83d3b44987cf270b20c1acc93de1762e310bbbd9f390298fe",
     "hero/v5/g2/equipment/skeleton/idle_02/sword.png": "58e9cb15e3238de4d8170038b3b984ce93a4b8ced0a9f5c09bbbf7dbdcb28dad",
     "hero/v5/g2/equipment/skeleton/idle_02/arm_front.png": "9e5a859e921b2a5eaa94b4226fab5497672f8a749d39e1c5b16de0e1b1370377",
     "hero/v5/g2/equipment/skeleton/idle_03/coverage_underlay.png": "abc6cd854798d862c99f5563799e8db6db36b420b228aeee1905c25b307a5bf6",
-    "hero/v5/g2/equipment/skeleton/idle_03/torso_armor.png": "b4a7d3ae04977b03255980c0956d585d6655609bd62b6647d3f0486aa415a80d",
-    "hero/v5/g2/equipment/skeleton/idle_03/legs_boots.png": "11a5e188170e3b19f8dc65fe95b40170f3ceed895a8a1945a101e8b7099f4b85",
-    "hero/v5/g2/equipment/skeleton/idle_03/arm_rear.png": "893dba82d91a03005e322eb4c854e666c6883cf26d8a11db906bbcf9a1abb35a",
-    "hero/v5/g2/equipment/skeleton/idle_03/helmet.png": "3e8dc0776f2c041ac13e19f61db5e018b4ef18a7e984bc932d26b844d2bdf91d",
+    "hero/v5/g2/equipment/skeleton/idle_03/torso_armor.png": "5e4ba15dd2977623277a74a9e06dd67d3eca76fce789f0dd31de753e0bb0f7c3",
+    "hero/v5/g2/equipment/skeleton/idle_03/legs_boots.png": "3f1f3144f9d2db9a85770d4224562b67171ed7043a4a77dc317f170bd43eaa3c",
+    "hero/v5/g2/equipment/skeleton/idle_03/arm_rear.png": "478a61d038dd7892f36eab15012e03f111013d4152c65078a30fd4834979bf55",
+    "hero/v5/g2/equipment/skeleton/idle_03/helmet.png": "de61f7e114d241c0fd42a812ed31e8cc14f19a5a2271aee493bc7f0243742c98",
     "hero/v5/g2/equipment/skeleton/idle_03/sword.png": "616f951df0fd12b5cb69fdcf8393385445b9a180c240a6fc536c34cc6f2d7fc4",
     "hero/v5/g2/equipment/skeleton/idle_03/arm_front.png": "fa482efd93f83efca27bd569ee90755aefcc5f56d7da534cab87a64936885165",
     "hero/v5/g2/equipment/skeleton/attack_01/coverage_underlay.png": "bd82515e24a03740eacc2d8fcf847aef0db2add1f9d5fbfd3aa9a1f0c604754b",
@@ -77,5 +77,20 @@
     ],
     "approval": "Owner approved revision07 and authorized in-place upload",
     "otherFrames": "unchanged"
+  },
+  "idle02Idle03Revision": {
+    "approval": "Owner approved 2026-10-29",
+    "source": "docs/skeleton-visual-audit/idle-02-03-review/",
+    "frames": [
+      "idle_02",
+      "idle_03"
+    ],
+    "layers": [
+      "helmet",
+      "torso_armor",
+      "arm_rear",
+      "legs_boots"
+    ],
+    "assets": 8
   }
 }
