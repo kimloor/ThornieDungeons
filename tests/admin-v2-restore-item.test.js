@@ -52,6 +52,8 @@ function createDb({ enabled = true } = {}) {
   const ins = db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, equipped, name, rarity, enhance_level, item_level, atk, def, extra_json, inventory_slot, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
   ins.run("gear1", "P1", "c1", "weapon", 0, "Sword", "mythic", 7, 40, 120, 3, '{"empowerSlots":[null,"fire"],"setId":"azure","overflow":false}', "s4", "2026-10-01T00:00:00Z", "2026-10-01T00:00:00Z");
   ins.run("junk1", "P1", "c1", "junk", 0, "Scrap", "common", 0, 0, 0, 0, '{"junkId":"scrap","quantity":7,"overflow":false}', "", "2026-10-01T00:00:00Z", "2026-10-01T00:00:00Z");
+  db.raw.prepare("INSERT INTO item_provenance (item_id, original_player_id, original_character_id, origin_type, created_at, acquired_at) VALUES ('gear1','P1','c1','drop','t','t')").run();
+  db.raw.prepare("INSERT INTO item_ownership_events (event_id,item_id,to_player_id,to_character_id,event_type,occurred_at) VALUES ('acquire-gear1','gear1','P1','c1','acquire','t')").run();
   if (enabled) db.raw.prepare("INSERT INTO game_config VALUES ('admin_item_delete_enabled','true','t')").run();
   return db;
 }
@@ -238,4 +240,172 @@ test("source: restore is routed through Admin auth, restore audit ids derive fro
   const ui = fs.readFileSync(path.join(__dirname, "../admin-app.js"), "utf8");
   assert.equal((ui.match(/action: "adminRestoreItem"/g) || []).length, 1);
   assert.doesNotMatch(ui, /\.innerHTML/);
+});
+
+
+// ---- W2-F/W2-G hardening (Project Lead review of main ca84ae56, findings B1 / B2 / C) ----
+const IDENT = (db, id) => db.raw.prepare("SELECT * FROM items WHERE item_id=?").get(id);
+const settle = (db, sql) => db.raw.exec(sql);
+
+test("B1: same id but a DIFFERENT stack (other junkId) is never merged into: safe insert under a new id", async () => {
+  const db = createDb();
+  const auditId = await del(db, "junk1", 3);
+  db.raw.prepare("UPDATE items SET name='Other', extra_json='{\"junkId\":\"cloth\",\"quantity\":4,\"overflow\":false}' WHERE item_id='junk1'").run();
+  const r = await restore(db, auditId, { confirmText: "junk1" });
+  assert.equal(r.ok, true); assert.equal(r.mode, "insert"); assert.equal(r.idChanged, true);
+  assert.equal(JSON.parse(IDENT(db, "junk1").extra_json).quantity, 4);
+  assert.equal(JSON.parse(IDENT(db, "junk1").extra_json).junkId, "cloth");
+  const restored = IDENT(db, r.itemId);
+  assert.equal(JSON.parse(restored.extra_json).junkId, "scrap"); assert.equal(JSON.parse(restored.extra_json).quantity, 3); assert.equal(restored.name, "Scrap");
+});
+
+test("B1: identity fields must match to merge (slot_type, template, rarity, name, levels, bound, stats, extra other than quantity/overflow)", async () => {
+  for (const change of ["slot_type='potion'", "item_template_id='tpl-x'", "rarity='rare'", "name='Renamed'", "item_level=9", "enhance_level=2", "bound=1", "atk=5", "extra_json='{\"junkId\":\"scrap\",\"quantity\":4,\"overflow\":false,\"tag\":\"x\"}'"]) {
+    const db = createDb();
+    const auditId = await del(db, "junk1", 3);
+    db.raw.prepare(`UPDATE items SET ${change} WHERE item_id='junk1'`).run();
+    const r = await restore(db, auditId, { confirmText: "junk1" });
+    assert.equal(r.ok, true, change); assert.equal(r.mode, "insert", change); assert.equal(r.idChanged, true, change);
+    assert.equal(count(db, "items", "item_id LIKE 'adm-res-%'"), 1, change);
+  }
+});
+
+test("B1: quantity/overflow differences alone do not block a merge (same item, different amount)", async () => {
+  const db = createDb();
+  const auditId = await del(db, "junk1", 3);
+  db.raw.prepare("UPDATE items SET extra_json='{\"junkId\":\"scrap\",\"quantity\":10,\"overflow\":true}' WHERE item_id='junk1'").run();
+  const r = await restore(db, auditId, { confirmText: "junk1" });
+  assert.equal(r.mode, "merge"); assert.equal(JSON.parse(IDENT(db, "junk1").extra_json).quantity, 13);
+});
+
+test("B1: merge is also refused when the id now belongs to another player or character (collision), data goes to a new id", async () => {
+  const db = createDb();
+  const auditId = await del(db, "junk1"); // whole stack gone, so the id is free to be reused by someone else
+  db.raw.prepare("INSERT INTO players (id) VALUES ('P9')").run();
+  db.raw.prepare("INSERT INTO characters VALUES ('c9','P9')").run();
+  db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, created_at, updated_at, extra_json) VALUES ('junk1','P9','c9','junk','t','t','{\"junkId\":\"scrap\",\"quantity\":1}')").run();
+  const r = await restore(db, auditId, { confirmText: "junk1" });
+  assert.equal(r.mode, "insert"); assert.equal(r.idChanged, true);
+  assert.equal(IDENT(db, r.itemId).player_id, "P1");
+  assert.equal(JSON.parse(IDENT(db, "junk1").extra_json).quantity, 1);
+});
+
+test("B1: merge guard also holds at the mutation: the stack changes identity between planning and batch -> 409, nothing added", async () => {
+  const db = createDb();
+  const auditId = await del(db, "junk1", 3);
+  const realBatch = db.batch.bind(db);
+  db.batch = async (list) => { db.raw.prepare("UPDATE items SET extra_json='{\"junkId\":\"cloth\",\"quantity\":4}', updated_at='2026-10-30T00:00:00Z' WHERE item_id='junk1'").run(); return realBatch(list); };
+  const r = await restore(db, auditId, { confirmText: "junk1" });
+  assert.equal(r.status, 409); assert.equal(r.error, "item_state_changed");
+  assert.equal(JSON.parse(IDENT(db, "junk1").extra_json).quantity, 4);
+  assert.equal(count(db, "admin_audit_log", "event_type='ADMIN_ITEM_RESTORE'"), 0);
+});
+
+test("C: snapshot integrity is checked before restore (fail closed, no guessing)", async () => {
+  const db = createDb();
+  const good = JSON.parse(db.raw.prepare("SELECT 1").get() ? "{}" : "{}");
+  const mk = (id, mutate) => {
+    const row = { item_id: "gx", player_id: "P1", character_id: "c1", slot_type: "weapon", equipped: 0, inventory_slot: "", item_template_id: "t", rarity: "rare", name: "N", item_level: 1, enhance_level: 0, bound: 0, quantity: 1, atk: 1, def: 0, hp: 0, mp: 0, extra_json: {}, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z" };
+    const before = { playerId: "P1", characterId: "c1", itemId: "gx", quantityRequested: 1, item: row };
+    mutate(before);
+    db.raw.prepare("INSERT INTO admin_audit_log VALUES (?,?,?,?,?,?,?)").run(id, "Admin_1", "ADMIN_ITEM_DELETE", "item", "gx", JSON.stringify({ outcome: "ok", before, after: null, changedKeys: ["deleted"], reason: "x" }), "t");
+  };
+  mk("adm-del-ok0000001", () => {});
+  mk("adm-del-nocol00001", (b) => { delete b.item.created_at; });
+  mk("adm-del-owner00001", (b) => { b.item.player_id = "P2"; });
+  mk("adm-del-char000001", (b) => { b.item.character_id = "cX"; });
+  mk("adm-del-qty0000001", (b) => { b.quantityRequested = 2; });
+  mk("adm-del-badtype001", (b) => { b.item.atk = "many"; });
+  mk("adm-del-extrabad01", (b) => { b.item.extra_json = 5; });
+  assert.equal((await restore(db, "adm-del-ok0000001", { confirmText: "gx" })).ok, true);
+  for (const id of ["adm-del-nocol00001", "adm-del-owner00001", "adm-del-char000001", "adm-del-qty0000001", "adm-del-badtype001", "adm-del-extrabad01"]) {
+    const r = await restore(db, id, { confirmText: "gx" });
+    assert.equal(r.status, 409, id); assert.equal(r.error, "audit_not_restorable", id);
+  }
+  assert.equal(count(db, "admin_audit_log", "event_type='ADMIN_ITEM_RESTORE'"), 1);
+  assert.ok(good);
+});
+
+test("C: delete writes a snapshot that covers every items column, ownership and provenance (round trip uses only the snapshot)", async () => {
+  const db = createDb();
+  const auditId = await del(db, "gear1");
+  const meta = JSON.parse(db.raw.prepare("SELECT metadata_json FROM admin_audit_log WHERE audit_id=?").get(auditId).metadata_json);
+  const cols = db.raw.prepare("SELECT name FROM pragma_table_info('items')").all().map((c) => c.name);
+  for (const c of cols) assert.ok(c in meta.before.item, `snapshot is missing items.${c}`);
+  assert.equal(meta.before.playerId, "P1"); assert.equal(meta.before.characterId, "c1"); assert.equal(meta.before.quantityRequested, 1);
+  assert.equal(meta.before.provenance.origin_type, "drop");
+});
+
+test("B2: a pending operation blocks restore (preflight and at the mutation)", async () => {
+  let db = createDb();
+  let auditId = await del(db, "gear1");
+  db.raw.prepare("INSERT INTO character_operation_receipts VALUES ('c1','sell','r1','tok1','{}','pending','t')").run();
+  let r = await restore(db, auditId);
+  assert.equal(r.status, 409); assert.equal(r.error, "operation_pending");
+  assert.equal(IDENT(db, "gear1"), undefined);
+  assert.equal((await j(await h.handleAdminPreviewItemRestore(db, ADMIN, q({ auditId })))).error, "operation_pending");
+
+  db = createDb();
+  auditId = await del(db, "gear1");
+  const realBatch = db.batch.bind(db);
+  db.batch = async (list) => { db.raw.prepare("INSERT INTO character_operation_receipts VALUES ('c1','sell','r2','tok2','{}','pending','t')").run(); return realBatch(list); };
+  r = await restore(db, auditId);
+  assert.equal(r.status, 409); assert.equal(r.error, "operation_pending");
+  assert.equal(IDENT(db, "gear1"), undefined);
+  assert.equal(count(db, "admin_audit_log", "event_type='ADMIN_ITEM_RESTORE'"), 0);
+  assert.equal(count(db, "item_ownership_events", "event_type='admin_restored'"), 0);
+});
+
+test("B2: capacity is guarded at the mutation: the last carried slot is taken after planning -> 409, no 31st carried item", async () => {
+  const db = createDb();
+  const auditId = await del(db, "gear1");
+  fill(db, 28); // + junk1 = 29 carried at planning time
+  const realBatch = db.batch.bind(db);
+  let once = false;
+  db.batch = async (list) => { if (!once) { once = true; fill2(db); } return realBatch(list); };
+  const fill2 = (d) => d.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, created_at, updated_at, extra_json) VALUES ('late1','P1','c1','weapon','t','t','{\"overflow\":false}')").run();
+  const r = await restore(db, auditId);
+  assert.equal(r.status, 409); assert.equal(r.error, "item_state_changed");
+  assert.equal(IDENT(db, "gear1"), undefined);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) c FROM items WHERE character_id='c1' AND equipped=0 AND COALESCE(json_extract(extra_json,'$.overflow'),0) NOT IN (1,'1','true')").get().c, 30);
+  // retry plans overflow and succeeds
+  const again = await restore(db, auditId);
+  assert.equal(again.ok, true); assert.equal(again.overflow, true);
+});
+
+test("B2: overflow restore never needs a free carried slot and is unaffected by later capacity changes", async () => {
+  const db = createDb();
+  const auditId = await del(db, "gear1");
+  fill(db, 30);
+  const realBatch = db.batch.bind(db);
+  db.batch = async (list) => { db.raw.exec("DELETE FROM items WHERE item_id LIKE 'pad%'"); return realBatch(list); };
+  const r = await restore(db, auditId);
+  assert.equal(r.ok, true); assert.equal(r.overflow, true);
+  assert.equal(JSON.parse(IDENT(db, "gear1").extra_json).overflow, true);
+});
+
+test("B2: concurrent restore of the same delete: exactly one wins, the other is already_applied, no duplicate item or quantity", async () => {
+  for (const [itemId, qty, itemCount, quantityAfter] of [["gear1", undefined, 1, null], ["junk1", 3, 1, 7]]) {
+    const db = createDb();
+    const auditId = await del(db, itemId, qty);
+    const realBatch = db.batch.bind(db);
+    let first = true;
+    db.batch = async (list) => { if (first) { first = false; await realBatch(list); } return realBatch(list); }; // winner lands, loser re-runs the same statements
+    const r = await restore(db, auditId, { confirmText: itemId });
+    assert.equal(r.ok, true, itemId); assert.equal(r.already_applied, true, itemId);
+    assert.equal(count(db, "items", `item_id = '${itemId}'`), itemCount);
+    if (quantityAfter) assert.equal(JSON.parse(IDENT(db, itemId).extra_json).quantity, quantityAfter);
+    assert.equal(count(db, "admin_audit_log", "event_type='ADMIN_ITEM_RESTORE'"), 1);
+    assert.equal(count(db, "item_ownership_events", "event_type='admin_restored'"), 1);
+  }
+});
+
+test("B2: restore does not duplicate an item when the original is already back (e.g. restored by hand): safe new id, single audit", async () => {
+  const db = createDb();
+  const auditId = await del(db, "gear1");
+  db.raw.prepare("INSERT INTO items (item_id, player_id, character_id, slot_type, name, created_at, updated_at) VALUES ('gear1','P1','c1','weapon','Manual','t','t')").run();
+  const r = await restore(db, auditId);
+  assert.equal(r.ok, true); assert.equal(r.idChanged, true);
+  assert.equal(IDENT(db, "gear1").name, "Manual");
+  assert.equal(count(db, "items", "item_id LIKE 'adm-res-%'"), 1);
 });
