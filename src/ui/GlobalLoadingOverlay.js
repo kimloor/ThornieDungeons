@@ -3,7 +3,7 @@
 // changing the manager contract. No baked text, no mode-specific words.
 const GLOBAL_LOADING_STYLE = `
 .gl-overlay {
-  position: fixed; inset: 0; z-index: 2100;
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2100;
   display: block; overflow: hidden;
   padding: var(--safe-top-eff) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: #08050f;
