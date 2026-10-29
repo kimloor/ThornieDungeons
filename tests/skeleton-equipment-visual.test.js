@@ -111,3 +111,25 @@ test("Inventory preview preserves revised Skeleton idle URLs through the asset r
     assert.equal(config.frames[frameId][layer].includes("?v=skeleton_idle_r07_20261029"), revised);
   }
 });
+
+test("mixed Inventory pants use revised Leather/Azure URLs and retain the hand-only crop", () => {
+  const { context } = runtimeContext();
+  for (const file of ["src/assets/loader.js", "src/phaser/assets/AssetResolver.js", "src/phaser/presentation/EventBridge.js", "src/phaser/assets/TextureRegistry.js"]) {
+    vm.runInContext(fs.readFileSync(path.join(ROOT, file), "utf8"), context);
+  }
+  for (const boots of [{gearTier:1}, {setId:"azure"}]) {
+    context.boots = boots;
+    const snapshot = vm.runInContext('buildHeroPreviewSnapshot({equipped:{chest:{setId:"skeleton"},boots,weapon:{gearTier:1}}})', context);
+    snapshot.hero.layerFrames.idle.forEach(layers => {
+      const legs = layers.find(layer => layer.name === "legs_boots");
+      assert.ok(legs.url.endsWith("?v=idle_equipment_20261029_r2"));
+      const hand = layers.find(layer => layer.name === "right_hand_occlusion");
+      assert.deepEqual(Array.from(hand.crop).filter((_,i)=>i===0||i===2), [244,48]);
+      const keys = vm.runInContext(`[
+        phaserTextureKeyForUrl(${JSON.stringify(legs.url.split("?")[0])}),
+        phaserTextureKeyForUrl(${JSON.stringify(legs.url)})
+      ]`, context);
+      assert.notEqual(keys[0], keys[1]);
+    });
+  }
+});

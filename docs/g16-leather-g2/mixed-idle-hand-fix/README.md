@@ -18,3 +18,13 @@ in all three idle frames. Build and diff whitespace checks passed.
 
 Release: frontend 1.1.32; Owner device visual acceptance pending. Reload the game
 before checking mixed equipment with a Leather sword and unsupported/empty gloves.
+
+## 1.1.33 cache follow-up
+Owner still observed the issue on 1.1.32. A new frontend version does not expire
+previous image responses: Leather idle URLs had no revision. Revision
+idle_equipment_20261029_r2 is now attached to 21 Leather idle references and the
+three Azure idle legs_boots references. No artwork changed. This forces browser
+and Phaser texture keys to change while retaining the 1.1.32 hand-only crop.
+The cache hypothesis requires Owner device confirmation; it is not proven solely
+by the version badge. Runtime snapshot regression verifies revised pants URLs
+and hand-only crop together for both Leather and Azure mixed equipment.
