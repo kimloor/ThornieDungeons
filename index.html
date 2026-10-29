@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.29" />
+<meta name="application-version" content="1.1.30" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.28";
+  content: "Ver 1.1.30";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3296,6 +3296,24 @@ body::after {
 }
 .md-shop-refresh-btn:disabled { opacity:.55; color:var(--ink-soft); border-color:rgba(255,209,102,.24); background:rgba(255,255,255,.035); }
 
+/* v1.1.30: Portaled Compare is independent of the clipped Inventory shell. */
+body > .md-inv2-detail-layer {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  z-index:210;
+  overflow:hidden;
+  touch-action:pan-y;
+}
+body > .md-inv2-detail-layer .md-inv2-detail {
+  width:min(100%,420px);
+  min-height:0;
+  max-height:calc(100dvh - 28px - var(--safe-top) - var(--safe-bottom));
+  overflow-y:auto;
+  touch-action:pan-y;
+  -webkit-overflow-scrolling:touch;
+}
 /* v1.1.29: Compare uses the popup's own bounded scroll area; never clip action buttons. */
 .md-inv2-detail-layer .md-inv2-detail {
   max-height:min(92dvh,760px,calc(100dvh - 28px - var(--safe-top) - var(--safe-bottom)));
@@ -8261,13 +8279,13 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.29", date: "2026-10-29", title: "แก้ไขการเลื่อนเปรียบเทียบไอเทมและหัวข้อหน้า",
+      version: "1.1.30", date: "2026-10-29", title: "ปรับปรุงการเลื่อนหน้าเปรียบเทียบไอเทมบนมือถือ",
       items: [
-        "แก้หน้าเปรียบเทียบไอเทมให้เลื่อนถึงปุ่มด้านล่างได้บนมือถือและเดสก์ท็อป",
-        "จัดหัวข้อด้านบนให้อยู่กึ่งกลางระหว่างปุ่มย้อนกลับและปุ่มปิด"
+        "แก้หน้าต่างเปรียบเทียบไอเทมให้เลื่อนได้บนมือถือ และเข้าถึงปุ่มดำเนินการด้านล่าง"
       ]
     },
     history: [
+      { version: "1.1.29", date: "2026-10-29", title: "ปรับหัวข้อและการเลื่อนหน้าไอเทม", items: ["จัดหัวข้อหน้าให้อยู่กึ่งกลาง และปรับการเลื่อนในหน้ารายละเอียดไอเทม"] },
       {
         version: "1.1.28", date: "2026-10-29", title: "ปรับปรุงร้านค้าและการนำทาง",
         items: [
@@ -26803,7 +26821,7 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
   const iconButtonStyle = key => inventoryUiStyle(`icons.${key}`);
   const iconButtonFallback = (key, fallback) => inventoryUiUrl(`icons.${key}`) ? null : fallback;
   const itemType = inventoryItemType(currentDetail);
-  return /*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer md-inv2-detail-layer" }, /*#__PURE__*/React.createElement("div", {
+  return ReactDOM.createPortal(/*#__PURE__*/React.createElement("div", { className: "md-inv2-modal-layer md-inv2-detail-layer", role:"presentation" }, /*#__PURE__*/React.createElement("div", {
     className: `md-inv2-popup md-inv2-detail ${inventoryRarityKey(currentDetail)} md-inventory-art`,
     style: inventoryRarityKey(currentDetail) === "mythic" ? inventoryUiStyle("mythicFrame") || inventoryUiStyle("popupFrame") : inventoryUiStyle("popupFrame")
   },
@@ -26833,7 +26851,7 @@ function ItemDetailModal({ detail, currentDetail, currentEquipped, compareRows, 
         ? salvagePreview.materials.map(material => /*#__PURE__*/React.createElement("span", { key:material.junkId }, /*#__PURE__*/React.createElement(GameIcon, { item:{ type:"junk", junkId:material.junkId }, fallback:JUNK_INFO[material.junkId]?.icon || "📦", className:"md-game-icon md-inline-item-icon", alt:JUNK_INFO[material.junkId]?.name || material.junkId }), JUNK_INFO[material.junkId]?.name || material.junkId, " ×", material.quantity))
         : /*#__PURE__*/React.createElement("span", null, "ไม่มีวัสดุคืน")),
     message && /*#__PURE__*/React.createElement("p", { className:"md-inv2-message" }, message),
-    /*#__PURE__*/React.createElement(ItemActions, { detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose })));
+    /*#__PURE__*/React.createElement(ItemActions, { detail, currentDetail, busy, onEquip, onUnequip, onSell, onSalvage, onClose }))), document.body);
 }
 
 function InventoryOverlayV2({
