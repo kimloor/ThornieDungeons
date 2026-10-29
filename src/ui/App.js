@@ -2534,7 +2534,7 @@ function ThornieDungeons() {
     const send = force ? cloudRefreshCharacterShopStock : cloudGetCharacterShopStock;
     // The manager owns the full-screen overlay here (one token per intent, not per retry).
     const result = await OPERATIONS.run({
-      key: "shop.refresh", group: "shop", characterId, ui: "overlay", label: "กำลังรีเฟรชร้านค้า…",
+      key: "shop.refresh", group: "shop", characterId, ui: "inline", label: "กำลังรีเฟรชร้านค้า…",
       action: force ? "refreshCharacterShopStock" : "getCharacterShopStock", conflict: "reject"
     }, requestId => send(cred.url, characterId, requestId));
     if (result?.ok) { applyShopStockResult(result); return { ok: true }; }
@@ -3088,9 +3088,9 @@ function ThornieDungeons() {
       setUtilityReturnPhase("guild");
       setPhase("chat");
     },
-    // Guild is a top-level utility destination. Always return to the explicit Main Hub
-    // route so a stale utilityReturnPhase cannot leave the page mounted in place.
-    onBack: () => setPhase("menu")
+    // Back returns to the screen that opened Guild; close always returns to Town.
+    onBack: () => setPhase(utilityReturnPhase === "guild" ? "town" : utilityReturnPhase),
+    onClose: () => setPhase("town")
   }), phase === "gacha" && /*#__PURE__*/React.createElement(GachaScreen, {
     save: save,
     gachaResult: gachaResult,
