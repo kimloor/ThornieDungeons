@@ -1,0 +1,172 @@
+{
+  "baseline": "ab3a887ee2036ab37c6f5244c8658058e5291be0",
+  "source": "Owner-approved Idle01 revision07, source SHA locked",
+  "candidate_count": 8,
+  "inventory": [
+    {
+      "frame": "idle_02",
+      "layer": "helmet",
+      "candidate": "docs/skeleton-visual-audit/idle-02-03-review/candidates/idle_02/helmet.png",
+      "future_replacement_path": "r2-upload/hero/v5/g2/equipment/skeleton/idle_02/helmet.png",
+      "source_idle01_sha256": "33084455216da0ef68ef00218d9ea67c4cf23d27e94e2cbca4eb6f9096e00d84",
+      "original_sha256": "1fc4fd887fab4b5d3cbdad1dfa4d8f964172b6387bf2569d3c967a743e08de96",
+      "candidate_sha256": "81c90c66f26470e83d3b44987cf270b20c1acc93de1762e310bbbd9f390298fe",
+      "delta": [
+        0,
+        -12
+      ],
+      "rgba_exact_inverse_shift": true,
+      "alpha_pixels_preserved": true,
+      "dimensions": [
+        768,
+        768
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "torso_armor",
+      "candidate": "docs/skeleton-visual-audit/idle-02-03-review/candidates/idle_02/torso_armor.png",
+      "future_replacement_path": "r2-upload/hero/v5/g2/equipment/skeleton/idle_02/torso_armor.png",
+      "source_idle01_sha256": "f94698824bc0fd916cff8bc2a997742c9b0ebc91c7c4b4a761aa5da26c595214",
+      "original_sha256": "a803273964cb5f60b9d9d437fb39ccf50a8562f39f01878e7e0911c8e1b34a8a",
+      "candidate_sha256": "7a49eda8b1f32fb5b45b28524eebe6a27c6c3b625a9b3c2dadd24a791227f387",
+      "delta": [
+        0,
+        -12
+      ],
+      "rgba_exact_inverse_shift": true,
+      "alpha_pixels_preserved": true,
+      "dimensions": [
+        768,
+        768
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "arm_rear",
+      "candidate": "docs/skeleton-visual-audit/idle-02-03-review/candidates/idle_02/arm_rear.png",
+      "future_replacement_path": "r2-upload/hero/v5/g2/equipment/skeleton/idle_02/arm_rear.png",
+      "source_idle01_sha256": "38bd00f95249e1718d4cd4e1836928a3a6f272e993f9415140ff4b1dad49b6fc",
+      "original_sha256": "2ea69bec9ffab63e7640657b3978f9ed7a143795996962c1a6eed19c81ffbab5",
+      "candidate_sha256": "d7e3c786811e031f44602dce14dbbdf1b4d857286b1ffa55d5e71b6df8b2f821",
+      "delta": [
+        0,
+        -12
+      ],
+      "rgba_exact_inverse_shift": true,
+      "alpha_pixels_preserved": true,
+      "dimensions": [
+        768,
+        768
+      ]
+    },
+    {
+      "frame": "idle_02",
+      "layer": "legs_boots",
+      "candidate": "docs/skeleton-visual-audit/idle-02-03-review/candidates/idle_02/legs_boots.png",
+      "future_replacement_path": "r2-upload/hero/v5/g2/equipment/skeleton/idle_02/legs_boots.png",
+      "source_idle01_sha256": "e2a6e8000f54a7a2841e001ddb87f600edc8fa4039605098a0d6ed68bd18de27",
+      "original_sha256": "565a0d7193fa3e7f8cb2b1f965892b5d9979aa26c3c462949bc297736c01223c",
+      "candidate_sha256": "34bacfb92a9c1b422d463e02ad3eda080e39bee772351cd938f9a7c4eb9f3f29",
+      "delta": [
+        0,
+        -12
+      ],
+      "rgba_exact_inverse_shift": true,
+      "alpha_pixels_preserved": true,
+      "dimensions": [
+        768,
+        768
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "helmet",
+      "candidate": "docs/skeleton-visual-audit/idle-02-03-review/candidates/idle_03/helmet.png",
+      "future_replacement_path": "r2-upload/hero/v5/g2/equipment/skeleton/idle_03/helmet.png",
+      "source_idle01_sha256": "33084455216da0ef68ef00218d9ea67c4cf23d27e94e2cbca4eb6f9096e00d84",
+      "original_sha256": "3e8dc0776f2c041ac13e19f61db5e018b4ef18a7e984bc932d26b844d2bdf91d",
+      "candidate_sha256": "de61f7e114d241c0fd42a812ed31e8cc14f19a5a2271aee493bc7f0243742c98",
+      "delta": [
+        0,
+        -4
+      ],
+      "rgba_exact_inverse_shift": true,
+      "alpha_pixels_preserved": true,
+      "dimensions": [
+        768,
+        768
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "torso_armor",
+      "candidate": "docs/skeleton-visual-audit/idle-02-03-review/candidates/idle_03/torso_armor.png",
+      "future_replacement_path": "r2-upload/hero/v5/g2/equipment/skeleton/idle_03/torso_armor.png",
+      "source_idle01_sha256": "f94698824bc0fd916cff8bc2a997742c9b0ebc91c7c4b4a761aa5da26c595214",
+      "original_sha256": "b4a7d3ae04977b03255980c0956d585d6655609bd62b6647d3f0486aa415a80d",
+      "candidate_sha256": "5e4ba15dd2977623277a74a9e06dd67d3eca76fce789f0dd31de753e0bb0f7c3",
+      "delta": [
+        0,
+        -4
+      ],
+      "rgba_exact_inverse_shift": true,
+      "alpha_pixels_preserved": true,
+      "dimensions": [
+        768,
+        768
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "arm_rear",
+      "candidate": "docs/skeleton-visual-audit/idle-02-03-review/candidates/idle_03/arm_rear.png",
+      "future_replacement_path": "r2-upload/hero/v5/g2/equipment/skeleton/idle_03/arm_rear.png",
+      "source_idle01_sha256": "38bd00f95249e1718d4cd4e1836928a3a6f272e993f9415140ff4b1dad49b6fc",
+      "original_sha256": "893dba82d91a03005e322eb4c854e666c6883cf26d8a11db906bbcf9a1abb35a",
+      "candidate_sha256": "478a61d038dd7892f36eab15012e03f111013d4152c65078a30fd4834979bf55",
+      "delta": [
+        0,
+        -4
+      ],
+      "rgba_exact_inverse_shift": true,
+      "alpha_pixels_preserved": true,
+      "dimensions": [
+        768,
+        768
+      ]
+    },
+    {
+      "frame": "idle_03",
+      "layer": "legs_boots",
+      "candidate": "docs/skeleton-visual-audit/idle-02-03-review/candidates/idle_03/legs_boots.png",
+      "future_replacement_path": "r2-upload/hero/v5/g2/equipment/skeleton/idle_03/legs_boots.png",
+      "source_idle01_sha256": "e2a6e8000f54a7a2841e001ddb87f600edc8fa4039605098a0d6ed68bd18de27",
+      "original_sha256": "11a5e188170e3b19f8dc65fe95b40170f3ceed895a8a1945a101e8b7099f4b85",
+      "candidate_sha256": "3f1f3144f9d2db9a85770d4224562b67171ed7043a4a77dc317f170bd43eaa3c",
+      "delta": [
+        0,
+        -4
+      ],
+      "rgba_exact_inverse_shift": true,
+      "alpha_pixels_preserved": true,
+      "dimensions": [
+        768,
+        768
+      ]
+    }
+  ],
+  "existing_motion_checks": {
+    "base/idle_02": true,
+    "base/idle_03": true,
+    "coverage_underlay/idle_02": true,
+    "coverage_underlay/idle_03": true,
+    "arm_front/idle_02": true,
+    "arm_front/idle_03": true,
+    "sword/idle_02": true,
+    "sword/idle_03": true
+  },
+  "assembled_full_rgba_exact_after_bob": true,
+  "owner_visual_approval": "PENDING",
+  "publication": "NOT AUTHORIZED"
+}
