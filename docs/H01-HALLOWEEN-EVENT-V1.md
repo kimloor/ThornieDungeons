@@ -12,24 +12,35 @@ Source: Owner directions and two screenshots supplied on 2026-10-29 (Dungeon Hub
 - Add a Halloween event entrance to the existing Dungeon floor selection map at the **upper-left empty arch** marked in the Owner screenshot (do not reposition existing floors 7–11).
 - Reuse the **same architectural gate design** as the current Dungeon floor doors, not a new gate style: normal blue, boss gold, Halloween event **dark purple**. Match perspective, placement, lighting and mobile legibility.
 - On Dungeon Hub, reuse the current WORLD EVENT / Raid Boss banner component and **rotate Raid Boss ↔ Halloween every 5 seconds**. Preserve the existing Raid Boss destination and UX. The selected banner's action must navigate to the correct event destination. Proposed active-event filtering and timer behavior require contract verification; do not silently hide an existing Raid Boss entry.
-- Halloween encounter: **one fixed boss monster** (not a random monster pool) using the **existing battle system and rules**. No new battle mechanics are authorized.
-- On successful battle reward resolution, **one exclusive outcome**: Halloween event weapon **5%** or existing gold currency **95%**. No second item drop, additional currency or guaranteed weapon. Precise gold amount, item stats and eligibility rules remain unapproved.
+- Halloween encounter: **one fixed boss monster, named `Haloween nightmare` per Owner spelling**, depicted as a grim reaper riding a skeletal horse and wielding a scythe. Use existing battle/status/boss rage systems; exact status availability and attack alternation must be audited before implementation.
+- On successful battle reward resolution, **one exclusive outcome**: Halloween event weapon **5%** or existing gold currency **95%**. No second item drop, additional currency or guaranteed weapon. Gold payout is tied to the applicable existing chapter boss reward for the player's current dungeon progress (examples: at floor 9 use floor-10 boss gold, at floor 11 use floor-20 boss gold). Exact mapping across boundary cases and weapon parameters still require verification/approval.
 - Event is active for **one calendar month starting from actual activation**, not automatically from deployment or document creation. Exact start timestamp, timezone, month arithmetic and expiry behavior must be locked before implementation; do not substitute 30 days without approval.
 - Event weapon remains a normal authoritative inventory item once awarded; permanence after event closure needs explicit Owner confirmation.
 - No changes to unrelated Admin V2 PR #182, production D1, player data, other dungeon bosses or existing G16/Skeleton assets.
+
+
+## 1A. Owner-approved boss combat and reward direction (2026-10-29)
+
+- **Exact working boss name supplied:** `Haloween nightmare` (retain Owner spelling; do not silently rename to “Halloween Nightmare”). Visual: a grim reaper **mounted on a skeletal horse**, holding a **scythe**; detailed concept still requires Owner visual acceptance.
+- **Attack cadence:** alternate a **normal attack** and a **skill-use turn**. On each skill turn, randomly select one of **three status skills** corresponding to existing **Stun**, **Silence** and **Poison** effects. DEV must verify exact existing status IDs, availability of Silence, resistance/immunity rules, duration, targeting, selection probability and turn scheduling; these details are not invented here.
+- **Rage:** when boss HP becomes **strictly below 50%**, transition to the existing boss Rage behavior. Verify edge cases at exactly 50%, one-time activation and save/resume with current battle contract. No separate Rage mechanic or unexplained numeric buff is authorized.
+- **Boss stats:** derive from the existing chapter boss corresponding to the player's **current dungeon progression**, not a newly balanced stat block. Example mapping from Owner: current floor **9** → boss floor **10**; current floor **11** → boss floor **20**. DEV must inspect the source of truth for current floor, chapter boundaries, boss stat scaling and level caps; don't use floor 9 / floor 11 stats directly.
+- **Gold reward if weapon does not drop (95% branch):** equal to the gold reward for the corresponding chapter boss using the same mappings: floor 9 → floor-10 boss gold; floor 11 → floor-20 boss gold. Evaluate the authoritative existing reward amount without assuming a fixed numeric payout. Confirm behavior at exact boss floors, locked floors, repeated attempts and progress changing during a run.
+- **Weapon reward (5% branch):** remains one event weapon only, **identity, slot, rarity, stats and art to be discussed later**. Do not preempt Owner's weapon choice based on the boss's scythe.
+- Reuse existing battle outcomes/statuses/Rage/reward mechanisms. If Silence or required alternating action patterns do not exist in the current engine, stop and report a scoped contract gap rather than silently implementing a new global mechanic.
 
 ## 2. Decision register — pending Owner contract (DO NOT IMPLEMENT/INVENT VALUES)
 
 | ID | Decision | State | Why needed |
 | --- | --- | --- | --- |
-| D01 | Boss identity, look, size/rig, animation frame contract | PENDING | Graphics concept and runtime mapping |
+| D01 | Boss `Haloween nightmare`: grim reaper riding a skeletal horse, wielding a scythe; detailed look, sprite size/rig and animation frame contract pending | DIRECTION APPROVED / ASSETS PENDING | Graphics concept and runtime mapping |
 | D02 | Weapon name, type, visual/slot, tier, rarity, stats/effects, uniqueness/stacking | PENDING | Graphics and economy/inventory authority |
-| D03 | Gold reward amount (fixed vs scaled) and applicability | PENDING | Server reward logic |
+| D03 | Gold equals the player's applicable chapter-boss gold payout (floor 9 → boss floor 10; floor 11 → boss floor 20); verify formula at chapter boundaries, max floor and progress snapshot | RULE APPROVED / EDGE CASE AUDIT PENDING | Server reward logic |
 | D04 | Entry requirements, attempts/stamina, repeat fights, cooldown, level limits | PENDING | Dungeon encounter rules |
 | D05 | Exact activation instant/timezone; one-calendar-month expiry semantics; hide/disable expired gate and pending runs | PENDING | Secure timed event behavior |
 | D06 | Banner rotation on inactive events, timer lifecycle, click targets and destination; do not degrade Raid Boss | PENDING DETAIL | UX integration |
 | D07 | Weapon permanence after expiry, duplicate drops, capacity/overflow/mailbox delivery | PENDING | Player data safety |
-| D08 | Boss difficulty (reuse which existing scaling/HP/attacks) | PENDING | No unapproved balance changes |
+| D08 | Boss stats same as chapter boss at player's current progression tier; alternate normal attacks with random skill turns; skill pool: existing Stun, Silence, Poison; trigger existing Rage on HP below 50% | RULE APPROVED / EXISTING SYSTEM COMPATIBILITY AUDIT PENDING | Confirm exact scaling and whether Silence and attack cadence exist without new mechanics |
 | D09 | Event presentation label/localization and banner art | PENDING DETAIL | Consistent Thai/mobile UI |
 
 Owner may decide these in later discussion. **No placeholder values may be shipped as production economy settings.**
@@ -107,4 +118,4 @@ H01-04 + H01-05 + H01-06 -> H01-07 -> H01-08 -> H01-09 -> H01-10
 - **NOT STARTED:** H01 implementation, asset publication, staging QA, production deployment.
 - **Parallel dependency:** Admin V2 PR #182 remains separate, open and security-blocked; do not merge or activate it because of H01.
 
-**Next conversation:** Owner + PL decide pending Event identity, reward/economy, access and expiry details; then assign H01-02 DEV interface audit before instructing Graphics to produce final assets.
+**Next conversation:** Owner + PL decide event weapon identity/reward contract, entry and expiry details; then assign H01-02 DEV interface audit before instructing Graphics to produce final assets.
