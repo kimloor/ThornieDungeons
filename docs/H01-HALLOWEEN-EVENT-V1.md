@@ -149,3 +149,38 @@ H01-04 + H01-05 + H01-06 -> H01-07 -> H01-08 -> H01-09 -> H01-10
 - **Parallel dependency:** Admin V2 PR #182 remains separate, open and security-blocked; do not merge or activate it because of H01.
 
 **Next conversation:** Owner + PL discuss Excaliburnt remaining balance, gear tier derivation and exact activation calendar/timezone; expiry battle continuation is approved; event test-stage entry is approved and 30%/50% post-QA spawn selection remains deferred; wearable frame production is now mandatory but waits for DEV contract and artwork review; then assign H01-02 DEV interface audit before instructing Graphics to produce final assets.
+
+
+## 8. Owner gameplay/economy decision lock — 2026-10-29 (supersedes older pending entries)
+
+**Status: OWNER APPROVED DESIGN; TECHNICAL COMPATIBILITY / QA NOT YET PASSED.** These 12 decisions override earlier pending/proposal text where conflicting. No artwork, source, runtime, backend, R2 or production work is authorized by this documentation change alone.
+
+| ID | Approved decision | Technical acceptance requirement |
+| --- | --- | --- |
+| O01 | Every skill turn selects **Stun, Silence or Poison** with equal probabilities (1/3 each; 33.33% is rounded). | Preserve seeded/server-authoritative Battle RNG and replay determinism. |
+| O02 | The immediately previous **skill** may not repeat on the next skill turn. | Clarification: equal 1/3 applies to the initial/no-prior selection; later select **uniformly between the two other skills (1/2 each)**. This is the only way to combine the two directives without bias; DEV must flag any incompatible engine contract before coding. Persist last selected skill across checkpoint/resume. |
+| O03 | Skill damage, status proc chance and duration use the **existing game's corresponding status skill values and rules**. | Confirm exact skill IDs/effect parameters, immunity/resistance and no accidental global rule changes. |
+| O04 | Excaliburnt **Base ATK matches an ordinary Mythic Sword of the awarded Tier**. | Identify authoritative formula/data and tier snapshot. No custom bonus. |
+| O05 | Excaliburnt uses **standard Mythic Enchant, Refine and Salvage** policies. | Verify relevant catalog/item validation accepts event Mythic without Boss signature. |
+| O06 | Excaliburnt **may drop repeatedly and is permanently owned** after Event expiry. | Every drop is a separately authorized item, with replay/idempotency and capacity checks. |
+| O07 | Excaliburnt **follows existing Mythic Trade rules**. | Do not invent trade exemptions or new policy. |
+| O08 | Full inventory is handled through the **existing Inventory Overflow** system, not Mailbox. | Verify actual server-safe overflow delivery and recovery. |
+| O09 | Victory grants **XP equivalent to the reference Chapter Boss**, in addition to the mutually exclusive 5% weapon / 95% gold payout. **No Boss Stone, first-clear credit, floor unlock or other extra rewards**. | Check event completion/reward code never grants chapter progression accidentally. |
+| O10 | Event activation uses **Server Config**, lasts **one calendar month** in **Asia/Bangkok** time from activation. | Server-authored start timestamp, calendar-month rollover including month end, precise cutoff and recovery/restart; no hardcoded 30 days. |
+| O11 | **Before activation and after expiry hide both Halloween banner and purple gate**. Raid Boss banner remains operational, and active event test gate stays always accessible. | Client display must reflect authoritative event status; server rejects new entry at expiry while allowing pre-expiry authorized run completion. |
+| O12 | Prefer **existing server-side reward RNG** **only if DEV verifies it is secure and idempotent**. | Demonstrate no client-controlled reward roll, retry/race reroll or duplicate grants. If not sufficient, report a proposed server-secret deterministic approach to PL/Owner; do not silently change RNG architecture. |
+
+### Remaining DEV technical contract gaps before implementation
+
+1. **Action scheduler:** scoped [normal, skill] alternation, three existing status skills, last-skill exclusion, fair conditional selection, deterministic seeded RNG, serialization and resume.
+2. **Battle authority:** event start authorization, authentic progress snapshot (`characters.unlocked_floor` proposed, not yet accepted as source of truth), chapter reference floor/stat/XP/gold derivation, expiry-safe completion after cutoff, exact cutoff boundary.
+3. **Rewards:** existing server RNG security/idempotency and deterministic outcome persistence; Mythic event-item whitelist without Boss Weapon signature, standard Mythic stats/Enchant/Refine/Salvage/Trade, repeat ownership, overflow settlement, 5% weapon vs 95% gold plus reference Boss XP, no Boss Stone/first-clear/unlock.
+4. **Calendar lifecycle:** activation through Server Config, Bangkok-local calendar-month arithmetic including 29th–31st and February, UTC persistence/clock, server-authoritative inactive/active/expired state and UI visibility.
+5. **Assets/runtime:** align the dark-purple gate at the approved world-coordinate upper-left arch; 5-second two-banner rotation with lifecycle cleanup; 7 fixed-boss sprite files and visible missing-texture fallback; Excaliburnt 512×512 icon and 8 weapon-only Hero frames, grip/occlusion/mixed-equipment compatibility.
+6. **Evidence:** scoped automated and real staging D1/Worker handler tests for battle entry, completion, race, replay, overflow, RNG and expiry; Phaser Canvas and mobile layout/asset QA. No implementation or QA PASS is claimed.
+
+### Separate deferred decision
+
+**Post-QA random gate appearance is NOT locked:** Owner will later choose 30% or 50% after successfully clearing a dungeon floor. Do not implement either probability in the initial always-available test phase. Exact activation date/time is likewise **not scheduled**; activation is a future authorized server-config action, not automatic on deployment.
+
+**Next action:** Project Lead issues scoped contract-gap verification to DEV; Graphics pre-production concept work remains subject to PL work sequencing and Owner visual review. Keep H01 separate from Admin V2 PR #182.
