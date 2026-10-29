@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.26" />
+<meta name="application-version" content="1.1.27" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -46,7 +46,6 @@ Run `node build.js` after source changes. index.html is the single generated app
   .md-game-frame { position: relative; width: 100%; max-width: 430px; height: 100%; min-height: 0; display:flex; flex-direction:column; overflow:hidden; }
   @media (min-width:431px) and (max-width:700px) { .md-game-frame { max-width:700px; } }
   @media (min-width:701px) { .md-game-frame { max-width:820px; } }
-
   * { -webkit-tap-highlight-color: transparent; }
   #boot-status { color: #B9AEDD; font-family: -apple-system, sans-serif; font-size: 13px; text-align: center; padding: 40px 20px; width: 100%; }
   .md-enemy-img { object-fit: contain; max-width: none; }
@@ -204,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.26";
+  content: "Ver 1.1.27";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -16410,7 +16409,11 @@ function GlobalLoadingOverlay({ manager }) {
     className: "gl-toast-btn",
     onClick: () => source.dismissStale()
   }, "ปิด"))) : null;
-  if (!snap.visible && !exitMode) return notice;
+  // Keep the blocking gate mounted across the first released-token render.
+  // Effects run after paint; without this handoff the Result page flashes for one frame
+  // before the opening animation's exitMode has been scheduled.
+  const exitHandoffPending = !snap.visible && wasVisibleRef.current && artReady;
+  if (!snap.visible && !exitMode && !exitHandoffPending) return notice;
   const determinate = snap.visible && shown.mode === "determinate";
   return /*#__PURE__*/React.createElement(React.Fragment, null, notice, /*#__PURE__*/React.createElement("div", {
     className: "gl-overlay" + (exitMode ? " gl-exiting gl-gate-" + exitMode : "") + (exitMode.startsWith("reduced") ? " gl-reduced" : ""),
