@@ -240,3 +240,13 @@ test("W8 preview scene keeps optional texture failures presentation-local", () =
   assert.match(scene, /if \(failedLayerNames\.has\("base"\)\) return null/);
   assert.match(scene, /this\.failedUrls\.has\(url\)/);
 });
+
+test("optional Azure waist or boots failure removes both pants pieces together", () => {
+  const context={};vm.createContext(context);
+  vm.runInContext(source("src/phaser/scenes/HeroPreviewScene.js"),context);
+  for(const failed of ["legs_waist","legs_boots"]){
+    context.failed=failed;
+    const names=vm.runInContext(`createHeroPreviewScene({Scene:class{}}).prototype.sanitizeSnapshot.call({assetResolver:{resolve:x=>x},failedUrls:new Set([failed])},{hero:{layerFrames:{idle:[[{name:'base',url:'base'},{name:'legs_waist',url:'legs_waist'},{name:'legs_boots',url:'legs_boots'},{name:'torso_armor',url:'chest'}]]}}}).hero.layerFrames.idle[0].map(x=>x.name)`,context);
+    assert.deepEqual(Array.from(names),["base","torso_armor"]);
+  }
+});

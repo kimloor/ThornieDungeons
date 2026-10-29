@@ -119,10 +119,11 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle",
-      items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure เพื่อโหลดภาพล่าสุดแทน Cache เดิม"]
+      version: "1.1.34", date: "2026-10-29", title: "แก้ส่วนเอวกางเกง Azure ในชุดผสม",
+      items: ["ประกอบส่วนกางเกง Azure ด้านบนเมื่อสวมกับเสื้อชุดอื่น ให้ครอบคลุมต้นขาและเอว"]
     },
     history: [
+      { version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle", items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure"] },
       { version: "1.1.32", date: "2026-10-29", title: "แก้กางเกงแสดงผลเมื่อสวมอุปกรณ์ผสม", items: ["จำกัดภาพมือที่ซ้อนหน้าดาบ Leather ไม่ให้ทับกางเกง"] },
       { version: "1.1.31", date: "2026-10-29", title: "แก้สีตัวอักษรหน้ารายละเอียดไอเทม", items: ["คืนสีตัวอักษรและปุ่มให้ถูกต้องในหน้าต่างเปรียบเทียบไอเทมบนมือถือ"] },
       { version: "1.1.30", date: "2026-10-29", title: "ปรับการเลื่อนหน้าต่างเปรียบเทียบไอเทม", items: ["แก้การเลื่อนภายในหน้าต่างเพื่อเข้าถึงปุ่มด้านล่าง"] },

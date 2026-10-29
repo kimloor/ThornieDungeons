@@ -5,7 +5,7 @@ function heroPreviewFallbackLayerNames(name) {
     return ["arm_rear", "arm_front", "right_hand_occlusion", "coverage_underlay"];
   }
   if (name === "torso_armor") return ["torso_armor", "coverage_underlay"];
-  if (name === "legs_boots") return ["legs_boots", "coverage_underlay"];
+  if (name === "legs_boots" || name === "legs_waist") return ["legs_boots", "legs_waist", "coverage_underlay"];
   return name ? [name] : [];
 }
 

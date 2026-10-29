@@ -146,7 +146,7 @@ function heroV5MoveLayersBefore(order, names, target) {
 
 function heroV5LayerSlot(name) {
   if (name === "torso_armor" || name === "coverage_underlay") return "chest";
-  if (name === "legs_boots") return "boots";
+  if (name === "legs_boots" || name === "legs_waist") return "boots";
   if (name === "arm_rear" || name === "arm_front") return "gloves";
   if (name === "helmet") return "helmet";
   return name === "sword" ? "weapon" : null;
@@ -276,6 +276,15 @@ function heroV5FrameLayers(config, frameId, {
   layers.push(heroV5FrameLayer("base", basePath));
   const hairMode = heroV5HelmetHairMode(config, frameId, equipmentSelection, equipmentLayerNames);
   layers.push(...heroV5HairLayers(config, frameId, includeHair && hairMode === "default"));
+  // Azure's approved cut stores the upper trouser panels in torso_armor.
+  // Supply only that lower band for mixed idle boots, behind the equipped chest.
+  const azureWaistY = { idle_01: 490, idle_02: 478, idle_03: 486 }[frameId];
+  if (equipmentSelection?.equipment?.boots === "azure"
+      && equipmentSelection?.equipment?.chest !== "azure"
+      && azureWaistY != null) {
+    const waistPath = config?.equipment?.azure?.frames?.[frameId]?.torso_armor;
+    if (waistPath) layers.push(heroV5FrameLayer("legs_waist", waistPath, { crop: [0, azureWaistY, 768, 32] }));
+  }
   equipmentLayerNames.forEach(name => {
     const slot = heroV5LayerSlot(name);
     const family = slot === "weapon" && equipmentSelection?.bossWeapon ? equipmentSelection.bossWeapon : equipmentSelection?.equipment?.[slot];

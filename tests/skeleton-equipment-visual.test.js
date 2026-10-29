@@ -133,3 +133,48 @@ test("mixed Inventory pants use revised Leather/Azure URLs and retain the hand-o
     });
   }
 });
+
+test("Owner mixed Azure boots / Skeleton chest and gloves include the missing upper pants", () => {
+  const {context}=runtimeContext();
+  for(const file of ["src/assets/loader.js","src/phaser/assets/AssetResolver.js","src/phaser/presentation/EventBridge.js"]){
+    vm.runInContext(fs.readFileSync(path.join(ROOT,file),"utf8"),context);
+  }
+  const snapshot=vm.runInContext('buildHeroPreviewSnapshot({equipped:{helmet:{setId:"azure"},chest:{setId:"skeleton"},gloves:{setId:"skeleton"},boots:{setId:"azure"},weapon:{gearTier:1}}})',context);
+  const frames=snapshot.hero.layerFrames.idle;
+  frames.forEach((layers,i)=>{
+    const waist=layers.find(l=>l.name==="legs_waist");
+    assert.match(waist.url,/\/azure\/idle_0[123]\/torso_armor.png$/);
+    assert.deepEqual(Array.from(waist.crop),[0,[490,478,486][i],768,32]);
+    assert.ok(layers.indexOf(waist)<layers.findIndex(l=>l.name==="torso_armor"));
+    assert.ok(!layers.some(l=>l.name==="right_hand_occlusion"));
+  });
+  const {spawnSync}=require("node:child_process");
+  const check=spawnSync("python3",["-c",String.raw`
+import sys,json
+from PIL import Image
+p=json.load(sys.stdin)
+for i,layers in enumerate(p['frames']):
+    out=Image.new('RGBA',(768,768)); old=out.copy()
+    for l in layers:
+        im=Image.open(p['root']+'/r2-upload/'+l['url'].removeprefix('/assets/').split('?')[0]).convert('RGBA')
+        if l.get('crop'):
+            x,y,w,h=l['crop']; clipped=Image.new('RGBA',im.size);clipped.paste(im.crop((x,y,x+w,y+h)),(x,y));im=clipped
+        out=Image.alpha_composite(out,im)
+        if l['name']!='legs_waist':old=Image.alpha_composite(old,im)
+    point=(350,[500,488,496][i])
+    base=Image.open(p['root']+'/r2-upload/hero/v5/g2/base/idle_0'+str(i+1)+'.png').convert('RGBA')
+    azure=Image.open(p['root']+'/r2-upload/hero/v5/g2/equipment/azure/idle_0'+str(i+1)+'/torso_armor.png').convert('RGBA')
+    assert old.getpixel(point)==base.getpixel(point),('reproduce gray Base',i)
+    assert out.getpixel(point)==azure.getpixel(point),('upper pants supplied',i)
+    assert out.getpixel(point)!=old.getpixel(point)
+print('Owner screenshot reproduced and corrected: 3/3')
+`],{input:JSON.stringify({root:ROOT,frames}),encoding:"utf8"});
+  assert.equal(check.status,0,check.stderr||check.stdout);
+  for(const boots of ["leather","skeleton","robot"]){
+    const result=vm.runInContext(`resolveHeroV5BaseWingContract({equipmentSelection:{equipment:{chest:"skeleton",boots:"${boots}"}}})`,context);
+    assert.ok(result.idle.every(layers=>!layers.some(l=>l.name==="legs_waist")));
+  }
+  const azure=vm.runInContext('resolveHeroV5BaseWingContract({equipmentSelection:{equipment:{chest:"azure",boots:"azure"}}})',context);
+  assert.ok(azure.idle.every(layers=>!layers.some(l=>l.name==="legs_waist")));
+  for(const state of ['attack','death'])assert.ok(snapshot.hero.layerFrames[state].every(layers=>!layers.some(l=>l.name==="legs_waist")));
+});
