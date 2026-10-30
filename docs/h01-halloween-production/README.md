@@ -1,6 +1,6 @@
 # H01-04 — Halloween Graphics Production Review
 
-Status: **REVIEW PACKAGE PREPARED; NOT READY FOR H01-07**. Date: 2026-10-30, Asia/Bangkok.
+Status: **OWNER VISUAL PASS / H01-04 GRAPHICS DELIVERABLE ACCEPTED; DEV RUNTIME/PHASER QA DEFERRED TO H01-07; NO R2 PUBLICATION**. Date: 2026-10-30, Asia/Bangkok.
 
 ## Authority and source lock
 
@@ -64,3 +64,13 @@ Findings:
 ## Next action
 
 Project Lead reviews A/B artwork and Package C evidence. Resolve the hand-occlusion/item-binding interface and explicitly confirm Death weapon visibility before declaring H01-04 complete or authorizing H01-07. No runtime, D1, WebGL, authenticated Production, device, CI release or gameplay regression PASS is claimed. Application sources did not change; no game build/version bump was performed.
+
+## 2026-10-30 Owner decision superseding pre-acceptance review labels
+
+Owner inspected the recovered images in PR #183 and approved the **entire 17/17 artwork package**. H01-04's export/source-lock/visual deliverable is accepted and requires no regeneration. References elsewhere in this file to final PL visual acceptance pending or “Excaliburnt REVISION REQUIRED” describe the previous **runtime hand-occlusion compatibility** finding, now deliberately transferred to DEV H01-07; they do not reopen Graphics approval.
+
+- Gate 1/1, Boss 7/7, Excaliburnt icon 1/1 and weapon layers 8/8: Owner Visual PASS, dimension/alpha/hash evidence present.
+- Two Excaliburnt Death frames deliberately alpha-empty under the current convention and **accepted as such**.
+- H01-07 DEV owns normal EquipmentVisualResolver/manifest resolution and scoped hand/handle occlusion for bare/legacy/Leather/mixed; do not globally reorder other equipment sets.
+- Browser Phaser Canvas 56-case checks, in-game integration, responsive gate placement and R2 read-back remain **NOT RUN / NOT AUTHORIZED** at H01-04 completion.
+- Keep PR #183 as a draft asset handoff. No merge, R2 upload or production deploy is inferred from Owner visual approval.
