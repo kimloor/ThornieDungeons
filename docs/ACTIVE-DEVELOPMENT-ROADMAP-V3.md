@@ -414,3 +414,7 @@ Do not silently pull unrelated future gameplay into the Ver 1.1.0 gate.
 - **H01-08/09/10:** Independent staging QA, explicit Owner release authorization and closure; **NOT STARTED**.
 
 **Boundary:** H01-05–07 source implementation is now prepared only on a separate DEV branch for Draft PR review. This does not approve Production D1 modification, R2 publication, merge, deploy, event activation or final H01 release. H01-08 independent staging QA and H01-09 explicit Owner authorization remain mandatory.
+
+## H01-08 staging checkpoint — 2026-10-30
+
+**BLOCKED / NOT RELEASE READY.** The shared staging D1 bootstrap completed through migration `0030` with 19 migration records and a clean foreign-key check. The isolated H01 staging Worker deployed from exact PR #184 SHA `a59ab4e` with the staging D1 binding. Actual D1 QA found a release-blocking checkpoint-to-victory reward authorization bypass: a client-constructed checkpoint without verified combat was accepted and then received server-calculated Gold/XP on victory. Public and preview access to the staging Worker were disabled, and the staging-only event config was restored to absent. No production changes or PR merges occurred. See `docs/h01-halloween-production/H01-08-QA-REPORT.md` on the QA branch for evidence. H01-09 remains blocked pending a DEV fix, security retest and completion of the remaining independent QA matrix.
