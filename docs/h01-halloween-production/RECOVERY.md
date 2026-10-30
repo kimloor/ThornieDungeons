@@ -1,6 +1,6 @@
 # H01-04 Recovery — 2026-10-30 Asia/Bangkok
 
-Status: **ASSETS RECOVERED / EXCALIBURNT REVISION REQUIRED / CANVAS QA BLOCKED / H01-04 OPEN**.
+Status: **ASSETS RECOVERED / OWNER VISUAL APPROVED / GRAPHICS DELIVERABLE ACCEPTED / DEV INTEGRATION PENDING**.
 Risk: MEDIUM — graphics recovery and review evidence only.
 
 ## Repository and provenance
@@ -42,3 +42,15 @@ Recovered the actual prior workspace and local commits `abb451f`, `c436f3b`, and
 - Owner/PL reviews preserved Gate/Boss sheets and Excaliburnt grip evidence.
 - PL assigns a separately authorized DEV occlusion/interface task and resolves Death visibility. Then revise only the affected interface/art assets and run the 56-case actual Phaser Canvas matrix in a browser-capable environment.
 - Keep H01-04 open and H01-07 publication gated. No R2 upload, manifest/runtime/gameplay/economy change, merge or deploy was performed in recovery.
+
+## Owner visual acceptance / H01-04 Graphics closure — 2026-10-30
+
+Owner independently inspected the artwork in this repository and explicitly confirmed **VISUAL PASS** for the H01-04 package. Project Lead accepts the **Graphics deliverable** as complete (17/17 exports, source locks, SHA/alpha/dimension evidence, no artwork regeneration). This is a visual/artifact acceptance, **not** Phaser Canvas or in-game rendering QA.
+
+Owner-directed scope split:
+- **H01-04 Graphics: ARTWORK ACCEPTED.** Do not regenerate or alter approved gate, boss, icon, weapon artwork for existing hand/handle overlap alone.
+- **H01-07 DEV integration:** implement Excaliburnt's normal item-to-visual/manifest binding and scoped hand-over-grip/occlusion compatibility (bare hand, Azure/legacy, Leather, mixed gloves) without global layer order changes; run actual browser Phaser Canvas matrix (56 selections) and live equipment-resolution QA.
+- **Death_01 and Death_02 Excaliburnt weapon layers:** retain current fully transparent PNGs following existing weapon Death convention. A visible Death weapon is **not** required for H01-04 approval; reassess only if runtime contract tests demonstrate a conflict.
+- Gate placement, banner navigation/rotation, boss gameplay, rewards, R2 publication and production QA are subsequent H01-05/06/07/08 gates.
+
+**Release constraints:** PR #183 remains Draft / no merge or production deployment authorized by this approval. H01-07 R2 and manifest publication remain gated on DEV readiness and separate integration QA. Historical notes above describe pre-acceptance defects and should not be interpreted as a reason to reopen approved Graphics work.
