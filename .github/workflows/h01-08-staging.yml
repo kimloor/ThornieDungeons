@@ -1,0 +1,59 @@
+name: H01-08 isolated staging Worker
+on:
+  push:
+    branches: [qa/h01-08-staging]
+    paths: [.github/workflows/h01-08-staging.yml]
+permissions:
+  contents: read
+concurrency:
+  group: thornie-dungeons-shared-staging-qa
+  cancel-in-progress: false
+jobs:
+  deploy-h01:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: a59ab4e215d00c4a618307292838629cd48f1379
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify exact source and staging credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "a59ab4e215d00c4a618307292838629cd48f1379"
+          test "$CLOUDFLARE_ACCOUNT_ID" = "72a2af0ff5c5e4a83d037953f8a35356"
+          test -n "$CLOUDFLARE_API_TOKEN"
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+      - name: Write isolated staging config
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/h01-staging.jsonc" <<'JSON'
+          {
+            "name": "thornie-dungeons-h01-staging",
+            "main": "workers/thornie-dungeons-api-entry.js",
+            "compatibility_date": "2026-08-25",
+            "workers_dev": true,
+            "d1_databases": [{
+              "binding": "DB",
+              "database_name": "thornie-dungeons-staging",
+              "database_id": "c16e0b11-cf83-468c-a533-0ecbf522082f"
+            }]
+          }
+          JSON
+      - name: Deploy H01 Worker only
+        run: wrangler deploy --config "$RUNNER_TEMP/h01-staging.jsonc"
+      - name: Verify staging Worker settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/thornie-dungeons-h01-staging/settings" \
+            | jq -e '.success and (.result.bindings | any(.name=="DB" and .type=="d1" and (.database_id=="c16e0b11-cf83-468c-a533-0ecbf522082f" or .id=="c16e0b11-cf83-468c-a533-0ecbf522082f")))' >/dev/null
