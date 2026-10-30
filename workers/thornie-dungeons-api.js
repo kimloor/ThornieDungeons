@@ -148,6 +148,45 @@ async function handleGetGameConfig(db) {
   return json(cfg);
 }
 
+const HALLOWEEN_EVENT_ID = "halloween_v1";
+const HALLOWEEN_EVENT_CONFIG_KEY = "halloween_event_v1";
+const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+function bangkokCalendarMonthEnd(startMs) {
+  const local = new Date(startMs + BANGKOK_OFFSET_MS);
+  const year = local.getUTCFullYear();
+  const month = local.getUTCMonth();
+  const day = local.getUTCDate();
+  const nextMonth = month + 1;
+  const targetYear = year + Math.floor(nextMonth / 12);
+  const targetMonth = nextMonth % 12;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  return Date.UTC(targetYear, targetMonth, Math.min(day, lastDay), local.getUTCHours(), local.getUTCMinutes(), local.getUTCSeconds(), local.getUTCMilliseconds()) - BANGKOK_OFFSET_MS;
+}
+
+async function halloweenEventWindow(db, nowMs = Date.now()) {
+  const row = await db.prepare(`SELECT value_json FROM game_config WHERE key = ?`).bind(HALLOWEEN_EVENT_CONFIG_KEY).first();
+  const config = parseJsonColumn(row?.value_json, {});
+  const startMs = Date.parse(String(config?.activationAt || ""));
+  if (config?.enabled !== true || !Number.isFinite(startMs)) {
+    return { eventId: HALLOWEEN_EVENT_ID, active: false, state: "inactive", timezone: "Asia/Bangkok" };
+  }
+  const endMs = bangkokCalendarMonthEnd(startMs);
+  const state = nowMs < startMs ? "scheduled" : nowMs < endMs ? "active" : "expired";
+  return {
+    eventId: HALLOWEEN_EVENT_ID,
+    active: state === "active",
+    state,
+    timezone: "Asia/Bangkok",
+    activationAt: new Date(startMs).toISOString(),
+    endsAt: new Date(endMs).toISOString()
+  };
+}
+
+async function handleGetHalloweenEventStatus(db) {
+  return json(await halloweenEventWindow(db));
+}
+
 // Public, unauthenticated — just game data, not user-specific (same trust level as
 // getGameConfig above). Lets new crafted sets go live via a D1 insert alone, no worker
 // redeploy and no client code change: the client fetches this list on load instead of
@@ -1181,7 +1220,10 @@ async function handleSalvageItem(db, id, session, characterId, itemId, requestId
   const v2 = Number(extra.itemModelVersion) === 2 || Number(extra.rewardVersion) === 2;
   if (v2 || ["mythic", "azure"].includes(String(row.rarity || "").toLowerCase())) {
     const model = { type: row.slot_type, rarity: row.rarity, itemModelVersion: Number(extra.itemModelVersion), setId: extra.setId };
-    if (globalThis.MYTHIC_V2?.validSetItem(model)) {
+    if (String(extra.specialSource || "").toLowerCase() === "excaliburnt" && String(extra.bossWeaponId || "").toLowerCase() === "excaliburnt") {
+      materials = [];
+      salvageKind = "halloween_excaliburnt";
+    } else if (globalThis.MYTHIC_V2?.validSetItem(model)) {
       const consumed = Array.isArray(extra.craftConsumed) ? extra.craftConsumed : [];
       const needs = Object.fromEntries(consumed.filter(entry => ["bossHorn", "bossHide"].includes(entry?.junkId)).map(entry => [entry.junkId, Math.max(0, Math.floor(Number(entry.qty) || 0))]));
       if (!needs.bossHorn || !needs.bossHide) return json({ error: "mythic_salvage_source_invalid" }, 409);
@@ -1527,6 +1569,31 @@ function dungeonV2ServerRng(seed) {
     return state / 4294967296;
   };
 }
+const HALLOWEEN_BOSS_ID = "haloween_nightmare";
+const HALLOWEEN_BASIC_ACTION = Object.freeze({ id: "basic_attack", kind: "attack", actionName: "Normal Attack", mult: 1, hits: 1, targetMode: "single", statuses: [] });
+const HALLOWEEN_SKILL_ACTIONS = Object.freeze({
+  stun: Object.freeze({ id: "nightmare_stun", kind: "attack", actionName: "Nightmare Stun", mult: .9, hits: 1, targetMode: "single", statuses: [{ key: "stun", chance: 25, duration: 1 }] }),
+  silence: Object.freeze({ id: "nightmare_silence", kind: "attack", actionName: "Nightmare Silence", mult: 1.5, hits: 1, targetMode: "single", statuses: [{ key: "silence", chance: 25, duration: 2 }] }),
+  poison: Object.freeze({ id: "nightmare_poison", kind: "attack", actionName: "Nightmare Poison", mult: .9, hits: 1, targetMode: "single", statuses: [{ key: "poison", chance: 40, duration: 3, damagePct: .12 }] })
+});
+function halloweenServerSkillCycle(seed, skillTurns = 32) {
+  const rng = dungeonV2ServerRng(seed);
+  const keys = Object.keys(HALLOWEEN_SKILL_ACTIONS);
+  let previous = null;
+  const cycle = [];
+  for (let index = 0; index < skillTurns; index += 1) {
+    const choices = previous ? keys.filter(key => key !== previous) : keys;
+    const selected = choices[Math.floor(rng() * choices.length)] || choices[0];
+    cycle.push({ ...HALLOWEEN_BASIC_ACTION }, JSON.parse(JSON.stringify(HALLOWEEN_SKILL_ACTIONS[selected])));
+    previous = selected;
+  }
+  return cycle;
+}
+function secureUint32() {
+  const words = new Uint32Array(1);
+  crypto.getRandomValues(words);
+  return words[0] || 1;
+}
 function dungeonV2ServerNormalizeContext(value) {
   if (!value || value.mode !== "dungeon") return null;
   const floor = Math.floor(Number(value.floor) || 0);
@@ -1534,20 +1601,26 @@ function dungeonV2ServerNormalizeContext(value) {
   // Version 1 is the legacy-issued contract: permit any formerly valid definition ID so
   // active checkpoints/previews survive deployment. New server contexts are version 2 and
   // are strictly checked against the approved floor pool/fixed Boss assignment.
+  const eventId = String(value.eventId || "");
+  const isHalloween = eventId === HALLOWEEN_EVENT_ID;
   const contextVersion = value.version == null ? 1 : Number(value.version);
-  if (contextVersion !== 1 && contextVersion !== 2) return null;
+  if (isHalloween ? contextVersion !== 3 : (contextVersion !== 1 && contextVersion !== 2)) return null;
   const role = dungeonV2ServerExpectedRole(floor);
   if (String(value.role || "") !== role) return null;
   const entries = Array.isArray(value.enemies) ? value.enemies : [];
   if (entries.length < 1 || entries.length > 3 || Number(value.packCount) !== entries.length) return null;
   if (role === "chapter_boss" && entries.length !== 1) return null;
-  const allowedIds = contextVersion === 1
+  const allowedIds = isHalloween
+    ? new Set([HALLOWEEN_BOSS_ID])
+    : contextVersion === 1
     ? (role === "chapter_boss" ? DUNGEON_V2_BOSS_IDS : DUNGEON_V2_MONSTER_IDS)
     : new Set(role === "chapter_boss" ? [dungeonV2ServerBossForFloor(floor)] : dungeonV2ServerMonsterPoolForFloor(floor));
   const enemies = entries.map((enemy, index) => ({
     id: String(enemy?.id || ""),
     instanceId: String(enemy?.instanceId || ""),
     modifierId: enemy?.modifierId == null ? null : String(enemy.modifierId),
+    statProfileId: enemy?.statProfileId == null ? null : String(enemy.statProfileId),
+    skillCycle: Array.isArray(enemy?.skillCycle) ? enemy.skillCycle : null,
     kind: role === "chapter_boss" ? "boss" : "monster",
     isBoss: role === "chapter_boss"
   }));
@@ -1558,7 +1631,19 @@ function dungeonV2ServerNormalizeContext(value) {
   const encounterSeed = Number(value.encounterSeed) >>> 0;
   const rewardSeed = Number(value.rewardSeed) >>> 0;
   if (!encounterSeed || !rewardSeed) return null;
-  return { version: contextVersion, mode: "dungeon", floor, role, packCount: enemies.length, enemies, encounterSeed, rewardSeed };
+  if (isHalloween) {
+    const progressFloor = Math.max(1, Math.floor(Number(value.progressFloor) || 0));
+    const referenceFloor = Math.ceil(progressFloor / 10) * 10;
+    const startedAtMs = Date.parse(String(value.startedAt || ""));
+    const eventEndsAtMs = Date.parse(String(value.eventEndsAt || ""));
+    const expectedCycle = halloweenServerSkillCycle(encounterSeed);
+    if (role !== "chapter_boss" || floor !== referenceFloor || !Number.isFinite(startedAtMs) || !Number.isFinite(eventEndsAtMs) || startedAtMs >= eventEndsAtMs) return null;
+    if (enemies[0]?.statProfileId !== dungeonV2ServerBossForFloor(referenceFloor)) return null;
+    if (JSON.stringify(enemies[0]?.skillCycle) !== JSON.stringify(expectedCycle)) return null;
+    return { version: 3, mode: "dungeon", eventId, floor, referenceFloor, progressFloor, role, packCount: 1, enemies, encounterSeed, rewardSeed,
+      startedAt: new Date(startedAtMs).toISOString(), eventEndsAt: new Date(eventEndsAtMs).toISOString() };
+  }
+  return { version: contextVersion, mode: "dungeon", floor, role, packCount: enemies.length, enemies: enemies.map(({ statProfileId, skillCycle, ...enemy }) => enemy), encounterSeed, rewardSeed };
 }
 function dungeonV2ServerContextFromStoredCheckpoint(payload) {
   return dungeonV2ServerNormalizeContext(payload?.serverContext);
@@ -1621,8 +1706,10 @@ function dungeonV2ServerContextsMatch(a, b) {
     && a.packCount === b.packCount
     && a.encounterSeed === b.encounterSeed
     && a.rewardSeed === b.rewardSeed
-    && JSON.stringify(a.enemies.map(enemy => [enemy.id, enemy.instanceId, enemy.modifierId]))
-      === JSON.stringify(b.enemies.map(enemy => [enemy.id, enemy.instanceId, enemy.modifierId])));
+    && String(a.eventId || "") === String(b.eventId || "")
+    && String(a.startedAt || "") === String(b.startedAt || "")
+    && String(a.eventEndsAt || "") === String(b.eventEndsAt || "")
+    && JSON.stringify(a.enemies) === JSON.stringify(b.enemies));
 }
 function dungeonV2ServerEncounterContext(characterId, floor, ordinal) {
   const role = dungeonV2ServerExpectedRole(floor);
@@ -1742,6 +1829,79 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
     if (racedPayload?.authorizationOnly && racedContext && racedContext.floor === floor) {
       return json({ ok: true, battleId: raced.battle_id, context: racedContext });
     }
+    return json({ error: "active_battle_conflict" }, 409);
+  }
+  return json({ ok: true, battleId, context });
+}
+async function handleStartHalloweenBattle(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+
+  const existing = await db.prepare(
+    `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
+  ).bind(characterId).first();
+  if (existing) {
+    const payload = parseJsonColumn(existing.payload_json, null);
+    const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
+    if (context?.eventId === HALLOWEEN_EVENT_ID) {
+      return json({ ok: true, battleId: existing.battle_id, context });
+    }
+    if (!payload?.authorizationOnly) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+    await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
+      .bind(nowIso(), existing.battle_id, characterId).run();
+  }
+
+  const window = await halloweenEventWindow(db);
+  if (!window.active) return json({ error: "halloween_event_inactive", event: window }, 403);
+  const progressFloor = Math.max(1, Math.floor(Number(owned.row.unlocked_floor) || 1));
+  const referenceFloor = Math.ceil(progressFloor / 10) * 10;
+  const encounterSeed = secureUint32();
+  const rewardSeed = secureUint32();
+  const context = dungeonV2ServerNormalizeContext({
+    version: 3,
+    mode: "dungeon",
+    eventId: HALLOWEEN_EVENT_ID,
+    floor: referenceFloor,
+    referenceFloor,
+    progressFloor,
+    role: "chapter_boss",
+    packCount: 1,
+    encounterSeed,
+    rewardSeed,
+    startedAt: nowIso(),
+    eventEndsAt: window.endsAt,
+    enemies: [{
+      id: HALLOWEEN_BOSS_ID,
+      instanceId: `halloween-enemy-${dungeonV2ServerHash(`${characterId}:${encounterSeed}`)}`,
+      modifierId: null,
+      statProfileId: dungeonV2ServerBossForFloor(referenceFloor),
+      skillCycle: halloweenServerSkillCycle(encounterSeed),
+      kind: "boss",
+      isBoss: true
+    }]
+  });
+  if (!context) return json({ error: "halloween_context_invalid" }, 500);
+
+  const battleId = `halloween-${randomToken(16)}`;
+  const now = nowIso();
+  const authorization = JSON.stringify({
+    version: 1,
+    battleId,
+    mode: "dungeon",
+    floor: referenceFloor,
+    encounterType: "chapter_boss",
+    safeActionSeq: -1,
+    authorizationOnly: true,
+    serverContext: context
+  });
+  try {
+    await db.prepare(
+      `INSERT INTO battle_checkpoints (battle_id, character_id, checkpoint_seq, payload_json, state, created_at, updated_at)
+       VALUES (?, ?, -1, ?, 'active', ?, ?)`
+    ).bind(battleId, characterId, authorization, now, now).run();
+  } catch (_) {
     return json({ error: "active_battle_conflict" }, 409);
   }
   return json({ ok: true, battleId, context });
@@ -1868,6 +2028,51 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     reconcile: false,
     prefetchedRows: Array.isArray(prefetchedInventoryRows) ? prefetchedInventoryRows : null
   });
+  if (context.eventId === HALLOWEEN_EVENT_ID) {
+    const weaponDrop = rng() < .05;
+    const tier = dungeonV2ServerTierForFloor(context.referenceFloor);
+    const atk = Math.max(1, Math.round(DUNGEON_V2_REWARD_BASE_STATS.weapon[tier - 1] * DUNGEON_V2_REWARD_TIER_MULT[tier - 1] * 1.5));
+    const items = weaponDrop ? [{
+      id: `event-${dungeonV2ServerHash(`${battleId}:excaliburnt`)}`,
+      type: "weapon",
+      rarity: "mythic",
+      name: "Excaliburnt",
+      gearTier: tier,
+      rewardVersion: 2,
+      itemModelVersion: 2,
+      empowerSlotCapacity: 4,
+      empowerSlotCount: 4,
+      empowerSlots: globalThis.ENHANCEMENT_V2?.fillEmpowerSlots
+        ? globalThis.ENHANCEMENT_V2.fillEmpowerSlots("weapon", "mythic", rng)
+        : Array(4).fill(null),
+      sourceType: "halloween_event",
+      sourceFloor: context.referenceFloor,
+      sourceIdentity: `${HALLOWEEN_EVENT_ID}:${HALLOWEEN_BOSS_ID}`,
+      specialSource: "excaliburnt",
+      bossWeaponId: "excaliburnt",
+      sourceBossId: HALLOWEEN_BOSS_ID,
+      atk
+    }] : [];
+    const result = {
+      floor: context.referenceFloor,
+      encounterType: "halloween_event",
+      rewardRole: "halloween_event",
+      packCount: 1,
+      gold: weaponDrop ? 0 : dungeonV2ServerGold(context.referenceFloor, "chapter_boss", 1),
+      xp: dungeonV2ServerExp(context.referenceFloor, "chapter_boss", 1),
+      diamonds: 0,
+      unlockedNext: false,
+      firstClear: false,
+      starterPetGrant: null,
+      items,
+      drop: items[0] || null,
+      junkDrop: null,
+      sourceIdentity: HALLOWEEN_BOSS_ID,
+      rewardSeed: seed
+    };
+    Object.defineProperty(result, "__inventoryPlan", { value: inventoryPlan, enumerable: false });
+    return result;
+  }
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
@@ -1987,7 +2192,8 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
     };
   }
   if (!(DUNGEON_V2_REWARD_SLOTS.has(type) || type === "accessory")) return null;
-  if (!DUNGEON_V2_REWARD_RARITIES.has(item.rarity) || Number(item.rewardVersion) !== 2 || Number(item.itemModelVersion) !== 2) return null;
+  const eventMythic = item.rarity === "mythic" && item.specialSource === "excaliburnt" && item.bossWeaponId === "excaliburnt";
+  if ((!DUNGEON_V2_REWARD_RARITIES.has(item.rarity) && !eventMythic) || Number(item.rewardVersion) !== 2 || Number(item.itemModelVersion) !== 2) return null;
   const extra = {
     empowerSlots: Array.isArray(item.empowerSlots) ? item.empowerSlots : [],
     empowerSlotCapacity: Math.max(0, Number(item.empowerSlotCapacity) || 0),
@@ -1995,6 +2201,8 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
     sourceType: String(item.sourceType || "dungeon").slice(0, 80), sourceFloor: Number(item.sourceFloor) || 0,
     specialSource: item.specialSource ? String(item.specialSource).slice(0, 80) : undefined,
     sourceIdentity: item.sourceIdentity ? String(item.sourceIdentity).slice(0, 120) : undefined,
+    bossWeaponId: item.bossWeaponId ? String(item.bossWeaponId).slice(0, 80) : undefined,
+    sourceBossId: item.sourceBossId ? String(item.sourceBossId).slice(0, 80) : undefined,
     utilityStat: item.utilityStat ? String(item.utilityStat).slice(0, 40) : undefined,
     wingFamily: type === "wings" ? String(item.wingFamily || item.setId || "").toLowerCase() : undefined,
     critChance: item.critChance || undefined, dodgeChance: item.dodgeChance || undefined, critDamage: item.critDamage || undefined,
@@ -2059,7 +2267,8 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   const rewardPlan = await dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload, prefetchedInventoryRows);
   const inventoryPlan = rewardPlan?.__inventoryPlan;
   const serverReward = rewardPlan;
-  if (!inventoryPlan || Number(reward.gold) !== serverReward.gold || Number(reward.xp) !== serverReward.xp) return { error: "invalid_reward_plan" };
+  const authoritativeEventReward = context.eventId === HALLOWEEN_EVENT_ID;
+  if (!inventoryPlan || (!authoritativeEventReward && (Number(reward.gold) !== serverReward.gold || Number(reward.xp) !== serverReward.xp))) return { error: "invalid_reward_plan" };
   const petsRaw = parseJsonColumn(ownedRow.pets_json, []);
   const envelope = Array.isArray(petsRaw) ? { list: petsRaw } : { ...petsRaw };
   if (!Array.isArray(envelope.list)) envelope.list = [];
@@ -7985,6 +8194,7 @@ async function apiFetch(request, env) {
         const p = url.searchParams;
         const action = p.get("action");
         if (action === "getGameConfig") return await handleGetGameConfig(db);
+        if (action === "getHalloweenEventStatus") return await handleGetHalloweenEventStatus(db);
         if (action === "getRecipes") return await handleGetRecipes(db);
         if (action === "getMonsterLoot") return await handleGetMonsterLoot(db);
         if (action === "getJunkInfo") return await handleGetJunkInfo(db);
@@ -8145,6 +8355,8 @@ async function apiFetch(request, env) {
             return await handleSaveRunState(db, id, auth, body.characterId, body.runState);
           case "startDungeonBattle":
             return await handleStartDungeonBattle(db, id, auth, body.characterId, body.floor, body.previewContext || null);
+          case "startHalloweenBattle":
+            return await handleStartHalloweenBattle(db, id, auth, body.characterId);
           case "saveBattleCheckpoint":
             return await handleSaveBattleCheckpoint(db, id, auth, body.characterId, body.battleId, body.checkpointSeq, body.payload);
           case "clearBattleCheckpoint":
