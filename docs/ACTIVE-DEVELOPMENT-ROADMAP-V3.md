@@ -402,3 +402,15 @@ Do not silently pull unrelated future gameplay into the Ver 1.1.0 gate.
 ## Backlog (unscheduled)
 
 - Guest Login V1: design recorded in `docs/GUEST-LOGIN-V1.md` (draft, risk HIGH, awaiting Owner approval and a roadmap slot).
+
+### H01 checkpoint — 2026-10-30 Owner Graphics Acceptance
+
+- **H01-00 / H01-01 / H01-02 / H01-02B:** Design, Owner decisions and interface/technical contract review documented; maintain high-risk server-authority gates.
+- **H01-03:** Owner concept approval 3/3 (purple Boss Gate variant, Haloween nightmare, Excaliburnt Rev2).
+- **H01-04:** **GRAPHICS ARTWORK ACCEPTED / OWNER VISUAL PASS**. PR #183 (Draft, `art/h01-04-final-graphics`) contains recovered 17/17 final exports, verified SHA/dimensions/alpha and review materials. Owner reviewed repo images and accepted visual appearance. Excaliburnt Death_01/02 retain intentional transparent weapon layers under established convention. No regeneration required.
+- **H01-05 (NEXT):** DEV frontend banner 5s rotation, navigation, timed gate visibility and map placement; feature-flagged, no production release until gated.
+- **H01-06 (NEXT / HIGH RISK):** DEV battle/reward/event backend, authoritative 5%/95% resolution and staging/idempotency tests. Separate branch/PR; do not touch blocked Admin #182.
+- **H01-07 (AFTER DEV READINESS):** DEV + Graphics R2/manifest/item resolver, scoped Excaliburnt hand/handle occlusion for bare/Azure/Leather/mixed gloves, 56-case actual Phaser Canvas and browser decode/SHA readback. Hand overlap is **not a blocker to H01-04 Graphics closure**, but **blocks integration acceptance**.
+- **H01-08/09/10:** Independent staging QA, explicit Owner release authorization and closure; **NOT STARTED**.
+
+**Boundary:** Owner approved Graphics visuals only. H01-04 acceptance does not approve PR #183 merge, Production D1 modifications, manifest/R2 publication, implementation, production deploy or final H01 release. Earlier 2026-10-29 planning status paragraphs above are historical snapshots superseded for the H01-03/04 art gates by this checkpoint.
