@@ -223,6 +223,15 @@ function heroV5RightHandOcclusionLayer(config, frameId, equipmentSelection, equi
   const gloveFamily = equipmentSelection?.equipment?.gloves;
   const gloveConfig = gloveFamily ? config?.equipment?.[gloveFamily] : null;
   const weaponFamily = equipmentSelection?.bossWeapon || equipmentSelection?.equipment?.weapon;
+  const eventWeaponConfig = weaponFamily === "excaliburnt" ? config?.equipment?.excaliburnt : null;
+  if (eventWeaponConfig?.handOcclusion?.profile === "excaliburnt_hand_v1" && equipmentLayerNames.includes("sword")) {
+    const crop = HERO_V5_LEATHER_BARE_HAND_CROPS[frameId];
+    if (!Array.isArray(crop)) return null;
+    const sourcePath = gloveFamily
+      ? gloveConfig?.frames?.[frameId]?.arm_rear
+      : config?.base?.frames?.[frameId];
+    return sourcePath ? heroV5FrameLayer("right_hand_occlusion", sourcePath, { crop: [...crop] }) : null;
+  }
   const bareLeatherSword = !gloveFamily && weaponFamily === "leather";
   const occlusionConfig = bareLeatherSword ? config?.equipment?.leather : gloveConfig;
   const handConfig = occlusionConfig?.handOcclusion;
