@@ -64,6 +64,8 @@ const results = [];
 const REASON = "QA staging verification of W2-F/W2-G";
 
 async function bootstrap() {
+  const prior = sqlRun(`SELECT value_json FROM game_config WHERE key='admin_item_delete_enabled'`);
+  state.priorFlag = prior.length ? prior[0].value_json : null;
   const suffix = randomBytes(3).toString("hex");
   const adminId = `QAADMIN${suffix}`, playerId = `QAP1${suffix}`;
   const pw = randomBytes(9).toString("hex"); // alnum, never logged
@@ -87,8 +89,8 @@ function reset() {
   sqlRun(`DROP TRIGGER IF EXISTS qa_fail_delete`); sqlRun(`DROP TRIGGER IF EXISTS qa_fail_restore`);
   sqlRun(`DELETE FROM items WHERE player_id=${q(pid)}`);
   sqlRun(`DELETE FROM item_provenance WHERE original_player_id=${q(pid)}`);
-  sqlRun(`DELETE FROM item_ownership_events WHERE item_id LIKE 'qa-%' OR event_type IN ('admin_deleted','admin_restored') AND (from_player_id=${q(pid)} OR to_player_id=${q(pid)})`);
-  sqlRun(`DELETE FROM admin_audit_log WHERE event_type LIKE 'ADMIN_ITEM_%'`);
+  sqlRun(`DELETE FROM item_ownership_events WHERE event_type IN ('admin_deleted','admin_restored') AND (from_player_id=${q(pid)} OR to_player_id=${q(pid)})`);
+  sqlRun(`DELETE FROM admin_audit_log WHERE event_type LIKE 'ADMIN_ITEM_%' AND player_id=${q(state.admin)}`);
   sqlRun(`DELETE FROM character_operation_receipts WHERE character_id=${q(cid)}`);
   sqlRun(`DELETE FROM character_run_state WHERE character_id=${q(cid)}`);
   flag("true");
@@ -117,8 +119,8 @@ async function del(itemId, { quantity, requestId = newReq(), snapshotHash, reaso
 }
 const restore = (requestId, originalId, reason = REASON) => call("POST", { action: "adminRestoreItem", auditId: `adm-del-${requestId}`, reason, confirmText: originalId }, state.token);
 const items = () => sqlRun(`SELECT item_id, equipped, enhance_level, atk, extra_json, updated_at FROM items WHERE player_id=${q(state.pid)} ORDER BY item_id`);
-const audits = () => sqlRun(`SELECT audit_id, event_type, target_id, created_at FROM admin_audit_log WHERE event_type LIKE 'ADMIN_ITEM_%' ORDER BY created_at, audit_id`);
-const events = () => sqlRun(`SELECT event_id, item_id, event_type FROM item_ownership_events WHERE event_type IN ('admin_deleted','admin_restored') ORDER BY occurred_at, event_id`);
+const audits = () => sqlRun(`SELECT audit_id, event_type, target_id, created_at FROM admin_audit_log WHERE event_type LIKE 'ADMIN_ITEM_%' AND player_id=${q(state.admin)} ORDER BY created_at, audit_id`);
+const events = () => sqlRun(`SELECT event_id, item_id, event_type FROM item_ownership_events WHERE event_type IN ('admin_deleted','admin_restored') AND (from_player_id=${q(state.pid)} OR to_player_id=${q(state.pid)}) ORDER BY occurred_at, event_id`);
 const snap = () => ({ items: items(), audits: audits(), events: events() });
 const count = (rows, pred) => rows.filter(pred).length;
 
@@ -267,7 +269,7 @@ async function main() {
   await scenario(18, "Pending-operation race during mutation (real D1)", async (c) => {
     const tally = { deleted: 0, blocked: 0, other: 0, inconsistent: 0 };
     for (let i = 0; i < RACE_N; i++) {
-      sqlRun(`DELETE FROM items WHERE player_id=${q(S.pid)}`); sqlRun(`DELETE FROM admin_audit_log WHERE event_type='ADMIN_ITEM_DELETE'`); sqlRun(`DELETE FROM item_ownership_events WHERE event_type='admin_deleted'`); sqlRun(`DELETE FROM character_operation_receipts WHERE character_id=${q(S.cid)}`);
+      sqlRun(`DELETE FROM items WHERE player_id=${q(S.pid)}`); sqlRun(`DELETE FROM admin_audit_log WHERE event_type='ADMIN_ITEM_DELETE' AND player_id=${q(S.admin)}`); sqlRun(`DELETE FROM item_ownership_events WHERE event_type='admin_deleted' AND (from_player_id=${q(S.pid)} OR to_player_id=${q(S.pid)})`); sqlRun(`DELETE FROM character_operation_receipts WHERE character_id=${q(S.cid)}`);
       seedGear(`qa-race-${i}`); const h = (await preview(`qa-race-${i}`)).body.snapshotHash;
       const [r] = await Promise.all([del(`qa-race-${i}`, { snapshotHash: h }), (async () => { await sleep(Math.floor(Math.random() * 150)); sqlRun(`INSERT INTO character_operation_receipts VALUES (${q(S.cid)},'sell',${q("race" + i)},${q("race-tok-" + i + "-" + Date.now())},'{}','pending',datetime('now'))`); })()]);
       const s = snap(); const present = s.items.some((x) => x.item_id === `qa-race-${i}`); const aud = count(s.audits, (a) => a.event_type === "ADMIN_ITEM_DELETE"); const ev = count(s.events, (e) => e.event_type === "admin_deleted");
@@ -294,7 +296,8 @@ async function main() {
     sqlRun(`DROP TRIGGER qa_fail_restore`);
   });
 
-  reset(); flag("false"); // leave staging with the feature OFF
+  reset(); // QA rows only; shared staging D1 -> put the flag back exactly as found
+  if (state.priorFlag === null) sqlRun(`DELETE FROM game_config WHERE key='admin_item_delete_enabled'`); else flag(state.priorFlag);
   const pass = results.filter((r) => r.status === "PASS").length;
   mkdirSync(OUT, { recursive: true });
   writeFileSync(`${OUT}/evidence.json`, JSON.stringify({ commit: SHA, workerVersion: WORKER_VERSION, baseUrl: BASE, mode: MODE, stagingDb: STAGING_DB_ID, at: new Date().toISOString(), pass, total: results.length, results }, null, 2));
