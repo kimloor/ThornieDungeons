@@ -34,7 +34,7 @@ jobs:
       - name: Write isolated staging config
         shell: bash
         run: |
-          cat > "$RUNNER_TEMP/h01-staging.jsonc" <<'JSON'
+          cat > "$GITHUB_WORKSPACE/.wrangler.h01.staging.jsonc" <<'JSON'
           {
             "name": "thornie-dungeons-h01-staging",
             "main": "workers/thornie-dungeons-api-entry.js",
@@ -48,7 +48,7 @@ jobs:
           }
           JSON
       - name: Deploy H01 Worker only
-        run: wrangler deploy --config "$RUNNER_TEMP/h01-staging.jsonc"
+        run: wrangler deploy --config "$GITHUB_WORKSPACE/.wrangler.h01.staging.jsonc"
       - name: Verify staging Worker settings
         shell: bash
         run: |
