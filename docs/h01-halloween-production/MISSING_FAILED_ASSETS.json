@@ -1,0 +1,23 @@
+{
+  "missingFiles": [],
+  "decodeOrDimensionFailures": [],
+  "visualOrCompatibilityFailures": [
+    {
+      "id": "C-HAND",
+      "status": "REVISION REQUIRED",
+      "detail": "Bare/no-glove and legacy/mixed glove hand occlusion is not supported consistently by current scoped layer contract"
+    },
+    {
+      "id": "C-BINDING",
+      "status": "DEV INTEGRATION REQUIRED",
+      "detail": "Current EquipmentVisualResolver has no Excaliburnt identity mapping; production manifest intentionally untouched"
+    },
+    {
+      "id": "C-DEATH",
+      "status": "PL CONFIRMATION REQUIRED",
+      "detail": "Two intentional empty Death PNGs follow existing boss convention; visible Death weapon needs reviewed placement contract"
+    }
+  ],
+  "publicationAuthorized": false,
+  "completionGateClosed": false
+}
