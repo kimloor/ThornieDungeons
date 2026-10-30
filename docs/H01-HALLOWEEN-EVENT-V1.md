@@ -198,3 +198,27 @@ H01-04 + H01-05 + H01-06 -> H01-07 -> H01-08 -> H01-09 -> H01-10
 Existing H01 alternating normal/skill cadence and no consecutive identical status skill remain in force. **Excaliburnt Salvage is allowed and returns zero materials**, matching the existing non-set Mythic Boss Weapon no-material-return precedent; preserve Mythic normal eligibility, inventory safety, and transactional behavior. No Boss Weapon identity/signature is assigned to Excaliburnt.
 
 **Implementation readiness:** The two outstanding Owner gameplay/economy value decisions in H01-02B are **CLOSED**. Technical implementation remains **NOT AUTHORIZED** pending DEV design/QA of Halloween boss skill mapping and persistence, secure server-only persisted cryptographic reward outcome, event authorization/expiry, Mythic Event validation and Salvage, and real D1/Phaser QA. The specific RNG implementation, month-end cutoff, and Graphics asset interfaces discussed by PL are technical design directions, not deployed or proven functionality. Exact event activation date/time and 30%/50% post-QA gate spawn remain deferred.
+
+## 2026-10-30 H01-04 Graphics acceptance and DEV interface handoff
+
+Owner personally reviewed the recovered PR #183 artwork and confirmed **Visual PASS**. **H01-04 Graphics deliverable is accepted**: Gate 1, boss animation 7, Excaliburnt icon 1, weapon sprite PNGs 8 = **17/17**, with hash/dimension/alpha/source-lock evidence in `docs/h01-halloween-production/` on Draft PR #183. Death_01/Death_02 Excaliburnt weapon overlays are intentionally fully transparent and accepted under the existing equipment Death convention. Do not regenerate approved assets solely to conceal runtime layer issues.
+
+**H01-05:** implement UI banner swap every 5s, correct Raid Boss/Halloween navigation, event-active filtering, purple gate world placement and 360/390/desktop responsive QA; no release before full event acceptance.
+
+**H01-06:** implement locked server-authoritative boss, skill/status scheduling, progression-floor-based boss stats/XP/gold, exclusive 5% Excaliburnt / 95% gold, event lifetime with Asia/Bangkok calendar-month cutoffs and protected in-flight settlements; secure RNG, atomic/idempotent reward delivery, negative-path and D1 staging verification. Maintain Admin #182 isolation.
+
+**H01-07:** bind approved image files to R2/manifest and actual EquipmentVisualResolver, implement **scoped DEV hand-over-grip occlusion** for bare/no gloves, Azure/legacy, Leather, and mixed selections without modifying global equipment layer rules. Run real Phaser Canvas 56-case suite, normal inventory/equip/texture lookups, browser decoding, revisions/cache and SHA readback before publication approval. Offline Sharp composites are only earlier review aids, **not Phaser QA**.
+
+**Authorization boundary:** H01-04 Owner Visual PASS closes art review only. PR #183 remains Draft. No H01-05/06/07 changes are considered production-ready, no publication/merge/deploy is authorized by this note; H01-08 QA and H01-09 explicit Owner release remain mandatory. The earlier document header is a historical design baseline superseded only for Graphics acceptance by this dated checkpoint.
+
+## 2026-10-30 H01-05–07 DEV implementation checkpoint
+
+Status: **IMPLEMENTED ON ISOLATED DEV BRANCH / DRAFT REVIEW ONLY / NOT RELEASED**.
+
+- H01-05 uses the public server event-status endpoint to hide both Halloween UI surfaces outside the active window. The Hub reuses the current World Event callout and rotates Raid/Halloween every five seconds with cleanup; the active map gate is a scoped node at the approved upper-left world coordinate and does not reposition existing floor gates.
+- H01-06 stores the server-authored event identity, Bangkok calendar-month cutoff, progress/reference floor, secure encounter/reward seeds, exact boss skill cycle and timestamps inside the existing battle authorization/checkpoint. New entry is start-inclusive/end-exclusive; a valid pre-cutoff checkpoint remains resumable and settleable. The result is exactly one 5% Excaliburnt or 95% reference-boss gold branch, plus reference-boss XP, with no stone, first-clear or unlock.
+- Excaliburnt is an ordinary permanent, tradeable, repeatable Mythic sword with standard tier/ATK/Empower/Enchant/Refine handling and the approved zero-material transactional salvage exception. Existing inventory Overflow settlement is reused.
+- H01-07 stages exact approved bytes, adds revisioned manifest bindings, normal inventory icon/equipment resolver lookup and a scoped hand-over-weapon crop for bare, Azure/legacy, Leather and mixed glove states. Death weapon frames remain intentionally transparent per Owner acceptance.
+- Automated H01 checks cover Bangkok month-end and cutoff inclusivity, exact/no-repeat skill cycle, tamper rejection, exclusive reward contract, byte identity/path resolution and 56 equipment/frame contracts. The actual Phaser Canvas fixture also passes 56/56 with no asset-load, layer-order or grip failures. The repository-wide suite retains five failures reproduced unchanged on the H01-04 base commit; they are pre-existing version/layout assertions outside H01.
+
+No Production R2 upload/SHA read-back, production D1 write, event-config activation, version bump, merge or deploy was performed. Real staging D1 race/rollback/expiry QA, independent mobile/device review and publication verification remain H01-08 work; the completed Phaser Canvas browser evidence is recorded in `docs/h01-halloween-production/DEV-HANDOFF.md`.

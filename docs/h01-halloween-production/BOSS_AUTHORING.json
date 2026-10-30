@@ -1,0 +1,112 @@
+{
+  "approvedIdle01CopiedUnchanged": true,
+  "frames": [
+    {
+      "frame": "idle_02",
+      "source": "exec-2987804c-2e8d-4e50-bb41-4f2f2e346ad3.png",
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "uniformCanvasScale": 0.6124401913875598,
+      "origin": [
+        0,
+        0
+      ],
+      "trim": false,
+      "recenter": false,
+      "alphaCleanup": "only source alpha values 1..3 set to 0",
+      "removedSubvisibleAlphaPixels": 46786
+    },
+    {
+      "frame": "idle_03",
+      "source": "exec-e2e65a85-6efd-44e9-b062-6760aa18677a.png",
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "uniformCanvasScale": 0.6124401913875598,
+      "origin": [
+        0,
+        0
+      ],
+      "trim": false,
+      "recenter": false,
+      "alphaCleanup": "only source alpha values 1..3 set to 0",
+      "removedSubvisibleAlphaPixels": 41549
+    },
+    {
+      "frame": "attack_01",
+      "source": "exec-c511c0bf-cb58-4022-b411-d06a63e0f18b.png",
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "uniformCanvasScale": 0.6124401913875598,
+      "origin": [
+        0,
+        0
+      ],
+      "trim": false,
+      "recenter": false,
+      "alphaCleanup": "only source alpha values 1..3 set to 0",
+      "removedSubvisibleAlphaPixels": 50798
+    },
+    {
+      "frame": "attack_02",
+      "source": "exec-116a9352-e0ea-4c81-8ba6-e26e6103c384.png",
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "uniformCanvasScale": 0.6124401913875598,
+      "origin": [
+        0,
+        0
+      ],
+      "trim": false,
+      "recenter": false,
+      "alphaCleanup": "only source alpha values 1..3 set to 0",
+      "removedSubvisibleAlphaPixels": 55927
+    },
+    {
+      "frame": "attack_03",
+      "source": "exec-346cd902-a963-46a8-ba11-e4b85db72fd5.png",
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "uniformCanvasScale": 0.6124401913875598,
+      "origin": [
+        0,
+        0
+      ],
+      "trim": false,
+      "recenter": false,
+      "alphaCleanup": "only source alpha values 1..3 set to 0",
+      "removedSubvisibleAlphaPixels": 55521
+    },
+    {
+      "frame": "death_01",
+      "source": "exec-ee327cbe-9497-40d3-9ed2-03cfd3d21360.png",
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "uniformCanvasScale": 0.6124401913875598,
+      "origin": [
+        0,
+        0
+      ],
+      "trim": false,
+      "recenter": false,
+      "alphaCleanup": "only source alpha values 1..3 set to 0",
+      "removedSubvisibleAlphaPixels": 16255
+    }
+  ],
+  "phaserOrigin": [
+    0.5,
+    1
+  ],
+  "ground": "standing foot contacts near y704; exact per-frame pixel measurements in VALIDATION.json"
+}

@@ -402,3 +402,15 @@ Do not silently pull unrelated future gameplay into the Ver 1.1.0 gate.
 ## Backlog (unscheduled)
 
 - Guest Login V1: design recorded in `docs/GUEST-LOGIN-V1.md` (draft, risk HIGH, awaiting Owner approval and a roadmap slot).
+
+### H01 checkpoint — 2026-10-30 Owner Graphics Acceptance
+
+- **H01-00 / H01-01 / H01-02 / H01-02B:** Design, Owner decisions and interface/technical contract review documented; maintain high-risk server-authority gates.
+- **H01-03:** Owner concept approval 3/3 (purple Boss Gate variant, Haloween nightmare, Excaliburnt Rev2).
+- **H01-04:** **GRAPHICS ARTWORK ACCEPTED / OWNER VISUAL PASS**. PR #183 (Draft, `art/h01-04-final-graphics`) contains recovered 17/17 final exports, verified SHA/dimensions/alpha and review materials. Owner reviewed repo images and accepted visual appearance. Excaliburnt Death_01/02 retain intentional transparent weapon layers under established convention. No regeneration required.
+- **H01-05 (DEV COMPLETE / QA PENDING):** isolated branch implements server-status-driven visibility, 5-second Raid/Halloween banner rotation with interval cleanup and scoped map-gate placement. No version bump, activation or release.
+- **H01-06 (DEV COMPLETE / STAGING QA PENDING / HIGH RISK):** server-issued event window/context, fixed boss and deterministic skill cycle, protected expiry resume, reference-boss stats/XP/gold and exclusive 5% Excaliburnt / 95% gold settlement are implemented with existing exact-once completion and Overflow paths. Real staging D1 concurrency/rollback remains H01-08 evidence; Admin #182 is untouched.
+- **H01-07 (LOCAL INTEGRATION + PHASER QA COMPLETE / PUBLICATION PENDING):** approved 17/17 bytes are staged under `r2-upload`, manifest/item resolver and scoped Excaliburnt hand occlusion are bound, automated 7×8 contract/SHA checks pass, and the real Phaser Canvas fixture passes 56/56 with zero load/order/grip failures. Production R2 upload/read-back is deliberately not performed without release authority.
+- **H01-08/09/10:** Independent staging QA, explicit Owner release authorization and closure; **NOT STARTED**.
+
+**Boundary:** H01-05–07 source implementation is now prepared only on a separate DEV branch for Draft PR review. This does not approve Production D1 modification, R2 publication, merge, deploy, event activation or final H01 release. H01-08 independent staging QA and H01-09 explicit Owner authorization remain mandatory.

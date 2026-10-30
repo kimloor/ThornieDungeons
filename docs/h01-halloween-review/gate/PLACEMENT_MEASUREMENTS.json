@@ -1,0 +1,236 @@
+{
+  "kind": "static concept; not runtime QA",
+  "portraitMap": true,
+  "sourceGateSlotsUnchanged": [
+    [
+      79,
+      2,
+      0.62
+    ],
+    [
+      58,
+      20,
+      0.72
+    ],
+    [
+      75,
+      39,
+      0.86
+    ],
+    [
+      49,
+      58,
+      0.8
+    ],
+    [
+      23,
+      72,
+      0.88
+    ]
+  ],
+  "eventProposal": {
+    "xPercent": 31,
+    "yPercent": 13,
+    "scale": 0.72
+  },
+  "viewports": [
+    {
+      "viewport": [
+        360,
+        800
+      ],
+      "event": {
+        "x": 82,
+        "y": 214,
+        "width": 75,
+        "height": 89
+      },
+      "floor11": {
+        "x": 245,
+        "y": 167,
+        "width": 58,
+        "height": 72
+      },
+      "floor10": {
+        "x": 169,
+        "y": 272,
+        "width": 75,
+        "height": 89
+      },
+      "floor9": {
+        "x": 220,
+        "y": 384,
+        "width": 81,
+        "height": 100
+      },
+      "floor8": {
+        "x": 140,
+        "y": 491,
+        "width": 75,
+        "height": 93
+      },
+      "floor7": {
+        "x": 52,
+        "y": 572,
+        "width": 83,
+        "height": 102
+      },
+      "map": {
+        "x": 20,
+        "y": 140,
+        "width": 321,
+        "height": 570
+      },
+      "header": {
+        "x": 0,
+        "y": 76,
+        "width": 360,
+        "height": 54
+      },
+      "currency": {
+        "x": 10,
+        "y": 34,
+        "width": 340,
+        "height": 34
+      },
+      "dock": {
+        "x": 10,
+        "y": 724,
+        "width": 340,
+        "height": 48
+      }
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "event": {
+        "x": 92,
+        "y": 220,
+        "width": 75,
+        "height": 89
+      },
+      "floor11": {
+        "x": 266,
+        "y": 168,
+        "width": 58,
+        "height": 72
+      },
+      "floor10": {
+        "x": 185,
+        "y": 281,
+        "width": 75,
+        "height": 89
+      },
+      "floor9": {
+        "x": 241,
+        "y": 401,
+        "width": 81,
+        "height": 100
+      },
+      "floor8": {
+        "x": 154,
+        "y": 516,
+        "width": 75,
+        "height": 93
+      },
+      "floor7": {
+        "x": 60,
+        "y": 604,
+        "width": 83,
+        "height": 102
+      },
+      "map": {
+        "x": 22,
+        "y": 140,
+        "width": 346,
+        "height": 614
+      },
+      "header": {
+        "x": 0,
+        "y": 76,
+        "width": 390,
+        "height": 54
+      },
+      "currency": {
+        "x": 10,
+        "y": 34,
+        "width": 370,
+        "height": 34
+      },
+      "dock": {
+        "x": 10,
+        "y": 768,
+        "width": 370,
+        "height": 48
+      }
+    },
+    {
+      "viewport": [
+        1280,
+        900
+      ],
+      "event": {
+        "x": 531,
+        "y": 227,
+        "width": 75,
+        "height": 89
+      },
+      "floor11": {
+        "x": 721,
+        "y": 169,
+        "width": 58,
+        "height": 72
+      },
+      "floor10": {
+        "x": 633,
+        "y": 292,
+        "width": 75,
+        "height": 89
+      },
+      "floor9": {
+        "x": 694,
+        "y": 423,
+        "width": 81,
+        "height": 100
+      },
+      "floor8": {
+        "x": 599,
+        "y": 549,
+        "width": 75,
+        "height": 93
+      },
+      "floor7": {
+        "x": 497,
+        "y": 644,
+        "width": 83,
+        "height": 102
+      },
+      "map": {
+        "x": 452,
+        "y": 140,
+        "width": 377,
+        "height": 670
+      },
+      "header": {
+        "x": 0,
+        "y": 76,
+        "width": 1280,
+        "height": 54
+      },
+      "currency": {
+        "x": 10,
+        "y": 34,
+        "width": 1260,
+        "height": 34
+      },
+      "dock": {
+        "x": 10,
+        "y": 824,
+        "width": 1260,
+        "height": 48
+      }
+    }
+  ]
+}

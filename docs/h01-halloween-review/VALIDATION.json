@@ -1,0 +1,590 @@
+{
+  "status": "FILE EVIDENCE ONLY / OWNER VISUAL REVIEW REQUIRED / NO QA PASS",
+  "main": "dcb4cd0c97f145d803e4317674921d95c4a0c9c9",
+  "sources": [
+    {
+      "path": "r2-upload/ui/dungeon-select/dungeon-gate-boss-v2.webp",
+      "sha256": "bb2a0203e7f19f4c7a6fbaa7dbf7af7c18a030da5d0749ea8ba02be7a8b03156"
+    },
+    {
+      "path": "r2-upload/ui/dungeon-select/dungeon-gate-normal-v2.webp",
+      "sha256": "a18feb06a21c460a1df8a705a832902c7e781c96b26b67435eee4d31efdc08af"
+    },
+    {
+      "path": "r2-upload/ui/dungeon-select/dungeon-floor-select-v2.webp",
+      "sha256": "93771a99c6ce7af3e7aaf06d5863d2427e5cbcc466006331b24213ed8d4771ce"
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/base/idle_01.png",
+      "sha256": "1c4e9d24d7d560b96e85dbdbccc47d17739c156a1377d4afb7f53fd90983e5e5"
+    },
+    {
+      "path": "r2-upload/hero/v5/g2/equipment/azure/idle_01/sword_w7_idle_v3.png",
+      "sha256": "8cf7a65a35e70defcc9420ec1b72e533f76bbdbc45e3675700d851bb3212b410"
+    },
+    {
+      "path": "r2-upload/ui/equipment-icons/boss/lavalon_sword.png",
+      "sha256": "b9ca812a09ac38b2e0457cf70dc983de1e0c8e059042d0d8d69742a6465a1994"
+    },
+    {
+      "path": "r2-upload/manifest.json",
+      "sha256": "4cda6432e97335afa6dfc8e6c5c6eb321b4d8dc55225d410a4c1e2aa8908968d"
+    },
+    {
+      "path": "src/phaser/presentation/HeroV5RuntimeContract.js",
+      "sha256": "82493fa1e230b19deec0eddafcaaa56f4761ff1d3e45d45759ce2ff7b12d2f97"
+    }
+  ],
+  "files": [
+    {
+      "path": "H01_03_REVIEW_OVERVIEW.png",
+      "bytes": 1226095,
+      "sha256": "284255dc284565e15008ed4a8cebd478293a9320423295e3a95bea1fadfa6bb5",
+      "mode": "RGBA",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        1600,
+        900
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "boss/HALOWEEN_NIGHTMARE_CONCEPT_SHEET.png",
+      "bytes": 790757,
+      "sha256": "76ad9b4f0858db5f7eb6a77cb51495a7a0d2262ea5965e677283c140ace705e7",
+      "mode": "RGBA",
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        1440,
+        1000
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "boss/HALOWEEN_NIGHTMARE_IDLE_01.png",
+      "bytes": 606280,
+      "sha256": "83909092055fbcc9b69ab70e7dbae563beac9ba6e4a4549dec16be1604a0f354",
+      "mode": "RGBA",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        94,
+        52,
+        713,
+        705
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/EXCALIBURNT_DESIGN_REVIEW.png",
+      "bytes": 504408,
+      "sha256": "17c25270eea22fc1ef95730dde392aef1c8eea5c05f1a9bffc2e888c12fa77d5",
+      "mode": "RGBA",
+      "dimensions": [
+        1280,
+        1050
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        1280,
+        1050
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/EXCALIBURNT_ICON_512.png",
+      "bytes": 94721,
+      "sha256": "cc8b3a9a45c37773da00f5fd91d7230a9230684fd227ea31de191958c0ec5154",
+      "mode": "RGBA",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        125,
+        33,
+        467,
+        393
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/EXCALIBURNT_IDLE_01_WEAPON_ONLY.png",
+      "bytes": 56067,
+      "sha256": "999d9bdc0a77115960fc2a8bb6b2a4300c4fd058d97808e3a47ef3c9c5bf5f5f",
+      "mode": "RGBA",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        233,
+        468,
+        481,
+        718
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/EXCALIBURNT_MASTER_UPRIGHT.png",
+      "bytes": 1652567,
+      "sha256": "58f024de715500b87bd211e382cf2227ffa0221b7e4ee3087c4cced06048fa19",
+      "mode": "RGBA",
+      "dimensions": [
+        1024,
+        1536
+      ],
+      "alphaBounds": [
+        0,
+        17,
+        1002,
+        1536
+      ],
+      "alphaExtrema": [
+        0,
+        254
+      ]
+    },
+    {
+      "path": "excaliburnt/GRIP_DETAIL_AZURE.png",
+      "bytes": 522442,
+      "sha256": "cec69a5384320c5b0f8571ed2019b898bc74002b3e9d04f5666d32803749d212",
+      "mode": "RGBA",
+      "dimensions": [
+        540,
+        480
+      ],
+      "alphaBounds": [
+        71,
+        0,
+        540,
+        480
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/GRIP_DETAIL_BASE.png",
+      "bytes": 321873,
+      "sha256": "74259857f041dca036de59c714750bea50a3468d65e9cc0a1125c1edad816778",
+      "mode": "RGBA",
+      "dimensions": [
+        540,
+        480
+      ],
+      "alphaBounds": [
+        71,
+        0,
+        540,
+        480
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/GRIP_DETAIL_HAND_STUDY.png",
+      "bytes": 299018,
+      "sha256": "afac422fa2c807c6095b5195f12d8a2ea1702f2f470156aad6c13eb3d9e6a83f",
+      "mode": "RGBA",
+      "dimensions": [
+        540,
+        480
+      ],
+      "alphaBounds": [
+        71,
+        0,
+        540,
+        480
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/HAND_OCCLUSION_COMPARISON.png",
+      "bytes": 144604,
+      "sha256": "42d3da7d88244089ea7c8edbe88b54a85e76aac067a64d3b3e310265aeee6119",
+      "mode": "RGBA",
+      "dimensions": [
+        1100,
+        820
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        1100,
+        820
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/HERO_AZURE_COMPOSITE_IDLE_01.png",
+      "bytes": 335738,
+      "sha256": "0e908ba75d2081b6b38ad8a4cb3fb8adbbb48e7b6571472b1c2f6ce77f0377a0",
+      "mode": "RGBA",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        192,
+        126,
+        481,
+        718
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/HERO_BASE_COMPOSITE_IDLE_01.png",
+      "bytes": 176132,
+      "sha256": "e02ef0b87e69cc3f3480ce3fb9a6110be68f70162ba15dac429233c7ed03691d",
+      "mode": "RGBA",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        233,
+        206,
+        481,
+        718
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/HERO_GRIP_REVIEW.png",
+      "bytes": 303437,
+      "sha256": "a008824c8990dc797aa436be32d588784064917d57df3f33181774f2c46c5e82",
+      "mode": "RGBA",
+      "dimensions": [
+        1536,
+        900
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        1536,
+        900
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "excaliburnt/HERO_HAND_OVERLAP_STUDY.png",
+      "bytes": 175147,
+      "sha256": "4ddd90f2bddfd49c0e556b40af48ddd80c7300a014fd5d68afc3e846a79bb0b9",
+      "mode": "RGBA",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        233,
+        206,
+        481,
+        718
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "gate/GATE_BEFORE_AFTER.png",
+      "bytes": 1438838,
+      "sha256": "1f543c64be42cacbd24d3c2833624914b8a6b5109b12d9b46b4e4d3f3b0c7fd0",
+      "mode": "RGBA",
+      "dimensions": [
+        1040,
+        880
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        1040,
+        880
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "gate/HALLOWEEN_GATE_PROTOTYPE.png",
+      "bytes": 2899616,
+      "sha256": "f6330ef599df518797d989b53de9bcb79c4e3235b00a114b814d5c35962ba0a2",
+      "mode": "RGBA",
+      "dimensions": [
+        1024,
+        1536
+      ],
+      "alphaBounds": [
+        32,
+        0,
+        992,
+        1500
+      ],
+      "alphaExtrema": [
+        0,
+        254
+      ]
+    },
+    {
+      "path": "gate/PLACEMENT_1280.png",
+      "bytes": 714356,
+      "sha256": "c60ccc8d81354b33c7f8158687cec943800cc92997faf450f8a971232b3c1c5c",
+      "mode": "RGBA",
+      "dimensions": [
+        1280,
+        900
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        1280,
+        900
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "gate/PLACEMENT_360.png",
+      "bytes": 482052,
+      "sha256": "5639537a7c25239e4be88ec9dfb1d2c33138066abb311d259d9f2d38701a7760",
+      "mode": "RGBA",
+      "dimensions": [
+        360,
+        800
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        360,
+        800
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "gate/PLACEMENT_390.png",
+      "bytes": 558117,
+      "sha256": "6b2160f6600eecbc9b8632aa9c5808976d4999b26fa984a47eaee97742dacee4",
+      "mode": "RGBA",
+      "dimensions": [
+        390,
+        844
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        390,
+        844
+      ],
+      "alphaExtrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "path": "working/AZURE_REFERENCE_IDLE_01.png",
+      "bytes": 327257,
+      "sha256": "f6fb0b04a2a6de9c9637ad20e00e6daa1f06e106d96a75d45016eeb3054b7f2c",
+      "mode": "RGBA",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        192,
+        126,
+        480,
+        711
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "working/BOSS_SILHOUETTE.png",
+      "bytes": 89485,
+      "sha256": "1a5c0f74c185c723d5dd69f82d21215e9ed612fabe7190511010ac9a250699f3",
+      "mode": "RGBA",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        94,
+        52,
+        713,
+        705
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ]
+    }
+  ],
+  "staticPlacementChecks": [
+    {
+      "viewport": [
+        360,
+        800
+      ],
+      "intersectionAreas": {
+        "floor10": 0,
+        "floor8": 0,
+        "header": 0,
+        "currency": 0,
+        "dock": 0
+      }
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "intersectionAreas": {
+        "floor10": 0,
+        "floor8": 0,
+        "header": 0,
+        "currency": 0,
+        "dock": 0
+      }
+    },
+    {
+      "viewport": [
+        1280,
+        900
+      ],
+      "intersectionAreas": {
+        "floor10": 0,
+        "floor8": 0,
+        "header": 0,
+        "currency": 0,
+        "dock": 0
+      }
+    }
+  ],
+  "runtimeQA": "NOT RUN",
+  "build": "NOT RUN - no application source change",
+  "productionPublication": "NOT AUTHORIZED",
+  "weaponTransform": {
+    "sourceGrip": [
+      512,
+      1250
+    ],
+    "targetGrip": [
+      270,
+      505
+    ],
+    "scale": 0.205,
+    "clockwiseDegrees": 135,
+    "canvas": [
+      768,
+      768
+    ],
+    "origin": [
+      0,
+      0
+    ]
+  },
+  "bossAuthoringRegistration": {
+    "sourceCanvas": [
+      1280,
+      1280
+    ],
+    "uniformScale": 0.55,
+    "translation": [
+      32,
+      24
+    ],
+    "canvas": [
+      768,
+      768
+    ],
+    "alphaTrim": false
+  },
+  "handStudyOnly": {
+    "source": "unchanged Base idle_01",
+    "crop": [
+      240,
+      475,
+      60,
+      65
+    ],
+    "translation": [
+      0,
+      0
+    ],
+    "insideWeaponFile": false
+  },
+  "ownerReview": {
+    "gate": "CONCEPT APPROVED",
+    "boss": "CONCEPT APPROVED",
+    "excaliburnt": "REVISION 2 CONCEPT APPROVED",
+    "scope": "Concept/prototype visual acceptance only; H01-04 not started"
+  },
+  "approvedArtworkPreservation": {
+    "gate/HALLOWEEN_GATE_PROTOTYPE.png": {
+      "sha256": "f6330ef599df518797d989b53de9bcb79c4e3235b00a114b814d5c35962ba0a2",
+      "byteIdentical": true
+    },
+    "boss/HALOWEEN_NIGHTMARE_IDLE_01.png": {
+      "sha256": "83909092055fbcc9b69ab70e7dbae563beac9ba6e4a4549dec16be1604a0f354",
+      "byteIdentical": true
+    }
+  }
+}

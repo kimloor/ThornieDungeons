@@ -1,0 +1,3522 @@
+{
+  "productionManifestModified": false,
+  "fixtureConfigOnly": true,
+  "source": "src/phaser/presentation/HeroV5RuntimeContract.js",
+  "cases": [
+    {
+      "selection": "bare",
+      "frame": "idle_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_back",
+          "path": "hero/v5/g2/hair/topknot/idle_01/hair_back.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_front",
+          "path": "hero/v5/g2/hair/topknot/idle_01/hair_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "bare",
+      "frame": "idle_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_back",
+          "path": "hero/v5/g2/hair/topknot/idle_02/hair_back.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_front",
+          "path": "hero/v5/g2/hair/topknot/idle_02/hair_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "bare",
+      "frame": "idle_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_back",
+          "path": "hero/v5/g2/hair/topknot/idle_03/hair_back.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_front",
+          "path": "hero/v5/g2/hair/topknot/idle_03/hair_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "bare",
+      "frame": "attack_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_back",
+          "path": "hero/v5/g2/hair/topknot/attack_01/hair_back.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_front",
+          "path": "hero/v5/g2/hair/topknot/attack_01/hair_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "bare",
+      "frame": "attack_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_back",
+          "path": "hero/v5/g2/hair/topknot/attack_02/hair_back.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_front",
+          "path": "hero/v5/g2/hair/topknot/attack_02/hair_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "bare",
+      "frame": "attack_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_back",
+          "path": "hero/v5/g2/hair/topknot/attack_03/hair_back.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_front",
+          "path": "hero/v5/g2/hair/topknot/attack_03/hair_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "bare",
+      "frame": "death_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_back",
+          "path": "hero/v5/g2/hair/topknot/death_01/hair_back.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_front",
+          "path": "hero/v5/g2/hair/topknot/death_01/hair_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "bare",
+      "frame": "death_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_back",
+          "path": "hero/v5/g2/hair/topknot/death_02/hair_back.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "hair_front",
+          "path": "hero/v5/g2/hair/topknot/death_02/hair_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure",
+      "frame": "idle_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/azure/idle_01/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/idle_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_01/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/idle_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_01/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/idle_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure",
+      "frame": "idle_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/azure/idle_02/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/idle_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_02/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/idle_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_02/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/idle_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure",
+      "frame": "idle_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/azure/idle_03/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/idle_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_03/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/idle_03/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_03/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/idle_03/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure",
+      "frame": "attack_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/azure/attack_01/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/attack_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/attack_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_01/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/attack_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure",
+      "frame": "attack_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/azure/attack_02/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/attack_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/attack_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_02/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/attack_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure",
+      "frame": "attack_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/azure/attack_03/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/attack_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_03/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/attack_03/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_03/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/attack_03/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure",
+      "frame": "death_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/azure/death_01/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/death_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/death_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/death_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/death_01/helmet.png?v=azure_angel_fullface_death_r3",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/death_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure",
+      "frame": "death_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/azure/death_02/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/death_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/death_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/death_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/death_02/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/death_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure_no_gloves",
+      "frame": "idle_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/idle_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_01/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_01/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure_no_gloves",
+      "frame": "idle_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/idle_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_02/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_02/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure_no_gloves",
+      "frame": "idle_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/idle_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_03/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_03/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure_no_gloves",
+      "frame": "attack_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/attack_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_01/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure_no_gloves",
+      "frame": "attack_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/attack_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_02/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure_no_gloves",
+      "frame": "attack_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/attack_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_03/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_03/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure_no_gloves",
+      "frame": "death_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/death_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/death_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/death_01/helmet.png?v=azure_angel_fullface_death_r3",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "azure_no_gloves",
+      "frame": "death_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/azure/death_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/death_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/death_02/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather",
+      "frame": "idle_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/leather/idle_01/coverage_underlay.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/idle_01/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/idle_01/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/idle_01/arm_front.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_01/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/idle_01/helmet.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "right_hand_occlusion",
+          "path": "hero/v5/g2/equipment/leather/idle_01/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            493,
+            768,
+            42
+          ]
+        }
+      ],
+      "postSwordLayers": [
+        "right_hand_occlusion"
+      ],
+      "hasScopedHandPass": true,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather",
+      "frame": "idle_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/leather/idle_02/coverage_underlay.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/idle_02/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/idle_02/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/idle_02/arm_front.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_02/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/idle_02/helmet.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "right_hand_occlusion",
+          "path": "hero/v5/g2/equipment/leather/idle_02/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            481,
+            768,
+            42
+          ]
+        }
+      ],
+      "postSwordLayers": [
+        "right_hand_occlusion"
+      ],
+      "hasScopedHandPass": true,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather",
+      "frame": "idle_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/leather/idle_03/coverage_underlay.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/idle_03/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/idle_03/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/idle_03/arm_front.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_03/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/idle_03/helmet.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "right_hand_occlusion",
+          "path": "hero/v5/g2/equipment/leather/idle_03/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            489,
+            768,
+            42
+          ]
+        }
+      ],
+      "postSwordLayers": [
+        "right_hand_occlusion"
+      ],
+      "hasScopedHandPass": true,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather",
+      "frame": "attack_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/leather/attack_01/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/attack_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/attack_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/attack_01/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/attack_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_rear"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather",
+      "frame": "attack_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/leather/attack_02/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/attack_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/attack_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/attack_02/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/attack_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_rear"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather",
+      "frame": "attack_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/leather/attack_03/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/attack_03/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/attack_03/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/attack_03/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/attack_03/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_rear"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather",
+      "frame": "death_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/leather/death_01/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/death_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/death_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/death_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/death_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/death_01/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather",
+      "frame": "death_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "coverage_underlay",
+          "path": "hero/v5/g2/equipment/leather/death_02/coverage_underlay.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/death_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/death_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/death_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/death_02/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/death_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_rear"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather_no_gloves",
+      "frame": "idle_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/idle_01/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_01/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/idle_01/helmet.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather_no_gloves",
+      "frame": "idle_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/idle_02/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_02/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/idle_02/helmet.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather_no_gloves",
+      "frame": "idle_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/idle_03/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_03/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/idle_03/helmet.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather_no_gloves",
+      "frame": "attack_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/attack_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/attack_01/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather_no_gloves",
+      "frame": "attack_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/attack_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/attack_02/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather_no_gloves",
+      "frame": "attack_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/attack_03/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/attack_03/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather_no_gloves",
+      "frame": "death_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/death_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/death_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/death_01/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "leather_no_gloves",
+      "frame": "death_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/leather/death_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/death_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/leather/death_02/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed",
+      "frame": "idle_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_01/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/robot/idle_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/idle_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/skeleton/idle_01/helmet.png?v=skeleton_idle_r07_20261029",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/idle_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed",
+      "frame": "idle_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_02/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/robot/idle_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/idle_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/skeleton/idle_02/helmet.png?v=skeleton_idle_r07_20261029",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/idle_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed",
+      "frame": "idle_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/idle_03/torso_armor.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/robot/idle_03/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/idle_03/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/skeleton/idle_03/helmet.png?v=skeleton_idle_r07_20261029",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/idle_03/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed",
+      "frame": "attack_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/robot/attack_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/attack_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/skeleton/attack_01/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/attack_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed",
+      "frame": "attack_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/robot/attack_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/attack_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/skeleton/attack_02/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/attack_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed",
+      "frame": "attack_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/attack_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/robot/attack_03/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/attack_03/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/skeleton/attack_03/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/attack_03/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed",
+      "frame": "death_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/death_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/robot/death_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/death_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/skeleton/death_01/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/death_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed",
+      "frame": "death_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/leather/death_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/robot/death_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/azure/death_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/skeleton/death_02/helmet.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/azure/death_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed_leather_gloves",
+      "frame": "idle_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_waist",
+          "path": "hero/v5/g2/equipment/azure/idle_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            490,
+            768,
+            32
+          ]
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/skeleton/idle_01/torso_armor.png?v=skeleton_idle_r07_20261029",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_01/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/idle_01/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_01/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/idle_01/arm_front.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "right_hand_occlusion",
+          "path": "hero/v5/g2/equipment/leather/idle_01/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            493,
+            768,
+            42
+          ]
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front",
+        "right_hand_occlusion"
+      ],
+      "hasScopedHandPass": true,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed_leather_gloves",
+      "frame": "idle_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_waist",
+          "path": "hero/v5/g2/equipment/azure/idle_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            478,
+            768,
+            32
+          ]
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/skeleton/idle_02/torso_armor.png?v=skeleton_idle_r07_20261029",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_02/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/idle_02/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_02/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/idle_02/arm_front.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "right_hand_occlusion",
+          "path": "hero/v5/g2/equipment/leather/idle_02/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            481,
+            768,
+            42
+          ]
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front",
+        "right_hand_occlusion"
+      ],
+      "hasScopedHandPass": true,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed_leather_gloves",
+      "frame": "idle_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_waist",
+          "path": "hero/v5/g2/equipment/azure/idle_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            486,
+            768,
+            32
+          ]
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/skeleton/idle_03/torso_armor.png?v=skeleton_idle_r07_20261029",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/idle_03/legs_boots.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/idle_03/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/idle_03/helmet.png?v=azure_angel_fullface_idle_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/idle_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/idle_03/arm_front.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "right_hand_occlusion",
+          "path": "hero/v5/g2/equipment/leather/idle_03/arm_rear.png?v=idle_equipment_20261029_r2",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0,
+          "crop": [
+            0,
+            489,
+            768,
+            42
+          ]
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front",
+        "right_hand_occlusion"
+      ],
+      "hasScopedHandPass": true,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed_leather_gloves",
+      "frame": "attack_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/skeleton/attack_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_01/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/attack_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/attack_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front",
+        "arm_rear"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed_leather_gloves",
+      "frame": "attack_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/skeleton/attack_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_02/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/attack_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/attack_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front",
+        "arm_rear"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed_leather_gloves",
+      "frame": "attack_03",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/skeleton/attack_03/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/attack_03/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/attack_03/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/attack_03.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/attack_03/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/attack_03/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front",
+        "arm_rear"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed_leather_gloves",
+      "frame": "death_01",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/skeleton/death_01/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/death_01/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/death_01/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/death_01/helmet.png?v=azure_angel_fullface_death_r3",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_01.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/death_01/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    },
+    {
+      "selection": "mixed_leather_gloves",
+      "frame": "death_02",
+      "layers": [
+        {
+          "name": "base",
+          "path": "hero/v5/g2/base/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "torso_armor",
+          "path": "hero/v5/g2/equipment/skeleton/death_02/torso_armor.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "legs_boots",
+          "path": "hero/v5/g2/equipment/azure/death_02/legs_boots.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "helmet",
+          "path": "hero/v5/g2/equipment/azure/death_02/helmet.png?v=azure_angel_fullface_v1",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "sword",
+          "path": "h01-review:hero/v5/g2/weapons/excaliburnt/death_02.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_front",
+          "path": "hero/v5/g2/equipment/leather/death_02/arm_front.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        },
+        {
+          "name": "arm_rear",
+          "path": "hero/v5/g2/equipment/leather/death_02/arm_rear.png",
+          "x": 0,
+          "y": 84,
+          "scale": 1,
+          "rotation": 0
+        }
+      ],
+      "postSwordLayers": [
+        "arm_front",
+        "arm_rear"
+      ],
+      "hasScopedHandPass": false,
+      "note": "Actual main HeroV5RuntimeContract evaluated with isolated Excaliburnt texture config only; Sharp composition, NOT Phaser/browser/runtime QA; runtimeOffsetY=84 omitted equally from all layers in authoring-space output"
+    }
+  ]
+}

@@ -506,6 +506,7 @@ body::after {
 .md-hub-raid-callout small { color:#ffb3a3; font-size:7.5px; letter-spacing:1.4px; font-weight:900; }
 .md-hub-raid-callout strong { font-family:'Baloo 2'; font-size:13px; }
 .md-hub-raid-callout > b { color:var(--gold); font-size:9px; }
+.md-hub-raid-callout[data-world-event="halloween"] > img { object-fit:contain; filter:drop-shadow(0 0 8px rgba(184,74,255,.8)); }
 .md-hub-gate-focus { position:absolute; z-index:2; top:28%; left:12px; right:12px; display:flex; flex-direction:column; align-items:center; text-align:center; pointer-events:none; }
 .md-hub-gate-focus span { color:#a8e8ff; font-family:'Baloo 2'; font-size:11px; font-weight:900; letter-spacing:.5px; text-shadow:0 2px 6px #000,0 0 10px #009be8; }
 .md-hub-gate-focus strong { margin-top:-2px; color:#ffe6a2; font-family:'Baloo 2'; font-size:58px; line-height:.95; text-shadow:0 4px 0 rgba(0,0,0,.7),0 0 24px rgba(68,200,255,.45); }
@@ -873,6 +874,10 @@ body::after {
 .md-dungeon-floor-node.boss .md-dungeon-door { width:104px; height:124px; }
 .md-dungeon-floor-node.boss.current .md-dungeon-door > img { filter:saturate(1.18) brightness(1.05) drop-shadow(0 0 8px rgba(255,174,38,.9)) drop-shadow(0 0 16px rgba(185,87,0,.62)); }
 .md-dungeon-floor-node.boss.current .md-dungeon-floor-number,.md-dungeon-floor-node.boss.current .md-dungeon-floor-state { border-color:#cf922d; color:#ffe2a0; box-shadow:0 0 10px rgba(218,137,25,.42); }
+.md-dungeon-floor-node.md-halloween-gate { z-index:3; }
+.md-dungeon-floor-node.md-halloween-gate .md-dungeon-door { width:104px; height:124px; }
+.md-dungeon-floor-node.md-halloween-gate .md-dungeon-door > img { filter:saturate(1.2) brightness(1.04) drop-shadow(0 0 9px rgba(178,65,255,.9)); }
+.md-dungeon-floor-node.md-halloween-gate .md-dungeon-floor-number,.md-dungeon-floor-node.md-halloween-gate .md-dungeon-floor-state { border-color:#9f5bd7; color:#f1d8ff; box-shadow:0 0 10px rgba(168,70,245,.55); }
 .md-dungeon-floor-node:active:not(:disabled) { filter:brightness(.88) drop-shadow(0 5px 5px rgba(0,0,0,.72)); }
 .md-dungeon-map-page > .md-hub-dock { flex:0 0 auto; min-height:var(--md-dock-height); z-index:10; }
 .md-dungeon-map-page > .md-hub-dock button { min-height:var(--md-dock-hit); }
@@ -3927,7 +3932,7 @@ function resolveItemIconPath(item) {
     return icons.wings?.angel || "";
   }
   const bossWeaponId = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
-  const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword", excaliburnt: "excaliburnt" };
   if (bossWeaponIcons[bossWeaponId]) return icons.bossWeapons?.[bossWeaponIcons[bossWeaponId]] || "";
   // G11 set families share one slot contract; never infer a path outside the manifest.
   const setFamily = String(item.setId || "").trim().toLowerCase();
@@ -5376,6 +5381,7 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   arena_opponent_not_found: "business",
   arena_replay_not_found: "business",
   arena_tickets_full: "business",
+  halloween_event_inactive: "business",
   battle_checkpoint_missing: "business",
   battle_result_not_after_checkpoint: "business",
   blocked_relationship: "business",
@@ -5462,6 +5468,7 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   cors_origin_not_allowed: "fatal",
   daily_reward_contract_unavailable: "fatal",
   dungeon_battle_not_authorized: "fatal",
+  halloween_context_invalid: "fatal",
   invalid_config: "fatal",
   method_not_allowed: "fatal",
   missing_action_key: "fatal",
@@ -5574,6 +5581,7 @@ const API_POLICY = Object.freeze({
   getGlobalChat: P.readBackground,
   getGuildChat: P.readBackground,
   getGuildChatStatus: P.readBackground,
+  getHalloweenEventStatus: P.readBackground,
   // write (42)
   acceptGuildApplication: P.write,
   acknowledgeArenaV2Unlock: P.write,
@@ -5622,6 +5630,7 @@ const API_POLICY = Object.freeze({
   cancelFriendRequest: P.writeState,
   claimAllMail: P.writeState,
   rejectFriendRequest: P.writeState,
+  startHalloweenBattle: P.writeState,
   // writeBackground (4)
   markConversationRead: P.writeBackground,
   markGuildChatRead: P.writeBackground,
@@ -6242,6 +6251,12 @@ function cloudGetBattleState(url, characterId) {
 }
 function cloudGetDungeonEncounterPreview(url, characterId, floor) {
   return cloudAuthGet(url, { action: "getDungeonEncounterPreview", characterId, floor });
+}
+function cloudGetHalloweenEventStatus(url) {
+  return cloudGet(url, { action: "getHalloweenEventStatus" });
+}
+function cloudStartHalloweenBattle(url, characterId) {
+  return cloudAuthPost(url, { action: "startHalloweenBattle", characterId });
 }
 function cloudStartDungeonBattle(url, characterId, floor, previewContext = null) {
   return cloudAuthPost(url, {
@@ -12191,19 +12206,19 @@ function makeEnemy(floor, options = {}) {
     : null;
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
   const canonicalProfile = isBoss
-    ? DUNGEON_V2.getDungeonV2BossProfile(options.profileId)
+    ? DUNGEON_V2.getDungeonV2BossProfile(options.statProfileId || options.profileId)
     : DUNGEON_V2.getDungeonV2MonsterProfile(options.profileId);
   const t = options.profileId
     ? pool.find(entry => String(entry.dungeonV2Id || entry.id) === String(options.profileId)) || {
       id: canonicalProfile?.id || String(options.profileId),
-      name: canonicalProfile?.name || String(options.profileId),
+      name: options.displayName || canonicalProfile?.name || String(options.profileId),
       color: "#7ED9A8",
       sizeClass: isBoss ? "large" : "medium",
       anchorType: options.profileId === "bramble_bat" ? "flying" : "ground"
     }
     : pool[Math.floor(Math.random() * pool.length)] || pool[0];
   const packCount = Math.max(1, Math.min(3, Math.floor(Number(options.packCount) || 1)));
-  const v2ProfileId = t.dungeonV2Id || t.id;
+  const v2ProfileId = options.statProfileId || t.dungeonV2Id || t.id;
   const v2Stats = isBoss
     ? DUNGEON_V2.resolveDungeonV2BossStats(floor, v2ProfileId)
     : DUNGEON_V2.resolveDungeonV2NormalStats(floor, v2ProfileId, { packCount, elite: isElite, modifier });
@@ -12213,7 +12228,9 @@ function makeEnemy(floor, options = {}) {
   const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
   const speedAdjustment = Number(v2Stats.speedAdjustment) || 0;
   const baseAtk = v2Stats.atk;
-  const skillConfig = DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
+  const skillConfig = Array.isArray(options.skillCycle) && options.skillCycle.length
+    ? { skillSetId: options.profileId, cycle: options.skillCycle, phase2Cycle: null, phaseAction: null }
+    : DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
   return {
     id: t.id,
     uid: options.instanceId || `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -12229,7 +12246,8 @@ function makeEnemy(floor, options = {}) {
     chapter: DUNGEON_V2.dungeonChapterForFloor(floor),
     chapterFloor: DUNGEON_V2.dungeonChapterFloor(floor),
     sourceIdentity: isBoss ? `chapter_boss:${t.id}` : `${encounterType}:${t.id}`,
-    dungeonV2ProfileId: v2Stats.profileId,
+    dungeonV2ProfileId: options.profileId || v2Stats.profileId,
+    dungeonV2StatProfileId: v2Stats.profileId,
     dungeonV2SkillSetId: skillConfig?.skillSetId || null,
     dungeonV2SkillCycle: skillConfig?.cycle || null,
     dungeonV2SkillPhase2Cycle: skillConfig?.phase2Cycle || null,
@@ -12270,6 +12288,9 @@ function makeEncounter(floor, options = {}) {
       encounterType,
       packCount: serverContext.packCount,
       profileId: enemy.id,
+      displayName: enemy.id === "haloween_nightmare" ? "Haloween nightmare" : undefined,
+      statProfileId: enemy.statProfileId,
+      skillCycle: enemy.skillCycle,
       instanceId: enemy.instanceId,
       modifierId: enemy.modifierId
     }));
@@ -13001,8 +13022,11 @@ function heroV5SetFamily(item) {
 
 function heroV5BossWeaponVisualId(item) {
   if (!item) return null;
-  const id = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
-  const map = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  const identities = [item.bossWeaponId, item.specialSource, item.sourceIdentity, item.itemTemplateId, item.templateId, item.itemId, item.id]
+    .map(value => String(value || "").trim().toLowerCase().replace(/^boss_weapon:/, ""));
+  const id = identities.find(value => ["spirit_greatsword", "lavalon_sword", "icicle_longsword", "excaliburnt"].includes(value))
+    || (identities.some(value => value === "halloween_event:haloween_nightmare") ? "excaliburnt" : "");
+  const map = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword", excaliburnt: "excaliburnt" };
   return map[id] || null;
 }
 
@@ -13298,6 +13322,15 @@ function heroV5RightHandOcclusionLayer(config, frameId, equipmentSelection, equi
   const gloveFamily = equipmentSelection?.equipment?.gloves;
   const gloveConfig = gloveFamily ? config?.equipment?.[gloveFamily] : null;
   const weaponFamily = equipmentSelection?.bossWeapon || equipmentSelection?.equipment?.weapon;
+  const eventWeaponConfig = weaponFamily === "excaliburnt" ? config?.equipment?.excaliburnt : null;
+  if (eventWeaponConfig?.handOcclusion?.profile === "excaliburnt_hand_v1" && equipmentLayerNames.includes("sword")) {
+    const crop = HERO_V5_LEATHER_BARE_HAND_CROPS[frameId];
+    if (!Array.isArray(crop)) return null;
+    const sourcePath = gloveFamily
+      ? gloveConfig?.frames?.[frameId]?.arm_rear
+      : config?.base?.frames?.[frameId];
+    return sourcePath ? heroV5FrameLayer("right_hand_occlusion", sourcePath, { crop: [...crop] }) : null;
+  }
   const bareLeatherSword = !gloveFamily && weaponFamily === "leather";
   const occlusionConfig = bareLeatherSword ? config?.equipment?.leather : gloveConfig;
   const handConfig = occlusionConfig?.handOcclusion;
@@ -16581,6 +16614,7 @@ function ThornieDungeons() {
   const [gachaReturnPhase, setGachaReturnPhase] = useState("pets");
   const [utilityReturnPhase, setUtilityReturnPhase] = useState("menu");
   const [arenaHud, setArenaHud] = useState(null);
+  const [halloweenEvent, setHalloweenEvent] = useState({ active: false, state: "inactive" });
   const [arenaFatal, setArenaFatal] = useState(null);
   // One-shot deep link set only by Friend's "Chat" action, consumed once by ChatScreen on
   // mount to open straight into that DM thread. Every other way of opening Chat clears
@@ -16624,6 +16658,19 @@ function ThornieDungeons() {
       clearInterval(timer);
     };
   }, [cred.url, save?.characterId, save?.character?.level]);
+  useEffect(() => {
+    if (!cred.url || !["menu", "map"].includes(phase)) return undefined;
+    let cancelled = false;
+    const refresh = () => cloudGetHalloweenEventStatus(cred.url).then(status => {
+      if (!cancelled && status && !status.error) setHalloweenEvent(status);
+    }).catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [cred.url, phase]);
   const refreshGuildChatStatus = useCallback((characterId) => cloudGetGuildChatStatus(cred.url, characterId).then((res) => {
     if (activeCharacterIdRef.current === characterId && res?.ok) setGuildUnreadState({ characterId, unread: !!res.guild?.unread });
   }).catch(() => {}), [cred.url]);
@@ -17934,7 +17981,10 @@ function ThornieDungeons() {
     const stageLoading = GLOBAL_LOADING.begin({ key: "dungeon.enter", label: "กำลังเข้าดันเจี้ยน…", maxMs: 45000 });
     void (async () => {
     const allowResume = options.allowResume !== false;
-    const resumableCheckpoint = allowResume && resumeBattle?.serverContext && Number(resumeBattle.floor) === Number(floorNum)
+    const resumeMatches = options.halloween
+      ? resumeBattle?.serverContext?.eventId === "halloween_v1"
+      : Number(resumeBattle?.floor) === Number(floorNum);
+    const resumableCheckpoint = allowResume && resumeBattle?.serverContext && resumeMatches
       ? resumeBattle
       : null;
     let battleAuthorization = null;
@@ -17946,8 +17996,10 @@ function ThornieDungeons() {
         if (!cleared?.ok) throw new Error("checkpoint_reset_failed");
         setResumeBattle(null);
       }
-      let started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null);
-      if (!started?.ok && started?.error === "dungeon_preview_stale" && started?.context) {
+      let started = options.halloween
+        ? await cloudStartHalloweenBattle(cred.url, save.characterId)
+        : await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null);
+      if (!options.halloween && !started?.ok && started?.error === "dungeon_preview_stale" && started?.context) {
         started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, started.context);
       }
       if (!started?.ok || !started?.battleId || !started?.context) throw new Error(started?.error || "dungeon_start_failed");
@@ -17961,6 +18013,8 @@ function ThornieDungeons() {
     setLogState([]);
     setBattleVfx([]);
     setFinishedBattleLog([]);
+    const serverContext = resumableCheckpoint?.serverContext || battleAuthorization?.context;
+    floorNum = Math.max(1, Number(serverContext?.floor) || Number(floorNum) || 1);
     setSelectedFloor(floorNum);
     const resumeCarry = allowResume && !carryPlayer && resumeRun && Number(resumeRun.floor) === Number(floorNum) ? resumeRun : null;
     const nextPlayer = freshPlayerFromSave(save, carryPlayer || resumeCarry);
@@ -17976,7 +18030,6 @@ function ThornieDungeons() {
     if (resumeRun) setResumeRun(null);
     // The map may preview a local encounter, but combat identity is established by
     // the Worker before Battle Core starts. Resume uses the same persisted context.
-    const serverContext = resumableCheckpoint?.serverContext || battleAuthorization?.context;
     const spawned = makeEncounter(floorNum, { serverContext });
     setMonsters(spawned);
     monstersRef.current = spawned;
@@ -19289,6 +19342,7 @@ function ThornieDungeons() {
     save: save,
     cp: cp,
     arenaHud: arenaHud,
+    halloweenEvent: halloweenEvent,
     onTown: () => setPhase("town"),
     onCharacter: () => {
       setCharacterReturnPhase("menu");
@@ -19311,6 +19365,7 @@ function ThornieDungeons() {
       setUtilityReturnPhase("menu");
       setPhase("raid");
     },
+    onHalloween: () => setPhase("map"),
     onArena: () => {
       setUtilityReturnPhase("menu");
       setPhase("arena");
@@ -19459,6 +19514,7 @@ function ThornieDungeons() {
     save: save,
     serverUrl: cred.url,
     arenaHud: arenaHud,
+    halloweenEvent: halloweenEvent,
     unlockedFloor: save.unlockedFloor,
     onCharacter: () => {
       setCharacterReturnPhase("map");
@@ -19477,6 +19533,11 @@ function ThornieDungeons() {
       floorNum,
       player && player.hp > 0 ? player : null,
       { encounter, previewContext }
+    ),
+    onSelectHalloween: () => enterStage(
+      null,
+      player && player.hp > 0 ? player : null,
+      { halloween: true }
     ),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
@@ -20619,6 +20680,8 @@ function HubScreen({
   onPets,
   onLeaderboard,
   onRaid,
+  onHalloween,
+  halloweenEvent,
   onArena,
   onMailbox,
   onSave,
@@ -20632,11 +20695,23 @@ function HubScreen({
   onClearDailyLoginResult
 }) {
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
+  const [worldEventIndex, setWorldEventIndex] = useState(0);
   const canClaimDaily = dailyLogin.canClaim;
   const dailyPreview = dailyLogin.preview || { streak: 1, reward: {} };
   React.useEffect(() => {
     if (dailyLoginClaimResult) setDailyModalOpen(true);
   }, [dailyLoginClaimResult]);
+  const worldEvents = React.useMemo(() => [
+    { id: "raid", label: "Raid Boss", icon: "/assets/ui/hub-icons/raid.svg", onClick: onRaid },
+    ...(halloweenEvent?.active ? [{ id: "halloween", label: "Haloween nightmare", icon: "/assets/ui/dungeon-select/dungeon-gate-halloween-v1.webp", onClick: onHalloween }] : [])
+  ], [halloweenEvent?.active, onRaid, onHalloween]);
+  React.useEffect(() => {
+    setWorldEventIndex(0);
+    if (worldEvents.length < 2) return undefined;
+    const timer = setInterval(() => setWorldEventIndex(index => (index + 1) % worldEvents.length), 5000);
+    return () => clearInterval(timer);
+  }, [worldEvents.length]);
+  const worldEvent = worldEvents[worldEventIndex] || worldEvents[0];
   const openDaily = () => {
     setDailyModalOpen(true);
   };
@@ -20672,8 +20747,9 @@ function HubScreen({
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "md-hub-raid-callout",
-    onClick: onRaid
-  }, /*#__PURE__*/React.createElement("img", { src: "/assets/ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("small", null, "WORLD EVENT"), /*#__PURE__*/React.createElement("strong", null, "Raid Boss")), /*#__PURE__*/React.createElement("b", null, "ไปต่อ ›")), /*#__PURE__*/React.createElement("div", {
+    onClick: worldEvent.onClick,
+    "data-world-event": worldEvent.id
+  }, /*#__PURE__*/React.createElement("img", { src: worldEvent.icon, alt: "" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("small", null, "WORLD EVENT"), /*#__PURE__*/React.createElement("strong", null, worldEvent.label)), /*#__PURE__*/React.createElement("b", null, "ไปต่อ ›")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-gate-focus"
   }, /*#__PURE__*/React.createElement("span", null, "ชั้นปัจจุบัน"), /*#__PURE__*/React.createElement("strong", null, save.unlockedFloor)), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-world-actions"
@@ -24951,6 +25027,8 @@ function MapScreen({
   arenaHud,
   unlockedFloor,
   onSelectFloor,
+  onSelectHalloween,
+  halloweenEvent,
   onSave,
   onBack,
   onCharacter,
@@ -25015,6 +25093,20 @@ function MapScreen({
       )
     ),
     e("section", { className: "md-dungeon-floor-world", "aria-label": "ชั้นดันเจี้ยน" },
+      halloweenEvent?.active && e("button", {
+        type: "button",
+        className: "md-dungeon-floor-node md-halloween-gate current",
+        style: { left: "31%", top: "13%", "--md-gate-scale": .72 },
+        onClick: onSelectHalloween,
+        "aria-label": "เข้าสู่ดันเจี้ยน Halloween"
+      },
+        e("span", { className: "md-dungeon-floor-number" }, "EVENT"),
+        e("span", { className: "md-dungeon-boss-label" }, "HALLOWEEN"),
+        e("span", { className: "md-dungeon-door" },
+          e("img", { src: "/assets/ui/dungeon-select/dungeon-gate-halloween-v1.webp", alt: "", draggable: false, "aria-hidden": "true" })
+        ),
+        e("span", { className: "md-dungeon-floor-state" }, "พร้อมท้าทาย")
+      ),
       floors.map((floor, index) => {
         const locked = floor > unlockedFloor;
         const current = floor === unlockedFloor;

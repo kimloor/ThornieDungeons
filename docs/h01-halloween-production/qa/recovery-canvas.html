@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>H01 Excaliburnt — Phaser Canvas QA</title>
+  <style>
+    html,body{margin:0;min-height:100%;background:#171d28;color:#fff;font:14px system-ui,sans-serif}
+    #stage{width:768px;height:768px;background:linear-gradient(#313849,#161a24)}
+    canvas{display:block}#status{position:fixed;left:8px;bottom:8px;max-width:740px;padding:6px 8px;background:#111c;color:#fff;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <div id="stage"></div><pre id="status">Loading production resolver and renderer…</pre>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  <script src="../../../src/phaser/presentation/EquipmentVisualResolver.js"></script>
+  <script src="../../../src/phaser/presentation/HeroV5RuntimeContract.js"></script>
+  <script src="../../../src/phaser/renderers/HeroRenderer.js"></script>
+  <script>
+  (async()=>{
+    const root=new URL('../../../',location.href);
+    const frameIds=['idle_01','idle_02','idle_03','attack_01','attack_02','attack_03','death_01','death_02'];
+    const frameState=Object.fromEntries([
+      ...frameIds.slice(0,3).map((id,index)=>[id,['idle',index]]),
+      ...frameIds.slice(3,6).map((id,index)=>[id,['attack',index]]),
+      ...frameIds.slice(6).map((id,index)=>[id,['death',index]])
+    ]);
+    const manifest=await fetch(new URL('r2-upload/manifest.json',root)).then(response=>{
+      if(!response.ok)throw new Error(`manifest:${response.status}`);
+      return response.json();
+    });
+    window.ASSETS=manifest.assets;
+    const config=manifest.assets.hero001.v5.g2;
+    const item=(family,type)=>family==='leather'?{type,gearTier:1}:{type,setId:family};
+    const states={
+      bare:{},
+      azure:{helmet:item('azure','helmet'),chest:item('azure','chest'),gloves:item('azure','gloves'),boots:item('azure','boots')},
+      azure_no_gloves:{helmet:item('azure','helmet'),chest:item('azure','chest'),boots:item('azure','boots')},
+      leather:{helmet:item('leather','helmet'),chest:item('leather','chest'),gloves:item('leather','gloves'),boots:item('leather','boots')},
+      leather_no_gloves:{helmet:item('leather','helmet'),chest:item('leather','chest'),boots:item('leather','boots')},
+      mixed:{helmet:item('azure','helmet'),chest:item('leather','chest'),gloves:item('azure','gloves'),boots:item('leather','boots')},
+      mixed_leather_gloves:{helmet:item('azure','helmet'),chest:item('azure','chest'),gloves:item('leather','gloves'),boots:item('azure','boots')}
+    };
+    const weapon={type:'weapon',rarity:'mythic',bossWeaponId:'excaliburnt',specialSource:'excaliburnt'};
+    const cases=Object.entries(states).flatMap(([state,equipped])=>{
+      const selection=resolveHeroV5EquipmentSelection({...equipped,weapon});
+      if(selection.bossWeapon!=='excaliburnt')throw new Error(`resolver:${state}`);
+      return frameIds.map(frame=>{
+        const layers=heroV5FrameLayers(config,frame,{includeHair:true,equipmentSelection:selection});
+        return {state,frame,layers:layers.map(layer=>{
+          const reference=String(layer.path||'');
+          return {...layer,url:new URL(`r2-upload/${reference}`,root).href};
+        })};
+      });
+    });
+    const urls=[...new Set(cases.flatMap(entry=>entry.layers.map(layer=>layer.url)))];
+    const keys=new Map(urls.map((url,index)=>[url,`h01-${index}`]));
+    const failures=[];
+    let renderer,game;
+    class H01QA extends Phaser.Scene{
+      preload(){
+        this.load.on('loaderror',file=>failures.push(file.src));
+        urls.forEach(url=>this.load.image(keys.get(url),url));
+      }
+      create(){
+        renderer=new HeroRenderer(this,{root:this.add.container(384,684),data:{},displaySize:768,textureKey:url=>keys.get(url)});
+        window.__h01Ready=true;
+        document.querySelector('#status').textContent=`ready:${game.renderer.type}:56 cases`;
+      }
+    }
+    game=new Phaser.Game({type:Phaser.CANVAS,width:768,height:768,parent:'stage',transparent:true,banner:false,audio:{noAudio:true},render:{antialias:true,preserveDrawingBuffer:true},scene:H01QA});
+    window.__h01Cases=cases.map(({state,frame})=>({state,frame}));
+    window.__h01Render=async index=>{
+      if(!window.__h01Ready)throw new Error('not ready');
+      const entry=cases[index];
+      const [animation]=frameState[entry.frame];
+      renderer.setData({layerFrames:{canvas:{width:768,height:768},[animation]:[entry.layers]}});
+      renderer.applyVisualFrame(animation,0);
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      const visibleOrder=renderer.root.list.filter(image=>image.visible).map(image=>renderer.layerImages.find(layer=>layer.image===image)?.name).filter(Boolean);
+      const expectedOrder=entry.layers.map(layer=>layer.name);
+      const result={state:entry.state,frame:entry.frame,renderer:game.renderer.type,loadFailures:[...failures],expectedOrder,visibleOrder,
+        orderMatches:JSON.stringify(expectedOrder)===JSON.stringify(visibleOrder),handAfterSword:!visibleOrder.includes('right_hand_occlusion')||visibleOrder.indexOf('right_hand_occlusion')>visibleOrder.indexOf('sword')};
+      document.querySelector('#status').textContent=JSON.stringify(result,null,2);
+      return result;
+    };
+    window.__h01RunAll=async()=>{
+      const results=[];
+      for(let index=0;index<cases.length;index+=1)results.push(await window.__h01Render(index));
+      return {count:results.length,renderer:game.renderer.type,loadFailures:[...new Set(failures)],orderFailures:results.filter(result=>!result.orderMatches),gripFailures:results.filter(result=>!result.handAfterSword)};
+    };
+    const autoRun=setInterval(async()=>{
+      if(!window.__h01Ready)return;
+      clearInterval(autoRun);
+      const status=document.querySelector('#status');
+      try{
+        const summary=await window.__h01RunAll();
+        await window.__h01Render(52);
+        status.dataset.h01Result=JSON.stringify(summary);
+        status.textContent=JSON.stringify(summary,null,2);
+      }catch(error){
+        status.dataset.h01Error=String(error.stack||error);
+        status.textContent=status.dataset.h01Error;
+      }
+    },100);
+  })().catch(error=>{window.__h01Error=String(error.stack||error);document.querySelector('#status').textContent=window.__h01Error;});
+  </script>
+</body>
+</html>

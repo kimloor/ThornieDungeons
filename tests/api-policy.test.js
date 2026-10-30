@@ -61,7 +61,7 @@ test("API policy: reads keep the previous behavior (15 s, 2 retries) and polling
     assert.equal(p.retries, 2, action);
   });
   const background = Object.entries(API_POLICY).filter(([, p]) => p.background).map(([a]) => a).sort();
-  assert.deepEqual(background, ["getDirectConversations", "getDirectMessages", "getGlobalChat", "getGuildChat", "getGuildChatStatus", "markConversationRead", "markGuildChatRead", "saveBattleCheckpoint", "syncItems"]);
+  assert.deepEqual(background, ["getDirectConversations", "getDirectMessages", "getGlobalChat", "getGuildChat", "getGuildChatStatus", "getHalloweenEventStatus", "markConversationRead", "markGuildChatRead", "saveBattleCheckpoint", "syncItems"]);
   assert.equal(apiPolicyFor("unknown_action", "GET"), API_POLICY_DEFAULTS.GET);
   assert.equal(apiPolicyFor("unknown_action", "POST").timeoutMs, 0, "unknown POST actions stay conservative");
   assert.equal(apiPolicyFor("craftItem", "GET"), API_POLICY_DEFAULTS.GET, "method mismatch falls back to defaults");

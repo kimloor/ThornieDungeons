@@ -24,8 +24,11 @@ function heroV5SetFamily(item) {
 
 function heroV5BossWeaponVisualId(item) {
   if (!item) return null;
-  const id = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
-  const map = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  const identities = [item.bossWeaponId, item.specialSource, item.sourceIdentity, item.itemTemplateId, item.templateId, item.itemId, item.id]
+    .map(value => String(value || "").trim().toLowerCase().replace(/^boss_weapon:/, ""));
+  const id = identities.find(value => ["spirit_greatsword", "lavalon_sword", "icicle_longsword", "excaliburnt"].includes(value))
+    || (identities.some(value => value === "halloween_event:haloween_nightmare") ? "excaliburnt" : "");
+  const map = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword", excaliburnt: "excaliburnt" };
   return map[id] || null;
 }
 

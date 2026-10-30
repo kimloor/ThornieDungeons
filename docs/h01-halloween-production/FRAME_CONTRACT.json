@@ -1,0 +1,124 @@
+{
+  "scope": "ARTWORK REVIEW ONLY / NOT A LIVE MANIFEST",
+  "canonicalId": "haloween_nightmare",
+  "displayName": "Haloween nightmare",
+  "boss": {
+    "canvas": [
+      768,
+      768
+    ],
+    "phaserOrigin": [
+      0.5,
+      1
+    ],
+    "sizeClass": "large",
+    "anchorType": "ground",
+    "frames": [
+      "idle_01",
+      "idle_02",
+      "idle_03",
+      "attack_01",
+      "attack_02",
+      "attack_03",
+      "death_01"
+    ]
+  },
+  "excaliburnt": {
+    "canvas": [
+      768,
+      768
+    ],
+    "origin": [
+      0,
+      0
+    ],
+    "layerName": "sword",
+    "masterGrip": [
+      512,
+      1250
+    ],
+    "frames": {
+      "idle_01": {
+        "sword": "hero/v5/g2/weapons/excaliburnt/idle_01.png",
+        "targetGrip": [
+          270,
+          505
+        ],
+        "scale": 0.205,
+        "clockwiseDegrees": 135,
+        "emptyReason": null
+      },
+      "idle_02": {
+        "sword": "hero/v5/g2/weapons/excaliburnt/idle_02.png",
+        "targetGrip": [
+          270,
+          493
+        ],
+        "scale": 0.205,
+        "clockwiseDegrees": 135,
+        "emptyReason": null
+      },
+      "idle_03": {
+        "sword": "hero/v5/g2/weapons/excaliburnt/idle_03.png",
+        "targetGrip": [
+          270,
+          501
+        ],
+        "scale": 0.205,
+        "clockwiseDegrees": 135,
+        "emptyReason": null
+      },
+      "attack_01": {
+        "sword": "hero/v5/g2/weapons/excaliburnt/attack_01.png",
+        "targetGrip": [
+          310,
+          309
+        ],
+        "scale": 0.205,
+        "clockwiseDegrees": -53,
+        "emptyReason": null
+      },
+      "attack_02": {
+        "sword": "hero/v5/g2/weapons/excaliburnt/attack_02.png",
+        "targetGrip": [
+          489,
+          448
+        ],
+        "scale": 0.205,
+        "clockwiseDegrees": 35,
+        "emptyReason": null
+      },
+      "attack_03": {
+        "sword": "hero/v5/g2/weapons/excaliburnt/attack_03.png",
+        "targetGrip": [
+          413,
+          551
+        ],
+        "scale": 0.205,
+        "clockwiseDegrees": 112,
+        "emptyReason": null
+      },
+      "death_01": {
+        "sword": "hero/v5/g2/weapons/excaliburnt/death_01.png",
+        "targetGrip": null,
+        "scale": null,
+        "clockwiseDegrees": null,
+        "emptyReason": "Existing approved Boss Weapon/Azure Death convention: no grip in open-hand Death poses; explicit transparent weapon layer, no invented Death grip"
+      },
+      "death_02": {
+        "sword": "hero/v5/g2/weapons/excaliburnt/death_02.png",
+        "targetGrip": null,
+        "scale": null,
+        "clockwiseDegrees": null,
+        "emptyReason": "Existing approved Boss Weapon/Azure Death convention: no grip in open-hand Death poses; explicit transparent weapon layer, no invented Death grip"
+      }
+    },
+    "deathConventionRequiresPLConfirmation": "Eight declared PNGs include two intentionally empty Death layers following current boss-weapon contract. If a visible stone is required in Death, revised grip/pose contract is needed; do not infer one."
+  },
+  "manifestTargets": {
+    "boss": "assets.monsters.haloween_nightmare",
+    "icon": "assets.itemIcons.eventWeapons.excaliburnt"
+  },
+  "runtimeTransforms": false,
+  "runtimeImplemented": false
+}
