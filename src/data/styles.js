@@ -368,6 +368,7 @@ body::after {
 .md-hub-raid-callout small { color:#ffb3a3; font-size:7.5px; letter-spacing:1.4px; font-weight:900; }
 .md-hub-raid-callout strong { font-family:'Baloo 2'; font-size:13px; }
 .md-hub-raid-callout > b { color:var(--gold); font-size:9px; }
+.md-hub-raid-callout[data-world-event="halloween"] > img { object-fit:contain; filter:drop-shadow(0 0 8px rgba(184,74,255,.8)); }
 .md-hub-gate-focus { position:absolute; z-index:2; top:28%; left:12px; right:12px; display:flex; flex-direction:column; align-items:center; text-align:center; pointer-events:none; }
 .md-hub-gate-focus span { color:#a8e8ff; font-family:'Baloo 2'; font-size:11px; font-weight:900; letter-spacing:.5px; text-shadow:0 2px 6px #000,0 0 10px #009be8; }
 .md-hub-gate-focus strong { margin-top:-2px; color:#ffe6a2; font-family:'Baloo 2'; font-size:58px; line-height:.95; text-shadow:0 4px 0 rgba(0,0,0,.7),0 0 24px rgba(68,200,255,.45); }
@@ -735,6 +736,10 @@ body::after {
 .md-dungeon-floor-node.boss .md-dungeon-door { width:104px; height:124px; }
 .md-dungeon-floor-node.boss.current .md-dungeon-door > img { filter:saturate(1.18) brightness(1.05) drop-shadow(0 0 8px rgba(255,174,38,.9)) drop-shadow(0 0 16px rgba(185,87,0,.62)); }
 .md-dungeon-floor-node.boss.current .md-dungeon-floor-number,.md-dungeon-floor-node.boss.current .md-dungeon-floor-state { border-color:#cf922d; color:#ffe2a0; box-shadow:0 0 10px rgba(218,137,25,.42); }
+.md-dungeon-floor-node.md-halloween-gate { z-index:3; }
+.md-dungeon-floor-node.md-halloween-gate .md-dungeon-door { width:104px; height:124px; }
+.md-dungeon-floor-node.md-halloween-gate .md-dungeon-door > img { filter:saturate(1.2) brightness(1.04) drop-shadow(0 0 9px rgba(178,65,255,.9)); }
+.md-dungeon-floor-node.md-halloween-gate .md-dungeon-floor-number,.md-dungeon-floor-node.md-halloween-gate .md-dungeon-floor-state { border-color:#9f5bd7; color:#f1d8ff; box-shadow:0 0 10px rgba(168,70,245,.55); }
 .md-dungeon-floor-node:active:not(:disabled) { filter:brightness(.88) drop-shadow(0 5px 5px rgba(0,0,0,.72)); }
 .md-dungeon-map-page > .md-hub-dock { flex:0 0 auto; min-height:var(--md-dock-height); z-index:10; }
 .md-dungeon-map-page > .md-hub-dock button { min-height:var(--md-dock-hit); }

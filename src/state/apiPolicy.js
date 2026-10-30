@@ -61,6 +61,7 @@ const API_POLICY = Object.freeze({
   getGlobalChat: P.readBackground,
   getGuildChat: P.readBackground,
   getGuildChatStatus: P.readBackground,
+  getHalloweenEventStatus: P.readBackground,
   // write (42)
   acceptGuildApplication: P.write,
   acknowledgeArenaV2Unlock: P.write,
@@ -109,6 +110,7 @@ const API_POLICY = Object.freeze({
   cancelFriendRequest: P.writeState,
   claimAllMail: P.writeState,
   rejectFriendRequest: P.writeState,
+  startHalloweenBattle: P.writeState,
   // writeBackground (4)
   markConversationRead: P.writeBackground,
   markGuildChatRead: P.writeBackground,

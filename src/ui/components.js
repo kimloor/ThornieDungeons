@@ -632,6 +632,8 @@ function HubScreen({
   onPets,
   onLeaderboard,
   onRaid,
+  onHalloween,
+  halloweenEvent,
   onArena,
   onMailbox,
   onSave,
@@ -645,11 +647,23 @@ function HubScreen({
   onClearDailyLoginResult
 }) {
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
+  const [worldEventIndex, setWorldEventIndex] = useState(0);
   const canClaimDaily = dailyLogin.canClaim;
   const dailyPreview = dailyLogin.preview || { streak: 1, reward: {} };
   React.useEffect(() => {
     if (dailyLoginClaimResult) setDailyModalOpen(true);
   }, [dailyLoginClaimResult]);
+  const worldEvents = React.useMemo(() => [
+    { id: "raid", label: "Raid Boss", icon: "ui/hub-icons/raid.svg", onClick: onRaid },
+    ...(halloweenEvent?.active ? [{ id: "halloween", label: "Haloween nightmare", icon: "ui/dungeon-select/dungeon-gate-halloween-v1.webp", onClick: onHalloween }] : [])
+  ], [halloweenEvent?.active, onRaid, onHalloween]);
+  React.useEffect(() => {
+    setWorldEventIndex(0);
+    if (worldEvents.length < 2) return undefined;
+    const timer = setInterval(() => setWorldEventIndex(index => (index + 1) % worldEvents.length), 5000);
+    return () => clearInterval(timer);
+  }, [worldEvents.length]);
+  const worldEvent = worldEvents[worldEventIndex] || worldEvents[0];
   const openDaily = () => {
     setDailyModalOpen(true);
   };
@@ -685,8 +699,9 @@ function HubScreen({
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "md-hub-raid-callout",
-    onClick: onRaid
-  }, /*#__PURE__*/React.createElement("img", { src: "ui/hub-icons/raid.svg", alt: "" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("small", null, "WORLD EVENT"), /*#__PURE__*/React.createElement("strong", null, "Raid Boss")), /*#__PURE__*/React.createElement("b", null, "ไปต่อ ›")), /*#__PURE__*/React.createElement("div", {
+    onClick: worldEvent.onClick,
+    "data-world-event": worldEvent.id
+  }, /*#__PURE__*/React.createElement("img", { src: worldEvent.icon, alt: "" }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("small", null, "WORLD EVENT"), /*#__PURE__*/React.createElement("strong", null, worldEvent.label)), /*#__PURE__*/React.createElement("b", null, "ไปต่อ ›")), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-gate-focus"
   }, /*#__PURE__*/React.createElement("span", null, "ชั้นปัจจุบัน"), /*#__PURE__*/React.createElement("strong", null, save.unlockedFloor)), /*#__PURE__*/React.createElement("div", {
     className: "md-hub-world-actions"
@@ -4964,6 +4979,8 @@ function MapScreen({
   arenaHud,
   unlockedFloor,
   onSelectFloor,
+  onSelectHalloween,
+  halloweenEvent,
   onSave,
   onBack,
   onCharacter,
@@ -5028,6 +5045,20 @@ function MapScreen({
       )
     ),
     e("section", { className: "md-dungeon-floor-world", "aria-label": "ชั้นดันเจี้ยน" },
+      halloweenEvent?.active && e("button", {
+        type: "button",
+        className: "md-dungeon-floor-node md-halloween-gate current",
+        style: { left: "31%", top: "13%", "--md-gate-scale": .72 },
+        onClick: onSelectHalloween,
+        "aria-label": "เข้าสู่ดันเจี้ยน Halloween"
+      },
+        e("span", { className: "md-dungeon-floor-number" }, "EVENT"),
+        e("span", { className: "md-dungeon-boss-label" }, "HALLOWEEN"),
+        e("span", { className: "md-dungeon-door" },
+          e("img", { src: "ui/dungeon-select/dungeon-gate-halloween-v1.webp", alt: "", draggable: false, "aria-hidden": "true" })
+        ),
+        e("span", { className: "md-dungeon-floor-state" }, "พร้อมท้าทาย")
+      ),
       floors.map((floor, index) => {
         const locked = floor > unlockedFloor;
         const current = floor === unlockedFloor;

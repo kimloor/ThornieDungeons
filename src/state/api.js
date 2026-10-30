@@ -216,6 +216,12 @@ function cloudGetBattleState(url, characterId) {
 function cloudGetDungeonEncounterPreview(url, characterId, floor) {
   return cloudAuthGet(url, { action: "getDungeonEncounterPreview", characterId, floor });
 }
+function cloudGetHalloweenEventStatus(url) {
+  return cloudGet(url, { action: "getHalloweenEventStatus" });
+}
+function cloudStartHalloweenBattle(url, characterId) {
+  return cloudAuthPost(url, { action: "startHalloweenBattle", characterId });
+}
 function cloudStartDungeonBattle(url, characterId, floor, previewContext = null) {
   return cloudAuthPost(url, {
     action: "startDungeonBattle",
