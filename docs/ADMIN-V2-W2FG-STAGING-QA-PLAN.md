@@ -1,6 +1,6 @@
 # W2-F / W2-G — Actual D1 Full Handler QA: reproducible staging plan
 
-**Status:** `D1_HANDLER_QA_BLOCKED` for Claude (no network to `api.cloudflare.com`, no Worker deploy tool, the D1 tool runs single SQL statements only). This plan lets the Project Lead or Owner run the full handler on a real D1 without touching production. It is documentation only; nothing here has been executed against a Worker.
+**Status:** `D1_HANDLER_QA_BLOCKED` (2026-10-30). Staging D1 `thornie-dungeons-staging` (`c16e0b11-cf83-468c-a533-0ecbf522082f`) has the production-matching schema and migrations 0012–0030, but the Worker `thornie-dungeons-api-staging` is not deployed: the DEV agent has no Worker deploy tool, no `api.cloudflare.com` access, and the repo has no staging Cloudflare secrets. Nothing below has been executed against a deployed Worker on real D1 yet. Automation is ready: `.github/workflows/admin-v2-staging-qa.yml` + `scripts/staging-qa/d1-handler-qa.mjs` (all 19 scenarios); required secrets `CF_STAGING_API_TOKEN`, `CF_STAGING_ACCOUNT_ID`. An empty D1 cannot be built from `migrations/auto` alone (base tables predate the lane); use `migrations/staging/0000_staging_baseline_schema.sql` (staging only).
 
 ## 0. Hard safety rules
 - Use a **separate Worker name** (e.g. `thornie-dungeons-api-staging`) and a **separate D1 database** (e.g. `thornie-dungeons-staging`). Never bind the production database id (`2f6d52b4-3de7-4e78-98d4-fc143a4d29e2`) to the staging Worker.
@@ -78,3 +78,11 @@ Record the response bodies, these three result sets, the Worker version id and t
 
 ## 6. Pass criteria
 All 19 scenarios behave as listed, no scenario leaves a partial write, and no production resource was used. Scenarios 16 to 19 are the ones that cannot be proven by the SQLite simulation and are the point of this run.
+
+## 7. QA Evidence Summary (to be completed by the workflow run)
+- Tested SHA: `46ee2b2` (PR #182 HEAD at time of writing)
+- Staging Worker / version: not deployed
+- Staging D1: `c16e0b11-cf83-468c-a533-0ecbf522082f` (schema verified against production DDL: 13 QA tables column-identical, 60 tables / 66 indexes)
+- Actual D1 results, concurrency evidence, rollback evidence: **none yet** (see Status). Local workerd runs of the script are script validation only, not release evidence.
+- Automated at 46ee2b2: full repo 964/964, delete 20/20, restore 50/50, prod-schema 5/5, build and diff-check clean.
+- Remaining risks: scenarios 16–19 unproven on real D1; Release Gate remains locked.

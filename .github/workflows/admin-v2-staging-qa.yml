@@ -1,0 +1,137 @@
+name: Admin V2 Staging D1 QA (W2-F/W2-G)
+
+# STAGING ONLY. Manual trigger. Never touches production Worker, D1, cron, routes or feature flag.
+on:
+  workflow_dispatch:
+    inputs:
+      pr_commit_sha:
+        description: "Exact PR #182 commit to test (must be reachable from refs/pull/182/head)"
+        required: true
+        default: "46ee2b2b76a1d9435ef9d0d2ac14c2ba455f3c9e"
+      race_iterations:
+        description: "Scenario 18 race iterations"
+        required: false
+        default: "30"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thornie-api-staging-qa
+  cancel-in-progress: false
+
+jobs:
+  staging-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # Dedicated staging credentials. Required GitHub secrets (values never printed):
+      #   CF_STAGING_API_TOKEN, CF_STAGING_ACCOUNT_ID
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_STAGING_ACCOUNT_ID }}
+      STAGING_DB_NAME: thornie-dungeons-staging
+      STAGING_DB_ID: c16e0b11-cf83-468c-a533-0ecbf522082f
+      PROD_DB_ID: 2f6d52b4-3de7-4e78-98d4-fc143a4d29e2
+      WORKER_NAME: thornie-dungeons-api-staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR #182 head and pin the exact commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ inputs.pr_commit_sha }}"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "pr_commit_sha must be a full 40-hex SHA"; exit 1; }
+          git fetch origin pull/182/head:pr182
+          git merge-base --is-ancestor "$sha" pr182 || { echo "Commit is not on PR #182"; exit 1; }
+          git checkout --detach "$sha"
+          echo "Testing $(git rev-parse HEAD)"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Automated regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node build.js
+          git diff --exit-code -- index.html
+          git diff --check
+          node --test tests/*.test.js 2>&1 | tee regression.log | grep -E "^# (tests|pass|fail)"
+          grep -q "^# fail 0" regression.log
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Validate staging credentials and database identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing GitHub secret CF_STAGING_API_TOKEN"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing GitHub secret CF_STAGING_ACCOUNT_ID"; exit 1; }
+          wrangler d1 list --json > "$RUNNER_TEMP/d1.json"
+          name="$(jq -r --arg id "$STAGING_DB_ID" '.[] | select((.uuid // .id // "") == $id) | .name' "$RUNNER_TEMP/d1.json")"
+          [ "$name" = "$STAGING_DB_NAME" ] || { echo "Staging D1 id/name mismatch"; exit 1; }
+          [ "$STAGING_DB_ID" != "$PROD_DB_ID" ] || { echo "Refusing production database id"; exit 1; }
+
+      - name: Build staging Wrangler config (no cron, no routes, staging D1 only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .wrangler.staging.runtime.jsonc <<JSON
+          {"name":"$WORKER_NAME","main":"workers/thornie-dungeons-api-entry.js","compatibility_date":"2026-08-25","workers_dev":true,
+           "d1_databases":[{"binding":"DB","database_name":"$STAGING_DB_NAME","database_id":"$STAGING_DB_ID","migrations_dir":"migrations/auto"}]}
+          JSON
+          ! grep -q "$PROD_DB_ID" .wrangler.staging.runtime.jsonc
+          ! grep -q '"triggers"' .wrangler.staging.runtime.jsonc
+
+      - name: Apply staging migrations (no-op when already tracked)
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 migrations apply "$STAGING_DB_NAME" --remote --config .wrangler.staging.runtime.jsonc
+          # Empty-database bootstrap is migrations/staging/0000_staging_baseline_schema.sql (manual, see docs).
+          tables="$(wrangler d1 execute "$STAGING_DB_NAME" --remote --config .wrangler.staging.runtime.jsonc --json --command "SELECT count(*) AS n FROM sqlite_master WHERE type='table' AND name='items'" | jq -r '.[0].results[0].n')"
+          [ "$tables" = "1" ] || { echo "Staging schema missing base tables; apply the baseline first"; exit 1; }
+
+      - name: Deploy staging Worker
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler deploy --config .wrangler.staging.runtime.jsonc --keep-vars 2>&1 | tee deploy.log
+          url="$(grep -Eo 'https://[A-Za-z0-9.-]*staging[A-Za-z0-9.-]*\.workers\.dev' deploy.log | head -1)"
+          ver="$(grep -Eo 'Current Version ID: [0-9a-f-]+' deploy.log | awk '{print $4}' | head -1)"
+          test -n "$url" || { echo "Could not resolve staging URL"; exit 1; }
+          echo "url=$url" >> "$GITHUB_OUTPUT"; echo "version=${ver:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Actual D1 handler QA (19 scenarios)
+        shell: bash
+        env:
+          QA_BASE_URL: ${{ steps.deploy.outputs.url }}
+          QA_SQL_MODE: remote
+          QA_DB_NAME: thornie-dungeons-staging
+          QA_DB_ID: c16e0b11-cf83-468c-a533-0ecbf522082f
+          QA_WRANGLER_CONFIG: .wrangler.staging.runtime.jsonc
+          QA_WORKER_VERSION: ${{ steps.deploy.outputs.version }}
+          QA_RACE_ITERATIONS: ${{ inputs.race_iterations }}
+          QA_OUT_DIR: qa-artifacts
+        run: |
+          set -euo pipefail
+          export QA_COMMIT_SHA="$(git rev-parse HEAD)"
+          node scripts/staging-qa/d1-handler-qa.mjs
+          cat qa-artifacts/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload QA artifacts (secrets redacted by the script)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w2fg-staging-qa
+          path: |
+            qa-artifacts/
+            regression.log
+          if-no-files-found: warn
