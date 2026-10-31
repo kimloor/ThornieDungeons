@@ -7667,9 +7667,9 @@ async function loadAdminItemTriple(db, playerId, characterId, itemId) {
     .bind(itemId, playerId, characterId).first();
 }
 
-// Returns the machine-readable reason an item cannot be deleted, or null when deletable.
-async function adminItemBlockedReason(db, row, characterId) {
-  if (Number(row.equipped) === 1) return "item_equipped";
+// Activity semantics shared by delete AND restore (pending operation, run within 30 minutes,
+// unparseable run timestamp counts as active). Returns an error code or null.
+async function adminCharacterActivityBlock(db, characterId) {
   const pending = await db.prepare(`SELECT 1 AS x FROM character_operation_receipts WHERE character_id = ? AND result_json = 'pending' LIMIT 1`).bind(characterId).first();
   if (pending) return "operation_pending";
   const run = await db.prepare(`SELECT updated_at FROM character_run_state WHERE character_id = ?`).bind(characterId).first();
@@ -7678,6 +7678,27 @@ async function adminItemBlockedReason(db, row, characterId) {
     if (!Number.isFinite(age) || age < ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS) return "character_in_run";
   }
   return null;
+}
+
+// Returns the machine-readable reason an item cannot be deleted, or null when deletable.
+async function adminItemBlockedReason(db, row, characterId) {
+  if (Number(row.equipped) === 1) return "item_equipped";
+  return adminCharacterActivityBlock(db, characterId);
+}
+
+// Transaction-level twin of the activity checks in adminItemBlockedReason(). The preflight read
+// gives a precise error code; this guard is what actually stops a pending operation or a fresh
+// run that begins between the preflight and db.batch (Project Lead review A1, 2026-10-29).
+function adminItemActivityGuardSql() {
+  return `NOT EXISTS (SELECT 1 FROM character_operation_receipts WHERE character_id = ? AND result_json = 'pending')
+          AND NOT EXISTS (SELECT 1 FROM character_run_state WHERE character_id = ? AND (updated_at >= ? OR julianday(updated_at) IS NULL))`;
+}
+function adminItemActivityGuardBinds(characterId) {
+  return [characterId, characterId, new Date(Date.now() - ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS).toISOString()];
+}
+// A losing concurrent request hits the audit primary key and the whole batch rolls back.
+function isAdminAuditDuplicate(error) {
+  return /UNIQUE|constraint/i.test(String(error && error.message)) && /admin_audit_log|audit_id/i.test(String(error && error.message));
 }
 
 function adminItemTripleError(playerId, characterId, itemId) {
@@ -7749,8 +7770,8 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
   if (blockedReason) return json({ error: blockedReason }, 409);
   if ((await adminItemSnapshotHash(row)) !== snapshotHash) return json({ error: "item_state_changed" }, 409);
   const stack = adminItemStackInfo(row);
-  const qty = quantity === undefined || quantity === null ? stack.quantity : Number(quantity);
-  if (!Number.isInteger(qty) || qty < 1 || qty > stack.quantity || (!stack.stackable && qty !== 1)) {
+  const qty = quantity === undefined || quantity === null ? stack.quantity : quantity;
+  if (!adminRestoreStrictInt(qty) || qty > stack.quantity || (!stack.stackable && qty !== 1)) {
     return json({ error: "invalid_quantity", max: stack.stackable ? stack.quantity : 1 }, 400);
   }
 
@@ -7766,13 +7787,14 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
   });
   // Every statement carries the same guard against the observed row; if it no longer matches,
   // nothing is inserted and the item statement affects 0 rows -> 409, nothing written.
-  const guard = `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?)`;
-  const guardBinds = [itemId, playerId, characterId, row.updated_at, row.extra_json || ""];
+  const guard = `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?)
+    AND ${adminItemActivityGuardSql()}`;
+  const guardBinds = [itemId, playerId, characterId, row.updated_at, row.extra_json || "", ...adminItemActivityGuardBinds(characterId)];
   const itemStatement = remaining > 0
-    ? db.prepare(`UPDATE items SET extra_json = json_set(COALESCE(NULLIF(extra_json, ''), '{}'), '$.quantity', ?), updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?`)
-        .bind(remaining, now, itemId, playerId, characterId, row.updated_at, row.extra_json || "")
-    : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?`)
-        .bind(itemId, playerId, characterId, row.updated_at, row.extra_json || "");
+    ? db.prepare(`UPDATE items SET extra_json = json_set(COALESCE(NULLIF(extra_json, ''), '{}'), '$.quantity', ?), updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ? AND ${adminItemActivityGuardSql()}`)
+        .bind(remaining, now, itemId, playerId, characterId, row.updated_at, row.extra_json || "", ...adminItemActivityGuardBinds(characterId))
+    : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ? AND ${adminItemActivityGuardSql()}`)
+        .bind(itemId, playerId, characterId, row.updated_at, row.extra_json || "", ...adminItemActivityGuardBinds(characterId));
   let results;
   try {
     results = await db.batch([
@@ -7783,10 +7805,20 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
       itemStatement,
     ]);
   } catch (error) {
+    if (isAdminAuditDuplicate(error) && (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first())) {
+      return json({ ok: true, already_applied: true });
+    }
     console.error("admin_audit_failed", "ADMIN_ITEM_DELETE", error && error.message);
     return json({ error: "admin_audit_failed" }, 500);
   }
-  if (Number(results?.[2]?.meta?.changes) !== 1) return json({ error: "item_state_changed" }, 409);
+  if (Number(results?.[2]?.meta?.changes) !== 1) {
+    // The guard refused. If a concurrent request with the same id already applied, say so.
+    if (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first()) return json({ ok: true, already_applied: true });
+    // Otherwise report the precise reason when it is an activity block, else a state change.
+    const now2 = await loadAdminItemTriple(db, playerId, characterId, itemId);
+    const reason2 = now2 ? await adminItemBlockedReason(db, now2, characterId) : null;
+    return json({ error: reason2 || "item_state_changed" }, 409);
+  }
   return json({ ok: true, auditId, deleted: remaining === 0, quantity: qty, remaining });
 }
 
@@ -7798,6 +7830,77 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
 const ADMIN_RESTORE_CARRIED_CAPACITY = 30;
 const ADMIN_RESTORE_STACK_MAX = 99;
 
+// Columns that identify "the same item" for a stack merge. Quantity (extra_json.quantity / overflow),
+// slot position and equipped state may legitimately differ between the snapshot and now.
+const ADMIN_RESTORE_IDENTITY_IGNORED = new Set(["item_id", "player_id", "character_id", "equipped", "inventory_slot", "quantity", "updated_at", "extra_json"]);
+function adminRestoreExtraForIdentity(value) {
+  const parsed = typeof value === "string" ? safeParseAdminAuditJson(value) : value;
+  const obj = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? { ...parsed } : {};
+  delete obj.quantity; delete obj.overflow;
+  const sorted = {};
+  for (const k of Object.keys(obj).sort()) sorted[k] = obj[k];
+  return JSON.stringify(sorted);
+}
+function adminRestoreIdentityMatches(current, snapshot, columns) {
+  for (const col of columns) {
+    if (ADMIN_RESTORE_IDENTITY_IGNORED.has(col.name)) continue;
+    if (col.name in snapshot && JSON.stringify(current[col.name] ?? null) !== JSON.stringify(snapshot[col.name] ?? null)) return false;
+  }
+  return adminRestoreExtraForIdentity(current.extra_json) === adminRestoreExtraForIdentity(snapshot.extra_json);
+}
+
+// Fail closed: the snapshot must be able to rebuild the row without any guessing.
+// Returns null when unusable, else { extra (plain object), quantity, stackQuantity }.
+const ADMIN_RESTORE_STACK_ID_KEY = { junk: "junkId", potion: "potionId" };
+const ADMIN_RESTORE_BAD_MARKER = /\[redacted\]|\[truncated-depth\]/;
+function adminRestoreStrictInt(v) { return typeof v === "number" && Number.isSafeInteger(v) && v >= 1; }
+
+function adminRestoreParseExtra(raw) {
+  let value = raw;
+  if (typeof value === "string") { try { value = JSON.parse(value); } catch (_) { return null; } }
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+
+function adminRestoreValidateSnapshot(item, before, columns) {
+  if (String(item.player_id) !== String(before.playerId) || String(item.character_id) !== String(before.characterId)) return null;
+  if (ADMIN_RESTORE_BAD_MARKER.test(JSON.stringify(item))) return null;
+  for (const col of columns) {
+    const has = col.name in item && item[col.name] !== undefined;
+    if (!has) {
+      if (Number(col.pk) === 1) return null;
+      if (Number(col.notnull) === 1 && (col.dflt_value === null || col.dflt_value === undefined)) return null;
+      continue;
+    }
+    const v = item[col.name];
+    if (v === null) { if (Number(col.notnull) === 1) return null; continue; }
+    if (col.name === "extra_json") continue; // validated structurally below
+    if (/INT/i.test(String(col.type))) { if (typeof v !== "number" || !Number.isSafeInteger(v)) return null; continue; }
+    if (typeof v === "object" || typeof v === "boolean") return null;
+  }
+  const extra = adminRestoreParseExtra(item.extra_json);
+  if (!extra) return null;
+  if ("overflow" in extra && typeof extra.overflow !== "boolean") return null;
+  if ("empowerSlots" in extra && !Array.isArray(extra.empowerSlots)) return null;
+  if (ADMIN_RESTORE_BAD_MARKER.test(JSON.stringify(extra))) return null;
+  const stackable = ADMIN_ITEM_STACK_SLOTS.has(item.slot_type);
+  let stackQuantity = 1;
+  if (stackable) {
+    const idKey = ADMIN_RESTORE_STACK_ID_KEY[item.slot_type];
+    if (typeof extra[idKey] !== "string" || !extra[idKey]) return null;
+    if (!adminRestoreStrictInt(extra.quantity)) return null;
+    stackQuantity = extra.quantity;
+  } else if ("quantity" in extra && !adminRestoreStrictInt(extra.quantity)) {
+    return null;
+  }
+  // The deleted amount must be a real positive integer exactly as recorded: never truncated, rounded or coerced.
+  const qty = before.quantityRequested;
+  if (!adminRestoreStrictInt(qty)) return null;
+  if (stackable ? qty > stackQuantity : qty !== 1) return null;
+  return { extra, quantity: qty, stackQuantity };
+}
+
+const ADMIN_RESTORE_CARRIED_SQL = `(SELECT COUNT(*) FROM items WHERE character_id = ? AND player_id = ? AND equipped = 0 AND COALESCE(json_extract(CASE WHEN json_valid(extra_json) THEN extra_json ELSE '{}' END, '$.overflow'), 0) NOT IN (1, '1', 'true'))`;
+
 async function planAdminItemRestore(db, deleteAuditId) {
   const audit = await db.prepare(`SELECT * FROM admin_audit_log WHERE audit_id = ? AND event_type = 'ADMIN_ITEM_DELETE'`).bind(deleteAuditId).first();
   if (!audit) return { error: json({ error: "not_found" }, 404) };
@@ -7807,28 +7910,33 @@ async function planAdminItemRestore(db, deleteAuditId) {
   const unusable = () => ({ error: json({ error: "audit_not_restorable" }, 409) });
   if (!meta || meta.truncated || !item || typeof item !== "object" || !before.playerId || !before.characterId || !item.item_id) return unusable();
   if (JSON.stringify(item).includes("[redacted]")) return unusable();
-  const qty = Math.trunc(Number(before.quantityRequested));
-  if (!Number.isInteger(qty) || qty < 1) return unusable();
+  const columns = (await db.prepare(`SELECT name, type, "notnull", dflt_value, pk FROM pragma_table_info('items')`).all()).results || [];
+  const checked = columns.length ? adminRestoreValidateSnapshot(item, before, columns) : null;
+  if (!checked) return unusable();
+  const stackable = ADMIN_ITEM_STACK_SLOTS.has(item.slot_type);
+  const qty = checked.quantity;
   const playerId = String(before.playerId), characterId = String(before.characterId);
   const character = await db.prepare(`SELECT 1 AS x FROM characters WHERE character_id = ? AND player_id = ?`).bind(characterId, playerId).first();
   if (!character) return { error: json({ error: "character_not_found" }, 404) };
+  // Same activity semantics as delete (pending operation, run within 30 min, unparseable timestamp = active).
+  const blocked = await adminCharacterActivityBlock(db, characterId);
+  if (blocked) return { error: json({ error: blocked }, 409) };
 
   const restoreAuditId = `adm-res-${deleteAuditId}`;
   const originalId = String(item.item_id);
-  const stackable = ADMIN_ITEM_STACK_SLOTS.has(item.slot_type);
   const current = await db.prepare(`SELECT * FROM items WHERE item_id = ?`).bind(originalId).first();
-  const plan = { deleteAuditId, restoreAuditId, playerId, characterId, originalId, item, quantity: qty };
+  const plan = { deleteAuditId, restoreAuditId, playerId, characterId, originalId, item, extra: checked.extra, quantity: qty, columns };
 
-  // Partial stack whose row still exists for the same character: add the deleted quantity back.
-  if (stackable && current && current.player_id === playerId && current.character_id === characterId && Number(current.equipped) === 0) {
+  // Merge only into the very same stack: same owner/character, unequipped, identical item identity
+  // to the snapshot, and the result stays within the stack limit. Anything else forks into a safe insert.
+  if (stackable && current && current.player_id === playerId && current.character_id === characterId && Number(current.equipped) === 0
+      && adminRestoreIdentityMatches(current, { ...item, extra_json: checked.extra }, columns)) {
     const currentQty = adminItemStackInfo(current).quantity;
     if (currentQty + qty <= ADMIN_RESTORE_STACK_MAX) {
       return { plan: { ...plan, mode: "merge", current, itemId: originalId, newQuantity: currentQty + qty, overflow: adminItemExtra(current).overflow === true } };
     }
   }
-  const carried = (await db.prepare(
-    `SELECT COUNT(*) AS c FROM items WHERE character_id = ? AND player_id = ? AND equipped = 0 AND COALESCE(json_extract(CASE WHEN json_valid(extra_json) THEN extra_json ELSE '{}' END, '$.overflow'), 0) NOT IN (1, '1', 'true')`
-  ).bind(characterId, playerId).first())?.c || 0;
+  const carried = (await db.prepare(`SELECT ${ADMIN_RESTORE_CARRIED_SQL} AS c`).bind(characterId, playerId).first())?.c || 0;
   const overflow = Number(carried) >= ADMIN_RESTORE_CARRIED_CAPACITY;
   let itemId = originalId;
   let idChanged = false;
@@ -7874,28 +7982,30 @@ async function handleAdminRestoreItem(db, adminAuth, body) {
   if (check.response) return check.response;
 
   const now = nowIso();
-  const columns = new Set(((await db.prepare(`SELECT name FROM pragma_table_info('items')`).all()).results || []).map((c) => c.name));
-  const statements = [];
-  const existsChar = `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?)`;
+  const columns = new Set(plan.columns.map((c) => c.name));
+  // Same activity guard as delete, inside every statement: pending operation, run within 30 min, unparseable run timestamp.
+  const existsChar = `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?) AND ${adminItemActivityGuardSql()}`;
+  const charBinds = [plan.characterId, plan.playerId, ...adminItemActivityGuardBinds(plan.characterId)];
   let guard, guardBinds, itemStatement, before, after, changedKeys;
   if (plan.mode === "merge") {
     const c = plan.current;
     guard = `${existsChar} AND EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?)`;
-    guardBinds = [plan.characterId, plan.playerId, plan.itemId, plan.playerId, plan.characterId, c.updated_at, c.extra_json || ""];
-    itemStatement = db.prepare(`UPDATE items SET extra_json = json_set(COALESCE(NULLIF(extra_json, ''), '{}'), '$.quantity', ?), updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?`)
-      .bind(plan.newQuantity, now, plan.itemId, plan.playerId, plan.characterId, c.updated_at, c.extra_json || "");
+    guardBinds = [...charBinds, plan.itemId, plan.playerId, plan.characterId, c.updated_at, c.extra_json || ""];
+    itemStatement = db.prepare(`UPDATE items SET extra_json = json_set(COALESCE(NULLIF(extra_json, ''), '{}'), '$.quantity', ?), updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ? AND ${adminItemActivityGuardSql()}`)
+      .bind(plan.newQuantity, now, plan.itemId, plan.playerId, plan.characterId, c.updated_at, c.extra_json || "", ...adminItemActivityGuardBinds(plan.characterId));
     before = { currentItem: sanitizeAdminItemRow(c) };
     after = { quantity: plan.newQuantity };
     changedKeys = ["quantity"];
   } else {
-    const extraSource = plan.item.extra_json && typeof plan.item.extra_json === "object" ? plan.item.extra_json : {};
+    const extraSource = plan.extra;
     const row = { ...plan.item, item_id: plan.itemId, player_id: plan.playerId, character_id: plan.characterId, equipped: 0, inventory_slot: "", updated_at: now };
     // A stack comes back with exactly the quantity that was deleted (the rest of the stack, if any, never left).
     const stackExtra = ADMIN_ITEM_STACK_SLOTS.has(plan.item.slot_type) ? { quantity: plan.quantity } : {};
     row.extra_json = JSON.stringify({ ...extraSource, ...stackExtra, overflow: !!plan.overflow });
     const cols = Object.keys(row).filter((k) => columns.has(k));
-    guard = `${existsChar} AND NOT EXISTS (SELECT 1 FROM items WHERE item_id = ?)`;
-    guardBinds = [plan.characterId, plan.playerId, plan.itemId];
+    // A carried (non-overflow) restore must still have a free slot at the mutation; overflow never needs one.
+    guard = `${existsChar} AND NOT EXISTS (SELECT 1 FROM items WHERE item_id = ?)${plan.overflow ? "" : ` AND ${ADMIN_RESTORE_CARRIED_SQL} < ${ADMIN_RESTORE_CARRIED_CAPACITY}`}`;
+    guardBinds = [...charBinds, plan.itemId, ...(plan.overflow ? [] : [plan.characterId, plan.playerId])];
     itemStatement = db.prepare(`INSERT INTO items (${cols.join(", ")}) SELECT ${cols.map(() => "?").join(", ")} WHERE ${guard}`)
       .bind(...cols.map((k) => row[k]), ...guardBinds);
     before = null;
@@ -7913,10 +8023,17 @@ async function handleAdminRestoreItem(db, adminAuth, body) {
       itemStatement,
     ]);
   } catch (error2) {
+    if (isAdminAuditDuplicate(error2) && (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(restoreAuditId).first())) {
+      return json({ ok: true, already_applied: true });
+    }
     console.error("admin_audit_failed", "ADMIN_ITEM_RESTORE", error2 && error2.message);
     return json({ error: "admin_audit_failed" }, 500);
   }
-  if (Number(results?.[2]?.meta?.changes) !== 1) return json({ error: "item_state_changed" }, 409);
+  if (Number(results?.[2]?.meta?.changes) !== 1) {
+    // The guard refused: a concurrent identical restore may have won, or the character became busy, or state moved.
+    if (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(restoreAuditId).first()) return json({ ok: true, already_applied: true });
+    return json({ error: (await adminCharacterActivityBlock(db, plan.characterId)) || "item_state_changed" }, 409);
+  }
   return json({ ok: true, restoreAuditId, ...adminRestoreSummary(plan) });
 }
 
