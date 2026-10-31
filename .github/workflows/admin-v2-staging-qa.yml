@@ -2,6 +2,10 @@ name: Admin V2 Staging D1 QA (W2-F/W2-G)
 
 # STAGING ONLY. Manual trigger. Never touches production Worker, D1, cron, routes or feature flag.
 on:
+  # TEMPORARY (remove before merge to main): lets the QA branch run before the workflow exists on main.
+  push:
+    branches: [qa/w2fg-staging-d1]
+    paths: [.github/workflows/admin-v2-staging-qa.yml]
   workflow_dispatch:
     inputs:
       pr_commit_sha:
@@ -43,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sha="${{ inputs.pr_commit_sha }}"
+          sha="${{ inputs.pr_commit_sha || '46ee2b2b76a1d9435ef9d0d2ac14c2ba455f3c9e' }}"
           [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "pr_commit_sha must be a full 40-hex SHA"; exit 1; }
           git fetch origin pull/182/head:pr182
           git merge-base --is-ancestor "$sha" pr182 || { echo "Commit is not on PR #182"; exit 1; }
@@ -118,7 +122,7 @@ jobs:
           QA_DB_ID: c16e0b11-cf83-468c-a533-0ecbf522082f
           QA_WRANGLER_CONFIG: .wrangler.staging.runtime.jsonc
           QA_WORKER_VERSION: ${{ steps.deploy.outputs.version }}
-          QA_RACE_ITERATIONS: ${{ inputs.race_iterations }}
+          QA_RACE_ITERATIONS: ${{ inputs.race_iterations || '30' }}
           QA_OUT_DIR: qa-artifacts
         run: |
           set -euo pipefail
