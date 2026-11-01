@@ -46,7 +46,9 @@ test("double finish is locked by battleId and retry reuses the same battleId", (
 });
 
 test("skip battle intentionally bypasses terminal presentation", () => {
-  assert.match(app, /finishCoreBattle\(resolved, \{ skip: true \}\)/);
+  assert.match(app, /heroCommand\?\.type === "skip_battle"/);
+  assert.match(app, /cloudSubmitDungeonBattleAction/);
+  assert.match(app, /finishCoreBattle\(next, \{ actorKind: actor\.kind, skip: heroCommand\?\.type === "skip_battle" \}\)/);
   assert.match(app, /runPresentation: !retry && !skip/);
 });
 
