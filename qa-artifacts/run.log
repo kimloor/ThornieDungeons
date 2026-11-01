@@ -1,0 +1,45 @@
+#1 PASS Delete normal gear
+#2 PASS Restore gear
+#3 PASS Duplicate restore / idempotency
+#4 PASS Partial stack delete and restore
+#5 PASS Equipped item rejection
+#6 PASS Pending operation blocks delete/restore
+#7 PASS Active run blocks delete/restore
+#8 PASS Stale run permits operation
+#9 PASS Invalid run timestamp blocks operation
+#10 PASS Stale snapshot hash rejection
+#11 PASS Inventory capacity and overflow
+#12 PASS Item ID collision
+#13 PASS Different stack identity
+#14 PASS Malformed audit snapshot rejection
+#15 PASS Feature flag disabled rejection
+#16 PASS Concurrent duplicate delete (real D1)
+#17 PASS Concurrent duplicate restore (real D1)
+#18 PASS Pending-operation race during mutation (real D1)
+#19 PASS Forced audit failure and atomic rollback (real D1)
+# W2-F/G Actual D1 handler QA
+commit: 46ee2b2b76a1d9435ef9d0d2ac14c2ba455f3c9e  worker version: 909e491d-212e-45ef-8e35-f4818397881a  mode: remote  staging D1: c16e0b11-cf83-468c-a533-0ecbf522082f
+**19/19 PASS**
+
+| # | Scenario | Result |
+|---|---|---|
+| 1 | Delete normal gear | PASS |
+| 2 | Restore gear | PASS |
+| 3 | Duplicate restore / idempotency | PASS |
+| 4 | Partial stack delete and restore | PASS |
+| 5 | Equipped item rejection | PASS |
+| 6 | Pending operation blocks delete/restore | PASS |
+| 7 | Active run blocks delete/restore | PASS |
+| 8 | Stale run permits operation | PASS |
+| 9 | Invalid run timestamp blocks operation | PASS |
+| 10 | Stale snapshot hash rejection | PASS |
+| 11 | Inventory capacity and overflow | PASS |
+| 12 | Item ID collision | PASS |
+| 13 | Different stack identity | PASS |
+| 14 | Malformed audit snapshot rejection | PASS |
+| 15 | Feature flag disabled rejection | PASS |
+| 16 | Concurrent duplicate delete (real D1) | PASS |
+| 17 | Concurrent duplicate restore (real D1) | PASS |
+| 18 | Pending-operation race during mutation (real D1) | PASS |
+| 19 | Forced audit failure and atomic rollback (real D1) | PASS |
+::error::QA 19/19 PASS%0A#1 PASS Delete normal gear%0A#2 PASS Restore gear%0A#3 PASS Duplicate restore / idempotency%0A#4 PASS Partial stack delete and restore%0A#5 PASS Equipped item rejection%0A#6 PASS Pending operation blocks delete/restore%0A#7 PASS Active run blocks delete/restore%0A#8 PASS Stale run permits operation%0A#9 PASS Invalid run timestamp blocks operation%0A#10 PASS Stale snapshot hash rejection%0A#11 PASS Inventory capacity and overflow%0A#12 PASS Item ID collision%0A#13 PASS Different stack identity%0A#14 PASS Malformed audit snapshot rejection%0A#15 PASS Feature flag disabled rejection%0A#16 PASS Concurrent duplicate delete (real D1)%0A#17 PASS Concurrent duplicate restore (real D1)%0A#18 PASS Pending-operation race during mutation (real D1)%0A#19 PASS Forced audit failure and atomic rollback (real D1)
