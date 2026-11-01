@@ -2,10 +2,6 @@ name: Admin V2 Staging D1 QA (W2-F/W2-G)
 
 # STAGING ONLY. Manual trigger. Never touches production Worker, D1, cron, routes or feature flag.
 on:
-  # TEMPORARY (remove before merge to main): lets the QA branch run before the workflow exists on main.
-  push:
-    branches: [qa/w2fg-staging-d1]
-    paths: [.github/workflows/admin-v2-staging-qa.yml, scripts/staging-qa/d1-handler-qa.mjs]
   workflow_dispatch:
     inputs:
       pr_commit_sha:

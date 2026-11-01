@@ -1,6 +1,6 @@
 # W2-F / W2-G — Actual D1 Full Handler QA: reproducible staging plan
 
-**Status:** `D1_HANDLER_QA_BLOCKED` (2026-10-30). Staging D1 `thornie-dungeons-staging` (`c16e0b11-cf83-468c-a533-0ecbf522082f`) has the production-matching schema and migrations 0012–0030, but the Worker `thornie-dungeons-api-staging` is not deployed: the DEV agent has no Worker deploy tool, no `api.cloudflare.com` access, and the repo has no staging Cloudflare secrets. Nothing below has been executed against a deployed Worker on real D1 yet. Automation is ready: `.github/workflows/admin-v2-staging-qa.yml` + `scripts/staging-qa/d1-handler-qa.mjs` (all 19 scenarios); required secrets `CF_STAGING_API_TOKEN`, `CF_STAGING_ACCOUNT_ID`. An empty D1 cannot be built from `migrations/auto` alone (base tables predate the lane); use `migrations/staging/0000_staging_baseline_schema.sql` (staging only).
+**Status:** Actual D1 handler QA 19/19 PASS on 2026-11-01 (GitHub Actions run 41291704153, commit `46ee2b2`, staging Worker `thornie-dungeons-api-staging` version `909e491d-212e-45ef-8e35-f4818397881a`, staging D1 `c16e0b11-cf83-468c-a533-0ecbf522082f`). Redacted evidence: branch `qa-evidence/w2fg-41291704153` (`qa-artifacts/evidence.json`, `summary.md`, `run.log`). Release Gate stays locked pending Project Lead / Owner approvals.
 
 ## 0. Hard safety rules
 - Use a **separate Worker name** (e.g. `thornie-dungeons-api-staging`) and a **separate D1 database** (e.g. `thornie-dungeons-staging`). Never bind the production database id (`2f6d52b4-3de7-4e78-98d4-fc143a4d29e2`) to the staging Worker.
@@ -79,10 +79,16 @@ Record the response bodies, these three result sets, the Worker version id and t
 ## 6. Pass criteria
 All 19 scenarios behave as listed, no scenario leaves a partial write, and no production resource was used. Scenarios 16 to 19 are the ones that cannot be proven by the SQLite simulation and are the point of this run.
 
-## 7. QA Evidence Summary (to be completed by the workflow run)
-- Tested SHA: `46ee2b2` (PR #182 HEAD at time of writing)
-- Staging Worker / version: not deployed
-- Staging D1: `c16e0b11-cf83-468c-a533-0ecbf522082f` (schema verified against production DDL: 13 QA tables column-identical, 60 tables / 66 indexes)
-- Actual D1 results, concurrency evidence, rollback evidence: **none yet** (see Status). Local workerd runs of the script are script validation only, not release evidence.
-- Automated at 46ee2b2: full repo 964/964, delete 20/20, restore 50/50, prod-schema 5/5, build and diff-check clean.
-- Remaining risks: scenarios 16–19 unproven on real D1; Release Gate remains locked.
+## 7. QA Evidence Summary
+- Tested SHA: `46ee2b2b76a1d9435ef9d0d2ac14c2ba455f3c9e` (PR #182 HEAD). Worker source verified byte-identical to this commit before deploy; QA tooling overlaid from the QA branch only.
+- Staging Worker: `thornie-dungeons-api-staging`, version `909e491d-212e-45ef-8e35-f4818397881a`, mode `remote` (real Cloudflare D1), no cron / routes / production binding.
+- Staging D1: `c16e0b11-cf83-468c-a533-0ecbf522082f` (13 QA tables column-identical to production DDL; 60 tables / 66 indexes). The staging D1 is shared with another agent; QA touches only its own rows and restores `admin_item_delete_enabled` to its prior value.
+- Actual D1 results: scenarios 1–19 all PASS (HTTP status, redacted body, before/after item, audit and ownership-event snapshots per scenario in `evidence.json`).
+- Concurrency (16, 17): 4 parallel identical requests each; exactly one applied, three `already_applied`; one audit row, one ownership event, quantity changed once.
+- Rollback (19): forced `ADMIN_ITEM_DELETE` / `ADMIN_ITEM_RESTORE` audit-insert failure returned 500 `admin_audit_failed` with no item, event or audit change.
+- Automated (46ee2b2, CI): full repo 964/964 with Pillow installed, build and `git diff --check` clean.
+- Remaining risks / limits:
+  - Scenario 18 ran 30 iterations and the pending operation won all 30 (`blocked` 30, `deleted` 0, inconsistent 0). It proves no partial mutation, but did not observe the interleaving where the delete commits first; the in-statement guard (A1) is therefore proven by handler/SQL tests plus the 409 path, not by an observed race on D1. A deterministic injection test is recommended.
+  - Prod-schema test count is 5 (earlier baseline said 6); unexplained.
+  - The staging flag value restored by the script is whatever was found; production flag untouched (OFF).
+- Not production ready. Remaining gates: independent re-review, production D1 restore point, Owner-supervised first delete and restore, explicit Owner authorization to enable the flag.

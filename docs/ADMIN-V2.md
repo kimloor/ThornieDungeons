@@ -720,6 +720,8 @@ Item rows live in `items` (`item_id`, `player_id`, `character_id`, `slot_type`, 
 
 **Open items to resolve before the W2-F implementation PR:** confirm which storage states other than `items` can hold an item; confirm how derived stats react when an equipped item is blocked/unequipped; confirm `item_ownership_events.event_type` conventions; confirm the active-run default.
 
+**Staging QA (2026-11-01):** Actual D1 handler QA 19/19 PASS at `46ee2b2` (staging Worker `thornie-dungeons-api-staging`, version `909e491d-212e-45ef-8e35-f4818397881a`, staging D1 `c16e0b11-cf83-468c-a533-0ecbf522082f`); details and limits in `ADMIN-V2-W2FG-STAGING-QA-PLAN.md` §7. Feature flag stays OFF; not production ready until the remaining Release Gates are approved.
+
 ### 22.8 Documentation upkeep
 
 Each slice PR updates this file (status line and the slice's section), `docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md` (Wave 2 entry) and `docs/PROJECT-INDEX.md` in the same PR.
