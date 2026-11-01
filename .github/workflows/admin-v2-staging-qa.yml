@@ -81,6 +81,15 @@ jobs:
             exit 1
           fi
 
+      - name: Overlay QA tooling from the workflow commit (Worker source stays the exact PR #182 commit)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout "${{ github.sha }}" -- scripts/staging-qa migrations/staging
+          test -f scripts/staging-qa/d1-handler-qa.mjs
+          # Worker/runtime sources must still be byte-identical to the pinned PR commit
+          git diff --quiet "${{ inputs.pr_commit_sha || '46ee2b2b76a1d9435ef9d0d2ac14c2ba455f3c9e' }}" -- workers wrangler.api.template.jsonc || { echo "::error::Worker sources differ from the pinned PR commit"; exit 1; }
+
       - name: Install Wrangler
         run: npm install --global wrangler@4
 
