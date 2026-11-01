@@ -5,7 +5,7 @@ on:
   # TEMPORARY (remove before merge to main): lets the QA branch run before the workflow exists on main.
   push:
     branches: [qa/w2fg-staging-d1]
-    paths: [.github/workflows/admin-v2-staging-qa.yml]
+    paths: [.github/workflows/admin-v2-staging-qa.yml, scripts/staging-qa/d1-handler-qa.mjs]
   workflow_dispatch:
     inputs:
       pr_commit_sha:

@@ -18,7 +18,7 @@ const WORKER_VERSION = env.QA_WORKER_VERSION || "unknown";
 const RACE_N = Number(env.QA_RACE_ITERATIONS || 20);
 
 // ---- safety gates -------------------------------------------------------
-function abort(msg) { console.error("BLOCKED: " + msg); process.exit(2); }
+function abort(msg) { console.error("BLOCKED: " + msg); console.log("::error::BLOCKED: " + String(msg).slice(0, 400)); process.exit(2); }
 if (!BASE) abort("QA_BASE_URL missing");
 if ([BASE, CONFIG, env.QA_DB_ID || "", env.QA_DB_NAME || ""].join(" ").includes(PROD_DB_ID)) abort("production database id detected");
 if (env.QA_DB_ID && env.QA_DB_ID !== STAGING_DB_ID) abort("QA_DB_ID is not the staging database id");
@@ -303,6 +303,8 @@ async function main() {
   writeFileSync(`${OUT}/evidence.json`, JSON.stringify({ commit: SHA, workerVersion: WORKER_VERSION, baseUrl: BASE, mode: MODE, stagingDb: STAGING_DB_ID, at: new Date().toISOString(), pass, total: results.length, results }, null, 2));
   const md = [`# W2-F/G Actual D1 handler QA`, `commit: ${SHA}  worker version: ${WORKER_VERSION}  mode: ${MODE}  staging D1: ${STAGING_DB_ID}`, `**${pass}/${results.length} PASS**`, "", "| # | Scenario | Result |", "|---|---|---|", ...results.map((r) => `| ${r.n} | ${r.name} | ${r.status}${r.error ? " (" + r.error + ")" : ""} |`)].join("\n");
   writeFileSync(`${OUT}/summary.md`, md); console.log(md);
+  const lines = results.map((r) => `#${r.n} ${r.status} ${r.name}` + (r.error ? ` ERR:${r.error.slice(0, 160)}` : "") + (r.checks || []).filter((c) => !c.ok).slice(0, 3).map((c) => ` | FAILED:${c.label} ${JSON.stringify(c.detail ?? "").slice(0, 160)}`).join(""));
+  console.log(`::error::QA ${pass}/${results.length} PASS%0A` + lines.join("%0A").replace(/\n/g, " "));
   process.exit(pass === results.length && (results.length === 19 || !!env.QA_ONLY) ? 0 : 1);
 }
-main().catch((e) => { console.error("QA crashed:", String(e && e.message || e).slice(0, 400)); process.exit(3); });
+main().catch((e) => { const m = String(e && e.message || e).slice(0, 600); console.error("QA crashed:", m); console.log("::error::QA crashed: " + m.replace(/\n/g, " ")); process.exit(3); });
