@@ -86,9 +86,16 @@ All 19 scenarios behave as listed, no scenario leaves a partial write, and no pr
 - Actual D1 results: scenarios 1–19 all PASS (HTTP status, redacted body, before/after item, audit and ownership-event snapshots per scenario in `evidence.json`).
 - Concurrency (16, 17): 4 parallel identical requests each; exactly one applied, three `already_applied`; one audit row, one ownership event, quantity changed once.
 - Rollback (19): forced `ADMIN_ITEM_DELETE` / `ADMIN_ITEM_RESTORE` audit-insert failure returned 500 `admin_audit_failed` with no item, event or audit change.
-- Automated (46ee2b2, CI): full repo 964/964 with Pillow installed, build and `git diff --check` clean.
+- Automated (46ee2b2, CI): full repo 964/964 with Pillow installed, build and `git diff --check` clean. Production schema tests (`tests/admin-v2-item-prod-schema.test.js`) = **5/5**; no repo document records 6/6 (the earlier "6/6" was a hand-off baseline figure, not a repo fact).
 - Remaining risks / limits:
-  - Scenario 18 ran 30 iterations and the pending operation won all 30 (`blocked` 30, `deleted` 0, inconsistent 0). It proves no partial mutation, but did not observe the interleaving where the delete commits first; the in-statement guard (A1) is therefore proven by handler/SQL tests plus the 409 path, not by an observed race on D1. A deterministic injection test is recommended.
-  - Prod-schema test count is 5 (earlier baseline said 6); unexplained.
+  - Scenario 18 ran 30 iterations on real D1 and the pending operation won all 30 (`blocked` 30, `deleted` 0, inconsistent 0): no partial mutation, but the "delete commits first" interleaving was not observed. Actual D1 cannot be driven to a controlled preflight→batch interleaving without changing runtime code or using in-transaction triggers (which would test an interleaving production D1 cannot produce: writes are serialised and every guarded statement in one batch sees the same snapshot). A1 is therefore evidenced by the deterministic integration test in §8, not by a reproduction on D1.
   - The staging flag value restored by the script is whatever was found; production flag untouched (OFF).
 - Not production ready. Remaining gates: independent re-review, production D1 restore point, Owner-supervised first delete and restore, explicit Owner authorization to enable the flag.
+
+## 8. A1 deterministic interleaving test (integration, SQLite harness — not a D1 reproduction)
+- File: `tests/admin-v2-a1-deterministic-race.test.js` (24 tests). Handlers are the real worker source loaded unchanged; only the database is the SQLite test double used by the other W2-F/G tests.
+- Boundary: a hook on `db.batch` injects the activity row after all preflight reads and before the guarded batch. Each test asserts the hook ran once, reads happened before it, and the handler had written nothing before the batch (`total_changes()` unchanged).
+- Matrix: {delete whole gear, delete partial stack, restore whole gear, restore partial stack} × {pending operation, fresh active run, invalid run timestamp} → HTTP 409 (`operation_pending` / `character_in_run`), never `ok` or `already_applied`, and items, admin_audit_log, item_ownership_events and item_provenance are byte-identical before/after.
+- Controls: a settled receipt and a stale run injected at the same boundary do not block (200, mutation happens) — the hook is live and the guard is selective.
+- Sensitivity: the same late pending operation against a worker whose in-statement guard is neutralised (`adminItemActivityGuardSql` → `1 = 1`) mutates (200), so the suite fails if the in-statement guard is removed.
+- Scope: test-only; no runtime file changed (`workers/` and the wrangler template are identical to `46ee2b2`).
