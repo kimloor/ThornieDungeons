@@ -8,7 +8,9 @@ const ROOT = path.resolve(__dirname, "..");
 const source = rel => fs.readFileSync(path.join(ROOT, rel), "utf8");
 const FRAME_IDS = ["idle_01", "idle_02", "idle_03", "attack_01", "attack_02", "attack_03", "death_01", "death_02"];
 
+let cachedWorkerApi = null;
 function workerApi() {
+  if (cachedWorkerApi) return cachedWorkerApi;
   const { loadWorkerSource } = require("./helpers/worker-source");
   let code = loadWorkerSource(ROOT).replace("export default {", "const workerDefault = {");
   code += `\nglobalThis.__h01={
@@ -19,7 +21,8 @@ function workerApi() {
   const context = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, Uint32Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(context);
   vm.runInContext(code, context);
-  return context.__h01;
+  cachedWorkerApi = context.__h01;
+  return cachedWorkerApi;
 }
 
 function eventDb(config) {
@@ -121,6 +124,17 @@ test("H01 reward contract is one exclusive roll with fixed 5% threshold and chap
   assert.ok(drops > 900 && drops < 1100, `deterministic sample was ${drops}/20000`);
   assert.ok(api.dungeonV2ServerGold(10, "chapter_boss", 1) > 0);
   assert.ok(api.dungeonV2ServerExp(10, "chapter_boss", 1) > 0);
+});
+
+test("H01 battle start and settlement use the shared server authority boundary", () => {
+  const worker = source("workers/thornie-dungeons-api.js");
+  const start = worker.slice(worker.indexOf("async function handleStartHalloweenBattle"), worker.indexOf("function dungeonV2ServerRollRarity"));
+  assert.match(start, /dungeonAuthorityInitialState/);
+  assert.match(start, /INSERT INTO battle_authority/);
+  assert.match(start, /authoritative: true/);
+  assert.match(worker, /case "submitDungeonBattleAction"/);
+  assert.match(worker, /battle_outcome_not_verified/);
+  assert.match(worker, /outcome = 'victory' AND settled_at = ''/);
 });
 
 function runtime() {

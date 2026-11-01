@@ -222,13 +222,17 @@ function cloudGetHalloweenEventStatus(url) {
 function cloudStartHalloweenBattle(url, characterId) {
   return cloudAuthPost(url, { action: "startHalloweenBattle", characterId });
 }
-function cloudStartDungeonBattle(url, characterId, floor, previewContext = null) {
+function cloudStartDungeonBattle(url, characterId, floor, previewContext = null, previousBattleId = null) {
   return cloudAuthPost(url, {
     action: "startDungeonBattle",
     characterId,
     floor,
-    previewContext: previewContext || undefined
+    previewContext: previewContext || undefined,
+    previousBattleId: previousBattleId || undefined
   });
+}
+function cloudSubmitDungeonBattleAction(url, characterId, battleId, actionKey, expectedRev, command) {
+  return cloudAuthPost(url, { action: "submitDungeonBattleAction", characterId, battleId, actionKey, expectedRev, command });
 }
 function cloudSaveBattleCheckpoint(url, characterId, battleId, checkpointSeq, payload) {
   return cloudAuthPost(url, { action: "saveBattleCheckpoint", characterId, battleId, checkpointSeq, payload });

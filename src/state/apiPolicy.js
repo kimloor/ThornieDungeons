@@ -102,6 +102,7 @@ const API_POLICY = Object.freeze({
   sendGuildMessage: P.write,
   setArenaV2Auto: P.write,
   startDungeonBattle: P.write,
+  submitDungeonBattleAction: P.write,
   transferGuildLeadership: P.write,
   unblockCharacter: P.write,
   updateGuildSettings: P.write,
