@@ -58,15 +58,25 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Automated regression
+      - name: Regression - build and whitespace
         shell: bash
         run: |
-          set -euo pipefail
           node build.js
-          git diff --exit-code -- index.html
-          git diff --check
-          node --test tests/*.test.js 2>&1 | tee regression.log | grep -E "^# (tests|pass|fail)"
-          grep -q "^# fail 0" regression.log
+          if ! git diff --quiet -- index.html; then echo "::error::index.html differs after node build.js: $(git diff --stat -- index.html | tail -1)"; exit 1; fi
+          git diff --check || { echo "::error::git diff --check failed"; exit 1; }
+
+      - name: Regression - full test suite
+        shell: bash
+        run: |
+          set +e
+          node --test tests/*.test.js > regression.log 2>&1
+          code=$?
+          summary="$(grep -E '^# (tests|pass|fail|cancelled|skipped)' regression.log | tr '\n' ' ')"
+          echo "node --test exit=$code :: $summary"
+          if [ $code -ne 0 ] || ! grep -q '^# fail 0' regression.log; then
+            echo "::error::regression failed (exit=$code) $summary :: $(grep -E '^not ok|^# Subtest' regression.log | grep -B0 'not ok' | head -5 | tr '\n' '|')"
+            exit 1
+          fi
 
       - name: Install Wrangler
         run: npm install --global wrangler@4
