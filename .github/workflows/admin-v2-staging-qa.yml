@@ -65,6 +65,9 @@ jobs:
           if ! git diff --quiet -- index.html; then echo "::error::index.html differs after node build.js: $(git diff --stat -- index.html | tail -1)"; exit 1; fi
           git diff --check || { echo "::error::git diff --check failed"; exit 1; }
 
+      - name: Python imaging dependency (G16 pixel test needs Pillow)
+        run: python3 -m pip install --quiet pillow
+
       - name: Regression - full test suite
         shell: bash
         run: |
