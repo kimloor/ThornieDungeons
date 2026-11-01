@@ -69,12 +69,12 @@ jobs:
         shell: bash
         run: |
           set +e
-          node --test tests/*.test.js > regression.log 2>&1
+          LOG="$RUNNER_TEMP/regression.log"; node --test tests/*.test.js > "$LOG" 2>&1
           code=$?
-          summary="$(grep -E '^# (tests|pass|fail|cancelled|skipped)' regression.log | tr '\n' ' ')"
+          summary="$(grep -E '^# (tests|pass|fail|cancelled|skipped)' "$LOG" | tr '\n' ' ')"
           echo "node --test exit=$code :: $summary"
-          if [ $code -ne 0 ] || ! grep -q '^# fail 0' regression.log; then
-            echo "::error::regression failed (exit=$code) $summary :: $(grep -E '^not ok|^# Subtest' regression.log | grep -B0 'not ok' | head -5 | tr '\n' '|')"
+          if [ $code -ne 0 ] || ! grep -q '^# fail 0' "$LOG"; then
+            echo "::error::regression failed (exit=$code) $summary :: $(grep -E '^not ok' "$LOG" | grep -B0 'not ok' | head -5 | tr '\n' '|')"
             exit 1
           fi
 
@@ -147,5 +147,5 @@ jobs:
           name: w2fg-staging-qa
           path: |
             qa-artifacts/
-            regression.log
+            ${{ runner.temp }}/regression.log
           if-no-files-found: warn
