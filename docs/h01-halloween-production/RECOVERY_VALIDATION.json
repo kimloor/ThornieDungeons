@@ -1,0 +1,331 @@
+{
+  "main": "2c0304d267ac0b89a76681991b0090bece2fdbc9",
+  "recoveredLocalCommit": "fbc9eb36d41560f44e1130c0795f449659f2171f",
+  "recoveredAssets": [
+    {
+      "path": "docs/h01-halloween-production/assets/hero/v5/g2/weapons/excaliburnt/attack_01.png",
+      "sha256": "f92e637680a694ab612b5ca2a5c7fcfe5c9c1da9d381d2af2678d8159d2b199d",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        84,
+        114,
+        352,
+        359
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/hero/v5/g2/weapons/excaliburnt/attack_02.png",
+      "sha256": "64fba1f806d295c6f11b416be3aa0c3bd6703c0077e8c17f1b15eb20572ce9d5",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        436,
+        219,
+        678,
+        491
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/hero/v5/g2/weapons/excaliburnt/attack_03.png",
+      "sha256": "2955d8484fea011d07f9e1ecc0d3045302d2334546b73cd4f0e22fc28f758302",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        365,
+        480,
+        658,
+        702
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/hero/v5/g2/weapons/excaliburnt/death_01.png",
+      "sha256": "9dca1519efbe27ad8c44e96a49b67526e6bad20bc3fd5ac951ebdf57ce24f9dd",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": null,
+      "alphaExtrema": [
+        0,
+        0
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/hero/v5/g2/weapons/excaliburnt/death_02.png",
+      "sha256": "9dca1519efbe27ad8c44e96a49b67526e6bad20bc3fd5ac951ebdf57ce24f9dd",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": null,
+      "alphaExtrema": [
+        0,
+        0
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/hero/v5/g2/weapons/excaliburnt/idle_01.png",
+      "sha256": "959c8321acba605e11835a4bf1933e77b0701a63c85c5d0afb62b2bab37157b8",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        233,
+        468,
+        481,
+        718
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/hero/v5/g2/weapons/excaliburnt/idle_02.png",
+      "sha256": "5c7d9820816b76cc5871a0bf91afdd73bc27e1821dd361314de221d2c58cd548",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        233,
+        456,
+        481,
+        706
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/hero/v5/g2/weapons/excaliburnt/idle_03.png",
+      "sha256": "e7d29f0515527a315aa09f8d104e06192e3b9297b8e18b699dd5ac177081fedc",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        233,
+        464,
+        481,
+        714
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/monsters/haloween_nightmare/attack_01.png",
+      "sha256": "e2fc7fce3a4a6ca7e4d1dec1d9ba1b10d9f8a1f5451114c6b02e156a4d31da9b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        94,
+        12,
+        742,
+        705
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/monsters/haloween_nightmare/attack_02.png",
+      "sha256": "e77d2c63cec8dc3c7ce33380a5e3e55973de7d537911616c5a2d0a4ec73c1513",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        9,
+        48,
+        721,
+        706
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/monsters/haloween_nightmare/attack_03.png",
+      "sha256": "c32af1b8deb5de953618a70d9fae1378be51650406e8d31e78faf65548563760",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        31,
+        161,
+        716,
+        705
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/monsters/haloween_nightmare/death_01.png",
+      "sha256": "94f7a1e399701e85953003a25f27863d05ffa4b1d46ada3d0039ee5b7509134c",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        40,
+        322,
+        756,
+        738
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/monsters/haloween_nightmare/idle_01.png",
+      "sha256": "83909092055fbcc9b69ab70e7dbae563beac9ba6e4a4549dec16be1604a0f354",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        94,
+        52,
+        713,
+        705
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/monsters/haloween_nightmare/idle_02.png",
+      "sha256": "0108615ce5ac9de2551b1d40c708f483a12a7d26b7a8e634bb27650752b04543",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        95,
+        52,
+        717,
+        706
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/monsters/haloween_nightmare/idle_03.png",
+      "sha256": "d657ce80878d1887a7718491d99d7a9419dae1f7c3b0dc629e46c5881a600fad",
+      "dimensions": [
+        768,
+        768
+      ],
+      "alphaBounds": [
+        94,
+        52,
+        732,
+        706
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/ui/dungeon-select/dungeon-gate-halloween-v1.webp",
+      "sha256": "89b4faa4a6815f8f3c9431dff748c2859d66e09486a3163d4622535efbcc7f0d",
+      "dimensions": [
+        1024,
+        1536
+      ],
+      "alphaBounds": [
+        32,
+        0,
+        992,
+        1500
+      ],
+      "alphaExtrema": [
+        0,
+        254
+      ],
+      "unchangedFromRecoveredCommit": true
+    },
+    {
+      "path": "docs/h01-halloween-production/assets/ui/equipment-icons/event/excaliburnt.png",
+      "sha256": "cc8b3a9a45c37773da00f5fd91d7230a9230684fd227ea31de191958c0ec5154",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        125,
+        33,
+        467,
+        393
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "unchangedFromRecoveredCommit": true
+    }
+  ],
+  "sourceLocksVerified": 5,
+  "originalLedgerEntries": 143,
+  "originalLedgerFailures": [],
+  "offlineHeroComposites": 56,
+  "missingFiles": [],
+  "artworkRegenerated": false,
+  "phaserCanvasQA": {
+    "status": "BLOCKED",
+    "reason": "No local Chromium executable; browser and headless-shell downloads failed with truncated ZIP archives. Fixture prepared but no Canvas PASS claimed."
+  },
+  "excaliburntStatus": "REVISION REQUIRED: hand occlusion; no runtime edits authorized",
+  "completionGateClosed": false
+}
