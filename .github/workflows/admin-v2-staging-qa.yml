@@ -18,7 +18,7 @@ on:
         default: "30"
 
 permissions:
-  contents: read
+  contents: write # only to push redacted QA evidence to a qa-evidence/* branch
 
 concurrency:
   group: thornie-api-staging-qa
@@ -140,8 +140,22 @@ jobs:
         run: |
           set -euo pipefail
           export QA_COMMIT_SHA="$(git rev-parse HEAD)"
-          node scripts/staging-qa/d1-handler-qa.mjs
+          mkdir -p qa-artifacts
+          node scripts/staging-qa/d1-handler-qa.mjs 2>&1 | tee qa-artifacts/run.log
           cat qa-artifacts/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish redacted evidence branch
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p qa-artifacts; cp "$RUNNER_TEMP/regression.log" qa-artifacts/ 2>/dev/null || true
+          rm -f qa-artifacts/.gitignore
+          git config user.name "qa-bot"; git config user.email "qa-bot@users.noreply.github.com"
+          br="qa-evidence/w2fg-${{ github.run_id }}"
+          git checkout --orphan "$br"; git rm -rf --quiet . >/dev/null 2>&1 || true
+          git add -f qa-artifacts; git commit -q -m "QA evidence run ${{ github.run_id }} on $(git rev-parse --short pr182)" || exit 0
+          git push -q origin "$br"
 
       - name: Upload QA artifacts (secrets redacted by the script)
         if: always()
