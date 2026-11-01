@@ -94,7 +94,9 @@ async function submit(api, db, token, characterId, battleId, rev, command, actio
 async function resolveBattle(api, db, token, characterId, started) {
   let state = started.body.state, rev = started.body.stateRev;
   for (let i = 0; i < 500 && !state.result; i += 1) {
-    const actor = state.units[state.queue[state.queueIndex]];
+    const actor = state.units[state.queue[state.queueIndex]] || Object.values(state.units)
+      .filter(unit => !unit.dead && unit.hp > 0)
+      .sort((a, b) => Number(b.speed) - Number(a.speed) || a.tieOrder - b.tieOrder || a.id.localeCompare(b.id))[0];
     const enemy = Object.values(state.units).find(unit => unit.side === "enemy" && !unit.dead && unit.hp > 0);
     const command = actor.kind === "hero" ? (state.heroTurnCount >= 5 ? { type: "skip_battle" } : { type: "basic", targetId: enemy.id }) : { type: "advance" };
     const result = await submit(api, db, token, characterId, started.body.battleId, rev, command, `legal-${rev}`);
@@ -287,4 +289,171 @@ test("settlement rebuilds reward context and ignores every client reward field",
   assert.equal(db.raw.prepare("SELECT diamonds FROM players WHERE id=(SELECT player_id FROM characters WHERE character_id=?)").get(characterId).diamonds, 0);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM items WHERE item_id='forged-context-item'").get().c, 0);
   assert.equal(JSON.parse(db.raw.prepare("SELECT result_json FROM battle_completions WHERE battle_id=?").get(started.body.battleId).result_json).reward.rewardSeed, started.body.context.rewardSeed);
+});
+
+test("receipt retention beyond 128 battles cannot bypass durable settlement replay", async () => {
+  const api = worker({ eventId: null }), db = database();
+  const { token, characterId } = await account(api, db, "Authority_Receipts");
+  db.raw.prepare("UPDATE characters SET str=1000,vit=1000,agi=1000,dex=1000,luk=1000 WHERE character_id=?").run(characterId);
+  const battleIds = [];
+
+  for (let i = 0; i < 129; i += 1) {
+    const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+    assert.equal(started.body.authoritative, true, JSON.stringify(started.body));
+    battleIds.push(started.body.battleId);
+    const terminal = await resolveBattle(api, db, token, characterId, started);
+    assert.equal(terminal.state.result, "victory", `battle ${i + 1} did not reach authoritative victory`);
+    const completed = await post(api, db, token, {
+      action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory" }
+    });
+    assert.equal(completed.body.firstCompletion, true, `battle ${i + 1}: ${JSON.stringify(completed.body)}`);
+  }
+
+  const envelope = JSON.parse(db.raw.prepare("SELECT pets_json FROM characters WHERE character_id=?").get(characterId).pets_json);
+  const expectedReceipts = battleIds.slice(-128).map(battleId => `battle:${battleId}`);
+  assert.deepEqual(envelope.battleRewardReceipts, expectedReceipts);
+  assert.deepEqual(envelope.rewardReceipts, expectedReceipts);
+  assert.equal(envelope.battleRewardReceipts.includes(`battle:${battleIds[0]}`), false);
+  assert.equal(envelope.battleRewardReceipts.includes(`battle:${battleIds.at(-1)}`), true);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE character_id=?").get(characterId).c, 129);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_checkpoints WHERE character_id=? AND state='completed'").get(characterId).c, 129);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_authority WHERE character_id=? AND outcome='victory' AND settled_at<>''").get(characterId).c, 129);
+
+  const beforeReplay = db.raw.prepare(
+    "SELECT level,xp,gold,(SELECT COUNT(*) FROM items WHERE character_id=?) AS item_count FROM characters WHERE character_id=?"
+  ).get(characterId, characterId);
+  for (const battleId of [battleIds[0], battleIds.at(-1)]) {
+    const replay = await post(api, db, token, {
+      action: "completeBattle", characterId, battleId, result: { result: "victory", reward: { gold: 999999 } }
+    });
+    assert.equal(replay.body.firstCompletion, false, JSON.stringify(replay.body));
+  }
+  assert.deepEqual({ ...db.raw.prepare(
+    "SELECT level,xp,gold,(SELECT COUNT(*) FROM items WHERE character_id=?) AS item_count FROM characters WHERE character_id=?"
+  ).get(characterId, characterId) }, { ...beforeReplay });
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE character_id=?").get(characterId).c, 129);
+});
+
+test("equipped and existing Overflow items do not consume carried reward capacity", async () => {
+  const api = worker({ eventId: null }), db = database();
+  const { token, characterId } = await account(api, db, "Authority_Capacity");
+  const playerId = db.raw.prepare("SELECT player_id FROM characters WHERE character_id=?").get(characterId).player_id;
+  const insert = db.raw.prepare(
+    "INSERT INTO items (item_id,player_id,character_id,slot_type,equipped,name,rarity,quantity,extra_json) VALUES (?,?,?,?,?,?,?,?,?)"
+  );
+  for (let i = 0; i < 29; i += 1) insert.run(`capacity-carried-${i}`, playerId, characterId, "weapon", 0, "Carried", "rare", 1, "{}");
+  insert.run("capacity-equipped", playerId, characterId, "helmet", 1, "Equipped", "rare", 1, JSON.stringify({ marker: "equipped" }));
+  insert.run("capacity-overflow", playerId, characterId, "boots", 0, "Existing Overflow", "rare", 1, JSON.stringify({ overflow: true, marker: "existing" }));
+  db.raw.prepare("UPDATE characters SET unlocked_floor=10,str=1000,vit=1000,agi=1000,dex=1000,luk=1000 WHERE character_id=?").run(characterId);
+
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 10 });
+  assert.equal(started.body.context.role, "chapter_boss");
+  assert.equal((await resolveBattle(api, db, token, characterId, started)).state.result, "victory");
+  const first = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory" }
+  });
+  assert.equal(first.body.firstCompletion, true, JSON.stringify(first.body));
+  assert.equal(first.body.result.reward.items.length, 2);
+  assert.equal(carriedCount(db, characterId), 30);
+
+  const equipped = db.raw.prepare("SELECT player_id,character_id,equipped,extra_json FROM items WHERE item_id='capacity-equipped'").get();
+  assert.deepEqual(
+    { playerId: equipped.player_id, characterId: equipped.character_id, equipped: equipped.equipped, extra: JSON.parse(equipped.extra_json) },
+    { playerId, characterId, equipped: 1, extra: { marker: "equipped" } }
+  );
+  const existingOverflow = db.raw.prepare("SELECT player_id,character_id,equipped,extra_json FROM items WHERE item_id='capacity-overflow'").get();
+  assert.equal(existingOverflow.player_id, playerId);
+  assert.equal(existingOverflow.character_id, characterId);
+  assert.equal(existingOverflow.equipped, 0);
+  assert.deepEqual(JSON.parse(existingOverflow.extra_json), { overflow: true, marker: "existing" });
+
+  const rewardIds = first.body.result.reward.items.map(item => item.id);
+  const rewardRows = rewardIds.map(itemId => db.raw.prepare(
+    "SELECT item_id,player_id,character_id,extra_json FROM items WHERE item_id=?"
+  ).get(itemId));
+  assert.equal(rewardRows.filter(row => JSON.parse(row.extra_json).overflow === false).length, 1);
+  assert.equal(rewardRows.filter(row => JSON.parse(row.extra_json).overflow === true).length, 1);
+  assert.ok(rewardRows.every(row => row.player_id === playerId && row.character_id === characterId));
+  assert.ok(rewardIds.every(itemId => db.raw.prepare(
+    "SELECT COUNT(*) AS c FROM item_ownership_events WHERE item_id=? AND to_player_id=? AND to_character_id=? AND event_type='acquire'"
+  ).get(itemId, playerId, characterId).c === 1));
+  assert.ok(rewardIds.every(itemId => db.raw.prepare(
+    "SELECT COUNT(*) AS c FROM item_provenance WHERE item_id=? AND original_player_id=? AND original_character_id=?"
+  ).get(itemId, playerId, characterId).c === 1));
+
+  const beforeReplay = db.raw.prepare(
+    "SELECT gold,xp,(SELECT COUNT(*) FROM items WHERE character_id=?) AS item_count,(SELECT COUNT(*) FROM item_ownership_events WHERE to_character_id=?) AS ownership_count FROM characters WHERE character_id=?"
+  ).get(characterId, characterId, characterId);
+  const replay = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory" }
+  });
+  assert.equal(replay.body.firstCompletion, false);
+  assert.deepEqual({ ...db.raw.prepare(
+    "SELECT gold,xp,(SELECT COUNT(*) FROM items WHERE character_id=?) AS item_count,(SELECT COUNT(*) FROM item_ownership_events WHERE to_character_id=?) AS ownership_count FROM characters WHERE character_id=?"
+  ).get(characterId, characterId, characterId) }, { ...beforeReplay });
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id=?").get(started.body.battleId).c, 1);
+  assert.ok(db.raw.prepare("SELECT settled_at FROM battle_authority WHERE battle_id=?").get(started.body.battleId).settled_at);
+});
+
+test("canonical runtime checkpoint resumes across reload without granting client victory", async () => {
+  const api = worker({ eventId: null }), db = database();
+  const { token, characterId } = await account(api, db, "Authority_Resume");
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  const actor = started.body.state.units[started.body.state.queue[started.body.state.queueIndex]];
+  const command = actor.kind === "hero"
+    ? { type: "basic", targetId: started.body.state.enemyIds[0] }
+    : { type: "advance" };
+  const advanced = await submit(api, db, token, characterId, started.body.battleId, started.body.stateRev, command, "canonical-first-action");
+  assert.equal(advanced.body.ok, true, JSON.stringify(advanced.body));
+
+  const checkpoint = await get(api, db, token, { action: "getBattleState", characterId });
+  assert.equal(checkpoint.body.checkpoint.authoritative, true);
+  assert.equal(checkpoint.body.checkpoint.checkpointSeq, advanced.body.stateRev);
+  assert.equal(checkpoint.body.checkpoint.payload.authorityRev, advanced.body.stateRev);
+  assert.deepEqual(checkpoint.body.checkpoint.payload.serverContext, advanced.body.state.serverContext);
+  assert.deepEqual(Array.from(checkpoint.body.checkpoint.payload.enemyIds), Array.from(advanced.body.state.enemyIds));
+
+  const reloadedApi = worker({ eventId: null });
+  const reloaded = await get(reloadedApi, db, token, { action: "getBattleState", characterId });
+  assert.deepEqual(reloaded.body.checkpoint, checkpoint.body.checkpoint);
+  const authorityBeforeClientSave = db.raw.prepare("SELECT state_rev,state_json,outcome FROM battle_authority WHERE battle_id=?").get(started.body.battleId);
+  const clientCheckpoint = {
+    ...reloaded.body.checkpoint.payload,
+    result: "victory",
+    safeActionSeq: 999999,
+    units: {},
+    serverContext: { ...reloaded.body.checkpoint.payload.serverContext, floor: 999 }
+  };
+  const ignored = await post(reloadedApi, db, token, {
+    action: "saveBattleCheckpoint", characterId, battleId: started.body.battleId,
+    checkpointSeq: 999999, payload: clientCheckpoint
+  });
+  assert.deepEqual(ignored.body, { ok: true, accepted: false, checkpointSeq: advanced.body.stateRev, authoritative: true });
+  assert.deepEqual({ ...db.raw.prepare("SELECT state_rev,state_json,outcome FROM battle_authority WHERE battle_id=?").get(started.body.battleId) }, { ...authorityBeforeClientSave });
+  const premature = await post(reloadedApi, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory" }
+  });
+  assert.equal(premature.status, 409);
+  assert.equal(premature.body.error, "battle_outcome_not_verified");
+
+  const resumed = { body: {
+    battleId: started.body.battleId,
+    state: reloaded.body.checkpoint.payload,
+    stateRev: reloaded.body.checkpoint.checkpointSeq
+  } };
+  const terminal = await resolveBattle(reloadedApi, db, token, characterId, resumed);
+  assert.equal(terminal.state.result, "victory");
+  const completed = await post(reloadedApi, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", floor: 999, reward: { gold: 999999 } }
+  });
+  assert.equal(completed.body.firstCompletion, true, JSON.stringify(completed.body));
+  assert.equal(completed.body.result.floor, 1);
+  assert.equal(completed.body.result.reward.floor, 1);
+  assert.equal((await get(reloadedApi, db, token, { action: "getBattleState", characterId })).body.checkpoint, null);
+  const replay = await post(api, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId, result: { result: "victory" }
+  });
+  assert.equal(replay.body.firstCompletion, false);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id=?").get(started.body.battleId).c, 1);
 });
