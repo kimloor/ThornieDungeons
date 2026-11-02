@@ -141,7 +141,7 @@ test("server state rejects forged checkpoint and premature victory", async () =>
 
 test("terminal authoritative result survives reload until settlement", async () => {
   const api = worker({ eventId: null }), db = database();
-  const { token, characterId } = await account(api, db, "Authority_TerminalResume");
+  const { token, characterId } = await account(api, db, "TermResume");
   const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
   const terminal = forceAuthoritativeVictory(db, started.body.battleId);
 
