@@ -276,11 +276,16 @@ test("battle completion error matrix keeps retry, session, non-retryable, and te
   assert.match(finish, /if \(!completionOutcome\.ok\)[\s\S]*setBusy\(false\)[\s\S]*setBattleFinishing\(true\)/);
 });
 
-test("Battle Potion consumes inventory before submitting the authoritative action", () => {
+test("Battle Potion submits one atomic authoritative action without a separate pre-consume request", () => {
   const start = app.indexOf("async function consumeBattlePotion");
   const end = app.indexOf("function playerTurn", start);
   const body = app.slice(start, end);
-  assert.match(body, /await cloudConsumePotion/);
+  assert.doesNotMatch(body, /cloudConsumePotion/);
   assert.match(body, /await driveCoreBattle\(state, \{ type: "potion", potionId, requestId \}\)/);
-  assert.ok(body.indexOf("await cloudConsumePotion") < body.indexOf("await driveCoreBattle"));
+  const driveStart = app.indexOf("function driveCoreBattle");
+  const driveEnd = app.indexOf("async function consumeBattlePotion", driveStart);
+  const drive = app.slice(driveStart, driveEnd);
+  assert.match(drive, /heroCommand\?\.type === "potion"/);
+  assert.match(drive, /hydrateAuthoritativeBlacksmithSnapshot\(receipt, save\.characterId\)/);
+  assert.match(drive, /potionRequestIdsRef\.current\.delete/);
 });
