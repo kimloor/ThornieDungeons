@@ -34,7 +34,7 @@ jobs:
           node build.js
           sha256sum index.html | awk '{print $1}' > /tmp/index-pass2.sha256
           diff -u /tmp/index-pass1.sha256 /tmp/index-pass2.sha256
-          cp /tmp/index-pass1.sha256 /tmp/index-build.sha256
+          cp /tmp/index-pass1.sha256 index-build.sha256
       - name: Verify generated output and scope
         run: |
           set -euo pipefail
@@ -48,5 +48,5 @@ jobs:
           name: pr-196-generated-index
           path: |
             index.html
-            /tmp/index-build.sha256
+            index-build.sha256
           if-no-files-found: error
