@@ -191,6 +191,30 @@ jobs:
           }
           echo "Migration 0031 and battle_authority schema verified read-only; no migration command was run."
 
+      - name: Verify exact QA rows and unsettled Chapter Boss victory
+        shell: bash
+        env:
+          RUNTIME_CONFIG: ${{ steps.config.outputs.runtime_config }}
+        run: |
+          set -euo pipefail
+          query="SELECT COUNT(*) AS n
+            FROM battle_authority ba
+            JOIN characters c ON c.character_id = ba.character_id
+            JOIN players p ON p.player_id = c.player_id
+            LEFT JOIN battle_completions bc ON bc.battle_id = ba.battle_id
+            WHERE ba.battle_id = '$QA_BATTLE_ID'
+              AND ba.character_id = '$QA_CHARACTER_ID'
+              AND c.player_id = '$QA_PLAYER_ID'
+              AND ba.outcome = 'victory'
+              AND ba.settled_at = ''
+              AND bc.battle_id IS NULL"
+          wrangler d1 execute "$STAGING_DB_NAME" --remote --config "$RUNTIME_CONFIG" --json --command "$query" > "$RUNNER_TEMP/qa-scope.json"
+          jq -e '.[0].success == true and .[0].results[0].n == 1' "$RUNNER_TEMP/qa-scope.json" >/dev/null || {
+            echo "Exact QA Player/Character/Battle scope is not one unsettled victory; refusing deployment."
+            exit 1
+          }
+          echo "Exact QA rows verified read-only; no battle or reward data was changed."
+
       - name: Wrangler dry run
         shell: bash
         run: wrangler deploy --dry-run --config "${{ steps.config.outputs.runtime_config }}"
