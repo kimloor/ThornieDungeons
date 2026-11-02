@@ -399,6 +399,33 @@ New findings discovered during the pre-V1.1.0 gate are recorded for the successo
 
 Do not silently pull unrelated future gameplay into the Ver 1.1.0 gate.
 
+
+### P0 — Dungeon Battle Authority & Victory Settlement Security
+**Status: MERGED TO MAIN — Production release pending Owner authorization (2026-11-02)**  
+**Risk: VERY HIGH — authoritative Worker state, D1 transactions, inventory and player rewards**  
+**PR:** [#196](https://github.com/kimloor/ThornieDungeons/pull/196)  
+**Merge commit:** `6f3b8333a7c8105d17d271eccb2ff8105fc5cfb9`  
+**Implementation contract:** `BATTLE-RESULT-COMMIT-V1.md` §14
+
+Completed and merged:
+- Worker-owned Dungeon Battle state and revision/CAS action sequencing; client checkpoints/results/reward fields cannot authorize Victory or rewards.
+- Server-derived terminal outcome with atomic, idempotent settlement and recovery for terminal-but-unsettled battles.
+- Durable per-action receipts; Potion inventory decrement, authority transition and receipt commit in one D1 batch.
+- Potion preflight remains read-only; stale revisions do not consume inventory; one-time per-character Potion request IDs prevent replay.
+- Historical consumed Potion requests remain replay-protected.
+- HP/MP carry source is restricted to the Character's latest settled Victory, with same-Floor retry or immediate next-Floor progression only; stale/cross-character/cross-floor references are rejected.
+
+Verification:
+- Battle Core parity exact-head security run [#41433194956](https://github.com/kimloor/ThornieDungeons/actions/runs/41433194956) PASS; branch-associated run [#41433203981](https://github.com/kimloor/ThornieDungeons/actions/runs/41433203981) PASS.
+- Admin V2 QA [#41433203976](https://github.com/kimloor/ThornieDungeons/actions/runs/41433203976) PASS.
+- Actual D1 QA [#41434632747](https://github.com/kimloor/ThornieDungeons/actions/runs/41434632747) PASS, R01–R04, exact source SHA `a02f40b6edb8570bb084a737733e3e84447a43b1`, isolated Staging D1 only.
+- QA Worker and run-specific Staging fixtures removed; zero matching rows remain and `PRAGMA foreign_key_check` reports zero violations.
+
+Release boundary:
+- PR #196 merged to `main`; this is **not** a Production deployment.
+- Migrations `0031_battle_authority_v1.sql` and `0032_battle_action_idempotency_v1.sql` are included in source but have **not** been applied to Production D1.
+- Production Worker/API deployment, Production D1 migration, and player-facing release remain pending separate Owner authorization and release verification.
+
 ## Backlog (unscheduled)
 
 - Guest Login V1: design recorded in `docs/GUEST-LOGIN-V1.md` (draft, risk HIGH, awaiting Owner approval and a roadmap slot).
