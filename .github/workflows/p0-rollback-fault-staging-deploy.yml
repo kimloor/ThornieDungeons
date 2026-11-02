@@ -119,19 +119,84 @@ jobs:
             'any(.[]; ((.uuid // .id // "") == $id and .name == $name))' \
             "$RUNNER_TEMP/d1-list.json" >/dev/null || { echo "Staging D1 id/name mismatch"; exit 1; }
 
-      - name: Refuse an existing or ambiguous Worker target
+      - name: Refuse unknown Worker targets; allow only an exact prior P0 QA deployment
         shell: bash
         run: |
           set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME"
           status="$(curl --silent --show-error \
             --output "$RUNNER_TEMP/target-worker.json" \
             --write-out '%{http_code}' \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/settings")"
+            "$api/settings")"
           case "$status" in
-            404) echo "Confirmed isolated Worker target does not exist." ;;
-            200) echo "Worker $WORKER_NAME already exists; refusing to overwrite unknown staging state."; exit 1 ;;
-            *) echo "Unable to determine isolated Worker existence safely (HTTP $status)."; exit 1 ;;
+            404)
+              echo "Confirmed isolated Worker target does not exist."
+              ;;
+            200)
+              # A previous run may have deployed the isolated QA Worker but
+              # stopped during verification. Reuse it only when its active
+              # code still matches the pinned source tag and every binding is
+              # limited to this exact QA fixture and staging D1.
+              curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                "$api/versions?per_page=20" > "$RUNNER_TEMP/existing-versions.json"
+              curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                "$api/deployments?per_page=20" > "$RUNNER_TEMP/existing-deployments.json"
+              source_id="$(jq -er --arg sha "$APPROVED_SOURCE_SHA" '
+                if .success != true then error("Unable to read existing Worker versions")
+                else
+                  ([.result.items[] | select(.annotations["workers/tag"] == $sha)] | sort_by(.metadata.created_on)) as $matches |
+                  if ($matches | length) >= 1 then $matches[-1].id else error("Existing Worker has no approved source tag") end
+                end
+              ' "$RUNNER_TEMP/existing-versions.json")"
+              active_id="$(jq -er '
+                if .success != true then error("Unable to read existing Worker deployments")
+                else
+                  (.result.deployments | max_by(.created_on)) as $deployment |
+                  if ($deployment.versions | length) == 1 and $deployment.versions[0].percentage == 100
+                  then $deployment.versions[0].version_id
+                  else error("Existing Worker does not have one 100-percent active version")
+                  end
+                end
+              ' "$RUNNER_TEMP/existing-deployments.json")"
+              curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                "$api/versions/$source_id" > "$RUNNER_TEMP/existing-source.json"
+              curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                "$api/versions/$active_id" > "$RUNNER_TEMP/existing-active.json"
+              source_etag="$(jq -er '.result.resources.script.etag' "$RUNNER_TEMP/existing-source.json")"
+              jq -e --arg sha "$APPROVED_SOURCE_SHA" --arg source "$source_id" '
+                .success == true and .result.id == $source and
+                .result.annotations["workers/tag"] == $sha and
+                (.result.resources.script.etag | type == "string" and length > 0)
+              ' "$RUNNER_TEMP/existing-source.json" >/dev/null
+              jq -e --arg db "$STAGING_DB_ID" --arg etag "$source_etag" --arg active "$active_id" \
+                --arg player "$QA_PLAYER_ID" --arg character "$QA_CHARACTER_ID" --arg battle "$QA_BATTLE_ID" '
+                .success == true and .result.id == $active and
+                .result.resources.script.etag == $etag and
+                (.result.resources.bindings | map(select(.type == "d1")) | length == 1) and
+                any(.result.resources.bindings[]; .name == "DB" and .type == "d1" and ((.database_id // .id // "") == $db)) and
+                (([.result.resources.bindings[].name] | sort) == ["DB","P0_ROLLBACK_BATTLE_ID","P0_ROLLBACK_CHARACTER_ID","P0_ROLLBACK_PLAYER_ID"] or
+                 ([.result.resources.bindings[].name] | sort) == ["DB","P0_ROLLBACK_BATTLE_ID","P0_ROLLBACK_CHARACTER_ID","P0_ROLLBACK_PLAYER_ID","P0_ROLLBACK_TEST_KEY"]) and
+                any(.result.resources.bindings[]; .name == "P0_ROLLBACK_PLAYER_ID" and .type == "plain_text" and .text == $player) and
+                any(.result.resources.bindings[]; .name == "P0_ROLLBACK_CHARACTER_ID" and .type == "plain_text" and .text == $character) and
+                any(.result.resources.bindings[]; .name == "P0_ROLLBACK_BATTLE_ID" and .type == "plain_text" and .text == $battle) and
+                (all(.result.resources.bindings[]; .name != "P0_ROLLBACK_TEST_KEY" or .type == "secret_text"))
+              ' "$RUNNER_TEMP/existing-active.json" >/dev/null || {
+                echo "Existing Worker is not the exact approved P0 staging deployment; refusing overwrite."
+                exit 1
+              }
+              curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                "$api/schedules" > "$RUNNER_TEMP/existing-schedules.json"
+              jq -e '.success == true and (.result.schedules | type == "array") and (.result.schedules | length == 0)' "$RUNNER_TEMP/existing-schedules.json" >/dev/null || {
+                echo "Existing Worker has an unexpected cron schedule; refusing overwrite."
+                exit 1
+              }
+              echo "Verified exact prior P0 QA Worker, pinned source etag, fixture bindings, staging-only D1 and empty schedules; safe to continue."
+              ;;
+            *)
+              echo "Unable to determine isolated Worker existence safely (HTTP $status)."
+              exit 1
+              ;;
           esac
 
       - name: Build isolated Wrangler config
@@ -307,16 +372,20 @@ jobs:
             "$api/deployments?per_page=20" > "$deployments"
 
           source_version_id="$(jq -er --arg sha "$APPROVED_SOURCE_SHA" '
-            .success == true |
-            [.result.items[] | select(.annotations["workers/tag"] == $sha)] as $matches |
-            if ($matches | length) == 1 then $matches[0].id else error("Expected exactly one source-tagged Worker version") end
+            if .success != true then error("Unable to read Worker versions")
+            else
+              ([.result.items[] | select(.annotations["workers/tag"] == $sha)] | sort_by(.metadata.created_on)) as $matches |
+              if ($matches | length) >= 1 then $matches[-1].id else error("No source-tagged Worker version found") end
+            end
           ' "$versions")"
           active_version_id="$(jq -er '
-            .success == true |
-            (.result.deployments | max_by(.created_on)) as $deployment |
-            if ($deployment.versions | length) == 1 and $deployment.versions[0].percentage == 100
-            then $deployment.versions[0].version_id
-            else error("Expected one active Worker version at 100 percent")
+            if .success != true then error("Unable to read Worker deployments")
+            else
+              (.result.deployments | max_by(.created_on)) as $deployment |
+              if ($deployment.versions | length) == 1 and $deployment.versions[0].percentage == 100
+              then $deployment.versions[0].version_id
+              else error("Expected one active Worker version at 100 percent")
+              end
             end
           ' "$deployments")"
 
@@ -343,7 +412,8 @@ jobs:
             any(.result.resources.bindings[]; .name == "P0_ROLLBACK_TEST_KEY" and .type == "secret_text") and
             any(.result.resources.bindings[]; .name == "P0_ROLLBACK_PLAYER_ID" and .type == "plain_text" and .text == $player) and
             any(.result.resources.bindings[]; .name == "P0_ROLLBACK_CHARACTER_ID" and .type == "plain_text" and .text == $character) and
-            any(.result.resources.bindings[]; .name == "P0_ROLLBACK_BATTLE_ID" and .type == "plain_text" and .text == $battle)
+            any(.result.resources.bindings[]; .name == "P0_ROLLBACK_BATTLE_ID" and .type == "plain_text" and .text == $battle) and
+            ([.result.resources.bindings[].name] | sort) == ["DB","P0_ROLLBACK_BATTLE_ID","P0_ROLLBACK_CHARACTER_ID","P0_ROLLBACK_PLAYER_ID","P0_ROLLBACK_TEST_KEY"]
           ' "$active_version" >/dev/null || {
             echo "Active Worker version, source etag, QA binding or staging D1 mismatch."
             exit 1
