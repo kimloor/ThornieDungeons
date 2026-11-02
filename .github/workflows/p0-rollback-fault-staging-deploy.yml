@@ -210,7 +210,7 @@ jobs:
           query="SELECT COUNT(*) AS n
             FROM battle_authority ba
             JOIN characters c ON c.character_id = ba.character_id
-            JOIN players p ON p.player_id = c.player_id
+            JOIN players p ON p.id = c.player_id
             LEFT JOIN battle_completions bc ON bc.battle_id = ba.battle_id
             WHERE ba.battle_id = '$QA_BATTLE_ID'
               AND ba.character_id = '$QA_CHARACTER_ID'
