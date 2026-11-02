@@ -159,7 +159,9 @@ test("potion reservation is non-consuming and the battle action atomically consu
   const reserved = await post(api, db, token, { action: "consumePotion", characterId, potionId: "hp_small", requestId });
   assert.equal(reserved.body.ok, true, JSON.stringify(reserved.body));
   assert.equal(reserved.body.result.reserved, true);
-  assert.equal(potionQuantity(db, characterId), 2, "reservation must not deduct inventory");
+  assert.equal(potionQuantity(db, characterId), 2, "preflight must not deduct inventory");
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM character_operation_receipts WHERE character_id=? AND operation='consume_potion' AND request_id=?").get(characterId, requestId).c, 0,
+    "preflight must not create unbounded unused receipt rows");
   const command = { type: "potion", potionId: "hp_small", requestId };
   const first = await submit(api, db, token, characterId, started.body.battleId, hero.rev, command, "potion-action-atomic-1");
   assert.equal(first.body.ok, true, JSON.stringify(first.body));
