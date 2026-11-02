@@ -1977,6 +1977,7 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
     const priorPotion = await db.prepare(`SELECT battle_id, action_key, request_json, result_json FROM battle_action_receipts WHERE character_id = ? AND potion_request_id = ? LIMIT 1`)
       .bind(characterId, potionRequestId).first();
     if (priorPotion) {
+      if (priorPotion.result_json === "legacy_consumed") return json({ error: "potion_request_reused" }, 409);
       if (priorPotion.battle_id !== battleKey || priorPotion.request_json !== requestJson) return json({ error: "potion_request_reused" }, 409);
       if (priorPotion.result_json === "pending") return json({ error: "battle_action_in_progress", retry: true }, 409);
       return json({ ok: true, replayed: true, ...parseJsonColumn(priorPotion.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
