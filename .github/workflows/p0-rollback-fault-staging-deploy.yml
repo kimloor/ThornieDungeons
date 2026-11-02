@@ -217,6 +217,8 @@ jobs:
               AND c.player_id = '$QA_PLAYER_ID'
               AND ba.outcome = 'victory'
               AND ba.settled_at = ''
+              AND json_extract(ba.initial_state_json, '$.serverContext.role') = 'chapter_boss'
+              AND json_extract(ba.state_json, '$.serverContext.role') = 'chapter_boss'
               AND bc.battle_id IS NULL"
           wrangler d1 execute "$STAGING_DB_NAME" --remote --config "$RUNTIME_CONFIG" --json --command "$query" > "$RUNNER_TEMP/qa-scope.json"
           jq -e '.[0].success == true and .[0].results[0].n == 1' "$RUNNER_TEMP/qa-scope.json" >/dev/null || {
