@@ -547,3 +547,16 @@ This section records the implementation contract for the P0 Dungeon Battle Autho
 - Carry is allowed only when starting the same Floor again or the immediately following Floor. Older completions, another Character's Battle, unsettled outcomes, and unrelated Floor jumps are rejected with `battle_carry_source_invalid`.
 - Omitting `previousBattleId` continues to start with the normal full HP/MP initialization; no client-provided HP/MP is accepted.
 - Regression coverage must prove that a latest completion can carry its actual HP/MP, but an older formerly valid Battle ID cannot be replayed after a newer completion.
+
+### 14.6 Implementation and verification record (2026-11-02)
+
+**Status: MERGED TO `main`; Production rollout not yet authorized/performed.**
+
+- PR [#196](https://github.com/kimloor/ThornieDungeons/pull/196) merged by squash commit `6f3b8333a7c8105d17d271eccb2ff8105fc5cfb9`.
+- Implemented the Worker-owned battle authority, server-derived Victory, atomic/idempotent settlement, durable action receipts, Potion transaction/idempotency protections, and legacy battle recovery described above.
+- Follow-up carry-source hardening requires `previousBattleId` to match the Character's latest settled Victory and permits only same-Floor retry or the immediately following Floor.
+- Battle Core parity exact-head run [#41433194956](https://github.com/kimloor/ThornieDungeons/actions/runs/41433194956) PASS; Admin V2 QA [#41433203976](https://github.com/kimloor/ThornieDungeons/actions/runs/41433203976) PASS.
+- Actual D1 QA [#41434632747](https://github.com/kimloor/ThornieDungeons/actions/runs/41434632747) PASS for R01–R04 on exact source SHA `a02f40b6edb8570bb084a737733e3e84447a43b1`, using isolated Staging D1 only. Evidence artifact ID: `13135343132`.
+- The temporary QA Worker was deleted. Run-specific staging fixtures were removed and verified absent; `PRAGMA foreign_key_check` returned zero violations. The shared QA template and unrelated data were retained.
+- Migrations `0031_battle_authority_v1.sql` and `0032_battle_action_idempotency_v1.sql` are committed in the repository. **Do not infer that they have been applied to Production D1.**
+- Production D1 migration, Production Worker/API deployment, and player-facing rollout remain separate release gates requiring explicit Owner authorization and post-deployment verification.
