@@ -126,6 +126,98 @@ function carriedCount(db, characterId) {
   ).get(characterId).c);
 }
 
+async function advanceToHero(api, db, token, characterId, started) {
+  let state = started.body.state, rev = started.body.stateRev;
+  for (let i = 0; i < 12; i += 1) {
+    const actor = state.units[state.queue[state.queueIndex]];
+    if (actor?.kind === "hero") return { state, rev };
+    const advanced = await submit(api, db, token, characterId, started.body.battleId, rev, { type: "advance" }, `prep-${rev}`);
+    assert.equal(advanced.body.ok, true, JSON.stringify(advanced.body));
+    state = advanced.body.state; rev = advanced.body.stateRev;
+  }
+  throw new Error("hero turn was not reached");
+}
+function insertPotion(db, characterId, playerId, quantity = 2, potionId = "hp_small") {
+  db.raw.prepare("INSERT INTO items (item_id,player_id,character_id,slot_type,equipped,name,rarity,quantity,extra_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+    .run(`potion-${characterId}-${potionId}`, playerId, characterId, "potion", 0, potionId, "common", quantity,
+      JSON.stringify({ potionId, quantity }), new Date().toISOString(), new Date().toISOString());
+}
+function potionQuantity(db, characterId, potionId = "hp_small") {
+  const row = db.raw.prepare("SELECT extra_json FROM items WHERE character_id=? AND slot_type='potion' AND json_extract(extra_json,'$.potionId')=?")
+    .get(characterId, potionId);
+  return row ? Number(JSON.parse(row.extra_json).quantity) || 0 : 0;
+}
+
+test("potion reservation is non-consuming and the battle action atomically consumes exactly once", async () => {
+  const api = worker(), db = database();
+  const { token, characterId } = await account(api, db, "PotionAtomic");
+  const playerId = db.raw.prepare("SELECT player_id FROM characters WHERE character_id=?").get(characterId).player_id;
+  insertPotion(db, characterId, playerId, 2);
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  const hero = await advanceToHero(api, db, token, characterId, started);
+  const requestId = "potion-request-atomic-0001";
+  const reserved = await post(api, db, token, { action: "consumePotion", characterId, potionId: "hp_small", requestId });
+  assert.equal(reserved.body.ok, true, JSON.stringify(reserved.body));
+  assert.equal(reserved.body.result.reserved, true);
+  assert.equal(potionQuantity(db, characterId), 2, "reservation must not deduct inventory");
+  const command = { type: "potion", potionId: "hp_small", requestId };
+  const first = await submit(api, db, token, characterId, started.body.battleId, hero.rev, command, "potion-action-atomic-1");
+  assert.equal(first.body.ok, true, JSON.stringify(first.body));
+  assert.equal(first.body.replayed, false);
+  assert.equal(potionQuantity(db, characterId), 1);
+  const replay = await submit(api, db, token, characterId, started.body.battleId, hero.rev, command, "potion-action-atomic-retry");
+  assert.equal(replay.body.ok, true, JSON.stringify(replay.body));
+  assert.equal(replay.body.replayed, true);
+  assert.equal(replay.body.stateRev, first.body.stateRev);
+  assert.equal(potionQuantity(db, characterId), 1, "replay must not consume a second Potion");
+  const reused = await submit(api, db, token, characterId, started.body.battleId, first.body.stateRev, { ...command, potionId: "mp_small" }, "potion-action-reused");
+  assert.equal(reused.status, 409);
+  assert.equal(reused.body.error, "potion_request_reused");
+  assert.equal(potionQuantity(db, characterId), 1);
+});
+
+test("stale Potion battle revision does not consume inventory and same request can retry", async () => {
+  const api = worker(), db = database();
+  const { token, characterId } = await account(api, db, "PotionStale");
+  const playerId = db.raw.prepare("SELECT player_id FROM characters WHERE character_id=?").get(characterId).player_id;
+  insertPotion(db, characterId, playerId, 2);
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  const hero = await advanceToHero(api, db, token, characterId, started);
+  const requestId = "potion-request-stale-0001";
+  const command = { type: "potion", potionId: "hp_small", requestId };
+  const stale = await submit(api, db, token, characterId, started.body.battleId, hero.rev + 1, command, "potion-action-stale");
+  assert.equal(stale.status, 409);
+  assert.equal(stale.body.error, "battle_revision_conflict");
+  assert.equal(potionQuantity(db, characterId), 2);
+  const retry = await submit(api, db, token, characterId, started.body.battleId, hero.rev, command, "potion-action-stale-retry");
+  assert.equal(retry.body.ok, true, JSON.stringify(retry.body));
+  assert.equal(potionQuantity(db, characterId), 1);
+});
+
+test("battle action keys remain replay-protected after later actions", async () => {
+  const api = worker(), db = database();
+  const { token, characterId } = await account(api, db, "ActionReplay");
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  const firstActor = started.body.state.units[started.body.state.queue[started.body.state.queueIndex]];
+  const firstEnemy = Object.values(started.body.state.units).find(unit => unit.side === "enemy" && !unit.dead);
+  const firstCommand = firstActor.kind === "hero" ? { type: "basic", targetId: firstEnemy.id } : { type: "advance" };
+  const first = await submit(api, db, token, characterId, started.body.battleId, started.body.stateRev, firstCommand, "durable-action-key-0001");
+  assert.equal(first.body.ok, true, JSON.stringify(first.body));
+  const secondActor = first.body.state.units[first.body.state.queue[first.body.state.queueIndex]];
+  const secondEnemy = Object.values(first.body.state.units).find(unit => unit.side === "enemy" && !unit.dead);
+  const secondCommand = secondActor.kind === "hero" ? { type: "basic", targetId: secondEnemy.id } : { type: "advance" };
+  const second = await submit(api, db, token, characterId, started.body.battleId, first.body.stateRev, secondCommand, "durable-action-key-0002");
+  assert.equal(second.body.ok, true, JSON.stringify(second.body));
+  const replay = await submit(api, db, token, characterId, started.body.battleId, second.body.stateRev, firstCommand, "durable-action-key-0001");
+  assert.equal(replay.body.ok, true, JSON.stringify(replay.body));
+  assert.equal(replay.body.replayed, true);
+  assert.equal(replay.body.stateRev, first.body.stateRev);
+  assert.equal(db.raw.prepare("SELECT state_rev FROM battle_authority WHERE battle_id=?").get(started.body.battleId).state_rev, second.body.stateRev);
+  const conflict = await submit(api, db, token, characterId, started.body.battleId, second.body.stateRev, { type: "invalid-reuse" }, "durable-action-key-0001");
+  assert.equal(conflict.status, 409);
+  assert.equal(conflict.body.error, "battle_action_key_conflict");
+});
+
 test("server state rejects forged checkpoint and premature victory", async () => {
   const api = worker(), db = database();
   const { token, characterId } = await account(api, db);
