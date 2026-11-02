@@ -77,6 +77,7 @@ import { createLeaderboardHandlers } from "./modules/leaderboard.js";
 import "../src/systems/enhancementV2.js";
 import "../src/systems/rewardV2.js";
 import "../src/systems/mythicV2.js";
+import "../src/systems/dungeonV2.js";
 
 const ENHANCEMENT_V2_RULES = globalThis.ENHANCEMENT_V2;
 
@@ -146,6 +147,45 @@ async function handleGetGameConfig(db) {
     try { cfg[r.key] = JSON.parse(r.value_json || "null"); } catch (e) {}
   }
   return json(cfg);
+}
+
+const HALLOWEEN_EVENT_ID = "halloween_v1";
+const HALLOWEEN_EVENT_CONFIG_KEY = "halloween_event_v1";
+const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+function bangkokCalendarMonthEnd(startMs) {
+  const local = new Date(startMs + BANGKOK_OFFSET_MS);
+  const year = local.getUTCFullYear();
+  const month = local.getUTCMonth();
+  const day = local.getUTCDate();
+  const nextMonth = month + 1;
+  const targetYear = year + Math.floor(nextMonth / 12);
+  const targetMonth = nextMonth % 12;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  return Date.UTC(targetYear, targetMonth, Math.min(day, lastDay), local.getUTCHours(), local.getUTCMinutes(), local.getUTCSeconds(), local.getUTCMilliseconds()) - BANGKOK_OFFSET_MS;
+}
+
+async function halloweenEventWindow(db, nowMs = Date.now()) {
+  const row = await db.prepare(`SELECT value_json FROM game_config WHERE key = ?`).bind(HALLOWEEN_EVENT_CONFIG_KEY).first();
+  const config = parseJsonColumn(row?.value_json, {});
+  const startMs = Date.parse(String(config?.activationAt || ""));
+  if (config?.enabled !== true || !Number.isFinite(startMs)) {
+    return { eventId: HALLOWEEN_EVENT_ID, active: false, state: "inactive", timezone: "Asia/Bangkok" };
+  }
+  const endMs = bangkokCalendarMonthEnd(startMs);
+  const state = nowMs < startMs ? "scheduled" : nowMs < endMs ? "active" : "expired";
+  return {
+    eventId: HALLOWEEN_EVENT_ID,
+    active: state === "active",
+    state,
+    timezone: "Asia/Bangkok",
+    activationAt: new Date(startMs).toISOString(),
+    endsAt: new Date(endMs).toISOString()
+  };
+}
+
+async function handleGetHalloweenEventStatus(db) {
+  return json(await halloweenEventWindow(db));
 }
 
 // Public, unauthenticated — just game data, not user-specific (same trust level as
@@ -1181,7 +1221,10 @@ async function handleSalvageItem(db, id, session, characterId, itemId, requestId
   const v2 = Number(extra.itemModelVersion) === 2 || Number(extra.rewardVersion) === 2;
   if (v2 || ["mythic", "azure"].includes(String(row.rarity || "").toLowerCase())) {
     const model = { type: row.slot_type, rarity: row.rarity, itemModelVersion: Number(extra.itemModelVersion), setId: extra.setId };
-    if (globalThis.MYTHIC_V2?.validSetItem(model)) {
+    if (String(extra.specialSource || "").toLowerCase() === "excaliburnt" && String(extra.bossWeaponId || "").toLowerCase() === "excaliburnt") {
+      materials = [];
+      salvageKind = "halloween_excaliburnt";
+    } else if (globalThis.MYTHIC_V2?.validSetItem(model)) {
       const consumed = Array.isArray(extra.craftConsumed) ? extra.craftConsumed : [];
       const needs = Object.fromEntries(consumed.filter(entry => ["bossHorn", "bossHide"].includes(entry?.junkId)).map(entry => [entry.junkId, Math.max(0, Math.floor(Number(entry.qty) || 0))]));
       if (!needs.bossHorn || !needs.bossHide) return json({ error: "mythic_salvage_source_invalid" }, 409);
@@ -1287,16 +1330,27 @@ async function handleGetBattleState(db, id, session, characterId) {
   ).bind(characterId).first();
   const settings = await db.prepare(`SELECT quick_slots_json FROM character_settings WHERE character_id = ?`).bind(characterId).first();
   const checkpointPayload = checkpoint ? parseJsonColumn(checkpoint.payload_json, null) : null;
+  const authority = checkpoint ? await db.prepare(
+    `SELECT state_rev, state_json, outcome FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`
+  ).bind(checkpoint.battle_id, characterId).first() : null;
+  const storedAuthorityState = authority ? parseJsonColumn(authority.state_json, null) : null;
+  const authorityState = storedAuthorityState ? { ...storedAuthorityState, authorityRev: Number(authority.state_rev) || 0 } : null;
   return json({
     ok: true,
     // An authorization row owns immutable encounter identity but is not yet a
     // resumable Battle Core checkpoint. A reconnect can safely call
     // startDungeonBattle again and receive this same authorization.
-    checkpoint: checkpoint && !checkpointPayload?.authorizationOnly ? {
+    checkpoint: checkpoint && authorityState && !authority.outcome ? {
       battleId: checkpoint.battle_id,
-      checkpointSeq: Number(checkpoint.checkpoint_seq) || 0,
-      payload: checkpointPayload,
-      updatedAt: checkpoint.updated_at
+      checkpointSeq: Number(authority.state_rev) || 0,
+      payload: authorityState,
+      updatedAt: checkpoint.updated_at,
+      authoritative: true
+    } : null,
+    legacyRecovery: checkpoint && !authority ? {
+      battleId: checkpoint.battle_id,
+      floor: Math.max(1, Math.floor(Number(checkpointPayload?.floor) || Number(checkpointPayload?.serverContext?.floor) || 1)),
+      policy: "restart_same_floor"
     } : null,
     quickSlots: parseJsonColumn(settings && settings.quick_slots_json, [null, null, null, null])
   });
@@ -1314,6 +1368,14 @@ async function handleSaveBattleCheckpoint(db, id, session, characterId, battleId
   const priorCheckpoint = await db.prepare(`SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`).bind(String(battleId), characterId).first();
   if (payload?.mode === "dungeon") {
     if (!priorCheckpoint) return json({ error: "dungeon_battle_not_authorized" }, 409);
+    const authority = await db.prepare(`SELECT state_rev FROM battle_authority WHERE battle_id = ? AND character_id = ? AND outcome = '' LIMIT 1`)
+      .bind(String(battleId), characterId).first();
+    if (authority) {
+      // Dungeon combat state is server-owned. Legacy clients may still send a
+      // presentation checkpoint during the rolling upgrade, but it must never
+      // mutate authoritative HP/SP, queue, damage, outcome, or revision.
+      return json({ ok: true, accepted: false, checkpointSeq: Number(authority.state_rev) || 0, authoritative: true });
+    }
     const priorPayload = parseJsonColumn(priorCheckpoint.payload_json, null);
     const priorContext = dungeonV2ServerContextFromStoredCheckpoint(priorPayload);
     if (!priorContext) return json({ error: "dungeon_battle_not_authorized" }, 409);
@@ -1394,8 +1456,13 @@ async function handleClearBattleCheckpoint(db, id, session, characterId, battleI
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error });
   if (!battleId) return json({ error: "missing_fields" });
-  await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
-    .bind(nowIso(), String(battleId), characterId).run();
+  const now = nowIso();
+  await db.batch([
+    db.prepare(`UPDATE battle_authority SET outcome = 'abandoned', updated_at = ? WHERE battle_id = ? AND character_id = ? AND outcome = ''`)
+      .bind(now, String(battleId), characterId),
+    db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
+      .bind(now, String(battleId), characterId)
+  ]);
   return json({ ok: true });
 }
 
@@ -1450,6 +1517,13 @@ const DUNGEON_V2_EVENT_EFFECTS = Object.freeze({
   oasis: Object.freeze({ turnHealPct: 0.05 }),
   toxic: Object.freeze({ poisonDamagePct: 0.05, poisonDuration: 3 })
 });
+// Battle Core resolves Oasis/Toxic from this shared lookup. Keep the runtime
+// shape aligned with src/systems/floorModifier.js without trusting client data.
+function floorModifierById(id) {
+  const key = String(id || "");
+  const effects = DUNGEON_V2_EVENT_EFFECTS[key];
+  return effects ? { id: key, ...effects } : null;
+}
 function dungeonV2ServerEventModifier(id) {
   const key = String(id || "");
   const effects = DUNGEON_V2_EVENT_EFFECTS[key];
@@ -1527,6 +1601,31 @@ function dungeonV2ServerRng(seed) {
     return state / 4294967296;
   };
 }
+const HALLOWEEN_BOSS_ID = "haloween_nightmare";
+const HALLOWEEN_BASIC_ACTION = Object.freeze({ id: "basic_attack", kind: "attack", actionName: "Normal Attack", mult: 1, hits: 1, targetMode: "single", statuses: [] });
+const HALLOWEEN_SKILL_ACTIONS = Object.freeze({
+  stun: Object.freeze({ id: "nightmare_stun", kind: "attack", actionName: "Nightmare Stun", mult: .9, hits: 1, targetMode: "single", statuses: [{ key: "stun", chance: 25, duration: 1 }] }),
+  silence: Object.freeze({ id: "nightmare_silence", kind: "attack", actionName: "Nightmare Silence", mult: 1.5, hits: 1, targetMode: "single", statuses: [{ key: "silence", chance: 25, duration: 2 }] }),
+  poison: Object.freeze({ id: "nightmare_poison", kind: "attack", actionName: "Nightmare Poison", mult: .9, hits: 1, targetMode: "single", statuses: [{ key: "poison", chance: 40, duration: 3, damagePct: .12 }] })
+});
+function halloweenServerSkillCycle(seed, skillTurns = 32) {
+  const rng = dungeonV2ServerRng(seed);
+  const keys = Object.keys(HALLOWEEN_SKILL_ACTIONS);
+  let previous = null;
+  const cycle = [];
+  for (let index = 0; index < skillTurns; index += 1) {
+    const choices = previous ? keys.filter(key => key !== previous) : keys;
+    const selected = choices[Math.floor(rng() * choices.length)] || choices[0];
+    cycle.push({ ...HALLOWEEN_BASIC_ACTION }, JSON.parse(JSON.stringify(HALLOWEEN_SKILL_ACTIONS[selected])));
+    previous = selected;
+  }
+  return cycle;
+}
+function secureUint32() {
+  const words = new Uint32Array(1);
+  crypto.getRandomValues(words);
+  return words[0] || 1;
+}
 function dungeonV2ServerNormalizeContext(value) {
   if (!value || value.mode !== "dungeon") return null;
   const floor = Math.floor(Number(value.floor) || 0);
@@ -1534,20 +1633,26 @@ function dungeonV2ServerNormalizeContext(value) {
   // Version 1 is the legacy-issued contract: permit any formerly valid definition ID so
   // active checkpoints/previews survive deployment. New server contexts are version 2 and
   // are strictly checked against the approved floor pool/fixed Boss assignment.
+  const eventId = String(value.eventId || "");
+  const isHalloween = eventId === HALLOWEEN_EVENT_ID;
   const contextVersion = value.version == null ? 1 : Number(value.version);
-  if (contextVersion !== 1 && contextVersion !== 2) return null;
+  if (isHalloween ? contextVersion !== 3 : (contextVersion !== 1 && contextVersion !== 2)) return null;
   const role = dungeonV2ServerExpectedRole(floor);
   if (String(value.role || "") !== role) return null;
   const entries = Array.isArray(value.enemies) ? value.enemies : [];
   if (entries.length < 1 || entries.length > 3 || Number(value.packCount) !== entries.length) return null;
   if (role === "chapter_boss" && entries.length !== 1) return null;
-  const allowedIds = contextVersion === 1
+  const allowedIds = isHalloween
+    ? new Set([HALLOWEEN_BOSS_ID])
+    : contextVersion === 1
     ? (role === "chapter_boss" ? DUNGEON_V2_BOSS_IDS : DUNGEON_V2_MONSTER_IDS)
     : new Set(role === "chapter_boss" ? [dungeonV2ServerBossForFloor(floor)] : dungeonV2ServerMonsterPoolForFloor(floor));
   const enemies = entries.map((enemy, index) => ({
     id: String(enemy?.id || ""),
     instanceId: String(enemy?.instanceId || ""),
     modifierId: enemy?.modifierId == null ? null : String(enemy.modifierId),
+    statProfileId: enemy?.statProfileId == null ? null : String(enemy.statProfileId),
+    skillCycle: Array.isArray(enemy?.skillCycle) ? enemy.skillCycle : null,
     kind: role === "chapter_boss" ? "boss" : "monster",
     isBoss: role === "chapter_boss"
   }));
@@ -1558,7 +1663,19 @@ function dungeonV2ServerNormalizeContext(value) {
   const encounterSeed = Number(value.encounterSeed) >>> 0;
   const rewardSeed = Number(value.rewardSeed) >>> 0;
   if (!encounterSeed || !rewardSeed) return null;
-  return { version: contextVersion, mode: "dungeon", floor, role, packCount: enemies.length, enemies, encounterSeed, rewardSeed };
+  if (isHalloween) {
+    const progressFloor = Math.max(1, Math.floor(Number(value.progressFloor) || 0));
+    const referenceFloor = Math.ceil(progressFloor / 10) * 10;
+    const startedAtMs = Date.parse(String(value.startedAt || ""));
+    const eventEndsAtMs = Date.parse(String(value.eventEndsAt || ""));
+    const expectedCycle = halloweenServerSkillCycle(encounterSeed);
+    if (role !== "chapter_boss" || floor !== referenceFloor || !Number.isFinite(startedAtMs) || !Number.isFinite(eventEndsAtMs) || startedAtMs >= eventEndsAtMs) return null;
+    if (enemies[0]?.statProfileId !== dungeonV2ServerBossForFloor(referenceFloor)) return null;
+    if (JSON.stringify(enemies[0]?.skillCycle) !== JSON.stringify(expectedCycle)) return null;
+    return { version: 3, mode: "dungeon", eventId, floor, referenceFloor, progressFloor, role, packCount: 1, enemies, encounterSeed, rewardSeed,
+      startedAt: new Date(startedAtMs).toISOString(), eventEndsAt: new Date(eventEndsAtMs).toISOString() };
+  }
+  return { version: contextVersion, mode: "dungeon", floor, role, packCount: enemies.length, enemies: enemies.map(({ statProfileId, skillCycle, ...enemy }) => enemy), encounterSeed, rewardSeed };
 }
 function dungeonV2ServerContextFromStoredCheckpoint(payload) {
   return dungeonV2ServerNormalizeContext(payload?.serverContext);
@@ -1621,8 +1738,10 @@ function dungeonV2ServerContextsMatch(a, b) {
     && a.packCount === b.packCount
     && a.encounterSeed === b.encounterSeed
     && a.rewardSeed === b.rewardSeed
-    && JSON.stringify(a.enemies.map(enemy => [enemy.id, enemy.instanceId, enemy.modifierId]))
-      === JSON.stringify(b.enemies.map(enemy => [enemy.id, enemy.instanceId, enemy.modifierId])));
+    && String(a.eventId || "") === String(b.eventId || "")
+    && String(a.startedAt || "") === String(b.startedAt || "")
+    && String(a.eventEndsAt || "") === String(b.eventEndsAt || "")
+    && JSON.stringify(a.enemies) === JSON.stringify(b.enemies));
 }
 function dungeonV2ServerEncounterContext(characterId, floor, ordinal) {
   const role = dungeonV2ServerExpectedRole(floor);
@@ -1651,6 +1770,162 @@ function dungeonV2ServerEncounterContext(characterId, floor, ordinal) {
     };
   });
   return { version: 2, mode: "dungeon", floor, role, packCount, enemies, encounterSeed, rewardSeed };
+}
+
+const DUNGEON_POTION_EFFECTS = Object.freeze({
+  hp_small: ["hp", 0.20], hp_medium: ["hp", 0.40], hp_high: ["hp", 0.70], hp_full: ["hp", 1],
+  mp_small: ["mp", 0.20], mp_medium: ["mp", 0.40], mp_high: ["mp", 0.70], mp_full: ["mp", 1]
+});
+
+function dungeonAuthoritySkillKeys(quickSlots, skillLevels) {
+  const learned = new Set(heroActiveSkillList(skillLevels || {}).map(skill => skill.key));
+  const seen = new Set();
+  return (Array.isArray(quickSlots) ? quickSlots : []).flatMap(slot => {
+    const key = typeof slot === "string" ? slot : slot?.kind === "skill" ? slot.key : null;
+    if (!key || !learned.has(key) || seen.has(key)) return [];
+    seen.add(key);
+    return [key];
+  }).slice(0, 4);
+}
+
+function dungeonAuthorityStats(character, items, petDefId, skillLevels) {
+  const primary = {
+    str: Number(character.str) || 0, vit: Number(character.vit) || 0, agi: Number(character.agi) || 0,
+    dex: Number(character.dex) || 0, luk: Number(character.luk) || 0
+  };
+  const base = characterBaseStats(Number(character.level) || 1, primary);
+  const bonus = { atk: 0, def: 0, hp: 0, mp: 0, hpPct: 0, mpPct: 0, str: 0, vit: 0, agi: 0, dex: 0, luk: 0, accuracy: 0, critChance: 0, critDamage: 0, dodgeChance: 0 };
+  for (const item of items || []) {
+    const current = itemBonus(item) || {};
+    for (const key of Object.keys(current)) bonus[key] = (bonus[key] || 0) + (Number(current[key]) || 0);
+  }
+  const equipped = mythicEquippedFromRows(items);
+  const setEffects = globalThis.MYTHIC_V2.setEffects(equipped);
+  bonus.str += Number(setEffects.str) || 0;
+  bonus.vit += Number(setEffects.vit) || 0;
+  bonus.agi += Number(setEffects.agi) || 0;
+  const toughness = heroSkillRankData(skillLevels, "toughness");
+  const ironBody = heroSkillRankData(skillLevels, "iron_body");
+  const battleHardened = heroSkillRankData(skillLevels, "battle_hardened");
+  const maxHp = Math.round((base.maxHp + bonus.vit * 12 + bonus.hp) * (1 + bonus.hpPct / 100) * (1 + (Number(toughness?.maxHpPct) || 0) / 100));
+  const maxMp = Math.round((base.maxMp + bonus.mp) * (1 + bonus.mpPct / 100));
+  const rawDef = base.def + Math.floor((primary.vit + bonus.vit) * 0.5) - Math.floor(primary.vit * 0.5) + bonus.def;
+  return {
+    maxHp, maxMp,
+    atk: Math.round(base.atk + bonus.str * 3 + Math.floor((primary.dex + bonus.dex) * 0.5) - Math.floor(primary.dex * 0.5) + bonus.atk),
+    def: Math.round(rawDef * (1 + (Number(ironBody?.defPct) || 0) / 100 + (petDefId === "inferno_drake" ? 0.08 : 0))),
+    speed: Math.round(BASE_SPEED + (primary.agi + bonus.agi) * 2),
+    accuracy: Math.min(99, Math.round((base.accuracy + (bonus.accuracy || 0) + bonus.dex * 0.5 + (petDefId === "hell_wolf" ? 8 : 0)) * 10) / 10),
+    critChance: Math.min(80, Math.round((base.critChance + bonus.critChance + bonus.luk * 0.5 + (petDefId === "ember_fox" ? 5 : 0)) * 10) / 10),
+    critDamage: Math.min(300, Math.round((base.critDamage + bonus.critDamage + (Number(setEffects.critDamage) || 0)) * 10) / 10),
+    dodge: Math.min(60, Math.round((base.dodgeChance + bonus.dodgeChance + bonus.agi * 0.5 + (petDefId === "storm_phoenix" ? 8 : 0)) * 10) / 10),
+    statusResist: Math.round(((Number(battleHardened?.statusResist) || 0) + (petDefId === "moon_hare" ? 15 : 0)) * 10) / 10,
+    equipmentEffects: globalThis.MYTHIC_V2.combatEffects(equipped)
+  };
+}
+
+function dungeonAuthorityPetUnit(character, carryHp = null) {
+  const { active } = parsePetsJson(character);
+  if (!active) return null;
+  const defId = active.defId === "thunder_cub" ? "hell_wolf" : active.defId;
+  const base = PET_BASE_STATS[defId] || PET_BASE_STATS.sprout;
+  const growth = PET_GROWTH_STATS[defId] || PET_GROWTH_STATS.sprout;
+  const level = Math.max(1, Math.min(50, Number(active.level) || 1));
+  const mult = PET_STAR_MULT[Math.max(0, Math.min(2, (Number(active.star) || 1) - 1))] || 1;
+  const values = active.statModel === "v2" && active.stats
+    ? [active.stats.str, active.stats.vit, active.stats.agi, active.stats.dex, active.stats.luk]
+    : base.map((value, index) => value + growth[index] * (level - 1));
+  const stats = { str: values[0] * mult, vit: values[1] * mult, agi: values[2] * mult, dex: values[3] * mult, luk: values[4] * mult };
+  const maxHp = Math.round(30 + level * 4 + stats.vit * 7);
+  return {
+    instId: active.instId, defId: active.defId, id: "pet", kind: "pet", side: "ally", name: PET_DISPLAY_NAMES[defId] || defId,
+    maxHp, hp: carryHp == null ? maxHp : Math.max(0, Math.min(maxHp, Number(carryHp) || 0)),
+    atk: Math.round(5 + level * 0.7 + stats.str * 2),
+    def: Math.round((2 + level * 0.25 + stats.vit * 0.5) * (defId === "inferno_drake" ? 1.15 : 1)),
+    speed: Math.round(BASE_SPEED + stats.agi * 1.5),
+    accuracy: Math.min(99, Math.round((85 + stats.dex * 0.4 + (defId === "hell_wolf" ? 8 : 0)) * 10) / 10),
+    dodge: Math.min(20, Math.round((stats.agi * 0.35 + (defId === "storm_phoenix" ? 8 : 0)) * 10) / 10),
+    crit: Math.min(25, Math.round((stats.luk * 0.4 + (defId === "ember_fox" ? 10 : 0)) * 10) / 10),
+    statusResist: defId === "moon_hare" ? 15 : 0,
+    vit: stats.vit
+  };
+}
+
+function dungeonAuthorityEnemyUnit(context, enemy, index) {
+  const dungeon = globalThis.DUNGEON_V2;
+  const modifier = enemy.modifierId ? floorModifierById(enemy.modifierId) : null;
+  const elite = context.role === "elite";
+  const boss = context.role === "chapter_boss";
+  const profileId = context.eventId === HALLOWEEN_EVENT_ID ? enemy.statProfileId : enemy.id;
+  const profile = boss ? dungeon.getDungeonV2BossProfile(profileId) : dungeon.getDungeonV2MonsterProfile(profileId);
+  const stats = boss
+    ? dungeon.resolveDungeonV2BossStats(context.floor, profileId)
+    : dungeon.resolveDungeonV2NormalStats(context.floor, enemy.id, { packCount: context.packCount, elite, modifier });
+  const skill = context.eventId === HALLOWEEN_EVENT_ID
+    ? { skillSetId: HALLOWEEN_BOSS_ID, cycle: enemy.skillCycle, phase2Cycle: null, phaseAction: null }
+    : dungeon.getDungeonV2SkillConfig(enemy.id, context.role);
+  const agi = (boss ? 8 : 4) + Math.floor(context.floor / 10);
+  const speed = Math.max(0, (BASE_SPEED + agi * 2 + (Number(stats.speedAdjustment) || 0)) * (Number(modifier?.speedMult) || 1));
+  return {
+    id: enemy.instanceId, monsterDefId: enemy.id, kind: boss ? "boss" : "monster", side: "enemy",
+    name: `${context.eventId === HALLOWEEN_EVENT_ID ? "Halloween Nightmare" : profile?.name || enemy.id}${boss ? " (Boss)" : elite ? " (Elite)" : ""}`,
+    isBoss: boss, isElite: elite, encounterType: context.role, floor: context.floor,
+    maxHp: stats.hp, hp: stats.hp, atk: stats.atk, def: stats.def, speed,
+    accuracy: Math.min(99, Math.round((80 + (boss ? 6 : 2) * 0.5) * 10) / 10),
+    dodge: boss ? Math.round(agi * 0.5 * 10) / 10 : Number(stats.dodge) || 0,
+    crit: 5, statusResist: Number(stats.statusResist) || 0, tieOrder: index + 2,
+    dungeonV2ProfileId: profileId,
+    dungeonV2SkillSetId: skill?.skillSetId || null,
+    dungeonV2SkillCycle: skill?.cycle || null,
+    dungeonV2SkillPhase2Cycle: skill?.phase2Cycle || null,
+    dungeonV2PhaseAction: skill?.phaseAction || null,
+    dungeonV2CycleIndex: 0, dungeonV2Phase: "base", dungeonV2PendingAction: null,
+    dungeonV2OvergrowthQueued: false, dungeonV2OvergrowthUsed: false,
+    dungeonV2BaseAtk: stats.atk, flags: { dungeonV2BaseAtk: stats.atk }, modifier
+  };
+}
+
+async function dungeonAuthorityCarryState(db, characterId, previousBattleId) {
+  if (!previousBattleId) return null;
+  const row = await db.prepare(`SELECT state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ?`)
+    .bind(String(previousBattleId), characterId).first();
+  if (!row || row.outcome !== "victory" || !row.settled_at) return null;
+  const state = parseJsonColumn(row.state_json, null);
+  const hero = state?.units?.[state.heroId];
+  const pet = state?.petId ? state?.units?.[state.petId] : null;
+  return hero ? { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp } : null;
+}
+
+async function dungeonAuthorityInitialState(db, character, context, battleId, previousBattleId) {
+  const [itemsResult, settings, carry] = await Promise.all([
+    db.prepare(`SELECT * FROM items WHERE character_id = ? AND equipped = 1`).bind(character.character_id).all(),
+    db.prepare(`SELECT quick_slots_json FROM character_settings WHERE character_id = ?`).bind(character.character_id).first(),
+    dungeonAuthorityCarryState(db, character.character_id, previousBattleId)
+  ]);
+  const items = itemsResult?.results || [];
+  const parsedPets = parsePetsJson(character);
+  const pet = dungeonAuthorityPetUnit(character, carry?.petHp);
+  const stats = dungeonAuthorityStats(character, items, pet?.defId || "", parsedPets.skillLevels || {});
+  const skills = parsedPets.skillLevels || {};
+  const state = globalThis.BATTLE_CORE_V1.createDungeonBattle({
+    battleId, floor: context.floor, mode: "dungeon", seed: context.encounterSeed,
+    dungeonEventId: context.enemies.map(entry => entry.modifierId).find(Boolean) || null,
+    hero: {
+      id: "hero", kind: "hero", side: "ally", name: character.name || "Hero",
+      maxHp: stats.maxHp, hp: carry ? Math.max(0, Math.min(stats.maxHp, Number(carry.heroHp) || 0)) : stats.maxHp,
+      maxSp: stats.maxMp, sp: carry ? Math.max(0, Math.min(stats.maxMp, Number(carry.heroSp) || 0)) : stats.maxMp,
+      atk: stats.atk, def: stats.def, speed: stats.speed, accuracy: stats.accuracy,
+      dodge: stats.dodge, crit: stats.critChance, critDamage: 1 + stats.critDamage / 100,
+      agi: Number(character.agi) || 0, skills,
+      activeSkills: dungeonAuthoritySkillKeys(parseJsonColumn(settings?.quick_slots_json, []), skills),
+      statusResist: stats.statusResist, equipmentEffects: stats.equipmentEffects
+    },
+    pet,
+    enemies: context.enemies.map((enemy, index) => dungeonAuthorityEnemyUnit(context, enemy, index))
+  });
+  state.serverContext = context;
+  globalThis.DUNGEON_V2.applyDungeonV2BossEnrage(state);
+  return state;
 }
 async function handleGetDungeonEncounterPreview(db, id, session, characterId, requestedFloor) {
   const auth = await verifyPlayer(db, id, session);
@@ -1684,7 +1959,7 @@ async function handleGetDungeonEncounterPreview(db, id, session, characterId, re
   });
 }
 
-async function handleStartDungeonBattle(db, id, session, characterId, requestedFloor, previewContext = null) {
+async function handleStartDungeonBattle(db, id, session, characterId, requestedFloor, previewContext = null, previousBattleId = null) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error });
   const owned = await verifyOwnedCharacter(db, id, characterId);
@@ -1699,10 +1974,14 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
   if (existing) {
     const payload = parseJsonColumn(existing.payload_json, null);
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
-    if (payload?.authorizationOnly && context && context.floor === floor) {
-      return json({ ok: true, battleId: existing.battle_id, context });
+    const authority = await db.prepare(`SELECT state_rev, state_json, outcome FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`)
+      .bind(existing.battle_id, characterId).first();
+    if (authority && !authority.outcome && context && context.floor === floor) {
+      return json({ ok: true, battleId: existing.battle_id, context, state: { ...parseJsonColumn(authority.state_json, {}), authorityRev: Number(authority.state_rev) || 0 }, stateRev: Number(authority.state_rev) || 0, authoritative: true });
     }
-    if (!payload?.authorizationOnly) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+    if (authority && !authority.outcome) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+    // Legacy checkpoints have no trustworthy combat transcript. Close them
+    // without reward and restart the same floor at full HP/SP.
     await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
       .bind(nowIso(), existing.battle_id, characterId).run();
   }
@@ -1718,6 +1997,7 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
   }
   const battleId = `dungeon-${randomToken(16)}`;
   const now = nowIso();
+  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, previousBattleId);
   const authorization = JSON.stringify({
     version: 1,
     battleId,
@@ -1729,10 +2009,14 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
     serverContext: context
   });
   try {
-    await db.prepare(
+    await db.batch([db.prepare(
       `INSERT INTO battle_checkpoints (battle_id, character_id, checkpoint_seq, payload_json, state, created_at, updated_at)
        VALUES (?, ?, -1, ?, 'active', ?, ?)`
-    ).bind(battleId, characterId, authorization, now, now).run();
+    ).bind(battleId, characterId, authorization, now, now),
+    db.prepare(`INSERT INTO battle_authority
+      (battle_id, character_id, state_rev, initial_state_json, state_json, outcome, last_action_key, last_action_request_json, last_action_result_json, settled_at, created_at, updated_at)
+      VALUES (?, ?, 0, ?, ?, '', '', '', '', '', ?, ?)`)
+      .bind(battleId, characterId, JSON.stringify(state), JSON.stringify(state), now, now)]);
   } catch (error) {
     const raced = await db.prepare(
       `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
@@ -1740,11 +2024,161 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
     const racedPayload = parseJsonColumn(raced?.payload_json, null);
     const racedContext = dungeonV2ServerContextFromStoredCheckpoint(racedPayload);
     if (racedPayload?.authorizationOnly && racedContext && racedContext.floor === floor) {
-      return json({ ok: true, battleId: raced.battle_id, context: racedContext });
+      const authority = await db.prepare(`SELECT state_rev, state_json FROM battle_authority WHERE battle_id = ? AND character_id = ? AND outcome = ''`)
+        .bind(raced.battle_id, characterId).first();
+      return json({ ok: true, battleId: raced.battle_id, context: racedContext, state: { ...parseJsonColumn(authority?.state_json, {}), authorityRev: Number(authority?.state_rev) || 0 }, stateRev: Number(authority?.state_rev) || 0, authoritative: true });
     }
     return json({ error: "active_battle_conflict" }, 409);
   }
-  return json({ ok: true, battleId, context });
+  return json({ ok: true, battleId, context, state: { ...state, authorityRev: 0 }, stateRev: 0, authoritative: true });
+}
+
+async function handleSubmitDungeonBattleAction(db, id, session, characterId, battleId, actionKey, expectedRev, rawCommand) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+  const key = String(actionKey || "");
+  const battleKey = String(battleId || "");
+  const rev = Number(expectedRev);
+  if (!battleKey || !/^[A-Za-z0-9:_-]{4,160}$/.test(key) || !Number.isInteger(rev) || rev < 0) return json({ error: "invalid_battle_action" }, 400);
+  const row = await db.prepare(`SELECT character_id, state_rev, state_json, outcome, last_action_key, last_action_request_json, last_action_result_json FROM battle_authority WHERE battle_id = ? LIMIT 1`)
+    .bind(battleKey).first();
+  if (!row) return json({ error: "battle_authority_upgrade_required", policy: "restart_same_floor" }, 409);
+  if (row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
+  const requestJson = JSON.stringify(rawCommand || {});
+  if (row.last_action_key === key) {
+    if (row.last_action_request_json !== requestJson) return json({ error: "battle_action_key_conflict" }, 409);
+    return json({ ok: true, replayed: true, ...parseJsonColumn(row.last_action_result_json, {}) });
+  }
+  if (row.outcome) return json({ error: "battle_already_terminal", outcome: row.outcome, stateRev: Number(row.state_rev) || 0 }, 409);
+  if (Number(row.state_rev) !== rev) return json({ error: "battle_revision_conflict", stateRev: Number(row.state_rev) || 0 }, 409);
+  const state = parseJsonColumn(row.state_json, null);
+  const actor = state && globalThis.BATTLE_CORE_V1.currentUnit(state);
+  if (!state || !actor) return json({ error: "invalid_authoritative_state" }, 500);
+  let result;
+  const requested = rawCommand && typeof rawCommand === "object" ? rawCommand : {};
+  if (requested.type === "skip_battle") {
+    if (actor.kind !== "hero" || Number(state.heroTurnCount) < 5) return json({ error: "battle_action_not_legal" }, 409);
+    const next = globalThis.DUNGEON_V2.simulateDungeonV2Battle(state, globalThis.BATTLE_CORE_V1);
+    result = { state: next, completedAction: true };
+  } else if (actor.kind !== "hero") {
+    if (requested.type !== "advance") return json({ error: "battle_action_not_legal" }, 409);
+    result = globalThis.BATTLE_CORE_V1.battleStep(state, undefined);
+  } else {
+    if (!["basic", "active", "flee", "potion"].includes(requested.type)) return json({ error: "battle_action_not_legal" }, 409);
+    let command = { type: requested.type };
+    if (requested.type === "basic" || requested.type === "active") {
+      if (requested.targetId != null) command.targetId = String(requested.targetId);
+      if (requested.type === "active") command.skillId = String(requested.skillId || "");
+      const metadata = globalThis.BATTLE_CORE_V1.getActionMetadata(state, actor, command);
+      if (!metadata.usable || (metadata.requiresEnemyTarget && !metadata.targetLegal)) return json({ error: "battle_action_not_legal", reason: metadata.reason || "invalid_target" }, 409);
+    }
+    if (requested.type === "potion") {
+      const potionId = String(requested.potionId || "");
+      const requestId = String(requested.requestId || "");
+      const receipt = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = 'consume_potion' AND request_id = ? LIMIT 1`)
+        .bind(characterId, requestId).first();
+      if (!receipt || receipt.result_json === "pending" || parseJsonColumn(receipt.payload_json, {})?.potionId !== potionId) return json({ error: "potion_receipt_required" }, 409);
+      const effect = DUNGEON_POTION_EFFECTS[potionId];
+      if (!effect) return json({ error: "battle_action_not_legal" }, 409);
+      command = { type: "potion", count: 1, heal: effect[0] === "hp" ? actor.maxHp * effect[1] : 0, restoreSp: effect[0] === "mp" ? actor.maxSp * effect[1] : 0 };
+    }
+    result = globalThis.BATTLE_CORE_V1.battleStep(state, command);
+    if (result.error || !result.completedAction) return json({ error: "battle_action_not_legal", reason: result.error || "action_not_completed" }, 409);
+  }
+  const next = globalThis.DUNGEON_V2.applyDungeonV2BossEnrage(result.state);
+  const nextRev = rev + 1;
+  const outcome = ["victory", "defeat", "fled"].includes(next.result) ? next.result : "";
+  const response = { state: { ...next, authorityRev: nextRev }, stateRev: nextRev, outcome: outcome || null, completedAction: !!result.completedAction };
+  const updated = await db.prepare(`UPDATE battle_authority SET state_rev = ?, state_json = ?, outcome = ?, last_action_key = ?, last_action_request_json = ?, last_action_result_json = ?, updated_at = ? WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = ''`)
+    .bind(nextRev, JSON.stringify(next), outcome, key, requestJson, JSON.stringify(response), nowIso(), battleKey, characterId, rev).run();
+  if (!updated?.meta?.changes) {
+    const raced = await db.prepare(`SELECT state_rev, last_action_key, last_action_request_json, last_action_result_json FROM battle_authority WHERE battle_id = ?`).bind(battleKey).first();
+    if (raced?.last_action_key === key && raced.last_action_request_json === requestJson) return json({ ok: true, replayed: true, ...parseJsonColumn(raced.last_action_result_json, {}) });
+    return json({ error: "battle_revision_conflict", stateRev: Number(raced?.state_rev) || 0 }, 409);
+  }
+  return json({ ok: true, replayed: false, ...response });
+}
+async function handleStartHalloweenBattle(db, id, session, characterId) {
+  const auth = await verifyPlayer(db, id, session);
+  if (auth.error) return json({ error: auth.error }, 401);
+  const owned = await verifyOwnedCharacter(db, id, characterId);
+  if (owned.error) return json({ error: owned.error }, 403);
+
+  const existing = await db.prepare(
+    `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
+  ).bind(characterId).first();
+  if (existing) {
+    const payload = parseJsonColumn(existing.payload_json, null);
+    const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
+    const authority = await db.prepare(`SELECT state_rev, state_json, outcome FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`)
+      .bind(existing.battle_id, characterId).first();
+    if (context?.eventId === HALLOWEEN_EVENT_ID && authority && !authority.outcome) {
+      return json({ ok: true, battleId: existing.battle_id, context, state: { ...parseJsonColumn(authority.state_json, {}), authorityRev: Number(authority.state_rev) || 0 }, stateRev: Number(authority.state_rev) || 0, authoritative: true });
+    }
+    if (authority && !authority.outcome) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+    await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
+      .bind(nowIso(), existing.battle_id, characterId).run();
+  }
+
+  const window = await halloweenEventWindow(db);
+  if (!window.active) return json({ error: "halloween_event_inactive", event: window }, 403);
+  const progressFloor = Math.max(1, Math.floor(Number(owned.row.unlocked_floor) || 1));
+  const referenceFloor = Math.ceil(progressFloor / 10) * 10;
+  const encounterSeed = secureUint32();
+  const rewardSeed = secureUint32();
+  const context = dungeonV2ServerNormalizeContext({
+    version: 3,
+    mode: "dungeon",
+    eventId: HALLOWEEN_EVENT_ID,
+    floor: referenceFloor,
+    referenceFloor,
+    progressFloor,
+    role: "chapter_boss",
+    packCount: 1,
+    encounterSeed,
+    rewardSeed,
+    startedAt: nowIso(),
+    eventEndsAt: window.endsAt,
+    enemies: [{
+      id: HALLOWEEN_BOSS_ID,
+      instanceId: `halloween-enemy-${dungeonV2ServerHash(`${characterId}:${encounterSeed}`)}`,
+      modifierId: null,
+      statProfileId: dungeonV2ServerBossForFloor(referenceFloor),
+      skillCycle: halloweenServerSkillCycle(encounterSeed),
+      kind: "boss",
+      isBoss: true
+    }]
+  });
+  if (!context) return json({ error: "halloween_context_invalid" }, 500);
+
+  const battleId = `halloween-${randomToken(16)}`;
+  const now = nowIso();
+  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, null);
+  const authorization = JSON.stringify({
+    version: 1,
+    battleId,
+    mode: "dungeon",
+    floor: referenceFloor,
+    encounterType: "chapter_boss",
+    safeActionSeq: -1,
+    authorizationOnly: true,
+    serverContext: context
+  });
+  try {
+    await db.batch([db.prepare(
+      `INSERT INTO battle_checkpoints (battle_id, character_id, checkpoint_seq, payload_json, state, created_at, updated_at)
+       VALUES (?, ?, -1, ?, 'active', ?, ?)`
+    ).bind(battleId, characterId, authorization, now, now),
+    db.prepare(`INSERT INTO battle_authority
+      (battle_id, character_id, state_rev, initial_state_json, state_json, outcome, last_action_key, last_action_request_json, last_action_result_json, settled_at, created_at, updated_at)
+      VALUES (?, ?, 0, ?, ?, '', '', '', '', '', ?, ?)`)
+      .bind(battleId, characterId, JSON.stringify(state), JSON.stringify(state), now, now)]);
+  } catch (_) {
+    return json({ error: "active_battle_conflict" }, 409);
+  }
+  return json({ ok: true, battleId, context, state: { ...state, authorityRev: 0 }, stateRev: 0, authoritative: true });
 }
 function dungeonV2ServerRollRarity(floor, rng, rarityBoost = false) {
   const roll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
@@ -1868,6 +2302,51 @@ async function dungeonV2ServerRewardPlan(db, id, characterId, battleId, context,
     reconcile: false,
     prefetchedRows: Array.isArray(prefetchedInventoryRows) ? prefetchedInventoryRows : null
   });
+  if (context.eventId === HALLOWEEN_EVENT_ID) {
+    const weaponDrop = rng() < .05;
+    const tier = dungeonV2ServerTierForFloor(context.referenceFloor);
+    const atk = Math.max(1, Math.round(DUNGEON_V2_REWARD_BASE_STATS.weapon[tier - 1] * DUNGEON_V2_REWARD_TIER_MULT[tier - 1] * 1.5));
+    const items = weaponDrop ? [{
+      id: `event-${dungeonV2ServerHash(`${battleId}:excaliburnt`)}`,
+      type: "weapon",
+      rarity: "mythic",
+      name: "Excaliburnt",
+      gearTier: tier,
+      rewardVersion: 2,
+      itemModelVersion: 2,
+      empowerSlotCapacity: 4,
+      empowerSlotCount: 4,
+      empowerSlots: globalThis.ENHANCEMENT_V2?.fillEmpowerSlots
+        ? globalThis.ENHANCEMENT_V2.fillEmpowerSlots("weapon", "mythic", rng)
+        : Array(4).fill(null),
+      sourceType: "halloween_event",
+      sourceFloor: context.referenceFloor,
+      sourceIdentity: `${HALLOWEEN_EVENT_ID}:${HALLOWEEN_BOSS_ID}`,
+      specialSource: "excaliburnt",
+      bossWeaponId: "excaliburnt",
+      sourceBossId: HALLOWEEN_BOSS_ID,
+      atk
+    }] : [];
+    const result = {
+      floor: context.referenceFloor,
+      encounterType: "halloween_event",
+      rewardRole: "halloween_event",
+      packCount: 1,
+      gold: weaponDrop ? 0 : dungeonV2ServerGold(context.referenceFloor, "chapter_boss", 1),
+      xp: dungeonV2ServerExp(context.referenceFloor, "chapter_boss", 1),
+      diamonds: 0,
+      unlockedNext: false,
+      firstClear: false,
+      starterPetGrant: null,
+      items,
+      drop: items[0] || null,
+      junkDrop: null,
+      sourceIdentity: HALLOWEEN_BOSS_ID,
+      rewardSeed: seed
+    };
+    Object.defineProperty(result, "__inventoryPlan", { value: inventoryPlan, enumerable: false });
+    return result;
+  }
   const rowsByMonster = lootRows.reduce((out, row) => ((out[String(row.monster_id)] ||= []).push(row), out), {});
   const items = [];
   let drop = null;
@@ -1987,7 +2466,8 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
     };
   }
   if (!(DUNGEON_V2_REWARD_SLOTS.has(type) || type === "accessory")) return null;
-  if (!DUNGEON_V2_REWARD_RARITIES.has(item.rarity) || Number(item.rewardVersion) !== 2 || Number(item.itemModelVersion) !== 2) return null;
+  const eventMythic = item.rarity === "mythic" && item.specialSource === "excaliburnt" && item.bossWeaponId === "excaliburnt";
+  if ((!DUNGEON_V2_REWARD_RARITIES.has(item.rarity) && !eventMythic) || Number(item.rewardVersion) !== 2 || Number(item.itemModelVersion) !== 2) return null;
   const extra = {
     empowerSlots: Array.isArray(item.empowerSlots) ? item.empowerSlots : [],
     empowerSlotCapacity: Math.max(0, Number(item.empowerSlotCapacity) || 0),
@@ -1995,6 +2475,8 @@ function dungeonV2ServerRewardItem(item, index, overflow) {
     sourceType: String(item.sourceType || "dungeon").slice(0, 80), sourceFloor: Number(item.sourceFloor) || 0,
     specialSource: item.specialSource ? String(item.specialSource).slice(0, 80) : undefined,
     sourceIdentity: item.sourceIdentity ? String(item.sourceIdentity).slice(0, 120) : undefined,
+    bossWeaponId: item.bossWeaponId ? String(item.bossWeaponId).slice(0, 80) : undefined,
+    sourceBossId: item.sourceBossId ? String(item.sourceBossId).slice(0, 80) : undefined,
     utilityStat: item.utilityStat ? String(item.utilityStat).slice(0, 40) : undefined,
     wingFamily: type === "wings" ? String(item.wingFamily || item.setId || "").toLowerCase() : undefined,
     critChance: item.critChance || undefined, dodgeChance: item.dodgeChance || undefined, critDamage: item.critDamage || undefined,
@@ -2049,17 +2531,12 @@ function dungeonV2GrantActivePetXp(list, activePetId, battleXp) {
   return { list: next, progress: { instId: activePetId, defId: active.defId, xpGained: gained, levelBefore: before.level, levelAfter: level, xpBefore: before.xp, xpAfter: xp } };
 }
 async function commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, ownedRow, checkpointPayload, context, now, prefetchedInventoryRows = null) {
-  const reward = resultPayload?.reward;
-  if (!reward || resultPayload.result !== "victory") return { reward: null, committed: false };
-  if (!context || Number(resultPayload.floor) !== context.floor) return { error: "invalid_battle_context" };
-  if (Number(reward.floor) !== context.floor || String(reward.rewardRole || "") !== context.role
-      || String(reward.encounterType || context.role) !== context.role || Number(reward.packCount) !== context.packCount) {
-    return { error: "invalid_reward_context" };
-  }
+  if (resultPayload?.result !== "victory") return { reward: null, committed: false };
+  if (!context) return { error: "invalid_battle_context" };
   const rewardPlan = await dungeonV2ServerRewardPlan(db, id, characterId, battleId, context, ownedRow, checkpointPayload, prefetchedInventoryRows);
   const inventoryPlan = rewardPlan?.__inventoryPlan;
   const serverReward = rewardPlan;
-  if (!inventoryPlan || Number(reward.gold) !== serverReward.gold || Number(reward.xp) !== serverReward.xp) return { error: "invalid_reward_plan" };
+  if (!inventoryPlan) return { error: "invalid_reward_plan" };
   const petsRaw = parseJsonColumn(ownedRow.pets_json, []);
   const envelope = Array.isArray(petsRaw) ? { list: petsRaw } : { ...petsRaw };
   if (!Array.isArray(envelope.list)) envelope.list = [];
@@ -2106,8 +2583,11 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   });
   reconcileMailOverflow(inventoryPlan);
   const completionStmt = db.prepare(
-    `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`
-  ).bind(String(battleId), characterId, encoded, now);
+    `INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at)
+     SELECT ?, ?, ?, ? WHERE EXISTS (
+       SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND outcome = 'victory' AND settled_at = ''
+     ) ON CONFLICT(battle_id) DO NOTHING`
+  ).bind(String(battleId), characterId, encoded, now, String(battleId), characterId);
   const characterStmt = db.prepare(
     `UPDATE characters SET gold = gold + ?, level = ?, xp = ?, stat_points = ?, unlocked_floor = CASE WHEN ? THEN unlocked_floor + 1 ELSE unlocked_floor END, pets_json = ?, active_pet_id = CASE WHEN (active_pet_id IS NULL OR active_pet_id = '') AND ? != '' THEN ? ELSE active_pet_id END, updated_at = ? WHERE character_id = ? AND changes() > 0`
   ).bind(
@@ -2127,7 +2607,7 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
   const playerStmt = db.prepare(`UPDATE players SET diamonds = diamonds + 0 WHERE id = ? AND changes() > 0`).bind(id);
   const itemStatements = mailPlanPersistenceStatements(db, inventoryPlan, id, characterId, now, "changes() > 0", []);
   const completionReadIndex = 3 + itemStatements.length;
-  const snapshotIndex = completionReadIndex + 1;
+  const snapshotIndex = completionReadIndex + 3;
   const finalStatements = [
     completionStmt,
     characterStmt,
@@ -2135,6 +2615,8 @@ async function commitDungeonRewardInBattleTransaction(db, id, characterId, battl
     ...itemStatements,
     db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(String(battleId)),
     db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`).bind(now, String(battleId), characterId),
+    db.prepare(`UPDATE battle_authority SET settled_at = ?, updated_at = ? WHERE battle_id = ? AND character_id = ? AND outcome = 'victory' AND settled_at = '' AND EXISTS (SELECT 1 FROM battle_completions WHERE battle_id = ? AND character_id = ?)`)
+      .bind(now, now, String(battleId), characterId, String(battleId), characterId),
     ...battleCompletionSnapshotStatements(db, id, characterId)
   ];
   const batchResult = await db.batch(finalStatements);
@@ -2520,10 +3002,11 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
   if (!battleId || !["victory", "defeat", "fled"].includes(resultName)) return json({ error: "invalid_battle_result" }, 400);
   const battleKey = String(battleId);
   const snapshotStatements = battleCompletionSnapshotStatements(db, id, characterId);
-  const inventoryReadIndex = 3 + snapshotStatements.length;
+  const inventoryReadIndex = 4 + snapshotStatements.length;
   const preRead = await db.batch([
     db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey),
     db.prepare(`SELECT checkpoint_seq, payload_json FROM battle_checkpoints WHERE battle_id = ? AND character_id = ? AND state = 'active' LIMIT 1`).bind(battleKey, characterId),
+    db.prepare(`SELECT character_id, state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? LIMIT 1`).bind(battleKey),
     db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND EXISTS (SELECT 1 FROM battle_completions WHERE battle_id = ? AND character_id = ?)`).bind(nowIso(), battleKey, characterId, battleKey, characterId),
     ...snapshotStatements,
     db.prepare(`SELECT * FROM items WHERE player_id = ? AND character_id = ? ORDER BY rowid, item_id`).bind(id, characterId)
@@ -2531,23 +3014,30 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
   const prior = preRead?.[0]?.results?.[0] || null;
   if (prior) {
     if (prior.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
-    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at, ...battleCompletionSnapshotFromBatch(preRead, 3) });
+    return json({ ok: true, firstCompletion: false, result: parseJsonColumn(prior.result_json, null), completedAt: prior.completed_at, ...battleCompletionSnapshotFromBatch(preRead, 4) });
   }
   const checkpoint = preRead?.[1]?.results?.[0] || null;
+  const authority = preRead?.[2]?.results?.[0] || null;
+  if (!authority) return json({ error: "battle_authority_upgrade_required", policy: "restart_same_floor" }, 409);
+  if (authority.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
   if (!checkpoint) return json({ error: "battle_checkpoint_missing" }, 409);
-  if (Math.floor(Number(resultPayload.safeActionSeq) || 0) <= (Number(checkpoint.checkpoint_seq) || 0)) return json({ error: "battle_result_not_after_checkpoint" }, 409);
+  if (!authority.outcome || authority.outcome !== resultName) return json({ error: "battle_outcome_not_verified", authoritativeOutcome: authority.outcome || null }, 409);
   const checkpointPayload = parseJsonColumn(checkpoint.payload_json, null);
-  if (checkpointPayload?.authorizationOnly) return json({ error: "battle_checkpoint_missing" }, 409);
-  const battleContext = resultName === "victory" && resultPayload?.reward ? dungeonV2ServerContextFromStoredCheckpoint(checkpointPayload) : null;
-  if (resultName === "victory" && resultPayload?.reward && !battleContext) return json({ error: "invalid_battle_context" }, 400);
-  const encoded = JSON.stringify(resultPayload);
+  const authorityState = parseJsonColumn(authority.state_json, null);
+  const battleContext = dungeonV2ServerNormalizeContext(authorityState?.serverContext || checkpointPayload?.serverContext);
+  if (resultName === "victory" && (!battleContext || authorityState?.result !== "victory"
+      || Object.values(authorityState?.units || {}).some(unit => unit?.side === "enemy" && !unit.dead && Number(unit.hp) > 0))) {
+    return json({ error: "battle_outcome_not_verified" }, 409);
+  }
+  const trustedResult = { result: resultName, safeActionSeq: Number(authority.state_rev) || 0, floor: battleContext?.floor || authorityState?.floor || null };
+  const encoded = JSON.stringify(trustedResult);
   if (encoded.length > 512000) return json({ error: "battle_result_too_large" }, 413);
   const now = nowIso();
-  const rewardCommit = resultPayload?.reward && resultName === "victory"
-    ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, resultPayload, owned.row, checkpointPayload, battleContext, now, preRead?.[inventoryReadIndex]?.results || [])
+  const rewardCommit = resultName === "victory"
+    ? await commitDungeonRewardInBattleTransaction(db, id, characterId, battleId, trustedResult, owned.row, checkpointPayload, battleContext, now, preRead?.[inventoryReadIndex]?.results || [])
     : { reward: null, committed: false };
   if (rewardCommit.error) return json({ error: rewardCommit.error }, 400);
-  if (resultPayload?.reward && resultName === "victory") {
+  if (resultName === "victory") {
     const row = rewardCommit.completionRow;
     if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
     return json({
@@ -2559,15 +3049,19 @@ async function handleCompleteBattle(db, id, session, characterId, battleId, resu
     });
   }
   const finalStatements = [
-    db.prepare(`INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at) VALUES (?, ?, ?, ?) ON CONFLICT(battle_id) DO NOTHING`).bind(battleKey, characterId, encoded, now),
+    db.prepare(`INSERT INTO battle_completions (battle_id, character_id, result_json, completed_at)
+      SELECT ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND outcome = ? AND settled_at = '')
+      ON CONFLICT(battle_id) DO NOTHING`).bind(battleKey, characterId, encoded, now, battleKey, characterId, resultName),
     db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`),
     db.prepare(`UPDATE battle_checkpoints SET state = 'completed', updated_at = ? WHERE battle_id = ? AND character_id = ?`).bind(now, battleKey, characterId),
+    db.prepare(`UPDATE battle_authority SET settled_at = ?, updated_at = ? WHERE battle_id = ? AND character_id = ? AND outcome = ? AND settled_at = '' AND EXISTS (SELECT 1 FROM battle_completions WHERE battle_id = ? AND character_id = ?)`)
+      .bind(now, now, battleKey, characterId, resultName, battleKey, characterId),
     ...battleCompletionSnapshotStatements(db, id, characterId)
   ];
   finalStatements[1] = db.prepare(`SELECT character_id, result_json, completed_at FROM battle_completions WHERE battle_id = ?`).bind(battleKey);
   const finalBatch = await db.batch(finalStatements);
   const rowReadIndex = 1;
-  const snapshotIndex = 3;
+  const snapshotIndex = 4;
   const row = finalBatch?.[rowReadIndex]?.results?.[0] || null;
   if (!row || row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
   const firstCompletion = !!(finalBatch?.[0]?.meta?.changes);
@@ -7985,6 +8479,7 @@ async function apiFetch(request, env) {
         const p = url.searchParams;
         const action = p.get("action");
         if (action === "getGameConfig") return await handleGetGameConfig(db);
+        if (action === "getHalloweenEventStatus") return await handleGetHalloweenEventStatus(db);
         if (action === "getRecipes") return await handleGetRecipes(db);
         if (action === "getMonsterLoot") return await handleGetMonsterLoot(db);
         if (action === "getJunkInfo") return await handleGetJunkInfo(db);
@@ -8144,7 +8639,11 @@ async function apiFetch(request, env) {
           case "saveRunState":
             return await handleSaveRunState(db, id, auth, body.characterId, body.runState);
           case "startDungeonBattle":
-            return await handleStartDungeonBattle(db, id, auth, body.characterId, body.floor, body.previewContext || null);
+            return await handleStartDungeonBattle(db, id, auth, body.characterId, body.floor, body.previewContext || null, body.previousBattleId || null);
+          case "startHalloweenBattle":
+            return await handleStartHalloweenBattle(db, id, auth, body.characterId);
+          case "submitDungeonBattleAction":
+            return await handleSubmitDungeonBattleAction(db, id, auth, body.characterId, body.battleId, body.actionKey, body.expectedRev, body.command);
           case "saveBattleCheckpoint":
             return await handleSaveBattleCheckpoint(db, id, auth, body.characterId, body.battleId, body.checkpointSeq, body.payload);
           case "clearBattleCheckpoint":
