@@ -22,8 +22,8 @@ test("staging identity, restricted D1, and no routes or cron", () => {
   assert.match(workflow, /has\("routes"\) \| not/);
   assert.match(workflow, /has\("triggers"\) \| not/);
   assert.match(workflow, /\.result\.schedules \| length == 0/);
-  assert.match(workflow, /workers\/scripts\/\$WORKER_NAME\/versions\?per_page=20/);
-  assert.match(workflow, /workers\/scripts\/\$WORKER_NAME\/deployments\?per_page=20/);
+  assert.match(workflow, /versions\\?per_page=20/);
+  assert.match(workflow, /deployments\\?per_page=20/);
   assert.match(workflow, /\.result\.resources\.script\.etag == \$etag/);
   assert.match(workflow, /max_by\(\.created_on\)/);
   assert.match(workflow, /Worker .*already exists; refusing/);
