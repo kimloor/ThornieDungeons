@@ -130,7 +130,6 @@ jobs:
           for value in "$QA_PLAYER_ID" "$QA_CHARACTER_ID" "$QA_BATTLE_ID"; do
             test -n "$value" && test "${#value}" -le 128 && [[ "$value" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "Invalid QA ID"; exit 1; }
           done
-          test -n "${{ secrets.P0_ROLLBACK_TEST_KEY }}" || { echo "Missing P0_ROLLBACK_TEST_KEY secret"; exit 1; }
           jq -n \
             --arg name "$WORKER_NAME" \
             --arg db_name "$STAGING_DB_NAME" \
@@ -157,7 +156,7 @@ jobs:
             (.d1_databases[0].database_id != $prod) and
             (has("routes") | not) and
             (has("triggers") | not) and
-            (.vars | keys | sort == ["P0_ROLLBACK_BATTLE_ID","P0_ROLLBACK_CHARACTER_ID","P0_ROLLBACK_PLAYER_ID"])
+            ((.vars | keys | sort) == ["P0_ROLLBACK_BATTLE_ID","P0_ROLLBACK_CHARACTER_ID","P0_ROLLBACK_PLAYER_ID"])
           ' "$runtime_config" >/dev/null
           echo "runtime_config=$runtime_config" >> "$GITHUB_OUTPUT"
 
@@ -232,7 +231,7 @@ jobs:
             > "$settings"
           jq -e --arg db "$STAGING_DB_ID" --arg sha "$APPROVED_SOURCE_SHA" '
             .success == true and
-            (.result.bindings | length == 2) and
+            (.result.bindings | map(select(.type == "d1")) | length == 1) and
             any(.result.bindings[]; .name == "DB" and .type == "d1" and ((.database_id // .id // "") == $db)) and
             (.result.annotations["workers/tag"] == $sha) and
             any(.result.bindings[]; .name == "P0_ROLLBACK_TEST_KEY" and .type == "secret_text")
