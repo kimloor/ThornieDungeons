@@ -156,6 +156,13 @@ test("terminal authoritative result survives reload until settlement", async () 
   assert.equal(blockedStart.body.error, "battle_settlement_pending");
   assert.equal(db.raw.prepare("SELECT state FROM battle_checkpoints WHERE battle_id=?").get(started.body.battleId).state, "active");
 
+  const blockedClear = await post(reloadedApi, db, token, {
+    action: "clearBattleCheckpoint", characterId, battleId: started.body.battleId
+  });
+  assert.equal(blockedClear.status, 409);
+  assert.equal(blockedClear.body.error, "battle_settlement_pending");
+  assert.equal(db.raw.prepare("SELECT state FROM battle_checkpoints WHERE battle_id=?").get(started.body.battleId).state, "active");
+
   const completed = await post(reloadedApi, db, token, {
     action: "completeBattle", characterId, battleId: started.body.battleId,
     result: { result: "victory", floor: 999, reward: { gold: 999999, xp: 999999 } }
