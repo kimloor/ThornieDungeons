@@ -1415,12 +1415,24 @@ async function handleClearBattleCheckpoint(db, id, session, characterId, battleI
   if (owned.error) return json({ error: owned.error });
   if (!battleId) return json({ error: "missing_fields" });
   const now = nowIso();
-  await db.batch([
+  const cleared = await db.batch([
     db.prepare(`UPDATE battle_authority SET outcome = 'abandoned', updated_at = ? WHERE battle_id = ? AND character_id = ? AND outcome = ''`)
       .bind(now, String(battleId), characterId),
-    db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
-      .bind(now, String(battleId), characterId)
+    db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ?
+      WHERE battle_id = ? AND character_id = ? AND state = 'active'
+      AND NOT EXISTS (
+        SELECT 1 FROM battle_authority
+        WHERE battle_id = ? AND character_id = ?
+          AND outcome IN ('victory', 'defeat', 'fled') AND settled_at = ''
+      )`)
+      .bind(now, String(battleId), characterId, String(battleId), characterId),
+    db.prepare(`SELECT outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`)
+      .bind(String(battleId), characterId)
   ]);
+  const authority = cleared?.[2]?.results?.[0] || null;
+  if (authority && ['victory', 'defeat', 'fled'].includes(authority.outcome) && !authority.settled_at) {
+    return json({ error: "battle_settlement_pending", outcome: authority.outcome }, 409);
+  }
   return json({ ok: true });
 }
 
