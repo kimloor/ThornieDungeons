@@ -1270,6 +1270,10 @@ function ThornieDungeons() {
     }
     const result = { state: receipt.state, completedAction: receipt.completedAction !== false };
     const next = receipt.state;
+    if (heroCommand?.type === "potion") {
+      hydrateAuthoritativeBlacksmithSnapshot(receipt, save.characterId);
+      potionRequestIdsRef.current.delete(`${state.battleId}:${state.safeActionSeq}:${heroCommand.potionId || ""}`);
+    }
     const optionalBasicKey = BATTLE_VFX_PRESENTATION.OPTIONAL_BASIC_EFFECT_KEY;
     const basicEffectKey = battleVfxFrames(optionalBasicKey).length ? optionalBasicKey : "";
     const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(
@@ -1302,41 +1306,8 @@ function ThornieDungeons() {
       setBattleVfx([]);
       setHeroAnim(""); setPetAnim("");
       setEnemyAnims(current => Object.fromEntries(Object.keys(current).map(id => [id, next.units[id]?.dead ? "death" : ""])));
-      const pendingPotion = pendingPotionRef.current;
-      if (heroCommand?.type === "potion" && pendingPotion
-          && pendingPotion.battleId === next.battleId
-          && pendingPotion.nextActionSeq === next.safeActionSeq) {
-          pendingPotion.promise.then(result => {
-          const currentPending = pendingPotionRef.current;
-          if (!currentPending || currentPending.requestId !== pendingPotion.requestId) return;
-          pendingPotionRef.current = null;
-          potionRequestIdsRef.current.delete(`${pendingPotion.battleId}:${pendingPotion.preState.safeActionSeq}:${pendingPotion.potionId || ""}`);
-          if (result?.ok && activeCharacterIdRef.current === save.characterId) {
-            hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
-            driveCoreBattle(next);
-            return;
-          }
-          // Server rejected the inventory mutation, so the local Potion Action must not survive.
-          // Restore the exact pre-action state before allowing another Hero Action.
-          applyCoreBattleState(pendingPotion.preState, false);
-          setBattleVfx([]);
-          setHeroAnim(""); setPetAnim("");
-          setBusy(false);
-          setLog(result?.error === "potion_not_owned"
-            ? "Potion no longer available."
-            : "Potion sync failed — the Potion Action was cancelled.");
-        }).catch(() => {
-          const currentPending = pendingPotionRef.current;
-          if (!currentPending || currentPending.requestId !== pendingPotion.requestId) return;
-          pendingPotionRef.current = null;
-          applyCoreBattleState(pendingPotion.preState, false);
-          setBattleVfx([]);
-          setHeroAnim(""); setPetAnim("");
-          setBusy(false);
-          setLog("Potion sync failed — the Potion Action was cancelled.");
-        });
-        return;
-      }
+      driveCoreBattle(next);
+    }, delay);
       driveCoreBattle(next);
     }, delay);
   }
@@ -1347,17 +1318,10 @@ function ThornieDungeons() {
     const requestId = potionRequestIdsRef.current.get(operationKey)
       || (globalThis.crypto?.randomUUID?.() || `potion-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     potionRequestIdsRef.current.set(operationKey, requestId);
-    setBusy(true);
-    const consumed = await cloudConsumePotion(cred.url, save.characterId, potionId, requestId);
-    if (!consumed?.ok) {
-      potionRequestIdsRef.current.delete(operationKey);
-      setBusy(false);
-      setLog(consumed?.error === "potion_not_owned" ? "Potion no longer available." : "Potion sync failed — the Potion Action was cancelled.");
-      return;
-    }
-    hydrateAuthoritativeBlacksmithSnapshot(consumed, save.characterId);
+    // Potion deduction and Battle Authority CAS now commit in one Worker/D1 batch.
     await driveCoreBattle(state, { type: "potion", potionId, requestId });
   }
+
   function playerTurn(action, value) {
     if (busy || !battleStateRef.current) return;
     const state = battleStateRef.current;
