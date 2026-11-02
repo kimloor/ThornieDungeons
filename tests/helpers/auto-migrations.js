@@ -7,7 +7,10 @@ function applyAutoMigration(db, root, filename) {
 }
 
 function applyRequiredAutoMigrations(db, root) {
+  applyAutoMigration(db, root, "0026_w45_authority_receipts.sql");
   applyAutoMigration(db, root, "0028_empower_v21_item_provenance.sql");
+  applyAutoMigration(db, root, "0031_battle_authority_v1.sql");
+  applyAutoMigration(db, root, "0032_battle_action_idempotency_v1.sql");
   return db;
 }
 

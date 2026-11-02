@@ -135,7 +135,6 @@ function ThornieDungeons() {
   // Potion consumption is server-authoritative, but the battle Action itself can resolve
   // immediately. While the authenticated consume request is pending, pause the next queue
   // step; a rejected consume rolls the exact Action back to its pre-potion checkpoint.
-  const pendingPotionRef = useRef(null);
   const [battleFinishing, setBattleFinishing] = useState(false);
   const [battleFinishStatus, setBattleFinishStatus] = useState("");
   const terminalFinishRef = useRef(null);
@@ -747,6 +746,11 @@ function ThornieDungeons() {
         if (Array.isArray(battleRes.quickSlots) && battleRes.quickSlots.length === 4) setQuickSlots(battleRes.quickSlots);
         else setQuickSlots(await loadQuickSlots(cred.id, characterSlot.id));
         if (battleRes.checkpoint && battleRes.checkpoint.payload) setResumeBattle(battleRes.checkpoint.payload);
+        else if (battleRes.legacyRecovery?.battleId) {
+          await cloudClearBattleCheckpoint(cred.url, characterSlot.id, battleRes.legacyRecovery.battleId);
+          setSelectedFloor(Math.max(1, Number(battleRes.legacyRecovery.floor) || 1));
+          setResumeBattle(null);
+        }
       } else {
         setQuickSlots(await loadQuickSlots(cred.id, characterSlot.id));
       }
@@ -1237,7 +1241,7 @@ function ThornieDungeons() {
       setLog("ยืนยันผลไม่สำเร็จ ผลการต่อสู้ยังไม่หาย");
     });
   }
-  function driveCoreBattle(inputState, heroCommand = null, immediate = false) {
+  async function driveCoreBattle(inputState, heroCommand = null, immediate = false) {
     const state = inputState || battleStateRef.current;
     if (!state || state.result) { if (state?.result && battleFinishStatus !== "error") finishCoreBattle(state); return; }
     const actor = BATTLE_CORE_V1.currentUnit(state);
@@ -1246,16 +1250,29 @@ function ThornieDungeons() {
       applyCoreBattleState(state, false); setBusy(false); return;
     }
     setBusy(true);
-    if (heroCommand?.type === "skip_battle") {
-      setBattleVfx([]);
-      const resolved = DUNGEON_V2.simulateDungeonV2Battle(state, BATTLE_CORE_V1);
-      applyCoreBattleState(resolved, false); finishCoreBattle(resolved, { skip: true }); return;
-    }
+    if (heroCommand?.type === "skip_battle") setBattleVfx([]);
     if (actor.kind === "hero" && ["basic", "active"].includes(heroCommand?.type)) setHeroAnim("attack");
     else if (actor.kind === "pet") setPetAnim("attack");
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
-    const result = BATTLE_CORE_V1.battleStep(state, actor.kind === "hero" ? heroCommand : undefined);
-    const next = DUNGEON_V2.applyDungeonV2BossEnrage(result.state);
+    const command = actor.kind === "hero" ? heroCommand : { type: "advance" };
+    const actionKey = globalThis.crypto?.randomUUID?.() || `battle-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const receipt = await cloudSubmitDungeonBattleAction(
+      cred.url, save.characterId, state.battleId, actionKey,
+      Math.max(0, Number(state.authorityRev) || 0), command
+    );
+    if (!receipt?.ok || !receipt.state) {
+      setBusy(false);
+      setLog(receipt?.error === "battle_revision_conflict"
+        ? "Battle state changed. Reopen the battle to continue."
+        : "Battle action was rejected by the server.");
+      return;
+    }
+    const result = { state: receipt.state, completedAction: receipt.completedAction !== false };
+    const next = receipt.state;
+    if (heroCommand?.type === "potion") {
+      hydrateAuthoritativeBlacksmithSnapshot(receipt, save.characterId);
+      potionRequestIdsRef.current.delete(`${state.battleId}:${state.safeActionSeq}:${heroCommand.potionId || ""}`);
+    }
     const optionalBasicKey = BATTLE_VFX_PRESENTATION.OPTIONAL_BASIC_EFFECT_KEY;
     const basicEffectKey = battleVfxFrames(optionalBasicKey).length ? optionalBasicKey : "";
     const resolvedVfx = BATTLE_VFX_PRESENTATION.resolvedEvents(
@@ -1282,74 +1299,26 @@ function ThornieDungeons() {
       }
     }
     applyCoreBattleState(next, result.completedAction);
-    if (next.result) { finishCoreBattle(next, { actorKind: actor.kind }); return; }
+    if (next.result) { finishCoreBattle(next, { actorKind: actor.kind, skip: heroCommand?.type === "skip_battle" }); return; }
     const delay = immediate ? 0 : combatDelay(actor.kind === "hero" ? 420 : 520);
     setTimeout(() => {
       setBattleVfx([]);
       setHeroAnim(""); setPetAnim("");
       setEnemyAnims(current => Object.fromEntries(Object.keys(current).map(id => [id, next.units[id]?.dead ? "death" : ""])));
-      const pendingPotion = pendingPotionRef.current;
-      if (heroCommand?.type === "potion" && pendingPotion
-          && pendingPotion.battleId === next.battleId
-          && pendingPotion.nextActionSeq === next.safeActionSeq) {
-        pendingPotion.promise.then(result => {
-          const currentPending = pendingPotionRef.current;
-          if (!currentPending || currentPending.requestId !== pendingPotion.requestId) return;
-          pendingPotionRef.current = null;
-          potionRequestIdsRef.current.delete(`${pendingPotion.battleId}:${pendingPotion.preState.safeActionSeq}:${pendingPotion.potionId || ""}`);
-          if (result?.ok && activeCharacterIdRef.current === save.characterId) {
-            hydrateAuthoritativeBlacksmithSnapshot(result, save.characterId);
-            driveCoreBattle(next);
-            return;
-          }
-          // Server rejected the inventory mutation, so the local Potion Action must not survive.
-          // Restore the exact pre-action state before allowing another Hero Action.
-          applyCoreBattleState(pendingPotion.preState, false);
-          setBattleVfx([]);
-          setHeroAnim(""); setPetAnim("");
-          setBusy(false);
-          setLog(result?.error === "potion_not_owned"
-            ? "Potion no longer available."
-            : "Potion sync failed — the Potion Action was cancelled.");
-        }).catch(() => {
-          const currentPending = pendingPotionRef.current;
-          if (!currentPending || currentPending.requestId !== pendingPotion.requestId) return;
-          pendingPotionRef.current = null;
-          applyCoreBattleState(pendingPotion.preState, false);
-          setBattleVfx([]);
-          setHeroAnim(""); setPetAnim("");
-          setBusy(false);
-          setLog("Potion sync failed — the Potion Action was cancelled.");
-        });
-        return;
-      }
       driveCoreBattle(next);
     }, delay);
   }
-  function consumeBattlePotion(state, potionId) {
+  async function consumeBattlePotion(state, potionId) {
     const def = getPotionDef(potionId);
-    if (!def || !state?.battleId || busy || pendingPotionRef.current) return;
+    if (!def || !state?.battleId || busy) return;
     const operationKey = `${state.battleId}:${state.safeActionSeq}:${potionId}`;
     const requestId = potionRequestIdsRef.current.get(operationKey)
       || (globalThis.crypto?.randomUUID?.() || `potion-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     potionRequestIdsRef.current.set(operationKey, requestId);
-    const heroUnit = state.units[state.heroId];
-    const heal = def.kind === "hp" ? heroUnit.maxHp * def.healPct : 0;
-    const restoreSp = def.kind !== "hp" ? heroUnit.maxSp * def.healPct : 0;
-    const promise = cloudConsumePotion(cred.url, save.characterId, potionId, requestId);
-    pendingPotionRef.current = {
-      battleId: state.battleId,
-      nextActionSeq: state.safeActionSeq + 1,
-      requestId,
-      potionId,
-      preState: state,
-      promise
-    };
-    setBusy(true);
-    // Resolve the full Potion Action immediately; only the following queue step waits
-    // for the authoritative inventory consume to settle.
-    driveCoreBattle(state, { type: "potion", count: 1, heal, restoreSp });
+    // Potion deduction and Battle Authority CAS now commit in one Worker/D1 batch.
+    await driveCoreBattle(state, { type: "potion", potionId, requestId });
   }
+
   function playerTurn(action, value) {
     if (busy || !battleStateRef.current) return;
     const state = battleStateRef.current;
@@ -1387,9 +1356,9 @@ function ThornieDungeons() {
         if (!cleared?.ok) throw new Error("checkpoint_reset_failed");
         setResumeBattle(null);
       }
-      let started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null);
+      let started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null, options.previousBattleId || null);
       if (!started?.ok && started?.error === "dungeon_preview_stale" && started?.context) {
-        started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, started.context);
+        started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, started.context, options.previousBattleId || null);
       }
       if (!started?.ok || !started?.battleId || !started?.context) throw new Error(started?.error || "dungeon_start_failed");
       battleAuthorization = started;
@@ -1433,23 +1402,6 @@ function ThornieDungeons() {
     setPetCombat(initialPet);
     petCombatRef.current = initialPet;
     pushRunState(buildRunStateSnapshot(floorNum, nextPlayer, initialPet));
-    const baseStats = getStats(nextPlayer, equipped);
-    const petDefId = initialPet?.defId;
-    const toughness = heroSkillRankData(save.character.skillLevels, "toughness");
-    const ironBody = heroSkillRankData(save.character.skillLevels, "iron_body");
-    const battleHardened = heroSkillRankData(save.character.skillLevels, "battle_hardened");
-    const stats = {
-      ...baseStats,
-      maxHp: Math.round(baseStats.maxHp * (1 + (toughness?.maxHpPct || 0) / 100)),
-      def: Math.round(baseStats.def * (1 + (ironBody?.defPct || 0) / 100 + (petDefId === "inferno_drake" ? 0.08 : 0))),
-      accuracy: Math.min(99, baseStats.accuracy + (petDefId === "hell_wolf" ? 8 : 0)),
-      dodgeChance: baseStats.dodgeChance + (petDefId === "storm_phoenix" ? 8 : 0),
-      critChance: baseStats.critChance + (petDefId === "ember_fox" ? 5 : 0),
-      statusResist: (baseStats.statusResist || 0) + (battleHardened?.statusResist || 0) + (petDefId === "moon_hare" ? 15 : 0)
-    };
-    const heroStartHp = (carryPlayer || resumeCarry) ? Math.min(stats.maxHp, nextPlayer.hp) : stats.maxHp;
-    const learnedActives = heroActiveSkillList(save.character.skillLevels).map(skill => skill.key);
-    const equippedActives = quickSlots.filter(slot => slot && slot.kind === "skill" && learnedActives.includes(slot.key)).map(slot => slot.key);
     let initialBattle;
     if (resumableCheckpoint) {
       try { initialBattle = BATTLE_CORE_V1.restoreCheckpoint(resumableCheckpoint); }
@@ -1463,30 +1415,8 @@ function ThornieDungeons() {
       }
       setResumeBattle(null);
     }
-    if (!initialBattle) initialBattle = BATTLE_CORE_V1.createDungeonBattle({
-      battleId: battleAuthorization.battleId,
-      floor: floorNum,
-      mode: "dungeon",
-      seed: battleAuthorization.context.encounterSeed,
-      dungeonEventId: battleAuthorization.context.enemies?.map(entry => entry?.modifierId).find(Boolean) || null,
-      hero: {
-        id: "hero", kind: "hero", side: "ally", name: save.characterName || "Hero", hp: heroStartHp, maxHp: stats.maxHp,
-        sp: nextPlayer.mp, maxSp: stats.maxMp, atk: stats.atk, def: stats.def, speed: stats.speed,
-        accuracy: stats.accuracy, dodge: stats.dodgeChance, crit: stats.critChance,
-        critDamage: 1 + stats.critDamage / 100, agi: save.character.stats.agi,
-        skills: save.character.skillLevels, activeSkills: equippedActives, statusResist: stats.statusResist,
-        equipmentEffects: MYTHIC_V2.combatEffects(equipped)
-      },
-      pet: initialPet && {
-        ...initialPet, id: "pet", kind: "pet", side: "ally", petDefId: initialPet.defId,
-        def: Math.round(initialPet.def * (petDefId === "inferno_drake" ? 1.15 : 1)),
-        accuracy: Math.min(99, initialPet.hitRate + (petDefId === "hell_wolf" ? 8 : 0)),
-        dodge: initialPet.evasion + (petDefId === "storm_phoenix" ? 8 : 0),
-        crit: initialPet.critChance + (petDefId === "ember_fox" ? 10 : 0),
-        statusResist: petDefId === "moon_hare" ? 15 : 0
-      },
-      enemies: spawned.map((monster, index) => DUNGEON_V2.toDungeonV2BattleEnemy(monster, index))
-    });
+    if (!initialBattle && battleAuthorization?.state) initialBattle = battleAuthorization.state;
+    if (!initialBattle) throw new Error("dungeon_authority_state_missing");
     if (battleAuthorization) initialBattle.serverContext = battleAuthorization.context;
     // Apply the Dungeon V2 enrage boundary before the first resumed checkpoint;
     // the serialized unit flag makes this exact-once across save/reload/resume.
@@ -2135,7 +2065,7 @@ function ThornieDungeons() {
     // Retrying a stage you just cleared keeps your real current HP/MP,
     // same rule as advancing to the next stage — no free heal.
     combatOutcomeRef.current = null;
-    enterStage(selectedFloor, player, { allowResume: false });
+    enterStage(selectedFloor, player, { allowResume: false, previousBattleId: battleStateRef.current?.battleId });
   }
   function backToMap() {
     combatOutcomeRef.current = null;
@@ -2148,7 +2078,7 @@ function ThornieDungeons() {
   function nextStage() {
     // Dungeon run rule: carry the current HP/MP into the next stage.
     combatOutcomeRef.current = null;
-    enterStage(selectedFloor + 1, player);
+    enterStage(selectedFloor + 1, player, { previousBattleId: battleStateRef.current?.battleId });
   }
   async function commitStatDraft(draft) {
     const safeDraft = Object.fromEntries(STAT_INFO.map(st => [st.key, Math.max(0, Math.floor(Number(draft?.[st.key]) || 0))]));

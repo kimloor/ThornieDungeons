@@ -499,3 +499,51 @@ Before release:
 - save/persistence tests pass;
 - build + generated inline-JS syntax guard pass;
 - authenticated staging E2E covers completion retry and reload recovery before production cutover.
+
+
+## 14. P0 Server-Authoritative Dungeon Actions and Potion Idempotency
+
+This section records the implementation contract for the P0 Dungeon Battle Authority hardening. It does not change Battle Core gameplay rules, Potion effects, reward formulas, or settlement amounts.
+
+### 14.1 Worker-owned action state
+
+- The Worker is the sole authority for persisted Dungeon battle state, action sequencing, and terminal outcome.
+- Client checkpoints and result payloads remain presentation/recovery hints only; they cannot authorize an action, Victory, or rewards.
+- Every action must match the current `battle_authority.state_rev` and transition through a compare-and-swap update.
+- Action keys are durable for the lifetime of a battle. Reusing the same key with the same request returns the stored result; reusing it with a different request returns `battle_action_key_conflict`.
+- Durable receipts are stored in `battle_action_receipts`, keyed by `(battle_id, action_key)`.
+
+### 14.2 Potion transaction boundary
+
+- Potion use is one Hero Action and is authorized only by the Worker.
+- The legacy `consumePotion` endpoint is a non-mutating inventory preflight for client compatibility. It must not deduct inventory or create a reservation receipt.
+- The authoritative `submitDungeonBattleAction` request validates the Potion ID, current Hero turn, inventory ownership/quantity, action key, Potion request ID, and current battle revision.
+- The D1 batch commits the Battle Authority transition, one Potion decrement/delete, and the final action receipt together. If any guarded step fails, the batch must roll back.
+- A stale revision or invalid action must not consume a Potion.
+- `potion_request_id` is unique per character in `battle_action_receipts`; retrying a committed request returns the same action result without another inventory mutation.
+- Historical `consume_potion` receipts from the former two-request flow are treated as already-used requests and cannot authorize a new Potion action.
+
+### 14.3 Migration and compatibility
+
+- Migration order: `0031_battle_authority_v1.sql`, then `0032_battle_action_idempotency_v1.sql`.
+- Migration 0032 creates durable action receipts, a unique per-character Potion request index, and indexes for character history.
+- Existing legacy Potion receipts are backfilled as consumed markers where a battle authority row exists. Runtime also rejects any historical consume receipt not represented by the backfill.
+- The most recent pre-migration action receipt is preserved from `battle_authority.last_action_*` fields.
+- Existing battle settlement, reward formulas, Diamonds, and terminal-but-unsettled recovery remain unchanged.
+
+### 14.4 Required regression coverage
+
+- One Potion request decrements inventory exactly once, including duplicate request replay.
+- A stale Battle revision leaves Potion quantity unchanged; the same request ID may be retried against the correct revision if it was not committed.
+- Historical consumed Potion receipts cannot authorize a second effect.
+- An action key remains replay-protected after later actions have committed.
+- A conflicting payload using an existing action key is rejected.
+
+### 14.5 Authoritative HP/MP carry source
+
+- A client-supplied `previousBattleId` is only a reference; it is never sufficient proof that a Battle may supply carried HP/MP.
+- The Worker must resolve the Character's latest settled Battle completion from `battle_completions` joined to `battle_authority`, and require the supplied ID to match that latest completion.
+- The source must be a settled `victory`, and its stored server context/Floor must match the committed completion Floor.
+- Carry is allowed only when starting the same Floor again or the immediately following Floor. Older completions, another Character's Battle, unsettled outcomes, and unrelated Floor jumps are rejected with `battle_carry_source_invalid`.
+- Omitting `previousBattleId` continues to start with the normal full HP/MP initialization; no client-provided HP/MP is accepted.
+- Regression coverage must prove that a latest completion can carry its actual HP/MP, but an older formerly valid Battle ID cannot be replayed after a newer completion.

@@ -315,24 +315,20 @@ async function measureLatencyScenario() {
   });
   assert.equal(started.status, 200, JSON.stringify(started.body));
 
-  const checkpoint = makeBattleCheckpoint(started);
-  db.raw.prepare(
-    "UPDATE battle_checkpoints SET checkpoint_seq = ?, payload_json = ?, state = 'active' WHERE battle_id = ? AND character_id = ?"
-  ).run(1, JSON.stringify(checkpoint), started.body.battleId, characterId);
-
-  const reward = {
-    floor: 1,
-    encounterType: started.body.context.role,
-    rewardRole: started.body.context.role,
-    packCount: started.body.context.packCount,
-    gold: 23,
-    xp: 8,
-  };
+  // Latency fixture begins at a Worker-derived terminal state; action legality
+  // is covered by battle-persistence.test.js and is not part of this budget.
+  const terminal = structuredClone(started.body.state);
+  terminal.result = "victory";
+  for (const unit of Object.values(terminal.units)) {
+    if (unit.side === "enemy") { unit.hp = 0; unit.dead = true; }
+  }
+  db.raw.prepare("UPDATE battle_authority SET state_rev = 1, state_json = ?, outcome = 'victory' WHERE battle_id = ? AND character_id = ?")
+    .run(JSON.stringify(terminal), started.body.battleId, characterId);
   const completionPayload = {
     result: "victory",
     safeActionSeq: 2,
     floor: 1,
-    reward,
+    reward: { gold: 999999, xp: 999999 },
   };
 
   const complete = await post(entry, db, token, {

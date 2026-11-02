@@ -24,7 +24,7 @@ test("Dungeon preview and battle entry share the authoritative server encounter 
   assert.match(componentsSource, /makeEncounter\(floor, \{ serverContext: preview\.context \}\)/);
   assert.match(componentsSource, /onSelectFloor\(detail\.floor, detail\.monsters, detail\.previewContext\)/);
   assert.doesNotMatch(componentsSource, /encounterCache\.current\.set\(floor, makeEncounter\(floor\)\)/);
-  assert.match(appSource, /cloudStartDungeonBattle\(cred\.url, save\.characterId, floorNum, options\.previewContext \|\| null\)/);
+  assert.match(appSource, /cloudStartDungeonBattle\(cred\.url, save\.characterId, floorNum, options\.previewContext \|\| null, options\.previousBattleId \|\| null\)/);
   assert.match(appSource, /started\?\.error === "dungeon_preview_stale"/);
 });
 

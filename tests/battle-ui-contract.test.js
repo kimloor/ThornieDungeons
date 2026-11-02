@@ -58,12 +58,13 @@ test("Battlefield uses stable presentation classes and mobile safe-area/control 
   assert.match(styles, /\.md-scene\.battle-bg > \.md-panel/);
 });
 
-test("Battle rendering preserves manifest resolvers and App has one gameplay resolver", () => {
+test("Battle rendering preserves manifest resolvers and delegates gameplay resolution to the Worker", () => {
   assert.match(manifest, /function battleEncounterSources/);
   assert.match(manifest, /getPetSpriteConfig/);
   assert.match(manifest, /getMonsterSpriteConfig/);
-  assert.match(app, /BATTLE_CORE_V1\.battleStep/);
-  assert.match(app, /DUNGEON_V2\.simulateDungeonV2Battle\(state, BATTLE_CORE_V1\)/);
+  assert.match(app, /cloudSubmitDungeonBattleAction/);
+  assert.doesNotMatch(app, /const result = BATTLE_CORE_V1\.battleStep/);
+  assert.doesNotMatch(app, /DUNGEON_V2\.simulateDungeonV2Battle\(state, BATTLE_CORE_V1\)/);
   assert.doesNotMatch(app, /Legacy source-contract marker/);
   assert.doesNotMatch(app, /function (processQueue|doPetAction|doMonsterAction|enemyTurn)/);
 });
@@ -212,14 +213,13 @@ test("battle presentation resets Hero to idle at completion and before stage ent
   assert.equal(app.slice(enterStart, enterEnd).includes('setHeroAnim("");'), true);
 });
 
-test("Dungeon battle entry obtains server authorization before creating or checkpointing combat", () => {
+test("Dungeon battle entry uses server-created state before checkpointing combat", () => {
   const enterStart = app.indexOf("function enterStage(");
   const enterEnd = app.indexOf("function buildPetCombatUnit", enterStart);
   const entry = app.slice(enterStart, enterEnd);
-  assert.ok(entry.indexOf("cloudStartDungeonBattle(") < entry.indexOf("BATTLE_CORE_V1.createDungeonBattle("));
   assert.ok(entry.indexOf("cloudStartDungeonBattle(") < entry.indexOf("pushBattleCheckpoint(initialBattle)"));
-  assert.match(entry, /battleId: battleAuthorization\.battleId/);
-  assert.match(entry, /seed: battleAuthorization\.context\.encounterSeed/);
+  assert.match(entry, /initialBattle = battleAuthorization\.state/);
+  assert.match(entry, /dungeon_authority_state_missing/);
 });
 
 test("Quick-slot skill changes update the live Battle Core Hero immediately", () => {
@@ -276,11 +276,16 @@ test("battle completion error matrix keeps retry, session, non-retryable, and te
   assert.match(finish, /if \(!completionOutcome\.ok\)[\s\S]*setBusy\(false\)[\s\S]*setBattleFinishing\(true\)/);
 });
 
-test("Battle Potion starts the local Hero Action immediately while server consumption stays authoritative", () => {
-  assert.match(app, /const pendingPotionRef = useRef\(null\)/);
-  assert.match(app, /const promise = cloudConsumePotion\(/);
-  assert.match(app, /Resolve the full Potion Action immediately/);
-  assert.match(app, /driveCoreBattle\(state, \{ type: "potion"/);
-  assert.match(app, /Server rejected the inventory mutation/);
-  assert.match(app, /applyCoreBattleState\(pendingPotion\.preState, false\)/);
+test("Battle Potion submits one atomic authoritative action without a separate pre-consume request", () => {
+  const start = app.indexOf("async function consumeBattlePotion");
+  const end = app.indexOf("function playerTurn", start);
+  const body = app.slice(start, end);
+  assert.doesNotMatch(body, /cloudConsumePotion/);
+  assert.match(body, /await driveCoreBattle\(state, \{ type: "potion", potionId, requestId \}\)/);
+  const driveStart = app.indexOf("function driveCoreBattle");
+  const driveEnd = app.indexOf("async function consumeBattlePotion", driveStart);
+  const drive = app.slice(driveStart, driveEnd);
+  assert.match(drive, /heroCommand\?\.type === "potion"/);
+  assert.match(drive, /hydrateAuthoritativeBlacksmithSnapshot\(receipt, save\.characterId\)/);
+  assert.match(drive, /potionRequestIdsRef\.current\.delete/);
 });
