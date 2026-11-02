@@ -23,7 +23,19 @@ This document governs routine post-deploy gameplay, UI, and regression acceptanc
 | Character ID | `char-1793631141111-8kzn3j2j` |
 | Intended use | Routine gameplay regression and post-deploy acceptance |
 
-The identity and Character ID were confirmed by a read-only Production D1 query on 2026-11-02. Never store passwords, password hashes, session tokens, recovery codes, or other authentication secrets in this document or in chat.
+### 3.0 Second designated QA identity (Claude)
+
+| Field | Value |
+|---|---|
+| Environment | Production |
+| Player ID / username | `claude` |
+| Character name | `claude1` |
+| Character ID | `char-1793632719961-ycr8bbue` |
+| Intended use | Claude-side routine regression QA; kept separate from the `chatgpt` account so state, runs, Arena rating and audit trails do not collide |
+
+Identity confirmed by a read-only Production D1 query on 2026-11-02 (created 2026-11-02T15:18:39Z; initial state Level 1, XP 0, Gold 0, Unlocked Floor 1, Potions 2, Diamonds 0 — same baseline as below). Seed status: NOT APPLIED. All rules in this document apply to this identity too. No credentials are stored here.
+
+The identity and Character ID of the `chatgpt` account were confirmed by a read-only Production D1 query on 2026-11-02. Never store passwords, password hashes, session tokens, recovery codes, or other authentication secrets in this document or in chat.
 
 ### 3.1 Initial observed state (before any seed)
 
