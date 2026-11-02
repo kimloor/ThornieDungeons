@@ -139,6 +139,33 @@ test("server state rejects forged checkpoint and premature victory", async () =>
   assert.deepEqual({ ...db.raw.prepare("SELECT state_rev, outcome, settled_at FROM battle_authority WHERE battle_id = ?").get(started.body.battleId) }, { state_rev: 0, outcome: "", settled_at: "" });
 });
 
+test("terminal authoritative result survives reload until settlement", async () => {
+  const api = worker({ eventId: null }), db = database();
+  const { token, characterId } = await account(api, db, "Authority_TerminalResume");
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  const terminal = forceAuthoritativeVictory(db, started.body.battleId);
+
+  const reloadedApi = worker({ eventId: null });
+  const pending = await get(reloadedApi, db, token, { action: "getBattleState", characterId });
+  assert.equal(pending.body.checkpoint.authoritative, true);
+  assert.equal(pending.body.checkpoint.payload.result, "victory");
+  assert.equal(pending.body.checkpoint.payload.authorityRev, terminal.rev);
+
+  const blockedStart = await post(reloadedApi, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  assert.equal(blockedStart.status, 409);
+  assert.equal(blockedStart.body.error, "battle_settlement_pending");
+  assert.equal(db.raw.prepare("SELECT state FROM battle_checkpoints WHERE battle_id=?").get(started.body.battleId).state, "active");
+
+  const completed = await post(reloadedApi, db, token, {
+    action: "completeBattle", characterId, battleId: started.body.battleId,
+    result: { result: "victory", floor: 999, reward: { gold: 999999, xp: 999999 } }
+  });
+  assert.equal(completed.body.firstCompletion, true, JSON.stringify(completed.body));
+  assert.ok(db.raw.prepare("SELECT settled_at FROM battle_authority WHERE battle_id=?").get(started.body.battleId).settled_at);
+  assert.equal((await get(reloadedApi, db, token, { action: "getBattleState", characterId })).body.checkpoint, null);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id=?").get(started.body.battleId).c, 1);
+});
+
 test("actions enforce ownership, revision, idempotency, order, and targets", async () => {
   const api = worker(), db = database();
   const owner = await account(api, db, "Battle_Owner"), other = await account(api, db, "Battle_Other");
