@@ -104,8 +104,11 @@ jobs:
 
       - name: Validate dedicated staging credentials and D1 identity
         shell: bash
+        env:
+          FAULT_SECRET: ${{ secrets.P0_ROLLBACK_TEST_KEY }}
         run: |
           set -euo pipefail
+          test -n "$FAULT_SECRET" || { echo "Missing GitHub secret P0_ROLLBACK_TEST_KEY"; exit 1; }
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing GitHub secret CF_STAGING_API_TOKEN"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing GitHub secret CF_STAGING_ACCOUNT_ID"; exit 1; }
           test "$CLOUDFLARE_ACCOUNT_ID" = "$EXPECTED_ACCOUNT_ID" || { echo "Staging account mismatch"; exit 1; }
@@ -257,6 +260,33 @@ jobs:
           set -euo pipefail
           test -n "$FAULT_SECRET"
           printf '%s' "$FAULT_SECRET" | wrangler secret put P0_ROLLBACK_TEST_KEY --config "${{ steps.config.outputs.runtime_config }}"
+
+      - name: Create short-lived QA bearer session for the exact fixture player
+        shell: bash
+        env:
+          FAULT_SECRET: ${{ secrets.P0_ROLLBACK_TEST_KEY }}
+          RUNTIME_CONFIG: ${{ steps.config.outputs.runtime_config }}
+        run: |
+          set -euo pipefail
+          token_hash="$(printf '%s' "$FAULT_SECRET" | openssl dgst -sha256 -binary | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
+          session_id="sess-p0-rollback-$QA_PLAYER_ID"
+          created_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          expires_at="$(date -u -d '+2 hours' +'%Y-%m-%dT%H:%M:%SZ')"
+          sql="INSERT INTO auth_sessions (session_id, player_id, token_hash, created_at, expires_at, revoked_at, revoke_reason, remember_login)
+            SELECT '$session_id', '$QA_PLAYER_ID', '$token_hash', '$created_at', '$expires_at', NULL, NULL, 0
+            WHERE EXISTS (SELECT 1 FROM characters WHERE character_id='$QA_CHARACTER_ID' AND player_id='$QA_PLAYER_ID')
+            ON CONFLICT(session_id) DO UPDATE SET token_hash=excluded.token_hash, created_at=excluded.created_at,
+              expires_at=excluded.expires_at, revoked_at=NULL, revoke_reason=NULL, remember_login=0
+            WHERE auth_sessions.player_id=excluded.player_id"
+          wrangler d1 execute "$STAGING_DB_NAME" --remote --config "$RUNTIME_CONFIG" --json --command "$sql" > "$RUNNER_TEMP/qa-session-write.json"
+          jq -e 'all(.[]; .success == true)' "$RUNNER_TEMP/qa-session-write.json" >/dev/null
+          check="SELECT COUNT(*) AS n FROM auth_sessions s JOIN characters c ON c.player_id=s.player_id
+            WHERE s.session_id='$session_id' AND s.player_id='$QA_PLAYER_ID'
+              AND c.character_id='$QA_CHARACTER_ID' AND s.token_hash='$token_hash'
+              AND s.revoked_at IS NULL AND s.expires_at > '$created_at'"
+          wrangler d1 execute "$STAGING_DB_NAME" --remote --config "$RUNTIME_CONFIG" --json --command "$check" > "$RUNNER_TEMP/qa-session-check.json"
+          jq -e '.[0].success == true and .[0].results[0].n == 1' "$RUNNER_TEMP/qa-session-check.json" >/dev/null
+          echo "Short-lived QA bearer session installed for exact fixture player; bearer token is the QA secret and is never logged."
 
       - name: Verify deployed identity, sole D1 binding, source tag and no cron
         shell: bash
