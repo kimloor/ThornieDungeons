@@ -217,7 +217,9 @@ jobs:
               AND c.player_id = '$QA_PLAYER_ID'
               AND ba.outcome = 'victory'
               AND ba.settled_at = ''
-              AND json_extract(ba.initial_state_json, '$.serverContext.role') = 'chapter_boss'
+              AND json_extract(ba.initial_state_json, '$.floor') = 10
+              AND json_extract(ba.initial_state_json, '$.units') IS NOT NULL
+              AND EXISTS (SELECT 1 FROM json_each(ba.initial_state_json, '$.units') AS initial_unit WHERE json_extract(initial_unit.value, '$.side') = 'enemy' AND (json_extract(initial_unit.value, '$.kind') = 'boss' OR json_extract(initial_unit.value, '$.isBoss') = 1))
               AND json_extract(ba.state_json, '$.serverContext.role') = 'chapter_boss'
               AND bc.battle_id IS NULL"
           wrangler d1 execute "$STAGING_DB_NAME" --remote --config "$RUNTIME_CONFIG" --json --command "$query" > "$RUNNER_TEMP/qa-scope.json"
