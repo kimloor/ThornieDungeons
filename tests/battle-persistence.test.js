@@ -178,6 +178,23 @@ test("potion reservation is non-consuming and the battle action atomically consu
   assert.equal(potionQuantity(db, characterId), 1);
 });
 
+
+test("legacy consumed Potion receipts cannot authorize a second battle effect", async () => {
+  const api = worker(), db = database();
+  const { token, characterId } = await account(api, db, "PotionLegacyReplay");
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  const hero = await advanceToHero(api, db, token, characterId, started);
+  const requestId = "legacy-potion-request-0001";
+  db.raw.prepare("INSERT INTO character_operation_receipts (character_id,operation,request_id,operation_token,payload_json,result_json,created_at) VALUES (?,?,?,?,?,?,?)")
+    .run(characterId, "consume_potion", requestId, "legacy-token", JSON.stringify({ potionId: "hp_small" }),
+      JSON.stringify({ potionId: "hp_small", consumed: 1 }), new Date().toISOString());
+  const replay = await submit(api, db, token, characterId, started.body.battleId, hero.rev,
+    { type: "potion", potionId: "hp_small", requestId }, "legacy-potion-action-replay");
+  assert.equal(replay.status, 409);
+  assert.equal(replay.body.error, "potion_request_reused");
+  assert.equal(db.raw.prepare("SELECT state_rev FROM battle_authority WHERE battle_id=?").get(started.body.battleId).state_rev, hero.rev);
+});
+
 test("stale Potion battle revision does not consume inventory and same request can retry", async () => {
   const api = worker(), db = database();
   const { token, characterId } = await account(api, db, "PotionStale");
