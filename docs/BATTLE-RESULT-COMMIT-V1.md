@@ -538,3 +538,12 @@ This section records the implementation contract for the P0 Dungeon Battle Autho
 - Historical consumed Potion receipts cannot authorize a second effect.
 - An action key remains replay-protected after later actions have committed.
 - A conflicting payload using an existing action key is rejected.
+
+### 14.5 Authoritative HP/MP carry source
+
+- A client-supplied `previousBattleId` is only a reference; it is never sufficient proof that a Battle may supply carried HP/MP.
+- The Worker must resolve the Character's latest settled Battle completion from `battle_completions` joined to `battle_authority`, and require the supplied ID to match that latest completion.
+- The source must be a settled `victory`, and its stored server context/Floor must match the committed completion Floor.
+- Carry is allowed only when starting the same Floor again or the immediately following Floor. Older completions, another Character's Battle, unsettled outcomes, and unrelated Floor jumps are rejected with `battle_carry_source_invalid`.
+- Omitting `previousBattleId` continues to start with the normal full HP/MP initialization; no client-provided HP/MP is accepted.
+- Regression coverage must prove that a latest completion can carry its actual HP/MP, but an older formerly valid Battle ID cannot be replayed after a newer completion.

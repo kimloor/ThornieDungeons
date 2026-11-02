@@ -1782,22 +1782,36 @@ function dungeonAuthorityEnemyUnit(context, enemy, index) {
   };
 }
 
-async function dungeonAuthorityCarryState(db, characterId, previousBattleId) {
+async function dungeonAuthorityCarryState(db, characterId, previousBattleId, targetFloor) {
   if (!previousBattleId) return null;
-  const row = await db.prepare(`SELECT state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ?`)
-    .bind(String(previousBattleId), characterId).first();
-  if (!row || row.outcome !== "victory" || !row.settled_at) return null;
+  // A carry source must be the character's latest settled completion. Looking up
+  // the supplied ID alone lets a client replay an older high-HP battle snapshot.
+  const row = await db.prepare(`SELECT c.battle_id, c.result_json, a.state_json, a.outcome, a.settled_at
+    FROM battle_completions c
+    JOIN battle_authority a ON a.battle_id = c.battle_id AND a.character_id = c.character_id
+    WHERE c.character_id = ?
+    ORDER BY c.completed_at DESC, c.rowid DESC
+    LIMIT 1`)
+    .bind(characterId).first();
+  if (!row || String(row.battle_id) !== String(previousBattleId)
+      || row.outcome !== "victory" || !row.settled_at) return null;
+  const result = parseJsonColumn(row.result_json, null);
   const state = parseJsonColumn(row.state_json, null);
+  const context = dungeonV2ServerNormalizeContext(state?.serverContext);
+  const completedFloor = Math.floor(Number(result?.floor) || 0);
+  const nextFloor = Math.floor(Number(targetFloor) || 0);
+  if (!context || context.floor !== completedFloor
+      || (nextFloor !== completedFloor && nextFloor !== completedFloor + 1)) return null;
   const hero = state?.units?.[state.heroId];
   const pet = state?.petId ? state?.units?.[state.petId] : null;
-  return hero ? { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp } : null;
+  if (!hero || !Number.isFinite(Number(hero.hp)) || !Number.isFinite(Number(hero.sp))) return null;
+  return { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp };
 }
 
-async function dungeonAuthorityInitialState(db, character, context, battleId, previousBattleId) {
-  const [itemsResult, settings, carry] = await Promise.all([
+async function dungeonAuthorityInitialState(db, character, context, battleId, carry) {
+  const [itemsResult, settings] = await Promise.all([
     db.prepare(`SELECT * FROM items WHERE character_id = ? AND equipped = 1`).bind(character.character_id).all(),
-    db.prepare(`SELECT quick_slots_json FROM character_settings WHERE character_id = ?`).bind(character.character_id).first(),
-    dungeonAuthorityCarryState(db, character.character_id, previousBattleId)
+    db.prepare(`SELECT quick_slots_json FROM character_settings WHERE character_id = ?`).bind(character.character_id).first()
   ]);
   const items = itemsResult?.results || [];
   const parsedPets = parsePetsJson(character);
@@ -1905,9 +1919,15 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
       return json({ error: "dungeon_preview_stale", context }, 409);
     }
   }
+  const carry = previousBattleId
+    ? await dungeonAuthorityCarryState(db, characterId, previousBattleId, floor)
+    : null;
+  if (previousBattleId && !carry) {
+    return json({ error: "battle_carry_source_invalid" }, 409);
+  }
   const battleId = `dungeon-${randomToken(16)}`;
   const now = nowIso();
-  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, previousBattleId);
+  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, carry);
   const authorization = JSON.stringify({
     version: 1,
     battleId,
