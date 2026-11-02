@@ -32,6 +32,8 @@ jobs:
   p0-rollback-contract:
     if: startsWith(github.ref, 'refs/heads/ops/p0-rollback-')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout rollback tooling branch
         uses: actions/checkout@v4
