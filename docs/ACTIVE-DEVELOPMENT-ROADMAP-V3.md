@@ -401,7 +401,7 @@ Do not silently pull unrelated future gameplay into the Ver 1.1.0 gate.
 
 
 ### P0 — Dungeon Battle Authority & Victory Settlement Security
-**Status: MERGED TO MAIN — Production release pending Owner authorization (2026-11-02)**  
+**Status: MERGED; post-merge Production rollout detected and verified by read-only Cloudflare/D1 inspection (2026-11-02)**  
 **Risk: VERY HIGH — authoritative Worker state, D1 transactions, inventory and player rewards**  
 **PR:** [#196](https://github.com/kimloor/ThornieDungeons/pull/196)  
 **Merge commit:** `6f3b8333a7c8105d17d271eccb2ff8105fc5cfb9`  
@@ -421,10 +421,13 @@ Verification:
 - Actual D1 QA [#41434632747](https://github.com/kimloor/ThornieDungeons/actions/runs/41434632747) PASS, R01–R04, exact source SHA `a02f40b6edb8570bb084a737733e3e84447a43b1`, isolated Staging D1 only.
 - QA Worker and run-specific Staging fixtures removed; zero matching rows remain and `PRAGMA foreign_key_check` reports zero violations.
 
-Release boundary:
-- PR #196 merged to `main`; this is **not** a Production deployment.
-- Migrations `0031_battle_authority_v1.sql` and `0032_battle_action_idempotency_v1.sql` are included in source but have **not** been applied to Production D1.
-- Production Worker/API deployment, Production D1 migration, and player-facing release remain pending separate Owner authorization and release verification.
+Post-merge Production verification (read-only audit, 2026-11-02):
+- Cloudflare records show `thornie-dungeons-api` Version **107** serving **100%** traffic from `2026-11-02 14:16:21 UTC`; its active D1 binding is Production database `thornie-dungeons-db`.
+- Cloudflare records show `thorniedungeons` frontend Version **1962** serving **100%** traffic from `2026-11-02 14:17:10 UTC`.
+- Production D1 migration ledger confirms `0031_battle_authority_v1.sql` applied at `14:16:14 UTC`, followed by `0032_battle_action_idempotency_v1.sql` at `14:16:15 UTC`.
+- Production schema contains both new tables and all four expected indexes. Read-only `PRAGMA foreign_key_check` returned zero violations. No battle-authority/action-receipt rows existed at audit time; 17 historical consumed Potion receipts remain in `character_operation_receipts` and the deployed runtime checks that table directly to reject reuse.
+- Direct public HTTP smoke testing could not be completed from this session because public hostname resolution failed. Treat runtime smoke/real-player flow verification as **pending**, not passed.
+- The post-merge Production rollout is recorded here because it is observable in Cloudflare; no Production migration/deploy command was issued manually by Project Lead during this audit. Do not run a duplicate migration or redeploy as part of this record.
 
 ## Backlog (unscheduled)
 
